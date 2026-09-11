@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
 // LISTA DE FILAS de Atlas: el patron para las listas que se BUSCAN (BRAND.md, "si busca, densidad; si
@@ -34,6 +35,30 @@ import type { CSSProperties, ReactNode } from "react";
 // orden de tabulacion hay UN solo enlace, el lector anuncia el nombre como texto del enlace, y funciona con
 // teclado sin handlers propios. Cualquier control dentro de la fila va con `relative z-10` para quedar POR
 // ENCIMA del estirado.
+
+/**
+ * UNA CELDA CON DESTINO PROPIO.
+ *
+ * ═══ POR QUE ALGUNAS CELDAS LLEVAN A OTRO SITIO QUE LA FILA (Santiago, 2026-09-10) ═══
+ *
+ * La fila entera lleva a un sitio (en pacientes, al panel) y hay celdas cuyo dato ES otra cosa: el
+ * pendiente vive en UNA evaluacion concreta, la ultima evaluacion ES una evaluacion. Mandarlas al panel
+ * obliga a dar dos saltos para llegar a lo que la celda ya estaba nombrando.
+ *
+ * ── Y POR QUE NO TODAS ──────────────────────────────────────────────────────────────────────────────
+ *
+ * Porque cada destino es una PARADA DE TECLADO mas, y veinte filas multiplican. Las celdas que llevan al
+ * MISMO sitio que la fila (la edad, el documento) NO llevan enlace propio: ya son pulsables, porque el
+ * enlace del titulo esta estirado sobre la fila entera. Se gana el clic sin pagar la parada.
+ */
+export type CeldaConDestino = {
+  texto: string;
+  /** A donde lleva. Con `alPulsar` en su lugar, la celda es un boton (p. ej. desplegar). */
+  href?: string;
+  alPulsar?: () => void;
+  /** Lo que se anuncia, si el texto solo no basta ("3" no dice que hace). */
+  etiqueta?: string;
+};
 
 export type ColumnaLista = {
   /** Cabecera de la columna en la disposicion de columnas. */
@@ -94,7 +119,16 @@ export function ListaFilas({
         <>
           <div
             aria-hidden
-            className="hidden border-b border-border bg-muted px-3 py-2.5 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:items-center md:gap-3"
+            // ═══ LA MISMA REGLA QUE LAS FRANJAS DE NIVEL DE WANG (Santiago, 2026-09-10) ═══
+            //
+            // Esta cabecera iba en `bg-muted`, el gris que se retiro de las tablas de composicion por lo
+            // mismo que alli: un relleno gris sobre superficie clara no separa, pesa. Adopta el
+            // tratamiento que quedo en `components/shared/tabla.tsx` para los encabezados de grupo: un
+            // tinte muy leve del azul de marca con el rotulo en gris de texto.
+            //
+            // Y ES COHERENTE CON SU PAPEL: esta fila AGRUPA a las de abajo, igual que "Nivel III" agrupa
+            // a sus indices. No es un encabezado de columnas suelto sobre datos, es la cabeza de la lista.
+            className="hidden border-y border-primary/20 bg-primary/5 px-3 py-2.5 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:items-center md:gap-3"
             style={{ gridTemplateColumns: "var(--cols)" }}
           >
             <span>Paciente</span>
@@ -120,7 +154,7 @@ export function FilaLista({
   valores,
   chip,
   acciones,
-  alPulsar,
+  alDesplegar,
   desplegado = false,
   panel,
 }: {
@@ -133,27 +167,30 @@ export function FilaLista({
   titulo: string;
   /** Las MISMAS columnas que recibio `ListaFilas`, para saber como se pinta cada valor. */
   columnas: readonly ColumnaLista[];
-  /** Un valor por columna, en el mismo orden. `null` deja la celda vacia y se omite en estrecho. */
-  valores: readonly (string | null)[];
+  /**
+   * Un valor por columna, en el mismo orden. `null` deja la celda vacia y se omite en estrecho.
+   * Una celda puede llevar a SU propio destino: ver `CeldaConDestino`.
+   */
+  valores: readonly (string | CeldaConDestino | null)[];
   /** Distintivo EXCEPCIONAL, junto al titulo. Se omite en el caso normal (BRAND). */
   chip?: ReactNode;
   /** Controles propios de la fila. Van con `relative z-10` para quedar sobre el enlace estirado. */
   acciones?: ReactNode;
   /**
-   * LA FILA DESPLIEGA EN VEZ DE NAVEGAR (Santiago, 2026-09-10).
+   * DESPLEGAR ES UN MANDO PROPIO, no lo que hace la fila (Santiago, 2026-09-10, segunda vuelta).
    *
-   * POR QUE ES OTRO MODO Y NO UN ENLACE CON `preventDefault`: lo que la fila hace deja de ser navegacion,
-   * asi que el elemento tiene que dejar de ser un enlace. Un `<a>` que no lleva a ningun sitio se copia,
-   * se abre en otra pestaña y se anuncia como enlace, y ninguna de las tres cosas es cierta.
+   * LA PRIMERA VERSION hacia que la fila ENTERA desplegara, y su reporte fue el que la condena: sin cursor
+   * ni marca, una fila que despliega no se distingue de una que no hace nada, y eso se descubre pulsando.
+   * Ahora la fila lleva a su sitio (que es lo que una fila de lista hace) y desplegar tiene su chevron.
    */
-  alPulsar?: () => void;
+  alDesplegar?: () => void;
   /** Si su panel esta abierto. Gobierna `aria-expanded` y el giro del chevron. */
   desplegado?: boolean;
   /** Lo que se pinta DEBAJO de la fila cuando esta desplegada. */
   panel?: ReactNode;
 }) {
-  if ((href == null) === (alPulsar == null)) {
-    throw new Error("FilaLista: pasa `href` (navega) o `alPulsar` (despliega), exactamente uno.");
+  if (href == null && alDesplegar == null) {
+    throw new Error("FilaLista: la fila necesita `href` (a donde lleva) o `alDesplegar`.");
   }
   // Un valor por columna: si esto se desalinea, las celdas quedan bajo la cabecera equivocada y NO se nota
   // (los valores se leen igual, solo que rotulados mal). Por eso falla ruidoso en vez de degradar.
@@ -186,15 +223,30 @@ export function FilaLista({
       style={{ gridTemplateColumns: "var(--cols)" }}
     >
       <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
+        {/* EL CHEVRON VA DELANTE DEL NOMBRE, que es donde vive un mando de desplegar en cualquier lista:
+            asi se ve que la fila SE ABRE antes de leerla, en vez de descubrirlo pulsando. Y `z-10` para
+            quedar sobre el enlace estirado del titulo. */}
+        {alDesplegar ? (
+          <button
+            type="button"
+            onClick={alDesplegar}
+            aria-expanded={desplegado}
+            aria-label={desplegado ? `Ocultar las evaluaciones de ${titulo}` : `Ver las evaluaciones de ${titulo}`}
+            className="relative z-10 -ml-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronRight
+              aria-hidden
+              className={`size-4 transition-transform ${desplegado ? "rotate-90" : ""}`}
+            />
+          </button>
+        ) : null}
         {/* EL TITULO SI TRUNCA: es el ancla visual de la fila. Los valores no (ver abajo). */}
         {href != null ? (
           <Link href={href} className={CLASES_TITULO}>
             {titulo}
           </Link>
         ) : (
-          <button type="button" onClick={alPulsar} aria-expanded={desplegado} className={CLASES_TITULO}>
-            {titulo}
-          </button>
+          <span className="truncate font-medium text-foreground">{titulo}</span>
         )}
         {chip}
       </div>
@@ -235,7 +287,31 @@ export function FilaLista({
             {v !== null && columnas[i].rotularEnEstrecho ? (
               <span className="md:hidden">{columnas[i].rotulo}: </span>
             ) : null}
-            {v}
+            {typeof v === "object" && v !== null ? (
+              // RELATIVE Z-10: la celda con destino propio tiene que quedar POR ENCIMA del enlace estirado
+              // del titulo, que cubre la fila entera. Sin esto se pulsaria el de abajo y el destino propio
+              // no serviria de nada.
+              v.href != null ? (
+                <Link
+                  href={v.href}
+                  aria-label={v.etiqueta}
+                  className="relative z-10 rounded underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {v.texto}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={v.alPulsar}
+                  aria-label={v.etiqueta}
+                  className="relative z-10 rounded underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {v.texto}
+                </button>
+              )
+            ) : (
+              v
+            )}
           </span>
         ))}
       </div>

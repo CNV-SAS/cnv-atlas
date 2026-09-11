@@ -40,6 +40,10 @@ export const COLUMNAS_PACIENTES: readonly ColumnaLista[] = [
   // ACCIONES AL FINAL, que es donde se buscan: se recorre la fila de izquierda a derecha y lo ultimo es
   // que hacer con ella. El rotulo no se repite en estrecho (`rotularEnEstrecho` ausente): ahi los botones
   // se explican solos y un rotulo "Acciones" sobre tres iconos gasta una linea.
-  { rotulo: "Acciones", ancho: "8rem" },
+  // ANCHO SUFICIENTE Y FIJO. Con 8rem los dos botones cabian en el papel pero la fila los empujaba a una
+  // segunda linea, debajo del nombre (reporte de Santiago): la celda cedia su ancho a las de al lado. Dos
+  // botones de 36 px mas su separacion son 80 px; 6rem (96) deja margen y el `shrink-0` del contenedor de
+  // acciones impide que la columna vuelva a ceder.
+  { rotulo: "Acciones", ancho: "6rem" },
 ];
 

@@ -121,6 +121,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
         evals
           .filter((e) => e.superseded_at == null)
           .map((e) => ({
+            evaluationId: e.id,
             status: e.status,
             tieneBis: (e.bis_measurements ?? []).length > 0,
             tieneDiagnostico: (e.diagnoses ?? []).length > 0,

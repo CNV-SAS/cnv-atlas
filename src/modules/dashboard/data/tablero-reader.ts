@@ -62,7 +62,7 @@ export async function getTablero(): Promise<Tablero> {
     supabase
       .from("patients")
       .select(
-        "id, status, patient_consents(consent_type, revoked_at), evaluations(superseded_at, status, bis_measurements(id), diagnoses(id), reports(status))",
+        "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, status, bis_measurements(id), diagnoses(id), reports(status))",
       )
       .is("deleted_at", null),
     supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "draft"),
@@ -86,6 +86,7 @@ export async function getTablero(): Promise<Tablero> {
   ]);
 
   type FilaEval = {
+    id: string;
     superseded_at: string | null;
     status: string;
     bis_measurements: { id: string }[] | null;
@@ -109,6 +110,7 @@ export async function getTablero(): Promise<Tablero> {
     const evals = ((p.evaluations as FilaEval[] | null) ?? []).filter((e) => e.superseded_at == null);
     const r = pendienteDelPaciente(
       evals.map((e) => ({
+        evaluationId: e.id,
         status: e.status,
         tieneBis: (e.bis_measurements ?? []).length > 0,
         tieneDiagnostico: (e.diagnoses ?? []).length > 0,

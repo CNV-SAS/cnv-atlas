@@ -17,14 +17,23 @@ import { cn } from "@/lib/utils"
 // alcanza. Y ademas trae de serie lo que habria que escribir a mano: aparece con el foco del teclado, se
 // cierra con Escape, y se anuncia como descripcion del enlace.
 
+// EL RETARDO Y EL SALTO ENTRE VECINOS (Santiago, 2026-09-10): "a veces si cambio rapido se le dificulta
+// para cambiar y queda mostrando el hover del icono del lado".
+//
+// SON DOS COSAS. La apertura sube a 250 ms: con 120 el tooltip salta al rozar un boton de paso, que es
+// como se acaba viendo el del vecino sobre el que ya no estas. Y `skipDelayDuration` baja a 0: por defecto
+// radix deja una ventana en la que el SIGUIENTE tooltip abre sin esperar, que es justo lo que encadena uno
+// con otro al recorrer una fila de botones. Con 0, cada uno espera su turno.
 function TooltipProvider({
-  delayDuration = 120,
+  delayDuration = 250,
+  skipDelayDuration = 0,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
       {...props}
     />
   )

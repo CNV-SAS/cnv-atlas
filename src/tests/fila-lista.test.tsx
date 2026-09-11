@@ -111,7 +111,7 @@ describe("ListaFilas: la cabecera", () => {
   });
 
   it("solo se ve en ancho", () => {
-    expect(markup).toContain("hidden border-b");
+    expect(markup).toContain("hidden border-y");
     expect(markup).toContain("md:grid");
   });
 

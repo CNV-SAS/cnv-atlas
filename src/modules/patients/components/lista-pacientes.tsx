@@ -270,12 +270,51 @@ export function ListaPacientes({
         const anos = edadEnAnios(p.birthDate);
         // Un valor por columna, en el mismo orden. `null` deja la celda VACIA en columnas (para no correr
         // las de al lado) y se omite en la linea concatenada, donde un hueco no dice nada.
-        // "+N" SOLO CUANDO LO HAY. Un "+0" es ruido, y un pendiente sin numero se lee mejor.
+        // ═══ CADA CELDA LLEVA A LO QUE NOMBRA (Santiago, 2026-09-10) ═══
+        //
+        // LA FILA ENTERA SIGUE LLEVANDO AL PANEL: el enlace del titulo esta estirado sobre ella, asi que
+        // pulsar la edad, el documento o el hueco entre columnas lleva al panel sin que ninguna de esas
+        // celdas tenga que ser un enlace propio. Eso importa: cada destino propio es una PARADA DE TECLADO
+        // mas, y veinte filas multiplican. Solo la tienen las celdas cuyo dato ES otra cosa.
+        //
+        //   · PENDIENTE -> la evaluacion donde esta ese pendiente. Decir "Montar BIS" y mandar al panel
+        //     obliga a un segundo salto para llegar a lo que la celda ya nombraba.
+        //   · ULTIMA EVALUACION -> esa evaluacion.
+        //   · EL CONTEO -> despliega las tres recientes, que es lo que el numero resume.
+        //
+        // Y NO LO TIENE el pendiente de autorizacion, que no es de ninguna consulta sino del paciente:
+        // llevar a una evaluacion desde ahi mandaria al sitio donde NO se arregla.
         const pend = p.pendiente.principal;
+        const textoPend = pend
+          ? `${pend.texto}${p.pendiente.otras > 0 ? ` +${p.pendiente.otras}` : ""}`
+          : null;
+        const abrir = () => setAbierta((a) => (a === p.patientId ? null : p.patientId));
         const valores = [
-          pend ? `${pend.texto}${p.pendiente.otras > 0 ? ` +${p.pendiente.otras}` : ""}` : null,
-          p.lastEvaluationDate ? formatDateOnlyShort(p.lastEvaluationDate) : null,
-          String(p.evaluationCount),
+          textoPend == null
+            ? null
+            : p.pendiente.evaluationId != null
+              ? {
+                  texto: textoPend,
+                  href: `/ani-bis-e/${p.pendiente.evaluationId}`,
+                  etiqueta: `${pend?.texto}: ir a esa evaluación`,
+                }
+              : textoPend,
+          p.lastEvaluationDate == null
+            ? null
+            : p.ultimasEvaluaciones[0]
+              ? {
+                  texto: formatDateOnlyShort(p.lastEvaluationDate),
+                  href: `/ani-bis-e/${p.ultimasEvaluaciones[0].evaluationId}?etapa=encuesta`,
+                  etiqueta: "Abrir la última evaluación",
+                }
+              : formatDateOnlyShort(p.lastEvaluationDate),
+          p.evaluationCount === 0
+            ? "0"
+            : {
+                texto: String(p.evaluationCount),
+                alPulsar: abrir,
+                etiqueta: `Ver las evaluaciones de ${nombreVisible(p)}`,
+              },
           anos !== null ? String(anos) : null,
           `${p.documentType} ${p.documentNumber}`.trim() || null,
           // La celda de "Acciones" va vacia: sus botones se pintan por la prop `acciones`, que se coloca
@@ -287,9 +326,12 @@ export function ListaPacientes({
         return (
           <FilaLista
             key={p.patientId}
-            // SIN `href`: la fila despliega. Ver `abierta`.
-            alPulsar={() => setAbierta((a) => (a === p.patientId ? null : p.patientId))}
+            // LA FILA VUELVE A LLEVAR AL PANEL (Santiago, 2026-09-10). Desplegar pasa a un boton propio:
+            // sin cursor ni marca, una fila que despliega no se distingue de una que no hace nada, y eso
+            // se descubre pulsando. El desplegable no se pierde, gana un mando que se ve.
+            href={`/pacientes/${p.patientId}`}
             desplegado={abierta === p.patientId}
+            alDesplegar={abrir}
             panel={
               p.ultimasEvaluaciones.length === 0 ? (
                 <p className="text-sm text-muted-foreground">

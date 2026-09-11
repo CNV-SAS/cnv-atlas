@@ -24,6 +24,8 @@
 
 /** Lo que se sabe de UNA evaluacion vigente para decidir que le falta. */
 export type EvaluacionPendiente = {
+  /** Para poder LLEVAR a la evaluacion donde esta el pendiente, no solo nombrarlo. */
+  evaluationId: string;
   status: string;
   tieneBis: boolean;
   tieneDiagnostico: boolean;
@@ -94,6 +96,13 @@ export function accionDeEvaluacion(e: EvaluacionPendiente): AccionPendiente | nu
 export type PendienteDelPaciente = {
   /** La accion mas atrasada de sus evaluaciones vigentes. `null` = no hay nada pendiente. */
   principal: AccionPendiente | null;
+  /**
+   * La evaluacion donde esta ese pendiente, para que la celda lleve AHI y no a la ficha.
+   *
+   * `null` cuando el pendiente no es de ninguna evaluacion en concreto: el paciente que no tiene
+   * ninguna, o al que le falta la autorizacion (que es del paciente, no de una consulta).
+   */
+  evaluationId: string | null;
   /** Cuantas OTRAS evaluaciones suyas tienen algo pendiente, ademas de la principal. */
   otras: number;
 };
@@ -109,24 +118,32 @@ export function pendienteDelPaciente(
   evaluaciones: EvaluacionPendiente[],
   sinAutorizacionVigente: boolean,
 ): PendienteDelPaciente {
+  // SE CONSERVA DE QUE EVALUACION ES CADA ACCION: sin eso la celda puede decir "Montar BIS" y no saber a
+  // cual de las tres consultas del paciente llevar.
   const acciones = evaluaciones
-    .map(accionDeEvaluacion)
-    .filter((a): a is AccionPendiente => a != null)
-    .sort((a, b) => a.orden - b.orden);
+    .map((e) => ({ accion: accionDeEvaluacion(e), evaluationId: e.evaluationId }))
+    .filter((x): x is { accion: AccionPendiente; evaluationId: string } => x.accion != null)
+    .sort((a, b) => a.accion.orden - b.accion.orden);
 
   // NI UNA SOLA EVALUACION: no es que no haya nada pendiente, es que no ha empezado. Ver
   // `SIN_EVALUACIONES`. Se mira sobre la lista ENTERA, no sobre las acciones: un paciente cuya unica
   // evaluacion se abandono tampoco ha empezado nada, y ahi la lista de acciones tambien queda vacia.
   if (evaluaciones.length === 0) {
     return sinAutorizacionVigente
-      ? { principal: SIN_AUTORIZACION, otras: 1 }
-      : { principal: SIN_EVALUACIONES, otras: 0 };
+      ? { principal: SIN_AUTORIZACION, evaluationId: null, otras: 1 }
+      : { principal: SIN_EVALUACIONES, evaluationId: null, otras: 0 };
   }
 
   // SIN AUTORIZACION VIGENTE MANDA SOBRE TODO, pero solo si hay algo que hacer con este paciente: a un
   // paciente cerrado y al dia no hay que renovarle nada para seguir, porque no hay nada que seguir.
   if (sinAutorizacionVigente && acciones.length > 0) {
-    return { principal: SIN_AUTORIZACION, otras: acciones.length };
+    // LA AUTORIZACION NO ES DE UNA EVALUACION: es del paciente. Llevar a una consulta concreta desde ahi
+    // mandaria al sitio donde NO se arregla.
+    return { principal: SIN_AUTORIZACION, evaluationId: null, otras: acciones.length };
   }
-  return { principal: acciones[0] ?? null, otras: Math.max(0, acciones.length - 1) };
+  return {
+    principal: acciones[0]?.accion ?? null,
+    evaluationId: acciones[0]?.evaluationId ?? null,
+    otras: Math.max(0, acciones.length - 1),
+  };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Archive, ArchiveRestore, IdCard, Stethoscope } from "lucide-react";
+import { Archive, ArchiveRestore, IdCard } from "lucide-react";
 import { useActionState } from "react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
@@ -18,7 +18,7 @@ const INICIAL: ArchivarPacienteState = { error: null, success: null, warning: nu
 //
 // LO QUE SE PORTA DE LA REFERENCIA ES LA FORMA, no la paleta: una columna de botones de icono con su
 // explicacion al pasar por encima. Su tabla lleva OCHO botones y cada uno de un color saturado distinto
-// (morado, naranja, rojo, azul, gris, verde...). Aqui son TRES y van neutros, por dos razones:
+// (morado, naranja, rojo, azul, gris, verde...). Aqui son DOS y con UN solo acento, por dos razones:
 //
 //   · Ocho acciones por fila en una lista de 73 convierten la columna en el elemento mas ruidoso de la
 //     pantalla, y esta lista ya tiene dos cosas que SI deben saltar: la columna de pendientes y el chip.
@@ -28,6 +28,20 @@ const INICIAL: ArchivarPacienteState = { error: null, success: null, warning: nu
 // EL ROTULO NO ES SOLO UN `title`: va en tooltip con portal, que aparece tambien con el foco del teclado
 // y se anuncia como descripcion. Un boton de icono sin nombre accesible es un boton que solo existe para
 // quien ve el dibujo.
+//
+// ── Y SON DOS, NO TRES (Santiago, 2026-09-10, segunda vuelta) ───────────────────────────────────────
+//
+// "Nueva evaluacion" se retira: llevaba al MISMO sitio que el panel, asi que era un segundo boton para lo
+// mismo con otro icono, que es peor que no tenerlo (obliga a leer los dos para descubrir que dan igual).
+// Con uno menos los dos que quedan pueden ser mas grandes, que es lo que pedia el area de pulsacion.
+//
+// ── EL BLOQUE DE COLOR, de la referencia de Biody ───────────────────────────────────────────────────
+//
+// Su interfaz pinta los iconos como TESELAS: un cuadrado redondeado relleno con el icono en blanco. Eso
+// se porta, y da la profundidad que faltaba. Lo que NO se porta es que cada tesela lleve un color
+// distinto: aqui el relleno es el azul de MARCA, uno solo, y el segundo boton va en neutro. Dos teselas
+// de dos colores saturados en la misma fila que el semaforo clinico competirian con el, y el color en
+// Atlas significa.
 //
 // Y NO HAY BOTON DE ELIMINAR, aunque la referencia lo tenga: un paciente con datos clinicos arrastra
 // evaluaciones, diagnosticos sellados y su rastro de auditoria. Borrarlo rompe la trazabilidad de la regla
@@ -48,31 +62,20 @@ export function AccionesPaciente({
     <>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button asChild variant="ghost" size="icon" className="size-8">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="size-9 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
+          >
             <Link href={`/pacientes/${patientId}`} aria-label="Abrir el panel del paciente">
-              <IdCard className="size-4" aria-hidden />
+              <IdCard className="size-[1.125rem]" aria-hidden />
             </Link>
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Panel del paciente: su historia completa</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button asChild variant="ghost" size="icon" className="size-8">
-            {/* LA EVALUACION NUEVA EMPIEZA EN SU PANEL, no en una accion suelta: el enlace o el QR se le
-                pasan desde ahi, y ahi esta ademas lo que hay que mirar antes (autorizaciones vigentes y
-                lo que quedo de la consulta anterior). Un boton que creara la evaluacion desde la lista se
-                saltaria esa mirada. */}
-            <Link
-              href={`/pacientes/${patientId}#seguimiento`}
-              aria-label="Empezar una evaluación nueva"
-            >
-              <Stethoscope className="size-4" aria-hidden />
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Nueva evaluación: emite su enlace de seguimiento</TooltipContent>
+        {/* CORTO Y DIRECTO (Santiago): el tooltip se lee de paso, no se estudia. "Panel del paciente: su
+            historia completa" obligaba a pararse encima del boton para terminar de leerlo. */}
+        <TooltipContent>Panel del paciente</TooltipContent>
       </Tooltip>
 
       {puedeArchivar ? (
@@ -85,22 +88,18 @@ export function AccionesPaciente({
                 type="submit"
                 variant="ghost"
                 size="icon"
-                className="size-8"
+                className="size-9 rounded-lg bg-muted text-muted-foreground hover:bg-foreground hover:text-background"
                 disabled={pending}
                 aria-label={archivado ? "Desarchivar el paciente" : "Archivar el paciente"}
               >
                 {archivado ? (
-                  <ArchiveRestore className="size-4" aria-hidden />
+                  <ArchiveRestore className="size-[1.125rem]" aria-hidden />
                 ) : (
-                  <Archive className="size-4" aria-hidden />
+                  <Archive className="size-[1.125rem]" aria-hidden />
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              {archivado
-                ? "Desarchivar: vuelve a la lista"
-                : "Archivar: sale de la lista. No se borra nada"}
-            </TooltipContent>
+            <TooltipContent>{archivado ? "Desarchivar" : "Archivar"}</TooltipContent>
           </Tooltip>
         </form>
       ) : null}
