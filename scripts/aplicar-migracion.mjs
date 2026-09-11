@@ -36,9 +36,29 @@ import postgres from "postgres";
 //   (contra la nube: exportar DATABASE_URL de la nube y correrlo sin --env-file)
 //
 //   Con --commit al final, confirma en vez de revertir. Solo cuando se sepa lo que se esta haciendo.
+//
+// ── POR QUE UNA BANDERA DESCONOCIDA ABORTA, Y NO SE IGNORA (2026-09-11) ─────────────────────────
+//
+// Paso lo peor que podia pasar con una herramienta asi: se corrio la carga de inventario con `--confirmar`
+// (una bandera que NO existe; la real es `--commit`), la herramienta la ignoro en silencio, corrio en
+// ensayo, revirtio, y quien la ejecuto creyo que habia aplicado la carga. La salida decia "Modo: ENSAYO",
+// pero cuando uno cree haber pedido lo contrario, esa linea se lee como ruido.
+//
+// LA REGLA: en una herramienta donde la diferencia entre dos modos es "los datos quedan" contra "los datos
+// no quedan", ignorar un argumento no es tolerancia, es dejar que el usuario se equivoque sin enterarse.
+// Un argumento que no se entiende ABORTA antes de tocar la base.
+const BANDERAS = new Set(["--commit"]);
 
-const archivo = process.argv[2];
-const confirmar = process.argv.includes("--commit");
+const args = process.argv.slice(2);
+const desconocidas = args.filter((a) => a.startsWith("-") && !BANDERAS.has(a));
+if (desconocidas.length > 0) {
+  console.error(`No reconozco ${desconocidas.join(", ")}, asi que no corro nada.`);
+  console.error(`La unica bandera es --commit (confirma los cambios). Sin ella, ENSAYA y revierte.`);
+  process.exit(1);
+}
+
+const archivo = args.find((a) => !a.startsWith("-"));
+const confirmar = args.includes("--commit");
 if (!archivo) {
   console.error("Falta el archivo. Ej: node scripts/aplicar-migracion.mjs drizzle/0111_x.sql");
   process.exit(1);
@@ -64,11 +84,22 @@ try {
       .replace(/^[ 	]*begin[ 	]*;[ 	]*$/gim, "")
       .replace(/^[ 	]*commit[ 	]*;[ 	]*$/gim, "");
     await tx.unsafe(contenido).simple();
-    console.log("La migracion corrio SIN ERRORES.");
+    console.log(`El archivo corrio SIN ERRORES.`);
     if (!confirmar) {
-      console.log("Revirtiendo (ensayo). Para aplicarla de verdad: pnpm db:migrate");
+      // EL CONSEJO SE DERIVA DEL ARCHIVO, no es una frase fija. Decia siempre "para aplicarla de verdad:
+      // pnpm db:migrate", que es cierto de una migracion y FALSO de un script de operacion: db:migrate
+      // solo corre lo que esta en el journal de drizzle, y una carga o una purga no estan ahi. Un consejo
+      // equivocado en el momento de aplicar es peor que ningun consejo.
+      const esMigracion = /(^|[\\/])drizzle[\\/]\d{4}_/.test(archivo);
+      console.log("Revirtiendo: esto fue un ENSAYO, no queda nada en la base.");
+      console.log(
+        esMigracion
+          ? "  Para aplicarla de verdad: pnpm db:migrate (es lo unico que deja constancia en el journal)."
+          : `  Para aplicarlo de verdad: el mismo comando con --commit al final.`,
+      );
       throw new Error("__ensayo__");
     }
+    console.log("CONFIRMADO: los cambios quedan en la base.");
   });
 } catch (e) {
   if (e?.message === "__ensayo__") {

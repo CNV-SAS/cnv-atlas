@@ -19,6 +19,20 @@ import {
 // · NADA SE RESALTA POR COINCIDIR. Pintar distinto lo que coincide seria el cruce con otro nombre.
 // · Y EL CIERRE PIDE VERIFICAR, no informa de que se verifico. Gildardo, textual: "la pantalla no dice
 //   que nada fue verificado contra las alergias, porque no lo sera".
+//
+// ── LOS ROTULOS SE ESCRIBIERON DOS VECES, Y LA SEGUNDA VERSION ES LA QUE ESTA (2026-09-11) ───────
+//
+// La primera decia "El paciente declaro alergia a" / "Y declaro intolerancia a" / "LUVIA declara". Estaba
+// armada como UNA FRASE REPARTIDA EN TRES COLUMNAS, y solo se lee bien en el caso en que las tres estan:
+// un paciente que declara intolerancias y NINGUNA alergia veia una columna que empezaba por "Y" y que
+// habia perdido el sujeto. El caso del smoke era exactamente ese.
+//
+// LA REGLA QUE SALE: cada rotulo tiene que sostenerse SOLO, porque cual aparece depende del dato. Un
+// texto que depende de que su vecino exista es un texto que falla en cuanto el vecino falta, y en una
+// pantalla condicional eso no es un caso borde, es la mitad de los casos.
+//
+// Por eso los tres son ahora frases nominales paralelas y en plural, que leen igual con un elemento o con
+// cinco, aparezcan solas o juntas, y en cualquier orden.
 
 function Columna({ titulo, items }: { titulo: string; items: string[] }) {
   return (
@@ -50,12 +64,12 @@ export function YuxtaposicionAlergenos({
     <div className="rounded-lg border border-border bg-muted/40 p-3">
       <div className="flex flex-wrap gap-x-6 gap-y-3">
         {paciente.alergias.length > 0 && (
-          <Columna titulo="El paciente declaró alergia a" items={paciente.alergias} />
+          <Columna titulo="Alergias declaradas por el paciente" items={paciente.alergias} />
         )}
         {paciente.intolerancias.length > 0 && (
-          <Columna titulo="Y declaró intolerancia a" items={paciente.intolerancias} />
+          <Columna titulo="Intolerancias declaradas por el paciente" items={paciente.intolerancias} />
         )}
-        <Columna titulo={`${nombreProducto} declara`} items={producto.alergenos} />
+        <Columna titulo={`Alérgenos declarados por ${nombreProducto}`} items={producto.alergenos} />
       </div>
       <p className="mt-3 border-t border-border pt-2 text-sm text-muted-foreground">
         Verifica la compatibilidad antes de recomendarlo. Atlas no las compara.
