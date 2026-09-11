@@ -39,17 +39,25 @@ describe("desplegar no cuesta una consulta", () => {
 });
 
 describe("lo que la fila HACE cambia lo que la fila ES", () => {
-  it("si despliega, el título es un botón y no un enlace", () => {
-    // Un `<a>` que no lleva a ningún sitio se copia, se abre en otra pestaña y se anuncia como enlace, y
-    // ninguna de las tres cosas es cierta. Por eso no es un enlace con `preventDefault`.
+  it("DESPLEGAR ES UN MANDO PROPIO, no lo que hace la fila", () => {
+    // ═══ SEGUNDA VUELTA (Santiago, 2026-09-10) ═══
+    //
+    // La primera version hacia que la fila ENTERA desplegara, y su reporte la condeno: "si no ponemos el
+    // cursor activo sobre la fila, pareciera que no tiene funcion". Sin cursor ni marca, una fila que
+    // despliega no se distingue de una que no hace nada, y eso se descubre pulsando.
+    //
+    // Ahora la fila LLEVA A SU SITIO (que es lo que una fila de lista hace) y desplegar tiene su chevron
+    // delante del nombre, que es donde vive ese mando en cualquier lista: se VE que la fila se abre antes
+    // de leerla.
     expect(FILA).toContain("aria-expanded={desplegado}");
-    expect(FILA).toContain('<button type="button" onClick={alPulsar}');
+    expect(FILA).toContain("onClick={alDesplegar}");
+    expect(FILA).toContain("rotate-90");
   });
 
-  it("y los dos modos son excluyentes, con error ruidoso", () => {
-    // Pasar los dos o ninguno es un error de programación, no un caso de borde: falla al construir la
-    // fila en vez de pintar algo que no responde.
-    expect(FILA).toContain("exactamente uno.");
+  it("y el chevron dice de QUIEN son las evaluaciones que abre", () => {
+    // Veinte chevrones identicos en una lista son veinte botones que se anuncian igual con lector de
+    // pantalla. El nombre del paciente los distingue.
+    expect(FILA).toContain("Ver las evaluaciones de");
   });
 
   it("el panel va FUERA del <li> de la fila", () => {
@@ -71,22 +79,30 @@ describe("lo que la fila HACE cambia lo que la fila ES", () => {
 });
 
 describe("la columna de acciones: la forma de la referencia, no su paleta", () => {
-  it("son TRES botones, no ocho", () => {
+  it("son DOS botones, no ocho", () => {
     // La tabla de Biody lleva ocho, cada uno de un color saturado. En una lista de 73 filas eso convierte
     // la columna en lo más ruidoso de la pantalla, y aquí ya hay dos cosas que SÍ deben saltar: la columna
     // de pendientes y el chip.
-    expect((ACCIONES.match(/<TooltipTrigger asChild>/g) ?? []).length).toBe(3);
+    //
+    // Y BAJAN DE TRES A DOS (Santiago, segunda vuelta): "nueva evaluación" llevaba al MISMO sitio que el
+    // panel, así que era un segundo botón para lo mismo con otro icono, lo que obliga a leer los dos para
+    // descubrir que dan igual. Con uno menos, los dos que quedan pueden ser más grandes.
+    expect((ACCIONES.match(/<TooltipTrigger asChild>/g) ?? []).length).toBe(2);
   });
 
-  it("y van neutros: en Atlas el color significa", () => {
+  it("con UN solo acento: en Atlas el color significa", () => {
+    // La TESELA de la referencia sí se porta (da la profundidad que faltaba); su arcoíris no. El primario
+    // va en el azul de marca y el segundo en neutro: dos colores saturados en la misma fila que el
+    // semáforo clínico competirían con él.
     expect(ACCIONES, "los botones de acción se pintaron de color").not.toMatch(/variant="destructive"/);
-    expect((ACCIONES.match(/variant="ghost"/g) ?? []).length).toBe(3);
+    expect(ACCIONES, "el primario perdió su tesela").toContain("bg-primary/10 text-primary");
+    expect(ACCIONES, "el segundo botón dejó de ser neutro").toContain("bg-muted text-muted-foreground");
   });
 
   it("cada uno dice qué hace al pasar por encima Y tiene nombre accesible", () => {
     // Un botón de icono sin nombre es un botón que solo existe para quien ve el dibujo.
-    expect((ACCIONES.match(/aria-label=/g) ?? []).length).toBe(3);
-    expect((ACCIONES.match(/<TooltipContent>/g) ?? []).length).toBe(3);
+    expect((ACCIONES.match(/aria-label=/g) ?? []).length).toBe(2);
+    expect((ACCIONES.match(/<TooltipContent>/g) ?? []).length).toBe(2);
   });
 
   it("no hay eliminar, aunque la referencia lo tenga", () => {
@@ -128,5 +144,40 @@ describe("las funcionalidades se derivan del sidebar, no se escriben aparte", ()
       "utf8",
     );
     expect(COMPONENTE).toContain("QUE_HACE[i.href] ? (");
+  });
+});
+
+describe("el reparto de clics no multiplica las paradas de teclado", () => {
+  // ═══ LO QUE SANTIAGO PIDIO VERIFICAR ═══
+  //
+  // Su reparto pone CINCO destinos en una fila. Con cinco enlaces por fila y veinte filas serian cien
+  // paradas de tabulador en una pantalla, y recorrer la lista con teclado dejaria de ser viable.
+  //
+  // LO QUE LO RESUELVE, y ya estaba en el componente: el enlace del titulo esta ESTIRADO sobre la fila
+  // entera (un pseudo-elemento absoluto que cubre la fila). Asi que la edad, el documento y el hueco entre columnas YA
+  // llevan al panel sin ser enlaces propios. Solo tienen destino propio las celdas cuyo dato ES otra cosa.
+  //
+  // RESULTADO: cuatro paradas por fila (chevron, nombre, pendiente, ultima evaluacion, conteo... y los dos
+  // botones de accion), no nueve. Se gana el clic sin pagar la parada.
+
+  it("la edad y el documento NO son enlaces propios: ya los cubre el título estirado", () => {
+    const LISTA_SRC = readFileSync("src/modules/patients/components/lista-pacientes.tsx", "utf8");
+    const i = LISTA_SRC.indexOf("const valores = [");
+    const j = LISTA_SRC.indexOf("];", i);
+    const bloque = LISTA_SRC.slice(i, j);
+    // Las dos ultimas celdas (edad y documento) van como cadena suelta, sin destino propio.
+    expect(bloque).toContain('anos !== null ? String(anos) : null');
+    expect(bloque).toContain('.trim() || null');
+  });
+
+  it("y el título sigue estirado sobre la fila entera", () => {
+    // Si esto se pierde, pulsar la edad o el hueco deja de llevar a ningun sitio y el reparto se rompe
+    // en silencio: las celdas con destino propio seguirian funcionando y el resto no.
+    expect(FILA).toContain("after:absolute after:inset-0");
+  });
+
+  it("las celdas con destino propio quedan POR ENCIMA del estirado", () => {
+    // Sin la capa de arriba se pulsaria el enlace estirado y el destino propio no serviria de nada.
+    expect(FILA).toContain('className="relative z-10 rounded underline-offset-4');
   });
 });

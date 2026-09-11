@@ -12,7 +12,13 @@ import { accionDeEvaluacion, pendienteDelPaciente } from "@/modules/patients/pen
 // SEIS ACCIONES DISTINTAS SALEN, y solo UNA aplica por evaluacion, porque son los pasos de una secuencia.
 // Por eso caben en una columna: no es una lista de casillas, es un puntero al escalon donde esta parada.
 
-const base = { status: "in_progress", tieneBis: true, tieneDiagnostico: true, reporte: "sent" };
+const base = {
+  evaluationId: "e-1",
+  status: "in_progress",
+  tieneBis: true,
+  tieneDiagnostico: true,
+  reporte: "sent",
+};
 
 describe("cada evaluación tiene UN paso siguiente, el de su escalón", () => {
   it("sin BIS, lo que falta es montarlo", () => {
@@ -57,6 +63,7 @@ describe("lo que espera al PACIENTE no se le atribuye al profesional", () => {
     // el paciente firmó y todavía no respondió, y no hay nada que el profesional pueda pulsar. En
     // producción son 12 evaluaciones, así que no es un caso de borde.
     const a = accionDeEvaluacion({
+      evaluationId: "e-1",
       status: "awaiting_survey",
       tieneBis: false,
       tieneDiagnostico: false,
@@ -68,7 +75,7 @@ describe("lo que espera al PACIENTE no se le atribuye al profesional", () => {
 });
 
 describe("un paciente con varias evaluaciones paradas", () => {
-  const sinBis = { ...base, tieneBis: false, tieneDiagnostico: false };
+  const sinBis = { ...base, evaluationId: "e-vieja", tieneBis: false, tieneDiagnostico: false };
   const sinCerrar = base;
 
   it("manda la MÁS ATRASADA, no la más reciente", () => {
@@ -76,6 +83,16 @@ describe("un paciente con varias evaluaciones paradas", () => {
     // atender primero es la vieja. El orden de la secuencia YA es el de urgencia.
     const r = pendienteDelPaciente([sinCerrar, sinBis], false);
     expect(r.principal?.texto).toBe("Montar BIS");
+  });
+
+  it("y lleva a ESA evaluación, no a la ficha: el pendiente vive en una consulta concreta", () => {
+    // Sin el id, la celda puede decir "Montar BIS" y no saber a cuál de las tres consultas llevar.
+    expect(pendienteDelPaciente([sinCerrar, sinBis], false).evaluationId).toBe("e-vieja");
+  });
+
+  it("pero la autorización NO lleva a una evaluación: es del paciente", () => {
+    // Llevar a una consulta concreta desde ahí mandaría al sitio donde NO se arregla.
+    expect(pendienteDelPaciente([sinBis], true).evaluationId).toBeNull();
   });
 
   it("y cuenta las demás, para que no se escondan detrás de la primera", () => {
