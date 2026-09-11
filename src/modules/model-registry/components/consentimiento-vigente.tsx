@@ -1,6 +1,5 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, FileCheck } from "lucide-react";
 
-import { TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { ConsentDocument } from "@/modules/consent/components/consent-document";
 import { buildConsentFullPreview } from "@/modules/consent/consent-instance";
 import { CONSENT_TEXT_V1_0, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.0";
@@ -25,31 +24,41 @@ import { CONSENT_TEXT_V1_0, CONSENT_VERSION } from "@/modules/consent/text/conse
 // estado de cliente: este bloque es de servidor y un desplegable que no guarda nada no necesita
 // hidratacion. Y LA VERSION SE VE PLEGADO, que es el dato que se viene a mirar.
 
+// ── EL MISMO TRATAMIENTO QUE LAS TARJETAS DE VERSION (Santiago, 2026-09-10) ─────────────────────────
+//
+// Lo diseñe en el artefacto y monte otra cosa: tarjeta cuadrada, sin tesela y con un titulo de seccion
+// encima que repetia lo que la propia tarjeta ya dice. En una pantalla de tres bloques, uno con otro
+// acabado se lee como si fuera de otra pantalla.
+//
+// ASI QUE ES UNA TARJETA MAS: mismo radio, mismo borde, misma sombra y la misma tesela azul con su icono.
+// Lo unico que la distingue es que se abre, y eso lo dice el mando de la derecha, no un acabado distinto.
 export function ConsentimientoVigente() {
   return (
-    <section className="flex flex-col gap-4">
-      <TituloSeccion>Consentimiento informado</TituloSeccion>
-
-      <details className="group border border-border bg-card">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
-          <span className="flex flex-col gap-1">
+    <details className="group rounded-xl border border-border bg-card shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <FileCheck className="size-[1.05rem]" aria-hidden />
+          </span>
+          <span className="flex min-w-0 flex-col">
             <span className="text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
-              Versión vigente
+              Consentimiento informado
             </span>
-            <span className="font-mono text-lg font-medium tabular-nums text-foreground">
-              {CONSENT_VERSION}
+            <span className="text-lg font-semibold tabular-nums tracking-tight text-foreground">
+              Versión {CONSENT_VERSION} vigente
             </span>
             <span className="text-xs text-muted-foreground">
               El texto que se presenta al paciente antes de la encuesta. Solo lectura.
             </span>
           </span>
-          <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground">
-            Ver el texto
-            <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
-          </span>
-        </summary>
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+          Ver el texto
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+        </span>
+      </summary>
 
-        <div className="flex flex-col gap-3 border-t border-border p-4">
+      <div className="flex flex-col gap-3 border-t border-border p-4">
           {/* Vista COMPLETA de la plantilla vigente: AMBAS ramas (mayor y menor) con los campos como
               rotulos. NO una instancia de un paciente (esa filtra la rama menor). Asi se lee el texto
               entero, incluido el bloque de menores, sin marcadores crudos. */}
@@ -58,8 +67,7 @@ export function ConsentimientoVigente() {
             Según la edad del paciente, en el documento que firma se muestra solo la rama que aplica
             (mayor de edad o representante legal del menor).
           </p>
-        </div>
-      </details>
-    </section>
+      </div>
+    </details>
   );
 }
