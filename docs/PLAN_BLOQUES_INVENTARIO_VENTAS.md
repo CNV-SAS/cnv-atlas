@@ -19,7 +19,7 @@ que algo ya hecho se vuelva a planear).
 | Bloque | Estado | Cierra con |
 |---|---|---|
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
-| 1 · Cimientos | Pendiente | — |
+| 1 · Cimientos | **EN CURSO** (el reparto, hecho) | La carga inicial corriendo |
 | 2 · Alegra de verdad | Pendiente | — |
 | 3 · La venta nace en Tratamiento | Pendiente | — |
 | 3b · Reversa | Pendiente | — |
@@ -343,7 +343,31 @@ diferir. La recepción sin remesa queda entonces como lo que es, una discrepanci
 **Al terminar:** se puede registrar un producto de tercero con su reparto, recibirlo por lote en una
 bodega y consultar el saldo por ubicación.
 
-### Modelo de datos
+### Lo que ya está hecho (2026-09-11, migración 0119)
+
+**El reparto, con vigencia y con piso.** Tres tablas, un trigger y una vista:
+
+| Pieza | Qué garantiza |
+|---|---|
+| `professional_commission_rates` | La tasa del Integrante **con vigencia**. Índice único parcial: una sola vigente |
+| `revenue_splits` | La participación del **proveedor** por producto, con vigencia y **su umbral de aviso** |
+| `commercial_config` | El umbral global por defecto. Fila única, como `ai_config` |
+| `reparto_residuo_cnv_valido()` | **Trigger en las dos tablas.** Bloquea el residuo negativo |
+| `combinaciones_bajo_umbral` | Vista: lo que está sobre cero pero bajo la política |
+| `modules/payments/reparto.ts` | La aritmética pura del sellado, con 17 casos de candado |
+
+**El umbral va por producto** (decisión de Santiago, y tiene razón): un producto propio deja a CNV el 80%
+y uno de tercero el 10%, así que con un umbral único el propio no avisaría nunca y LUVIA avisaría desde el
+primer día. Cuesta una columna anulable y un `coalesce`; ponerlo después sería migrar configuración viva.
+
+**Y el candado destapó un defecto que no habría visto nadie:** en coma flotante `1 - 0.8 - 0.2` da
+**−5,5e-17**, o sea negativo. Un reparto 80/20 perfectamente legítimo habría disparado el bloqueo de "CNV
+no puede pagar por vender" por un error de la decimosexta cifra. Y el reverso: `1 - 0.7 - 0.2` da
+0,10000…3, mayor que 0,1, así que el umbral del 10% no se habría disparado **nunca** justo en el caso para
+el que se escribió. Se redondea a seis decimales, que además alinea la comparación con la de la base,
+donde `numeric` es decimal exacto y el problema no existe.
+
+### Lo que falta
 
 | Tabla | Notas |
 |---|---|
