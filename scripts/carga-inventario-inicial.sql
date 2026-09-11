@@ -1,7 +1,15 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 -- CARGA DEL INVENTARIO INICIAL  ·  Bloque 0/1  ·  primera tanda del laboratorio
 --
--- NO SE CORRE TODAVIA. Faltan piezas, y estan listadas abajo en "LO QUE BLOQUEA".
+-- ══ EJECUTADO EN LA NUBE EL 2026-09-11, por Santiago Uribe, con --commit. NO SE VUELVE A CORRER ══
+--
+-- Resultado cotejado por lectura contra la nube el mismo dia: 43 movimientos de recepcion, 38 filas de
+-- saldo en 8 ubicaciones, 1.284 unidades en bodega central y 526 repartidas entre los siete Integrantes.
+-- Lo recibido por producto cuadra con lo que entrego el laboratorio (500 / 500 / 426 / 300 / 84).
+--
+-- ESTE ARCHIVO ES AHORA UN REGISTRO, no una herramienta. Correrlo otra vez DUPLICARIA el inventario: los
+-- movimientos son append-only y no hay clave que impida una segunda recepcion identica. Si hiciera falta
+-- cargar una segunda tanda, se escribe otro script.
 --
 -- QUE CARGA: las unidades que los SIETE Integrantes ya tienen en su vitrina. Se corre DESPUES de
 -- `purga-comercial.sql` y de la migracion 0118.
@@ -227,9 +235,11 @@ select null, cen.id, lo.id, p.producto_id,
 -- entregado. Ver la cabecera: colapsarlas en un movimiento borraria que 24 unidades llegaron un dia
 -- despues, y eso no se recupera.
 --
--- SE PUEDE CARGAR PORQUE LUVIA YA EXISTE (migracion 0124) y esta BLOQUEADO: entro con
--- `commercial_availability = 'no_disponible'`, y desde el 2026-09-11 esa bandera si impide venderlo (el
--- servicio la comprueba, no solo la pantalla).
+-- SE PUEDE CARGAR PORQUE LUVIA YA EXISTE (migracion 0124). ESTE COMENTARIO DECIA ADEMAS que estaba
+-- BLOQUEADO (`no_disponible`), y para cuando el script se corrio YA NO LO ESTABA: la 0126 lo habilito ese
+-- mismo dia, porque la retencion colgaba de una firma que nadie habia pedido. La carga no depende de esa
+-- bandera (se puede recibir inventario de un producto que no se vende), asi que el resultado es el mismo;
+-- lo que estaba mal era el texto, y se corrige en vez de dejarlo afirmando un estado que ya no existe.
 insert into nutraceutical_stock_movements
   (professional_id, location_id, lot_id, nutraceutical_id, delta, type, reason, lote)
 select i.profesional_id, loc.id, lo.id, p.producto_id,
