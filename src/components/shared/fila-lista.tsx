@@ -20,8 +20,8 @@ import type { CSSProperties, ReactNode } from "react";
 // Lo fija `fila-lista.test.tsx`: cada campo aparece exactamente una vez en la fila.
 //
 // COMO SE REPARTE, sin contexto de React (asi esto sigue siendo server-safe). `ListaFilas` declara las
-// columnas UNA vez y publica la pista de grid en la variable CSS `--cols`, que HEREDA a todas las filas; la
-// cabecera y cada `<li>` la leen de ahi. En ancho, el contenedor de valores pasa a `display: contents`, con
+// columnas UNA vez y publica las pistas de grid en variables CSS que HEREDAN a todas las filas; la
+// cabecera y cada `<li>` las leen de ahi. En ancho, el contenedor de valores pasa a `display: contents`, con
 // lo que sus celdas se vuelven items del grid de la fila. `display: contents` no genera caja pero SI
 // conserva la herencia, asi que el tamano y el color del texto de los valores siguen aplicando.
 //
@@ -48,8 +48,8 @@ import type { CSSProperties, ReactNode } from "react";
  * ── Y POR QUE NO TODAS ──────────────────────────────────────────────────────────────────────────────
  *
  * Porque cada destino es una PARADA DE TECLADO mas, y veinte filas multiplican. Las celdas que llevan al
- * MISMO sitio que la fila (la edad, el documento) NO llevan enlace propio: ya son pulsables, porque el
- * enlace del titulo esta estirado sobre la fila entera. Se gana el clic sin pagar la parada.
+ * MISMO sitio que la fila NO llevan enlace propio: ya son pulsables, porque el enlace del titulo esta
+ * estirado sobre la fila entera. Se gana el clic sin pagar la parada.
  */
 export type CeldaConDestino = {
   texto: string;
@@ -72,7 +72,50 @@ export type ColumnaLista = {
    * carga su unidad ("3 evaluaciones", "45 anos", "CC 1.020..."), no hace falta y solo gastaria ancho.
    */
   rotularEnEstrecho?: boolean;
+  /**
+   * DESDE QUE ANCHO ESTA COLUMNA TIENE SITIO (Santiago, 2026-09-10: "al cambiar el tamaño de la ventana
+   * todo se amontona y se pierde informacion").
+   *
+   * EL DEFECTO ERA DE FONDO Y NO DE AJUSTE: las pistas de esta lista son anchos FIJOS en rem, y un grid
+   * cuyas pistas fijas suman mas que su contenedor NO las encoge, las DESBORDA. Entre 768 px (donde
+   * entra la disposicion de columnas) y el ancho que la suma pide, las celdas de la derecha se salian de
+   * la tarjeta. No se "amontonaba": se perdia, que es peor, porque nada indica que falte algo.
+   *
+   * ASI QUE LAS COLUMNAS ENTRAN POR ESCALONES. Sin `desde`, la columna esta desde que hay columnas
+   * (768 px) y no se va nunca: es lo que NO puede faltar. Con `desde`, la columna espera a que haya
+   * ancho de verdad.
+   *
+   * Y NADA SE PIERDE AL OCULTARLA: por debajo de 768 px todas las celdas vuelven a la linea concatenada,
+   * que las muestra todas. El hueco es solo el tramo intermedio, y ahi la informacion sigue estando a un
+   * clic (la fila lleva al panel del paciente, que la tiene entera).
+   */
+  desde?: "lg" | "xl";
 };
+
+/** Pistas visibles en cada escalon. La del titulo la antepone `ListaFilas` y absorbe el sobrante. */
+function pistas(columnas: readonly ColumnaLista[], hasta: "md" | "lg" | "xl", conAcciones: boolean) {
+  const cabe = (c: ColumnaLista) =>
+    c.desde == null || c.desde === hasta || (hasta === "xl" && c.desde === "lg");
+  return [
+    "minmax(0,1fr)",
+    ...columnas.filter(cabe).map((c) => c.ancho),
+    ...(conAcciones ? ["auto"] : []),
+  ].join(" ");
+}
+
+/** Clases de visibilidad de una celda segun su escalon. Ver `desde`. */
+function visibilidadCelda(desde: ColumnaLista["desde"], vacia: boolean) {
+  if (vacia) {
+    // La celda vacia no existe en la linea concatenada (un hueco no dice nada) y si en columnas.
+    return desde == null ? "hidden md:block" : desde === "lg" ? "hidden lg:block" : "hidden xl:block";
+  }
+  // Con dato: visible en la linea concatenada SIEMPRE, y en columnas solo desde su escalon.
+  return desde == null ? "" : desde === "lg" ? "md:hidden lg:block" : "md:hidden xl:block";
+}
+
+function visibilidadCabecera(desde: ColumnaLista["desde"]) {
+  return desde == null ? "" : desde === "lg" ? "hidden lg:block" : "hidden xl:block";
+}
 
 export function ListaFilas({
   columnas,
@@ -84,7 +127,21 @@ export function ListaFilas({
 }: {
   /** Las columnas de los VALORES. La del titulo la antepone esta funcion, y ocupa el espacio sobrante. */
   columnas: readonly ColumnaLista[];
-  /** Reserva la ultima pista para los controles de fila. */
+  /**
+   * Reserva la ultima pista para los controles de fila.
+   *
+   * ═══ OBLIGATORIO SI ALGUNA FILA PASA `acciones`, Y ESTE FUE EL DEFECTO (Santiago, 2026-09-10) ═══
+   *
+   * Los botones caian a UNA SEGUNDA FILA debajo del nombre. La causa no era el ancho (se fijo la columna
+   * en 6rem y no cambio nada, porque el ancho nunca fue el problema): la lista declaraba "Acciones" como
+   * una COLUMNA MAS, con su celda vacia en cada fila, y ademas pintaba el contenedor de botones como
+   * hermano. Asi que habia 7 pistas y 8 items de grid, y el octavo (los botones) caia a una fila
+   * IMPLICITA, que empieza en la columna 1: justo debajo del nombre.
+   *
+   * LA REGLA QUE SALE DE AHI: los botones NO son una columna de datos, son la pista reservada. O se
+   * declara `conAcciones` y no existe una columna "Acciones", o al reves. Las dos cosas a la vez son
+   * siempre un item de mas. Lo fija `fila-lista.test.tsx`.
+   */
   conAcciones?: boolean;
   /**
    * Controles de la lista (un buscador, filtros), DENTRO de la misma tarjeta. Van juntos a proposito: el
@@ -98,20 +155,32 @@ export function ListaFilas({
   vacia?: ReactNode;
   children: ReactNode;
 }) {
-  const pistas = [
-    "minmax(0,1fr)",
-    ...columnas.map((c) => c.ancho),
-    ...(conAcciones ? ["auto"] : []),
-  ];
-  // `--cols` hereda a la cabecera y a cada fila: una sola definicion de las columnas para toda la lista.
-  const vars = { "--cols": pistas.join(" ") } as CSSProperties;
+  if (conAcciones && columnas.some((c) => c.rotulo === "Acciones")) {
+    throw new Error(
+      "ListaFilas: `conAcciones` YA reserva la pista de los botones; una columna \"Acciones\" ademas de eso deja un item de grid de mas y los botones caen a una segunda fila.",
+    );
+  }
+  // TRES JUEGOS DE PISTAS, uno por escalon. La hoja global (`globals.css`, regla `.lista-filas`) elige
+  // cual vale en cada ancho y lo publica en `--cols`, que es lo que heredan la cabecera y cada fila.
+  // Se hace ahi y no con variantes de Tailwind porque el valor lleva espacios: un valor arbitrario que el
+  // compilador no parsea NO da error, simplemente no emite la regla, y el fallo seria mudo.
+  const vars = {
+    "--cols-md": pistas(columnas, "md", conAcciones),
+    "--cols-lg": pistas(columnas, "lg", conAcciones),
+    "--cols-xl": pistas(columnas, "xl", conAcciones),
+  } as CSSProperties;
 
   return (
     // SUPERFICIE BLANCA sobre el gris de la pagina, no un recuadro con borde sobre blanco. Es lo que
     // faltaba tras invertir la disposicion (hallazgo de Santiago, 2026-08-28): pusimos el fondo gris pero
     // dejamos el contenido suelto encima, asi que la pagina se veia apagada en vez de organizada. El gris
     // no es un fondo: es la CALLE entre bloques, y sin bloques no hay calle, solo penumbra.
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" style={vars}>
+    //
+    // ESQUINAS CUADRADAS (Santiago, 2026-09-10). Iba en `rounded-2xl overflow-hidden`, y como la franja
+    // de cabecera es el PRIMER hijo, el recorte le curvaba las dos esquinas de arriba: la misma franja
+    // que en `shared/tabla.tsx` es recta aqui salia redondeada, y las dos se ven en la misma pantalla.
+    // Manda la tabla, que es donde vive la regla de las franjas de nivel.
+    <div className="lista-filas border border-border bg-card shadow-sm" style={vars}>
       {encabezado ? <div className="border-b border-border p-4">{encabezado}</div> : null}
       {vacia ? (
         vacia
@@ -133,9 +202,11 @@ export function ListaFilas({
           >
             <span>Paciente</span>
             {columnas.map((c) => (
-              <span key={c.rotulo}>{c.rotulo}</span>
+              <span key={c.rotulo} className={visibilidadCabecera(c.desde)}>
+                {c.rotulo}
+              </span>
             ))}
-            {conAcciones ? <span /> : null}
+            {conAcciones ? <span>Acciones</span> : null}
           </div>
           <ul className="flex flex-col">{children}</ul>
         </>
@@ -150,6 +221,7 @@ export function ListaFilas({
 export function FilaLista({
   href,
   titulo,
+  subtitulo,
   columnas,
   valores,
   chip,
@@ -160,11 +232,25 @@ export function FilaLista({
 }: {
   /**
    * Destino de la fila entera. Opcional desde el 2026-09-10: una fila puede DESPLEGAR en vez de navegar
-   * (ver `alPulsar`). Exactamente uno de los dos.
+   * (ver `alDesplegar`).
    */
   href?: string;
   /** Lo que identifica la fila. Es el texto del enlace. */
   titulo: string;
+  /**
+   * SEGUNDA LINEA BAJO EL NOMBRE (Santiago, 2026-09-10, eligiendo la opcion B del artefacto).
+   *
+   * QUE GANA: el nombre deja de pesar lo mismo que una fecha. Una lista que se recorre se recorre por el
+   * nombre, y hasta aqui el nombre competia de igual a igual con cinco cifras.
+   *
+   * Y QUE RESUELVE ADEMAS: los datos que bajan aqui (documento, edad) eran DOS COLUMNAS, y esas dos
+   * columnas eran ~15rem de pistas fijas. Recuperarlas es lo que le deja sitio a los botones sin
+   * desbordar en pantallas medianas.
+   *
+   * VA EN LETRA PEQUENA a proposito (su cuidado textual): si se pone al tamano del cuerpo, la fila
+   * engorda y la lista deja de caber, que es justo lo contrario de lo que se busca.
+   */
+  subtitulo?: ReactNode;
   /** Las MISMAS columnas que recibio `ListaFilas`, para saber como se pinta cada valor. */
   columnas: readonly ColumnaLista[];
   /**
@@ -174,7 +260,7 @@ export function FilaLista({
   valores: readonly (string | CeldaConDestino | null)[];
   /** Distintivo EXCEPCIONAL, junto al titulo. Se omite en el caso normal (BRAND). */
   chip?: ReactNode;
-  /** Controles propios de la fila. Van con `relative z-10` para quedar sobre el enlace estirado. */
+  /** Controles propios de la fila. Exigen `conAcciones` en `ListaFilas` (ver alli el porque). */
   acciones?: ReactNode;
   /**
    * DESPLEGAR ES UN MANDO PROPIO, no lo que hace la fila (Santiago, 2026-09-10, segunda vuelta).
@@ -205,125 +291,134 @@ export function FilaLista({
   // la izquierda. Un paciente sin ultima consulta mostraba su numero de evaluaciones bajo "Última" y su
   // edad bajo "Evaluaciones". No era un fallo visible: los valores se leen bien, solo que rotulados mal,
   // que es exactamente el modo de fallo que el `throw` de arriba intenta evitar.
-  //
-  // Asi que la celda SIEMPRE se pinta y se oculta solo en estrecho (`hidden md:block`), donde no hay
-  // cabecera que rotule y una celda vacia no dice nada.
   const primeroConDato = valores.findIndex((v) => v !== null);
 
-  // EL TITULO ES ENLACE O BOTON SEGUN LO QUE LA FILA HAGA. Las dos versiones se estiran igual sobre la
-  // fila (`after:absolute after:inset-0`), asi que el area pulsable no cambia; lo que cambia es lo que el
-  // elemento ES, y con ello como se anuncia y que hace el teclado.
   const CLASES_TITULO =
     "truncate text-left font-medium text-foreground after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+  // ═══ EL SUBRAYADO AL PASAR, EN TODA LA CELDA (Santiago, 2026-09-10) ═══
+  //
+  // EL DEFECTO ERA DE ALCANCE, no de ausencia: el subrayado ya estaba, pero colgaba del propio enlace, que
+  // solo cubre el TEXTO. Pasar por la celda no lo encendia, asi que el unico modo de descubrir que esa
+  // celda lleva a otro sitio que el resto de la fila era acertarle a las letras.
+  //
+  // Ahora cuelga de la CELDA (`group/celda`), y por eso vale igual para el conteo, que es un boton y no
+  // cambia el cursor: su regla es "si responde al paso, tiene que decir que responde".
+  const CLASES_DESTINO =
+    "relative z-10 rounded underline-offset-4 group-hover/celda:underline hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   return (
     <>
-    <li
-      className="relative flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border/60 px-3 py-2.5 last:border-0 hover:bg-muted/40 focus-within:bg-muted/40 md:grid md:flex-nowrap md:gap-y-0"
-      style={{ gridTemplateColumns: "var(--cols)" }}
-    >
-      <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
-        {/* EL CHEVRON VA DELANTE DEL NOMBRE, que es donde vive un mando de desplegar en cualquier lista:
-            asi se ve que la fila SE ABRE antes de leerla, en vez de descubrirlo pulsando. Y `z-10` para
-            quedar sobre el enlace estirado del titulo. */}
-        {alDesplegar ? (
-          <button
-            type="button"
-            onClick={alDesplegar}
-            aria-expanded={desplegado}
-            aria-label={desplegado ? `Ocultar las evaluaciones de ${titulo}` : `Ver las evaluaciones de ${titulo}`}
-            className="relative z-10 -ml-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ChevronRight
-              aria-hidden
-              className={`size-4 transition-transform ${desplegado ? "rotate-90" : ""}`}
-            />
-          </button>
-        ) : null}
-        {/* EL TITULO SI TRUNCA: es el ancla visual de la fila. Los valores no (ver abajo). */}
-        {href != null ? (
-          <Link href={href} className={CLASES_TITULO}>
-            {titulo}
-          </Link>
-        ) : (
-          <span className="truncate font-medium text-foreground">{titulo}</span>
-        )}
-        {chip}
-      </div>
-
-      {/* EN ANCHO ESTE CONTENEDOR DESAPARECE (`md:contents`) y sus celdas pasan a ser items del grid de la
-          fila. En estrecho es la segunda linea: los valores concatenados, que ENVUELVEN. Lo corregimos asi
-          tras el smoke del 2026-08-28: con truncado, en un telefono la linea se cortaba en "Ultima..." y se
-          perdia la fecha de ultima consulta, el dato MAS util para barrer la lista. El ritmo vertical
-          uniforme ayuda a recorrer, pero vale MENOS que el dato: una fila desigual se lee, un dato ausente
-          no esta. Se omite lo que no hay en vez de escribir "-": un guion ocupa lo mismo y no dice nada. */}
-      <div className="flex w-full flex-wrap items-center gap-x-2 text-xs text-muted-foreground md:contents">
-        {valores.map((v, i) => (
-          <span
-            key={columnas[i].rotulo}
-            className={[
-              // La celda vacia existe en columnas (para no correr las de al lado) y desaparece en la
-              // linea concatenada (donde un hueco no dice nada).
-              v === null ? "hidden md:block" : "",
-              columnas[i].numerico ? "tabular-nums" : "",
-              "md:truncate",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            {/* EL SEPARADOR ES UN NODO, no un `before:content-[...]` de Tailwind: un valor arbitrario que el
-                compilador no reconozca no da error, simplemente no emite la regla, y el separador
-                desapareceria EN SILENCIO en la disposicion de dos lineas. Va DENTRO de la celda para no
-                volverse un item mas del grid en ancho, y `aria-hidden` porque no se lee. */}
-            {/* El separador se cuenta contra el primer valor CON DATO, no contra el indice: si la primera
-                columna viene vacia, la linea concatenada abriria con un separador huerfano. */}
-            {v !== null && i > primeroConDato ? (
-              <span aria-hidden className="mr-2 text-border md:hidden">
-                ·
-              </span>
-            ) : null}
-            {/* El rotulo solo en estrecho: en ancho lo da la cabecera, y repetirlo seria decir lo mismo dos
-                veces en la misma pantalla. No es contenido duplicado: aparece en UNA de las dos. */}
-            {v !== null && columnas[i].rotularEnEstrecho ? (
-              <span className="md:hidden">{columnas[i].rotulo}: </span>
-            ) : null}
-            {typeof v === "object" && v !== null ? (
-              // RELATIVE Z-10: la celda con destino propio tiene que quedar POR ENCIMA del enlace estirado
-              // del titulo, que cubre la fila entera. Sin esto se pulsaria el de abajo y el destino propio
-              // no serviria de nada.
-              v.href != null ? (
-                <Link
-                  href={v.href}
-                  aria-label={v.etiqueta}
-                  className="relative z-10 rounded underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {v.texto}
+      <li
+        className="relative flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border/60 px-3 py-2.5 last:border-0 hover:bg-muted/40 focus-within:bg-muted/40 md:grid md:flex-nowrap md:gap-y-0"
+        style={{ gridTemplateColumns: "var(--cols)" }}
+      >
+        <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
+          {/* EL CHEVRON VA DELANTE DEL NOMBRE, que es donde vive un mando de desplegar en cualquier lista:
+              asi se ve que la fila SE ABRE antes de leerla, en vez de descubrirlo pulsando. Y `z-10` para
+              quedar sobre el enlace estirado del titulo. */}
+          {alDesplegar ? (
+            <button
+              type="button"
+              onClick={alDesplegar}
+              aria-expanded={desplegado}
+              aria-label={
+                desplegado ? `Ocultar las evaluaciones de ${titulo}` : `Ver las evaluaciones de ${titulo}`
+              }
+              className="relative z-10 -ml-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronRight
+                aria-hidden
+                className={`size-4 transition-transform ${desplegado ? "rotate-90" : ""}`}
+              />
+            </button>
+          ) : null}
+          <div className="flex min-w-0 flex-col">
+            <div className="flex min-w-0 items-center gap-2">
+              {/* EL TITULO SI TRUNCA: es el ancla visual de la fila. Los valores no (ver abajo). */}
+              {href != null ? (
+                <Link href={href} className={CLASES_TITULO}>
+                  {titulo}
                 </Link>
               ) : (
-                <button
-                  type="button"
-                  onClick={v.alPulsar}
-                  aria-label={v.etiqueta}
-                  className="relative z-10 rounded underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {v.texto}
-                </button>
-              )
-            ) : (
-              v
-            )}
-          </span>
-        ))}
-      </div>
+                <span className="truncate font-medium text-foreground">{titulo}</span>
+              )}
+              {chip}
+            </div>
+            {subtitulo ? (
+              <span className="truncate text-xs text-muted-foreground">{subtitulo}</span>
+            ) : null}
+          </div>
+        </div>
 
-      {acciones ? <div className="relative z-10 flex shrink-0 gap-2">{acciones}</div> : null}
-    </li>
-    {/* EL PANEL VA FUERA DEL <li> DE LA FILA, como hermano: dentro seria una celda mas del grid de
-        columnas y ademas quedaria bajo el area pulsable estirada, asi que sus enlaces no se podrian
-        pulsar. */}
-    {desplegado && panel ? (
-      <li className="border-b border-border/60 bg-muted/30 px-3 py-2 last:border-0">{panel}</li>
-    ) : null}
+        {/* EN ANCHO ESTE CONTENEDOR DESAPARECE (`md:contents`) y sus celdas pasan a ser items del grid de la
+            fila. En estrecho es la segunda linea: los valores concatenados, que ENVUELVEN. Lo corregimos asi
+            tras el smoke del 2026-08-28: con truncado, en un telefono la linea se cortaba en "Ultima..." y se
+            perdia la fecha de ultima consulta, el dato MAS util para barrer la lista. El ritmo vertical
+            uniforme ayuda a recorrer, pero vale MENOS que el dato: una fila desigual se lee, un dato ausente
+            no esta. Se omite lo que no hay en vez de escribir "-": un guion ocupa lo mismo y no dice nada. */}
+        <div className="flex w-full flex-wrap items-center gap-x-2 text-xs text-muted-foreground md:contents">
+          {valores.map((v, i) => (
+            <span
+              key={columnas[i].rotulo}
+              className={[
+                "group/celda",
+                visibilidadCelda(columnas[i].desde, v === null),
+                columnas[i].numerico ? "tabular-nums" : "",
+                "md:truncate",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {/* EL SEPARADOR ES UN NODO, no un `before:content-[...]` de Tailwind: un valor arbitrario que el
+                  compilador no reconozca no da error, simplemente no emite la regla, y el separador
+                  desapareceria EN SILENCIO en la disposicion de dos lineas. Va DENTRO de la celda para no
+                  volverse un item mas del grid en ancho, y `aria-hidden` porque no se lee. */}
+              {/* El separador se cuenta contra el primer valor CON DATO, no contra el indice: si la primera
+                  columna viene vacia, la linea concatenada abriria con un separador huerfano. */}
+              {v !== null && i > primeroConDato ? (
+                <span aria-hidden className="mr-2 text-border md:hidden">
+                  ·
+                </span>
+              ) : null}
+              {/* El rotulo solo en estrecho: en ancho lo da la cabecera, y repetirlo seria decir lo mismo dos
+                  veces en la misma pantalla. No es contenido duplicado: aparece en UNA de las dos. */}
+              {v !== null && columnas[i].rotularEnEstrecho ? (
+                <span className="md:hidden">{columnas[i].rotulo}: </span>
+              ) : null}
+              {typeof v === "object" && v !== null ? (
+                // RELATIVE Z-10: la celda con destino propio tiene que quedar POR ENCIMA del enlace estirado
+                // del titulo, que cubre la fila entera. Sin esto se pulsaria el de abajo y el destino propio
+                // no serviria de nada.
+                v.href != null ? (
+                  <Link href={v.href} aria-label={v.etiqueta} className={CLASES_DESTINO}>
+                    {v.texto}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={v.alPulsar}
+                    aria-label={v.etiqueta}
+                    className={`${CLASES_DESTINO} cursor-pointer`}
+                  >
+                    {v.texto}
+                  </button>
+                )
+              ) : (
+                v
+              )}
+            </span>
+          ))}
+        </div>
+
+        {acciones ? <div className="relative z-10 flex shrink-0 gap-2">{acciones}</div> : null}
+      </li>
+      {/* EL PANEL VA FUERA DEL <li> DE LA FILA, como hermano: dentro seria una celda mas del grid de
+          columnas y ademas quedaria bajo el area pulsable estirada, asi que sus enlaces no se podrian
+          pulsar. */}
+      {desplegado && panel ? (
+        <li className="border-b border-border/60 bg-muted/30 px-3 py-2 last:border-0">{panel}</li>
+      ) : null}
     </>
   );
 }
