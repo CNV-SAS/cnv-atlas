@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { formatDate } from "@/lib/format/date";
 
 import { AccionesPaciente } from "./acciones-paciente";
-import { COLUMNAS_PACIENTES } from "../columnas";
+import { ANCHO_NOMBRE, COLUMNAS_PACIENTES } from "../columnas";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { FilaLista, ListaFilas } from "@/components/shared/fila-lista";
 import { PillEstado } from "@/components/shared/pill-estado";
@@ -244,6 +244,7 @@ export function ListaPacientes({
       // caia a una fila implicita que empieza en la columna 1, o sea justo debajo del nombre. Eso era lo
       // que Santiago veia; el ancho de la columna nunca tuvo nada que ver.
       conAcciones
+      anchoTitulo={ANCHO_NOMBRE}
       // EL PIE SOLO CUANDO HAY FILTRO. Sin filtro repetia la tarjeta de metrica de arriba, que ya dice
       // cuantos pacientes hay; dos sitios con la misma cifra no informan mas, solo hacen dudar de si son
       // lo mismo. Pero con el buscador activo NO es la misma cifra: dice cuantos quedaron FUERA de la
@@ -304,15 +305,12 @@ export function ListaPacientes({
                   etiqueta: `${pend?.texto}: ir a esa evaluación`,
                 }
               : textoPend,
-          p.lastEvaluationDate == null
-            ? null
-            : p.ultimasEvaluaciones[0]
-              ? {
-                  texto: formatDateOnlyShort(p.lastEvaluationDate),
-                  href: `/ani-bis-e/${p.ultimasEvaluaciones[0].evaluationId}?etapa=encuesta`,
-                  etiqueta: "Abrir la última evaluación",
-                }
-              : formatDateOnlyShort(p.lastEvaluationDate),
+          // FECHA DE CREACION: texto suelto, sin destino propio. No lleva a ningun sitio porque no NOMBRA
+          // nada abrible: es un dato de la ficha, y la ficha ya se abre desde el boton de panel.
+          formatDateOnlyShort(p.createdAt),
+          // EL CONTEO SIGUE DESPLEGANDO, aunque el nombre haga ya lo mismo: es el numero que resume lo
+          // que hay dentro, asi que pulsarlo para verlo es el gesto natural. Con cero no despliega, que
+          // seria abrir un panel vacio.
           p.evaluationCount === 0
             ? "0"
             : {
@@ -336,10 +334,9 @@ export function ListaPacientes({
         return (
           <FilaLista
             key={p.patientId}
-            // LA FILA VUELVE A LLEVAR AL PANEL (Santiago, 2026-09-10). Desplegar pasa a un boton propio:
-            // sin cursor ni marca, una fila que despliega no se distingue de una que no hace nada, y eso
-            // se descubre pulsando. El desplegable no se pierde, gana un mando que se ve.
-            href={`/pacientes/${p.patientId}`}
+            // LA FILA YA NO LLEVA AL PANEL (Santiago, 2026-09-10, tercera vuelta): al panel se va por su
+            // boton, y el nombre despliega. Sin `href` no hay enlace estirado, que era ademas lo que
+            // impedia que las celdas recibieran el paso del raton.
             desplegado={abierta === p.patientId}
             alDesplegar={abrir}
             panel={

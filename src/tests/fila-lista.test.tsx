@@ -113,8 +113,17 @@ describe("ListaFilas: la cabecera", () => {
   });
 
   it("solo se ve en ancho", () => {
-    expect(markup).toContain("hidden border-y");
+    expect(markup).toContain("hidden border-b");
     expect(markup).toContain("md:grid");
+  });
+
+  it("y SOLO el borde de abajo resalta", () => {
+    // Santiago, 2026-09-10: "el borde superior del encabezado, del mismo color de los bordes de los
+    // lados. Que el unico borde con color diferente y que resalta sea el de abajo". Llevaba `border-y`,
+    // asi que pintaba una linea azul ARRIBA pegada al borde de la tarjeta: dos lineas de colores
+    // distintos a un pixel una de otra. Arriba no hace falta ninguna, el borde de la tarjeta ya cierra.
+    expect(markup).not.toContain("border-y border-primary");
+    expect(markup).toContain("border-b border-primary/20");
   });
 
   it("las columnas se declaran UNA vez, en las variables que heredan las filas", () => {
@@ -181,16 +190,20 @@ describe("rotulos de columna: un adjetivo solo no nombra un dato", () => {
     for (const c of COLUMNAS_PACIENTES) expect(c.rotulo).not.toMatch(ADJETIVOS_SOLOS);
   });
 
-  it("y el rotulo dice lo que el dato ES: la fecha viene de EVALUACIONES, no de consultas", () => {
-    // No es un matiz: la fecha sale del MISMO filtro que produce la columna "Evaluaciones". Llamar
-    // "consulta" a lo que la columna de al lado llama "evaluacion" sugeriria que son dos cosas distintas.
-    // EL ANCLA PASA DE LA POSICION AL ROTULO (2026-09-10), y el rojo que lo obligo fue legitimo: al
-    // añadir la columna "Pendiente" delante, `[0]` dejo de ser la fecha y el candado acuso a quien no era.
-    // Lo que este caso afirma no depende del ORDEN de las columnas, asi que no debia leerlo por indice.
-    const fecha = COLUMNAS_PACIENTES.find((c) => c.rotulo.startsWith("Última"))?.rotulo ?? "";
-    expect(fecha, "desapareció la columna de la última evaluación").not.toBe("");
-    expect(fecha).toContain("evaluación");
-    expect(fecha).not.toContain("consulta");
+  it("y el rotulo dice DE QUE es la fecha, que es lo que un adjetivo solo no dice", () => {
+    // ═══ RE-ANCLADO: LA COLUMNA CAMBIO DE DATO (Santiago, 2026-09-10, tercera vuelta) ═══
+    //
+    // "Última evaluación" se retiro entera: su fecha repetia la primera de las tres que ya salen al
+    // desplegar la fila. En su sitio va la FECHA DE CREACION de la ficha, que es un dato que la lista no
+    // daba en ningun sitio.
+    //
+    // LO QUE EL CASO SIGUE PROTEGIENDO es la regla que lo origino, no la columna: el rotulo tiene que
+    // nombrar SU dato. "Fecha" a secas seria el mismo defecto que "Última" (¿fecha de que?), y "Fecha de
+    // creación de la evaluación" seria peor: afirmaria de la evaluacion lo que es del paciente.
+    const fecha = COLUMNAS_PACIENTES.find((c) => c.rotulo.includes("Fecha"))?.rotulo ?? "";
+    expect(fecha, "desapareció la columna de fecha").not.toBe("");
+    expect(fecha).toBe("Fecha de creación");
+    expect(fecha).not.toContain("evaluación");
     expect(COLUMNAS_PACIENTES.some((c) => c.rotulo === "Evaluaciones")).toBe(true);
   });
 });
@@ -283,7 +296,11 @@ describe("los botones de fila no son una columna: la pista se RESERVA", () => {
         }),
       }),
     );
-    expect(markup).toContain("--cols-md:minmax(0,1fr) 7rem 7rem 11rem auto");
+    // LA PISTA DE ACCIONES ES FIJA, NO `auto`, y ese era el desalineado que Santiago capturo: `auto` se
+    // resuelve contra el contenido de CADA grid, y la cabecera y la fila son grids distintos (el texto
+    // "ACCIONES" mide menos que dos botones), asi que sus columnas no coincidian.
+    expect(markup).toContain("--cols-md:minmax(0,1fr) 7rem 7rem 11rem 5.5rem");
+    expect(markup).not.toContain("11rem auto");
     expect(veces(markup, "Acciones")).toBe(1);
   });
 });

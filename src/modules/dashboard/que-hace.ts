@@ -21,7 +21,7 @@ export const QUE_HACE: Record<string, string> = {
   "/pacientes":
     "Tus pacientes, con lo que le falta a cada uno. Desde aquí se crea uno nuevo y se le pasa el enlace de la encuesta.",
   "/ani-bis-e":
-    "El taller del modelo: con qué versión se está diagnosticando, contra qué cortes, y el trabajo por lote (importar mediciones BIS y generar diagnósticos de varias evaluaciones seguidas).",
+    "El modelo: con qué versión se está diagnosticando y el consentimiento vigente que firma el paciente.",
   "/reportes": "Los reportes del paciente: aprobarlos, enviarlos y consultar los ya enviados.",
   "/direccion": "Indicadores de la operación para la dirección.",
   "/obbia": "El observatorio: datos agregados y anonimizados para investigación.",
@@ -31,7 +31,6 @@ export const QUE_HACE: Record<string, string> = {
   "/mi-inventario": "Lo que tienes tú en existencia, y sus movimientos.",
   "/faltantes": "Los faltantes reportados en un conteo y cómo se resolvieron.",
   "/pagos": "Cobros a pacientes y el estado de cada transacción.",
-  "/consentimiento": "La versión vigente del consentimiento que firman los pacientes.",
   "/perfil": "Tus datos, tu profesión y tu información tributaria.",
   "/verificaciones": "La cola de RUT por verificar, para que se les pueda pagar.",
   "/admin": "Altas, bajas y roles de las cuentas.",

@@ -25,12 +25,13 @@ import { cn } from "@/lib/utils"
 // al recorrer una fila de botones se veia el del boton que ya se dejo atras. Con 0 cada uno espera su
 // turno, y eso lo resuelve por si solo.
 //
-// SUBIR LA APERTURA A 250 ms FUE DE MAS (Santiago, 2026-09-10, tercera vuelta: "el tooltip sigue lento").
-// Se subio en la MISMA tanda que el `skipDelayDuration`, atribuyendole al retardo un defecto que era del
-// otro parametro, y el coste se paga en CADA hover: un cuarto de segundo antes de saber que hace un boton
-// de icono. Baja a 125 ms, la mitad. El del vecino no vuelve porque su causa sigue cerrada.
+// EL RETARDO SE FUE BAJANDO EN DOS PASOS, y el destino es 50 ms (Santiago: "aun se nota el retraso").
+// Estuvo en 250 por atribuirle al retardo un defecto que era del `skipDelayDuration`; con esa causa ya
+// cerrada, el retardo solo tiene que hacer su trabajo original, que es no disparar el rotulo al cruzar por
+// encima de camino a otra cosa. 50 ms bastan para eso (un cruce de raton dura menos) y por debajo del
+// umbral en que la espera se percibe.
 function TooltipProvider({
-  delayDuration = 125,
+  delayDuration = 50,
   skipDelayDuration = 0,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {

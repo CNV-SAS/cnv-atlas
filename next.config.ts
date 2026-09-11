@@ -104,6 +104,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/evaluaciones", destination: "/ani-bis-e", permanent: true },
+      // EL CONSENTIMIENTO DEJO DE TENER PANTALLA PROPIA (Santiago, 2026-09-10): es un bloque de
+      // /ani-bis-e, junto a las versiones del modelo, porque tambien esta versionado y es parte del
+      // modelo. La redireccion cubre los enlaces guardados; el que se manda a los PACIENTES es otro
+      // (/consentimiento/[token], publico) y no pasa por aqui.
+      { source: "/consentimiento", destination: "/ani-bis-e", permanent: true },
       { source: "/evaluaciones/:path*", destination: "/ani-bis-e/:path*", permanent: true },
     ];
   },
