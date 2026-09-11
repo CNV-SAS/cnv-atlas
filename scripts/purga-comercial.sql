@@ -81,7 +81,9 @@ select
   -- El catalogo tampoco se toca: es contenido.
   (select count(*) from nutraceuticals)                        as c_catalogo;
 
-select 'ANTES' as momento, * from purga_antes;
+-- NO SE IMPRIME AQUI, y es deliberado: el SQL Editor de Supabase muestra SOLO EL ULTIMO resultado de la
+-- ejecucion, asi que un `select` del ANTES en este punto se pierde y Santiago solo veria el DESPUES. Y el
+-- ANTES es la mitad del acta. Va todo junto en la fila final, en pares antes/despues.
 
 -- ── DESACTIVAR LOS DOS TRIGGERS DE INMUTABILIDAD ─────────────────────────────────────────────────
 --
@@ -221,39 +223,47 @@ end $$;
 alter table nutraceutical_stock_movements      enable trigger nutra_movement_append_only_trg;
 alter table nutraceutical_faltante_transitions enable trigger nutra_faltante_transition_append_only_trg;
 
--- ── CONTEO DESPUES ───────────────────────────────────────────────────────────────────────────────
--- Lo que tiene que salir: CERO en las once comerciales, las nueve clinicas y el catalogo IDENTICOS a la
--- fila ANTES, y los dos triggers en 'O' (activos).
+-- ── LA FILA DEL ACTA: ANTES Y DESPUES JUNTOS ─────────────────────────────────────────────────────
+--
+-- UNA SOLA FILA, con las dos cifras de cada tabla. El SQL Editor de Supabase muestra solo el ULTIMO
+-- resultado, asi que imprimir el ANTES arriba y el DESPUES abajo dejaria el acta a medias: se veria el
+-- DESPUES y no contra que compararlo. El ANTES vive en `purga_antes` desde el principio de la
+-- transaccion, asi que se lee de ahi.
+--
+-- LO QUE TIENE QUE SALIR: las comerciales con "N -> 0", las clinicas y el catalogo con "N -> N", y los
+-- dos triggers en 'O' (activos).
 --
 -- ESTA ES LA FILA QUE VA AL ACTA, junto con la fecha y quien lo corrio.
-select 'DESPUES' as momento,
-  (select count(*) from transactions)                          as transacciones,
-  (select count(*) from transaction_items)                     as items_de_transaccion,
-  (select count(*) from professional_revenue)                  as comisiones,
-  (select count(*) from cnv_revenue)                           as ingreso_cnv,
-  (select count(*) from payment_webhook_events)                as eventos_pasarela,
-  (select count(*) from nutraceutical_stock_movements)         as movimientos,
-  (select count(*) from nutraceutical_inventory)               as saldos,
-  (select count(*) from nutraceutical_count_sessions)          as sesiones_conteo,
-  (select count(*) from nutraceutical_count_lines)             as lineas_conteo,
-  (select count(*) from nutraceutical_faltante_cases)          as casos_faltante,
-  (select count(*) from nutraceutical_faltante_transitions)    as transiciones_faltante,
-  (select count(*) from patients)                              as c_pacientes,
-  (select count(*) from evaluations)                           as c_evaluaciones,
-  (select count(*) from diagnoses)                             as c_diagnosticos,
-  (select count(*) from treatments)                            as c_tratamientos,
-  (select count(*) from reports)                               as c_reportes,
-  (select count(*) from survey_responses)                      as c_respuestas_encuesta,
-  (select count(*) from survey_answers)                        as c_items_encuesta,
-  (select count(*) from prescription_emissions)                as c_emisiones,
-  (select count(*) from nutraceutical_usage)                   as c_prescripcion_nutraceuticos,
-  (select count(*) from nutraceuticals)                        as c_catalogo,
+select
+  a.transacciones            || ' -> ' || (select count(*) from transactions)                       as transacciones,
+  a.items_de_transaccion     || ' -> ' || (select count(*) from transaction_items)                  as items_de_transaccion,
+  a.comisiones               || ' -> ' || (select count(*) from professional_revenue)               as comisiones,
+  a.ingreso_cnv              || ' -> ' || (select count(*) from cnv_revenue)                        as ingreso_cnv,
+  a.eventos_pasarela         || ' -> ' || (select count(*) from payment_webhook_events)             as eventos_pasarela,
+  a.movimientos              || ' -> ' || (select count(*) from nutraceutical_stock_movements)      as movimientos,
+  a.saldos                   || ' -> ' || (select count(*) from nutraceutical_inventory)            as saldos,
+  a.sesiones_conteo          || ' -> ' || (select count(*) from nutraceutical_count_sessions)       as sesiones_conteo,
+  a.lineas_conteo            || ' -> ' || (select count(*) from nutraceutical_count_lines)          as lineas_conteo,
+  a.casos_faltante           || ' -> ' || (select count(*) from nutraceutical_faltante_cases)       as casos_faltante,
+  a.transiciones_faltante    || ' -> ' || (select count(*) from nutraceutical_faltante_transitions) as transiciones_faltante,
+  a.c_pacientes              || ' -> ' || (select count(*) from patients)                           as pacientes,
+  a.c_evaluaciones           || ' -> ' || (select count(*) from evaluations)                        as evaluaciones,
+  a.c_diagnosticos           || ' -> ' || (select count(*) from diagnoses)                          as diagnosticos,
+  a.c_tratamientos           || ' -> ' || (select count(*) from treatments)                         as tratamientos,
+  a.c_reportes               || ' -> ' || (select count(*) from reports)                            as reportes,
+  a.c_respuestas_encuesta    || ' -> ' || (select count(*) from survey_responses)                   as respuestas_encuesta,
+  a.c_items_encuesta         || ' -> ' || (select count(*) from survey_answers)                     as items_encuesta,
+  a.c_emisiones              || ' -> ' || (select count(*) from prescription_emissions)             as emisiones,
+  a.c_prescripcion_nutraceuticos || ' -> ' || (select count(*) from nutraceutical_usage)            as prescripcion_nutraceuticos,
+  a.c_catalogo               || ' -> ' || (select count(*) from nutraceuticals)                     as catalogo,
   (select string_agg(t.tgname || '=' || t.tgenabled::text, ', ')
      from pg_trigger t
     where t.tgname in ('nutra_movement_append_only_trg', 'nutra_faltante_transition_append_only_trg'))
-                                                               as triggers;
+                                                                                                   as triggers,
+  now()                                                                                            as corrido_el
+from purga_antes a;
 
--- REVISA EL CONTEO DE ARRIBA ANTES DE CONFIRMAR.
+-- REVISA LA FILA DE ARRIBA ANTES DE CONFIRMAR.
 -- Si cuadra:      commit;
 -- Si no cuadra:   rollback;   (y los triggers vuelven solos)
 commit;
