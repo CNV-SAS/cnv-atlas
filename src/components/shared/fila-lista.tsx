@@ -344,23 +344,40 @@ export function FilaLista({
   const CLASES_TITULO =
     "truncate text-left font-medium text-foreground underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-  // ═══ EL SUBRAYADO AL PASAR, Y POR QUE NO FUNCIONABA (Santiago, 2026-09-10, tercera vuelta) ═══
+  // ═══ EL SUBRAYADO: SE RETIRA EL MECANISMO DEL QUE DEPENDIA (Santiago, 2026-09-10, cuarta vuelta) ═══
   //
-  // Su reporte: "no funciona el subrayado al pasar por los items. Aparece solo el mouse active en toda la
-  // fila". Las dos mitades de la frase son la misma causa.
+  // VAN TRES INTENTOS Y DOS DIAGNOSTICOS MIOS EQUIVOCADOS, asi que este no es un tercero: es quitar de en
+  // medio todo lo que podia fallar.
   //
-  // LO IMPEDIA EL ENLACE ESTIRADO. El titulo era un `<Link>` con `after:absolute after:inset-0`, o sea un
-  // pseudo-elemento que TAPA la fila entera para que cualquier punto lleve al panel. Ese pseudo pertenece
-  // al enlace del titulo, asi que el cursor de mano salia en toda la fila (la primera mitad del reporte) y
-  // el `:hover` se lo llevaba el titulo, NO la celda por la que se estaba pasando (la segunda mitad).
-  // `group-hover/celda` no podia dispararse nunca: el raton, para el navegador, nunca estaba sobre la
-  // celda.
+  // LO QUE SI QUEDO VERIFICADO, contra el CSS compilado que se sirve y contra el DOM renderizado:
+  //   · las reglas existen (`.hover:underline:hover` y `.group-hover/celda:underline` estan las dos
+  //     en el chunk de CSS del build);
+  //   · el marcado es el correcto (`group/celda` en la celda, el enlace dentro).
+  // O sea que no faltaba ni la clase ni la regla. Lo que no pude verificar es lo unico que quedaba, el
+  // HIT-TESTING en un navegador real, porque en este entorno no hay ninguno.
   //
-  // YA NO HAY ENLACE ESTIRADO, porque la fila dejo de llevar a un sitio (ver `alDesplegar`). Con el fuera,
-  // cada celda recibe su propio paso y el subrayado funciona por si solo. Es el mismo hallazgo de siempre:
-  // el defecto no estaba donde se veia, estaba en la pieza que cubria a las demas.
+  // ASI QUE SE DEJA DE DEPENDER DE EL. La version anterior necesitaba que se cumplieran TRES cosas a la
+  // vez: que la clase de grupo estuviera, que el enlace fuera DESCENDIENTE del grupo, y que el raton
+  // alcanzara una caja INLINE dentro de una celda con `overflow:hidden`. Ahora el enlace ES la celda:
+  // ocupa su ancho entero (`md:block md:w-full`) y lleva su propio `hover:underline`. Una sola condicion,
+  // y de las que no dependen de que haya o no algo encima de una caja pequeña.
+  //
+  // Y DE PASO ARREGLA LO OTRO: el area pulsable pasa de ser el texto a ser la celda, que es lo que hace
+  // falta para que "si responde al paso, tiene que decir que responde" se pueda cumplir de verdad.
+  //
+  // ── UN AVISO QUE SALIO DE VERIFICAR ESTO, y que conviene tener presente ─────────────────────────────
+  //
+  // TAILWIND ESCANEA EL TEXTO DEL ARCHIVO, COMENTARIOS INCLUIDOS. Tras retirar `group-hover/celda` del
+  // JSX, su regla SEGUIA en el CSS compilado, generada por los comentarios de aqui arriba que la nombran.
+  // Es inofensivo (ningun elemento lleva ya `group/celda`), pero tiene una consecuencia que si importa:
+  // **"la clase esta en el CSS" no prueba que algun elemento la use**, asi que no sirve como verificacion
+  // de que una pieza esta cableada. Al reves si vale: si NO esta, no puede funcionar.
+  //
+  // Las clases de las que depende esta version se comprobaron una a una contra el CSS del build
+  // (`md:block`, `md:w-full`, `md:truncate`, `hover:underline`): un valor que el compilador no parsea no
+  // da error, simplemente no emite la regla.
   const CLASES_DESTINO =
-    "relative z-10 cursor-pointer rounded underline-offset-4 group-hover/celda:underline hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "relative z-10 cursor-pointer rounded text-left underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:block md:w-full md:truncate";
 
   return (
     <>
@@ -435,7 +452,6 @@ export function FilaLista({
             <span
               key={columnas[i].rotulo}
               className={[
-                "group/celda",
                 visibilidadCelda(columnas[i].desde, v === null),
                 columnas[i].numerico ? "tabular-nums" : "",
                 "md:truncate",

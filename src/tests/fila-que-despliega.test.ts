@@ -219,10 +219,30 @@ describe("el reparto de clics no multiplica las paradas de teclado", () => {
   });
 
   it("las celdas con destino propio siguen por encima de los fondos de la fila", () => {
-    expect(FILA).toContain("relative z-10 cursor-pointer rounded underline-offset-4");
+    expect(FILA).toContain("relative z-10 cursor-pointer rounded text-left underline-offset-4");
   });
 
-  it("y el subrayado al pasar cuelga de la CELDA, no del enlace", () => {
+  it("el elemento con destino OCUPA su celda, y el subrayado cuelga de el mismo", () => {
+    // ═══ CUARTA VUELTA: SE RETIRA EL MECANISMO, NO SE AJUSTA (Santiago, 2026-09-10) ═══
+    //
+    // La version con `group-hover/celda` exigia TRES cosas a la vez: la clase de grupo puesta, el enlace
+    // como DESCENDIENTE del grupo, y el raton alcanzando una caja INLINE dentro de una celda con
+    // `overflow:hidden`. Se verifico que las dos primeras se cumplian (las reglas estan en el CSS
+    // compilado, el marcado es el correcto) y aun asi no subrayaba, asi que el fallo estaba en la tercera,
+    // que es la unica que no se puede comprobar sin un navegador.
+    //
+    // AHORA EL ENLACE ES LA CELDA: `md:block md:w-full`, con su propio `hover:underline`. Una sola
+    // condicion, y de las que no dependen de si algo tapa una caja pequeña. Si alguien lo devuelve a ser
+    // un texto suelto dentro de la celda, el area pulsable se encoge al texto y el subrayado vuelve a
+    // depender de acertarle a las letras.
+    expect(FILA).toContain("md:block md:w-full");
+    expect(FILA).toContain("hover:underline");
+    // Y NO vuelve el grupo: era el mecanismo que fallaba. Sobre el codigo sin comentarios, porque el
+    // propio componente explica por que lo retiro y esa explicacion lo nombra.
+    expect(sinComentarios(FILA)).not.toContain("group-hover/celda");
+  });
+
+  it("el nombre conserva el suyo, que es el que SI funciona", () => {
     // ═══ SANTIAGO, 2026-09-10: "en cada celda con destino, y tambien en el conteo" ═══
     //
     // EL DEFECTO ERA DE ALCANCE, no de ausencia: el subrayado estaba, pero colgaba del propio enlace, que
@@ -231,7 +251,7 @@ describe("el reparto de clics no multiplica las paradas de teclado", () => {
     //
     // COLGARLO DE LA CELDA vale ademas para el conteo, que es un BOTON y no cambia el cursor. Su regla:
     // si responde al paso, tiene que decir que responde.
-    expect(FILA).toContain("group/celda");
-    expect(FILA).toContain("group-hover/celda:underline");
+    expect(FILA).toContain("group/paciente");
+    expect(FILA).toContain("group-hover/paciente:underline");
   });
 });
