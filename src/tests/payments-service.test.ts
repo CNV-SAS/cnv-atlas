@@ -66,8 +66,8 @@ describe("createCheckout: sella el precio en el servidor", () => {
   it("calcula el monto desde el catalogo (no del cliente) y crea la transaccion", async () => {
     vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
     vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
-      { id: "n1", name: "A", unit_price: "50000" },
-      { id: "n2", name: "B", unit_price: "75000" },
+      { id: "n1", name: "A", unit_price: "50000", commercial_availability: "en_consultorio" },
+      { id: "n2", name: "B", unit_price: "75000", commercial_availability: "en_consultorio" },
     ] as never);
     vi.mocked(writer.createTransactionWithItems).mockResolvedValue({ id: "tx-1" });
 
@@ -109,7 +109,7 @@ describe("createCheckout: sella el precio en el servidor", () => {
     vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue(null);
     vi.mocked(repo.getProfessionalIdForPatient).mockResolvedValue("prof-asignado");
     vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
-      { id: "n1", name: "A", unit_price: "10000" },
+      { id: "n1", name: "A", unit_price: "10000", commercial_availability: "en_consultorio" },
     ] as never);
     vi.mocked(writer.createTransactionWithItems).mockResolvedValue({ id: "tx-2" });
 
@@ -127,7 +127,7 @@ describe("registerCashSale: misma resolucion de venta, transaccion ya pagada", (
   it("sella el precio del catalogo y crea la transaccion en efectivo con la clave del cliente", async () => {
     vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
     vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
-      { id: "n1", name: "A", unit_price: "50000" },
+      { id: "n1", name: "A", unit_price: "50000", commercial_availability: "en_consultorio" },
     ] as never);
     vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-1" });
 
@@ -221,5 +221,39 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
 
     expect(out.sealed).toBe(false);
     expect(alegra.createAlegraInvoice).not.toHaveBeenCalled();
+  });
+});
+
+// ═══ LA DISPONIBILIDAD GATEA LA VENTA, NO SOLO LA ENTREGA (2026-09-11) ═══
+//
+// EL HUECO QUE ESTO CIERRA: `recordDespacho` ya bloqueaba todo lo que no fuera `en_consultorio`, pero el
+// checkout solo miraba si el producto tenia precio. Asi que un producto marcado `no_disponible` no se
+// podia ENTREGAR y si se podia VENDER. La bandera gateaba media puerta.
+//
+// POR QUE IMPORTA AHORA Y NO ANTES: LUVIA entra al catalogo como producto de tercero y NO puede venderse
+// hasta que Direccion Cientifica firme las equivalencias de alergenos. `no_disponible` es exactamente lo
+// que tiene que impedirlo.
+//
+// Y VA EN EL SERVICIO, no en la pantalla: /pagos ya filtra el catalogo, pero un filtro de formulario es
+// una comodidad y no una garantia, porque la accion recibe ids y se puede invocar con cualquiera.
+describe("un producto no disponible no se puede vender", () => {
+  it("`no_disponible` se rechaza aunque tenga precio", async () => {
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "LUVIA", unit_price: "90000", commercial_availability: "no_disponible" },
+    ] as never);
+    await expect(
+      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"])),
+    ).rejects.toThrow(/no está disponible/);
+  });
+
+  it("y `solo_tienda` también, con su propia razón", async () => {
+    // No es el mismo caso: ese producto SI se vende, pero en la tienda. Cobrarlo aqui seria cobrarle dos
+    // veces al paciente por lo mismo, asi que el mensaje tiene que decir otra cosa.
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "A", unit_price: "50000", commercial_availability: "solo_tienda" },
+    ] as never);
+    await expect(
+      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"])),
+    ).rejects.toThrow(/en la tienda/);
   });
 });

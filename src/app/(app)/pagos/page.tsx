@@ -75,8 +75,21 @@ export default async function PagosPage() {
       nutraService.listCatalog(),
     ]);
     patients = pts;
+    // ═══ LA DISPONIBILIDAD TAMBIEN GATEA LA VENTA, NO SOLO LA ENTREGA (2026-09-11) ═══
+    //
+    // EL HUECO: este filtro miraba SOLO si el producto tiene precio. La entrega si comprueba la
+    // disponibilidad (`recordDespacho` bloquea todo lo que no sea `en_consultorio`), asi que un producto
+    // marcado `no_disponible` no se podia entregar... y si se podia VENDER desde aqui. La bandera gateaba
+    // media puerta.
+    //
+    // POR QUE IMPORTA AHORA: LUVIA entra al catalogo como producto de tercero y NO puede venderse hasta
+    // que Gildardo firme las equivalencias de alergenos. `no_disponible` es lo que tenia que impedirlo, y
+    // sin esta linea no lo impedia.
+    //
+    // `solo_tienda` TAMBIEN QUEDA FUERA, y es la otra mitad del arreglo: ese producto lo compra el
+    // paciente en la tienda, asi que cobrarlo aqui seria cobrarle dos veces por el mismo producto.
     nutraceuticals = catalog
-      .filter((n) => n.unit_price != null)
+      .filter((n) => n.unit_price != null && n.commercial_availability === "en_consultorio")
       .map((n) => ({ id: n.id, name: n.name, unitPrice: Number(n.unit_price) }));
   }
 

@@ -841,6 +841,13 @@
       "when": 1790295386099,
       "tag": "0119_reparto_con_vigencia",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1790381786099,
+      "tag": "0120_cimientos_del_portafolio",
+      "breakpoints": true
     }
   ]
 }
