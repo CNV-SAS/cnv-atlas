@@ -81,9 +81,11 @@ insert into carga_productos (clave, producto_id, codigo_alegra, lote, vence, rec
   ('OMEGA',      '77777777-7777-7777-7777-777777777701', 'NUT-002', '20226',    '2028-07-22', 500),
   ('CURCUMIN',   '77777777-7777-7777-7777-777777777703', 'NUT-003', '20526',    '2028-07-25', 426),
   ('D3K2',       '77777777-7777-7777-7777-777777777704', 'NUT-004', '19726',    '2028-07-17', 300),
-  -- LUVIA no esta en el catalogo y NO tiene codigo en Alegra. Ver "LO QUE BLOQUEA", punto 4.
+  -- LUVIA ya esta en el catalogo (migracion 0124), cargado y SIN HABILITAR. Su id se resuelve por nombre
+  -- porque no tiene uno fijo como los cuatro sembrados. Sin codigo en Alegra: es de tercero, no va al
+  -- balance de CNV, y su item se crea en el Bloque 2, antes de que pueda venderse.
   -- PVP 90.000 con IVA (base 75.630, IVA 14.370), confirmado por contabilidad: viene de redondear 89.990.
-  ('LUVIA',      null,                                    null,     '04197232', '2028-07-10',  84);
+  ('LUVIA',      (select id from nutraceuticals where name = 'LUVIA'), null, '04197232', '2028-07-10',  84);
 
 -- ── LO ENTREGADO A CADA INTEGRANTE ───────────────────────────────────────────────────────────────
 drop table if exists carga_entregas;
@@ -218,11 +220,42 @@ select null, cen.id, lo.id, p.producto_id,
  where p.producto_id is not null
    and p.recibido_lab - coalesce((select sum(e.unidades) from carga_entregas e where e.clave = p.clave), 0) > 0;
 
--- ── 4c. LUVIA ──────────────────────────────────────────────────────────────────────────────────
+-- ── 4c. LUVIA: DOS MOVIMIENTOS POR INTEGRANTE, UNO POR CADA RECEPCION ──────────────────────────
 --
--- ⚠ COMENTADO hasta que LUVIA exista en el catalogo con su `ownership`, su titular de marca y su
--- proveedor. Y con una condicion de seguridad: se crea con `commercial_availability = 'no_disponible'`,
--- que desde el 2026-09-11 SI impide venderlo (hasta entonces esa bandera solo gateaba la entrega).
+-- 60 unidades llegaron el 2026-08-26 y 24 el 27, mismo lote. Se reparten en PROPORCION a lo que cada
+-- recepcion aporto (60/84 y 24/84), redondeando la primera hacia arriba para que las dos sumen lo
+-- entregado. Ver la cabecera: colapsarlas en un movimiento borraria que 24 unidades llegaron un dia
+-- despues, y eso no se recupera.
+--
+-- SE PUEDE CARGAR PORQUE LUVIA YA EXISTE (migracion 0124) y esta BLOQUEADO: entro con
+-- `commercial_availability = 'no_disponible'`, y desde el 2026-09-11 esa bandera si impide venderlo (el
+-- servicio la comprueba, no solo la pantalla).
+insert into nutraceutical_stock_movements
+  (professional_id, location_id, lot_id, nutraceutical_id, delta, type, reason, lote)
+select i.profesional_id, loc.id, lo.id, p.producto_id,
+       ceil(e.unidades * 60.0 / 84.0)::int, 'recepcion',
+       'Carga inicial LUVIA (producto de tercero): recepcion del proveedor del 2026-08-26',
+       p.lote
+  from carga_entregas e
+  join carga_integrantes   i   on i.nombre = e.nombre
+  join carga_productos     p   on p.clave  = e.clave
+  join inventory_locations loc on loc.professional_id = i.profesional_id
+  join lots                lo  on lo.nutraceutical_id = p.producto_id and lo.code = p.lote
+ where e.clave = 'LUVIA';
+
+insert into nutraceutical_stock_movements
+  (professional_id, location_id, lot_id, nutraceutical_id, delta, type, reason, lote)
+select i.profesional_id, loc.id, lo.id, p.producto_id,
+       e.unidades - ceil(e.unidades * 60.0 / 84.0)::int, 'recepcion',
+       'Carga inicial LUVIA (producto de tercero): recepcion del proveedor del 2026-08-27',
+       p.lote
+  from carga_entregas e
+  join carga_integrantes   i   on i.nombre = e.nombre
+  join carga_productos     p   on p.clave  = e.clave
+  join inventory_locations loc on loc.professional_id = i.profesional_id
+  join lots                lo  on lo.nutraceutical_id = p.producto_id and lo.code = p.lote
+ where e.clave = 'LUVIA'
+   and e.unidades - ceil(e.unidades * 60.0 / 84.0)::int > 0;
 -- insert into nutraceutical_stock_movements (professional_id, nutraceutical_id, delta, type, reason, lote)
 -- select i.profesional_id, p.producto_id, e.unidades, 'recepcion',
 --        'Carga inicial LUVIA (producto de tercero): recepcion del proveedor del 2026-08-26, 60 unidades',
@@ -272,12 +305,9 @@ commit;
 --    lote), asi que las 1.284 unidades de CNV ya tienen donde vivir. Este script las carga.
 -- 3. [RESUELTO, migracion 0121] El lote gobierna el saldo. Los cinco se crean en el paso 3.
 --
--- 4. LUVIA SIGUE FUERA. Falta crearlo en el catalogo con `ownership='tercero'`, su titular de marca
---    (Centro de Nutricion Integral Katherine Ruiz), su proveedor como entidad en `suppliers`, y su
---    esquema de reparto en `revenue_splits` (proveedor 0,70 y umbral de aviso 0,10). El PVP ya no
---    bloquea: 90.000 con IVA, confirmado por contabilidad.
---
---    Y NO SE HABILITA PARA VENTA hasta que Direccion Cientifica firme las equivalencias de alergenos.
+-- 4. [RESUELTO, migracion 0124] LUVIA esta en el catalogo con su titularidad, su titular de marca, su
+--    proveedor y su reparto. Y BLOQUEADO: no se habilita para venta hasta que Direccion Cientifica firme
+--    las equivalencias de alergenos. Lo comprueba `luvia-sin-habilitar.test.ts`.
 --
 -- 5. EL CODIGO DE ALEGRA ya tiene columna (`alegra_item_id`, migracion 0120) y se rellena en el
 --    Bloque 2. Los cuatro codigos estan arriba, en `carga_productos`, esperando ese momento.

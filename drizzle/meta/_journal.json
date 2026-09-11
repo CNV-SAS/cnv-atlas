@@ -862,6 +862,20 @@
       "when": 1790554586099,
       "tag": "0122_faltante_settle_con_lote",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1790640986099,
+      "tag": "0123_alergenos_y_retencion",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1790727386099,
+      "tag": "0124_luvia_cargado_sin_habilitar",
+      "breakpoints": true
     }
   ]
 }
