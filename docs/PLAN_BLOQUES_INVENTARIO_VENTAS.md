@@ -19,8 +19,8 @@ que algo ya hecho se vuelva a planear).
 | Bloque | Estado | Cierra con |
 |---|---|---|
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
-| 1 · Cimientos | **EN CURSO** (el reparto, hecho) | La carga inicial corriendo |
-| 2 · Alegra de verdad | Pendiente | — |
+| 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
+| 2 · Alegra de verdad | **SIGUIENTE** | Una venta emite factura real con consecutivo de Alegra |
 | 3 · La venta nace en Tratamiento | Pendiente | — |
 | 3b · Reversa | Pendiente | — |
 | 4 · Liquidaciones | Pendiente | — |
@@ -395,11 +395,28 @@ Y falta lo que el modelo §7.10 pide de verdad: **disponibilidad por modalidad y
 restringir un producto de tercero a modalidad Comisión y sin domicilio durante el piloto. El enum actual
 no lo expresa.
 
-### Criterio de aceptación
+### Criterio de aceptación · CUMPLIDO 2026-09-11, con dos partes que cambiaron de enunciado
 
-Con LUVIA cargado como producto de tercero al 70/20/10 sobre base sin IVA, recibido por lote en la bodega
-de un Integrante: `saldo(ubicación, producto, lote)` devuelve la cifra correcta; `alergenosDe(LUVIA)`
-resuelve a `gluten` partiendo de `avena`; y **LUVIA no aparece como vendible en ninguna pantalla**.
+Se escribió el 2026-09-10 y **dos de sus tres partes quedaron obsoletas por decisiones posteriores**. Se
+conserva entero porque un criterio que se reescribe sin decirlo deja de ser un criterio.
+
+| Lo que pedía | Estado |
+|---|---|
+| `saldo(ubicación, producto, lote)` devuelve la cifra correcta | **CUMPLE.** Cotejado contra la nube tras la carga: 38 filas de saldo, 8 ubicaciones, 1.284 en central y 526 repartidas, y lo recibido por producto cuadra con lo que entregó el laboratorio |
+| `alergenosDe(LUVIA)` resuelve a `gluten` partiendo de `avena` | **RETIRADO, no incumplido.** Esa función no existe ni debe existir: Dirección Científica y el asesor legal descartaron la inferencia, cada uno por su razón. Lo que se construyó es la yuxtaposición |
+| **LUVIA no aparece como vendible en ninguna pantalla** | **REVERTIDO.** LUVIA está habilitada desde el 2026-09-11: la retención colgaba de una firma que nadie había pedido |
+
+**Lo que SÍ sobrevivió de esa tercera parte, y es lo que importaba:** el hueco del checkout era real y está
+cerrado. `/pagos` filtraba solo por "tiene precio", así que un producto `no_disponible` con precio se podía
+vender. Ahora lo gatea el **servicio** (`resolveSale`), no solo la pantalla, que es donde una acción recibe
+ids arbitrarios. Eso protege a los seis productos que todavía no se han maquilado.
+
+### Lo único que queda abierto del Bloque 1, y va al 5
+
+**Disponibilidad por MODALIDAD y por CANAL** (§7.10 del modelo): restringir un producto de tercero a
+modalidad Comisión y sin domicilio durante el piloto. El enum actual (`en_consultorio` / `solo_tienda` /
+`no_disponible`) no lo expresa. **No bloquea nada hoy** porque no hay Integrantes en modalidad Distribución
+ni domicilio activo; se construye en el Bloque 5, que es donde nacen las dos cosas que restringe.
 
 ---
 
