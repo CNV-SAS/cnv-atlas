@@ -155,15 +155,26 @@ export const lots = pgTable("lots", {
   createdAt: createdAt(),
 });
 
-// ═══ ALERGENOS (migracion 0123) ═══
+// ═══ ALERGENOS (0123, replanteado el 2026-09-11) ═══
 //
-// POR QUE UNA TABLA Y NO UN COTEJO DE CADENAS: LUVIA declara AVENA y el paciente declara "Gluten (trigo,
-// pan, pasta)" o "Trigo". Ninguna cadena contiene a la otra, asi que comparar textos deja pasar a un
-// celiaco. Es el mismo fallo que "lactosa" contra "lacteos" en el menu, con una consecuencia peor.
+// ESTE BLOQUE DECIA LO CONTRARIO Y SE CONSERVA CORREGIDO, porque el error explica la forma actual.
+// Decia: "por que una tabla y no un cotejo de cadenas... comparar textos deja pasar a un celiaco", y
+// "se construye y no se enciende: el bloqueo solo considera relaciones FIRMADAS".
 //
-// SE CONSTRUYE Y NO SE ENCIENDE: el bloqueo solo considera relaciones FIRMADAS, y ninguna lo esta. Una
-// fila sin firma es una propuesta. La firma es dato de cada fila y no una bandera global que alguien
-// pueda voltear entera.
+// NO HAY BLOQUEO NI HABRA, y la tabla de equivalencias (`allergen_relations`) SE RETIRO en la 0127. Dos
+// instrucciones independientes lo prohiben:
+//
+//   · DIRECCION CIENTIFICA (27-ago, 11-sep): traducir un ingrediente a una alergia es contenido clinico
+//     que el modelo ANI-BIS-E no tiene.
+//   · ASESOR LEGAL (11-sep): bloquear obliga a Atlas a afirmar que la alergia y el alergeno son
+//     incompatibles, o sea a INFERIR CLINICAMENTE, y eso contradice el Anexo 3 y el consentimiento que
+//     los pacientes ya firmaron, donde dice que Atlas no diagnostica y el profesional interpreta.
+//
+// LO QUE SE HACE EN SU LUGAR: yuxtaponer. Las dos declaraciones textuales, una al lado de la otra, sin
+// compararlas. Ver `modules/nutraceuticals/yuxtaposicion-alergenos`.
+//
+// Y LA PREOCUPACION ORIGINAL SIGUE SIENDO CIERTA (ninguna cadena contiene a la otra), solo que ya no es
+// nuestro problema que resolver: la valoracion de compatibilidad es del profesional tratante.
 
 export const allergens = pgTable("allergens", {
   id: pk(),
@@ -174,24 +185,10 @@ export const allergens = pgTable("allergens", {
   createdAt: createdAt(),
 });
 
-export const allergenRelations = pgTable("allergen_relations", {
-  id: pk(),
-  sourceId: uuid("source_id").notNull().references(() => allergens.id, { onDelete: "cascade" }),
-  targetId: uuid("target_id").notNull().references(() => allergens.id, { onDelete: "cascade" }),
-  /**
-   * 'directa' (trigo implica gluten, siempre) o 'por_contaminacion_cruzada' (avena implica gluten SALVO
-   * que el producto declare certificacion de ausencia).
-   *
-   * La segunda existe porque la equivalencia binaria no daba: la avena por si sola no tiene gluten, pero
-   * arrastra contaminacion cruzada con trigo salvo certificacion.
-   */
-  kind: text("kind").notNull(),
-  notes: text("notes"),
-  /** Sin firma, la relacion NO gobierna nada. Ver la nota de arriba. */
-  signedAt: timestamp("signed_at", { withTimezone: true }),
-  signedBy: uuid("signed_by").references(() => profiles.id),
-  createdAt: createdAt(),
-});
+// `allergenRelations` VIVIA AQUI y se retiro con su tabla en la 0127. No se deja vacia a proposito:
+// una tabla con un enum de tipos de equivalencia (`directa`, `por_contaminacion_cruzada`) no es neutral,
+// es un formulario, y el dia que alguien quiera "solo dejar anotado" que la avena arrastra gluten, la
+// estructura le dice como. Una ausencia se sostiene mejor con un documento que con un hueco que invita.
 
 export const nutraceuticalAllergens = pgTable("nutraceutical_allergens", {
   id: pk(),
@@ -214,6 +211,14 @@ export const nutraceuticalAllergens = pgTable("nutraceutical_allergens", {
  * silencio. El id no cambia por una reescritura, y ya lleva su version de encuesta dentro (la opcion
  * cuelga de la pregunta y la pregunta de la version).
  */
+// IDENTIDAD, no equivalencia: la opcion "Gluten (trigo, pan, pasta)" ES el alergeno gluten, la misma
+// cosa nombrada dos veces. Por eso sobrevive al retiro de `allergenRelations`, que relacionaba alergenos
+// DISTINTOS entre si.
+//
+// HOY NO TIENE LECTOR, y queda anotado como decision y no como olvido: la yuxtaposicion muestra la
+// respuesta CRUDA del paciente, tal como la escribio, no su normalizacion. Se conserva porque mapear la
+// opcion a su alergeno costo un defecto real de encontrar (las versiones viejas de la encuesta quedaron
+// sin mapear por buscar por texto) y rehacerlo seria repetir ese trabajo.
 export const surveyOptionAllergens = pgTable("survey_option_allergens", {
   id: pk(),
   surveyOptionId: uuid("survey_option_id").notNull(),

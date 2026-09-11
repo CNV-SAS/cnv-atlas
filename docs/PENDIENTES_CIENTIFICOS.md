@@ -554,10 +554,21 @@ el 27 de agosto, lo ejecutamos el 28, y aun así te llegó una tercera vez. Qued
 | LUVIA | 11-sep, §4 | **Habilitada**, con el alérgeno que declara su ficha |
 | Bloqueo activo con confirmación y registro | 27-ago / 11-sep | **No se construye** |
 
-**Y la referencia a una opinión del asesor legal sobre el alérgeno: retirada, porque tienes razón, no
-existe.** La buscamos como pediste. La frase que la citaba aparecía en **un solo sitio de todo nuestro
-repositorio y sin fuente**; el documento donde se registra lo que el legal decide no menciona alérgenos
-ni una vez, y las tres consultas legales que sí existen son de otra cosa. Lo que sí existe es una
-exigencia de bloqueo activo en un documento **nuestro** (el modelo comercial, §7.7), y llamarla "opinión
-del asesor" convirtió un texto propio en un dictamen externo que nadie podía cotejar. **Ese conflicto es
-de responsabilidad frente al consumidor, no clínico, y va al asesor legal por escrito; no vuelve a ti.**
+**Y la referencia a la opinión del asesor legal: la buscamos como pediste, dijimos que no existía, y nos
+equivocamos.** Sí existe. La escribió en una consulta sobre responsabilidad en la venta de producto de
+tercero, que no habíamos indexado con las consultas legales porque el índice solo cubría las de datos.
+**Nuestra verificación falló; no es que el documento mintiera.** Ya está indexada, y el índice cambió de
+regla para que no vuelva a pasar.
+
+**Lo que sí era un error nuestro, y es el que te tocó a ti:** la nota se escribió como *pendiente de
+Gildardo*, y no lo era. Era un conflicto entre tu instrucción y un dictamen legal, o sea una decisión de
+CNV. Escrita como pendiente tuyo, viajó sola hasta tu bandeja tres veces.
+
+**Cómo cerró, y te lo contamos porque el resultado es el tuyo.** El asesor rectificó su propia
+recomendación: advirtió que su principio confundía **usar** el dato con **bloquear** con el dato, y que un
+Atlas que bloquea sobre una inferencia clínica contradice el consentimiento que los pacientes ya
+firmaron, donde dice que Atlas no diagnostica y el profesional interpreta. **Sin bloqueo, sin confirmación
+y sin registro**, como dijiste tú. Lo que sí se construye es poner las dos declaraciones **juntas en
+pantalla** (lo que el paciente declaró, textual, y la lista completa de lo que el producto declara), sin
+clasificar ninguna ni deducir nada entre ellas. **No es un cruce: es mostrar dos hechos, que es lo que tu
+punto 1 ya mandaba.** Si lo lees de otra manera, dilo y se retira.

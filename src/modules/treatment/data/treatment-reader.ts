@@ -3,6 +3,7 @@ import "server-only";
 import type { ProtocoloAjustes, ProtocoloSnapshot } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
+import { getDeclaracionesDelPaciente } from "@/modules/evaluations/data/declaraciones-paciente-reader";
 
 // TreatmentProtocol (anotacion del reader) vive en el modulo neutro; ver el reexport abajo.
 import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
@@ -108,7 +109,8 @@ export async function getTreatmentProtocol(
   // contraindicaciones lo necesita (son de la PERSONA, no de esta consulta).
   const patientId = patientIdFrom((diag as { evaluations?: unknown }).evaluations);
 
-  const [nutras, guides, notes, catalog, menus, get, report, contra, intake] = await Promise.all([
+  const [nutras, guides, notes, catalog, menus, get, report, contra, intake, alergenos] =
+    await Promise.all([
     supabase
       .from("treatment_nutraceuticals")
       .select("id, nutraceutical_id, dosage, duration_days, nutraceuticals(name)")
@@ -164,7 +166,10 @@ export async function getTreatmentProtocol(
       .select("weight_goal_kg, weight_goal_set_in")
       .eq("id", evaluationId)
       .maybeSingle(),
-  ]);
+    // LO QUE CADA PRODUCTO DECLARA. Se lee para TODO el catalogo, no para los ya prescritos: el bloque
+    // tiene que poder salir en el momento en que el profesional elige, no despues de haber elegido.
+    supabase.from("nutraceutical_allergens").select("nutraceutical_id, declared_as"),
+    ]);
 
   if (nutras.error) throw new Error(`treatment-reader: nutraceuticals: ${nutras.error.message}`);
   if (guides.error) throw new Error(`treatment-reader: guidelines: ${guides.error.message}`);
@@ -174,6 +179,22 @@ export async function getTreatmentProtocol(
   if (get.error) throw new Error(`treatment-reader: get: ${get.error.message}`);
   if (report.error) throw new Error(`treatment-reader: report snapshot: ${report.error.message}`);
   if (intake.error) throw new Error(`treatment-reader: peso meta: ${intake.error.message}`);
+  if (alergenos.error) throw new Error(`treatment-reader: alergenos: ${alergenos.error.message}`);
+
+  // Lo que declara cada producto, agrupado por producto y COMPLETO. No se filtra por nada: la lista
+  // entera es lo que el asesor legal pidio mostrar, porque ahi aparecen ingredientes que un filtro no
+  // habria sacado nunca.
+  const alergenosPorProducto = new Map<string, string[]>();
+  for (const a of alergenos.data ?? []) {
+    const id = a.nutraceutical_id as string;
+    const texto = String(a.declared_as ?? "").trim();
+    if (!id || texto === "") continue;
+    alergenosPorProducto.set(id, [...(alergenosPorProducto.get(id) ?? []), texto]);
+  }
+
+  // Las dos respuestas de la encuesta que se yuxtaponen con lo que declara el producto. Va aparte del
+  // Promise.all porque necesita dos consultas encadenadas (la respuesta de la encuesta primero).
+  const declaracionesPaciente = await getDeclaracionesDelPaciente(evaluationId);
 
   const kcalSugerido = get.data?.value != null ? Math.round(Number(get.data.value)) : null;
   // Recomendacion del modelo (string plano, p. ej. "MULTI-CELL BASE, OMEGA COMPLEX"). El P1/P2/dosis
@@ -285,7 +306,9 @@ export async function getTreatmentProtocol(
       servingSize: c.serving_size ?? null,
       presentation: c.presentation ?? null,
       composition: c.composition ?? null,
+      alergenosDeclarados: alergenosPorProducto.get(c.id) ?? [],
     })),
+    declaracionesPaciente,
     menuSuggestions: (menus.data ?? []).map((m) => ({
       id: m.id,
       provider: m.provider,

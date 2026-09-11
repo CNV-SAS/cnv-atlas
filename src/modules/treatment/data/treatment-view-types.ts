@@ -1,4 +1,5 @@
 import type { ProtocoloSnapshot } from "@/clinical-engine";
+import type { DeclaracionDelPaciente } from "@/modules/nutraceuticals/yuxtaposicion-alergenos";
 
 // Tipos NEUTROS (sin server-only) de la vista del protocolo de tratamiento. Viven aparte del reader
 // server-only para que el panel cliente los importe sin arrastrar el reader al boundary de cliente
@@ -93,6 +94,10 @@ export type CatalogItem = {
   servingSize: string | null; // "30 mL", "25 g"
   presentation: string | null; // liquida | polvo
   composition: string | null; // ingredientes
+  // LO QUE EL PRODUCTO DECLARA, completo y textual (`nutraceutical_allergens.declared_as`). Vacio si no
+  // declara nada. Va COMPLETO por instruccion del asesor legal: ahi aparecen ingredientes que un filtro
+  // no habria sacado nunca. Ver `modules/nutraceuticals/yuxtaposicion-alergenos`.
+  alergenosDeclarados: string[];
 };
 
 /** Forma v4: las sustituciones propuestas sobre la semana base. `citaVerificada` la calcula el servicio. */
@@ -226,6 +231,9 @@ export type TreatmentProtocol = {
   guidelines: DietGuideline[];
   notes: TreatmentNote[];
   catalog: CatalogItem[];
+  // LO QUE EL PACIENTE DECLARO en la P43 y la P44, textual. Se pone junto a lo que declara el producto en
+  // el momento de la recomendacion, SIN compararlos. Es una yuxtaposicion, no un cruce.
+  declaracionesPaciente: DeclaracionDelPaciente;
   menuSuggestions: MenuSuggestion[]; // sugerencias de IA (B13), la mas reciente primero
   // Snapshot del protocolo sugerido (write-once, sellado al crear el tratamiento). Solo lectura; lo
   // usa el panel de consulta medica para mostrar examenes y suplementacion sugeridos. null si el
