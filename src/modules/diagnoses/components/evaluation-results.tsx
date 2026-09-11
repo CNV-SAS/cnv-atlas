@@ -861,8 +861,21 @@ export function EvaluationResults({
 
       {/* Constelacion de versiones (regla 7): trazabilidad del calculo, discreta al pie. Texto muted, no
           una barra: la franja de arriba es el marco; esto es solo la traza, para no enmarcar de mas. */}
+      {/* ═══ LOS NOMBRES SON LOS MISMOS QUE EN /ani-bis-e (Santiago, 2026-09-10) ═══
+
+          Su reporte: este pie decia "Motor · modelo · reglas" y la pantalla del modelo decia "Modelo
+          ANI-BIS-E · Protocolo de tratamiento". Dos juegos de nombres para cosas que se solapan, y quien
+          los vea va a preguntar cual es cual.
+
+          AHORA LAS TRES SE ESCRIBEN IGUAL EN LOS DOS SITIOS, en mayuscula inicial porque son nombres y no
+          sustantivos sueltos. QUE GOBIERNA CADA UNA se explica en /ani-bis-e, que es la pantalla de
+          consulta; esto es la TRAZA de lo que se sello en este diagnostico (regla 7) y no el sitio para
+          explicar nada. `motor-vigente.test.ts` comprueba que las dos superficies no vuelvan a separarse.
+
+          Y EL PROTOCOLO NO VA AQUI, aunque sea la cuarta version: se sella en el TRATAMIENTO, no en el
+          diagnostico. Nombrarlo en esta linea afirmaria que el diagnostico se calculo con el. */}
       <p className="text-xs text-muted-foreground">
-        Motor {versions.engine} · modelo {versions.model} · reglas {versions.rules}
+        Motor {versions.engine} · Modelo {versions.model} · Reglas {versions.rules}
       </p>
     </div>
   );

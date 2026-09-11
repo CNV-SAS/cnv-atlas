@@ -35,7 +35,9 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // EL DIAGNOSTICO Y EL REPORTE entran en la MISMA consulta, para la columna de pendientes: sin
       // ellos no se puede decir si lo que falta es generar el diagnostico o enviar el reporte. Es un
       // embed mas en la consulta que ya se hacia, no una consulta nueva por paciente.
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, bis_measurements(measurement_date), diagnoses(id), reports(status))",
+      // `created_at` DEL PACIENTE (no de su evaluacion): es la columna "Fecha de creacion", y la tiene
+      // tambien quien no tiene ninguna evaluacion, que es justo cuando mas informa.
+      "id, created_at, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, bis_measurements(measurement_date), diagnoses(id), reports(status))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -83,6 +85,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       .map((c) => c.consent_type as ConsentType);
     return {
       patientId: row.id,
+      createdAt: row.created_at as string,
       documentType: row.document_type as DocumentType,
       documentNumber: row.document_number,
       firstName: profile?.first_name ?? "",

@@ -54,10 +54,24 @@ describe("lo que la fila HACE cambia lo que la fila ES", () => {
     expect(FILA).toContain("rotate-90");
   });
 
-  it("y el chevron dice de QUIEN son las evaluaciones que abre", () => {
-    // Veinte chevrones identicos en una lista son veinte botones que se anuncian igual con lector de
-    // pantalla. El nombre del paciente los distingue.
-    expect(FILA).toContain("Ver las evaluaciones de");
+  it("el mando de desplegar se anuncia con el nombre del paciente", () => {
+    // ═══ RE-ANCLADO EN LA TERCERA VUELTA (Santiago, 2026-09-10) ═══
+    //
+    // ANTES el mando era un chevron suelto con `aria-label="Ver las evaluaciones de X"`, porque veinte
+    // chevrones identicos se anuncian todos igual y hacia falta el nombre para distinguirlos.
+    //
+    // AHORA el mando ENVUELVE al nombre ("que el item de la columna paciente tambien me despliegue"), asi
+    // que el nombre ES el nombre accesible del boton: no hace falta un `aria-label` que lo repita, y
+    // ponerlo seria peor (un `aria-label` PISA el contenido, asi que habria que mantener dos copias del
+    // nombre y una acabaria diciendo otra cosa).
+    //
+    // LO QUE HACE FALTA QUE SIGA: que sea un BOTON (no un div pulsable) y que diga si esta abierto.
+    // Con eso un lector anuncia "María Restrepo, botón, contraído", que es el patron estandar.
+    expect(FILA).toContain("aria-expanded={desplegado}");
+    expect(FILA).toContain("{titulo}");
+    // Y sin `aria-label` en ese boton, que taparia el nombre.
+    const boton = FILA.slice(FILA.indexOf("onClick={alDesplegar}"), FILA.indexOf("{chip}"));
+    expect(boton).not.toContain("aria-label");
   });
 
   it("el panel va FUERA del <li> de la fila", () => {
@@ -153,19 +167,26 @@ describe("el reparto de clics no multiplica las paradas de teclado", () => {
   // Su reparto pone CINCO destinos en una fila. Con cinco enlaces por fila y veinte filas serian cien
   // paradas de tabulador en una pantalla, y recorrer la lista con teclado dejaria de ser viable.
   //
-  // LO QUE LO RESUELVE, y ya estaba en el componente: el enlace del titulo esta ESTIRADO sobre la fila
-  // entera (un pseudo-elemento absoluto que cubre la fila). Asi que la edad, el documento y el hueco entre columnas YA
-  // llevan al panel sin ser enlaces propios. Solo tienen destino propio las celdas cuyo dato ES otra cosa.
+  // LA SOLUCION CAMBIO EN LA TERCERA VUELTA, y conviene dejar las dos escritas porque la segunda solo se
+  // entiende contra la primera.
   //
-  // RESULTADO: cuatro paradas por fila (chevron, nombre, pendiente, ultima evaluacion, conteo... y los dos
-  // botones de accion), no nueve. Se gana el clic sin pagar la parada.
+  // ANTES: el enlace del titulo iba ESTIRADO sobre la fila entera (`after:absolute after:inset-0`), asi
+  // que la edad, el documento y los huecos llevaban al panel sin ser enlaces propios.
+  //
+  // Y ESO COBRABA UN PRECIO QUE NADIE VIO hasta el smoke: el pseudo que cubre la fila pertenece al enlace
+  // del titulo, asi que el cursor de mano salia en TODA la fila y el `:hover` se lo llevaba siempre el
+  // titulo, nunca la celda por la que se pasaba. Ningun subrayado de celda podia encenderse.
+  //
+  // AHORA: la fila no lleva a ningun sitio (el nombre despliega, al panel se va por su boton), asi que no
+  // hay estirado ninguno. Las paradas de teclado no suben porque los destinos no subieron: nombre,
+  // pendiente, conteo y los dos botones.
 
-  it("la edad y el documento NO son enlaces propios: ya los cubre el título estirado", () => {
+  it("la edad y el documento NO son destinos propios: identifican, no llevan a nada", () => {
     // RE-ANCLADO (2026-09-10): con la opcion B del artefacto, la edad y el documento dejaron de ser
-    // CELDAS y bajaron a la segunda linea bajo el nombre. Lo que el caso afirma no cambia (ninguno de
-    // los dos es un destino propio, porque el titulo estirado ya los cubre), pero el sitio donde vive
-    // la afirmacion si. Es la familia de "un candado anclado a una entrega superada pasa verde": si se
-    // hubiera dejado mirando `const valores`, seguiria pasando sin mirar nada.
+    // CELDAS y bajaron a la segunda linea bajo el nombre. Lo que el caso afirma no cambia (ninguno de los
+    // dos es un destino propio), pero el sitio donde vive la afirmacion si. Es la familia de "un candado
+    // anclado a una entrega superada pasa verde": si se hubiera dejado mirando `const valores`, seguiria
+    // pasando sin mirar nada.
     const LISTA_SRC = readFileSync("src/modules/patients/components/lista-pacientes.tsx", "utf8");
     const i = LISTA_SRC.indexOf("const identificacion = [");
     expect(i, "desapareció la segunda línea con documento y edad").toBeGreaterThan(-1);
@@ -177,15 +198,28 @@ describe("el reparto de clics no multiplica las paradas de teclado", () => {
     expect(bloque).not.toContain("alPulsar");
   });
 
-  it("y el título sigue estirado sobre la fila entera", () => {
-    // Si esto se pierde, pulsar la edad o el hueco deja de llevar a ningun sitio y el reparto se rompe
-    // en silencio: las celdas con destino propio seguirian funcionando y el resto no.
-    expect(FILA).toContain("after:absolute after:inset-0");
+  it("NO hay enlace estirado: era lo que robaba el hover a las celdas", () => {
+    // ═══ EL CANDADO CAMBIA DE SIGNO, y por eso va explicado ═══
+    //
+    // Hasta hoy este caso exigia el estirado; ahora lo PROHIBE. No es que antes estuviera mal: la fila
+    // tenia un destino y cubrirla entera era correcto. Al dejar de tenerlo, el estirado se quedo sin
+    // razon y con un coste: tapaba a las celdas y ninguna recibia el paso del raton.
+    //
+    // Si alguien lo vuelve a meter para "hacer la fila clicable", el subrayado de las celdas se apaga
+    // otra vez y en silencio, que es exactamente como llego el defecto la primera vez.
+    const LISTA_SRC = readFileSync("src/modules/patients/components/lista-pacientes.tsx", "utf8");
+    // SIN COMENTARIOS: el propio componente EXPLICA por que retiro el estirado, y esa explicacion nombra
+    // la clase. Un candado que busca una cadena prohibida se caza a si mismo en cuanto alguien escribe por
+    // que esa cadena no debe estar. Lo que afirma el codigo es el codigo, no lo que el codigo cuenta.
+    const sinComentarios = FILA.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(sinComentarios).not.toContain("after:inset-0");
+    // Y la fila de pacientes no le pasa `href`, que es lo que encenderia el estirado.
+    const fila = LISTA_SRC.slice(LISTA_SRC.indexOf("<FilaLista"), LISTA_SRC.indexOf("panel={"));
+    expect(fila, "la fila de pacientes volvió a llevar a un destino").not.toContain("href=");
   });
 
-  it("las celdas con destino propio quedan POR ENCIMA del estirado", () => {
-    // Sin la capa de arriba se pulsaria el enlace estirado y el destino propio no serviria de nada.
-    expect(FILA).toContain("relative z-10 rounded underline-offset-4");
+  it("las celdas con destino propio siguen por encima de los fondos de la fila", () => {
+    expect(FILA).toContain("relative z-10 cursor-pointer rounded underline-offset-4");
   });
 
   it("y el subrayado al pasar cuelga de la CELDA, no del enlace", () => {

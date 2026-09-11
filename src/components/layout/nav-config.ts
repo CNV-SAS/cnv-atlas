@@ -108,10 +108,20 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // por lo que la pantalla HACE hoy, y el nombre no es de la pantalla: es del MODELO, y es como Gildardo
     // y los profesionales lo llaman. Un rotulo de navegacion que renombra el vocabulario de la casa cuesta
     // mas de lo que aclara.
+    // ═══ Y HEREDA LOS ROLES DEL CONSENTIMIENTO (2026-09-10) ═══
+    //
+    // Al mudar el consentimiento aqui, su entrada propia se retiro. Esa la veian tambien direccion,
+    // soporte y obbia, asi que dejarla en "admin y profesional" les habria QUITADO en silencio una
+    // referencia que si tenian: retirar una pantalla y absorber su contenido no es lo mismo que retirar
+    // su contenido, y la diferencia se paga en accesos.
+    //
+    // Y NO ABRE NADA MAS: esta pantalla ya no tiene colas de pacientes (se fueron a /pacientes y a cada
+    // evaluacion). Lo que queda son las versiones del modelo y el texto del consentimiento vigente: cero
+    // datos de paciente. La evaluacion concreta (/ani-bis-e/[id]) conserva sus propias policies.
     label: "Modelo ANI-BIS-E",
     href: "/ani-bis-e",
     icon: "evaluaciones",
-    roles: ["admin", "professional"],
+    roles: ["admin", "professional", "direccion", "soporte", "obbia"],
     group: "clinica",
   },
   {
@@ -165,15 +175,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: "pagos",
     roles: ["admin", "direccion", "professional"],
     group: "operacion",
-  },
-  {
-    // Referencia de solo lectura del consentimiento vigente (DELTA2 C1). Aplica a
-    // cualquier rol autenticado; la pagina solo exige sesion, sin policy especial.
-    label: "Consentimiento vigente",
-    href: "/consentimiento",
-    icon: "consentimiento",
-    roles: ["admin", "direccion", "soporte", "obbia", "professional"],
-    group: "cuenta",
   },
   {
     // Perfil del integrante (hoy, su estado tributario para poder cobrar la comision). Solo el

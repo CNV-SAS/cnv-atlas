@@ -35,10 +35,19 @@ describe("B3: navegacion adaptativa por rol", () => {
     expect(soporteHrefs).not.toContain("/admin");
   });
 
-  it("el consentimiento vigente es visible para todos los roles (DELTA2 C1)", () => {
+  it("el consentimiento vigente sigue siendo visible para todos los roles (DELTA2 C1)", () => {
+    // ═══ RE-ANCLADO AL MUDARLO (Santiago, 2026-09-10) ═══
+    //
+    // El consentimiento dejo de tener pantalla propia: es un bloque de /ani-bis-e, junto a las versiones
+    // del modelo, porque tambien esta versionado y es parte del modelo.
+    //
+    // LO QUE ESTE CASO PROTEGE NO CAMBIA, y por eso se re-ancla en vez de borrarse: los CINCO roles
+    // tienen que seguir llegando al texto vigente. Mudar una pantalla y no mover su acceso es como se
+    // retira una funcion sin querer, y aqui se habria retirado para direccion, soporte y obbia, que no
+    // entran a /ani-bis-e por su trabajo clinico. Si alguien vuelve a estrechar esos roles, esto truena.
     for (const role of ["admin", "direccion", "soporte", "obbia", "professional"] as const) {
       const hrefs = navItemsForRoles([role]).map((i) => i.href);
-      expect(hrefs).toContain("/consentimiento");
+      expect(hrefs, `${role} perdió el acceso al consentimiento vigente`).toContain("/ani-bis-e");
     }
   });
 });

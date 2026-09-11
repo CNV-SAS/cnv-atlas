@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { HTML_VIGENTE } from "./fixtures/html-vigente";
 
+import { indicatorBands } from "@/modules/diagnoses/data/indicator-ranges";
 import { INDICES_ANI, indicesAniAlterados } from "@/modules/reports/data/hc-indices-ani";
 
 // CANDADO DEL BLOQUE ANI-BIS-E DE LA HISTORIA CLINICA (2026-08-24).
@@ -148,4 +149,49 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
   it("sin clasificación no se afirma que está alterado", () => {
     expect(indicesAniAlterados({ IEHH: 0.89 }, {}, { IEHH: 2 }, true)).toEqual([]);
   });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// LAS DOS SUPERFICIES DEL MISMO CORTE NO PUEDEN CONTRADECIRSE (2026-09-10)
+//
+// POR QUE EXISTE ESTE BLOQUE, y es la pregunta que hizo Santiago al proponer retirar la tabla de cortes
+// de /ani-bis-e: "la tabla acaba de destapar el IRC desfasado doce dias, y eso paso porque los cortes se
+// pusieron a la vista juntos. ¿Donde mas se veria esa clase de desfase?".
+//
+// LA RESPUESTA HONESTA ERA: EN NINGUN SITIO. Habia dos candados y ninguno cubria el cruce.
+//   · `hc-indices-ani` (arriba) prueba que nuestra REFERENCIA coincide con la de SU archivo.
+//   · `indicator-ranges` prueba que nuestras BANDAS coinciden con el CLASIFICADOR congelado.
+// Los dos pueden estar verdes y las dos superficies decir cosas distintas, porque comparan contra cosas
+// distintas. Es justo lo que paso con el IRC.
+//
+// ASI QUE EL CRUCE SE VUELVE UN TEST, y por eso la tabla puede retirarse: un test corre en cada commit y
+// una tabla solo funciona si alguien la mira. Mejor detector, y ademas gratis.
+//
+// COMO COMPARA: todo numero que aparece en la referencia tiene que aparecer entre los de las bandas.
+// Numericamente, no como cadena: el escribe "1,7" y nosotros "1,70", y son el mismo corte. Al reves NO se
+// exige (las bandas traen los tramos intermedios, que la referencia no menciona).
+describe("la referencia de su HC y las bandas del clasificador no pueden decir cortes distintos", () => {
+  const numeros = (s: string): number[] =>
+    [...s.matchAll(/−?-?\d+(?:[.,]\d+)?/g)]
+      .map((m) => Number(m[0].replace("−", "-").replace(",", ".")))
+      .filter((n) => Number.isFinite(n));
+
+  for (const fila of INDICES_ANI) {
+    for (const sexM of [true, false]) {
+      const quien = `${fila.codigo} (${sexM ? "hombre" : "mujer"})`;
+      const bandas = indicatorBands(fila.codigo, sexM);
+      // Sin bandas no hay cruce que hacer: PABU, ICA-BIS y EB son referencia de PUNTO, no de banda.
+      if (bandas == null) continue;
+      it(`el corte de ${quien} dice lo mismo en las dos`, () => {
+        const enBandas = numeros(bandas);
+        for (const n of numeros(fila.referencia(sexM))) {
+          expect(
+            enBandas,
+            `${quien}: la referencia de su HC cita ${n} y las bandas del clasificador no lo tienen (${bandas}). ` +
+              `O el movió el corte y falta portarlo a una de las dos, o una de las dos se quedó atrás.`,
+          ).toContain(n);
+        }
+      });
+    }
+  }
 });

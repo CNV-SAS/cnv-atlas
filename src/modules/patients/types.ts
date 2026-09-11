@@ -64,6 +64,12 @@ export type IdentityResolution = {
 // pacientes propios, o todos para admin) lo resuelve RLS, no la app.
 export type PatientListItem = {
   patientId: string;
+  /**
+   * Cuando se creo la FICHA del paciente (no su evaluacion). Es la columna "Fecha de creacion", que
+   * reemplazo a "Ultima evaluacion" el 2026-09-10: esa repetia la primera de las tres fechas que ya salen
+   * al desplegar la fila, y esta responde algo que la lista no decia en ningun sitio.
+   */
+  createdAt: string;
   documentType: DocumentType;
   documentNumber: string;
   firstName: string;

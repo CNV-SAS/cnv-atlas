@@ -30,11 +30,20 @@ import type { CSSProperties, ReactNode } from "react";
 // cabecera de columnas va `aria-hidden`: en ancho orienta la vista, y en lectura no hace falta porque cada
 // valor se anuncia detras del nombre del paciente (y el que no se explica solo lleva su rotulo delante).
 //
-// ACCESIBILIDAD DE LA FILA CLICABLE. No es un `div` con onClick: es un `<Link>` REAL sobre el titulo,
-// estirado a toda la fila con `after:absolute after:inset-0`. Asi la fila entera es el area de clic, en el
-// orden de tabulacion hay UN solo enlace, el lector anuncia el nombre como texto del enlace, y funciona con
-// teclado sin handlers propios. Cualquier control dentro de la fila va con `relative z-10` para quedar POR
-// ENCIMA del estirado.
+// ═══ LA FILA NO ES UN SOLO DESTINO, Y EL ENLACE ESTIRADO SE RETIRO (2026-09-10) ═══
+//
+// LO QUE HABIA: el titulo era un `<Link>` con `after:absolute after:inset-0`, un pseudo-elemento que
+// cubre la fila entera para que cualquier punto lleve a un sitio. Es un patron bueno cuando la fila TIENE
+// un destino, y esta dejo de tenerlo: el nombre ahora despliega, y al panel se va por su boton.
+//
+// Y ADEMAS COBRABA UN PRECIO QUE NO SE VEIA hasta que Santiago lo reporto: el pseudo que cubre la fila
+// pertenece al enlace del titulo, asi que el cursor de mano salia en TODA la fila y el `:hover` se lo
+// llevaba siempre el titulo, nunca la celda por la que se estaba pasando. Ningun subrayado de celda podia
+// encenderse. Una pieza que se pone encima de las demas les quita el paso del raton, no solo el clic.
+//
+// LO QUE QUEDA: cada mando es un elemento REAL (boton o enlace), ninguno tapa a otro, y cada celda con
+// destino recibe su propio hover. Los mandos siguen llevando `relative z-10` porque el panel desplegado y
+// los fondos de la fila se pintan detras.
 
 /**
  * UNA CELDA CON DESTINO PROPIO.
@@ -92,14 +101,38 @@ export type ColumnaLista = {
   desde?: "lg" | "xl";
 };
 
-/** Pistas visibles en cada escalon. La del titulo la antepone `ListaFilas` y absorbe el sobrante. */
-function pistas(columnas: readonly ColumnaLista[], hasta: "md" | "lg" | "xl", conAcciones: boolean) {
+/**
+ * ANCHO FIJO PARA LA PISTA DE ACCIONES, Y ESTA ERA LA CAUSA DEL DESALINEADO (Santiago, 2026-09-10,
+ * captura `corregir-encabezados-tabla-pacientes`).
+ *
+ * Iba en `auto`, y `auto` se resuelve POR GRID contra el contenido de ESE grid. La cabecera y cada fila
+ * son grids SEPARADOS que solo comparten la cadena de pistas, asi que su pista `auto` media cosas
+ * distintas: en la cabecera, el ancho del texto "ACCIONES"; en la fila, dos botones de 36 px con su
+ * separacion. Veintitantos pixeles de diferencia, que el `1fr` del titulo absorbia, corriendo TODAS las
+ * columnas de la fila respecto de sus encabezados.
+ *
+ * SE VEIA COMO UN PROBLEMA DE LAS COLUMNAS DE LA DERECHA y era del reparto entero. Y no se nota entre
+ * filas (todas se desplazan igual), solo contra la cabecera, que es como lo vio Santiago.
+ *
+ * LA REGLA: ninguna pista de esta lista puede ser `auto`. Dos grids solo quedan alineados si TODAS sus
+ * pistas se resuelven igual, y `auto` depende del contenido. 5,5rem son 88 px: dos botones de 36 y su
+ * separacion de 8 caben con margen.
+ */
+const ANCHO_ACCIONES = "5.5rem";
+
+/** Pistas visibles en cada escalon. La del titulo la antepone `ListaFilas`. */
+function pistas(
+  columnas: readonly ColumnaLista[],
+  hasta: "md" | "lg" | "xl",
+  conAcciones: boolean,
+  anchoTitulo: string,
+) {
   const cabe = (c: ColumnaLista) =>
     c.desde == null || c.desde === hasta || (hasta === "xl" && c.desde === "lg");
   return [
-    "minmax(0,1fr)",
+    anchoTitulo,
     ...columnas.filter(cabe).map((c) => c.ancho),
-    ...(conAcciones ? ["auto"] : []),
+    ...(conAcciones ? [ANCHO_ACCIONES] : []),
   ].join(" ");
 }
 
@@ -120,6 +153,7 @@ function visibilidadCabecera(desde: ColumnaLista["desde"]) {
 export function ListaFilas({
   columnas,
   conAcciones = false,
+  anchoTitulo = "minmax(0,1fr)",
   encabezado,
   pie,
   vacia,
@@ -144,6 +178,14 @@ export function ListaFilas({
    */
   conAcciones?: boolean;
   /**
+   * PISTA DE LA COLUMNA DEL TITULO. Por defecto se lleva todo el sobrante, que es lo razonable en una
+   * lista de dos o tres columnas y deja de serlo en cuanto hay cinco: con `1fr` el nombre se llevaba la
+   * mitad de la pantalla y el resto se apretaba (Santiago, 2026-09-10: "el nombre ocupa mucho espacio y
+   * el resto muy poco"). Una lista con varias columnas pasa un `fr` acotado y reparte el sobrante con
+   * otra columna que sepa usarlo.
+   */
+  anchoTitulo?: string;
+  /**
    * Controles de la lista (un buscador, filtros), DENTRO de la misma tarjeta. Van juntos a proposito: el
    * buscador y la lista son UNA cosa (un roster que se busca) y separarlos en dos bloques blancos
    * partiria en dos lo que se usa como un solo gesto, escribir y mirar el resultado.
@@ -165,9 +207,9 @@ export function ListaFilas({
   // Se hace ahi y no con variantes de Tailwind porque el valor lleva espacios: un valor arbitrario que el
   // compilador no parsea NO da error, simplemente no emite la regla, y el fallo seria mudo.
   const vars = {
-    "--cols-md": pistas(columnas, "md", conAcciones),
-    "--cols-lg": pistas(columnas, "lg", conAcciones),
-    "--cols-xl": pistas(columnas, "xl", conAcciones),
+    "--cols-md": pistas(columnas, "md", conAcciones, anchoTitulo),
+    "--cols-lg": pistas(columnas, "lg", conAcciones, anchoTitulo),
+    "--cols-xl": pistas(columnas, "xl", conAcciones, anchoTitulo),
   } as CSSProperties;
 
   return (
@@ -197,7 +239,13 @@ export function ListaFilas({
             //
             // Y ES COHERENTE CON SU PAPEL: esta fila AGRUPA a las de abajo, igual que "Nivel III" agrupa
             // a sus indices. No es un encabezado de columnas suelto sobre datos, es la cabeza de la lista.
-            className="hidden border-y border-primary/20 bg-primary/5 px-3 py-2.5 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:items-center md:gap-3"
+            // SOLO EL BORDE DE ABAJO RESALTA (Santiago, 2026-09-10). Llevaba `border-y`, asi que la
+            // franja pintaba tambien una linea azul ARRIBA, pegada al borde de la tarjeta: dos lineas de
+            // colores distintos a un pixel una de otra, que es lo que se veia raro. Arriba no hace falta
+            // ninguna: el borde de la tarjeta ya cierra por ese lado, y asi los tres lados de fuera son
+            // el mismo color y el unico que separa es el de abajo, que es lo que la franja tiene que
+            // hacer (separar la cabeza de las filas).
+            className="hidden border-b border-primary/20 bg-primary/5 px-3 py-2.5 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:items-center md:gap-3"
             style={{ gridTemplateColumns: "var(--cols)" }}
           >
             <span>Paciente</span>
@@ -294,18 +342,25 @@ export function FilaLista({
   const primeroConDato = valores.findIndex((v) => v !== null);
 
   const CLASES_TITULO =
-    "truncate text-left font-medium text-foreground after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "truncate text-left font-medium text-foreground underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-  // ═══ EL SUBRAYADO AL PASAR, EN TODA LA CELDA (Santiago, 2026-09-10) ═══
+  // ═══ EL SUBRAYADO AL PASAR, Y POR QUE NO FUNCIONABA (Santiago, 2026-09-10, tercera vuelta) ═══
   //
-  // EL DEFECTO ERA DE ALCANCE, no de ausencia: el subrayado ya estaba, pero colgaba del propio enlace, que
-  // solo cubre el TEXTO. Pasar por la celda no lo encendia, asi que el unico modo de descubrir que esa
-  // celda lleva a otro sitio que el resto de la fila era acertarle a las letras.
+  // Su reporte: "no funciona el subrayado al pasar por los items. Aparece solo el mouse active en toda la
+  // fila". Las dos mitades de la frase son la misma causa.
   //
-  // Ahora cuelga de la CELDA (`group/celda`), y por eso vale igual para el conteo, que es un boton y no
-  // cambia el cursor: su regla es "si responde al paso, tiene que decir que responde".
+  // LO IMPEDIA EL ENLACE ESTIRADO. El titulo era un `<Link>` con `after:absolute after:inset-0`, o sea un
+  // pseudo-elemento que TAPA la fila entera para que cualquier punto lleve al panel. Ese pseudo pertenece
+  // al enlace del titulo, asi que el cursor de mano salia en toda la fila (la primera mitad del reporte) y
+  // el `:hover` se lo llevaba el titulo, NO la celda por la que se estaba pasando (la segunda mitad).
+  // `group-hover/celda` no podia dispararse nunca: el raton, para el navegador, nunca estaba sobre la
+  // celda.
+  //
+  // YA NO HAY ENLACE ESTIRADO, porque la fila dejo de llevar a un sitio (ver `alDesplegar`). Con el fuera,
+  // cada celda recibe su propio paso y el subrayado funciona por si solo. Es el mismo hallazgo de siempre:
+  // el defecto no estaba donde se veia, estaba en la pieza que cubria a las demas.
   const CLASES_DESTINO =
-    "relative z-10 rounded underline-offset-4 group-hover/celda:underline hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "relative z-10 cursor-pointer rounded underline-offset-4 group-hover/celda:underline hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <>
@@ -313,42 +368,60 @@ export function FilaLista({
         className="relative flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border/60 px-3 py-2.5 last:border-0 hover:bg-muted/40 focus-within:bg-muted/40 md:grid md:flex-nowrap md:gap-y-0"
         style={{ gridTemplateColumns: "var(--cols)" }}
       >
-        <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
-          {/* EL CHEVRON VA DELANTE DEL NOMBRE, que es donde vive un mando de desplegar en cualquier lista:
-              asi se ve que la fila SE ABRE antes de leerla, en vez de descubrirlo pulsando. Y `z-10` para
-              quedar sobre el enlace estirado del titulo. */}
+        {/* ═══ LA CELDA DEL PACIENTE ES UN SOLO MANDO (Santiago, 2026-09-10, tercera vuelta) ═══
+
+            "Mejor que el item de la columna paciente tambien me despliegue el listado de evaluaciones.
+            Que solo sea el boton panel del paciente el que me lleva al panel. Lo hago pensando en
+            optimizar la fluidez del profesional."
+
+            Y la razon aguanta: lo frecuente es MIRAR las ultimas evaluaciones, y eso se hacia con un
+            chevron de 24 px mientras el area grande (el nombre) se iba a otra pantalla. El gesto barato
+            servia al caso raro.
+
+            ASI QUE EL CHEVRON Y EL NOMBRE SON EL MISMO BOTON, no dos mandos pegados. Dos controles que
+            hacen lo mismo uno al lado del otro son dos paradas de teclado para una accion, y obligan a
+            mirar cual es cual. Uno solo, y el chevron queda como lo que siempre fue: el dibujo que avisa
+            de que esto se abre. */}
+        <div className="flex w-full min-w-0 items-center md:w-auto">
           {alDesplegar ? (
             <button
               type="button"
               onClick={alDesplegar}
               aria-expanded={desplegado}
-              aria-label={
-                desplegado ? `Ocultar las evaluaciones de ${titulo}` : `Ver las evaluaciones de ${titulo}`
-              }
-              className="relative z-10 -ml-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group/paciente -ml-1 flex min-w-0 cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <ChevronRight
                 aria-hidden
-                className={`size-4 transition-transform ${desplegado ? "rotate-90" : ""}`}
+                className={`size-4 shrink-0 text-muted-foreground transition-transform ${desplegado ? "rotate-90" : ""}`}
               />
+              <span className="flex min-w-0 flex-col">
+                <span className="flex min-w-0 items-center gap-2">
+                  {/* EL TITULO SI TRUNCA: es el ancla visual de la fila. Los valores no (ver abajo). */}
+                  <span className={`${CLASES_TITULO} group-hover/paciente:underline`}>{titulo}</span>
+                  {chip}
+                </span>
+                {subtitulo ? (
+                  <span className="truncate text-xs text-muted-foreground">{subtitulo}</span>
+                ) : null}
+              </span>
             </button>
-          ) : null}
-          <div className="flex min-w-0 flex-col">
-            <div className="flex min-w-0 items-center gap-2">
-              {/* EL TITULO SI TRUNCA: es el ancla visual de la fila. Los valores no (ver abajo). */}
-              {href != null ? (
-                <Link href={href} className={CLASES_TITULO}>
-                  {titulo}
-                </Link>
-              ) : (
-                <span className="truncate font-medium text-foreground">{titulo}</span>
-              )}
-              {chip}
+          ) : (
+            <div className="flex min-w-0 flex-col">
+              <div className="flex min-w-0 items-center gap-2">
+                {href != null ? (
+                  <Link href={href} className={`${CLASES_TITULO} hover:underline`}>
+                    {titulo}
+                  </Link>
+                ) : (
+                  <span className="truncate font-medium text-foreground">{titulo}</span>
+                )}
+                {chip}
+              </div>
+              {subtitulo ? (
+                <span className="truncate text-xs text-muted-foreground">{subtitulo}</span>
+              ) : null}
             </div>
-            {subtitulo ? (
-              <span className="truncate text-xs text-muted-foreground">{subtitulo}</span>
-            ) : null}
-          </div>
+          )}
         </div>
 
         {/* EN ANCHO ESTE CONTENEDOR DESAPARECE (`md:contents`) y sus celdas pasan a ser items del grid de la
