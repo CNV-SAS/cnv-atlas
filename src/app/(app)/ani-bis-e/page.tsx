@@ -7,13 +7,15 @@ import { listEvaluationsForBisImport } from "@/modules/bis/data/bis-evaluations-
 import { PipelineRunner } from "@/modules/clinical-pipeline/components/pipeline-runner";
 import { listEvaluationsForDiagnosis } from "@/modules/clinical-pipeline/data/pipeline-evaluations-reader";
 import { AwaitingSurveyList } from "@/modules/evaluations/components/awaiting-survey-list";
+import { CortesVigentes } from "@/modules/model-registry/components/cortes-vigentes";
+import { MotorHoy } from "@/modules/model-registry/components/motor-hoy";
 import { listAwaitingSurveyEvaluations } from "@/modules/evaluations/data/evaluations-repository";
 import {
   canConfirmIdentity,
   canEmitFollowupLink,
 } from "@/modules/evaluations/policies/can-manage-evaluations";
 
-export const metadata = { title: "Evaluaciones - Atlas" };
+export const metadata = { title: "Modelo ANI-BIS-E - Atlas" };
 
 // Panel del profesional: evaluaciones recien llegadas de la encuesta, pendientes de
 // confirmar la identidad del paciente. Para las iniciales se recomputan los posibles
@@ -62,13 +64,45 @@ export default async function EvaluacionesPage() {
               que es donde se empieza a un paciente.
             · SE QUEDAN las tres de lote: importar BIS, generar diagnostico y las encuestas sin responder.
 
-          Y LA ENTRADA DEL SIDEBAR SE QUEDA, con otro nombre. Retirarla obligaria a importar el BIS desde
-          algun sitio que no existe. Lo que cambia es el rotulo: "Modelo ANI-BIS-E" se leia como "la lista
-          de evaluaciones", que es justo lo que ahora es /pacientes. */}
+          Y LA ENTRADA DEL SIDEBAR SE QUEDA: retirarla obligaria a importar el BIS desde algun sitio que
+          no existe.
+
+          ── Y LO QUE ENTRA EN SU SITIO (Santiago, 2026-09-10, "B con A dentro") ────────────────────────
+
+          Con la mitad retirada, lo que quedaba eran tres colas de lote, y eso no llena una entrada del
+          sidebar. Lo que la llena es lo OTRO que esta pantalla puede ser y ninguna otra es: el TALLER DEL
+          MODELO. Su razon, y es la que decide: "hoy nadie puede responder desde Atlas con que version del
+          motor se esta diagnosticando. Eso ya nos costo rondas de averiguarlo por consulta."
+
+          Asi que la pantalla tiene dos mitades y las dos son del modelo: con QUE se diagnostica (la
+          version, sus modificaciones autorizadas, los cortes vigentes) y el trabajo de lote que lo
+          aplica. El nombre no hay que buscarlo: es el del modelo, y ya lo era. */}
+      {/* ═══ EL TITULO VUELVE AL NOMBRE DEL MODELO (Santiago, 2026-09-10) ═══
+
+          Lo puse en "Bandeja de trabajo" por lo que la pantalla HACIA, y el rotulo del sidebar con el.
+          Santiago revirtio el del sidebar con una razon que vale igual para el titulo: el nombre no es de
+          la pantalla, es del MODELO, y es como Gildardo y los profesionales lo llaman. El titulo y el
+          rotulo vuelven a decir lo mismo. */}
       <TituloPantalla
-        titulo="Bandeja de trabajo"
-        descripcion="Lo que se hace por lote y no paciente por paciente. Para trabajar a un paciente concreto, ve a la lista de pacientes."
+        titulo="Modelo ANI-BIS-E"
+        descripcion="Con qué se está diagnosticando hoy, y el trabajo que se hace por lote y no paciente por paciente. Para trabajar a un paciente concreto, ve a la lista de pacientes."
       />
+
+      {/* ═══ EL TALLER VA ANTES QUE LAS COLAS, y no es orden de importancia ═══
+
+          Es lo unico de esta pantalla que se consulta SIN una tarea delante: las colas de abajo son
+          trabajo (importar, generar), estas dos secciones son una RESPUESTA. Quien entra a importar un
+          XLSX baja; quien entra a saber con que version se diagnostica, no tendria que buscar.
+
+          Y LA RAZON POR LA QUE EXISTEN (Santiago): "hoy nadie puede responder desde Atlas con que version
+          del motor se esta diagnosticando. Eso ya nos costo rondas de averiguarlo por consulta." Se
+          verifico antes de construirlo: `engine_version` aparecia en DOS sitios de la interfaz y los dos
+          dentro de un texto de fallo (el diagnostico viejo que no puede mostrarse, y el seguimiento que
+          cruza dos versiones). La version solo se veia cuando algo iba mal. */}
+      <MotorHoy />
+      <CortesVigentes />
+
+      <hr className="border-border" />
 
       <section className="flex flex-col gap-6">
         <header className="flex flex-col gap-1">

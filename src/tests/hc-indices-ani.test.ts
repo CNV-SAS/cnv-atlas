@@ -1,4 +1,8 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
+import { HTML_VIGENTE } from "./fixtures/html-vigente";
 
 import { INDICES_ANI, indicesAniAlterados } from "@/modules/reports/data/hc-indices-ani";
 
@@ -46,11 +50,68 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
     expect(INDICES_ANI.find((f) => f.codigo === "EB")!.nombre).toBeNull();
   });
 
+  // ═══ EL CANDADO QUE FALTABA, Y POR QUE EL QUE HABIA NO SERVIA (2026-09-10) ═══
+  //
+  // EL CASO DE ABAJO comparaba nuestras cadenas contra cadenas escritas A MANO EN ESTE ARCHIVO. Eso es un
+  // candado que compara DOS COPIAS NUESTRAS: pasa verde mientras las dos digan lo mismo, aunque las dos
+  // digan algo distinto de lo que dice el. Y eso fue exactamente lo que paso.
+  //
+  // LO QUE SE LE ESCAPO: la referencia del IRC decia "<1,68 bajo riesgo". El 2026-08-29 se portaron sus
+  // cortes del IRC por sexo (1,7/2,1 H y 2,3/2,8 M) al clasificador, y esta columna, que los CITA, se
+  // quedo en los viejos. Durante doce dias la historia clinica imprimio un corte que su propio
+  // clasificador ya no usaba: un hombre con IRC 1,69 salia clasificado "Bajo riesgo" con una referencia al
+  // lado diciendo que el bajo riesgo empieza por debajo de 1,68.
+  //
+  // ESTE COTEJA CONTRA SU ARCHIVO. Lee la fila del bloque "ANI BIS-E" de su HC en la entrega VIGENTE (que
+  // se deriva del directorio, nunca se escribe a mano) y compara las dos referencias por sexo. Asi el dia
+  // que el vuelva a mover un corte, esto se pone rojo y nombra la fila, en vez de esperar a que alguien
+  // se acuerde de barrer los sitios que lo citan.
+  it("cada referencia coincide con la de SU archivo vigente, no con una copia nuestra", () => {
+    const html = readFileSync(HTML_VIGENTE, "utf8");
+    // SE ANCLA POR EL `idx:"..."` DE LA FILA, no por numero de linea: una posicion se desincroniza en
+    // cuanto el inserta algo mas arriba, y eso ya nos paso con los rangos de `funcionDelHtml`.
+    //
+    // Su codigo de la HC: `{ idx:"IRC", ref:sexoK_v==="M"?"<1,7 bajo riesgo":"<2,3 bajo riesgo", val:...`
+    // o, cuando la referencia no depende del sexo, `ref:"ISCM-1 ≤ −1", val:...`.
+    const suRef = (idx: string): { h: string; m: string } => {
+      const marca = `idx:"${idx}",`;
+      const i = html.indexOf(marca);
+      expect(i, `no aparece la fila idx:"${idx}" en ${HTML_VIGENTE}`).toBeGreaterThan(-1);
+      const desdeRef = html.slice(html.indexOf("ref:", i) + 4, html.indexOf("val:", i));
+      // Las cadenas entre comillas del fragmento: dos si es por sexo (hombre primero, como el lo escribe),
+      // una si es plana. Cualquier otra cantidad significa que cambio la forma y hay que mirarla.
+      const textos = [...desdeRef.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+      expect(
+        textos.length,
+        `la referencia de ${idx} tiene una forma que este candado no reconoce: ${desdeRef.trim()}`,
+      ).toBeGreaterThan(0);
+      // Con sexo, su expresion es `sexoK_v==="M" ? <hombre> : <mujer>`, asi que la primera cadena es el
+      // literal "M" del comparador y las dos siguientes las referencias.
+      if (textos.length === 3 && textos[0] === "M") return { h: textos[1], m: textos[2] };
+      return { h: textos[0], m: textos[0] };
+    };
+
+    // SU CODIGO DE FILA NO ES SIEMPRE EL NUESTRO: el suyo rotula la fila de la EB como "EB-BIS" y el
+    // nuestro la llama "EB" (la sigla sola, por la divergencia deliberada de arriba).
+    const SU_IDX: Record<string, string> = { EB: "EB-BIS" };
+
+    for (const fila of INDICES_ANI) {
+      const suyo = suRef(SU_IDX[fila.codigo] ?? fila.codigo);
+      expect(fila.referencia(true), `referencia de ${fila.codigo} (hombre)`).toBe(suyo.h);
+      expect(fila.referencia(false), `referencia de ${fila.codigo} (mujer)`).toBe(suyo.m);
+    }
+  });
+
   it("las referencias son las suyas, verbatim y por sexo", () => {
     const ifc = INDICES_ANI.find((f) => f.codigo === "IFC")!;
     expect(ifc.referencia(true)).toBe("≥6,68 óptimo");
     expect(ifc.referencia(false)).toBe("≥3,28 óptimo");
     expect(INDICES_ANI.find((f) => f.codigo === "IAE")!.referencia(true)).toBe("−5 a +5 años");
+    // EL CORTE DEL IRC, que es el que se quedo atras doce dias. Lo cubre el caso de arriba contra su
+    // archivo; queda tambien aqui, nombrado, para que el dia que alguien lo vuelva a tocar lea por que.
+    const irc = INDICES_ANI.find((f) => f.codigo === "IRC")!;
+    expect(irc.referencia(true)).toBe("<1,7 bajo riesgo");
+    expect(irc.referencia(false)).toBe("<2,3 bajo riesgo");
   });
 
   it("muestra el caso de su captura: IEHH leve e IAE acelerado", () => {

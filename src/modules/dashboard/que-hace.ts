@@ -21,7 +21,7 @@ export const QUE_HACE: Record<string, string> = {
   "/pacientes":
     "Tus pacientes, con lo que le falta a cada uno. Desde aquí se crea uno nuevo y se le pasa el enlace de la encuesta.",
   "/ani-bis-e":
-    "El trabajo por lote del modelo: importar las mediciones BIS y generar diagnósticos de varias evaluaciones seguidas.",
+    "El taller del modelo: con qué versión se está diagnosticando, contra qué cortes, y el trabajo por lote (importar mediciones BIS y generar diagnósticos de varias evaluaciones seguidas).",
   "/reportes": "Los reportes del paciente: aprobarlos, enviarlos y consultar los ya enviados.",
   "/direccion": "Indicadores de la operación para la dirección.",
   "/obbia": "El observatorio: datos agregados y anonimizados para investigación.",
