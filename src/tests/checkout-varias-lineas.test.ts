@@ -9,7 +9,7 @@ vi.mock("@/modules/payments/data/payments-repository", () => ({
   findRecentCashSaleDuplicate: vi.fn(),
 }));
 
-import { leerLineas } from "@/modules/payments/actions";
+import { leerLineas } from "@/modules/payments/lineas-del-formulario";
 
 // ═══ UNA VENTA PUEDE TENER VARIAS LINEAS, Y HASTA HOY NO PODIA ═══
 //
