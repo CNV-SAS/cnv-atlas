@@ -10,6 +10,7 @@ import {
   findLivePendingDuplicate,
   findRecentCashSaleDuplicate,
 } from "./data/payments-repository";
+import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { CheckoutError, createCheckout, registerCashSale } from "./services/payments-service";
 import {
@@ -51,31 +52,6 @@ export async function createCheckoutAction(
 }
 
 // ----- Adaptador de formulario (useActionState) para la UI de B6.4 -----
-
-// ── LAS LINEAS DE LA VENTA, QUE SON VARIAS ──────────────────────────────────────────────────────
-//
-// Esto leia `nutraceuticalId` y `quantity`, dos campos sueltos, y construia un array de UN elemento. El
-// resto de la cadena (validacion, servicio, writer, tabla) admitia cincuenta desde siempre: el
-// estrangulamiento eran la pantalla y esta funcion.
-//
-// Se leen del campo oculto `lineas` (JSON), el mismo patron que el conteo de inventario. Si viene roto o
-// vacio se devuelve lista vacia y el esquema de Zod lo rechaza con su mensaje: NO se cae a un valor por
-// defecto, que seria cobrar algo que nadie eligio.
-export function leerLineas(formData: FormData): { nutraceuticalId: string; quantity: number }[] {
-  try {
-    const crudo = JSON.parse(String(formData.get("lineas") ?? "[]")) as unknown;
-    if (!Array.isArray(crudo)) return [];
-    return crudo.map((l) => {
-      const o = (l ?? {}) as { nutraceuticalId?: unknown; quantity?: unknown };
-      return {
-        nutraceuticalId: String(o.nutraceuticalId ?? ""),
-        quantity: Number(String(o.quantity ?? "")),
-      };
-    });
-  } catch {
-    return [];
-  }
-}
 
 export async function createCheckoutFormAction(
   _prev: PaymentFormState,
