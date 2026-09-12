@@ -223,6 +223,8 @@ export type Database = {
       }
       alegra_config: {
         Row: {
+          bank_account_efectivo_id: string
+          bank_account_pasarela_id: string
           cost_center_propio_id: string
           cost_center_tercero_id: string
           credit_note_template_id: string | null
@@ -234,6 +236,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bank_account_efectivo_id: string
+          bank_account_pasarela_id: string
           cost_center_propio_id: string
           cost_center_tercero_id: string
           credit_note_template_id?: string | null
@@ -245,6 +249,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bank_account_efectivo_id?: string
+          bank_account_pasarela_id?: string
           cost_center_propio_id?: string
           cost_center_tercero_id?: string
           credit_note_template_id?: string | null
