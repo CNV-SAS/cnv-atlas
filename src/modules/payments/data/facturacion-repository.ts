@@ -96,7 +96,9 @@ export type DatosDelContacto = {
   patientId: string;
   documento: string;
   tipoDocumento: string;
-  nombre: string | null;
+  /** SEPARADOS, como los guarda `patient_profiles`. Alegra los quiere asi y partirlos aqui seria adivinar. */
+  nombres: string | null;
+  apellidos: string | null;
   correo: string | null;
   /** Si es paciente de PRUEBA. Gatea la facturacion en las dos direcciones; ver `pacienteYAmbienteCuadran`. */
   esDePrueba: boolean;
@@ -116,7 +118,8 @@ export async function getDatosDelContacto(patientId: string): Promise<DatosDelCo
       documento: patients.documentNumber,
       tipoDocumento: patients.documentType,
       esDePrueba: patients.isTest,
-      nombre: sql<string | null>`nullif(trim(concat_ws(' ', ${patientProfiles.firstName}, ${patientProfiles.lastName})), '')`,
+      nombres: patientProfiles.firstName,
+      apellidos: patientProfiles.lastName,
       correo: patientContacts.email,
       alegraContactId: patients.alegraContactId,
       alegraEnv: patients.alegraEnv,

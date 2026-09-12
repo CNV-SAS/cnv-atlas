@@ -112,10 +112,19 @@ async function resolverContacto(patientId: string, env: string): Promise<number>
   const creado = await createAlegraContact({
     // Sin nombre no se deja de facturar: la factura la exige la ley y el documento identifica al
     // adquirente igual. Se usa un rotulo con el documento, que es verdadero y visible.
-    nombre: datos.nombre ?? `Paciente ${datos.documento}`,
+    nombres: datos.nombres ?? "Paciente",
+    apellidos: datos.apellidos ?? datos.documento,
     documento: datos.documento,
     tipoDocumento: datos.tipoDocumento,
     correo: datos.correo,
+    // EL TIPO DE PERSONA SALE DEL TIPO DE DOCUMENTO, no de un valor fijo. Un NIT es una persona
+    // JURIDICA; una cedula, una natural. Hoy todos los pacientes son personas naturales, pero poner
+    // "PERSON_ENTITY" a secas seria cierto por casualidad, y dejaria de serlo el dia que CNV le facture a
+    // una empresa sin que nada avise.
+    tipoDePersona: datos.tipoDocumento === "NIT" ? "LEGAL_ENTITY" : "PERSON_ENTITY",
+    // Y EL REGIMEN: un paciente es consumidor final, no responsable de IVA. Si algun dia se factura a un
+    // responsable, sale de su perfil tributario, no de aqui.
+    regimen: "SIMPLIFIED_REGIME",
   });
   await fr.setContactoDeAlegra(patientId, creado.id, env);
   return Number(creado.id);

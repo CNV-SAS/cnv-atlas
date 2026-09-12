@@ -35,10 +35,16 @@ const cabeceras = () => ({ authorization: authHeader(), accept: "application/jso
 // ── CONTACTOS ────────────────────────────────────────────────────────────────────────────────────
 
 export type AlegraContactInput = {
-  nombre: string;
+  /** Nombres y apellidos POR SEPARADO. Ver la nota de `createAlegraContact`. */
+  nombres: string;
+  apellidos: string;
   documento: string;
   tipoDocumento: string; // CC | CE | NIT | PA...
   correo: string | null;
+  /** PERSON_ENTITY (natural) | LEGAL_ENTITY (juridica). Alegra lo exige. */
+  tipoDePersona: "PERSON_ENTITY" | "LEGAL_ENTITY";
+  /** SIMPLIFIED_REGIME (no responsable de IVA) | COMMON_REGIME (responsable). */
+  regimen: "SIMPLIFIED_REGIME" | "COMMON_REGIME";
 };
 
 /**
@@ -60,14 +66,36 @@ export async function findAlegraContactByDocument(documento: string): Promise<{ 
   return exacto ? { id: String((exacto as { id: unknown }).id) } : null;
 }
 
-/** Crea el contacto. Solo viajan nombre, documento y correo (principio 7 del modelo comercial). */
+/**
+ * Crea el contacto. Solo viajan nombre, documento y correo (principio 7 del modelo comercial).
+ *
+ * ── LOS CUATRO CAMPOS QUE FALTABAN, Y COMO SE SUPO (2026-09-12) ─────────────────────────────────
+ *
+ * El primer smoke fallo aqui con un 400, y el motivo lo dijo Alegra:
+ *
+ *     {"message":"El tipo de persona del cliente es obligatorio","code":2031}
+ *
+ * `kindOfPerson` y `regime` alimentan el documento electronico ante la DIAN, asi que una cuenta con
+ * facturacion electronica los exige. Y VAN LOS DOS DE UNA, no solo el que el error nombro: esta API
+ * valida de a un campo, asi que mandar solo `kindOfPerson` habria devuelto el siguiente 400 con el
+ * siguiente campo, y el smoke habria tardado tres vueltas en vez de una.
+ *
+ * ── Y EL APELLIDO VIENE PARTIDO DESDE SU FUENTE ─────────────────────────────────────────────────
+ *
+ * `patient_profiles` guarda `first_name` y `last_name` SEPARADOS, y hasta hoy se concatenaban aqui para
+ * meterlos en `firstName`. Partir "Ana Maria Lopez Gomez" de vuelta es imposible de hacer bien (no se
+ * sabe donde termina el nombre), asi que el apellido no se adivina: se pide separado a quien ya lo tiene
+ * asi. Es la misma regla que con el lote o el consecutivo: no se recalcula lo que la fuente ya sabe.
+ */
 export async function createAlegraContact(input: AlegraContactInput): Promise<{ id: string }> {
   const res = await fetchJson<{ id: number | string }>(`${baseUrl()}/contacts`, {
     method: "POST",
     headers: cabeceras(),
     body: {
-      nameObject: { firstName: input.nombre },
+      nameObject: { firstName: input.nombres, lastName: input.apellidos },
       identificationObject: { type: input.tipoDocumento, number: input.documento },
+      kindOfPerson: input.tipoDePersona,
+      regime: input.regimen,
       ...(input.correo ? { email: input.correo } : {}),
       type: ["client"],
     },
