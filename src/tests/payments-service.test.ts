@@ -20,14 +20,19 @@ vi.mock("../modules/payments/data/payments-repository", () => ({
 vi.mock("@/modules/nutraceuticals/data/nutraceuticals-repository", () => ({
   listNutraceuticals: vi.fn(),
 }));
-vi.mock("@/lib/alegra/client", () => ({ createAlegraInvoice: vi.fn() }));
+// La FACTURA se mockea a nivel de servicio, no de cliente HTTP: desde el Bloque 2a la emision es un
+// servicio propio (contacto, lineas, emision, pago), y este test es del WEBHOOK. Lo que aqui importa es
+// que el pago se selle y que la factura SE INTENTE; que la factura salga bien lo prueban sus propios
+// candados.
+vi.mock("../modules/payments/services/facturacion-service", () => ({ emitirFacturaDeVenta: vi.fn() }));
+vi.mock("../modules/payments/data/facturacion-repository", () => ({ marcarFacturaPendiente: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
 
-import * as alegra from "@/lib/alegra/client";
 import * as nutraRepo from "@/modules/nutraceuticals/data/nutraceuticals-repository";
 
 import * as repo from "../modules/payments/data/payments-repository";
 import * as writer from "../modules/payments/data/payments-writer";
+import * as facturacion from "../modules/payments/services/facturacion-service";
 import {
   CheckoutError,
   createCheckout,
@@ -182,8 +187,6 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
   });
 
   it("APPROVED nuevo: sella el pago, marca procesado e intenta la factura", async () => {
-    process.env.ALEGRA_DEFAULT_CLIENT_ID = "1";
-    process.env.ALEGRA_DEFAULT_ITEM_ID = "1";
     vi.mocked(writer.recordWebhookEvent).mockResolvedValue({ isNew: true, alreadyProcessed: false });
     vi.mocked(writer.sealPaidTransaction).mockResolvedValue({
       id: TX_REF,
@@ -192,14 +195,14 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
       patientId: null,
       professionalId: "prof-1",
     });
-    vi.mocked(alegra.createAlegraInvoice).mockResolvedValue({ id: "inv-9" });
-
     const out = await processWompiWebhook(event("APPROVED"));
 
     expect(writer.sealPaidTransaction).toHaveBeenCalledWith(TX_REF, "wompi-1");
     expect(writer.markWebhookProcessed).toHaveBeenCalled();
-    expect(alegra.createAlegraInvoice).toHaveBeenCalled();
-    expect(writer.setAlegraInvoiceId).toHaveBeenCalledWith(TX_REF, "inv-9");
+    // Se intenta la factura, y con el CANAL correcto: es lo que elige la cuenta puente del pago.
+    expect(facturacion.emitirFacturaDeVenta).toHaveBeenCalledWith(
+      expect.objectContaining({ id: TX_REF, canal: "wompi" }),
+    );
     expect(out.sealed).toBe(true);
   });
 
@@ -220,7 +223,7 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
     const out = await processWompiWebhook(event("APPROVED"));
 
     expect(out.sealed).toBe(false);
-    expect(alegra.createAlegraInvoice).not.toHaveBeenCalled();
+    expect(facturacion.emitirFacturaDeVenta).not.toHaveBeenCalled();
   });
 });
 
