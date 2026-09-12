@@ -474,13 +474,79 @@ existe en Atlas y se descarta al facturar.**
    **ventas sin documento fiscal, que debe estar en cero al cierre del día** (decisión D2 de contabilidad).
 5. **Y que el ambiente sea explícito**: si un contacto o un ítem son de otro ambiente, no se usan.
 
+### Lo que añade contabilidad al alcance, y lo que se verificó de cada cosa
+
+**1. Registrar el PAGO, no solo emitir.** Es el hueco más importante y no estaba en el plan. Una venta a
+paciente **ya está pagada** cuando se factura (Wompi cobró antes), así que el pago se registra en Alegra en
+el mismo acto. Si solo se emite, la contabilidad acumula cuentas por cobrar de pacientes que ya pagaron y
+bancos nunca cuadra. **La única que sí queda por cobrar es la quincenal al Integrante bajo Distribución**,
+que es del Bloque 5.
+
+*Verificado:* el endpoint `/payments` del sandbox responde y está vacío. Y las facturas existentes tienen
+`totalPaid: 0` y `balance` igual al total, o sea la deuda que contabilidad describe, ya visible.
+
+**2. Centro de costo en el payload.** No estaba en el mapeo. Sin él no se puede medir rentabilidad por
+línea, que es justo la pregunta abierta del margen del 10%.
+
+*Verificado, y con un matiz que importa:* **el centro de costo no se hereda del ítem.** Los cinco ítems
+del sandbox salen con `costCenter` vacío, y la factura lo trae como campo propio (`costCenter: null` en
+las que hay). Así que va en el payload de la factura, producto a producto, derivado de `ownership`:
+`propio` → Vitacellebis, `tercero` → Productos de Terceros. Por eso el mapa guarda los dos ids y no uno.
+
+**3. Probar la nota crédito en sandbox.** Saber ahora si su numeración funciona por API y cómo se enlaza a
+la original. Descubrirlo con ventas reales es caro.
+
+*Y aquí hay un hallazgo que bloquea la prueba:* **la numeración de nota crédito del sandbox no es
+electrónica** (`isElectronic: false`), y la factura que emitimos **sí** lo es (plantilla 16, prefijo SETP).
+Una nota crédito no electrónica contra una factura electrónica no es lo que la DIAN espera. `/credit-notes`
+responde y está vacío, así que el endpoint sirve; lo que falta es la numeración. **Santiago tiene que
+habilitar una numeración electrónica de nota crédito en el sandbox.** Hasta entonces
+`credit_note_template_id` queda **nulo a propósito**, para que el código pueda decir "no está configurada"
+en vez de emitir con la que no sirve.
+
+**4. Probar el contacto que YA existe.** Un paciente que compra dos veces tiene que reusar su contacto, no
+duplicarlo: Alegra rechaza documentos duplicados y ahí es donde se rompe.
+
+*Verificado:* el sandbox tiene **un solo contacto**, "consumidor final" con documento 222222222222, que es
+el `ALEGRA_DEFAULT_CLIENT_ID` actual. O sea: hoy **todas** las facturas van a ese contacto. El caso de la
+segunda compra nunca se ha ejercido. Entra al criterio de aceptación como caso propio: dos ventas al mismo
+paciente producen **un** contacto y **dos** facturas.
+
+### El webhook de Alegra: no hace falta, y se difiere
+
+**La respuesta de la factura YA trae lo que se necesita.** Leída una emitida del sandbox, el objeto
+`stamp` contiene:
+
+- `cufe` (el identificador único que la DIAN reconoce),
+- `legalStatus` (`STAMPED_AND_ACCEPTED_WITH_OBSERVATIONS` en la que hay),
+- `barCodeContent` con el QR hacia el catálogo de la DIAN,
+- y hasta las `warnings` que la DIAN devolvió.
+
+Así que Atlas puede leer el estado **preguntando**, y no hace falta que Alegra le avise. Se difiere el
+webhook, con una condición escrita: **el sellado es asíncrono**, así que si `stamp` viene vacío al emitir,
+la transacción queda en `emitida` sin CUFE y una relectura posterior lo completa. Eso es una consulta más,
+no una ruta pública nueva.
+
+**Y una advertencia que salió de esa misma lectura:** la factura de prueba fue aceptada *con
+observaciones*, y la observación es `FAZ09: debe existir el grupo de información de identificación del bien
+o servicio`. Es porque el ítem genérico "PRUEBA" no tiene código de producto. Los cinco ítems reales
+deberían llevar su `productKey`; conviene verificarlo antes de producción, porque en producción una
+observación de esas se acumula factura a factura.
+
+
 ### Criterio de aceptación
 
-En sandbox, de punta a punta: se crea el checkout de un paciente en modalidad Comisión, **Wompi de prueba
-lo paga**, el webhook sella el pago, **se crea el contacto del paciente en Alegra** (o se reusa el suyo), y
-sale **una factura emitida con consecutivo**, cuyas líneas son los productos realmente vendidos con sus
-cantidades. Y una venta a la que se le fuerce un fallo de Alegra queda en `fallida` con su motivo, aparece
-en la cola, y el reintento la emite.
+En sandbox, de punta a punta:
+
+1. Se crea el checkout de un paciente en modalidad Comisión y **Wompi de prueba lo paga**.
+2. El webhook sella el pago, **se crea el contacto del paciente en Alegra** (o se reusa el suyo).
+3. Sale **una factura EMITIDA con consecutivo** (`SETP9902147xx`), cuyas líneas son los productos realmente vendidos, con su cantidad, su precio base y su **IVA al 19%**, y con su **centro de costo** según la propiedad del producto.
+4. **El pago queda registrado**: `totalPaid` igual al total y `balance` en cero. Una factura emitida con saldo pendiente es el defecto que este punto viene a evitar.
+5. **Una segunda venta al MISMO paciente reusa su contacto**: un contacto, dos facturas.
+6. Una venta a la que se le fuerce un fallo de Alegra queda en `fallida` con su motivo, aparece en la cola, y el reintento la emite.
+7. Y el **reporte de ventas sin documento fiscal está en cero** al terminar (decisión D2 de contabilidad).
+
+**Fuera de este criterio, por configuración que falta:** la nota crédito, hasta que exista numeración electrónica en el sandbox.
 
 ---
 

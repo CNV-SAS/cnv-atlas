@@ -911,6 +911,13 @@
       "when": 1791159386099,
       "tag": "0129_facturacion_estado_y_contacto",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1791245786099,
+      "tag": "0130_mapa_de_alegra",
+      "breakpoints": true
     }
   ]
 }

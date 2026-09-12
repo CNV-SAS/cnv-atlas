@@ -14,6 +14,7 @@ const DB_TESTS = [
   // que `pnpm verify` dependiera de la base.
   "src/tests/medicion-efecto-del-bump.test.ts",
   "src/tests/alergenos-cobertura.test.ts",
+  "src/tests/mapa-alegra.test.ts",
   "src/tests/auth-flows.test.ts",
   "src/tests/base-survey-link.test.ts",
   "src/tests/clinical-access.test.ts",
