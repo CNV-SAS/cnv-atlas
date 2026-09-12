@@ -98,6 +98,8 @@ export type DatosDelContacto = {
   tipoDocumento: string;
   nombre: string | null;
   correo: string | null;
+  /** Si es paciente de PRUEBA. Gatea la facturacion en las dos direcciones; ver `pacienteYAmbienteCuadran`. */
+  esDePrueba: boolean;
   alegraContactId: string | null;
   alegraEnv: string | null;
 };
@@ -113,6 +115,7 @@ export async function getDatosDelContacto(patientId: string): Promise<DatosDelCo
       patientId: patients.id,
       documento: patients.documentNumber,
       tipoDocumento: patients.documentType,
+      esDePrueba: patients.isTest,
       nombre: sql<string | null>`nullif(trim(concat_ws(' ', ${patientProfiles.firstName}, ${patientProfiles.lastName})), '')`,
       correo: patientContacts.email,
       alegraContactId: patients.alegraContactId,

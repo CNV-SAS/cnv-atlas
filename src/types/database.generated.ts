@@ -2589,6 +2589,7 @@ export type Database = {
           document_number: string
           document_type: Database["public"]["Enums"]["document_type"]
           id: string
+          is_test: boolean
           organization_id: string
           status: Database["public"]["Enums"]["patient_status"]
         }
@@ -2600,6 +2601,7 @@ export type Database = {
           document_number: string
           document_type: Database["public"]["Enums"]["document_type"]
           id?: string
+          is_test?: boolean
           organization_id: string
           status?: Database["public"]["Enums"]["patient_status"]
         }
@@ -2611,6 +2613,7 @@ export type Database = {
           document_number?: string
           document_type?: Database["public"]["Enums"]["document_type"]
           id?: string
+          is_test?: boolean
           organization_id?: string
           status?: Database["public"]["Enums"]["patient_status"]
         }

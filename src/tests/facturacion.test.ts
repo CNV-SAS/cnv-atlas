@@ -5,6 +5,7 @@ import {
   centroDeCosto,
   cuentaDelPago,
   desgloseDeLaVenta,
+  motivoSiPacienteYAmbienteNoCuadran,
   type LineaDeVenta,
   type MapaDeAlegra,
 } from "@/modules/payments/facturacion";
@@ -156,5 +157,36 @@ describe("el desglose de la venta cuadra con lo que se cobra", () => {
     // LUVIA aporta 75.630 de base y 14.370 de IVA: los 0,30 del redondeo caen en el IVA, no en el total.
     expect(d.base).toBe(90000 * 2 + 140000 * 3 + 75630);
     expect(d.iva).toBe(17100 * 2 + 26600 * 3 + 14370);
+  });
+});
+
+describe("el paciente y el ambiente tienen que corresponderse", () => {
+  // Es la regla "a sandbox no van datos de pacientes reales" convertida en mecanismo. Como promesa no
+  // alcanzaba: el smoke corre contra el PREVIEW, y el preview usa la MISMA base que producción, con 73
+  // pacientes reales. Elegir mal el paciente mandaría su identidad al sandbox y la venta saldría bien.
+
+  it("un paciente REAL no se factura contra sandbox", () => {
+    const motivo = motivoSiPacienteYAmbienteNoCuadran(false, "sandbox");
+    expect(motivo).not.toBeNull();
+    expect(motivo).toMatch(/identidad/i);
+  });
+
+  it("y un paciente DE PRUEBA no se factura contra producción", () => {
+    // El lado que se olvida, y pesa igual: sería un documento fiscal REAL, con consecutivo real, a nombre
+    // de alguien que no existe. No se borra: se deshace con nota crédito y deja hueco en el consecutivo.
+    const motivo = motivoSiPacienteYAmbienteNoCuadran(true, "produccion");
+    expect(motivo).not.toBeNull();
+    expect(motivo).toMatch(/producción/i);
+  });
+
+  it("los dos casos que SÍ cuadran no dicen nada", () => {
+    expect(motivoSiPacienteYAmbienteNoCuadran(true, "sandbox")).toBeNull();
+    expect(motivoSiPacienteYAmbienteNoCuadran(false, "produccion")).toBeNull();
+  });
+
+  it("y por defecto un paciente NO es de prueba, que es el lado seguro de equivocarse", () => {
+    // La columna entra con default false. Si la heurística fuera al revés, un paciente real sin marcar
+    // se facturaría contra sandbox; así, uno de prueba sin marcar simplemente no se factura.
+    expect(motivoSiPacienteYAmbienteNoCuadran(false, "sandbox")).not.toBeNull();
   });
 });
