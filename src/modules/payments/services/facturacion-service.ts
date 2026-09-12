@@ -2,6 +2,8 @@ import "server-only";
 
 import * as Sentry from "@sentry/nextjs";
 
+import { HttpError } from "@/core/http/http-error";
+
 import {
   createAlegraContact,
   createAlegraInvoice,
@@ -46,6 +48,31 @@ const MAX_INTENTOS = 5;
 
 function hoy(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * El motivo que se guarda en la transaccion, CON LO QUE DIJO EL PROVEEDOR.
+ *
+ * ── POR QUE EXISTE (2026-09-12, primer smoke del Bloque 2a) ─────────────────────────────────────
+ *
+ * La primera venta real fallo y `alegra_last_error` decia, entero:
+ *
+ *     HTTP 400 en POST https://sandbox.alegra.com:26967/api/v1/contacts
+ *
+ * Eso dice DONDE fallo y no dice POR QUE, que es justo lo que hacia falta. Y el porque estaba a mano:
+ * `fetchJson` construye un `HttpError` que YA LLEVA el cuerpo de la respuesta en `.body`, con el mensaje
+ * de validacion de Alegra dentro. Lo perdiamos al persistir, porque se guardaba solo `.message`.
+ *
+ * Es la forma mas cara de fallar: el sistema externo explica el error, nosotros lo recibimos, y lo
+ * tiramos antes de escribirlo. El siguiente intento habria dado exactamente la misma linea inutil.
+ */
+export function motivoLegible(e: unknown): string {
+  if (e instanceof HttpError) {
+    // El cuerpo puede ser objeto (lo normal) o texto (una pagina de error del proveedor).
+    const detalle = typeof e.body === "string" ? e.body : JSON.stringify(e.body ?? {});
+    return `${e.message} -> ${detalle}`;
+  }
+  return e instanceof Error ? e.message : String(e);
 }
 
 /** Lo que se necesita de la venta ya sellada. */
@@ -194,7 +221,7 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       }
     }
   } catch (e) {
-    const motivo = e instanceof Error ? e.message : String(e);
+    const motivo = motivoLegible(e);
     await fr
       .registrarIntentoDeFactura(venta.id, { estado: "fallida", error: motivo.slice(0, 500) })
       .catch(() => {
