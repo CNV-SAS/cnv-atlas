@@ -534,6 +534,74 @@ deberían llevar su `productKey`; conviene verificarlo antes de producción, por
 observación de esas se acumula factura a factura.
 
 
+### El pago va contra CUENTAS PUENTE, nunca contra el banco
+
+Cuando Atlas registra el pago **la plata todavía no está en el banco**: está en el bolsillo del Integrante
+o retenida en Wompi. Registrarla contra Bancolombia diría que llegó cuando no ha llegado, y el banco
+dejaría de cuadrar contra su extracto.
+
+| Canal de la venta | Cuenta destino |
+|---|---|
+| Efectivo | **Efectivo en poder de Integrantes** (cuenta 5) |
+| Pasarela (Wompi) | **Wompi por liquidar** (cuenta 6) |
+| Factura quincenal al Integrante (Distribución) | **Ninguna**: queda por cobrar de verdad |
+
+**Siempre por el valor BRUTO.** La comisión de la pasarela es un gasto de CNV y no se descuenta de la
+factura al paciente: restarla ahí haría que la factura dijera que el paciente pagó menos de lo que pagó.
+
+**Y el alcance de Atlas termina ahí.** El traslado a Bancolombia (cuando el Integrante consigna o Wompi
+desembolsa) lo registra contabilidad en Alegra.
+
+**Eso habilita dos conciliaciones que valen porque cruzan fuentes independientes** (van al Bloque 4):
+
+- saldo de *Efectivo en poder de Integrantes* en Alegra **contra** el pendiente de consignar según Atlas;
+- saldo de *Wompi por liquidar* en Alegra **contra** lo cobrado sin desembolsar según Atlas.
+
+Dos sistemas que no se copian entre sí y que tienen que dar lo mismo.
+
+### La política de redondeo, cerrada antes de que haya volumen
+
+**La fuente de verdad es la BASE sin IVA**, no el PVP. Tres razones y ninguna es de gusto: es lo que
+Alegra guarda en el ítem, es sobre lo que se calcula **todo** el reparto (principio 1 del modelo), y es la
+única de las dos que no depende de una política de redondeo.
+
+**Todo en pesos enteros.** Se redondean la **base** y el **IVA**, cada uno al peso, y el total es su
+**suma**. No al revés: redondear el total y repartirlo dejaría con centavos la base o el IVA, y el IVA es
+justo la cifra que la DIAN concilia.
+
+```
+base = redondeo(PVP / 1,19)     IVA = redondeo(base × 0,19)     total = base + IVA
+```
+
+Con los cinco productos eso devuelve **exactamente** los PVP publicados:
+
+| PVP | base | IVA | |
+|---|---|---|---|
+| 107.100 | 90.000 | 17.100 | 19% exacto |
+| 166.600 | 140.000 | 26.600 | 19% exacto |
+| 90.000 | 75.630 | 14.370 | el 19% de 75.630 son 14.369,70; el redondeo al peso da 14.370 |
+
+**LUVIA es el único donde el IVA no es el 19% exacto de su base, y esa diferencia de 0,30 tiene que caer
+en algún sitio: cae en el IVA y NO en el total**, para que el paciente pague un número redondo y la
+factura diga ese mismo número. Contabilidad ya lo había escrito así para LUVIA en la migración 0124; esto
+es la misma regla, generalizada.
+
+**Lo que había antes:** los helpers redondeaban a **dos decimales**, así que Atlas calculaba base 75.630,**25**
+contra los 75.630 del ítem de Alegra. Veinticinco centavos por unidad que no significan nada y que, con
+volumen, aparecen como un descuadre sin causa.
+
+### Y cuál es la fuente de verdad del precio
+
+El candado de vitest compara el catálogo de Atlas contra una tabla escrita **en el propio test**, y esa
+tabla es una **tercera transcripción a mano**: protege contra que Atlas cambie, y no puede ver que Alegra
+cambió. Un candado que compara contra una copia no ve moverse al original.
+
+Por eso existe **`scripts/cotejo-alegra.mjs`**: lee Alegra por API y compara contra la base. Un test
+unitario no debe llamar a una API externa, así que la comprobación contra la fuente de verdad se corre a
+propósito. **Cuándo:** cuando alguien toque un precio en cualquiera de los dos lados, y **siempre antes
+del paso a producción**. Contra la nube se corre exportando su `DATABASE_URL`.
+
+
 ### Criterio de aceptación
 
 En sandbox, de punta a punta:
@@ -541,12 +609,15 @@ En sandbox, de punta a punta:
 1. Se crea el checkout de un paciente en modalidad Comisión y **Wompi de prueba lo paga**.
 2. El webhook sella el pago, **se crea el contacto del paciente en Alegra** (o se reusa el suyo).
 3. Sale **una factura EMITIDA con consecutivo** (`SETP9902147xx`), cuyas líneas son los productos realmente vendidos, con su cantidad, su precio base y su **IVA al 19%**, y con su **centro de costo** según la propiedad del producto.
-4. **El pago queda registrado**: `totalPaid` igual al total y `balance` en cero. Una factura emitida con saldo pendiente es el defecto que este punto viene a evitar.
-5. **Una segunda venta al MISMO paciente reusa su contacto**: un contacto, dos facturas.
-6. Una venta a la que se le fuerce un fallo de Alegra queda en `fallida` con su motivo, aparece en la cola, y el reintento la emite.
-7. Y el **reporte de ventas sin documento fiscal está en cero** al terminar (decisión D2 de contabilidad).
+4. **El pago queda registrado contra la cuenta PUENTE que corresponde al canal**, por el valor bruto: `totalPaid` igual al total y `balance` en cero. Una factura emitida con saldo pendiente es el defecto que este punto viene a evitar, y una registrada contra el banco es el otro.
+5. **Una venta de TRES productos distintos produce TRES líneas**, cada una con su ítem, su cantidad, su precio base y su IVA. Es el caso más común en una consulta real y **es el que nunca se ha ejercido**: con el ítem genérico toda factura tiene una sola línea con cantidad 1.
+6. **Una segunda venta al MISMO paciente reusa su contacto**: un contacto, dos facturas. Alegra rechaza documentos duplicados y ahí es donde se rompe el patrón buscar-o-crear. Hoy el sandbox tiene **un solo contacto** ("consumidor final"), así que este caso tampoco se ha ejercido nunca.
+7. **Una nota crédito sobre una factura emitida sale con la numeración electrónica (NTC) y CON REFERENCIA a la factura original.** La referencia no es opcional: en este flujo una nota crédito sin referencia significaría que algo se rompió, no que se emitió suelta.
+8. **Y la validación previa RECHAZA emitir si alguna línea no trae impuesto.** Es el blindaje del hallazgo del IVA al 0%: sin él la factura sale validada por la DIAN, solo que sin IVA, y en producción eso es IVA no cobrado que CNV asume de su margen. Falla en silencio, así que el control tiene que ser previo y no una revisión posterior.
+9. Una venta a la que se le fuerce un fallo de Alegra queda en `fallida` con su motivo, aparece en la cola, y el reintento la emite.
+10. Y el **reporte de ventas sin documento fiscal está en cero** al terminar (decisión D2 de contabilidad).
 
-**Fuera de este criterio, por configuración que falta:** la nota crédito, hasta que exista numeración electrónica en el sandbox.
+**Fuera de este criterio:** nada. La numeración electrónica de nota crédito quedó habilitada el 2026-09-12 (plantilla 17, prefijo NTC).
 
 ---
 

@@ -59,17 +59,27 @@ describe.skipIf(!HAS_DB)("el mapa de Alegra (BD real)", () => {
     expect(c.cost_center_propio_id).not.toBe(c.cost_center_tercero_id);
   });
 
-  it("y la nota crédito queda SIN configurar a propósito, no por olvido", async () => {
-    // La numeracion 2 del sandbox no es electronica, y la factura si lo es. Un nulo deja que el codigo
-    // diga "no esta configurada"; un id equivocado emitiria el documento que no corresponde.
+  it("la nota crédito usa la numeración ELECTRÓNICA, no la que no lo es", async () => {
+    // El sandbox tiene DOS numeraciones de nota crédito: la 2, que no es electrónica, y la 17 (NTC), que
+    // sí. La factura que emitimos es electrónica, así que una nota crédito no electrónica contra ella no
+    // es lo que la DIAN espera. Elegir la 2 no falla: emite un documento que no corresponde.
     const { db } = await import("@/db");
-    const [c] = await db.execute<{ credit_note_template_id: string | null; note: string | null }>(dsql`
-      select credit_note_template_id, note from alegra_config where env = 'sandbox'`);
-    expect(c.credit_note_template_id).toBeNull();
-    expect(
-      c.note,
-      "el nulo tiene que llevar su razón escrita: si no, dentro de un mes parece un olvido",
-    ).toMatch(/[Nn]ota credito SIN configurar/);
+    const [c] = await db.execute<{ credit_note_template_id: string | null }>(dsql`
+      select credit_note_template_id from alegra_config where env = 'sandbox'`);
+    expect(c.credit_note_template_id).toBe("17");
+  });
+
+  it("y las dos cuentas del pago son PUENTE y distintas entre sí", async () => {
+    // Cuando Atlas registra el pago la plata no ha llegado al banco: está en el bolsillo del Integrante o
+    // retenida en Wompi. Que sean distintas es lo que permite las dos conciliaciones independientes; que
+    // ninguna sea el banco es lo que hace que Bancolombia siga cuadrando contra su extracto.
+    const { db } = await import("@/db");
+    const [c] = await db.execute<{ efectivo: string; pasarela: string }>(dsql`
+      select bank_account_efectivo_id as efectivo, bank_account_pasarela_id as pasarela
+        from alegra_config where env = 'sandbox'`);
+    expect(c.efectivo).toBe("5");
+    expect(c.pasarela).toBe("6");
+    expect(c.efectivo, "el efectivo y la pasarela caen en la misma cuenta: se pierde la conciliación").not.toBe(c.pasarela);
   });
 
   it("ningún item de Alegra está repetido entre productos", async () => {

@@ -918,6 +918,13 @@
       "when": 1791245786099,
       "tag": "0130_mapa_de_alegra",
       "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1791332186099,
+      "tag": "0131_nota_credito_y_cuentas_puente",
+      "breakpoints": true
     }
   ]
 }
