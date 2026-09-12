@@ -602,6 +602,38 @@ propósito. **Cuándo:** cuando alguien toque un precio en cualquiera de los dos
 del paso a producción**. Contra la nube se corre exportando su `DATABASE_URL`.
 
 
+### El smoke corre en el dominio de PRODUCCIÓN, y lo que eso implica
+
+Santiago no usa preview: `NEXT_PUBLIC_APP_URL` es `https://atlas.cnvsystem.com` y el webhook de Wompi de
+prueba apunta ahí. Es el dominio real, con la base real y sus 73 pacientes.
+
+**La protección que ya existe, y conviene que sea deliberada y no un accidente feliz:** el mapa de Alegra
+vive en `alegra_config`, **una fila por ambiente**, y hoy **solo existe la de `sandbox`**. El servicio
+resuelve el ambiente desde `ALEGRA_BASE_URL` y busca su fila; si el ambiente fuera `produccion` **no hay
+fila**, así que escribe *"No hay configuración de Alegra para el ambiente produccion"* y **no llama a
+Alegra**.
+
+**Consecuencia: hoy Atlas no puede emitir un documento fiscal real, pase lo que pase en Vercel.** No es
+suerte: es lo que se gana al poner el mapa en la base por ambiente en vez de en variables de entorno. Con
+variables, un valor cambiado a mano habría bastado para emitir de verdad.
+
+**La segunda protección es natural:** las credenciales y la URL tienen que ser del mismo lado o la
+autenticación falla. Una URL de producción con llave de sandbox da 401, ruidosamente.
+
+**Y la que NO está cubierta por ninguna de las dos, porque no es de Alegra:** si las llaves de **Wompi**
+en Vercel son de producción, un checkout de prueba **cobraría de verdad** a una tarjeta real. Eso hay que
+mirarlo antes del smoke, y se ve a simple vista: las de prueba empiezan por `pub_test_` y `prv_test_`.
+
+**Lo que hay que comprobar en Vercel (entorno Production) antes de nada:**
+
+| Variable | Tiene que | Si no |
+|---|---|---|
+| `ALEGRA_BASE_URL` | contener `sandbox` | nada se emite; toda venta queda `fallida` con ese motivo |
+| `ALEGRA_EMAIL` / `ALEGRA_API_KEY` | ser las del sandbox | 401 en cada intento |
+| `NEXT_PUBLIC_WOMPI_PUBLIC_KEY` / `WOMPI_PRIVATE_KEY` | empezar por `pub_test_` / `prv_test_` | **un checkout de prueba cobra de verdad** |
+| `WOMPI_EVENTS_SECRET` | ser el del panel de pruebas | el webhook llega y se rechaza por firma: "el pago se hizo y Atlas no se enteró" |
+
+
 ### Criterio de aceptación
 
 En sandbox, de punta a punta:
