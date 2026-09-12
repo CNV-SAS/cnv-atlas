@@ -12,6 +12,7 @@
 // Salida: lista las migraciones pendientes (o "al dia"). Exit code 1 si hay pendientes, para
 // poder encadenarlo en un checklist o CI.
 
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 
 import postgres from "postgres";
@@ -26,6 +27,75 @@ if (!DATABASE_URL || DATABASE_URL.trim() === "") {
 // base de datos, y hasta hoy no decia cual. "La BD esta AL DIA" es una afirmacion sobre una base sin
 // nombre. Se deriva del host de la propia DATABASE_URL, nunca de la credencial.
 console.log(`Base: ${new URL(DATABASE_URL).host}`);
+
+// ── CONTRA QUE VERSION DEL REPO, que es la pregunta que este chequeo no se hacia ────────────────
+//
+// EL CASO REAL (2026-09-12). Santiago corrio este chequeo y dijo "al dia", con 133 en el repo y 133 en la
+// base. Y `patients.is_test` NO EXISTIA: la migracion 0132 estaba en un commit que todavia no habia
+// traido. Las dos mitades de la comparacion salian del MISMO arbol de trabajo, asi que faltaba en las dos
+// y el conteo cuadraba. El chequeo no mintio sobre lo que mide; medio otra cosa.
+//
+// Y NO SE ARREGLA COMPARANDO CONTRA EL ESQUEMA, aunque sea lo primero que uno piensa. El esquema esperado
+// tambien saldria del arbol de trabajo (los snapshots de drizzle viven en el repo), asi que en este caso
+// estaria igual de atrasado y volveria a decir "al dia". Lo que falta no es una segunda fuente del
+// esquema: es saber que el arbol esta atrasado.
+//
+// Lo que SI cierra el caso: preguntarle al remoto si hay commits con migraciones que no estan aqui.
+function gitSeguro(args, opciones = {}) {
+  try {
+    return execFileSync("git", args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: opciones.timeout ?? 5000,
+    }).trim();
+  } catch {
+    return null; // sin git, sin red o sin credenciales: se degrada a aviso, no a error.
+  }
+}
+
+function avisarSiElArbolEstaAtrasado() {
+  const head = gitSeguro(["rev-parse", "--short", "HEAD"]);
+  if (!head) {
+    console.log("Repo:  (sin git: no se puede saber contra que version se compara)");
+    return;
+  }
+  const rama = gitSeguro(["rev-parse", "--abbrev-ref", "HEAD"]) ?? "HEAD";
+  console.log(`Repo:  ${head} (${rama})`);
+
+  // Un .sql sin commitear tambien envenena la comparacion, por el otro lado: el journal local lo cuenta y
+  // la nube no puede tenerlo, asi que saldria como "pendiente" siendo correcto.
+  const sucio = gitSeguro(["status", "--porcelain", "--", "drizzle/"]);
+  if (sucio) {
+    console.log(`AVISO: hay cambios sin commitear en drizzle/ (${sucio.split("\n").length} archivo(s)).`);
+  }
+
+  // El fetch puede no estar disponible (sin red, sin credenciales). Es una mejora, no un requisito.
+  const trajo = gitSeguro(["fetch", "--quiet", "origin"], { timeout: 15000 }) !== null;
+  const remoto = `origin/${rama}`;
+  const existe = gitSeguro(["rev-parse", "--verify", "--quiet", remoto]);
+  if (!existe) return;
+
+  // SOLO importan los commits que TOCAN migraciones. Estar atrasado en codigo no invalida esta respuesta;
+  // estarlo en drizzle/ si, y avisar de lo otro convertiria el aviso en ruido que se aprende a ignorar.
+  const conMigraciones = gitSeguro([
+    "log", "--oneline", `HEAD..${remoto}`, "--", "drizzle/meta/_journal.json", "drizzle/",
+  ]);
+  if (conMigraciones) {
+    const n = conMigraciones.split("\n").length;
+    console.error(`\nEL ARBOL DE TRABAJO ESTA ATRASADO: ${remoto} tiene ${n} commit(s) con migraciones que aqui no estan.`);
+    for (const l of conMigraciones.split("\n").slice(0, 5)) console.error(`    ${l}`);
+    console.error("\n  Este chequeo compara la BD contra EL REPO QUE TIENES, y le faltan migraciones.");
+    console.error("  Diria 'al dia' sobre una base a la que le falta lo mismo que a este arbol.");
+    console.error("  Corre `git pull` y vuelve a chequear.");
+    process.exit(1);
+  }
+  if (!trajo) {
+    console.log(`AVISO: no se pudo consultar el remoto, asi que la comparacion es contra la ultima vez`);
+    console.log(`       que se trajo ${remoto}. Si alguien pusheo una migracion despues, no se ve aqui.`);
+  }
+}
+
+avisarSiElArbolEstaAtrasado();
 
 const journal = JSON.parse(
   readFileSync(new URL("../drizzle/meta/_journal.json", import.meta.url), "utf8"),
