@@ -60,6 +60,36 @@ export type ArmadoDeFactura =
   | { ok: false; motivo: string };
 
 /**
+ * El PACIENTE y el AMBIENTE tienen que corresponderse, en las DOS direcciones.
+ *
+ * Es la regla de Santiago del 2026-09-12 ("a sandbox no van datos de pacientes reales, aunque sean solo
+ * identificacion y contacto") convertida en mecanismo, porque como promesa no alcanza: el smoke del
+ * Bloque 2a corre contra el PREVIEW, y el preview usa LA MISMA BASE que produccion, con 73 pacientes
+ * reales. Elegir el paciente equivocado mandaria su nombre, su documento y su correo al sandbox de
+ * Alegra, y la venta saldria bien: nadie se enteraria.
+ *
+ * Y AL REVES PESA IGUAL, que es lo que la hace simetrica: facturar a un paciente de prueba desde
+ * produccion emite un documento fiscal REAL, con consecutivo real, a nombre de alguien que no existe. Eso
+ * no se borra, se deshace con una nota credito y deja hueco en el consecutivo.
+ *
+ * Devuelve el motivo cuando NO cuadran, y null cuando si. Es al reves de lo intuitivo a proposito: el
+ * motivo es lo que hay que escribir en la transaccion.
+ */
+export function motivoSiPacienteYAmbienteNoCuadran(
+  pacienteEsDePrueba: boolean,
+  env: string,
+): string | null {
+  const esSandbox = env === "sandbox";
+  if (esSandbox && !pacienteEsDePrueba) {
+    return "El paciente NO está marcado como de prueba y se está facturando contra sandbox. No se emite: su identidad viajaría a un ambiente de pruebas.";
+  }
+  if (!esSandbox && pacienteEsDePrueba) {
+    return "El paciente está marcado como de PRUEBA y se está facturando contra producción. No se emite: sería un documento fiscal real a nombre de alguien que no existe.";
+  }
+  return null;
+}
+
+/**
  * El centro de costo de la factura, derivado de la PROPIEDAD de lo que se vende.
  *
  * NO SE HEREDA DEL ITEM: se verifico contra el sandbox y los cinco items lo tienen vacio; la factura lo

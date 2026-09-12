@@ -9,7 +9,12 @@ import {
   findAlegraContactByDocument,
   getAlegraInvoice,
 } from "@/lib/alegra/client";
-import { armarFactura, cuentaDelPago, desgloseDeLaVenta } from "../facturacion";
+import {
+  armarFactura,
+  cuentaDelPago,
+  desgloseDeLaVenta,
+  motivoSiPacienteYAmbienteNoCuadran,
+} from "../facturacion";
 import * as fr from "../data/facturacion-repository";
 
 // ═══ EMITIR LA FACTURA DE VERDAD, Y REGISTRAR SU PAGO ═══
@@ -61,6 +66,11 @@ export type VentaSellada = {
 async function resolverContacto(patientId: string, env: string): Promise<number> {
   const datos = await fr.getDatosDelContacto(patientId);
   if (!datos) throw new Error("El paciente de la venta no existe.");
+
+  // EL GUARD VA AQUI, antes de la primera llamada que lleva PII: una vez creado el contacto, el dato ya
+  // salio y borrarlo despues no lo devuelve.
+  const motivo = motivoSiPacienteYAmbienteNoCuadran(datos.esDePrueba, env);
+  if (motivo) throw new Error(motivo);
 
   // El id guardado solo sirve si es de ESTE ambiente. Uno de sandbox no existe en produccion, y usarlo
   // facturaria contra un contacto inexistente o, peor, contra otro que por casualidad tenga ese id.

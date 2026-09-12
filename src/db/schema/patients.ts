@@ -39,6 +39,12 @@ export const patients = pgTable(
     // a produccion facturaria contra ids que alli no estan. Es el error que el modelo comercial llama la
     // causa numero uno de facturas mal emitidas.
     alegraEnv: text("alegra_env"),
+    // PACIENTE DE PRUEBA (0132). Gatea la facturacion en LAS DOS direcciones: uno de prueba no se
+    // factura desde produccion (seria un documento fiscal real a nombre de nadie, y se deshace con nota
+    // credito) y uno real no se factura contra sandbox (su identidad viajaria a un ambiente de pruebas).
+    // No se deduce de con que profesional esta: las cuentas demo atienden a gente real y un paciente se
+    // reasigna. Es una propiedad declarada.
+    isTest: boolean("is_test").notNull().default(false),
     createdAt: createdAt(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
