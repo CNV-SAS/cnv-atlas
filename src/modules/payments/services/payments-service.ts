@@ -1,10 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import * as Sentry from "@sentry/nextjs";
-
-import { baseFromTotal } from "@/core/iva";
 import { missingEnvMessage } from "@/lib/env/missing-env";
-import { createAlegraInvoice } from "@/lib/alegra/client";
 import { computeIntegritySignature } from "@/lib/wompi/signatures";
 import type { CurrentUser } from "@/modules/auth/roles";
 import { listNutraceuticals } from "@/modules/nutraceuticals/data/nutraceuticals-repository";
@@ -18,10 +14,11 @@ import {
   markWebhookProcessed,
   recordWebhookEvent,
   sealPaidTransaction,
-  setAlegraInvoiceId,
   type NewOrderLine,
   type SealedTransaction,
 } from "../data/payments-writer";
+import { marcarFacturaPendiente } from "../data/facturacion-repository";
+import { emitirFacturaDeVenta } from "./facturacion-service";
 import type { CreateCheckoutInput, WompiEventInput } from "../validations";
 
 // Servicio de pagos (la logica vive aqui; las actions y el route handler son thin).
@@ -112,8 +109,12 @@ export type CashSaleCreated = { transactionId: string; amount: number };
 // Venta en EFECTIVO: el integrante recauda dinero de CNV en el momento. Misma resolucion de venta y mismo
 // sellado contable que el checkout (CNV vende, integrante recauda; comision + ingreso sobre la base sin
 // IVA), pero la transaccion nace YA pagada (createPaidCashTransaction). idempotencyKey lo trae el cliente
-// (uno por intento) para que un doble-clic no cobre dos veces. La factura de Alegra NO se emite aqui:
-// espera el cableado con la regla contable (CNV factura al paciente); hoy la venta se sella internamente.
+// (uno por intento) para que un doble-clic no cobre dos veces.
+//
+// Y LA FACTURA SI SE EMITE AQUI DESDE EL BLOQUE 2a. El comentario anterior decia que "espera el cableado
+// con la regla contable", y esa regla ya esta: CNV factura al paciente, y el pago va contra la cuenta
+// puente "Efectivo en poder de Integrantes", porque la plata la tiene el Integrante y todavia no llego al
+// banco. Una venta en efectivo sin factura era una venta cobrada sin documento igual que cualquier otra.
 export async function registerCashSale(
   input: CreateCheckoutInput,
   user: CurrentUser,
@@ -129,6 +130,13 @@ export async function registerCashSale(
     idempotencyKey,
     items: lines,
   });
+  // La venta en efectivo NACE pagada, asi que no hay webhook que dispare la factura: se emite aqui. No
+  // revienta la venta si falla (el servicio escribe el desenlace y la deja en la cola): el dinero ya lo
+  // recibio el Integrante y negarle la venta por un problema de facturacion seria peor.
+  await facturarVentaSellada(
+    { id, amount: String(amount), currency: "COP", patientId: input.patientId, professionalId },
+    "efectivo",
+  );
   return { transactionId: id, amount };
 }
 
@@ -239,60 +247,30 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
   // paid: sella el pago (comision + ingreso) y luego intenta la factura en Alegra.
   const sealed = await sealPaidTransaction(txId, wompiTxId);
   await markWebhookProcessed(WOMPI_PROVIDER, externalId);
-  if (sealed) await tryCreateAlegraInvoice(sealed);
+  if (sealed) await facturarVentaSellada(sealed, "wompi");
 
   return { handled: true, duplicate: false, sealed: Boolean(sealed) };
 }
 
-// Factura en Alegra, best-effort. No revienta el webhook: el pago ya quedo sellado.
+// LA FACTURA VIVE EN SU PROPIO SERVICIO desde el Bloque 2a (`facturacion-service`). Aqui solo queda el
+// puente, y conviene decir que sustituyo porque el defecto era grande:
 //
-// ═══ ESTE COMENTARIO DECIA DOS COSAS FALSAS Y SE CORRIGEN AQUI (2026-09-11) ═══
+// `tryCreateAlegraInvoice` mandaba a Alegra el MISMO cliente para todo paciente, UN item generico con
+// cantidad 1 y el total como precio, y la dejaba en BORRADOR (nunca `status:'open'`). No era una factura
+// mal hecha: no era una factura, porque sin consecutivo no hay documento fiscal. Contabilidad lo
+// confirmo: no hubo exposicion fiscal, hubo CERO facturas.
 //
-// Decia: "si falla, la factura se reintenta (Wompi reenvia) o queda para un job post-MVP".
+// Y si Alegra fallaba, nada lo reintentaba. El comentario de entonces decia que "Wompi reenvia", y no:
+// Wompi solo reintenta si NO le respondimos 200, y le respondemos 200 porque el pago SI se sello.
 //
-//   · WOMPI NO REENVIA. Solo reintenta el webhook si NO le respondimos 200, y le respondemos 200 porque
-//     el pago SI se sello. La factura fallida no vuelve por ahi.
-//   · Y EL JOB NUNCA SE CONSTRUYO. No hay cola, no hay cron, y la ruta del webhook de Alegra
-//     (api/webhooks/alegra/) es una carpeta VACIA, asi que tampoco llega nada de vuelta de Alegra.
-//
-// CONSECUENCIA REAL HOY: un pago cobrado cuya factura falla se queda sin documento PARA SIEMPRE, y no lo
-// detecta nadie salvo que alguien mire Sentry. El estado ya se puede registrar (columnas de la 0129); lo
-// que falta es que esta funcion lo escriba y que algo barra la cola. Es el Bloque 2a.
-//
-// Y LO QUE MANDA HOY A ALEGRA TAMPOCO ES LO QUE SE VENDIO: el MISMO cliente por defecto para todo
-// paciente, UN item generico con cantidad 1 y el total como precio, y en BORRADOR (nunca se manda
-// status:'open', asi que nunca recibe consecutivo). La tabla transaction_items SI tiene las lineas de
-// verdad, con su producto, su cantidad y su precio unitario: el dato existe en Atlas y se descarta al
-// facturar.
-async function tryCreateAlegraInvoice(sealed: SealedTransaction): Promise<void> {
-  const clientId = Number(process.env.ALEGRA_DEFAULT_CLIENT_ID ?? 0);
-  const itemId = Number(process.env.ALEGRA_DEFAULT_ITEM_ID ?? 0);
-  if (!clientId || !itemId) return; // sin IDs de sandbox: se omite la factura
-
-  try {
-    const today = isoDate();
-    // Alegra recibe el precio BASE sin IVA y el item lleva el impuesto referenciado
-    // por id (ALEGRA_IVA_TAX_ID): sin ese tax explicito Alegra factura con IVA en 0
-    // aunque el item lo tenga configurado. sealed.amount es PVP con IVA incluido.
-    const ivaTaxId = Number(process.env.ALEGRA_IVA_TAX_ID ?? 0);
-    const item = {
-      id: itemId,
-      price: baseFromTotal(Number(sealed.amount)),
-      quantity: 1,
-      ...(ivaTaxId ? { tax: [{ id: ivaTaxId }] } : {}),
-    };
-    const invoice = await createAlegraInvoice({
-      clientId,
-      items: [item],
-      date: today,
-      dueDate: today,
-    });
-    await setAlegraInvoiceId(sealed.id, invoice.id);
-  } catch (e) {
-    Sentry.captureException(e, { tags: { area: "alegra-invoice", transactionId: sealed.id } });
-  }
+// EL CANAL lo decide `payment_method` de la transaccion, y es lo que elige la cuenta puente del pago.
+async function facturarVentaSellada(sealed: SealedTransaction, canal: "wompi" | "efectivo"): Promise<void> {
+  await marcarFacturaPendiente(sealed.id);
+  await emitirFacturaDeVenta({
+    id: sealed.id,
+    amount: sealed.amount,
+    patientId: sealed.patientId,
+    canal,
+  });
 }
 
-function isoDate(): string {
-  return new Date().toISOString().slice(0, 10); // yyyy-MM-dd
-}
