@@ -221,6 +221,42 @@ export type Database = {
           },
         ]
       }
+      alegra_config: {
+        Row: {
+          cost_center_propio_id: string
+          cost_center_tercero_id: string
+          credit_note_template_id: string | null
+          env: string
+          id: string
+          invoice_template_id: string
+          iva_tax_id: string
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          cost_center_propio_id: string
+          cost_center_tercero_id: string
+          credit_note_template_id?: string | null
+          env: string
+          id?: string
+          invoice_template_id: string
+          iva_tax_id: string
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cost_center_propio_id?: string
+          cost_center_tercero_id?: string
+          credit_note_template_id?: string | null
+          env?: string
+          id?: string
+          invoice_template_id?: string
+          iva_tax_id?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       allergens: {
         Row: {
           code: string
