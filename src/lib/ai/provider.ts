@@ -1,6 +1,7 @@
 import "server-only";
 
 import { fetchJson } from "@/core/http/fetch-json";
+import { HttpError } from "@/core/http/http-error";
 import { conReintentoAnteTope } from "@/lib/ai/reintento-tope";
 
 // Abstraccion de proveedor de IA (API_INTEGRATIONS seccion 4). La IA SOLO genera el
@@ -33,6 +34,30 @@ export class AiError extends Error {
     super(message);
     this.name = "AiError";
   }
+}
+
+/**
+ * El mensaje con el que se envuelve un error del proveedor, CONSERVANDO lo que el proveedor dijo.
+ *
+ * ── POR QUE (2026-09-12, barrido tras el mismo defecto en la facturacion) ───────────────────────
+ *
+ * Esto era `new AiError(String(primaryError))`, y `String` de un HttpError da "HttpError: HTTP 400 en
+ * POST https://...": el STATUS sin el MOTIVO. El cuerpo de la respuesta viaja en `HttpError.body` y se
+ * perdia justo al envolverlo, asi que el fallo quedaba grabado mudo en `ai_menu_suggestions.raw_response`.
+ *
+ * Es el mismo defecto que tumbo el primer smoke de facturacion: el sistema externo EXPLICA el error, lo
+ * recibimos, y lo tiramos antes de escribirlo. Aqui duele menos porque casi siempre hay fallback, pero
+ * cuando el admin fija un proveedor a mano NO lo hay, y entonces esa linea es todo lo que queda.
+ *
+ * No toca la deteccion del 429: `conReintentoAnteTope` corre DENTRO de `callGroq`, antes de este
+ * envoltorio, y sigue viendo el HttpError crudo con su `body`.
+ */
+function mensajeDelProveedor(e: unknown): string {
+  if (e instanceof HttpError) {
+    const detalle = typeof e.body === "string" ? e.body : JSON.stringify(e.body ?? {});
+    return `${e.message} -> ${detalle}`;
+  }
+  return String(e);
 }
 
 // La IA puede tardar mas que un pago; timeout generoso pero acotado. 45s da margen a la
@@ -182,7 +207,9 @@ export async function generateText(
     };
   } catch (primaryError) {
     if (!config.fallback) {
-      throw primaryError instanceof AiError ? primaryError : new AiError(String(primaryError));
+      throw primaryError instanceof AiError
+        ? primaryError
+        : new AiError(mensajeDelProveedor(primaryError));
     }
     const r = await callProvider(
       config.fallback.provider,

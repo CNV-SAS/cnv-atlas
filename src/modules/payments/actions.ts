@@ -52,22 +52,51 @@ export async function createCheckoutAction(
 
 // ----- Adaptador de formulario (useActionState) para la UI de B6.4 -----
 
-// La UI minima crea una orden de una sola linea; el action y el servicio soportan
-// varias (lo ejercitan los tests). El refinamiento a multilinea es de un bloque
-// posterior junto con el catalogo de Alegra.
+// ── LAS LINEAS DE LA VENTA, QUE SON VARIAS ──────────────────────────────────────────────────────
+//
+// Esto leia `nutraceuticalId` y `quantity`, dos campos sueltos, y construia un array de UN elemento. El
+// resto de la cadena (validacion, servicio, writer, tabla) admitia cincuenta desde siempre: el
+// estrangulamiento eran la pantalla y esta funcion.
+//
+// Se leen del campo oculto `lineas` (JSON), el mismo patron que el conteo de inventario. Si viene roto o
+// vacio se devuelve lista vacia y el esquema de Zod lo rechaza con su mensaje: NO se cae a un valor por
+// defecto, que seria cobrar algo que nadie eligio.
+export function leerLineas(formData: FormData): { nutraceuticalId: string; quantity: number }[] {
+  try {
+    const crudo = JSON.parse(String(formData.get("lineas") ?? "[]")) as unknown;
+    if (!Array.isArray(crudo)) return [];
+    return crudo.map((l) => {
+      const o = (l ?? {}) as { nutraceuticalId?: unknown; quantity?: unknown };
+      return {
+        nutraceuticalId: String(o.nutraceuticalId ?? ""),
+        quantity: Number(String(o.quantity ?? "")),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function createCheckoutFormAction(
   _prev: PaymentFormState,
   formData: FormData,
 ): Promise<PaymentFormState> {
   const patientId = String(formData.get("patientId") ?? "");
-  const nutraceuticalId = String(formData.get("nutraceuticalId") ?? "");
+  const lineas = leerLineas(formData);
   const confirmDuplicate = String(formData.get("confirmDuplicate") ?? "") === "true";
 
   // Avisa antes de crear un cobro DUPLICADO vivo (mismo paciente + mismo producto, pending y < 24h): no
   // es solo la pantalla vieja, tambien el olvido con la pantalla al dia. No bloquea: el profesional puede
   // confirmar con "Generar de todos modos". Un pago de mas no tiene reembolso en el MVP (ver BACKLOG).
-  if (!confirmDuplicate && patientId && nutraceuticalId) {
-    const dup = await findLivePendingDuplicate(patientId, [nutraceuticalId]);
+  //
+  // AVISA POR LINEA, NO POR LA VENTA ENTERA, y la diferencia es la que importa: si el paciente ya tiene
+  // pendiente un checkout con MULTI-CELL y ahora se le arma uno con MULTI-CELL y OMEGA, lo que se duplica
+  // es el primero. Exigir que coincida la venta COMPLETA callaria ese caso, que es el habitual.
+  //
+  // No hizo falta construir nada:  ya recibia un arreglo y ya devolvia el
+  // producto que colisiona por su nombre. Lo unico que mandaba un solo id era esta funcion.
+  if (!confirmDuplicate && patientId && lineas.length > 0) {
+    const dup = await findLivePendingDuplicate(patientId, lineas.map((l) => l.nutraceuticalId));
     if (dup) {
       const cuando = dup.hoursAgo <= 0 ? "hace menos de una hora" : `hace ${dup.hoursAgo} h`;
       return {
@@ -79,10 +108,7 @@ export async function createCheckoutFormAction(
     }
   }
 
-  const result = await createCheckoutAction({
-    patientId,
-    items: [{ nutraceuticalId, quantity: Number(String(formData.get("quantity") ?? "")) }],
-  });
+  const result = await createCheckoutAction({ patientId, items: lineas });
   if (!result.ok) {
     return { error: result.error.message, success: null, checkoutUrl: null, duplicateWarning: null };
   }
