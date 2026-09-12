@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+vi.mock("@/db", () => ({ db: {} }));
 
 import {
   armarFactura,
@@ -9,6 +13,8 @@ import {
   type LineaDeVenta,
   type MapaDeAlegra,
 } from "@/modules/payments/facturacion";
+import { HttpError } from "@/core/http/http-error";
+import { motivoLegible } from "@/modules/payments/services/facturacion-service";
 
 // ═══ LO QUE SE RECHAZA ANTES DE LLAMAR A ALEGRA ═══
 //
@@ -188,5 +194,42 @@ describe("el paciente y el ambiente tienen que corresponderse", () => {
     // La columna entra con default false. Si la heurística fuera al revés, un paciente real sin marcar
     // se facturaría contra sandbox; así, uno de prueba sin marcar simplemente no se factura.
     expect(motivoSiPacienteYAmbienteNoCuadran(false, "sandbox")).not.toBeNull();
+  });
+});
+
+describe("el motivo que se guarda lleva lo que dijo el proveedor", () => {
+  // EL CASO REAL (2026-09-12, primer smoke). La primera venta falló y `alegra_last_error` decía, entero:
+  // "HTTP 400 en POST .../contacts". Dónde falló, no por qué. Y el porqué estaba a mano: `fetchJson`
+  // construye un HttpError que YA lleva el cuerpo de la respuesta, con el mensaje de validación de Alegra
+  // dentro. Se perdía al persistir, porque se guardaba solo `.message`.
+  //
+  // Es la forma más cara de fallar: el sistema externo explica el error, lo recibimos, y lo tiramos antes
+  // de escribirlo. El siguiente intento habría dado la misma línea inútil.
+
+  it("un HttpError guarda el cuerpo, no solo el status", () => {
+    const e = new HttpError("HTTP 400 en POST /contacts", 400, {
+      message: "El campo lastName es obligatorio",
+      code: 1001,
+    });
+    const motivo = motivoLegible(e);
+    expect(motivo).toContain("HTTP 400");
+    expect(motivo, "sin el cuerpo, el motivo no dice qué corregir").toContain("lastName");
+  });
+
+  it("y aguanta un cuerpo que no es JSON, que es la página de error del proveedor", () => {
+    const e = new HttpError("HTTP 502 en POST /invoices", 502, "<html>Bad Gateway</html>");
+    expect(motivoLegible(e)).toContain("Bad Gateway");
+  });
+
+  it("un error corriente sigue dando su mensaje", () => {
+    expect(motivoLegible(new Error("El paciente de la venta no existe."))).toBe(
+      "El paciente de la venta no existe.",
+    );
+  });
+
+  it("y algo que ni siquiera es un Error no rompe el registro del fallo", () => {
+    // Si esto lanzara, se perdería el único sitio donde queda constancia de que la venta no se facturó.
+    expect(motivoLegible("se cayó la red")).toBe("se cayó la red");
+    expect(() => motivoLegible(undefined)).not.toThrow();
   });
 });
