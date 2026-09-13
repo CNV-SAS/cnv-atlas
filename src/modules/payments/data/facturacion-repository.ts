@@ -18,6 +18,22 @@ import type { LineaDeVenta, MapaDeAlegra } from "../facturacion";
 // `sealPaidTransaction` vive en el writer y no en un repositorio con cliente anon.
 
 /**
+ * QUE LE FALTA A UNA VENTA COBRADA. UNA SOLA DEFINICION, usada por los cuatro sitios que la necesitan.
+ *
+ * ── POR QUE ES UN FRAGMENTO Y NO CUATRO COPIAS (2026-09-13) ─────────────────────────────────────
+ *
+ * La condicion vivia escrita a mano en el reclamo, en la cola, en el panel y en el conteo del reporte. Al
+ * agregar el pago como segundo hueco se actualizo en UNO y los otros tres siguieron mirando solo el
+ * estado de la factura. Resultado en el smoke: seis ventas con el pago fallido que el boton podia reclamar
+ * pero el panel no mostraba, y el panel dijo "una pendiente" con siete.
+ *
+ * Cuatro copias de la misma regla divergen la primera vez que la regla cambia. Una sola no puede.
+ *
+ * LOS DOS HUECOS: la factura no esta completa, o esta completa y el pago no se registro.
+ */
+export const LE_FALTA_ALGO = sql`(transactions.alegra_invoice_state is distinct from 'emitida' or transactions.alegra_payment_id is null)`;
+
+/**
  * El mapa del ambiente que se esta usando.
  *
  * QUE AMBIENTE: el que diga `ALEGRA_BASE_URL`. Se resuelve por la URL y no por una variable aparte porque
@@ -177,15 +193,17 @@ export type ResultadoDeFacturacion = {
   numero?: string | null;
   cufe?: string | null;
   legalStatus?: string | null;
+  paymentId?: string | null;
   error?: string | null;
 };
 
 /**
  * Registra el desenlace del intento, gane o pierda.
  *
- * SIEMPRE SUBE `alegra_attempts`, tambien cuando sale bien: el contador no es "cuantas veces fallo", es
- * cuantas veces se intento, y sin eso un error permanente (un item que no existe) se reintentaria para
- * siempre sin que nadie note el bucle.
+ * NO TOCA `alegra_attempts`. Esta nota decia que "siempre lo sube", y dejo de ser cierto el 2026-09-12
+ * cuando el contador se movio a `reclamarParaFacturar`: intentar ES reclamar, y un intento que muere sin
+ * llegar a escribir desenlace tiene que contar igual. Se corrige aqui porque un texto que describe mal lo
+ * que hace una funcion lleva a llamarla dos veces "para asegurarse".
  */
 export async function registrarIntentoDeFactura(
   txId: string,
@@ -200,6 +218,7 @@ export async function registrarIntentoDeFactura(
       -- perdia aqui porque no habia columna: se recibia y se tiraba.
       alegra_cufe           = coalesce(${r.cufe ?? null}, alegra_cufe),
       alegra_legal_status   = coalesce(${r.legalStatus ?? null}, alegra_legal_status),
+      alegra_payment_id     = coalesce(${r.paymentId ?? null}, alegra_payment_id),
       alegra_emitted_at     = case when ${r.estado} = 'emitida' and alegra_emitted_at is null
                                    then now() else alegra_emitted_at end,
       -- EL CONTADOR NO SE TOCA AQUI: lo sube reclamarParaFacturar, que es quien decide intentar. Si se
@@ -242,7 +261,9 @@ export async function reclamarParaFacturar(txId: string): Promise<boolean> {
            updated_at = now()
      where id = ${txId}
        and status = 'paid'
-       and (alegra_invoice_state is null or alegra_invoice_state <> 'emitida')
+       -- LOS DOS HUECOS: sin documento, o con documento y SIN PAGO. Antes solo el primero, y las ventas
+       -- facturadas con el pago fallido no se podian reclamar: el boton no las tocaba nunca.
+       and ${LE_FALTA_ALGO}
        and (alegra_last_attempt_at is null or alegra_last_attempt_at < now() - interval '2 minutes')
     returning id`);
   return filas.length > 0;
@@ -270,6 +291,8 @@ export async function listarVentasSinDocumento(limite = 50): Promise<
     intentos: number;
     motivo: string | null;
     fecha: string;
+    /** Si la factura esta completa pero el pago no. Es el hueco que el panel no mostraba. */
+    pagoPendiente: boolean;
   }[]
 > {
   const filas = await db.execute<{
@@ -280,12 +303,13 @@ export async function listarVentasSinDocumento(limite = 50): Promise<
     alegra_attempts: number;
     alegra_last_error: string | null;
     created_at: string;
+    alegra_payment_id: string | null;
   }>(sql`
     select id, amount, alegra_invoice_state, alegra_invoice_number,
-           alegra_attempts, alegra_last_error, created_at
+           alegra_attempts, alegra_last_error, created_at, alegra_payment_id
       from transactions
      where status = 'paid'
-       and (alegra_invoice_state is null or alegra_invoice_state <> 'emitida')
+       and ${LE_FALTA_ALGO}
      order by created_at desc
      limit ${limite}`);
   return filas.map((f) => ({
@@ -296,6 +320,7 @@ export async function listarVentasSinDocumento(limite = 50): Promise<
     intentos: Number(f.alegra_attempts),
     motivo: f.alegra_last_error,
     fecha: String(f.created_at),
+    pagoPendiente: f.alegra_invoice_state === "emitida" && !f.alegra_payment_id,
   }));
 }
 
@@ -323,8 +348,7 @@ export async function listarFacturasPendientes(
        -- TODO LO QUE NO ESTA TERMINADO, no una lista de estados: incluye emitida_sin_sellar (numerada y
        -- sin CUFE), que antes quedaba fuera del barrido justo por parecer terminada. Y un estado nuevo
        -- entra solo, sin que haya que acordarse de esta linea.
-       and alegra_invoice_state is not null
-       and alegra_invoice_state <> 'emitida'
+       and ${LE_FALTA_ALGO}
        and alegra_attempts < ${maxIntentos}
      order by created_at asc
      limit ${limite}`);
@@ -344,6 +368,6 @@ export async function contarVentasSinDocumento(): Promise<{ total: number; agota
            count(*) filter (where alegra_attempts >= 5)::int as agotadas
       from transactions
      where status = 'paid'
-       and (alegra_invoice_state is null or alegra_invoice_state <> 'emitida')`);
+       and ${LE_FALTA_ALGO}`);
   return { total: Number(r?.total ?? 0), agotadas: Number(r?.agotadas ?? 0) };
 }

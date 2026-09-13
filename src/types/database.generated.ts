@@ -3885,6 +3885,7 @@ export type Database = {
           alegra_last_attempt_at: string | null
           alegra_last_error: string | null
           alegra_legal_status: string | null
+          alegra_payment_id: string | null
           amount: number
           created_at: string
           currency: string
@@ -3910,6 +3911,7 @@ export type Database = {
           alegra_last_attempt_at?: string | null
           alegra_last_error?: string | null
           alegra_legal_status?: string | null
+          alegra_payment_id?: string | null
           amount: number
           created_at?: string
           currency?: string
@@ -3935,6 +3937,7 @@ export type Database = {
           alegra_last_attempt_at?: string | null
           alegra_last_error?: string | null
           alegra_legal_status?: string | null
+          alegra_payment_id?: string | null
           amount?: number
           created_at?: string
           currency?: string

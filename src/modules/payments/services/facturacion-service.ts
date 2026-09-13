@@ -131,22 +131,27 @@ async function resolverContacto(patientId: string, env: string): Promise<number>
 }
 
 /**
- * Registra el pago de una factura si todavia tiene saldo.
+ * Registra el pago de una factura si todavia tiene saldo. Devuelve el id del pago o el motivo del fallo.
  *
- * EL SALDO LO DICE ALEGRA, no Atlas. Es deliberado: si el pago se registro y el desenlace no llego a
- * escribirse (el proceso murio entre las dos llamadas), Atlas creeria que falta y lo registraria DOS
- * VECES. La unica fuente que no puede equivocarse sobre si una factura esta pagada es la factura.
+ * EL SALDO LO DICE ALEGRA, no Atlas. Si el pago se registro y el desenlace no llego a escribirse (el proceso
+ * murio entre las dos llamadas), Atlas creeria que falta y lo registraria DOS VECES. La unica fuente que no
+ * puede equivocarse sobre si una factura esta pagada es la factura.
  */
+export const PAGADA_SIN_ID = "pagada-en-alegra";
+
 async function registrarPagoSiFalta(
   clientId: number,
   factura: { id: string; balance: number | null },
   cobrado: number,
   cuenta: number,
   fecha: string,
-): Promise<string | null> {
-  if (factura.balance !== null && factura.balance <= 0) return null; // ya esta pagada
+): Promise<{ paymentId: string | null; error: string | null }> {
+  // YA ESTA PAGADA segun Alegra, pero Atlas no tiene el id (la respuesta de la factura no trae sus pagos).
+  // Se marca con un valor que dice exactamente eso en vez de dejarlo nulo: nulo significa "falta el
+  // pago", y la cola lo reintentaria hasta agotar los intentos contra una factura que ya estaba bien.
+  if (factura.balance !== null && factura.balance <= 0) return { paymentId: PAGADA_SIN_ID, error: null };
   try {
-    await createAlegraPayment({
+    const pago = await createAlegraPayment({
       clientId,
       invoiceId: factura.id,
       // BRUTO. La comision de la pasarela es gasto de CNV: restarla haria que la factura dijera que el
@@ -155,15 +160,12 @@ async function registrarPagoSiFalta(
       date: fecha,
       bankAccountId: cuenta,
     });
-    return null;
+    return { paymentId: pago.id, error: null };
   } catch (e) {
-    // EL ERROR DEL PAGO SE ESCRIBE, y hasta el 2026-09-12 solo iba a Sentry. La factura quedaba `emitida`
-    // sin rastro de que el pago no se habia registrado, y Alegra la mostraba "por cobrar" de un paciente
-    // que ya pago. Nadie iba a mirar Sentry por eso.
-    Sentry.captureException(e, {
-      tags: { area: "alegra-pago", invoiceId: factura.id },
-    });
-    return `Factura OK, PAGO NO REGISTRADO: ${motivoLegible(e)}`;
+    // EL ERROR DEL PAGO SE ESCRIBE, y hasta el 2026-09-12 solo iba a Sentry. Con eso se diagnostico el
+    // campo `bankAccount` en vez de `account`, que tumbo los seis pagos del smoke.
+    Sentry.captureException(e, { tags: { area: "alegra-pago", invoiceId: factura.id } });
+    return { paymentId: null, error: `Factura OK, PAGO NO REGISTRADO: ${motivoLegible(e)}` };
   }
 }
 
@@ -189,10 +191,10 @@ async function completarFactura(
   const cobrado = Math.round(Number(venta.amount));
   const cuenta = cuentaDelPago(venta.canal, mapa);
 
-  let errorDelPago: string | null = null;
+  let pago: { paymentId: string | null; error: string | null } = { paymentId: null, error: null };
   if (cuenta) {
     const clientId = await resolverContacto(venta.patientId!, mapa.env);
-    errorDelPago = await registrarPagoSiFalta(clientId, factura, cobrado, cuenta, hoy());
+    pago = await registrarPagoSiFalta(clientId, factura, cobrado, cuenta, hoy());
   }
 
   await fr.registrarIntentoDeFactura(venta.id, {
@@ -201,8 +203,9 @@ async function completarFactura(
     numero: factura.numero,
     cufe,
     legalStatus: factura.stamp?.legalStatus ?? null,
+    paymentId: pago.paymentId,
     error:
-      errorDelPago ??
+      pago.error ??
       (cufe ? null : "Numerada sin sellar ante la DIAN (sin CUFE). La cola vuelve a leerla."),
   });
 }
@@ -320,10 +323,16 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
     // segunda factura. Se escribe primero lo irreversible.
     const cuenta = cuentaDelPago(venta.canal, mapa);
     if (cuenta) {
-      const errorDelPago = await registrarPagoSiFalta(clientId, sellada, cobrado, cuenta, fecha);
-      if (errorDelPago) {
-        await fr.registrarIntentoDeFactura(venta.id, { estado, error: errorDelPago });
-      }
+      const pago = await registrarPagoSiFalta(clientId, sellada, cobrado, cuenta, fecha);
+      // Se escribe SIEMPRE, no solo al fallar: el id del pago es lo que saca la venta de la cola. Sin
+      // escribirlo en el exito, una venta bien pagada seguiria figurando como "le falta el pago".
+      await fr.registrarIntentoDeFactura(venta.id, {
+        estado,
+        paymentId: pago.paymentId,
+        error:
+          pago.error ??
+          (cufe ? null : "Numerada sin sellar ante la DIAN (sin CUFE). La cola vuelve a leerla."),
+      });
     }
   } catch (e) {
     const motivo = motivoLegible(e);
