@@ -46,7 +46,7 @@ node --env-file=.env.produccion.local scripts/check-migrations.mjs
 ```
 
 - [ ] **Debe dar:** `137` en el repo y `137` en la base, sin migraciones pendientes.
-- [ ] En Vercel, Deployments: el deployment de **Production** es del último commit de `main`.
+- [ ] En Vercel, Deployments: el deployment de **Production** es del último commit de `main`, y ese último commit **incluye `94ecf611`** (el reparto con el proveedor). Sin él, la venta controlada de LUVIA registraría 60.504 de ingreso de CNV en vez de 7.563.
 - [ ] **Anota el nombre de ese deployment** (el de sandbox). Es a donde vuelves si algo sale mal (F3).
 
 ### A4. Wompi producción está listo
@@ -60,9 +60,11 @@ Si falta algo, lo crea contabilidad en la pantalla de Alegra **antes** de seguir
 
 - [ ] **Cinco ítems**, con el nombre igual al de Atlas (el cotejo compara nombres), su precio **base sin IVA** y el impuesto **IVA 19%**:
 
+  > **ANTES DE ESTE PASO: el nombre de MULTI-CELL BASE tiene que estar confirmado con el texto del registro sanitario RSA-3987-2026**, y Atlas alineado a ese nombre. Hoy hay dos afirmaciones que se contradicen (ver el reporte del 2026-09-13). La tabla dice el nombre que se dio el 2026-09-13; si el registro dice otra cosa, se corrige aquí y en Atlas antes de la ventana, no durante.
+
   | Nombre | Base |
   |---|---|
-  | MULTICELL BASE (o MULTI-CELL BASE) | 90.000 |
+  | MULTI-CELL BASE | 90.000 |
   | OMEGA COMPLEX | 90.000 |
   | CURCUMIN BIOACTIV | 90.000 |
   | D3-K2 OSTEO | 140.000 |
@@ -228,6 +230,18 @@ select status, amount, wompi_env, alegra_env, alegra_invoice_state, alegra_invoi
 - [ ] `alegra_last_error` vacío
 - [ ] En `/pagos`, esa venta **no** aparece en "Ventas cobradas sin cerrar en contabilidad".
 
+**(lectura)** El reparto que selló la venta:
+
+```sql
+select (select amount from cnv_revenue cr where cr.transaction_id = t.id) as ingreso_cnv,
+       (select commission_amount from professional_revenue pr where pr.transaction_id = t.id) as comision
+  from transactions t order by t.created_at desc limit 1;
+```
+
+- [ ] Con un Integrante al 20%: **`comision` 15126** e **`ingreso_cnv` 7563**.
+- [ ] Sin profesional en la venta: `comision` vacía e **`ingreso_cnv` 22689**.
+- **Si `ingreso_cnv` dice 60504 o 75630: PARA.** El deployment no tiene el reparto con el proveedor (A3).
+
 ### C4. Revisión en Alegra (contabilidad, en pantalla)
 
 Abre la factura FE nueva:
@@ -255,6 +269,15 @@ Abre la factura FE nueva:
 
 **Solo si C3, C4 y C6 quedaron completos.**
 
+- [ ] **Purga las ventas de prueba del smoke** (decisión del 2026-09-13). Primero el ensayo, sin `--commit`:
+
+```
+node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purga-ventas-de-prueba.sql
+```
+
+  **Debe dar:** la lista de ventas de prueba (unas siete, ninguna de hoy) y `Ventas reales intactas: 1 por 90000` (la venta controlada). Si la cifra real no es esa, **no confirmes**. Si cuadra, repite con `--commit`.
+
+- [ ] **Envía el aviso escrito a los Integrantes** (`docs/entregas/AVISO_INTEGRANTES_VENTAS_Y_ENTREGAS.md`) y guarda el mensaje enviado.
 - [ ] Avisa a los Integrantes de que ya pueden cobrar.
 - [ ] **Primer día:** que contabilidad mire en Alegra la **primera factura de un producto propio** (MULTICELL, OMEGA, CURCUMIN o D3-K2) y confirme que su centro de costo es el **propio**. La venta controlada solo probó el de terceros.
 - [ ] Y la **primera venta en efectivo**: su pago tiene que ir contra **"Efectivo en poder de Integrantes"**.
