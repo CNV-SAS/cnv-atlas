@@ -17,9 +17,9 @@
 
 ## Si ya empezaste y paraste en el paso 3 (2026-09-13)
 
-El botón "Generar de todos modos" no generaba. Está arreglado en el commit siguiente al de estas instrucciones. Para retomar:
+El botón "Generar de todos modos" no generaba. Está arreglado en el commit `0049fb1b`. Para retomar:
 
-1. **Push y deployment** con ese commit, en **Ready**.
+1. **Push y deployment** con `0049fb1b` o posterior, en **Ready**.
 2. En la ventana de PowerShell con `$env:DATABASE_URL` de la nube, cierra los checkouts pendientes. Esto suelta la unidad que dejó reservada el checkout de 1:
 
 ```powershell
