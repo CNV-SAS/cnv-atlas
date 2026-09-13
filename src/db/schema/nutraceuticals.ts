@@ -118,6 +118,9 @@ export const nutraceuticalStockMovements = pgTable(
     // y el excedente NO infla el saldo sin que CNV lo reconozca (lo reconcilia el conteo/sobrante). Se guarda
     // lo reportado para que CNV vea la DIRECCION (falto/sobro). null en movimientos que no confirman remesa.
     reportedQuantity: integer("reported_quantity"),
+    // VENTA (Bloque 3, 0139): la linea de venta de la que salio. Obligatoria en `type=venta` (CHECK en la
+    // migracion). Sin `.references` aqui porque payments.ts ya importa este archivo; la FK existe en SQL.
+    transactionItemId: uuid("transaction_item_id"),
     createdBy: uuid("created_by").references(() => profiles.id),
     createdAt: createdAt(),
   },

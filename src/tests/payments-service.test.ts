@@ -27,12 +27,22 @@ vi.mock("@/modules/nutraceuticals/data/nutraceuticals-repository", () => ({
 vi.mock("../modules/payments/services/facturacion-service", () => ({ emitirFacturaDeVenta: vi.fn() }));
 vi.mock("../modules/payments/data/facturacion-repository", () => ({ marcarFacturaPendiente: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+// EL INVENTARIO DE LA VENTA (Bloque 3) tiene sus candados contra base real (venta-inventario.test.ts). Aqui
+// solo importa la ORQUESTACION: que el webhook y el efectivo lo llamen, y que un checkout sin existencias se
+// traduzca al error del formulario.
+vi.mock("../modules/payments/data/inventario-de-venta", () => ({
+  InventarioDeVentaError: class InventarioDeVentaError extends Error {},
+  liberarReservasDeVenta: vi.fn(),
+}));
+vi.mock("../modules/payments/services/inventario-venta-service", () => ({ descontarInventarioDeVenta: vi.fn() }));
 
 import * as nutraRepo from "@/modules/nutraceuticals/data/nutraceuticals-repository";
 
 import * as repo from "../modules/payments/data/payments-repository";
 import * as writer from "../modules/payments/data/payments-writer";
+import * as inventario from "../modules/payments/data/inventario-de-venta";
 import * as facturacion from "../modules/payments/services/facturacion-service";
+import * as descuento from "../modules/payments/services/inventario-venta-service";
 import {
   CheckoutError,
   createCheckout,
@@ -201,7 +211,16 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
     // impedir sellar: llega como null y el pago se sella igual.
     // Los dos ultimos son el instrumento y el tipo de tarjeta. El evento de este test no los trae, y eso NO
     // puede impedir sellar: llegan como null y el pago se sella igual.
-    expect(writer.sealPaidTransaction).toHaveBeenCalledWith(TX_REF, "wompi-1", null, null);
+    // Y el quinto, el AMBIENTE del evento (Bloque 3): este evento tampoco lo trae, y llega como null.
+    expect(writer.sealPaidTransaction).toHaveBeenCalledWith(TX_REF, "wompi-1", null, null, null);
+    // EL INVENTARIO SE DESCUENTA ANTES DE PEDIR LA FACTURA, y despues de sellar el pago.
+    expect(descuento.descontarInventarioDeVenta).toHaveBeenCalledWith(TX_REF);
+    expect(vi.mocked(descuento.descontarInventarioDeVenta).mock.invocationCallOrder[0]).toBeGreaterThan(
+      vi.mocked(writer.sealPaidTransaction).mock.invocationCallOrder[0],
+    );
+    expect(vi.mocked(descuento.descontarInventarioDeVenta).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(facturacion.emitirFacturaDeVenta).mock.invocationCallOrder[0],
+    );
     expect(writer.markWebhookProcessed).toHaveBeenCalled();
     // Se intenta la factura, y con el CANAL correcto: es lo que elige la cuenta puente del pago.
     expect(facturacion.emitirFacturaDeVenta).toHaveBeenCalledWith(
@@ -216,7 +235,13 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
     const out = await processWompiWebhook(event("DECLINED"));
 
     expect(writer.markTransactionFailed).toHaveBeenCalledWith(TX_REF, "wompi-1");
+    // Y suelta sus reservas, DESPUES de marcarla fallida (la liberacion solo actua sobre una venta failed).
+    expect(inventario.liberarReservasDeVenta).toHaveBeenCalledWith(TX_REF);
+    expect(vi.mocked(inventario.liberarReservasDeVenta).mock.invocationCallOrder[0]).toBeGreaterThan(
+      vi.mocked(writer.markTransactionFailed).mock.invocationCallOrder[0],
+    );
     expect(writer.sealPaidTransaction).not.toHaveBeenCalled();
+    expect(descuento.descontarInventarioDeVenta).not.toHaveBeenCalled();
     expect(out.sealed).toBe(false);
   });
 
@@ -228,6 +253,51 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
 
     expect(out.sealed).toBe(false);
     expect(facturacion.emitirFacturaDeVenta).not.toHaveBeenCalled();
+    expect(descuento.descontarInventarioDeVenta).not.toHaveBeenCalled();
+  });
+
+  it("el AMBIENTE del evento llega al sellado", async () => {
+    vi.mocked(writer.recordWebhookEvent).mockResolvedValue({ isNew: true, alreadyProcessed: false });
+    vi.mocked(writer.sealPaidTransaction).mockResolvedValue(null);
+    await processWompiWebhook({ ...(event("APPROVED") as object), environment: "prod" } as never);
+    expect(writer.sealPaidTransaction).toHaveBeenCalledWith(TX_REF, "wompi-1", null, null, "prod");
+  });
+});
+
+describe("el inventario en la venta", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("un checkout SIN EXISTENCIAS se rechaza con el mensaje del inventario, como error del formulario", async () => {
+    vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "A", unit_price: "50000", commercial_availability: "en_consultorio" },
+    ] as never);
+    vi.mocked(writer.createTransactionWithItems).mockRejectedValue(
+      new inventario.InventarioDeVentaError("Solo hay 1 unidad de \"A\" disponible, y la venta pide 2."),
+    );
+    const promesa = createCheckout(
+      { patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 2 }] },
+      user(["professional"]),
+    );
+    await expect(promesa).rejects.toBeInstanceOf(CheckoutError);
+    await expect(promesa).rejects.toThrow(/Solo hay 1 unidad/);
+  });
+
+  it("la venta en EFECTIVO descuenta el inventario despues de crearse y antes de la factura", async () => {
+    vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "A", unit_price: "50000", commercial_availability: "en_consultorio" },
+    ] as never);
+    vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-9" });
+    await registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"]), "idem-9");
+
+    expect(descuento.descontarInventarioDeVenta).toHaveBeenCalledWith("cash-9");
+    expect(vi.mocked(descuento.descontarInventarioDeVenta).mock.invocationCallOrder[0]).toBeGreaterThan(
+      vi.mocked(writer.createPaidCashTransaction).mock.invocationCallOrder[0],
+    );
+    expect(vi.mocked(descuento.descontarInventarioDeVenta).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(facturacion.emitirFacturaDeVenta).mock.invocationCallOrder[0],
+    );
   });
 });
 

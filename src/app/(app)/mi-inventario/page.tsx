@@ -27,6 +27,7 @@ const MOVEMENT_LABEL: Record<string, string> = {
   despacho: "Entrega a paciente",
   conciliacion: "Ajuste por conteo",
   devolucion: "Devolución a CNV",
+  venta: "Venta",
 };
 
 function fmtDate(iso: string): string {

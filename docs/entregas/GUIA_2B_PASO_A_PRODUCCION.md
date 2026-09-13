@@ -45,7 +45,7 @@ git pull
 node --env-file=.env.produccion.local scripts/check-migrations.mjs
 ```
 
-- [ ] **Debe dar:** `138` en el repo y `138` en la base, sin migraciones pendientes. La 138 es la `0137` (el nombre MULTI-CELL BASE, con guion): **aplícala como las anteriores antes de seguir**, porque el SQL de configuración busca el producto por ese nombre y aborta si no lo encuentra.
+- [ ] **Debe dar:** el **mismo número** en el repo y en la base, sin migraciones pendientes (el 2026-09-13 eran 140). Entre ellas van la `0137` (el nombre MULTI-CELL BASE, con guion: el SQL de configuración busca el producto por ese nombre y aborta si no lo encuentra) y la `0138`-`0139` (la venta mueve inventario).
 - [ ] En Vercel, Deployments: el deployment de **Production** está en **Ready** y es de **`208aa3aa` o posterior**. Ese commit trae, con los anteriores de hoy:
   - **el reparto con el proveedor** (`94ecf611`). Sin él, la venta controlada de LUVIA registraría 60.504 de ingreso de CNV en vez de 7.563;
   - **las lecturas de saldo por lote** (`dd67a041`);
@@ -270,10 +270,11 @@ Abre la factura FE nueva:
 
 ### C7. La unidad física
 
-La venta **no descuenta inventario** (eso llega con el Bloque 3), y es la misma situación del aviso a los Integrantes.
+**Desde la sesión 1 del Bloque 3 la venta descuenta inventario**, así que esto ya no es una nota a mano: se verifica.
 
-- [ ] **Anota de dónde salió la unidad de LUVIA:** de la bodega central o de la vitrina de qué Integrante, y la fecha.
-- Si salió de un Integrante y el comprador tiene tratamiento con LUVIA prescrita, ese Integrante registra la entrega en Tratamiento. Si no, la nota escrita es el registro, igual que pide el aviso.
+- [ ] **Antes de C1:** la venta sale de la ubicación del Integrante asignado al comprador, o de la **bodega central** si no tiene. Esa ubicación tiene que tener LUVIA; si no, el checkout se rechaza con *No hay existencias de "LUVIA"*.
+- [ ] **(lectura)** Después de C3: `select stock_state, stock_last_error from transactions order by created_at desc limit 1;` **Debe dar** `descontado`. Si dice `sin_saldo`, la venta está bien pero Atlas no tenía esa unidad en esa ubicación: anótalo.
+- [ ] La unidad **física** sale de esa misma ubicación. Si se entrega desde otra, el inventario de las dos queda descuadrado: anótalo.
 
 ---
 

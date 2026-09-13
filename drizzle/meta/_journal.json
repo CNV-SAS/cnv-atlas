@@ -967,6 +967,20 @@
       "when": 1791764246099,
       "tag": "0137_multi_cell_base_con_guion",
       "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1791764306099,
+      "tag": "0138_movimiento_de_venta",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1791764366099,
+      "tag": "0139_venta_con_inventario",
+      "breakpoints": true
     }
   ]
 }

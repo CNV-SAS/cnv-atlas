@@ -18,7 +18,9 @@ import {
   type SealedTransaction,
 } from "../data/payments-writer";
 import { marcarFacturaPendiente } from "../data/facturacion-repository";
+import { InventarioDeVentaError, liberarReservasDeVenta } from "../data/inventario-de-venta";
 import { emitirFacturaDeVenta } from "./facturacion-service";
+import { descontarInventarioDeVenta } from "./inventario-venta-service";
 import type { CreateCheckoutInput, WompiEventInput } from "../validations";
 
 // Servicio de pagos (la logica vive aqui; las actions y el route handler son thin).
@@ -91,15 +93,23 @@ export async function createCheckout(
   user: CurrentUser,
 ): Promise<CheckoutCreated> {
   const { professionalId, lines, amount } = await resolveSale(input, user);
-  const { id } = await createTransactionWithItems({
-    organizationId: user.organizationId,
-    patientId: input.patientId,
-    professionalId,
-    amount,
-    currency: "COP",
-    idempotencyKey: randomUUID(),
-    items: lines,
-  });
+  let id: string;
+  try {
+    ({ id } = await createTransactionWithItems({
+      organizationId: user.organizationId,
+      patientId: input.patientId,
+      professionalId,
+      amount,
+      currency: "COP",
+      idempotencyKey: randomUUID(),
+      items: lines,
+    }));
+  } catch (e) {
+    // SIN EXISTENCIAS NO HAY CHECKOUT (D3): la reserva va dentro de la creacion y, si no alcanza, la venta
+    // no se crea. El mensaje dice que producto y cuanto hay.
+    if (e instanceof InventarioDeVentaError) throw new CheckoutError(e.message);
+    throw e;
+  }
 
   return { transactionId: id, checkoutUrl: buildCheckoutUrl(id) };
 }
@@ -133,6 +143,9 @@ export async function registerCashSale(
   // La venta en efectivo NACE pagada, asi que no hay webhook que dispare la factura: se emite aqui. No
   // revienta la venta si falla (el servicio escribe el desenlace y la deja en la cola): el dinero ya lo
   // recibio el Integrante y negarle la venta por un problema de facturacion seria peor.
+  // PRIMERO EL INVENTARIO, DESPUES LA FACTURA, y ninguno de los dos puede tumbar la venta: los dos escriben
+  // su desenlace en la venta y quedan en su cola. El pago ya esta sellado en la transaccion de arriba.
+  await descontarInventarioDeVenta(id);
   await facturarVentaSellada(
     { id, amount: String(amount), currency: "COP", patientId: input.patientId, professionalId },
     "efectivo",
@@ -240,6 +253,8 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
 
   if (internal === "failed") {
     await markTransactionFailed(txId, wompiTxId);
+    // El pago no se hizo: sus unidades vuelven a estar disponibles. Solo actua si la venta quedo `failed`.
+    await liberarReservasDeVenta(txId);
     await markWebhookProcessed(WOMPI_PROVIDER, externalId);
     return { handled: true, duplicate: false, sealed: false };
   }
@@ -250,9 +265,15 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
     wompiTxId,
     tx.payment_method_type ?? null,
     tx.payment_method?.extra?.card_type ?? null,
+    event.environment ?? null,
   );
   await markWebhookProcessed(WOMPI_PROVIDER, externalId);
-  if (sealed) await facturarVentaSellada(sealed, "wompi");
+  if (sealed) {
+    // EL ORDEN: el pago ya quedo sellado y confirmado arriba. El inventario y la factura corren despues, cada
+    // uno en su transaccion, y ninguno lanza.
+    await descontarInventarioDeVenta(sealed.id);
+    await facturarVentaSellada(sealed, "wompi");
+  }
 
   return { handled: true, duplicate: false, sealed: Boolean(sealed) };
 }

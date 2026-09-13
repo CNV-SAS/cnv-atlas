@@ -34,6 +34,10 @@ export type RegisterCashSaleInput = z.infer<typeof registerCashSaleSchema>;
 export const wompiEventSchema = z.object({
   event: z.string(),
   timestamp: z.number(),
+  // EL AMBIENTE DEL PAGO, segun Wompi: "test" en sandbox, "prod" en produccion (docs.wompi.co, eventos). Es
+  // la fuente del hecho y el sellado lo usa para corregir el de la venta (Bloque 3). Opcional para no romper
+  // el sellado si un evento no lo trae; un valor desconocido se rechaza, no se adivina.
+  environment: z.enum(["test", "prod"]).optional(),
   signature: z.object({
     checksum: z.string(),
     properties: z.array(z.string()),

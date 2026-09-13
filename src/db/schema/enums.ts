@@ -205,6 +205,7 @@ export const nutraceuticalMovementType = pgEnum("nutraceutical_movement_type", [
   "despacho", // el integrante entrega a un paciente, ligado al tratamiento (-)
   "conciliacion", // ajuste tras conteo fisico (+/-)
   "devolucion", // el integrante devuelve a CNV (-)
+  "venta", // salida ligada a una LINEA de venta, al sellar el pago (-) (Bloque 3, 0138)
 ]);
 
 // Estado del CASO de faltante (T3b-3). El faltante NO es un ajuste: es un caso con estados y consecuencia

@@ -1,6 +1,7 @@
 import "server-only";
 import { wompiEnvDeLaLlave } from "../ambiente";
 import { RepartoInvalidoError, repartir } from "../reparto";
+import { InventarioDeVentaError, reservarVenta, ubicacionDeLaVenta } from "./inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
@@ -143,13 +144,20 @@ export type NewTransaction = {
   currency: string;
   idempotencyKey: string;
   items: NewOrderLine[];
+  /** El tratamiento del que nace la venta. Nulo en `/pagos` (el paciente que vuelve solo a comprar). */
+  treatmentId?: string | null;
 };
 
-// Crea la transaccion (pending) y sus items en una sola transaccion de BD.
+// Crea la transaccion (pending), sus items y SUS RESERVAS en una sola transaccion de BD.
+//
+// LA RESERVA VA DENTRO (D3, Bloque 3): si no hay existencias, `reservarVenta` lanza
+// `InventarioDeVentaError` y la venta no se crea. Un checkout pagable sin unidades detras es cobrar algo que
+// no se puede entregar.
 export async function createTransactionWithItems(
   input: NewTransaction,
 ): Promise<{ id: string }> {
   return db.transaction(async (tx) => {
+    const locationId = await ubicacionDeLaVenta(tx, input.professionalId);
     const [t] = await tx
       .insert(transactions)
       .values({
@@ -159,9 +167,13 @@ export async function createTransactionWithItems(
         amount: String(input.amount),
         currency: input.currency,
         idempotencyKey: input.idempotencyKey,
-        // EL MODO DEL PAGO SE ESCRIBE AL NACER LA VENTA y no cambia: es lo que impide que una venta del smoke
-        // se facture como real al pasar Alegra a produccion (0135).
+        // EL MODO DEL PAGO al nacer la venta (0135). Si el pago llega de otro ambiente, el sellado lo corrige
+        // con el que declara el evento de Wompi, que es la fuente del hecho.
         wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
+        treatmentId: input.treatmentId ?? null,
+        locationId,
+        deliveryMode: "en_consulta",
+        operatedAt: new Date(),
       })
       .returning({ id: transactions.id });
     if (input.items.length > 0) {
@@ -174,6 +186,10 @@ export async function createTransactionWithItems(
         })),
       );
     }
+    if (!locationId) {
+      throw new InventarioDeVentaError("No hay una ubicación de inventario de la que pueda salir esta venta.");
+    }
+    await reservarVenta(tx, t.id, locationId);
     return { id: t.id };
   });
 }
@@ -242,8 +258,28 @@ export async function sealPaidTransaction(
   // El instrumento con que pago el paciente. Opcional: un evento sin el no puede impedir sellar el pago.
   paymentMethodType?: string | null,
   paymentCardType?: string | null,
+  // EL AMBIENTE QUE DECLARA EL EVENTO DE WOMPI ("test" | "prod"). Es la fuente del hecho: la venta guarda
+  // el ambiente con que se CREO el checkout, pero la llave con que se COBRA la pone la pagina al abrirse.
+  // Un link creado antes de un cambio de llaves y pagado despues cruzaria de ambiente (hallazgo del 2b).
+  ambienteDelEvento?: "test" | "prod" | null,
 ): Promise<SealedTransaction | null> {
   return db.transaction(async (tx) => {
+    const wompiEnv = ambienteDelEvento === "prod" ? "produccion" : ambienteDelEvento === "test" ? "test" : undefined;
+    if (wompiEnv) {
+      const [antes] = await tx
+        .select({ wompiEnv: transactions.wompiEnv })
+        .from(transactions)
+        .where(and(eq(transactions.id, txId), eq(transactions.status, "pending")));
+      if (antes && antes.wompiEnv !== wompiEnv) {
+        // No es un error: es exactamente el caso que esto corrige. Se deja rastro porque solo pasa alrededor
+        // de un cambio de llaves, y si pasa en otro momento algo esta mal configurado.
+        Sentry.captureMessage("El pago llegó de otro ambiente que el del checkout", {
+          level: "warning",
+          tags: { area: "ambiente-del-pago", transactionId: txId },
+          extra: { checkout: antes.wompiEnv, pago: wompiEnv },
+        });
+      }
+    }
     const updated = await tx
       .update(transactions)
       .set({
@@ -251,6 +287,7 @@ export async function sealPaidTransaction(
         wompiTransactionId,
         paymentMethodType: paymentMethodType ?? null,
         paymentCardType: paymentCardType ?? null,
+        ...(wompiEnv ? { wompiEnv } : {}),
         updatedAt: new Date(),
       })
       .where(and(eq(transactions.id, txId), eq(transactions.status, "pending")))
@@ -273,8 +310,13 @@ export async function sealPaidTransaction(
 // MISMA contabilidad que el webhook de Wompi (sealAccounting). Idempotente por idempotency_key: un doble
 // envio no crea ni sella dos veces (onConflictDoNothing + re-lectura). El efectivo es dinero de CNV que
 // el integrante custodia; eso lo refleja payment_method='efectivo' (la liquidacion suma lo custodiado).
+//
+// EL INVENTARIO NO SE DESCUENTA AQUI (Bloque 3): la venta nace `pendiente` de descuento y el servicio lo
+// corre despues, en su propia transaccion. Dentro de esta, un error de inventario desharia la venta ya
+// cobrada. En efectivo no hay reserva: el pago y la entrega son el mismo momento.
 export async function createPaidCashTransaction(input: NewTransaction): Promise<{ id: string }> {
   return db.transaction(async (tx) => {
+    const locationId = await ubicacionDeLaVenta(tx, input.professionalId);
     const inserted = await tx
       .insert(transactions)
       .values({
@@ -286,9 +328,14 @@ export async function createPaidCashTransaction(input: NewTransaction): Promise<
         amount: String(input.amount),
         currency: input.currency,
         idempotencyKey: input.idempotencyKey,
-        // EL MODO DEL PAGO SE ESCRIBE AL NACER LA VENTA y no cambia: es lo que impide que una venta del smoke
-        // se facture como real al pasar Alegra a produccion (0135).
+        // EL MODO DEL PAGO SE ESCRIBE AL NACER LA VENTA: en efectivo no hay evento de Wompi que lo corrija, y
+        // es lo que impide que una venta de prueba se facture como real (0135).
         wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
+        treatmentId: input.treatmentId ?? null,
+        locationId,
+        deliveryMode: "en_consulta",
+        operatedAt: new Date(),
+        stockState: "pendiente",
       })
       .onConflictDoNothing({ target: transactions.idempotencyKey })
       .returning({
