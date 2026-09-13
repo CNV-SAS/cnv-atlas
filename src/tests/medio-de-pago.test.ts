@@ -67,19 +67,32 @@ describe("a Alegra solo viaja un código VERIFICADO", () => {
     }
   });
 
-  it("los dos VERIFICADOS en el sandbox viajan: efectivo y transferencia débito", () => {
-    // Leidos de las facturas 701 y 702 despues de que Santiago los eligiera en la pantalla de Alegra.
+  it("los CUATRO medios de contabilidad están verificados y viajan", () => {
+    // Leidos de las facturas en borrador del sandbox despues de que Santiago los eligiera en la pantalla.
     expect(codigoAlegraDelPago({ canal: "efectivo", tipo: null, tipoTarjeta: null })).toBe("CASH");
     expect(codigoAlegraDelPago({ canal: "wompi", tipo: "PSE", tipoTarjeta: null })).toBe("DEBIT_TRANSFER");
     expect(codigoAlegraDelPago({ canal: "wompi", tipo: "NEQUI", tipoTarjeta: null })).toBe("DEBIT_TRANSFER");
+    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "CREDIT" })).toBe("CREDIT_CARD");
+    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "DEBIT" })).toBe("DEBIT_CARD");
   });
 
-  it("y las TARJETAS no viajan: Alegra no tiene ese medio, y a qué caen lo decide contabilidad", () => {
-    // Informativo: "no definido" no tiene efecto fiscal. Por eso no se elige por nuestra cuenta.
-    expect(CODIGO_ALEGRA.tarjeta_credito).toBeNull();
-    expect(CODIGO_ALEGRA.tarjeta_debito).toBeNull();
-    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "CREDIT" })).toBeNull();
-    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "DEBIT" })).toBeNull();
+  it("el caso real del smoke: el pago con tarjeta de crédito del 13-sep sale con CREDIT_CARD", () => {
+    // Ese pago guardo tipo CARD y tarjeta CREDIT, leidos de la base. Su factura salio sin medio porque en ese
+    // momento el codigo de tarjeta no estaba verificado. Con el codigo, la siguiente sale con el suyo.
+    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "CREDIT" })).toBe("CREDIT_CARD");
+  });
+
+  it("y la tarjeta SIN tipo sigue sin viajar: no se adivina crédito", () => {
+    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: null })).toBeNull();
+  });
+
+  it("el número de la DIAN va al lado del código, y no se escribe si no es seguro", () => {
+    // Contabilidad pidio el numero para cotejar. Transferencia debito queda sin el porque su listado dice 46 y
+    // el catalogo de la DIAN tiene tambien 47, y el rotulo de Alegra no dice cual.
+    expect(CODIGO_ALEGRA.efectivo?.dian).toBe("10");
+    expect(CODIGO_ALEGRA.tarjeta_credito?.dian).toBe("48");
+    expect(CODIGO_ALEGRA.tarjeta_debito?.dian).toBe("49");
+    expect(CODIGO_ALEGRA.transferencia_debito?.dian).toBeNull();
   });
 
   it("y el servicio no manda el campo si no hay código", () => {

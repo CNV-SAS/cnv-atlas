@@ -20,8 +20,8 @@ que algo ya hecho se vuelva a planear).
 |---|---|---|
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
-| **2a** · Alegra reescrito, en SANDBOX | **EN CURSO (2026-09-11)** | Una venta de punta a punta en sandbox: Wompi de prueba paga, se crea el contacto del paciente en Alegra, y sale la factura con sus líneas reales |
-| **2b** · Paso a producción | Pendiente | Credenciales, resolución de facturación y re-mapeo de identificadores. **No arranca hasta que 2a pase** |
+| **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
+| **2b** · Paso a producción | **SIGUIENTE** | Credenciales, resolución de facturación, fila de producción en `alegra_config` y re-mapeo de ítems. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
 | 3 · La venta nace en Tratamiento | Pendiente | — |
 | 3b · Reversa | Pendiente | — |

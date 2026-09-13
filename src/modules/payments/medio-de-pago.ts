@@ -26,8 +26,11 @@ export type MedioDian = "tarjeta_credito" | "tarjeta_debito" | "transferencia_de
 /**
  * De Wompi a DIAN. Es la tabla de contabilidad del 2026-09-13, literal.
  *
+ * LA REGLA PARA LO QUE VENGA, de contabilidad: si la plata sale de una cuenta o deposito, es transferencia
+ * debito; si es plastico, la tarjeta que corresponda; si son billetes, efectivo.
+ *
  * Lo que no esta aqui devuelve null y la factura sale sin medio, que es lo seguro: un instrumento nuevo de
- * Wompi no puede heredar por parecido el medio de otro.
+ * Wompi no puede heredar por parecido el medio de otro. Se agrega aplicando esa regla, a proposito.
  */
 export function medioDianDelPago(pago: {
   canal: "wompi" | "efectivo";
@@ -69,28 +72,68 @@ export function medioDianDelPago(pago: {
  * real. Verificar uno es poner ese medio en una factura del sandbox desde la pantalla de Alegra y leer por
  * API que guardo; entonces se escribe aqui con su evidencia al lado.
  */
-export const CODIGO_ALEGRA: Record<MedioDian, { codigo: string; evidencia: string } | null> = {
-  // SIN CODIGO, y no por falta de verificar: Santiago busco "tarjeta credito" y "tarjeta debito" en el
-  // desplegable de medio de pago de Alegra (sandbox, 2026-09-13) y NO EXISTEN. A que medio caen las tarjetas
-  // lo decide contabilidad, no nosotros. Mientras tanto una venta con tarjeta sale "no definido", que es
-  // informativo y no tiene efecto fiscal.
-  tarjeta_credito: null,
-  tarjeta_debito: null,
+export const CODIGO_ALEGRA: Record<
+  MedioDian,
+  { codigo: string; dian: string | null; evidencia: string } | null
+> = {
+  // ── LOS CUATRO, VERIFICADOS EN EL SANDBOX EL 2026-09-13 ──────────────────────────────────────
+  //
+  // El metodo, para quien tenga que repetirlo: Santiago elige el medio en una factura en BORRADOR desde la
+  // pantalla de Alegra, y se lee por API que guardo. Nada de aqui salio de adivinar un nombre.
+  //
+  // UNA CORRECCION QUE VALE REGISTRAR: primero se escribio que las tarjetas "no existen en Alegra", porque
+  // no aparecian en el desplegable. Existian: el listado expone el catalogo completo de la DIAN y estaban mas
+  // abajo. Que no se vieran no significaba que no estuvieran, y la afirmacion se cayo en cuanto contabilidad
+  // la corrigio. Es la misma leccion que la opinion del asesor legal: una ausencia no se afirma por no haber
+  // mirado el sitio entero.
+  tarjeta_credito: {
+    codigo: "CREDIT_CARD",
+    dian: "48",
+    evidencia:
+      "Factura SETP990214703 del sandbox: Santiago eligio 'Tarjeta credito' en la pantalla y la API devolvio CREDIT_CARD.",
+  },
+  tarjeta_debito: {
+    codigo: "DEBIT_CARD",
+    dian: "49",
+    evidencia:
+      "Factura SETP990214702 del sandbox: Santiago eligio 'Tarjeta debito' en la pantalla y la API devolvio DEBIT_CARD.",
+  },
   transferencia_debito: {
     codigo: "DEBIT_TRANSFER",
+    // SIN NUMERO, a proposito. El listado de contabilidad trae 46 ("Transferencia Debito Interbancario"),
+    // pero el catalogo de la DIAN tiene tambien 47 ("Transferencia Debito Bancaria"), y el rotulo de Alegra
+    // ("Transferencia debito") no dice cual de las dos es. Se confirma con contabilidad antes de escribirlo.
+    dian: null,
     evidencia:
-      "Factura SETP990214702 del sandbox: Santiago eligio 'Transferencia debito' en la pantalla y la API devolvio DEBIT_TRANSFER (2026-09-13).",
+      "Factura SETP990214702 del sandbox, en su PRIMERA lectura: Santiago eligio 'Transferencia debito' y la API devolvio DEBIT_TRANSFER. Despues esa misma factura se cambio a tarjeta debito para verificar ese codigo.",
   },
   efectivo: {
     codigo: "CASH",
+    dian: "10",
     evidencia:
-      "Factura SETP990214701 del sandbox: Santiago eligio 'Efectivo' en la pantalla y la API devolvio CASH (2026-09-13).",
+      "Factura SETP990214701 del sandbox: Santiago eligio 'Efectivo' en la pantalla y la API devolvio CASH.",
   },
 };
 
-// VISTO Y NO USADO: "Consignacion bancaria" guarda BANK_DEPOSIT (factura SETP990214703, 2026-09-13).
-// Contabilidad penso primero en ella (codigo DIAN 42) para PSE y Nequi, y luego los paso a transferencia
-// debito. Queda anotado aqui para que nadie tenga que volver a averiguarlo si esa decision cambia.
+// ── POR QUE SE MANDA EL CODIGO DE ALEGRA Y NO EL NUMERO DE LA DIAN ────────────────────────────
+//
+// Contabilidad pidio guardar el CODIGO NUMERICO y no la etiqueta, para que un cambio de redaccion en Alegra
+// no rompa el envio. La preocupacion es correcta, y resulta que ya esta cubierta, aunque no por el numero:
+//
+//   · "CASH" NO ES LA ETIQUETA. La etiqueta es "Efectivo", la que ve la pantalla. "CASH" es el
+//     identificador que usa la API, y no cambia si Alegra redacta distinto el rotulo.
+//   · Y LA API NO MUESTRA EL NUMERO DE LA DIAN en lo que se leyo: los campos de medio y pago de la factura,
+//     y el contenido del codigo QR de una factura sellada. El medio aparece solo como "CASH",
+//     "CREDIT_CARD"... Donde queda el 10, el 48 o el 49 no se ha visto; lo razonable es que Alegra lo ponga
+//     en el XML que manda a la DIAN, pero eso es inferencia, no algo leido.
+//
+// Asi que se ENVIA el codigo de Alegra (es el que su API devuelve y guarda) y se GUARDA al lado el numero de
+// la DIAN que dio contabilidad, para trazabilidad y para que puedan cotejar sin traducir. Si algun dia hace
+// falta mandar el numero, primero hay que ver que la API lo acepte.
+
+// VISTO Y NO USADO: "Consignacion bancaria" guarda BANK_DEPOSIT (factura SETP990214703, antes de cambiarla a
+// tarjeta credito). Contabilidad penso primero en ella (codigo DIAN 42) para PSE y Nequi, y luego los paso a
+// transferencia debito. Queda anotado para que nadie tenga que volver a averiguarlo si esa decision cambia.
 
 /** Lo que viaja a Alegra: el codigo si esta verificado, nada si no. */
 export function codigoAlegraDelPago(pago: {
