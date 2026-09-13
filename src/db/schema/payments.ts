@@ -64,6 +64,8 @@ export const transactions = pgTable(
     alegraEnv: text("alegra_env"),
     // El instrumento con que pago el paciente. Wompi lo mandaba y el esquema del webhook lo tiraba.
     paymentMethodType: text("payment_method_type"),
+    // CREDIT | DEBIT. Wompi dice "CARD" para las dos en el tipo y separa esto en otro campo (0136).
+    paymentCardType: text("payment_card_type"),
     alegraCufe: text("alegra_cufe"),
     alegraLegalStatus: text("alegra_legal_status"),
     idempotencyKey: text("idempotency_key").notNull().unique(),

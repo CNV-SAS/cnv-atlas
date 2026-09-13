@@ -168,6 +168,18 @@ export async function getVentaParaFacturar(
   return { ...t, canal: t.canal === "efectivo" ? "efectivo" : "wompi" };
 }
 
+/** Con que pago el paciente, para el medio de pago de la factura. Leido de la fila, igual que el ambiente. */
+export async function getInstrumentoDeVenta(
+  txId: string,
+): Promise<{ tipo: string | null; tipoTarjeta: string | null }> {
+  const [t] = await db
+    .select({ tipo: transactions.paymentMethodType, tipoTarjeta: transactions.paymentCardType })
+    .from(transactions)
+    .where(eq(transactions.id, txId))
+    .limit(1);
+  return t ?? { tipo: null, tipoTarjeta: null };
+}
+
 /**
  * El AMBIENTE de una venta, leido de la fila y no de quien llama. Es la fuente de verdad de la regla que
  * impide facturar un pago de prueba en produccion: un llamador que pasara el dato podria pasarlo mal.

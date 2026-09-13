@@ -51,6 +51,15 @@ export const wompiEventSchema = z.object({
       // comision, que no es la misma por instrumento. Opcional porque un evento sin el no debe romper el
       // sellado del pago, que es lo que no se puede perder.
       payment_method_type: z.string().max(40).optional(),
+      // Y EL TIPO DE TARJETA, que `payment_method_type` no dice: para Wompi las dos son "CARD". Viaja en
+      // `payment_method.extra.card_type`. Se declara SOLO lo que se usa (no el objeto entero, que trae
+      // datos del titular de la tarjeta que no hay por que guardar).
+      payment_method: z
+        .object({
+          extra: z.object({ card_type: z.string().max(20).optional() }).partial().optional(),
+        })
+        .partial()
+        .optional(),
     }),
   }),
 });

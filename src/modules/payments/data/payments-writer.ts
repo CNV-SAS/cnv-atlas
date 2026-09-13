@@ -164,6 +164,7 @@ export async function sealPaidTransaction(
   wompiTransactionId: string,
   // El instrumento con que pago el paciente. Opcional: un evento sin el no puede impedir sellar el pago.
   paymentMethodType?: string | null,
+  paymentCardType?: string | null,
 ): Promise<SealedTransaction | null> {
   return db.transaction(async (tx) => {
     const updated = await tx
@@ -172,6 +173,7 @@ export async function sealPaidTransaction(
         status: "paid",
         wompiTransactionId,
         paymentMethodType: paymentMethodType ?? null,
+        paymentCardType: paymentCardType ?? null,
         updatedAt: new Date(),
       })
       .where(and(eq(transactions.id, txId), eq(transactions.status, "pending")))

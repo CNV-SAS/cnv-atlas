@@ -126,6 +126,12 @@ export type AlegraInvoiceInput = {
   numberTemplateId: number; // quien asigna el consecutivo. Atlas nunca lo calcula.
   costCenterId?: number;
   /**
+   * El CODIGO de medio de pago de Alegra ("INSTRUMENT_NOT_DEFINED" y similares), NO el rotulo de su
+   * pantalla. Opcional: si no viene, la factura sale "no definido", que es informativo y no tiene efecto
+   * fiscal. Solo se manda un codigo VERIFICADO (ver `modules/payments/medio-de-pago`).
+   */
+  paymentMethod?: string;
+  /**
    * `true` emite: Alegra asigna el CONSECUTIVO y se pide el SELLADO ante la DIAN. `false` la deja en
    * borrador, que no es un documento fiscal.
    *
@@ -189,6 +195,7 @@ export async function createAlegraInvoice(input: AlegraInvoiceInput): Promise<Al
       ...(input.costCenterId ? { costCenter: { id: input.costCenterId } } : {}),
       // Alegra Colombia exige la forma de pago. La venta a paciente esta pagada al facturarse.
       paymentForm: "CASH",
+      ...(input.paymentMethod ? { paymentMethod: input.paymentMethod } : {}),
       // `open` da el CONSECUTIVO. Sin esto queda en borrador, que es lo que hacia Atlas hasta hoy y por
       // lo que nunca hubo una factura de verdad.
       ...(input.emitir ? { status: "open" } : {}),
