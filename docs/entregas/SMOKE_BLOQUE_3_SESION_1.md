@@ -32,6 +32,8 @@ node scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql --com
 3. En el editor de Supabase, corre la **consulta RESERVAS** (abajo): todas `liberada = true`. Y la **consulta SALDO**: SMOKE-A **2** y SMOKE-B **3**.
 4. **Sigue desde el paso 3.** No repitas los pasos 1 y 2: el paciente ya está sin Integrante y el producto ya existe.
 
+   **Lo que vas a ver de más:** el checkout de 1 que acabas de cerrar sigue apareciendo, como primera fila, en la **consulta VENTAS** (`failed`, `liberado`) y en la **consulta RESERVAS** (SMOKE-A 1, `liberada = true`). Ignóralo: cuando un paso dice "una venta" o "una sola venta", cuenta solo las creadas desde el paso 3.
+
 ---
 
 ## 0. Antes de empezar
