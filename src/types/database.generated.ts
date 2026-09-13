@@ -3894,6 +3894,7 @@ export type Database = {
           idempotency_key: string
           organization_id: string
           patient_id: string | null
+          payment_card_type: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_method_type: string | null
           professional_id: string | null
@@ -3923,6 +3924,7 @@ export type Database = {
           idempotency_key: string
           organization_id: string
           patient_id?: string | null
+          payment_card_type?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
@@ -3952,6 +3954,7 @@ export type Database = {
           idempotency_key?: string
           organization_id?: string
           patient_id?: string | null
+          payment_card_type?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null

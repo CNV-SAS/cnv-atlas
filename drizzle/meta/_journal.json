@@ -953,6 +953,13 @@
       "when": 1791677786099,
       "tag": "0135_ambiente_de_la_venta",
       "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1791764186099,
+      "tag": "0136_tipo_de_tarjeta",
+      "breakpoints": true
     }
   ]
 }

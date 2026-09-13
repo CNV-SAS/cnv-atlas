@@ -19,6 +19,7 @@ import {
 } from "../facturacion";
 import * as fr from "../data/facturacion-repository";
 import { motivoSiLaVentaNoEsDeEsteAmbiente } from "../ambiente";
+import { codigoAlegraDelPago } from "../medio-de-pago";
 
 // ═══ EMITIR LA FACTURA DE VERDAD, Y REGISTRAR SU PAGO ═══
 //
@@ -311,6 +312,12 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
     const clientId = await resolverContacto(venta.patientId, mapa.env);
     const fecha = hoy();
 
+    // EL MEDIO DE PAGO viaja solo si su codigo de Alegra esta VERIFICADO. Si no, la factura sale "no
+    // definido" como hasta hoy: el campo es informativo, y un codigo que Alegra no reconozca podria
+    // rechazar la factura entera.
+    const instrumento = await fr.getInstrumentoDeVenta(venta.id);
+    const paymentMethod = codigoAlegraDelPago({ canal: venta.canal, ...instrumento });
+
     const factura = await createAlegraInvoice({
       clientId,
       items: armado.lineas,
@@ -318,6 +325,7 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       dueDate: fecha,
       numberTemplateId: Number(mapa.invoiceTemplateId),
       ...(armado.costCenterId ? { costCenterId: armado.costCenterId } : {}),
+      ...(paymentMethod ? { paymentMethod } : {}),
       emitir: true,
     });
 
