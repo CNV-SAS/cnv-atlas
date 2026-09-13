@@ -201,12 +201,21 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       }
     }
 
+    // TRES ESTADOS, no dos, y la factura 7 enseño por que: salio `open` con su consecutivo y con `stamp`
+    // NULO. Numerada y sin sellar ante la DIAN. Guardarla como `emitida` decia "listo" sobre algo a
+    // medias, y un estado que dice listo es peor que uno que dice fallida, porque nadie vuelve a mirarlo.
+    const cufe = sellada.stamp?.cufe ?? null;
+    const estado =
+      sellada.estado === "draft" ? "borrador" : cufe ? "emitida" : "emitida_sin_sellar";
     await fr.registrarIntentoDeFactura(venta.id, {
-      estado: sellada.estado === "draft" ? "borrador" : "emitida",
+      estado,
       invoiceId: sellada.id,
       numero: sellada.numero,
-      cufe: sellada.stamp?.cufe ?? null,
-      error: null,
+      cufe,
+      legalStatus: sellada.stamp?.legalStatus ?? null,
+      // El motivo no es un fallo: es lo que falta. Sin esto, una factura sin CUFE se ve igual que una
+      // completa en la unica columna que alguien mira.
+      error: cufe ? null : "Numerada sin sellar ante la DIAN (sin CUFE). La cola vuelve a leerla.",
     });
 
     // EL PAGO, en su propio try. Si falla, la factura YA existe: reintentar la emision duplicaria el
@@ -224,6 +233,15 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
           bankAccountId: cuenta,
         });
       } catch (e) {
+        // EL ERROR DEL PAGO SE ESCRIBE, y hasta hoy solo iba a Sentry. Es el MISMO defecto de visibilidad
+        // que se barrio esta semana, y lo deje yo aqui hace dos dias: la factura quedaba `emitida` sin
+        // rastro de que el pago no se habia registrado, y Alegra la mostraba "por cobrar" de un paciente
+        // que ya pago. Nadie iba a mirar Sentry por eso.
+        //
+        // NO cambia el estado de la factura (existe y esta bien); deja el motivo donde se ve.
+        await fr
+          .registrarIntentoDeFactura(venta.id, { estado, error: `Factura OK, PAGO NO REGISTRADO: ${motivoLegible(e)}` })
+          .catch(() => {});
         Sentry.captureException(e, {
           tags: { area: "alegra-pago", transactionId: venta.id, invoiceId: sellada.id },
         });

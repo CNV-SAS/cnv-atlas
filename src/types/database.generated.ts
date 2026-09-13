@@ -3875,6 +3875,7 @@ export type Database = {
       transactions: {
         Row: {
           alegra_attempts: number
+          alegra_cufe: string | null
           alegra_emitted_at: string | null
           alegra_invoice_id: string | null
           alegra_invoice_number: string | null
@@ -3883,6 +3884,7 @@ export type Database = {
             | null
           alegra_last_attempt_at: string | null
           alegra_last_error: string | null
+          alegra_legal_status: string | null
           amount: number
           created_at: string
           currency: string
@@ -3898,6 +3900,7 @@ export type Database = {
         }
         Insert: {
           alegra_attempts?: number
+          alegra_cufe?: string | null
           alegra_emitted_at?: string | null
           alegra_invoice_id?: string | null
           alegra_invoice_number?: string | null
@@ -3906,6 +3909,7 @@ export type Database = {
             | null
           alegra_last_attempt_at?: string | null
           alegra_last_error?: string | null
+          alegra_legal_status?: string | null
           amount: number
           created_at?: string
           currency?: string
@@ -3921,6 +3925,7 @@ export type Database = {
         }
         Update: {
           alegra_attempts?: number
+          alegra_cufe?: string | null
           alegra_emitted_at?: string | null
           alegra_invoice_id?: string | null
           alegra_invoice_number?: string | null
@@ -3929,6 +3934,7 @@ export type Database = {
             | null
           alegra_last_attempt_at?: string | null
           alegra_last_error?: string | null
+          alegra_legal_status?: string | null
           amount?: number
           created_at?: string
           currency?: string
@@ -4398,7 +4404,12 @@ export type Database = {
         | "timeout"
         | "parse_failed"
         | "provider_error"
-      alegra_invoice_state: "pendiente" | "borrador" | "emitida" | "fallida"
+      alegra_invoice_state:
+        | "pendiente"
+        | "borrador"
+        | "emitida"
+        | "fallida"
+        | "emitida_sin_sellar"
       app_role: "admin" | "direccion" | "soporte" | "obbia" | "professional"
       assignment_status: "active" | "completed" | "breach"
       bank_account_type: "ahorros" | "corriente"
@@ -4636,7 +4647,13 @@ export const Constants = {
         "parse_failed",
         "provider_error",
       ],
-      alegra_invoice_state: ["pendiente", "borrador", "emitida", "fallida"],
+      alegra_invoice_state: [
+        "pendiente",
+        "borrador",
+        "emitida",
+        "fallida",
+        "emitida_sin_sellar",
+      ],
       app_role: ["admin", "direccion", "soporte", "obbia", "professional"],
       assignment_status: ["active", "completed", "breach"],
       bank_account_type: ["ahorros", "corriente"],

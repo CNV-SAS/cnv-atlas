@@ -125,7 +125,14 @@ export type AlegraInvoiceInput = {
   dueDate: string;
   numberTemplateId: number; // quien asigna el consecutivo. Atlas nunca lo calcula.
   costCenterId?: number;
-  /** `true` emite (consecutivo y CUFE). `false` la deja en borrador, que NO es un documento fiscal. */
+  /**
+   * `true` emite: Alegra asigna el CONSECUTIVO y se pide el SELLADO ante la DIAN. `false` la deja en
+   * borrador, que no es un documento fiscal.
+   *
+   * SON DOS COSAS Y SE APRENDIO CON LA FACTURA 7: salio `status: open` con su consecutivo y con `stamp`
+   * NULO, o sea numerada y sin sellar. En la pantalla de Alegra eso se ve como un boton "Emitir"
+   * pendiente. El consecutivo lo da `status: open`; el CUFE hay que pedirlo.
+   */
   emitir: boolean;
 };
 
@@ -177,9 +184,12 @@ export async function createAlegraInvoice(input: AlegraInvoiceInput): Promise<Al
       ...(input.costCenterId ? { costCenter: { id: input.costCenterId } } : {}),
       // Alegra Colombia exige la forma de pago. La venta a paciente esta pagada al facturarse.
       paymentForm: "CASH",
-      // `open` emite: asigna consecutivo y dispara el sellado ante la DIAN. Sin esto queda en borrador,
-      // que es lo que hacia Atlas hasta hoy y por lo que nunca hubo una factura de verdad.
+      // `open` da el CONSECUTIVO. Sin esto queda en borrador, que es lo que hacia Atlas hasta hoy y por
+      // lo que nunca hubo una factura de verdad.
       ...(input.emitir ? { status: "open" } : {}),
+      // Y ESTO PIDE EL SELLADO ante la DIAN, que es lo que produce el CUFE. La factura 7 demostro que no
+      // viene con `open`: hay que pedirlo aparte, en el mismo POST.
+      ...(input.emitir ? { stamp: { generateStamp: true } } : {}),
     },
     timeoutMs: ALEGRA_TIMEOUT_MS,
   });

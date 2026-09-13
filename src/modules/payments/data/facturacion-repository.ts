@@ -172,10 +172,11 @@ export async function setContactoDeAlegra(
 
 /** Lo que se sabe de la factura tras intentarla. */
 export type ResultadoDeFacturacion = {
-  estado: "borrador" | "emitida" | "fallida";
+  estado: "borrador" | "emitida" | "emitida_sin_sellar" | "fallida";
   invoiceId?: string | null;
   numero?: string | null;
   cufe?: string | null;
+  legalStatus?: string | null;
   error?: string | null;
 };
 
@@ -195,6 +196,10 @@ export async function registrarIntentoDeFactura(
       alegra_invoice_state = ${r.estado},
       alegra_invoice_id     = coalesce(${r.invoiceId ?? null}, alegra_invoice_id),
       alegra_invoice_number = coalesce(${r.numero ?? null}, alegra_invoice_number),
+      -- EL CUFE SE ESCRIBE, que hasta hoy no. Se leia de la respuesta, se pasaba a esta funcion y se
+      -- perdia aqui porque no habia columna: se recibia y se tiraba.
+      alegra_cufe           = coalesce(${r.cufe ?? null}, alegra_cufe),
+      alegra_legal_status   = coalesce(${r.legalStatus ?? null}, alegra_legal_status),
       alegra_emitted_at     = case when ${r.estado} = 'emitida' and alegra_emitted_at is null
                                    then now() else alegra_emitted_at end,
       alegra_attempts       = alegra_attempts + 1,
@@ -225,7 +230,11 @@ export async function listarFacturasPendientes(
   const filas = await db.execute<{ id: string; alegra_attempts: number }>(sql`
     select id, alegra_attempts from transactions
      where status = 'paid'
-       and alegra_invoice_state in ('pendiente', 'fallida')
+       -- TODO LO QUE NO ESTA TERMINADO, no una lista de estados: incluye emitida_sin_sellar (numerada y
+       -- sin CUFE), que antes quedaba fuera del barrido justo por parecer terminada. Y un estado nuevo
+       -- entra solo, sin que haya que acordarse de esta linea.
+       and alegra_invoice_state is not null
+       and alegra_invoice_state <> 'emitida'
        and alegra_attempts < ${maxIntentos}
      order by created_at asc
      limit ${limite}`);
