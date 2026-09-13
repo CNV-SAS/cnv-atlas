@@ -202,11 +202,101 @@ export async function registrarIntentoDeFactura(
       alegra_legal_status   = coalesce(${r.legalStatus ?? null}, alegra_legal_status),
       alegra_emitted_at     = case when ${r.estado} = 'emitida' and alegra_emitted_at is null
                                    then now() else alegra_emitted_at end,
-      alegra_attempts       = alegra_attempts + 1,
-      alegra_last_attempt_at = now(),
+      -- EL CONTADOR NO SE TOCA AQUI: lo sube reclamarParaFacturar, que es quien decide intentar. Si se
+      -- subiera en los dos sitios, un intento contaria doble; y si solo se subiera aqui, un intento que
+      -- muere sin llegar a registrar desenlace no contaria nunca y el tope no lo frenaria.
       alegra_last_error     = ${r.error ?? null},
       updated_at            = now()
     where id = ${txId}`);
+}
+
+
+/**
+ * RECLAMA una venta para facturarla. Devuelve false si otro ya la tiene o si ya esta emitida.
+ *
+ * ── POR QUE HACE FALTA UN RECLAMO Y NO BASTA UN `if` ────────────────────────────────────────────
+ *
+ * El boton de reintentar se puede pulsar dos veces, y dos webhooks del mismo pago pueden llegar a la vez.
+ * Con un `if (estado === 'emitida') return`, las dos llamadas leen el estado ANTES de que ninguna lo
+ * cambie, las dos pasan, y salen DOS FACTURAS del mismo hecho. Deshacer eso es una nota credito y un hueco
+ * en el consecutivo.
+ *
+ * El reclamo es un UPDATE CONDICIONAL: gana quien lo ejecuta primero, y Postgres serializa. Lo que llega
+ * despues no encuentra fila y se va.
+ *
+ * ── Y ES UN ARRIENDO, NO UN CANDADO PERMANENTE ─────────────────────────────────────────────────
+ *
+ * Si el proceso muere a mitad (un timeout de la funcion serverless, un despliegue), un candado permanente
+ * dejaria esa venta sin facturar PARA SIEMPRE y sin que nadie pueda reintentarla. Con el arriendo de dos
+ * minutos, se libera sola. Dos minutos es mas que el timeout de las llamadas a Alegra (15s cada una) y
+ * menos que la paciencia de quien pulsa el boton.
+ *
+ * AQUI SE CUENTA EL INTENTO, y en un solo sitio: intentar ES reclamar. Antes se contaba al registrar el
+ * desenlace, asi que un intento que moria sin desenlace no se contaba y el tope no lo frenaba nunca.
+ */
+export async function reclamarParaFacturar(txId: string): Promise<boolean> {
+  const filas = await db.execute<{ id: string }>(sql`
+    update transactions
+       set alegra_attempts = alegra_attempts + 1,
+           alegra_last_attempt_at = now(),
+           updated_at = now()
+     where id = ${txId}
+       and status = 'paid'
+       and (alegra_invoice_state is null or alegra_invoice_state <> 'emitida')
+       and (alegra_last_attempt_at is null or alegra_last_attempt_at < now() - interval '2 minutes')
+    returning id`);
+  return filas.length > 0;
+}
+
+/** Lo que ya se sabe de la factura de una venta, para no crear una segunda. */
+export async function getFacturaDeVenta(
+  txId: string,
+): Promise<{ invoiceId: string | null; estado: string | null } | null> {
+  const [t] = await db
+    .select({ invoiceId: transactions.alegraInvoiceId, estado: transactions.alegraInvoiceState })
+    .from(transactions)
+    .where(eq(transactions.id, txId))
+    .limit(1);
+  return t ?? null;
+}
+
+/** Las ventas sin documento fiscal, CON SU MOTIVO. Es lo que pinta el panel de reintento. */
+export async function listarVentasSinDocumento(limite = 50): Promise<
+  {
+    id: string;
+    amount: string;
+    estado: string | null;
+    numero: string | null;
+    intentos: number;
+    motivo: string | null;
+    fecha: string;
+  }[]
+> {
+  const filas = await db.execute<{
+    id: string;
+    amount: string;
+    alegra_invoice_state: string | null;
+    alegra_invoice_number: string | null;
+    alegra_attempts: number;
+    alegra_last_error: string | null;
+    created_at: string;
+  }>(sql`
+    select id, amount, alegra_invoice_state, alegra_invoice_number,
+           alegra_attempts, alegra_last_error, created_at
+      from transactions
+     where status = 'paid'
+       and (alegra_invoice_state is null or alegra_invoice_state <> 'emitida')
+     order by created_at desc
+     limit ${limite}`);
+  return filas.map((f) => ({
+    id: f.id,
+    amount: String(f.amount),
+    estado: f.alegra_invoice_state,
+    numero: f.alegra_invoice_number,
+    intentos: Number(f.alegra_attempts),
+    motivo: f.alegra_last_error,
+    fecha: String(f.created_at),
+  }));
 }
 
 /** Marca que la venta esta pagada y a la espera de factura. Es lo que la pone en la cola. */

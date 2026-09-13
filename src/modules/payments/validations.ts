@@ -68,3 +68,11 @@ export type CashSaleFormState = {
   success: string | null;
   duplicateWarning: string | null;
 };
+
+// Estado del boton de reintentar facturas. Lleva `warning` porque `useFormToastRefreshOnSuccess` lo
+// espera, y porque un reintento puede salir a medias: unas emitidas y otras no.
+export type RetryFormState = {
+  error: string | null;
+  success: string | null;
+  warning: string | null;
+};

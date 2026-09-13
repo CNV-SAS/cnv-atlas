@@ -5,6 +5,19 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // EL PREFIJO `_` SIGNIFICA "sin usar A PROPOSITO", y hasta hoy era una convencion que el lint no
+  // conocia: lo respetaba por casualidad, porque el ajuste `after-used` solo mira los argumentos
+  // posteriores al ultimo usado. Una accion de `useActionState` que no necesita NINGUNO de sus dos
+  // argumentos (recibe el estado previo y el FormData, y no usa ninguno) los tiene todos sin usar, y ahi
+  // la convencion se caia. Se declara explicita: lo que empieza por `_` esta sin usar porque asi se quiso.
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
