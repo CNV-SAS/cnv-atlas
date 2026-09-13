@@ -1,14 +1,17 @@
 import "server-only";
 import { wompiEnvDeLaLlave } from "../ambiente";
-import { and, eq, isNull } from "drizzle-orm";
+import { RepartoInvalidoError, repartir } from "../reparto";
+import * as Sentry from "@sentry/nextjs";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
-import { db } from "@/db";
 import { baseFromTotal } from "@/core/iva";
+import { db } from "@/db";
 import {
   cnvRevenue,
   paymentWebhookEvents,
   professionalProfiles,
   professionalRevenue,
+  revenueSplits,
   transactionItems,
   transactions,
 } from "@/db/schema";
@@ -21,34 +24,108 @@ import {
 // Tipo de la transaccion de BD (evita `any`, se mantiene con la version de Drizzle).
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-// Contabilidad COMPARTIDA del sellado: comision del profesional (tasa snapshot) + ingreso de CNV, dentro
-// de la transaccion de BD dada. La usan el sellado del webhook de Wompi y la venta en EFECTIVO: UN solo
-// camino contable, no dos. amount es PVP con IVA; la comision y el ingreso van sobre la BASE sin IVA (el
-// IVA es recaudo, no ingreso; decision de B6, ver core/iva).
+// Contabilidad COMPARTIDA del sellado: comision del profesional (tasa snapshot), parte del proveedor e
+// ingreso de CNV, dentro de la transaccion de BD dada. La usan el sellado del webhook de Wompi y la venta en
+// EFECTIVO: UN solo camino contable, no dos. Todo sobre la BASE sin IVA (el IVA es recaudo, no ingreso).
+//
+// EL PROVEEDOR SE DESCUENTA DESDE EL 2026-09-13. Antes el ingreso de CNV era "base menos comision", y en
+// LUVIA (proveedor al 70%) eso registraba 60.504 por venta cuando el real es 7.563: ocho veces mas, en el
+// producto sobre el que esta abierta la pregunta de si el 10% de CNV cubre servirlo.
+//
+// Y NO SE ESCRIBIO UN REPARTO NUEVO. `repartir` (reparto.ts) existia desde el 2026-09-11, puro, probado y
+// escrito para este sellado, y nadie lo importaba; `revenue_splits` tampoco lo leia nadie. Faltaba el cable.
+//
+// LA BASE ES LA DE CADA LINEA (base unitaria al peso por cantidad), la misma que va en la factura
+// (`desgloseDeLaVenta`). Sacarla del total da un peso de diferencia en dos LUVIA (151.261 contra 151.260).
 async function sealAccounting(
   tx: Tx,
   t: { id: string; amount: string; professionalId: string | null },
 ): Promise<void> {
-  const base = baseFromTotal(Number(t.amount));
-  let commission = 0;
+  const lineas = await tx
+    .select({
+      nutraceuticalId: transactionItems.nutraceuticalId,
+      cantidad: transactionItems.quantity,
+      precioUnitario: transactionItems.unitPrice,
+    })
+    .from(transactionItems)
+    .where(eq(transactionItems.transactionId, t.id));
+
+  // LA PARTICIPACION VIGENTE HOY, EN HORA DE COLOMBIA. `valid_to` es exclusivo: cerrar una vigencia el dia X
+  // e insertar la nueva desde X deja un solo reparto por dia, sin solape. Si por error hubiera dos, gana la
+  // mas reciente, y es determinista.
+  const participacion = new Map<string, number>();
+  if (lineas.length > 0) {
+    const vigentes = await tx
+      .select({ nutraceuticalId: revenueSplits.nutraceuticalId, share: revenueSplits.supplierShare })
+      .from(revenueSplits)
+      .where(
+        and(
+          inArray(revenueSplits.nutraceuticalId, lineas.map((l) => l.nutraceuticalId)),
+          sql`${revenueSplits.validFrom} <= (now() at time zone 'America/Bogota')::date`,
+          sql`(${revenueSplits.validTo} is null or ${revenueSplits.validTo} > (now() at time zone 'America/Bogota')::date)`,
+        ),
+      )
+      .orderBy(asc(revenueSplits.validFrom));
+    for (const v of vigentes) participacion.set(v.nutraceuticalId, Number(v.share));
+  }
+
+  let rate = 0;
   if (t.professionalId) {
     const [prof] = await tx
       .select({ rate: professionalProfiles.commissionRate })
       .from(professionalProfiles)
       .where(eq(professionalProfiles.id, t.professionalId));
-    const rate = Number(prof?.rate ?? 0);
-    commission = Math.round(base * rate * 100) / 100;
+    rate = Number(prof?.rate ?? 0);
+  }
+
+  // Una venta sin lineas no la crea ningun camino actual; si llegara una, se reparte su total sin proveedor
+  // en vez de dejar el pago sin contabilidad.
+  const tramos =
+    lineas.length > 0
+      ? lineas.map((l) => ({
+          base: baseFromTotal(Number(l.precioUnitario)) * Number(l.cantidad),
+          proveedor: participacion.get(l.nutraceuticalId) ?? 0,
+        }))
+      : [{ base: baseFromTotal(Number(t.amount)), proveedor: 0 }];
+
+  let comision = 0;
+  let cnv = 0;
+  for (const tramo of tramos) {
+    if (!(tramo.base > 0)) continue; // una linea sin base no tiene nada que repartir
+    let r;
+    try {
+      r = repartir({ base: tramo.base, tasaIntegrante: rate, participacionProveedor: tramo.proveedor });
+    } catch (e) {
+      // EL PAGO NO SE PIERDE POR UN REPARTO INVALIDO (decision de Santiago, 2026-09-13: el paciente ya
+      // pago y el dinero es de CNV pase lo que pase). Un error aqui desharia el sellado entero, porque va
+      // en la misma transaccion. `repartir` rechaza un residuo negativo; eso lo impide ya el trigger de la
+      // 0119 sobre las tasas VIGENTES, pero la tasa que lee el sellado es la del perfil y puede diferir.
+      // Se sella la aritmetica tal cual (CNV negativo queda VISIBLE en su fila) y se avisa.
+      if (!(e instanceof RepartoInvalidoError)) throw e;
+      Sentry.captureException(e, { tags: { area: "reparto-sellado", transactionId: t.id } });
+      const montoIntegrante = Math.round(tramo.base * rate * 100) / 100;
+      const montoProveedor = Math.round(tramo.base * tramo.proveedor * 100) / 100;
+      r = { montoIntegrante, montoProveedor, montoCnv: Math.round((tramo.base - montoIntegrante - montoProveedor) * 100) / 100 };
+    }
+    comision += r.montoIntegrante;
+    cnv += r.montoCnv;
+  }
+  comision = Math.round(comision * 100) / 100;
+  cnv = Math.round(cnv * 100) / 100;
+
+  if (t.professionalId) {
     await tx.insert(professionalRevenue).values({
       transactionId: t.id,
       professionalId: t.professionalId,
       commissionRate: String(rate), // snapshot de la tasa del momento
-      commissionAmount: String(commission),
+      commissionAmount: String(comision),
     });
   }
-  // El resto de la base (sin IVA) es ingreso de CNV.
+  // El residuo es el ingreso de CNV. La parte del proveedor no se guarda aqui: su cuenta por pagar es del
+  // Bloque 4 (y en el Bloque 3 se sella en la linea); hoy se reconstruye exacta con la linea y la vigencia.
   await tx.insert(cnvRevenue).values({
     transactionId: t.id,
-    amount: String(Math.round((base - commission) * 100) / 100),
+    amount: String(cnv),
   });
 }
 
