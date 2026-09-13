@@ -66,7 +66,7 @@ async function alegraTodo(ruta) {
   }
 }
 
-// MULTI-CELL BASE (Alegra) y MULTICELL BASE (Atlas) son el mismo nombre; OMEGA COMPLEX y MULTICELL no.
+// Ignora guiones y espacios: HEPA-DETOX y HEPA DETOX son el mismo nombre; OMEGA COMPLEX y MULTI-CELL no.
 const normal = (s) => String(s ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 // El ambiente sale de la URL, con la misma regla que la aplicacion (`ambienteDeAlegra`).
@@ -133,7 +133,7 @@ try {
       pega(`${p.name}: apunta al item ${p.alegra_item_id} y ese item NO EXISTE en este ambiente de Alegra.`);
       continue;
     }
-    // EL NOMBRE, que es lo unico que ve un cruce entre productos del MISMO precio. MULTICELL, OMEGA y
+    // EL NOMBRE, que es lo unico que ve un cruce entre productos del MISMO precio. MULTI-CELL, OMEGA y
     // CURCUMIN valen los tres 90.000 de base: con sus ids intercambiados, el precio, el IVA y el total
     // cuadran, y la factura dice un producto que no se vendio.
     if (normal(item.name) !== normal(p.name)) {

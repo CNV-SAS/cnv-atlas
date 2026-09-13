@@ -39,7 +39,7 @@ insert into cfg_produccion (clave, valor) values
   -- IMPUESTOS: el IVA al 19%.
   ('iva_tax_id',               '<LLENAR>'),
   -- CENTROS DE COSTO. OJO A NO INVERTIRLOS: el cotejo no puede saber cual es cual, solo avisa por nombre.
-  ('cost_center_propio_id',    '<LLENAR>'),   -- productos PROPIOS de CNV (MULTICELL, OMEGA, CURCUMIN, D3-K2)
+  ('cost_center_propio_id',    '<LLENAR>'),   -- productos PROPIOS de CNV (MULTI-CELL, OMEGA, CURCUMIN, D3-K2)
   ('cost_center_tercero_id',   '<LLENAR>'),   -- productos de TERCERO (LUVIA)
   -- CUENTAS PUENTE. Nunca una de tipo bank.
   ('bank_account_efectivo_id', '<LLENAR>'),   -- "Efectivo en poder de Integrantes"
@@ -48,9 +48,9 @@ insert into cfg_produccion (clave, valor) values
 create temp table items_produccion (producto text primary key, item text not null) on commit drop;
 insert into items_produccion (producto, item) values
   -- El nombre de la izquierda es el de ATLAS, tal cual (no se toca). El id es el del item de Alegra
-  -- produccion. MULTICELL, OMEGA y CURCUMIN tienen el MISMO precio: cruzarlos no lo detecta ningun
+  -- produccion. MULTI-CELL, OMEGA y CURCUMIN tienen el MISMO precio: cruzarlos no lo detecta ningun
   -- cotejo de precios, solo el de nombre. Copiar mirando el nombre, no la cifra.
-  ('MULTICELL BASE',    '<LLENAR>'),
+  ('MULTI-CELL BASE',   '<LLENAR>'),
   ('OMEGA COMPLEX',     '<LLENAR>'),
   ('CURCUMIN BIOACTIV', '<LLENAR>'),
   ('D3-K2 OSTEO',       '<LLENAR>'),

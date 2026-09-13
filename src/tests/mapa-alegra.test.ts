@@ -32,7 +32,7 @@ HAS_DB = Boolean(process.env.DATABASE_URL);
 // Lo que se leyo del sandbox por API el 2026-09-12. Si Santiago reconfigura Alegra, este test se pone
 // rojo y eso es lo correcto: el mapa de la base tiene que volver a leerse, no adivinarse.
 const BASES_SANDBOX: Record<string, number> = {
-  "MULTICELL BASE": 90000, // NUT-001, item 5
+  "MULTI-CELL BASE": 90000, // NUT-001, item 5 (con guion desde la 0137)
   "OMEGA COMPLEX": 90000, // NUT-002, item 6
   "CURCUMIN BIOACTIV": 90000, // NUT-003, item 2
   "D3-K2 OSTEO": 140000, // NUT-004, item 3

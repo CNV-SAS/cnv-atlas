@@ -8,9 +8,14 @@
 // existe en el catalogo (p. ej. Gildardo agrega un nutraceutico antes de que exista el producto).
 
 // Alias motor -> nombre canonico del catalogo. SOLO las grafias que DIFIEREN de la del catalogo; las que
-// coinciden no necesitan entrada. La del motor DOMINANTE para MultiCell lleva guion y el catalogo no.
+// coinciden no necesitan entrada.
+//
+// MULTI-CELL BASE SE INVIRTIO EL 2026-09-13. El catalogo decia "MULTICELL BASE" porque se creyo que asi lo
+// escribia el registro INVIMA, y el alias traducia la grafia dominante del motor (con guion) a esa. El
+// registro RSA-3987-2026 dice "MULTI-CELL BASE" (verificado por Santiago; migracion 0137), asi que la
+// dominante del motor ya coincide y la que necesita alias es la minoritaria, sin guion.
 const MOTOR_ALIAS: Record<string, string> = {
-  "MULTI-CELL BASE": "MULTICELL BASE", // motor: mayormente con guion; catalogo (INVIMA): sin guion
+  "MULTICELL BASE": "MULTI-CELL BASE", // motor: a veces sin guion; catalogo (registro RSA-3987-2026): con guion
   "HEPA DETOX": "HEPA-DETOX", // motor: a veces sin guion
   "GUTIMMUNE PRO": "GUT-IMMUNE PRO", // motor: a veces pegado
 };

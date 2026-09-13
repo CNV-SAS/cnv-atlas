@@ -41,10 +41,10 @@ const BASE: TreatmentProtocol = {
   menuSemanal: null,
   kcalSugerido: 2100,
   nutraceuticals: [
-    { id: "tn-1", nutraceuticalId: "n-multicell", name: "MULTICELL BASE", dosage: "1/dia", durationDays: 30 },
+    { id: "tn-1", nutraceuticalId: "n-multicell", name: "MULTI-CELL BASE", dosage: "1/dia", durationDays: 30 },
     { id: "tn-2", nutraceuticalId: "n-omega", name: "OMEGA COMPLEX", dosage: null, durationDays: null },
   ],
-  recommendedNutraceuticals: "MULTICELL BASE, OMEGA COMPLEX",
+  recommendedNutraceuticals: "MULTI-CELL BASE, OMEGA COMPLEX",
   guidelines: [
     { id: "g-1", text: "5 comidas al dia" },
     { id: "g-2", text: "Evitar ultraprocesados" },
@@ -54,7 +54,7 @@ const BASE: TreatmentProtocol = {
   catalog: [
     {
       id: "n-multicell",
-      name: "MULTICELL BASE",
+      name: "MULTI-CELL BASE",
       unit: "frasco",
       indication: "Basal",
       commercialAvailability: "en_consultorio",

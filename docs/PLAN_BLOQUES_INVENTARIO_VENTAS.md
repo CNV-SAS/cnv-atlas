@@ -1252,5 +1252,5 @@ La consulta está en `docs/entregas/CONSULTA_GILDARDO_ALERGENOS.md`.
 | Credenciales de Alegra y Wompi de producción | Bloque 2b |
 | Perfil tributario de cada Integrante | Bloque 4 |
 | ~~¿Existen muestras o cortesías?~~ | **Cerrado 2026-09-13: no existen.** No se construye |
-| **El nombre de MULTI-CELL BASE según el registro RSA-3987-2026** (DATA_GOVERNANCE #16 dice sin guion; Santiago, con guion) | Crear los ítems de Alegra producción (2b, A5) |
+| ~~El nombre de MULTI-CELL BASE según el registro RSA-3987-2026~~ | **Cerrado 2026-09-13: con guion** (verificado en INVIMA). Catálogo corregido en la 0137 y #16 de DATA_GOVERNANCE corregida |
 | Anexo 2 actualizado y un Integrante habilitado | Bloque 5 |

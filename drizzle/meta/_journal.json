@@ -960,6 +960,13 @@
       "when": 1791764186099,
       "tag": "0136_tipo_de_tarjeta",
       "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1791764246099,
+      "tag": "0137_multi_cell_base_con_guion",
+      "breakpoints": true
     }
   ]
 }

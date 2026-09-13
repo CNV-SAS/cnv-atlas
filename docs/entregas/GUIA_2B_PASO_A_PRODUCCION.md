@@ -45,7 +45,7 @@ git pull
 node --env-file=.env.produccion.local scripts/check-migrations.mjs
 ```
 
-- [ ] **Debe dar:** `137` en el repo y `137` en la base, sin migraciones pendientes.
+- [ ] **Debe dar:** `138` en el repo y `138` en la base, sin migraciones pendientes. La 138 es la `0137` (el nombre MULTI-CELL BASE, con guion): **aplícala como las anteriores antes de seguir**, porque el SQL de configuración busca el producto por ese nombre y aborta si no lo encuentra.
 - [ ] En Vercel, Deployments: el deployment de **Production** es del último commit de `main`, y ese último commit **incluye `94ecf611`** (el reparto con el proveedor). Sin él, la venta controlada de LUVIA registraría 60.504 de ingreso de CNV en vez de 7.563.
 - [ ] **Anota el nombre de ese deployment** (el de sandbox). Es a donde vuelves si algo sale mal (F3).
 
@@ -60,7 +60,7 @@ Si falta algo, lo crea contabilidad en la pantalla de Alegra **antes** de seguir
 
 - [ ] **Cinco ítems**, con el nombre igual al de Atlas (el cotejo compara nombres), su precio **base sin IVA** y el impuesto **IVA 19%**:
 
-  > **ANTES DE ESTE PASO: el nombre de MULTI-CELL BASE tiene que estar confirmado con el texto del registro sanitario RSA-3987-2026**, y Atlas alineado a ese nombre. Hoy hay dos afirmaciones que se contradicen (ver el reporte del 2026-09-13). La tabla dice el nombre que se dio el 2026-09-13; si el registro dice otra cosa, se corrige aquí y en Atlas antes de la ventana, no durante.
+  > **Un solo nombre, con guion:** MULTI-CELL BASE es la grafía del registro sanitario RSA-3987-2026 (verificado el 2026-09-13). Atlas ya lo tiene así desde la migración 0137.
 
   | Nombre | Base |
   |---|---|
@@ -88,7 +88,7 @@ node --env-file=.env.produccion.local scripts/leer-alegra.mjs
 
 ### A7. Llenar y ensayar el SQL de configuración
 
-1. Abre `scripts/config-alegra-produccion.sql` y cambia cada `<LLENAR>` por el id que mostró A6. Copia **mirando el nombre**, no la cifra: MULTICELL, OMEGA y CURCUMIN tienen el mismo precio.
+1. Abre `scripts/config-alegra-produccion.sql` y cambia cada `<LLENAR>` por el id que mostró A6. Copia **mirando el nombre**, no la cifra: MULTI-CELL, OMEGA y CURCUMIN tienen el mismo precio.
 2. Ensáyalo, **sin** `--commit`:
 
 ```
@@ -279,7 +279,7 @@ node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purg
 
 - [ ] **Envía el aviso escrito a los Integrantes** (`docs/entregas/AVISO_INTEGRANTES_VENTAS_Y_ENTREGAS.md`) y guarda el mensaje enviado.
 - [ ] Avisa a los Integrantes de que ya pueden cobrar.
-- [ ] **Primer día:** que contabilidad mire en Alegra la **primera factura de un producto propio** (MULTICELL, OMEGA, CURCUMIN o D3-K2) y confirme que su centro de costo es el **propio**. La venta controlada solo probó el de terceros.
+- [ ] **Primer día:** que contabilidad mire en Alegra la **primera factura de un producto propio** (MULTI-CELL, OMEGA, CURCUMIN o D3-K2) y confirme que su centro de costo es el **propio**. La venta controlada solo probó el de terceros.
 - [ ] Y la **primera venta en efectivo**: su pago tiene que ir contra **"Efectivo en poder de Integrantes"**.
 - [ ] Borra `.env.produccion.local` cuando termines, o guárdalo fuera del proyecto.
 
