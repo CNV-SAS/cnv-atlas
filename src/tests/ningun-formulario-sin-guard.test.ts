@@ -89,9 +89,17 @@ describe("el guard se arma en el ENVÍO, no al llegar el resultado", () => {
   const GUARD = readFileSync("src/components/shared/preservar-scroll.ts", "utf8");
 
   it("`enviarSinReset` lo arma antes de invocar la acción", () => {
-    const i = ENVIO.indexOf("preservarScroll()");
-    const j = ENVIO.indexOf("startTransition(() => action(new FormData");
+    // SE BUSCA DENTRO DEL CUERPO de `enviarSinReset`, no el texto exacto de la llamada. El ancla era
+    // "startTransition(() => action(new FormData", y dejo de existir el 2026-09-13 cuando el FormData pasó a
+    // armarse una línea antes (para incluir el botón pulsado). La regla no cambió; solo la forma del código.
+    const inicio = ENVIO.indexOf("export function enviarSinReset(");
+    const fin = ENVIO.indexOf("export function ejecutarAccion(");
+    expect(inicio, "no se encontró enviarSinReset").toBeGreaterThan(-1);
+    const cuerpo = ENVIO.slice(inicio, fin === -1 ? undefined : fin);
+    const i = cuerpo.indexOf("preservarScroll()");
+    const j = cuerpo.indexOf("startTransition(");
     expect(i, "`enviarSinReset` dejó de armar el guard").toBeGreaterThan(-1);
+    expect(j, "`enviarSinReset` dejó de invocar la acción en una transición").toBeGreaterThan(-1);
     expect(i, "el guard se arma DESPUÉS de invocar la acción").toBeLessThan(j);
   });
 
