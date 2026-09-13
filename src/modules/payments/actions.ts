@@ -14,6 +14,7 @@ import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { canViewRevenue } from "./policies/can-view-revenue";
 import { reintentarFacturasPendientes } from "./services/facturacion-service";
+import { reintentarDescuentosPendientes } from "./services/inventario-venta-service";
 import { CheckoutError, createCheckout, registerCashSale } from "./services/payments-service";
 import {
   createCheckoutSchema,
@@ -180,6 +181,10 @@ export async function reintentarFacturasAction(
     return { error: "No tienes permiso para reintentar facturas.", success: null, warning: null };
   }
   try {
+    // EL MISMO BOTON REINTENTA EL INVENTARIO de las ventas pagadas (Bloque 3). Va primero porque es
+    // independiente de la factura y no la bloquea. Un boton aparte seria una segunda puerta para cerrar
+    // la misma venta.
+    await reintentarDescuentosPendientes();
     const { intentadas } = await reintentarFacturasPendientes();
     // SIN `revalidatePath`: el refresco lo hace la pantalla (`useFormToastRefreshOnSuccess`). Hacer los
     // dos monta los segmentos dos veces, la pagina salta al inicio dos veces, y el formulario puede

@@ -16,7 +16,10 @@
 --   · Ninguna venta con `wompi_env = 'produccion'`. El bloque de verificacion aborta si alguna cambiaria.
 --   · Las facturas del SANDBOX de Alegra: son de otro sistema.
 --   · Los pacientes de prueba (`is_test`): la decision fue sobre las ventas.
---   · El inventario: estas ventas nunca movieron existencias.
+--   · El inventario REAL. Desde el Bloque 3 una venta de prueba SI puede haber movido inventario (reserva y
+--     movimiento de venta). Esos movimientos se borran con ella y el saldo de sus lotes se RECALCULA desde
+--     los movimientos que quedan: un pago de prueba nunca saco producto de la vitrina, asi que devolver ese
+--     saldo es corregirlo, no alterarlo. Nada mas se toca.
 --
 -- NO DEJA RASTRO EN clinical_audit_log, igual que la purga del Bloque 0: aceptable en datos de prueba,
 -- no en reales.
@@ -53,13 +56,49 @@ begin
   end loop;
 end $$;
 
+-- ── LOS MOVIMIENTOS DE VENTA DE ESTAS VENTAS (Bloque 3) ────────────────────────────────────────────
+--
+-- Son append-only por trigger, asi que el borrado va con el trigger desactivado DENTRO de esta transaccion
+-- (el DDL es transaccional: si algo falla, vuelve solo). Mismo patron que la purga del Bloque 0. Sin esto,
+-- borrar la venta chocaria con la FK RESTRICT del movimiento y la purga abortaria entera.
+create temp table purga_movs on commit drop as
+  select m.id, m.location_id, m.nutraceutical_id, m.lot_id, m.delta, m.type::text as tipo
+    from nutraceutical_stock_movements m
+    join transaction_items ti on ti.id = m.transaction_item_id
+    join purga_ids p on p.id = ti.transaction_id;
+
+do $$
+begin
+  raise notice 'Movimientos de venta de prueba a borrar: % (% unidades)',
+    (select count(*) from purga_movs), (select coalesce(-sum(delta), 0) from purga_movs);
+  -- Solo movimientos de VENTA: si una venta de prueba tuviera otro tipo ligado, algo no es lo que parece.
+  if exists (select 1 from purga_movs where tipo <> 'venta') then
+    raise exception 'ABORTADO: una venta de prueba tiene movimientos que no son de venta.';
+  end if;
+end $$;
+
+alter table nutraceutical_stock_movements disable trigger nutra_movement_append_only_trg;
+delete from nutraceutical_stock_movements m using purga_movs x where m.id = x.id;
+alter table nutraceutical_stock_movements enable trigger nutra_movement_append_only_trg;
+
+-- EL SALDO SE RECALCULA desde los movimientos, igual que lo hace el trigger: es una proyeccion. El trigger de
+-- coherencia del saldo valida cada fila al actualizarla.
+update nutraceutical_inventory i
+   set stock_quantity = (
+         select coalesce(sum(m.delta), 0) from nutraceutical_stock_movements m
+          where m.location_id = i.location_id and m.nutraceutical_id = i.nutraceutical_id
+            and m.lot_id = i.lot_id and m.type <> 'remesa'),
+       last_updated = now()
+ where (i.location_id, i.nutraceutical_id, i.lot_id) in
+       (select distinct location_id, nutraceutical_id, lot_id from purga_movs);
+
 -- Los eventos de Wompi guardan la venta en el `reference` del payload, no en una columna.
 delete from payment_webhook_events e
  using purga_ids p
  where e.provider = 'wompi'
    and e.payload -> 'data' -> 'transaction' ->> 'reference' = p.id::text;
 
--- Lineas, comision e ingreso de CNV se van con la venta (ON DELETE CASCADE).
+-- Lineas, reservas, comision e ingreso de CNV se van con la venta (ON DELETE CASCADE).
 delete from transactions t using purga_ids p where t.id = p.id;
 
 do $$
@@ -79,6 +118,9 @@ begin
   if exists (select 1 from professional_revenue pr where not exists (select 1 from transactions t where t.id = pr.transaction_id))
      or exists (select 1 from cnv_revenue cr where not exists (select 1 from transactions t where t.id = cr.transaction_id)) then
     raise exception 'ABORTADO: quedaria comision o ingreso sin su venta.';
+  end if;
+  if exists (select 1 from pg_trigger where tgname = 'nutra_movement_append_only_trg' and tgenabled <> 'O') then
+    raise exception 'ABORTADO: el trigger de inmutabilidad de los movimientos quedo desactivado.';
   end if;
   raise notice 'Ventas reales intactas: % por %.', a.ventas_reales, a.monto_real;
 end $$;

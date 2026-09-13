@@ -55,7 +55,9 @@ export const transactions = pgTable(
     // smoke quedaron con la factura bien emitida y el pago fallido, y como el panel solo miraba el estado
     // de la FACTURA, no las mostro. Nulo en una venta facturada = el paciente figura "por cobrar".
     alegraPaymentId: text("alegra_payment_id"),
-    // EL MODO DEL PAGO (0135): con que llaves de Wompi estaba el sistema al CREAR la venta. No cambia nunca.
+    // EL MODO DEL PAGO (0135): con que llaves de Wompi estaba el sistema al CREAR la venta, CORREGIDO al sellar
+    // con el ambiente que declara el evento de Wompi (Bloque 3): un link creado antes de un cambio de llaves y
+    // pagado despues se cobra con las llaves nuevas, y el evento es quien lo sabe.
     // Un pago de prueba solo se factura en sandbox y uno real solo en produccion: es lo que impide que una
     // venta del smoke se convierta en factura electronica real al pasar Alegra a produccion.
     wompiEnv: text("wompi_env").notNull(),
@@ -67,6 +69,16 @@ export const transactions = pgTable(
     // CREDIT | DEBIT. Wompi dice "CARD" para las dos en el tipo y separa esto en otro campo (0136).
     paymentCardType: text("payment_card_type"),
     alegraCufe: text("alegra_cufe"),
+    // ── LA VENTA MUEVE INVENTARIO (Bloque 3, 0139) ──────────────────────────────────────────────────
+    // Nulo en todas: una venta anterior al Bloque 3 no mueve inventario y no se le descuenta hacia atras.
+    treatmentId: uuid("treatment_id"),
+    // De donde sale el producto, sellado al crear la venta.
+    locationId: uuid("location_id"),
+    deliveryMode: text("delivery_mode"), // en_consulta | domicilio
+    operatedAt: timestamp("operated_at", { withTimezone: true }),
+    // reservado | pendiente | descontado | sin_saldo | fallido | liberado. NULL = anterior al Bloque 3.
+    stockState: text("stock_state"),
+    stockLastError: text("stock_last_error"),
     alegraLegalStatus: text("alegra_legal_status"),
     idempotencyKey: text("idempotency_key").notNull().unique(),
     createdAt: createdAt(),
@@ -85,6 +97,25 @@ export const transactionItems = pgTable("transaction_items", {
     .references(() => nutraceuticals.id),
   quantity: integer("quantity").notNull(),
   unitPrice: numeric("unit_price").notNull(),
+});
+
+// LAS RESERVAS DEL CHECKOUT PENDIENTE (D3, 0139). No mueven el saldo: restan de lo DISPONIBLE mientras
+// esten vivas (sin liberar, sin consumir y sin vencer). Vencen con el link de pago.
+export const inventoryReservations = pgTable("inventory_reservations", {
+  id: pk(),
+  transactionItemId: uuid("transaction_item_id")
+    .notNull()
+    .references(() => transactionItems.id, { onDelete: "cascade" }),
+  locationId: uuid("location_id").notNull(),
+  lotId: uuid("lot_id").notNull(),
+  nutraceuticalId: uuid("nutraceutical_id")
+    .notNull()
+    .references(() => nutraceuticals.id),
+  quantity: integer("quantity").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  releasedAt: timestamp("released_at", { withTimezone: true }),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  createdAt: createdAt(),
 });
 
 export const professionalRevenue = pgTable("professional_revenue", {

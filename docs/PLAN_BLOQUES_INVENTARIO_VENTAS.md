@@ -23,7 +23,7 @@ que algo ya hecho se vuelva a planear).
 | **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
 | **2b** · Paso a producción | **SIGUIENTE (2026-09-14, de último). PREPARADO** (guía en `docs/entregas/`) | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
-| 3 · La venta nace en Tratamiento | Pendiente | — |
+| **3** · La venta nace en Tratamiento | **EN CURSO: sesión 1 hecha (2026-09-13), falta smoke; sesión 2 pendiente** | Sesión 1: migraciones 0138-0139 y servicio de venta. Candados: `venta-inventario`, `asignacion-por-lote`, `payments-service`. Smoke: `docs/entregas/SMOKE_BLOQUE_3_SESION_1.md`. Sesión 2: Tratamiento con su smoke en navegador |
 | 3b · Reversa | Pendiente | — |
 | 4 · Liquidaciones | Pendiente | — |
 | 5 · Distribución | Pendiente | — |
@@ -953,6 +953,24 @@ entre "venta que no mueve inventario" y "venta que lo mueve".
 
 ### 3.2 · Cómo se migra: no hay migración de datos
 
+> **LO QUE QUEDÓ CONSTRUIDO EN LA SESIÓN 1 (2026-09-13), y en qué se aparta de lo escrito abajo:**
+>
+> - **`0138`** agrega el tipo `venta`. **`0139`** agrega a `transactions` `treatment_id`, `location_id`,
+>   `delivery_mode`, `operated_at` y además **`stock_state` y `stock_last_error`**, que no estaban
+>   escritos: el descuento es un estado propio de la venta (reservado, pendiente, descontado, sin_saldo,
+>   fallido, liberado) porque corre **después** del pago y puede fallar sin deshacerlo. Agrega el vínculo
+>   movimiento-línea con su CHECK y la tabla `inventory_reservations`.
+> - **El CHECK compara `type::text`**, no el literal del enum: drizzle aplica juntas las migraciones
+>   pendientes, y nombrar `venta` como enum en la misma corrida daría 55P04. Ensayado aplicando las dos
+>   juntas.
+> - **Diferido, a propósito:** `sale_fulfillment` pasa a la **sesión 2**, que es la que diseña la entrega;
+>   y las columnas selladas de la línea (`vat_rate`, `commission_rate`, `supplier_share`, `modality`)
+>   van con el **paso 5**. Crearlas hoy sin quien las escriba sería una columna declarada sin escritor.
+> - **La reserva vence con el link** (`CHECKOUT_TTL_MS`, la misma constante), y una reserva vencida no
+>   necesita limpieza: deja de contar.
+> - **SUPUESTO OPERATIVO a confirmar:** una venta sin profesional (la crea un administrador para un paciente
+>   sin Integrante asignado) sale de la **bodega central**.
+
 **Solo DDL aditivo, sin backfill:**
 
 1. **Migración A, sola:** `ALTER TYPE nutraceutical_movement_type ADD VALUE 'venta'`. Va sola porque un valor
@@ -1026,16 +1044,18 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
 
 ### 3.4 · Sub-tareas, en orden (un commit cada una)
 
-1. **Los tres errores de lectura de saldo por lote.** Independiente de pagos; se puede adelantar.
-2. **Migraciones A y B**, con test contra base real: un movimiento `venta` sin línea se rechaza, y el
-   saldo por lote se mueve.
-3. **El servicio de venta:** reserva al crear el checkout, descuenta al sellar (FEFO por lote, varios lotes
+1. **HECHO (`dd67a041`).** Los tres errores de lectura de saldo por lote.
+2. **HECHO (sesión 1).** Migraciones A y B, con test contra base real: un movimiento `venta` sin línea se
+   rechaza, y el saldo por lote se mueve.
+3. **HECHO (sesión 1), falta el smoke.** El servicio de venta: reserva al crear el checkout, descuenta al sellar (FEFO por lote, varios lotes
    si hace falta), libera al vencer, el pago primero y el inventario después, y el ambiente desde el
    evento. `/pagos` (checkout y efectivo) pasa a usarlo. Tests de base real para cada regla.
+   **Queda para la sesión 2:** el aviso EN PANTALLA de las ventas `sin_saldo` y `fallido` (hoy quedan en la
+   venta y en Sentry, y el botón de reintentar ya reintenta el descuento).
 4. **Tratamiento:** "¿lo adquiere?" → forma de entrega → QR en pantalla, **reemplazando** a la sección de
    despacho. La entrega queda en `clinical_audit_log` (Decisión 3 del plan; hoy **nada** de pagos, entrega
    ni inventario escribe auditoría). La yuxtaposición de alérgenos ya está en la selección (D1).
-5. **Reparto sellado por línea** desde `revenue_splits` y `professional_commission_rates` con vigencia,
+5. **A MEDIAS: el cálculo ya lee `revenue_splits` (`94ecf611`); falta SELLARLO en la línea.** Reparto sellado por línea desde `revenue_splits` y `professional_commission_rates` con vigencia,
    reemplazando la tasa viva. La parte del proveedor queda sellada en la línea; su cuenta por pagar es del
    Bloque 4.
 6. **El reporte de ventas sin documento, consultable por día.** El panel ya existe; le falta el filtro
