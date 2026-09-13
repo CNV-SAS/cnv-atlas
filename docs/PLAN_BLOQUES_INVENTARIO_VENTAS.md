@@ -21,7 +21,7 @@ que algo ya hecho se vuelva a planear).
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
 | **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
-| **2b** · Paso a producción | **SIGUIENTE** | Credenciales, resolución de facturación, fila de producción en `alegra_config` y re-mapeo de ítems. El gate de ambiente ya está (0135) |
+| **2b** · Paso a producción | **SIGUIENTE (2026-09-14, de último)** | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
 | 3 · La venta nace en Tratamiento | Pendiente | — |
 | 3b · Reversa | Pendiente | — |
@@ -655,12 +655,49 @@ En sandbox, de punta a punta:
 
 ## Bloque 2b · Paso a producción
 
-**No arranca hasta que 2a pase el criterio de aceptación en sandbox.** Lo que hace falta, y lo consigue Santiago:
+**2a pasó su criterio el 2026-09-13.** El 2b va el 2026-09-14, de último en el día (decisión de Santiago).
 
-1. **Credenciales de Alegra de producción** (`ALEGRA_EMAIL`, `ALEGRA_API_KEY`, `ALEGRA_BASE_URL`).
-2. **La resolución de facturación de CNV**: numeración autorizada, prefijo y vigencia. Es lo que decide si Alegra puede emitir a nombre de CNV.
-3. **El mapeo de los cuatro códigos a sus ítems**: NUT-001 a NUT-004, que están anotados en el script de carga. Y el **ítem de LUVIA, que no existe**: hoy se puede vender y no se podría facturar.
-4. **El re-mapeo de identificadores**: los contactos e ítems creados en sandbox NO valen en producción. La columna `alegra_env` (migración 0129) es lo que impide usarlos por error.
+### PRIMER PASO: la primera factura de producción es una venta ELEGIDA, no la primera que caiga
+
+**Decisión de contabilidad, 2026-09-13.** Una venta real, **de bajo monto y controlada**: un comprador que
+sabe que es la primera, cuyo correo es conocido, y con alguien mirando la factura en Alegra en cuanto sale.
+
+**Por qué:** si algo quedó mal mapeado (un ítem, el IVA, el centro de costo, la cuenta puente, el medio de
+pago), conviene descubrirlo en **una** factura de 90.000 que se corrige con **una** nota crédito, y no en un
+día con diez ventas, diez facturas mal emitidas y diez notas crédito.
+
+**Consecuencia operativa:** entre el cambio de credenciales y esa venta **no se cobra nada más**. Solo
+cuando esa factura se coteja completa (líneas, IVA, centro de costo, consecutivo FE, CUFE, pago contra la
+cuenta puente, medio de pago, y el correo recibido) se abre la venta normal.
+
+### LA NUMERACIÓN SE COMPARTE (contabilidad, 2026-09-13)
+
+Contabilidad revisó su propia recomendación de prefijos diferenciados (modelo comercial, "Numeración
+compartida"): **el choque de consecutivos no existe**, porque Alegra asigna el número en los dos casos, y el
+volumen manual es de seis facturas. **Atlas continúa la numeración que ya existe:** en producción hay FE1 a
+FE6 y NC1 y NC2 emitidas a mano, y la primera de Atlas será la siguiente que Alegra asigne.
+
+**Así que el trámite de numeración NO hace falta.** Lo que sí se lee por API antes de insertar la fila de
+producción: que esa numeración sea electrónica, que esté vigente y que le quede rango.
+
+### Lo que hace falta, reducido
+
+1. **Credenciales de Alegra de producción** (`ALEGRA_EMAIL`, `ALEGRA_API_KEY`, `ALEGRA_BASE_URL`), y las de Wompi de producción.
+2. **Crear los cinco ítems en Alegra de producción** (MULTICELL, OMEGA, CURCUMIN, D3-K2, LUVIA), con su precio base y su IVA del 19%. Los ítems del sandbox no valen: la columna `alegra_env` (0129) impide usarlos por error.
+3. **Centros de costo y las dos cuentas puente** en producción ("Efectivo en poder de Integrantes", "Wompi por liquidar").
+4. **La fila de producción de `alegra_config`** con los ids leídos por API (plantillas FE y NC, IVA, centros de costo sin invertir, cuentas puente) y el mapeo de ítems. Antes de encender, `scripts/cotejo-alegra.mjs` contra producción.
+5. **La venta pequeña** del primer paso.
+
+### El correo al cliente
+
+**En producción Alegra lo manda solo.** Su ayuda para Colombia dice que al emitir un documento electrónico
+se envía automáticamente al correo registrado en el contacto, que el envío automático se activa al
+habilitar la facturación electrónica, y que solo se envían los documentos aceptados o aceptados con
+observaciones. Atlas no tiene que llamar a nada: el contacto ya viaja con el correo del paciente.
+
+**En el sandbox, no está verificado.** La documentación no dice nada del sandbox, y la API **no expone** si
+se envió un correo: la factura trae `client.email` y ningún campo de envío (leído en SETP990214712 a 714).
+Por eso la venta pequeña de producción incluye "el correo llegó" en su cotejo.
 
 ### Conciliación y comisión: lo que respondió contabilidad (2026-09-13)
 
@@ -701,19 +738,26 @@ tarifa, y sobre qué base (bruto o neto de comisión).
 
 ### El medio de pago en la factura
 
-Códigos DIAN que dio contabilidad: **48** tarjeta crédito · **49** tarjeta débito · **10** efectivo · **42**
-PSE, Nequi y transferencia Bancolombia. Es **informativo**: no cambia impuestos ni valores.
+**HECHO el 2026-09-13.** Es **informativo**: no cambia impuestos ni valores. La tabla final, con los códigos
+de Alegra verificados leyendo facturas del sandbox y el número DIAN confirmado por contabilidad:
 
-**Prerrequisito cumplido el 2026-09-13:** el instrumento con que pagó el paciente se estaba **tirando** (el
-esquema del webhook declaraba cinco campos y Zod eliminaba `payment_method_type`). Ahora se guarda en
-`transactions.payment_method_type`.
+| Medio | Wompi | Alegra | DIAN |
+|---|---|---|---|
+| Tarjeta crédito | `CARD` + `CREDIT` | `CREDIT_CARD` | 48 |
+| Tarjeta débito | `CARD` + `DEBIT` | `DEBIT_CARD` | 49 |
+| Transferencia débito | PSE, Nequi, transferencia Bancolombia | `DEBIT_TRANSFER` | 46 |
+| Efectivo | (venta en efectivo) | `CASH` | 10 |
 
-**Falta:** verificar **qué valores acepta Alegra** en el campo de medio de pago de la factura. No expone un
-catálogo por API (probado: no existe endpoint), y puede admitir un subconjunto de los códigos DIAN. **No sale
-mañana**: al ser informativo, que las facturas de producción digan "no definido" unos días no tiene efecto
-fiscal, y mandar un valor que Alegra no reconozca sí podría rechazar la factura entera.
+El 46 es "Transferencia Débito Interbancario", que Alegra abrevia como "Transferencia débito"; el 47
+("Transferencia débito bancaria") es otra opción y no se usa. Confirmado en real: la venta de LUVIA con Visa
+de prueba (SETP990214714) salió con "Tarjeta crédito". Detalle y evidencia en
+`src/modules/payments/medio-de-pago.ts`; candado en `medio-de-pago.test.ts`.
 
 ### GATE DE 2b: las ventas del smoke viven en la base de producción, y no saben de qué ambiente son
+
+**RESUELTO el 2026-09-13 con la salida recomendada** (migración 0135: `wompi_env` y `alegra_env` en
+`transactions`, estado `rechazada` que no gasta intentos). Candados: `ambiente-de-la-venta` y
+`venta-rechazada-no-gasta-intentos`. El análisis se conserva porque explica por qué existen.
 
 **Encontrado el 2026-09-13 al analizar la venta del paciente real que el guard rechaza.** No se arregla
 antes de 2b porque en sandbox no hace daño; se arregla ANTES de cambiar las credenciales, o el cambio
@@ -768,7 +812,7 @@ factura queda en una cola visible.
   viajan nombre, documento y correo.
 - **Ítem = el producto**, con su código de identificación (evita la observación FAZ09 de la DIAN).
 - **Sin `taxes` forzado desde Atlas:** el IVA se hereda de la configuración del producto en Alegra.
-- **Prefijo propio**, distinto del de la facturación manual.
+- ~~Prefijo propio, distinto del de la facturación manual.~~ **Revisado por contabilidad el 2026-09-13: numeración compartida** (ver arriba).
 - `paymentForm` según el medio de pago, no fijo en `CASH`.
 - **Idempotencia:** una venta, un documento, ante timeout, reintento o doble confirmación de la pasarela.
 - **Estados DIAN:** `"aprobada con observaciones"` es válida y **no se reintenta**; solo `"rechazada"`
@@ -927,6 +971,12 @@ prepara en el Bloque 1 sin encender la operación.
 
 ## Los alérgenos
 
+> **SUPERADO (nota del 2026-09-13).** Esta sección es el diseño de 2026-09-10 y ya no describe lo que hay.
+> Gildardo decidió habilitar LUVIA y retirar las equivalencias (migraciones 0126 y 0127: se borraron y se
+> eliminó `allergen_relations`), y el asesor legal pidió **yuxtaponer** lo que declaró el paciente y lo que
+> declara el producto, sin cruzarlos (`src/modules/nutraceuticals/yuxtaposicion-alergenos.ts`). Fuentes:
+> `DECISIONES_LEGALES.md` y `MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` §7.7. Se conserva como historia.
+
 ### Lo que hay hoy, verificado
 
 - **P43 `d6_43`** — alergias diagnosticadas. Opciones: Ninguna, Leche, Huevo, Maní, **Trigo**, Soya,
@@ -980,8 +1030,9 @@ La consulta está en `docs/entregas/CONSULTA_GILDARDO_ALERGENOS.md`.
 | Qué | Bloquea |
 |---|---|
 | Conteo físico inicial por producto, lote y ubicación | Bloque 0 (la fecha de corte) y Bloque 1 |
-| **La firma de Gildardo sobre las equivalencias** | Encender el bloqueo, y con él la venta de LUVIA |
-| Numeración de Atlas en Alegra (prefijo propio o compartido) | Bloque 2 |
+| ~~La firma de Gildardo sobre las equivalencias~~ | **Cerrado: decidió sin equivalencias y LUVIA habilitada (0126).** Ya no bloquea |
+| ~~Numeración de Atlas en Alegra~~ | **Decidida el 2026-09-13: compartida.** Ya no bloquea |
+| Credenciales de Alegra y Wompi de producción | Bloque 2b |
 | Perfil tributario de cada Integrante | Bloque 4 |
 | ¿Existen muestras o cortesías? | Bloque 3 (si no existen, no se construye) |
 | Anexo 2 actualizado y un Integrante habilitado | Bloque 5 |

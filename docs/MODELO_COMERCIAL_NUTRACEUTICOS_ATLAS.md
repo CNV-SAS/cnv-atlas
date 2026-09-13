@@ -571,7 +571,7 @@ Necesidades funcionales. Los detalles técnicos deben contrastarse con la docume
 
 **El consecutivo lo asigna siempre Alegra.** Atlas nunca genera números de factura.
 
-**Prefijos diferenciados.** Conviene una numeración distinta para las facturas generadas automáticamente por Atlas y las emitidas manualmente, para evitar choques de consecutivo y facilitar la conciliación.
+**Numeración compartida (revisado por contabilidad el 2026-09-13).** La recomendación original era una numeración distinta para las facturas de Atlas y las manuales, para evitar choques de consecutivo. Contabilidad la revisó: **el choque no existe**, porque Alegra asigna el número en los dos casos (ver el párrafo anterior), y el volumen manual es de seis facturas, así que separar resolvería un problema de escala que no hay. **Atlas continúa la misma numeración** que la facturación manual (en producción ya había FE1 a FE6 y NC1 y NC2), y no hace falta trámite de numeración nuevo.
 
 **Idempotencia.** Una venta genera una y solo una factura. Ante timeout, reintento o doble confirmación de la pasarela, el sistema no debe duplicar documentos.
 

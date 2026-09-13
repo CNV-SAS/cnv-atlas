@@ -146,7 +146,7 @@ El producto de tercero en consignación se carga por separado, sin valor contabl
 
 - Re-mapear todos los identificadores de Alegra: productos, impuestos, numeraciones, bodegas, centros de costo. Los de sandbox no sirven en producción y esta es la causa número uno de facturas mal emitidas al hacer el cambio.
 - Confirmar que cada producto exista en Alegra de producción con su tarifa de IVA y su código de identificación.
-- Definir la **numeración que usará Atlas**: prefijo propio o compartido con la facturación manual. Decisión a confirmar con contabilidad.
+- ~~Definir la numeración que usará Atlas~~. **Decidido por contabilidad el 2026-09-13: compartida**, Atlas continúa la numeración FE/NC de la facturación manual (modelo comercial, "Numeración compartida").
 - Wompi a producción, con validación del webhook en el ambiente real.
 - **Emisión de prueba en producción contra un contacto controlado** antes de facturar al primer paciente real.
 
@@ -220,7 +220,7 @@ Estas dependen de decisiones de negocio o de contabilidad, y conviene no bloquea
 
 - **La fecha de corte de arranque en producción**, que separa el período de pruebas del período contable.
 - **El inventario físico inicial**, contado por producto, lote y ubicación. Es insumo de la Fase 0 y no lo puede producir el equipo técnico.
-- **La numeración que usará Atlas** para facturar: prefijo propio o compartido con la facturación manual. A confirmar con contabilidad.
+- ~~La numeración que usará Atlas~~. **Decidida el 2026-09-13: compartida con la manual.**
 - Si existe la práctica de entregar muestras o cortesías, para saber si hay que modelarla.
 - El listado de Integrantes reales con su modalidad asignada y su perfil tributario completo.
 

@@ -100,10 +100,11 @@ export const CODIGO_ALEGRA: Record<
   },
   transferencia_debito: {
     codigo: "DEBIT_TRANSFER",
-    // SIN NUMERO, a proposito. El listado de contabilidad trae 46 ("Transferencia Debito Interbancario"),
-    // pero el catalogo de la DIAN tiene tambien 47 ("Transferencia Debito Bancaria"), y el rotulo de Alegra
-    // ("Transferencia debito") no dice cual de las dos es. Se confirma con contabilidad antes de escribirlo.
-    dian: null,
+    // 46, CONFIRMADO POR CONTABILIDAD EL 2026-09-13. Estuvo en null mientras tanto: el catalogo de la DIAN
+    // tiene 46 ("Transferencia Debito Interbancario") y 47 ("Transferencia Debito Bancaria"), y el rotulo de
+    // Alegra no decia cual. Contabilidad: "Transferencia debito" es el nombre abreviado del 46; el 47 es una
+    // variante mas especifica que Alegra expone aparte como "Transferencia debito bancaria", y no se usa.
+    dian: "46",
     evidencia:
       "Factura SETP990214702 del sandbox, en su PRIMERA lectura: Santiago eligio 'Transferencia debito' y la API devolvio DEBIT_TRANSFER. Despues esa misma factura se cambio a tarjeta debito para verificar ese codigo.",
   },
