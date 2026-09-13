@@ -109,15 +109,18 @@ export async function registerCashSaleFormAction(
   if (authzError) return { error: authzError.message, success: null, duplicateWarning: null };
 
   const patientId = String(formData.get("patientId") ?? "");
-  const nutraceuticalId = String(formData.get("nutraceuticalId") ?? "");
+  const lineas = leerLineas(formData);
   const confirmDuplicate = String(formData.get("confirmDuplicate") ?? "") === "true";
 
   // Aviso de venta en efectivo DUPLICADA reciente (mismo paciente + producto, pagada, en la ventana): NO
   // registra, el profesional confirma con "Registrar de todos modos". Reusa el patron del checkout. Esto
   // es lo que atrapa el re-registro secuencial (la clave de idempotencia solo cubre el doble-clic
   // simultaneo). En efectivo importa mas: un cobro duplicado se revierte con nota credito, no con un clic.
-  if (!confirmDuplicate && patientId && nutraceuticalId) {
-    const dup = await findRecentCashSaleDuplicate(patientId, [nutraceuticalId]);
+  // AVISA POR LINEA, igual que el checkout: si ya se registro una venta con MULTI-CELL y la nueva lleva
+  // MULTI-CELL y OMEGA, lo que se duplica es el primero. En efectivo importa mas, porque el cobro ya
+  // ocurrio: revertirlo es una nota credito, no un clic.
+  if (!confirmDuplicate && patientId && lineas.length > 0) {
+    const dup = await findRecentCashSaleDuplicate(patientId, lineas.map((l) => l.nutraceuticalId));
     if (dup) {
       const cuando = dup.minutesAgo <= 0 ? "hace menos de un minuto" : `hace ${dup.minutesAgo} min`;
       return {
@@ -131,7 +134,7 @@ export async function registerCashSaleFormAction(
   const parsed = registerCashSaleSchema.safeParse({
     patientId,
     idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
-    items: [{ nutraceuticalId, quantity: Number(String(formData.get("quantity") ?? "")) }],
+    items: lineas,
   });
   if (!parsed.success) return { error: "Datos de la venta inválidos.", success: null, duplicateWarning: null };
 

@@ -33,8 +33,18 @@ export function RegisterCashSaleForm({
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
   const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
-  const [nutraceuticalId, setNutraceuticalId] = useState(nutraceuticals[0]?.id ?? "");
-  const [quantity, setQuantity] = useState("1");
+  // VARIAS LINEAS, como el checkout (2026-09-12). Tenia el mismo estrangulamiento: un selector y un campo
+  // de cantidad, mientras la tabla, el writer, el servicio y el esquema admitian cincuenta. Y en efectivo
+  // pesa mas: la venta nace PAGADA, asi que dos registros son dos cobros y revertir uno es una nota
+  // credito, no un clic.
+  const [lineas, setLineas] = useState<{ nutraceuticalId: string; quantity: string }[]>([
+    { nutraceuticalId: nutraceuticals[0]?.id ?? "", quantity: "1" },
+  ]);
+  const cambiar = (i: number, campo: Partial<{ nutraceuticalId: string; quantity: string }>) =>
+    setLineas((prev) => prev.map((l, j) => (j === i ? { ...l, ...campo } : l)));
+  const anadir = () =>
+    setLineas((prev) => [...prev, { nutraceuticalId: nutraceuticals[0]?.id ?? "", quantity: "1" }]);
+  const quitar = (i: number) => setLineas((prev) => prev.filter((_, j) => j !== i));
   // Clave de idempotencia de ESTE intento (en un ref, no en estado: no se renderiza, se lee al enviar).
   // Un doble-clic manda la MISMA clave (el writer deduplica); tras una venta exitosa se regenera para que
   // el siguiente cobro sea nuevo. Mutar el ref en el efecto es valido (no es setState).
@@ -58,8 +68,7 @@ export function RegisterCashSaleForm({
   const submit = (confirmDuplicate: boolean) => {
     const fd = new FormData();
     fd.set("patientId", patientId);
-    fd.set("nutraceuticalId", nutraceuticalId);
-    fd.set("quantity", quantity);
+    fd.set("lineas", JSON.stringify(lineas));
     fd.set("idempotencyKey", keyRef.current);
     if (confirmDuplicate) fd.set("confirmDuplicate", "true");
     ejecutarAccion(action, fd);
@@ -71,11 +80,12 @@ export function RegisterCashSaleForm({
 
   // Preview del total (precio del catalogo x cantidad), para ver el monto antes de cobrar.
   const total = useMemo(() => {
-    const n = nutraceuticals.find((x) => x.id === nutraceuticalId);
-    const q = Number(quantity);
-    if (!n || !Number.isFinite(q) || q <= 0) return null;
-    return n.unitPrice * q;
-  }, [nutraceuticals, nutraceuticalId, quantity]);
+    return lineas.reduce((suma, l) => {
+      const n = nutraceuticals.find((x) => x.id === l.nutraceuticalId);
+      const q = Number(l.quantity);
+      return suma + (n && Number.isFinite(q) && q > 0 ? n.unitPrice * q : 0);
+    }, 0);
+  }, [nutraceuticals, lineas]);
 
   if (patients.length === 0) {
     return (
@@ -115,41 +125,43 @@ export function RegisterCashSaleForm({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="cash-nutraceuticalId" className="text-xs">
-            Nutraceutico
-          </Label>
-          <select
-            id="cash-nutraceuticalId"
-            name="nutraceuticalId"
-            required
-            value={nutraceuticalId}
-            onChange={(e) => setNutraceuticalId(e.target.value)}
-            className={selectClass}
-          >
-            {nutraceuticals.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.name} ({n.unitPrice.toLocaleString("es-CO")} COP)
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="cash-quantity" className="text-xs">
-            Cantidad
-          </Label>
-          <Input
-            id="cash-quantity"
-            name="quantity"
-            type="number"
-            min={1}
-            step={1}
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            required
-            className="h-9 w-24"
-          />
+        <div className="flex w-full flex-col gap-2">
+          <Label className="text-xs">Productos</Label>
+          {lineas.map((l, i) => (
+            <div key={i} className="flex flex-wrap items-end gap-2">
+              <select
+                aria-label={`Nutracéutico ${i + 1}`}
+                required
+                value={l.nutraceuticalId}
+                onChange={(e) => cambiar(i, { nutraceuticalId: e.target.value })}
+                className={`${selectClass} min-w-[16rem] flex-1`}
+              >
+                {nutraceuticals.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name} ({n.unitPrice.toLocaleString("es-CO")} COP)
+                  </option>
+                ))}
+              </select>
+              <Input
+                aria-label={`Cantidad ${i + 1}`}
+                type="number"
+                min={1}
+                step={1}
+                value={l.quantity}
+                onChange={(e) => cambiar(i, { quantity: e.target.value })}
+                required
+                className="h-9 w-24"
+              />
+              {lineas.length > 1 && (
+                <Button type="button" variant="outline" onClick={() => quitar(i)}>
+                  Quitar
+                </Button>
+              )}
+            </div>
+          ))}
+          <Button type="button" variant="outline" onClick={anadir} className="self-start">
+            Añadir producto
+          </Button>
         </div>
 
         <Button type="submit" disabled={pending}>
