@@ -62,7 +62,7 @@ async function leerTodo(ruta) {
   }
 }
 
-// Mismo criterio que el cotejo: MULTI-CELL BASE (Alegra) y MULTICELL BASE (Atlas) son el mismo nombre.
+// Mismo criterio que el cotejo: ignora guiones y espacios al emparejar nombres.
 const normal = (s) => String(s ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 const avisos = [];
 const titulo = (t) => console.log(`\n── ${t} ${"─".repeat(Math.max(0, 90 - t.length))}`);

@@ -20,7 +20,7 @@ begin;
 
 create temp table items_sandbox (producto text primary key, item text not null) on commit drop;
 insert into items_sandbox (producto, item) values
-  ('MULTICELL BASE',    '5'),   -- NUT-001, en Alegra "MULTI-CELL BASE"
+  ('MULTI-CELL BASE',   '5'),   -- NUT-001 (registro RSA-3987-2026, con guion; migracion 0137)
   ('OMEGA COMPLEX',     '6'),   -- NUT-002
   ('CURCUMIN BIOACTIV', '2'),   -- NUT-003
   ('D3-K2 OSTEO',       '3'),   -- NUT-004

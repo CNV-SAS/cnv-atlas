@@ -6,11 +6,12 @@ import {
   type RecommendationCatalogItem,
 } from "@/modules/treatment/nutraceuticals-recommendation";
 
-// Catalogo con la grafia INVIMA (la del seed): las 10 canonicas. MULTICELL BASE sin guion, HEPA-DETOX y
-// GUT-IMMUNE PRO con guion (la grafia dominante del motor para MultiCell lleva guion y NO empareja
-// directo: por eso el alias es imprescindible).
+// Catalogo con la grafia del registro sanitario: las 10 canonicas. MULTI-CELL BASE, HEPA-DETOX y
+// GUT-IMMUNE PRO con guion. MULTI-CELL BASE fue "MULTICELL BASE" hasta el 2026-09-13 (migracion 0137): el
+// registro RSA-3987-2026 lleva guion. Ahora la grafia MINORITARIA del motor (sin guion) es la que no
+// empareja directo, y por eso el alias sigue siendo imprescindible, al reves que antes.
 const NAMES = [
-  "OMEGA COMPLEX", "MULTICELL BASE", "CURCUMIN BIOACTIV", "D3-K2 OSTEO", "BERBERINA METABO",
+  "OMEGA COMPLEX", "MULTI-CELL BASE", "CURCUMIN BIOACTIV", "D3-K2 OSTEO", "BERBERINA METABO",
   "MITO-Q10 PLUS", "HEPA-DETOX", "ADAPTO-STRESS", "SARCO-PROTECT", "GUT-IMMUNE PRO",
 ];
 const CATALOG: RecommendationCatalogItem[] = NAMES.map((name, i) => ({
@@ -37,10 +38,11 @@ describe("resolveRecommendation: emparejamiento con alias explicito", () => {
   });
 
   it("resuelve las 3 grafias inconsistentes del motor via alias, a la grafia del catalogo", () => {
-    // La DOMINANTE del motor para MultiCell lleva guion y el catalogo no: sin alias no emparejaria.
+    // Desde la 0137 el catalogo lleva guion: la dominante del motor empareja directo y la minoritaria (sin
+    // guion) necesita el alias.
     const cases: [string, string][] = [
-      ["MULTI-CELL BASE", "MULTICELL BASE"], // motor dominante (con guion) -> catalogo (sin)
-      ["MULTICELL BASE", "MULTICELL BASE"], // motor minoritario (sin guion) -> directo
+      ["MULTI-CELL BASE", "MULTI-CELL BASE"], // motor dominante (con guion) -> directo
+      ["MULTICELL BASE", "MULTI-CELL BASE"], // motor minoritario (sin guion) -> alias
       ["HEPA DETOX", "HEPA-DETOX"],
       ["GUTIMMUNE PRO", "GUT-IMMUNE PRO"],
     ];

@@ -23,7 +23,7 @@ describe("IVA (19%), en pesos enteros", () => {
     // Si esto se pone rojo, los dos catálogos dejaron de decir lo mismo.
     const CATALOGO: [string, number, number, number][] = [
       // producto, PVP, base en Alegra, IVA resultante
-      ["MULTICELL BASE", 107100, 90000, 17100],
+      ["MULTI-CELL BASE", 107100, 90000, 17100],
       ["OMEGA COMPLEX", 107100, 90000, 17100],
       ["CURCUMIN BIOACTIV", 107100, 90000, 17100],
       ["D3-K2 OSTEO", 166600, 140000, 26600],

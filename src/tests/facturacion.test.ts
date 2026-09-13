@@ -37,7 +37,7 @@ const MAPA: MapaDeAlegra = {
 
 const linea = (over: Partial<LineaDeVenta> = {}): LineaDeVenta => ({
   nutraceuticalId: "n-1",
-  nombre: "MULTICELL BASE",
+  nombre: "MULTI-CELL BASE",
   cantidad: 1,
   precioUnitario: 107100,
   alegraItemId: "5",
@@ -52,7 +52,7 @@ describe("la venta de VARIOS productos, que es el caso que nunca se ejerció", (
     // cuadraba y el documento no decia que se habia vendido. Es el caso mas comun en una consulta real.
     const r = armarFactura(
       [
-        linea({ nombre: "MULTICELL BASE", alegraItemId: "5", cantidad: 2 }),
+        linea({ nombre: "MULTI-CELL BASE", alegraItemId: "5", cantidad: 2 }),
         linea({ nombre: "OMEGA COMPLEX", alegraItemId: "6", cantidad: 1 }),
         linea({ nombre: "D3-K2 OSTEO", alegraItemId: "3", cantidad: 3, precioUnitario: 166600 }),
       ],
