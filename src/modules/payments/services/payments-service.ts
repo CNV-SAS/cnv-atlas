@@ -245,7 +245,7 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
   }
 
   // paid: sella el pago (comision + ingreso) y luego intenta la factura en Alegra.
-  const sealed = await sealPaidTransaction(txId, wompiTxId);
+  const sealed = await sealPaidTransaction(txId, wompiTxId, tx.payment_method_type ?? null);
   await markWebhookProcessed(WOMPI_PROVIDER, externalId);
   if (sealed) await facturarVentaSellada(sealed, "wompi");
 

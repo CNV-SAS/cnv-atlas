@@ -169,6 +169,21 @@ export async function getVentaParaFacturar(
 }
 
 /**
+ * El AMBIENTE de una venta, leido de la fila y no de quien llama. Es la fuente de verdad de la regla que
+ * impide facturar un pago de prueba en produccion: un llamador que pasara el dato podria pasarlo mal.
+ */
+export async function getAmbienteDeVenta(
+  txId: string,
+): Promise<{ wompiEnv: string; alegraEnv: string | null } | null> {
+  const [t] = await db
+    .select({ wompiEnv: transactions.wompiEnv, alegraEnv: transactions.alegraEnv })
+    .from(transactions)
+    .where(eq(transactions.id, txId))
+    .limit(1);
+  return t ?? null;
+}
+
+/**
  * Guarda el contacto de Alegra en el paciente, CON SU AMBIENTE.
  *
  * Guardado por `alegra_contact_id IS NULL` del mismo ambiente: si dos ventas simultaneas del mismo
@@ -188,7 +203,9 @@ export async function setContactoDeAlegra(
 
 /** Lo que se sabe de la factura tras intentarla. */
 export type ResultadoDeFacturacion = {
-  estado: "borrador" | "emitida" | "emitida_sin_sellar" | "fallida";
+  estado: "borrador" | "emitida" | "emitida_sin_sellar" | "fallida" | "rechazada";
+  /** De que ambiente es la factura. Se escribe con su id, porque el id solo significa algo dentro de el. */
+  alegraEnv?: string | null;
   invoiceId?: string | null;
   numero?: string | null;
   cufe?: string | null;
@@ -219,6 +236,7 @@ export async function registrarIntentoDeFactura(
       alegra_cufe           = coalesce(${r.cufe ?? null}, alegra_cufe),
       alegra_legal_status   = coalesce(${r.legalStatus ?? null}, alegra_legal_status),
       alegra_payment_id     = coalesce(${r.paymentId ?? null}, alegra_payment_id),
+      alegra_env            = coalesce(${r.alegraEnv ?? null}, alegra_env),
       alegra_emitted_at     = case when ${r.estado} = 'emitida' and alegra_emitted_at is null
                                    then now() else alegra_emitted_at end,
       -- EL CONTADOR NO SE TOCA AQUI: lo sube reclamarParaFacturar, que es quien decide intentar. Si se

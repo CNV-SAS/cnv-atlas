@@ -197,7 +197,9 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
     });
     const out = await processWompiWebhook(event("APPROVED"));
 
-    expect(writer.sealPaidTransaction).toHaveBeenCalledWith(TX_REF, "wompi-1");
+    // El tercer argumento es el instrumento de pago. El evento de este test no lo trae, y eso NO puede
+    // impedir sellar: llega como null y el pago se sella igual.
+    expect(writer.sealPaidTransaction).toHaveBeenCalledWith(TX_REF, "wompi-1", null);
     expect(writer.markWebhookProcessed).toHaveBeenCalled();
     // Se intenta la factura, y con el CANAL correcto: es lo que elige la cuenta puente del pago.
     expect(facturacion.emitirFacturaDeVenta).toHaveBeenCalledWith(

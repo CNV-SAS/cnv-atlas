@@ -45,6 +45,12 @@ export const wompiEventSchema = z.object({
       status: z.string(),
       amount_in_cents: z.number(),
       currency: z.string(),
+      // EL INSTRUMENTO con que pago el paciente (CARD, PSE, NEQUI, BANCOLOMBIA_TRANSFER...). Wompi lo manda
+      // en CADA evento y este esquema no lo declaraba, asi que Zod lo eliminaba antes de guardar: el dato
+      // llegaba autenticado y se tiraba. Hace falta para el medio de pago DIAN de la factura y para la
+      // comision, que no es la misma por instrumento. Opcional porque un evento sin el no debe romper el
+      // sellado del pago, que es lo que no se puede perder.
+      payment_method_type: z.string().max(40).optional(),
     }),
   }),
 });

@@ -43,6 +43,9 @@ const ROTULO: Record<string, string> = {
   borrador: "En borrador",
   emitida_sin_sellar: "Numerada, sin sellar ante la DIAN",
   fallida: "Falló",
+  // UNA DECISION, NO UN FALLO. Mismo paciente y mismo ambiente dan siempre lo mismo, asi que reintentarla
+  // no cambia nada y no gasta intentos. "Falló" o "agotados" dirian que algo se rindio.
+  rechazada: "No se factura aquí, por regla",
 };
 
 const MAX_INTENTOS = 5;
@@ -87,12 +90,16 @@ export function FacturasPendientes({ ventas }: { ventas: VentaSinDocumento[] }) 
                   {/* Los intentos importan porque al llegar al tope la cola deja de tocarla: a partir de
                       ahi no se arregla sola y hay que mirarla. En AMBAR OPERATIVO, no en la escala
                       clinica: esa dice cosas sobre un paciente, y esto es un problema de facturacion. */}
-                  <span
-                    className={`text-xs ${v.intentos >= MAX_INTENTOS ? "text-attention" : "text-muted-foreground"}`}
-                  >
-                    {v.intentos} de {MAX_INTENTOS} intentos
-                    {v.intentos >= MAX_INTENTOS ? " · agotados" : ""}
-                  </span>
+                  {/* Una rechazada NO muestra contador: no se esta intentando, se esta decidiendo. Un "3 de 5"
+                      junto a una decision la hace parecer un fallo que va a agotarse. */}
+                  {v.estado !== "rechazada" && (
+                    <span
+                      className={`text-xs ${v.intentos >= MAX_INTENTOS ? "text-attention" : "text-muted-foreground"}`}
+                    >
+                      {v.intentos} de {MAX_INTENTOS} intentos
+                      {v.intentos >= MAX_INTENTOS ? " · agotados" : ""}
+                    </span>
+                  )}
                 </div>
                 {v.motivo && (
                   <p className="mt-1 break-words font-mono text-xs text-muted-foreground">{v.motivo}</p>

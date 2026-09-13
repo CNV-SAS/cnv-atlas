@@ -1,4 +1,5 @@
 import "server-only";
+import { wompiEnvDeLaLlave } from "../ambiente";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -81,6 +82,9 @@ export async function createTransactionWithItems(
         amount: String(input.amount),
         currency: input.currency,
         idempotencyKey: input.idempotencyKey,
+        // EL MODO DEL PAGO SE ESCRIBE AL NACER LA VENTA y no cambia: es lo que impide que una venta del smoke
+        // se facture como real al pasar Alegra a produccion (0135).
+        wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
       })
       .returning({ id: transactions.id });
     if (input.items.length > 0) {
@@ -158,11 +162,18 @@ export type SealedTransaction = {
 export async function sealPaidTransaction(
   txId: string,
   wompiTransactionId: string,
+  // El instrumento con que pago el paciente. Opcional: un evento sin el no puede impedir sellar el pago.
+  paymentMethodType?: string | null,
 ): Promise<SealedTransaction | null> {
   return db.transaction(async (tx) => {
     const updated = await tx
       .update(transactions)
-      .set({ status: "paid", wompiTransactionId, updatedAt: new Date() })
+      .set({
+        status: "paid",
+        wompiTransactionId,
+        paymentMethodType: paymentMethodType ?? null,
+        updatedAt: new Date(),
+      })
       .where(and(eq(transactions.id, txId), eq(transactions.status, "pending")))
       .returning({
         id: transactions.id,
@@ -196,6 +207,9 @@ export async function createPaidCashTransaction(input: NewTransaction): Promise<
         amount: String(input.amount),
         currency: input.currency,
         idempotencyKey: input.idempotencyKey,
+        // EL MODO DEL PAGO SE ESCRIBE AL NACER LA VENTA y no cambia: es lo que impide que una venta del smoke
+        // se facture como real al pasar Alegra a produccion (0135).
+        wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
       })
       .onConflictDoNothing({ target: transactions.idempotencyKey })
       .returning({

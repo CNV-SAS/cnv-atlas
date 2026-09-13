@@ -3877,6 +3877,7 @@ export type Database = {
           alegra_attempts: number
           alegra_cufe: string | null
           alegra_emitted_at: string | null
+          alegra_env: string | null
           alegra_invoice_id: string | null
           alegra_invoice_number: string | null
           alegra_invoice_state:
@@ -3894,15 +3895,18 @@ export type Database = {
           organization_id: string
           patient_id: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
+          payment_method_type: string | null
           professional_id: string | null
           status: Database["public"]["Enums"]["transaction_status"]
           updated_at: string
+          wompi_env: string
           wompi_transaction_id: string | null
         }
         Insert: {
           alegra_attempts?: number
           alegra_cufe?: string | null
           alegra_emitted_at?: string | null
+          alegra_env?: string | null
           alegra_invoice_id?: string | null
           alegra_invoice_number?: string | null
           alegra_invoice_state?:
@@ -3920,15 +3924,18 @@ export type Database = {
           organization_id: string
           patient_id?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
+          payment_method_type?: string | null
           professional_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           updated_at?: string
+          wompi_env: string
           wompi_transaction_id?: string | null
         }
         Update: {
           alegra_attempts?: number
           alegra_cufe?: string | null
           alegra_emitted_at?: string | null
+          alegra_env?: string | null
           alegra_invoice_id?: string | null
           alegra_invoice_number?: string | null
           alegra_invoice_state?:
@@ -3946,9 +3953,11 @@ export type Database = {
           organization_id?: string
           patient_id?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
+          payment_method_type?: string | null
           professional_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           updated_at?: string
+          wompi_env?: string
           wompi_transaction_id?: string | null
         }
         Relationships: [
@@ -4413,6 +4422,7 @@ export type Database = {
         | "emitida"
         | "fallida"
         | "emitida_sin_sellar"
+        | "rechazada"
       app_role: "admin" | "direccion" | "soporte" | "obbia" | "professional"
       assignment_status: "active" | "completed" | "breach"
       bank_account_type: "ahorros" | "corriente"
@@ -4656,6 +4666,7 @@ export const Constants = {
         "emitida",
         "fallida",
         "emitida_sin_sellar",
+        "rechazada",
       ],
       app_role: ["admin", "direccion", "soporte", "obbia", "professional"],
       assignment_status: ["active", "completed", "breach"],

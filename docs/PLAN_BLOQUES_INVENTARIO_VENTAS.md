@@ -662,6 +662,57 @@ En sandbox, de punta a punta:
 3. **El mapeo de los cuatro códigos a sus ítems**: NUT-001 a NUT-004, que están anotados en el script de carga. Y el **ítem de LUVIA, que no existe**: hoy se puede vender y no se podría facturar.
 4. **El re-mapeo de identificadores**: los contactos e ítems creados en sandbox NO valen en producción. La columna `alegra_env` (migración 0129) es lo que impide usarlos por error.
 
+### Conciliación y comisión: lo que respondió contabilidad (2026-09-13)
+
+**La comisión de Wompi va en DOS CAPAS que no se confunden.**
+
+| Capa | Para qué | Cuándo |
+|---|---|---|
+| **Estimada, por venta** | Gestión. Es la que **desbloquea el reporte del margen de LUVIA** | Al sellar la venta, con la tarifa de Wompi por instrumento |
+| **Real, al desembolso** | Contabilidad, con la factura de Wompi | Cuando Wompi liquida |
+
+Y una **verificación periódica** que compare la acumulada estimada contra la real. **Si divergen, la tarifa
+está mal**, y es la única forma de saberlo.
+
+**Tres reportes, no dos, y como PANTALLAS CONSULTABLES, no reportes programados:**
+
+1. **Pendiente de consignar por Integrante, CON ANTIGÜEDAD.** *"200.000 de hace tres días es normal; de hace
+   cinco semanas es un problema."* Sin la columna de días, los dos se ven igual.
+2. **Cobrado por Wompi sin desembolsar.**
+3. **Composición del desembolso**: qué ventas componen el depósito que entró hoy. **Es el que faltaba, y
+   sin él conciliar el extracto es imposible.**
+
+### LO QUE NINGUNO VIO: la retención en la fuente de Wompi
+
+Wompi es de Bancolombia, así que **es probable que practique retención en la fuente**. Si la practica, lo
+que llega al banco no es *bruto − comisión* sino ***bruto − comisión − retención***.
+
+**Y el tratamiento es opuesto:** la comisión es **gasto**; la retención es **anticipo de renta a favor de
+CNV**, recuperable con su certificado. **Tratarlo todo como comisión sería registrar como gasto un activo.**
+
+**Verificado en el código: el webhook de Wompi NO trae esa información, y no por un descuido nuestro.** El
+evento de transacción informa el cobro (monto, estado, instrumento), no la liquidación. La comisión y la
+retención aparecen en el **desembolso**, así que se leen del reporte de liquidación de Wompi y de su
+certificado de retención, no del webhook. Consecuencia para el reporte 3 (composición del desembolso):
+tiene que separar **tres** cifras por depósito, no dos, y la retención va a una cuenta de activo.
+
+**Pendiente de confirmar con Wompi o con la primera liquidación real:** si practica retención, a qué
+tarifa, y sobre qué base (bruto o neto de comisión).
+
+### El medio de pago en la factura
+
+Códigos DIAN que dio contabilidad: **48** tarjeta crédito · **49** tarjeta débito · **10** efectivo · **42**
+PSE, Nequi y transferencia Bancolombia. Es **informativo**: no cambia impuestos ni valores.
+
+**Prerrequisito cumplido el 2026-09-13:** el instrumento con que pagó el paciente se estaba **tirando** (el
+esquema del webhook declaraba cinco campos y Zod eliminaba `payment_method_type`). Ahora se guarda en
+`transactions.payment_method_type`.
+
+**Falta:** verificar **qué valores acepta Alegra** en el campo de medio de pago de la factura. No expone un
+catálogo por API (probado: no existe endpoint), y puede admitir un subconjunto de los códigos DIAN. **No sale
+mañana**: al ser informativo, que las facturas de producción digan "no definido" unos días no tiene efecto
+fiscal, y mandar un valor que Alegra no reconozca sí podría rechazar la factura entera.
+
 ### GATE DE 2b: las ventas del smoke viven en la base de producción, y no saben de qué ambiente son
 
 **Encontrado el 2026-09-13 al analizar la venta del paciente real que el guard rechaza.** No se arregla
@@ -776,6 +827,7 @@ fiscal** existe y se puede consultar por día.
 
 **Alcance mínimo:**
 
+- **CONTRACARGOS** (añadido por contabilidad el 2026-09-13): un pago que Wompi aprobó y **reversa después**. La factura ya está validada por la DIAN, así que no se puede anular: **la salida es nota crédito**, con referencia a la factura original y numeración electrónica (plantilla NTC, ya configurada). Y la venta tiene que volver a la cola del panel, porque el pago que la cerraba dejó de existir.
 - Anulación por error.
 - Devolución con **reingreso al lote de origen**.
 - **Nota crédito en Alegra enlazada a la factura original.**
@@ -838,7 +890,7 @@ procedimiento de dos personas, no un borrado.
 ## Bloques 4, 5 y 6
 
 **4 · Liquidaciones (grande).** `/comercial`, la pantalla de comisiones del Integrante, la liquidación con
-IVA y retención según perfil (**con acumulado anual que se reinicia por año calendario**, adición d), los
+IVA y retención según perfil. **Y la retención que PRACTIQUE un Integrante que sea agente retenedor** (recordado por contabilidad el 2026-09-13, ya estaba en el modelo): cuando el Integrante le paga a CNV y retiene, lo que llega es menos que lo facturado, y esa diferencia es **anticipo de renta de CNV**, no un faltante ni un descuento. `tax_is_withholding_agent` ya existe en el perfil desde la migración 0123; falta que la liquidación la use (**con acumulado anual que se reinicia por año calendario**, adición d), los
 faltantes con su máquina de estados, y la **conciliación Atlas ↔ Alegra**. El faltante nunca es una venta:
 no genera factura, ni IVA, ni comisión (principio 6).
 
