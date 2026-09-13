@@ -46,8 +46,12 @@ node --env-file=.env.produccion.local scripts/check-migrations.mjs
 ```
 
 - [ ] **Debe dar:** `138` en el repo y `138` en la base, sin migraciones pendientes. La 138 es la `0137` (el nombre MULTI-CELL BASE, con guion): **aplícala como las anteriores antes de seguir**, porque el SQL de configuración busca el producto por ese nombre y aborta si no lo encuentra.
-- [ ] En Vercel, Deployments: el deployment de **Production** es del último commit de `main`, y ese último commit **incluye `94ecf611`** (el reparto con el proveedor). Sin él, la venta controlada de LUVIA registraría 60.504 de ingreso de CNV en vez de 7.563.
-- [ ] **Anota el nombre de ese deployment** (el de sandbox). Es a donde vuelves si algo sale mal (F3).
+- [ ] En Vercel, Deployments: el deployment de **Production** está en **Ready** y es de **`208aa3aa` o posterior**. Ese commit trae, con los anteriores de hoy:
+  - **el reparto con el proveedor** (`94ecf611`). Sin él, la venta controlada de LUVIA registraría 60.504 de ingreso de CNV en vez de 7.563;
+  - **las lecturas de saldo por lote** (`dd67a041`);
+  - **el alias del motor para MULTI-CELL BASE** (`208aa3aa`).
+- [ ] **El nombre y el alias tienen que ir juntos.** Si la base y el deployment no coinciden (base con el nombre nuevo y código viejo, o al revés), la recomendación del motor en Tratamiento muestra **MULTI-CELL BASE como "no está en el catálogo"**. No rompe la venta ni la factura, pero el profesional ve un producto recomendado que no puede elegir. **Cómo comprobarlo:** abre la pestaña Tratamiento de un paciente al que el motor le recomiende MULTI-CELL BASE, y tiene que aparecer como producto del catálogo.
+- [ ] **Anota el nombre de ese deployment** (el de sandbox). Es a donde vuelves si algo sale mal (F3), y tiene que ser **este**: uno anterior a `208aa3aa` traería de vuelta el alias viejo.
 
 ### A4. Wompi producción está listo
 
@@ -240,6 +244,7 @@ select (select amount from cnv_revenue cr where cr.transaction_id = t.id) as ing
 
 - [ ] Con un Integrante al 20%: **`comision` 15126** e **`ingreso_cnv` 7563**.
 - [ ] Sin profesional en la venta: `comision` vacía e **`ingreso_cnv` 22689**.
+- [ ] Si el Integrante tiene otra tasa: `comision` = 75.630 × tasa, e `ingreso_cnv` = 75.630 − 52.941 (la parte del proveedor, 70%) − `comision`.
 - **Si `ingreso_cnv` dice 60504 o 75630: PARA.** El deployment no tiene el reparto con el proveedor (A3).
 
 ### C4. Revisión en Alegra (contabilidad, en pantalla)
@@ -263,11 +268,18 @@ Abre la factura FE nueva:
 
 - [ ] En el panel de Wompi producción, la transacción aparece **aprobada** por 90.000.
 
+### C7. La unidad física
+
+La venta **no descuenta inventario** (eso llega con el Bloque 3), y es la misma situación del aviso a los Integrantes.
+
+- [ ] **Anota de dónde salió la unidad de LUVIA:** de la bodega central o de la vitrina de qué Integrante, y la fecha.
+- Si salió de un Integrante y el comprador tiene tratamiento con LUVIA prescrita, ese Integrante registra la entrega en Tratamiento. Si no, la nota escrita es el registro, igual que pide el aviso.
+
 ---
 
 ## D. ABRIR LA VENTA
 
-**Solo si C3, C4 y C6 quedaron completos.**
+**Solo si C3, C4, C6 y C7 quedaron completos.**
 
 - [ ] **Purga las ventas de prueba del smoke** (decisión del 2026-09-13). Primero el ensayo, sin `--commit`:
 
@@ -275,7 +287,7 @@ Abre la factura FE nueva:
 node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purga-ventas-de-prueba.sql
 ```
 
-  **Debe dar:** la lista de ventas de prueba (unas siete, ninguna de hoy) y `Ventas reales intactas: 1 por 90000` (la venta controlada). Si la cifra real no es esa, **no confirmes**. Si cuadra, repite con `--commit`.
+  **Debe dar:** la lista de ventas de prueba (unas siete, ninguna de hoy) y `Ventas reales intactas: N por X`, donde N y X son **los checkouts de producción que creaste en C**, pagados o no. Lo normal es `1 por 90000`; si en C1 tuviste que crear otro checkout, serán 2. Si la cifra no corresponde con lo que hiciste en C, **no confirmes**. Si cuadra, repite con `--commit`.
 
 - [ ] **Envía el aviso escrito a los Integrantes** (`docs/entregas/AVISO_INTEGRANTES_VENTAS_Y_ENTREGAS.md`) y guarda el mensaje enviado.
 - [ ] Avisa a los Integrantes de que ya pueden cobrar.
@@ -287,7 +299,7 @@ node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purg
 
 ## E. LO QUE ES NORMAL Y NO ES UN PROBLEMA
 
-- **Ventas de prueba en el panel** con "No se factura aquí, por regla": son pagos del smoke con tarjeta de prueba. En producción no se facturan nunca, que es justo lo que se quiere, y el reintento no les gasta intentos.
+- **Ventas de prueba en el panel** con "No se factura aquí, por regla", **hasta la purga del paso D**: son pagos del smoke con tarjeta de prueba. En producción no se facturan nunca, que es justo lo que se quiere, y el reintento no les gasta intentos. Después de la purga ya no aparecen.
 - **"sin productKey"** en el cotejo y **"aceptada con observaciones"** en la DIAN: es la observación FAZ09. No invalida la factura.
 - **Una factura "Numerada sin sellar"** en el panel: la DIAN tardó en responder. Pulsa **Reintentar** en `/pagos` pasado un minuto y se completa sola. No crea una segunda factura.
 
@@ -313,7 +325,7 @@ node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purg
 
 ### F3. Vuelta atrás completa
 
-1. **Vercel → Deployments → el deployment que anotaste en A3 → ⋮ → Instant Rollback.** Tarda un minuto, y ese deployment trae **sus** variables, las de sandbox.
+1. **Vercel → Deployments → el deployment que anotaste en A3 → ⋮ → Instant Rollback.** Tarda un minuto, y ese deployment trae **sus** variables, las de sandbox. **Ese, no uno anterior:** antes de `208aa3aa` el alias del motor no coincide con el nombre de la base.
 2. **Vercel → Settings → Environment Variables:** devuelve las siete variables de B4 a sus valores de sandbox. Sin esto, el próximo push despliega otra vez con las de producción.
 3. Hasta que se pulse **Undo Rollback** en Vercel, los push nuevos **no se publican**. Es lo esperado.
 4. **Solo si se va a volver a probar en sandbox:**
