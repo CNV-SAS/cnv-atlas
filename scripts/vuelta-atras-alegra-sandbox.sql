@@ -10,7 +10,8 @@
 -- Para frenar la emision en produccion NO hace falta: eso lo hace devolver las variables de Vercel.
 --
 -- COMO SE CORRE:
---   node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/vuelta-atras-alegra-sandbox.sql
+--   En una ventana de PowerShell con $env:DATABASE_URL de la nube (ver la guia del 2b, A2):
+--     node scripts/aplicar-migracion.mjs scripts/vuelta-atras-alegra-sandbox.sql
 --   ... y con --commit al final cuando el ensayo diga "SIN ERRORES".
 --
 -- Para volver a produccion despues: `scripts/config-alegra-produccion.sql` otra vez, con sus valores.

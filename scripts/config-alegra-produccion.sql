@@ -8,7 +8,8 @@
 -- `docs/entregas/GUIA_2B_PASO_A_PRODUCCION.md`, que dice el orden. Se ENSAYA antes, sin --commit.
 --
 -- COMO SE CORRE (nunca en el editor SQL de Supabase, que no sostiene la transaccion):
---   node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql
+--   En una ventana de PowerShell con $env:DATABASE_URL de la nube (ver la guia del 2b, A2):
+--     node scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql
 --   ... y lo mismo con --commit al final cuando el ensayo diga "SIN ERRORES".
 --
 -- ── LO QUE HAY QUE SABER ANTES DE CORRERLO ──────────────────────────────────────────────────────

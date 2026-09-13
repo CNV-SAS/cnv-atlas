@@ -6,22 +6,21 @@
 -- inmutables. Con un producto propio de prueba, lo unico que se mueve es ese producto, y la purga de ventas
 -- de prueba lo deshace entero.
 --
--- DE DONDE SALE LA VENTA: igual que en la aplicacion, de la ubicacion del profesional ASIGNADO al paciente, y
--- si no tiene, de la bodega central. Este script calcula esa ubicacion con el documento del paciente de
--- prueba y carga ahi las unidades. Si el paciente tiene Integrante asignado, el producto de prueba se vera en
--- el "Mi inventario" de ese Integrante mientras dure el smoke: el NOTICE lo dice.
+-- DE DONDE SALE LA VENTA: de la ubicacion del profesional asignado al paciente, y si no tiene, de la bodega
+-- central. El smoke usa al paciente de prueba 1000898321 SIN Integrante (decision de Santiago, 2026-09-13), asi
+-- que las unidades se cargan en la CENTRAL. Si todavia tiene Integrante, este script ABORTA: primero va
+-- `smoke-bloque3-desasignar-paciente.sql`. Con Integrante, el producto de prueba viviria en una vitrina real.
 --
 -- SE FACTURA EN SANDBOX contra el item "PRUEBA" (id 1, base 1.000 + IVA): por eso el precio es 1.190.
 --
 -- COMO SE CORRE:
---   node --env-file=<archivo con DATABASE_URL de la nube> scripts/aplicar-migracion.mjs scripts/smoke-bloque3-preparar.sql
---   ... y con --commit al final.
+--   ver docs/entregas/SMOKE_BLOQUE_3_SESION_1.md, paso 2. NO se pega en el editor de Supabase.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 begin;
 
--- ══ EL UNICO VALOR QUE SE EDITA: el documento del paciente de PRUEBA con el que se hara el smoke ══
-create temp table smoke_param on commit drop as select '<DOCUMENTO>'::text as documento;
+-- El paciente de PRUEBA del smoke, ya escrito: no hay nada que editar.
+create temp table smoke_param on commit drop as select '1000898321'::text as documento;
 
 do $$
 declare
@@ -36,7 +35,7 @@ declare
   v_lote_b   uuid := gen_random_uuid();
 begin
   if v_doc !~ '^[0-9]+$' then
-    raise exception 'ABORTADO: falta el documento del paciente de prueba (<DOCUMENTO>).';
+    raise exception 'ABORTADO: el documento del paciente de prueba no es valido.';
   end if;
   select id, organization_id into v_paciente, v_org from patients where document_number = v_doc and is_test;
   if v_paciente is null then
@@ -48,8 +47,8 @@ begin
 
   -- La misma lectura que hace la aplicacion (`getProfessionalIdForPatient`: la primera relacion, sin orden).
   -- Si el paciente tuviera varias, la aplicacion podria elegir otra: se avisa en vez de adivinar.
-  if (select count(*) from patient_professional_relationships where patient_id = v_paciente) > 1 then
-    raise exception 'ABORTADO: el paciente de prueba tiene varios profesionales asignados; usa uno con uno solo o ninguno.';
+  if exists (select 1 from patient_professional_relationships where patient_id = v_paciente) then
+    raise exception 'ABORTADO: el paciente % todavia tiene Integrante asignado. Corre primero smoke-bloque3-desasignar-paciente.sql.', v_doc;
   end if;
   select professional_id into v_prof from patient_professional_relationships
    where patient_id = v_paciente limit 1;

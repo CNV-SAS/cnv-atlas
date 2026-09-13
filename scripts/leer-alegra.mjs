@@ -14,12 +14,12 @@ import postgres from "postgres";
 //
 // ── DE DONDE SALEN LAS CREDENCIALES ─────────────────────────────────────────────────────────────
 //
-// Del entorno. Las de produccion van en un archivo APARTE (`.env.produccion.local`, ignorado por git), no
-// en `.env.local`: si entraran en `.env.local`, `pnpm dev` y los tests locales hablarian con la cuenta real.
+// Del entorno. Las de produccion se ponen con $env: en una ventana de PowerShell SOLO para eso (guia del 2b,
+// A2), nunca en `.env.local`: ahi `pnpm dev` y los tests locales hablarian con la cuenta real.
 //
 // USO:
-//   node --env-file=.env.produccion.local scripts/leer-alegra.mjs
-//   node --env-file=.env.local            scripts/leer-alegra.mjs     (el sandbox, para comparar la forma)
+//   node scripts/leer-alegra.mjs                                (con las $env: de produccion puestas)
+//   node --env-file=.env.local scripts/leer-alegra.mjs          (el sandbox, para comparar la forma)
 //
 // Si el entorno trae DATABASE_URL, tambien lee el catalogo de Atlas (un SELECT) y pone al lado de cada
 // item de Alegra el producto de Atlas que le corresponde por nombre y si el precio coincide. Es una AYUDA
@@ -31,7 +31,7 @@ const apiKey = process.env.ALEGRA_API_KEY;
 const base = (process.env.ALEGRA_BASE_URL ?? "").replace(/\/+$/, "");
 if (!email || !apiKey || !base) {
   console.error("Faltan ALEGRA_EMAIL, ALEGRA_API_KEY o ALEGRA_BASE_URL en el entorno.");
-  console.error("Uso: node --env-file=.env.produccion.local scripts/leer-alegra.mjs");
+  console.error("Pon $env:ALEGRA_EMAIL, $env:ALEGRA_API_KEY y $env:ALEGRA_BASE_URL y corre: node scripts/leer-alegra.mjs");
   process.exit(1);
 }
 const ambiente = /sandbox/i.test(base) ? "sandbox" : "produccion";
