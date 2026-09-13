@@ -14,6 +14,8 @@ import {
 } from "@/modules/payments/components/create-checkout-form";
 import { RegisterCashSaleForm } from "@/modules/payments/components/register-cash-sale-form";
 import { listSelectablePatients, listTransactions } from "@/modules/payments/data/payments-repository";
+import { listarVentasSinDocumento } from "@/modules/payments/data/facturacion-repository";
+import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
 import type { TransactionStatus, TransactionWithItems } from "@/modules/payments/types";
@@ -57,6 +59,10 @@ export default async function PagosPage() {
   if (!canCreate && !canView) redirect("/no-autorizado");
 
   const transactions = await listTransactions();
+  // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
+  // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
+  // transacciones, que se muestra igual.
+  const ventasSinDocumento = canView ? await listarVentasSinDocumento() : [];
   // Para recuperar el enlace de un checkout pendiente sin generar otro: el link es derivable del id
   // (misma forma que buildCheckoutUrl). Horas restantes del TTL de 24h contra el created_at.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -126,6 +132,10 @@ export default async function PagosPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      {/* VA ANTES DE LA LISTA DE TRANSACCIONES a proposito: es lo que hay que mirar y resolver, y al
+          final de la pagina no lo mira nadie. Contabilidad lo quiere en CERO al cierre de cada dia. */}
+      {canView && <FacturasPendientes ventas={ventasSinDocumento} />}
 
       <section className="flex flex-col gap-3">
         <TituloSeccion>Transacciones</TituloSeccion>

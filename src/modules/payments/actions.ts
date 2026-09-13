@@ -12,6 +12,8 @@ import {
 } from "./data/payments-repository";
 import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
+import { canViewRevenue } from "./policies/can-view-revenue";
+import { reintentarFacturasPendientes } from "./services/facturacion-service";
 import { CheckoutError, createCheckout, registerCashSale } from "./services/payments-service";
 import {
   createCheckoutSchema,
@@ -19,6 +21,7 @@ import {
   type CashSaleFormState,
   type CreateCheckoutInput,
   type PaymentFormState,
+  type RetryFormState,
 } from "./validations";
 
 // Autorizacion comun (regla 3): crear checkout = professional o admin.
@@ -151,5 +154,46 @@ export async function registerCashSaleFormAction(
     if (e instanceof CheckoutError) return { error: e.message, success: null, duplicateWarning: null };
     reportServerError("cash-sale.register", e);
     return { error: "No se pudo registrar la venta en efectivo.", success: null, duplicateWarning: null };
+  }
+}
+
+// ----- Reintentar las facturas pendientes (panel de /pagos) -----
+
+/**
+ * Vuelve a intentar las ventas cobradas sin documento fiscal.
+ *
+ * SE PUEDE PULSAR LAS VECES QUE HAGA FALTA. La idempotencia no la da este boton: la da el reclamo con
+ * arriendo del servicio (dos pulsaciones a la vez no pasan las dos) y la regla de que una venta que ya
+ * tiene id de factura se RELEE en vez de crear otra. Aqui solo se comprueba quien puede pulsarlo.
+ *
+ * MISMA POLICY QUE VER EL INGRESO (`canViewRevenue`), y no una nueva: quien puede ver el dinero de CNV es
+ * quien tiene por que arreglar su facturacion. Inventar un permiso aparte para un boton habria sido una
+ * segunda fuente de la misma decision.
+ */
+export async function reintentarFacturasAction(
+  _prev: RetryFormState,
+  _formData: FormData,
+): Promise<RetryFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canViewRevenue(user)) {
+    return { error: "No tienes permiso para reintentar facturas.", success: null, warning: null };
+  }
+  try {
+    const { intentadas } = await reintentarFacturasPendientes();
+    // SIN `revalidatePath`: el refresco lo hace la pantalla (`useFormToastRefreshOnSuccess`). Hacer los
+    // dos monta los segmentos dos veces, la pagina salta al inicio dos veces, y el formulario puede
+    // desmontarse antes de que se vea el toast.
+    return {
+      error: null,
+      success:
+        intentadas === 0
+          ? "No hay facturas pendientes por reintentar."
+          : `Se reintentaron ${intentadas} factura${intentadas === 1 ? "" : "s"}. Mira el resultado en la lista.`,
+      warning: null,
+    };
+  } catch (e) {
+    reportServerError("facturas.reintentar", e);
+    return { error: "No se pudieron reintentar las facturas.", success: null, warning: null };
   }
 }

@@ -91,7 +91,6 @@ function dietaCoarse(enc: Enc): string {
 // Recibe `bis` sin usarlo para que las TRES tengan la misma firma: el reader elige la funcion por
 // profesion y la llama igual, sin tener que saber cual necesita la composicion. En su archivo tambien la
 // recibe. Quitarlo obligaria al llamador a distinguir, que es donde se cuelan los errores de cableado.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function resumenMedicoParrafo(enc: Enc, _bis: Bis = {}): string {
   const pres: string[] = [];
   const af = arr(enc.d5_38);

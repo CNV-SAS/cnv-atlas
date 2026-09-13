@@ -149,6 +149,9 @@ export type AlegraInvoiceResult = {
   stamp: AlegraStamp | null;
   total: number | null;
   tax: number | null;
+  /** Lo que falta por cobrar. Es la FUENTE para saber si el pago ya se registro, y es la de Alegra: si el
+   *  pago fallo y no dejo rastro en Atlas, el saldo lo dice igual. */
+  balance: number | null;
 };
 
 type InvoiceResponse = {
@@ -156,6 +159,7 @@ type InvoiceResponse = {
   status?: string;
   total?: number;
   tax?: number;
+  balance?: number;
   numberTemplate?: { fullNumber?: string; number?: string };
   stamp?: { cufe?: string; legalStatus?: string };
 };
@@ -168,6 +172,7 @@ function leerFactura(res: InvoiceResponse): AlegraInvoiceResult {
     stamp: res.stamp ? { cufe: res.stamp.cufe ?? null, legalStatus: res.stamp.legalStatus ?? null } : null,
     total: typeof res.total === "number" ? res.total : null,
     tax: typeof res.tax === "number" ? res.tax : null,
+    balance: typeof res.balance === "number" ? res.balance : null,
   };
 }
 

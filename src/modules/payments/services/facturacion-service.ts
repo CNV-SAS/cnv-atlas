@@ -131,13 +131,103 @@ async function resolverContacto(patientId: string, env: string): Promise<number>
 }
 
 /**
+ * Registra el pago de una factura si todavia tiene saldo.
+ *
+ * EL SALDO LO DICE ALEGRA, no Atlas. Es deliberado: si el pago se registro y el desenlace no llego a
+ * escribirse (el proceso murio entre las dos llamadas), Atlas creeria que falta y lo registraria DOS
+ * VECES. La unica fuente que no puede equivocarse sobre si una factura esta pagada es la factura.
+ */
+async function registrarPagoSiFalta(
+  clientId: number,
+  factura: { id: string; balance: number | null },
+  cobrado: number,
+  cuenta: number,
+  fecha: string,
+): Promise<string | null> {
+  if (factura.balance !== null && factura.balance <= 0) return null; // ya esta pagada
+  try {
+    await createAlegraPayment({
+      clientId,
+      invoiceId: factura.id,
+      // BRUTO. La comision de la pasarela es gasto de CNV: restarla haria que la factura dijera que el
+      // paciente pago menos de lo que pago.
+      amount: cobrado,
+      date: fecha,
+      bankAccountId: cuenta,
+    });
+    return null;
+  } catch (e) {
+    // EL ERROR DEL PAGO SE ESCRIBE, y hasta el 2026-09-12 solo iba a Sentry. La factura quedaba `emitida`
+    // sin rastro de que el pago no se habia registrado, y Alegra la mostraba "por cobrar" de un paciente
+    // que ya pago. Nadie iba a mirar Sentry por eso.
+    Sentry.captureException(e, {
+      tags: { area: "alegra-pago", invoiceId: factura.id },
+    });
+    return `Factura OK, PAGO NO REGISTRADO: ${motivoLegible(e)}`;
+  }
+}
+
+/**
+ * Completa una factura QUE YA EXISTE: relee su estado, guarda el CUFE si ya llego y registra el pago si
+ * falta.
+ *
+ * ── POR QUE ESTO NO PUEDE SER "volver a emitir" ─────────────────────────────────────────────────
+ *
+ * Es el camino del reintento sobre una venta que quedo `emitida_sin_sellar` o con el pago fallido. Si
+ * llamara otra vez a `createAlegraInvoice`, saldria una SEGUNDA factura del mismo hecho, con su propio
+ * consecutivo. Deshacer eso es una nota credito y un hueco en la numeracion.
+ *
+ * La regla, entonces: si la venta YA tiene id de factura, NUNCA se crea otra. Se relee y se completa.
+ */
+async function completarFactura(
+  venta: VentaSellada,
+  invoiceId: string,
+  mapa: Parameters<typeof cuentaDelPago>[1],
+): Promise<void> {
+  const factura = await getAlegraInvoice(invoiceId);
+  const cufe = factura.stamp?.cufe ?? null;
+  const cobrado = Math.round(Number(venta.amount));
+  const cuenta = cuentaDelPago(venta.canal, mapa);
+
+  let errorDelPago: string | null = null;
+  if (cuenta) {
+    const clientId = await resolverContacto(venta.patientId!, mapa.env);
+    errorDelPago = await registrarPagoSiFalta(clientId, factura, cobrado, cuenta, hoy());
+  }
+
+  await fr.registrarIntentoDeFactura(venta.id, {
+    estado: factura.estado === "draft" ? "borrador" : cufe ? "emitida" : "emitida_sin_sellar",
+    invoiceId: factura.id,
+    numero: factura.numero,
+    cufe,
+    legalStatus: factura.stamp?.legalStatus ?? null,
+    error:
+      errorDelPago ??
+      (cufe ? null : "Numerada sin sellar ante la DIAN (sin CUFE). La cola vuelve a leerla."),
+  });
+}
+
+/**
  * Emite la factura de una venta ya pagada y registra su pago.
  *
- * Idempotente por el estado: si ya esta `emitida`, no hace nada. Es lo que impide que un reintento de la
- * cola, o un webhook reenviado, emitan el documento dos veces.
+ * ── LA IDEMPOTENCIA ES REAL DESDE EL 2026-09-12, Y ANTES ERA SOLO UNA FRASE ─────────────────────
+ *
+ * Esta nota decia "idempotente por el estado: si ya esta emitida, no hace nada", Y NO HABIA NINGUNA
+ * COMPROBACION en el codigo. Era un texto que afirmaba una garantia sin derivarla, escrito por mi al
+ * crear la funcion. Se cierra con dos piezas, porque una sola no basta:
+ *
+ *   1. UN RECLAMO (`reclamarParaFacturar`): un UPDATE condicional con arriendo. Dos pulsaciones del boton
+ *      o dos webhooks a la vez no pueden pasar los dos; Postgres serializa y el segundo no encuentra fila.
+ *      Un `if` no habria servido: las dos llamadas leen el estado antes de que ninguna lo cambie.
+ *   2. Y NO CREAR SEGUNDA FACTURA: si la venta ya tiene id de factura, se RELEE y se completa. Crear otra
+ *      daria un segundo consecutivo del mismo hecho, y deshacerlo es una nota credito y un hueco en la
+ *      numeracion.
  */
 export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
   try {
+    // EL RECLAMO VA PRIMERO, antes de leer nada: lo que se protege es el derecho a intentar.
+    if (!(await fr.reclamarParaFacturar(venta.id))) return;
+
     const mapa = await fr.getMapaDeAlegra();
     if (!mapa) {
       await fr.registrarIntentoDeFactura(venta.id, {
@@ -152,6 +242,13 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
         estado: "fallida",
         error: "La venta no tiene paciente, y la factura tiene que identificar al adquirente.",
       });
+      return;
+    }
+
+    // SI YA HAY FACTURA, no se crea otra: se completa. Es el camino del reintento.
+    const yaHecha = await fr.getFacturaDeVenta(venta.id);
+    if (yaHecha?.invoiceId) {
+      await completarFactura(venta, yaHecha.invoiceId, mapa);
       return;
     }
 
@@ -218,33 +315,14 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       error: cufe ? null : "Numerada sin sellar ante la DIAN (sin CUFE). La cola vuelve a leerla.",
     });
 
-    // EL PAGO, en su propio try. Si falla, la factura YA existe: reintentar la emision duplicaria el
-    // documento, y eso es peor que una factura sin pago registrado, que se ve en el reporte y se arregla.
+    // EL PAGO VA DESPUES DE ESE REGISTRO, y el orden es el que importa: la factura ya existe en Alegra, y
+    // si el proceso muere durante el pago, el id TIENE que estar guardado o el reintento crearia una
+    // segunda factura. Se escribe primero lo irreversible.
     const cuenta = cuentaDelPago(venta.canal, mapa);
-    if (cuenta && sellada.id) {
-      try {
-        await createAlegraPayment({
-          clientId,
-          invoiceId: sellada.id,
-          // BRUTO. La comision de la pasarela es gasto de CNV: restarla haria que la factura dijera que
-          // el paciente pago menos de lo que pago.
-          amount: cobrado,
-          date: fecha,
-          bankAccountId: cuenta,
-        });
-      } catch (e) {
-        // EL ERROR DEL PAGO SE ESCRIBE, y hasta hoy solo iba a Sentry. Es el MISMO defecto de visibilidad
-        // que se barrio esta semana, y lo deje yo aqui hace dos dias: la factura quedaba `emitida` sin
-        // rastro de que el pago no se habia registrado, y Alegra la mostraba "por cobrar" de un paciente
-        // que ya pago. Nadie iba a mirar Sentry por eso.
-        //
-        // NO cambia el estado de la factura (existe y esta bien); deja el motivo donde se ve.
-        await fr
-          .registrarIntentoDeFactura(venta.id, { estado, error: `Factura OK, PAGO NO REGISTRADO: ${motivoLegible(e)}` })
-          .catch(() => {});
-        Sentry.captureException(e, {
-          tags: { area: "alegra-pago", transactionId: venta.id, invoiceId: sellada.id },
-        });
+    if (cuenta) {
+      const errorDelPago = await registrarPagoSiFalta(clientId, sellada, cobrado, cuenta, fecha);
+      if (errorDelPago) {
+        await fr.registrarIntentoDeFactura(venta.id, { estado, error: errorDelPago });
       }
     }
   } catch (e) {
