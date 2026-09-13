@@ -70,11 +70,27 @@ export function medioDianDelPago(pago: {
  * API que guardo; entonces se escribe aqui con su evidencia al lado.
  */
 export const CODIGO_ALEGRA: Record<MedioDian, { codigo: string; evidencia: string } | null> = {
+  // SIN CODIGO, y no por falta de verificar: Santiago busco "tarjeta credito" y "tarjeta debito" en el
+  // desplegable de medio de pago de Alegra (sandbox, 2026-09-13) y NO EXISTEN. A que medio caen las tarjetas
+  // lo decide contabilidad, no nosotros. Mientras tanto una venta con tarjeta sale "no definido", que es
+  // informativo y no tiene efecto fiscal.
   tarjeta_credito: null,
   tarjeta_debito: null,
-  transferencia_debito: null,
-  efectivo: null,
+  transferencia_debito: {
+    codigo: "DEBIT_TRANSFER",
+    evidencia:
+      "Factura SETP990214702 del sandbox: Santiago eligio 'Transferencia debito' en la pantalla y la API devolvio DEBIT_TRANSFER (2026-09-13).",
+  },
+  efectivo: {
+    codigo: "CASH",
+    evidencia:
+      "Factura SETP990214701 del sandbox: Santiago eligio 'Efectivo' en la pantalla y la API devolvio CASH (2026-09-13).",
+  },
 };
+
+// VISTO Y NO USADO: "Consignacion bancaria" guarda BANK_DEPOSIT (factura SETP990214703, 2026-09-13).
+// Contabilidad penso primero en ella (codigo DIAN 42) para PSE y Nequi, y luego los paso a transferencia
+// debito. Queda anotado aqui para que nadie tenga que volver a averiguarlo si esa decision cambia.
 
 /** Lo que viaja a Alegra: el codigo si esta verificado, nada si no. */
 export function codigoAlegraDelPago(pago: {

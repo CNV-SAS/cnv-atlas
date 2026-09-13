@@ -67,11 +67,19 @@ describe("a Alegra solo viaja un código VERIFICADO", () => {
     }
   });
 
-  it("mientras un medio no esté verificado, no viaja nada y la factura sale como hoy", () => {
-    // Informativo: "no definido" no tiene efecto fiscal. Por eso esperar a verificarlo no cuesta nada.
-    if (CODIGO_ALEGRA.tarjeta_credito === null) {
-      expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "CREDIT" })).toBeNull();
-    }
+  it("los dos VERIFICADOS en el sandbox viajan: efectivo y transferencia débito", () => {
+    // Leidos de las facturas 701 y 702 despues de que Santiago los eligiera en la pantalla de Alegra.
+    expect(codigoAlegraDelPago({ canal: "efectivo", tipo: null, tipoTarjeta: null })).toBe("CASH");
+    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "PSE", tipoTarjeta: null })).toBe("DEBIT_TRANSFER");
+    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "NEQUI", tipoTarjeta: null })).toBe("DEBIT_TRANSFER");
+  });
+
+  it("y las TARJETAS no viajan: Alegra no tiene ese medio, y a qué caen lo decide contabilidad", () => {
+    // Informativo: "no definido" no tiene efecto fiscal. Por eso no se elige por nuestra cuenta.
+    expect(CODIGO_ALEGRA.tarjeta_credito).toBeNull();
+    expect(CODIGO_ALEGRA.tarjeta_debito).toBeNull();
+    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "CREDIT" })).toBeNull();
+    expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "DEBIT" })).toBeNull();
   });
 
   it("y el servicio no manda el campo si no hay código", () => {
