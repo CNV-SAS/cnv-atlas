@@ -4,7 +4,11 @@
 **Tiempo:** unos 30 minutos para la parte A y 45 para la ventana (B a D), sin contar la creación de ítems en Alegra.
 **Regla de toda la guía:** si un paso no da lo que dice **Debe dar**, no sigas. Ve a la sección **F. Si algo sale mal**.
 
-Las consultas marcadas **(lectura)** se pueden correr en el editor SQL de Supabase. Los scripts `.sql` **no**: esos se corren con `aplicar-migracion.mjs`, porque el editor de Supabase no sostiene la transacción.
+> ### ⚠ Dos cosas antes de correr cualquier comando
+>
+> **1. Los archivos `.sql` NO se pegan en el editor SQL de Supabase.** El editor no sostiene la transacción: un script partido o con su `commit` suelto puede aplicar la mitad y decir "success". Se corren **siempre** con `node scripts/aplicar-migracion.mjs`, como está escrito. En el editor de Supabase solo van las consultas marcadas **(lectura)**.
+>
+> **2. Usa una ventana de PowerShell SOLO para esto, y ciérrala al terminar.** Las variables que pones con `$env:` quedan en esa ventana y **ganan sobre `.env.local`**: un `pnpm dev`, un `pnpm db:check`, un `pnpm db:seed` o los tests corridos en esa misma ventana apuntarían a la base de la nube y a la cuenta real de Alegra.
 
 ---
 
@@ -25,24 +29,25 @@ Las consultas marcadas **(lectura)** se pueden correr en el editor SQL de Supaba
   - tener un correo que alguien pueda abrir durante la ventana.
 - [ ] **Alguien de contabilidad** conectado a Alegra durante la ventana, para mirar la factura en cuanto salga.
 
-### A2. Crear el archivo de credenciales de producción
+### A2. Abrir la ventana de PowerShell de la ventana de producción
 
-En la raíz del proyecto, un archivo **nuevo** llamado `.env.produccion.local` (git ya lo ignora):
+Abre una ventana **nueva** de PowerShell en la carpeta del proyecto y pon las cuatro variables. Todos los comandos de esta guía se corren **en esta ventana**:
 
+```powershell
+$env:DATABASE_URL    = "postgresql://...la de la nube..."
+$env:ALEGRA_EMAIL    = "...correo de Alegra producción..."
+$env:ALEGRA_API_KEY  = "...token de Alegra producción..."
+$env:ALEGRA_BASE_URL = "https://api.alegra.com/api/v1"
 ```
-DATABASE_URL=<el de la nube>
-ALEGRA_EMAIL=<correo de Alegra producción>
-ALEGRA_API_KEY=<token de Alegra producción>
-ALEGRA_BASE_URL=https://api.alegra.com/api/v1
-```
 
-- [ ] **No** pongas estas credenciales en `.env.local`. Si entran ahí, `pnpm dev` y los tests locales hablan con la cuenta real de CNV.
+- [ ] **No** pongas estas credenciales en `.env.local`: `pnpm dev` y los tests locales hablarían con la cuenta real de CNV.
+- [ ] Cada script imprime al empezar la base o la cuenta contra la que corre. **Míralo siempre:** tiene que ser la nube (no `127.0.0.1`) y Alegra producción (no `sandbox`).
 
 ### A3. El código y la base están al día
 
 ```
 git pull
-node --env-file=.env.produccion.local scripts/check-migrations.mjs
+node scripts/check-migrations.mjs
 ```
 
 - [ ] **Debe dar:** el **mismo número** en el repo y en la base, sin migraciones pendientes (el 2026-09-13 eran 140). Entre ellas van la `0137` (el nombre MULTI-CELL BASE, con guion: el SQL de configuración busca el producto por ese nombre y aborta si no lo encuentra) y la `0138`-`0139` (la venta mueve inventario).
@@ -80,7 +85,7 @@ Si falta algo, lo crea contabilidad en la pantalla de Alegra **antes** de seguir
 ### A6. Leer la cuenta de producción
 
 ```
-node --env-file=.env.produccion.local scripts/leer-alegra.mjs
+node scripts/leer-alegra.mjs
 ```
 
 - [ ] **Debe dar:** `Ambiente: PRODUCCION` y la empresa CONNECTED NUTRITION VENTURES S.A.S.
@@ -96,7 +101,7 @@ node --env-file=.env.produccion.local scripts/leer-alegra.mjs
 2. Ensáyalo, **sin** `--commit`:
 
 ```
-node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql
+node scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql
 ```
 
 - [ ] **Debe dar:** `El archivo corrio SIN ERRORES` y `Revirtiendo: esto fue un ENSAYO`.
@@ -137,7 +142,7 @@ select id, amount, alegra_invoice_state, alegra_attempts, alegra_last_attempt_at
 Un link creado antes del cambio y pagado después cruza de ambiente: se cobra con la llave de producción y la venta queda marcada "de prueba", así que nunca se factura.
 
 ```
-node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql --commit
+node scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql --commit
 ```
 
 - [ ] **Debe dar:** `Checkouts pendientes cerrados: N` y `CONFIRMADO`.
@@ -148,7 +153,7 @@ node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/cerr
 El mismo comando de A7, ahora con `--commit`:
 
 ```
-node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql --commit
+node scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql --commit
 ```
 
 - [ ] **Debe dar:** `SIN ERRORES` y `CONFIRMADO`.
@@ -158,7 +163,7 @@ Desde aquí, una venta facturada contra el sandbox fallaría. Por eso no se cobr
 ### B3. Cotejar Atlas contra Alegra producción
 
 ```
-node --env-file=.env.produccion.local scripts/cotejo-alegra.mjs
+node scripts/cotejo-alegra.mjs
 ```
 
 - [ ] **Debe dar:** `Ambiente cotejado: produccion` y `COTEJO LIMPIO`.
@@ -285,7 +290,7 @@ Abre la factura FE nueva:
 - [ ] **Purga las ventas de prueba del smoke** (decisión del 2026-09-13). Primero el ensayo, sin `--commit`:
 
 ```
-node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purga-ventas-de-prueba.sql
+node scripts/aplicar-migracion.mjs scripts/purga-ventas-de-prueba.sql
 ```
 
   **Debe dar:** la lista de ventas de prueba (unas siete, ninguna de hoy) y `Ventas reales intactas: N por X`, donde N y X son **los checkouts de producción que creaste en C**, pagados o no. Lo normal es `1 por 90000`; si en C1 tuviste que crear otro checkout, serán 2. Si la cifra no corresponde con lo que hiciste en C, **no confirmes**. Si cuadra, repite con `--commit`.
@@ -294,7 +299,7 @@ node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purg
 - [ ] Avisa a los Integrantes de que ya pueden cobrar.
 - [ ] **Primer día:** que contabilidad mire en Alegra la **primera factura de un producto propio** (MULTI-CELL, OMEGA, CURCUMIN o D3-K2) y confirme que su centro de costo es el **propio**. La venta controlada solo probó el de terceros.
 - [ ] Y la **primera venta en efectivo**: su pago tiene que ir contra **"Efectivo en poder de Integrantes"**.
-- [ ] Borra `.env.produccion.local` cuando termines, o guárdalo fuera del proyecto.
+- [ ] **Cierra la ventana de PowerShell** donde pusiste las credenciales. Si no la cierras, corre `Remove-Item Env:DATABASE_URL, Env:ALEGRA_EMAIL, Env:ALEGRA_API_KEY, Env:ALEGRA_BASE_URL`.
 
 ---
 
@@ -332,7 +337,7 @@ node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purg
 4. **Solo si se va a volver a probar en sandbox:**
 
 ```
-node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/vuelta-atras-alegra-sandbox.sql --commit
+node scripts/aplicar-migracion.mjs scripts/vuelta-atras-alegra-sandbox.sql --commit
 ```
 
 **Lo que NO se deshace:**

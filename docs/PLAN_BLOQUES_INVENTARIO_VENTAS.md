@@ -968,8 +968,9 @@ entre "venta que no mueve inventario" y "venta que lo mueve".
 >   van con el **paso 5**. Crearlas hoy sin quien las escriba sería una columna declarada sin escritor.
 > - **La reserva vence con el link** (`CHECKOUT_TTL_MS`, la misma constante), y una reserva vencida no
 >   necesita limpieza: deja de contar.
-> - **SUPUESTO OPERATIVO a confirmar:** una venta sin profesional (la crea un administrador para un paciente
->   sin Integrante asignado) sale de la **bodega central**.
+> - **CONFIRMADO por Santiago (2026-09-13):** una venta sin profesional (la crea un administrador para un
+>   paciente sin Integrante asignado) sale de la **bodega central**: ese paciente no tiene de dónde
+>   descontar, y la central es de CNV.
 
 **Solo DDL aditivo, sin backfill:**
 

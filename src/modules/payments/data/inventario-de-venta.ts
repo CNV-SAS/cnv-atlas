@@ -42,8 +42,8 @@ export class InventarioDeVentaError extends Error {
  * De donde sale la venta: la ubicacion del profesional de la venta; si no tiene (o la venta no tiene
  * profesional), la bodega central.
  *
- * SUPUESTO OPERATIVO, anotado para confirmarlo: una venta sin profesional (la crea un administrador para un
- * paciente sin Integrante asignado) sale de la central, que es donde esta el producto que no custodia nadie.
+ * CONFIRMADO por Santiago (2026-09-13): una venta sin profesional (la crea un administrador para un paciente
+ * sin Integrante asignado) sale de la central. Ese paciente no tiene de donde descontar, y la central es de CNV.
  */
 export async function ubicacionDeLaVenta(
   ex: Ejecutor,

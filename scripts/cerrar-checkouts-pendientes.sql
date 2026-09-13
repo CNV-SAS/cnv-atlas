@@ -19,7 +19,8 @@
 -- y va DESPUES del 2b: no se toca el codigo de pagos el dia antes de salir.
 --
 -- COMO SE CORRE, en los dos momentos que dice la guia (antes de encender y antes de una vuelta atras):
---   node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql
+--   En una ventana de PowerShell con $env:DATABASE_URL de la nube (ver la guia del 2b, A2):
+--     node scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql
 --   ... y con --commit al final. El ensayo ya dice cuantas cerraria.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 

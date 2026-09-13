@@ -25,7 +25,8 @@
 -- no en reales.
 --
 -- COMO SE CORRE (nunca en el editor SQL de Supabase, que no sostiene la transaccion):
---   node --env-file=.env.produccion.local scripts/aplicar-migracion.mjs scripts/purga-ventas-de-prueba.sql
+--   En una ventana de PowerShell con $env:DATABASE_URL de la nube (ver la guia del 2b, A2):
+--     node scripts/aplicar-migracion.mjs scripts/purga-ventas-de-prueba.sql
 --   ... revisar los NOTICE, y lo mismo con --commit al final.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 
