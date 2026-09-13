@@ -96,8 +96,10 @@ comprometida. Hoy esto no está escrito en ninguna parte y no existe.
 **D4. Entra un bloque de REVERSA (3b), inmediatamente después del de venta.** No es hipotético: CNV ya
 emitió una factura con cantidad equivocada y la corrigió con nota crédito.
 
-**D5. La tabla de alérgenos se construye pero NO se enciende en producción hasta que Gildardo firme las
-equivalencias.** Y mientras tanto **LUVIA no se habilita para venta**.
+**D5. ~~La tabla de alérgenos se construye pero NO se enciende en producción hasta que Gildardo firme las
+equivalencias. Y mientras tanto LUVIA no se habilita para venta.~~** **Superada (2026-09-12):** Gildardo
+decidió sin equivalencias y LUVIA habilitada (0126); el asesor legal pidió yuxtaponer las dos
+declaraciones (0127). Ver "Los alérgenos".
 
 ---
 
@@ -857,6 +859,173 @@ segundo documento; con Alegra caída, la venta se sella y aparece en la cola con
 ## Bloque 3 · La venta nace en Tratamiento
 
 **Tamaño: grande.** No se fragmenta.
+
+> **PLAN DE EJECUCIÓN DEL 2026-09-13, PENDIENTE DE APROBACIÓN DE SANTIAGO.** Sin código. Escrito después de
+> verificar el estado real del código (inventario, Tratamiento, pagos, tableros y RLS). Donde contradice el
+> "Modelo de datos" original de más abajo, **manda este plan si se aprueba**; el original se conserva como
+> historia.
+
+### 3.0 · La decisión de fondo: `transactions` NO se reemplaza, se extiende
+
+El plan original decía *"`sales` reemplaza a `transactions` como raíz"*. Se escribió el 2026-09-10, **antes**
+de que el 2a endureciera `transactions`: estado de factura, reclamo con arriendo, intentos, ambiente de
+Wompi y de Alegra, instrumento de pago, CUFE y pago registrado. Mañana eso va a producción.
+
+**Lo que hoy cuelga de `transactions`** (120 referencias en 18 archivos): la facturación entera, el
+webhook de Wompi, la venta en efectivo, el link de pago, el panel de reintento, tres tableros
+(`getDireccionDashboard`, `getTablero`, `getTaxStatusView`), cuatro políticas RLS de lectura de las que
+dependen `/pagos`, el tablero del profesional y su banner tributario, y los índices parciales de 0133 y 0134.
+
+**Lo que el Bloque 3 necesita de una "venta"** (tratamiento, ubicación, forma de entrega, fecha de
+operación; y por línea: lote, IVA sellado, reparto sellado, modalidad) **cabe en columnas de
+`transactions` y `transaction_items`**. Ninguna pieza del Bloque 3 exige una tabla raíz nueva.
+
+**Y el argumento que decide:** `transactions` hoy funde tres cosas: la **venta**, el **pago** y el
+**documento fiscal**. De las tres, **la que de verdad es una por fila es la venta**. Las que se van a
+separar son las otras dos:
+
+- el **pago**, si una venta se paga mitad efectivo y mitad Wompi (hoy son dos transacciones);
+- el **documento**, en Distribución (Bloque 5), donde **una** factura quincenal cubre **muchas** ventas, y
+  en la reversa (3b), donde una nota crédito referencia una factura.
+
+Así que la fila que se queda como raíz es la correcta, y lo que saldrá de ella algún día es
+`fiscal_documents` (y quizá `payments`), **no** `sales`. Reemplazarla hoy sería reescribir la facturación
+recién probada para mover lo único que no hace falta mover.
+
+| | **Recomendado: extender** | Reemplazar por `sales` |
+|---|---|---|
+| Datos existentes | Se quedan donde están | Se copian 1 a 1 a `sales`/`sale_lines`, con FK repuntadas en comisión e ingreso |
+| Facturación del 2a | No se toca (salvo 3.7) | Se reescribe: sus 31 referencias leen de otra tabla |
+| RLS y tableros | Siguen igual | Cuatro políticas y tres lectores nuevos |
+| Riesgo al desplegar | Migraciones solo aditivas | Ventana de doble escritura o corte en frío |
+| Lo que deja pendiente | El nombre (`transactions` es "la venta") y la separación del documento en el Bloque 5 | Nada de nombre; el documento sigue igual de fundido |
+
+**Si se aprueba "extender"**, en adelante "la venta" es una fila de `transactions`, y el plan lo dice así.
+
+### 3.1 · Qué pasa con las ventas existentes
+
+**Hay dos clases, y no se tratan igual.**
+
+**Las de PRUEBA del smoke (`wompi_env = 'test'`).** Viven en la base de producción, **después de la fecha
+de corte** del Bloque 0, que dice *"a partir de ella, todo registro es real"*. **Hoy ya contaminan**
+(verificado en el código, sin filtro de prueba en ninguno):
+
+- `getDireccionDashboard`: cobrado bruto, ingreso de CNV y comisiones, desde siempre.
+- `getTablero`: ventas y comisión del mes del profesional.
+- **`getTaxStatusView`: la comisión pendiente del profesional, que alimenta su banner tributario.** Si el
+  smoke le asignó comisión a un Integrante real, su acumulado ya está inflado.
+
+**Decisión que se pide (D-3a):**
+
+| | |
+|---|---|
+| **Recomendada: purgarlas** con un script de un solo uso (solo filas `wompi_env = 'test'`, con su comisión, su ingreso y sus eventos), **después de la venta controlada del 2b y antes de la primera liquidación** | Es lo que dice la fecha de corte. Y desde el 2b ya no nacen ventas de prueba en producción: las llaves son reales |
+| Alternativa: filtrarlas en cada lector | Son tres lectores hoy y los del Bloque 4 mañana. Es la regla que vive en varios sitios y se olvida en uno |
+
+Las facturas del sandbox que referencian no se afectan: son de otro sistema.
+
+**Las REALES, desde mañana hasta que el Bloque 3 se despliegue.** Se quedan como están, con las columnas
+nuevas en nulo. **No se les descuenta inventario hacia atrás**, y la razón es concreta: mientras tanto el
+Integrante registra la entrega por separado (`despacho` en Tratamiento), así que descontar la venta
+**restaría dos veces** las mismas unidades. La fecha de despliegue del Bloque 3 queda escrita como el corte
+entre "venta que no mueve inventario" y "venta que lo mueve".
+
+### 3.2 · Cómo se migra: no hay migración de datos
+
+**Solo DDL aditivo, sin backfill:**
+
+1. **Migración A, sola:** `ALTER TYPE nutraceutical_movement_type ADD VALUE 'venta'`. Va sola porque un valor
+   nuevo de enum no se puede usar en la misma transacción que lo crea (el 55P04 que ya mordió en 0133).
+2. **Migración B:**
+   - `transactions` (+): `treatment_id` (nulo permitido, porque `/pagos` sin evaluación es legítimo),
+     `location_id`, `delivery_mode`, `operated_at`.
+   - `transaction_items` (+): `lot_id`, `vat_rate`, `commission_rate`, `supplier_share`, `modality`, todos
+     sellados al vender.
+   - `nutraceutical_stock_movements` (+): `transaction_item_id`, con CHECK `type <> 'venta' OR
+     transaction_item_id IS NOT NULL`. Una línea puede salir de **varios** lotes, así que el vínculo va
+     del movimiento a la línea y no al revés.
+   - Tablas nuevas: `inventory_reservations` (línea, ubicación, lote, cantidad, vence, liberada, consumida)
+     y `sale_fulfillment` (una por venta: pendiente, entregado en consulta, despachado, entregado).
+3. El CHECK de 0118 (`despacho` exige tratamiento) **se conserva**: hay despachos reales de mañana a
+   Bloque 3 y la regla sigue siendo cierta para ellos. Lo que cambia es que **deja de escribirse `despacho`**.
+
+**Orden de despliegue:** migraciones primero (`db:check` en la nube), código después. Todas son nulas o
+nuevas, así que el código viejo sigue funcionando con ellas aplicadas; al revés no.
+
+### 3.3 · Qué se rompe mientras tanto
+
+#### Lo que ya está vivo desde mañana, antes del Bloque 3
+
+Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana**, porque hay dinero real.
+
+1. **Vender y entregar no se hablan.** La venta (`/pagos`) no mueve inventario; la entrega (`despacho` en
+   Tratamiento) sí, y no sabe de la venta. Con plata real:
+   - una venta **sin** su despacho deja el saldo del Integrante **alto** (tiene menos de lo que Atlas
+     cree);
+   - un despacho **sin** venta es producto entregado sin factura, y el reporte de ventas sin documento
+     **no lo ve**, porque no hay venta;
+   - y el **paciente que vuelve solo a comprar** no puede tener despacho, porque el despacho exige
+     tratamiento, así que esa venta **nunca** baja el saldo.
+
+   **Consecuencia: un conteo físico antes del Bloque 3 abre faltantes por ventas legítimas**, con el PVP
+   sellado y un plazo en días hábiles. Es el caso del Bloque R, extendido a los siete.
+   **Decisión que se pide (D-3b):** hasta el Bloque 3, **no se corren conteos** (es un formulario al que
+   hay que ir a propósito y solo cada Integrante cuenta lo suyo, igual que en R), y cada venta en consulta
+   se acompaña de su despacho. Se ofrece una **consulta de lectura diaria** que cruce ventas pagadas contra
+   despachos por paciente y producto, para que contabilidad vea los descuadres antes de que se acumulen.
+
+2. **Tres errores de lectura de saldo desde la 0121, latentes.** El saldo pasó a ser por lote y tres
+   lectores siguen leyendo una fila por (profesional, producto):
+   - `getOwnInventory` y `getOwnStockByIds` arman un `Map`, así que **el último lote pisa al anterior** en
+     vez de sumarse (`/mi-inventario` y "Tu saldo" en la entrega);
+   - `recordDespacho` relee el saldo con `.maybeSingle()`, que **falla con dos lotes** y hace que la
+     pantalla avise de saldo negativo sin que lo haya.
+
+   **Hoy no se ven** porque la carga creó un solo lote por producto. **Aparecen con la primera remesa de un
+   lote nuevo.** Van primero en el bloque (3.4, paso 1) y pueden adelantarse sin tocar pagos.
+
+3. **LUVIA cuenta como ingreso de CNV lo que es del proveedor.** `sealAccounting` lee la tasa **viva** de
+   `professional_profiles.commission_rate` e ignora `revenue_splits`, que existe con vigencia desde la 0119
+   y **no lo lee nadie**. La factura está bien; lo inflado es el tablero de Dirección (`cnv_revenue` =
+   base − comisión, sin descontar el 70% del proveedor). Se corrige en 3.4, paso 5.
+
+4. **Soporte no ve `transactions`** (la RLS de 0003 admite admin, dirección y el profesional dueño). Anotado,
+   no bloquea.
+
+#### Lo que se rompería durante el cambio, y cómo se evita
+
+| Riesgo | Cómo se evita |
+|---|---|
+| **Dos caminos de venta** (Tratamiento y `/pagos`) con reglas distintas | **Un solo servicio de venta** que reserva, sella y descuenta. `/pagos` pasa a ser solo una pantalla que lo llama con `treatment_id` nulo. Los dos caminos cambian **en el mismo despliegue**, así que no hay ventana con uno viejo y otro nuevo |
+| **El webhook sella el pago y ahora también mueve inventario**; los triggers del movimiento pueden lanzar error (lote de otro producto, ubicación incoherente) y un error **deshace el sellado del pago** | El pago se sella **siempre primero y solo**. El movimiento va después, y si falla queda en una cola visible, igual que la factura. **Una venta pagada nunca se pierde por un problema de inventario** |
+| **Checkouts creados antes del despliegue** no tienen reserva | Se cierran al desplegar con `scripts/cerrar-checkouts-pendientes.sql`, el mismo del 2b |
+| **Pago que llega cuando la reserva ya venció** (el link vale 24 h, el paciente paga a las 23:59 y el evento llega a las 00:01), o sin saldo | **Decisión que se pide (D-3c):** se sella igual y se descuenta de lo que haya, con alerta si no alcanza. Bloquear una venta ya pagada no es opción. Falta verificar si el trigger de coherencia admite saldo negativo por lote; se comprueba en 3.4, paso 2 |
+| **`despacho` escrito a mano en tres sitios** (`getDespachosForTreatment`, la etiqueta de `/mi-inventario`, un test) | "Entregas a este paciente" lee `despacho` **y** `venta`; la etiqueta de `venta` se agrega. No se renombra nada |
+| **El ambiente de Wompi se fija al crear el checkout** (hallazgo del 2b) | Se corrige aquí, porque el sellado se reescribe igual: el ambiente se toma del evento de Wompi (`environment`) y la venta se rechaza si contradice la fila |
+
+### 3.4 · Sub-tareas, en orden (un commit cada una)
+
+1. **Los tres errores de lectura de saldo por lote.** Independiente de pagos; se puede adelantar.
+2. **Migraciones A y B**, con test contra base real: un movimiento `venta` sin línea se rechaza, y el
+   saldo por lote se mueve.
+3. **El servicio de venta:** reserva al crear el checkout, descuenta al sellar (FEFO por lote, varios lotes
+   si hace falta), libera al vencer, el pago primero y el inventario después, y el ambiente desde el
+   evento. `/pagos` (checkout y efectivo) pasa a usarlo. Tests de base real para cada regla.
+4. **Tratamiento:** "¿lo adquiere?" → forma de entrega → QR en pantalla, **reemplazando** a la sección de
+   despacho. La entrega queda en `clinical_audit_log` (Decisión 3 del plan; hoy **nada** de pagos, entrega
+   ni inventario escribe auditoría). La yuxtaposición de alérgenos ya está en la selección (D1).
+5. **Reparto sellado por línea** desde `revenue_splits` y `professional_commission_rates` con vigencia,
+   reemplazando la tasa viva. La parte del proveedor queda sellada en la línea; su cuenta por pagar es del
+   Bloque 4.
+6. **El reporte de ventas sin documento, consultable por día.** El panel ya existe; le falta el filtro
+   por fecha.
+7. **La factura muestra el titular de marca** (criterio de aceptación). **Es lo único que toca la
+   facturación del 2a**, y va último, cuando producción lleve días estable.
+8. **Mapa de ítems por (producto, ambiente)** (hallazgo del 2b). Opcional dentro del bloque: no bloquea
+   nada y quita el paso de vuelta atrás de ítems.
+
+**Preguntas que siguen abiertas y tocan este bloque:** si existen **muestras o cortesías** (si no, no se
+construyen), y si existe el **pago mixto** en la operación real (define si el pago se separa algún día).
 
 ### Dónde vive dentro del flujo ANI-BIS-E
 
