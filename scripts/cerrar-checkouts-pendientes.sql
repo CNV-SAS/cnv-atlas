@@ -27,16 +27,33 @@
 begin;
 
 do $$
-declare n int;
+declare n int; u int;
 begin
+  create temp table cerrados on commit drop as
+    select id from transactions where status = 'pending' and payment_method = 'wompi';
+
   -- Todas las pendientes de Wompi, no solo las de menos de 24 horas: una mas vieja ya no abre, y cerrarla
   -- no cambia nada; dejar fuera una de 23 horas y 59 minutos si.
-  update transactions
+  update transactions t
      set status = 'failed', updated_at = now()
-   where status = 'pending'
-     and payment_method = 'wompi';
+    from cerrados c
+   where t.id = c.id;
   get diagnostics n = row_count;
-  raise notice 'Checkouts pendientes cerrados: %', n;
+
+  -- Y SE SUELTAN SUS RESERVAS (Bloque 3, 0139). Un checkout cerrado a mano que conservara su reserva
+  -- retendria las unidades hasta que venciera el link, 24 horas, sin que nadie las pueda vender. Es lo mismo
+  -- que hace el webhook cuando un pago falla (liberarReservasDeVenta).
+  update inventory_reservations r
+     set released_at = now()
+    from transaction_items ti
+    join cerrados c on c.id = ti.transaction_id
+   where r.transaction_item_id = ti.id
+     and r.released_at is null and r.consumed_at is null;
+  get diagnostics u = row_count;
+  update transactions t set stock_state = 'liberado'
+    from cerrados c where t.id = c.id and t.stock_state = 'reservado';
+
+  raise notice 'Checkouts pendientes cerrados: %. Reservas liberadas: %.', n, u;
 end $$;
 
 commit;

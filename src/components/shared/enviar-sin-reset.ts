@@ -49,11 +49,33 @@ import { preservarScroll } from "./preservar-scroll";
 //      que es despues del viaje al servidor y (posiblemente) despues del salto.
 //
 // El detalle completo, en `preservar-scroll.ts`.
+// ═══ Y EL BOTON QUE SE PULSO VIAJA CON EL FORMULARIO (2026-09-13) ═══
+//
+// EL DEFECTO: `new FormData(form)` NO incluye el `name`/`value` del boton de envio. El navegador solo lo
+// agrega cuando el envio es nativo, o cuando se le pasa el boton: `new FormData(form, submitter)`. Al pasar
+// los formularios por este helper, todo boton que llevaba su dato en `name`/`value` dejo de mandarlo, sin
+// error: tsc, lint y los tests no lo ven, y el navegador no se queja.
+//
+// LO QUE ROMPIO, encontrado en el smoke del Bloque 3:
+//   · "Generar de todos modos" del checkout duplicado mandaba `confirmDuplicate=true` en el boton. No
+//     llegaba, el servidor volvia a avisar, y el aviso se volvio un BLOQUEO: un paciente que quiere comprar
+//     dos veces el mismo producto no podia.
+//   · "Confirmar el cargo" / "Rechazar" de un faltante mandan `decision` en el boton. Tampoco llegaba.
+//
+// SOLO SE PASA UN BOTON DE ESTE FORMULARIO: `new FormData(form, submitter)` lanza si el boton es de otro
+// formulario, y un envio por `requestSubmit()` sin boton no trae ninguno.
 export function enviarSinReset(action: (fd: FormData) => void) {
   return (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     preservarScroll();
-    startTransition(() => action(new FormData(e.currentTarget)));
+    const form = e.currentTarget;
+    const submitter = (e.nativeEvent as SubmitEvent | undefined)?.submitter as
+      | HTMLButtonElement
+      | HTMLInputElement
+      | null
+      | undefined;
+    const fd = submitter && submitter.form === form ? new FormData(form, submitter) : new FormData(form);
+    startTransition(() => action(fd));
   };
 }
 
