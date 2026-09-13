@@ -37,9 +37,9 @@ async function ventaPagada(estado: string | null, paymentId: string | null, hace
   const { db } = await import("@/db");
   const id = randomUUID();
   await db.execute(dsql`
-    insert into transactions (id, organization_id, amount, status, idempotency_key,
+    insert into transactions (id, organization_id, amount, status, idempotency_key, wompi_env,
                               alegra_invoice_state, alegra_payment_id, alegra_last_attempt_at)
-    select ${id}, o.id, 107100, 'paid', ${`test-reclamo-${id}`},
+    select ${id}, o.id, 107100, 'paid', ${`test-reclamo-${id}`}, 'test',
            ${estado}::alegra_invoice_state, ${paymentId},
            now() - ${hace}::interval
       from organizations o limit 1`);

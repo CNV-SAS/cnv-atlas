@@ -18,6 +18,7 @@ import {
   motivoSiPacienteYAmbienteNoCuadran,
 } from "../facturacion";
 import * as fr from "../data/facturacion-repository";
+import { motivoSiLaVentaNoEsDeEsteAmbiente } from "../ambiente";
 
 // ═══ EMITIR LA FACTURA DE VERDAD, Y REGISTRAR SU PAGO ═══
 //
@@ -94,8 +95,9 @@ async function resolverContacto(patientId: string, env: string): Promise<number>
   const datos = await fr.getDatosDelContacto(patientId);
   if (!datos) throw new Error("El paciente de la venta no existe.");
 
-  // EL GUARD VA AQUI, antes de la primera llamada que lleva PII: una vez creado el contacto, el dato ya
-  // salio y borrarlo despues no lo devuelve.
+  // SEGUNDA LINEA DEL GUARD. La primera va en `emitirFacturaDeVenta`, antes del reclamo, para no gastar
+  // intentos. Esta se queda porque `resolverContacto` tambien la llama `completarFactura`, y es la ultima
+  // puerta antes de la primera llamada que lleva PII: una vez creado el contacto, el dato ya salio.
   const motivo = motivoSiPacienteYAmbienteNoCuadran(datos.esDePrueba, env);
   if (motivo) throw new Error(motivo);
 
@@ -200,6 +202,7 @@ async function completarFactura(
   await fr.registrarIntentoDeFactura(venta.id, {
     estado: factura.estado === "draft" ? "borrador" : cufe ? "emitida" : "emitida_sin_sellar",
     invoiceId: factura.id,
+    alegraEnv: mapa.env,
     numero: factura.numero,
     cufe,
     legalStatus: factura.stamp?.legalStatus ?? null,
@@ -228,9 +231,6 @@ async function completarFactura(
  */
 export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
   try {
-    // EL RECLAMO VA PRIMERO, antes de leer nada: lo que se protege es el derecho a intentar.
-    if (!(await fr.reclamarParaFacturar(venta.id))) return;
-
     const mapa = await fr.getMapaDeAlegra();
     if (!mapa) {
       await fr.registrarIntentoDeFactura(venta.id, {
@@ -247,6 +247,38 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       });
       return;
     }
+
+    // ── LAS DOS DECISIONES VAN ANTES DEL RECLAMO, y el orden es el que cumple lo pedido ──────────
+    //
+    // El reclamo SUBE el contador de intentos. Si las decisiones fueran despues, cada pulsacion del boton
+    // le gastaria un intento a una venta cuyo resultado no puede cambiar, y a los cinco el panel diria
+    // "agotados", que se lee como que algo se rindio. Evaluadas antes, se re-evaluan en cada reintento SIN
+    // COSTE: si el paciente se marca de prueba o cambia el ambiente, la venta sale sola de `rechazada`.
+    //
+    // 1. EL AMBIENTE, que va primero porque es la que protege a produccion: un pago de prueba nunca se
+    //    factura en produccion, y una factura de un ambiente nunca se relee en el otro.
+    const ambiente = await fr.getAmbienteDeVenta(venta.id);
+    const motivoAmbiente = ambiente
+      ? motivoSiLaVentaNoEsDeEsteAmbiente(ambiente, mapa.env)
+      : "La venta no existe.";
+    if (motivoAmbiente) {
+      await fr.registrarIntentoDeFactura(venta.id, { estado: "rechazada", error: motivoAmbiente });
+      return;
+    }
+
+    // 2. EL PACIENTE: uno real no viaja al sandbox, y uno de prueba no se factura en produccion.
+    const datos = await fr.getDatosDelContacto(venta.patientId);
+    const motivoPaciente = datos
+      ? motivoSiPacienteYAmbienteNoCuadran(datos.esDePrueba, mapa.env)
+      : "El paciente de la venta no existe.";
+    if (motivoPaciente) {
+      await fr.registrarIntentoDeFactura(venta.id, { estado: "rechazada", error: motivoPaciente });
+      return;
+    }
+
+    // Y AHORA SI EL RECLAMO: lo que protege es el derecho a INTENTAR, y a esta altura ya se sabe que se
+    // puede. Dos pulsaciones o dos webhooks a la vez no pasan los dos.
+    if (!(await fr.reclamarParaFacturar(venta.id))) return;
 
     // SI YA HAY FACTURA, no se crea otra: se completa. Es el camino del reintento.
     const yaHecha = await fr.getFacturaDeVenta(venta.id);
@@ -310,6 +342,7 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
     await fr.registrarIntentoDeFactura(venta.id, {
       estado,
       invoiceId: sellada.id,
+      alegraEnv: mapa.env,
       numero: sellada.numero,
       cufe,
       legalStatus: sellada.stamp?.legalStatus ?? null,

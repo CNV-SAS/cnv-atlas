@@ -55,6 +55,15 @@ export const transactions = pgTable(
     // smoke quedaron con la factura bien emitida y el pago fallido, y como el panel solo miraba el estado
     // de la FACTURA, no las mostro. Nulo en una venta facturada = el paciente figura "por cobrar".
     alegraPaymentId: text("alegra_payment_id"),
+    // EL MODO DEL PAGO (0135): con que llaves de Wompi estaba el sistema al CREAR la venta. No cambia nunca.
+    // Un pago de prueba solo se factura en sandbox y uno real solo en produccion: es lo que impide que una
+    // venta del smoke se convierta en factura electronica real al pasar Alegra a produccion.
+    wompiEnv: text("wompi_env").notNull(),
+    // De que ambiente es la FACTURA. `alegraInvoiceId` es un id interno y la factura 7 del sandbox no es la
+    // factura 7 de produccion: releer una en el otro ambiente leeria el documento de otra persona.
+    alegraEnv: text("alegra_env"),
+    // El instrumento con que pago el paciente. Wompi lo mandaba y el esquema del webhook lo tiraba.
+    paymentMethodType: text("payment_method_type"),
     alegraCufe: text("alegra_cufe"),
     alegraLegalStatus: text("alegra_legal_status"),
     idempotencyKey: text("idempotency_key").notNull().unique(),
