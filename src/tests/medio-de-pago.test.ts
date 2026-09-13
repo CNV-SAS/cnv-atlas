@@ -79,6 +79,8 @@ describe("a Alegra solo viaja un código VERIFICADO", () => {
   it("el caso real del smoke: el pago con tarjeta de crédito del 13-sep sale con CREDIT_CARD", () => {
     // Ese pago guardo tipo CARD y tarjeta CREDIT, leidos de la base. Su factura salio sin medio porque en ese
     // momento el codigo de tarjeta no estaba verificado. Con el codigo, la siguiente sale con el suyo.
+    // CONFIRMADO: la siguiente (LUVIA con Visa de prueba, SETP990214714) salio con "Tarjeta credito" en la
+    // pantalla y CREDIT_CARD por API.
     expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: "CREDIT" })).toBe("CREDIT_CARD");
   });
 
@@ -86,13 +88,13 @@ describe("a Alegra solo viaja un código VERIFICADO", () => {
     expect(codigoAlegraDelPago({ canal: "wompi", tipo: "CARD", tipoTarjeta: null })).toBeNull();
   });
 
-  it("el número de la DIAN va al lado del código, y no se escribe si no es seguro", () => {
-    // Contabilidad pidio el numero para cotejar. Transferencia debito queda sin el porque su listado dice 46 y
-    // el catalogo de la DIAN tiene tambien 47, y el rotulo de Alegra no dice cual.
+  it("el número de la DIAN va al lado del código, los cuatro confirmados por contabilidad", () => {
+    // Transferencia debito estuvo sin numero hasta que contabilidad eligio entre 46 (Interbancario, el que
+    // Alegra abrevia como "Transferencia debito") y 47 (Bancaria, que Alegra expone aparte). Es el 46.
     expect(CODIGO_ALEGRA.efectivo?.dian).toBe("10");
     expect(CODIGO_ALEGRA.tarjeta_credito?.dian).toBe("48");
     expect(CODIGO_ALEGRA.tarjeta_debito?.dian).toBe("49");
-    expect(CODIGO_ALEGRA.transferencia_debito?.dian).toBeNull();
+    expect(CODIGO_ALEGRA.transferencia_debito?.dian).toBe("46");
   });
 
   it("y el servicio no manda el campo si no hay código", () => {
