@@ -8,6 +8,7 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { recordCount, type CountLineInput, type CountResult } from "../data/count-writer";
+import { saldoPorProducto } from "../saldo-por-producto";
 
 // Servicio del inventario en CONSIGNACION del profesional (T3b-1, "Mi inventario"). Lecturas del saldo
 // y el historial del propio profesional, y el registro de una RECEPCION (un movimiento). El saldo lo
@@ -61,7 +62,8 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
     .select("nutraceutical_id, stock_quantity")
     .eq("professional_id", profId);
   if (iErr) throw new Error(`inventory-service: saldos: ${iErr.message}`);
-  const stockByNutra = new Map((inv ?? []).map((r) => [r.nutraceutical_id, r.stock_quantity]));
+  // UNA FILA POR LOTE desde la 0121: se suman. Un mapa directo dejaba solo el ultimo lote.
+  const stockByNutra = saldoPorProducto(inv ?? []);
 
   const { data: cat, error: cErr } = await supabase
     .from("nutraceuticals")
@@ -158,9 +160,10 @@ export async function getOwnStockByIds(
     .select("nutraceutical_id, stock_quantity")
     .eq("professional_id", profId)
     .in("nutraceutical_id", nutraceuticalIds);
+  // UNA FILA POR LOTE desde la 0121: se suman, igual que en `getOwnInventory`.
+  const saldo = saldoPorProducto(data ?? []);
   const out: Record<string, number> = {};
-  for (const id of nutraceuticalIds) out[id] = 0;
-  for (const r of data ?? []) out[r.nutraceutical_id] = r.stock_quantity;
+  for (const id of nutraceuticalIds) out[id] = saldo.get(id) ?? 0;
   return out;
 }
 
@@ -189,9 +192,9 @@ export async function getDespachosForTreatment(treatmentId: string): Promise<Mov
 
 // Registra un DESPACHO (entrega al paciente): un movimiento -N ligado al tratamiento. Condiciones:
 //  (1) solo productos en_consultorio (los solo_tienda los compra el paciente en la tienda);
-//  (2) descuenta el stock (via el trigger);
-//  (3) NO impide sin stock: permite el negativo, y devuelve el saldo resultante para AVISAR y que la
-//      discrepancia quede visible (un inventario que miente en silencio es peor que uno negativo).
+//  (2) descuenta el stock (via el trigger), del lote que vence antes;
+//  (3) SIN EXISTENCIAS SE RECHAZA desde la 0121: hace falta un lote que cubra la cantidad. Esta nota decia
+//      que se permitia el negativo, y dejo de ser cierto con el saldo por lote (corregido 2026-09-13).
 // Guard: el tratamiento debe ser del profesional del paciente (ademas la RLS acota el movimiento a su
 // propio inventario).
 export async function recordDespacho(input: {
@@ -258,14 +261,16 @@ export async function recordDespacho(input: {
   });
   if (error) return { ok: false, message: "No se pudo registrar la entrega." };
 
-  // Saldo resultante (para el aviso de negativo / discrepancia visible).
-  const { data: inv } = await supabase
+  // Saldo resultante, SUMANDO LOS LOTES. Era `.maybeSingle()`, que con dos lotes falla y dejaba caer el
+  // saldo al respaldo negativo: la pantalla avisaba de un faltante que no existia. Si la lectura falla, no
+  // se inventa una cifra: se omite y la accion confirma la entrega sin decir cuanto queda.
+  const { data: inv, error: iErr } = await supabase
     .from("nutraceutical_inventory")
-    .select("stock_quantity")
+    .select("nutraceutical_id, stock_quantity")
     .eq("professional_id", profId)
-    .eq("nutraceutical_id", input.nutraceuticalId)
-    .maybeSingle();
-  return { ok: true, resultingStock: inv?.stock_quantity ?? -input.quantity };
+    .eq("nutraceutical_id", input.nutraceuticalId);
+  if (iErr) return { ok: true };
+  return { ok: true, resultingStock: saldoPorProducto(inv ?? []).get(input.nutraceuticalId) ?? 0 };
 }
 
 // Registra el CONTEO fisico del profesional (T3b-3 ST2): resuelve su perfil, delega en el writer

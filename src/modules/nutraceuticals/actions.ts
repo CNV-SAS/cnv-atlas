@@ -189,8 +189,9 @@ export async function recordReceptionFormAction(
 
 // Registrar un DESPACHO (entrega al paciente) desde el panel de tratamiento. Solo el profesional
 // (canLoadOwnStock); el service verifica ademas que el tratamiento sea suyo y que el producto sea
-// en_consultorio. Si el saldo queda negativo NO se bloquea: se avisa (warning) y la diferencia queda
-// visible en Mi inventario. Requiere el evaluationId (hidden) para revalidar la pagina de la evaluacion.
+// en_consultorio. Sin un lote que cubra la cantidad, el service RECHAZA (desde la 0121); si aun asi el saldo
+// leido queda negativo, se avisa (warning) y la diferencia queda visible en Mi inventario. Requiere el
+// evaluationId (hidden) para revalidar la pagina de la evaluacion.
 export async function recordDespachoFormAction(
   _prev: NutraceuticalFormState,
   formData: FormData,
@@ -219,8 +220,12 @@ export async function recordDespachoFormAction(
   if (evaluationId) revalidatePath(`/ani-bis-e/${evaluationId}`);
   revalidatePath("/mi-inventario");
 
+  // Sin saldo leido no se inventa uno: "te quedan 0" seria una cifra que nadie midio.
+  if (res.resultingStock === undefined) {
+    return { error: null, success: "Entrega registrada.", warning: null };
+  }
   // Saldo negativo = discrepancia visible: nunca se calla. El aviso confirma la entrega Y la diferencia.
-  const stock = res.resultingStock ?? 0;
+  const stock = res.resultingStock;
   if (stock < 0) {
     return {
       error: null,
