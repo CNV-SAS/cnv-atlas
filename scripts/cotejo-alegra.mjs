@@ -55,6 +55,23 @@ async function alegra(ruta) {
   return JSON.parse(texto);
 }
 
+// Alegra devuelve como maximo 30 por consulta. Con `limit=30` a secas, el item 31 "no existiria".
+async function alegraTodo(ruta) {
+  const todo = [];
+  for (let start = 0; ; start += 30) {
+    const pagina = await alegra(`${ruta}?limit=30&start=${start}`);
+    const filas = Array.isArray(pagina) ? pagina : (pagina.data ?? []);
+    todo.push(...filas);
+    if (filas.length < 30) return todo;
+  }
+}
+
+// MULTI-CELL BASE (Alegra) y MULTICELL BASE (Atlas) son el mismo nombre; OMEGA COMPLEX y MULTICELL no.
+const normal = (s) => String(s ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+// El ambiente sale de la URL, con la misma regla que la aplicacion (`ambienteDeAlegra`).
+const ambiente = /sandbox/i.test(alegraBase) ? "sandbox" : "produccion";
+
 const sql = postgres(url, { max: 1 });
 let problemas = 0;
 const pega = (linea) => {
@@ -67,20 +84,23 @@ try {
   console.log(`Alegra:        ${alegraBase}`);
   console.log("");
 
+  // LA FILA DEL AMBIENTE CONTRA EL QUE SE COTEJA. Hasta el 2026-09-13 tomaba "la primera por orden
+  // alfabetico", que con una sola fila daba igual y con dos elige SIEMPRE 'produccion': cotejar el sandbox
+  // habria comparado el mapa de produccion contra los items del sandbox.
   const [cfg] = await sql`
     select env, invoice_template_id, credit_note_template_id, iva_tax_id,
            cost_center_propio_id, cost_center_tercero_id,
            bank_account_efectivo_id, bank_account_pasarela_id
       from alegra_config
-     order by env`;
+     where env = ${ambiente}`;
   if (!cfg) {
-    console.log("  [X] No hay ninguna fila en alegra_config.");
+    console.log(`  [X] No hay fila de "${ambiente}" en alegra_config: Atlas no facturaria en este ambiente.`);
     process.exit(1);
   }
-  console.log(`Ambiente configurado: ${cfg.env}\n`);
+  console.log(`Ambiente cotejado: ${cfg.env}\n`);
 
   // ── 1. LOS PRECIOS, que es lo que este script viene a mirar ──────────────────────────────────
-  const items = await alegra("/items?limit=30");
+  const items = await alegraTodo("/items");
   const porId = new Map(items.map((i) => [String(i.id), i]));
   const productos = await sql`
     select name, unit_price, vat_rate, alegra_item_id, alegra_env, ownership
@@ -88,15 +108,36 @@ try {
      where alegra_item_id is not null
      order by name`;
 
+  // UN PRODUCTO VENDIBLE SIN MAPEAR A ESTE AMBIENTE no aparecia en ningun sitio: el bucle de abajo solo
+  // recorre los mapeados. Su primera venta fallaria con "Sin item" o "Items de otro ambiente".
+  const sinMapear = await sql`
+    select name, alegra_env from nutraceuticals
+     where not is_test
+       and commercial_availability <> 'no_disponible'
+       and (alegra_item_id is null or alegra_env is distinct from ${cfg.env})
+     order by name`;
+  for (const p of sinMapear) {
+    pega(`${p.name}: se vende y NO esta mapeado a ${cfg.env} (${p.alegra_env ? `su item es de ${p.alegra_env}` : "sin item"}).`);
+  }
+
   console.log(`── PRECIOS (${productos.length} productos mapeados) ──`);
   for (const p of productos) {
     const item = porId.get(String(p.alegra_item_id));
+    if (p.alegra_env !== cfg.env) {
+      // Ya contado arriba si se vende; un id de otro ambiente no se busca aqui, porque el mismo numero
+      // seria OTRO item y el cotejo de precio saldria sobre el producto equivocado.
+      console.log(`  --  ${String(p.name).padEnd(20)} item de ${p.alegra_env}, no se coteja en ${cfg.env}`);
+      continue;
+    }
     if (!item) {
       pega(`${p.name}: apunta al item ${p.alegra_item_id} y ese item NO EXISTE en este ambiente de Alegra.`);
       continue;
     }
-    if (p.alegra_env !== cfg.env) {
-      pega(`${p.name}: su item es del ambiente "${p.alegra_env}" y se esta cotejando "${cfg.env}".`);
+    // EL NOMBRE, que es lo unico que ve un cruce entre productos del MISMO precio. MULTICELL, OMEGA y
+    // CURCUMIN valen los tres 90.000 de base: con sus ids intercambiados, el precio, el IVA y el total
+    // cuadran, y la factura dice un producto que no se vendio.
+    if (normal(item.name) !== normal(p.name)) {
+      pega(`${p.name}: apunta al item ${item.id}, que en Alegra se llama "${item.name}". Es otro producto.`);
     }
 
     const tarifa = Number(p.vat_rate ?? IVA_RATE);
@@ -147,8 +188,21 @@ try {
   const factura = porPlantilla.get(String(cfg.invoice_template_id));
   if (!factura) pega(`la numeracion de factura ${cfg.invoice_template_id} no existe.`);
   else {
-    console.log(`  ok  factura: ${factura.name} (prefijo ${factura.prefix ?? "-"}), electronica: ${factura.isElectronic}`);
+    console.log(
+      `  ok  factura: ${factura.name} (prefijo ${factura.prefix ?? "-"}), electronica: ${factura.isElectronic}, ` +
+        `siguiente ${factura.nextInvoiceNumber ?? "-"}, vence ${factura.endDate ?? "-"}`,
+    );
     if (!factura.isElectronic) pega("la numeracion de factura NO es electronica: no habria CUFE.");
+    if (factura.status !== "active") pega(`la numeracion de factura esta "${factura.status}", no activa.`);
+    // Vencida o sin rango, Alegra rechaza a mitad del dia y todas las ventas quedan fallidas a la vez.
+    if (factura.endDate && factura.endDate < new Date().toISOString().slice(0, 10)) {
+      pega(`la numeracion de factura VENCIO el ${factura.endDate}.`);
+    }
+    if (factura.maxInvoiceNumber != null && factura.nextInvoiceNumber != null) {
+      const quedan = Number(factura.maxInvoiceNumber) - Number(factura.nextInvoiceNumber) + 1;
+      if (quedan <= 0) pega("la numeracion de factura NO TIENE RANGO disponible.");
+      else if (quedan < 50) console.log(`      aviso: a la numeracion le quedan ${quedan} numeros`);
+    }
   }
   if (cfg.credit_note_template_id) {
     const nc = porPlantilla.get(String(cfg.credit_note_template_id));
@@ -164,16 +218,23 @@ try {
     console.log("  --  nota credito: sin configurar (la reversa no se puede emitir).");
   }
 
-  const centros = await alegra("/cost-centers?limit=30");
-  const porCentro = new Map((Array.isArray(centros) ? centros : (centros.data ?? [])).map((c) => [String(c.id), c]));
+  const centros = await alegraTodo("/cost-centers");
+  const porCentro = new Map(centros.map((c) => [String(c.id), c]));
   for (const [rotulo, id] of [["propio", cfg.cost_center_propio_id], ["tercero", cfg.cost_center_tercero_id]]) {
     const c = porCentro.get(String(id));
     if (!c) pega(`el centro de costo de ${rotulo} (${id}) no existe.`);
-    else console.log(`  ok  centro ${rotulo}: ${c.name} / ${c.code ?? "-"}`);
+    else {
+      console.log(`  ok  centro ${rotulo}: ${c.name} / ${c.code ?? "-"}`);
+      // INVERTIDOS NO FALLA NADA: las facturas salen, y la rentabilidad por linea se mide al reves. El
+      // script no puede saber cual es cual; avisa cuando el nombre sugiere lo contrario, y lo mira una persona.
+      const suenaTercero = /tercer|consign|ext/i.test(`${c.name} ${c.code ?? ""}`);
+      if (rotulo === "propio" && suenaTercero) console.log(`      AVISO: el centro PROPIO se llama como uno de terceros. ¿Invertidos?`);
+      if (rotulo === "tercero" && !suenaTercero) console.log(`      aviso: el centro de TERCERO no dice "tercero" en el nombre. Confirmar a ojo.`);
+    }
   }
 
-  const cuentas = await alegra("/bank-accounts?limit=30");
-  const porCuenta = new Map((Array.isArray(cuentas) ? cuentas : (cuentas.data ?? [])).map((c) => [String(c.id), c]));
+  const cuentas = await alegraTodo("/bank-accounts");
+  const porCuenta = new Map(cuentas.map((c) => [String(c.id), c]));
   for (const [rotulo, id] of [["efectivo", cfg.bank_account_efectivo_id], ["pasarela", cfg.bank_account_pasarela_id]]) {
     const c = porCuenta.get(String(id));
     if (!c) pega(`la cuenta de ${rotulo} (${id}) no existe.`);
@@ -182,6 +243,9 @@ try {
       // Las dos son PUENTE: la plata no ha llegado al banco cuando Atlas registra el pago. Una cuenta de
       // tipo `bank` aqui diria que si llego, y el banco dejaria de cuadrar contra su extracto.
       if (c.type === "bank") pega(`la cuenta de ${rotulo} es un BANCO, y tiene que ser una cuenta puente.`);
+      // E invertidas, el efectivo de los Integrantes quedaria como plata en Wompi y al reves.
+      const esperado = rotulo === "efectivo" ? /efectivo/i : /wompi|pasarela/i;
+      if (!esperado.test(c.name)) console.log(`      AVISO: la cuenta de ${rotulo} se llama "${c.name}". ¿Invertidas?`);
     }
   }
 
