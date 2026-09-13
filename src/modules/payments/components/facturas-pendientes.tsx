@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/format/date";
 import { Panel } from "@/components/shared/panel";
 import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
 
@@ -34,6 +35,7 @@ export type VentaSinDocumento = {
   intentos: number;
   motivo: string | null;
   fecha: string;
+  pagoPendiente: boolean;
 };
 
 const ROTULO: Record<string, string> = {
@@ -54,11 +56,11 @@ export function FacturasPendientes({ ventas }: { ventas: VentaSinDocumento[] }) 
   useFormToastRefreshOnSuccess(state);
 
   return (
-    <Panel titulo="Ventas sin documento fiscal">
+    <Panel titulo="Ventas cobradas sin cerrar en contabilidad">
       <p className="text-sm text-muted-foreground">
         {ventas.length === 0
-          ? "Ninguna. Todas las ventas cobradas tienen su factura emitida."
-          : `${ventas.length} venta${ventas.length === 1 ? "" : "s"} cobrada${ventas.length === 1 ? "" : "s"} cuya factura todavía no está completa.`}
+          ? "Ninguna. Todas las ventas cobradas tienen su factura emitida y su pago registrado."
+          : `${ventas.length} venta${ventas.length === 1 ? "" : "s"} cobrada${ventas.length === 1 ? "" : "s"} con la factura o el pago sin completar.`}
       </p>
       {ventas.length > 0 && (
         <>
@@ -69,16 +71,17 @@ export function FacturasPendientes({ ventas }: { ventas: VentaSinDocumento[] }) 
                   <strong className="text-foreground">
                     {Number(v.amount).toLocaleString("es-CO")} COP
                   </strong>
-                  <span className="text-muted-foreground">
-                    {new Date(v.fecha).toLocaleDateString("es-CO", {
-                      day: "numeric",
-                      month: "long",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                  {/* CON EL HELPER DE ZONA FIJA, y esto fue el error #418 que salio en consola. Este
+                      componente es de cliente: el servidor (Vercel, UTC) y el navegador (Bogota, UTC-5)
+                      formateaban la misma fecha distinta, y React no pudo hidratar. `lib/format/date`
+                      existe exactamente para eso y su propia cabecera nombra el 418; no lo use. */}
+                  <span className="text-muted-foreground">{formatDateTime(v.fecha)}</span>
                   <span className="rounded bg-muted px-2 py-0.5 text-xs">
-                    {ROTULO[v.estado ?? ""] ?? v.estado ?? "Sin intentar"}
+                    {/* La factura puede estar completa y el pago no: se dice, porque es otro problema y
+                        otra cuenta en contabilidad (el paciente figura "por cobrar" habiendo pagado). */}
+                    {v.pagoPendiente
+                      ? "Facturada, pago no registrado"
+                      : (ROTULO[v.estado ?? ""] ?? v.estado ?? "Sin intentar")}
                   </span>
                   {v.numero && <span className="text-xs text-muted-foreground">{v.numero}</span>}
                   {/* Los intentos importan porque al llegar al tope la cola deja de tocarla: a partir de

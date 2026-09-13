@@ -242,7 +242,11 @@ export async function createAlegraPayment(input: AlegraPaymentInput): Promise<{ 
     headers: cabeceras(),
     body: {
       date: input.date,
-      account: { id: input.bankAccountId },
+      // `bankAccount`, NO `account`. Con `account` Alegra respondia 400 en TODOS los pagos:
+      //   {"message":"La cuenta de banco asociada al pago es obligatoria","code":4002}
+      // Se supo porque el motivo ya se escribia en la transaccion. Seis pagos fallaron igual en el smoke,
+      // cada uno con la factura bien emitida y el paciente figurando "por cobrar" habiendo pagado.
+      bankAccount: { id: input.bankAccountId },
       client: { id: input.clientId },
       type: "in",
       paymentMethod: "cash",

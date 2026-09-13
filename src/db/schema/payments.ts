@@ -51,6 +51,12 @@ export const transactions = pgTable(
     alegraAttempts: integer("alegra_attempts").notNull().default(0),
     alegraLastAttemptAt: timestamp("alegra_last_attempt_at", { withTimezone: true }),
     alegraLastError: text("alegra_last_error"),
+    // EL PAGO REGISTRADO EN ALEGRA (0134). Es un hecho propio y no se deduce de la factura: seis ventas del
+    // smoke quedaron con la factura bien emitida y el pago fallido, y como el panel solo miraba el estado
+    // de la FACTURA, no las mostro. Nulo en una venta facturada = el paciente figura "por cobrar".
+    alegraPaymentId: text("alegra_payment_id"),
+    alegraCufe: text("alegra_cufe"),
+    alegraLegalStatus: text("alegra_legal_status"),
     idempotencyKey: text("idempotency_key").notNull().unique(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
