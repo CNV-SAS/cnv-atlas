@@ -662,6 +662,36 @@ En sandbox, de punta a punta:
 3. **El mapeo de los cuatro códigos a sus ítems**: NUT-001 a NUT-004, que están anotados en el script de carga. Y el **ítem de LUVIA, que no existe**: hoy se puede vender y no se podría facturar.
 4. **El re-mapeo de identificadores**: los contactos e ítems creados en sandbox NO valen en producción. La columna `alegra_env` (migración 0129) es lo que impide usarlos por error.
 
+### GATE DE 2b: las ventas del smoke viven en la base de producción, y no saben de qué ambiente son
+
+**Encontrado el 2026-09-13 al analizar la venta del paciente real que el guard rechaza.** No se arregla
+antes de 2b porque en sandbox no hace daño; se arregla ANTES de cambiar las credenciales, o el cambio
+emite documentos fiscales reales.
+
+**El guard de `is_test` cubre QUÉ PACIENTE, no QUÉ PAGO.** La venta del smoke de 107.100 es un pago con
+tarjeta de PRUEBA de Wompi a un paciente REAL:
+
+- En sandbox el guard la rechaza (paciente real contra sandbox), y está bien.
+- **Al pasar a producción, paciente real contra producción queda PERMITIDO.** La cola, que la tiene en 3 de
+  5 intentos, la reclamaría y **emitiría una factura electrónica real, con consecutivo real, por un pago que
+  nunca movió dinero**, y registraría 107.100 en "Wompi por liquidar" que no van a llegar.
+
+**Y hay un segundo caso, peor.** `transactions.alegra_invoice_id` guarda el id interno de la factura, que
+**es de un ambiente concreto**, y la transacción **no registra de cuál**. La venta SETP990214706 está
+`emitida_sin_sellar` con la factura 7 del sandbox. En producción seguiría siendo reclamable, y el reintento
+**leería la factura 7 de PRODUCCIÓN**, que es otro documento de otra persona, y podría registrarle un pago.
+
+**La causa es de las que ya conocemos:** `patients` y `nutraceuticals` tienen `alegra_env` justo para que
+un id de un ambiente no se use en otro. `transactions`, que es la que guarda el id de la factura, **se quedó
+sin la suya**. Es una regla que vive en varios sitios y se aplicó en dos de tres.
+
+**Las dos salidas, antes de 2b:**
+
+| | |
+|---|---|
+| **Recomendada** | `transactions.alegra_env` (y el ambiente de Wompi del pago), escritos al emitir y al sellar. El reclamo solo toca ventas de SU ambiente. Es el mismo mecanismo que ya tienen pacientes y productos |
+| Alternativa | Purgar las ventas del smoke antes de cambiar credenciales, como la purga del Bloque 0. Funciona, pero es un paso manual de un solo uso que se olvida, y no protege a la siguiente tanda de pruebas |
+
 **Y el contenido anterior de este bloque se conserva abajo**, porque su análisis sigue siendo válido; lo que cambió es que se parte en dos.
 
 ### (análisis original del Bloque 2, escrito el 2026-09-10)
