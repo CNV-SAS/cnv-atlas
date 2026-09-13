@@ -21,7 +21,7 @@ que algo ya hecho se vuelva a planear).
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
 | **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
-| **2b** · Paso a producción | **SIGUIENTE (2026-09-14, de último)** | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
+| **2b** · Paso a producción | **SIGUIENTE (2026-09-14, de último). PREPARADO** (guía en `docs/entregas/`) | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
 | 3 · La venta nace en Tratamiento | Pendiente | — |
 | 3b · Reversa | Pendiente | — |
@@ -860,10 +860,31 @@ segundo documento; con Alegra caída, la venta se sella y aparece en la cola con
 
 **Tamaño: grande.** No se fragmenta.
 
-> **PLAN DE EJECUCIÓN DEL 2026-09-13, PENDIENTE DE APROBACIÓN DE SANTIAGO.** Sin código. Escrito después de
-> verificar el estado real del código (inventario, Tratamiento, pagos, tableros y RLS). Donde contradice el
-> "Modelo de datos" original de más abajo, **manda este plan si se aprueba**; el original se conserva como
-> historia.
+> **PLAN DE EJECUCIÓN DEL 2026-09-13, APROBADO POR SANTIAGO EL MISMO DÍA.** Escrito después de verificar el
+> estado real del código (inventario, Tratamiento, pagos, tableros y RLS). Donde contradice el "Modelo de
+> datos" original de más abajo, **manda este plan**; el original se conserva como historia.
+>
+> **Las cinco decisiones, cerradas (Santiago, 2026-09-13):**
+>
+> 1. **Extender `transactions`**, no reemplazarla.
+> 2. **Purgar las ventas de prueba** después de la venta controlada: `scripts/purga-ventas-de-prueba.sql`
+>    (paso D de la guía del 2b), ensayado con fixtures y con control de aborto.
+> 3. **Sin conteos hasta el Bloque 3**, y toda venta en consulta con su entrega registrada. Va **por
+>    escrito**: `docs/entregas/AVISO_INTEGRANTES_VENTAS_Y_ENTREGAS.md`.
+> 4. **Una venta pagada sin saldo se sella igual y avisa.** El dinero es de CNV pase lo que pase con el
+>    inventario.
+> 5. **Muestras y cortesías no existen:** no se construyen. **Pagos mixtos: una sola factura por el total,
+>    aunque sean dos cobros** (decidido antes: `PLAN_FACTURACION.md`, `BACKLOG.md`). No era una pregunta
+>    abierta y se listó como tal sin buscarla. **Lo que sí es trabajo:** el código actual no tiene flujo
+>    mixto, y si alguien cobrara una venta en dos transacciones hoy saldrían dos facturas. El servicio de
+>    venta del Bloque 3 (3.4, paso 3) lo implementa como una venta con dos cobros y un documento.
+>
+> **Adelantado del 3.4 al 2026-09-13, con candados de base real y control:**
+>
+> - **Paso 5, el reparto con el proveedor** (commit `94ecf611`), subido de prioridad por Santiago: LUVIA
+>   registraba 60.504 de ingreso de CNV por venta en vez de 7.563. Se cablearon `repartir` y
+>   `revenue_splits`, que existían sin usarse. Queda para el 3 sellar el reparto **en la línea**.
+> - **Paso 1, las tres lecturas de saldo por lote** (commit `dd67a041`).
 
 ### 3.0 · La decisión de fondo: `transactions` NO se reemplaza, se extiende
 
@@ -1024,8 +1045,8 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
 8. **Mapa de ítems por (producto, ambiente)** (hallazgo del 2b). Opcional dentro del bloque: no bloquea
    nada y quita el paso de vuelta atrás de ítems.
 
-**Preguntas que siguen abiertas y tocan este bloque:** si existen **muestras o cortesías** (si no, no se
-construyen), y si existe el **pago mixto** en la operación real (define si el pago se separa algún día).
+**~~Preguntas que siguen abiertas~~ Cerradas el 2026-09-13:** muestras y cortesías no existen (no se
+construyen); el pago mixto ya estaba decidido (una factura por el total). Ver las cinco decisiones arriba.
 
 ### Dónde vive dentro del flujo ANI-BIS-E
 
@@ -1230,5 +1251,6 @@ La consulta está en `docs/entregas/CONSULTA_GILDARDO_ALERGENOS.md`.
 | ~~Numeración de Atlas en Alegra~~ | **Decidida el 2026-09-13: compartida.** Ya no bloquea |
 | Credenciales de Alegra y Wompi de producción | Bloque 2b |
 | Perfil tributario de cada Integrante | Bloque 4 |
-| ¿Existen muestras o cortesías? | Bloque 3 (si no existen, no se construye) |
+| ~~¿Existen muestras o cortesías?~~ | **Cerrado 2026-09-13: no existen.** No se construye |
+| **El nombre de MULTI-CELL BASE según el registro RSA-3987-2026** (DATA_GOVERNANCE #16 dice sin guion; Santiago, con guion) | Crear los ítems de Alegra producción (2b, A5) |
 | Anexo 2 actualizado y un Integrante habilitado | Bloque 5 |
