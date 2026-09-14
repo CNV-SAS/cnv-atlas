@@ -33,6 +33,7 @@ import {
 } from "../data/inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
 
+import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import { emitirFacturaDeVenta } from "./facturacion-service";
 import { descontarInventarioDeVenta } from "./inventario-venta-service";
 import type { CreateCheckoutInput, WompiEventInput } from "../validations";
@@ -129,6 +130,9 @@ export async function createCheckout(
   user: CurrentUser,
 ): Promise<CheckoutCreated> {
   const { professionalId, lines, amount } = await resolveSale(input, user);
+  // EL MINIMO DE WOMPI, ANTES DE CREAR NADA: un link por menos de $1.500 falla en la pagina de Wompi con el
+  // paciente delante, y deja una reserva viva 24 horas. Solo el checkout: el efectivo no tiene minimo.
+  if (amount < WOMPI_MONTO_MINIMO) throw new CheckoutError(MENSAJE_MINIMO_WOMPI);
   let id: string;
   try {
     ({ id } = await createTransactionWithItems({

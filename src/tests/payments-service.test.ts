@@ -386,6 +386,35 @@ describe("la pagina de Wompi vence con el link (expiration-time firmado)", () =>
   });
 });
 
+describe("el minimo de Wompi ($1.500)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("un checkout por menos de $1.500 se rechaza ANTES de crear la venta, con el mensaje para el profesional", async () => {
+    vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "PRUEBA", unit_price: "1190", commercial_availability: "en_consultorio" },
+    ] as never);
+    await expect(
+      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"])),
+    ).rejects.toThrow(/menos de \$1\.500. Cóbralo en efectivo/);
+    expect(writer.createTransactionWithItems).not.toHaveBeenCalled();
+  });
+
+  it("CONTROL: 1.500 exactos pasa, y la venta en efectivo no tiene minimo", async () => {
+    vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "PRUEBA", unit_price: "1500", commercial_availability: "en_consultorio" },
+      { id: "n2", name: "BARATO", unit_price: "1190", commercial_availability: "en_consultorio" },
+    ] as never);
+    vi.mocked(writer.createTransactionWithItems).mockResolvedValue({ id: "tx-min" });
+    vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-min", linksAnulados: [] });
+    await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"]));
+    expect(writer.createTransactionWithItems).toHaveBeenCalled();
+    await registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n2", quantity: 1 }] }, user(["professional"]), "idem-min");
+    expect(writer.createPaidCashTransaction).toHaveBeenCalled();
+  });
+});
+
 describe("la venta que nace en TRATAMIENTO (Bloque 3, sesion 2)", () => {
   beforeEach(() => {
     vi.clearAllMocks();

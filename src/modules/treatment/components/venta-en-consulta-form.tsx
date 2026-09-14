@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createCheckoutFormAction, registerCashSaleFormAction } from "@/modules/payments/actions";
 import type { CashSaleFormState, PaymentFormState } from "@/modules/payments/validations";
+import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "@/modules/payments/wompi-minimo";
 
 export type ProductoVendible = {
   id: string;
@@ -200,6 +201,9 @@ export function VentaEnConsultaForm({
       {excede ? (
         <p className="text-sm text-clinical-warning">Pides más unidades de las que tienes disponibles.</p>
       ) : null}
+      {lineas.length > 0 && total > 0 && total < WOMPI_MONTO_MINIMO ? (
+        <p className="text-sm text-attention">{MENSAJE_MINIMO_WOMPI}</p>
+      ) : null}
 
       {confirmandoEfectivo ? (
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-3">
@@ -223,7 +227,12 @@ export function VentaEnConsultaForm({
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          <Button key="qr" type="button" disabled={pending || !listo || excede} onClick={() => cobrarConQr()}>
+          <Button
+            key="qr"
+            type="button"
+            disabled={pending || !listo || excede || total < WOMPI_MONTO_MINIMO}
+            onClick={() => cobrarConQr()}
+          >
             {generando ? "Generando..." : "Cobrar con QR"}
           </Button>
           <Button
