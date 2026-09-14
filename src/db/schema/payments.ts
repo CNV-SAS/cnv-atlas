@@ -94,6 +94,14 @@ export const transactions = pgTable(
     reviewResolution: text("review_resolution"), // segunda_compra | devuelto
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     reviewedBy: uuid("reviewed_by").references(() => profiles.id, { onDelete: "restrict" }),
+    // EL SOPORTE DE LA REVISION (0141): lo que conto el Integrante (y quien lo escribio) y el comprobante de la
+    // devolucion. Resolver exige la version; "devuelto" exige ademas el comprobante.
+    reviewProfessionalVersion: text("review_professional_version"),
+    reviewProfessionalVersionBy: uuid("review_professional_version_by").references(() => profiles.id, { onDelete: "restrict" }),
+    reviewProfessionalVersionAt: timestamp("review_professional_version_at", { withTimezone: true }),
+    reviewRefundReference: text("review_refund_reference"),
+    // Cuando entro en revision: el plazo de 5 dias habiles cuenta desde aqui.
+    reviewOpenedAt: timestamp("review_opened_at", { withTimezone: true }),
     alegraLegalStatus: text("alegra_legal_status"),
     idempotencyKey: text("idempotency_key").notNull().unique(),
     createdAt: createdAt(),

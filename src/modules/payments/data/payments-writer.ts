@@ -325,7 +325,7 @@ export async function sealPaidTransaction(
         paymentMethodType: paymentMethodType ?? null,
         paymentCardType: paymentCardType ?? null,
         ...(wompiEnv ? { wompiEnv } : {}),
-        ...(sobreLinkAnulado ? { reviewReason: "pago_sobre_link_anulado" } : {}),
+        ...(sobreLinkAnulado ? { reviewReason: "pago_sobre_link_anulado", reviewOpenedAt: new Date() } : {}),
         // Rechazado y despues aprobado: sus reservas se liberaron con el rechazo, asi que el descuento sale de
         // lo disponible. En el anulado el inventario se queda `liberado` hasta la revision.
         ...(!sobreLinkAnulado && antes.status === "failed" && antes.stock_state === "liberado"
@@ -509,6 +509,30 @@ export async function linksPendientesQueComparten(
 
 export type ResolucionDeRevision = "segunda_compra" | "devuelto";
 
+/** Falta el soporte que contabilidad exige para resolver. El mensaje es para quien pulso. */
+export class SoporteDeRevisionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SoporteDeRevisionError";
+  }
+}
+
+/**
+ * LA VERSION DEL INTEGRANTE sobre un pago en revision (contabilidad, 2026-09-14: el Integrante aporta el hecho,
+ * Direccion resuelve). La escribe el Integrante de la venta, o quien resuelve si el Integrante se lo conto;
+ * queda quien la escribio y cuando. Se puede corregir mientras la venta siga en revision, y no despues: una
+ * vez resuelta, la version es parte del soporte. Devuelve false si la venta ya no esta en revision.
+ */
+export async function registrarVersionDelIntegrante(txId: string, texto: string, actorId: string): Promise<boolean> {
+  const filas = await db.execute<{ id: string }>(sql`
+    update transactions
+       set review_professional_version = ${texto}, review_professional_version_by = ${actorId},
+           review_professional_version_at = now(), updated_at = now()
+     where id = ${txId} and status = 'paid' and review_reason is not null and review_resolution is null
+    returning id`);
+  return filas.length > 0;
+}
+
 /**
  * RESUELVE una venta en revision (pago sobre link anulado). Devuelve la venta si la resolvio; null si no
  * estaba en revision o ya estaba resuelta.
@@ -522,20 +546,34 @@ export async function resolverRevision(
   txId: string,
   resolucion: ResolucionDeRevision,
   actorId: string,
+  // La referencia de la devolucion en Wompi. Obligatoria para "devuelto" (contabilidad, 2026-09-14).
+  comprobante?: string | null,
 ): Promise<SealedTransaction | null> {
   return db.transaction(async (tx) => {
     const [venta] = await tx.execute<{
       status: string;
       review_reason: string | null;
       review_resolution: string | null;
-    }>(sql`select status, review_reason, review_resolution from transactions where id = ${txId} for update`);
+      review_professional_version: string | null;
+    }>(sql`select status, review_reason, review_resolution, review_professional_version
+             from transactions where id = ${txId} for update`);
     if (!venta || venta.status !== "paid" || !venta.review_reason || venta.review_resolution) return null;
+    // EL SOPORTE, ANTES DE RESOLVER. La base lo exige tambien (0141); aqui se dice con un mensaje que se
+    // entiende, en vez de un error de restriccion.
+    if (!venta.review_professional_version?.trim()) {
+      throw new SoporteDeRevisionError("Falta la versión del Integrante: qué pasó en la consulta. Regístrala antes de resolver.");
+    }
+    const referencia = comprobante?.trim() ?? "";
+    if (resolucion === "devuelto" && !referencia) {
+      throw new SoporteDeRevisionError("Falta el comprobante de la devolución en Wompi.");
+    }
     const [t] = await tx
       .update(transactions)
       .set({
         reviewResolution: resolucion,
         reviewedAt: new Date(),
         reviewedBy: actorId,
+        ...(resolucion === "devuelto" ? { reviewRefundReference: referencia } : {}),
         ...(resolucion === "segunda_compra" ? { stockState: "pendiente" } : { status: "refunded" as const }),
         updatedAt: new Date(),
       })

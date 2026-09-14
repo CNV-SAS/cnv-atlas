@@ -105,6 +105,15 @@ export type AccionDeVentaState = {
 
 export const accionDeVentaSchema = z.object({ transactionId: dbUuid });
 
+// La version del Integrante: texto libre corto. Minimo 10 caracteres para que no se resuelva con un "ok".
+export const versionDelIntegranteSchema = z.object({
+  transactionId: dbUuid,
+  version: z.string().trim().min(10, "Cuenta en una o dos frases qué pasó en la consulta.").max(1000),
+});
+
+// El comprobante de la devolucion en Wompi (la referencia que da el panel de Wompi).
+export const comprobanteDeDevolucionSchema = z.string().trim().min(3, "Escribe el comprobante de la devolución.").max(200);
+
 // Estado del boton de reintentar facturas. Lleva `warning` porque `useFormToastRefreshOnSuccess` lo
 // espera, y porque un reintento puede salir a medias: unas emitidas y otras no.
 export type RetryFormState = {

@@ -25,11 +25,14 @@ import {
   entregarVenta,
   linksPendientesQueBloquean,
   registerCashSale,
+  registrarVersionDeVenta,
   resolverRevisionDeVenta,
   VentaError,
 } from "./services/payments-service";
 import {
   accionDeVentaSchema,
+  comprobanteDeDevolucionSchema,
+  versionDelIntegranteSchema,
   createCheckoutSchema,
   registerCashSaleSchema,
   type AccionDeVentaState,
@@ -281,8 +284,14 @@ async function resolverRevisionFormAction(
   if (!canViewRevenue(user)) return { ...vacio, error: "No tienes permiso para resolver esta venta." };
   const parsed = accionDeVentaSchema.safeParse({ transactionId: String(formData.get("transactionId") ?? "") });
   if (!parsed.success) return { ...vacio, error: "Venta inválida." };
+  let comprobante: string | null = null;
+  if (resolucion === "devuelto") {
+    const c = comprobanteDeDevolucionSchema.safeParse(String(formData.get("comprobante") ?? ""));
+    if (!c.success) return { ...vacio, error: c.error.issues[0]?.message ?? "Escribe el comprobante de la devolución." };
+    comprobante = c.data;
+  }
   try {
-    await resolverRevisionDeVenta(parsed.data.transactionId, resolucion, user);
+    await resolverRevisionDeVenta(parsed.data.transactionId, resolucion, user, comprobante);
     return {
       ...vacio,
       success:
@@ -309,6 +318,40 @@ export async function resolverComoDevueltoFormAction(
   formData: FormData,
 ): Promise<AccionDeVentaState> {
   return resolverRevisionFormAction("devuelto", formData);
+}
+
+// ----- La version del Integrante sobre un pago en revision -----
+
+/**
+ * La escribe el Integrante de la venta (o un admin), y tambien quien resuelve (admin o direccion) cuando el
+ * Integrante se lo conto. La venta tiene que ser visible para el usuario (RLS).
+ */
+export async function registrarVersionFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  const vacio = { error: null, success: null, warning: null };
+  const user = await getCurrentUser();
+  if (!user) return { ...vacio, error: "Inicia sesión." };
+  const parsed = versionDelIntegranteSchema.safeParse({
+    transactionId: String(formData.get("transactionId") ?? ""),
+    version: String(formData.get("version") ?? ""),
+  });
+  if (!parsed.success) return { ...vacio, error: parsed.error.issues[0]?.message ?? "Versión inválida." };
+  try {
+    const venta = await getVentaVisible(parsed.data.transactionId);
+    if (!venta) return { ...vacio, error: "No encontramos esa venta." };
+    const propio = await getProfessionalProfileIdByUser(user.id);
+    if (!canDeliverSale(user, venta, propio) && !canViewRevenue(user)) {
+      return { ...vacio, error: "Solo el profesional de la venta o Dirección registran la versión." };
+    }
+    await registrarVersionDeVenta(venta.id, parsed.data.version, user);
+    return { ...vacio, success: "Versión registrada." };
+  } catch (e) {
+    if (e instanceof VentaError) return { ...vacio, error: e.message };
+    reportServerError("venta.version-integrante", e);
+    return { ...vacio, error: "No se pudo registrar la versión." };
+  }
 }
 
 // ----- Reintentar las facturas pendientes (panel de /pagos) -----

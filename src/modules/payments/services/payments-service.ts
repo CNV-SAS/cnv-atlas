@@ -16,6 +16,8 @@ import {
   markWebhookProcessed,
   recordWebhookEvent,
   registrarEntrega,
+  registrarVersionDelIntegrante,
+  SoporteDeRevisionError,
   resolverRevision,
   sealPaidTransaction,
   type LinkPendiente,
@@ -400,8 +402,15 @@ export async function resolverRevisionDeVenta(
   transactionId: string,
   resolucion: ResolucionDeRevision,
   user: CurrentUser,
+  comprobante?: string | null,
 ): Promise<void> {
-  const venta = await resolverRevision(transactionId, resolucion, user.id);
+  let venta;
+  try {
+    venta = await resolverRevision(transactionId, resolucion, user.id, comprobante);
+  } catch (e) {
+    if (e instanceof SoporteDeRevisionError) throw new VentaError(e.message);
+    throw e;
+  }
   if (!venta) throw new VentaError("Esta venta ya no está en revisión.");
   if (resolucion === "segunda_compra") {
     await descontarInventarioDeVenta(venta.id);
@@ -435,4 +444,11 @@ export async function disponibleParaVender(
 ): Promise<Record<string, number>> {
   const professionalId = await repo.getProfessionalProfileIdByUser(user.id);
   return disponibleDondeVende(professionalId, nutraceuticalIds);
+}
+
+/** Registra la version del Integrante sobre un pago en revision. Quien llama ya autorizo. */
+export async function registrarVersionDeVenta(transactionId: string, texto: string, user: CurrentUser): Promise<void> {
+  if (!(await registrarVersionDelIntegrante(transactionId, texto, user.id))) {
+    throw new VentaError("Esta venta ya no está en revisión.");
+  }
 }
