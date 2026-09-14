@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { FILTRO_FUERA_DE_REVISION } from "@/modules/payments/cobro-reconocido";
 
 // Tablero consolidado de direccion (B14). Solo agregados financieros e inventario, leidos por
 // RLS (direccion/admin): transacciones, ingreso CNV, comisiones e inventario. Sin PII: se
@@ -24,7 +25,8 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   const supabase = await createSupabaseServerClient();
 
   const [paid, cnv, commissions, inventory] = await Promise.all([
-    supabase.from("transactions").select("amount").eq("status", "paid"),
+    // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
+    supabase.from("transactions").select("amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION),
     supabase.from("cnv_revenue").select("amount"),
     supabase.from("professional_revenue").select("commission_amount"),
     supabase.from("nutraceutical_inventory").select("stock_quantity"),

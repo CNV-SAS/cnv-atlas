@@ -23,6 +23,7 @@ const DB_TESTS = [
   "src/tests/factura-huerfana-db.test.ts",
   "src/tests/venta-anulacion-y-revision-db.test.ts",
   "src/tests/catalogo-prescribible-db.test.ts",
+  "src/tests/cobro-reconocido-db.test.ts",
   "src/tests/auth-flows.test.ts",
   "src/tests/base-survey-link.test.ts",
   "src/tests/clinical-access.test.ts",
