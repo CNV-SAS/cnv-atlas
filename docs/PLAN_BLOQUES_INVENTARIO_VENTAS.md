@@ -1058,12 +1058,12 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
 1. **HECHO (`dd67a041`).** Los tres errores de lectura de saldo por lote.
 2. **HECHO (sesión 1).** Migraciones A y B, con test contra base real: un movimiento `venta` sin línea se
    rechaza, y el saldo por lote se mueve.
-3. **HECHO (sesión 1), falta el smoke.** El servicio de venta: reserva al crear el checkout, descuenta al sellar (FEFO por lote, varios lotes
+3. **HECHO (sesión 1), smokeado el 2026-09-14.** El servicio de venta: reserva al crear el checkout, descuenta al sellar (FEFO por lote, varios lotes
    si hace falta), libera al vencer, el pago primero y el inventario después, y el ambiente desde el
    evento. `/pagos` (checkout y efectivo) pasa a usarlo. Tests de base real para cada regla.
    **Queda para la sesión 2:** el aviso EN PANTALLA de las ventas `sin_saldo` y `fallido` (hoy quedan en la
    venta y en Sentry, y el botón de reintentar ya reintenta el descuento).
-4. **Tratamiento:** "¿lo adquiere?" → forma de entrega → QR en pantalla, **reemplazando** a la sección de
+4. **CONSTRUIDO en la sesión 2 (ver 3.6), falta el smoke.** **Tratamiento:** "¿lo adquiere?" → forma de entrega → QR en pantalla, **reemplazando** a la sección de
    despacho. La entrega queda en `clinical_audit_log` (Decisión 3 del plan; hoy **nada** de pagos, entrega
    ni inventario escribe auditoría). La yuxtaposición de alérgenos ya está en la selección (D1).
 5. **A MEDIAS: el cálculo ya lee `revenue_splits` (`94ecf611`); falta SELLARLO en la línea.** Reparto sellado por línea desde `revenue_splits` y `professional_commission_rates` con vigencia,
@@ -1174,15 +1174,17 @@ Varias ventas por tratamiento están permitidas (el paciente vuelve por más). C
 - `DespachoSection`, `DespachoForm` y la acción `recordDespacho` **se retiran**. El tipo `despacho` y su CHECK se quedan: son historia.
 - Con eso se cumple "no existe camino para entregar sin venta".
 
-#### Sub-tareas, en orden (un commit cada una)
+#### Sub-tareas, en orden (un commit cada una) · CONSTRUIDAS el 2026-09-14, falta el smoke
 
-1. Migración 0140. **La aplica Santiago.**
-2. Anular link, sellado desde `failed` (con la rama del link anulado) y el vencimiento de la página de Wompi, con tests de base real y control.
-3. Efectivo que anula el link pendiente: servicio, y la pantalla de `/pagos`.
-4. Entrega auditada: servicio, y botón en `/pagos`.
-5. La venta en Tratamiento (QR, efectivo, estado, entrega) y el retiro del despacho.
-6. Avisos en pantalla: `sin_saldo`, `fallido`, pago sobre link anulado.
-7. Guía de smoke de la sesión 2, en navegador real (los cinco hazards de formularios), con scripts listos y el QR escaneado con un teléfono contra el sandbox.
+Estado verificable: `venta-anulacion-y-revision-db.test.ts` (19, base real, con controles), `efectivo-con-link-pendiente.test.ts`, `can-deliver-sale.test.ts`, `payments-service.test.ts`, `wompi-signatures.test.ts` y `luvia-y-alergenos.test.ts`.
+
+1. **HECHO (`0c68a65c`).** Migración 0140. **La aplica Santiago** antes del push (paso 0 del smoke).
+2. **HECHO (`991159ad`).** Anular link, sellado desde `failed` (con la rama del link anulado) y el vencimiento de la página de Wompi. `cerrar-checkouts-pendientes.sql` marca `cancelled_at`.
+3. **HECHO (`35947164`).** Efectivo que anula el link pendiente, y "Anular link" en `/pagos`.
+4. **HECHO (`bcef2d61`).** Entrega auditada, y su botón en `/pagos`.
+5. **HECHO (`6d48aac3`).** La venta en Tratamiento (QR, efectivo, estado, entrega) y el retiro del despacho.
+6. **HECHO (`7d5daf34`).** Panel "Ventas por revisar": pago sobre link anulado (con sus dos salidas), `sin_saldo` y `fallido`.
+7. **HECHO.** `docs/entregas/SMOKE_BLOQUE_3_SESION_2.md`. **El paso 6 (Tratamiento) espera** a que Santiago diga con qué cuenta profesional de prueba se hace. Verificado en la nube: ningún administrador tiene perfil profesional, y el paciente de prueba no tiene tratamiento.
 
 **Al cerrar la sesión:** el aviso de arranque (borrador en `AVISO_INTEGRANTES_VENTAS_Y_ENTREGAS.md`) se ajusta a los nombres reales de las pantallas. Se envía cuando pasen el smoke de esta sesión y la venta controlada del 2b.
 
