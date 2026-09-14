@@ -50,12 +50,14 @@ describe("los tres lectores usan la suma (el defecto era una OMISION en cada sit
     return src.slice(desde, hasta === -1 ? undefined : hasta);
   };
 
-  it.each(["getOwnInventory", "getOwnStockByIds", "recordDespacho"])("%s suma por lote", (nombre) => {
+  // `recordDespacho` era el tercero y se retiro con la venta en consulta (Bloque 3, sesion 2): la entrega ya no
+  // mueve inventario, lo mueve la venta al sellarse, y su descuento suma por lote (venta-inventario).
+  it.each(["getOwnInventory", "getOwnStockByIds"])("%s suma por lote", (nombre) => {
     expect(cuerpo(nombre)).toContain("saldoPorProducto(");
   });
 
   it("y ninguno relee el saldo con maybeSingle, que falla con dos lotes", () => {
-    for (const nombre of ["getOwnInventory", "getOwnStockByIds", "recordDespacho"]) {
+    for (const nombre of ["getOwnInventory", "getOwnStockByIds"]) {
       const c = cuerpo(nombre);
       const lecturaDeSaldo = c.slice(c.lastIndexOf('from("nutraceutical_inventory")'));
       expect(lecturaDeSaldo, nombre).not.toContain("maybeSingle");

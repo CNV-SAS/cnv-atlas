@@ -10,6 +10,10 @@ const dbUuid = z.guid();
 // cliente, se sella en el servidor desde el catalogo de nutraceuticos.
 export const createCheckoutSchema = z.object({
   patientId: dbUuid,
+  // El tratamiento del que nace la venta (pestaña Tratamiento). Sin el, es la venta de `/pagos`: el paciente
+  // que vuelve solo a comprar. Con el, el servidor comprueba que sea de ese paciente y que lo vendido este
+  // prescrito.
+  treatmentId: dbUuid.optional(),
   items: z
     .array(
       z.object({

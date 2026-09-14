@@ -22,7 +22,6 @@ import {
   declareRemesaSchema,
   resolveSobranteSchema,
   createNutraceuticalSchema,
-  despachoSchema,
   receptionSchema,
   recordCountSchema,
   registerUsageSchema,
@@ -186,56 +185,6 @@ export async function recordReceptionFormAction(
   revalidatePath("/mi-inventario");
   return { error: null, success: "Recepción registrada.", warning: null };
 }
-
-// Registrar un DESPACHO (entrega al paciente) desde el panel de tratamiento. Solo el profesional
-// (canLoadOwnStock); el service verifica ademas que el tratamiento sea suyo y que el producto sea
-// en_consultorio. Sin un lote que cubra la cantidad, el service RECHAZA (desde la 0121); si aun asi el saldo
-// leido queda negativo, se avisa (warning) y la diferencia queda visible en Mi inventario. Requiere el
-// evaluationId (hidden) para revalidar la pagina de la evaluacion.
-export async function recordDespachoFormAction(
-  _prev: NutraceuticalFormState,
-  formData: FormData,
-): Promise<NutraceuticalFormState> {
-  const user = await getCurrentUser();
-  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
-  if (!canLoadOwnStock(user)) {
-    return { error: "Solo el profesional entrega nutracéuticos al paciente.", success: null, warning: null };
-  }
-  const parsed = despachoSchema.safeParse({
-    treatmentId: String(formData.get("treatmentId") ?? ""),
-    nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
-    quantity: String(formData.get("quantity") ?? ""),
-  });
-  if (!parsed.success) return { error: "Datos de la entrega inválidos.", success: null, warning: null };
-
-  const res = await inventoryService.recordDespacho({
-    userId: user.id,
-    treatmentId: parsed.data.treatmentId,
-    nutraceuticalId: parsed.data.nutraceuticalId,
-    quantity: parsed.data.quantity,
-  });
-  if (!res.ok) return { error: res.message ?? "No se pudo registrar la entrega.", success: null, warning: null };
-
-  const evaluationId = optStr(formData, "evaluationId");
-  if (evaluationId) revalidatePath(`/ani-bis-e/${evaluationId}`);
-  revalidatePath("/mi-inventario");
-
-  // Sin saldo leido no se inventa uno: "te quedan 0" seria una cifra que nadie midio.
-  if (res.resultingStock === undefined) {
-    return { error: null, success: "Entrega registrada.", warning: null };
-  }
-  // Saldo negativo = discrepancia visible: nunca se calla. El aviso confirma la entrega Y la diferencia.
-  const stock = res.resultingStock;
-  if (stock < 0) {
-    return {
-      error: null,
-      success: null,
-      warning: `Entrega registrada. Tu inventario de este producto quedo en ${stock}: entregaste mas de lo que tienes cargado. Revisa la diferencia (registra la recepcion que falte o repórtalo en el conteo).`,
-    };
-  }
-  return { error: null, success: `Entrega registrada. Te quedan ${stock} unidades.`, warning: null };
-}
-
 
 // Declarar una REMESA (E2): CNV declara un envío en consignación a un integrante. Solo admin/soporte
 // (Operaciones); el integrante no declara. No mueve el saldo (eso pasa al confirmar la recepción).

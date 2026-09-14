@@ -160,3 +160,77 @@ export async function getVentaVisible(transactionId: string): Promise<VentaVisib
   if (error) fail("getVentaVisible", error.message);
   return data ?? null;
 }
+
+export type TratamientoParaVenta = {
+  patientId: string;
+  /** El profesional de la evaluacion (perfil profesional). */
+  professionalId: string | null;
+  decision: string | null;
+  /** Los nutraceuticos PRESCRITOS en el tratamiento. */
+  prescritos: string[];
+};
+
+/**
+ * El tratamiento del que nace una venta, SI EL USUARIO LO PUEDE VER (RLS). Tres lecturas en cadena y no un
+ * embed anidado: `treatments -> diagnoses -> evaluations` se leia igual en `recordDespacho` (la entrega retirada en la sesion 2), y un
+ * embed anidado es justo donde PostgREST se vuelve ambiguo sin que tsc lo vea (CLAUDE.md).
+ */
+export async function getTratamientoParaVenta(treatmentId: string): Promise<TratamientoParaVenta | null> {
+  const supabase = await createSupabaseServerClient();
+  const t = await supabase
+    .from("treatments")
+    .select("id, diagnosis_id, nutraceutical_decision")
+    .eq("id", treatmentId)
+    .maybeSingle();
+  if (t.error) fail("getTratamientoParaVenta.treatment", t.error.message);
+  if (!t.data) return null;
+  const d = await supabase.from("diagnoses").select("evaluation_id").eq("id", t.data.diagnosis_id).maybeSingle();
+  if (d.error) fail("getTratamientoParaVenta.diagnosis", d.error.message);
+  if (!d.data) return null;
+  const e = await supabase
+    .from("evaluations")
+    .select("patient_id, professional_id")
+    .eq("id", d.data.evaluation_id)
+    .maybeSingle();
+  if (e.error) fail("getTratamientoParaVenta.evaluation", e.error.message);
+  if (!e.data) return null;
+  const n = await supabase.from("treatment_nutraceuticals").select("nutraceutical_id").eq("treatment_id", treatmentId);
+  if (n.error) fail("getTratamientoParaVenta.nutraceuticals", n.error.message);
+  return {
+    patientId: e.data.patient_id,
+    professionalId: e.data.professional_id,
+    decision: t.data.nutraceutical_decision,
+    prescritos: [...new Set((n.data ?? []).map((x) => x.nutraceutical_id))],
+  };
+}
+
+export type VentaDeTratamiento = {
+  id: string;
+  status: string;
+  amount: string;
+  created_at: string;
+  payment_method: string;
+  stock_state: string | null;
+  stock_last_error: string | null;
+  fulfillment_state: string | null;
+  delivered_at: string | null;
+  cancelled_at: string | null;
+  review_reason: string | null;
+  review_resolution: string | null;
+  professional_id: string | null;
+  transaction_items: { quantity: number; nutraceuticals: { name: string } | null }[];
+};
+
+/** Las ventas que nacieron de un tratamiento, mas reciente primero. RLS: el profesional ve las suyas. */
+export async function listVentasDeTratamiento(treatmentId: string): Promise<VentaDeTratamiento[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id, status, amount, created_at, payment_method, stock_state, stock_last_error, fulfillment_state, delivered_at, cancelled_at, review_reason, review_resolution, professional_id, transaction_items(quantity, nutraceuticals(name))",
+    )
+    .eq("treatment_id", treatmentId)
+    .order("created_at", { ascending: false });
+  if (error) fail("listVentasDeTratamiento", error.message);
+  return (data ?? []) as unknown as VentaDeTratamiento[];
+}

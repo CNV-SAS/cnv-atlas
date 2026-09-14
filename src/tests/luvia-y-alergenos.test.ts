@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it, vi } from "vitest";
@@ -25,7 +26,8 @@ vi.mock("server-only", () => ({}));
 const HABILITA = "drizzle/0126_luvia_habilitada_sin_regla_de_alergenos.sql";
 const SERVICIO = "src/modules/payments/services/payments-service.ts";
 const PAGINA = "src/app/(app)/pagos/page.tsx";
-const DESPACHO = "src/modules/nutraceuticals/services/inventory-service.ts";
+const VENTA_EN_CONSULTA = "src/modules/treatment/components/venta-en-consulta-section.tsx";
+const FORM_VENTA = "src/modules/treatment/components/venta-en-consulta-form.tsx";
 
 describe("LUVIA entra al catálogo como producto vendible de tercero", () => {
   const mig = readFileSync(HABILITA, "utf8");
@@ -63,9 +65,26 @@ describe("el gate de disponibilidad sigue cerrado, que es lo que protege a los q
     expect(src).toContain('n.commercial_availability === "en_consultorio"');
   });
 
-  it("la ENTREGA sigue cerrada, que era la mitad que ya funcionaba", () => {
-    const src = readFileSync(DESPACHO, "utf8");
-    expect(src).toContain('prod.commercial_availability !== "en_consultorio"');
+  it("la ENTREGA sigue cerrada: desde la sesion 2 del Bloque 3 solo se entrega una VENTA, y la venta pasa por el servicio", () => {
+    // La entrega ya no es un movimiento suelto con su propio gate (`recordDespacho`, retirado): es un estado de
+    // una venta pagada. La venta de la consulta usa el MISMO servicio que `/pagos`, cuyo gate se prueba arriba,
+    // y su pantalla solo ofrece lo que es en_consultorio.
+    expect(readFileSync(VENTA_EN_CONSULTA, "utf8")).toContain('=== "en_consultorio"');
+    expect(readFileSync(FORM_VENTA, "utf8")).toContain("createCheckoutFormAction");
+    expect(readFileSync(FORM_VENTA, "utf8")).toContain("registerCashSaleFormAction");
+    // Y no queda ningun otro camino que escriba un movimiento de entrega.
+    const buscar = (literal: string) => {
+      try {
+        // Sin shell: el literal lleva comillas y un shell se las comeria.
+        return execFileSync("git", ["grep", "-l", "-F", literal, "--", "src", ":!src/tests"], { encoding: "utf8" }).trim();
+      } catch {
+        return ""; // git grep sale con 1 cuando no encuentra nada
+      }
+    };
+    // CONTROL: la busqueda si encuentra el escritor de la venta, asi que un vacio abajo significa algo.
+    expect(buscar(`type: "venta"`)).toContain("inventario-de-venta.ts");
+    const escritores = buscar(`type: "despacho"`);
+    expect(escritores).toBe("");
   });
 });
 
