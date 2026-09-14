@@ -4,6 +4,7 @@ import { requireUser } from "@/modules/auth/session";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
 import { getDespachosForTreatment } from "@/modules/nutraceuticals/services/inventory-service";
 import { AccionDeVentaButton } from "@/modules/payments/components/accion-de-venta-button";
+import { VersionDelIntegranteForm } from "@/modules/payments/components/version-del-integrante-form";
 import { CheckoutLink } from "@/modules/payments/components/checkout-link";
 import { CHECKOUT_TTL_MS } from "@/modules/payments/data/checkout-reader";
 import {
@@ -236,10 +237,20 @@ function EstadoDeLaVenta({
   }
   if (v.review_reason && v.review_resolution !== "segunda_compra") {
     return (
-      <span className="text-sm text-clinical-warning">
-        Pago en revisión por CNV: llegó sobre un link anulado y puede ser un cobro doble. No entregues el producto
-        hasta que se resuelva.
-      </span>
+      <div className="flex flex-col gap-2">
+        <span className="text-sm text-clinical-warning">
+          Pago en revisión por CNV: llegó sobre un link anulado y puede ser un cobro doble. No entregues el producto
+          hasta que se resuelva.
+        </span>
+        {puedeEntregar ? (
+          <VersionDelIntegranteForm
+            key={v.review_professional_version ?? "sin-version"}
+            transactionId={v.id}
+            actual={v.review_professional_version}
+            titulo="Cuéntale a CNV qué pasó en la consulta"
+          />
+        ) : null}
+      </div>
     );
   }
   return (

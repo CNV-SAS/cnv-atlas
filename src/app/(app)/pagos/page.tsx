@@ -22,6 +22,7 @@ import {
 import { listarVentasSinDocumento } from "@/modules/payments/data/facturacion-repository";
 import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
 import { VentasPorRevisar } from "@/modules/payments/components/ventas-por-revisar";
+import { VersionDelIntegranteForm } from "@/modules/payments/components/version-del-integrante-form";
 import { listarVentasPorRevisar } from "@/modules/payments/data/ventas-por-revisar";
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
@@ -79,9 +80,20 @@ function EntregaDeLaVenta({ tx, puedeEntregar }: { tx: TransactionWithItems; pue
   if (tx.fulfillment_state !== "pendiente" || tx.status !== "paid") return null;
   if (tx.review_reason && tx.review_resolution !== "segunda_compra") {
     return (
-      <span className="text-xs text-clinical-warning">
-        Pago en revisión por CNV: no entregues el producto hasta que se resuelva.
-      </span>
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-clinical-warning">
+          Pago en revisión por CNV: no entregues el producto hasta que se resuelva.
+        </span>
+        {/* El profesional de la venta cuenta que paso: es lo que Direccion necesita para resolver. */}
+        {puedeEntregar ? (
+          <VersionDelIntegranteForm
+            key={tx.review_professional_version ?? "sin-version"}
+            transactionId={tx.id}
+            actual={tx.review_professional_version}
+            titulo="Cuéntale a CNV qué pasó en la consulta"
+          />
+        ) : null}
+      </div>
     );
   }
   return (
@@ -192,7 +204,7 @@ export default async function PagosPage() {
 
       {/* VA ANTES DE LA LISTA DE TRANSACCIONES a proposito: es lo que hay que mirar y resolver, y al
           final de la pagina no lo mira nadie. Contabilidad lo quiere en CERO al cierre de cada dia. */}
-      {canView && <VentasPorRevisar ventas={ventasPorRevisar} />}
+      {canView && <VentasPorRevisar ventas={ventasPorRevisar} ahora={new Date(nowMs)} />}
       {canView && <FacturasPendientes ventas={ventasSinDocumento} />}
 
       <section className="flex flex-col gap-3">

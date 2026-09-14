@@ -26,6 +26,12 @@ export type VentaPorRevisar = {
   productos: string;
   motivo: "pago_sobre_link_anulado" | "sin_saldo" | "fallido";
   detalle: string | null;
+  /** Cuando entro en revision (para el plazo). */
+  abierta: string;
+  /** La version del Integrante, quien la escribio y cuando. */
+  version: string | null;
+  versionPor: string | null;
+  versionEn: string | null;
 };
 
 export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
@@ -36,6 +42,10 @@ export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
     productos: string | null;
     motivo: VentaPorRevisar["motivo"];
     detalle: string | null;
+    abierta: string;
+    version: string | null;
+    version_por: string | null;
+    version_en: string | null;
   }>(sql`
     select t.id, t.amount::text as amount, t.created_at::text as created_at,
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
@@ -48,8 +58,14 @@ export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
            case
              when t.review_reason is not null and t.review_resolution is null then null
              else t.stock_last_error
-           end as detalle
+           end as detalle,
+           -- Las que entraron en revision antes de la 0141 no tienen la fecha: la aproxima la ultima escritura.
+           coalesce(t.review_opened_at, t.updated_at)::text as abierta,
+           t.review_professional_version as version,
+           p.full_name as version_por,
+           t.review_professional_version_at::text as version_en
       from transactions t
+      left join profiles p on p.id = t.review_professional_version_by
      where t.status = 'paid'
        and (
          (t.review_reason is not null and t.review_resolution is null)
@@ -64,5 +80,9 @@ export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
     productos: f.productos ?? "",
     motivo: f.motivo,
     detalle: f.detalle,
+    abierta: String(f.abierta),
+    version: f.version,
+    versionPor: f.version_por,
+    versionEn: f.version_en,
   }));
 }
