@@ -3,7 +3,7 @@ import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { formatDateTime } from "@/lib/format/date";
+import { formatDateTimeConSegundos } from "@/lib/format/date";
 
 import { canViewAudit } from "@/modules/audit/policies/can-view-audit";
 import { getAuditLog } from "@/modules/audit/data/audit-reader";
@@ -16,7 +16,8 @@ export const metadata = { title: "Auditoria - Atlas" };
 // append-only, aqui nunca se escribe ni se borra.
 
 function fmt(iso: string): string {
-  return formatDateTime(iso);
+  // Con segundos: es el registro tecnico, y el orden fino de los eventos es lo que se lee aqui.
+  return formatDateTimeConSegundos(iso);
 }
 
 function summarizePayload(payload: unknown): string {
