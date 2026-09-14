@@ -1,6 +1,7 @@
 import Image from "next/image";
 
-import { getCheckoutByToken } from "@/modules/payments/data/checkout-reader";
+import { reportServerError } from "@/lib/observability/report-error";
+import { getCheckoutByToken, type CheckoutView } from "@/modules/payments/data/checkout-reader";
 import { buildWompiCheckoutParams } from "@/modules/payments/services/payments-service";
 
 export const metadata = { title: "Pago - Atlas" };
@@ -34,14 +35,48 @@ export default async function CheckoutPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const view = await getCheckoutByToken(token);
+
+  // ═══ SI LA LECTURA FALLA, EL PACIENTE VE QUE HACER, NO UN ERROR GENERICO (2026-09-14) ═══
+  //
+  // La API de Supabase respondio 502 de forma intermitente al abrir este link, y la pagina caia en "algo salio
+  // mal". Un paciente que ve eso se va; uno que ve "intenta de nuevo en unos segundos" y tiene el boton, lo
+  // intenta. Solo se captura la LECTURA, que es lo pasajero: un error de configuracion (una llave faltante,
+  // abajo) no se disfraza de "intenta de nuevo".
+  //
+  // SE SIGUE REPORTANDO A SENTRY, con el area "checkout.leer-link": sin el throw ya no llega como error sin
+  // manejar, y la frecuencia de este fallo es justo lo que se esta investigando.
+  let view: CheckoutView | null;
+  try {
+    view = await getCheckoutByToken(token);
+  } catch (e) {
+    reportServerError("checkout.leer-link", e);
+    return (
+      <CheckoutShell>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">No pudimos cargar tu link de pago</h1>
+        <p className="text-center text-sm text-muted-foreground">
+          Es un problema pasajero de nuestro lado. Intenta de nuevo en unos
+          segundos.
+        </p>
+        {/* Un enlace a la misma pagina y no un boton con JavaScript: funciona en cualquier telefono. */}
+        <a
+          href={`/checkout/${encodeURIComponent(token)}`}
+          className="flex h-11 w-full items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          Intentar de nuevo
+        </a>
+        <p className="text-center text-xs text-muted-foreground">
+          Si sigue sin cargar, avísale a tu profesional.
+        </p>
+      </CheckoutShell>
+    );
+  }
 
   if (!view) {
     return (
       <CheckoutShell>
         <h1 className="text-xl font-bold tracking-tight text-foreground">Link no disponible</h1>
         <p className="text-center text-sm text-muted-foreground">
-          Este link de pago no existe, ya fue usado o vencio (vale 24 horas). Pide uno
+          Este link de pago no existe, ya fue usado o venció (vale 24 horas). Pide uno
           nuevo a tu profesional.
         </p>
       </CheckoutShell>
