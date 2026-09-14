@@ -1,3 +1,4 @@
+import { HttpError } from "@/core/http/http-error";
 import { baseFromTotal, ivaFromTotal } from "@/core/iva";
 
 // ═══ LO QUE VIAJA A LA FACTURA, Y LO QUE IMPIDE QUE VIAJE MAL ═══
@@ -207,4 +208,58 @@ export function desgloseDeLaVenta(lineas: LineaDeVenta[]): {
     iva += ivaFromTotal(l.precioUnitario) * l.cantidad;
   }
   return { base, iva, total: base + iva };
+}
+
+// ═══ ENCONTRAR LA FACTURA DE UNA VENTA SI LA RESPUESTA DE ALEGRA SE PIERDE (2026-09-14) ═══
+//
+// Ver la cabecera de `lib/alegra/client.ts`: un corte por tiempo al emitir es un desenlace DESCONOCIDO, y
+// antes de emitir otra vez se busca la que ese intento pudo haber creado.
+
+/**
+ * La referencia que viaja en la factura. Contiene el id de la venta, que es unico, y un prefijo que dice de
+ * donde viene para quien la lea en Alegra.
+ */
+export function referenciaDeVenta(transactionId: string): string {
+  return `Atlas venta ${transactionId}`;
+}
+
+/**
+ * La fecha de HOY EN COLOMBIA (yyyy-MM-dd), que es la fecha de emision de la factura.
+ *
+ * ERA UTC (`toISOString().slice(0, 10)`): una venta despues de las 7 de la noche salia con la fecha del dia
+ * siguiente. Una fecha de factura es una fecha civil de Colombia, no un instante.
+ */
+export function fechaEnColombia(instante: Date = new Date()): string {
+  // en-CA formatea como yyyy-MM-dd.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instante);
+}
+
+/**
+ * El rango en que se busca la factura: un dia antes y uno despues de la fecha del intento. Holgura a proposito:
+ * la fecha que registra Alegra puede no coincidir con la del intento (la SETP990214715 quedo con fecha
+ * 2026-09-13 y se emitio pasadas las 00:00 UTC del 14), y un rango un poco mas ancho no cuesta nada porque se
+ * filtra por la referencia exacta.
+ */
+export function rangoDeBusqueda(fecha: string): { desde: string; hasta: string } {
+  const dia = (delta: number) => {
+    const d = new Date(`${fecha}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + delta);
+    return d.toISOString().slice(0, 10);
+  };
+  return { desde: dia(-1), hasta: dia(1) };
+}
+
+/**
+ * Si un error al CREAR pudo haber dejado el documento creado del otro lado.
+ *
+ * NO, solo cuando Alegra respondio un 4xx: rechazo la peticion, no creo nada. Todo lo demas (corte por
+ * tiempo, red, 5xx) es desconocido y obliga a buscar antes de volver a crear.
+ */
+export function pudoHaberseCreado(e: unknown): boolean {
+  return !(e instanceof HttpError && e.status >= 400 && e.status < 500);
 }

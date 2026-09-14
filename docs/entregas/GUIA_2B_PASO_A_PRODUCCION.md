@@ -319,9 +319,36 @@ node scripts/aplicar-migracion.mjs scripts/purga-ventas-de-prueba.sql
 |---|---|
 | C1 dice `wompi_env test` | No pagues. Revisa B4 y B5, redespliega, y crea otro checkout |
 | Wompi aprobó, pero en Atlas la venta sigue `pending` después de 2 minutos | El webhook no entró: el secreto de eventos (B4) o la URL (A4) están mal. Corrige y redespliega. **No marques la venta a mano:** el cobro existe en Wompi y avísame para sellarlo |
-| La venta está `paid` y `alegra_invoice_state` es `fallida` | Lee `alegra_last_error`. Si es un dato mal configurado, corrígelo (B2 y B3) y pulsa **Reintentar** en `/pagos`. El pago del comprador ya quedó guardado |
+| La venta está `paid` y `alegra_invoice_state` es `fallida` **y el motivo dice "No se supo si Alegra emitió"**, o habla de tiempo agotado | **La factura pudo haberse emitido.** No pulses Reintentar todavía: sigue **F1b** |
+| La venta está `paid` y `alegra_invoice_state` es `fallida` con otro motivo | Lee `alegra_last_error`. Si es un dato mal configurado, corrígelo (B2 y B3) y pulsa **Reintentar** en `/pagos`. El pago del comprador ya quedó guardado |
 | La factura salió, pero **mal** (ítem, IVA, centro de costo, cuenta del pago) | Nadie más cobra. Contabilidad emite **nota crédito manual** en Alegra sobre esa factura. Corrige el mapeo (B2 y B3) y haz **otra** venta controlada (C). Atlas todavía no emite notas crédito: eso llega en el 3b |
 | No sabes qué pasa, o hay más de un problema | Vuelta atrás completa (F3) |
+
+### F1b. La factura no volvió (le pasó al smoke del Bloque 3 y puede pasarle a la venta controlada)
+
+La emisión en Alegra espera el sellado de la DIAN. Si tarda más de lo que Atlas espera, **Alegra puede haber emitido la factura y Atlas no haberse enterado**. Con dinero real **esto va a pasar** alguna vez. Lo que no puede pasar es emitir dos facturas del mismo pago.
+
+1. **No pulses Reintentar.** Reintenta **todas** las ventas pendientes, no solo esta.
+2. **Mira en Alegra si la factura existe:** Ingresos → Facturas de venta, filtra por el comprador y la fecha. Busca una por el total de la venta.
+3. **Si NO existe:** pulsa Reintentar. Emite normalmente.
+4. **Si SÍ existe:** copia su **número** tal como se ve (por ejemplo `FE7`). En la ventana de PowerShell de la ventana de producción (A2), primero el ensayo:
+
+```powershell
+node scripts/adoptar-factura-alegra.mjs --numero FE7
+```
+
+   (con el número que copiaste). **Debe dar:** las comprobaciones de ambiente, cliente, total, fecha, líneas y estado en `ok`, y `UNA venta cumple todo`. Si alguna sale `[X]` o dice `ABORTADO`, **para** y avísame.
+
+   Si cuadra:
+
+```powershell
+node scripts/adoptar-factura-alegra.mjs --numero FE7 --commit
+```
+
+5. **Ahora sí, Reintentar.** Atlas relee esa factura y registra el pago; no emite otra.
+6. **(lectura)** La consulta de C3: `alegra_invoice_number` es el de esa factura, `alegra_payment_id` ya no está vacío. En Alegra, **una sola** factura de esa venta, con saldo 0.
+
+Desde el commit del 2026-09-14 la factura lleva la referencia de la venta y Reintentar la encuentra solo. Este camino de adopción queda como verificación a mano y para las facturas emitidas antes de ese arreglo.
 
 ### F2. Antes de volver atrás
 

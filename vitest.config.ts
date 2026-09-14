@@ -20,6 +20,7 @@ const DB_TESTS = [
   "src/tests/reparto-sellado.test.ts",
   "src/tests/saldo-por-lote-db.test.ts",
   "src/tests/venta-inventario.test.ts",
+  "src/tests/factura-huerfana-db.test.ts",
   "src/tests/auth-flows.test.ts",
   "src/tests/base-survey-link.test.ts",
   "src/tests/clinical-access.test.ts",

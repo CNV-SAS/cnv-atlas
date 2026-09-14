@@ -717,6 +717,16 @@ venta controlada con su lista de revisión, y vuelta atrás.
    **Después del 2b:** sellar el ambiente desde el evento de Wompi, que trae `environment`, y rechazar la
    venta si contradice la fila. No se hace hoy porque es código de pagos y va a producción mañana.
 
+### Hallazgo del smoke del Bloque 3 (2026-09-14): la factura que se emite y no vuelve
+
+La emisión (con el sellado DIAN en la misma llamada) tardó más que el timeout de 15 s: Alegra emitió SETP990214715, Atlas la dio por `fallida` sin id y **un reintento habría emitido una segunda**. La idempotencia cubría los intentos simultáneos y los reintentos después de guardar el id; **no este caso**.
+
+**Arreglado:** la factura lleva la referencia de la venta en `observations` (verificado en el PDF: no se imprime; `anotation` sí), se **busca y adopta antes de emitir** y otra vez si la emisión se corta, la emisión espera **60 s** (medido: 12,9 s en el sandbox), y las funciones que facturan declaran `maxDuration = 180`. La fecha de la factura pasa a ser la de **Colombia** (era UTC). Para las facturas sin referencia: `scripts/adoptar-factura-alegra.mjs`. Candados: `factura-huerfana-db`, `factura-sin-respuesta`.
+
+**Qué hacer en la ventana si pasa con la venta controlada:** guía, **F1b**.
+
+**Barrido de las demás escrituras externas:** el contacto ya se buscaba por documento, y el pago se encuentra por el saldo de la factura releída (probado con un corte en el pago). **Pendiente, fuera de pagos:** los correos de Resend. Su timeout corta la espera sin cancelar el envío, así que un reintento puede mandar el mismo correo dos veces. El arreglo ahí es otro: Resend acepta una clave de idempotencia por envío.
+
 ### El correo al cliente
 
 **En producción Alegra lo manda solo.** Su ayuda para Colombia dice que al emitir un documento electrónico
@@ -1113,6 +1123,7 @@ fiscal** existe y se puede consultar por día.
 - Anulación por error.
 - Devolución con **reingreso al lote de origen**.
 - **Nota crédito en Alegra enlazada a la factura original.**
+- **Y CON LA REGLA DE LAS ESCRITURAS SIN RESPUESTA (2026-09-14):** la nota crédito es un POST que puede completarse en Alegra y perder la respuesta, igual que la factura del smoke del Bloque 3 (SETP990214715). Lleva la referencia de la reversa de Atlas en `observations` (que no se imprime) y **se busca antes de emitir**, con la misma forma que `buscarFacturaPorReferencia`. No se construye sin eso. La regla está escrita una vez, en la cabecera de `lib/alegra/client.ts`.
 - **Reversión de la comisión**; si ya se liquidó, se descuenta en la siguiente liquidación.
 - Para **producto de tercero**, el reingreso va a la **consignación del proveedor**, no al inventario de
   CNV (el producto nunca fue de CNV).

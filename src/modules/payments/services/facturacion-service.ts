@@ -5,17 +5,23 @@ import * as Sentry from "@sentry/nextjs";
 import { HttpError } from "@/core/http/http-error";
 
 import {
+  buscarFacturaPorReferencia,
   createAlegraContact,
   createAlegraInvoice,
   createAlegraPayment,
   findAlegraContactByDocument,
   getAlegraInvoice,
+  type AlegraInvoiceResult,
 } from "@/lib/alegra/client";
 import {
   armarFactura,
   cuentaDelPago,
   desgloseDeLaVenta,
+  fechaEnColombia,
   motivoSiPacienteYAmbienteNoCuadran,
+  pudoHaberseCreado,
+  rangoDeBusqueda,
+  referenciaDeVenta,
 } from "../facturacion";
 import * as fr from "../data/facturacion-repository";
 import { motivoSiLaVentaNoEsDeEsteAmbiente } from "../ambiente";
@@ -48,8 +54,10 @@ import { codigoAlegraDelPago } from "../medio-de-pago";
 
 const MAX_INTENTOS = 5;
 
+// La fecha de la factura es la de HOY EN COLOMBIA. Era UTC, y una venta despues de las 7 de la noche salia
+// con la fecha del dia siguiente.
 function hoy(): string {
-  return new Date().toISOString().slice(0, 10);
+  return fechaEnColombia();
 }
 
 /**
@@ -215,6 +223,29 @@ async function completarFactura(
 }
 
 /**
+ * ADOPTA una factura que ya existe en Alegra para esta venta: guarda su id y la completa (CUFE y pago).
+ *
+ * Es el desenlace de encontrarla por su referencia. Se escribe PRIMERO el id, que es lo irreversible: si el
+ * proceso muriera durante el pago, el reintento ya la tiene y no la busca ni la crea otra vez.
+ */
+async function adoptarFactura(
+  venta: VentaSellada,
+  existente: AlegraInvoiceResult,
+  mapa: Parameters<typeof cuentaDelPago>[1],
+): Promise<void> {
+  await fr.registrarIntentoDeFactura(venta.id, {
+    estado: existente.estado === "draft" ? "borrador" : existente.stamp?.cufe ? "emitida" : "emitida_sin_sellar",
+    invoiceId: existente.id,
+    alegraEnv: mapa.env,
+    numero: existente.numero,
+    cufe: existente.stamp?.cufe ?? null,
+    legalStatus: existente.stamp?.legalStatus ?? null,
+    error: `Factura ${existente.numero ?? existente.id} encontrada en Alegra por su referencia y adoptada: no se emitió otra.`,
+  });
+  await completarFactura(venta, existente.id, mapa);
+}
+
+/**
  * Emite la factura de una venta ya pagada y registra su pago.
  *
  * ── LA IDEMPOTENCIA ES REAL DESDE EL 2026-09-12, Y ANTES ERA SOLO UNA FRASE ─────────────────────
@@ -229,6 +260,16 @@ async function completarFactura(
  *   2. Y NO CREAR SEGUNDA FACTURA: si la venta ya tiene id de factura, se RELEE y se completa. Crear otra
  *      daria un segundo consecutivo del mismo hecho, y deshacerlo es una nota credito y un hueco en la
  *      numeracion.
+ *
+ * ── Y AUN ASI ERA INCOMPLETA: FALTABA UNA TERCERA PIEZA (2026-09-14) ──────────────────────────────
+ *
+ * Las dos de arriba cubrian los intentos simultaneos y los reintentos DESPUES de guardar el id. No cubrian el
+ * caso que ocurrio en el smoke del Bloque 3: Alegra EMITIO la factura, la respuesta no llego a tiempo, la venta
+ * quedo fallida SIN id, y un reintento habria emitido una segunda. Decir "idempotencia real" era quedarse corto:
+ * cubria los casos que se pensaron, no el que paso.
+ *
+ *   3. BUSCAR ANTES DE EMITIR: la factura lleva la referencia de la venta, y antes de emitir (y otra vez si la
+ *      emision se corta sin respuesta) se busca en Alegra. Si existe, se ADOPTA.
  */
 export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
   try {
@@ -318,16 +359,45 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
     const instrumento = await fr.getInstrumentoDeVenta(venta.id);
     const paymentMethod = codigoAlegraDelPago({ canal: venta.canal, ...instrumento });
 
-    const factura = await createAlegraInvoice({
-      clientId,
-      items: armado.lineas,
-      date: fecha,
-      dueDate: fecha,
-      numberTemplateId: Number(mapa.invoiceTemplateId),
-      ...(armado.costCenterId ? { costCenterId: armado.costCenterId } : {}),
-      ...(paymentMethod ? { paymentMethod } : {}),
-      emitir: true,
-    });
+    // ── 3. BUSCAR ANTES DE EMITIR ─────────────────────────────────────────────────────────────────
+    //
+    // Un intento anterior pudo haberla emitido sin que llegara la respuesta. Si esta, se adopta.
+    const referencia = referenciaDeVenta(venta.id);
+    const rango = rangoDeBusqueda(fecha);
+    const previa = await buscarFacturaPorReferencia({ clientId, referencia, ...rango });
+    if (previa) {
+      await adoptarFactura(venta, previa, mapa);
+      return;
+    }
+
+    let factura: AlegraInvoiceResult;
+    try {
+      factura = await createAlegraInvoice({
+        clientId,
+        referencia,
+        items: armado.lineas,
+        date: fecha,
+        dueDate: fecha,
+        numberTemplateId: Number(mapa.invoiceTemplateId),
+        ...(armado.costCenterId ? { costCenterId: armado.costCenterId } : {}),
+        ...(paymentMethod ? { paymentMethod } : {}),
+        emitir: true,
+      });
+    } catch (e) {
+      // UN 4xx ES UN RECHAZO: Alegra no creo nada, y el error es el de siempre.
+      if (!pudoHaberseCreado(e)) throw e;
+      // CUALQUIER OTRO (corte por tiempo, red, 5xx) ES DESCONOCIDO. Se busca una vez ahora; si ya aparece, se
+      // adopta. Si todavia no (Alegra puede tardar en dejarla visible), la venta queda fallida con un motivo
+      // que dice exactamente eso, y el reintento vuelve a buscar antes de emitir.
+      const tras = await buscarFacturaPorReferencia({ clientId, referencia, ...rango }).catch(() => null);
+      if (tras) {
+        await adoptarFactura(venta, tras, mapa);
+        return;
+      }
+      throw new Error(
+        `No se supo si Alegra emitió la factura (${motivoLegible(e)}). No se emite otra: el reintento la busca por su referencia antes de emitir.`,
+      );
+    }
 
     // EL SELLADO ANTE LA DIAN ES ASINCRONO: la respuesta puede volver sin CUFE. Se relee una vez, que es
     // lo que permite tener el CUFE sin construir un webhook. Si sigue sin venir, la factura esta emitida
