@@ -6,6 +6,7 @@ import * as Sentry from "@sentry/nextjs";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { baseFromTotal } from "@/core/iva";
+import { recordAudit } from "@/modules/audit/log";
 import { db } from "@/db";
 import {
   cnvRevenue,
@@ -575,4 +576,59 @@ export async function detalleDeLinksPendientes(
      group by t.id
      order by t.created_at desc`);
   return filas.map((f) => ({ id: f.id, amount: String(f.amount), createdAt: String(f.created_at), productos: f.productos }));
+}
+
+export type ResultadoDeEntrega = "entregada" | "no_pagada" | "ya_entregada" | "en_revision" | "sin_estado";
+
+// ═══ LA ENTREGA DE UNA VENTA (Bloque 3, sesion 2) ═══
+//
+// NO EXISTE CAMINO PARA ENTREGAR SIN VENTA: la entrega es un estado de la venta, y solo de una PAGADA. Antes
+// la entrega era un movimiento suelto (`despacho`) que no sabia de la venta, y un producto podia salir de la
+// vitrina sin que nadie lo cobrara.
+//
+// EL INVENTARIO NO SE MUEVE AQUI: se movio al sellar el pago (D2). Entregar es el hecho de que el paciente se
+// llevo el producto. Por eso una venta `sin_saldo` SI se entrega: el producto esta en la mano del Integrante,
+// y lo que esta mal es el saldo de Atlas.
+//
+// Y SE AUDITA INLINE (regla dura 8, Decision 3 del plan): es el momento en que un nutraceutico prescrito llega
+// al paciente. El payload lleva productos y cantidades; nunca nombre ni documento.
+export async function registrarEntrega(
+  txId: string,
+  actor: { id: string; email: string | null },
+): Promise<ResultadoDeEntrega> {
+  return db.transaction(async (tx) => {
+    const [venta] = await tx.execute<{
+      status: string;
+      fulfillment_state: string | null;
+      treatment_id: string | null;
+      en_revision: boolean;
+    }>(sql`
+      select status, fulfillment_state, treatment_id,
+             (review_reason is not null and review_resolution is distinct from 'segunda_compra') as en_revision
+        from transactions where id = ${txId} for update`);
+    if (!venta || venta.fulfillment_state == null) return "sin_estado";
+    if (venta.fulfillment_state === "entregado") return "ya_entregada";
+    if (venta.status !== "paid") return "no_pagada";
+    // Un pago en revision puede ser un cobro doble: entregar ahora seria entregar dos veces el mismo producto.
+    if (venta.en_revision) return "en_revision";
+
+    const items = await tx.execute<{ nutraceutical_id: string; quantity: number }>(sql`
+      select nutraceutical_id, quantity from transaction_items where transaction_id = ${txId} order by nutraceutical_id`);
+    await tx.execute(sql`
+      update transactions
+         set fulfillment_state = 'entregado', delivered_at = now(), delivered_by = ${actor.id}, updated_at = now()
+       where id = ${txId}`);
+    await recordAudit(tx, {
+      event: "nutraceutical.delivered",
+      actorId: actor.id,
+      actorEmail: actor.email,
+      entityType: "transaction",
+      entityId: txId,
+      payload: {
+        treatment_id: venta.treatment_id,
+        items: items.map((i) => ({ nutraceutical_id: i.nutraceutical_id, quantity: Number(i.quantity) })),
+      },
+    });
+    return "entregada";
+  });
 }

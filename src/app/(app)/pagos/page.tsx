@@ -6,7 +6,7 @@ import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantal
 import { requireUser } from "@/modules/auth/session";
 import { formatDate } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
-import { AnularLinkButton } from "@/modules/payments/components/anular-link-button";
+import { AccionDeVentaButton } from "@/modules/payments/components/accion-de-venta-button";
 import { CheckoutLink } from "@/modules/payments/components/checkout-link";
 import {
   CreateCheckoutForm,
@@ -14,10 +14,15 @@ import {
   type CheckoutPatient,
 } from "@/modules/payments/components/create-checkout-form";
 import { RegisterCashSaleForm } from "@/modules/payments/components/register-cash-sale-form";
-import { listSelectablePatients, listTransactions } from "@/modules/payments/data/payments-repository";
+import {
+  getProfessionalProfileIdByUser,
+  listSelectablePatients,
+  listTransactions,
+} from "@/modules/payments/data/payments-repository";
 import { listarVentasSinDocumento } from "@/modules/payments/data/facturacion-repository";
 import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
+import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
 import type { TransactionStatus, TransactionWithItems } from "@/modules/payments/types";
 
@@ -60,6 +65,29 @@ function TxStatusBadge({ tx }: { tx: TransactionWithItems }) {
 // con la liquidacion viniendo, distinguirlas importa).
 const METODO_LABEL: Record<string, string> = { wompi: "Pasarela", efectivo: "Efectivo" };
 
+// LA ENTREGA DE LA VENTA (Bloque 3, sesion 2). Una venta pagada muestra si el paciente ya se llevo el producto
+// y, a quien puede entregarla, el boton. Aqui entrega el paciente que vuelve SOLO A COMPRAR, sin consulta: sin
+// esto, su venta no tendria donde registrarse como entregada.
+function EntregaDeLaVenta({ tx, puedeEntregar }: { tx: TransactionWithItems; puedeEntregar: boolean }) {
+  if (tx.fulfillment_state === "entregado" && tx.delivered_at) {
+    return <span className="text-xs text-muted-foreground">Entregado el {formatDate(tx.delivered_at)}</span>;
+  }
+  if (tx.fulfillment_state !== "pendiente" || tx.status !== "paid") return null;
+  if (tx.review_reason && tx.review_resolution !== "segunda_compra") {
+    return (
+      <span className="text-xs text-clinical-warning">
+        Pago en revisión por CNV: no entregues el producto hasta que se resuelva.
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-clinical-warning">Pagado, sin entregar</span>
+      {puedeEntregar ? <AccionDeVentaButton transactionId={tx.id} tipo="entregar" /> : null}
+    </div>
+  );
+}
+
 function itemsLabel(tx: TransactionWithItems): string {
   if (tx.transaction_items.length === 0) return "Sin items";
   return tx.transaction_items
@@ -75,7 +103,10 @@ export default async function PagosPage() {
   const canView = canViewRevenue(user);
   if (!canCreate && !canView) redirect("/no-autorizado");
 
-  const transactions = await listTransactions();
+  const [transactions, perfilPropio] = await Promise.all([
+    listTransactions(),
+    getProfessionalProfileIdByUser(user.id),
+  ]);
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
   // transacciones, que se muestra igual.
@@ -181,9 +212,10 @@ export default async function PagosPage() {
                             url={`${appUrl}/checkout/${tx.id}`}
                             hoursLeft={hoursLeftOf(tx.created_at)}
                           />
-                          {canCreate && tx.payment_method === "wompi" ? <AnularLinkButton transactionId={tx.id} /> : null}
+                          {canCreate && tx.payment_method === "wompi" ? <AccionDeVentaButton transactionId={tx.id} tipo="anular" /> : null}
                         </div>
                       ) : null}
+                      <EntregaDeLaVenta tx={tx} puedeEntregar={canDeliverSale(user, tx, perfilPropio)} />
                     </div>
                     <TxStatusBadge tx={tx} />
                   </div>
