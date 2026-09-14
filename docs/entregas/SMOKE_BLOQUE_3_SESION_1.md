@@ -217,9 +217,9 @@ Al pagar el paso 5, Alegra **sí** emitió la factura **SETP990214715** (id inte
 
 En Alegra también vas a ver **SETP990214717**, del mismo paciente, por 1.190 y emitida el 14: **la emití yo** para comprobar qué campo sale impreso en la factura. No es un duplicado ni es de este smoke.
 
-**Para cerrarla** (necesita el arreglo del 2026-09-14 desplegado):
+**Para cerrarla** (necesita el arreglo `05e274bf` desplegado):
 
-1. **Push y deployment** con el commit del arreglo, en **Ready**.
+1. **Push y deployment** con `05e274bf` o posterior, en **Ready**.
 2. En la ventana de PowerShell, además de `$env:DATABASE_URL`, pon las credenciales del **sandbox** de Alegra (las mismas de `.env.local`):
 
 ```powershell
