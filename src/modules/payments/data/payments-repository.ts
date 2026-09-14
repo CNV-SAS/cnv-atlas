@@ -135,3 +135,28 @@ export async function findRecentCashSaleDuplicate(
   const minutesAgo = Math.floor((Date.now() - new Date(row.created_at).getTime()) / (60 * 1000));
   return { product, minutesAgo };
 }
+
+export type VentaVisible = {
+  id: string;
+  status: string;
+  payment_method: string;
+  professional_id: string | null;
+  patient_id: string | null;
+  treatment_id: string | null;
+};
+
+/**
+ * La venta, SI EL USUARIO LA PUEDE VER. Con RLS a proposito: la policy de `transactions` deja al profesional
+ * solo las suyas y a admin y direccion todas. Una accion sobre una venta (anularla, entregarla) primero la
+ * lee por aqui: si no vuelve, para ese usuario no existe.
+ */
+export async function getVentaVisible(transactionId: string): Promise<VentaVisible | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, status, payment_method, professional_id, patient_id, treatment_id")
+    .eq("id", transactionId)
+    .maybeSingle();
+  if (error) fail("getVentaVisible", error.message);
+  return data ?? null;
+}

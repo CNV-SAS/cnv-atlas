@@ -86,7 +86,20 @@ export type CashSaleFormState = {
   error: string | null;
   success: string | null;
   duplicateWarning: string | null;
+  // El paciente tiene un link de pago PENDIENTE con alguno de estos productos: NO se registro. El profesional
+  // confirma con "Anular el link y cobrar en efectivo" (decision (b) de Santiago, 2026-09-14).
+  pendingLinkWarning: string | null;
 };
+
+// Estado de los botones que actuan sobre UNA venta (anular el link, entregar, resolver una revision). Tiene
+// la forma de `FormToastState`.
+export type AccionDeVentaState = {
+  error: string | null;
+  success: string | null;
+  warning: string | null;
+};
+
+export const accionDeVentaSchema = z.object({ transactionId: dbUuid });
 
 // Estado del boton de reintentar facturas. Lleva `warning` porque `useFormToastRefreshOnSuccess` lo
 // espera, y porque un reintento puede salir a medias: unas emitidas y otras no.

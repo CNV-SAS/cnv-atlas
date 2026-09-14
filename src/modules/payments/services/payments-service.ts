@@ -10,12 +10,14 @@ import * as repo from "../data/payments-repository";
 import {
   anularCheckout,
   createPaidCashTransaction,
+  detalleDeLinksPendientes,
   createTransactionWithItems,
   markTransactionFailed,
   markWebhookProcessed,
   recordWebhookEvent,
   resolverRevision,
   sealPaidTransaction,
+  type LinkPendiente,
   type NewOrderLine,
   type ResolucionDeRevision,
   type SealedTransaction,
@@ -119,7 +121,7 @@ export async function createCheckout(
   return { transactionId: id, checkoutUrl: buildCheckoutUrl(id) };
 }
 
-export type CashSaleCreated = { transactionId: string; amount: number };
+export type CashSaleCreated = { transactionId: string; amount: number; linksAnulados: number };
 
 // Venta en EFECTIVO: el integrante recauda dinero de CNV en el momento. Misma resolucion de venta y mismo
 // sellado contable que el checkout (CNV vende, integrante recauda; comision + ingreso sobre la base sin
@@ -134,9 +136,10 @@ export async function registerCashSale(
   input: CreateCheckoutInput,
   user: CurrentUser,
   idempotencyKey: string,
+  opciones: { anularLinksQueComparten?: boolean } = {},
 ): Promise<CashSaleCreated> {
   const { professionalId, lines, amount } = await resolveSale(input, user);
-  const { id } = await createPaidCashTransaction({
+  const { id, linksAnulados } = await createPaidCashTransaction({
     organizationId: user.organizationId,
     patientId: input.patientId,
     professionalId,
@@ -144,6 +147,8 @@ export async function registerCashSale(
     currency: "COP",
     idempotencyKey,
     items: lines,
+    anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
+    actorId: user.id,
   });
   // La venta en efectivo NACE pagada, asi que no hay webhook que dispare la factura: se emite aqui. No
   // revienta la venta si falla (el servicio escribe el desenlace y la deja en la cola): el dinero ya lo
@@ -155,7 +160,19 @@ export async function registerCashSale(
     { id, amount: String(amount), patientId: input.patientId },
     "efectivo",
   );
-  return { transactionId: id, amount };
+  return { transactionId: id, amount, linksAnulados: linksAnulados.length };
+}
+
+/**
+ * Los links pendientes del paciente que comparten producto con una venta en efectivo. Si hay alguno, la venta
+ * no se registra sin anularlos (decision (b)): el link retiene las unidades, y si la pagina de Wompi sigue
+ * abierta, el paciente podria pagar dos veces.
+ */
+export async function linksPendientesQueBloquean(input: CreateCheckoutInput): Promise<LinkPendiente[]> {
+  return detalleDeLinksPendientes(
+    input.patientId,
+    input.items.map((i) => i.nutraceuticalId),
+  );
 }
 
 function buildCheckoutUrl(transactionId: string): string {

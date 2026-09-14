@@ -275,6 +275,60 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     expect(await resolverRevision(normal.id, "segunda_compra", actorId)).toBeNull();
   });
 
+  // ── EFECTIVO CON UN LINK PENDIENTE (decision (b)) ───────────────────────────────────────────────
+  async function efectivo(productoId: string, cantidad: number, anular: boolean) {
+    const { createPaidCashTransaction } = await import("@/modules/payments/data/payments-writer");
+    return createPaidCashTransaction({
+      organizationId,
+      patientId,
+      professionalId: PROF,
+      amount: 107100 * cantidad,
+      currency: "COP",
+      idempotencyKey: `test-efectivo-${randomUUID()}`,
+      items: [{ nutraceuticalId: productoId, quantity: cantidad, unitPrice: 107100 }],
+      anularLinksQueComparten: anular,
+      actorId,
+    });
+  }
+
+  it("la tarjeta no paso y paga en EFECTIVO: el link del mismo producto se anula y sus unidades son las que se venden", async () => {
+    const { detalleDeLinksPendientes } = await import("@/modules/payments/data/payments-writer");
+    const { descontarVenta } = await import("@/modules/payments/data/inventario-de-venta");
+    const p = await producto(2);
+    const link = await checkout(p, 2); // reserva las DOS unidades que hay
+
+    const detalle = await detalleDeLinksPendientes(patientId, [p]);
+    expect(detalle.map((d) => d.id)).toEqual([link.id]);
+    expect(detalle[0].productos).toContain("x2");
+
+    const cash = await efectivo(p, 2, true);
+    expect(cash.linksAnulados).toEqual([link.id]);
+    const l = await venta(link.id);
+    expect(l.status).toBe("failed");
+    expect(l.cancelled_by).toBe(actorId);
+    expect(l.reservas_vivas).toBe(0);
+    expect((await descontarVenta(cash.id)).estado).toBe("descontado");
+  });
+
+  it("CONTROL: sin anular, el link muerto retiene las unidades y la venta en efectivo queda sin_saldo sin serlo", async () => {
+    const { descontarVenta } = await import("@/modules/payments/data/inventario-de-venta");
+    const p = await producto(2);
+    const link = await checkout(p, 2);
+    const cash = await efectivo(p, 2, false);
+    expect(cash.linksAnulados).toEqual([]);
+    expect((await venta(link.id)).status).toBe("pending");
+    expect((await descontarVenta(cash.id)).estado).toBe("sin_saldo");
+  });
+
+  it("un link pendiente de OTRO producto no se anula", async () => {
+    const p = await producto(2);
+    const otro = await producto(2);
+    const link = await checkout(otro, 1);
+    const cash = await efectivo(p, 1, true);
+    expect(cash.linksAnulados).toEqual([]);
+    expect((await venta(link.id)).status).toBe("pending");
+  });
+
   // ── LOS CHECK DE LA 0140 ───────────────────────────────────────────────────────────────────────
   it("la base rechaza una entrega sin fecha y una resolucion sin motivo", async () => {
     const { db } = await import("@/db");

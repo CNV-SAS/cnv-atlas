@@ -145,7 +145,7 @@ describe("registerCashSale: misma resolucion de venta, transaccion ya pagada", (
     vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
       { id: "n1", name: "A", unit_price: "50000", commercial_availability: "en_consultorio" },
     ] as never);
-    vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-1" });
+    vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-1", linksAnulados: [] });
 
     const res = await registerCashSale(
       { patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 2 }] },
@@ -166,7 +166,7 @@ describe("registerCashSale: misma resolucion de venta, transaccion ya pagada", (
         items: [{ nutraceuticalId: "n1", quantity: 2, unitPrice: 50000 }],
       }),
     );
-    expect(res).toEqual({ transactionId: "cash-1", amount: 100000 });
+    expect(res).toEqual({ transactionId: "cash-1", amount: 100000, linksAnulados: 0 });
     // El checkout de Wompi NO se toca: es otro camino.
     expect(writer.createTransactionWithItems).not.toHaveBeenCalled();
   });
@@ -313,7 +313,7 @@ describe("el inventario en la venta", () => {
     vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
       { id: "n1", name: "A", unit_price: "50000", commercial_availability: "en_consultorio" },
     ] as never);
-    vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-9" });
+    vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-9", linksAnulados: [] });
     await registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"]), "idem-9");
 
     expect(descuento.descontarInventarioDeVenta).toHaveBeenCalledWith("cash-9");
