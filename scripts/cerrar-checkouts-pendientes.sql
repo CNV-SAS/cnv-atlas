@@ -18,6 +18,8 @@
 -- El arreglo de fondo es de codigo (sellar el ambiente desde el evento de Wompi, que trae `environment`),
 -- y va DESPUES del 2b: no se toca el codigo de pagos el dia antes de salir.
 --
+-- REQUIERE LA 0140 aplicada (usa `cancelled_at`).
+--
 -- COMO SE CORRE, en los dos momentos que dice la guia (antes de encender y antes de una vuelta atras):
 --   En una ventana de PowerShell con $env:DATABASE_URL de la nube (ver la guia del 2b, A2):
 --     node scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql
@@ -34,8 +36,12 @@ begin
 
   -- Todas las pendientes de Wompi, no solo las de menos de 24 horas: una mas vieja ya no abre, y cerrarla
   -- no cambia nada; dejar fuera una de 23 horas y 59 minutos si.
+  -- CON `cancelled_at` (Bloque 3, sesion 2, 0140): un link cerrado aqui es un link ANULADO, no uno que Wompi
+  -- rechazo. Si una pagina de Wompi ya abierta lo paga despues, el pago queda sellado y EN REVISION, sin
+  -- factura, en vez de facturarse solo: justo alrededor de un cambio de ambiente es cuando no se sabe con que
+  -- llaves se cobro. Sin actor (`cancelled_by` nulo): lo corre un script.
   update transactions t
-     set status = 'failed', updated_at = now()
+     set status = 'failed', cancelled_at = now(), updated_at = now()
     from cerrados c
    where t.id = c.id;
   get diagnostics n = row_count;

@@ -10,6 +10,8 @@ export type CheckoutView = {
   id: string;
   amount: string;
   currency: string;
+  /** Cuando vence el link (creacion + 24 h), en ISO 8601 UTC. La pagina de Wompi vence a la misma hora. */
+  expiresAt: string;
 };
 
 // Lectura de la transaccion para la pagina publica /checkout/[token], que no tiene
@@ -28,7 +30,7 @@ export async function getCheckoutByToken(token: string): Promise<CheckoutView | 
     .maybeSingle();
   if (error) throw new Error(`checkout-reader: getCheckoutByToken: ${error.message}`);
   if (!data || data.status !== "pending") return null;
-  const age = Date.now() - new Date(data.created_at).getTime();
-  if (age > CHECKOUT_TTL_MS) return null; // vencido (>24h)
-  return { id: data.id, amount: data.amount, currency: data.currency };
+  const vence = new Date(data.created_at).getTime() + CHECKOUT_TTL_MS;
+  if (Date.now() > vence) return null; // vencido (>24h)
+  return { id: data.id, amount: data.amount, currency: data.currency, expiresAt: new Date(vence).toISOString() };
 }

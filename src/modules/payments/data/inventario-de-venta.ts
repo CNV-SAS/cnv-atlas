@@ -161,11 +161,15 @@ export async function descontarVenta(transactionId: string): Promise<ResultadoDe
       stock_state: string | null;
       location_id: string | null;
       treatment_id: string | null;
+      en_revision: boolean;
     }>(sql`
-      select status, stock_state, location_id, treatment_id
+      select status, stock_state, location_id, treatment_id,
+             (review_reason is not null and review_resolution is distinct from 'segunda_compra') as en_revision
         from transactions where id = ${transactionId}
          for update`);
-    if (!venta || venta.status !== "paid" || !DESCONTABLE.includes(venta.stock_state ?? "")) {
+    // UNA VENTA EN REVISION NO SE DESCUENTA, aunque su estado lo pareciera: la regla no depende de que nadie
+    // haya dejado el inventario en `liberado`.
+    if (!venta || venta.status !== "paid" || venta.en_revision || !DESCONTABLE.includes(venta.stock_state ?? "")) {
       return { estado: venta?.stock_state ?? null, movio: false, faltantes: [] };
     }
     if (!venta.location_id) {
@@ -270,6 +274,7 @@ export async function listarDescuentosPendientes(limite = 50): Promise<string[]>
   const filas = await db.execute<{ id: string }>(sql`
     select id from transactions
      where status = 'paid' and stock_state in ('reservado', 'pendiente', 'fallido')
+       and (review_reason is null or review_resolution = 'segunda_compra')
      order by created_at asc
      limit ${limite}`);
   return filas.map((f) => f.id);

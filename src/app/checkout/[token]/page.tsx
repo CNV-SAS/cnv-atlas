@@ -103,6 +103,8 @@ export default async function CheckoutPage({
         <input type="hidden" name="reference" value={wompi.reference} />
         <input type="hidden" name="signature:integrity" value={wompi.signature} />
         <input type="hidden" name="redirect-url" value={wompi.redirectUrl} />
+        {/* Firmado junto con el monto: la pagina de Wompi deja de cobrar cuando vence el link. */}
+        <input type="hidden" name="expiration-time" value={wompi.expirationTime} />
         <button
           type="submit"
           className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"

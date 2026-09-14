@@ -26,7 +26,7 @@ vi.mock("@/modules/nutraceuticals/data/nutraceuticals-repository", () => ({
 // candados.
 vi.mock("../modules/payments/services/facturacion-service", () => ({ emitirFacturaDeVenta: vi.fn() }));
 vi.mock("../modules/payments/data/facturacion-repository", () => ({ marcarFacturaPendiente: vi.fn() }));
-vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(), captureMessage: vi.fn() }));
 // EL INVENTARIO DE LA VENTA (Bloque 3) tiene sus candados contra base real (venta-inventario.test.ts). Aqui
 // solo importa la ORQUESTACION: que el webhook y el efectivo lo llamen, y que un checkout sin existencias se
 // traduzca al error del formulario.
@@ -46,6 +46,7 @@ import * as descuento from "../modules/payments/services/inventario-venta-servic
 import {
   CheckoutError,
   createCheckout,
+  buildWompiCheckoutParams,
   processWompiWebhook,
   registerCashSale,
 } from "../modules/payments/services/payments-service";
@@ -204,6 +205,7 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
       currency: "COP",
       patientId: null,
       professionalId: "prof-1",
+      enRevision: false,
     });
     const out = await processWompiWebhook(event("APPROVED"));
 
@@ -254,6 +256,29 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
     expect(out.sealed).toBe(false);
     expect(facturacion.emitirFacturaDeVenta).not.toHaveBeenCalled();
     expect(descuento.descontarInventarioDeVenta).not.toHaveBeenCalled();
+  });
+
+  it("APPROVED sobre un LINK ANULADO: queda sellado y en revision, SIN descuento ni factura, y avisa", async () => {
+    // Casi seguro un cobro doble (el link se anulo al cobrar en efectivo). Una factura validada solo se
+    // deshace con nota credito, que no existe hasta el 3b (Santiago, 2026-09-14).
+    vi.mocked(writer.recordWebhookEvent).mockResolvedValue({ isNew: true, alreadyProcessed: false });
+    vi.mocked(writer.sealPaidTransaction).mockResolvedValue({
+      id: TX_REF,
+      amount: "100",
+      currency: "COP",
+      patientId: null,
+      professionalId: "prof-1",
+      enRevision: true,
+    });
+    const Sentry = await import("@sentry/nextjs");
+    const out = await processWompiWebhook(event("APPROVED"));
+    expect(out.sealed).toBe(true);
+    expect(descuento.descontarInventarioDeVenta).not.toHaveBeenCalled();
+    expect(facturacion.emitirFacturaDeVenta).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "Pago aprobado sobre un link de pago anulado",
+      expect.objectContaining({ tags: expect.objectContaining({ area: "pago-sobre-link-anulado" }) }),
+    );
   });
 
   it("el AMBIENTE del evento llega al sellado", async () => {
@@ -332,5 +357,30 @@ describe("un producto no disponible no se puede vender", () => {
     await expect(
       createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"])),
     ).rejects.toThrow(/en la tienda/);
+  });
+});
+
+describe("la pagina de Wompi vence con el link (expiration-time firmado)", () => {
+  it("manda el vencimiento del link y lo mete en la firma", async () => {
+    const { computeIntegritySignature } = await import("@/lib/wompi/signatures");
+    vi.stubEnv("NEXT_PUBLIC_WOMPI_PUBLIC_KEY", "pub_test_x");
+    vi.stubEnv("WOMPI_INTEGRITY_SECRET", "test_integrity_x");
+    const vence = "2026-09-15T13:32:18.000Z";
+    const p = buildWompiCheckoutParams({ id: TX_REF, amount: "107100", currency: "COP", expiresAt: vence });
+    expect(p.expirationTime).toBe(vence);
+    expect(p.signature).toBe(
+      computeIntegritySignature({
+        reference: TX_REF,
+        amountInCents: 10710000,
+        currency: "COP",
+        expirationTime: vence,
+        integritySecret: "test_integrity_x",
+      }),
+    );
+    // CONTROL: no es la firma sin vencimiento, que Wompi rechazaria al venir el campo.
+    expect(p.signature).not.toBe(
+      computeIntegritySignature({ reference: TX_REF, amountInCents: 10710000, currency: "COP", integritySecret: "test_integrity_x" }),
+    );
+    vi.unstubAllEnvs();
   });
 });
