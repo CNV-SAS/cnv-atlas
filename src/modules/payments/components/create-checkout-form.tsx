@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { createCheckoutFormAction } from "../actions";
+import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import type { PaymentFormState } from "../validations";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
@@ -164,9 +165,12 @@ export function CreateCheckoutForm({
           </div>
         </div>
 
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || (total > 0 && total < WOMPI_MONTO_MINIMO)}>
           {pending ? "Creando..." : "Crear checkout"}
         </Button>
+        {total > 0 && total < WOMPI_MONTO_MINIMO ? (
+          <p className="w-full text-sm text-attention">{MENSAJE_MINIMO_WOMPI}</p>
+        ) : null}
 
         {state.duplicateWarning ? (
           <div className="flex w-full flex-col gap-2 rounded-lg bg-attention-bg p-3 text-sm">
