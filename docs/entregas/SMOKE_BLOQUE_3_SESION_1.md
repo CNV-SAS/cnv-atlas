@@ -25,6 +25,17 @@ El botón "Generar de todos modos" no generaba. Está arreglado en el commit `00
 
 ---
 
+## Si ya hiciste los pasos 6 y 7 como estaban antes (2026-09-14)
+
+No hace falta repetir el smoke. Lo que quedó sin probar en real es solo **cerrar un link y liberar su reserva**. Con el link del paso 6 todavía abierto:
+
+1. **Consulta RESERVAS:** la de SMOKE-B **1**, ni liberada ni consumida.
+2. Cierra el link (los dos comandos de `cerrar-checkouts-pendientes.sql` del paso 6).
+3. **Debe dar:** `Checkouts pendientes cerrados: 1. Reservas liberadas: 1.` Y en las consultas: esa venta `failed` y `liberado`, su reserva **liberada**, y **SALDO** sin cambios (SMOKE-A **0**, SMOKE-B **1**).
+4. Sigue con el **paso 8**.
+
+---
+
 ## 0. Antes de empezar
 
 - [ ] **Migraciones:** `140` y `140` (hecho).
@@ -178,22 +189,38 @@ Paga el link del paso 3 con la tarjeta de prueba **4242 4242 4242 4242** (cualqu
 - [ ] **Consulta RESERVAS:** las dos reservas del paso 3, **consumidas**.
 - [ ] La factura de sandbox sale como siempre (`alegra_invoice_state` = `emitida` en la consulta VENTAS). Si no, mira su motivo en `/pagos`: no es parte de este smoke, pero conviene saberlo.
 
-## 6. Un pago rechazado libera
+## 6. Un link sin pagar retiene sus unidades, y cerrarlo las libera
 
-Checkout de **1 ×** y págalo con la tarjeta **4111 1111 1111 1111** (declina).
+**Por qué este paso cambió (2026-09-14).** Decía "paga con la tarjeta que declina y la reserva se libera". En el sandbox, la tarjeta 4111 se rechaza **dentro de la página de pago, sin que Wompi cree una transacción**: la API de Wompi no muestra ninguna transacción rechazada. Sin transacción no hay evento, y Atlas no tiene de qué enterarse. El link sigue vivo (se puede volver a intentar con otra tarjeta), así que **su reserva sigue viva, y eso es lo correcto**. Lo que libera un link que nadie va a pagar es cerrarlo.
 
-- [ ] **Consulta VENTAS:** la venta nueva queda `failed`, `stock_state` = `liberado`.
+Checkout de **1 ×**. **No lo pagues** (o intenta con la 4111: da lo mismo).
+
+- [ ] **Consulta VENTAS:** la venta nueva `pending`, `stock_state` = `reservado`.
+- [ ] **Consulta RESERVAS:** una reserva de SMOKE-B **1**, ni liberada ni consumida.
+- [ ] **Consulta SALDO:** SMOKE-B sigue en **2**. Reservar no descuenta.
+
+Ahora ciérralo. En PowerShell, ensayo y confirmación:
+
+```powershell
+node scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql
+node scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql --commit
+```
+
+- [ ] **Debe dar:** `Checkouts pendientes cerrados: 1. Reservas liberadas: 1.` y `CONFIRMADO`.
+- [ ] **Consulta VENTAS:** esa venta queda `failed`, `stock_state` = `liberado`.
 - [ ] **Consulta RESERVAS:** su reserva, **liberada**.
-- [ ] **Consulta SALDO:** SMOKE-B sigue en **2**.
+- [ ] **Consulta SALDO:** SMOKE-B sigue en **2**, y ahora las 2 están disponibles.
 
 ## 7. Pagada sin saldo: se registra igual y avisa
 
-En `/pagos`, **venta en efectivo** del paciente 1000898321, **4 ×** PRUEBA SMOKE BLOQUE 3. Solo hay 2.
+En `/pagos`, **venta en efectivo** del paciente 1000898321, **4 ×** PRUEBA SMOKE BLOQUE 3. Solo hay 2 disponibles.
 
 - [ ] La venta se registra, **no se rechaza**.
 - [ ] **Consulta VENTAS:** `paid`, `stock_state` = `sin_saldo`, y `stock_last_error` dice *faltaron 2*.
 - [ ] **Consulta SALDO:** SMOKE-B **0**. Se descontó lo que había, sin saldo negativo.
 - [ ] **Consulta MOVIMIENTOS:** un movimiento `venta` de **−2** en SMOKE-B.
+
+**Si el link del paso 6 siguiera abierto**, las cifras son otras y también son correctas: la venta en efectivo **no toca la reserva viva** de otra venta. Con 2 en SMOKE-B y 1 reservada, hay 1 disponible: descuenta **1**, *faltaron 3*, y SMOKE-B queda en **1**. Es lo que pasó el 2026-09-14.
 
 ## 8. Retirar el producto de prueba y cerrar la ventana
 

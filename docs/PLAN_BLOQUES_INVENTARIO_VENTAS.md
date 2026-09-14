@@ -1076,6 +1076,18 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
 8. **Mapa de ítems por (producto, ambiente)** (hallazgo del 2b). Opcional dentro del bloque: no bloquea
    nada y quita el paso de vuelta atrás de ítems.
 
+### 3.5 · Lo que dejó el smoke de la sesión 1 (2026-09-14), para decidir antes de la sesión 2
+
+**Verificado en real:** reserva por FEFO en varios lotes, sin existencias no hay checkout, "Generar de todos modos", descuento al pagar, venta pagada sin saldo que no toca la reserva viva de otra venta, y la adopción de una factura cuya respuesta se perdió.
+
+**1. Un rechazo en la página de pago no avisa, y el link retiene sus unidades 24 horas.** En el sandbox, la tarjeta que declina se rechaza dentro de la página de Wompi **sin crear transacción** (la API de Wompi no muestra ninguna rechazada), así que no hay evento. El link sigue pagable, y por eso su reserva sigue viva: eso es correcto. **Lo que importa en producción:** un link abandonado inmoviliza inventario real hasta que vence. Y el caso de consulta es concreto: la tarjeta del paciente no pasa, paga en efectivo, y **la venta en efectivo no encuentra las unidades porque el link muerto las tiene reservadas**; queda `sin_saldo` sin serlo. Opciones para decidir:
+   - **(a)** Un botón "Anular link" en `/pagos` que cierra el checkout y libera (hoy solo existe `cerrar-checkouts-pendientes.sql`, que cierra todos).
+   - **(b)** Al registrar en efectivo un producto que el mismo paciente tiene en un link pendiente, avisar y anular ese link, usando sus unidades.
+   - **(c)** Acortar la vida del link. Cambia el TTL de 24 h que dice SECURITY.md.
+   **Recomendación:** (b) con (a) como respaldo. Es operativa, no contable.
+
+**2. A VERIFICAR, y es más grave: un pago aprobado después de un rechazo en el mismo link.** Si Wompi SÍ crea una transacción rechazada (con otra tarjeta u otro medio) y deja reintentar en el mismo checkout, el evento `DECLINED` marca la venta `failed`; el `APPROVED` siguiente ya no la sella, porque el sellado exige `pending`. **Dinero real cobrado y sin registrar.** Lo mismo pasaría con un link cerrado a mano que alguien paga igual. Dos cosas: comprobar con Wompi si su checkout permite reintentar con la misma referencia, y en todo caso **sellar también desde `failed` cuando llega un APPROVED** (el dinero se movió; decisión 4), volviendo el inventario a `pendiente`. Es cambio en el sellado del pago, con su test.
+
 **~~Preguntas que siguen abiertas~~ Cerradas el 2026-09-13:** muestras y cortesías no existen (no se
 construyen); el pago mixto ya estaba decidido (una factura por el total). Ver las cinco decisiones arriba.
 
