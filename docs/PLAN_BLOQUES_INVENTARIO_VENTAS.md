@@ -1094,9 +1094,13 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
 
    Análisis original: Si Wompi SÍ crea una transacción rechazada (con otra tarjeta u otro medio) y deja reintentar en el mismo checkout, el evento `DECLINED` marca la venta `failed`; el `APPROVED` siguiente ya no la sella, porque el sellado exige `pending`. **Dinero real cobrado y sin registrar.** Lo mismo pasaría con un link cerrado a mano que alguien paga igual. Dos cosas: comprobar con Wompi si su checkout permite reintentar con la misma referencia, y en todo caso **sellar también desde `failed` cuando llega un APPROVED** (el dinero se movió; decisión 4), volviendo el inventario a `pendiente`. Es cambio en el sellado del pago, con su test.
 
-### 3.6 · Plan de la sesión 2 (PROPUESTO el 2026-09-14, pendiente de aprobación de Santiago)
+### 3.6 · Plan de la sesión 2 (APROBADO por Santiago el 2026-09-14)
 
-**Antes del plan, un riesgo que ya está vivo y no espera a la sesión 2.** Desde la sesión 1, una venta de `/pagos` descuenta inventario al pagarse. El aviso a Integrantes (instrucción 2) pide además registrar la entrega en Tratamiento, que **también** descuenta: si se sigue al pie de la letra, las mismas unidades bajan dos veces. **Verificado en la nube, solo lectura (2026-09-14): cero movimientos `despacho` y cero ventas reales**; las tres ventas con estado de inventario son del smoke. No hay daño todavía. Si el aviso ya salió, su instrucción 2 hay que retirarla antes de la primera venta real; si no salió, no se envía como está.
+> **Aprobado con sus tres decisiones:** (1) pago sobre link anulado: se sella, no se descuenta ni se factura, y va a "Revisar" con alerta; se cierra con contabilidad con `docs/entregas/CONSULTA_CONTABILIDAD_PAGO_SOBRE_LINK_ANULADO.md`. (2) Pago mixto fuera de la sesión 2. (3) El conteo muestra dos cifras: saldo, y unidades pagadas sin entregar.
+>
+> **Y la regla que enmarca todo (Santiago, 2026-09-14):** los Integrantes no mueven inventario ni ventas hasta que todo esté listo y bien organizado. No hay instrucciones de transición.
+
+**El riesgo de doble descuento que se señaló al proponer este plan, resuelto sin código.** El aviso a Integrantes pedía registrar la entrega por cada venta, y desde la sesión 1 la venta ya descuenta. **Santiago no lo había enviado**, y los Integrantes no operan hasta que todo esté listo. El aviso se reescribió (`docs/entregas/AVISO_INTEGRANTES_VENTAS_Y_ENTREGAS.md`): uno de espera, por si reciben acceso antes, y el de arranque, que espera a esta sesión y al 2b. Verificado en la nube, solo lectura: cero movimientos `despacho` y cero ventas reales.
 
 #### Qué entra en la sesión 2 y qué no
 
@@ -1107,7 +1111,7 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
 | Estado de entrega de la venta, y la entrega auditada | **Paso 6** (reporte por día), **paso 7** (titular de marca), **paso 8** (mapa de ítems) |
 | La venta en Tratamiento, reemplazando la sección de despacho | **Forma de entrega a domicilio:** es del Bloque 6 |
 | Avisos en pantalla de `sin_saldo`, `fallido` y pago sobre link anulado | **Idempotencia de Resend** |
-| Lo que digan los logs del 502 (reintento automático de la lectura) | |
+| El vencimiento de la página de Wompi (`expiration-time`) | ~~El reintento automático de la lectura del link~~: los logs dicen que tapa, no ayuda (abajo) |
 
 #### Regla 0: lo que tiene el archivo de Gildardo, cotejado (`ATLAS_v8.html` del 4 de septiembre)
 
@@ -1147,16 +1151,16 @@ Varias ventas por tratamiento están permitidas (el paciente vuelve por más). C
   - **Si comparten producto,** avisa con el monto y los productos, y el único camino es "Anular el link y cobrar en efectivo". Todo va en **una sola transacción**, para que las unidades liberadas sean las que usa la venta en efectivo.
   - **Si no comparten producto,** solo avisa.
   - El botón de confirmación viaja con el `submitter` (hazard 5).
-- **Por verificar en la documentación de Wompi antes de construir:** si su firma de integridad admite **fecha de expiración**. Eso acotaría cuánto tiempo sirve una página de Wompi ya abierta. No resuelve la anulación, que sigue necesitando lo siguiente.
+- **VERIFICADO en la documentación de Wompi (2026-09-14): la firma admite vencimiento.** El Web Checkout recibe `expiration-time` (ISO 8601 en UTC), y la firma pasa a ser `<Referencia><Monto><Moneda><FechaExpiracion><SecretoIntegridad>`. **Se construye en esta sesión:** la página de Wompi vence cuando vence el link (creación + `CHECKOUT_TTL_MS`), así que una página abierta ya no cobra después de las 24 horas. **No resuelve la anulación** (un link anulado a las 2 horas sigue cobrable en una página abierta hasta que venza), y por eso sigue haciendo falta lo siguiente.
 
 #### Decisión: sellar desde `failed`
 
 - **`failed` por rechazo de Wompi y llega APPROVED:** se sella, `stock_state` pasa de `liberado` a `pendiente`, se descuenta y se factura. Es la decisión 4: el dinero se movió.
 - **`failed` por link ANULADO y llega APPROVED: es casi seguro un cobro doble** (el paciente pagó en efectivo y la página de Wompi abierta cobró también).
-  - **Recomiendo:** sellar el pago (es dinero real) pero **no descontar ni facturar** automáticamente. La venta queda en "Revisar: pago sobre link anulado", con alerta a Sentry y en pantalla.
+  - **DECIDIDO (Santiago, 2026-09-14):** sellar el pago (es dinero real) pero **no descontar ni facturar** automáticamente. La venta queda en "Revisar: pago sobre link anulado", con alerta a Sentry y en pantalla.
   - Si se factura sola, sale una factura validada por la DIAN que solo se deshace con nota crédito (3b, sin construir).
   - Quien revisa decide: si **devuelve** el pago en Wompi, no se factura nada; si es **una segunda compra real**, "Reintentar" descuenta y factura.
-  - **Esto lo decide Santiago, con contabilidad.**
+  - **Cómo se registra el dinero mientras se revisa, y quién resuelve, lo responde contabilidad:** `docs/entregas/CONSULTA_CONTABILIDAD_PAGO_SOBRE_LINK_ANULADO.md`.
 - Tests de base real para las tres ramas: rechazo seguido de aprobado, anulado seguido de aprobado, y el control.
 
 #### La entrega auditada
@@ -1173,14 +1177,38 @@ Varias ventas por tratamiento están permitidas (el paciente vuelve por más). C
 #### Sub-tareas, en orden (un commit cada una)
 
 1. Migración 0140. **La aplica Santiago.**
-2. Anular link y sellado desde `failed` (servicio y escritor), con tests de base real y control.
+2. Anular link, sellado desde `failed` (con la rama del link anulado) y el vencimiento de la página de Wompi, con tests de base real y control.
 3. Efectivo que anula el link pendiente: servicio, y la pantalla de `/pagos`.
 4. Entrega auditada: servicio, y botón en `/pagos`.
 5. La venta en Tratamiento (QR, efectivo, estado, entrega) y el retiro del despacho.
 6. Avisos en pantalla: `sin_saldo`, `fallido`, pago sobre link anulado.
 7. Guía de smoke de la sesión 2, en navegador real (los cinco hazards de formularios), con scripts listos y el QR escaneado con un teléfono contra el sandbox.
 
-**Al desplegar:** se reescribe el aviso a Integrantes, que se reduce a "cobra y entrega desde la pestaña Tratamiento, o desde Pagos si el paciente vuelve solo a comprar". Y queda escrita la fecha como corte entre "entrega registrada aparte" y "entrega de la venta".
+**Al cerrar la sesión:** el aviso de arranque (borrador en `AVISO_INTEGRANTES_VENTAS_Y_ENTREGAS.md`) se ajusta a los nombres reales de las pantallas. Se envía cuando pasen el smoke de esta sesión y la venta controlada del 2b.
+
+#### Los 502 y 504 de la API de Supabase (logs de Santiago, 2026-09-14)
+
+**Los eventos (hora de Bogotá):** 07:20:00, 07:20:03, 07:20:03, 07:51:00, 07:56:02 y 08:39:47 dan 504 en `/auth/v1/user`; 08:32:16 da 502 en `/auth/v1/user`; 08:32:18 da 502 en `/rest/v1/transactions`; 08:38:09 da 504 en `/rest/v1/transactions`. **Sentry tiene una sola incidencia**, porque los fallos de `/auth/v1/user` vienen del proxy de sesión, donde `getUser` devuelve error en vez de lanzar: **nunca llegan a Sentry**. Solo la lectura del link lanzaba.
+
+**Lectura:**
+
+- **No es una consulta nuestra.** Dos servicios distintos (Auth y PostgREST) fallan en la misma franja, con 502 (la puerta no alcanzó el servicio) y 504 (tardó demasiado) mezclados.
+- **No es volumen.** Actividad de escritura en la nube, de 05:00 a 09:30: una reserva a las 07:51, una venta a las 07:56, dos a las 08:07 y tres cierres a las 08:45. **Antes de las 07:51 no hay ninguna escritura de la aplicación**, así que los errores de las 07:20 no coinciden con ninguna. Y los tests de base real van a la base local (127.0.0.1), no a la nube.
+- **No es una pausa del proyecto.** Una pausa falla todo y de forma continua. Aquí las peticiones entre un error y otro funcionaron (el smoke selló ventas a las 07:56 y a las 08:07).
+- **Los scripts que desactivan triggers no lo explican bien.** Bloquean la tabla de movimientos mientras dura su transacción, no `auth.users`, y en Postgres una lectura por id no espera a un bloqueo de fila. Lo que sí podría dejar huella es consumo de disco en ráfaga (abajo), y eso lo dicen las métricas, no los logs.
+- **Encaja con el plan gratuito.** `DEPLOY.md` dice "Plan: Free para MVP". Free corre en **Nano**: hasta 0,5 GB de memoria, CPU compartida, y disco con una línea base de 250 IOPS y ráfagas. Según la documentación de Supabase, agotada la ráfaga el rendimiento vuelve a la línea base, y con el presupuesto de disco agotado el proyecto puede dejar de responder. Eso da justo esta mezcla, en los dos servicios, con un solo usuario.
+
+**Lo que lo confirma o lo descarta (Santiago, en el panel de Supabase, reportes u observabilidad de la base, de hoy 07:00 a 09:00):** "Disk IO % consumed", memoria y CPU. Si el disco o la memoria tocan el techo en la franja, está confirmado. Si están tranquilos, no es de recursos y hay que abrir un ticket con Supabase con estos nueve eventos.
+
+**Pro:** empieza en **Micro** (1 GB, 2 núcleos compartidos, el doble de línea base de disco), y ya está en lo de "antes del primer Integrante". Esto lo refuerza, con una condición: **si las métricas muestran que el techo lo tocó algo nuestro**, Pro lo aplaza, no lo arregla.
+
+**El reintento automático: TAPA, no ayuda. No se construye.**
+
+- Con una causa de recursos, reintentar **agrega carga justo cuando la instancia está saturada**.
+- En un 504 el paciente ya esperó hasta el plazo (10 s); un reintento lo lleva a 20.
+- **Y borra la señal:** el reintento que funciona no llega a Sentry, así que el problema seguiría y el conteo bajaría.
+- El botón manual se queda: el paciente reintenta a su ritmo, cada fallo se cuenta, y la solución va donde está la causa.
+- **Se reconsidera solo si, ya en Pro, quedan 502 aislados**; entonces sería un único reintento, solo en 502 y reportando cada intento.
 
 **~~Preguntas que siguen abiertas~~ Cerradas el 2026-09-13:** muestras y cortesías no existen (no se
 construyen); el pago mixto ya estaba decidido (una factura por el total). Ver las cinco decisiones arriba.
