@@ -17,22 +17,11 @@
 
 ## Si ya empezaste y paraste en el paso 3 (2026-09-13)
 
-El botón "Generar de todos modos" no generaba. Está arreglado en el commit `0049fb1b`. Para retomar:
+El botón "Generar de todos modos" no generaba. Está arreglado en el commit `0049fb1b`.
 
 1. **Push y deployment** con `0049fb1b` o posterior, en **Ready**.
-2. En la ventana de PowerShell con `$env:DATABASE_URL` de la nube, cierra los checkouts pendientes. Esto suelta la unidad que dejó reservada el checkout de 1:
-
-```powershell
-node scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql
-node scripts/aplicar-migracion.mjs scripts/cerrar-checkouts-pendientes.sql --commit
-```
-
-   **Debe dar:** `Checkouts pendientes cerrados: N. Reservas liberadas: M.` y `CONFIRMADO`. Cierra **todos** los checkouts de Wompi pendientes, que hoy son solo de prueba.
-
-3. En el editor de Supabase, corre la **consulta RESERVAS** (abajo): todas `liberada = true`. Y la **consulta SALDO**: SMOKE-A **2** y SMOKE-B **3**.
-4. **Sigue desde el paso 3.** No repitas los pasos 1 y 2: el paciente ya está sin Integrante y el producto ya existe.
-
-   **Lo que vas a ver de más:** el checkout de 1 que acabas de cerrar sigue apareciendo, como primera fila, en la **consulta VENTAS** (`failed`, `liberado`) y en la **consulta RESERVAS** (SMOKE-A 1, `liberada = true`). Ignóralo: cuando un paso dice "una venta" o "una sola venta", cuenta solo las creadas desde el paso 3.
+2. **No repitas los pasos 1 y 2:** el paciente ya está sin Integrante y el producto ya existe.
+3. **Sigue desde el paso 3**, que empieza dejando limpio lo que se haya creado antes.
 
 ---
 
@@ -138,12 +127,37 @@ select l.code as lote, m.type as tipo, m.delta as cambio
 
 ## 3. El checkout reserva
 
+### 3.0 Primero, dejarlo limpio
+
+Si antes de este paso ya se creó algún checkout o venta del producto de prueba (un intento de más, un paso repetido, un smoke anterior), bórralos. **Si no hay nada, no pasa nada**: el script lo dice y no toca nada. Se puede correr cada vez que haga falta volver a empezar desde aquí.
+
+En PowerShell, ensayo y después confirmación:
+
+```powershell
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-limpiar-ventas.sql
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-limpiar-ventas.sql --commit
+```
+
+- [ ] **Debe dar:** `Ventas del producto de prueba a borrar: N` (con su detalle por estado), `Reservas liberadas: M`, `Saldo que queda: ... lote SMOKE-A = 2` y `... lote SMOKE-B = 3`, y `CONFIRMADO`.
+- Libera las reservas **antes** de borrar las ventas: una reserva que sobreviviera a su venta seguiría restando unidades disponibles.
+- Solo toca ventas del producto de prueba, de pacientes de prueba y de sandbox. Si encuentra otra cosa, aborta sin tocar nada.
+- [ ] **Consulta VENTAS:** vacía. **Consulta RESERVAS:** vacía. **Consulta SALDO:** SMOKE-A **2** y SMOKE-B **3**.
+
+### 3.1 Crear el checkout
+
 En `/pagos`: checkout del paciente **1000898321**, **3 × PRUEBA SMOKE BLOQUE 3**. **No lo pagues todavía.**
 
 - [ ] El link se genera.
 - [ ] **Consulta VENTAS:** una venta `pending`, `stock_state` = `reservado`.
 - [ ] **Consulta RESERVAS:** SMOKE-A **2** y SMOKE-B **1**, ninguna liberada ni consumida. Salió primero el lote que vence antes.
 - [ ] **Consulta SALDO:** SMOKE-A **2** y SMOKE-B **3**. **Reservar no descuenta:** las unidades siguen en la bodega hasta que se pague.
+
+**Si hubo más de un intento sin limpiar**, las cifras de RESERVAS son otras y pueden estar bien. Lo que tiene que cumplirse:
+
+- **Cada checkout toma primero lo que queda en SMOKE-A**, y solo pasa a SMOKE-B cuando A ya no alcanza.
+- **La suma de todas las reservas vivas no pasa de 5**, las unidades que hay.
+
+Ejemplo real del 2026-09-13: un checkout de 1 y otro de 3 dieron SMOKE-A **1**, SMOKE-A **1** y SMOKE-B **2**. El primero tomó 1 de A. El segundo tomó la última de A y 2 de B, porque A ya no daba para más. Son 4 de 5, y es correcto. Para seguir el recorrido con las cifras de esta guía, vuelve a **3.0**.
 
 ## 4. El aviso de duplicado ya no bloquea, y sin existencias no hay checkout
 
@@ -193,7 +207,7 @@ node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-retirar.sql --commit
 - [ ] En `/pagos` ya no aparece en la lista de productos.
 - [ ] **Cierra la ventana de PowerShell**, o corre `Remove-Item Env:DATABASE_URL`.
 
-Las ventas del smoke quedan en la base hasta la purga de ventas de prueba, que ya borra también sus movimientos y devuelve el saldo.
+Las ventas del smoke quedan en la base hasta la purga de ventas de prueba, que ya borra también sus movimientos y devuelve el saldo. Si prefieres no dejarlas, corre el paso **3.0** antes de retirar el producto: hace lo mismo, solo para el producto de prueba.
 
 ---
 
