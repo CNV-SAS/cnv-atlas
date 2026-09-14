@@ -15,6 +15,7 @@ import {
   markTransactionFailed,
   markWebhookProcessed,
   recordWebhookEvent,
+  registrarEntrega,
   resolverRevision,
   sealPaidTransaction,
   type LinkPendiente,
@@ -378,4 +379,20 @@ export async function resolverRevisionDeVenta(
     await descontarInventarioDeVenta(venta.id);
     await facturarVentaSellada(venta, "wompi");
   }
+}
+
+const MOTIVO_SIN_ENTREGA: Record<string, string> = {
+  no_pagada: "Esta venta todavía no está pagada. Se entrega cuando llegue el pago.",
+  ya_entregada: "Esta venta ya estaba entregada.",
+  en_revision: "Este pago está en revisión por CNV (llegó sobre un link anulado). No lo entregues hasta que se resuelva.",
+  sin_estado: "Esta venta es anterior a las entregas en Atlas y no se registra aquí.",
+};
+
+/**
+ * Registra que el paciente se llevo el producto. Quien llama ya comprobo que el usuario VE la venta (RLS) y
+ * la policy `canDeliverSale`.
+ */
+export async function entregarVenta(transactionId: string, user: CurrentUser): Promise<void> {
+  const r = await registrarEntrega(transactionId, { id: user.id, email: user.email });
+  if (r !== "entregada") throw new VentaError(MOTIVO_SIN_ENTREGA[r]);
 }

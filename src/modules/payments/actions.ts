@@ -9,10 +9,12 @@ import { getCurrentUser } from "@/modules/auth/session";
 import {
   findLivePendingDuplicate,
   findRecentCashSaleDuplicate,
+  getProfessionalProfileIdByUser,
   getVentaVisible,
 } from "./data/payments-repository";
 import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
+import { canDeliverSale } from "./policies/can-deliver-sale";
 import { canViewRevenue } from "./policies/can-view-revenue";
 import { reintentarFacturasPendientes } from "./services/facturacion-service";
 import { reintentarDescuentosPendientes } from "./services/inventario-venta-service";
@@ -20,6 +22,7 @@ import {
   anularLink,
   CheckoutError,
   createCheckout,
+  entregarVenta,
   linksPendientesQueBloquean,
   registerCashSale,
   VentaError,
@@ -224,6 +227,35 @@ export async function anularLinkFormAction(
     if (e instanceof VentaError) return { ...vacio, error: e.message };
     reportServerError("checkout.anular", e);
     return { ...vacio, error: "No se pudo anular el link." };
+  }
+}
+
+// ----- Entregar una venta (Bloque 3, sesion 2) -----
+
+/** Registra que el paciente se llevo el producto de una venta pagada. */
+export async function entregarVentaFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  const vacio = { error: null, success: null, warning: null };
+  const user = await getCurrentUser();
+  if (!user) return { ...vacio, error: "Inicia sesión." };
+  const parsed = accionDeVentaSchema.safeParse({ transactionId: String(formData.get("transactionId") ?? "") });
+  if (!parsed.success) return { ...vacio, error: "Venta inválida." };
+
+  try {
+    const venta = await getVentaVisible(parsed.data.transactionId);
+    if (!venta) return { ...vacio, error: "No encontramos esa venta." };
+    const propio = await getProfessionalProfileIdByUser(user.id);
+    if (!canDeliverSale(user, venta, propio)) {
+      return { ...vacio, error: "Solo el profesional de la venta registra su entrega." };
+    }
+    await entregarVenta(venta.id, user);
+    return { ...vacio, success: "Entrega registrada." };
+  } catch (e) {
+    if (e instanceof VentaError) return { ...vacio, error: e.message };
+    reportServerError("venta.entregar", e);
+    return { ...vacio, error: "No se pudo registrar la entrega." };
   }
 }
 

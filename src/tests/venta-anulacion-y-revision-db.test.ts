@@ -329,6 +329,60 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     expect((await venta(link.id)).status).toBe("pending");
   });
 
+  // ── LA ENTREGA ─────────────────────────────────────────────────────────────────────────────────
+  async function auditoriaDeEntrega(id: string) {
+    const { db } = await import("@/db");
+    return db.execute<{ actor_id: string; entity_type: string; payload: Record<string, unknown> }>(dsql`
+      select actor_id, entity_type, payload from clinical_audit_log
+       where event = 'nutraceutical.delivered' and entity_id = ${id}`);
+  }
+
+  it("no se entrega una venta sin pagar", async () => {
+    const { registrarEntrega } = await import("@/modules/payments/data/payments-writer");
+    const p = await producto(3);
+    const { id } = await checkout(p);
+    expect(await registrarEntrega(id, { id: actorId, email: null })).toBe("no_pagada");
+    expect((await venta(id)).fulfillment_state).toBe("pendiente");
+    expect(await auditoriaDeEntrega(id)).toHaveLength(0);
+  });
+
+  it("una venta pagada se entrega UNA vez, y queda en la auditoria clinica sin datos del paciente", async () => {
+    const { registrarEntrega } = await import("@/modules/payments/data/payments-writer");
+    const p = await producto(3);
+    const { id } = await checkout(p, 2);
+    await pagar(id);
+    expect(await registrarEntrega(id, { id: actorId, email: "profesional@demo.co" })).toBe("entregada");
+    expect((await venta(id)).fulfillment_state).toBe("entregado");
+
+    const audit = await auditoriaDeEntrega(id);
+    expect(audit).toHaveLength(1);
+    expect(audit[0].actor_id).toBe(actorId);
+    expect(audit[0].entity_type).toBe("transaction");
+    expect(audit[0].payload).toEqual({ treatment_id: null, items: [{ nutraceutical_id: p, quantity: 2 }] });
+
+    expect(await registrarEntrega(id, { id: actorId, email: null })).toBe("ya_entregada");
+    expect(await auditoriaDeEntrega(id)).toHaveLength(1);
+  });
+
+  it("un pago EN REVISION no se entrega (puede ser un cobro doble); resuelto como segunda compra, si", async () => {
+    const { registrarEntrega, resolverRevision } = await import("@/modules/payments/data/payments-writer");
+    const id = await enRevision();
+    expect(await registrarEntrega(id, { id: actorId, email: null })).toBe("en_revision");
+    await resolverRevision(id, "segunda_compra", actorId);
+    expect(await registrarEntrega(id, { id: actorId, email: null })).toBe("entregada");
+  });
+
+  it("una venta SIN SALDO se entrega igual: el producto esta en la mano, lo que falla es el saldo de Atlas", async () => {
+    const { registrarEntrega } = await import("@/modules/payments/data/payments-writer");
+    const { descontarVenta } = await import("@/modules/payments/data/inventario-de-venta");
+    const p = await producto(1);
+    const link = await checkout(p, 1);
+    const cash = await efectivo(p, 1, false); // el link retiene la unica unidad
+    expect((await descontarVenta(cash.id)).estado).toBe("sin_saldo");
+    expect(await registrarEntrega(cash.id, { id: actorId, email: null })).toBe("entregada");
+    expect((await venta(link.id)).status).toBe("pending");
+  });
+
   // ── LOS CHECK DE LA 0140 ───────────────────────────────────────────────────────────────────────
   it("la base rechaza una entrega sin fecha y una resolucion sin motivo", async () => {
     const { db } = await import("@/db");

@@ -22,6 +22,7 @@ vi.mock("@/modules/auth/session", () => ({
 vi.mock("@/modules/payments/data/payments-repository", () => ({
   findLivePendingDuplicate: vi.fn(),
   findRecentCashSaleDuplicate: vi.fn(async () => null),
+  getProfessionalProfileIdByUser: vi.fn(),
   getVentaVisible: vi.fn(),
 }));
 vi.mock("@/modules/payments/services/facturacion-service", () => ({ reintentarFacturasPendientes: vi.fn() }));
@@ -31,6 +32,7 @@ vi.mock("@/modules/payments/services/payments-service", () => ({
   VentaError: class VentaError extends Error {},
   anularLink: vi.fn(),
   createCheckout: vi.fn(),
+  entregarVenta: vi.fn(),
   linksPendientesQueBloquean: vi.fn(),
   registerCashSale: vi.fn(async () => ({ transactionId: "cash-1", amount: 107100, linksAnulados: 1 })),
 }));
