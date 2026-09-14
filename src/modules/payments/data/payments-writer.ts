@@ -148,6 +148,17 @@ export type NewTransaction = {
   treatmentId?: string | null;
 };
 
+export type NewCashTransaction = NewTransaction & {
+  /**
+   * DECISION (b) DE SANTIAGO (2026-09-14): anular, DENTRO de la misma transaccion, los links pendientes del
+   * paciente que llevan alguno de estos productos. Es el caso de consulta: la tarjeta no paso, el paciente
+   * paga en efectivo, y el link muerto retenia las unidades que esta venta necesita.
+   */
+  anularLinksQueComparten?: boolean;
+  /** Quien registra la venta: queda como quien anulo el link. */
+  actorId?: string | null;
+};
+
 // Crea la transaccion (pending), sus items y SUS RESERVAS en una sola transaccion de BD.
 //
 // LA RESERVA VA DENTRO (D3, Bloque 3): si no hay existencias, `reservarVenta` lanza
@@ -345,8 +356,23 @@ export async function sealPaidTransaction(
 // EL INVENTARIO NO SE DESCUENTA AQUI (Bloque 3): la venta nace `pendiente` de descuento y el servicio lo
 // corre despues, en su propia transaccion. Dentro de esta, un error de inventario desharia la venta ya
 // cobrada. En efectivo no hay reserva: el pago y la entrega son el mismo momento.
-export async function createPaidCashTransaction(input: NewTransaction): Promise<{ id: string }> {
+export async function createPaidCashTransaction(
+  input: NewCashTransaction,
+): Promise<{ id: string; linksAnulados: string[] }> {
   return db.transaction(async (tx) => {
+    // PRIMERO SE ANULAN LOS LINKS: sus reservas se liberan en esta misma transaccion, y el descuento de esta
+    // venta (que corre despues) ya encuentra esas unidades disponibles.
+    const linksAnulados: string[] = [];
+    if (input.anularLinksQueComparten) {
+      const ids = await linksPendientesQueComparten(
+        tx,
+        input.patientId,
+        input.items.map((i) => i.nutraceuticalId),
+      );
+      for (const id of ids) {
+        if ((await anularCheckout(id, input.actorId ?? null, tx)) === "anulado") linksAnulados.push(id);
+      }
+    }
     const locationId = await ubicacionDeLaVenta(tx, input.professionalId);
     const inserted = await tx
       .insert(transactions)
@@ -381,7 +407,7 @@ export async function createPaidCashTransaction(input: NewTransaction): Promise<
         .select({ id: transactions.id })
         .from(transactions)
         .where(eq(transactions.idempotencyKey, input.idempotencyKey));
-      return { id: existing.id };
+      return { id: existing.id, linksAnulados };
     }
     const t = inserted[0];
     if (input.items.length > 0) {
@@ -395,7 +421,7 @@ export async function createPaidCashTransaction(input: NewTransaction): Promise<
       );
     }
     await sealAccounting(tx, t);
-    return { id: t.id };
+    return { id: t.id, linksAnulados };
   });
 }
 
@@ -523,4 +549,30 @@ export async function resolverRevision(
     if (resolucion === "segunda_compra") await sealAccounting(tx, t);
     return { ...t, enRevision: false };
   });
+}
+
+export type LinkPendiente = { id: string; amount: string; createdAt: string; productos: string };
+
+/**
+ * El detalle de los links pendientes del paciente que comparten producto con una venta, para AVISAR antes de
+ * cobrar en efectivo. Lectura con la conexion de sistema y no con RLS, a proposito: el profesional no ve un
+ * link que genero un administrador para su paciente, y ese link retiene las mismas unidades. Solo sale
+ * producto, monto y fecha, de un paciente que el profesional ya tiene en pantalla.
+ */
+export async function detalleDeLinksPendientes(
+  patientId: string,
+  nutraceuticalIds: string[],
+): Promise<LinkPendiente[]> {
+  const ids = await linksPendientesQueComparten(db, patientId, nutraceuticalIds);
+  if (ids.length === 0) return [];
+  const filas = await db.execute<{ id: string; amount: string; created_at: string; productos: string }>(sql`
+    select t.id, t.amount::text as amount, t.created_at::text as created_at,
+           string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name) as productos
+      from transactions t
+      join transaction_items ti on ti.transaction_id = t.id
+      join nutraceuticals n on n.id = ti.nutraceutical_id
+     where t.id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
+     group by t.id
+     order by t.created_at desc`);
+  return filas.map((f) => ({ id: f.id, amount: String(f.amount), createdAt: String(f.created_at), productos: f.productos }));
 }

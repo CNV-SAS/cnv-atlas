@@ -6,6 +6,7 @@ import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantal
 import { requireUser } from "@/modules/auth/session";
 import { formatDate } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
+import { AnularLinkButton } from "@/modules/payments/components/anular-link-button";
 import { CheckoutLink } from "@/modules/payments/components/checkout-link";
 import {
   CreateCheckoutForm,
@@ -38,8 +39,16 @@ const STATUS_META: Record<TransactionStatus, { label: string; className: string 
   refunded: { label: "Reembolsado", className: "bg-muted text-muted-foreground" },
 };
 
-function TxStatusBadge({ status }: { status: TransactionStatus }) {
-  const meta = STATUS_META[status];
+// UN LINK ANULADO NO ES UN PAGO FALLIDO, y en la lista se tienen que distinguir: "Fallido" le dice al
+// profesional que la tarjeta del paciente no paso; "Anulado", que lo cerro alguien de Atlas. Y una venta
+// EN REVISION esta pagada pero no se factura ni se descuenta hasta que CNV la revise.
+function TxStatusBadge({ tx }: { tx: TransactionWithItems }) {
+  const meta =
+    tx.status === "failed" && tx.cancelled_at
+      ? { label: "Anulado", className: "bg-muted text-muted-foreground" }
+      : tx.status === "paid" && tx.review_reason && !tx.review_resolution
+        ? { label: "En revisión", className: "bg-clinical-warning-bg text-clinical-warning" }
+        : STATUS_META[tx.status as TransactionStatus];
   return (
     <Badge variant="outline" className={meta.className}>
       {meta.label}
@@ -167,13 +176,16 @@ export default async function PagosPage() {
                         {tx.alegra_invoice_id ? ` · Factura Alegra ${tx.alegra_invoice_id}` : ""}
                       </span>
                       {tx.status === "pending" ? (
-                        <CheckoutLink
-                          url={`${appUrl}/checkout/${tx.id}`}
-                          hoursLeft={hoursLeftOf(tx.created_at)}
-                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CheckoutLink
+                            url={`${appUrl}/checkout/${tx.id}`}
+                            hoursLeft={hoursLeftOf(tx.created_at)}
+                          />
+                          {canCreate && tx.payment_method === "wompi" ? <AnularLinkButton transactionId={tx.id} /> : null}
+                        </div>
                       ) : null}
                     </div>
-                    <TxStatusBadge status={tx.status} />
+                    <TxStatusBadge tx={tx} />
                   </div>
                 </CardHeader>
               </Card>

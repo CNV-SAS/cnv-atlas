@@ -13,7 +13,7 @@ import { registerCashSaleFormAction } from "../actions";
 import type { CashSaleFormState } from "../validations";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 
-const initial: CashSaleFormState = { error: null, success: null, duplicateWarning: null };
+const initial: CashSaleFormState = { error: null, success: null, duplicateWarning: null, pendingLinkWarning: null };
 
 const selectClass =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
@@ -56,6 +56,7 @@ export function RegisterCashSaleForm({
     last.current = state;
     if (state.error) toast.error(state.error);
     else if (state.duplicateWarning) toast.warning(state.duplicateWarning); // NO regenera la clave: no hubo venta
+    else if (state.pendingLinkWarning) toast.warning(state.pendingLinkWarning); // tampoco: no hubo venta
     else if (state.success) {
       toast.success(state.success);
       keyRef.current = crypto.randomUUID(); // venta concretada: clave nueva para el proximo cobro
@@ -65,17 +66,20 @@ export function RegisterCashSaleForm({
   // Envio por transicion (no prop `action`): arma el FormData desde el estado controlado, inyecta la clave
   // del intento y (para "registrar de todos modos") el flag de confirmacion del duplicado. La MISMA clave
   // se usa en el aviso y en la confirmacion, asi confirmar crea UNA sola venta.
-  const submit = (confirmDuplicate: boolean) => {
+  // "Anular el link y cobrar" viaja igual que el duplicado: como campo del FormData armado aqui, no como
+  // name/value del boton (que `new FormData(form)` no incluye; hazard 5 de CLAUDE.md).
+  const submit = (opciones: { confirmDuplicate?: boolean; anularLinks?: boolean } = {}) => {
     const fd = new FormData();
     fd.set("patientId", patientId);
     fd.set("lineas", JSON.stringify(lineas));
     fd.set("idempotencyKey", keyRef.current);
-    if (confirmDuplicate) fd.set("confirmDuplicate", "true");
+    if (opciones.confirmDuplicate) fd.set("confirmDuplicate", "true");
+    if (opciones.anularLinks) fd.set("anularLinks", "true");
     ejecutarAccion(action, fd);
   };
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    submit(false);
+    submit();
   };
 
   // Preview del total (precio del catalogo x cantidad), para ver el monto antes de cobrar.
@@ -168,6 +172,21 @@ export function RegisterCashSaleForm({
           {pending ? "Registrando..." : "Registrar venta en efectivo"}
         </Button>
 
+        {state.pendingLinkWarning ? (
+          <div className="flex w-full flex-col gap-2 rounded-lg bg-attention-bg p-3 text-sm">
+            <p className="text-attention">{state.pendingLinkWarning}</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => submit({ anularLinks: true })}
+              className="self-start"
+            >
+              Anular el link y cobrar en efectivo
+            </Button>
+          </div>
+        ) : null}
+
         {state.duplicateWarning ? (
           <div className="flex w-full flex-col gap-2 rounded-lg bg-attention-bg p-3 text-sm">
             <p className="text-attention">{state.duplicateWarning}</p>
@@ -175,7 +194,7 @@ export function RegisterCashSaleForm({
               type="button"
               variant="outline"
               disabled={pending}
-              onClick={() => submit(true)}
+              onClick={() => submit({ confirmDuplicate: true })}
               className="self-start"
             >
               Registrar de todos modos
