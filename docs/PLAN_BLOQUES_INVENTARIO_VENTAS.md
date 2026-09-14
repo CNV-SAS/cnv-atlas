@@ -1084,9 +1084,15 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
    - **(a)** Un botón "Anular link" en `/pagos` que cierra el checkout y libera (hoy solo existe `cerrar-checkouts-pendientes.sql`, que cierra todos).
    - **(b)** Al registrar en efectivo un producto que el mismo paciente tiene en un link pendiente, avisar y anular ese link, usando sus unidades.
    - **(c)** Acortar la vida del link. Cambia el TTL de 24 h que dice SECURITY.md.
-   **Recomendación:** (b) con (a) como respaldo. Es operativa, no contable.
+   **DECIDIDO por Santiago (2026-09-14): (b), con (a) como respaldo.** Va en la sesión 2.
 
-**2. A VERIFICAR, y es más grave: un pago aprobado después de un rechazo en el mismo link.** Si Wompi SÍ crea una transacción rechazada (con otra tarjeta u otro medio) y deja reintentar en el mismo checkout, el evento `DECLINED` marca la venta `failed`; el `APPROVED` siguiente ya no la sella, porque el sellado exige `pending`. **Dinero real cobrado y sin registrar.** Lo mismo pasaría con un link cerrado a mano que alguien paga igual. Dos cosas: comprobar con Wompi si su checkout permite reintentar con la misma referencia, y en todo caso **sellar también desde `failed` cuando llega un APPROVED** (el dinero se movió; decisión 4), volviendo el inventario a `pendiente`. Es cambio en el sellado del pago, con su test.
+**2. DECIDIDO (Santiago, 2026-09-14): sellar también desde `failed` cuando llega un pago aprobado.** Va en la sesión 2, con su test.
+
+   **Verificado con Wompi:** su soporte dice que *"La referencia que envía debe ser única para cada transacción"* (artículo "La referencia ya ha sido usada"). Así que un rechazo y un aprobado **en el mismo link** no deberían darse: el segundo intento con la misma referencia se rechaza. No dice explícitamente si vale después de un rechazo, y no se pudo provocar uno en el sandbox (la 4111 no crea transacción). **No sube a urgente por esa vía.**
+
+   **Pero sigue haciendo falta, por otra:** un link cerrado (a mano, o con la opción (a)/(b) de arriba) mientras el paciente ya tiene abierta la página de Wompi con los datos cargados. Si paga, el `APPROVED` llega sobre una venta `failed` y no se sella. **Anular links hace este caso más probable**, así que las dos cosas van juntas.
+
+   Análisis original: Si Wompi SÍ crea una transacción rechazada (con otra tarjeta u otro medio) y deja reintentar en el mismo checkout, el evento `DECLINED` marca la venta `failed`; el `APPROVED` siguiente ya no la sella, porque el sellado exige `pending`. **Dinero real cobrado y sin registrar.** Lo mismo pasaría con un link cerrado a mano que alguien paga igual. Dos cosas: comprobar con Wompi si su checkout permite reintentar con la misma referencia, y en todo caso **sellar también desde `failed` cuando llega un APPROVED** (el dinero se movió; decisión 4), volviendo el inventario a `pendiente`. Es cambio en el sellado del pago, con su test.
 
 **~~Preguntas que siguen abiertas~~ Cerradas el 2026-09-13:** muestras y cortesías no existen (no se
 construyen); el pago mixto ya estaba decidido (una factura por el total). Ver las cinco decisiones arriba.
