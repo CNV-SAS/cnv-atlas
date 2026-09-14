@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
-import { formatDate } from "@/lib/format/date";
+import { formatDate, formatDateTime } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
 import { AccionDeVentaButton } from "@/modules/payments/components/accion-de-venta-button";
 import { CheckoutLink } from "@/modules/payments/components/checkout-link";
@@ -72,7 +72,9 @@ const METODO_LABEL: Record<string, string> = { wompi: "Pasarela", efectivo: "Efe
 // esto, su venta no tendria donde registrarse como entregada.
 function EntregaDeLaVenta({ tx, puedeEntregar }: { tx: TransactionWithItems; puedeEntregar: boolean }) {
   if (tx.fulfillment_state === "entregado" && tx.delivered_at) {
-    return <span className="text-xs text-muted-foreground">Entregado el {formatDate(tx.delivered_at)}</span>;
+    // CON LA HORA, no solo el dia (Santiago, smoke del 2026-09-14): orienta al profesional sobre en que
+    // momento de la consulta se entrego.
+    return <span className="text-xs text-muted-foreground">Entregado el {formatDateTime(tx.delivered_at)}</span>;
   }
   if (tx.fulfillment_state !== "pendiente" || tx.status !== "paid") return null;
   if (tx.review_reason && tx.review_resolution !== "segunda_compra") {

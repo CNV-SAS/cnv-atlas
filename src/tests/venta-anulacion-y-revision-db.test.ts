@@ -368,7 +368,18 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     expect(audit).toHaveLength(1);
     expect(audit[0].actor_id).toBe(actorId);
     expect(audit[0].entity_type).toBe("transaction");
-    expect(audit[0].payload).toEqual({ treatment_id: null, items: [{ nutraceutical_id: p, quantity: 2 }] });
+    expect(audit[0].payload).toEqual({
+      delivered_at: expect.any(String),
+      treatment_id: null,
+      items: [{ nutraceutical_id: p, quantity: 2 }],
+    });
+    // La hora del payload es la de la venta, no otra.
+    const { db } = await import("@/db");
+    const [fila] = await db.execute<{ iguales: boolean }>(dsql`
+      select (a.payload->>'delivered_at')::timestamptz = t.delivered_at as iguales
+        from clinical_audit_log a join transactions t on t.id::text = a.entity_id
+       where a.event = 'nutraceutical.delivered' and a.entity_id = ${id}`);
+    expect(fila.iguales).toBe(true);
 
     expect(await registrarEntrega(id, { id: actorId, email: null })).toBe("ya_entregada");
     expect(await auditoriaDeEntrega(id)).toHaveLength(1);

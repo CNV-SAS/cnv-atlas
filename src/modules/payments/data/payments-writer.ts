@@ -614,10 +614,11 @@ export async function registrarEntrega(
 
     const items = await tx.execute<{ nutraceutical_id: string; quantity: number }>(sql`
       select nutraceutical_id, quantity from transaction_items where transaction_id = ${txId} order by nutraceutical_id`);
-    await tx.execute(sql`
+    const [entrega] = await tx.execute<{ delivered_at: string }>(sql`
       update transactions
          set fulfillment_state = 'entregado', delivered_at = now(), delivered_by = ${actor.id}, updated_at = now()
-       where id = ${txId}`);
+       where id = ${txId}
+      returning delivered_at::text as delivered_at`);
     await recordAudit(tx, {
       event: "nutraceutical.delivered",
       actorId: actor.id,
@@ -625,6 +626,10 @@ export async function registrarEntrega(
       entityType: "transaction",
       entityId: txId,
       payload: {
+        // LA HORA DE LA ENTREGA VA EXPLICITA en el payload, no solo en `created_at` del registro: es el hecho
+        // clinico, y quien lea el payload suelto (un export, un reporte) no tiene por que saber que la fila la
+        // trae aparte. Es la misma de la venta, escrita en la misma transaccion.
+        delivered_at: entrega.delivered_at,
         treatment_id: venta.treatment_id,
         items: items.map((i) => ({ nutraceutical_id: i.nutraceutical_id, quantity: Number(i.quantity) })),
       },
