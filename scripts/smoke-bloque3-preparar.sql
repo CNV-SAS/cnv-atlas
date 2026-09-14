@@ -11,7 +11,9 @@
 -- que las unidades se cargan en la CENTRAL. Si todavia tiene Integrante, este script ABORTA: primero va
 -- `smoke-bloque3-desasignar-paciente.sql`. Con Integrante, el producto de prueba viviria en una vitrina real.
 --
--- SE FACTURA EN SANDBOX contra el item "PRUEBA" (id 1, base 1.000 + IVA): por eso el precio es 1.190.
+-- SE FACTURA EN SANDBOX contra el item "PRUEBA" (id 1). EL PRECIO ES 11.900 (base 10.000 + IVA), y no 1.190
+-- como antes: Wompi rechaza todo cobro por debajo de $1.500, asi que un cobro de UNA unidad a 1.190 no se podia
+-- pagar (smoke de la sesion 2, 2026-09-14). El precio de la linea lo manda Atlas, no el item de Alegra.
 --
 -- COMO SE CORRE:
 --   ver docs/entregas/SMOKE_BLOQUE_3_SESION_1.md, paso 2. NO se pega en el editor de Supabase.
@@ -61,7 +63,7 @@ begin
 
   insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership,
                               commercial_availability, alegra_item_id, alegra_env)
-  values (v_prod, v_org, 'PRUEBA SMOKE BLOQUE 3', 1190, true, 'propio', 'en_consultorio', '1', 'sandbox');
+  values (v_prod, v_org, 'PRUEBA SMOKE BLOQUE 3', 11900, true, 'propio', 'en_consultorio', '1', 'sandbox');
 
   insert into lots (id, nutraceutical_id, code, expires_on) values
     (v_lote_a, v_prod, 'SMOKE-A', current_date + 90),
