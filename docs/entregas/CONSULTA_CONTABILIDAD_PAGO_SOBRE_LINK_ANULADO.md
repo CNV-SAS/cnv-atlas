@@ -24,7 +24,7 @@ Resultado: **el mismo producto quedó pagado dos veces**, una en efectivo, ya fa
 Quien revisa tiene dos salidas:
 
 - **Fue un cobro doble:** se le devuelve al paciente el pago de Wompi. No se factura nada.
-- **Fue una segunda compra real** (el paciente quería dos unidades): se presiona "Reintentar", y Atlas descuenta el inventario y emite la factura.
+- **Fue una segunda compra real** (el paciente quería dos unidades): se marca "Fue una segunda compra" en la lista, y Atlas descuenta el inventario y emite la factura.
 
 ---
 
@@ -36,7 +36,7 @@ Quien revisa tiene dos salidas:
 
 **3. Si se devuelve, ¿quién asume la comisión de Wompi y la retención en la fuente de esa transacción?** ¿Es gasto de CNV, o se recupera? (Atlas verifica aparte con Wompi cómo se hace la devolución de un pago aprobado, y si la comisión se reintegra.)
 
-**4. ¿Quién resuelve la lista "Revisar"?** ¿Dirección, contabilidad, o el Integrante con aprobación? ¿Hace falta dejar un soporte, por ejemplo la confirmación escrita del paciente de que no quería dos unidades?
+**4. ¿Quién resuelve la lista "Revisar"?** (Hoy la resuelven admin y dirección, los mismos que ven el ingreso de CNV, hasta que contabilidad diga otra cosa.) ¿Dirección, contabilidad, o el Integrante con aprobación? ¿Hace falta dejar un soporte, por ejemplo la confirmación escrita del paciente de que no quería dos unidades?
 
 **5. El caso al revés.** Al revisar puede resultar que el efectivo **no** se recibió: el Integrante lo registró, pero el paciente terminó pagando solo con tarjeta. Entonces la factura que sobra es la del efectivo, y esa ya está emitida. **¿Cómo se maneja mientras no existe nota crédito en Atlas?** ¿Nota crédito manual en Alegra, con qué referencia?
 
