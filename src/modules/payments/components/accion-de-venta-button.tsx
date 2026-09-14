@@ -6,7 +6,12 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 
-import { anularLinkFormAction, entregarVentaFormAction } from "../actions";
+import {
+  anularLinkFormAction,
+  entregarVentaFormAction,
+  resolverComoDevueltoFormAction,
+  resolverComoSegundaCompraFormAction,
+} from "../actions";
 import type { AccionDeVentaState } from "../validations";
 
 const initial: AccionDeVentaState = { error: null, success: null, warning: null };
@@ -16,6 +21,7 @@ const initial: AccionDeVentaState = { error: null, success: null, warning: null 
 //   · ANULAR LINK (decision (a) de Santiago, 2026-09-14): el link deja de servir y sus unidades quedan libres.
 //     Si el paciente ya tenia abierta la pagina de Wompi y paga igual, Atlas no lo factura solo.
 //   · ENTREGAR: el paciente se llevo el producto. Queda en la auditoria clinica.
+//   · SEGUNDA COMPRA / DEVUELTO: la decision sobre un pago que llego sobre un link anulado.
 //
 // EL REFRESCO LO HACE LA PANTALLA, DESPUES DEL TOAST (`useFormToastAndRefresh`): el boton desaparece al
 // actuar, y si la accion revalidara, se desmontaria antes de mostrar el mensaje.
@@ -36,6 +42,22 @@ const ACCIONES = {
     confirmar: "Sí, lo entregué",
     enCurso: "Registrando...",
     variante: "default" as const,
+  },
+  segunda_compra: {
+    accion: resolverComoSegundaCompraFormAction,
+    pedir: "Fue una segunda compra",
+    aviso: "Atlas descuenta el inventario y emite la factura.",
+    confirmar: "Sí, facturar",
+    enCurso: "Resolviendo...",
+    variante: "default" as const,
+  },
+  devuelto: {
+    accion: resolverComoDevueltoFormAction,
+    pedir: "Ya se devolvió el pago",
+    aviso: "Confirma que devolviste el pago desde Wompi. No se factura.",
+    confirmar: "Sí, está devuelto",
+    enCurso: "Resolviendo...",
+    variante: "destructive" as const,
   },
 };
 

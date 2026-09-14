@@ -21,6 +21,8 @@ import {
 } from "@/modules/payments/data/payments-repository";
 import { listarVentasSinDocumento } from "@/modules/payments/data/facturacion-repository";
 import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
+import { VentasPorRevisar } from "@/modules/payments/components/ventas-por-revisar";
+import { listarVentasPorRevisar } from "@/modules/payments/data/ventas-por-revisar";
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
@@ -83,6 +85,9 @@ function EntregaDeLaVenta({ tx, puedeEntregar }: { tx: TransactionWithItems; pue
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs text-clinical-warning">Pagado, sin entregar</span>
+      {tx.stock_state === "sin_saldo" ? (
+        <span className="text-xs text-clinical-warning">· tu inventario en Atlas no alcanzaba; CNV lo revisa</span>
+      ) : null}
       {puedeEntregar ? <AccionDeVentaButton transactionId={tx.id} tipo="entregar" /> : null}
     </div>
   );
@@ -110,7 +115,9 @@ export default async function PagosPage() {
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
   // transacciones, que se muestra igual.
-  const ventasSinDocumento = canView ? await listarVentasSinDocumento() : [];
+  const [ventasSinDocumento, ventasPorRevisar] = canView
+    ? await Promise.all([listarVentasSinDocumento(), listarVentasPorRevisar()])
+    : [[], []];
   // Para recuperar el enlace de un checkout pendiente sin generar otro: el link es derivable del id
   // (misma forma que buildCheckoutUrl). Horas restantes del TTL de 24h contra el created_at.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -183,6 +190,7 @@ export default async function PagosPage() {
 
       {/* VA ANTES DE LA LISTA DE TRANSACCIONES a proposito: es lo que hay que mirar y resolver, y al
           final de la pagina no lo mira nadie. Contabilidad lo quiere en CERO al cierre de cada dia. */}
+      {canView && <VentasPorRevisar ventas={ventasPorRevisar} />}
       {canView && <FacturasPendientes ventas={ventasSinDocumento} />}
 
       <section className="flex flex-col gap-3">
