@@ -25,6 +25,7 @@ import {
   entregarVenta,
   linksPendientesQueBloquean,
   registerCashSale,
+  resolverRevisionDeVenta,
   VentaError,
 } from "./services/payments-service";
 import {
@@ -262,6 +263,52 @@ export async function entregarVentaFormAction(
     reportServerError("venta.entregar", e);
     return { ...vacio, error: "No se pudo registrar la entrega." };
   }
+}
+
+// ----- Resolver una venta en revision (pago sobre link anulado) -----
+
+// MISMA POLICY QUE VER EL INGRESO Y REINTENTAR FACTURAS (`canViewRevenue`): admin y direccion. Quien decide
+// entre ellos (o contabilidad) es una pregunta abierta a contabilidad
+// (docs/entregas/CONSULTA_CONTABILIDAD_PAGO_SOBRE_LINK_ANULADO.md, pregunta 4); mientras tanto no se abre a
+// quien no ve el dinero.
+async function resolverRevisionFormAction(
+  resolucion: "segunda_compra" | "devuelto",
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  const vacio = { error: null, success: null, warning: null };
+  const user = await getCurrentUser();
+  if (!user) return { ...vacio, error: "Inicia sesión." };
+  if (!canViewRevenue(user)) return { ...vacio, error: "No tienes permiso para resolver esta venta." };
+  const parsed = accionDeVentaSchema.safeParse({ transactionId: String(formData.get("transactionId") ?? "") });
+  if (!parsed.success) return { ...vacio, error: "Venta inválida." };
+  try {
+    await resolverRevisionDeVenta(parsed.data.transactionId, resolucion, user);
+    return {
+      ...vacio,
+      success:
+        resolucion === "segunda_compra"
+          ? "Marcada como segunda compra. Se descontó el inventario y se pidió la factura."
+          : "Marcada como devuelta. No se factura ni se descuenta.",
+    };
+  } catch (e) {
+    if (e instanceof VentaError) return { ...vacio, error: e.message };
+    reportServerError("venta.resolver-revision", e);
+    return { ...vacio, error: "No se pudo resolver la venta." };
+  }
+}
+
+export async function resolverComoSegundaCompraFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  return resolverRevisionFormAction("segunda_compra", formData);
+}
+
+export async function resolverComoDevueltoFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  return resolverRevisionFormAction("devuelto", formData);
 }
 
 // ----- Reintentar las facturas pendientes (panel de /pagos) -----

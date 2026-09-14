@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { sql as dsql } from "drizzle-orm";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 // ═══ ANULAR UN LINK, SELLAR DESDE `failed` Y LA REVISION (Bloque 3, sesion 2) ═══
 //
@@ -32,6 +32,9 @@ let organizationId = "";
 let patientId = "";
 let locationId = "";
 let actorId = "";
+// Los pagos en revision que dejan los casos se resuelven al final: la lista "por revisar" tiene tope, y una base
+// local que acumula revisiones abiertas de corridas anteriores terminaria empujando fuera las del caso nuevo.
+const revisionesCreadas: string[] = [];
 
 async function producto(cantidad: number) {
   const { db } = await import("@/db");
@@ -115,6 +118,11 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     actorId = perfil.id;
   });
 
+  afterAll(async () => {
+    const { resolverRevision } = await import("@/modules/payments/data/payments-writer");
+    for (const id of revisionesCreadas) await resolverRevision(id, "devuelto", actorId);
+  });
+
   it("toda venta nueva nace con la entrega PENDIENTE", async () => {
     const p = await producto(3);
     const { id } = await checkout(p);
@@ -185,6 +193,7 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     await anularCheckout(id, actorId);
 
     const sellada = await pagar(id);
+    revisionesCreadas.push(id);
     expect(sellada?.enRevision).toBe(true);
     const v = await venta(id);
     expect(v.status).toBe("paid");
@@ -230,6 +239,7 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     const { id } = await checkout(p);
     await anularCheckout(id, actorId);
     await pagar(id);
+    revisionesCreadas.push(id);
     return id;
   }
 
@@ -381,6 +391,30 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     expect((await descontarVenta(cash.id)).estado).toBe("sin_saldo");
     expect(await registrarEntrega(cash.id, { id: actorId, email: null })).toBe("entregada");
     expect((await venta(link.id)).status).toBe("pending");
+  });
+
+  // ── LA LISTA "VENTAS POR REVISAR" ──────────────────────────────────────────────────────────────
+  it("la lista muestra el pago por decidir y la venta sin saldo, y deja de mostrar el pago ya resuelto", async () => {
+    const { listarVentasPorRevisar } = await import("@/modules/payments/data/ventas-por-revisar");
+    const { resolverRevision } = await import("@/modules/payments/data/payments-writer");
+    const { descontarVenta } = await import("@/modules/payments/data/inventario-de-venta");
+    const porDecidir = await enRevision();
+    const p = await producto(1);
+    await checkout(p, 1);
+    const sinSaldo = await efectivo(p, 1, false);
+    await descontarVenta(sinSaldo.id);
+
+    const lista = await listarVentasPorRevisar();
+    expect(lista.find((v) => v.id === porDecidir)?.motivo).toBe("pago_sobre_link_anulado");
+    expect(lista.find((v) => v.id === sinSaldo.id)?.motivo).toBe("sin_saldo");
+    expect(lista.find((v) => v.id === sinSaldo.id)?.detalle).toMatch(/faltaron 1/);
+    // Lo por decidir va primero: es lo unico que bloquea factura, inventario y entrega.
+    const primeraNoDecision = lista.findIndex((v) => v.motivo !== "pago_sobre_link_anulado");
+    const ultimaDecision = lista.map((v) => v.motivo).lastIndexOf("pago_sobre_link_anulado");
+    if (primeraNoDecision >= 0) expect(ultimaDecision).toBeLessThan(primeraNoDecision);
+
+    await resolverRevision(porDecidir, "devuelto", actorId);
+    expect((await listarVentasPorRevisar()).some((v) => v.id === porDecidir)).toBe(false);
   });
 
   // ── LOS CHECK DE LA 0140 ───────────────────────────────────────────────────────────────────────
