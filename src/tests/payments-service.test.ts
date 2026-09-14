@@ -16,6 +16,7 @@ vi.mock("../modules/payments/data/payments-writer", () => ({
 vi.mock("../modules/payments/data/payments-repository", () => ({
   getProfessionalProfileIdByUser: vi.fn(),
   getProfessionalIdForPatient: vi.fn(),
+  getTratamientoParaVenta: vi.fn(),
 }));
 vi.mock("@/modules/nutraceuticals/data/nutraceuticals-repository", () => ({
   listNutraceuticals: vi.fn(),
@@ -382,5 +383,63 @@ describe("la pagina de Wompi vence con el link (expiration-time firmado)", () =>
       computeIntegritySignature({ reference: TX_REF, amountInCents: 10710000, currency: "COP", integritySecret: "test_integrity_x" }),
     );
     vi.unstubAllEnvs();
+  });
+});
+
+describe("la venta que nace en TRATAMIENTO (Bloque 3, sesion 2)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "MULTI-CELL BASE", unit_price: "107100", commercial_availability: "en_consultorio" },
+      { id: "n2", name: "OMEGA", unit_price: "90000", commercial_availability: "en_consultorio" },
+    ] as never);
+    vi.mocked(writer.createTransactionWithItems).mockResolvedValue({ id: "tx-t" });
+    vi.mocked(repo.getTratamientoParaVenta).mockResolvedValue({
+      patientId: "p1",
+      professionalId: "prof-1",
+      decision: "si",
+      prescritos: ["n1"],
+    });
+  });
+  const venta = (extra: Partial<{ patientId: string; items: { nutraceuticalId: string; quantity: number }[] }> = {}) =>
+    createCheckout(
+      { patientId: "p1", treatmentId: "t1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ...extra },
+      user(["professional"]),
+    );
+
+  it("lo prescrito, del paciente del tratamiento y con el si: crea la venta CON el tratamiento", async () => {
+    await venta();
+    expect(writer.createTransactionWithItems).toHaveBeenCalledWith(expect.objectContaining({ treatmentId: "t1" }));
+  });
+
+  it("un producto NO prescrito no se cuela en la venta de la consulta", async () => {
+    await expect(venta({ items: [{ nutraceuticalId: "n2", quantity: 1 }] })).rejects.toThrow(/prescritos/);
+    expect(writer.createTransactionWithItems).not.toHaveBeenCalled();
+  });
+
+  it("el tratamiento de OTRO paciente se rechaza", async () => {
+    await expect(venta({ patientId: "p2" })).rejects.toThrow(/Tratamiento no encontrado/);
+  });
+
+  it("sin el si del paciente no se vende", async () => {
+    vi.mocked(repo.getTratamientoParaVenta).mockResolvedValue({
+      patientId: "p1",
+      professionalId: "prof-1",
+      decision: "pendiente",
+      prescritos: ["n1"],
+    });
+    await expect(venta()).rejects.toThrow(/adquiere/);
+  });
+
+  it("otro profesional no vende en la evaluacion ajena", async () => {
+    vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-2");
+    await expect(venta()).rejects.toThrow(/No estás asignado/);
+  });
+
+  it("CONTROL: sin tratamiento (/pagos) no se consulta ninguno", async () => {
+    await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n2", quantity: 1 }] }, user(["professional"]));
+    expect(repo.getTratamientoParaVenta).not.toHaveBeenCalled();
+    expect(writer.createTransactionWithItems).toHaveBeenCalledWith(expect.objectContaining({ treatmentId: null }));
   });
 });

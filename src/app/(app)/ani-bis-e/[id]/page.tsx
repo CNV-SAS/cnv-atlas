@@ -125,7 +125,7 @@ import { canManageReports } from "@/modules/reports/policies/can-manage-reports"
 import { bloqueCls } from "@/components/shared/bloque";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { patronDeclarado } from "@/modules/treatment/services/patron-declarado";
-import { DespachoSection } from "@/modules/treatment/components/despacho-section";
+import { VentaEnConsultaSection } from "@/modules/treatment/components/venta-en-consulta-section";
 import { NutraDecisionSection } from "@/modules/treatment/components/nutra-decision-section";
 import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
@@ -795,8 +795,8 @@ export default async function ResultadosEvaluacionPage({
       : "Profesional";
   // Nutraceuticos (checkpoint 2.3): visibles en Rutas para toda profesion (Opcion A: el medico necesita
   // saber que se le da al paciente por interacciones farmaco-nutriente), pero SOLO el nutricionista edita
-  // la prescripcion; el resto la ve en consulta. El despacho es acto de cualquier profesional sobre su
-  // inventario. locked = diagnostico sin confirmar o protocolo aprobado (inmutable).
+  // la prescripcion; el resto la ve en consulta. La venta y su entrega las hace el profesional de la
+  // evaluacion (Bloque 3, sesion 2; el servicio lo comprueba). locked = diagnostico sin confirmar o protocolo aprobado (inmutable).
   const canPrescribeNutraceuticals =
     actorProfession.isProfessional && actorProfession.profession === "nutricionista";
   // YA NADA CIERRA LA PRESCRIPCION DE NUTRACEUTICOS (2026-09-09). Esto era `Boolean(protocol.approved)`,
@@ -908,9 +908,9 @@ export default async function ResultadosEvaluacionPage({
                 ) : null}
                 <SeccionRuta n={1} titulo="Rutas de atención activadas" />
                 <RutasSection rutas={rutas} />
-                {/* Nutraceuticos (checkpoint 2.3): la prescripcion PRIMERO, el despacho DESPUES, para que se
-                    lea la secuencia (primero se prescribe, luego se entrega) y nadie despache sin mirar lo
-                    prescrito. El orden Rutas -> Nutraceuticos -> Remisiones sigue al HTML (Sec 1/2/3). */}
+                {/* Nutraceuticos (checkpoint 2.3): la prescripcion PRIMERO, la venta DESPUES, para que se
+                    lea la secuencia (primero se prescribe, luego se vende y se entrega) y nadie venda sin mirar
+                    lo prescrito. El orden Rutas -> Nutraceuticos -> Remisiones sigue al HTML (Sec 1/2/3). */}
                 <SeccionRuta n={2} titulo="Nutracéuticos recomendados" />
                 {protocol ? (
                   <NutraceuticalsSection
@@ -930,16 +930,17 @@ export default async function ResultadosEvaluacionPage({
                 {protocol && actorProfession.isProfessional && protocol.nutraceuticals.length > 0 ? (
                   <NutraDecisionSection evaluationId={id} protocol={protocol} />
                 ) : null}
-                {/* La entrega SOLO si la respuesta fue que si. Un aviso, no un formulario deshabilitado: un
-                    bloque en gris invita a buscar como habilitarlo; una frase dice que falta. */}
+                {/* La VENTA Y SU ENTREGA solo si la respuesta fue que si (Bloque 3, sesion 2: reemplaza a la
+                    seccion de despacho). Un aviso, no un formulario deshabilitado: un bloque en gris invita a
+                    buscar como habilitarlo; una frase dice que falta. */}
                 {protocol && actorProfession.isProfessional && protocol.nutraceuticals.length > 0 ? (
                   protocol.nutraceuticalDecision?.decision === "si" ? (
-                    <DespachoSection evaluationId={id} protocol={protocol} />
+                    <VentaEnConsultaSection evaluationId={id} protocol={protocol} />
                   ) : (
                     <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
                       {protocol.nutraceuticalDecision
-                        ? "La entrega se habilita cuando el paciente los adquiere. Si cambia de decisión, actualízala arriba."
-                        : "Registra arriba si el paciente los adquiere; la entrega se habilita entonces."}
+                        ? "La venta se habilita cuando el paciente los adquiere. Si cambia de decisión, actualízala arriba."
+                        : "Registra arriba si el paciente los adquiere; la venta se habilita entonces."}
                     </p>
                   )
                 ) : null}

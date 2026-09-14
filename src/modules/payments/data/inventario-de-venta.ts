@@ -279,3 +279,40 @@ export async function listarDescuentosPendientes(limite = 50): Promise<string[]>
      limit ${limite}`);
   return filas.map((f) => f.id);
 }
+
+/**
+ * LO DISPONIBLE PARA VENDER por producto en una ubicacion: saldo menos reservas vivas. Es lo que ve el
+ * profesional ANTES de cobrar. Sin bloqueo, a proposito: es una lectura de pantalla, y la que decide es la
+ * reserva, que si bloquea (`reservarVenta`). Si cambia entre la pantalla y el clic, la reserva lo dice.
+ */
+export async function disponiblePorProducto(
+  locationId: string,
+  nutraceuticalIds: string[],
+): Promise<Record<string, number>> {
+  const out: Record<string, number> = Object.fromEntries(nutraceuticalIds.map((id) => [id, 0]));
+  if (nutraceuticalIds.length === 0) return out;
+  const filas = await db.execute<{ nutraceutical_id: string; disponible: number }>(sql`
+    select i.nutraceutical_id,
+           sum(i.stock_quantity - coalesce((
+             select sum(r.quantity) from inventory_reservations r
+              where r.location_id = i.location_id and r.lot_id = i.lot_id
+                and r.nutraceutical_id = i.nutraceutical_id
+                and r.released_at is null and r.consumed_at is null and r.expires_at > now()
+           ), 0))::int as disponible
+      from nutraceutical_inventory i
+     where i.location_id = ${locationId}
+       and i.nutraceutical_id in (${sql.join(nutraceuticalIds.map((id) => sql`${id}::uuid`), sql`, `)})
+     group by i.nutraceutical_id`);
+  for (const f of filas) out[f.nutraceutical_id] = Math.max(0, Number(f.disponible));
+  return out;
+}
+
+/** Lo disponible en la ubicacion de la que saldria una venta de este profesional (ver `ubicacionDeLaVenta`). */
+export async function disponibleDondeVende(
+  professionalId: string | null,
+  nutraceuticalIds: string[],
+): Promise<Record<string, number>> {
+  const locationId = await ubicacionDeLaVenta(db, professionalId);
+  if (!locationId) return Object.fromEntries(nutraceuticalIds.map((id) => [id, 0]));
+  return disponiblePorProducto(locationId, nutraceuticalIds);
+}

@@ -77,6 +77,8 @@ export async function createCheckoutFormAction(
   const patientId = String(formData.get("patientId") ?? "");
   const lineas = leerLineas(formData);
   const confirmDuplicate = String(formData.get("confirmDuplicate") ?? "") === "true";
+  const treatmentId = String(formData.get("treatmentId") ?? "") || undefined;
+  const evaluationId = String(formData.get("evaluationId") ?? "");
 
   // Avisa antes de crear un cobro DUPLICADO vivo (mismo paciente + mismo producto, pending y < 24h): no
   // es solo la pantalla vieja, tambien el olvido con la pantalla al dia. No bloquea: el profesional puede
@@ -101,10 +103,12 @@ export async function createCheckoutFormAction(
     }
   }
 
-  const result = await createCheckoutAction({ patientId, items: lineas });
+  const result = await createCheckoutAction({ patientId, items: lineas, treatmentId });
   if (!result.ok) {
     return { error: result.error.message, success: null, checkoutUrl: null, duplicateWarning: null };
   }
+  // Desde Tratamiento, la seccion de la venta muestra el QR del link recien creado.
+  if (evaluationId) revalidatePath(`/ani-bis-e/${evaluationId}`);
   return {
     error: null,
     success: "Checkout creado. Comparte el link con el paciente.",
@@ -135,6 +139,7 @@ export async function registerCashSaleFormAction(
     patientId,
     idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
     items: lineas,
+    treatmentId: String(formData.get("treatmentId") ?? "") || undefined,
   });
   if (!parsed.success) return { ...vacio, error: "Datos de la venta inválidos." };
   const { idempotencyKey, ...sale } = parsed.data;

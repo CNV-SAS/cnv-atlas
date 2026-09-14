@@ -1,6 +1,5 @@
 import "server-only";
 import {
-  loteParaEntregar,
   resolverLoteDeRecepcion,
   ubicacionDelProfesional,
 } from "./ubicacion-y-lote";
@@ -188,89 +187,6 @@ export async function getDespachosForTreatment(treatmentId: string): Promise<Mov
     lote: m.lote,
     nutraceuticalName: nutraName(m.nutraceuticals),
   }));
-}
-
-// Registra un DESPACHO (entrega al paciente): un movimiento -N ligado al tratamiento. Condiciones:
-//  (1) solo productos en_consultorio (los solo_tienda los compra el paciente en la tienda);
-//  (2) descuenta el stock (via el trigger), del lote que vence antes;
-//  (3) SIN EXISTENCIAS SE RECHAZA desde la 0121: hace falta un lote que cubra la cantidad. Esta nota decia
-//      que se permitia el negativo, y dejo de ser cierto con el saldo por lote (corregido 2026-09-13).
-// Guard: el tratamiento debe ser del profesional del paciente (ademas la RLS acota el movimiento a su
-// propio inventario).
-export async function recordDespacho(input: {
-  userId: string;
-  treatmentId: string;
-  nutraceuticalId: string;
-  quantity: number;
-}): Promise<{ ok: boolean; message?: string; resultingStock?: number }> {
-  const supabase = await createSupabaseServerClient();
-  const profId = await ownProfessionalId(supabase, input.userId);
-  if (!profId) return { ok: false, message: "No tienes un perfil profesional." };
-
-  // Guard: el tratamiento es de este profesional (treatment -> diagnosis -> evaluation.professional_id).
-  const { data: t } = await supabase.from("treatments").select("diagnosis_id").eq("id", input.treatmentId).maybeSingle();
-  if (!t) return { ok: false, message: "Tratamiento no encontrado." };
-  const { data: d } = await supabase.from("diagnoses").select("evaluation_id").eq("id", t.diagnosis_id).maybeSingle();
-  const { data: e } = d ? await supabase.from("evaluations").select("professional_id").eq("id", d.evaluation_id).maybeSingle() : { data: null };
-  if (!e || e.professional_id !== profId) return { ok: false, message: "No estas asignado a este paciente." };
-
-  // Condicion 1: solo en_consultorio.
-  const { data: prod } = await supabase.from("nutraceuticals").select("commercial_availability, name").eq("id", input.nutraceuticalId).maybeSingle();
-  if (!prod) return { ok: false, message: "Producto no encontrado." };
-  if (prod.commercial_availability !== "en_consultorio") {
-    return { ok: false, message: `"${prod.name}" no se entrega en consultorio (el paciente lo compra en la tienda).` };
-  }
-
-  // ═══ DE QUE LOTE SALE: EL QUE VENCE ANTES (FEFO) ═══
-  //
-  // Con el saldo por lote, entregar obliga a elegir uno, y NO se le pregunta al profesional: en un
-  // perecedero la respuesta correcta siempre es la misma, y preguntarla abre la puerta a que el producto
-  // viejo se quede en la vitrina hasta vencerse. Ver `ubicacion-y-lote`.
-  const locationId = await ubicacionDelProfesional(supabase, profId);
-  if (!locationId) return { ok: false, message: "No tienes una ubicación de inventario asignada." };
-  const { lotId, disponible } = await loteParaEntregar(
-    supabase,
-    locationId,
-    input.nutraceuticalId,
-    input.quantity,
-  );
-  if (!lotId) {
-    // SE AVISA EN VEZ DE REPARTIR EN SILENCIO. Si hay unidades pero en varios lotes, partir la entrega
-    // entre dos es otra decision (y otra fila), y tomarla sola aqui escondería que el saldo esta
-    // fragmentado, que es justo lo que hay que ver.
-    return {
-      ok: false,
-      message:
-        disponible >= input.quantity
-          ? `Tienes ${disponible} unidades pero repartidas en varios lotes, y ninguno alcanza para ${input.quantity}. Entrégalas por separado.`
-          : `No tienes existencias suficientes: quedan ${disponible}.`,
-    };
-  }
-
-  // Movimiento despacho: -N, ligado al tratamiento. El trigger descuenta el saldo.
-  const { error } = await supabase.from("nutraceutical_stock_movements").insert({
-    professional_id: profId,
-    location_id: locationId,
-    lot_id: lotId,
-    nutraceutical_id: input.nutraceuticalId,
-    delta: -input.quantity,
-    type: "despacho",
-    reason: "Entrega al paciente",
-    treatment_id: input.treatmentId,
-    created_by: input.userId,
-  });
-  if (error) return { ok: false, message: "No se pudo registrar la entrega." };
-
-  // Saldo resultante, SUMANDO LOS LOTES. Era `.maybeSingle()`, que con dos lotes falla y dejaba caer el
-  // saldo al respaldo negativo: la pantalla avisaba de un faltante que no existia. Si la lectura falla, no
-  // se inventa una cifra: se omite y la accion confirma la entrega sin decir cuanto queda.
-  const { data: inv, error: iErr } = await supabase
-    .from("nutraceutical_inventory")
-    .select("nutraceutical_id, stock_quantity")
-    .eq("professional_id", profId)
-    .eq("nutraceutical_id", input.nutraceuticalId);
-  if (iErr) return { ok: true };
-  return { ok: true, resultingStock: saldoPorProducto(inv ?? []).get(input.nutraceuticalId) ?? 0 };
 }
 
 // Registra el CONTEO fisico del profesional (T3b-3 ST2): resuelve su perfil, delega en el writer

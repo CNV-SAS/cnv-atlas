@@ -24,7 +24,11 @@ import {
   type SealedTransaction,
 } from "../data/payments-writer";
 import { marcarFacturaPendiente } from "../data/facturacion-repository";
-import { InventarioDeVentaError, liberarReservasDeVenta } from "../data/inventario-de-venta";
+import {
+  disponibleDondeVende,
+  InventarioDeVentaError,
+  liberarReservasDeVenta,
+} from "../data/inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
 
 import { emitirFacturaDeVenta } from "./facturacion-service";
@@ -56,8 +60,30 @@ async function resolveSale(
   user: CurrentUser,
 ): Promise<{ professionalId: string | null; lines: NewOrderLine[]; amount: number }> {
   let professionalId = await repo.getProfessionalProfileIdByUser(user.id);
+  const propio = professionalId;
   if (!professionalId) {
     professionalId = await repo.getProfessionalIdForPatient(input.patientId);
+  }
+
+  // ═══ LA VENTA QUE NACE EN TRATAMIENTO (Bloque 3, sesion 2) ═══
+  //
+  // La pantalla ya filtra, y un filtro de pantalla es una comodidad, no una garantia: la accion recibe ids y
+  // se puede invocar con cualquiera. Tres reglas, las mismas que tenia la entrega (`recordDespacho`):
+  //   · el tratamiento es de ESTE paciente y el usuario lo ve (RLS);
+  //   · lo vende el profesional de la evaluacion (o un admin);
+  //   · el paciente dijo que SI los adquiere, y lo vendido esta PRESCRITO. Lo no prescrito se vende en
+  //     `/pagos`, no se cuela en la venta de la consulta.
+  if (input.treatmentId) {
+    const t = await repo.getTratamientoParaVenta(input.treatmentId);
+    if (!t || t.patientId !== input.patientId) throw new CheckoutError("Tratamiento no encontrado para este paciente.");
+    if (propio && t.professionalId !== propio) throw new CheckoutError("No estás asignado a este paciente.");
+    if (t.decision !== "si") {
+      throw new CheckoutError("Registra primero que el paciente adquiere los nutracéuticos.");
+    }
+    const prescritos = new Set(t.prescritos);
+    if (input.items.some((it) => !prescritos.has(it.nutraceuticalId))) {
+      throw new CheckoutError("Solo se venden aquí los nutracéuticos prescritos en este tratamiento.");
+    }
   }
 
   const catalog = await listNutraceuticals();
@@ -76,7 +102,7 @@ async function resolveSale(
     // garantia: la accion recibe ids y se puede invocar con cualquiera. La regla vive donde se decide la
     // venta (regla 2: ninguna logica de negocio en pages).
     //
-    // Y ES LA MISMA REGLA QUE YA APLICA LA ENTREGA (`recordDespacho`). Que existiera en un lado y no en el
+    // Y ERA LA MISMA REGLA QUE APLICABA LA ENTREGA (`recordDespacho`, retirada en la sesion 2). Que existiera en un lado y no en el
     // otro es como un producto marcado `no_disponible` podia venderse: la bandera gateaba media puerta.
     if (n.commercial_availability !== "en_consultorio") {
       throw new CheckoutError(
@@ -111,6 +137,7 @@ export async function createCheckout(
       currency: "COP",
       idempotencyKey: randomUUID(),
       items: lines,
+      treatmentId: input.treatmentId ?? null,
     }));
   } catch (e) {
     // SIN EXISTENCIAS NO HAY CHECKOUT (D3): la reserva va dentro de la creacion y, si no alcanza, la venta
@@ -148,6 +175,7 @@ export async function registerCashSale(
     currency: "COP",
     idempotencyKey,
     items: lines,
+    treatmentId: input.treatmentId ?? null,
     anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
     actorId: user.id,
   });
@@ -395,4 +423,16 @@ const MOTIVO_SIN_ENTREGA: Record<string, string> = {
 export async function entregarVenta(transactionId: string, user: CurrentUser): Promise<void> {
   const r = await registrarEntrega(transactionId, { id: user.id, email: user.email });
   if (r !== "entregada") throw new VentaError(MOTIVO_SIN_ENTREGA[r]);
+}
+
+/**
+ * Lo disponible para vender en consulta, por producto, en la ubicacion de donde saldria la venta del usuario
+ * (la suya; si no tiene, la central, igual que `ubicacionDeLaVenta`).
+ */
+export async function disponibleParaVender(
+  user: CurrentUser,
+  nutraceuticalIds: string[],
+): Promise<Record<string, number>> {
+  const professionalId = await repo.getProfessionalProfileIdByUser(user.id);
+  return disponibleDondeVende(professionalId, nutraceuticalIds);
 }

@@ -52,15 +52,6 @@ export const confirmRemesaSchema = z.object({
 });
 export type ConfirmRemesaInput = z.infer<typeof confirmRemesaSchema>;
 
-// Despacho (T3b-2): entrega de N unidades al paciente, ligada a su tratamiento. Cantidad entera positiva
-// (el negativo lo pone el service como delta; aqui es "cuantas entregaste").
-export const despachoSchema = z.object({
-  treatmentId: dbUuid,
-  nutraceuticalId: dbUuid,
-  quantity: z.coerce.number().int().min(1).max(1_000_000),
-});
-export type DespachoInput = z.infer<typeof despachoSchema>;
-
 // Conteo fisico (T3b-3 ST2): lineas de lo contado por producto. Cantidad entera >= 0 (contar cero es un
 // dato valido: el producto ya no esta). Puede ser PARCIAL, pero al menos una linea. Lote opcional.
 export const countLineSchema = z.object({
