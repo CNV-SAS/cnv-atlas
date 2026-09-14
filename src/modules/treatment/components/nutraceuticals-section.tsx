@@ -166,7 +166,9 @@ export function NutraceuticalsSection({
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
             >
               <option value="">Selecciona un nutracéutico</option>
-              {/* El ESTADO va en la etiqueta de cada opcion (cotejo 2026-08-24): sin el, se puede
+              {/* "SE VENDE en consultorio" y no "en consultorio" (2026-09-14): se leia como si el profesional
+                  tuviera el producto, y es la disponibilidad COMERCIAL del producto, igual para todos.
+                  El ESTADO va en la etiqueta de cada opcion (cotejo 2026-08-24): sin el, se puede
                   prescribir un producto que no existe todavia y el paciente se va con una indicacion que
                   no puede cumplir. Los no disponibles NO se ocultan (el profesional debe saber que el
                   modelo los contempla), se marcan. */}
@@ -174,7 +176,7 @@ export function NutraceuticalsSection({
                 <option key={c.id} value={c.id}>
                   {c.name}
                   {c.commercialAvailability === "en_consultorio"
-                    ? " · en consultorio"
+                    ? " · se vende en consultorio"
                     : c.commercialAvailability === "solo_tienda"
                       ? " · solo en tienda"
                       : " · aún no disponible"}

@@ -5,6 +5,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { getDeclaracionesDelPaciente } from "@/modules/evaluations/data/declaraciones-paciente-reader";
 
+import { FILTRO_CATALOGO_PRESCRIBIBLE } from "../catalogo-prescribible";
+
 // TreatmentProtocol (anotacion del reader) vive en el modulo neutro; ver el reexport abajo.
 import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
 
@@ -127,6 +129,13 @@ export async function getTreatmentProtocol(
     supabase
       .from("nutraceuticals")
       .select("id, name, unit, indication, commercial_availability, serving_size, presentation, composition")
+      // LOS PRODUCTOS DE PRUEBA RETIRADOS NO SE OFRECEN (Santiago, smoke del Bloque 3, 2026-09-14): cada smoke
+      // deja un "PRUEBA SMOKE BLOQUE 3 (retirado ...)" que no se puede borrar (sus movimientos son inmutables),
+      // y aparecian en el desplegable de TODOS los profesionales. Solo se ocultan los DE PRUEBA y no
+      // disponibles: un producto real "aun no disponible" se sigue mostrando, porque el profesional debe
+      // saber que el modelo lo contempla. Uno ya prescrito que se oculte se lee "Producto retirado del
+      // catalogo", que es lo que es.
+      .or(FILTRO_CATALOGO_PRESCRIBIBLE)
       .order("name", { ascending: true }),
     supabase
       .from("ai_menu_suggestions")
