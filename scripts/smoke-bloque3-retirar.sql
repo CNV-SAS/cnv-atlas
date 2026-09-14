@@ -17,7 +17,8 @@ begin
      set commercial_availability = 'no_disponible',
          alegra_item_id = null,
          alegra_env = null,
-         name = 'PRUEBA SMOKE BLOQUE 3 (retirado ' || to_char(now(), 'YYYY-MM-DD HH24:MI') || ')',
+         -- HORA DE BOGOTA, no la del servidor (UTC): "13:48" en el nombre era 8:48 de la manana (2026-09-14).
+         name = 'PRUEBA SMOKE BLOQUE 3 (retirado ' || to_char(now() at time zone 'America/Bogota', 'YYYY-MM-DD HH24:MI') || ')',
          updated_at = now()
    where name = 'PRUEBA SMOKE BLOQUE 3' and is_test;
   get diagnostics n = row_count;
