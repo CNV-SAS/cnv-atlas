@@ -13,7 +13,7 @@ import {
 import { createdAt, pk, updatedAt } from "./_columns";
 import { alegraInvoiceState, paymentMethod, transactionStatus } from "./enums";
 import { nutraceuticals } from "./nutraceuticals";
-import { organizations, professionalProfiles } from "./organizations";
+import { organizations, professionalProfiles, profiles } from "./organizations";
 import { patients } from "./patients";
 
 // Grupo 14: pagos y finanzas.
@@ -79,6 +79,21 @@ export const transactions = pgTable(
     // reservado | pendiente | descontado | sin_saldo | fallido | liberado. NULL = anterior al Bloque 3.
     stockState: text("stock_state"),
     stockLastError: text("stock_last_error"),
+    // ── LA ENTREGA, LA ANULACION Y LA REVISION (Bloque 3, sesion 2, 0140) ─────────────────────────────
+    // pendiente | entregado. NULL = anterior a la sesion 2. Solo una venta pagada se entrega, y entregar no
+    // mueve inventario: ya se movio al sellar.
+    fulfillmentState: text("fulfillment_state"),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    deliveredBy: uuid("delivered_by").references(() => profiles.id, { onDelete: "restrict" }),
+    // Un link ANULADO queda `failed` como uno rechazado, y estas columnas son lo que los distingue: un pago
+    // aprobado que llega sobre un link anulado es casi seguro un cobro doble.
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelledBy: uuid("cancelled_by").references(() => profiles.id, { onDelete: "restrict" }),
+    // pago_sobre_link_anulado. Mientras no tenga resolucion, la venta no se descuenta ni se factura.
+    reviewReason: text("review_reason"),
+    reviewResolution: text("review_resolution"), // segunda_compra | devuelto
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: uuid("reviewed_by").references(() => profiles.id, { onDelete: "restrict" }),
     alegraLegalStatus: text("alegra_legal_status"),
     idempotencyKey: text("idempotency_key").notNull().unique(),
     createdAt: createdAt(),
