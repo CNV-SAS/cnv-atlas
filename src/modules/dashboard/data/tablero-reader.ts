@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { FILTRO_FUERA_DE_REVISION } from "@/modules/payments/cobro-reconocido";
 import { pendienteDelPaciente } from "@/modules/patients/pendientes";
 
 // ═══ LO QUE EL TABLERO NECESITA SABER, Y NADA MAS ═══
@@ -81,7 +82,8 @@ export async function getTablero(): Promise<Tablero> {
       .order("proxima_cita", { ascending: true })
       .limit(4),
     supabase.from("professional_revenue").select("commission_amount").gte("created_at", desde),
-    supabase.from("transactions").select("amount").eq("status", "paid").gte("created_at", desde),
+    // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
+    supabase.from("transactions").select("amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).gte("created_at", desde),
     supabase.from("nutraceutical_inventory").select("stock_quantity"),
   ]);
 
