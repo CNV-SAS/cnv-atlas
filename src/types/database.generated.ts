@@ -3984,7 +3984,12 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_method_type: string | null
           professional_id: string | null
+          review_opened_at: string | null
+          review_professional_version: string | null
+          review_professional_version_at: string | null
+          review_professional_version_by: string | null
           review_reason: string | null
+          review_refund_reference: string | null
           review_resolution: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -4029,7 +4034,12 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
+          review_opened_at?: string | null
+          review_professional_version?: string | null
+          review_professional_version_at?: string | null
+          review_professional_version_by?: string | null
           review_reason?: string | null
+          review_refund_reference?: string | null
           review_resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -4074,7 +4084,12 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
+          review_opened_at?: string | null
+          review_professional_version?: string | null
+          review_professional_version_at?: string | null
+          review_professional_version_by?: string | null
           review_reason?: string | null
+          review_refund_reference?: string | null
           review_resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -4127,6 +4142,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_review_professional_version_by_fkey"
+            columns: ["review_professional_version_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {

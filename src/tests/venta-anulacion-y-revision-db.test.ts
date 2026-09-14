@@ -120,7 +120,11 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
 
   afterAll(async () => {
     const { resolverRevision } = await import("@/modules/payments/data/payments-writer");
-    for (const id of revisionesCreadas) await resolverRevision(id, "devuelto", actorId);
+    const { registrarVersionDelIntegrante } = await import("@/modules/payments/data/payments-writer");
+    for (const id of revisionesCreadas) {
+      await registrarVersionDelIntegrante(id, "Limpieza del test: pago de prueba", actorId);
+      await resolverRevision(id, "devuelto", actorId, "TEST-LIMPIEZA");
+    }
   });
 
   it("toda venta nueva nace con la entrega PENDIENTE", async () => {
@@ -233,13 +237,17 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
   });
 
   // ── LA REVISION ────────────────────────────────────────────────────────────────────────────────
-  async function enRevision() {
+  async function enRevision(conVersion = true) {
     const { anularCheckout } = await import("@/modules/payments/data/payments-writer");
     const p = await producto(3);
     const { id } = await checkout(p);
     await anularCheckout(id, actorId);
     await pagar(id);
     revisionesCreadas.push(id);
+    if (conVersion) {
+      const { registrarVersionDelIntegrante } = await import("@/modules/payments/data/payments-writer");
+      await registrarVersionDelIntegrante(id, "El paciente pago en efectivo y la pagina de Wompi seguia abierta.", actorId);
+    }
     return id;
   }
 
@@ -264,7 +272,7 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     const { reclamarParaFacturar } = await import("@/modules/payments/data/facturacion-repository");
     const id = await enRevision();
 
-    expect(await resolverRevision(id, "devuelto", actorId)).not.toBeNull();
+    expect(await resolverRevision(id, "devuelto", actorId, "WOMPI-REEMBOLSO-123")).not.toBeNull();
     const v = await venta(id);
     expect(v.status).toBe("refunded");
     expect(v.review_resolution).toBe("devuelto");
@@ -277,7 +285,7 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     const { resolverRevision } = await import("@/modules/payments/data/payments-writer");
     const id = await enRevision();
     await resolverRevision(id, "segunda_compra", actorId);
-    expect(await resolverRevision(id, "devuelto", actorId)).toBeNull();
+    expect(await resolverRevision(id, "devuelto", actorId, "WOMPI-REEMBOLSO-123")).toBeNull();
 
     const p = await producto(3);
     const normal = await checkout(p);
@@ -424,8 +432,41 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     const ultimaDecision = lista.map((v) => v.motivo).lastIndexOf("pago_sobre_link_anulado");
     if (primeraNoDecision >= 0) expect(ultimaDecision).toBeLessThan(primeraNoDecision);
 
-    await resolverRevision(porDecidir, "devuelto", actorId);
+    await resolverRevision(porDecidir, "devuelto", actorId, "WOMPI-REEMBOLSO-123");
     expect((await listarVentasPorRevisar()).some((v) => v.id === porDecidir)).toBe(false);
+  });
+
+  // ── EL SOPORTE DE LA REVISION (contabilidad, 2026-09-14; 0141) ─────────────────────────────────
+  it("no se resuelve sin la version del Integrante, y 'devuelto' no se resuelve sin comprobante", async () => {
+    const { resolverRevision, registrarVersionDelIntegrante, SoporteDeRevisionError } = await import(
+      "@/modules/payments/data/payments-writer"
+    );
+    const { db } = await import("@/db");
+    const id = await enRevision(false);
+
+    await expect(resolverRevision(id, "segunda_compra", actorId)).rejects.toBeInstanceOf(SoporteDeRevisionError);
+    expect((await venta(id)).review_resolution).toBeNull();
+
+    expect(await registrarVersionDelIntegrante(id, "Queria dos unidades, una para su pareja.", actorId)).toBe(true);
+    await expect(resolverRevision(id, "devuelto", actorId, "  ")).rejects.toThrow(/comprobante/);
+
+    expect(await resolverRevision(id, "devuelto", actorId, "WOMPI-REEMBOLSO-9")).not.toBeNull();
+    const [fila] = await db.execute<{ version: string; por: string; comprobante: string }>(dsql`
+      select review_professional_version as version, review_professional_version_by as por,
+             review_refund_reference as comprobante
+        from transactions where id = ${id}`);
+    expect(fila).toEqual({ version: "Queria dos unidades, una para su pareja.", por: actorId, comprobante: "WOMPI-REEMBOLSO-9" });
+
+    // Resuelta, la version ya no se cambia: es parte del soporte.
+    expect(await registrarVersionDelIntegrante(id, "otra version despues", actorId)).toBe(false);
+  });
+
+  it("la base tambien lo exige para lo que se escriba desde ahora (0141)", async () => {
+    const { db } = await import("@/db");
+    const id = await enRevision(false);
+    await expect(
+      db.execute(dsql`update transactions set review_resolution = 'segunda_compra', reviewed_at = now() where id = ${id}`),
+    ).rejects.toThrow();
   });
 
   // ── LOS CHECK DE LA 0140 ───────────────────────────────────────────────────────────────────────
