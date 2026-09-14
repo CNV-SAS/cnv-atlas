@@ -981,6 +981,13 @@
       "when": 1791764366099,
       "tag": "0139_venta_con_inventario",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1791764426099,
+      "tag": "0140_entrega_anulacion_y_revision",
+      "breakpoints": true
     }
   ]
 }

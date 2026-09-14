@@ -1621,6 +1621,74 @@ export type Database = {
           },
         ]
       }
+      inventory_reservations: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          location_id: string
+          lot_id: string
+          nutraceutical_id: string
+          quantity: number
+          released_at: string | null
+          transaction_item_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          location_id: string
+          lot_id: string
+          nutraceutical_id: string
+          quantity: number
+          released_at?: string | null
+          transaction_item_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          location_id?: string
+          lot_id?: string
+          nutraceutical_id?: string
+          quantity?: number
+          released_at?: string | null
+          transaction_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_reservations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_nutraceutical_id_fkey"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_transaction_item_id_fkey"
+            columns: ["transaction_item_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lots: {
         Row: {
           code: string
@@ -2080,6 +2148,7 @@ export type Database = {
           reason: string | null
           remesa_id: string | null
           reported_quantity: number | null
+          transaction_item_id: string | null
           treatment_id: string | null
           type: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
@@ -2097,6 +2166,7 @@ export type Database = {
           reason?: string | null
           remesa_id?: string | null
           reported_quantity?: number | null
+          transaction_item_id?: string | null
           treatment_id?: string | null
           type: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
@@ -2114,6 +2184,7 @@ export type Database = {
           reason?: string | null
           remesa_id?: string | null
           reported_quantity?: number | null
+          transaction_item_id?: string | null
           treatment_id?: string | null
           type?: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
@@ -2165,6 +2236,13 @@ export type Database = {
             columns: ["remesa_id"]
             isOneToOne: false
             referencedRelation: "nutraceutical_stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_stock_movements_transaction_item_id_fkey"
+            columns: ["transaction_item_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_items"
             referencedColumns: ["id"]
           },
           {
@@ -3888,17 +3966,32 @@ export type Database = {
           alegra_legal_status: string | null
           alegra_payment_id: string | null
           amount: number
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           currency: string
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_mode: string | null
+          fulfillment_state: string | null
           id: string
           idempotency_key: string
+          location_id: string | null
+          operated_at: string | null
           organization_id: string
           patient_id: string | null
           payment_card_type: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_method_type: string | null
           professional_id: string | null
+          review_reason: string | null
+          review_resolution: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["transaction_status"]
+          stock_last_error: string | null
+          stock_state: string | null
+          treatment_id: string | null
           updated_at: string
           wompi_env: string
           wompi_transaction_id: string | null
@@ -3918,17 +4011,32 @@ export type Database = {
           alegra_legal_status?: string | null
           alegra_payment_id?: string | null
           amount: number
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           currency?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivery_mode?: string | null
+          fulfillment_state?: string | null
           id?: string
           idempotency_key: string
+          location_id?: string | null
+          operated_at?: string | null
           organization_id: string
           patient_id?: string | null
           payment_card_type?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
+          review_reason?: string | null
+          review_resolution?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
+          stock_last_error?: string | null
+          stock_state?: string | null
+          treatment_id?: string | null
           updated_at?: string
           wompi_env: string
           wompi_transaction_id?: string | null
@@ -3948,22 +4056,58 @@ export type Database = {
           alegra_legal_status?: string | null
           alegra_payment_id?: string | null
           amount?: number
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           currency?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivery_mode?: string | null
+          fulfillment_state?: string | null
           id?: string
           idempotency_key?: string
+          location_id?: string | null
+          operated_at?: string | null
           organization_id?: string
           patient_id?: string | null
           payment_card_type?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
+          review_reason?: string | null
+          review_resolution?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
+          stock_last_error?: string | null
+          stock_state?: string | null
+          treatment_id?: string | null
           updated_at?: string
           wompi_env?: string
           wompi_transaction_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_delivered_by_fkey"
+            columns: ["delivered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_organization_id_organizations_id_fk"
             columns: ["organization_id"]
@@ -3983,6 +4127,20 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
             referencedColumns: ["id"]
           },
         ]
@@ -4504,6 +4662,7 @@ export type Database = {
         | "despacho"
         | "conciliacion"
         | "devolucion"
+        | "venta"
       nutraceutical_ownership: "propio" | "tercero"
       patient_status: "active" | "inactive"
       payment_method: "wompi" | "efectivo"
@@ -4759,6 +4918,7 @@ export const Constants = {
         "despacho",
         "conciliacion",
         "devolucion",
+        "venta",
       ],
       nutraceutical_ownership: ["propio", "tercero"],
       patient_status: ["active", "inactive"],
