@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { missingEnvMessage } from "@/lib/env/missing-env";
 import type { Database } from "@/types/database.generated";
 
+import { fetchConTimeout } from "./fetch-con-timeout";
+
 // Cliente de Supabase para Server Components, server actions y route handlers.
 // Usa la anon key + RLS (el 99% de los casos). La sesion vive en cookies.
 // Tipado con la Database generada: los repos obtienen columnas y filas tipadas.
@@ -18,6 +20,8 @@ export async function createSupabaseServerClient() {
   if (missing) throw new Error(missing);
   // missingEnvMessage ya lanzo si faltaba alguna; el `!` es para el narrowing (TS no lo infiere del helper).
   return createServerClient<Database>(url!, anonKey!, {
+    // Con timeout (regla dura 10): ver `fetch-con-timeout.ts`.
+    global: { fetch: fetchConTimeout },
     cookies: {
       getAll() {
         return cookieStore.getAll();

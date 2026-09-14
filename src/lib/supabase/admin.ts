@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 import { missingEnvMessage } from "@/lib/env/missing-env";
 
+import { fetchConTimeout } from "./fetch-con-timeout";
+
 // Cliente con service role: BYPASSA RLS. Es la llave maestra (SECURITY.md).
 // Reglas duras: nunca se expone al cliente, nunca se importa fuera de este
 // archivo, y cada uso se justifica en comentario. Solo en server actions y
@@ -18,5 +20,7 @@ export function createSupabaseAdminClient() {
   if (missing) throw new Error(missing);
   return createClient(url!, serviceRoleKey!, {
     auth: { persistSession: false, autoRefreshToken: false },
+    // Con timeout (regla dura 10): ver `fetch-con-timeout.ts`.
+    global: { fetch: fetchConTimeout },
   });
 }

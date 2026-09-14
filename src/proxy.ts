@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isPublicPath } from "@/core/http/public-paths";
+import { fetchConTimeout } from "@/lib/supabase/fetch-con-timeout";
 
 // proxy.ts (Next 16, antes "middleware"). NO es capa de seguridad (SECURITY.md):
 // solo refresca la sesion de Supabase en cada request y redirige por presencia de
@@ -16,6 +17,9 @@ export async function proxy(request: NextRequest) {
   if (!url || !anonKey) return response; // sin config no bloquea el arranque
 
   const supabase = createServerClient(url, anonKey, {
+    // Con timeout (regla dura 10). Si la sesion no responde a tiempo, `getUser` devuelve error y no usuario:
+    // una ruta protegida manda a /login en vez de dejar colgada la navegacion.
+    global: { fetch: fetchConTimeout },
     cookies: {
       getAll() {
         return request.cookies.getAll();
