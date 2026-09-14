@@ -20,8 +20,28 @@ export function formatDate(iso: string | number | Date | null | undefined): stri
   return d.toLocaleDateString("es-CO", { timeZone: BOGOTA });
 }
 
-// Fecha + hora (zona Bogota).
+// Fecha + hora, SOLO HORA Y MINUTOS (zona Bogota): "14/9/2026, 3:23 p. m.".
+//
+// SIN SEGUNDOS desde el 2026-09-14 (Santiago, smoke del Bloque 3): "3:23:57" se le hace dificil de leer a un
+// profesional de salud, y ningun acto clinico o comercial de la pantalla se decide por segundos. La unica
+// pantalla que los conserva es el registro tecnico de auditoria (`formatDateTimeConSegundos`), donde el
+// orden fino de los eventos si importa para reconstruir que paso.
 export function formatDateTime(iso: string | number | Date | null | undefined): string {
+  if (iso == null) return "";
+  const d = toDate(iso);
+  if (Number.isNaN(d.getTime())) return typeof iso === "string" ? iso : "";
+  return d.toLocaleString("es-CO", {
+    timeZone: BOGOTA,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** Fecha + hora CON segundos: solo para el registro tecnico de auditoria. */
+export function formatDateTimeConSegundos(iso: string | number | Date | null | undefined): string {
   if (iso == null) return "";
   const d = toDate(iso);
   if (Number.isNaN(d.getTime())) return typeof iso === "string" ? iso : "";
