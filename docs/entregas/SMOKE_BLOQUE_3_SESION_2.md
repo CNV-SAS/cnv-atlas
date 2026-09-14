@@ -308,6 +308,85 @@ node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-retirar.sql --commit
 
 ---
 
+## 8. Lo que se agregó después del smoke (2026-09-14)
+
+Son los arreglos del paso 7 y cuatro de las cinco propuestas del 3.6. **Trae la migración 0141.**
+
+### 8.0 Migración, push y producto de prueba
+
+En una ventana nueva de PowerShell, con la conexión **directa** de la nube:
+
+```powershell
+$env:DATABASE_URL = "postgresql://...la directa de la nube, puerto 5432..."
+pnpm db:check:cloud
+pnpm db:migrate
+pnpm db:check:cloud
+```
+
+- [ ] **Debe dar:** primero una pendiente, `0141_soporte_de_la_revision`, y al final `142` y `142`, al día.
+- La 0141 marca las dos revisiones que resolviste en el paso 5 con *"(Resuelta antes de exigir la versión del Integrante...)"*. Es a propósito: son anteriores a la regla.
+
+- [ ] **Push** de `main` y deployment en **Ready**.
+
+Producto de prueba nuevo (el anterior quedó retirado), ya a 11.900:
+
+```powershell
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-preparar.sql
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-preparar.sql --commit
+```
+
+### 8.1 Lo que se ve sin hacer nada
+
+- [ ] **La hora sin segundos:** en `/pagos`, una venta entregada dice *Entregado el 14/9/2026, 5:32 p. m.*
+- [ ] **El desplegable de prescripción**, en cualquier profesional (el de Gildardo, por ejemplo):
+  - ya **no** aparecen los "PRUEBA SMOKE BLOQUE 3 (retirado ...)";
+  - los productos a la venta dicen **"· se vende en consultorio"**;
+  - los reales no disponibles siguen apareciendo como **"· aún no disponible"**;
+  - el producto de prueba **nuevo** sí aparece, porque está a la venta mientras dura este paso.
+
+### 8.2 El pago en revisión, con su soporte
+
+1. Anota en `/direccion` el **Ingreso bruto facturado** y el número de pagos.
+2. Provoca un pago sobre un link anulado, como en **5.1**: checkout de **1 ×**, deja la página de Wompi abierta con la 4242, anula el link y paga.
+
+- [ ] **`/direccion`:** el ingreso bruto y el número de pagos **no cambian**. El dinero de una venta en revisión es un pasivo hasta resolverse.
+- [ ] **Panel Ventas por revisar:**
+  - dice *Resuélvela a más tardar el ... (5 días hábiles)*;
+  - dice *Falta la versión del Integrante*;
+  - **no** muestra todavía los botones de resolver.
+- [ ] En la venta de la lista de `/pagos` aparece *Cuéntale a CNV qué pasó en la consulta* **solo si entras como el profesional de la venta**. Como admin, ese formulario está en el panel.
+- [ ] Escribe una versión de menos de 10 letras: el botón **Guardar la versión** no se enciende. Escribe una frase completa y guárdala. **Debe dar:** *Versión registrada.* y el panel muestra la versión con *Escrita por ... el ...*.
+- [ ] Ahora aparecen **Fue una segunda compra** y **Ya se devolvió el pago**. Pulsa **Ya se devolvió el pago**: la confirmación pide el **comprobante**, y **Sí, está devuelto** no se enciende sin él. Escribe `SMOKE-REEMBOLSO-1` y confirma.
+- [ ] **Consulta** (editor de Supabase):
+
+```sql
+select t.status, t.review_resolution as resolucion, t.review_professional_version as version,
+       t.review_refund_reference as comprobante, t.review_opened_at is not null as con_fecha_de_apertura
+  from transactions t
+  join transaction_items ti on ti.transaction_id = t.id
+  join nutraceuticals n on n.id = ti.nutraceutical_id
+ where n.name = 'PRUEBA SMOKE BLOQUE 3' and t.review_reason is not null
+ order by t.created_at desc limit 1;
+```
+
+  **Debe dar:** `refunded`, `devuelto`, tu versión, `SMOKE-REEMBOLSO-1` y `con_fecha_de_apertura` = `true`.
+
+- [ ] **`/direccion`:** sigue igual que en el punto 1.
+
+### 8.3 El mínimo de Wompi
+
+Ningún producto a la venta cuesta menos de $1.500, así que en pantalla no se puede provocar. Lo prueban los tests: el servicio rechaza el checkout antes de crear la venta, y el efectivo no tiene mínimo. Si algún día hay un producto así, el botón del QR y el de crear checkout se apagan con *Wompi no acepta cobros de menos de $1.500. Cóbralo en efectivo.*
+
+### 8.4 Limpiar y cerrar
+
+```powershell
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-limpiar-ventas.sql --commit
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-retirar.sql --commit
+```
+
+- [ ] **Debe dar:** `CONFIRMADO` en los dos. El producto retirado ahora lleva **la hora de Bogotá** en el nombre, y **no** aparece en el desplegable de prescripción.
+- [ ] Cierra la ventana de PowerShell.
+
 ## El mínimo de Wompi, también para producción
 
 **Wompi no cobra por debajo de $1.500 por transacción** (soporte de Wompi: "Agregador: desde $1.500"; el mensaje dice *"exceptuando impuestos"*). No es del sandbox: aplica igual en producción.

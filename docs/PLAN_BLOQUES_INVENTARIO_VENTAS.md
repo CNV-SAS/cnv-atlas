@@ -1238,12 +1238,55 @@ Estado verificable: `venta-anulacion-y-revision-db.test.ts` (19, base real, con 
   - y es **después** de aprobado: no impide el cobro, lo reversa.
 - **Conclusión:** con lo documentado, el cobro doble **no se puede hacer imposible**, y la revisión sigue haciendo falta. Lo que falta saber lo responde el **soporte de Wompi**: si un link de pago se puede desactivar por API y si eso bloquea una página abierta, y los plazos y la comisión de una anulación.
 
-**Pendiente de aprobación, no construido:**
-- sacar la revisión de las dos cifras de cobro;
-- resolución solo por Dirección, con la versión del Integrante y el comprobante;
-- el plazo visible;
-- la salida "el efectivo no se recibió", con su alerta y su conteo por Integrante;
-- un aviso antes de cobrar por Wompi menos de $1.500.
+**Aprobadas por Santiago el 2026-09-14, con admin y dirección resolviendo (como estaba). Construidas el mismo día:**
+- **Hecho (`dc17b6a7`).** La revisión fuera del cobrado bruto de Dirección y de las ventas del mes del profesional.
+- **Hecho (`b41c250b`, `dfd4f16e`, migración 0141).** Resolver exige la versión del Integrante, y "devuelto" exige el comprobante. Queda quién escribió la versión y cuándo.
+- **Hecho (`dfd4f16e`).** El plazo en pantalla: 5 días hábiles, o antes del cierre del bimestre si el corte llega antes.
+- **Hecho (`b900c157`).** El mínimo de Wompi: no se crea un checkout de menos de $1.500, y las dos pantallas lo avisan antes de pulsar.
+- **Hecho (`32d46b11`).** Los productos de prueba retirados salen del desplegable, la etiqueta dice "se vende en consultorio" y el retiro pone la hora de Bogotá.
+- **Se queda "Fue una segunda compra"** (Santiago: da a entender que está comprando otra vez, que es lo que pasa).
+- **El soporte de Wompi no se contacta:** con lo documentado basta, y la revisión se queda.
+
+#### DISEÑO PROPUESTO, no construido: la salida "el efectivo no se recibió"
+
+**El caso.** Un pago aprobado sobre un link anulado entra en revisión. La versión del Integrante, o la averiguación de Dirección, dice que el efectivo **no** se recibió: el paciente pagó solo con tarjeta, y la venta en efectivo que anuló el link no ocurrió. Así que hay:
+- una **factura emitida** por un efectivo que no entró;
+- una **comisión** sellada al Integrante por esa venta;
+- y un **pago real en Wompi** que no tiene factura.
+
+**Lo que hace falta y hoy no existe:** saber **qué venta en efectivo anuló el link**. La anulación dentro de la venta en efectivo no lo guarda. Sin ese vínculo, Dirección tendría que adivinar cuál venta es la falsa.
+
+**Lo que haría la resolución, en una transacción:**
+
+1. **La venta de Wompi pasa a ser la venta.**
+   - Se sella su contabilidad: comisión e ingreso de CNV.
+   - Se pide su factura, con fecha de resolución.
+   - **No se descuenta inventario:** el producto ya salió con la venta en efectivo. Su inventario queda `en_otra_venta`, apuntando a la venta en efectivo.
+   - Su entrega toma la de la venta en efectivo, si ya estaba entregada.
+2. **La venta en efectivo queda marcada "efectivo no recibido"**, con quién y cuándo.
+   - Sale de toda cifra de cobro, igual que la revisión.
+   - Su comisión se **revierte con una fila negativa**, no se borra. Es la forma que ya dice el 3b ("si ya se liquidó, se descuenta en la siguiente").
+   - Sus movimientos de inventario se quedan: el producto sí salió.
+3. **La nota crédito manual en Alegra** queda **pendiente en el panel** hasta que Dirección escriba su número. La hace contabilidad sobre la factura del efectivo, como la NC1.
+4. **La alerta es distinta a la de la revisión.**
+   - Sentry nivel **error** (no warning), con el Integrante.
+   - Un bloque aparte en el panel: **"Efectivo registrado que no se recibió"**.
+   - El profesional ve en su venta "Anulada por CNV: el efectivo no se recibió".
+5. **La escalada, por Integrante.**
+   - Se cuentan sus casos en los últimos 90 días.
+   - Desde el **segundo**, el bloque se marca en rojo con el conteo ("2 casos en 90 días"), y la alerta de Sentry lo dice.
+
+**Migración (0142, aditiva):**
+- En el link: `cancelled_by_sale_id`, la venta en efectivo que lo anuló.
+- En la venta en efectivo: `cash_not_received_at`, `cash_not_received_by` y `credit_note_manual_number`.
+- En la venta de Wompi: `stock_covered_by_sale_id`, más el valor `en_otra_venta` en el CHECK de `stock_state`.
+- El valor `efectivo_no_recibido` en el CHECK de `review_resolution`.
+
+**Tres preguntas antes de construir:**
+
+1. **¿Solo cuando las dos ventas coinciden** (mismos productos y cantidades)? Recomiendo **sí**. Si la venta en efectivo llevaba algo más, una parte pudo ser real, y separarla es otra decisión. En ese caso el botón no aparece y dice "resuélvelo con contabilidad".
+2. **¿La escalada desde el segundo caso en 90 días**, y qué es escalar? Recomiendo el bloque en rojo más la alerta de Sentry. Un correo a Dirección sería un paso más.
+3. **¿La comisión se revierte con fila negativa?** Recomiendo **sí**: el rastro de que existió y se revirtió es parte del control.
 
 **~~Preguntas que siguen abiertas~~ Cerradas el 2026-09-13:** muestras y cortesías no existen (no se
 construyen); el pago mixto ya estaba decidido (una factura por el total). Ver las cinco decisiones arriba.
