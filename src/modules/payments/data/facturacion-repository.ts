@@ -34,6 +34,16 @@ import type { LineaDeVenta, MapaDeAlegra } from "../facturacion";
 export const LE_FALTA_ALGO = sql`(transactions.alegra_invoice_state is distinct from 'emitida' or transactions.alegra_payment_id is null)`;
 
 /**
+ * UNA VENTA EN REVISION NO SE FACTURA (Santiago, 2026-09-14). Un pago aprobado sobre un link anulado es casi
+ * seguro un cobro doble; facturarlo dejaria una factura validada que solo se deshace con nota credito, que no
+ * existe hasta el 3b. Solo se factura si la revision la resolvio como segunda compra.
+ *
+ * Va en TODAS las consultas de la cola, no en una: el boton "Reintentar" reclama por `reclamarParaFacturar`,
+ * y si la regla viviera solo en la lista, el boton la facturaria igual.
+ */
+export const FACTURABLE = sql`(transactions.review_reason is null or transactions.review_resolution = 'segunda_compra')`;
+
+/**
  * El mapa del ambiente que se esta usando.
  *
  * QUE AMBIENTE: el que diga `ALEGRA_BASE_URL`. Se resuelve por la URL y no por una variable aparte porque
@@ -294,6 +304,7 @@ export async function reclamarParaFacturar(txId: string): Promise<boolean> {
        -- LOS DOS HUECOS: sin documento, o con documento y SIN PAGO. Antes solo el primero, y las ventas
        -- facturadas con el pago fallido no se podian reclamar: el boton no las tocaba nunca.
        and ${LE_FALTA_ALGO}
+       and ${FACTURABLE}
        and (alegra_last_attempt_at is null or alegra_last_attempt_at < now() - interval '2 minutes')
     returning id`);
   return filas.length > 0;
@@ -340,6 +351,7 @@ export async function listarVentasSinDocumento(limite = 50): Promise<
       from transactions
      where status = 'paid'
        and ${LE_FALTA_ALGO}
+       and ${FACTURABLE}
      order by created_at desc
      limit ${limite}`);
   return filas.map((f) => ({
@@ -379,6 +391,7 @@ export async function listarFacturasPendientes(
        -- sin CUFE), que antes quedaba fuera del barrido justo por parecer terminada. Y un estado nuevo
        -- entra solo, sin que haya que acordarse de esta linea.
        and ${LE_FALTA_ALGO}
+       and ${FACTURABLE}
        and alegra_attempts < ${maxIntentos}
      order by created_at asc
      limit ${limite}`);
@@ -398,6 +411,7 @@ export async function contarVentasSinDocumento(): Promise<{ total: number; agota
            count(*) filter (where alegra_attempts >= 5)::int as agotadas
       from transactions
      where status = 'paid'
-       and ${LE_FALTA_ALGO}`);
+       and ${LE_FALTA_ALGO}
+       and ${FACTURABLE}`);
   return { total: Number(r?.total ?? 0), agotadas: Number(r?.agotadas ?? 0) };
 }

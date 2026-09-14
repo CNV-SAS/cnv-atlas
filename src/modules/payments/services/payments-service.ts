@@ -8,17 +8,22 @@ import { listNutraceuticals } from "@/modules/nutraceuticals/data/nutraceuticals
 import type { CheckoutView } from "../data/checkout-reader";
 import * as repo from "../data/payments-repository";
 import {
+  anularCheckout,
   createPaidCashTransaction,
   createTransactionWithItems,
   markTransactionFailed,
   markWebhookProcessed,
   recordWebhookEvent,
+  resolverRevision,
   sealPaidTransaction,
   type NewOrderLine,
+  type ResolucionDeRevision,
   type SealedTransaction,
 } from "../data/payments-writer";
 import { marcarFacturaPendiente } from "../data/facturacion-repository";
 import { InventarioDeVentaError, liberarReservasDeVenta } from "../data/inventario-de-venta";
+import * as Sentry from "@sentry/nextjs";
+
 import { emitirFacturaDeVenta } from "./facturacion-service";
 import { descontarInventarioDeVenta } from "./inventario-venta-service";
 import type { CreateCheckoutInput, WompiEventInput } from "../validations";
@@ -147,7 +152,7 @@ export async function registerCashSale(
   // su desenlace en la venta y quedan en su cola. El pago ya esta sellado en la transaccion de arriba.
   await descontarInventarioDeVenta(id);
   await facturarVentaSellada(
-    { id, amount: String(amount), currency: "COP", patientId: input.patientId, professionalId },
+    { id, amount: String(amount), patientId: input.patientId },
     "efectivo",
   );
   return { transactionId: id, amount };
@@ -167,6 +172,8 @@ export type WompiCheckoutParams = {
   reference: string;
   signature: string;
   redirectUrl: string;
+  /** Cuando deja de cobrar la pagina de Wompi, en ISO 8601 UTC. Va firmado. */
+  expirationTime: string;
 };
 
 // Arma los campos del Web Checkout por redirect, incluida la firma de integridad.
@@ -183,11 +190,17 @@ export function buildWompiCheckoutParams(view: CheckoutView): WompiCheckoutParam
   const amountInCents = Math.round(Number(view.amount) * 100);
   const reference = view.id;
   const currency = view.currency;
+  // LA PAGINA DE WOMPI VENCE CUANDO VENCE EL LINK (2026-09-14). Sin esto, una pagina de Wompi que el paciente
+  // dejo abierta seguia cobrando despues de las 24 horas del link: nuestra pagina ya no la mostraba, pero la
+  // de Wompi no sabia nada. Wompi admite `expiration-time` y lo mete en la firma (docs.wompi.co, Web Checkout),
+  // asi que no se puede alargar desde el navegador.
+  const expirationTime = view.expiresAt;
   const signature = computeIntegritySignature({
     reference,
     amountInCents,
     currency,
     integritySecret: integritySecret!,
+    expirationTime,
   });
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "";
   return {
@@ -197,6 +210,7 @@ export function buildWompiCheckoutParams(view: CheckoutView): WompiCheckoutParam
     reference,
     signature,
     redirectUrl: `${base}/checkout/${reference}/resultado`,
+    expirationTime,
   };
 }
 
@@ -268,7 +282,14 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
     event.environment ?? null,
   );
   await markWebhookProcessed(WOMPI_PROVIDER, externalId);
-  if (sealed) {
+  if (sealed?.enRevision) {
+    // PAGO SOBRE UN LINK ANULADO: casi seguro un cobro doble. Queda sellado y en la lista "Revisar", sin
+    // descuento ni factura (Santiago, 2026-09-14). La alerta es para que alguien lo mire hoy, no al cierre.
+    Sentry.captureMessage("Pago aprobado sobre un link de pago anulado", {
+      level: "warning",
+      tags: { area: "pago-sobre-link-anulado", transactionId: sealed.id },
+    });
+  } else if (sealed) {
     // EL ORDEN: el pago ya quedo sellado y confirmado arriba. El inventario y la factura corren despues, cada
     // uno en su transaccion, y ninguno lanza.
     await descontarInventarioDeVenta(sealed.id);
@@ -290,7 +311,10 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
 // Wompi solo reintenta si NO le respondimos 200, y le respondemos 200 porque el pago SI se sello.
 //
 // EL CANAL lo decide `payment_method` de la transaccion, y es lo que elige la cuenta puente del pago.
-async function facturarVentaSellada(sealed: SealedTransaction, canal: "wompi" | "efectivo"): Promise<void> {
+async function facturarVentaSellada(
+  sealed: Pick<SealedTransaction, "id" | "amount" | "patientId">,
+  canal: "wompi" | "efectivo",
+): Promise<void> {
   await marcarFacturaPendiente(sealed.id);
   await emitirFacturaDeVenta({
     id: sealed.id,
@@ -300,3 +324,41 @@ async function facturarVentaSellada(sealed: SealedTransaction, canal: "wompi" | 
   });
 }
 
+
+// ----- Anular un link de pago y resolver una venta en revision -----
+
+/** Error esperable de una accion sobre una venta: el mensaje es para quien la pulso. */
+export class VentaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "VentaError";
+  }
+}
+
+/**
+ * Anula un link de pago pendiente y libera sus unidades. Quien llama ya comprobo que el usuario PUEDE VER la
+ * venta (lectura con RLS: el profesional solo ve las suyas) y la policy de crear checkouts.
+ */
+export async function anularLink(transactionId: string, user: CurrentUser): Promise<void> {
+  const r = await anularCheckout(transactionId, user.id);
+  if (r === "no_estaba_pendiente") {
+    throw new VentaError("Este link ya no está pendiente: se pagó, se anuló o Wompi lo rechazó.");
+  }
+}
+
+/**
+ * Resuelve una venta en revision (pago sobre link anulado). En `segunda_compra` hace lo que hace un pago
+ * normal despues de sellarse: descontar y facturar, en ese orden y sin lanzar.
+ */
+export async function resolverRevisionDeVenta(
+  transactionId: string,
+  resolucion: ResolucionDeRevision,
+  user: CurrentUser,
+): Promise<void> {
+  const venta = await resolverRevision(transactionId, resolucion, user.id);
+  if (!venta) throw new VentaError("Esta venta ya no está en revisión.");
+  if (resolucion === "segunda_compra") {
+    await descontarInventarioDeVenta(venta.id);
+    await facturarVentaSellada(venta, "wompi");
+  }
+}

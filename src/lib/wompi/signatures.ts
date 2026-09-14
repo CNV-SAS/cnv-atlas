@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 
 // Firmas de Wompi, verificadas contra la doc oficial vigente (docs.wompi.co, 2026):
-// - Integridad del checkout: SHA256(reference + amountInCents + currency + integritySecret).
+// - Integridad del checkout: SHA256(reference + amountInCents + currency + integritySecret), y con
+//   vencimiento SHA256(reference + amountInCents + currency + expirationTime + integritySecret).
 // - Eventos (webhook): SHA256(concat de los valores de signature.properties, en
 //   orden, + timestamp + eventsSecret), comparado con signature.checksum.
 // Funciones puras (solo node:crypto) para poder probarlas con vectores conocidos.
@@ -11,14 +12,17 @@ function sha256Hex(input: string): string {
 }
 
 // Firma de integridad para el Web Checkout por redirect. amountInCents es entero.
+// El vencimiento va ENTRE la moneda y el secreto (docs.wompi.co, Web Checkout), en ISO 8601 UTC, y tiene que
+// ser el mismo texto que viaja en `expiration-time`: si difieren en un caracter, Wompi rechaza la firma.
 export function computeIntegritySignature(params: {
   reference: string;
   amountInCents: number;
   currency: string;
   integritySecret: string;
+  expirationTime?: string;
 }): string {
-  const { reference, amountInCents, currency, integritySecret } = params;
-  return sha256Hex(`${reference}${amountInCents}${currency}${integritySecret}`);
+  const { reference, amountInCents, currency, integritySecret, expirationTime } = params;
+  return sha256Hex(`${reference}${amountInCents}${currency}${expirationTime ?? ""}${integritySecret}`);
 }
 
 // Resuelve un path con puntos (ej. "transaction.amount_in_cents") contra el objeto

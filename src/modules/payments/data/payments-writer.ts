@@ -174,6 +174,9 @@ export async function createTransactionWithItems(
         locationId,
         deliveryMode: "en_consulta",
         operatedAt: new Date(),
+        // Toda venta nace con su entrega pendiente (sesion 2): es lo que hace que ninguna quede sin camino
+        // para entregarse.
+        fulfillmentState: "pendiente",
       })
       .returning({ id: transactions.id });
     if (input.items.length > 0) {
@@ -246,12 +249,29 @@ export type SealedTransaction = {
   currency: string;
   patientId: string | null;
   professionalId: string | null;
+  /**
+   * El pago llego sobre un link que Atlas ya habia ANULADO: quedo sellado, SIN contabilidad, sin descuento y
+   * sin factura, esperando revision. Quien llama no debe descontar ni facturar.
+   */
+  enRevision: boolean;
 };
 
-// Sella el pago en UNA transaccion: pasa la transaccion de pending->paid (guardado
-// por status='pending', asi solo sella una vez), sella la comision con la tasa
-// vigente del profesional como snapshot y registra el ingreso de CNV. Devuelve la
-// transaccion si la sello; null si ya no estaba pending (no hace nada, idempotente).
+// Sella el pago en UNA transaccion: la venta pasa a paid, se sella la comision con la tasa vigente como
+// snapshot y se registra el ingreso de CNV. Devuelve la venta si la sello; null si no habia nada que sellar
+// (ya pagada, reembolsada o inexistente): idempotente.
+//
+// ═══ SE SELLA TAMBIEN DESDE `failed` (decision de Santiago, 2026-09-14) ═══
+//
+// Antes solo desde `pending`, y un APPROVED sobre una venta `failed` se perdia: dinero cobrado y sin
+// registrar. Pasa de dos maneras, y NO se tratan igual:
+//
+//   · `failed` POR RECHAZO DE WOMPI (un intento rechazado y despues uno aprobado): es un pago normal. Se sella
+//     con su contabilidad, y el inventario, que se libero con el rechazo, vuelve a `pendiente` para que el
+//     servicio lo descuente. Es la decision 4: el dinero se movio.
+//   · `failed` PORQUE ATLAS ANULO EL LINK (`cancelled_at`): casi seguro un cobro doble, porque el link se anula
+//     al cobrar en efectivo. Se sella el pago (el dinero entro), pero SIN contabilidad, sin descuento y sin
+//     factura, y la venta queda `review_reason = pago_sobre_link_anulado`. Una factura validada por la DIAN
+//     solo se deshace con nota credito, y esa no existe hasta el 3b.
 export async function sealPaidTransaction(
   txId: string,
   wompiTransactionId: string,
@@ -264,22 +284,27 @@ export async function sealPaidTransaction(
   ambienteDelEvento?: "test" | "prod" | null,
 ): Promise<SealedTransaction | null> {
   return db.transaction(async (tx) => {
+    // Bloqueo de la fila: un DECLINED y un APPROVED que llegan a la vez no pueden leer el mismo estado.
+    const [antes] = await tx.execute<{
+      status: string;
+      wompi_env: string;
+      cancelled_at: string | null;
+      stock_state: string | null;
+    }>(sql`select status, wompi_env, cancelled_at, stock_state from transactions where id = ${txId} for update`);
+    if (!antes || (antes.status !== "pending" && antes.status !== "failed")) return null; // idempotente
+
     const wompiEnv = ambienteDelEvento === "prod" ? "produccion" : ambienteDelEvento === "test" ? "test" : undefined;
-    if (wompiEnv) {
-      const [antes] = await tx
-        .select({ wompiEnv: transactions.wompiEnv })
-        .from(transactions)
-        .where(and(eq(transactions.id, txId), eq(transactions.status, "pending")));
-      if (antes && antes.wompiEnv !== wompiEnv) {
-        // No es un error: es exactamente el caso que esto corrige. Se deja rastro porque solo pasa alrededor
-        // de un cambio de llaves, y si pasa en otro momento algo esta mal configurado.
-        Sentry.captureMessage("El pago llegó de otro ambiente que el del checkout", {
-          level: "warning",
-          tags: { area: "ambiente-del-pago", transactionId: txId },
-          extra: { checkout: antes.wompiEnv, pago: wompiEnv },
-        });
-      }
+    if (wompiEnv && antes.wompi_env !== wompiEnv) {
+      // No es un error: es exactamente el caso que esto corrige. Se deja rastro porque solo pasa alrededor
+      // de un cambio de llaves, y si pasa en otro momento algo esta mal configurado.
+      Sentry.captureMessage("El pago llegó de otro ambiente que el del checkout", {
+        level: "warning",
+        tags: { area: "ambiente-del-pago", transactionId: txId },
+        extra: { checkout: antes.wompi_env, pago: wompiEnv },
+      });
     }
+
+    const sobreLinkAnulado = antes.status === "failed" && antes.cancelled_at != null;
     const updated = await tx
       .update(transactions)
       .set({
@@ -288,9 +313,15 @@ export async function sealPaidTransaction(
         paymentMethodType: paymentMethodType ?? null,
         paymentCardType: paymentCardType ?? null,
         ...(wompiEnv ? { wompiEnv } : {}),
+        ...(sobreLinkAnulado ? { reviewReason: "pago_sobre_link_anulado" } : {}),
+        // Rechazado y despues aprobado: sus reservas se liberaron con el rechazo, asi que el descuento sale de
+        // lo disponible. En el anulado el inventario se queda `liberado` hasta la revision.
+        ...(!sobreLinkAnulado && antes.status === "failed" && antes.stock_state === "liberado"
+          ? { stockState: "pendiente" }
+          : {}),
         updatedAt: new Date(),
       })
-      .where(and(eq(transactions.id, txId), eq(transactions.status, "pending")))
+      .where(and(eq(transactions.id, txId), inArray(transactions.status, ["pending", "failed"])))
       .returning({
         id: transactions.id,
         amount: transactions.amount,
@@ -298,10 +329,10 @@ export async function sealPaidTransaction(
         patientId: transactions.patientId,
         professionalId: transactions.professionalId,
       });
-    if (updated.length === 0) return null; // ya sellada u otro estado: idempotente
+    if (updated.length === 0) return null;
     const t = updated[0];
-    await sealAccounting(tx, t);
-    return t;
+    if (!sobreLinkAnulado) await sealAccounting(tx, t);
+    return { ...t, enRevision: sobreLinkAnulado };
   });
 }
 
@@ -336,6 +367,7 @@ export async function createPaidCashTransaction(input: NewTransaction): Promise<
         deliveryMode: "en_consulta",
         operatedAt: new Date(),
         stockState: "pendiente",
+        fulfillmentState: "pendiente",
       })
       .onConflictDoNothing({ target: transactions.idempotencyKey })
       .returning({
@@ -386,4 +418,109 @@ export async function setAlegraInvoiceId(
     .update(transactions)
     .set({ alegraInvoiceId, updatedAt: new Date() })
     .where(and(eq(transactions.id, txId), isNull(transactions.alegraInvoiceId)));
+}
+
+export type ResultadoDeAnular = "anulado" | "no_estaba_pendiente";
+
+// ═══ ANULAR UN LINK DE PAGO (decision (a) de Santiago, 2026-09-14) ═══
+//
+// En UNA transaccion: la venta queda `failed` con quien y cuando la anulo, y sus reservas se liberan. Solo
+// una venta `pending` de Wompi: una pagada no se anula (eso es una reversa, 3b), y una en efectivo nace pagada.
+//
+// Recibe la transaccion de BD opcional para que la venta en efectivo pueda anular el link del mismo paciente
+// DENTRO de la suya (decision (b)): las unidades liberadas son las que usa esa venta.
+//
+// La pagina del link deja de mostrarse sola (solo sirve un checkout `pending`). Una pagina de Wompi que el
+// paciente ya tenia abierta todavia puede cobrar hasta que venza; ese pago llega a `sealPaidTransaction`,
+// que lo deja en revision.
+export async function anularCheckout(
+  txId: string,
+  actorId: string | null,
+  enTx?: Tx,
+): Promise<ResultadoDeAnular> {
+  const correr = async (tx: Tx): Promise<ResultadoDeAnular> => {
+    const [venta] = await tx.execute<{ status: string; payment_method: string }>(sql`
+      select status, payment_method from transactions where id = ${txId} for update`);
+    if (!venta || venta.status !== "pending" || venta.payment_method !== "wompi") return "no_estaba_pendiente";
+    await tx.execute(sql`
+      update transactions
+         set status = 'failed', cancelled_at = now(), cancelled_by = ${actorId},
+             stock_state = case when stock_state = 'reservado' then 'liberado' else stock_state end,
+             updated_at = now()
+       where id = ${txId}`);
+    await tx.execute(sql`
+      update inventory_reservations r set released_at = now()
+        from transaction_items ti
+       where ti.id = r.transaction_item_id and ti.transaction_id = ${txId}
+         and r.released_at is null and r.consumed_at is null`);
+    return "anulado";
+  };
+  return enTx ? correr(enTx) : db.transaction(correr);
+}
+
+/**
+ * Los links de pago PENDIENTES de un paciente que llevan alguno de estos productos. Es lo que la venta en
+ * efectivo anula (decision (b)). Sin limite de 24 horas a proposito: un link vencido ya no cobra desde
+ * nuestra pagina, pero sigue `pending` y anularlo no cuesta nada.
+ */
+export async function linksPendientesQueComparten(
+  ex: typeof db | Tx,
+  patientId: string,
+  nutraceuticalIds: string[],
+): Promise<string[]> {
+  if (nutraceuticalIds.length === 0) return [];
+  const filas = await ex.execute<{ id: string }>(sql`
+    select distinct t.id
+      from transactions t
+      join transaction_items ti on ti.transaction_id = t.id
+     where t.patient_id = ${patientId}
+       and t.status = 'pending' and t.payment_method = 'wompi'
+       and ti.nutraceutical_id in (${sql.join(nutraceuticalIds.map((id) => sql`${id}::uuid`), sql`, `)})
+     order by t.id`);
+  return filas.map((f) => f.id);
+}
+
+export type ResolucionDeRevision = "segunda_compra" | "devuelto";
+
+/**
+ * RESUELVE una venta en revision (pago sobre link anulado). Devuelve la venta si la resolvio; null si no
+ * estaba en revision o ya estaba resuelta.
+ *
+ *   · `segunda_compra`: el paciente si queria las dos. Se sella la contabilidad que se habia retenido y el
+ *     inventario pasa a `pendiente`. Quien llama descuenta y factura, igual que tras un pago normal.
+ *   · `devuelto`: el pago ya se le devolvio al paciente en Wompi. La venta pasa a `refunded` y no se factura
+ *     ni se descuenta nada. Atlas NO hace la devolucion: deja constancia de que se hizo.
+ */
+export async function resolverRevision(
+  txId: string,
+  resolucion: ResolucionDeRevision,
+  actorId: string,
+): Promise<SealedTransaction | null> {
+  return db.transaction(async (tx) => {
+    const [venta] = await tx.execute<{
+      status: string;
+      review_reason: string | null;
+      review_resolution: string | null;
+    }>(sql`select status, review_reason, review_resolution from transactions where id = ${txId} for update`);
+    if (!venta || venta.status !== "paid" || !venta.review_reason || venta.review_resolution) return null;
+    const [t] = await tx
+      .update(transactions)
+      .set({
+        reviewResolution: resolucion,
+        reviewedAt: new Date(),
+        reviewedBy: actorId,
+        ...(resolucion === "segunda_compra" ? { stockState: "pendiente" } : { status: "refunded" as const }),
+        updatedAt: new Date(),
+      })
+      .where(eq(transactions.id, txId))
+      .returning({
+        id: transactions.id,
+        amount: transactions.amount,
+        currency: transactions.currency,
+        patientId: transactions.patientId,
+        professionalId: transactions.professionalId,
+      });
+    if (resolucion === "segunda_compra") await sealAccounting(tx, t);
+    return { ...t, enRevision: false };
+  });
 }

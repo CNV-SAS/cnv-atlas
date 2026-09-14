@@ -29,6 +29,30 @@ describe("Wompi: firma de integridad del checkout", () => {
     expect(computeIntegritySignature({ ...base, currency: "USD" })).not.toBe(sig);
     expect(computeIntegritySignature({ ...base, reference: "B" })).not.toBe(sig);
   });
+
+  it("CON VENCIMIENTO: el ejemplo de la documentacion de Wompi, la fecha entre la moneda y el secreto", () => {
+    // Cadena literal de docs.wompi.co (Web Checkout, "firma de integridad" con fecha de expiracion). El hash se
+    // calcula aqui sobre ESA cadena, asi que el test prueba el orden y no una copia de la implementacion.
+    const documentada =
+      "sk8-438k4-xmxm392-sn2m2490000COP2023-06-09T20:28:50.000Zprod_integrity_Z5mMke9x0k8gpErbDqwrJXMqsI6SFli6";
+    const esperado = createHash("sha256").update(documentada, "utf8").digest("hex");
+    expect(
+      computeIntegritySignature({
+        reference: "sk8-438k4-xmxm392-sn2m",
+        amountInCents: 2490000,
+        currency: "COP",
+        expirationTime: "2023-06-09T20:28:50.000Z",
+        integritySecret: "prod_integrity_Z5mMke9x0k8gpErbDqwrJXMqsI6SFli6",
+      }),
+    ).toBe(esperado);
+  });
+
+  it("el vencimiento cambia la firma: no se puede alargar desde el navegador", () => {
+    const base = { reference: "A", amountInCents: 100, currency: "COP", integritySecret: "s" };
+    const con = computeIntegritySignature({ ...base, expirationTime: "2026-09-15T13:00:00.000Z" });
+    expect(con).not.toBe(computeIntegritySignature(base));
+    expect(computeIntegritySignature({ ...base, expirationTime: "2026-09-16T13:00:00.000Z" })).not.toBe(con);
+  });
 });
 
 describe("Wompi: verificacion de la firma de eventos (HMAC)", () => {
