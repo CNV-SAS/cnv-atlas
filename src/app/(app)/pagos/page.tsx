@@ -22,6 +22,14 @@ import type { TransactionStatus, TransactionWithItems } from "@/modules/payments
 
 export const metadata = { title: "Pagos - Atlas" };
 
+// DURACION MAXIMA DE LA FUNCION (2026-09-14). Las acciones de esta pagina facturan (venta en efectivo y "Reintentar"): la emision en Alegra espera el sellado de la
+// DIAN con un timeout de 60 s, y alrededor van el contacto, la relectura y el pago (15 s cada uno). Se declara
+// explicito para no depender del valor por defecto del proyecto en Vercel: con Fluid compute es 300 s en todo
+// plan; si el plan no admitiera este valor, el deployment falla con error en vez de cortar la funcion a mitad
+// de una factura.
+export const maxDuration = 180;
+
+
 // Estado de la transaccion como badge con los tintes clinicos reutilizados.
 const STATUS_META: Record<TransactionStatus, { label: string; className: string }> = {
   pending: { label: "Pendiente", className: "bg-clinical-warning-bg text-clinical-warning" },

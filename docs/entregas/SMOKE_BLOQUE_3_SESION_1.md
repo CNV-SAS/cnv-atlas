@@ -211,6 +211,41 @@ Las ventas del smoke quedan en la base hasta la purga de ventas de prueba, que y
 
 ---
 
+## Si la factura no vuelve: lo que pasó en el paso 5 (2026-09-14)
+
+Al pagar el paso 5, Alegra **sí** emitió la factura **SETP990214715** (id interno **16**), pero tardó más de lo que Atlas esperaba: la venta quedó `fallida`, sin número, y el pago no se registró ("por cobrar" en Alegra). **Reintentar habría emitido una segunda factura.** Mientras no esté hecho lo de abajo: **no pulses Reintentar**, que reintenta **todas** las ventas pendientes, y **no limpies** esa venta con el paso 3.0.
+
+En Alegra también vas a ver **SETP990214717**, del mismo paciente, por 1.190 y emitida el 14: **la emití yo** para comprobar qué campo sale impreso en la factura. No es un duplicado ni es de este smoke.
+
+**Para cerrarla** (necesita el arreglo del 2026-09-14 desplegado):
+
+1. **Push y deployment** con el commit del arreglo, en **Ready**.
+2. En la ventana de PowerShell, además de `$env:DATABASE_URL`, pon las credenciales del **sandbox** de Alegra (las mismas de `.env.local`):
+
+```powershell
+$env:ALEGRA_EMAIL    = "...el del sandbox..."
+$env:ALEGRA_API_KEY  = "...el del sandbox..."
+$env:ALEGRA_BASE_URL = "...la del sandbox..."
+```
+
+3. Asocia la venta con la factura SETP990214715. Primero el ensayo:
+
+```powershell
+node scripts/adoptar-factura-alegra.mjs --numero SETP990214715
+```
+
+   **Debe dar:** `Alegra: ... (sandbox)`, las seis comprobaciones en `ok` (ambiente, cliente, total, fecha, líneas, estado) y `UNA venta cumple todo`. Si alguna sale `[X]`, para y avísame.
+
+```powershell
+node scripts/adoptar-factura-alegra.mjs --numero SETP990214715 --commit
+```
+
+   **Debe dar:** `CONFIRMADO: la venta ... queda con la factura SETP990214715.`
+
+4. **Si en el paso 7 pasó lo mismo** (la venta en efectivo quedó `fallida` con tiempo agotado), busca su factura en Alegra y haz lo mismo con su número (`--numero SETP...`) **antes** de seguir.
+5. **Ahora sí, Reintentar** en `/pagos`.
+6. **Consulta VENTAS:** la venta del paso 5 queda con `alegra_invoice_state` = `emitida`. En Alegra, la **SETP990214715** pasa a **pagada** (saldo 0) y **no aparece una factura nueva** de esa venta.
+
 ## Lo que este smoke NO prueba (va en la sesión 2)
 
 - La venta desde **Tratamiento** (¿lo adquiere?, forma de entrega, QR) y la **entrega auditada**.

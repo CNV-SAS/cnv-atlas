@@ -11,6 +11,13 @@ import { wompiEventSchema } from "@/modules/payments/validations";
 // del servicio; no se rate-limita (SECURITY.md). Node runtime: usa node:crypto y BD.
 export const runtime = "nodejs";
 
+// DURACION MAXIMA DE LA FUNCION (2026-09-14). Aqui se factura: la emision en Alegra espera el sellado de la
+// DIAN con un timeout de 60 s, y alrededor van el contacto, la relectura y el pago (15 s cada uno). Se declara
+// explicito para no depender del valor por defecto del proyecto en Vercel: con Fluid compute es 300 s en todo
+// plan; si el plan no admitiera este valor, el deployment falla con error en vez de cortar la funcion a mitad
+// de una factura.
+export const maxDuration = 180;
+
 export async function POST(request: NextRequest) {
   const secret = process.env.WOMPI_EVENTS_SECRET;
   if (!secret) {

@@ -10,11 +10,35 @@ import { missingEnvMessage } from "@/lib/env/missing-env";
 // ir sin impuesto. Eso son reglas de negocio y viven en el servicio (regla 2). Aqui no hay ni un solo
 // identificador quemado: todos llegan por parametro desde `alegra_config`.
 //
-// LA IDEMPOTENCIA NO ES DE AQUI. No facturar dos veces la misma transaccion lo garantiza el servicio
-// mirando `transactions.alegra_invoice_state` antes de llamar.
+// LA IDEMPOTENCIA NO ES DE AQUI: la decide el servicio. Pero este modulo le da lo que necesita para
+// decidirla, y eso incluye poder BUSCAR lo que quiza ya se creo.
+//
+// ═══ LAS ESCRITURAS QUE PUEDEN COMPLETARSE SIN QUE LLEGUE LA RESPUESTA (2026-09-14) ═══
+//
+// Un POST que se corta por tiempo NO es un fallo: es un desenlace DESCONOCIDO. Alegra puede haber creado el
+// documento y la respuesta haberse perdido. Paso en el smoke del Bloque 3: la emision tardo mas de 15 s,
+// Alegra emitio SETP990214715, Atlas la dio por fallida sin id, y un reintento habria emitido una SEGUNDA
+// factura del mismo pago. La proteccion anterior ("si la venta ya tiene id de factura, no se crea otra")
+// cubria los reintentos DESPUES de guardar el id y los intentos simultaneos, no este caso.
+//
+// LA REGLA, UNA SOLA PARA TODAS: antes de volver a crear, se BUSCA en Alegra lo que ese intento pudo haber
+// creado, y si existe se ADOPTA. Cada escritura tiene su forma de buscarse:
+//
+//   · CONTACTO: por el numero de documento (`findAlegraContactByDocument`). Ya era asi: Alegra rechaza el
+//     documento repetido.
+//   · FACTURA: por la REFERENCIA de la venta de Atlas, que viaja en `observations`
+//     (`buscarFacturaPorReferencia`).
+//   · PAGO: por el SALDO de la factura, releida (`getAlegraInvoice`). Si ya no debe nada, el pago existe.
+//   · NOTA CREDITO (Bloque 3b, todavia sin llamador): la misma forma que la factura. Referencia propia en un
+//     campo que se pueda leer, y buscar antes de emitir. No se construye sin eso.
 
 const ALEGRA_DEFAULT_BASE = "https://api.alegra.com/api/v1";
 const ALEGRA_TIMEOUT_MS = 15_000;
+// LA EMISION TIENE SU PROPIO TIMEOUT, porque pide el sellado ante la DIAN en la misma llamada y Alegra
+// responde cuando la DIAN contesta. Medido en el sandbox el 2026-09-14: 12,9 s para una factura de una linea,
+// a dos segundos del limite anterior. Subirlo reduce los cortes; lo que evita la factura duplicada cuando
+// igual ocurren es buscar antes de emitir. La funcion que factura declara `maxDuration` holgado para esto.
+export const ALEGRA_TIMEOUT_EMISION_MS = 60_000;
 
 // Base URL desde el entorno: sandbox y produccion tienen hosts distintos, no se hardcodea.
 function baseUrl(): string {
@@ -120,6 +144,12 @@ export type AlegraInvoiceLine = {
 
 export type AlegraInvoiceInput = {
   clientId: number;
+  /**
+   * LA REFERENCIA DE LA VENTA DE ATLAS, obligatoria. Viaja en `observations`, que Alegra NO imprime:
+   * verificado en el PDF de una factura emitida del sandbox (SETP990214717), donde `anotation` si aparece
+   * junto al CUFE y `observations` no. Es lo que permite encontrar la factura si la respuesta se pierde.
+   */
+  referencia: string;
   items: AlegraInvoiceLine[];
   date: string; // yyyy-MM-dd
   dueDate: string;
@@ -192,6 +222,8 @@ export async function createAlegraInvoice(input: AlegraInvoiceInput): Promise<Al
       date: input.date,
       dueDate: input.dueDate,
       numberTemplate: { id: input.numberTemplateId },
+      // Interna: no la ve el paciente (ver `referencia`).
+      observations: input.referencia,
       ...(input.costCenterId ? { costCenter: { id: input.costCenterId } } : {}),
       // Alegra Colombia exige la forma de pago. La venta a paciente esta pagada al facturarse.
       paymentForm: "CASH",
@@ -203,9 +235,45 @@ export async function createAlegraInvoice(input: AlegraInvoiceInput): Promise<Al
       // viene con `open`: hay que pedirlo aparte, en el mismo POST.
       ...(input.emitir ? { stamp: { generateStamp: true } } : {}),
     },
-    timeoutMs: ALEGRA_TIMEOUT_MS,
+    timeoutMs: ALEGRA_TIMEOUT_EMISION_MS,
   });
   return leerFactura(res);
+}
+
+/**
+ * BUSCA la factura de una venta por su REFERENCIA, entre las facturas del cliente en un rango de fechas.
+ *
+ * Devuelve null si no hay ninguna. LANZA si hay mas de una: dos facturas vivas con la referencia de la misma
+ * venta es un duplicado que ya ocurrio, y adoptar una al azar esconderia la otra. Eso lo mira una persona.
+ *
+ * Las anuladas (`void`) no cuentan: una factura anulada no es la factura de la venta.
+ */
+export async function buscarFacturaPorReferencia(input: {
+  clientId: number;
+  referencia: string;
+  /** yyyy-MM-dd, inclusivos. */
+  desde: string;
+  hasta: string;
+}): Promise<AlegraInvoiceResult | null> {
+  const encontradas: (InvoiceResponse & { observations?: string | null })[] = [];
+  for (let start = 0; ; start += 30) {
+    const url =
+      `${baseUrl()}/invoices?client_id=${encodeURIComponent(String(input.clientId))}` +
+      `&date_afterOrNow=${input.desde}&date_beforeOrNow=${input.hasta}&limit=30&start=${start}`;
+    const pagina = await fetchJson<unknown>(url, { headers: cabeceras(), timeoutMs: ALEGRA_TIMEOUT_MS });
+    const filas = (Array.isArray(pagina) ? pagina : []) as (InvoiceResponse & { observations?: string | null })[];
+    encontradas.push(...filas);
+    if (filas.length < 30) break;
+  }
+  const suyas = encontradas.filter(
+    (f) => f.status !== "void" && typeof f.observations === "string" && f.observations.includes(input.referencia),
+  );
+  if (suyas.length > 1) {
+    throw new Error(
+      `Hay ${suyas.length} facturas en Alegra con la referencia "${input.referencia}" (${suyas.map((f) => f.numberTemplate?.fullNumber ?? f.id).join(", ")}). No se adopta ninguna: se revisa a mano.`,
+    );
+  }
+  return suyas[0] ? leerFactura(suyas[0]) : null;
 }
 
 /**
