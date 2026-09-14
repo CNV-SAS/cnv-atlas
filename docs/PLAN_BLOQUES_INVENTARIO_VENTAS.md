@@ -1094,6 +1094,94 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
 
    Análisis original: Si Wompi SÍ crea una transacción rechazada (con otra tarjeta u otro medio) y deja reintentar en el mismo checkout, el evento `DECLINED` marca la venta `failed`; el `APPROVED` siguiente ya no la sella, porque el sellado exige `pending`. **Dinero real cobrado y sin registrar.** Lo mismo pasaría con un link cerrado a mano que alguien paga igual. Dos cosas: comprobar con Wompi si su checkout permite reintentar con la misma referencia, y en todo caso **sellar también desde `failed` cuando llega un APPROVED** (el dinero se movió; decisión 4), volviendo el inventario a `pendiente`. Es cambio en el sellado del pago, con su test.
 
+### 3.6 · Plan de la sesión 2 (PROPUESTO el 2026-09-14, pendiente de aprobación de Santiago)
+
+**Antes del plan, un riesgo que ya está vivo y no espera a la sesión 2.** Desde la sesión 1, una venta de `/pagos` descuenta inventario al pagarse. El aviso a Integrantes (instrucción 2) pide además registrar la entrega en Tratamiento, que **también** descuenta: si se sigue al pie de la letra, las mismas unidades bajan dos veces. **Verificado en la nube, solo lectura (2026-09-14): cero movimientos `despacho` y cero ventas reales**; las tres ventas con estado de inventario son del smoke. No hay daño todavía. Si el aviso ya salió, su instrucción 2 hay que retirarla antes de la primera venta real; si no salió, no se envía como está.
+
+#### Qué entra en la sesión 2 y qué no
+
+| Entra | Queda para después, y por qué |
+|---|---|
+| Anular link (a) y efectivo que anula el link pendiente (b) | **Pago mixto** (decisión 5): separa el cobro de la venta y toca la facturación; es su propia sesión. Mientras tanto, una venta se paga con un solo medio |
+| Sellar desde `failed` cuando llega un APPROVED | **Paso 5, reparto sellado en la línea:** no toca Tratamiento; va con los pasos 6 y 7 |
+| Estado de entrega de la venta, y la entrega auditada | **Paso 6** (reporte por día), **paso 7** (titular de marca), **paso 8** (mapa de ítems) |
+| La venta en Tratamiento, reemplazando la sección de despacho | **Forma de entrega a domicilio:** es del Bloque 6 |
+| Avisos en pantalla de `sin_saldo`, `fallido` y pago sobre link anulado | **Idempotencia de Resend** |
+| Lo que digan los logs del 502 (reintento automático de la lectura) | |
+
+#### Regla 0: lo que tiene el archivo de Gildardo, cotejado (`ATLAS_v8.html` del 4 de septiembre)
+
+- **Sección 2 · VITACELLEBIS:** una casilla por producto recomendado (P1, P2...) y por "OTROS PRODUCTOS", cantidad por producto, y **un botón "Registrar despacho"** que guarda producto, cantidad, paciente y semana como consignación `pendiente_envio` para el módulo administrativo.
+- Hay un **segundo bloque** (salida de inventario más comisión, por profesional) **definido y nunca renderizado**: código muerto en su archivo.
+- **No tiene cobro, ni QR, ni forma de entrega.** Su archivo no modela pagos.
+- **Lo que se mantiene literal:** qué se entrega (lo prescrito) y cuántas unidades. **Lo que cambia es comercial** (cobro, inventario, factura), que no gobierna su archivo sino contabilidad y Santiago.
+- **Recomendación:** Santiago le **informa** a Gildardo que el botón pasa a cobrar y entregar; no se le pide decisión clínica porque no hay ninguna.
+- **Hueco que ya existía, no de esta sesión:** sus "OTROS PRODUCTOS" (fuera de diagnóstico, en el mismo registro) no están en Atlas. No se amplía el alcance; se anota para preguntarle.
+
+#### El flujo en pantalla (pestaña Tratamiento)
+
+Aparece donde hoy está la entrega, con el mismo gate: prescripción entregada, decisión "sí", y quien mira es profesional.
+
+1. **Productos:** los prescritos que son `en_consultorio`, con cantidad (1 por defecto) y **disponible** (saldo menos reservas vivas). Un producto sin disponible se muestra con la razón, no se esconde.
+2. **Forma de entrega: no se pregunta en esta sesión.** Hoy la única es en consulta, y una pregunta con una sola respuesta es ruido. El selector llega con el domicilio (Bloque 6), que es lo que su `pendiente_envio` representa.
+3. **Cobro, con dos botones:**
+   - **"Cobrar con QR"** crea el checkout (reserva, aviso de duplicado igual que en `/pagos`). Muestra el QR, el link copiable, cuánto le queda y "Esperando el pago". La pantalla se actualiza sola cada 5 s durante 10 min, y tiene "Actualizar" y "Anular link".
+   - **"Cobrar en efectivo"** registra la venta ya pagada.
+4. **Pagada:** "Pago recibido" y el botón **"Entregar"**. Si el inventario quedó `sin_saldo`, la entrega **se permite igual** (el Integrante tiene el producto en la mano; lo que está mal es el saldo de Atlas) y el aviso va a Dirección.
+5. **Entregada:** pasa a "Entregas a este paciente", que lee las ventas entregadas **y** los `despacho` históricos.
+
+Varias ventas por tratamiento están permitidas (el paciente vuelve por más). Cambiar la decisión a "no" **no anula** una venta hecha: la reversa es del 3b.
+
+**El QR** se genera en el servidor con `qrcode` (ya aprobado, lo usa MFA) como `data:` en un `<img>`. Nunca SVG insertado como HTML: la regla prohíbe `dangerouslySetInnerHTML`.
+
+#### Modelo de datos: migración 0140, solo aditiva
+
+- **`sale_fulfillment` NO se crea como tabla.** Es una por venta, así que va en columnas de `transactions`, como `stock_state` en la sesión 1 y por la decisión 1: `fulfillment_state` (`pendiente` | `entregado`), `delivered_at`, `delivered_by`. **Se aparta del plan escrito**, que decía tabla; los estados `despachado` y `entregado a domicilio` llegan con el Bloque 6.
+- **`cancelled_at`, `cancelled_by`** en `transactions`: un link anulado queda `failed` como hoy, pero **distinguible** de un rechazo de Wompi. El sellado desde `failed` necesita esa diferencia (abajo).
+- Sin backfill: las ventas existentes son del smoke y las borra la purga.
+
+#### Decisión (b) + (a): anular el link
+
+- **"Anular link"** en `/pagos` y en Tratamiento. En una transacción: `failed`, `cancelled_at`/`cancelled_by`, reservas liberadas, `stock_state = liberado`. La página del link deja de mostrarse (ya pasa con todo lo que no está `pending`).
+- **Efectivo con link pendiente del mismo paciente:**
+  - **Si comparten producto,** avisa con el monto y los productos, y el único camino es "Anular el link y cobrar en efectivo". Todo va en **una sola transacción**, para que las unidades liberadas sean las que usa la venta en efectivo.
+  - **Si no comparten producto,** solo avisa.
+  - El botón de confirmación viaja con el `submitter` (hazard 5).
+- **Por verificar en la documentación de Wompi antes de construir:** si su firma de integridad admite **fecha de expiración**. Eso acotaría cuánto tiempo sirve una página de Wompi ya abierta. No resuelve la anulación, que sigue necesitando lo siguiente.
+
+#### Decisión: sellar desde `failed`
+
+- **`failed` por rechazo de Wompi y llega APPROVED:** se sella, `stock_state` pasa de `liberado` a `pendiente`, se descuenta y se factura. Es la decisión 4: el dinero se movió.
+- **`failed` por link ANULADO y llega APPROVED: es casi seguro un cobro doble** (el paciente pagó en efectivo y la página de Wompi abierta cobró también).
+  - **Recomiendo:** sellar el pago (es dinero real) pero **no descontar ni facturar** automáticamente. La venta queda en "Revisar: pago sobre link anulado", con alerta a Sentry y en pantalla.
+  - Si se factura sola, sale una factura validada por la DIAN que solo se deshace con nota crédito (3b, sin construir).
+  - Quien revisa decide: si **devuelve** el pago en Wompi, no se factura nada; si es **una segunda compra real**, "Reintentar" descuenta y factura.
+  - **Esto lo decide Santiago, con contabilidad.**
+- Tests de base real para las tres ramas: rechazo seguido de aprobado, anulado seguido de aprobado, y el control.
+
+#### La entrega auditada
+
+- `registrarEntrega(ventaId)`: solo sobre una venta `paid` y `pendiente`, y solo el profesional de la venta (o admin). En la misma transacción: `fulfillment_state = entregado` y `clinical_audit_log`, con evento `nutraceutical.delivered`, entidad la venta, y payload `{ treatmentId, items: [{ nutraceuticalId, quantity }] }`. **Sin nombre ni documento.**
+- Las ventas de `/pagos` (paciente que vuelve solo a comprar) se entregan con el mismo botón en la lista de `/pagos`, con `treatmentId` nulo en el payload. Así **ninguna venta queda sin camino de entrega**, que es lo que la instrucción 2 del aviso no podía cumplir.
+- **El inventario NO se mueve al entregar:** se movió al sellar (D2). La entrega es estado. Consecuencia para los conteos: una unidad vendida y no entregada está físicamente en el consultorio y ya no en el saldo. Lo físico es saldo más ventas `pagadas y pendientes de entrega`, y el conteo debe mostrar las dos cifras.
+
+#### Retiro del despacho
+
+- `DespachoSection`, `DespachoForm` y la acción `recordDespacho` **se retiran**. El tipo `despacho` y su CHECK se quedan: son historia.
+- Con eso se cumple "no existe camino para entregar sin venta".
+
+#### Sub-tareas, en orden (un commit cada una)
+
+1. Migración 0140. **La aplica Santiago.**
+2. Anular link y sellado desde `failed` (servicio y escritor), con tests de base real y control.
+3. Efectivo que anula el link pendiente: servicio, y la pantalla de `/pagos`.
+4. Entrega auditada: servicio, y botón en `/pagos`.
+5. La venta en Tratamiento (QR, efectivo, estado, entrega) y el retiro del despacho.
+6. Avisos en pantalla: `sin_saldo`, `fallido`, pago sobre link anulado.
+7. Guía de smoke de la sesión 2, en navegador real (los cinco hazards de formularios), con scripts listos y el QR escaneado con un teléfono contra el sandbox.
+
+**Al desplegar:** se reescribe el aviso a Integrantes, que se reduce a "cobra y entrega desde la pestaña Tratamiento, o desde Pagos si el paciente vuelve solo a comprar". Y queda escrita la fecha como corte entre "entrega registrada aparte" y "entrega de la venta".
+
 **~~Preguntas que siguen abiertas~~ Cerradas el 2026-09-13:** muestras y cortesías no existen (no se
 construyen); el pago mixto ya estaba decidido (una factura por el total). Ver las cinco decisiones arriba.
 
