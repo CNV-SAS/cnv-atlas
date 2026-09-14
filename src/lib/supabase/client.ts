@@ -2,6 +2,8 @@ import { createBrowserClient } from "@supabase/ssr";
 
 import { missingEnvMessage } from "@/lib/env/missing-env";
 
+import { fetchConTimeout } from "./fetch-con-timeout";
+
 // Cliente de Supabase para componentes de navegador. Usa la anon key + RLS.
 // Nada sensible: la anon key es publica por diseno.
 export function createSupabaseBrowserClient() {
@@ -12,5 +14,8 @@ export function createSupabaseBrowserClient() {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
   });
   if (missing) throw new Error(missing);
-  return createBrowserClient(url!, anonKey!);
+  return createBrowserClient(url!, anonKey!, {
+    // Con timeout (regla dura 10): ver `fetch-con-timeout.ts`.
+    global: { fetch: fetchConTimeout },
+  });
 }
