@@ -39,10 +39,10 @@ describe.skipIf(!HAS_DB)("el filtro contra PostgREST (BD real)", () => {
     const ids = { normal: randomUUID(), enRevision: randomUUID(), segundaCompra: randomUUID() };
     await db.execute(dsql`
       insert into transactions (id, organization_id, status, amount, currency, wompi_env, idempotency_key,
-                                review_reason, review_resolution, reviewed_at) values
-        (${ids.normal}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`cobro-${randomUUID()}`}, null, null, null),
-        (${ids.enRevision}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`cobro-${randomUUID()}`}, 'pago_sobre_link_anulado', null, null),
-        (${ids.segundaCompra}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`cobro-${randomUUID()}`}, 'pago_sobre_link_anulado', 'segunda_compra', now())`);
+                                review_reason, review_resolution, reviewed_at, review_professional_version) values
+        (${ids.normal}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`cobro-${randomUUID()}`}, null, null, null, null),
+        (${ids.enRevision}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`cobro-${randomUUID()}`}, 'pago_sobre_link_anulado', null, null, null),
+        (${ids.segundaCompra}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`cobro-${randomUUID()}`}, 'pago_sobre_link_anulado', 'segunda_compra', now(), 'Queria dos unidades.')`);
 
     const cliente = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: { persistSession: false },
