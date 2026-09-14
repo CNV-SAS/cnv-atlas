@@ -1212,6 +1212,39 @@ Estado verificable: `venta-anulacion-y-revision-db.test.ts` (19, base real, con 
 - El botón manual se queda: el paciente reintenta a su ritmo, cada fallo se cuenta, y la solución va donde está la causa.
 - **Se reconsidera solo si, ya en Pro, quedan 502 aislados**; entonces sería un único reintento, solo en 502 y reportando cada intento.
 
+#### Respuestas de contabilidad sobre el pago que llega a un link anulado (2026-09-14), y lo que quedó verificado
+
+1. **No se factura hasta resolver.** La factura lleva la **fecha de resolución**. Plazo operativo: **5 días hábiles**, y antes del corte si se acerca fin de bimestre.
+   *Hoy:* la factura se emite al resolver, con la fecha de Colombia de ese día. Cumple. El plazo no se ve en ningún lado.
+2. **El dinero va contra la cuenta puente de Wompi, como PASIVO** (anticipo pendiente de aplicación), no como ingreso. **La venta no cuenta en reportes de ingreso mientras esté en revisión.**
+   *Verificado en el código:*
+   - no cuenta en el ingreso de CNV ni en comisiones: el sellado de la revisión no escribe `cnv_revenue` ni `professional_revenue`, así que tampoco toca el banner tributario;
+   - **SÍ cuenta en dos cifras que suman `transactions` pagadas**: el *cobrado bruto* del tablero de Dirección (`getDireccionDashboard`) y las *ventas del mes* del tablero del profesional (`getTablero`).
+3. **La comisión de Wompi la asume CNV y no se reintegra.** La retención se recupera. El costo de un cobro doble devuelto es solo la comisión.
+4. **Lo resuelve Dirección**, con el Integrante aportando el hecho: marcar "segunda compra" le da comisión. **Soporte mínimo:** quién resolvió, cuándo, qué versión dio el Integrante y el comprobante si hubo devolución.
+   *Hoy:* resuelven admin **y** dirección, y solo queda quién y cuándo.
+5. **El caso al revés es más grave:** una factura por un efectivo que nunca se recibió.
+   - Mientras no exista nota crédito en Atlas: **nota crédito manual en Alegra**.
+   - Y un "efectivo registrado que no se recibió" tiene que **alertar distinto y escalar si se repite con el mismo Integrante**. Es el control contra un fraude con cincuenta Integrantes.
+   - *Hoy:* no existe esa salida en la revisión.
+
+**Su recomendación de fondo, "hacerlo imposible", verificada contra la documentación de Wompi (2026-09-14):**
+
+- **Web Checkout (lo que usa Atlas): no hay forma documentada de invalidar una sesión abierta.** Lo único es `expiration-time`, que va firmado y se fija al abrir la página.
+- **Links de pago por API:** documenta crear (con `expires_at` y `single_use`) y consultar. **No documenta desactivar**, ni qué pasa con una página ya abierta.
+- **Anular (`POST /v1/transactions/{id}/void`):**
+  - existe, pero **solo para tarjeta**, para "ciertos estados" que no especifica, y sin plazos documentados;
+  - PSE y Nequi no se anulan;
+  - y es **después** de aprobado: no impide el cobro, lo reversa.
+- **Conclusión:** con lo documentado, el cobro doble **no se puede hacer imposible**, y la revisión sigue haciendo falta. Lo que falta saber lo responde el **soporte de Wompi**: si un link de pago se puede desactivar por API y si eso bloquea una página abierta, y los plazos y la comisión de una anulación.
+
+**Pendiente de aprobación, no construido:**
+- sacar la revisión de las dos cifras de cobro;
+- resolución solo por Dirección, con la versión del Integrante y el comprobante;
+- el plazo visible;
+- la salida "el efectivo no se recibió", con su alerta y su conteo por Integrante;
+- un aviso antes de cobrar por Wompi menos de $1.500.
+
 **~~Preguntas que siguen abiertas~~ Cerradas el 2026-09-13:** muestras y cortesías no existen (no se
 construyen); el pago mixto ya estaba decidido (una factura por el total). Ver las cinco decisiones arriba.
 
