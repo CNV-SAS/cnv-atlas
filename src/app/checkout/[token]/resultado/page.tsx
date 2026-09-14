@@ -19,8 +19,8 @@ export default function CheckoutResultPage() {
         />
         <h1 className="text-xl font-bold tracking-tight text-foreground">Recibimos tu pago</h1>
         <p className="text-sm text-muted-foreground">
-          Estamos confirmando la transaccion con Wompi. Puedes cerrar esta ventana; tu
-          profesional vera la confirmacion en Atlas.
+          Estamos confirmando la transacción con Wompi. Puedes cerrar esta ventana; tu
+          profesional verá la confirmación en Atlas.
         </p>
       </div>
     </main>
