@@ -1293,6 +1293,37 @@ Estado verificable: `venta-anulacion-y-revision-db.test.ts` (19, base real, con 
 **~~Preguntas que siguen abiertas~~ Cerradas el 2026-09-13:** muestras y cortesías no existen (no se
 construyen); el pago mixto ya estaba decidido (una factura por el total). Ver las cinco decisiones arriba.
 
+### 3.4 bis · Los pasos 5 a 8, construidos el 2026-09-14 (falta el smoke de cierre)
+
+- **Paso 5, HECHO (`556b8ebc`, 0143).** El reparto sellado en cada línea: tasas de IVA, del Integrante y del proveedor, modalidad, y los montos. La tasa del Integrante sale de su vigencia.
+- **Paso 6, HECHO (`6b39b978`).** Ventas sin documento consultables por día de Colombia, con los días de los últimos 30 que tienen alguna.
+- **Paso 7, HECHO en código (`74cb2862`).** La línea de un producto de tercero lleva "Titular de marca: ...", y un tercero sin titular no se factura. **Falta confirmar que Alegra lo imprime**, con una factura de sandbox que necesita permiso (ver `SMOKE_BLOQUE_3_CIERRE.md`).
+- **Paso 8, HECHO (`d04b1f00`, 0144).** El mapa de ítems por producto y ambiente.
+- **Smoke de cierre:** `docs/entregas/SMOKE_BLOQUE_3_CIERRE.md`.
+
+### 3.7 · PROPUESTA, no construida: controles que no dependen de que alguien entre a /pagos
+
+**El problema (Santiago, 2026-09-14):** hoy nadie entra a `/pagos` a diario, y con más de 50 Integrantes y cientos de pedidos es inviable esperar que alguien lo mire. Un control que depende de que alguien entre no es un control.
+
+**El principio: Atlas avisa, no espera a que lo miren. Y antes de avisar, resuelve solo lo que no necesita a una persona.**
+
+1. **Primero se arregla solo lo que no necesita a nadie.** Hoy "Reintentar las pendientes" es un botón: facturas sin emitir, pagos no registrados en Alegra, descuentos de inventario fallidos. Un cron diario los reintenta antes de avisar. Lo que queda después es lo que de verdad pide a alguien.
+2. **(a) Lo que necesita acción humana, en una sola consulta:**
+   - efectivo registrado que no se recibió, con la nota crédito pendiente y la escalada por Integrante;
+   - pagos en revisión sin la versión del Integrante, o con el plazo por vencer o vencido;
+   - ventas sin documento que siguen así después del reintento automático (los intentos agotados primero).
+3. **(b) Lo que puede esperar:** ventas sin saldo (van al conteo), descuentos que se reintentan solos, lo ya resuelto. Queda en pantalla o en un resumen semanal.
+4. **Canal 1: un correo diario, SOLO SI HAY ALGO.**
+   - Vercel Cron, que ya estaba previsto para lo agendado (ARCHITECTURE, "Background jobs"). En el plan Hobby corre una vez al día por tarea, con ±59 minutos de precisión (documentación de Vercel).
+   - Dos tareas: **7 a. m.** (el día anterior y los plazos) y **5 p. m.** (lo que sigue sin documento antes del cierre contable). La de la tarde solo si queda algo.
+   - El asunto dice cuántas y cuáles están vencidas. Si no hay nada, no llega nada.
+5. **Canal 2: una franja en cualquier pantalla de Atlas**, para quien resuelve: "3 cosas necesitan tu acción", con enlace. Sirve a quien entra por otra cosa. Complementa el correo, no lo reemplaza.
+6. **Canal 3: al Integrante, lo suyo y en el momento.** Cuando un pago de su venta entra en revisión, un correo: "Cuéntale a CNV qué pasó". La versión llega sin que Dirección tenga que perseguirla.
+7. **A quién: por marca en el usuario, no por nombre.**
+   - Una marca "Recibe los pendientes de ventas" que el administrador activa en Atlas. Hoy la tiene Santiago; con 50 Integrantes, otra persona, con un clic y sin tocar código ni variables.
+   - Cuando haya dos responsables, la marca se parte por tipo (el efectivo no recibido a Dirección, las ventas sin documento a contabilidad).
+   - **Si nadie tiene la marca**, Sentry nivel error y la franja a los administradores: un control sin destinatario es el mismo problema.
+
 ### Dónde vive dentro del flujo ANI-BIS-E
 
 **En la pestaña Tratamiento de la evaluación, después de los indicadores y de la prescripción**, como
