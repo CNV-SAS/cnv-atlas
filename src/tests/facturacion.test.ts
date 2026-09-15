@@ -43,6 +43,7 @@ const linea = (over: Partial<LineaDeVenta> = {}): LineaDeVenta => ({
   alegraItemId: "5",
   alegraEnv: "sandbox",
   ownership: "propio",
+  titularDeMarca: null,
   ...over,
 });
 
@@ -231,5 +232,27 @@ describe("el motivo que se guarda lleva lo que dijo el proveedor", () => {
     // Si esto lanzara, se perdería el único sitio donde queda constancia de que la venta no se facturó.
     expect(motivoLegible("se cayó la red")).toBe("se cayó la red");
     expect(() => motivoLegible(undefined)).not.toThrow();
+  });
+});
+
+describe("el titular de marca en la factura (paso 7 del 3.4)", () => {
+  it("un producto de TERCERO lleva su titular en la linea", () => {
+    const r = armarFactura(
+      [linea({ nombre: "LUVIA", ownership: "tercero", titularDeMarca: "Centro de Nutrición Integral Katherine Ruiz S.A.S.", precioUnitario: 90000, alegraItemId: "4" })],
+      MAPA,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.lineas[0].description).toBe("Titular de marca: Centro de Nutrición Integral Katherine Ruiz S.A.S.");
+  });
+
+  it("un producto de tercero SIN titular no se emite", () => {
+    const r = armarFactura([linea({ nombre: "LUVIA", ownership: "tercero", titularDeMarca: "  " })], MAPA);
+    expect(r).toEqual({ ok: false, motivo: expect.stringContaining("sin titular de marca: LUVIA") });
+  });
+
+  it("CONTROL: un producto propio no lleva descripcion, aunque tuviera titular", () => {
+    const r = armarFactura([linea({ ownership: "propio", titularDeMarca: "CNV" })], MAPA);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.lineas[0]).not.toHaveProperty("description");
   });
 });

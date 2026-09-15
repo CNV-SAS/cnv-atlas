@@ -140,6 +140,8 @@ export type AlegraInvoiceLine = {
    * documento, y el IVA no cobrado lo asume CNV de su margen. Hay una factura asi en el sandbox.
    */
   tax: { id: number }[];
+  /** "Descripción del producto/servicio" (API de Alegra). Atlas pone aqui el titular de marca de un tercero. */
+  description?: string;
 };
 
 export type AlegraInvoiceInput = {
