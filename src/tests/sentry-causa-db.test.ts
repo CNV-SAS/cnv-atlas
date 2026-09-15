@@ -35,6 +35,9 @@ describe.skipIf(!HAS_DB)("la causa de un fallo de consulta (BD real)", () => {
 
     const cadena = cadenaDeCausas(error);
     expect(cadena[0].tipo).toBe("DrizzleQueryError");
+    expect(cadena[0].parametros, "sin la forma, el error tapa su causa; con el valor, viaja PHI").toEqual([
+      `texto(${DOCUMENTO.length})`,
+    ]);
     expect(cadena[1]).toMatchObject({ tipo: "PostgresError", codigo: "22P02" });
     expect(JSON.stringify(cadena)).not.toContain(DOCUMENTO);
 

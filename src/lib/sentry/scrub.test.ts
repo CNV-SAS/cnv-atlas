@@ -82,7 +82,7 @@ describe("la causa de un error de conexion", () => {
     const envoltorio = Object.assign(new Error("Failed query: select 1\nparams: CC123"), { query: "select 1", params: ["CC123"], cause: conexion });
     const cadena = cadenaDeCausas(envoltorio);
     expect(cadena).toEqual([
-      { tipo: "DrizzleQueryError" },
+      { tipo: "DrizzleQueryError", parametros: ["texto(5)"] },
       { tipo: "Error", codigo: "CONNECTION_CLOSED", mensaje: "write CONNECTION_CLOSED aws-0.pooler.supabase.com:6543" },
     ]);
     expect(JSON.stringify(cadena)).not.toContain("CC123");
