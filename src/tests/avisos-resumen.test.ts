@@ -63,7 +63,7 @@ describe("cuando se envia y cuando no", () => {
     });
     expect(r.conteo).toMatchObject({ nuevos: 0, siguen: 1, vencidos: 1 });
     expect(r.asunto).toContain("1 vencida");
-    expect(r.cuerpo.indexOf("VENCIDO")).toBeLessThan(r.cuerpo.indexOf("SIGUE PENDIENTE"));
+    expect(r.cuerpo.indexOf("── VENCIDO ──")).toBeLessThan(r.cuerpo.indexOf("── SIGUE PENDIENTE ──"));
     expect(r.cuerpo).toContain("venció el 14/9/2026");
     expect(r.escalamiento.enviar).toBe(true);
     expect(r.escalamiento.cuerpo).toContain("MULTI-CELL BASE x1");
@@ -102,6 +102,30 @@ describe("cuando se envia y cuando no", () => {
     expect(conHoy.enviar).toBe(true);
     expect(conHoy.cuerpo).toContain("vence al cierre de hoy");
     expect(conHoy.escalamiento.enviar, "el escalamiento sale solo en la manana").toBe(false);
+  });
+
+  it("LO NUEVO VA PRIMERO, antes de lo vencido y de lo que sigue", () => {
+    const vieja = p({ transactionId: "s-vieja" }); // vence el 14
+    const sigue = p({ tipo: "revision", transactionId: "r-sigue" });
+    const nueva = p({ tipo: "revision", transactionId: "r-nueva", desde: "2026-09-16T11:00:00Z" });
+    const r = armarResumen({ pendientes: [vieja, sigue, nueva], anteriores: [clave(vieja), clave(sigue)], ahora: am("2026-09-16"), franja: "am", enlace: ENLACE });
+    const [n, v, s] = ["── NUEVO ──", "── VENCIDO ──", "── SIGUE PENDIENTE ──"].map((t) => r.cuerpo.indexOf(t));
+    expect(n).toBeGreaterThan(-1);
+    expect(n).toBeLessThan(v);
+    expect(v).toBeLessThan(s);
+    expect(r.asunto).toBe("Atlas · ventas por resolver: 1 nueva, 1 vencida, 1 pendiente");
+  });
+
+  it("LA TARDE NO REPITE lo vencido: solo lo nombra, y el asunto dice lo que dispara", () => {
+    const vieja = p({ transactionId: "s-vieja" }); // vence el 14, ya salio en la manana
+    const nueva = p({ tipo: "revision", transactionId: "r-nueva", desde: "2026-09-16T16:00:00Z" });
+    const r = armarResumen({ pendientes: [vieja, nueva], anteriores: [clave(vieja)], ahora: pm("2026-09-16"), franja: "pm", enlace: ENLACE });
+    expect(r.enviar).toBe(true);
+    expect(r.cuerpo).toContain("── NUEVO ──");
+    expect(r.cuerpo).not.toContain("── VENCIDO ──");
+    expect(r.cuerpo).not.toContain("MULTI-CELL BASE x1 · lleva 2 días");
+    expect(r.cuerpo).toContain("Además: 1 vencido sin resolver, que ya salió en el correo de la mañana.");
+    expect(r.asunto).toBe("Atlas · ventas por resolver: 1 nueva (cierre del día)");
   });
 });
 
