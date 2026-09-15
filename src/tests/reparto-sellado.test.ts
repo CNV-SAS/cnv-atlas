@@ -163,4 +163,83 @@ describe.skipIf(!HAS_DB)("el reparto del sellado (BD real)", () => {
     const v = await sellarEnEfectivo([{ id: p, cantidad: 1, precio: 107100 }], profesional20);
     expect(await leer(v)).toEqual({ comision: 18000, cnv: 72000 });
   });
+
+  // ── EL REPARTO SELLADO EN LA LINEA (0143, paso 5 del 3.4) ─────────────────────────────────────────
+  async function lineas(txId: string) {
+    const { db } = await import("@/db");
+    return db.execute<{
+      nutraceutical_id: string;
+      vat_rate: string;
+      commission_rate: string;
+      supplier_share: string;
+      modality: string;
+      base_amount: string;
+      commission_amount: string;
+      supplier_amount: string;
+      cnv_amount: string;
+      sellada: boolean;
+    }>(dsql`
+      select nutraceutical_id, vat_rate::text, commission_rate::text, supplier_share::text, modality,
+             base_amount::text, commission_amount::text, supplier_amount::text, cnv_amount::text,
+             sealed_at is not null as sellada
+        from transaction_items where transaction_id = ${txId} order by base_amount`);
+  }
+
+  it("cada linea sella sus tasas y sus montos, y las lineas suman lo que va a comision e ingreso", async () => {
+    const v = await sellarEnEfectivo(
+      [
+        { id: luvia, cantidad: 1, precio: 90000 },
+        { id: multicell, cantidad: 1, precio: 107100 },
+      ],
+      profesional20,
+    );
+    const [l, m] = await lineas(v);
+    expect(l).toMatchObject({ nutraceutical_id: luvia, modality: "comision", sellada: true });
+    expect(Number(l.vat_rate)).toBe(0.19);
+    expect(Number(l.supplier_share)).toBe(0.7);
+    expect(Number(l.base_amount)).toBe(75630);
+    expect(Number(l.commission_amount)).toBe(15126);
+    // LA PARTE DEL PROVEEDOR, que antes no quedaba en ningun lado: 70% de 75.630.
+    expect(Number(l.supplier_amount)).toBe(52941);
+    expect(Number(l.cnv_amount)).toBe(7563);
+    expect(Number(m.supplier_share)).toBe(0);
+    expect(Number(m.supplier_amount)).toBe(0);
+
+    const { comision, cnv } = await leer(v);
+    expect(Number(l.commission_amount) + Number(m.commission_amount)).toBe(comision);
+    expect(Number(l.cnv_amount) + Number(m.cnv_amount)).toBe(cnv);
+  });
+
+  it("la tasa del Integrante sale de su VIGENCIA, no de la tasa viva del perfil", async () => {
+    const { db } = await import("@/db");
+    const [vigente] = await db.execute<{ id: string; rate: string }>(dsql`
+      select id, rate::text from professional_commission_rates where professional_id = ${profesional20} and valid_to is null`);
+    let creada: string | null = null;
+    if (!vigente) {
+      const [n] = await db.execute<{ id: string }>(dsql`
+        insert into professional_commission_rates (professional_id, rate, valid_from)
+        values (${profesional20}, 0.20, date '2026-01-01') returning id`);
+      creada = n.id;
+    }
+    const tasaVigente = vigente ? Number(vigente.rate) : 0.2;
+    // El perfil dice otra cosa: si el sellado leyera la tasa viva, la linea saldria al 25%.
+    await db.execute(dsql`update professional_profiles set commission_rate = 0.25 where id = ${profesional20}`);
+    try {
+      const v = await sellarEnEfectivo([{ id: multicell, cantidad: 1, precio: 107100 }], profesional20);
+      const [linea] = await lineas(v);
+      expect(Number(linea.commission_rate)).toBe(tasaVigente);
+      expect((await leer(v)).comision).toBe(Math.round(90000 * tasaVigente * 100) / 100);
+    } finally {
+      await db.execute(dsql`update professional_profiles set commission_rate = 0.20 where id = ${profesional20}`);
+      if (creada) await db.execute(dsql`delete from professional_commission_rates where id = ${creada}`);
+    }
+  });
+
+  it("la base no admite una linea a medio sellar", async () => {
+    const { db } = await import("@/db");
+    const v = await sellarEnEfectivo([{ id: multicell, cantidad: 1, precio: 107100 }], profesional20);
+    await expect(
+      db.execute(dsql`update transaction_items set supplier_amount = null where transaction_id = ${v}`),
+    ).rejects.toThrow();
+  });
 });

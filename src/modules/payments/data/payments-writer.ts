@@ -5,7 +5,7 @@ import { InventarioDeVentaError, reservarVenta, ubicacionDeLaVenta } from "./inv
 import * as Sentry from "@sentry/nextjs";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
-import { baseFromTotal } from "@/core/iva";
+import { baseFromTotal, IVA_RATE } from "@/core/iva";
 import { recordAudit } from "@/modules/audit/log";
 import { db } from "@/db";
 import {
@@ -45,6 +45,7 @@ async function sealAccounting(
 ): Promise<void> {
   const lineas = await tx
     .select({
+      id: transactionItems.id,
       nutraceuticalId: transactionItems.nutraceuticalId,
       cantidad: transactionItems.quantity,
       precioUnitario: transactionItems.unitPrice,
@@ -71,24 +72,39 @@ async function sealAccounting(
     for (const v of vigentes) participacion.set(v.nutraceuticalId, Number(v.share));
   }
 
+  // LA TASA DEL INTEGRANTE, CON VIGENCIA (paso 5 del 3.4, 2026-09-14). Antes se leia la tasa VIVA del perfil;
+  // ahora la vigente HOY en `professional_commission_rates`, que es la que explica una liquidacion con fecha.
+  // Si el profesional no tiene fila de vigencia, se cae a la del perfil: verificado en la nube el 2026-09-14,
+  // las diez vigentes coinciden con su perfil y a uno le falta la fila.
   let rate = 0;
   if (t.professionalId) {
-    const [prof] = await tx
-      .select({ rate: professionalProfiles.commissionRate })
-      .from(professionalProfiles)
-      .where(eq(professionalProfiles.id, t.professionalId));
-    rate = Number(prof?.rate ?? 0);
+    const [vigente] = await tx.execute<{ rate: string }>(sql`
+      select rate::text as rate from professional_commission_rates
+       where professional_id = ${t.professionalId}
+         and valid_from <= (now() at time zone 'America/Bogota')::date
+         and (valid_to is null or valid_to > (now() at time zone 'America/Bogota')::date)
+       order by valid_from desc limit 1`);
+    if (vigente) {
+      rate = Number(vigente.rate);
+    } else {
+      const [prof] = await tx
+        .select({ rate: professionalProfiles.commissionRate })
+        .from(professionalProfiles)
+        .where(eq(professionalProfiles.id, t.professionalId));
+      rate = Number(prof?.rate ?? 0);
+    }
   }
 
   // Una venta sin lineas no la crea ningun camino actual; si llegara una, se reparte su total sin proveedor
   // en vez de dejar el pago sin contabilidad.
-  const tramos =
+  const tramos: { lineaId: string | null; base: number; proveedor: number }[] =
     lineas.length > 0
       ? lineas.map((l) => ({
+          lineaId: l.id,
           base: baseFromTotal(Number(l.precioUnitario)) * Number(l.cantidad),
           proveedor: participacion.get(l.nutraceuticalId) ?? 0,
         }))
-      : [{ base: baseFromTotal(Number(t.amount)), proveedor: 0 }];
+      : [{ lineaId: null, base: baseFromTotal(Number(t.amount)), proveedor: 0 }];
 
   let comision = 0;
   let cnv = 0;
@@ -111,6 +127,26 @@ async function sealAccounting(
     }
     comision += r.montoIntegrante;
     cnv += r.montoCnv;
+
+    // EL REPARTO QUEDA SELLADO EN LA LINEA (0143): las tasas y los montos con que se hizo esta cuenta. La suma
+    // de las lineas es exactamente lo que se escribe abajo en `professional_revenue` y `cnv_revenue`.
+    if (tramo.lineaId) {
+      await tx
+        .update(transactionItems)
+        .set({
+          vatRate: String(IVA_RATE),
+          commissionRate: String(rate),
+          supplierShare: String(tramo.proveedor),
+          // La unica modalidad que existe hasta el Bloque 5 (Distribucion).
+          modality: "comision",
+          baseAmount: String(Math.round(tramo.base * 100) / 100),
+          commissionAmount: String(r.montoIntegrante),
+          supplierAmount: String(r.montoProveedor),
+          cnvAmount: String(r.montoCnv),
+          sealedAt: new Date(),
+        })
+        .where(eq(transactionItems.id, tramo.lineaId));
+    }
   }
   comision = Math.round(comision * 100) / 100;
   cnv = Math.round(cnv * 100) / 100;
