@@ -324,7 +324,12 @@ export async function getFacturaDeVenta(
 }
 
 /** Las ventas sin documento fiscal, CON SU MOTIVO. Es lo que pinta el panel de reintento. */
-export async function listarVentasSinDocumento(limite = 50): Promise<
+export async function listarVentasSinDocumento(
+  limite = 50,
+  // CONSULTABLE POR DIA (paso 6 del 3.4): solo las ventas de ese dia CIVIL de Colombia, "AAAA-MM-DD". Sin dia,
+  // todas. Es el reporte que contabilidad quiere en cero al cierre de cada dia.
+  dia: string | null = null,
+): Promise<
   {
     id: string;
     amount: string;
@@ -353,6 +358,7 @@ export async function listarVentasSinDocumento(limite = 50): Promise<
      where status = 'paid'
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
+       and (${dia}::date is null or (created_at at time zone 'America/Bogota')::date = ${dia}::date)
      order by created_at desc
      limit ${limite}`);
   return filas.map((f) => ({
@@ -415,4 +421,21 @@ export async function contarVentasSinDocumento(): Promise<{ total: number; agota
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}`);
   return { total: Number(r?.total ?? 0), agotadas: Number(r?.agotadas ?? 0) };
+}
+
+/**
+ * CUANTAS VENTAS SIN DOCUMENTO QUEDAN POR DIA, en los ultimos `dias` dias de Colombia (hoy incluido). Solo los
+ * dias que tienen alguna: un dia en cero no aparece, que es lo que se quiere ver.
+ */
+export async function contarVentasSinDocumentoPorDia(dias = 30): Promise<{ dia: string; total: number }[]> {
+  const filas = await db.execute<{ dia: string; total: number }>(sql`
+    select (created_at at time zone 'America/Bogota')::date::text as dia, count(*)::int as total
+      from transactions
+     where status = 'paid'
+       and ${LE_FALTA_ALGO}
+       and ${FACTURABLE}
+       and (created_at at time zone 'America/Bogota')::date > (now() at time zone 'America/Bogota')::date - ${dias}::int
+     group by 1
+     order by 1 desc`);
+  return filas.map((f) => ({ dia: String(f.dia), total: Number(f.total) }));
 }

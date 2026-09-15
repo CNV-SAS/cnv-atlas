@@ -19,7 +19,10 @@ import {
   listSelectablePatients,
   listTransactions,
 } from "@/modules/payments/data/payments-repository";
-import { listarVentasSinDocumento } from "@/modules/payments/data/facturacion-repository";
+import {
+  contarVentasSinDocumentoPorDia,
+  listarVentasSinDocumento,
+} from "@/modules/payments/data/facturacion-repository";
 import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
 import { VentasPorRevisar } from "@/modules/payments/components/ventas-por-revisar";
 import { bloqueadaPorRevision } from "@/modules/payments/revision";
@@ -126,8 +129,13 @@ function itemsLabel(tx: TransactionWithItems): string {
 
 // Pagos: crear checkout de nutraceuticos (professional/admin) y ver el historial de
 // transacciones (la RLS filtra: el profesional ve las suyas, admin/direccion todas).
-export default async function PagosPage() {
+const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export default async function PagosPage({ searchParams }: { searchParams: Promise<{ dia?: string }> }) {
   const user = await requireUser();
+  // El dia del reporte de ventas sin documento. Un valor que no es fecha se ignora: se muestran todas.
+  const sp = await searchParams;
+  const dia = sp.dia && DIA_RE.test(sp.dia) ? sp.dia : null;
   const canCreate = canCreateCheckout(user);
   const canView = canViewRevenue(user);
   if (!canCreate && !canView) redirect("/no-autorizado");
@@ -139,9 +147,14 @@ export default async function PagosPage() {
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
   // transacciones, que se muestra igual.
-  const [ventasSinDocumento, ventasPorRevisar, efectivosNoRecibidos] = canView
-    ? await Promise.all([listarVentasSinDocumento(), listarVentasPorRevisar(), listarEfectivosNoRecibidos()])
-    : [[], [], []];
+  const [ventasSinDocumento, ventasPorRevisar, efectivosNoRecibidos, sinDocumentoPorDia] = canView
+    ? await Promise.all([
+        listarVentasSinDocumento(50, dia),
+        listarVentasPorRevisar(),
+        listarEfectivosNoRecibidos(),
+        contarVentasSinDocumentoPorDia(),
+      ])
+    : [[], [], [], []];
   // Para recuperar el enlace de un checkout pendiente sin generar otro: el link es derivable del id
   // (misma forma que buildCheckoutUrl). Horas restantes del TTL de 24h contra el created_at.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -215,7 +228,7 @@ export default async function PagosPage() {
       {/* VA ANTES DE LA LISTA DE TRANSACCIONES a proposito: es lo que hay que mirar y resolver, y al
           final de la pagina no lo mira nadie. Contabilidad lo quiere en CERO al cierre de cada dia. */}
       {canView && <VentasPorRevisar ventas={ventasPorRevisar} efectivos={efectivosNoRecibidos} ahora={new Date(nowMs)} />}
-      {canView && <FacturasPendientes ventas={ventasSinDocumento} />}
+      {canView && <FacturasPendientes ventas={ventasSinDocumento} dia={dia} porDia={sinDocumentoPorDia} />}
 
       <section className="flex flex-col gap-3">
         <TituloSeccion>Transacciones</TituloSeccion>

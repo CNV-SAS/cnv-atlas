@@ -50,7 +50,17 @@ const ROTULO: Record<string, string> = {
 
 const MAX_INTENTOS = 5;
 
-export function FacturasPendientes({ ventas }: { ventas: VentaSinDocumento[] }) {
+export function FacturasPendientes({
+  ventas,
+  dia,
+  porDia,
+}: {
+  ventas: VentaSinDocumento[];
+  /** El dia consultado ("AAAA-MM-DD", de Colombia), o null para todas. */
+  dia: string | null;
+  /** Cuantas quedan por dia en los ultimos 30 dias; solo los dias con alguna. */
+  porDia: { dia: string; total: number }[];
+}) {
   const [state, action, pending] = useActionState(reintentarFacturasAction, {
     error: null,
     success: null,
@@ -60,10 +70,47 @@ export function FacturasPendientes({ ventas }: { ventas: VentaSinDocumento[] }) 
 
   return (
     <Panel titulo="Ventas cobradas sin cerrar en contabilidad">
+      {/* CONSULTABLE POR DIA (paso 6 del 3.4). Un formulario GET nativo, sin accion de servidor: solo cambia
+          la direccion (?dia=), y la pagina se vuelve a leer con ese filtro. */}
+      <form method="get" className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Día
+          <input
+            type="date"
+            name="dia"
+            defaultValue={dia ?? ""}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-xs"
+          />
+        </label>
+        <Button type="submit" variant="outline" size="sm">
+          Ver ese día
+        </Button>
+        {dia ? (
+          <a href="/pagos" className="text-sm text-primary underline-offset-4 hover:underline">
+            Ver todas
+          </a>
+        ) : null}
+      </form>
+      {porDia.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Días con ventas sin cerrar (últimos 30):{" "}
+          {porDia.map((d, i) => (
+            <span key={d.dia}>
+              {i > 0 ? " · " : ""}
+              <a href={`/pagos?dia=${d.dia}`} className="text-primary underline-offset-4 hover:underline">
+                {d.dia.split("-").reverse().join("/")}
+              </a>{" "}
+              ({d.total})
+            </span>
+          ))}
+        </p>
+      ) : null}
       <p className="text-sm text-muted-foreground">
         {ventas.length === 0
-          ? "Ninguna. Todas las ventas cobradas tienen su factura emitida y su pago registrado."
-          : `${ventas.length} venta${ventas.length === 1 ? "" : "s"} cobrada${ventas.length === 1 ? "" : "s"} con la factura o el pago sin completar.`}
+          ? dia
+            ? `Ninguna del ${dia.split("-").reverse().join("/")}. Ese día quedó en cero.`
+            : "Ninguna. Todas las ventas cobradas tienen su factura emitida y su pago registrado."
+          : `${ventas.length} venta${ventas.length === 1 ? "" : "s"} cobrada${ventas.length === 1 ? "" : "s"}${dia ? ` el ${dia.split("-").reverse().join("/")}` : ""} con la factura o el pago sin completar.`}
       </p>
       {ventas.length > 0 && (
         <>
