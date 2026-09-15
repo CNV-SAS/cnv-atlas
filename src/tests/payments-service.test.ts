@@ -12,6 +12,8 @@ vi.mock("../modules/payments/data/payments-writer", () => ({
   sealPaidTransaction: vi.fn(),
   markTransactionFailed: vi.fn(),
   setAlegraInvoiceId: vi.fn(),
+  resolverRevision: vi.fn(),
+  SoporteDeRevisionError: class SoporteDeRevisionError extends Error {},
 }));
 vi.mock("../modules/payments/data/payments-repository", () => ({
   getProfessionalProfileIdByUser: vi.fn(),
@@ -50,6 +52,7 @@ import {
   buildWompiCheckoutParams,
   processWompiWebhook,
   registerCashSale,
+  resolverRevisionDeVenta,
 } from "../modules/payments/services/payments-service";
 
 const TX_REF = "11111111-1111-1111-1111-111111111111";
@@ -470,5 +473,37 @@ describe("la venta que nace en TRATAMIENTO (Bloque 3, sesion 2)", () => {
     await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n2", quantity: 1 }] }, user(["professional"]));
     expect(repo.getTratamientoParaVenta).not.toHaveBeenCalled();
     expect(writer.createTransactionWithItems).toHaveBeenCalledWith(expect.objectContaining({ treatmentId: null }));
+  });
+});
+
+describe("resolver como EFECTIVO NO RECIBIDO (0142)", () => {
+  beforeEach(() => vi.clearAllMocks());
+  const venta = (casos: number) => ({
+    id: TX_REF,
+    amount: "11900",
+    currency: "COP",
+    patientId: "p1",
+    professionalId: "prof-1",
+    enRevision: false,
+    efectivoNoRecibido: { ventaEnEfectivoId: "cash-1", professionalId: "prof-1", casosEn90Dias: casos },
+  });
+
+  it("factura el pago de Wompi SIN descontar, y alerta en nivel error", async () => {
+    const Sentry = await import("@sentry/nextjs");
+    vi.mocked(writer.resolverRevision).mockResolvedValue(venta(1));
+    await resolverRevisionDeVenta(TX_REF, "efectivo_no_recibido", user(["admin"]));
+    expect(facturacion.emitirFacturaDeVenta).toHaveBeenCalledWith(expect.objectContaining({ id: TX_REF, canal: "wompi" }));
+    expect(descuento.descontarInventarioDeVenta).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "Efectivo registrado que no se recibió",
+      expect.objectContaining({ level: "error", tags: expect.objectContaining({ area: "efectivo-no-recibido" }) }),
+    );
+  });
+
+  it("desde el segundo caso en 90 dias, la alerta dice que SE REPITE", async () => {
+    const Sentry = await import("@sentry/nextjs");
+    vi.mocked(writer.resolverRevision).mockResolvedValue(venta(2));
+    await resolverRevisionDeVenta(TX_REF, "efectivo_no_recibido", user(["direccion"]));
+    expect(vi.mocked(Sentry.captureMessage).mock.calls[0][0]).toContain("SE REPITE (2 casos en 90 días");
   });
 });

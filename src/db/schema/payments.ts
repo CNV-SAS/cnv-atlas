@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   index,
   integer,
   jsonb,
@@ -91,7 +92,7 @@ export const transactions = pgTable(
     cancelledBy: uuid("cancelled_by").references(() => profiles.id, { onDelete: "restrict" }),
     // pago_sobre_link_anulado. Mientras no tenga resolucion, la venta no se descuenta ni se factura.
     reviewReason: text("review_reason"),
-    reviewResolution: text("review_resolution"), // segunda_compra | devuelto
+    reviewResolution: text("review_resolution"), // segunda_compra | devuelto | efectivo_no_recibido
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     reviewedBy: uuid("reviewed_by").references(() => profiles.id, { onDelete: "restrict" }),
     // EL SOPORTE DE LA REVISION (0141): lo que conto el Integrante (y quien lo escribio) y el comprobante de la
@@ -102,6 +103,18 @@ export const transactions = pgTable(
     reviewRefundReference: text("review_refund_reference"),
     // Cuando entro en revision: el plazo de 5 dias habiles cuenta desde aqui.
     reviewOpenedAt: timestamp("review_opened_at", { withTimezone: true }),
+    // ── EL EFECTIVO QUE NO SE RECIBIO (0142) ──
+    // En el link: la venta en efectivo que lo anulo.
+    cancelledBySaleId: uuid("cancelled_by_sale_id").references((): AnyPgColumn => transactions.id, { onDelete: "set null" }),
+    // En la venta en efectivo: Direccion determino que el efectivo no entro.
+    cashNotReceivedAt: timestamp("cash_not_received_at", { withTimezone: true }),
+    cashNotReceivedBy: uuid("cash_not_received_by").references(() => profiles.id, { onDelete: "restrict" }),
+    // La nota credito manual en Alegra sobre la factura del efectivo. Nulo = pendiente.
+    creditNoteManualNumber: text("credit_note_manual_number"),
+    // En la venta de Wompi: su producto salio con esta otra venta (stock_state = en_otra_venta).
+    stockCoveredBySaleId: uuid("stock_covered_by_sale_id").references((): AnyPgColumn => transactions.id, {
+      onDelete: "set null",
+    }),
     alegraLegalStatus: text("alegra_legal_status"),
     idempotencyKey: text("idempotency_key").notNull().unique(),
     createdAt: createdAt(),
@@ -151,6 +164,8 @@ export const professionalRevenue = pgTable("professional_revenue", {
     .references(() => professionalProfiles.id),
   commissionRate: numeric("commission_rate").notNull(), // snapshot de la tasa aplicada
   commissionAmount: numeric("commission_amount").notNull(),
+  // Fila NEGATIVA que revierte a otra (0142): la comision de un efectivo que no se recibio no se borra.
+  reversalOf: uuid("reversal_of").references((): AnyPgColumn => professionalRevenue.id, { onDelete: "restrict" }),
   createdAt: createdAt(),
 });
 
@@ -160,6 +175,8 @@ export const cnvRevenue = pgTable("cnv_revenue", {
     .notNull()
     .references(() => transactions.id, { onDelete: "cascade" }),
   amount: numeric("amount").notNull(),
+  // Fila NEGATIVA que revierte a otra (0142).
+  reversalOf: uuid("reversal_of").references((): AnyPgColumn => cnvRevenue.id, { onDelete: "restrict" }),
   createdAt: createdAt(),
 });
 

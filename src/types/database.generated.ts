@@ -726,21 +726,31 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          reversal_of: string | null
           transaction_id: string
         }
         Insert: {
           amount: number
           created_at?: string
           id?: string
+          reversal_of?: string | null
           transaction_id: string
         }
         Update: {
           amount?: number
           created_at?: string
           id?: string
+          reversal_of?: string | null
           transaction_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cnv_revenue_reversal_of_fkey"
+            columns: ["reversal_of"]
+            isOneToOne: false
+            referencedRelation: "cnv_revenue"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cnv_revenue_transaction_id_transactions_id_fk"
             columns: ["transaction_id"]
@@ -3209,6 +3219,7 @@ export type Database = {
           created_at: string
           id: string
           professional_id: string
+          reversal_of: string | null
           transaction_id: string
         }
         Insert: {
@@ -3217,6 +3228,7 @@ export type Database = {
           created_at?: string
           id?: string
           professional_id: string
+          reversal_of?: string | null
           transaction_id: string
         }
         Update: {
@@ -3225,6 +3237,7 @@ export type Database = {
           created_at?: string
           id?: string
           professional_id?: string
+          reversal_of?: string | null
           transaction_id?: string
         }
         Relationships: [
@@ -3233,6 +3246,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_revenue_reversal_of_fkey"
+            columns: ["reversal_of"]
+            isOneToOne: false
+            referencedRelation: "professional_revenue"
             referencedColumns: ["id"]
           },
           {
@@ -3968,7 +3988,11 @@ export type Database = {
           amount: number
           cancelled_at: string | null
           cancelled_by: string | null
+          cancelled_by_sale_id: string | null
+          cash_not_received_at: string | null
+          cash_not_received_by: string | null
           created_at: string
+          credit_note_manual_number: string | null
           currency: string
           delivered_at: string | null
           delivered_by: string | null
@@ -3994,6 +4018,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: Database["public"]["Enums"]["transaction_status"]
+          stock_covered_by_sale_id: string | null
           stock_last_error: string | null
           stock_state: string | null
           treatment_id: string | null
@@ -4018,7 +4043,11 @@ export type Database = {
           amount: number
           cancelled_at?: string | null
           cancelled_by?: string | null
+          cancelled_by_sale_id?: string | null
+          cash_not_received_at?: string | null
+          cash_not_received_by?: string | null
           created_at?: string
+          credit_note_manual_number?: string | null
           currency?: string
           delivered_at?: string | null
           delivered_by?: string | null
@@ -4044,6 +4073,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
+          stock_covered_by_sale_id?: string | null
           stock_last_error?: string | null
           stock_state?: string | null
           treatment_id?: string | null
@@ -4068,7 +4098,11 @@ export type Database = {
           amount?: number
           cancelled_at?: string | null
           cancelled_by?: string | null
+          cancelled_by_sale_id?: string | null
+          cash_not_received_at?: string | null
+          cash_not_received_by?: string | null
           created_at?: string
+          credit_note_manual_number?: string | null
           currency?: string
           delivered_at?: string | null
           delivered_by?: string | null
@@ -4094,6 +4128,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
+          stock_covered_by_sale_id?: string | null
           stock_last_error?: string | null
           stock_state?: string | null
           treatment_id?: string | null
@@ -4105,6 +4140,20 @@ export type Database = {
           {
             foreignKeyName: "transactions_cancelled_by_fkey"
             columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_cancelled_by_sale_id_fkey"
+            columns: ["cancelled_by_sale_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_cash_not_received_by_fkey"
+            columns: ["cash_not_received_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -4156,6 +4205,13 @@ export type Database = {
             columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_stock_covered_by_sale_id_fkey"
+            columns: ["stock_covered_by_sale_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
           {

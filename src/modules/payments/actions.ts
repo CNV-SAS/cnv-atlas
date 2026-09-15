@@ -25,12 +25,14 @@ import {
   entregarVenta,
   linksPendientesQueBloquean,
   registerCashSale,
+  registrarNotaCreditoDeVenta,
   registrarVersionDeVenta,
   resolverRevisionDeVenta,
   VentaError,
 } from "./services/payments-service";
 import {
   accionDeVentaSchema,
+  notaCreditoManualSchema,
   comprobanteDeDevolucionSchema,
   versionDelIntegranteSchema,
   createCheckoutSchema,
@@ -275,7 +277,7 @@ export async function entregarVentaFormAction(
 // (docs/entregas/CONSULTA_CONTABILIDAD_PAGO_SOBRE_LINK_ANULADO.md, pregunta 4); mientras tanto no se abre a
 // quien no ve el dinero.
 async function resolverRevisionFormAction(
-  resolucion: "segunda_compra" | "devuelto",
+  resolucion: "segunda_compra" | "devuelto" | "efectivo_no_recibido",
   formData: FormData,
 ): Promise<AccionDeVentaState> {
   const vacio = { error: null, success: null, warning: null };
@@ -297,7 +299,9 @@ async function resolverRevisionFormAction(
       success:
         resolucion === "segunda_compra"
           ? "Marcada como segunda compra. Se descontó el inventario y se pidió la factura."
-          : "Marcada como devuelta. No se factura ni se descuenta.",
+          : resolucion === "efectivo_no_recibido"
+            ? "Marcada: el efectivo no se recibió. Se facturó el pago de Wompi y se revirtió la comisión del efectivo. Falta la nota crédito manual en Alegra."
+            : "Marcada como devuelta. No se factura ni se descuenta.",
     };
   } catch (e) {
     if (e instanceof VentaError) return { ...vacio, error: e.message };
@@ -311,6 +315,13 @@ export async function resolverComoSegundaCompraFormAction(
   formData: FormData,
 ): Promise<AccionDeVentaState> {
   return resolverRevisionFormAction("segunda_compra", formData);
+}
+
+export async function resolverComoEfectivoNoRecibidoFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  return resolverRevisionFormAction("efectivo_no_recibido", formData);
 }
 
 export async function resolverComoDevueltoFormAction(
@@ -351,6 +362,32 @@ export async function registrarVersionFormAction(
     if (e instanceof VentaError) return { ...vacio, error: e.message };
     reportServerError("venta.version-integrante", e);
     return { ...vacio, error: "No se pudo registrar la versión." };
+  }
+}
+
+// ----- La nota credito manual de un efectivo que no se recibio -----
+
+/** Direccion escribe el numero de la nota credito que contabilidad emitio a mano en Alegra. */
+export async function registrarNotaCreditoFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  const vacio = { error: null, success: null, warning: null };
+  const user = await getCurrentUser();
+  if (!user) return { ...vacio, error: "Inicia sesión." };
+  if (!canViewRevenue(user)) return { ...vacio, error: "No tienes permiso para registrar la nota crédito." };
+  const parsed = notaCreditoManualSchema.safeParse({
+    transactionId: String(formData.get("transactionId") ?? ""),
+    numero: String(formData.get("numero") ?? ""),
+  });
+  if (!parsed.success) return { ...vacio, error: parsed.error.issues[0]?.message ?? "Número inválido." };
+  try {
+    await registrarNotaCreditoDeVenta(parsed.data.transactionId, parsed.data.numero);
+    return { ...vacio, success: "Nota crédito registrada." };
+  } catch (e) {
+    if (e instanceof VentaError) return { ...vacio, error: e.message };
+    reportServerError("venta.nota-credito-manual", e);
+    return { ...vacio, error: "No se pudo registrar la nota crédito." };
   }
 }
 

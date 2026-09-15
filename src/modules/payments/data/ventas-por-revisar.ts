@@ -32,6 +32,8 @@ export type VentaPorRevisar = {
   version: string | null;
   versionPor: string | null;
   versionEn: string | null;
+  /** Si se puede marcar "el efectivo no se recibio" (0142). */
+  efectivo: "si" | "sin_efectivo" | "no_coinciden";
 };
 
 export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
@@ -46,6 +48,7 @@ export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
     version: string | null;
     version_por: string | null;
     version_en: string | null;
+    efectivo: VentaPorRevisar["efectivo"];
   }>(sql`
     select t.id, t.amount::text as amount, t.created_at::text as created_at,
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
@@ -63,7 +66,24 @@ export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
            coalesce(t.review_opened_at, t.updated_at)::text as abierta,
            t.review_professional_version as version,
            p.full_name as version_por,
-           t.review_professional_version_at::text as version_en
+           t.review_professional_version_at::text as version_en,
+           -- LA SALIDA "EL EFECTIVO NO SE RECIBIO" solo si una venta en efectivo, todavia pagada y sin marcar,
+           -- anulo este link, Y las dos coinciden en productos y cantidades (Santiago, 2026-09-14).
+           case
+             when not exists (select 1 from transactions c
+                               where c.id = t.cancelled_by_sale_id and c.status = 'paid'
+                                 and c.payment_method = 'efectivo' and c.cash_not_received_at is null)
+               then 'sin_efectivo'
+             when not exists (
+               select 1
+                 from (select nutraceutical_id, sum(quantity) as q from transaction_items
+                        where transaction_id = t.id group by 1) x
+                 full outer join (select nutraceutical_id, sum(quantity) as q from transaction_items
+                                   where transaction_id = t.cancelled_by_sale_id group by 1) y using (nutraceutical_id)
+                where x.q is distinct from y.q)
+               then 'si'
+             else 'no_coinciden'
+           end as efectivo
       from transactions t
       left join profiles p on p.id = t.review_professional_version_by
      where t.status = 'paid'
@@ -84,5 +104,54 @@ export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
     version: f.version,
     versionPor: f.version_por,
     versionEn: f.version_en,
+    efectivo: f.efectivo,
+  }));
+}
+
+export type EfectivoNoRecibido = {
+  id: string;
+  amount: string;
+  marcadaEn: string;
+  profesional: string | null;
+  factura: string | null;
+  notaCredito: string | null;
+  /** Casos del mismo Integrante en los ultimos 90 dias. */
+  casosEn90Dias: number;
+};
+
+/**
+ * EFECTIVO REGISTRADO QUE NO SE RECIBIO (0142). Las que tienen la nota credito pendiente, siempre; y las de los
+ * ultimos 90 dias, porque es la ventana de la escalada por Integrante.
+ */
+export async function listarEfectivosNoRecibidos(): Promise<EfectivoNoRecibido[]> {
+  const filas = await db.execute<{
+    id: string;
+    amount: string;
+    marcada_en: string;
+    profesional: string | null;
+    factura: string | null;
+    nota_credito: string | null;
+    casos: number;
+  }>(sql`
+    select t.id, t.amount::text as amount, t.cash_not_received_at::text as marcada_en, pr.full_name as profesional,
+           t.alegra_invoice_number as factura, t.credit_note_manual_number as nota_credito,
+           (select count(*)::int from transactions o
+             where o.professional_id is not distinct from t.professional_id
+               and o.cash_not_received_at > now() - interval '90 days') as casos
+      from transactions t
+      left join professional_profiles pp on pp.id = t.professional_id
+      left join profiles pr on pr.id = pp.profile_id
+     where t.cash_not_received_at is not null
+       and (t.credit_note_manual_number is null or t.cash_not_received_at > now() - interval '90 days')
+     order by t.cash_not_received_at desc
+     limit 100`);
+  return filas.map((f) => ({
+    id: f.id,
+    amount: String(f.amount),
+    marcadaEn: String(f.marcada_en),
+    profesional: f.profesional,
+    factura: f.factura,
+    notaCredito: f.nota_credito,
+    casosEn90Dias: Number(f.casos),
   }));
 }

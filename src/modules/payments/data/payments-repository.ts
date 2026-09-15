@@ -218,6 +218,7 @@ export type VentaDeTratamiento = {
   review_reason: string | null;
   review_resolution: string | null;
   review_professional_version: string | null;
+  cash_not_received_at: string | null;
   professional_id: string | null;
   transaction_items: { quantity: number; nutraceuticals: { name: string } | null }[];
 };
@@ -228,7 +229,7 @@ export async function listVentasDeTratamiento(treatmentId: string): Promise<Vent
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "id, status, amount, created_at, payment_method, stock_state, stock_last_error, fulfillment_state, delivered_at, cancelled_at, review_reason, review_resolution, review_professional_version, professional_id, transaction_items(quantity, nutraceuticals(name))",
+      "id, status, amount, created_at, payment_method, stock_state, stock_last_error, fulfillment_state, delivered_at, cancelled_at, review_reason, review_resolution, review_professional_version, cash_not_received_at, professional_id, transaction_items(quantity, nutraceuticals(name))",
     )
     .eq("treatment_id", treatmentId)
     .order("created_at", { ascending: false });

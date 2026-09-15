@@ -9,3 +9,7 @@
 //
 // Es un `or` de PostgREST y va junto al `.eq("status", "paid")` de cada lector.
 export const FILTRO_FUERA_DE_REVISION = "review_reason.is.null,review_resolution.not.is.null";
+
+// UN EFECTIVO QUE NO SE RECIBIO TAMPOCO CUENTA (0142): la venta sigue `paid` porque su factura existe hasta la
+// nota credito, pero ese dinero nunca entro. Va como `.is("cash_not_received_at", null)` en cada lector.
+export const COLUMNA_EFECTIVO_NO_RECIBIDO = "cash_not_received_at";

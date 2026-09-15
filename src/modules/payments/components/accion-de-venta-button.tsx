@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import {
   anularLinkFormAction,
   entregarVentaFormAction,
+  registrarNotaCreditoFormAction,
   resolverComoDevueltoFormAction,
+  resolverComoEfectivoNoRecibidoFormAction,
   resolverComoSegundaCompraFormAction,
 } from "../actions";
 import type { AccionDeVentaState } from "../validations";
@@ -62,6 +64,23 @@ const ACCIONES = {
     // El comprobante es soporte obligatorio de una devolucion (contabilidad, 2026-09-14).
     campo: { name: "comprobante", label: "Comprobante de la devolución en Wompi", placeholder: "Referencia de la devolución" },
   },
+  efectivo_no_recibido: {
+    accion: resolverComoEfectivoNoRecibidoFormAction,
+    pedir: "El efectivo no se recibió",
+    aviso: "Atlas factura el pago de Wompi, revierte la comisión del efectivo y deja pendiente la nota crédito manual en Alegra.",
+    confirmar: "Sí, no se recibió",
+    enCurso: "Resolviendo...",
+    variante: "destructive" as const,
+  },
+  nota_credito: {
+    accion: registrarNotaCreditoFormAction,
+    pedir: "Registrar la nota crédito",
+    aviso: "El número de la nota crédito que contabilidad emitió en Alegra.",
+    confirmar: "Guardar",
+    enCurso: "Guardando...",
+    variante: "default" as const,
+    campo: { name: "numero", label: "Número de la nota crédito", placeholder: "Por ejemplo, NC3" },
+  },
 };
 
 type Campo = { name: string; label: string; placeholder: string };
@@ -108,7 +127,7 @@ export function AccionDeVentaButton({ transactionId, tipo }: { transactionId: st
         type="submit"
         size="sm"
         variant={a.variante}
-        disabled={pending || (campo != null && valor.trim().length < 3)}
+        disabled={pending || (campo != null && valor.trim().length < 2)}
       >
         {pending ? a.enCurso : a.confirmar}
       </Button>

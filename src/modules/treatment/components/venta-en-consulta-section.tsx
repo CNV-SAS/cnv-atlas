@@ -14,6 +14,7 @@ import {
 } from "@/modules/payments/data/payments-repository";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { disponibleParaVender } from "@/modules/payments/services/payments-service";
+import { bloqueadaPorRevision } from "@/modules/payments/revision";
 import { qrDelLink } from "@/modules/payments/services/qr-del-link";
 
 import type { TreatmentProtocol } from "../data/treatment-reader";
@@ -232,10 +233,17 @@ function EstadoDeLaVenta({
       </span>
     );
   }
+  if (v.cash_not_received_at) {
+    return (
+      <span className="text-sm text-muted-foreground">
+        Anulada por CNV: el efectivo no se recibió. La venta válida es el pago con QR del mismo producto.
+      </span>
+    );
+  }
   if (v.status === "refunded") {
     return <span className="text-sm text-muted-foreground">Pago devuelto al paciente.</span>;
   }
-  if (v.review_reason && v.review_resolution !== "segunda_compra") {
+  if (bloqueadaPorRevision(v)) {
     return (
       <div className="flex flex-col gap-2">
         <span className="text-sm text-clinical-warning">

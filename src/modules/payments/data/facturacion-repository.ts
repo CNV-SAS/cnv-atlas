@@ -36,12 +36,13 @@ export const LE_FALTA_ALGO = sql`(transactions.alegra_invoice_state is distinct 
 /**
  * UNA VENTA EN REVISION NO SE FACTURA (Santiago, 2026-09-14). Un pago aprobado sobre un link anulado es casi
  * seguro un cobro doble; facturarlo dejaria una factura validada que solo se deshace con nota credito, que no
- * existe hasta el 3b. Solo se factura si la revision la resolvio como segunda compra.
+ * existe hasta el 3b. Solo se factura si la revision la resolvio como segunda compra, o como efectivo no recibido
+ * (0142: entonces el pago de Wompi es LA venta).
  *
  * Va en TODAS las consultas de la cola, no en una: el boton "Reintentar" reclama por `reclamarParaFacturar`,
  * y si la regla viviera solo en la lista, el boton la facturaria igual.
  */
-export const FACTURABLE = sql`(transactions.review_reason is null or transactions.review_resolution = 'segunda_compra')`;
+export const FACTURABLE = sql`(transactions.review_reason is null or transactions.review_resolution in ('segunda_compra', 'efectivo_no_recibido'))`;
 
 /**
  * El mapa del ambiente que se esta usando.

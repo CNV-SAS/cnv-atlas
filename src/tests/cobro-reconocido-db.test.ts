@@ -27,7 +27,7 @@ describe("los dos tableros usan el filtro (el defecto era una omision en cada le
     "%s",
     (archivo) => {
       const src = readFileSync(archivo, "utf8");
-      expect(src).toMatch(/\.eq\("status", "paid"\)\.or\(FILTRO_FUERA_DE_REVISION\)/);
+      expect(src).toMatch(/\.eq\("status", "paid"\)\.or\(FILTRO_FUERA_DE_REVISION\)\.is\(COLUMNA_EFECTIVO_NO_RECIBIDO, null\)/);
     },
   );
 });
