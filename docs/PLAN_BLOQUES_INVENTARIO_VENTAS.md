@@ -21,10 +21,10 @@ que algo ya hecho se vuelva a planear).
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
 | **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
-| **A** · Avisos (antes del 2b) | **PROPUESTO, decisiones tomadas el 2026-09-15** (ver 3.7) | Correo diario solo si hay algo que requiere accion, franja en cualquier pantalla y correo inmediato al Integrante. Sin reintento automatico |
+| **A** · Avisos (antes del 2b) | **EN CURSO (2026-09-15).** Decisiones cerradas (ver 3.7). Necesita Vercel Pro para salir a produccion | Correo diario solo si hay algo que requiere accion, franja en cualquier pantalla y correo inmediato al Integrante. Sin reintento automatico |
 | **2b** · Paso a producción | **PREPARADO, ESPERA** (guía en `docs/entregas/`). Santiago, 2026-09-14: primero se cierran todos los bloques y se confirma que el flujo funciona; después 2b, después Supabase Pro, y al final los Integrantes | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
-| **3** · La venta nace en Tratamiento | **EN CURSO. Sesiones 1 y 2 hechas y smokeadas (2026-09-14), migraciones 0138-0142.** Falta: el smoke de la 0142 (paso 9) y los pasos 5, 6 y 7 del 3.4 | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
+| **3** · La venta nace en Tratamiento | **HECHO (2026-09-15), migraciones 0138-0144.** Sesiones 1 y 2, pasos 5 a 8 y el titular de marca verificado en una factura de sandbox. Solo queda el smoke corto del filtro por día (`SMOKE_BLOQUE_3_CIERRE.md`, paso 5) | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
 | 3b · Reversa | Pendiente | — |
 | 4 · Liquidaciones | Pendiente | — |
 | 5 · Distribución | Pendiente | — |
@@ -1311,7 +1311,9 @@ construyen); el pago mixto ya estaba decidido (una factura por el total). Ver la
 > - **d) Correo inmediato al Integrante** cuando un pago de su venta entra en revisión.
 > - **Es un bloque propio, antes del 2b.**
 >
-> **PROPUESTA para que el correo no se aprenda a ignorar, pendiente de aprobación:**
+> **Aprobado por Santiago el 2026-09-15, con la marca de escalamiento para lo vencido y 5 días hábiles para la nota crédito. La marca va a admin, dirección y soporte; "operador" no se crea.**
+>
+> **Para que el correo no se aprenda a ignorar:**
 > 1. **Nuevo contra lo que ya estaba.** El correo abre con lo NUEVO desde el anterior, y debajo, "sigue pendiente", con cuántos días lleva.
 > 2. **Lo viejo sube de tono con el plazo, no solo con los días.** Cada tipo tiene el suyo:
 >    - la revisión, 5 días hábiles (contabilidad);

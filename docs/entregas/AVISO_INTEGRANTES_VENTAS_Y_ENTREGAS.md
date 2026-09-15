@@ -27,27 +27,32 @@
 
 ## Aviso 2 · De arranque (cuando todo esté listo)
 
-**Conviene esperar a la sesión 2 del Bloque 3 para enviarlo, y también al paso a producción (2b) y a su smoke.** La sesión 2 es la que conecta la venta con la entrega: antes de ella, cualquier instrucción sobre cómo vender y entregar sería de transición, y habría que corregirla días después. **El texto de abajo es un BORRADOR** del flujo aprobado. Se ajusta a las pantallas reales al cerrar la sesión 2, antes de enviarlo.
+**AJUSTADO A LAS PANTALLAS REALES el 2026-09-15**, al cerrar el Bloque 3. Los nombres de botones y secciones son los que están en Atlas.
 
-**Lo envía:** Santiago, cuando la venta controlada del 2b y el smoke de la sesión 2 hayan pasado.
+**Cuándo se envía:** después del **Bloque A** (avisos), del **2b** con su venta controlada, y del bloque "antes del primer Integrante" (`LANZAMIENTO.md`). No antes: este aviso da permiso para vender.
 
 > Hola. Desde hoy puedes vender y entregar nutracéuticos en Atlas. Cada venta genera una factura electrónica a nombre del paciente.
 >
-> **En consulta:** en la pestaña Tratamiento del paciente, después de la prescripción, elige los productos y las cantidades y cobra:
+> **En consulta.** En la pestaña Tratamiento del paciente, cuando ya le entregaste la prescripción y registraste que **sí** adquiere los nutracéuticos, aparece **Venta y entrega de nutracéuticos**. Marca lo que se lleva, con sus unidades, y cobra:
 >
-> - **Con QR:** el paciente lo escanea y paga con tarjeta, PSE o Nequi. La pantalla te muestra cuando el pago llega.
-> - **En efectivo:** registras el cobro en el momento. Ese dinero es de CNV y lo transfieres como te indicamos.
+> - **Cobrar con QR:** aparece un código QR. El paciente lo escanea con su teléfono y paga en Wompi. La pantalla se actualiza sola y dice **Pago recibido** cuando llega el pago.
+> - **Cobrar en efectivo:** Atlas te pide confirmar que recibiste el dinero (**Sí, lo recibí**). Ese dinero es de CNV y lo transfieres como te indicamos.
 >
-> Cuando el pago esté recibido, presiona **Entregar** al darle el producto al paciente. Atlas descuenta tu inventario solo, así que no hay que registrar nada más.
+> **La entrega.** Cuando el pago esté recibido, pulsa **Entregar** y confirma con **Sí, lo entregué** al darle el producto al paciente. Atlas descuenta tu inventario solo: no registres nada más.
 >
-> **Si el paciente vuelve solo a comprar,** sin consulta, haz lo mismo desde **Pagos**.
+> **Si el paciente vuelve solo a comprar,** sin consulta, entra a **Pagos**: **Crear checkout** para pagar con tarjeta, PSE o Nequi, o **Registrar venta en efectivo**. La entrega se registra en la misma lista de Pagos, con **Entregar**.
 >
-> **Si la tarjeta no pasa y el paciente paga en efectivo,** cobra en efectivo desde la misma pantalla: Atlas te avisa y anula el link anterior, para que no quede cobrado dos veces.
+> **Si la tarjeta no pasa y el paciente paga en efectivo:** cobra en efectivo. Atlas te avisa que hay un link sin pagar y te ofrece **Anular el link y cobrar en efectivo**, para que no quede cobrado dos veces. Si ves que un link ya no se va a usar, **Anular link**.
+>
+> **Si CNV te escribe por un pago en revisión,** es porque llegó un pago con tarjeta sobre un link que ya estaba anulado. Entra a la venta y cuéntanos qué pasó en la consulta: con eso lo resolvemos.
+>
+> **Los cobros por menos de $1.500** solo se pueden hacer en efectivo: Wompi no los acepta.
 >
 > **Los conteos de inventario** los hacemos juntos la primera vez. No los hagas por tu cuenta todavía.
 
 **Notas para Santiago (no se envían):**
 
-- **Lo que se verifica contra las pantallas antes de enviarlo:** los nombres de los botones ("Cobrar con QR", "Cobrar en efectivo", "Entregar", "Anular link") y los medios de pago que de verdad ofrece el checkout de Wompi en producción.
-- **Cómo transfiere el efectivo el Integrante** no está escrito en Atlas: es la cuenta puente "Efectivo en poder de Integrantes" de contabilidad. La frase "como te indicamos" supone que ya se lo dijeron; si no, se completa aquí.
-- **El conteo, "juntos la primera vez"**, porque el conteo tiene que mostrar dos cifras (saldo, y unidades pagadas y aún no entregadas; decisión de Santiago del 2026-09-14), y la primera vez conviene explicarlo. Si prefieres otra cosa, cámbialo.
+- **Los medios de pago del QR** ("tarjeta, PSE o Nequi") son los que ofrece el checkout de Wompi de CNV; confírmalos en el Wompi de producción antes de enviarlo.
+- **"Como te indicamos"** sobre el efectivo supone que ya les explicaste la cuenta puente "Efectivo en poder de Integrantes"; si no, se completa aquí.
+- **"Si CNV te escribe"** depende del Bloque A: el correo al Integrante cuando un pago suyo entra en revisión.
+- **El conteo, "juntos la primera vez"**, porque debe mostrar dos cifras: el saldo, y las unidades pagadas y aún no entregadas.

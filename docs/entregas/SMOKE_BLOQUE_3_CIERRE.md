@@ -72,6 +72,14 @@ En `/pagos`, panel **Ventas cobradas sin cerrar en contabilidad**:
 - [ ] Elige **hoy**. Si la venta del paso 2 quedó facturada y con pago, **Debe dar:** *Ninguna del dd/mm/aaaa. Ese día quedó en cero.*
 - [ ] **Ver todas** vuelve al total.
 
+## 5. El filtro por día, corregido (2026-09-15)
+
+Después del push de `bfa28098` o posterior (no trae migraciones).
+
+- [ ] En **Día** elige una fecha y pulsa **Ver ese día**, varias veces y con fechas distintas. **Debe dar:** la página **no** sube al inicio.
+- [ ] Pulsa un día de la línea *Días con ventas sin cerrar*. **Debe dar:** filtra sin subir, y el campo **Día** muestra ese día.
+- [ ] Borra la fecha del campo. **Debe dar:** el botón pasa a decir **Ver todas**; al pulsarlo se ven todas. Con todas a la vista y el campo vacío, el botón queda **apagado**.
+
 ## 4. Limpiar
 
 ```powershell
