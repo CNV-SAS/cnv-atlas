@@ -111,6 +111,12 @@ export const versionDelIntegranteSchema = z.object({
   version: z.string().trim().min(10, "Cuenta en una o dos frases qué pasó en la consulta.").max(1000),
 });
 
+// El numero de la nota credito manual en Alegra (p. ej. NC3).
+export const notaCreditoManualSchema = z.object({
+  transactionId: dbUuid,
+  numero: z.string().trim().min(2, "Escribe el número de la nota crédito.").max(60),
+});
+
 // El comprobante de la devolucion en Wompi (la referencia que da el panel de Wompi).
 export const comprobanteDeDevolucionSchema = z.string().trim().min(3, "Escribe el comprobante de la devolución.").max(200);
 

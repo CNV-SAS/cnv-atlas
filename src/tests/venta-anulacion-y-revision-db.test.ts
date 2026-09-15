@@ -469,6 +469,150 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     ).rejects.toThrow();
   });
 
+  // ── EL EFECTIVO QUE NO SE RECIBIO (0142) ───────────────────────────────────────────────────────
+  // El caso: link de Wompi pendiente, venta en efectivo que lo anula (y se entrega), y el pago de Wompi que llega
+  // despues. Resulta que el efectivo no entro.
+  async function cobroDobleConEfectivo(cantidadLink = 1, cantidadEfectivo = 1) {
+    const { registrarEntrega, registrarVersionDelIntegrante } = await import("@/modules/payments/data/payments-writer");
+    const { descontarVenta } = await import("@/modules/payments/data/inventario-de-venta");
+    const p = await producto(5);
+    const link = await checkout(p, cantidadLink);
+    const cash = await efectivo(p, cantidadEfectivo, true);
+    await descontarVenta(cash.id);
+    await registrarEntrega(cash.id, { id: actorId, email: null });
+    await pagar(link.id);
+    revisionesCreadas.push(link.id);
+    await registrarVersionDelIntegrante(link.id, "El paciente no pago en efectivo: pago solo con tarjeta.", actorId);
+    return { p, link: link.id, cash: cash.id };
+  }
+
+  async function ingresoNeto(id: string) {
+    const { db } = await import("@/db");
+    const [r] = await db.execute<{ comision: string; cnv: string; filas_negativas: number }>(dsql`
+      select (select coalesce(sum(commission_amount), 0) from professional_revenue where transaction_id = ${id})::text as comision,
+             (select coalesce(sum(amount), 0) from cnv_revenue where transaction_id = ${id})::text as cnv,
+             (select count(*)::int from professional_revenue where transaction_id = ${id} and reversal_of is not null) as filas_negativas`);
+    return { comision: Number(r.comision), cnv: Number(r.cnv), filasNegativas: r.filas_negativas };
+  }
+
+  it("la venta en efectivo que anula el link queda escrita en el link", async () => {
+    const { db } = await import("@/db");
+    const p = await producto(3);
+    const link = await checkout(p, 1);
+    const cash = await efectivo(p, 1, true);
+    const [l] = await db.execute<{ por: string | null }>(dsql`select cancelled_by_sale_id as por from transactions where id = ${link.id}`);
+    expect(l.por).toBe(cash.id);
+  });
+
+  it("EFECTIVO NO RECIBIDO: Wompi pasa a ser la venta (sin descontar otra vez), el efectivo sale con su ingreso revertido", async () => {
+    const { resolverRevision, puedeMarcarseEfectivoNoRecibido } = await import("@/modules/payments/data/payments-writer");
+    const { descontarVenta } = await import("@/modules/payments/data/inventario-de-venta");
+    const { reclamarParaFacturar } = await import("@/modules/payments/data/facturacion-repository");
+    const { db } = await import("@/db");
+    const c = await cobroDobleConEfectivo();
+    expect(await puedeMarcarseEfectivoNoRecibido(c.link)).toBe("si");
+    const antes = await ingresoNeto(c.cash);
+    expect(antes.comision).toBeGreaterThan(0);
+
+    const r = await resolverRevision(c.link, "efectivo_no_recibido", actorId);
+    expect(r?.efectivoNoRecibido?.ventaEnEfectivoId).toBe(c.cash);
+    expect(r?.efectivoNoRecibido?.casosEn90Dias).toBeGreaterThanOrEqual(1);
+
+    const [w] = await db.execute<{ status: string; stock_state: string; cubierta: string; entrega: string | null; resolucion: string }>(dsql`
+      select status, stock_state, stock_covered_by_sale_id as cubierta, fulfillment_state as entrega, review_resolution as resolucion
+        from transactions where id = ${c.link}`);
+    expect(w).toEqual({ status: "paid", stock_state: "en_otra_venta", cubierta: c.cash, entrega: "entregado", resolucion: "efectivo_no_recibido" });
+    expect((await ingresoNeto(c.link)).comision).toBeGreaterThan(0);
+    expect((await descontarVenta(c.link)).movio, "el producto se desconto dos veces").toBe(false);
+    expect(await enColaDeFactura(c.link)).toBe(true);
+    expect(await reclamarParaFacturar(c.link)).toBe(true);
+
+    const [e] = await db.execute<{ marcada: boolean; entrega: string | null }>(dsql`
+      select cash_not_received_at is not null as marcada, fulfillment_state as entrega from transactions where id = ${c.cash}`);
+    expect(e).toEqual({ marcada: true, entrega: null });
+    const despues = await ingresoNeto(c.cash);
+    expect(despues.comision).toBe(0);
+    expect(despues.cnv).toBe(0);
+    expect(despues.filasNegativas).toBe(1);
+
+    const [audit] = await db.execute<{ n: number }>(dsql`
+      select count(*)::int as n from clinical_audit_log where event = 'nutraceutical.delivery_transferred' and entity_id = ${c.link}`);
+    expect(audit.n).toBe(1);
+  });
+
+  it("CONTROL: si las ventas NO coinciden, no se marca nada y se remite a contabilidad", async () => {
+    const { resolverRevision, puedeMarcarseEfectivoNoRecibido } = await import("@/modules/payments/data/payments-writer");
+    const c = await cobroDobleConEfectivo(1, 2);
+    expect(await puedeMarcarseEfectivoNoRecibido(c.link)).toBe("no_coinciden");
+    await expect(resolverRevision(c.link, "efectivo_no_recibido", actorId)).rejects.toThrow(/resuélvelo con contabilidad/);
+    expect((await venta(c.link)).review_resolution).toBeNull();
+    expect((await ingresoNeto(c.cash)).filasNegativas).toBe(0);
+  });
+
+  it("un link anulado a mano (sin venta en efectivo) no ofrece la salida", async () => {
+    const { resolverRevision, puedeMarcarseEfectivoNoRecibido } = await import("@/modules/payments/data/payments-writer");
+    const id = await enRevision();
+    expect(await puedeMarcarseEfectivoNoRecibido(id)).toBe("sin_efectivo");
+    await expect(resolverRevision(id, "efectivo_no_recibido", actorId)).rejects.toThrow(/no lo anuló una venta en efectivo/);
+  });
+
+  it("la escalada cuenta los casos del mismo Integrante en 90 dias", async () => {
+    const { resolverRevision } = await import("@/modules/payments/data/payments-writer");
+    const a = await cobroDobleConEfectivo();
+    const ra = await resolverRevision(a.link, "efectivo_no_recibido", actorId);
+    const b = await cobroDobleConEfectivo();
+    const rb = await resolverRevision(b.link, "efectivo_no_recibido", actorId);
+    expect(rb!.efectivoNoRecibido!.casosEn90Dias).toBe(ra!.efectivoNoRecibido!.casosEn90Dias + 1);
+  });
+
+  it("la nota credito manual se registra una vez, y solo sobre un efectivo marcado", async () => {
+    const { resolverRevision, registrarNotaCreditoManual } = await import("@/modules/payments/data/payments-writer");
+    const c = await cobroDobleConEfectivo();
+    expect(await registrarNotaCreditoManual(c.cash, "NC9")).toBe(false); // todavia no esta marcada
+    await resolverRevision(c.link, "efectivo_no_recibido", actorId);
+    expect(await registrarNotaCreditoManual(c.cash, "NC9")).toBe(true);
+    expect(await registrarNotaCreditoManual(c.cash, "NC10")).toBe(false);
+  });
+
+  it("el panel ofrece la salida solo cuando coinciden, y lista el efectivo marcado con su conteo y su nota credito", async () => {
+    const { resolverRevision } = await import("@/modules/payments/data/payments-writer");
+    const { listarVentasPorRevisar, listarEfectivosNoRecibidos } = await import("@/modules/payments/data/ventas-por-revisar");
+    const coinciden = await cobroDobleConEfectivo();
+    const noCoinciden = await cobroDobleConEfectivo(1, 2);
+    const aMano = await enRevision();
+    const lista = await listarVentasPorRevisar();
+    expect(lista.find((v) => v.id === coinciden.link)?.efectivo).toBe("si");
+    expect(lista.find((v) => v.id === noCoinciden.link)?.efectivo).toBe("no_coinciden");
+    expect(lista.find((v) => v.id === aMano)?.efectivo).toBe("sin_efectivo");
+
+    await resolverRevision(coinciden.link, "efectivo_no_recibido", actorId);
+    const efectivos = await listarEfectivosNoRecibidos();
+    const marcado = efectivos.find((e) => e.id === coinciden.cash);
+    expect(marcado?.notaCredito).toBeNull();
+    expect(marcado?.casosEn90Dias).toBeGreaterThanOrEqual(1);
+    expect((await listarVentasPorRevisar()).some((v) => v.id === coinciden.link)).toBe(false);
+  });
+
+  it("el efectivo no recibido no suma en el cobro reconocido", async () => {
+    const { resolverRevision } = await import("@/modules/payments/data/payments-writer");
+    const { createClient } = await import("@supabase/supabase-js");
+    const { COLUMNA_EFECTIVO_NO_RECIBIDO, FILTRO_FUERA_DE_REVISION } = await import("@/modules/payments/cobro-reconocido");
+    const c = await cobroDobleConEfectivo();
+    await resolverRevision(c.link, "efectivo_no_recibido", actorId);
+    const cliente = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { persistSession: false },
+    });
+    const { data, error } = await cliente
+      .from("transactions")
+      .select("id")
+      .in("id", [c.link, c.cash])
+      .eq("status", "paid")
+      .or(FILTRO_FUERA_DE_REVISION)
+      .is(COLUMNA_EFECTIVO_NO_RECIBIDO, null);
+    expect(error).toBeNull();
+    expect((data ?? []).map((x) => x.id)).toEqual([c.link]);
+  });
+
   // ── LOS CHECK DE LA 0140 ───────────────────────────────────────────────────────────────────────
   it("la base rechaza una entrega sin fecha y una resolucion sin motivo", async () => {
     const { db } = await import("@/db");

@@ -16,6 +16,7 @@ import {
   markWebhookProcessed,
   recordWebhookEvent,
   registrarEntrega,
+  registrarNotaCreditoManual,
   registrarVersionDelIntegrante,
   SoporteDeRevisionError,
   resolverRevision,
@@ -33,6 +34,7 @@ import {
 } from "../data/inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
 
+import { ESCALADA_EFECTIVO_NO_RECIBIDO } from "../revision";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import { emitirFacturaDeVenta } from "./facturacion-service";
 import { descontarInventarioDeVenta } from "./inventario-venta-service";
@@ -419,6 +421,30 @@ export async function resolverRevisionDeVenta(
   if (resolucion === "segunda_compra") {
     await descontarInventarioDeVenta(venta.id);
     await facturarVentaSellada(venta, "wompi");
+  }
+  if (resolucion === "efectivo_no_recibido" && venta.efectivoNoRecibido) {
+    // La venta de Wompi se factura; NO se descuenta: su producto salio con la venta en efectivo.
+    await facturarVentaSellada(venta, "wompi");
+    // ALERTA DISTINTA A LA DE LA REVISION (contabilidad, 2026-09-14): nivel error, con el Integrante, y la
+    // escalada desde el segundo caso en 90 dias. Es el control contra el efectivo registrado que no entra.
+    const e = venta.efectivoNoRecibido;
+    Sentry.captureMessage(
+      e.casosEn90Dias >= ESCALADA_EFECTIVO_NO_RECIBIDO
+        ? `Efectivo registrado que no se recibió: SE REPITE (${e.casosEn90Dias} casos en 90 días del mismo Integrante)`
+        : "Efectivo registrado que no se recibió",
+      {
+        level: "error",
+        tags: { area: "efectivo-no-recibido", professionalId: e.professionalId ?? "sin-profesional" },
+        extra: { ventaEnEfectivo: e.ventaEnEfectivoId, ventaWompi: venta.id, casosEn90Dias: e.casosEn90Dias },
+      },
+    );
+  }
+}
+
+/** El numero de la nota credito manual en Alegra sobre la factura del efectivo que no se recibio. */
+export async function registrarNotaCreditoDeVenta(transactionId: string, numero: string): Promise<void> {
+  if (!(await registrarNotaCreditoManual(transactionId, numero))) {
+    throw new VentaError("Esa venta no está marcada como efectivo no recibido, o ya tiene su nota crédito.");
   }
 }
 

@@ -22,8 +22,9 @@ import {
 import { listarVentasSinDocumento } from "@/modules/payments/data/facturacion-repository";
 import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
 import { VentasPorRevisar } from "@/modules/payments/components/ventas-por-revisar";
+import { bloqueadaPorRevision } from "@/modules/payments/revision";
 import { VersionDelIntegranteForm } from "@/modules/payments/components/version-del-integrante-form";
-import { listarVentasPorRevisar } from "@/modules/payments/data/ventas-por-revisar";
+import { listarEfectivosNoRecibidos, listarVentasPorRevisar } from "@/modules/payments/data/ventas-por-revisar";
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
@@ -52,7 +53,9 @@ const STATUS_META: Record<TransactionStatus, { label: string; className: string 
 // EN REVISION esta pagada pero no se factura ni se descuenta hasta que CNV la revise.
 function TxStatusBadge({ tx }: { tx: TransactionWithItems }) {
   const meta =
-    tx.status === "failed" && tx.cancelled_at
+    tx.cash_not_received_at
+      ? { label: "Anulada por CNV", className: "bg-muted text-muted-foreground" }
+      : tx.status === "failed" && tx.cancelled_at
       ? { label: "Anulado", className: "bg-muted text-muted-foreground" }
       : tx.status === "paid" && tx.review_reason && !tx.review_resolution
         ? { label: "En revisión", className: "bg-clinical-warning-bg text-clinical-warning" }
@@ -72,13 +75,20 @@ const METODO_LABEL: Record<string, string> = { wompi: "Pasarela", efectivo: "Efe
 // y, a quien puede entregarla, el boton. Aqui entrega el paciente que vuelve SOLO A COMPRAR, sin consulta: sin
 // esto, su venta no tendria donde registrarse como entregada.
 function EntregaDeLaVenta({ tx, puedeEntregar }: { tx: TransactionWithItems; puedeEntregar: boolean }) {
+  if (tx.cash_not_received_at) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        CNV determinó que el efectivo de esta venta no se recibió. La venta válida es el pago de Wompi del mismo producto.
+      </span>
+    );
+  }
   if (tx.fulfillment_state === "entregado" && tx.delivered_at) {
     // CON LA HORA, no solo el dia (Santiago, smoke del 2026-09-14): orienta al profesional sobre en que
     // momento de la consulta se entrego.
     return <span className="text-xs text-muted-foreground">Entregado el {formatDateTime(tx.delivered_at)}</span>;
   }
   if (tx.fulfillment_state !== "pendiente" || tx.status !== "paid") return null;
-  if (tx.review_reason && tx.review_resolution !== "segunda_compra") {
+  if (bloqueadaPorRevision(tx)) {
     return (
       <div className="flex flex-col gap-2">
         <span className="text-xs text-clinical-warning">
@@ -129,9 +139,9 @@ export default async function PagosPage() {
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
   // transacciones, que se muestra igual.
-  const [ventasSinDocumento, ventasPorRevisar] = canView
-    ? await Promise.all([listarVentasSinDocumento(), listarVentasPorRevisar()])
-    : [[], []];
+  const [ventasSinDocumento, ventasPorRevisar, efectivosNoRecibidos] = canView
+    ? await Promise.all([listarVentasSinDocumento(), listarVentasPorRevisar(), listarEfectivosNoRecibidos()])
+    : [[], [], []];
   // Para recuperar el enlace de un checkout pendiente sin generar otro: el link es derivable del id
   // (misma forma que buildCheckoutUrl). Horas restantes del TTL de 24h contra el created_at.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -204,7 +214,7 @@ export default async function PagosPage() {
 
       {/* VA ANTES DE LA LISTA DE TRANSACCIONES a proposito: es lo que hay que mirar y resolver, y al
           final de la pagina no lo mira nadie. Contabilidad lo quiere en CERO al cierre de cada dia. */}
-      {canView && <VentasPorRevisar ventas={ventasPorRevisar} ahora={new Date(nowMs)} />}
+      {canView && <VentasPorRevisar ventas={ventasPorRevisar} efectivos={efectivosNoRecibidos} ahora={new Date(nowMs)} />}
       {canView && <FacturasPendientes ventas={ventasSinDocumento} />}
 
       <section className="flex flex-col gap-3">

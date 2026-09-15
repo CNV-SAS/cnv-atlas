@@ -164,7 +164,8 @@ export async function descontarVenta(transactionId: string): Promise<ResultadoDe
       en_revision: boolean;
     }>(sql`
       select status, stock_state, location_id, treatment_id,
-             (review_reason is not null and review_resolution is distinct from 'segunda_compra') as en_revision
+             (review_reason is not null and review_resolution is distinct from 'segunda_compra'
+                                         and review_resolution is distinct from 'efectivo_no_recibido') as en_revision
         from transactions where id = ${transactionId}
          for update`);
     // UNA VENTA EN REVISION NO SE DESCUENTA, aunque su estado lo pareciera: la regla no depende de que nadie
@@ -274,7 +275,7 @@ export async function listarDescuentosPendientes(limite = 50): Promise<string[]>
   const filas = await db.execute<{ id: string }>(sql`
     select id from transactions
      where status = 'paid' and stock_state in ('reservado', 'pendiente', 'fallido')
-       and (review_reason is null or review_resolution = 'segunda_compra')
+       and (review_reason is null or review_resolution in ('segunda_compra', 'efectivo_no_recibido'))
      order by created_at asc
      limit ${limite}`);
   return filas.map((f) => f.id);

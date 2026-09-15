@@ -422,6 +422,14 @@ export async function createPaidCashTransaction(
       );
     }
     await sealAccounting(tx, t);
+    // EL VINCULO: cada link anulado sabe que venta en efectivo lo anulo (0142). Si ese pago de Wompi llega
+    // despues y resulta que el efectivo no entro, es lo que dice cual venta es la falsa.
+    if (linksAnulados.length > 0) {
+      await tx
+        .update(transactions)
+        .set({ cancelledBySaleId: t.id })
+        .where(inArray(transactions.id, linksAnulados));
+    }
     return { id: t.id, linksAnulados };
   });
 }
@@ -507,7 +515,15 @@ export async function linksPendientesQueComparten(
   return filas.map((f) => f.id);
 }
 
-export type ResolucionDeRevision = "segunda_compra" | "devuelto";
+export type ResolucionDeRevision = "segunda_compra" | "devuelto" | "efectivo_no_recibido";
+
+/** Lo que pasa con la venta en efectivo cuando el efectivo no se recibio: para la alerta y la escalada. */
+export type EfectivoNoRecibido = {
+  ventaEnEfectivoId: string;
+  professionalId: string | null;
+  /** Casos del mismo Integrante en los ultimos 90 dias, contando este. */
+  casosEn90Dias: number;
+};
 
 /** Falta el soporte que contabilidad exige para resolver. El mensaje es para quien pulso. */
 export class SoporteDeRevisionError extends Error {
@@ -548,14 +564,15 @@ export async function resolverRevision(
   actorId: string,
   // La referencia de la devolucion en Wompi. Obligatoria para "devuelto" (contabilidad, 2026-09-14).
   comprobante?: string | null,
-): Promise<SealedTransaction | null> {
+): Promise<(SealedTransaction & { efectivoNoRecibido: EfectivoNoRecibido | null }) | null> {
   return db.transaction(async (tx) => {
     const [venta] = await tx.execute<{
       status: string;
       review_reason: string | null;
       review_resolution: string | null;
       review_professional_version: string | null;
-    }>(sql`select status, review_reason, review_resolution, review_professional_version
+      cancelled_by_sale_id: string | null;
+    }>(sql`select status, review_reason, review_resolution, review_professional_version, cancelled_by_sale_id
              from transactions where id = ${txId} for update`);
     if (!venta || venta.status !== "paid" || !venta.review_reason || venta.review_resolution) return null;
     // EL SOPORTE, ANTES DE RESOLVER. La base lo exige tambien (0141); aqui se dice con un mensaje que se
@@ -566,6 +583,110 @@ export async function resolverRevision(
     const referencia = comprobante?.trim() ?? "";
     if (resolucion === "devuelto" && !referencia) {
       throw new SoporteDeRevisionError("Falta el comprobante de la devolución en Wompi.");
+    }
+
+    // ═══ EL EFECTIVO NO SE RECIBIO (0142, diseno aprobado por Santiago el 2026-09-14) ═══
+    //
+    // La venta de Wompi pasa a ser LA venta: se sella su contabilidad y se factura, pero NO se descuenta, porque
+    // el producto ya salio con la venta en efectivo. La del efectivo queda marcada, fuera de toda cifra de cobro,
+    // con su ingreso revertido por filas negativas. La nota credito de su factura la hace contabilidad a mano en
+    // Alegra y queda pendiente en el panel.
+    //
+    // SOLO SI LAS DOS VENTAS COINCIDEN en productos y cantidades: si la del efectivo llevaba algo mas, una parte
+    // pudo ser real, y separarla es otra decision que se toma con contabilidad.
+    if (resolucion === "efectivo_no_recibido") {
+      const efectivoId = venta.cancelled_by_sale_id;
+      if (!efectivoId) {
+        throw new SoporteDeRevisionError("Este link no lo anuló una venta en efectivo: no hay efectivo que marcar.");
+      }
+      const [efectivo] = await tx.execute<{
+        status: string;
+        payment_method: string;
+        cash_not_received_at: string | null;
+        professional_id: string | null;
+        fulfillment_state: string | null;
+        delivered_at: string | null;
+        delivered_by: string | null;
+        treatment_id: string | null;
+      }>(sql`select status, payment_method, cash_not_received_at, professional_id, fulfillment_state,
+                     delivered_at::text as delivered_at, delivered_by, treatment_id
+                from transactions where id = ${efectivoId} for update`);
+      if (!efectivo || efectivo.status !== "paid" || efectivo.payment_method !== "efectivo" || efectivo.cash_not_received_at) {
+        throw new SoporteDeRevisionError("La venta en efectivo que anuló este link ya no está pagada o ya se marcó.");
+      }
+      if (!(await ventasCoinciden(tx, txId, efectivoId))) {
+        throw new SoporteDeRevisionError(
+          "Las dos ventas no coinciden en productos y cantidades: resuélvelo con contabilidad.",
+        );
+      }
+
+      const [w] = await tx
+        .update(transactions)
+        .set({
+          reviewResolution: "efectivo_no_recibido",
+          reviewedAt: new Date(),
+          reviewedBy: actorId,
+          stockState: "en_otra_venta",
+          stockCoveredBySaleId: efectivoId,
+          // LA ENTREGA SE TRASLADA: si el producto ya se entrego con la venta en efectivo, la entrega es de esta.
+          ...(efectivo.fulfillment_state === "entregado"
+            ? { fulfillmentState: "entregado", deliveredAt: new Date(efectivo.delivered_at!), deliveredBy: efectivo.delivered_by }
+            : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(transactions.id, txId))
+        .returning({
+          id: transactions.id,
+          amount: transactions.amount,
+          currency: transactions.currency,
+          patientId: transactions.patientId,
+          professionalId: transactions.professionalId,
+        });
+      await sealAccounting(tx, w);
+
+      // La venta en efectivo deja de ser una venta: sin estado de entrega (su entrega, si la hubo, es ahora de
+      // la venta de Wompi), para que nadie la "entregue" otra vez ni cuente dos veces lo que el paciente recibio.
+      await tx.execute(sql`
+        update transactions
+           set cash_not_received_at = now(), cash_not_received_by = ${actorId},
+               fulfillment_state = null, delivered_at = null, delivered_by = null,
+               updated_at = now()
+         where id = ${efectivoId}`);
+      // LA REVERSION: una fila negativa por cada fila de ingreso de la venta en efectivo, que apunta a la que
+      // revierte. No se borra nada: el rastro de que existio y se revirtio es parte del control.
+      await tx.execute(sql`
+        insert into professional_revenue (transaction_id, professional_id, commission_rate, commission_amount, reversal_of)
+        select transaction_id, professional_id, commission_rate, -commission_amount, id
+          from professional_revenue where transaction_id = ${efectivoId} and reversal_of is null`);
+      await tx.execute(sql`
+        insert into cnv_revenue (transaction_id, amount, reversal_of)
+        select transaction_id, -amount, id from cnv_revenue where transaction_id = ${efectivoId} and reversal_of is null`);
+
+      if (efectivo.fulfillment_state === "entregado") {
+        // Inline (regla dura 8): lo que el paciente recibio no cambia, cambia la venta que lo respalda.
+        await recordAudit(tx, {
+          event: "nutraceutical.delivery_transferred",
+          actorId,
+          actorEmail: null,
+          entityType: "transaction",
+          entityId: txId,
+          payload: { from_transaction_id: efectivoId, to_transaction_id: txId, treatment_id: efectivo.treatment_id, reason: "efectivo_no_recibido" },
+        });
+      }
+
+      const [conteo] = await tx.execute<{ n: number }>(sql`
+        select count(*)::int as n from transactions
+         where professional_id is not distinct from ${efectivo.professional_id}
+           and cash_not_received_at > now() - interval '90 days'`);
+      return {
+        ...w,
+        enRevision: false,
+        efectivoNoRecibido: {
+          ventaEnEfectivoId: efectivoId,
+          professionalId: efectivo.professional_id,
+          casosEn90Dias: Number(conteo?.n ?? 1),
+        },
+      };
     }
     const [t] = await tx
       .update(transactions)
@@ -586,7 +707,7 @@ export async function resolverRevision(
         professionalId: transactions.professionalId,
       });
     if (resolucion === "segunda_compra") await sealAccounting(tx, t);
-    return { ...t, enRevision: false };
+    return { ...t, enRevision: false, efectivoNoRecibido: null };
   });
 }
 
@@ -617,6 +738,7 @@ export async function detalleDeLinksPendientes(
 }
 
 export type ResultadoDeEntrega = "entregada" | "no_pagada" | "ya_entregada" | "en_revision" | "sin_estado";
+// (Una venta en efectivo marcada "no recibido" queda sin estado de entrega, asi que da "sin_estado".)
 
 // ═══ LA ENTREGA DE UNA VENTA (Bloque 3, sesion 2) ═══
 //
@@ -642,7 +764,8 @@ export async function registrarEntrega(
       en_revision: boolean;
     }>(sql`
       select status, fulfillment_state, treatment_id,
-             (review_reason is not null and review_resolution is distinct from 'segunda_compra') as en_revision
+             (review_reason is not null and review_resolution is distinct from 'segunda_compra'
+                                         and review_resolution is distinct from 'efectivo_no_recibido') as en_revision
         from transactions where id = ${txId} for update`);
     if (!venta || venta.fulfillment_state == null) return "sin_estado";
     if (venta.fulfillment_state === "entregado") return "ya_entregada";
@@ -674,4 +797,38 @@ export async function registrarEntrega(
     });
     return "entregada";
   });
+}
+
+/**
+ * Si dos ventas llevan los mismos productos en las mismas cantidades (sumadas por producto). Es la condicion para
+ * marcar "el efectivo no se recibio": solo entonces la venta de Wompi reemplaza entera a la del efectivo.
+ */
+async function ventasCoinciden(ex: typeof db | Tx, a: string, b: string): Promise<boolean> {
+  const [r] = await ex.execute<{ iguales: boolean }>(sql`
+    with x as (select nutraceutical_id, sum(quantity) as q from transaction_items where transaction_id = ${a} group by 1),
+         y as (select nutraceutical_id, sum(quantity) as q from transaction_items where transaction_id = ${b} group by 1)
+    select not exists (
+      select 1 from x full outer join y using (nutraceutical_id) where x.q is distinct from y.q
+    ) as iguales`);
+  return Boolean(r?.iguales);
+}
+
+/** Para la pantalla: si la resolucion "el efectivo no se recibio" es posible para este pago en revision. */
+export async function puedeMarcarseEfectivoNoRecibido(txId: string): Promise<"si" | "sin_efectivo" | "no_coinciden"> {
+  const [v] = await db.execute<{ efectivo: string | null }>(sql`
+    select cancelled_by_sale_id as efectivo from transactions where id = ${txId}`);
+  if (!v?.efectivo) return "sin_efectivo";
+  return (await ventasCoinciden(db, txId, v.efectivo)) ? "si" : "no_coinciden";
+}
+
+/**
+ * La nota credito que contabilidad emitio a mano en Alegra sobre la factura de un efectivo que no se recibio.
+ * Solo sobre una venta marcada, y una vez.
+ */
+export async function registrarNotaCreditoManual(txId: string, numero: string): Promise<boolean> {
+  const filas = await db.execute<{ id: string }>(sql`
+    update transactions set credit_note_manual_number = ${numero}, updated_at = now()
+     where id = ${txId} and cash_not_received_at is not null and credit_note_manual_number is null
+    returning id`);
+  return filas.length > 0;
 }

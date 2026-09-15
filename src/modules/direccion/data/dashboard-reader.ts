@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { FILTRO_FUERA_DE_REVISION } from "@/modules/payments/cobro-reconocido";
+import { COLUMNA_EFECTIVO_NO_RECIBIDO, FILTRO_FUERA_DE_REVISION } from "@/modules/payments/cobro-reconocido";
 
 // Tablero consolidado de direccion (B14). Solo agregados financieros e inventario, leidos por
 // RLS (direccion/admin): transacciones, ingreso CNV, comisiones e inventario. Sin PII: se
@@ -27,7 +27,7 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
 
   const [paid, cnv, commissions, inventory] = await Promise.all([
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
-    supabase.from("transactions").select("amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION),
+    supabase.from("transactions").select("amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null),
     supabase.from("cnv_revenue").select("amount"),
     supabase.from("professional_revenue").select("commission_amount"),
     // SIN PRODUCTOS DE PRUEBA (smoke del Bloque 3, 2026-09-14): los "PRUEBA SMOKE BLOQUE 3" de cada smoke dejan

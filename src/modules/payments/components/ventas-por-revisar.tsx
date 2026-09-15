@@ -1,8 +1,9 @@
 import { Panel } from "@/components/shared/panel";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 
-import type { VentaPorRevisar } from "../data/ventas-por-revisar";
+import type { EfectivoNoRecibido, VentaPorRevisar } from "../data/ventas-por-revisar";
 import { plazoDeRevision } from "../plazo-de-revision";
+import { ESCALADA_EFECTIVO_NO_RECIBIDO } from "../revision";
 import { AccionDeVentaButton } from "./accion-de-venta-button";
 import { VersionDelIntegranteForm } from "./version-del-integrante-form";
 
@@ -38,9 +39,66 @@ function Plazo({ abierta, ahora }: { abierta: string; ahora: Date }) {
   return <p className={`text-xs ${p.estado === "a_tiempo" ? "text-muted-foreground" : "font-medium text-attention"}`}>{texto}</p>;
 }
 
-export function VentasPorRevisar({ ventas, ahora }: { ventas: VentaPorRevisar[]; ahora: Date }) {
+// La escalada: desde el segundo caso del mismo Integrante en 90 dias (Santiago, 2026-09-14).
+const ESCALADA = ESCALADA_EFECTIVO_NO_RECIBIDO;
+
+function EfectivosNoRecibidos({ efectivos }: { efectivos: EfectivoNoRecibido[] }) {
+  if (efectivos.length === 0) return null;
+  const escala = efectivos.some((e) => e.casosEn90Dias >= ESCALADA);
+  return (
+    <div
+      className={`flex flex-col gap-2 rounded-lg border p-3 ${escala ? "border-destructive bg-destructive/5" : "border-border"}`}
+    >
+      <h3 className={`text-sm font-semibold ${escala ? "text-destructive" : "text-foreground"}`}>
+        Efectivo registrado que no se recibió
+      </h3>
+      <p className="max-w-prose text-xs text-muted-foreground">
+        Ventas en efectivo que el Integrante registró y cuyo dinero no entró. Su factura sigue emitida hasta la nota
+        crédito manual en Alegra. Desde el segundo caso de un mismo Integrante en 90 días, este bloque se marca en rojo.
+      </p>
+      <ul className="flex flex-col gap-2">
+        {efectivos.map((e) => (
+          <li key={e.id} className="flex flex-col gap-1 rounded-md border border-border bg-card p-2 text-sm">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <strong className="tabular-nums text-foreground">{Number(e.amount).toLocaleString("es-CO")} COP</strong>
+              <span className="text-foreground">{e.profesional ?? "Sin profesional"}</span>
+              <span className="text-muted-foreground">marcada el {formatDateTime(e.marcadaEn)}</span>
+              {e.factura ? <span className="text-xs text-muted-foreground">factura {e.factura}</span> : null}
+              <span
+                className={`rounded px-2 py-0.5 text-xs ${e.casosEn90Dias >= ESCALADA ? "bg-destructive text-white" : "bg-muted text-muted-foreground"}`}
+              >
+                {e.casosEn90Dias} caso{e.casosEn90Dias === 1 ? "" : "s"} en 90 días
+              </span>
+            </div>
+            {e.notaCredito ? (
+              <span className="text-xs text-muted-foreground">Nota crédito manual: {e.notaCredito}</span>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-attention">Falta la nota crédito manual en Alegra.</span>
+                <div>
+                  <AccionDeVentaButton transactionId={e.id} tipo="nota_credito" />
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function VentasPorRevisar({
+  ventas,
+  efectivos,
+  ahora,
+}: {
+  ventas: VentaPorRevisar[];
+  efectivos: EfectivoNoRecibido[];
+  ahora: Date;
+}) {
   return (
     <Panel titulo="Ventas por revisar">
+      <EfectivosNoRecibidos efectivos={efectivos} />
       <p className="text-sm text-muted-foreground">
         {ventas.length === 0
           ? "Ninguna. No hay pagos por decidir ni avisos de inventario en los últimos 30 días."
@@ -87,7 +145,14 @@ export function VentasPorRevisar({ ventas, ahora }: { ventas: VentaPorRevisar[];
                     <div className="flex flex-wrap gap-2">
                       <AccionDeVentaButton transactionId={v.id} tipo="segunda_compra" />
                       <AccionDeVentaButton transactionId={v.id} tipo="devuelto" />
+                      {v.efectivo === "si" ? <AccionDeVentaButton transactionId={v.id} tipo="efectivo_no_recibido" /> : null}
                     </div>
+                  ) : null}
+                  {v.version && v.efectivo === "no_coinciden" ? (
+                    <p className="text-xs text-muted-foreground">
+                      Si el efectivo no se recibió: la venta en efectivo que anuló este link no coincide en productos y
+                      cantidades, así que resuélvelo con contabilidad.
+                    </p>
                   ) : null}
                 </div>
               )}
