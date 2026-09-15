@@ -21,10 +21,10 @@ que algo ya hecho se vuelva a planear).
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
 | **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
-| **A** · Avisos (antes del 2b) | **CONSTRUIDO (2026-09-15), falta el smoke** (`SMOKE_BLOQUE_A_AVISOS.md`). Migracion 0145. Necesita Vercel Pro para salir a produccion | Resumen puro (`avisos-resumen`), servicio y ruta programada, aviso al Integrante, marcas en administracion, "en gestion", franja y soporte en /pagos. Candados: `avisos-resumen`, `avisos-db`, `avisos-pantalla` | Correo diario solo si hay algo que requiere accion, franja en cualquier pantalla y correo inmediato al Integrante. Sin reintento automatico |
+| **A** · Avisos (antes del 2b) | **HECHO (2026-09-15), smoke pasado** (`SMOKE_BLOQUE_A_AVISOS.md`), con dos defectos que salieron en el y quedaron corregidos: un envio que fallaba quedaba como "ya enviado" (ahora se reintenta, con llave de idempotencia de Resend) y el formulario de "en gestion" no se cerraba al guardar. Falta repetir el paso 8 de la guia. Migracion 0145. Necesita Vercel Pro para salir a produccion | Resumen puro (`avisos-resumen`), servicio y ruta programada, aviso al Integrante, marcas en administracion, "en gestion", franja y soporte en /pagos. Candados: `avisos-resumen`, `avisos-db`, `avisos-pantalla` | Correo diario solo si hay algo que requiere accion, franja en cualquier pantalla y correo inmediato al Integrante. Sin reintento automatico |
 | **2b** · Paso a producción | **PREPARADO, ESPERA** (guía en `docs/entregas/`). Santiago, 2026-09-14: primero se cierran todos los bloques y se confirma que el flujo funciona; después 2b, después Supabase Pro, y al final los Integrantes | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
-| **3** · La venta nace en Tratamiento | **HECHO (2026-09-15), migraciones 0138-0144.** Sesiones 1 y 2, pasos 5 a 8 y el titular de marca verificado en una factura de sandbox. Solo queda el smoke corto del filtro por día (`SMOKE_BLOQUE_3_CIERRE.md`, paso 5) | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
+| **3** · La venta nace en Tratamiento | **HECHO (2026-09-15), migraciones 0138-0144.** Sesiones 1 y 2, pasos 5 a 8 y el titular de marca verificado en una factura de sandbox. Smoke de cierre pasado, incluido el filtro por día. **Anotado (2026-09-15): cada filtrado se siente lento** con pocas ventas; cada "Ver ese día" rehace la página entera (tres tandas de consultas en serie, la lista completa de transacciones sin límite y todos los pacientes), aunque solo cambia una consulta. Por medir antes de tocar: ver 3.8 | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
 | 3b · Reversa | Pendiente | — |
 | 4 · Liquidaciones | Pendiente | — |
 | 5 · Distribución | Pendiente | — |
@@ -1378,6 +1378,18 @@ Una venta descuenta el lote correcto de la ubicación correcta **al sellarse**; 
 entregar sin venta; un checkout pendiente reserva la unidad y al caducar la libera; la entrega queda en
 `clinical_audit_log`; la factura muestra el titular de marca; y el **reporte de ventas sin documento
 fiscal** existe y se puede consultar por día.
+
+---
+
+### 3.8 · Pendiente anotado: la lentitud de /pagos al filtrar (2026-09-15)
+
+Santiago, en el smoke de cierre: "funciona, solo que es algo lento". Con 10 ventas ya se nota; con volumen real sera peor.
+
+**Lo que dice el codigo (sin medir en la nube):** `router.push` con otro `?dia=` vuelve a ejecutar la pagina completa en el servidor. Son tres tandas en serie: (1) todas las transacciones, **sin limite**, y el perfil; (2) los cinco paneles; (3) si puede crear checkout, **todos los pacientes seleccionables** y el catalogo. Solo una consulta depende del dia (`listarVentasSinDocumento`).
+
+**Como distinguir consulta de render, una sola vez:** en el navegador, pestaña Network, la peticion que sale al pulsar "Ver ese día". Si casi todo es **Waiting (TTFB)**, es el servidor (las consultas). Si es **Content Download** grande, es lo que viaja (la lista completa).
+
+**Arreglo probable, cuando se mida:** las tres tandas en una sola en paralelo; la lista de transacciones paginada (las ultimas N, con "ver más"); y los selectores de paciente y producto cargados solo cuando se abre el formulario.
 
 ---
 

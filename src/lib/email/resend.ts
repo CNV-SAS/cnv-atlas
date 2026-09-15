@@ -188,7 +188,15 @@ export async function sendTaxStatusEmail(
 // y fecha de la venta, y el enlace a Atlas, donde la persona ve el resto con su sesion y su permiso. Varios
 // destinatarios van en UN envio: son del equipo y se ven entre si, que es lo que se quiere (saben quien mas lo
 // recibe).
-export async function sendAvisoEmail(to: string[], subject: string, text: string): Promise<Result<{ id: string }>> {
+//
+// `claveUnica` es la llave de idempotencia de Resend (24 horas): un reintento con la MISMA llave y el mismo contenido
+// no manda un segundo correo. Cubre el envio que vencio por timeout pero si salio (desenlace desconocido).
+export async function sendAvisoEmail(
+  to: string[],
+  subject: string,
+  text: string,
+  claveUnica?: string,
+): Promise<Result<{ id: string }>> {
   const resend = getClient();
   if (!resend) return err(appError("internal", "El servicio de correo no esta configurado."));
   const from = process.env.EMAIL_FROM;
@@ -197,7 +205,10 @@ export async function sendAvisoEmail(to: string[], subject: string, text: string
   const replyTo = process.env.EMAIL_REPLY_TO;
   try {
     const res = await withTimeout(
-      resend.emails.send({ from, ...(replyTo ? { replyTo } : {}), to, subject, text }),
+      resend.emails.send(
+        { from, ...(replyTo ? { replyTo } : {}), to, subject, text },
+        claveUnica ? { idempotencyKey: claveUnica } : undefined,
+      ),
       SEND_TIMEOUT_MS,
     );
     if (res.error) return err(appError("internal", `No se pudo enviar el aviso: ${res.error.message}`));
