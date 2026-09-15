@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useActionState, useState } from "react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
@@ -70,36 +72,17 @@ export function FacturasPendientes({
 
   return (
     <Panel titulo="Ventas cobradas sin cerrar en contabilidad">
-      {/* CONSULTABLE POR DIA (paso 6 del 3.4). Un formulario GET nativo, sin accion de servidor: solo cambia
-          la direccion (?dia=), y la pagina se vuelve a leer con ese filtro. */}
-      <form method="get" className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Día
-          <input
-            type="date"
-            name="dia"
-            defaultValue={dia ?? ""}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-xs"
-          />
-        </label>
-        <Button type="submit" variant="outline" size="sm">
-          Ver ese día
-        </Button>
-        {dia ? (
-          <a href="/pagos" className="text-sm text-primary underline-offset-4 hover:underline">
-            Ver todas
-          </a>
-        ) : null}
-      </form>
+      {/* Con `key`: al cambiar de dia por un enlace, el campo muestra el dia nuevo. */}
+      <FiltroDelDia key={dia ?? "todas"} dia={dia} />
       {porDia.length > 0 ? (
         <p className="text-xs text-muted-foreground">
           Días con ventas sin cerrar (últimos 30):{" "}
           {porDia.map((d, i) => (
             <span key={d.dia}>
               {i > 0 ? " · " : ""}
-              <a href={`/pagos?dia=${d.dia}`} className="text-primary underline-offset-4 hover:underline">
+              <Link href={`/pagos?dia=${d.dia}`} scroll={false} className="text-primary underline-offset-4 hover:underline">
                 {d.dia.split("-").reverse().join("/")}
-              </a>{" "}
+              </Link>{" "}
               ({d.total})
             </span>
           ))}
@@ -169,5 +152,49 @@ export function FacturasPendientes({
         </>
       )}
     </Panel>
+  );
+}
+
+// ═══ EL FILTRO POR DIA (paso 6 del 3.4) ═══
+//
+// NO ES UN FORMULARIO GET NATIVO, y lo fue: un envio nativo es una NAVEGACION COMPLETA, y el navegador sube la
+// pagina al inicio en cada clic (smoke del 2026-09-15). No es el salto de las acciones de servidor que corrige
+// `preservarScroll`: aqui no hay accion, hay navegacion. Se navega con el router de Next y `scroll: false`,
+// que cambia la direccion (?dia=) y vuelve a leer la pagina sin moverla.
+//
+// LA FECHA VACIA SIGNIFICA "VER TODAS" (decision del 2026-09-15): el boton lo dice cuando el campo esta vacio, y
+// se apaga si ya se estan viendo todas, porque no habria nada que hacer.
+function FiltroDelDia({ dia }: { dia: string | null }) {
+  const router = useRouter();
+  const [valor, setValor] = useState(dia ?? "");
+  const vacio = valor === "";
+  const ir = (destino: string | null) => router.push(destino ? `/pagos?dia=${destino}` : "/pagos", { scroll: false });
+
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        ir(vacio ? null : valor);
+      }}
+    >
+      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        Día
+        <input
+          type="date"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-xs"
+        />
+      </label>
+      <Button type="submit" variant="outline" size="sm" disabled={vacio && dia == null}>
+        {vacio ? "Ver todas" : "Ver ese día"}
+      </Button>
+      {dia && !vacio ? (
+        <Button type="button" variant="ghost" size="sm" onClick={() => ir(null)}>
+          Ver todas
+        </Button>
+      ) : null}
+    </form>
   );
 }
