@@ -298,6 +298,39 @@ export type Database = {
           },
         ]
       }
+      alert_digest_runs: {
+        Row: {
+          id: string
+          item_keys: string[]
+          ran_at: string
+          reason: string | null
+          recipients: number
+          run_date: string
+          sent: boolean
+          slot: string
+        }
+        Insert: {
+          id?: string
+          item_keys?: string[]
+          ran_at?: string
+          reason?: string | null
+          recipients?: number
+          run_date: string
+          sent: boolean
+          slot: string
+        }
+        Update: {
+          id?: string
+          item_keys?: string[]
+          ran_at?: string
+          reason?: string | null
+          recipients?: number
+          run_date?: string
+          sent?: boolean
+          slot?: string
+        }
+        Relationships: []
+      }
       allergens: {
         Row: {
           code: string
@@ -1828,6 +1861,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_subscriptions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutraceutical_allergens: {
         Row: {
           absence_certified_for: string | null
@@ -2776,6 +2848,51 @@ export type Database = {
           provider?: string
         }
         Relationships: []
+      }
+      pending_followups: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          note: string
+          transaction_id: string
+          until_date: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          note: string
+          transaction_id: string
+          until_date: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          note?: string
+          transaction_id?: string
+          until_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_followups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_followups_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phenotypes: {
         Row: {
@@ -4070,6 +4187,7 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_method_type: string | null
           professional_id: string | null
+          review_notified_at: string | null
           review_opened_at: string | null
           review_professional_version: string | null
           review_professional_version_at: string | null
@@ -4125,6 +4243,7 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
+          review_notified_at?: string | null
           review_opened_at?: string | null
           review_professional_version?: string | null
           review_professional_version_at?: string | null
@@ -4180,6 +4299,7 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
+          review_notified_at?: string | null
           review_opened_at?: string | null
           review_professional_version?: string | null
           review_professional_version_at?: string | null

@@ -21,6 +21,7 @@ export * from "./comodato"; // grupo 12
 export * from "./nutraceuticals"; // grupo 13
 export * from "./contraindications"; // contraindicaciones del paciente (2026-08-24)
 export * from "./payments"; // grupo 14
+export * from "./avisos"; // Bloque A (0145)
 export * from "./research"; // grupo 15
 export * from "./audit"; // grupo 16
 export * from "./ai"; // grupo 17
