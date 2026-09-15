@@ -103,6 +103,8 @@ export const transactions = pgTable(
     reviewRefundReference: text("review_refund_reference"),
     // Cuando entro en revision: el plazo de 5 dias habiles cuenta desde aqui.
     reviewOpenedAt: timestamp("review_opened_at", { withTimezone: true }),
+    // Cuando se aviso al Integrante que un pago de su venta entro en revision (Bloque A, 0145). Una vez.
+    reviewNotifiedAt: timestamp("review_notified_at", { withTimezone: true }),
     // ── EL EFECTIVO QUE NO SE RECIBIO (0142) ──
     // En el link: la venta en efectivo que lo anulo.
     cancelledBySaleId: uuid("cancelled_by_sale_id").references((): AnyPgColumn => transactions.id, { onDelete: "set null" }),

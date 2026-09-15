@@ -1016,6 +1016,13 @@
       "when": 1791764666099,
       "tag": "0144_mapa_de_items_por_ambiente",
       "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1791764726099,
+      "tag": "0145_avisos",
+      "breakpoints": true
     }
   ]
 }
