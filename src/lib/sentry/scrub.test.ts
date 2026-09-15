@@ -74,3 +74,18 @@ describe("scrubPhiFromEvent", () => {
     expect((out.breadcrumbs?.[0].data as { ok?: string })?.ok).toBe("keep");
   });
 });
+
+describe("la causa de un error de conexion", () => {
+  it("de la red se manda codigo y mensaje; lo que no es Error corta la cadena", async () => {
+    const { cadenaDeCausas } = await import("./causa");
+    const conexion = Object.assign(new Error("write CONNECTION_CLOSED aws-0.pooler.supabase.com:6543"), { code: "CONNECTION_CLOSED" });
+    const envoltorio = Object.assign(new Error("Failed query: select 1\nparams: CC123"), { query: "select 1", params: ["CC123"], cause: conexion });
+    const cadena = cadenaDeCausas(envoltorio);
+    expect(cadena).toEqual([
+      { tipo: "DrizzleQueryError" },
+      { tipo: "Error", codigo: "CONNECTION_CLOSED", mensaje: "write CONNECTION_CLOSED aws-0.pooler.supabase.com:6543" },
+    ]);
+    expect(JSON.stringify(cadena)).not.toContain("CC123");
+    expect(cadenaDeCausas("no es un error")).toEqual([]);
+  });
+});

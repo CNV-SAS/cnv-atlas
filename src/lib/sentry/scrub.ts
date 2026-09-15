@@ -102,5 +102,21 @@ export function scrubPhiFromEvent(event: ErrorEvent): ErrorEvent {
     );
   }
 
+  // 6. EL TEXTO DE LAS EXCEPCIONES (2026-09-15). Aqui no se miraba, y una consulta que falla lo llena de datos:
+  //    Drizzle pone los PARAMETROS en el mensaje ("Failed query: insert into patients ... params: Juan,CC123"), y
+  //    Postgres pone el valor en algunos ("invalid input syntax for type uuid: \"...\""). La consulta se queda (es
+  //    lo que sirve para diagnosticar); los valores, no.
+  if (event.exception?.values) {
+    for (const ex of event.exception.values) {
+      if (typeof ex.value === "string") ex.value = redactarTextoDeError(ex.value);
+    }
+  }
+
   return event;
+}
+
+export function redactarTextoDeError(texto: string): string {
+  return texto
+    .replace(/(\nparams: )[\s\S]*$/, `$1${REDACTED}`)
+    .replace(/(invalid input (?:syntax|value) for [^:\n]*: )"[^"\n]*"/g, `$1"${REDACTED}"`);
 }
