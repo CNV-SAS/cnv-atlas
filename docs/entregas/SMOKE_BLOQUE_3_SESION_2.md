@@ -387,6 +387,84 @@ node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-retirar.sql --commit
 - [ ] **Debe dar:** `CONFIRMADO` en los dos. El producto retirado ahora lleva **la hora de Bogotá** en el nombre, y **no** aparece en el desplegable de prescripción.
 - [ ] Cierra la ventana de PowerShell.
 
+## 9. El efectivo que no se recibió (migración 0142)
+
+Es el caso al revés del cobro doble: el Integrante registró un efectivo que no entró, y el paciente pagó solo con tarjeta.
+
+### 9.0 Migración, push y producto de prueba
+
+```powershell
+$env:DATABASE_URL = "postgresql://...la directa de la nube, puerto 5432..."
+pnpm db:check:cloud
+pnpm db:migrate
+pnpm db:check:cloud
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-preparar.sql --commit
+```
+
+- [ ] **Debe dar:** una pendiente, `0142_efectivo_no_recibido`; después `143` y `143`; y el producto de prueba creado.
+- [ ] **Push** de `main` y deployment en **Ready**.
+
+### 9.1 Provocarlo
+
+Todo en `/pagos`, con el paciente 1000898321:
+
+1. Checkout de **1 ×**. Abre el link, pulsa el botón y deja la página de Wompi abierta con la 4242. **No pagues.**
+2. **Venta en efectivo** de **1 ×**: sale el aviso del link pendiente. Pulsa **Anular el link y cobrar en efectivo**.
+3. En la venta en efectivo, **Entregar** y confirma.
+4. En la pestaña de Wompi, **paga**.
+5. En el panel **Ventas por revisar**, escribe la versión: *El paciente no pagó en efectivo: pagó solo con tarjeta.* Guárdala.
+
+- [ ] Aparecen **tres** botones: **Fue una segunda compra**, **Ya se devolvió el pago** y **El efectivo no se recibió**.
+
+### 9.2 Resolverlo
+
+**Anota antes** en `/direccion` el ingreso bruto, el ingreso de CNV y las comisiones.
+
+Pulsa **El efectivo no se recibió** y luego **Sí, no se recibió**.
+
+- [ ] **Debe dar:** *Marcada: el efectivo no se recibió. Se facturó el pago de Wompi y se revirtió la comisión del efectivo. Falta la nota crédito manual en Alegra.*
+- [ ] **En el panel:**
+  - la venta sale de la revisión;
+  - aparece el bloque **Efectivo registrado que no se recibió**, con el Integrante (o "Sin profesional", por ser el paciente sin Integrante), la factura del efectivo, *1 caso en 90 días* y *Falta la nota crédito manual en Alegra*.
+- [ ] **En la lista:**
+  - la venta en efectivo dice **Anulada por CNV**, con *CNV determinó que el efectivo de esta venta no se recibió...*;
+  - la de Wompi dice **Pagado** y **Entregado el ...** (tomó la entrega);
+  - su factura de sandbox sale emitida.
+- [ ] **Consulta:**
+
+```sql
+select t.payment_method as medio, t.status, t.stock_state, t.review_resolution as resolucion,
+       t.cash_not_received_at is not null as efectivo_no_recibido, t.fulfillment_state as entrega,
+       (select coalesce(sum(commission_amount), 0) from professional_revenue pr where pr.transaction_id = t.id) as comision_neta
+  from transactions t
+  join transaction_items ti on ti.transaction_id = t.id
+  join nutraceuticals n on n.id = ti.nutraceutical_id
+ where n.name = 'PRUEBA SMOKE BLOQUE 3'
+ order by t.created_at desc limit 2;
+```
+
+  **Debe dar:**
+  - la de `wompi`: `paid`, `en_otra_venta`, `efectivo_no_recibido`, `entregado` y su comisión (0 si no hay profesional);
+  - la de `efectivo`: `efectivo_no_recibido` = `true`, `entrega` vacía y `comision_neta` **0**.
+
+- [ ] **Consulta SALDO:** bajó **una sola** unidad en todo el paso. El producto salió una vez.
+- [ ] **`/direccion`:** el ingreso bruto sube **una** venta (la de Wompi) y no dos. El número de pagos no cuenta la del efectivo.
+- [ ] **Nota crédito:** en el bloque, **Registrar la nota crédito**, escribe `NC-SMOKE` y guarda. **Debe dar:** *Nota crédito registrada.* y el bloque muestra *Nota crédito manual: NC-SMOKE*.
+- [ ] **Sentry:** un aviso nivel **error**, *Efectivo registrado que no se recibió*.
+
+### 9.3 Coincidir o no
+
+- [ ] Repite **9.1** con el checkout de **1 ×** y el efectivo de **2 ×**. En el panel **no** aparece **El efectivo no se recibió**; sale *...no coincide en productos y cantidades, así que resuélvelo con contabilidad.* Resuélvela como **Ya se devolvió el pago** con `SMOKE-9-3`.
+
+### 9.4 Limpiar
+
+```powershell
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-limpiar-ventas.sql --commit
+node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-retirar.sql --commit
+```
+
+- **La limpieza borra las ventas.** Con ellas se van la comisión y su fila negativa, porque cuelgan de la venta. La auditoría del traslado de la entrega se queda.
+
 ## El mínimo de Wompi, también para producción
 
 **Wompi no cobra por debajo de $1.500 por transacción** (soporte de Wompi: "Agregador: desde $1.500"; el mensaje dice *"exceptuando impuestos"*). No es del sandbox: aplica igual en producción.

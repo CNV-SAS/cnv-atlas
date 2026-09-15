@@ -21,9 +21,9 @@ que algo ya hecho se vuelva a planear).
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
 | **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
-| **2b** · Paso a producción | **SIGUIENTE (2026-09-14, de último). PREPARADO** (guía en `docs/entregas/`) | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
+| **2b** · Paso a producción | **PREPARADO, ESPERA** (guía en `docs/entregas/`). Santiago, 2026-09-14: primero se cierran todos los bloques y se confirma que el flujo funciona; después 2b, después Supabase Pro, y al final los Integrantes | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
-| **3** · La venta nace en Tratamiento | **EN CURSO: sesión 1 hecha (2026-09-13), falta smoke; sesión 2 pendiente** | Sesión 1: migraciones 0138-0139 y servicio de venta. Candados: `venta-inventario`, `asignacion-por-lote`, `payments-service`. Smoke: `docs/entregas/SMOKE_BLOQUE_3_SESION_1.md`. Sesión 2: Tratamiento con su smoke en navegador |
+| **3** · La venta nace en Tratamiento | **EN CURSO. Sesiones 1 y 2 hechas y smokeadas (2026-09-14), migraciones 0138-0142.** Falta: el smoke de la 0142 (paso 9) y los pasos 5, 6 y 7 del 3.4 | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
 | 3b · Reversa | Pendiente | — |
 | 4 · Liquidaciones | Pendiente | — |
 | 5 · Distribución | Pendiente | — |
@@ -1063,7 +1063,7 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
    evento. `/pagos` (checkout y efectivo) pasa a usarlo. Tests de base real para cada regla.
    **Queda para la sesión 2:** el aviso EN PANTALLA de las ventas `sin_saldo` y `fallido` (hoy quedan en la
    venta y en Sentry, y el botón de reintentar ya reintenta el descuento).
-4. **CONSTRUIDO en la sesión 2 (ver 3.6), falta el smoke.** **Tratamiento:** "¿lo adquiere?" → forma de entrega → QR en pantalla, **reemplazando** a la sección de
+4. **HECHO y smokeado (sesión 2, 2026-09-14; ver 3.6).** **Tratamiento:** "¿lo adquiere?" → forma de entrega → QR en pantalla, **reemplazando** a la sección de
    despacho. La entrega queda en `clinical_audit_log` (Decisión 3 del plan; hoy **nada** de pagos, entrega
    ni inventario escribe auditoría). La yuxtaposición de alérgenos ya está en la selección (D1).
 5. **A MEDIAS: el cálculo ya lee `revenue_splits` (`94ecf611`); falta SELLARLO en la línea.** Reparto sellado por línea desde `revenue_splits` y `professional_commission_rates` con vigencia,
@@ -1072,7 +1072,7 @@ Nada de esto lo introduce el Bloque 3: existe hoy y **empieza a importar mañana
 6. **El reporte de ventas sin documento, consultable por día.** El panel ya existe; le falta el filtro
    por fecha.
 7. **La factura muestra el titular de marca** (criterio de aceptación). **Es lo único que toca la
-   facturación del 2a**, y va último, cuando producción lleve días estable.
+   facturación del 2a.** Decía "va último, cuando producción lleve días estable"; con el orden de Santiago (2026-09-14: 2b después de cerrar todos los bloques), se hace y se prueba en **sandbox**, antes del 2b.
 8. **Mapa de ítems por (producto, ambiente)** (hallazgo del 2b). Opcional dentro del bloque: no bloquea
    nada y quita el paso de vuelta atrás de ítems.
 
