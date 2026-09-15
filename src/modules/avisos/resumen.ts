@@ -126,19 +126,32 @@ export function armarResumen(e: {
         ? "Nada nuevo desde la mañana y ninguna venta de hoy sin documento."
         : "Nada nuevo ni vencido: lo pendiente está en gestión.";
 
-  const partes = [
-    vencidos.length ? `${vencidos.length} vencida${vencidos.length === 1 ? "" : "s"}` : null,
-    nuevos.length ? `${nuevos.length} nueva${nuevos.length === 1 ? "" : "s"}` : null,
-    siguen.length ? `${siguen.length} pendiente${siguen.length === 1 ? "" : "s"}` : null,
-  ].filter(Boolean);
-  const asunto = `Atlas · ventas por resolver: ${partes.join(", ") || "sin novedades"}${e.franja === "pm" ? " (cierre del día)" : ""}`;
+  // El asunto y el cuerpo dicen lo mismo que dispara el envio. En la tarde lo vencido no se repite: ya salio en la
+  // manana y ya fue a escalamiento; queda una linea con su numero para no esconderlo.
+  const plural = (n: number, s: string, p: string) => `${n} ${n === 1 ? s : p}`;
+  const partes =
+    e.franja === "am"
+      ? [
+          nuevos.length ? plural(nuevos.length, "nueva", "nuevas") : null,
+          vencidos.length ? plural(vencidos.length, "vencida", "vencidas") : null,
+          siguen.length ? plural(siguen.length, "pendiente", "pendientes") : null,
+        ]
+      : [
+          nuevos.length ? plural(nuevos.length, "nueva", "nuevas") : null,
+          deHoySinDocumento.length ? `${plural(deHoySinDocumento.length, "vence", "vencen")} hoy` : null,
+        ];
+  const asunto = `Atlas · ventas por resolver: ${partes.filter(Boolean).join(", ") || "sin novedades"}${e.franja === "pm" ? " (cierre del día)" : ""}`;
 
+  // LO NUEVO PRIMERO (decision 1 de 3.7), luego lo vencido, luego lo que sigue con sus dias.
   const cuerpo = [
     "Esto necesita a alguien de CNV. Atlas no lo reintenta solo.",
     "",
-    seccion("VENCIDO", vencidos, hoy),
     seccion("NUEVO", nuevos, hoy),
+    e.franja === "am" ? seccion("VENCIDO", vencidos, hoy) : null,
     seccion(e.franja === "pm" ? "SIGUE PENDIENTE (vence al cierre de hoy)" : "SIGUE PENDIENTE", e.franja === "pm" ? deHoySinDocumento : siguen, hoy),
+    e.franja === "pm" && vencidos.length
+      ? `Además: ${plural(vencidos.length, "vencido sin resolver, que ya salió", "vencidos sin resolver, que ya salieron")} en el correo de la mañana.`
+      : null,
     enGestion.length
       ? `En gestión (no se repite hasta su fecha): ${enGestion.length}.`
       : null,

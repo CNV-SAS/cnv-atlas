@@ -97,11 +97,12 @@ export async function avisarAlIntegranteDeRevision(transactionId: string): Promi
     const texto = [
       `Hola, ${d.nombre}.`,
       "",
-      `Llegó un pago con tarjeta sobre un link de pago que ya estaba anulado: la venta del ${formatDateTime(d.fecha)} por ${Number(d.monto).toLocaleString("es-CO")} COP (${d.productos}).`,
+      `Llegó un pago sobre un link de pago que ya estaba anulado: la venta del ${formatDateTime(d.fecha)} por ${Number(d.monto).toLocaleString("es-CO")} COP (${d.productos}).`,
       "",
       "Puede ser un cobro doble (el paciente también pagó en efectivo) o una segunda compra. Tú sabes qué pasó en la consulta.",
       "",
-      `Entra a Atlas, busca la venta en Pagos y usa "Cuéntale a CNV qué pasó en la consulta": ${enlaceAPagos()}`,
+      // Se cuenta en la pestana Tratamiento, no en Pagos: alli el Integrante solo ve la lista, sin el formulario.
+      `Entra a Atlas, abre la pestaña Tratamiento de la evaluación de ese paciente y usa "Cuéntale a CNV qué pasó en la consulta". En Pagos ves la venta con su fecha y su monto: ${enlaceAPagos()}`,
       "",
       "No entregues el producto de esa venta hasta que CNV la resuelva.",
     ].join("\n");

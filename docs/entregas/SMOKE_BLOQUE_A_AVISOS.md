@@ -71,9 +71,9 @@ Invoke-RestMethod -Uri "https://atlas.cnvsystem.com/api/cron/avisos/am" -Headers
 ```
 
 - [ ] **Debe dar:** `estado: enviado`, `destinatarios: 1`.
-- [ ] **Te llega un correo** con el asunto *Atlas · ventas por resolver: 1 vencida*. El cuerpo:
-  - una sección **VENCIDO** con *Ventas cobradas sin factura o sin pago registrado · 1 venta: El paciente NO está marcado como de prueba...*;
-  - la línea *107.100 COP, ... · lleva 3 días · venció el 12/9/2026*;
+- [ ] **Te llega un correo** con el asunto *Atlas · ventas por resolver: 1 vencida*. (Si hay más pendientes en la nube, el asunto los suma: *1 nueva, 1 vencida...*. Lo nuevo va siempre primero.) El cuerpo:
+  - una sección **── VENCIDO ──** con *Ventas cobradas sin factura o sin pago registrado · 1 venta:* y el mismo motivo que muestra Pagos para esa venta;
+  - debajo, la línea con el monto, el producto, *lleva N días* y *venció el 12/9/2026*;
   - el enlace a Pagos;
   - **ni nombre ni documento de paciente**.
 - [ ] Si pusiste **Escalamiento** en otro usuario, a esa persona le llega *Atlas · ESCALAMIENTO: 1 pendiente de ventas vencido*.
@@ -96,7 +96,7 @@ Como **Profesional Demo**, en la pestaña Tratamiento de su paciente de prueba, 
 3. **Anular link**.
 4. Paga en la página de Wompi.
 
-- [ ] **Al correo de Profesional Demo** llega *Atlas · Un pago de tu venta necesita que nos cuentes qué pasó*. Trae la fecha, el monto, el producto y *Cuéntale a CNV qué pasó en la consulta*. **Sin datos del paciente.** (Si no tienes acceso a ese buzón, míralo en Resend → Emails.)
+- [ ] **Al correo de Profesional Demo** llega *Atlas · Un pago de tu venta necesita que nos cuentes qué pasó*. Trae la fecha, el monto y el producto, y le dice que abra **la pestaña Tratamiento** de ese paciente y use *Cuéntale a CNV qué pasó en la consulta*. **Sin datos del paciente.** (Si no tienes acceso a ese buzón, míralo en Resend → Emails.)
 - [ ] La franja (en tu usuario) pasa a *2 pendientes de ventas necesitan acción (1 vencido)*.
 
 Ahora la tarde:
@@ -105,7 +105,8 @@ Ahora la tarde:
 Invoke-RestMethod -Uri "https://atlas.cnvsystem.com/api/cron/avisos/pm" -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
 ```
 
-- [ ] **Debe dar:** `estado: enviado`. El correo trae **solo** la sección **NUEVO** con el pago en revisión (*Falta la versión del Integrante*). La venta del 12/9 **no** se repite: ya salió en la mañana.
+- [ ] **Debe dar:** `estado: enviado`. Asunto: *Atlas · ventas por resolver: 1 nueva (cierre del día)*.
+- [ ] El correo trae la sección **── NUEVO ──** con el pago en revisión (*Falta la versión del Integrante*). La venta del 12/9 **no** se repite como sección: solo la línea *Además: 1 vencido sin resolver, que ya salió en el correo de la mañana.*
 
 ## 5. "En gestión", y que sin nada nuevo no llega correo
 
