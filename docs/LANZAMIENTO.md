@@ -37,18 +37,20 @@ IMPIDEN atender y pasaron a ser **exposición viva**, porque ya se está atendie
 3 tienen diagnóstico**. Los otros 54 no tienen nada sellado. Todavía no ha salido **ningún** reporte al
 paciente. La ventana para cerrar gates sin daño acumulado sigue abierta, pero no por mucho.
 
-### ⛔ BLOQUE "ANTES DEL PRIMER INTEGRANTE" · las tres van juntas
+### ⛔ BLOQUE "ANTES DEL PRIMER INTEGRANTE" · las cuatro van juntas
 
 **La condición, y está escrita aquí para que no dependa de que alguien se acuerde: estas tres se cierran
 ANTES de dar el primer acceso a un Integrante.** Santiago las aplaza hasta ese momento y es defendible:
-hoy nadie externo entra. Lo que no es defendible es dar un acceso con alguna de las tres abierta.
+hoy nadie externo entra. Lo que no es defendible es dar un acceso con alguna abierta. (Eran tres; Vercel Pro
+entró el 2026-09-15, y a diferencia de las otras, **su razón es de licencia**: no se puede cobrar a nadie en
+Hobby.)
 
 | | Qué | Estado |
 |---|---|---|
 | 1 | **MFA encendido** (TOTP) | Es borrar una variable de Vercel |
 | 2 | **Supabase Pro contratado** | 25 USD/mes |
 | 3 | **Dump externo funcionando** y con una restauración probada | Unas horas de trabajo |
-| 4 | **Vercel Pro, si Hobby no admite uso comercial** (agregado el 2026-09-15) | **Por verificar, lo revisa Santiago** en los términos de Vercel. Con pagos reales en producción, entra en la misma lista que Supabase Pro. De paso, Pro deja correr tareas programadas cada minuto (Hobby: una vez al día, ±59 min) |
+| 4 | **Vercel Pro contratado** (NECESARIO, confirmado por Santiago el 2026-09-15) | **Por licencia:** el plan Hobby prohíbe el uso comercial, y Atlas cobra a pacientes, factura y reparte comisiones. No hay margen. **Y por el Bloque A (Avisos):** sus correos salen de tareas programadas, y en Hobby cada tarea corre una vez al día con hasta 59 minutos de desfase (el de las 7 a. m. puede llegar a las 7:59); en Pro corren a la hora exacta y con la frecuencia que haga falta |
 
 **Al contratar Supabase Pro (anotado el 2026-09-15):** el proyecto sigue en la instancia **Nano** aunque se cobre como Micro; hay que subirla a mano en Settings → Compute and Disk (menos de 2 minutos de caída, según Supabase). Después, verificar que la app abre, `pnpm db:check:cloud`, y en los reportes de un día normal que el disco y la memoria no toquen techo.
 
