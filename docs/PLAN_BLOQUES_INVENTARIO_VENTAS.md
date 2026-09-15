@@ -699,7 +699,7 @@ venta controlada con su lista de revisión, y vuelta atrás.
 |---|---|---|
 | `scripts/leer-alegra.mjs` | Lista numeraciones (vigencia y rango), IVA, centros, cuentas e ítems con sus ids; solo GET | Contra el sandbox |
 | `scripts/config-alegra-produccion.sql` | Fila `produccion` de `alegra_config` y los cinco productos a sus ítems; aborta con un `<LLENAR>`, ids repetidos, centros o cuentas iguales, o un producto vendible fuera de la lista | En local: sin llenar, lleno, ítem repetido, centros iguales, producto faltante, dos veces seguidas |
-| `scripts/vuelta-atras-alegra-sandbox.sql` | Devuelve los ítems a sus ids del sandbox | En local, ida y vuelta en un ensayo |
+| `scripts/vuelta-atras-alegra-sandbox.sql` | Desde la 0144, COMPRUEBA que los ítems del sandbox siguen (y repone el que falte); ya no hace falta devolverlos | En local, ensayado el 2026-09-14 |
 | `scripts/cerrar-checkouts-pendientes.sql` | Cierra los checkouts pendientes antes de cambiar de ambiente | En local |
 | `scripts/cotejo-alegra.mjs` (corregido) | Ahora coteja la fila del ambiente de la URL, compara **nombres**, detecta un producto vendible sin mapear, revisa vigencia y rango de la numeración, y pagina | Control: con OMEGA y MULTICELL cruzados en local, falla por nombre; restaurado, limpio |
 
@@ -709,7 +709,9 @@ venta controlada con su lista de revisión, y vuelta atrás.
    Pasar a producción sobrescribe los ids del sandbox, así que la vuelta atrás necesita su propio script, y
    entre aplicar la configuración y redesplegar no se puede facturar nada. **Mañana:** se cubre con la
    ventana y el script de vuelta atrás. **Después:** un mapa por (producto, ambiente) en el Bloque 3, que
-   ya reescribe las líneas de venta.
+   ya reescribe las líneas de venta. **HECHO (migración 0144, 2026-09-14):** `alegra_items`, una fila por
+   producto y ambiente; configurar producción ya no toca el sandbox, y la vuelta atrás de ítems quedó como
+   comprobación.
 2. **`wompi_env` se fija al CREAR el checkout y la llave con que se cobra la pone la página al ABRIRSE.** Un
    link creado antes del cambio y pagado después cruza de ambiente: dinero real marcado como prueba (nunca
    se factura), o, tras una vuelta atrás, dinero de prueba marcado como real (se le emitiría factura al

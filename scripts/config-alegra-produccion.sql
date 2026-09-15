@@ -14,10 +14,10 @@
 --
 -- ── LO QUE HAY QUE SABER ANTES DE CORRERLO ──────────────────────────────────────────────────────
 --
--- EL MAPA DE ITEMS ES DE UN SOLO AMBIENTE POR PRODUCTO. `nutraceuticals.alegra_item_id` guarda UN id con
--- su ambiente, asi que este script SOBRESCRIBE los ids del sandbox. Desde el --commit, una venta facturada
--- contra el sandbox falla con "Items de otro ambiente": por eso se corre en la ventana y no antes. Volver
--- al sandbox es `scripts/vuelta-atras-alegra-sandbox.sql`.
+-- EL MAPA DE ITEMS ES POR AMBIENTE DESDE LA 0144 (`alegra_items`). Este script escribe la fila de PRODUCCION
+-- de cada producto y NO TOCA la del sandbox: los dos mapas conviven, y la factura lee el del ambiente con que
+-- factura. Por eso ya no hace falta "volver los items" al sandbox despues de una vuelta atras.
+-- (Antes de la 0144 sobrescribia los ids del sandbox en `nutraceuticals`; eso ya no pasa.)
 --
 -- LOS VALORES SE LLENAN A MANO, COPIADOS DE `scripts/leer-alegra.mjs` corrido con las credenciales de
 -- produccion. Mientras quede un '<LLENAR>' o un valor que no sea un numero, el script ABORTA sin escribir.
@@ -149,10 +149,10 @@ on conflict (env) do update set
 do $$
 declare n int;
 begin
-  update nutraceuticals
-     set alegra_item_id = i.item, alegra_env = 'produccion', updated_at = now()
-    from items_produccion i
-   where nutraceuticals.name = i.producto and not nutraceuticals.is_test;
+  insert into alegra_items (nutraceutical_id, env, item_id)
+  select n.id, 'produccion', i.item
+    from items_produccion i join nutraceuticals n on n.name = i.producto and not n.is_test
+  on conflict (nutraceutical_id, env) do update set item_id = excluded.item_id, updated_at = now();
   get diagnostics n = row_count;
   if n <> (select count(*) from items_produccion) then
     raise exception 'ABORTADO: se esperaban % productos actualizados y fueron %.', (select count(*) from items_produccion), n;
@@ -171,9 +171,10 @@ begin
       r.env, r.invoice_template_id, r.credit_note_template_id, r.iva_tax_id,
       r.cost_center_propio_id, r.cost_center_tercero_id, r.bank_account_efectivo_id, r.bank_account_pasarela_id;
   end loop;
-  for r in select name, ownership, alegra_item_id, alegra_env from nutraceuticals
-            where alegra_item_id is not null order by name loop
-    raise notice 'producto % (%) -> item % de %', rpad(r.name, 18), r.ownership, r.alegra_item_id, r.alegra_env;
+  for r in select n.name, n.ownership, ai.item_id, ai.env from alegra_items ai
+             join nutraceuticals n on n.id = ai.nutraceutical_id
+            order by n.name, ai.env loop
+    raise notice 'producto % (%) -> item % de %', rpad(r.name, 18), r.ownership, r.item_id, r.env;
   end loop;
 end $$;
 

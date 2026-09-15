@@ -13,6 +13,10 @@ begin;
 do $$
 declare n int;
 begin
+  -- Se quita su item del mapa por ambiente (0144): el item "PRUEBA" del sandbox queda libre para el siguiente
+  -- smoke, que lo vuelve a usar.
+  delete from alegra_items
+   where nutraceutical_id in (select id from nutraceuticals where name = 'PRUEBA SMOKE BLOQUE 3' and is_test);
   update nutraceuticals
      set commercial_availability = 'no_disponible',
          alegra_item_id = null,

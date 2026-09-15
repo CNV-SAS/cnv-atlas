@@ -89,8 +89,9 @@ describe.skipIf(!HAS_DB)("la factura cuya respuesta se pierde (BD real, Alegra s
       insert into patients (id, organization_id, document_type, document_number, is_test, alegra_contact_id, alegra_env)
       select ${pacienteId}, o.id, 'CC', ${documento}, true, '3', 'sandbox' from organizations o limit 1`);
     const [p] = await db.execute<{ id: string; unit_price: string }>(dsql`
-      select id, unit_price from nutraceuticals
-       where alegra_env = 'sandbox' and alegra_item_id is not null and not is_test and unit_price is not null
+      select n.id, n.unit_price from nutraceuticals n
+        join alegra_items ai on ai.nutraceutical_id = n.id and ai.env = 'sandbox'
+       where not n.is_test and n.unit_price is not null
        limit 1`);
     producto = { id: p.id, precio: Number(p.unit_price) };
     FACTURA.total = producto.precio;

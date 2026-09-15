@@ -203,3 +203,21 @@ export const paymentWebhookEvents = pgTable(
   },
   (t) => [unique("payment_webhook_events_provider_external_unique").on(t.provider, t.externalId)],
 );
+
+// EL MAPA DE ITEMS DE ALEGRA, POR PRODUCTO Y AMBIENTE (0144). Reemplaza a nutraceuticals.alegra_item_id /
+// alegra_env, que guardaban un solo ambiente: pasar a produccion sobrescribia el sandbox. La factura lee el
+// item del ambiente con que factura.
+export const alegraItems = pgTable(
+  "alegra_items",
+  {
+    id: pk(),
+    nutraceuticalId: uuid("nutraceutical_id")
+      .notNull()
+      .references(() => nutraceuticals.id, { onDelete: "cascade" }),
+    env: text("env").notNull(), // sandbox | produccion
+    itemId: text("item_id").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique("alegra_items_uno_por_producto_y_ambiente").on(t.nutraceuticalId, t.env)],
+);

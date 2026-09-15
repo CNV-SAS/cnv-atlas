@@ -102,22 +102,24 @@ try {
   // ── 1. LOS PRECIOS, que es lo que este script viene a mirar ──────────────────────────────────
   const items = await alegraTodo("/items");
   const porId = new Map(items.map((i) => [String(i.id), i]));
+  // EL MAPA POR AMBIENTE (0144): solo los items de ESTE ambiente. Uno de otro ambiente no se busca aqui, porque el
+  // mismo numero seria OTRO item y el cotejo de precio saldria sobre el producto equivocado.
   const productos = await sql`
-    select name, unit_price, vat_rate, alegra_item_id, alegra_env, ownership
-      from nutraceuticals
-     where alegra_item_id is not null
-     order by name`;
+    select n.name, n.unit_price, n.vat_rate, ai.item_id as alegra_item_id, ai.env as alegra_env, n.ownership
+      from alegra_items ai join nutraceuticals n on n.id = ai.nutraceutical_id
+     where ai.env = ${cfg.env}
+     order by n.name`;
 
   // UN PRODUCTO VENDIBLE SIN MAPEAR A ESTE AMBIENTE no aparecia en ningun sitio: el bucle de abajo solo
   // recorre los mapeados. Su primera venta fallaria con "Sin item" o "Items de otro ambiente".
   const sinMapear = await sql`
-    select name, alegra_env from nutraceuticals
-     where not is_test
-       and commercial_availability <> 'no_disponible'
-       and (alegra_item_id is null or alegra_env is distinct from ${cfg.env})
-     order by name`;
+    select n.name from nutraceuticals n
+     where not n.is_test
+       and n.commercial_availability <> 'no_disponible'
+       and not exists (select 1 from alegra_items ai where ai.nutraceutical_id = n.id and ai.env = ${cfg.env})
+     order by n.name`;
   for (const p of sinMapear) {
-    pega(`${p.name}: se vende y NO esta mapeado a ${cfg.env} (${p.alegra_env ? `su item es de ${p.alegra_env}` : "sin item"}).`);
+    pega(`${p.name}: se vende y NO esta mapeado a ${cfg.env}.`);
   }
 
   console.log(`── PRECIOS (${productos.length} productos mapeados) ──`);

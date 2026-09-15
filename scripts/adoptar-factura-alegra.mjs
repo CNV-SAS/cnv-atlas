@@ -113,9 +113,11 @@ try {
 
   const cumplen = [];
   for (const v of candidatas) {
+    // El item del AMBIENTE de la factura (0144): cada ambiente tiene el suyo.
     const lineas = await sql`
-      select n.alegra_item_id, n.alegra_env, ti.quantity
-        from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
+      select ai.item_id as alegra_item_id, ai.env as alegra_env, ti.quantity
+        from transaction_items ti
+        left join alegra_items ai on ai.nutraceutical_id = ti.nutraceutical_id and ai.env = ${ambiente}
        where ti.transaction_id = ${v.id}`;
     const clave = (xs) => xs.map((x) => `${x.id}:${x.cantidad}`).sort().join("|");
     const fechaVenta = fechaColombia(new Date(v.created_at));

@@ -4,6 +4,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
+  alegraItems,
   nutraceuticals,
   patientContacts,
   patientProfiles,
@@ -93,20 +94,27 @@ export async function getMapaDeAlegra(): Promise<MapaDeAlegra | null> {
  * codigo anterior las ignoraba y mandaba un item generico con cantidad 1: el dato existia en Atlas y se
  * descartaba al facturar.
  */
-export async function getLineasDeVenta(txId: string): Promise<LineaDeVenta[]> {
+// EL ITEM SE LEE DEL AMBIENTE CON QUE SE FACTURA (0144, paso 8 del 3.4): cada ambiente tiene su fila en
+// `alegra_items`, asi que configurar produccion no deja al sandbox sin items ni al reves. Un producto sin fila
+// en ese ambiente llega con `alegraItemId` nulo, y `armarFactura` lo rechaza por su nombre.
+export async function getLineasDeVenta(txId: string, env: string): Promise<LineaDeVenta[]> {
   const filas = await db
     .select({
       nutraceuticalId: transactionItems.nutraceuticalId,
       nombre: nutraceuticals.name,
       cantidad: transactionItems.quantity,
       precioUnitario: transactionItems.unitPrice,
-      alegraItemId: nutraceuticals.alegraItemId,
-      alegraEnv: nutraceuticals.alegraEnv,
+      alegraItemId: alegraItems.itemId,
+      alegraEnv: alegraItems.env,
       ownership: nutraceuticals.ownership,
       titularDeMarca: nutraceuticals.brandOwner,
     })
     .from(transactionItems)
     .innerJoin(nutraceuticals, eq(nutraceuticals.id, transactionItems.nutraceuticalId))
+    .leftJoin(
+      alegraItems,
+      and(eq(alegraItems.nutraceuticalId, transactionItems.nutraceuticalId), eq(alegraItems.env, env)),
+    )
     .where(eq(transactionItems.transactionId, txId));
 
   return filas.map((f) => ({
