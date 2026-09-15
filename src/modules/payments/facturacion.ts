@@ -36,6 +36,8 @@ export type LineaDeVenta = {
   alegraEnv: string | null;
   /** `propio` | `tercero`. Decide el centro de costo. */
   ownership: string | null;
+  /** El titular de marca (fabricante aparente, §7.7 del modelo). Obligatorio en un producto de tercero. */
+  titularDeMarca: string | null;
 };
 
 export type MapaDeAlegra = {
@@ -54,6 +56,8 @@ export type LineaDeFactura = {
   price: number;
   quantity: number;
   tax: { id: number }[];
+  /** Texto de la linea. Hoy solo lo lleva un producto de tercero: su titular de marca. */
+  description?: string;
 };
 
 export type ArmadoDeFactura =
@@ -140,6 +144,19 @@ export function armarFactura(lineas: LineaDeVenta[], mapa: MapaDeAlegra): Armado
     };
   }
 
+  // ═══ EL TITULAR DE MARCA EN LA FACTURA (paso 7 del 3.4, criterio de aceptacion del Bloque 3) ═══
+  //
+  // Un producto de TERCERO lo vende CNV, pero la marca es de otro (§7.7 del modelo: el fabricante aparente), y
+  // el paciente tiene que poder ver de quien es en su factura. Sin titular no se emite: la factura diria que el
+  // producto es de CNV, y eso no se corrige despues sin nota credito.
+  const terceroSinTitular = lineas.filter((l) => l.ownership === "tercero" && !l.titularDeMarca?.trim());
+  if (terceroSinTitular.length > 0) {
+    return {
+      ok: false,
+      motivo: `Producto de tercero sin titular de marca: ${terceroSinTitular.map((l) => l.nombre).join(", ")}. Complétalo en el catálogo antes de facturar.`,
+    };
+  }
+
   const cantidadMala = lineas.filter((l) => !Number.isInteger(l.cantidad) || l.cantidad <= 0);
   if (cantidadMala.length > 0) {
     return { ok: false, motivo: `Cantidad inválida en: ${cantidadMala.map((l) => l.nombre).join(", ")}.` };
@@ -151,6 +168,7 @@ export function armarFactura(lineas: LineaDeVenta[], mapa: MapaDeAlegra): Armado
     price: baseFromTotal(l.precioUnitario),
     quantity: l.cantidad,
     tax: [{ id: ivaTaxId }],
+    ...(l.ownership === "tercero" && l.titularDeMarca ? { description: `Titular de marca: ${l.titularDeMarca.trim()}` } : {}),
   }));
 
   // LA VALIDACION QUE DA NOMBRE A ESTE ARCHIVO. Es redundante con el `map` de arriba a proposito: lo que

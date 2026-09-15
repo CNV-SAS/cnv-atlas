@@ -103,6 +103,7 @@ export async function getLineasDeVenta(txId: string): Promise<LineaDeVenta[]> {
       alegraItemId: nutraceuticals.alegraItemId,
       alegraEnv: nutraceuticals.alegraEnv,
       ownership: nutraceuticals.ownership,
+      titularDeMarca: nutraceuticals.brandOwner,
     })
     .from(transactionItems)
     .innerJoin(nutraceuticals, eq(nutraceuticals.id, transactionItems.nutraceuticalId))
@@ -116,6 +117,7 @@ export async function getLineasDeVenta(txId: string): Promise<LineaDeVenta[]> {
     alegraItemId: f.alegraItemId,
     alegraEnv: f.alegraEnv,
     ownership: f.ownership,
+    titularDeMarca: f.titularDeMarca,
   }));
 }
 
