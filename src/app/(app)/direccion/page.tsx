@@ -31,7 +31,7 @@ export default async function DireccionPage() {
     {
       label: "Inventario",
       value: `${d.inventoryUnits} unidades`,
-      hint: `${d.inventoryItems} referencias`,
+      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} ubicaci${d.inventoryLocations === 1 ? "ón" : "ones"}`,
     },
   ];
 
