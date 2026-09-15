@@ -23,7 +23,27 @@ export type EslabonDeCausa = {
   tabla?: string;
   columna?: string;
   mensaje?: string;
+  /** La FORMA de los parametros de la consulta, nunca sus valores: "texto(36)", "numero", "nulo". */
+  parametros?: string[];
 };
+
+/**
+ * Los parametros de una consulta pueden ser el documento o el nombre de un paciente, asi que sus valores no salen.
+ * Pero sin NADA, el error tapa su causa igual que un catch que guarda solo `.message` (Santiago, 2026-09-15): no se
+ * ve si lo que rompio fue un nulo, un texto larguisimo o un tipo equivocado. Viaja la forma: tipo y longitud.
+ */
+function formaDeLosParametros(params: unknown): string[] | undefined {
+  if (!Array.isArray(params)) return undefined;
+  return params.slice(0, 20).map((p) => {
+    if (p === null || p === undefined) return "nulo";
+    if (typeof p === "string") return `texto(${p.length})`;
+    if (typeof p === "number") return "numero";
+    if (typeof p === "boolean") return "booleano";
+    if (p instanceof Date) return "fecha";
+    if (Array.isArray(p)) return `lista(${p.length})`;
+    return typeof p;
+  });
+}
 
 const MAX_ESLABONES = 5;
 
@@ -57,6 +77,7 @@ export function cadenaDeCausas(error: unknown): EslabonDeCausa[] {
       eslabon.columna = texto(e.column_name);
     } else if (esEnvoltorioDeConsulta(e)) {
       eslabon.tipo = "DrizzleQueryError";
+      eslabon.parametros = formaDeLosParametros(e.params);
     } else {
       eslabon.codigo = texto(e.code);
       const m = texto(actual.message);
