@@ -4,6 +4,8 @@ import { formatDate, formatDateTime } from "@/lib/format/date";
 import type { EfectivoNoRecibido, VentaPorRevisar } from "../data/ventas-por-revisar";
 import { plazoDeRevision } from "../plazo-de-revision";
 import { ESCALADA_EFECTIVO_NO_RECIBIDO } from "../revision";
+import { EnGestionForm, type EnGestionVigente } from "@/modules/avisos/components/en-gestion-form";
+
 import { AccionDeVentaButton } from "./accion-de-venta-button";
 import { VersionDelIntegranteForm } from "./version-del-integrante-form";
 
@@ -42,7 +44,18 @@ function Plazo({ abierta, ahora }: { abierta: string; ahora: Date }) {
 // La escalada: desde el segundo caso del mismo Integrante en 90 dias (Santiago, 2026-09-14).
 const ESCALADA = ESCALADA_EFECTIVO_NO_RECIBIDO;
 
-function EfectivosNoRecibidos({ efectivos }: { efectivos: EfectivoNoRecibido[] }) {
+/** El "en gestion" vigente de cada pendiente, por "tipo:venta" (Bloque A). */
+export type MapaEnGestion = Record<string, EnGestionVigente>;
+
+function EfectivosNoRecibidos({
+  efectivos,
+  puedeResolver,
+  enGestion,
+}: {
+  efectivos: EfectivoNoRecibido[];
+  puedeResolver: boolean;
+  enGestion: MapaEnGestion;
+}) {
   if (efectivos.length === 0) return null;
   const escala = efectivos.some((e) => e.casosEn90Dias >= ESCALADA);
   return (
@@ -75,9 +88,12 @@ function EfectivosNoRecibidos({ efectivos }: { efectivos: EfectivoNoRecibido[] }
             ) : (
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-attention">Falta la nota crédito manual en Alegra.</span>
-                <div>
-                  <AccionDeVentaButton transactionId={e.id} tipo="nota_credito" />
-                </div>
+                {puedeResolver ? (
+                  <div>
+                    <AccionDeVentaButton transactionId={e.id} tipo="nota_credito" />
+                  </div>
+                ) : null}
+                <EnGestionForm tipo="nota_credito" transactionId={e.id} vigente={enGestion[`nota_credito:${e.id}`] ?? null} />
               </div>
             )}
           </li>
@@ -91,14 +107,19 @@ export function VentasPorRevisar({
   ventas,
   efectivos,
   ahora,
+  puedeResolver,
+  enGestion,
 }: {
   ventas: VentaPorRevisar[];
   efectivos: EfectivoNoRecibido[];
   ahora: Date;
+  /** Admin y direccion resuelven; soporte atiende (ve y marca en gestion) pero no resuelve (Bloque A). */
+  puedeResolver: boolean;
+  enGestion: MapaEnGestion;
 }) {
   return (
     <Panel titulo="Ventas por revisar">
-      <EfectivosNoRecibidos efectivos={efectivos} />
+      <EfectivosNoRecibidos efectivos={efectivos} puedeResolver={puedeResolver} enGestion={enGestion} />
       <p className="text-sm text-muted-foreground">
         {ventas.length === 0
           ? "Ninguna. No hay pagos por decidir ni avisos de inventario en los últimos 30 días."
@@ -133,21 +154,24 @@ export function VentasPorRevisar({
                       Falta la versión del Integrante. Pídesela, o escribe lo que te contó.
                     </p>
                   )}
-                  <VersionDelIntegranteForm
-                    key={v.version ?? "sin-version"}
-                    transactionId={v.id}
-                    actual={v.version}
-                    titulo="Versión del Integrante: qué pasó en la consulta"
-                  />
+                  {puedeResolver ? (
+                    <VersionDelIntegranteForm
+                      key={v.version ?? "sin-version"}
+                      transactionId={v.id}
+                      actual={v.version}
+                      titulo="Versión del Integrante: qué pasó en la consulta"
+                    />
+                  ) : null}
                   {/* Sin la version no se ofrece resolver: es el soporte que pide contabilidad, y la accion
                       tambien lo exige. */}
-                  {v.version ? (
+                  {puedeResolver && v.version ? (
                     <div className="flex flex-wrap gap-2">
                       <AccionDeVentaButton transactionId={v.id} tipo="segunda_compra" />
                       <AccionDeVentaButton transactionId={v.id} tipo="devuelto" />
                       {v.efectivo === "si" ? <AccionDeVentaButton transactionId={v.id} tipo="efectivo_no_recibido" /> : null}
                     </div>
                   ) : null}
+                  <EnGestionForm tipo="revision" transactionId={v.id} vigente={enGestion[`revision:${v.id}`] ?? null} />
                   {v.version && v.efectivo === "no_coinciden" ? (
                     <p className="text-xs text-muted-foreground">
                       Si el efectivo no se recibió: la venta en efectivo que anuló este link no coincide en productos y

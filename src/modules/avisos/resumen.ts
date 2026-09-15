@@ -164,6 +164,24 @@ export function armarResumen(e: {
   return { enviar, motivoSiNo, asunto, cuerpo, escalamiento, claves, conteo };
 }
 
+/**
+ * Lo que HOY pide accion, para la franja de la pantalla: lo que no esta en gestion, mas lo vencido aunque lo este.
+ * La misma clasificacion que el correo, para que la pantalla y el correo no digan cosas distintas.
+ */
+export function pendientesVisibles(pendientes: Pendiente[], ahora: Date): { total: number; vencidos: number } {
+  const hoy = diaEnColombia(ahora);
+  let total = 0;
+  let vencidos = 0;
+  for (const p of pendientes) {
+    const vencido = hoy > limiteDe(p);
+    const enGestion = !vencido && p.enGestionHasta != null && hoy <= p.enGestionHasta;
+    if (enGestion) continue;
+    total++;
+    if (vencido) vencidos++;
+  }
+  return { total, vencidos };
+}
+
 /** Una seccion del correo, agrupada por tipo y causa. Vacia, no aparece. */
 function seccion(titulo: string, items: Clasificado[], hoy: string): string | null {
   if (items.length === 0) return null;
