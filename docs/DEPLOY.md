@@ -40,6 +40,9 @@ NEXT_PUBLIC_WOMPI_PUBLIC_KEY=        # público por diseño (widget de checkout)
 WOMPI_PRIVATE_KEY=                   # solo server
 WOMPI_EVENTS_SECRET=                 # solo server, valida firma HMAC de webhooks
 WOMPI_INTEGRITY_SECRET=              # solo server, firma de integridad del checkout
+
+# ===== Avisos (Bloque A) =====
+CRON_SECRET=                         # solo server. Vercel lo manda como "Authorization: Bearer" a /api/cron/avisos/am|pm (vercel.json). Una cadena larga aleatoria; sin ella la ruta responde 500 y no arma nada
 ALEGRA_EMAIL=                        # solo server
 ALEGRA_API_KEY=                      # solo server
 ALEGRA_BASE_URL=                     # solo server, base de la API (sandbox vs produccion)
@@ -174,6 +177,11 @@ vercel link && vercel env pull
 
 ### 9. DNS en Cloudflare
 Zona `cnvsystem.com`: CNAME `atlas` → `cname.vercel-dns.com`, proxy activado, SSL Full (strict). En Vercel → Domains agregar `atlas.cnvsystem.com`.
+
+### 9bis. Tareas programadas (Bloque A, 2026-09-15)
+- `vercel.json` declara dos: `/api/cron/avisos/am` a las 12:00 UTC (7 a. m. de Colombia) y `/api/cron/avisos/pm` a las 22:00 UTC (5 p. m.).
+- Requieren `CRON_SECRET` en las variables de Production. Se ven en **Vercel → Settings → Cron Jobs**, donde también se pueden correr a mano.
+- En Hobby cada tarea corre una vez al día con hasta 59 minutos de desfase; en Pro, a la hora exacta. **Vercel Pro es necesario de todos modos, por licencia** (ver `LANZAMIENTO.md`).
 
 ### 10. Webhooks de pago
 - En Wompi: registrar el endpoint `https://atlas.cnvsystem.com/api/webhooks/wompi`; guardar `WOMPI_EVENTS_SECRET` (firma HMAC) y `WOMPI_INTEGRITY_SECRET`.
@@ -330,7 +338,7 @@ Pasó al limpiar los pacientes de la cuenta de pruebas: los conteos salieron cor
 
 ## Límites de plan (MVP)
 - **Supabase Free:** suficiente para piloto; subir a Pro antes de datos clínicos reales (backups/PITR, más capacidad).
-- **Vercel Hobby:** suficiente para piloto; revisar límites de funciones serverless para tareas largas (PDFs, sync Alegra → background post-MVP).
+- **Vercel Hobby:** ~~suficiente para piloto~~ **NO sirve para producción (2026-09-15): prohíbe el uso comercial**, y Atlas cobra, factura y reparte comisiones. Vercel Pro entra en el bloque "antes del primer Integrante" de `LANZAMIENTO.md`.
 
 ## Smoke test manual antes del lanzamiento
 Login con MFA (admin); crear profesional y comodato; generar QR de encuesta; llenar encuesta (inicial y seguimiento con pre-llenado); importar XLSX de Biody; ver indicadores/diagnóstico (con motor real o stub); aprobar y enviar reporte al paciente; checkout de nutracéutico end-to-end (pago → webhook → transacción → factura Alegra); **auditoría/grants** (usar **Demo GoldenPath**, sembrado con notas reales en las 3 tablas narrativas por `pnpm seed:golden`; reemplaza a la cadena demo fabricada a mano que se retiró): como soporte solicitar acceso identificado a ese paciente y como admin aprobarlo, abrir la vista identificada; como admin solicitar acceso seudonimizado y como dirección aprobarlo, abrir `/auditoria/notas`; verificar que `admin` sin grant NO ve las notas; verificar que el `clinical_audit_log` registró todos los eventos, incluidos `access.requested` / `access.approved` / `access.used`.
