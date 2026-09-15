@@ -11,10 +11,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(), captureMessage: vi.fn() }));
-const enviados: { to: string[]; subject: string; text: string }[] = [];
+const enviados: { to: string[]; subject: string; text: string; clave?: string }[] = [];
+// Los envios que deben fallar, en orden: true = Resend responde error.
+const fallar: boolean[] = [];
 vi.mock("@/lib/email/resend", () => ({
-  sendAvisoEmail: vi.fn(async (to: string[], subject: string, text: string) => {
-    enviados.push({ to, subject, text });
+  sendAvisoEmail: vi.fn(async (to: string[], subject: string, text: string, clave?: string) => {
+    if (fallar.shift()) return { ok: false, error: { message: "Resend no respondió" } };
+    enviados.push({ to, subject, text, clave });
     return { ok: true, value: { id: "x" } };
   }),
 }));
@@ -31,6 +34,9 @@ HAS_DB = Boolean(process.env.DATABASE_URL);
 const DIA = `20${90 + Math.floor(Math.random() * 9)}-0${1 + Math.floor(Math.random() * 8)}-1${Math.floor(Math.random() * 9)}`;
 const AM = new Date(`${DIA}T12:00:00Z`);
 const PM = new Date(`${DIA}T22:00:00Z`);
+// Otro dia, en otra decada, para el reintento: no choca con las franjas de DIA.
+const DIA_FALLO = `20${80 + Math.floor(Math.random() * 9)}-0${1 + Math.floor(Math.random() * 8)}-1${Math.floor(Math.random() * 9)}`;
+const AM_FALLO = new Date(`${DIA_FALLO}T12:00:00Z`);
 
 let interno = "";
 let profesionalSolo = "";
@@ -93,6 +99,73 @@ describe.skipIf(!HAS_DB)("los avisos (BD real)", () => {
       expect(Number(run.claves)).toBeGreaterThan(0);
     } finally {
       await db.execute(dsql`delete from transactions where id = ${id}`);
+    }
+  });
+
+  it("UN ENVIO QUE FALLA NO QUEDA COMO ENVIADO: el reintento lo reclama y lo envia (smoke del 2026-09-15)", async () => {
+    const { enviarResumen } = await import("@/modules/avisos/services/avisos-service");
+    const { reclamarEnvio } = await import("@/modules/avisos/data/avisos-repository");
+    const { db } = await import("@/db");
+    const [org] = await db.execute<{ id: string }>(dsql`select id from organizations limit 1`);
+    const id = randomUUID();
+    await db.execute(dsql`
+      insert into transactions (id, organization_id, status, amount, currency, wompi_env, idempotency_key, alegra_invoice_state)
+      values (${id}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`fallo-${id}`}, 'pendiente')`);
+    try {
+      enviados.length = 0;
+      fallar.length = 0;
+      fallar.push(true);
+      const fallo = await enviarResumen("am", AM_FALLO);
+      expect(fallo.estado).toBe("sin_envio");
+      expect(enviados).toHaveLength(0);
+      const [fila] = await db.execute<{ sent: boolean; reason: string }>(dsql`
+        select sent, reason from alert_digest_runs where run_date = ${DIA_FALLO}::date and slot = 'am'`);
+      expect(fila.sent).toBe(false);
+      expect(fila.reason).toContain("Falló: Resend no respondió");
+
+      const reintento = await enviarResumen("am", AM_FALLO);
+      expect(reintento.estado, "el fallo quedo como ya enviado y el correo se perdio").toBe("enviado");
+      expect(enviados).toHaveLength(1);
+      expect(enviados[0].clave, "sin llave de idempotencia, un timeout que si salio llega dos veces").toMatch(
+        new RegExp(`^avisos:${DIA_FALLO}:am:[0-9a-f]{32}$`),
+      );
+
+      const tercero = await enviarResumen("am", AM_FALLO);
+      expect(tercero.estado, "CONTROL: lo que si salio no se repite").toBe("ya_enviado");
+      expect(enviados).toHaveLength(1);
+    } finally {
+      fallar.length = 0;
+      await db.execute(dsql`delete from transactions where id = ${id}`);
+    }
+
+    // UN RECLAMO VIVO BLOQUEA; uno que murio hace mas de 5 minutos, no.
+    const vivo = await reclamarEnvio(DIA_FALLO, "pm");
+    expect(vivo).toBe(true);
+    expect(await reclamarEnvio(DIA_FALLO, "pm"), "dos corridas a la vez enviarian dos veces").toBe(false);
+    await db.execute(dsql`
+      update alert_digest_runs set ran_at = now() - interval '6 minutes' where run_date = ${DIA_FALLO}::date and slot = 'pm'`);
+    expect(await reclamarEnvio(DIA_FALLO, "pm"), "una corrida muerta a mitad dejo la franja tomada para siempre").toBe(true);
+  });
+
+  it("EL ENVIO ANTERIOR: la tarde mira la manana del mismo dia, y la manana mira la tarde del dia anterior", async () => {
+    const { clavesDelEnvioAnterior } = await import("@/modules/avisos/data/avisos-repository");
+    const { db } = await import("@/db");
+    const d = `2070-0${1 + Math.floor(Math.random() * 8)}-1${Math.floor(Math.random() * 8)}`;
+    const siguiente = new Date(`${d}T12:00:00Z`);
+    siguiente.setUTCDate(siguiente.getUTCDate() + 1);
+    const d2 = siguiente.toISOString().slice(0, 10);
+    await db.execute(dsql`delete from alert_digest_runs where run_date between ${d}::date and ${d2}::date`);
+    await db.execute(dsql`
+      insert into alert_digest_runs (run_date, slot, sent, reason, item_keys) values
+        (${d}::date, 'am', true, 'enviado', array['x:am']),
+        (${d}::date, 'pm', true, 'enviado', array['x:pm'])`);
+    try {
+      expect(await clavesDelEnvioAnterior(d, "pm")).toEqual(["x:am"]);
+      expect(await clavesDelEnvioAnterior(d2, "am")).toEqual(["x:pm"]);
+      expect(await clavesDelEnvioAnterior(d, "am"), "la manana no se mira a si misma ni a su tarde").not.toEqual(["x:am"]);
+      expect(await clavesDelEnvioAnterior(d, "am")).not.toEqual(["x:pm"]);
+    } finally {
+      await db.execute(dsql`delete from alert_digest_runs where run_date between ${d}::date and ${d2}::date`);
     }
   });
 

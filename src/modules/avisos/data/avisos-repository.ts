@@ -107,20 +107,34 @@ export async function clavesDelEnvioAnterior(dia: string, franja: Franja): Promi
   const [f] = await db.execute<{ item_keys: string[] }>(sql`
     select item_keys from alert_digest_runs
      where reason is distinct from 'reclamado'
-       and (run_date, slot) < (${dia}::date, ${franja})
-     order by run_date desc, slot desc limit 1`);
+       -- "Antes" escrito a mano: un dia anterior, o la manana del mismo dia si esta es la tarde. No se confia en
+       -- que 'am' < 'pm' por orden alfabetico.
+       and (run_date < ${dia}::date or (run_date = ${dia}::date and slot = 'am' and ${franja} = 'pm'))
+     order by run_date desc, case slot when 'pm' then 1 else 0 end desc limit 1`);
   return f ? f.item_keys : null;
 }
+
+/** Cuanto se espera a una corrida reclamada que no cerro antes de darla por muerta. La ruta vive 60 segundos. */
+const RECLAMO_MUERTO = "5 minutes";
 
 /**
  * RECLAMA el envio de un dia y una franja ANTES de enviar. Si ya estaba reclamado (la tarea corrio dos veces, o
  * alguien la disparo a mano), devuelve false y no se envia nada: un mismo resumen no llega dos veces.
+ *
+ * EL RECLAMO NO ES "YA SE ENVIO" (smoke del Bloque A, 2026-09-15). Una corrida que FALLO queda escrita con su
+ * motivo, y la siguiente la puede reclamar otra vez; lo mismo una que quedo reclamada y murio a mitad. Antes, un
+ * fallo dejaba la fila tomada y el reintento respondia "ya_enviado": ese correo se perdia. Solo bloquean las que
+ * cerraron (enviadas, o sin envio por un motivo) y las reclamadas que siguen vivas.
  */
 export async function reclamarEnvio(dia: string, franja: Franja): Promise<boolean> {
   const filas = await db.execute<{ id: string }>(sql`
     insert into alert_digest_runs (run_date, slot, sent, reason)
     values (${dia}::date, ${franja}, false, 'reclamado')
-    on conflict (run_date, slot) do nothing
+    on conflict (run_date, slot) do update
+       set reason = 'reclamado', sent = false, ran_at = now()
+     where alert_digest_runs.sent = false
+       and (alert_digest_runs.reason like 'Falló:%'
+            or (alert_digest_runs.reason = 'reclamado' and alert_digest_runs.ran_at < now() - ${RECLAMO_MUERTO}::interval))
     returning id`);
   return filas.length > 0;
 }

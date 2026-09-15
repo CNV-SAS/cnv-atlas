@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import * as Sentry from "@sentry/nextjs";
 
 import { formatDateTime } from "@/lib/format/date";
@@ -16,6 +18,15 @@ import { armarResumen, type Franja } from "../resumen";
 
 function enlaceAPagos(): string {
   return `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/pagos`;
+}
+
+/**
+ * La llave de idempotencia de un correo: el mismo envio (dia, franja, destinatarios y texto) reintentado no llega dos
+ * veces. Si el contenido cambio entre el fallo y el reintento, es otro correo y sale.
+ */
+function claveDeEnvio(prefijo: string, to: string[], asunto: string, cuerpo: string): string {
+  const huella = createHash("sha256").update(JSON.stringify([[...to].sort(), asunto, cuerpo])).digest("hex").slice(0, 32);
+  return `${prefijo}:${huella}`;
 }
 
 function diaEnColombia(fecha: Date): string {
@@ -60,14 +71,19 @@ export async function enviarResumen(franja: Franja, ahora: Date = new Date()): P
       return { estado: "sin_envio", motivo: "Sin destinatarios con la marca." };
     }
 
-    const envio = await sendAvisoEmail(para, r.asunto, r.cuerpo);
+    const envio = await sendAvisoEmail(para, r.asunto, r.cuerpo, claveDeEnvio(`avisos:${dia}:${franja}`, para, r.asunto, r.cuerpo));
     if (!envio.ok) throw new Error(envio.error.message);
 
     let escalamiento = 0;
     if (r.escalamiento.enviar) {
       const esc = (await repo.destinatarios("escalamiento_ventas")).filter((e) => !para.includes(e));
       if (esc.length > 0) {
-        const e = await sendAvisoEmail(esc, r.escalamiento.asunto, r.escalamiento.cuerpo);
+        const e = await sendAvisoEmail(
+          esc,
+          r.escalamiento.asunto,
+          r.escalamiento.cuerpo,
+          claveDeEnvio(`avisos:${dia}:${franja}:escalamiento`, esc, r.escalamiento.asunto, r.escalamiento.cuerpo),
+        );
         if (e.ok) escalamiento = esc.length;
         else Sentry.captureMessage(`No salió el correo de escalamiento: ${e.error.message}`, { level: "error", tags: { area: "avisos" } });
       }
@@ -76,7 +92,8 @@ export async function enviarResumen(franja: Franja, ahora: Date = new Date()): P
     return { estado: "enviado", destinatarios: para.length, escalamiento };
   } catch (e) {
     Sentry.captureException(e, { tags: { area: "avisos", franja } });
-    // Queda escrito por que no salio. Las claves NO se guardan: si no salio, lo pendiente sigue siendo nuevo.
+    // Queda escrito por que no salio, y la fila queda LIBRE para reintentar (`reclamarEnvio`): correr la tarea otra
+    // vez lo envia, no responde "ya_enviado". Las claves NO se guardan: si no salio, lo pendiente sigue siendo nuevo.
     await repo
       .cerrarEnvio(dia, franja, { claves: [], enviado: false, motivo: `Falló: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300), destinatarios: 0 })
       .catch(() => {});
@@ -106,7 +123,7 @@ export async function avisarAlIntegranteDeRevision(transactionId: string): Promi
       "",
       "No entregues el producto de esa venta hasta que CNV la resuelva.",
     ].join("\n");
-    const r = await sendAvisoEmail([d.email], "Atlas · Un pago de tu venta necesita que nos cuentes qué pasó", texto);
+    const r = await sendAvisoEmail([d.email], "Atlas · Un pago de tu venta necesita que nos cuentes qué pasó", texto, `aviso-integrante:${transactionId}`);
     if (!r.ok) {
       Sentry.captureMessage(`No salió el aviso al Integrante: ${r.error.message}`, {
         level: "error",

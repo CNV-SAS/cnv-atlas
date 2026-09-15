@@ -153,3 +153,19 @@ node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-retirar.sql --commit
 - [ ] `CONFIRMADO` en los dos.
 - **Deja tu marca de Pendientes de ventas puesta** si quieres recibir los avisos desde mañana, con la advertencia del principio sobre la venta del 12/9.
 - Cierra la ventana de PowerShell, o corre `Remove-Item Env:DATABASE_URL` y `Remove-Item Env:CRON_SECRET`.
+
+---
+
+## 8. Lo corregido después del smoke (2026-09-15)
+
+Después del push del commit que dice *a failed send is retried*. No trae migraciones.
+
+**Lo que se corrigió:**
+- **Un envío que fallaba quedaba como "ya enviado"** y el reintento no mandaba nada. Ahora el fallo queda escrito con su motivo y la franja queda libre: correr la tarea otra vez la envía. Si el primer intento sí salió pero Resend no alcanzó a responder, el reintento no duplica el correo (llave de idempotencia).
+- **"Marcar en gestión" no se cerraba al guardar.**
+
+**Qué probar:**
+
+1. En `/pagos`, en cualquier pendiente, **Marcar en gestión** con una nota y la fecha de mañana, y **Guardar**.
+   - [ ] **Debe dar:** el toast, el formulario se cierra solo y aparece *En gestión hasta el ... por ...* con **Actualizar la gestión**, sin recargar.
+2. El fallo del correo no se puede provocar a mano en la nube (habría que tumbar Resend). Lo cubre el candado `avisos-db`: *un envío que falla no queda como enviado*. Si vuelve a pasar en la operación real, se ve así: la tarea responde `sin_envio` con *Falló el envío; ver Sentry.*, y **correr el mismo Invoke-RestMethod otra vez la envía**.

@@ -34,6 +34,19 @@ export function EnGestionForm({
   const [nota, setNota] = useState("");
   const [hasta, setHasta] = useState("");
 
+  // AL GUARDAR, SE CIERRA (smoke del Bloque A, 2026-09-15). La pagina si se refrescaba y traia la gestion nueva,
+  // pero `abierto` seguia en true y el formulario tapaba la linea "En gestión hasta...": parecia que no habia
+  // pasado nada hasta recargar. Se ajusta durante el render, no en un efecto (regla de lint set-state-in-effect).
+  const [estadoVisto, setEstadoVisto] = useState(state);
+  if (state !== estadoVisto) {
+    setEstadoVisto(state);
+    if (state.success) {
+      setAbierto(false);
+      setNota("");
+      setHasta("");
+    }
+  }
+
   const vigenteHoy = vigente != null;
   const texto = vigenteHoy
     ? `En gestión hasta el ${formatDate(`${vigente.hasta}T12:00:00`)}${vigente.por ? ` por ${vigente.por}` : ""}: ${vigente.nota}`
