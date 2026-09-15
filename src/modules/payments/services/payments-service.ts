@@ -36,6 +36,8 @@ import * as Sentry from "@sentry/nextjs";
 
 import { ESCALADA_EFECTIVO_NO_RECIBIDO } from "../revision";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
+import { avisarAlIntegranteDeRevision } from "@/modules/avisos/services/avisos-service";
+
 import { emitirFacturaDeVenta } from "./facturacion-service";
 import { descontarInventarioDeVenta } from "./inventario-venta-service";
 import type { CreateCheckoutInput, WompiEventInput } from "../validations";
@@ -343,6 +345,9 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
       level: "warning",
       tags: { area: "pago-sobre-link-anulado", transactionId: sealed.id },
     });
+    // Y AL INTEGRANTE, EN EL MOMENTO (Bloque A): es quien sabe que paso en la consulta. No lanza: el pago ya se
+    // sello y Wompi tiene que recibir su 200.
+    await avisarAlIntegranteDeRevision(sealed.id);
   } else if (sealed) {
     // EL ORDEN: el pago ya quedo sellado y confirmado arriba. El inventario y la factura corren despues, cada
     // uno en su transaccion, y ninguno lanza.

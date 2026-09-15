@@ -38,6 +38,7 @@ vi.mock("../modules/payments/data/inventario-de-venta", () => ({
   liberarReservasDeVenta: vi.fn(),
 }));
 vi.mock("../modules/payments/services/inventario-venta-service", () => ({ descontarInventarioDeVenta: vi.fn() }));
+vi.mock("@/modules/avisos/services/avisos-service", () => ({ avisarAlIntegranteDeRevision: vi.fn() }));
 
 import * as nutraRepo from "@/modules/nutraceuticals/data/nutraceuticals-repository";
 
@@ -279,6 +280,8 @@ describe("processWompiWebhook: idempotencia y mapeo de estado", () => {
     expect(out.sealed).toBe(true);
     expect(descuento.descontarInventarioDeVenta).not.toHaveBeenCalled();
     expect(facturacion.emitirFacturaDeVenta).not.toHaveBeenCalled();
+    const avisos = await import("@/modules/avisos/services/avisos-service");
+    expect(avisos.avisarAlIntegranteDeRevision, "el Integrante se entera en el momento").toHaveBeenCalledWith(TX_REF);
     expect(Sentry.captureMessage).toHaveBeenCalledWith(
       "Pago aprobado sobre un link de pago anulado",
       expect.objectContaining({ tags: expect.objectContaining({ area: "pago-sobre-link-anulado" }) }),
