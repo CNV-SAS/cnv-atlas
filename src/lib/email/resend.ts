@@ -183,3 +183,26 @@ export async function sendTaxStatusEmail(
     return err(appError("internal", e instanceof Error ? e.message : "Error enviando el aviso."));
   }
 }
+
+// AVISOS INTERNOS Y AL INTEGRANTE (Bloque A). Texto plano, sin adjuntos y SIN DATOS DEL PACIENTE: producto, monto
+// y fecha de la venta, y el enlace a Atlas, donde la persona ve el resto con su sesion y su permiso. Varios
+// destinatarios van en UN envio: son del equipo y se ven entre si, que es lo que se quiere (saben quien mas lo
+// recibe).
+export async function sendAvisoEmail(to: string[], subject: string, text: string): Promise<Result<{ id: string }>> {
+  const resend = getClient();
+  if (!resend) return err(appError("internal", "El servicio de correo no esta configurado."));
+  const from = process.env.EMAIL_FROM;
+  if (!from) return err(appError("internal", "Falta la dirección de envio (EMAIL_FROM)."));
+  if (to.length === 0) return err(appError("validation", "Sin destinatarios."));
+  const replyTo = process.env.EMAIL_REPLY_TO;
+  try {
+    const res = await withTimeout(
+      resend.emails.send({ from, ...(replyTo ? { replyTo } : {}), to, subject, text }),
+      SEND_TIMEOUT_MS,
+    );
+    if (res.error) return err(appError("internal", `No se pudo enviar el aviso: ${res.error.message}`));
+    return ok({ id: res.data?.id ?? "" });
+  } catch (e) {
+    return err(appError("internal", e instanceof Error ? e.message : "Error enviando el aviso."));
+  }
+}
