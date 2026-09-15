@@ -133,6 +133,16 @@ export const transactionItems = pgTable("transaction_items", {
     .references(() => nutraceuticals.id),
   quantity: integer("quantity").notNull(),
   unitPrice: numeric("unit_price").notNull(),
+  // ── EL REPARTO SELLADO EN LA LINEA (0143) ── Nulo en lineas anteriores. Todo o nada (CHECK).
+  vatRate: numeric("vat_rate"),
+  commissionRate: numeric("commission_rate"),
+  supplierShare: numeric("supplier_share"),
+  modality: text("modality"), // comision | distribucion
+  baseAmount: numeric("base_amount"),
+  commissionAmount: numeric("commission_amount"),
+  supplierAmount: numeric("supplier_amount"),
+  cnvAmount: numeric("cnv_amount"),
+  sealedAt: timestamp("sealed_at", { withTimezone: true }),
 });
 
 // LAS RESERVAS DEL CHECKOUT PENDIENTE (D3, 0139). No mueven el saldo: restan de lo DISPONIBLE mientras

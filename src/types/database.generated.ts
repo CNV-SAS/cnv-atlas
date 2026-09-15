@@ -3933,25 +3933,52 @@ export type Database = {
       }
       transaction_items: {
         Row: {
+          base_amount: number | null
+          cnv_amount: number | null
+          commission_amount: number | null
+          commission_rate: number | null
           id: string
+          modality: string | null
           nutraceutical_id: string
           quantity: number
+          sealed_at: string | null
+          supplier_amount: number | null
+          supplier_share: number | null
           transaction_id: string
           unit_price: number
+          vat_rate: number | null
         }
         Insert: {
+          base_amount?: number | null
+          cnv_amount?: number | null
+          commission_amount?: number | null
+          commission_rate?: number | null
           id?: string
+          modality?: string | null
           nutraceutical_id: string
           quantity: number
+          sealed_at?: string | null
+          supplier_amount?: number | null
+          supplier_share?: number | null
           transaction_id: string
           unit_price: number
+          vat_rate?: number | null
         }
         Update: {
+          base_amount?: number | null
+          cnv_amount?: number | null
+          commission_amount?: number | null
+          commission_rate?: number | null
           id?: string
+          modality?: string | null
           nutraceutical_id?: string
           quantity?: number
+          sealed_at?: string | null
+          supplier_amount?: number | null
+          supplier_share?: number | null
           transaction_id?: string
           unit_price?: number
+          vat_rate?: number | null
         }
         Relationships: [
           {
