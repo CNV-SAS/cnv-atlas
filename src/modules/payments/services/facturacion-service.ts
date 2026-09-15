@@ -329,7 +329,7 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       return;
     }
 
-    const lineas = await fr.getLineasDeVenta(venta.id);
+    const lineas = await fr.getLineasDeVenta(venta.id, mapa.env);
     const armado = armarFactura(lineas, mapa);
     if (!armado.ok) {
       // NO SE LLAMA A ALEGRA. Es el punto del bloque: lo que se rechaza aqui saldria validado y mal.

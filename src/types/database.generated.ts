@@ -263,6 +263,41 @@ export type Database = {
         }
         Relationships: []
       }
+      alegra_items: {
+        Row: {
+          created_at: string
+          env: string
+          id: string
+          item_id: string
+          nutraceutical_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          env: string
+          id?: string
+          item_id: string
+          nutraceutical_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          env?: string
+          id?: string
+          item_id?: string
+          nutraceutical_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alegra_items_nutraceutical_id_fkey"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       allergens: {
         Row: {
           code: string

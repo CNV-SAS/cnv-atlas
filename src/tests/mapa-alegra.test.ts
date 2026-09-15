@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { sql as dsql } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 
@@ -84,14 +86,14 @@ describe.skipIf(!HAS_DB)("el mapa de Alegra (BD real)", () => {
 
   it("ningún item de Alegra está repetido entre productos", async () => {
     const { db } = await import("@/db");
-    const filas = await db.execute<{ alegra_item_id: string; n: number }>(dsql`
-      select alegra_item_id, count(*)::int as n
-        from nutraceuticals
-       where alegra_item_id is not null
-       group by alegra_item_id, alegra_env
+    // Desde la 0144 el mapa vive en `alegra_items`, por ambiente.
+    const filas = await db.execute<{ item_id: string; n: number }>(dsql`
+      select item_id, count(*)::int as n
+        from alegra_items
+       group by env, item_id
       having count(*) > 1`);
     expect(
-      filas.map((f) => f.alegra_item_id),
+      filas.map((f) => f.item_id),
       "dos productos comparten item: la factura saldría con el producto equivocado y cuadraría en total",
     ).toEqual([]);
   });
@@ -103,7 +105,7 @@ describe.skipIf(!HAS_DB)("el mapa de Alegra (BD real)", () => {
     const [r] = await db.execute<{ existe: boolean }>(dsql`
       select exists (
         select 1 from pg_indexes
-         where tablename = 'nutraceuticals' and indexname = 'nutraceuticals_alegra_item_unico_idx'
+         where tablename = 'alegra_items' and indexname = 'alegra_items_item_unico_por_ambiente'
       ) as existe`);
     expect(r?.existe).toBe(true);
   });
@@ -113,7 +115,9 @@ describe.skipIf(!HAS_DB)("el mapa de Alegra (BD real)", () => {
     // automatico: es lo que hay que comprobar.
     const { db } = await import("@/db");
     const filas = await db.execute<{ name: string; unit_price: string; vat_rate: string | null }>(dsql`
-      select name, unit_price, vat_rate from nutraceuticals where alegra_item_id is not null`);
+      select n.name, n.unit_price, n.vat_rate
+        from nutraceuticals n join alegra_items ai on ai.nutraceutical_id = n.id and ai.env = 'sandbox'
+       where not n.is_test`);
     expect(filas.length).toBe(Object.keys(BASES_SANDBOX).length);
 
     const desajustes: string[] = [];
@@ -137,5 +141,39 @@ describe.skipIf(!HAS_DB)("el mapa de Alegra (BD real)", () => {
     const filas = await db.execute<{ name: string }>(dsql`
       select name from nutraceuticals where ownership = 'tercero'`);
     expect(filas.map((f) => f.name)).toEqual(["LUVIA"]);
+  });
+});
+
+describe.skipIf(!HAS_DB)("el mapa de items POR AMBIENTE (0144, paso 8 del 3.4)", () => {
+  it("un producto puede tener su item de sandbox Y el de produccion, y la factura lee el del ambiente", async () => {
+    const { db } = await import("@/db");
+    const { getLineasDeVenta } = await import("@/modules/payments/data/facturacion-repository");
+    const [org] = await db.execute<{ id: string }>(dsql`select id from organizations limit 1`);
+    const prod = randomUUID();
+    const venta = randomUUID();
+    await db.execute(dsql`
+      insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership)
+      values (${prod}, ${org.id}, ${`MAPA POR AMBIENTE ${prod.slice(0, 8)}`}, 11900, true, 'propio')`);
+    await db.execute(dsql`
+      insert into alegra_items (nutraceutical_id, env, item_id) values
+        (${prod}, 'sandbox', ${`s-${prod.slice(0, 6)}`}), (${prod}, 'produccion', ${`p-${prod.slice(0, 6)}`})`);
+    await db.execute(dsql`
+      insert into transactions (id, organization_id, status, amount, currency, wompi_env, idempotency_key)
+      values (${venta}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`mapa-${venta}`})`);
+    await db.execute(dsql`
+      insert into transaction_items (transaction_id, nutraceutical_id, quantity, unit_price) values (${venta}, ${prod}, 1, 11900)`);
+    try {
+      const [s] = await getLineasDeVenta(venta, "sandbox");
+      const [p] = await getLineasDeVenta(venta, "produccion");
+      expect([s.alegraItemId, s.alegraEnv]).toEqual([`s-${prod.slice(0, 6)}`, "sandbox"]);
+      expect([p.alegraItemId, p.alegraEnv]).toEqual([`p-${prod.slice(0, 6)}`, "produccion"]);
+      // CONTROL: sin fila en un ambiente, la linea llega sin item y la factura la rechaza por su nombre.
+      await db.execute(dsql`delete from alegra_items where nutraceutical_id = ${prod} and env = 'produccion'`);
+      const [sin] = await getLineasDeVenta(venta, "produccion");
+      expect(sin.alegraItemId).toBeNull();
+    } finally {
+      await db.execute(dsql`delete from transactions where id = ${venta}`);
+      await db.execute(dsql`delete from nutraceuticals where id = ${prod}`);
+    }
   });
 });

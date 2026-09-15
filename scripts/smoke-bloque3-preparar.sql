@@ -61,9 +61,10 @@ begin
     v_prof := null;
   end if;
 
-  insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership,
-                              commercial_availability, alegra_item_id, alegra_env)
-  values (v_prod, v_org, 'PRUEBA SMOKE BLOQUE 3', 11900, true, 'propio', 'en_consultorio', '1', 'sandbox');
+  insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership, commercial_availability)
+  values (v_prod, v_org, 'PRUEBA SMOKE BLOQUE 3', 11900, true, 'propio', 'en_consultorio');
+  -- EL ITEM VA AL MAPA POR AMBIENTE (0144), no a las columnas viejas del producto, que ya no se leen.
+  insert into alegra_items (nutraceutical_id, env, item_id) values (v_prod, 'sandbox', '1');
 
   insert into lots (id, nutraceutical_id, code, expires_on) values
     (v_lote_a, v_prod, 'SMOKE-A', current_date + 90),

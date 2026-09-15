@@ -158,7 +158,7 @@ node scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql --commit
 
 - [ ] **Debe dar:** `SIN ERRORES` y `CONFIRMADO`.
 
-Desde aquí, una venta facturada contra el sandbox fallaría. Por eso no se cobra nada en la ventana.
+Desde la migración 0144 esto **ya no deja al sandbox sin ítems**: cada ambiente tiene su fila en `alegra_items`, y el script solo escribe la de producción. Igual no se cobra nada en la ventana, porque las variables de Vercel todavía no cambiaron.
 
 ### B3. Cotejar Atlas contra Alegra producción
 
@@ -361,10 +361,10 @@ Desde el commit del 2026-09-14 la factura lleva la referencia de la venta y Rein
 1. **Vercel → Deployments → el deployment que anotaste en A3 → ⋮ → Instant Rollback.** Tarda un minuto, y ese deployment trae **sus** variables, las de sandbox. **Ese, no uno anterior:** antes de `208aa3aa` el alias del motor no coincide con el nombre de la base.
 2. **Vercel → Settings → Environment Variables:** devuelve las siete variables de B4 a sus valores de sandbox. Sin esto, el próximo push despliega otra vez con las de producción.
 3. Hasta que se pulse **Undo Rollback** en Vercel, los push nuevos **no se publican**. Es lo esperado.
-4. **Solo si se va a volver a probar en sandbox:**
+4. **Los ítems del sandbox no hay que devolverlos:** desde la 0144 nunca se tocaron. Si quieres comprobarlo antes de volver a probar en sandbox, este script lo verifica y repone el que falte (el ensayo, sin `--commit`, ya lo dice):
 
 ```
-node scripts/aplicar-migracion.mjs scripts/vuelta-atras-alegra-sandbox.sql --commit
+node scripts/aplicar-migracion.mjs scripts/vuelta-atras-alegra-sandbox.sql
 ```
 
 **Lo que NO se deshace:**
