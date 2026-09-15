@@ -21,6 +21,7 @@ que algo ya hecho se vuelva a planear).
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
 | **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
+| **A** · Avisos (antes del 2b) | **PROPUESTO, decisiones tomadas el 2026-09-15** (ver 3.7) | Correo diario solo si hay algo que requiere accion, franja en cualquier pantalla y correo inmediato al Integrante. Sin reintento automatico |
 | **2b** · Paso a producción | **PREPARADO, ESPERA** (guía en `docs/entregas/`). Santiago, 2026-09-14: primero se cierran todos los bloques y se confirma que el flujo funciona; después 2b, después Supabase Pro, y al final los Integrantes | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
 | **3** · La venta nace en Tratamiento | **EN CURSO. Sesiones 1 y 2 hechas y smokeadas (2026-09-14), migraciones 0138-0142.** Falta: el smoke de la 0142 (paso 9) y los pasos 5, 6 y 7 del 3.4 | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
@@ -1297,11 +1298,31 @@ construyen); el pago mixto ya estaba decidido (una factura por el total). Ver la
 
 - **Paso 5, HECHO (`556b8ebc`, 0143).** El reparto sellado en cada línea: tasas de IVA, del Integrante y del proveedor, modalidad, y los montos. La tasa del Integrante sale de su vigencia.
 - **Paso 6, HECHO (`6b39b978`).** Ventas sin documento consultables por día de Colombia, con los días de los últimos 30 que tienen alguna.
-- **Paso 7, HECHO en código (`74cb2862`).** La línea de un producto de tercero lleva "Titular de marca: ...", y un tercero sin titular no se factura. **Falta confirmar que Alegra lo imprime**, con una factura de sandbox que necesita permiso (ver `SMOKE_BLOQUE_3_CIERRE.md`).
+- **Paso 7, HECHO y VERIFICADO (`74cb2862`).** La línea de un producto de tercero lleva "Titular de marca: ...", y un tercero sin titular no se factura. **Alegra lo imprime:** factura de sandbox SETP990214726 (2026-09-15, con permiso de Santiago), cuyo PDF dice "PRUEBA(Titular de marca: TITULAR DE PRUEBA S.A.S.)": Alegra pone la descripción entre paréntesis junto al nombre del ítem.
 - **Paso 8, HECHO (`d04b1f00`, 0144).** El mapa de ítems por producto y ambiente.
 - **Smoke de cierre:** `docs/entregas/SMOKE_BLOQUE_3_CIERRE.md`.
 
-### 3.7 · PROPUESTA, no construida: controles que no dependen de que alguien entre a /pagos
+### 3.7 · Bloque A, AVISOS: controles que no dependen de que alguien entre a /pagos (va ANTES del 2b)
+
+> **DECISIONES DE SANTIAGO (2026-09-15):**
+> - **a) NO hay reintento automático.** Ojo humano antes de reintentar, para saber por qué falló. Consecuencia que se resuelve abajo: el correo no puede traer siempre lo mismo.
+> - **b) Correo diario, con la marca en el usuario.** La marca se puede poner a **admin, dirección y soporte**, que son los roles internos que existen hoy (`app_role`: admin, direccion, soporte, obbia, professional). "Operador" no existe como rol.
+> - **c) 7 a. m. y 5 p. m.**
+> - **d) Correo inmediato al Integrante** cuando un pago de su venta entra en revisión.
+> - **Es un bloque propio, antes del 2b.**
+>
+> **PROPUESTA para que el correo no se aprenda a ignorar, pendiente de aprobación:**
+> 1. **Nuevo contra lo que ya estaba.** El correo abre con lo NUEVO desde el anterior, y debajo, "sigue pendiente", con cuántos días lleva.
+> 2. **Lo viejo sube de tono con el plazo, no solo con los días.** Cada tipo tiene el suyo:
+>    - la revisión, 5 días hábiles (contabilidad);
+>    - la venta sin documento, el cierre del día;
+>    - la nota crédito manual, 5 días hábiles (propuesto).
+>    Vencido, el asunto lo dice ("1 vencida") y va también a quien tenga la marca de **escalamiento**.
+> 3. **"Lo estoy gestionando, avísame el ...".** Quien lo mira lo marca en gestión, con una nota de por qué y una fecha. Sale del correo hasta esa fecha o hasta su plazo, lo que llegue primero. Es el ojo humano de la decisión a): queda escrito quién lo vio y qué está pasando, y el correo deja de repetirse. Si la fecha pasa sin resolverse, vuelve marcado.
+> 4. **Agrupado por causa.** Doce facturas que fallan por el mismo motivo ("falta el ítem en Alegra") son UNA línea con su número: se arregla una vez.
+> 5. **Si no hay nada nuevo, nada vencido, y lo demás está en gestión, no llega correo.**
+
+**(Lo que sigue es la propuesta original del 2026-09-14, que las decisiones de arriba ajustan: el punto 1, el reintento automático, NO va.)**
 
 **El problema (Santiago, 2026-09-14):** hoy nadie entra a `/pagos` a diario, y con más de 50 Integrantes y cientos de pedidos es inviable esperar que alguien lo mire. Un control que depende de que alguien entre no es un control.
 
