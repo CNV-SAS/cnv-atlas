@@ -5,6 +5,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { CreateUserForm } from "@/modules/auth/components/create-user-form";
 import { UserRowActions } from "@/modules/auth/components/user-row-actions";
+import { MarcaDeAvisos } from "@/modules/avisos/components/marca-de-avisos";
+import { listarUsuariosInternosConMarcas } from "@/modules/avisos/data/avisos-repository";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
 
@@ -32,6 +34,7 @@ export default async function AdminPage() {
     .from("professional_profiles")
     .select("profile_id, profession, license");
   const byProfile = new Map((profRows ?? []).map((p) => [p.profile_id, p]));
+  const internos = await listarUsuariosInternosConMarcas();
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -74,6 +77,28 @@ export default async function AdminPage() {
           );
         })}
       </ul>
+      {/* ═══ QUIEN RECIBE LOS AVISOS DE VENTAS (Bloque A) ═══ Solo usuarios internos: admin, direccion o soporte. */}
+      <section className="flex flex-col gap-2">
+        <h2 className="font-bold">Avisos de ventas</h2>
+        <p className="text-sm text-muted-foreground">
+          Quien tiene <strong>Pendientes de ventas</strong> recibe el correo de las 7 a. m. y las 5 p. m. cuando algo
+          necesita acción. Quien tiene <strong>Escalamiento</strong> recibe además lo vencido.
+        </p>
+        <ul className="flex flex-col gap-2 text-sm">
+          {internos.map((u) => (
+            <li key={u.id} className="flex flex-wrap items-center gap-2 border-b pb-2">
+              <span className="min-w-[14rem] flex-1">
+                {u.nombre} <span className="text-muted-foreground">({u.roles.join(", ")})</span>
+              </span>
+              <MarcaDeAvisos profileId={u.id} tipo="pendientes_ventas" activa={u.marcas.includes("pendientes_ventas")} />
+              <MarcaDeAvisos profileId={u.id} tipo="escalamiento_ventas" activa={u.marcas.includes("escalamiento_ventas")} />
+            </li>
+          ))}
+        </ul>
+        {internos.every((u) => !u.marcas.includes("pendientes_ventas")) ? (
+          <p className="text-sm text-destructive">Nadie recibe los pendientes de ventas.</p>
+        ) : null}
+      </section>
       <section className="flex flex-col gap-2">
         <h2 className="font-bold">Crear usuario</h2>
         <CreateUserForm />

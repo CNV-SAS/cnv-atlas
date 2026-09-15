@@ -11,6 +11,8 @@ import { formatDateTime } from "@/lib/format/date";
 import { Panel } from "@/components/shared/panel";
 import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
 
+import { EnGestionForm, type EnGestionVigente } from "@/modules/avisos/components/en-gestion-form";
+
 import { reintentarFacturasAction } from "../actions";
 
 // ═══ VENTAS COBRADAS SIN DOCUMENTO FISCAL ═══
@@ -56,7 +58,13 @@ export function FacturasPendientes({
   ventas,
   dia,
   porDia,
+  puedeReintentar,
+  enGestion,
 }: {
+  /** Reintentar es de quien ve el ingreso (admin y direccion); soporte atiende pero no reintenta. */
+  puedeReintentar: boolean;
+  /** El "en gestion" vigente por "tipo:venta" (Bloque A). */
+  enGestion: Record<string, EnGestionVigente>;
   ventas: VentaSinDocumento[];
   /** El dia consultado ("AAAA-MM-DD", de Colombia), o null para todas. */
   dia: string | null;
@@ -134,11 +142,15 @@ export function FacturasPendientes({
                 {v.motivo && (
                   <p className="mt-1 break-words font-mono text-xs text-muted-foreground">{v.motivo}</p>
                 )}
+                <div className="mt-2">
+                  <EnGestionForm tipo="sin_documento" transactionId={v.id} vigente={enGestion[`sin_documento:${v.id}`] ?? null} />
+                </div>
               </li>
             ))}
           </ul>
 
           {/* onSubmit y no la prop `action`: React 19 dispara un reset nativo al ejecutar la accion. */}
+          {puedeReintentar ? (
           <form onSubmit={enviarSinReset(action)} className="mt-3">
             <Button type="submit" disabled={pending}>
               {pending ? "Reintentando..." : "Reintentar las pendientes"}
@@ -149,6 +161,7 @@ export function FacturasPendientes({
               Se puede pulsar las veces que haga falta: una venta que ya tiene factura no genera otra.
             </p>
           </form>
+          ) : null}
         </>
       )}
     </Panel>

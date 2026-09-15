@@ -31,6 +31,8 @@ import { listarEfectivosNoRecibidos, listarVentasPorRevisar } from "@/modules/pa
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
+import { listarPendientesDeAccion } from "@/modules/avisos/data/avisos-repository";
+import { canAtenderPendientesVentas } from "@/modules/avisos/policies/can-atender-pendientes";
 import type { TransactionStatus, TransactionWithItems } from "@/modules/payments/types";
 
 export const metadata = { title: "Pagos - Atlas" };
@@ -138,7 +140,11 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   const dia = sp.dia && DIA_RE.test(sp.dia) ? sp.dia : null;
   const canCreate = canCreateCheckout(user);
   const canView = canViewRevenue(user);
-  if (!canCreate && !canView) redirect("/no-autorizado");
+  // SOPORTE ATIENDE LOS PENDIENTES (Bloque A): con la marca de avisos le llegan por correo, y un correo que lleva
+  // a una pantalla que no puede abrir no sirve. Ve los paneles y marca "en gestion"; no resuelve ni reintenta.
+  const canAtender = canAtenderPendientesVentas(user);
+  const verPaneles = canView || canAtender;
+  if (!canCreate && !verPaneles) redirect("/no-autorizado");
 
   const [transactions, perfilPropio] = await Promise.all([
     listTransactions(),
@@ -147,14 +153,22 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
   // transacciones, que se muestra igual.
-  const [ventasSinDocumento, ventasPorRevisar, efectivosNoRecibidos, sinDocumentoPorDia] = canView
+  const [ventasSinDocumento, ventasPorRevisar, efectivosNoRecibidos, sinDocumentoPorDia, pendientes] = verPaneles
     ? await Promise.all([
         listarVentasSinDocumento(50, dia),
         listarVentasPorRevisar(),
         listarEfectivosNoRecibidos(),
         contarVentasSinDocumentoPorDia(),
+        listarPendientesDeAccion(),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
+  // El "en gestion" VIGENTE (hasta hoy o despues) de cada pendiente. Uno vencido ya no se muestra como en gestion.
+  const hoyBogota = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+  const enGestion = Object.fromEntries(
+    pendientes
+      .filter((p) => p.enGestionHasta && p.enGestionHasta >= hoyBogota && p.enGestionNota)
+      .map((p) => [`${p.tipo}:${p.transactionId}`, { hasta: p.enGestionHasta!, nota: p.enGestionNota!, por: p.enGestionPor }]),
+  );
   // Para recuperar el enlace de un checkout pendiente sin generar otro: el link es derivable del id
   // (misma forma que buildCheckoutUrl). Horas restantes del TTL de 24h contra el created_at.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -227,8 +241,24 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
 
       {/* VA ANTES DE LA LISTA DE TRANSACCIONES a proposito: es lo que hay que mirar y resolver, y al
           final de la pagina no lo mira nadie. Contabilidad lo quiere en CERO al cierre de cada dia. */}
-      {canView && <VentasPorRevisar ventas={ventasPorRevisar} efectivos={efectivosNoRecibidos} ahora={new Date(nowMs)} />}
-      {canView && <FacturasPendientes ventas={ventasSinDocumento} dia={dia} porDia={sinDocumentoPorDia} />}
+      {verPaneles && (
+        <VentasPorRevisar
+          ventas={ventasPorRevisar}
+          efectivos={efectivosNoRecibidos}
+          ahora={new Date(nowMs)}
+          puedeResolver={canView}
+          enGestion={enGestion}
+        />
+      )}
+      {verPaneles && (
+        <FacturasPendientes
+          ventas={ventasSinDocumento}
+          dia={dia}
+          porDia={sinDocumentoPorDia}
+          puedeReintentar={canView}
+          enGestion={enGestion}
+        />
+      )}
 
       <section className="flex flex-col gap-3">
         <TituloSeccion>Transacciones</TituloSeccion>

@@ -173,7 +173,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "Pagos",
     href: "/pagos",
     icon: "pagos",
-    roles: ["admin", "direccion", "professional"],
+    // Soporte, desde el Bloque A: atiende los pendientes de ventas que le llegan por correo.
+    roles: ["admin", "direccion", "soporte", "professional"],
     group: "operacion",
   },
   {
