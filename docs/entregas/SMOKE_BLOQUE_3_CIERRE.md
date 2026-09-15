@@ -84,7 +84,11 @@ node scripts/aplicar-migracion.mjs scripts/smoke-bloque3-retirar.sql --commit
 
 ---
 
-## El titular de marca en la factura (paso 7): cómo se prueba
+## El titular de marca en la factura (paso 7): VERIFICADO el 2026-09-15
+
+**Alegra lo imprime.** Con el permiso de Santiago se emitió **una** factura en el sandbox, **SETP990214726**: contacto de prueba, item PRUEBA, 11.900, con la descripción del titular. Su PDF dice en la línea **"PRUEBA(Titular de marca: TITULAR DE PRUEBA S.A.S.)"**: Alegra pone la descripción entre paréntesis junto al nombre del ítem. En producción, una LUVIA saldrá "LUVIA(Titular de marca: Centro de Nutrición Integral Katherine Ruiz S.A.S.)". La factura queda **abierta, sin pago**, en el sandbox: es de la prueba y no se toca.
+
+Lo que sigue es cómo estaba planteado antes de probarlo.
 
 Lo que Atlas manda está probado: la línea de un producto de tercero viaja con `description: "Titular de marca: ..."`, y un tercero sin titular no se factura. **Lo que no está probado es si Alegra imprime esa descripción en el PDF.** Su documentación dice que el campo es "Descripción del producto/servicio" y no dice si sale impreso.
 

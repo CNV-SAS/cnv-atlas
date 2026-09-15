@@ -48,6 +48,9 @@ hoy nadie externo entra. Lo que no es defendible es dar un acceso con alguna de 
 | 1 | **MFA encendido** (TOTP) | Es borrar una variable de Vercel |
 | 2 | **Supabase Pro contratado** | 25 USD/mes |
 | 3 | **Dump externo funcionando** y con una restauración probada | Unas horas de trabajo |
+| 4 | **Vercel Pro, si Hobby no admite uso comercial** (agregado el 2026-09-15) | **Por verificar, lo revisa Santiago** en los términos de Vercel. Con pagos reales en producción, entra en la misma lista que Supabase Pro. De paso, Pro deja correr tareas programadas cada minuto (Hobby: una vez al día, ±59 min) |
+
+**Al contratar Supabase Pro (anotado el 2026-09-15):** el proyecto sigue en la instancia **Nano** aunque se cobre como Micro; hay que subirla a mano en Settings → Compute and Disk (menos de 2 minutos de caída, según Supabase). Después, verificar que la app abre, `pnpm db:check:cloud`, y en los reportes de un día normal que el disco y la memoria no toquen techo.
 
 **1 · MFA.** La relajación (`src/modules/auth/mfa-relaxation.ts`) se diseñó para ser inerte en producción,
 y su garantía era, textual: *"PRODUCCION -que apunta a OTRA base de Supabase- NUNCA coincide"*. **Esa
