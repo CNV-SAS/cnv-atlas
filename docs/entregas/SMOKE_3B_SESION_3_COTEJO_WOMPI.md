@@ -85,7 +85,7 @@ node scripts/sondeo-wompi-consulta.mjs
 - [ ] Mira la línea **Estados** del paso 1 del sondeo. **Si dice** `{"APPROVED":N,"DECLINED":1}`, el listado trae las rechazadas y la sesión 1 puede apoyarse en él. **Si solo dice** `APPROVED`, habrá que consultarlas una por una por su referencia, y lo diseño así.
 - [ ] Mira también el paso 5, el de `disbursement`: dice si viene lleno y con qué claves.
 - Y al terminar: `Remove-Item Env:WOMPI_PRIVATE_KEY`.
-- La venta del pago rechazado queda `pending` y la borra la limpieza del paso 4.
+- La venta del pago rechazado NO queda pendiente: queda **fallida**, con *Pago rechazado. Puedes cobrar de nuevo*. Es lo correcto, y prueba de paso que el aviso de Wompi volvio a funcionar al restaurar la URL. La limpieza del paso 4 la borra igual (borra las ventas del producto de prueba, en cualquier estado).
 
 ## 4. Limpiar
 
