@@ -200,4 +200,19 @@ if (!unId) {
   }
 }
 
+// ── 5. EL CAMPO `disbursement`: ¿trae el desembolso de esa venta? ────────────────────────────────
+//
+// Si trae la comision y la retencion de Wompi, ahorra el reporte de liquidacion para el calculo del margen. Se
+// imprimen solo las CLAVES y si viene vacio: los valores son plata de CNV, no hacen falta para saber si sirve.
+console.log("\n── 5. El campo disbursement (para el margen) ──────────────────");
+const conDesembolso = filas.find((f) => f.disbursement != null);
+if (filas.length === 0) {
+  console.log("   Sin filas que mirar.");
+} else if (!conDesembolso) {
+  console.log(`   Las ${filas.length} filas lo traen vacio. Suele llenarse cuando Wompi ya desemboso: vuelve a correrlo con una venta ya pagada a CNV.`);
+} else {
+  const d = conDesembolso.disbursement;
+  console.log(`   Viene lleno. Claves: ${typeof d === "object" ? Object.keys(d).join(", ") : typeof d}`);
+}
+
 console.log("\nListo. Pasame esta salida tal cual.\n");

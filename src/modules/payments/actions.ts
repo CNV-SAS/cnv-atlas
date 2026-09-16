@@ -16,6 +16,7 @@ import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { canDeliverSale } from "./policies/can-deliver-sale";
 import { canViewRevenue } from "./policies/can-view-revenue";
+import { cotejarConWompi } from "./services/conciliacion-service";
 import { reintentarFacturasPendientes } from "./services/facturacion-service";
 import { reintentarDescuentosPendientes } from "./services/inventario-venta-service";
 import {
@@ -433,5 +434,44 @@ export async function reintentarFacturasAction(
   } catch (e) {
     reportServerError("facturas.reintentar", e);
     return { error: "No se pudieron reintentar las facturas.", success: null, warning: null };
+  }
+}
+
+/**
+ * EL COTEJO CON WOMPI A MANO (Bloque 3b, sesion 3). La tarea lo corre cada manana; este boton es para cuando
+ * alguien SABE que un pago no llego y no quiere esperar a manana. Es el mismo servicio, con el mismo candado de
+ * idempotencia, asi que pulsarlo dos veces no aplica nada dos veces.
+ */
+export async function cotejarConWompiAction(
+  _prev: RetryFormState,
+  _formData: FormData,
+): Promise<RetryFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  // Recuperar un pago SELLA plata (ingreso, comision, factura): lo mismo que reintentar facturas.
+  if (!canViewRevenue(user)) {
+    return { error: "No tienes permiso para cotejar los pagos con Wompi.", success: null, warning: null };
+  }
+  try {
+    const r = await cotejarConWompi({ origen: "manual", actorId: user.id });
+    if (r.falloPor) return { error: `No se pudo consultar a Wompi: ${r.falloPor}`, success: null, warning: null };
+    if (r.discrepancias.length > 0) {
+      return {
+        error: null,
+        success: null,
+        warning: `Se revisaron ${r.revisadas} ventas y ${r.discrepancias.length} no cuadran: quedaron reportadas y NO se sellaron. ${r.recuperadas.length > 0 ? `Se recuperaron ${r.recuperadas.length}.` : ""}`.trim(),
+      };
+    }
+    return {
+      error: null,
+      success:
+        r.recuperadas.length === 0
+          ? `Se revisaron ${r.revisadas} ventas y ninguna estaba pagada sin registrar. Todo al día.`
+          : `Se recuperaron ${r.recuperadas.length} pago${r.recuperadas.length === 1 ? "" : "s"} que Wompi había aprobado. Míralos en la lista.`,
+      warning: null,
+    };
+  } catch (e) {
+    reportServerError("pagos.cotejo-wompi", e);
+    return { error: "No se pudo cotejar con Wompi.", success: null, warning: null };
   }
 }
