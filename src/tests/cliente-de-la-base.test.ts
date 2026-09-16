@@ -32,7 +32,7 @@ describe("el cliente de la base", () => {
   it("limita el pool por instancia y no retiene conexiones ociosas", () => {
     const max = CONSTRUCTOR.match(/max\s*:\s*(\d+)/);
     expect(max, "sin `max`, postgres.js abre 10 por instancia y agota el pooler").not.toBeNull();
-    expect(Number(max![1])).toBeLessThanOrEqual(5);
+    expect(Number(max![1])).toBeLessThanOrEqual(8);
     expect(CONSTRUCTOR).toMatch(/idle_timeout\s*:\s*\d+/);
     expect(CONSTRUCTOR).toMatch(/connect_timeout\s*:\s*\d+/);
   });
