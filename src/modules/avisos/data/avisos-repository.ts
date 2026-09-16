@@ -126,7 +126,7 @@ const RECLAMO_MUERTO = "5 minutes";
  * fallo dejaba la fila tomada y el reintento respondia "ya_enviado": ese correo se perdia. Solo bloquean las que
  * cerraron (enviadas, o sin envio por un motivo) y las reclamadas que siguen vivas.
  */
-export async function reclamarEnvio(dia: string, franja: Franja): Promise<boolean> {
+export async function reclamarEnvio(dia: string, franja: Franja): Promise<string | null> {
   const filas = await db.execute<{ id: string }>(sql`
     insert into alert_digest_runs (run_date, slot, sent, reason)
     values (${dia}::date, ${franja}, false, 'reclamado')
@@ -136,7 +136,10 @@ export async function reclamarEnvio(dia: string, franja: Franja): Promise<boolea
        and (alert_digest_runs.reason like 'Falló:%'
             or (alert_digest_runs.reason = 'reclamado' and alert_digest_runs.ran_at < now() - ${RECLAMO_MUERTO}::interval))
     returning id`);
-  return filas.length > 0;
+  // Devuelve el ID de la corrida, no un si/no: con el se arma la llave de idempotencia del correo. Un REINTENTO
+  // de la misma corrida conserva el id (la fila se actualiza), asi que Resend no manda el correo dos veces; una
+  // corrida NUEVA (por ejemplo tras borrar el registro del dia en el smoke) trae otro id, y el correo si sale.
+  return filas.length > 0 ? filas[0].id : null;
 }
 
 export async function cerrarEnvio(

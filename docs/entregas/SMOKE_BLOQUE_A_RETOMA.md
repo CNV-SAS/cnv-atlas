@@ -55,6 +55,8 @@ node scripts/aplicar-migracion.mjs scripts/smoke-avisos-reiniciar-hoy.sql --comm
 
 - [ ] **Debe dar:** `CONFIRMADO`, con el número de envíos borrados.
 
+> Borrar el registro crea una **corrida nueva**, y con ella una llave de correo nueva. Importa: mientras la llave se armaba con el día y la franja, Resend trataba el reenvío del mismo día como el mismo correo, respondía con el id del original y **no lo mandaba**, aunque Atlas dijera `enviado`. Corregido el 2026-09-16.
+
 ## 4. El correo de la mañana, para tener contra qué comparar
 
 ```powershell
