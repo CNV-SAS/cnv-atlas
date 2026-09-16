@@ -126,13 +126,27 @@ describe.skipIf(!HAS_DB)("los avisos (BD real)", () => {
       const reintento = await enviarResumen("am", AM_FALLO);
       expect(reintento.estado, "el fallo quedo como ya enviado y el correo se perdio").toBe("enviado");
       expect(enviados).toHaveLength(1);
-      expect(enviados[0].clave, "sin llave de idempotencia, un timeout que si salio llega dos veces").toMatch(
-        new RegExp(`^avisos:${DIA_FALLO}:am:[0-9a-f]{32}$`),
+      // LA LLAVE LLEVA EL ID DE LA CORRIDA. Con el dia y la franja, Resend trataba el reenvio del mismo dia como
+      // el mismo correo y NO lo mandaba, mientras Atlas decia "enviado" (smoke del 2026-09-16).
+      const [corrida] = await db.execute<{ id: string }>(dsql`
+        select id from alert_digest_runs where run_date = ${DIA_FALLO}::date and slot = 'am'`);
+      expect(enviados[0].clave, "sin llave, un timeout que si salio llega dos veces").toMatch(
+        new RegExp(`^avisos:${corrida.id}:[0-9a-f]{32}$`),
       );
 
       const tercero = await enviarResumen("am", AM_FALLO);
       expect(tercero.estado, "CONTROL: lo que si salio no se repite").toBe("ya_enviado");
       expect(enviados).toHaveLength(1);
+
+      // Y BORRADO EL REGISTRO DEL DIA (lo que hace `smoke-avisos-reiniciar-hoy`), es OTRA corrida: otra llave, y
+      // el correo sale. Antes salia con la misma llave y Resend lo descartaba en silencio.
+      await db.execute(dsql`delete from alert_digest_runs where run_date = ${DIA_FALLO}::date and slot = 'am'`);
+      const despuesDeReiniciar = await enviarResumen("am", AM_FALLO);
+      expect(despuesDeReiniciar.estado).toBe("enviado");
+      expect(enviados).toHaveLength(2);
+      expect(enviados[1].clave, "misma llave tras reiniciar: Resend no lo manda y nadie se entera").not.toBe(
+        enviados[0].clave,
+      );
     } finally {
       fallar.length = 0;
       await db.execute(dsql`delete from transactions where id = ${id}`);
@@ -140,11 +154,16 @@ describe.skipIf(!HAS_DB)("los avisos (BD real)", () => {
 
     // UN RECLAMO VIVO BLOQUEA; uno que murio hace mas de 5 minutos, no.
     const vivo = await reclamarEnvio(DIA_FALLO, "pm");
-    expect(vivo).toBe(true);
-    expect(await reclamarEnvio(DIA_FALLO, "pm"), "dos corridas a la vez enviarian dos veces").toBe(false);
+    expect(vivo, "el reclamo devuelve el id de la corrida, que es lo que hace unica la llave del correo").toEqual(
+      expect.any(String),
+    );
+    expect(await reclamarEnvio(DIA_FALLO, "pm"), "dos corridas a la vez enviarian dos veces").toBeNull();
     await db.execute(dsql`
       update alert_digest_runs set ran_at = now() - interval '6 minutes' where run_date = ${DIA_FALLO}::date and slot = 'pm'`);
-    expect(await reclamarEnvio(DIA_FALLO, "pm"), "una corrida muerta a mitad dejo la franja tomada para siempre").toBe(true);
+    expect(
+      await reclamarEnvio(DIA_FALLO, "pm"),
+      "una corrida muerta a mitad dejo la franja tomada para siempre",
+    ).toEqual(vivo);
   });
 
   it("EL ENVIO ANTERIOR: la tarde mira la manana del mismo dia, y la manana mira la tarde del dia anterior", async () => {

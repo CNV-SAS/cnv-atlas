@@ -24,6 +24,10 @@ function enlaceAPagos(): string {
  * La llave de idempotencia de un correo: el mismo envio (dia, franja, destinatarios y texto) reintentado no llega dos
  * veces. Si el contenido cambio entre el fallo y el reintento, es otro correo y sale.
  */
+// LA LLAVE LLEVA EL ID DE LA CORRIDA, NO EL DIA Y LA FRANJA (smoke del Bloque A, 2026-09-16). Con dia y franja, el
+// resumen de las 7 a. m. y un reenvio posterior del mismo dia eran "el mismo correo" para Resend, que respondia con
+// el id del original y NO lo mandaba: Atlas decia "enviado" con razon (Resend acepto) y el correo no salia. Con el
+// id de la corrida, un reintento de la MISMA corrida sigue sin duplicar, y una corrida nueva si sale.
 function claveDeEnvio(prefijo: string, to: string[], asunto: string, cuerpo: string): string {
   const huella = createHash("sha256").update(JSON.stringify([[...to].sort(), asunto, cuerpo])).digest("hex").slice(0, 32);
   return `${prefijo}:${huella}`;
@@ -44,7 +48,8 @@ export type ResultadoDelResumen =
  */
 export async function enviarResumen(franja: Franja, ahora: Date = new Date()): Promise<ResultadoDelResumen> {
   const dia = diaEnColombia(ahora);
-  if (!(await repo.reclamarEnvio(dia, franja))) return { estado: "ya_enviado" };
+  const envioId = await repo.reclamarEnvio(dia, franja);
+  if (!envioId) return { estado: "ya_enviado" };
 
   try {
     const [pendientes, anteriores] = await Promise.all([
@@ -71,7 +76,7 @@ export async function enviarResumen(franja: Franja, ahora: Date = new Date()): P
       return { estado: "sin_envio", motivo: "Sin destinatarios con la marca." };
     }
 
-    const envio = await sendAvisoEmail(para, r.asunto, r.cuerpo, claveDeEnvio(`avisos:${dia}:${franja}`, para, r.asunto, r.cuerpo));
+    const envio = await sendAvisoEmail(para, r.asunto, r.cuerpo, claveDeEnvio(`avisos:${envioId}`, para, r.asunto, r.cuerpo));
     if (!envio.ok) throw new Error(envio.error.message);
 
     let escalamiento = 0;
@@ -82,7 +87,7 @@ export async function enviarResumen(franja: Franja, ahora: Date = new Date()): P
           esc,
           r.escalamiento.asunto,
           r.escalamiento.cuerpo,
-          claveDeEnvio(`avisos:${dia}:${franja}:escalamiento`, esc, r.escalamiento.asunto, r.escalamiento.cuerpo),
+          claveDeEnvio(`avisos:${envioId}:escalamiento`, esc, r.escalamiento.asunto, r.escalamiento.cuerpo),
         );
         if (e.ok) escalamiento = esc.length;
         else Sentry.captureMessage(`No salió el correo de escalamiento: ${e.error.message}`, { level: "error", tags: { area: "avisos" } });
