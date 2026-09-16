@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     { "path": "/api/cron/avisos/am", "schedule": "0 12 * * *" },
-    { "path": "/api/cron/avisos/pm", "schedule": "0 22 * * *" }
+    { "path": "/api/cron/avisos/pm", "schedule": "0 22 * * *" },
+    { "path": "/api/cron/cotejo-wompi", "schedule": "0 13 * * *" }
   ]
 }

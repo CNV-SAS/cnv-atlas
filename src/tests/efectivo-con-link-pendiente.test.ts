@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // misma transaccion. Que la anulacion y las unidades funcionen se prueba contra base real
 // (venta-anulacion-y-revision-db). Aqui, la puerta.
 
+// `actions` importa el cotejo con Wompi (Bloque 3b), que es `server-only` y no existe fuera de Next.
+vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/observability/report-error", () => ({ reportServerError: vi.fn() }));
 vi.mock("@/modules/auth/session", () => ({

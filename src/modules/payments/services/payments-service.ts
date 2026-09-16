@@ -330,14 +330,39 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
   }
 
   // paid: sella el pago (comision + ingreso) y luego intenta la factura en Alegra.
-  const sealed = await sealPaidTransaction(
+  const sealed = await aplicarPagoAprobado({
     txId,
     wompiTxId,
-    tx.payment_method_type ?? null,
-    tx.payment_method?.extra?.card_type ?? null,
-    event.environment ?? null,
-  );
-  await markWebhookProcessed(WOMPI_PROVIDER, externalId);
+    metodo: tx.payment_method_type ?? null,
+    tipoDeTarjeta: tx.payment_method?.extra?.card_type ?? null,
+    ambienteDelEvento: event.environment ?? null,
+    alSellar: () => markWebhookProcessed(WOMPI_PROVIDER, externalId),
+  });
+
+  return { handled: true, duplicate: false, sealed: Boolean(sealed) };
+}
+
+/**
+ * APLICAR UN PAGO APROBADO: sellar, y despues inventario y factura, cada uno en su transaccion y sin lanzar.
+ *
+ * VIVE APARTE DESDE EL BLOQUE 3b (sesion 3) porque tiene DOS puertas: el webhook de Wompi, y el cotejo que
+ * recupera los pagos cuyo webhook se perdio. Las dos tienen que hacer exactamente lo mismo, incluido el aviso al
+ * Integrante cuando el pago cae sobre un link anulado; una copia habria quedado desalineada a la primera
+ * correccion.
+ *
+ * `alSellar` corre justo despues del sellado y antes de la factura: es donde cada puerta marca su propio rastro
+ * (el webhook, su evento como procesado).
+ */
+export async function aplicarPagoAprobado(e: {
+  txId: string;
+  wompiTxId: string;
+  metodo: string | null;
+  tipoDeTarjeta: string | null;
+  ambienteDelEvento: "test" | "prod" | null;
+  alSellar?: () => Promise<void>;
+}): Promise<SealedTransaction | null> {
+  const sealed = await sealPaidTransaction(e.txId, e.wompiTxId, e.metodo, e.tipoDeTarjeta, e.ambienteDelEvento);
+  if (e.alSellar) await e.alSellar();
   if (sealed?.enRevision) {
     // PAGO SOBRE UN LINK ANULADO: casi seguro un cobro doble. Queda sellado y en la lista "Revisar", sin
     // descuento ni factura (Santiago, 2026-09-14). La alerta es para que alguien lo mire hoy, no al cierre.
@@ -354,8 +379,7 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
     await descontarInventarioDeVenta(sealed.id);
     await facturarVentaSellada(sealed, "wompi");
   }
-
-  return { handled: true, duplicate: false, sealed: Boolean(sealed) };
+  return sealed;
 }
 
 // LA FACTURA VIVE EN SU PROPIO SERVICIO desde el Bloque 2a (`facturacion-service`). Aqui solo queda el

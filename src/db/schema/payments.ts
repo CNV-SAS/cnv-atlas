@@ -223,3 +223,21 @@ export const alegraItems = pgTable(
   },
   (t) => [unique("alegra_items_uno_por_producto_y_ambiente").on(t.nutraceuticalId, t.env)],
 );
+
+// CADA CORRIDA DEL COTEJO CON WOMPI (0146, Bloque 3b sesion 3). Dos razones, que no son la misma: saber que el
+// control CORRIO (un cotejo que lleva dias sin correr es justo cuando hace falta), y dejar escrito que se
+// recupero y que quedo por revisar, porque recuperar un pago es escribir plata y tiene que poder auditarse.
+export const paymentReconciliationRuns = pgTable("payment_reconciliation_runs", {
+  id: pk(),
+  ranAt: timestamp("ran_at", { withTimezone: true }).defaultNow().notNull(),
+  fromDate: timestamp("from_date", { withTimezone: true }).notNull(),
+  untilDate: timestamp("until_date", { withTimezone: true }).notNull(),
+  wompiEnv: text("wompi_env").notNull(), // test | produccion
+  origin: text("origin").notNull(), // tarea | manual
+  actorId: uuid("actor_id").references(() => profiles.id, { onDelete: "set null" }),
+  checked: integer("checked").default(0).notNull(),
+  recovered: integer("recovered").default(0).notNull(),
+  mismatched: integer("mismatched").default(0).notNull(),
+  detail: jsonb("detail").default({}).notNull(),
+  failedReason: text("failed_reason"),
+});

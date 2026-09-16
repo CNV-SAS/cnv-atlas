@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { conLimite } from "@/lib/observability/con-limite";
+import { CotejoConWompi } from "@/modules/payments/components/cotejo-con-wompi";
+import { ultimaCorrida } from "@/modules/payments/data/conciliacion-repository";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -169,6 +171,9 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
         conLimite("pagos.pendientes-de-accion", listarPendientesDeAccion, []),
       ])
     : [];
+  // El cotejo con Wompi lo ve quien responde por el dinero (no soporte): recuperar un pago sella ingreso,
+  // comision y factura.
+  const cotejo = canView ? await conLimite("pagos.ultimo-cotejo", ultimaCorrida, null) : null;
   const ventasSinDocumento = paneles[0]?.dato ?? [];
   const ventasPorRevisar = paneles[1]?.dato ?? [];
   const efectivosNoRecibidos = paneles[2]?.dato ?? [];
@@ -270,6 +275,7 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
           enGestion={enGestion}
         />
       )}
+      {canView ? <CotejoConWompi ultima={cotejo?.dato ?? null} /> : null}
       {verPaneles && (
         <FacturasPendientes
           ventas={ventasSinDocumento}

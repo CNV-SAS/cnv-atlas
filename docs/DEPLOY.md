@@ -183,6 +183,11 @@ Zona `cnvsystem.com`: CNAME `atlas` → `cname.vercel-dns.com`, proxy activado, 
 - Requieren `CRON_SECRET` en las variables de Production. Se ven en **Vercel → Settings → Cron Jobs**, donde también se pueden correr a mano.
 - En Hobby cada tarea corre una vez al día con hasta 59 minutos de desfase; en Pro, a la hora exacta. **Vercel Pro es necesario de todos modos, por licencia** (ver `LANZAMIENTO.md`).
 
+### 9ter. El cotejo con Wompi (Bloque 3b, 2026-09-16)
+- `/api/cron/cotejo-wompi` a las 13:00 UTC (8 a. m. de Colombia), en `vercel.json`, con el mismo `CRON_SECRET`.
+- Necesita **`WOMPI_PRIVATE_KEY`** en Production: la consulta de transacciones va con la llave PRIVADA (con la publica, Wompi responde 404). La llave decide ademas el ambiente: `prv_test_` pregunta al sandbox y `prv_prod_` a produccion, y el cotejo solo toca ventas de ESE ambiente.
+- El listado de transacciones de Wompi **no esta documentado**; lo que se sabe salio de `scripts/sondeo-wompi-consulta.mjs` y quedo escrito en la cabecera de `src/lib/wompi/client.ts`.
+
 ### 10. Webhooks de pago
 - En Wompi: registrar el endpoint `https://atlas.cnvsystem.com/api/webhooks/wompi`; guardar `WOMPI_EVENTS_SECRET` (firma HMAC) y `WOMPI_INTEGRITY_SECRET`.
 - En Alegra: registrar/integrar el endpoint de facturación; guardar credenciales.

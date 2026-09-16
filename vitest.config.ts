@@ -16,6 +16,7 @@ const DB_TESTS = [
   "src/tests/alergenos-cobertura.test.ts",
   "src/tests/mapa-alegra.test.ts",
   "src/tests/sentry-causa-db.test.ts",
+  "src/tests/cotejo-wompi-db.test.ts",
   "src/tests/reclamo-factura-concurrente.test.ts",
   "src/tests/venta-rechazada-no-gasta-intentos.test.ts",
   "src/tests/reparto-sellado.test.ts",
