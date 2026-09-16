@@ -39,20 +39,25 @@ En **/pagos**, como admin:
 
 Aquí se provoca a mano lo que el 15/9 pasó solo. Prepara el producto si hace falta (paso 1 de `SMOKE_BLOQUE_A_RETOMA.md`).
 
-1. Como **Profesional Demo**, en la pestaña **Tratamiento** de su paciente de prueba: **Cobrar con QR** de 1 unidad.
-2. **Antes de pagar**, quita el aviso de Wompi para que no llegue: **Vercel → Settings → Environment Variables → Production**, edita **`WOMPI_EVENTS_SECRET`** y cámbiale un carácter. **Redeploy.**
-   *Con el secreto cambiado, Atlas rechaza el aviso de Wompi por firma inválida: exactamente el efecto de un aviso que no llega.*
+> **Corregido el 2026-09-16, después del primer intento.** Antes este paso decía que cambiaras `WOMPI_EVENTS_SECRET`. Eso **no sirve**: Atlas rechaza el aviso por firma inválida y responde error, así que **Wompi lo reintenta** a los 30 minutos, y para entonces el secreto ya está bien y el pago entra solo. El aviso no se pierde, solo llega tarde.
+>
+> La forma correcta es **quitarle a Wompi a dónde avisar**. Su URL de eventos **no es obligatoria** (lo dice su soporte), y la del sandbox es independiente de la de producción.
+
+1. **Wompi (sandbox) → Configuración → URL de eventos:** cópiala en un bloc de notas y **déjala vacía**. Guarda.
+2. Como **Profesional Demo**, en la pestaña **Tratamiento** de su paciente de prueba: **Cobrar con QR** de 1 unidad.
 3. Paga el link en la página de Wompi con la tarjeta `4242 4242 4242 4242`.
 4. Espera un minuto.
 
-- [ ] En **/pagos**, la venta sigue **pendiente**: el pago no se registró. (Eso es lo que hoy quedaría así para siempre.)
+- [ ] En **/pagos**, la venta sigue **pendiente**: Atlas no se enteró. **Eso es lo que hoy quedaría así para siempre**, porque sin URL no hay aviso que reintentar.
 
-Ahora **devuelve `WOMPI_EVENTS_SECRET` a su valor correcto** y vuelve a desplegar. **Este paso no se salta**, o el webhook seguirá roto para todo lo demás.
+Ahora **vuelve a poner la URL de eventos en Wompi**, tal como la copiaste. **Este paso no se salta**, o Atlas deja de enterarse de todos los pagos siguientes.
 
 - [ ] En **/pagos**, pulsa **Buscar pagos sin registrar**. **Debe dar:** *Se recuperaron 1 pago que Wompi había aprobado. Míralos en la lista.*
 - [ ] La venta pasa a **pagada**, con su factura de Alegra y el inventario descontado, igual que si el aviso hubiera llegado.
 - [ ] Pulsa el botón **otra vez**. **Debe dar:** *ninguna estaba pagada sin registrar*, y la venta **no** se cobra ni se factura dos veces.
 - [ ] En **Sentry** hay un aviso de nivel *warning*: *El cotejo recuperó un pago que Wompi aprobó y cuyo webhook no llegó*. Es correcto que esté: cada recuperación significa que un aviso se perdió.
+
+**Si el botón dice que no había nada que recuperar y la venta aparece pagada igual**, no es un fallo: es que el aviso de Wompi llegó por su cuenta. Para saber cuál de los dos la selló, pega `scripts/revision-quien-sello-la-venta.sql` en el editor SQL de Supabase (solo lee): la columna **origen** dice *aviso de Wompi* o *cotejo*.
 
 ## 3. La tarea programada
 
