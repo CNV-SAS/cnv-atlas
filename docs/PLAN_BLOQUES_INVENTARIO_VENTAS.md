@@ -1431,6 +1431,11 @@ Santiago, en el smoke de cierre: "funciona, solo que es algo lento". Con 10 vent
 
 **Sesión 2.** **Ojo con el tipo de movimiento:** el `devolucion` que existe significa "el Integrante devuelve a CNV", no "el paciente devuelve el producto". Reusarlo mezclaría dos hechos distintos en el saldo, así que la devolución de una venta lleva su propio tipo, ligado a la línea de venta. El destino de la unidad depende de la decisión D-3b-3 de abajo.
 
+**Lo que el sondeo dejo confirmado (2026-09-16), y que la sesion 1 usa:**
+
+- **El listado de Wompi SI trae las rechazadas y las anuladas**, no solo las aprobadas (`{"DECLINED":1,"APPROVED":23}`). Asi que un `VOIDED` sobre una venta que Atlas tiene pagada se puede detectar por el cotejo diario, sin consultar venta por venta. Es justo lo que hace falta cuando el aviso NO llega; cuando llega, el webhook ya lo marca solo.
+- **El campo `disbursement` viene VACIO en las 24 transacciones del sandbox.** Se llena cuando Wompi desembolsa, y en sandbox probablemente nunca. **Queda por verificar en produccion**, con una venta ya desembolsada: si trae la comision y la retencion, ahorra el reporte de liquidacion de Wompi. **El calculo del margen NO se diseña contando con el hasta comprobarlo.**
+
 **Sesión 3 (la primera que se construye).** Wompi reintenta su webhook 3 veces en 24 horas y después no más; hoy no hay nada que recupere un pago perdido así (pasó en el smoke del Bloque A, con plata de prueba). El cotejo pregunta a Wompi por las aprobadas de los últimos días, encuentra las que en Atlas no están pagadas y las sella por la misma ruta del webhook, que ya es idempotente. Se dispara solo (una tarea más, que Vercel Pro ya cubre) y también a mano desde /pagos.
 
 **Y antes de construirlo, un sondeo** (`scripts/sondeo-wompi-consulta.mjs`, lo corre Santiago contra el SANDBOX). La documentación de Wompi confirma que consultar transacciones va con la llave **privada** y que hay un listado paginado, pero **no documenta el filtro por referencia**, y hay reportes de que no filtra. De eso depende la forma del cotejo: si el filtro sirve, se pregunta venta por venta; si no, se recorre el listado reciente y se compara en Atlas, que es la forma que ya usa `buscarFacturaPorReferencia` con Alegra. El sondeo solo LEE y no imprime datos de nadie.
