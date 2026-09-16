@@ -467,7 +467,7 @@ export async function cotejarConWompiAction(
       success:
         r.recuperadas.length === 0
           ? `Se revisaron las ${r.revisadas} venta${r.revisadas === 1 ? "" : "s"} con link de pago de los últimos 3 días, y ninguna estaba pagada sin registrar. Todo al día.`
-          : `Se recuperaron ${r.recuperadas.length} pago${r.recuperadas.length === 1 ? "" : "s"} que Wompi había aprobado. Míralos en la lista.`,
+          : `Se recuperó ${r.recuperadas.length} pago${r.recuperadas.length === 1 ? "" : "s"} que Wompi había aprobado. Quedó registrado como cualquier otro: lo ves abajo, en Transacciones, y en "Ventas por revisar" si el link estaba anulado.`,
       warning: null,
     };
   } catch (e) {
