@@ -21,11 +21,11 @@ que algo ya hecho se vuelva a planear).
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
 | **2a** · Alegra reescrito, en SANDBOX | **HECHO (2026-09-13)** | Smoke A–F pasado en sandbox: factura DIAN aprobada con sus líneas reales, pago registrado contra la cuenta puente, contacto reusado, medio de pago con los cuatro códigos verificados, instrumento de Wompi guardado, reintento idempotente. Candados: `ambiente-de-la-venta`, `venta-rechazada-no-gasta-intentos`, `reclamo-factura-concurrente`, `medio-de-pago`, `facturacion` |
-| **A** · Avisos (antes del 2b) | **HECHO (2026-09-15), smoke pasado** (`SMOKE_BLOQUE_A_AVISOS.md`), con dos defectos que salieron en el y quedaron corregidos: un envio que fallaba quedaba como "ya enviado" (ahora se reintenta, con llave de idempotencia de Resend) y el formulario de "en gestion" no se cerraba al guardar. Falta repetir el paso 8 de la guia. Migracion 0145. Necesita Vercel Pro para salir a produccion | Resumen puro (`avisos-resumen`), servicio y ruta programada, aviso al Integrante, marcas en administracion, "en gestion", franja y soporte en /pagos. Candados: `avisos-resumen`, `avisos-db`, `avisos-pantalla` | Correo diario solo si hay algo que requiere accion, franja en cualquier pantalla y correo inmediato al Integrante. Sin reintento automatico |
+| **A** · Avisos (antes del 2b) | **HECHO Y CERRADO (2026-09-16), smoke pasado** (`SMOKE_BLOQUE_A_AVISOS.md` y `SMOKE_BLOQUE_A_RETOMA.md`). Migracion 0145. Tres defectos salieron en el smoke y quedaron corregidos: un envio fallido quedaba como "ya enviado", el formulario de "en gestion" no se cerraba al guardar, y la llave de idempotencia de Resend (dia y franja) hacia que un reenvio del mismo dia NO saliera mientras Atlas decia "enviado"; ahora la llave lleva el id de la corrida. Necesita Vercel Pro para salir a produccion | Resumen puro (`avisos-resumen`), servicio y ruta programada, aviso al Integrante, marcas en administracion, "en gestion", franja y soporte en /pagos. Candados: `avisos-resumen`, `avisos-db`, `avisos-pantalla` | Correo diario solo si hay algo que requiere accion, franja en cualquier pantalla y correo inmediato al Integrante. Sin reintento automatico |
 | **2b** · Paso a producción | **PREPARADO, ESPERA** (guía en `docs/entregas/`). Santiago, 2026-09-14: primero se cierran todos los bloques y se confirma que el flujo funciona; después 2b, después Supabase Pro, y al final los Integrantes | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
 | **3** · La venta nace en Tratamiento | **HECHO (2026-09-15), migraciones 0138-0144.** Sesiones 1 y 2, pasos 5 a 8 y el titular de marca verificado en una factura de sandbox. Smoke de cierre pasado, incluido el filtro por día. **Anotado (2026-09-15): cada filtrado se siente lento** con pocas ventas; cada "Ver ese día" rehace la página entera (tres tandas de consultas en serie, la lista completa de transacciones sin límite y todos los pacientes), aunque solo cambia una consulta. Por medir antes de tocar: ver 3.8 | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
-| 3b · Reversa | Pendiente | — |
+| 3b · Reversa | **PLAN LISTO, espera las decisiones de contabilidad (D-3b-1 a D-3b-5)**. Tres sesiones; alcance cerrado el 2026-09-16 | Registrar y sacar de las cifras, la devolucion fisica y el cotejo con Wompi. La nota credito se queda manual |
 | 4 · Liquidaciones | Pendiente | — |
 | 5 · Distribución | Pendiente | — |
 | 6 · Domicilio | Pendiente | — |
@@ -1410,6 +1410,38 @@ Santiago, en el smoke de cierre: "funciona, solo que es algo lento". Con 10 vent
   CNV (el producto nunca fue de CNV).
 
 **Fuera de alcance:** el retracto de venta a distancia, que depende de que existan domicilios (Bloque 6).
+
+### Alcance cerrado por Santiago (2026-09-16)
+
+- **Solo la mitad (a): registrar y sacar de las cifras.** Atlas se entera, revierte y avisa.
+- **La nota crédito se queda MANUAL en Alegra**, con Dirección registrando el número, en la misma cola con plazo que ya existe para el efectivo no recibido. Emitirla desde Atlas es un acto contable que pide un contador, no un botón, y con este volumen no se paga.
+- **Las devoluciones físicas SÍ entran**, por el reingreso al lote.
+- **El `VOIDED` sobre una venta pagada deja de ignorarse.** Hoy el webhook lo marca procesado y no hace nada: la factura sigue viva, el inventario descontado y la comisión sellada, sin aviso.
+- **El cotejo contra Wompi entra aquí**, y es lo que más vale.
+
+### Las tres sesiones
+
+| Sesión | Qué trae | Migración | Smoke en navegador |
+|---|---|---|---|
+| **1 · La reversa se registra y sale de las cifras** | La reversa como caso con estados, el `VOIDED` que deja de ignorarse, las filas negativas de ingreso y comisión, el panel y el correo | Sí (`sale_reversals`, más el tipo nuevo en la cola de pendientes) | Sí |
+| **2 · La devolución física** | El reingreso de la unidad, ligado a la línea de venta, con su tipo de movimiento propio | Sí (tipo de movimiento nuevo y su CHECK) | Sí |
+| **3 · El cotejo con Wompi** | Las aprobadas de los últimos días que a Atlas no le llegaron, selladas por la ruta idempotente de siempre | No, salvo el registro de la corrida | Corto |
+
+**Sesión 1.** Una reversa NO es un campo más en la venta: es un caso que dura días y cambia de estado (abierta → ganada o perdida), así que va en su tabla, como el faltante. Dirección la abre con la referencia de Wompi. Solo al **perderse** se revierten el ingreso y la comisión, con filas negativas que apuntan a las originales (la forma de la 0142, ya construida), y queda pendiente la nota crédito manual. Un `VOIDED` sobre una venta pagada abre la reversa solo y avisa.
+
+**Sesión 2.** **Ojo con el tipo de movimiento:** el `devolucion` que existe significa "el Integrante devuelve a CNV", no "el paciente devuelve el producto". Reusarlo mezclaría dos hechos distintos en el saldo, así que la devolución de una venta lleva su propio tipo, ligado a la línea de venta. El destino de la unidad depende de la decisión D-3b-3 de abajo.
+
+**Sesión 3.** Wompi reintenta su webhook 3 veces en 24 horas y después no más; hoy no hay nada que recupere un pago perdido así (pasó en el smoke del Bloque A, con plata de prueba). El cotejo pregunta a Wompi por las aprobadas de los últimos días, encuentra las que en Atlas no están pagadas y las sella por la misma ruta del webhook, que ya es idempotente. Se dispara solo (una tarea más, que Vercel Pro ya cubre) y también a mano desde /pagos.
+
+### Lo que necesita decisión de contabilidad ANTES de construir
+
+Cinco preguntas. Las tres primeras cambian el código; las dos últimas, no.
+
+1. **D-3b-1 · ¿Cuándo sale de las cifras un contracargo?** El banco **debita al abrirse** la disputa, y CNV puede ganarla. ¿El ingreso se revierte al abrir (y se repone si se gana) o solo al perder? Afecta el cierre del mes y el bimestre.
+2. **D-3b-2 · La comisión de una venta revertida que YA se liquidó.** El plan dice descontarla en la siguiente liquidación. ¿Lo confirman, y qué pasa si el Integrante ya no está?
+3. **D-3b-3 · Una unidad devuelta, ¿vuelve a ser vendible?** Si vuelve a su lote, se vende otra vez; si no, hace falta una ubicación de "devueltas", que no es vendible. Y para **producto de tercero**: ¿la unidad vuelve a la consignación del proveedor, y quién asume si el proveedor no la recibe?
+4. **D-3b-4 · El plazo de la nota crédito** de un contracargo o una devolución: ¿los mismos 5 días hábiles del efectivo no recibido?
+5. **D-3b-5 · El correo de disputas de Wompi** tiene que llegar a Dirección o a contabilidad (Wompi permite indicar un buzón propio para eso). Es operativo, no código, pero sin eso nadie se entera de la disputa y el bloque no sirve.
 
 **Criterio de aceptación:** una devolución de una unidad de producto de tercero reingresa al lote de
 origen en la consignación del proveedor, genera la nota crédito enlazada a la factura original, y revierte
