@@ -26,10 +26,17 @@ const client = postgres(process.env.DATABASE_URL!, {
   max: 3,
   idle_timeout: 20,
   connect_timeout: 10,
-  // Ninguna consulta de la app debe tardar 20 segundos. Sin esto, una consulta pesada puede quedarse tomando su
-  // conexion indefinidamente (ARCHITECTURE regla 10: ninguna llamada externa sin timeout).
-  connection: { statement_timeout: 20_000 },
 });
+
+// ═══ NADA DE PARAMETROS DE ARRANQUE AQUI (`connection: {...}`) ═══
+//
+// Tentacion natural: poner `connection: { statement_timeout: 20_000 }` para que ninguna consulta se eternice.
+// NO SE PUEDE. El pooler en modo TRANSACCION (el que usa la app, puerto 6543) NO admite parametros de sesion en
+// el arranque: la conexion es de cada transaccion, no de cada cliente. Puesto ahi, no falla una consulta: fallan
+// TODAS, con "unsupported startup parameter". Lo mismo vale para `search_path` o cualquier otro `SET` de sesion.
+//
+// Donde si se puede acotar: DENTRO de una transaccion, con `set local` (asi funciona el `lock_timeout` de los
+// writers de tratamiento), o por rol en la base. El candado `cliente-de-la-base` lo vigila.
 
 export const db = drizzle(client, { schema });
 
