@@ -23,7 +23,12 @@ import * as schema from "./schema";
 // de retenerla, y `connect_timeout` evita que una conexion que no llega cuelgue la peticion.
 const client = postgres(process.env.DATABASE_URL!, {
   prepare: false,
-  max: 3,
+  // 6, NO 3 (2026-09-16). Con 3, /pagos (que lanza cinco consultas a la vez) dejaba dos haciendo fila y la ultima
+  // pasaba de los 8 segundos: el aviso de "parte de esta pantalla no cargo" salio por eso, no porque la consulta
+  // fuera pesada (cuenta unas decenas de filas). En modo TRANSACCION subirlo no repite el incidente: ahi la
+  // conexion se devuelve al terminar cada transaccion y el pooler multiplexa; lo que se agotaba era el modo
+  // SESION, donde cada cliente retenia un cupo de los 15. El tope sigue puesto porque las instancias son muchas.
+  max: 6,
   idle_timeout: 20,
   connect_timeout: 10,
 });
