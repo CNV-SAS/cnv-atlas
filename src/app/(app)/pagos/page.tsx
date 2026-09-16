@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { conLimite } from "@/lib/observability/con-limite";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
@@ -146,22 +148,33 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   const verPaneles = canView || canAtender;
   if (!canCreate && !verPaneles) redirect("/no-autorizado");
 
-  const [transactions, perfilPropio] = await Promise.all([
-    listTransactions(),
-    getProfessionalProfileIdByUser(user.id),
+  // CADA CARGA CON SU LIMITE Y SU NOMBRE (2026-09-16). Esta pantalla arma ocho consultas y se colgo entera por
+  // una sola: Vercel la corto con un 504 y no quedo ni error ni rastro de cual fue. Ahora la que no llegue se
+  // reporta con su nombre y la pantalla sigue con lo demas, avisando de lo que falto.
+  const [transacciones, perfil] = await Promise.all([
+    conLimite("pagos.transacciones", listTransactions, [] as TransactionWithItems[]),
+    conLimite("pagos.perfil-propio", () => getProfessionalProfileIdByUser(user.id), null as string | null),
   ]);
+  const transactions = transacciones.dato;
+  const perfilPropio = perfil.dato;
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
   // transacciones, que se muestra igual.
-  const [ventasSinDocumento, ventasPorRevisar, efectivosNoRecibidos, sinDocumentoPorDia, pendientes] = verPaneles
+  const paneles = verPaneles
     ? await Promise.all([
-        listarVentasSinDocumento(50, dia),
-        listarVentasPorRevisar(),
-        listarEfectivosNoRecibidos(),
-        contarVentasSinDocumentoPorDia(),
-        listarPendientesDeAccion(),
+        conLimite("pagos.ventas-sin-documento", () => listarVentasSinDocumento(50, dia), []),
+        conLimite("pagos.ventas-por-revisar", listarVentasPorRevisar, []),
+        conLimite("pagos.efectivos-no-recibidos", listarEfectivosNoRecibidos, []),
+        conLimite("pagos.dias-con-ventas-sin-cerrar", contarVentasSinDocumentoPorDia, []),
+        conLimite("pagos.pendientes-de-accion", listarPendientesDeAccion, []),
       ])
-    : [[], [], [], [], []];
+    : [];
+  const ventasSinDocumento = paneles[0]?.dato ?? [];
+  const ventasPorRevisar = paneles[1]?.dato ?? [];
+  const efectivosNoRecibidos = paneles[2]?.dato ?? [];
+  const sinDocumentoPorDia = paneles[3]?.dato ?? [];
+  const pendientes = paneles[4]?.dato ?? [];
+  const algoNoCargo = transacciones.fallo || perfil.fallo || paneles.some((p) => p.fallo);
   // El "en gestion" VIGENTE (hasta hoy o despues) de cada pendiente. Uno vencido ya no se muestra como en gestion.
   const hoyBogota = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
   const enGestion = Object.fromEntries(
@@ -209,6 +222,13 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
       {/* SIN SUBTITULO: enumeraba las dos secciones que la pantalla ya muestra. */}
       <TituloPantalla titulo="Pagos" />
+
+      {algoNoCargo ? (
+        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          Parte de esta pantalla no cargó. Lo que ves está bien, pero puede faltar información: vuelve a intentarlo
+          en un momento. Ya quedó reportado.
+        </p>
+      ) : null}
 
       {canCreate ? (
         <Card>
