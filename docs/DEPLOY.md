@@ -336,6 +336,19 @@ Pasó al limpiar los pacientes de la cuenta de pruebas: los conteos salieron cor
   con `DATABASE_URL` apuntando a la nube. Ahí la sesión es una sola y la transacción sí abarca todo. Es la
   vía obligada si el bloque necesita revisión humana entre el cálculo y el borrado.
 
+## La conexión de la app a la base: MODO TRANSACCIÓN (incidente del 2026-09-15)
+
+`DATABASE_URL` en Vercel tiene que ser la cadena del **Transaction pooler (puerto 6543)**. No la directa y **no la del Session pooler**.
+
+**Lo que pasó:** con la del Session pooler, /pagos dejó de cargar para administración y el webhook de Wompi no pudo registrar un pago, mientras la app navegaba bien (esas lecturas van por la API REST, no por `DATABASE_URL`). En Sentry: `(EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15`. En modo sesión cada cliente ocupa un cupo entero mientras vive, y Vercel tiene muchas instancias a la vez, más todavía justo después de un deploy.
+
+**Las tres reglas del cliente** (`src/db/index.ts`, candado `cliente-de-la-base`):
+- `prepare: false`: el modo transacción no admite prepared statements.
+- `max: 3` con `idle_timeout`: sin `max`, postgres.js abre hasta 10 por instancia.
+- **Ningún parámetro de arranque** (`connection: { statement_timeout, search_path }`): el modo transacción los rechaza y entonces **fallan todas las consultas**, no una. Para acotar una consulta, `set local` dentro de su transacción.
+
+**Las migraciones son la excepción:** `pnpm db:migrate` va por la **conexión directa (5432)** desde la máquina de Santiago, porque el DDL en transacción no va bien por el pooler.
+
 ## Límites de plan (MVP)
 - **Supabase Free:** suficiente para piloto; subir a Pro antes de datos clínicos reales (backups/PITR, más capacidad).
 - **Vercel Hobby:** ~~suficiente para piloto~~ **NO sirve para producción (2026-09-15): prohíbe el uso comercial**, y Atlas cobra, factura y reparte comisiones. Vercel Pro entra en el bloque "antes del primer Integrante" de `LANZAMIENTO.md`.
