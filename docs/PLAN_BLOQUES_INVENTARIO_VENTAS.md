@@ -1400,6 +1400,7 @@ Santiago, en el smoke de cierre: "funciona, solo que es algo lento". Con 10 vent
 **Alcance mínimo:**
 
 - **CONTRACARGOS** (añadido por contabilidad el 2026-09-13): un pago que Wompi aprobó y **reversa después**. La factura ya está validada por la DIAN, así que no se puede anular: **la salida es nota crédito**, con referencia a la factura original y numeración electrónica (plantilla NTC, ya configurada). Y la venta tiene que volver a la cola del panel, porque el pago que la cerraba dejó de existir.
+- **CONCILIACIÓN CON WOMPI (anotado el 2026-09-16, salió del incidente de la base).** Wompi reintenta su webhook 3 veces en 24 horas y después deja de intentar. Durante el incidente un pago de prueba se perdió: Atlas respondió 500 a todos los intentos y esa venta quedó sin sellar, sin factura y sin aviso, con el pago hecho. En pruebas no costó nada; en producción es plata cobrada que Atlas no ve. Hace falta un cotejo contra la API de Wompi (las aprobadas de los últimos N días que en Atlas no están pagadas) que las selle por la misma ruta idempotente. Va en este bloque porque es la misma familia: un pago que llega tarde, o al revés.
 - Anulación por error.
 - Devolución con **reingreso al lote de origen**.
 - **Nota crédito en Alegra enlazada a la factura original.**
