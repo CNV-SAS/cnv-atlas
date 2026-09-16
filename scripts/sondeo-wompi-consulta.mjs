@@ -1,15 +1,15 @@
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// SONDEO DE LA CONSULTA DE TRANSACCIONES DE WOMPI  ·  Bloque 3b, sesion 3  ·  v2, 2026-09-16
+// SONDEO DE LA CONSULTA DE TRANSACCIONES DE WOMPI  ·  Bloque 3b, sesion 3  ·  v3, 2026-09-16
 //
 // POR QUE EXISTE: el cotejo (recuperar los pagos aprobados que a Atlas no le llegaron) necesita preguntarle a
-// Wompi por sus transacciones. La documentacion confirma que eso va con la llave PRIVADA y que hay un listado
-// paginado, pero NO documenta el filtro por referencia, y hay reportes de que no filtra. De eso depende la forma
-// del cotejo, asi que se convierte en dato antes de construir.
+// Wompi por sus transacciones, y ESE LISTADO NO ESTA DOCUMENTADO. La documentacion publica solo describe el
+// listado de dispersiones, que es otro producto. Asi que la forma del cotejo se descubre probando, no leyendo.
 //
-// QUE APRENDIO LA v1 (Santiago, 2026-09-16): el listado EXISTE y exige tres parametros, que la v1 no mandaba:
-//   {"from_date":["No esta presente"],"until_date":["No esta presente"],"page":["No esta presente", ...]}
-// El tope de `page` en 10000 dice ademas que la paginacion es por NUMERO, no por cursor. Esta version los manda,
-// prueba dos formatos de fecha, mide cuantas filas caben por pagina y recien entonces prueba el filtro.
+// POR QUE ESTA VERSION SE CORRIGE SOLA (Santiago, 2026-09-16): las v1 y v2 gastaron una vuelta cada una para
+// descubrir un parametro obligatorio. El 422 de Wompi SI nombra varios a la vez (la v1 recibio from_date,
+// until_date y page juntos), pero valida por capas: `page_size` no aparecio hasta que `page` estuvo presente. Con
+// un listado no documentado eso puede repetirse, asi que aqui el sondeo LEE el error, agrega el parametro que le
+// falta y reintenta, hasta cinco veces. Si aparece uno que no sabe rellenar, para y lo dice por su nombre.
 //
 // QUE HACE, Y QUE NO: SOLO LEE (GET). No crea, no anula y no toca la base de Atlas. Imprime la FORMA de la
 // respuesta (claves, cuantas filas, si el filtro filtro de verdad), nunca los datos de nadie: ni nombres, ni
@@ -63,77 +63,115 @@ async function pedir(ruta) {
 }
 
 const filasDe = (c) => (Array.isArray(c?.data) ? c.data : Array.isArray(c) ? c : null);
-const errorDe = (r) => (r.cuerpo?.error ? JSON.stringify(r.cuerpo.error.messages ?? r.cuerpo.error) : r.crudo);
+const errorDe = (r) => (r.cuerpo?.error ? JSON.stringify(r.cuerpo.error.messages ?? r.cuerpo.error) : (r.error ?? r.crudo));
+const consulta = (p) => Object.entries(p).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 
 const hasta = new Date();
 const desde = new Date(hasta.getTime() - DIAS * 86_400_000);
-// Dos formatos, porque la documentacion no dice cual: el primero que responda 200 es el que usa el cotejo.
-const FORMATOS = [
-  { nombre: "fecha y hora ISO", desde: desde.toISOString(), hasta: hasta.toISOString() },
-  { nombre: "solo fecha (AAAA-MM-DD)", desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) },
-];
 
-// ── 1. EL LISTADO, con los tres parametros que exige ──────────────────────────────────────────────
-console.log("── 1. GET /transactions?from_date=&until_date=&page= ──────────");
-let formatoBueno = null;
-let primeraPagina = null;
-for (const f of FORMATOS) {
-  const r = await pedir(`/transactions?from_date=${encodeURIComponent(f.desde)}&until_date=${encodeURIComponent(f.hasta)}&page=1`);
-  console.log(`   ${f.nombre}: HTTP ${r.status} en ${r.ms} ms${r.ok ? "" : ` · ${errorDe(r)}`}`);
-  if (r.ok && !formatoBueno) {
-    formatoBueno = f;
-    primeraPagina = r;
+// Lo que el sondeo sabe rellenar si Wompi lo pide. Si pide algo que no esta aqui, para y lo nombra.
+const VALORES = {
+  from_date: desde.toISOString(),
+  until_date: hasta.toISOString(),
+  page: "1",
+  page_size: "200",
+  limit: "200",
+  offset: "0",
+  order_by: "created_at",
+  order: "desc",
+  status: "APPROVED",
+};
+
+/** Pide el listado agregando los parametros que el 422 vaya reclamando. Devuelve la primera respuesta buena. */
+async function listadoQueSeCorrigeSolo(iniciales) {
+  const params = { ...iniciales };
+  for (let intento = 1; intento <= 5; intento++) {
+    const r = await pedir(`/transactions?${consulta(params)}`);
+    console.log(`   Intento ${intento} con [${Object.keys(params).join(", ")}]: HTTP ${r.status} en ${r.ms} ms`);
+    if (r.ok) return { r, params };
+    const mensajes = r.cuerpo?.error?.messages;
+    if (r.status !== 422 || !mensajes) {
+      console.log(`   No es un problema de parametros: ${errorDe(r)}`);
+      return { r: null, params };
+    }
+    const faltantes = Object.entries(mensajes)
+      .filter(([, ms]) => (Array.isArray(ms) ? ms : [ms]).some((m) => String(m).toLowerCase().includes("no está presente") || String(m).toLowerCase().includes("no esta presente")))
+      .map(([k]) => k)
+      .filter((k) => !(k in params));
+    const otros = Object.keys(mensajes).filter((k) => !faltantes.includes(k) && k in params);
+    if (otros.length > 0) console.log(`   Wompi objeta lo que ya se mando: ${JSON.stringify(mensajes)}`);
+    if (faltantes.length === 0) {
+      console.log(`   Sin parametros nuevos que agregar. Error: ${errorDe(r)}`);
+      return { r: null, params };
+    }
+    const desconocidos = faltantes.filter((k) => !(k in VALORES));
+    if (desconocidos.length > 0) {
+      console.log(`   PIDE ALGO QUE NO SE RELLENAR: ${desconocidos.join(", ")}. Pasame esta linea y lo agrego.`);
+      return { r: null, params };
+    }
+    for (const k of faltantes) params[k] = VALORES[k];
+    console.log(`   Agrega: ${faltantes.join(", ")}`);
   }
+  console.log("   Cinco intentos sin lograrlo.");
+  return { r: null, params };
 }
 
-if (!formatoBueno) {
-  console.log("\n   NINGUN FORMATO SIRVIO. Pasame las dos lineas de arriba tal cual y ajusto el sondeo.\n");
+// ── 1. EL LISTADO, y de paso que formato de fecha acepta ──────────────────────────────────────────
+console.log("── 1. GET /transactions (el listado que no esta documentado) ──");
+const { r: primera, params: PARAMS } = await listadoQueSeCorrigeSolo({
+  from_date: VALORES.from_date,
+  until_date: VALORES.until_date,
+  page: "1",
+  page_size: "200",
+});
+
+if (!primera) {
+  console.log("\n   El listado no respondio. Pasame la salida tal cual.\n");
   process.exit(0);
 }
 
-const rango = `from_date=${encodeURIComponent(formatoBueno.desde)}&until_date=${encodeURIComponent(formatoBueno.hasta)}`;
-console.log(`   ✔ El cotejo usara: ${formatoBueno.nombre}.`);
-
-const filas = filasDe(primeraPagina.cuerpo) ?? [];
-console.log(`   Filas en la pagina 1: ${filas.length}`);
+const filas = filasDe(primera.cuerpo) ?? [];
+console.log(`   ✔ Sirve con: ${Object.keys(PARAMS).join(", ")} (fecha en formato ISO con hora)`);
+console.log(`   Filas: ${filas.length} de un tope de ${PARAMS.page_size ?? "?"} por pagina`);
 console.log(`   Claves de una fila: ${Object.keys(filas[0] ?? {}).join(", ") || "(ninguna)"}`);
-console.log(`   Meta: ${JSON.stringify(primeraPagina.cuerpo?.meta ?? null)}`);
-if (filas.length > 1) {
-  const conFecha = filas.filter((f) => f.created_at);
-  if (conFecha.length > 1) {
-    const nuevaPrimero = conFecha[0].created_at > conFecha[conFecha.length - 1].created_at;
-    console.log(`   Orden: ${nuevaPrimero ? "de la mas NUEVA a la mas vieja" : "de la mas VIEJA a la mas nueva"} (${conFecha[0].created_at} ... ${conFecha[conFecha.length - 1].created_at})`);
-  }
+console.log(`   Meta: ${JSON.stringify(primera.cuerpo?.meta ?? null)}`);
+const conFecha = filas.filter((f) => f.created_at);
+if (conFecha.length > 1) {
+  const nuevaPrimero = conFecha[0].created_at > conFecha[conFecha.length - 1].created_at;
+  console.log(`   Orden: ${nuevaPrimero ? "de la mas NUEVA a la mas vieja" : "de la mas VIEJA a la mas nueva"} (${conFecha[0].created_at} ... ${conFecha[conFecha.length - 1].created_at})`);
 }
 const estados = {};
 for (const f of filas) estados[f.status] = (estados[f.status] ?? 0) + 1;
 console.log(`   Estados: ${JSON.stringify(estados)}`);
 
-// ── 2. CUANTO CABE POR PAGINA: decide si el cotejo diario es una llamada o veinte ─────────────────
-console.log("\n── 2. El tamano de pagina ─────────────────────────────────────");
-const pagina2 = await pedir(`/transactions?${rango}&page=2`);
-const filas2 = filasDe(pagina2.cuerpo) ?? [];
-console.log(`   Pagina 2: HTTP ${pagina2.status}, ${filas2.length} filas${pagina2.ok ? "" : ` · ${errorDe(pagina2)}`}`);
-const repetidas = filas2.filter((b) => filas.some((a) => a.id === b.id)).length;
-if (filas2.length > 0) console.log(`   Filas de la pagina 2 que ya estaban en la 1: ${repetidas} (si son todas, el numero de pagina se ignora)`);
-console.log(
-  filas.length === 0
-    ? "   El sandbox no tiene transacciones en el rango: el tamano de pagina queda por medir con datos."
-    : `   Por ahora, ${filas.length} por pagina. Con eso, un cotejo diario en produccion serian pocas llamadas.`,
-);
+// Y si el formato corto tambien sirve, el cotejo puede usar el mas simple.
+const corto = await pedir(`/transactions?${consulta({ ...PARAMS, from_date: desde.toISOString().slice(0, 10), until_date: hasta.toISOString().slice(0, 10) })}`);
+console.log(`   Fecha sin hora (AAAA-MM-DD): HTTP ${corto.status}${corto.ok ? " · tambien sirve" : ` · ${errorDe(corto)}`}`);
 
-// ── 3. EL FILTRO POR REFERENCIA: filtra de verdad, o devuelve de mas ──────────────────────────────
-console.log("\n── 3. ¿Sirve ?reference= ? (lo que la documentacion NO confirma) ──");
+// ── 2. LA PAGINACION: que el numero de pagina se respete ──────────────────────────────────────────
+console.log("\n── 2. La paginacion ───────────────────────────────────────────");
+const pag2 = await pedir(`/transactions?${consulta({ ...PARAMS, page: "2" })}`);
+const filas2 = filasDe(pag2.cuerpo) ?? [];
+console.log(`   Pagina 2: HTTP ${pag2.status}, ${filas2.length} filas${pag2.ok ? "" : ` · ${errorDe(pag2)}`}`);
+if (filas2.length > 0) {
+  const repetidas = filas2.filter((b) => filas.some((a) => a.id === b.id)).length;
+  console.log(`   Repetidas de la pagina 1: ${repetidas}${repetidas === filas2.length ? " · OJO: el numero de pagina se ignora" : ""}`);
+} else if (filas.length > 0 && filas.length < Number(PARAMS.page_size ?? 200)) {
+  console.log("   Vacia, y es lo correcto: todo cupo en la pagina 1.");
+}
+
+// ── 3. EL FILTRO POR REFERENCIA ───────────────────────────────────────────────────────────────────
+console.log("\n── 3. ¿Sirve ?reference= ? ───────────────────────────────────");
 const referencia = filas.find((f) => f.reference)?.reference ?? null;
 if (!referencia) {
   console.log("   Sin una referencia de la que partir (no hubo filas). Haz un pago de prueba y vuelve a correrlo.");
 } else {
   console.log(`   Referencia usada: ${referencia}`);
-  const r = await pedir(`/transactions?${rango}&page=1&reference=${encodeURIComponent(referencia)}`);
+  const r = await pedir(`/transactions?${consulta({ ...PARAMS, reference: referencia })}`);
   const f3 = filasDe(r.cuerpo) ?? [];
-  console.log(`   HTTP ${r.status} en ${r.ms} ms; filas devueltas: ${f3.length}`);
-  const coinciden = f3.filter((f) => f.reference === referencia).length;
+  console.log(`   HTTP ${r.status} en ${r.ms} ms; filas devueltas: ${f3.length} (sin filtrar eran ${filas.length})`);
   if (f3.length > 0) {
+    const coinciden = f3.filter((f) => f.reference === referencia).length;
     console.log(`   De esas, con la referencia pedida: ${coinciden}`);
     console.log(
       coinciden === f3.length && f3.length < filas.length
@@ -141,7 +179,7 @@ if (!referencia) {
         : "   ✘ EL FILTRO NO SIRVE (devuelve de mas): el cotejo recorre el rango y compara en Atlas.",
     );
   } else {
-    console.log(`   ${r.ok ? "Devolvio vacio: el parametro no sirve como filtro." : errorDe(r)}`);
+    console.log(`   ${r.ok ? "Devolvio vacio: no sirve como filtro." : errorDe(r)}`);
   }
 }
 
