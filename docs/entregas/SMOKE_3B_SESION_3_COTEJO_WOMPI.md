@@ -52,7 +52,7 @@ Aquí se provoca a mano lo que el 15/9 pasó solo. Prepara el producto si hace f
 
 Ahora **vuelve a poner la URL de eventos en Wompi**, tal como la copiaste. **Este paso no se salta**, o Atlas deja de enterarse de todos los pagos siguientes.
 
-- [ ] En **/pagos**, pulsa **Buscar pagos sin registrar**. **Debe dar:** *Se recuperaron 1 pago que Wompi había aprobado. Míralos en la lista.*
+- [ ] En **/pagos**, pulsa **Buscar pagos sin registrar**. **Debe dar:** *Se recuperó 1 pago que Wompi había aprobado...* No aparece ninguna lista nueva: la venta pasa a la de **Transacciones**, más abajo en esta misma pantalla, ya como pagada.
 - [ ] La venta pasa a **pagada**, con su factura de Alegra y el inventario descontado, igual que si el aviso hubiera llegado.
 - [ ] Pulsa el botón **otra vez**. **Debe dar:** *ninguna estaba pagada sin registrar*, y la venta **no** se cobra ni se factura dos veces.
 - [ ] En **Sentry** hay un aviso de nivel *warning*: *El cotejo recuperó un pago que Wompi aprobó y cuyo webhook no llegó*. Es correcto que esté: cada recuperación significa que un aviso se perdió.
@@ -69,6 +69,23 @@ Invoke-RestMethod -Uri "https://atlas.cnvsystem.com/api/cron/cotejo-wompi" -Head
 - [ ] **Debe dar:** `ambiente: test`, `revisadas: N`, `recuperadas: 0`, `discrepancias: 0`, `fallo:` vacío.
 - [ ] **Sin el secreto** (`Invoke-RestMethod -Uri "https://atlas.cnvsystem.com/api/cron/cotejo-wompi"`). **Debe dar:** error **401**.
 - [ ] En /pagos, la línea de la última revisión dice ahora **(automática)**.
+
+## 3bis. Un pago RECHAZADO, para la sesión 1
+
+Esto no prueba el cotejo: responde una pregunta que la **sesión 1** necesita, y sale gratis hacerlo aquí. En el sondeo las 20 transacciones estaban aprobadas, así que no sabemos si el listado de Wompi trae también las demás. Si las trae, la sesión 1 podrá detectar un pago anulado aunque su aviso no llegue.
+
+1. Cobra con QR otra unidad, y paga con la tarjeta que Wompi **rechaza**: `4111 1111 1111 1111`.
+2. Luego, en PowerShell:
+
+```powershell
+$env:WOMPI_PRIVATE_KEY = "prv_test_...la privada de SANDBOX..."
+node scripts/sondeo-wompi-consulta.mjs
+```
+
+- [ ] Mira la línea **Estados** del paso 1 del sondeo. **Si dice** `{"APPROVED":N,"DECLINED":1}`, el listado trae las rechazadas y la sesión 1 puede apoyarse en él. **Si solo dice** `APPROVED`, habrá que consultarlas una por una por su referencia, y lo diseño así.
+- [ ] Mira también el paso 5, el de `disbursement`: dice si viene lleno y con qué claves.
+- Y al terminar: `Remove-Item Env:WOMPI_PRIVATE_KEY`.
+- La venta del pago rechazado queda `pending` y la borra la limpieza del paso 4.
 
 ## 4. Limpiar
 

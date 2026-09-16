@@ -1,40 +1,54 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 -- ¿QUIEN SELLO ESA VENTA: EL AVISO DE WOMPI O EL COTEJO?  ·  consulta de REVISION  ·  2026-09-16
 --
--- SOLO LEE. Esta pensada para PEGARSE EN EL EDITOR SQL DE SUPABASE (no es un script de los que se corren con
--- --commit). Responde la duda del smoke del 3b: el pago aparecio sellado sin que el boton dijera "recuperado",
--- y la explicacion probable es que Wompi REINTENTO su aviso cuando el secreto ya estaba bien.
+-- SOLO LEE. Se pega en el EDITOR SQL DE SUPABASE (no es de los que se corren con --commit).
 --
--- COMO SE LEE EL RESULTADO:
---   · origen = 'aviso de Wompi'  -> lo sello el webhook (el reintento entro). El cotejo no tenia nada que hacer.
---   · origen = 'cotejo'          -> lo sello el cotejo, que es lo que el smoke queria probar.
---   · Y la columna `sellada_en` contra la hora en que se pulso el boton termina de decidirlo.
+-- OJO, Y POR ESO ES UNA SOLA CONSULTA (corregido el 2026-09-16): el editor de Supabase muestra el resultado de
+-- la ULTIMA sentencia, asi que la version anterior, con dos, devolvia el historial de corridas y escondia
+-- justamente lo que el nombre promete. Aqui todo viene en un resultado, con una columna `seccion`.
+--
+-- COMO SE LEE:
+--   · seccion = 'venta'  -> una venta con link de pago de los ultimos 3 dias, y en `origen` quien la sello:
+--       'aviso de Wompi'          el webhook (llego, o llego en un reintento);
+--       'cotejo'                  la recupero el cotejo;
+--       'sin evento: nadie la sello'  todavia no la sello nadie.
+--   · seccion = 'corrida' -> las ultimas corridas del cotejo, para cruzar las horas con `sellada_en`.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 
--- 1. Las ventas con link de pago de los ultimos 3 dias, y quien las sello.
-select t.created_at              as creada,
-       t.updated_at              as sellada_en,
-       t.status,
-       t.wompi_transaction_id,
-       t.alegra_invoice_number   as factura,
-       e.created_at              as evento_en,
-       e.processed_at            as evento_procesado,
-       case
-         when e.id is null then 'sin evento: nadie la sello'
-         when e.payload ? 'origen' then 'cotejo'
-         else 'aviso de Wompi'
-       end                       as origen
-  from transactions t
-  left join payment_webhook_events e
-    on e.provider = 'wompi'
-   and (e.payload->>'transactionId' = t.id::text
-        or e.payload->'data'->'transaction'->>'reference' = t.id::text)
- where t.payment_method = 'wompi'
-   and t.created_at > now() - interval '3 days'
- order by t.created_at desc, e.created_at;
-
--- 2. Las corridas del cotejo, para cruzar las horas.
-select ran_at, origin as origen, checked as revisadas, recovered as recuperadas, mismatched as discrepancias, failed_reason
-  from payment_reconciliation_runs
- order by ran_at desc
- limit 5;
+with ventas as (
+  select 'venta'                                    as seccion,
+         t.created_at                               as cuando,
+         t.id::text                                 as venta,
+         t.status::text                             as estado,
+         case
+           when e.id is null then 'sin evento: nadie la sello'
+           when e.payload->>'origen' is not null then 'cotejo'
+           else 'aviso de Wompi'
+         end                                        as origen,
+         t.updated_at::text                         as sellada_en,
+         e.created_at::text                         as evento_en,
+         coalesce(t.alegra_invoice_number, '-')     as factura
+    from transactions t
+    left join payment_webhook_events e
+      on e.provider = 'wompi'
+     and (e.payload->>'transactionId' = t.id::text
+          or e.payload->'data'->'transaction'->>'reference' = t.id::text)
+   where t.payment_method = 'wompi'
+     and t.created_at > now() - interval '3 days'
+),
+corridas as (
+  select 'corrida'                                  as seccion,
+         r.ran_at                                   as cuando,
+         '-'                                        as venta,
+         r.origin                                   as estado,
+         concat(r.checked, ' revisadas, ', r.recovered, ' recuperadas, ', r.mismatched, ' sin cuadrar') as origen,
+         r.ran_at::text                             as sellada_en,
+         '-'                                        as evento_en,
+         coalesce(r.failed_reason, '-')             as factura
+    from payment_reconciliation_runs r
+   order by r.ran_at desc
+   limit 5
+)
+select seccion, cuando, venta, estado, origen, sellada_en, evento_en, factura
+  from (select * from ventas union all select * from corridas) todo
+ order by seccion, cuando desc;
