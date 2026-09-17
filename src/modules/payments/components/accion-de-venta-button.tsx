@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import {
+  abrirContracargoFormAction,
   anularLinkFormAction,
   entregarVentaFormAction,
   registrarNotaCreditoFormAction,
@@ -62,7 +63,7 @@ const ACCIONES = {
     enCurso: "Resolviendo...",
     variante: "destructive" as const,
     // El comprobante es soporte obligatorio de una devolucion (contabilidad, 2026-09-14).
-    campo: { name: "comprobante", label: "Comprobante de la devolución en Wompi", placeholder: "Referencia de la devolución" },
+    campos: [{ name: "comprobante", label: "Comprobante de la devolución en Wompi", placeholder: "Referencia de la devolución" }],
   },
   efectivo_no_recibido: {
     accion: resolverComoEfectivoNoRecibidoFormAction,
@@ -79,22 +80,37 @@ const ACCIONES = {
     confirmar: "Guardar",
     enCurso: "Guardando...",
     variante: "default" as const,
-    campo: { name: "numero", label: "Número de la nota crédito", placeholder: "Por ejemplo, NC3" },
+    campos: [{ name: "numero", label: "Número de la nota crédito", placeholder: "Por ejemplo, NC3" }],
+  },
+  contracargo: {
+    accion: abrirContracargoFormAction,
+    pedir: "Registrar un contracargo",
+    aviso:
+      "El paciente desconoció el pago ante su banco. El ingreso NO se toca todavía: si la disputa se gana, no cambia nada.",
+    confirmar: "Abrir el caso",
+    enCurso: "Abriendo...",
+    variante: "destructive" as const,
+    campos: [
+      { name: "referencia", label: "Referencia de la disputa", placeholder: "La que dice el correo de Wompi" },
+      { name: "montoDebitado", label: "Monto que debitó el banco", placeholder: "Suele ser mayor que la venta", tipo: "number" as const },
+      { name: "debitadoEn", label: "Fecha del débito", placeholder: "", tipo: "date" as const, opcional: true },
+    ],
   },
 };
 
-type Campo = { name: string; label: string; placeholder: string };
+type Campo = { name: string; label: string; placeholder: string; tipo?: "number" | "date"; opcional?: boolean };
 
 export type AccionDeVenta = keyof typeof ACCIONES;
 
 export function AccionDeVentaButton({ transactionId, tipo }: { transactionId: string; tipo: AccionDeVenta }) {
   const a = ACCIONES[tipo];
-  const campo = ("campo" in a ? a.campo : null) as Campo | null;
+  const campos = ("campos" in a ? a.campos : []) as Campo[];
   const [state, action, pending] = useActionState(a.accion, initial);
   useFormToastAndRefresh(state);
   const [confirmando, setConfirmando] = useState(false);
-  // Controlado: un error del servidor (por ejemplo, falta la version) no borra lo escrito (hazard 2).
-  const [valor, setValor] = useState("");
+  // Controlados: un error del servidor (por ejemplo, falta la version) no borra lo escrito (hazard 2).
+  const [valores, setValores] = useState<Record<string, string>>({});
+  const faltaAlguno = campos.some((c) => !c.opcional && (valores[c.name] ?? "").trim().length < 2);
 
   if (!confirmando) {
     return (
@@ -108,18 +124,21 @@ export function AccionDeVentaButton({ transactionId, tipo }: { transactionId: st
     <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="transactionId" value={transactionId} />
       <span className="text-xs text-muted-foreground">{a.aviso}</span>
-      {campo ? (
+      {campos.map((campo) => (
         <Input
+          key={campo.name}
           name={campo.name}
+          type={campo.tipo ?? "text"}
           aria-label={campo.label}
           placeholder={campo.placeholder}
-          required
+          title={campo.label}
+          required={!campo.opcional}
           maxLength={200}
-          value={valor}
-          onChange={(e) => setValor(e.target.value)}
-          className="h-8 w-56"
+          value={valores[campo.name] ?? ""}
+          onChange={(e) => setValores((v) => ({ ...v, [campo.name]: e.target.value }))}
+          className={campo.tipo === "date" ? "h-8 w-40" : "h-8 w-56"}
         />
-      ) : null}
+      ))}
       {/* `key` distinta de la del primer boton: el mismo nodo pasando de type=button a submit dentro del
           clic se enviaria solo (hazard 1 de CLAUDE.md). */}
       <Button
@@ -127,7 +146,7 @@ export function AccionDeVentaButton({ transactionId, tipo }: { transactionId: st
         type="submit"
         size="sm"
         variant={a.variante}
-        disabled={pending || (campo != null && valor.trim().length < 2)}
+        disabled={pending || faltaAlguno}
       >
         {pending ? a.enCurso : a.confirmar}
       </Button>

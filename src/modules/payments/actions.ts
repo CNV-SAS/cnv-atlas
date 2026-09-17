@@ -17,6 +17,8 @@ import { canCreateCheckout } from "./policies/can-create-checkout";
 import { canDeliverSale } from "./policies/can-deliver-sale";
 import { canViewRevenue } from "./policies/can-view-revenue";
 import { cotejarConWompi } from "./services/conciliacion-service";
+import { abrirContracargo, registrarNotaCreditoDeReversa, resolverReversa } from "./services/reversas-service";
+import { ReversaError } from "./data/reversas-writer";
 import { reintentarFacturasPendientes } from "./services/facturacion-service";
 import { reintentarDescuentosPendientes } from "./services/inventario-venta-service";
 import {
@@ -31,9 +33,14 @@ import {
   resolverRevisionDeVenta,
   VentaError,
 } from "./services/payments-service";
+import type { CurrentUser } from "@/modules/auth/roles";
+
 import {
+  abrirContracargoSchema,
   accionDeVentaSchema,
+  notaCreditoDeReversaSchema,
   notaCreditoManualSchema,
+  resolverReversaSchema,
   comprobanteDeDevolucionSchema,
   versionDelIntegranteSchema,
   createCheckoutSchema,
@@ -473,5 +480,118 @@ export async function cotejarConWompiAction(
   } catch (e) {
     reportServerError("pagos.cotejo-wompi", e);
     return { error: "No se pudo cotejar con Wompi.", success: null, warning: null };
+  }
+}
+
+// ═══ LAS REVERSAS DE VENTA (Bloque 3b, sesion 1) ═══
+//
+// Un contracargo no lo decide CNV: llega. Abrirlo NO mueve el ingreso (la disputa se puede ganar y la factura
+// sigue valida); perderla si, y ademas deja pendiente la nota credito manual. Quien resuelve deja la referencia
+// de la respuesta del banco: esa transicion mueve dinero.
+
+async function quienPuedeReversar(): Promise<{ user: CurrentUser } | { error: AccionDeVentaState }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: { error: "Inicia sesión.", success: null, warning: null } };
+  if (!canViewRevenue(user)) {
+    return { error: { error: "No tienes permiso para registrar o resolver reversas.", success: null, warning: null } };
+  }
+  return { user };
+}
+
+export async function abrirContracargoFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  const quien = await quienPuedeReversar();
+  if ("error" in quien) return quien.error;
+  const parsed = abrirContracargoSchema.safeParse({
+    transactionId: String(formData.get("transactionId") ?? ""),
+    referencia: String(formData.get("referencia") ?? ""),
+    montoDebitado: String(formData.get("montoDebitado") ?? ""),
+    debitadoEn: String(formData.get("debitadoEn") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos.", success: null, warning: null };
+  try {
+    const r = await abrirContracargo({
+      transactionId: parsed.data.transactionId,
+      referenciaDeLaDisputa: parsed.data.referencia,
+      montoDebitado: parsed.data.montoDebitado,
+      debitadoEn: parsed.data.debitadoEn || null,
+      nota: null,
+      actorId: quien.user.id,
+    });
+    if ("yaHabiaUna" in r) {
+      return { error: null, success: null, warning: "Esa venta ya tenía un caso abierto. Míralo en el panel de contracargos." };
+    }
+    return {
+      error: null,
+      success:
+        "Caso abierto. El ingreso no se toca hasta que la disputa se resuelva. Responde al banco con los soportes: sin respuesta a tiempo se pierde.",
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof ReversaError) return { error: e.message, success: null, warning: null };
+    reportServerError("pagos.abrir-contracargo", e);
+    return { error: "No se pudo abrir el caso.", success: null, warning: null };
+  }
+}
+
+async function resolver(formData: FormData, resultado: "ganada" | "perdida"): Promise<AccionDeVentaState> {
+  const quien = await quienPuedeReversar();
+  if ("error" in quien) return quien.error;
+  const parsed = resolverReversaSchema.safeParse({
+    reversaId: String(formData.get("reversaId") ?? ""),
+    referencia: String(formData.get("referencia") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos.", success: null, warning: null };
+  try {
+    await resolverReversa({
+      reversaId: parsed.data.reversaId,
+      resultado,
+      referenciaDeLaRespuesta: parsed.data.referencia,
+      actorId: quien.user.id,
+    });
+    return {
+      error: null,
+      success:
+        resultado === "ganada"
+          ? "Disputa ganada. El ingreso nunca se movió, así que no hay nada más que hacer."
+          : "Disputa perdida. Se revirtieron el ingreso y la comisión, y queda pendiente la nota crédito manual en Alegra, POR EL VALOR DE LA VENTA.",
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof ReversaError) return { error: e.message, success: null, warning: null };
+    reportServerError("pagos.resolver-reversa", e);
+    return { error: "No se pudo resolver el caso.", success: null, warning: null };
+  }
+}
+
+export async function resolverReversaGanadaFormAction(_prev: AccionDeVentaState, formData: FormData) {
+  return resolver(formData, "ganada");
+}
+
+export async function resolverReversaPerdidaFormAction(_prev: AccionDeVentaState, formData: FormData) {
+  return resolver(formData, "perdida");
+}
+
+export async function registrarNotaCreditoDeReversaFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  const quien = await quienPuedeReversar();
+  if ("error" in quien) return quien.error;
+  const parsed = notaCreditoDeReversaSchema.safeParse({
+    reversaId: String(formData.get("reversaId") ?? ""),
+    numero: String(formData.get("numero") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos.", success: null, warning: null };
+  try {
+    const ok = await registrarNotaCreditoDeReversa(parsed.data.reversaId, parsed.data.numero);
+    return ok
+      ? { error: null, success: "Nota crédito registrada. El caso queda cerrado.", warning: null }
+      : { error: "Esa reversa no está perdida o ya tenía su nota crédito.", success: null, warning: null };
+  } catch (e) {
+    reportServerError("pagos.nota-credito-reversa", e);
+    return { error: "No se pudo registrar la nota crédito.", success: null, warning: null };
   }
 }

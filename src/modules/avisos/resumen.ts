@@ -20,11 +20,17 @@ import { plazoDeRevision } from "@/modules/payments/plazo-de-revision";
 //   · AGRUPADO POR CAUSA: doce fallos del mismo motivo se arreglan una vez, y son una linea.
 //   · SIN NADA NUEVO, NADA VENCIDO Y LO DEMAS EN GESTION, NO LLEGA CORREO.
 
-export type TipoDePendiente = "revision" | "sin_documento" | "nota_credito";
+export type TipoDePendiente = "revision" | "sin_documento" | "nota_credito" | "reversa";
 export type Franja = "am" | "pm";
 
 export type Pendiente = {
   tipo: TipoDePendiente;
+  /**
+   * Dias habiles de plazo desde `desde`, para los tipos cuyo plazo no se deduce del tipo. La reversa tiene dos:
+   * 3 para responderle al banco (una disputa sin respuesta a tiempo se PIERDE por silencio) y 5 desde la
+   * resolucion para la nota credito. Los demas lo dejan en null y su plazo sale del tipo.
+   */
+  diasHabilesDePlazo?: number | null;
   transactionId: string;
   /** Desde cuando esta pendiente: la venta (sin documento), la entrada en revision, o la marca del efectivo. */
   desde: string;
@@ -43,6 +49,7 @@ const TITULO: Record<TipoDePendiente, string> = {
   revision: "Pagos en revisión (pago sobre un link anulado)",
   nota_credito: "Efectivo que no se recibió: falta la nota crédito manual",
   sin_documento: "Ventas cobradas sin factura o sin pago registrado",
+  reversa: "Contracargos y anulaciones (el banco devolvió el dinero)",
 };
 
 function diaEnColombia(fecha: Date): string {
@@ -57,6 +64,10 @@ function aMediodia(ymd: string): Date {
 /** El ultimo dia (AAAA-MM-DD, de Colombia) para resolver cada pendiente. */
 export function limiteDe(p: Pendiente): string {
   const desde = new Date(p.desde);
+  if (p.diasHabilesDePlazo != null) {
+    const l = addBusinessDays(aMediodia(diaEnColombia(desde)), p.diasHabilesDePlazo);
+    return `${l.getFullYear()}-${String(l.getMonth() + 1).padStart(2, "0")}-${String(l.getDate()).padStart(2, "0")}`;
+  }
   if (p.tipo === "revision") {
     const l = plazoDeRevision(desde, desde).limite;
     return `${l.getFullYear()}-${String(l.getMonth() + 1).padStart(2, "0")}-${String(l.getDate()).padStart(2, "0")}`;

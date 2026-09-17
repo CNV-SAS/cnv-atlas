@@ -1030,6 +1030,13 @@
       "when": 1791851126099,
       "tag": "0146_cotejo_con_wompi",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1791861126099,
+      "tag": "0147_reversas_de_venta",
+      "breakpoints": true
     }
   ]
 }

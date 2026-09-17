@@ -4,6 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // (sellado de precios, idempotencia, mapeo de estados) sin tocar BD, Supabase, ni
 // los modulos server-only (writer, repo, alegra, nutraceuticos). El alias "@" lo
 // resuelve vitest.config.
+// El servicio importa el de reversas (Bloque 3b), que es `server-only` y toca la base. Aqui se simula
+// diciendo que la venta NO estaba pagada, que es el caso de esta suite: un rechazo normal de un link. Que un
+// VOIDED sobre una venta PAGADA abra el caso se prueba contra base real en `reversa-db`.
+vi.mock("server-only", () => ({}));
+vi.mock("../modules/payments/services/reversas-service", () => ({
+  abrirPorAnulacionDeWompi: vi.fn(async () => false),
+}));
 vi.mock("../modules/payments/data/payments-writer", () => ({
   createTransactionWithItems: vi.fn(),
   createPaidCashTransaction: vi.fn(),

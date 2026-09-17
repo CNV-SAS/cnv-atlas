@@ -29,6 +29,7 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
     en_gestion_hasta: string | null;
     en_gestion_nota: string | null;
     en_gestion_por: string | null;
+    dias_habiles: number | null;
   }>(sql`
     with pendientes as (
       -- Pagos en revision abiertos (panel "Ventas por revisar").
@@ -36,15 +37,30 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
              coalesce(t.review_opened_at, t.updated_at) as desde, t.amount,
              case when t.review_professional_version is null
                   then 'Falta la versión del Integrante'
-                  else 'Tiene la versión del Integrante: falta decidir' end as causa
+                  else 'Tiene la versión del Integrante: falta decidir' end as causa,
+             null::int as dias_habiles
         from transactions t
        where t.status = 'paid' and t.review_reason is not null and t.review_resolution is null
       union all
       -- Efectivo que no se recibio, con la nota credito manual pendiente.
       select 'nota_credito', t.id, t.cash_not_received_at, t.amount,
-             'Falta registrar la nota crédito manual en Alegra'
+             'Falta registrar la nota crédito manual en Alegra', null::int
         from transactions t
        where t.cash_not_received_at is not null and t.credit_note_manual_number is null
+      union all
+      -- LAS REVERSAS (Bloque 3b, sesion 1), con sus DOS plazos, que no se deducen del tipo y por eso viajan en
+      -- su propia columna: una disputa abierta pide responderle al banco (3 dias habiles, porque sin respuesta a
+      -- tiempo se pierde por silencio) y una perdida pide su nota credito manual (5 dias desde la resolucion).
+      select 'reversa', r.transaction_id,
+             case when r.state = 'abierta' then r.opened_at else coalesce(r.resolved_at, r.opened_at) end,
+             t.amount,
+             case when r.state = 'abierta'
+                  then 'Disputa abierta: hay que responderle al banco con los soportes'
+                  else 'Disputa perdida: falta la nota crédito manual en Alegra' end,
+             case when r.state = 'abierta' then 3 else 5 end
+        from sale_reversals r join transactions t on t.id = r.transaction_id
+       where r.state = 'abierta'
+          or (r.state = 'perdida' and r.credit_note_manual_number is null)
       union all
       -- Ventas cobradas sin factura o sin pago registrado (panel de facturas), con la misma condicion.
       select 'sin_documento', transactions.id, transactions.created_at, transactions.amount,
@@ -52,11 +68,12 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
                when transactions.alegra_invoice_state = 'emitida' then 'Facturada, pago no registrado en Alegra'
                when transactions.alegra_last_error is not null then left(transactions.alegra_last_error, 160)
                else 'Sin intentar facturar'
-             end
+             end, null::int
         from transactions
        where transactions.status = 'paid' and ${LE_FALTA_ALGO} and ${FACTURABLE}
     )
     select p.tipo, p.transaction_id, p.desde::text as desde, p.amount::text as monto,
+           p.dias_habiles,
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
               from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
              where ti.transaction_id = p.transaction_id) as productos,
@@ -72,6 +89,7 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
      order by p.desde`);
   return filas.map((f) => ({
     tipo: f.tipo,
+    diasHabilesDePlazo: f.dias_habiles == null ? null : Number(f.dias_habiles),
     transactionId: f.transaction_id,
     desde: String(f.desde),
     monto: String(f.monto),

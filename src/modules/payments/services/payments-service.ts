@@ -38,6 +38,8 @@ import { ESCALADA_EFECTIVO_NO_RECIBIDO } from "../revision";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import { avisarAlIntegranteDeRevision } from "@/modules/avisos/services/avisos-service";
 
+import { abrirPorAnulacionDeWompi } from "./reversas-service";
+
 import { emitirFacturaDeVenta } from "./facturacion-service";
 import { descontarInventarioDeVenta } from "./inventario-venta-service";
 import type { CreateCheckoutInput, WompiEventInput } from "../validations";
@@ -322,9 +324,15 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
   }
 
   if (internal === "failed") {
-    await markTransactionFailed(txId, wompiTxId);
-    // El pago no se hizo: sus unidades vuelven a estar disponibles. Solo actua si la venta quedo `failed`.
-    await liberarReservasDeVenta(txId);
+    // ANULAR UNA VENTA YA PAGADA NO ES UN RECHAZO, ES UNA REVERSA (Bloque 3b, sesion 1). Hasta ahora este
+    // camino marcaba el evento como procesado y no hacia nada cuando la venta estaba pagada: la factura seguia
+    // viva, el inventario descontado y la comision sellada, sin que nadie se enterara.
+    const esReversa = await abrirPorAnulacionDeWompi(txId, tx.status, wompiTxId);
+    if (!esReversa) {
+      await markTransactionFailed(txId, wompiTxId);
+      // El pago no se hizo: sus unidades vuelven a estar disponibles. Solo actua si la venta quedo `failed`.
+      await liberarReservasDeVenta(txId);
+    }
     await markWebhookProcessed(WOMPI_PROVIDER, externalId);
     return { handled: true, duplicate: false, sealed: false };
   }
