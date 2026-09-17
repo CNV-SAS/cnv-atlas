@@ -25,7 +25,7 @@ que algo ya hecho se vuelva a planear).
 | **2b** · Paso a producción | **PREPARADO, ESPERA** (guía en `docs/entregas/`). Santiago, 2026-09-14: primero se cierran todos los bloques y se confirma que el flujo funciona; después 2b, después Supabase Pro, y al final los Integrantes | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
 | **3** · La venta nace en Tratamiento | **HECHO (2026-09-15), migraciones 0138-0144.** Sesiones 1 y 2, pasos 5 a 8 y el titular de marca verificado en una factura de sandbox. Smoke de cierre pasado, incluido el filtro por día. **Anotado (2026-09-15): cada filtrado se siente lento** con pocas ventas; cada "Ver ese día" rehace la página entera (tres tandas de consultas en serie, la lista completa de transacciones sin límite y todos los pacientes), aunque solo cambia una consulta. Por medir antes de tocar: ver 3.8 | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
-| 3b · Reversa | **EN CURSO. Sesion 3 CONSTRUIDA (2026-09-16), falta su smoke; siguen la 1 y la 2** (orden de contabilidad: 3 -> 1 -> 2). Las cinco decisiones, respondidas. Empieza con el sondeo de la consulta de Wompi, que la documentacion no confirma | Registrar y sacar de las cifras, la devolucion fisica y el cotejo con Wompi. La nota credito se queda manual |
+| 3b · Reversa | **EN CURSO. Sesiones 3 y 1 CONSTRUIDAS (2026-09-16), con sus smokes por correr; falta la 2 (devolucion fisica)** (orden de contabilidad: 3 -> 1 -> 2). Las cinco decisiones, respondidas. Empieza con el sondeo de la consulta de Wompi, que la documentacion no confirma | Registrar y sacar de las cifras, la devolucion fisica y el cotejo con Wompi. La nota credito se queda manual |
 | 4 · Liquidaciones | Pendiente | — |
 | 5 · Distribución | Pendiente | — |
 | 6 · Domicilio | Pendiente | — |
@@ -1423,7 +1423,7 @@ Santiago, en el smoke de cierre: "funciona, solo que es algo lento". Con 10 vent
 
 | Sesión | Qué trae | Migración | Smoke en navegador |
 |---|---|---|---|
-| **1 · La reversa se registra y sale de las cifras** | La reversa como caso con estados, el `VOIDED` que deja de ignorarse, las filas negativas de ingreso y comisión, el panel y el correo | Sí (`sale_reversals`, más el tipo nuevo en la cola de pendientes) | Sí |
+| **1 · La reversa se registra y sale de las cifras** | **CONSTRUIDA (2026-09-16), falta el smoke** (`SMOKE_3B_SESION_1_CONTRACARGOS.md`). Migracion 0147. Candados: `reversa`, `reversa-db` | Sí (0147) | Sí |
 | **2 · La devolución física** | El reingreso de la unidad, ligado a la línea de venta, con su tipo de movimiento propio | Sí (tipo de movimiento nuevo y su CHECK) | Sí |
 | **3 · El cotejo con Wompi** | **CONSTRUIDA (2026-09-16), falta el smoke** (`SMOKE_3B_SESION_3_COTEJO_WOMPI.md`). Migración 0146. Candados: `cotejo-wompi`, `cotejo-wompi-db` | Sí (0146, el rastro de cada corrida) | Sí |
 

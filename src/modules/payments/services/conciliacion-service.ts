@@ -8,6 +8,7 @@ import { cotejar, type Discrepancia } from "../conciliacion";
 import * as repo from "../data/conciliacion-repository";
 import { markWebhookProcessed, recordWebhookEvent } from "../data/payments-writer";
 import { aplicarPagoAprobado } from "./payments-service";
+import { abrirPorAnulacionDeWompi } from "./reversas-service";
 
 // ═══ EL COTEJO CON WOMPI (Bloque 3b, sesion 3) ═══
 //
@@ -124,6 +125,16 @@ export async function cotejarConWompi(opciones?: {
   }
 
   for (const d of discrepancias) {
+    // SI WOMPI DA POR ANULADA UNA VENTA QUE AQUI ESTA PAGADA, se abre la reversa (Bloque 3b, sesion 1). Esta es
+    // la via que sirve cuando el aviso de Wompi NO llego; cuando llega, el webhook ya la abre. El sondeo del
+    // 2026-09-16 confirmo que el listado trae tambien las anuladas y las rechazadas, sin lo cual esto no
+    // existiria.
+    if (d.motivo.includes("Wompi dice")) {
+      const estado = d.motivo.split("Wompi dice ")[1]?.replace(".", "") ?? "VOIDED";
+      await abrirPorAnulacionDeWompi(d.ventaId, estado, d.wompiId).catch((e: unknown) =>
+        Sentry.captureException(e, { tags: { area: "cotejo-wompi", transactionId: d.ventaId } }),
+      );
+    }
     Sentry.captureMessage(`Cotejo con Wompi: ${d.motivo}`, {
       level: "error",
       tags: { area: "cotejo-wompi", transactionId: d.ventaId },

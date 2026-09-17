@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { conLimite } from "@/lib/observability/con-limite";
 import { CotejoConWompi } from "@/modules/payments/components/cotejo-con-wompi";
+import { ReversasDeVenta } from "@/modules/payments/components/reversas-de-venta";
+import { listarReversas } from "@/modules/payments/data/reversas-writer";
 import { ultimaCorrida } from "@/modules/payments/data/conciliacion-repository";
 
 import { Badge } from "@/components/ui/badge";
@@ -169,6 +171,7 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
         conLimite("pagos.efectivos-no-recibidos", listarEfectivosNoRecibidos, []),
         conLimite("pagos.dias-con-ventas-sin-cerrar", contarVentasSinDocumentoPorDia, []),
         conLimite("pagos.pendientes-de-accion", listarPendientesDeAccion, []),
+        conLimite("pagos.reversas", listarReversas, []),
       ])
     : [];
   // El cotejo con Wompi lo ve quien responde por el dinero (no soporte): recuperar un pago sella ingreso,
@@ -179,6 +182,7 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   const efectivosNoRecibidos = paneles[2]?.dato ?? [];
   const sinDocumentoPorDia = paneles[3]?.dato ?? [];
   const pendientes = paneles[4]?.dato ?? [];
+  const reversas = paneles[5]?.dato ?? [];
   const algoNoCargo = transacciones.fallo || perfil.fallo || paneles.some((p) => p.fallo);
   // El "en gestion" VIGENTE (hasta hoy o despues) de cada pendiente. Uno vencido ya no se muestra como en gestion.
   const hoyBogota = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
@@ -266,6 +270,9 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
 
       {/* VA ANTES DE LA LISTA DE TRANSACCIONES a proposito: es lo que hay que mirar y resolver, y al
           final de la pagina no lo mira nadie. Contabilidad lo quiere en CERO al cierre de cada dia. */}
+      {verPaneles && reversas.length > 0 ? (
+        <ReversasDeVenta reversas={reversas} puedeResolver={canView} enGestion={enGestion} />
+      ) : null}
       {verPaneles && (
         <VentasPorRevisar
           ventas={ventasPorRevisar}
@@ -318,6 +325,11 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
                         </div>
                       ) : null}
                       <EntregaDeLaVenta tx={tx} puedeEntregar={canDeliverSale(user, tx, perfilPropio)} />
+                      {/* EL CONTRACARGO LLEGA POR CORREO DE WOMPI, no por Atlas: por eso se registra desde la
+                          venta. Solo sobre una pagada de Wompi, que es la unica que el banco puede devolver. */}
+                      {canView && tx.status === "paid" && tx.payment_method === "wompi" ? (
+                        <AccionDeVentaButton transactionId={tx.id} tipo="contracargo" />
+                      ) : null}
                     </div>
                     <TxStatusBadge tx={tx} />
                   </div>

@@ -6,7 +6,7 @@ const dbUuid = z.guid();
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
 
 export const enGestionSchema = z.object({
-  tipo: z.enum(["revision", "sin_documento", "nota_credito"]),
+  tipo: z.enum(["revision", "sin_documento", "nota_credito", "reversa"]),
   transactionId: dbUuid,
   nota: z.string().trim().min(5, "Escribe en una frase qué se está haciendo.").max(500),
   hasta: z.string().regex(DIA, "Elige hasta qué fecha."),

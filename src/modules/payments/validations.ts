@@ -127,3 +127,35 @@ export type RetryFormState = {
   success: string | null;
   warning: string | null;
 };
+
+// ═══ LAS REVERSAS (Bloque 3b, sesion 1) ═══
+
+// Abrir un contracargo: la referencia de la disputa, lo que el banco debito de VERDAD (casi nunca es el monto
+// de la venta: suele traer la cuota de manejo de la disputa) y la fecha del debito, que puede no saberse aun.
+export const abrirContracargoSchema = z.object({
+  transactionId: dbUuid,
+  referencia: z.string().trim().min(2, "Escribe la referencia de la disputa.").max(120),
+  montoDebitado: z
+    .string()
+    .trim()
+    .min(1, "Escribe el monto que debitó el banco.")
+    .refine((v) => Number.isFinite(Number(v)) && Number(v) > 0, "El monto debitado tiene que ser un número mayor que cero."),
+  debitadoEn: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha del débito no es válida.")
+    .optional()
+    .or(z.literal("")),
+});
+
+// Resolver la disputa: quien la resuelve deja la referencia de la respuesta del banco, porque esa transicion
+// mueve dinero (contabilidad, 2026-09-16: el mismo criterio de la lista de revision).
+export const resolverReversaSchema = z.object({
+  reversaId: dbUuid,
+  referencia: z.string().trim().min(2, "Escribe la referencia de la respuesta del banco.").max(120),
+});
+
+export const notaCreditoDeReversaSchema = z.object({
+  reversaId: dbUuid,
+  numero: z.string().trim().min(2, "Escribe el número de la nota crédito.").max(60),
+});

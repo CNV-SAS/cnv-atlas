@@ -23,7 +23,7 @@ export function EnGestionForm({
   transactionId,
   vigente,
 }: {
-  tipo: "revision" | "sin_documento" | "nota_credito";
+  tipo: "revision" | "sin_documento" | "nota_credito" | "reversa";
   transactionId: string;
   vigente: EnGestionVigente;
 }) {
