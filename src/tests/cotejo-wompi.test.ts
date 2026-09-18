@@ -207,3 +207,15 @@ describe("el aviso de lo que no cuadra", () => {
     expect(resumirDiscrepancias([d(), d({ ventaId: "v-2", motivo: "Wompi aprobó 990000 centavos y la venta dice 1190000." })])).toHaveLength(2);
   });
 });
+
+describe("nombrar la venta cuando no hay monto", () => {
+  it("una corrida vieja, sin monto ni fecha, se nombra por su id corto y no como 'una venta'", async () => {
+    const { resumirDiscrepancias } = await import("@/modules/payments/conciliacion");
+    const [linea] = resumirDiscrepancias([
+      { ventaId: "6adedaa4-aa9b-4f5d-ba72-7198b63237b3", wompiId: "w-1", motivo: "Atlas la tiene pagada y Wompi dice VOIDED." },
+      { ventaId: "b519e1a8-36af-49d9-a4b0-8f1fe469ef93", wompiId: "w-2", motivo: "Atlas la tiene pagada y Wompi dice VOIDED." },
+    ]);
+    expect(linea, "decia 'una venta y una venta', que no le sirve a nadie").not.toContain("una venta");
+    expect(linea).toContain("la venta 6adedaa4 y la venta b519e1a8");
+  });
+});

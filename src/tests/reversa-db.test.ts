@@ -142,7 +142,10 @@ describe.skipIf(!HAS_DB)("las reversas de venta (BD real)", () => {
     const { abrirPorAnulacionDeWompi } = await import("@/modules/payments/services/reversas-service");
     const { db } = await import("@/db");
     const pagada = await ventaPagada();
-    expect(await abrirPorAnulacionDeWompi(pagada, "VOIDED", "wompi-1"), "hasta hoy esto se ignoraba en silencio").toBe(true);
+    expect(await abrirPorAnulacionDeWompi(pagada, "VOIDED", "wompi-1"), "hasta hoy esto se ignoraba en silencio").toBe("abierta");
+    // Y LA SEGUNDA VEZ NO ES NOTICIA: el cotejo ve la misma venta cada dia hasta que alguien la resuelva, y
+    // alertar en cada corrida hace crecer el error hasta que deja de significar algo.
+    expect(await abrirPorAnulacionDeWompi(pagada, "VOIDED", "wompi-1")).toBe("ya_estaba");
     const [r] = await db.execute<{ kind: string; state: string }>(dsql`
       select kind, state from sale_reversals where transaction_id = ${pagada}`);
     expect(r).toMatchObject({ kind: "anulacion_wompi", state: "abierta" });
@@ -153,7 +156,7 @@ describe.skipIf(!HAS_DB)("las reversas de venta (BD real)", () => {
                                 idempotency_key, alegra_invoice_state)
       values (${id}, ${orgId}, 'pending', '90000', 'COP', 'wompi', 'test', ${`rev-v-${id}`}, 'pendiente')`);
     creadas.push(id);
-    expect(await abrirPorAnulacionDeWompi(id, "DECLINED", "wompi-2"), "un rechazo normal no es una reversa").toBe(false);
+    expect(await abrirPorAnulacionDeWompi(id, "DECLINED", "wompi-2"), "un rechazo normal no es una reversa").toBe("no_aplica");
   });
 
   it("LA REVERSA ENTRA EN LA COLA DE PENDIENTES del Bloque A, con su plazo", async () => {

@@ -127,6 +127,10 @@ export async function cotejarConWompi(opciones?: {
   }
 
   const reversasAbiertas: string[] = [];
+  // Las que ya tenian su caso abierto: se siguen mostrando en pantalla, pero NO se vuelven a alertar. El cotejo
+  // corre cada dia y las ve otra vez hasta que alguien las resuelva; alertar cada vez hace crecer el error hasta
+  // que deja de significar algo (Santiago, 2026-09-18).
+  const yaAvisadas = new Set<string>();
   for (const d of discrepancias) {
     // SI WOMPI DA POR ANULADA UNA VENTA QUE AQUI ESTA PAGADA, se abre la reversa (Bloque 3b, sesion 1). Esta es
     // la via que sirve cuando el aviso de Wompi NO llego, que es SIEMPRE para las anulaciones: el smoke del
@@ -135,9 +139,13 @@ export async function cotejarConWompi(opciones?: {
     if (d.motivo.includes("Wompi dice")) {
       const estado = d.motivo.split("Wompi dice ")[1]?.replace(".", "") ?? "VOIDED";
       try {
-        if (await abrirPorAnulacionDeWompi(d.ventaId, estado, d.wompiId)) {
+        const desenlace = await abrirPorAnulacionDeWompi(d.ventaId, estado, d.wompiId);
+        if (desenlace === "abierta") {
           reversasAbiertas.push(d.ventaId);
           d.motivo = `${d.motivo} Se abrió el caso para resolverlo.`;
+        } else if (desenlace === "ya_estaba") {
+          yaAvisadas.add(d.ventaId);
+          d.motivo = `${d.motivo} Su caso ya está abierto en el panel.`;
         }
       } catch (e) {
         // NO SE QUEDA SOLO EN SENTRY (smoke del 2026-09-17): el cotejo dijo "1 no cuadra" y nadie supo que el
@@ -146,10 +154,12 @@ export async function cotejarConWompi(opciones?: {
         d.motivo = `${d.motivo} NO se pudo abrir el caso: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300);
       }
     }
-    Sentry.captureMessage(`Cotejo con Wompi: ${d.motivo}`, {
-      level: "error",
-      tags: { area: "cotejo-wompi", transactionId: d.ventaId },
-    });
+    if (!yaAvisadas.has(d.ventaId)) {
+      Sentry.captureMessage(`Cotejo con Wompi: ${d.motivo}`, {
+        level: "error",
+        tags: { area: "cotejo-wompi", transactionId: d.ventaId },
+      });
+    }
   }
 
   await repo.registrarCorrida({ desde, hasta, ambiente, origen, actorId, revisadas: ventas.length, recuperadas, discrepancias, falloPor: null });

@@ -43,13 +43,20 @@ export async function abrirContracargo(e: AperturaManual): Promise<{ id: string 
  * EL `VOIDED` SOBRE UNA VENTA YA PAGADA, que hasta hoy se ignoraba en silencio: el webhook lo marcaba procesado y
  * no hacia nada, con la factura viva, el inventario descontado y la comision sellada.
  *
- * Devuelve `true` si abrio (o ya habia) una reversa, es decir, si la venta estaba PAGADA. Si no lo estaba, no es
- * una reversa: es el rechazo normal de un link que nadie llego a pagar, y lo maneja quien llama.
+ * Distingue TRES desenlaces, y la diferencia importa: "abierta" es noticia y alerta; "ya_estaba" es el cotejo
+ * volviendo a ver el mismo caso cada dia, y ahi callar es lo correcto; "no_aplica" es el rechazo normal de un
+ * link que nadie llego a pagar, que no es una reversa y lo maneja quien llama.
  */
-export async function abrirPorAnulacionDeWompi(txId: string, estadoEnWompi: string, wompiTxId: string | null): Promise<boolean> {
+export type DesenlaceDeAnulacion = "abierta" | "ya_estaba" | "no_aplica";
+
+export async function abrirPorAnulacionDeWompi(
+  txId: string,
+  estadoEnWompi: string,
+  wompiTxId: string | null,
+): Promise<DesenlaceDeAnulacion> {
   const [venta] = await db.execute<{ status: string }>(sql`
     select status::text as status from transactions where id = ${txId}`);
-  if (!venta || venta.status !== "paid") return false;
+  if (!venta || venta.status !== "paid") return "no_aplica";
 
   const id = await writer.abrirReversa({
     transactionId: txId,
@@ -60,13 +67,17 @@ export async function abrirPorAnulacionDeWompi(txId: string, estadoEnWompi: stri
     nota: `Wompi reportó la transacción como ${estadoEnWompi} sobre una venta que aquí estaba pagada.`,
     actorId: null,
   });
-  // NIVEL ERROR a proposito: el dinero de una venta ya facturada dejo de estar, y eso necesita a alguien HOY.
-  Sentry.captureMessage(`Wompi reportó ${estadoEnWompi} sobre una venta pagada: se abrió una reversa`, {
-    level: "error",
-    tags: { area: "reversa-de-venta", transactionId: txId },
-    extra: { yaHabiaUna: id === null },
-  });
-  return true;
+  // SOLO AL ABRIRLO (Santiago, 2026-09-18). El cotejo vuelve a ver la misma venta cada dia hasta que se resuelva,
+  // y alertar en cada corrida hace crecer el error sin parar hasta que deja de significar algo. Nivel ERROR
+  // cuando SI es nuevo: el dinero de una venta ya facturada dejo de estar, y eso necesita a alguien hoy.
+  if (id) {
+    Sentry.captureMessage(`Wompi reportó ${estadoEnWompi} sobre una venta pagada: se abrió una reversa`, {
+      level: "error",
+      tags: { area: "reversa-de-venta", transactionId: txId },
+      extra: { referenciaDeWompi: wompiTxId },
+    });
+  }
+  return id ? "abierta" : "ya_estaba";
 }
 
 export async function resolverReversa(e: {
