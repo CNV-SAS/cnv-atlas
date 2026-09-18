@@ -150,3 +150,27 @@ describe("el cliente de consulta de Wompi", () => {
     expect(llamadas, "no deberia ni intentarlo").toEqual([]);
   });
 });
+
+describe("la anulación que Wompi hace sobre una venta ya pagada", () => {
+  it("SE DETECTA AUNQUE HAYA OTRO INTENTO APROBADO, mirando la transaccion que pago (smoke del 2026-09-17)", () => {
+    const pagada = venta({ estado: "pagada", wompiId: "w-la-que-pago" });
+    const r = cotejar(
+      [pagada],
+      [fila({ id: "w-la-que-pago", status: "VOIDED" }), fila({ id: "w-otro-intento", status: "APPROVED" })],
+    );
+    expect(r.discrepancias, "con otra aprobada del mismo link, la anulacion pasaba en silencio").toEqual([
+      { ventaId: "venta-1", wompiId: "w-la-que-pago", motivo: "Atlas la tiene pagada y Wompi dice VOIDED." },
+    ]);
+  });
+
+  it("CONTROL: si la anulada es OTRA transaccion y la que pago sigue aprobada, no se reporta nada", () => {
+    const pagada = venta({ estado: "pagada", wompiId: "w-la-que-pago" });
+    const r = cotejar([pagada], [fila({ id: "w-la-que-pago" }), fila({ id: "w-un-intento-viejo", status: "VOIDED" })]);
+    expect(r.discrepancias).toEqual([]);
+  });
+
+  it("sin saber cual transaccion pago (ventas viejas), se cae a la regla anterior", () => {
+    const r = cotejar([venta({ estado: "pagada", wompiId: null })], [fila({ status: "VOIDED" })]);
+    expect(r.discrepancias).toHaveLength(1);
+  });
+});

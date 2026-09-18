@@ -54,7 +54,7 @@ En **/pagos**, en esa venta de la lista de **Transacciones**:
 Repite el paso 1 con **otra** venta pagada, ábrele el contracargo (paso 2) y ahora:
 
 - [ ] **Se perdió la disputa**, con la referencia `BANCO-EN-CONTRA`. **Debe dar:** *Disputa perdida. Se revirtieron el ingreso y la comisión, y queda pendiente la nota crédito manual en Alegra, POR EL VALOR DE LA VENTA.*
-- [ ] **En Dirección, el ingreso de esa venta desaparece de las cifras**, y la comisión del Integrante también. La factura sigue existiendo: lo que la anula es la nota crédito que hace contabilidad.
+- [ ] **En Dirección desaparecen las TRES cifras de esa venta**: el ingreso bruto (con un pago menos), el ingreso de CNV y la comisión del Integrante. La factura sigue existiendo en Alegra: lo que la anula es la nota crédito que emite contabilidad.
 - [ ] El panel muestra **Disputa perdida** y pide el número de la nota crédito.
 - [ ] En el correo, esa venta aparece ahora como *Disputa perdida: falta la nota crédito manual en Alegra*, con **5 días hábiles desde hoy** (no desde que se abrió).
 - [ ] Escribe un número de prueba (`NC-SMOKE`) en **Registrar la nota crédito**. **Debe dar:** *Nota crédito registrada. El caso queda cerrado*, y el pendiente desaparece.
@@ -62,6 +62,8 @@ Repite el paso 1 con **otra** venta pagada, ábrele el contracargo (paso 2) y ah
 > **Ojo con lo que significa:** en producción ese número lo escribe Dirección **después** de que contabilidad emita la nota crédito en Alegra, por el **valor de la venta**, nunca por el débito total. La cuota de la disputa y la comisión de Wompi son gasto, no menor ingreso.
 
 ## 6. La anulación que antes pasaba en silencio
+
+> **Corregido el 2026-09-17, tras el primer intento.** Anular en Wompi no hizo nada en Atlas. Antes de repetirlo, pega `scripts/revision-anulaciones-de-wompi.sql` en el editor SQL de Supabase (solo lee) y pásame el resultado: dice si Wompi mandó el aviso de la anulación y con qué estado. Si no lo mandó, el camino que queda es el cotejo diario, y hay que correrlo a mano (`Buscar pagos sin registrar`) para ver si detecta la anulación.
 
 Esta es la parte que no se puede provocar desde Atlas: necesita que Wompi anule un pago aprobado. Si no tienes cómo hacerlo en el panel de Wompi sandbox, **sáltalo y dímelo**: queda cubierto por el candado `reversa-db`.
 

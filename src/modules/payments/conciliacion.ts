@@ -17,6 +17,8 @@ export type VentaDeAtlas = {
   estado: EstadoEnAtlas;
   /** El monto de Atlas, en pesos, como lo guarda la venta. */
   monto: string;
+  /** La transaccion de Wompi con la que se sello el pago, si Atlas la sabe. */
+  wompiId?: string | null;
 };
 
 export type FilaDeWompi = {
@@ -115,8 +117,15 @@ export function cotejar(ventas: VentaDeAtlas[], filas: FilaDeWompi[]): Cotejo {
 
     // La venta esta PAGADA en Atlas. Si Wompi dice otra cosa, el dinero se fue: es el contracargo o la anulacion
     // de la sesion 1. Aqui solo se anota y se avisa; revertir es de esa sesion.
-    const contradice = suyas.find((f) => CONTRADICEN.has(f.status));
-    if (contradice && !aprobada) {
+    //
+    // SE MIRA LA TRANSACCION QUE PAGO, no "que no haya ninguna aprobada" (smoke del 2026-09-17): al anular, Wompi
+    // deja la fila con estado VOIDED, y si ademas hubiera otro intento aprobado del mismo link, la version
+    // anterior daba la anulacion por buena y no avisaba. Cuando Atlas sabe cual fue su transaccion, esa manda;
+    // cuando no (ventas viejas, sin el id guardado), se cae a la regla anterior.
+    const contradice = venta.wompiId
+      ? suyas.find((f) => f.id === venta.wompiId && CONTRADICEN.has(f.status))
+      : suyas.find((f) => CONTRADICEN.has(f.status)) ?? null;
+    if (contradice && (venta.wompiId || !aprobada)) {
       discrepancias.push({
         ventaId: venta.id,
         wompiId: contradice.id,
