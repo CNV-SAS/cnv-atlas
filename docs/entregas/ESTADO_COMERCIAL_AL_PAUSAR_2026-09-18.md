@@ -32,6 +32,14 @@ Lo comercial se pausa aquí para pulir el flujo científico, que es lo que Gilda
 - **La retención de Wompi en un contracargo:** verificar si se ajusta en el desembolso o queda a favor de CNV.
 - **Supabase Pro y Vercel Pro**, antes del primer Integrante (ver `LANZAMIENTO.md`). Vercel Pro es necesario por licencia: Hobby prohíbe el uso comercial.
 
+## OJO: lo que hay en la nube es RESIDUO DEL SMOKE, no operación
+
+Quien retome esto dentro de un mes se va a encontrar cosas que parecen reales y no lo son:
+
+- **Dos reversas abiertas** (`anulacion_wompi`, del 17 y del 18 de septiembre, 11.900 cada una): son las anulaciones que se hicieron **a propósito** en Wompi sandbox para probar la sesión 1. **No son contracargos reales.** Se cierran resolviéndolas, o se van con la purga.
+- **El producto "PRUEBA SMOKE BLOQUE 3" quedó sin retirar**, con su saldo y su mapa a Alegra, porque el smoke se interrumpió antes de la limpieza. Se retira con `scripts/smoke-bloque3-retirar.sql`.
+- **Las ventas de prueba** siguen en la base hasta la purga que se hace después de la venta controlada del 2b.
+
 ## Dos cosas que van a seguir pasando mientras esté pausado
 
 - **El correo de las 7 a. m. llega todos los días** con la venta del **12/9** como vencida (paciente real que no se factura contra sandbox). Se va con la purga de ventas de prueba, que se hace después de la venta controlada del 2b.
