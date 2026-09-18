@@ -327,8 +327,8 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
     // ANULAR UNA VENTA YA PAGADA NO ES UN RECHAZO, ES UNA REVERSA (Bloque 3b, sesion 1). Hasta ahora este
     // camino marcaba el evento como procesado y no hacia nada cuando la venta estaba pagada: la factura seguia
     // viva, el inventario descontado y la comision sellada, sin que nadie se enterara.
-    const esReversa = await abrirPorAnulacionDeWompi(txId, tx.status, wompiTxId);
-    if (!esReversa) {
+    const desenlace = await abrirPorAnulacionDeWompi(txId, tx.status, wompiTxId);
+    if (desenlace === "no_aplica") {
       await markTransactionFailed(txId, wompiTxId);
       // El pago no se hizo: sus unidades vuelven a estar disponibles. Solo actua si la venta quedo `failed`.
       await liberarReservasDeVenta(txId);

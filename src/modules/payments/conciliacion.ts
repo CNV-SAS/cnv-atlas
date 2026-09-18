@@ -62,7 +62,10 @@ export function resumirDiscrepancias(ds: Discrepancia[], tope = 3): string[] {
     const nombradas = dels
       .slice(0, tope)
       .map((d) => {
-        const monto = d.monto ? `${Number(d.monto).toLocaleString("es-CO")} COP` : "una venta";
+        // SIN MONTO NI FECHA (corridas anteriores al 2026-09-18, que no los guardaban), se nombra por el id
+        // corto: "una venta y una venta" no le sirve a nadie, y era lo que decia.
+        if (!d.monto) return `la venta ${d.ventaId.slice(0, 8)}`;
+        const monto = `${Number(d.monto).toLocaleString("es-CO")} COP`;
         return d.cuando ? `${monto} del ${formatDateTime(d.cuando)}` : monto;
       })
       .join(" y ");

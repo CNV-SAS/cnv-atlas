@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // VOIDED sobre una venta PAGADA abra el caso se prueba contra base real en `reversa-db`.
 vi.mock("server-only", () => ({}));
 vi.mock("../modules/payments/services/reversas-service", () => ({
-  abrirPorAnulacionDeWompi: vi.fn(async () => false),
+  abrirPorAnulacionDeWompi: vi.fn(async () => "no_aplica"),
 }));
 vi.mock("../modules/payments/data/payments-writer", () => ({
   createTransactionWithItems: vi.fn(),

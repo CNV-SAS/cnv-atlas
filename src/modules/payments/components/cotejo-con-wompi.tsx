@@ -46,7 +46,7 @@ export function CotejoConWompi({ ultima }: { ultima: UltimaCorrida | null }) {
           Última revisión: {formatDateTime(ultima.ranAt)} ({ultima.origen === "tarea" ? "automática" : "a mano"}).{" "}
           {ultima.falloPor
             ? `No se pudo consultar: ${ultima.falloPor}`
-            : `${ultima.revisadas} venta${ultima.revisadas === 1 ? "" : "s"} revisada${ultima.revisadas === 1 ? "" : "s"}, ${ultima.recuperadas} recuperada${ultima.recuperadas === 1 ? "" : "s"}${ultima.discrepancias > 0 ? `, ${ultima.discrepancias} sin cuadrar` : ""}.`}
+            : `${ultima.revisadas} venta${ultima.revisadas === 1 ? "" : "s"} revisada${ultima.revisadas === 1 ? "" : "s"}, ${ultima.recuperadas} recuperada${ultima.recuperadas === 1 ? "" : "s"}${ultima.discrepancias > 0 ? `, ${ultima.discrepancias} con novedad` : ""}.`}
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">Todavía no se ha hecho ninguna revisión.</p>
