@@ -33,6 +33,8 @@ export type ResultadoDelCotejo = {
   recuperadas: string[];
   yaEstaban: number;
   discrepancias: Discrepancia[];
+  /** Las ventas para las que el cotejo abrio un caso de contracargo o anulacion. */
+  reversasAbiertas: string[];
   falloPor: string | null;
 };
 
@@ -51,10 +53,10 @@ export async function cotejarConWompi(opciones?: {
   if (!ambiente) {
     const falloPor = "Falta WOMPI_PRIVATE_KEY: sin ella no se puede preguntar a Wompi.";
     Sentry.captureMessage(falloPor, { level: "error", tags: { area: "cotejo-wompi" } });
-    return { ambiente: "test", revisadas: 0, recuperadas: [], yaEstaban: 0, discrepancias: [], falloPor };
+    return { ambiente: "test", revisadas: 0, recuperadas: [], yaEstaban: 0, discrepancias: [], reversasAbiertas: [], falloPor };
   }
 
-  const vacio = { ambiente, revisadas: 0, recuperadas: [] as string[], yaEstaban: 0, discrepancias: [] as Discrepancia[] };
+  const vacio = { ambiente, revisadas: 0, recuperadas: [] as string[], yaEstaban: 0, discrepancias: [] as Discrepancia[], reversasAbiertas: [] as string[] };
   const ventas = await repo.ventasParaCotejar(desde, ambiente);
   if (ventas.length === 0) {
     await repo.registrarCorrida({ desde, hasta, ambiente, origen, actorId, revisadas: 0, recuperadas: [], discrepancias: [], falloPor: null });
@@ -124,16 +126,25 @@ export async function cotejarConWompi(opciones?: {
     }
   }
 
+  const reversasAbiertas: string[] = [];
   for (const d of discrepancias) {
     // SI WOMPI DA POR ANULADA UNA VENTA QUE AQUI ESTA PAGADA, se abre la reversa (Bloque 3b, sesion 1). Esta es
-    // la via que sirve cuando el aviso de Wompi NO llego; cuando llega, el webhook ya la abre. El sondeo del
-    // 2026-09-16 confirmo que el listado trae tambien las anuladas y las rechazadas, sin lo cual esto no
-    // existiria.
+    // la via que sirve cuando el aviso de Wompi NO llego, que es SIEMPRE para las anulaciones: el smoke del
+    // 2026-09-17 confirmo que Wompi no manda ningun evento al anular. El listado si las trae, y por eso esto
+    // existe.
     if (d.motivo.includes("Wompi dice")) {
       const estado = d.motivo.split("Wompi dice ")[1]?.replace(".", "") ?? "VOIDED";
-      await abrirPorAnulacionDeWompi(d.ventaId, estado, d.wompiId).catch((e: unknown) =>
-        Sentry.captureException(e, { tags: { area: "cotejo-wompi", transactionId: d.ventaId } }),
-      );
+      try {
+        if (await abrirPorAnulacionDeWompi(d.ventaId, estado, d.wompiId)) {
+          reversasAbiertas.push(d.ventaId);
+          d.motivo = `${d.motivo} Se abrió el caso para resolverlo.`;
+        }
+      } catch (e) {
+        // NO SE QUEDA SOLO EN SENTRY (smoke del 2026-09-17): el cotejo dijo "1 no cuadra" y nadie supo que el
+        // caso no se habia abierto. El motivo viaja a la pantalla y al rastro de la corrida.
+        Sentry.captureException(e, { tags: { area: "cotejo-wompi", transactionId: d.ventaId } });
+        d.motivo = `${d.motivo} NO se pudo abrir el caso: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300);
+      }
     }
     Sentry.captureMessage(`Cotejo con Wompi: ${d.motivo}`, {
       level: "error",
@@ -142,5 +153,5 @@ export async function cotejarConWompi(opciones?: {
   }
 
   await repo.registrarCorrida({ desde, hasta, ambiente, origen, actorId, revisadas: ventas.length, recuperadas, discrepancias, falloPor: null });
-  return { ambiente, revisadas: ventas.length, recuperadas, yaEstaban, discrepancias, falloPor: null };
+  return { ambiente, revisadas: ventas.length, recuperadas, yaEstaban, discrepancias, reversasAbiertas, falloPor: null };
 }

@@ -463,10 +463,13 @@ export async function cotejarConWompiAction(
     const r = await cotejarConWompi({ origen: "manual", actorId: user.id });
     if (r.falloPor) return { error: `No se pudo consultar a Wompi: ${r.falloPor}`, success: null, warning: null };
     if (r.discrepancias.length > 0) {
+      // CON EL MOTIVO, NO SOLO EL NUMERO (smoke del 2026-09-17): "1 no cuadra" sin decir cual ni por que no le
+      // sirve a quien tiene que resolverlo. El detalle completo queda ademas en el panel, bajo la ultima revisión.
+      const detalle = r.discrepancias.slice(0, 3).map((d) => d.motivo).join(" · ");
       return {
         error: null,
         success: null,
-        warning: `Se revisaron ${r.revisadas} ventas y ${r.discrepancias.length} no cuadran: quedaron reportadas y NO se sellaron. ${r.recuperadas.length > 0 ? `Se recuperaron ${r.recuperadas.length}.` : ""}`.trim(),
+        warning: `${r.discrepancias.length} de las ${r.revisadas} ventas revisadas no cuadran: ${detalle}${r.discrepancias.length > 3 ? " (y más, en el panel)" : ""}`,
       };
     }
     return {

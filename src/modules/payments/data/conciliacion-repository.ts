@@ -69,8 +69,11 @@ export async function ultimaCorrida(): Promise<UltimaCorrida | null> {
     recovered: number;
     mismatched: number;
     failed_reason: string | null;
+    motivos: string[] | null;
   }>(sql`
-    select ran_at::text as ran_at, origin, checked, recovered, mismatched, failed_reason
+    select ran_at::text as ran_at, origin, checked, recovered, mismatched, failed_reason,
+           -- LOS MOTIVOS A LA PANTALLA: una discrepancia reportada que nadie sabe cual es no sirve de nada.
+           array(select d->>'motivo' from jsonb_array_elements(coalesce(detail->'discrepancias', '[]'::jsonb)) d) as motivos
       from payment_reconciliation_runs order by ran_at desc limit 1`);
   return f
     ? {
@@ -79,6 +82,7 @@ export async function ultimaCorrida(): Promise<UltimaCorrida | null> {
         revisadas: Number(f.checked),
         recuperadas: Number(f.recovered),
         discrepancias: Number(f.mismatched),
+        motivos: f.motivos ?? [],
         falloPor: f.failed_reason,
       }
     : null;

@@ -139,6 +139,32 @@ describe.skipIf(!HAS_DB)("el cotejo con Wompi (BD real)", () => {
     expect(u!.falloPor).toBeNull();
   });
 
+  it("UNA VENTA PAGADA QUE WOMPI DA POR ANULADA ABRE LA REVERSA, no solo se reporta (smoke del 2026-09-17)", async () => {
+    const { cotejarConWompi } = await import("@/modules/payments/services/conciliacion-service");
+    const { db } = await import("@/db");
+    const id = await ventaEsperando("pending");
+    const wompiId = `wompi-anulada-${id.slice(0, 8)}`;
+    // La venta quedo PAGADA con esa transaccion, y Wompi la da por anulada: es lo que paso en el smoke.
+    await db.execute(dsql`update transactions set status = 'paid', wompi_transaction_id = ${wompiId} where id = ${id}`);
+    filasDeWompi = [{ ...filaAprobada(id), id: wompiId, status: "VOIDED" }];
+
+    const r = await cotejarConWompi({ origen: "manual", dias: 1 });
+    expect(r.discrepancias.map((d) => d.ventaId), "el cotejo tiene que verla").toContain(id);
+    const [rev] = await db.execute<{ kind: string; state: string }>(dsql`
+      select kind, state from sale_reversals where transaction_id = ${id}`);
+    expect(rev, "se reporto la discrepancia pero nadie abrio el caso: la venta seguia como si nada").toMatchObject({
+      kind: "anulacion_wompi",
+      state: "abierta",
+    });
+    expect(r.reversasAbiertas, "el resultado tiene que DECIR que se abrio, no dejarlo solo en Sentry").toContain(id);
+    expect(r.discrepancias.find((d) => d.ventaId === id)?.motivo).toContain("Se abrió el caso");
+    // Y el motivo queda en el rastro de la corrida, que es lo que lee la pantalla: "1 no cuadra" sin decir cual
+    // no le sirve a quien tiene que resolverlo (smoke del 2026-09-17).
+    const { ultimaCorrida } = await import("@/modules/payments/data/conciliacion-repository");
+    const u = await ultimaCorrida();
+    expect(u!.motivos.join(" ")).toContain("Wompi dice VOIDED");
+  });
+
   it("SI WOMPI NO RESPONDE, la corrida queda escrita con su motivo: el hueco no se cierra en silencio", async () => {
     vi.resetModules();
     vi.doMock("@/lib/wompi/client", () => ({
