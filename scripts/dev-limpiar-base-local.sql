@@ -54,6 +54,16 @@ begin
   get diagnostics cerradas = row_count;
 
   raise notice 'Cerradas: %. La cola queda con las de hoy, y los candados vuelven a ver lo que crean ellos.', cerradas;
+
+  -- Y EL SALDO DE LOS PRODUCTOS QUE INVENTAN LOS TESTS ("TEST VENTA <id>"): son cientos de filas de inventario de
+  -- productos que no existen para nadie, y hacen que un lector que pide "todo el inventario" se pase del tope de
+  -- 1.000 filas de PostgREST y devuelva una lista donde falta justo el producto que el candado busca. Se borra la
+  -- PROYECCION del saldo, no los movimientos, que son append-only.
+  delete from nutraceutical_inventory i
+   using nutraceuticals n
+   where n.id = i.nutraceutical_id and n.name like 'TEST VENTA %';
+  get diagnostics cerradas = row_count;
+  raise notice 'Saldos de productos inventados por los tests, borrados: %', cerradas;
 end $$;
 
 commit;

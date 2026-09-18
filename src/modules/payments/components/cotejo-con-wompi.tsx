@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
-import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
+import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format/date";
 
@@ -24,7 +24,10 @@ export function CotejoConWompi({ ultima }: { ultima: UltimaCorrida | null }) {
     success: null,
     warning: null,
   });
-  useFormToastRefreshOnSuccess(state);
+  // REFRESCA TAMBIEN CON AVISO, no solo con exito (Santiago, 2026-09-18): el toast contaba la corrida recien
+  // hecha y el bloque rojo seguia mostrando la ANTERIOR, asi que decian cosas distintas de las mismas ventas
+  // ("se abrió el caso" contra "su caso ya está abierto"). Aqui no hay nada escrito a medias que preservar.
+  useFormToastAndRefresh(state);
 
   return (
     <section className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
