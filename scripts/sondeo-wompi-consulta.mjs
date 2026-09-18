@@ -215,4 +215,25 @@ if (filas.length === 0) {
   console.log(`   Viene lleno. Claves: ${typeof d === "object" ? Object.keys(d).join(", ") : typeof d}`);
 }
 
+// ── 6. UNA REFERENCIA CONCRETA (opcional): que estado le puso Wompi de verdad ─────────────────
+//
+// Se usa asi:  node scripts/sondeo-wompi-consulta.mjs <id-de-la-venta-en-atlas>
+// Responde la pregunta abierta del 3b: al ANULAR una transaccion aprobada, ¿Wompi la deja en VOIDED o en otro
+// estado? De eso depende que el cotejo la encuentre, porque busca los estados que contradicen un pago.
+const referenciaPedida = process.argv[2];
+if (referenciaPedida) {
+  console.log("");
+  console.log("── 6. La referencia que pediste ───────────────────────────────");
+  const rRef = await pedir(`/transactions?${consulta({ ...PARAMS, reference: referenciaPedida })}`);
+  const suyas = (filasDe(rRef.cuerpo) ?? []).filter((f) => f.reference === referenciaPedida);
+  if (suyas.length === 0) {
+    console.log(`   HTTP ${rRef.status}: Wompi no tiene ninguna transaccion con esa referencia en el rango.`);
+  } else {
+    for (const f of suyas) {
+      console.log(`   ${f.id} · status=${f.status} · ${f.amount_in_cents} centavos · creada ${f.created_at} · finalizada ${f.finalized_at ?? "-"}`);
+      if (f.status_message) console.log(`     status_message: ${f.status_message}`);
+    }
+    console.log(`   ESTADOS DE ESA VENTA: ${JSON.stringify(suyas.map((f) => f.status))}`);
+  }
+}
 console.log("\nListo. Pasame esta salida tal cual.\n");

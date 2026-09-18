@@ -339,7 +339,13 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
                       ) : null}
                       {/* EL CONTRACARGO LLEGA POR CORREO DE WOMPI, no por Atlas: por eso se registra desde la
                           venta. Solo sobre una pagada de Wompi, que es la unica que el banco puede devolver. */}
-                      {canView && tx.status === "paid" && tx.payment_method === "wompi" ? (
+                      {/* Y NO SI YA TIENE UN CASO VIVO O PERDIDO (smoke del 2026-09-17): el boton seguia ahi
+                          sobre una venta cuya disputa ya se habia perdido, invitando a abrir un segundo caso que
+                          la base rechaza. Tras GANARLA si vuelve: el banco puede disputarla otra vez. */}
+                      {canView &&
+                      tx.status === "paid" &&
+                      tx.payment_method === "wompi" &&
+                      !["abierta", "perdida"].includes(reversaDe.get(tx.id)?.estado ?? "") ? (
                         <AccionDeVentaButton transactionId={tx.id} tipo="contracargo" />
                       ) : null}
                     </div>
