@@ -265,6 +265,22 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
   // correccion". Ese flujo (generar incompleto y completar despues) YA NO EXISTE: el gate impide sellar
   // un diagnostico con encuesta incompleta, asi que nunca hay un diagnostico incompleto que completar.
   // La cobertura que importa ahora es que el pipeline BLOQUEE lo incompleto y no selle nada.
+  it("EL DIAGNOSTICO NACE FIRMADO: quien lo genera queda sellado, sin un boton aparte (2026-09-18)", async () => {
+    const evaluationId = await makeEvaluationWithDiagnosis("firma");
+    const [d] = await db
+      .select({
+        confirmedBy: schema.diagnoses.confirmedBy,
+        confirmedAt: schema.diagnoses.confirmedAt,
+      })
+      .from(schema.diagnoses)
+      .where(eq(schema.diagnoses.evaluationId, evaluationId));
+    // Antes lo sellaba APROBAR EL REPORTE, y por eso 621 diagnosticos se usaron sin firma, todos con
+    // tratamiento encima. No es un "estoy de acuerdo" (el calculo es del modelo y no hay via para hacer
+    // otro): es QUIEN atendio, que es lo que hay que poder responder dentro de dos años.
+    expect(d.confirmedBy, "el diagnostico quedo sin responsable").toBe(actorId);
+    expect(d.confirmedAt).not.toBeNull();
+  });
+
   it("gate: el pipeline con encuesta INCOMPLETA bloquea y no sella (Gildardo 2026-08-13 §1)", async () => {
     const patientId = (
       await db.insert(schema.patients).values({ organizationId: orgId, documentType: "CC", documentNumber: `GATE-${Date.now()}` }).returning({ id: schema.patients.id })

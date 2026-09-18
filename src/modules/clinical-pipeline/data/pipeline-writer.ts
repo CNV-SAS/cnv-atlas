@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import {
   type EngineIndicators,
@@ -9,11 +9,13 @@ import {
   type ProtocoloSnapshot,
 } from "@/clinical-engine";
 import { db, type DbTransaction } from "@/db";
+import type { Profession } from "@/modules/auth/admin-validations";
 import {
   diagnoses,
   followupMetrics,
   followups,
   indicatorValues,
+  professionalProfiles,
   reports,
   treatmentDietGuidelines,
   treatments,
@@ -136,6 +138,16 @@ export async function writePipeline(
     await tx.insert(indicatorValues).values(indicatorRows);
 
     // 2. diagnosis (sin confirmar: el profesional confirma aguas abajo, B10).
+    // LA PROFESION SE LEE CON DRIZZLE, DENTRO DE LA MISMA TRANSACCION, y no con el lector de sesion
+    // (`getActorProfession`): ese abre un cliente de Supabase con las cookies de la peticion, y el pipeline
+    // tambien corre donde no hay peticion (los candados contra base, y cualquier camino de servidor sin
+    // sesion). Aqui solo hace falta el dato, no la identidad de quien pregunta.
+    const [perfilDelActor] = await tx
+      .select({ profession: professionalProfiles.profession })
+      .from(professionalProfiles)
+      .where(eq(professionalProfiles.profileId, input.actorId))
+      .limit(1);
+    const profesionDelActor = perfilDelActor?.profession ?? null;
     const [diagnosis] = await tx
       .insert(diagnoses)
       .values({
@@ -152,6 +164,20 @@ export async function writePipeline(
         surveyVersionId: input.surveyVersionId, // cierra la constelacion (regla 7) en la propia fila
         // Versiones de emision emergentes (Q20/C2b), set COMPLETO sellado write-once.
         emissionVersions: buildEmissionVersions(),
+        // ═══ LA FIRMA CLINICA SE SELLA AL GENERAR, SIN UN BOTON MAS (Santiago, 2026-09-18) ═══
+        //
+        // Antes la ponia APROBAR EL REPORTE, que es un documento de envio: la firma quedaba como efecto
+        // secundario de otro acto, y por eso 621 diagnosticos se usaron sin ella (todos con tratamiento
+        // encima). Y un boton propio de "confirmar" seria un boton vacio: el diagnostico lo CALCULA el
+        // modelo, y el profesional no tiene una via para hacer uno distinto. Usar Atlas ya es estar de
+        // acuerdo con sus calculos.
+        //
+        // LO QUE SE REGISTRA NO ES UN "ESTOY DE ACUERDO", ES QUIEN ATENDIO: el actor que genero (que puede
+        // ser un administrador actuando por el profesional, y por eso no se deduce de la evaluacion) y la
+        // profesion CON QUE lo hizo, sellada en el momento porque puede cambiar despues.
+        confirmedBy: input.actorId,
+        confirmedAt: sql`now()`,
+        confirmedProfession: profesionDelActor as Profession | null,
       })
       .returning({ id: diagnoses.id });
     await recordAudit(tx, {
