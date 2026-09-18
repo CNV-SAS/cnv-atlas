@@ -21,8 +21,8 @@ export type { UltimaCorrida };
  * (regla del Bloque 2a).
  */
 export async function ventasParaCotejar(desde: Date, ambiente: "test" | "produccion"): Promise<VentaDeAtlas[]> {
-  const filas = await db.execute<{ id: string; status: string; amount: string; wompi_transaction_id: string | null }>(sql`
-    select id, status, amount::text as amount, wompi_transaction_id
+  const filas = await db.execute<{ id: string; status: string; amount: string; wompi_transaction_id: string | null; created_at: string }>(sql`
+    select id, status, amount::text as amount, wompi_transaction_id, created_at::text as created_at
       from transactions
      where payment_method = 'wompi'
        and wompi_env = ${ambiente}
@@ -34,6 +34,7 @@ export async function ventasParaCotejar(desde: Date, ambiente: "test" | "producc
     estado: f.status === "paid" ? "pagada" : "esperando",
     monto: String(f.amount),
     wompiId: f.wompi_transaction_id,
+    creada: f.created_at,
   }));
 }
 
@@ -69,11 +70,11 @@ export async function ultimaCorrida(): Promise<UltimaCorrida | null> {
     recovered: number;
     mismatched: number;
     failed_reason: string | null;
-    motivos: string[] | null;
+    discrepancias_detalle: unknown;
   }>(sql`
     select ran_at::text as ran_at, origin, checked, recovered, mismatched, failed_reason,
-           -- LOS MOTIVOS A LA PANTALLA: una discrepancia reportada que nadie sabe cual es no sirve de nada.
-           array(select d->>'motivo' from jsonb_array_elements(coalesce(detail->'discrepancias', '[]'::jsonb)) d) as motivos
+           -- LAS DISCREPANCIAS COMPLETAS A LA PANTALLA: una reportada que nadie sabe cual es no sirve de nada.
+           coalesce(detail->'discrepancias', '[]'::jsonb) as discrepancias_detalle
       from payment_reconciliation_runs order by ran_at desc limit 1`);
   return f
     ? {
@@ -82,7 +83,7 @@ export async function ultimaCorrida(): Promise<UltimaCorrida | null> {
         revisadas: Number(f.checked),
         recuperadas: Number(f.recovered),
         discrepancias: Number(f.mismatched),
-        motivos: f.motivos ?? [],
+        detalle: Array.isArray(f.discrepancias_detalle) ? (f.discrepancias_detalle as Discrepancia[]) : [],
         falloPor: f.failed_reason,
       }
     : null;

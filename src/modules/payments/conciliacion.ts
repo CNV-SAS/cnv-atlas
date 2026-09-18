@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/lib/format/date";
+
 // ═══ EL COTEJO CON WOMPI: QUE HACER CON CADA VENTA (Bloque 3b, sesion 3) ═══
 //
 // Modulo PURO: recibe lo que Atlas tiene y lo que Wompi dice, y decide. Sin base, sin red, sin reloj propio.
@@ -19,6 +21,8 @@ export type VentaDeAtlas = {
   monto: string;
   /** La transaccion de Wompi con la que se sello el pago, si Atlas la sabe. */
   wompiId?: string | null;
+  /** Cuando se creo la venta, para poder nombrarla en pantalla. */
+  creada?: string | null;
 };
 
 export type FilaDeWompi = {
@@ -41,13 +45,40 @@ export type Discrepancia = {
   ventaId: string;
   wompiId: string | null;
   motivo: string;
+  /** Para poder NOMBRAR la venta en pantalla: sin esto el aviso dice "2 no cuadran" y nadie sabe cuales. */
+  monto?: string | null;
+  cuando?: string | null;
 };
+
+/**
+ * EL AVISO, AGRUPADO POR CAUSA Y CON LAS VENTAS NOMBRADAS (Santiago, 2026-09-18). Con dos casos iguales, el aviso
+ * repetia la misma frase dos veces y no decia cuales eran; con diez seria ilegible. Se agrupa por motivo, se
+ * nombran las primeras con su monto y su hora, y el resto se remite al panel, que las tiene todas.
+ */
+export function resumirDiscrepancias(ds: Discrepancia[], tope = 3): string[] {
+  const grupos = new Map<string, Discrepancia[]>();
+  for (const d of ds) grupos.set(d.motivo, [...(grupos.get(d.motivo) ?? []), d]);
+  return [...grupos.entries()].map(([motivo, dels]) => {
+    const nombradas = dels
+      .slice(0, tope)
+      .map((d) => {
+        const monto = d.monto ? `${Number(d.monto).toLocaleString("es-CO")} COP` : "una venta";
+        return d.cuando ? `${monto} del ${formatDateTime(d.cuando)}` : monto;
+      })
+      .join(" y ");
+    const resto = dels.length - Math.min(dels.length, tope);
+    const cuantas = dels.length === 1 ? "1 venta" : `${dels.length} ventas`;
+    return `${cuantas}: ${motivo} ${nombradas}${resto > 0 ? `, y ${resto} más (están en el panel)` : ""}`;
+  });
+}
 
 export type Cotejo = { recuperar: ARecuperar[]; discrepancias: Discrepancia[] };
 
 /**
  * Lo que la pantalla muestra de la ultima corrida. VIVE AQUI, en el modulo neutro, y no en el repositorio: el
- * panel es un componente cliente, y un `import type` desde un modulo `server-only` lo borra tsc sin avisar pero
+ * panel es un componente cliente, y un `import { formatDateTime } from "@/lib/format/date";
+
+import type` desde un modulo `server-only` lo borra tsc sin avisar pero
  * deja la arista viva para el bundler (CLAUDE.md, frontera A).
  */
 export type UltimaCorrida = {
@@ -56,8 +87,8 @@ export type UltimaCorrida = {
   revisadas: number;
   recuperadas: number;
   discrepancias: number;
-  /** El motivo de cada discrepancia, para que la pantalla diga CUAL no cuadro y por que. */
-  motivos: string[];
+  /** Las discrepancias de esa corrida, para que la pantalla diga CUALES no cuadraron y por que. */
+  detalle: Discrepancia[];
   falloPor: string | null;
 };
 
@@ -105,6 +136,8 @@ export function cotejar(ventas: VentaDeAtlas[], filas: FilaDeWompi[]): Cotejo {
           ventaId: venta.id,
           wompiId: aprobada.id,
           motivo: `Wompi aprobó ${aprobada.amount_in_cents ?? "?"} centavos y la venta dice ${esperado ?? "?"}. No se selló: revísala a mano.`,
+          monto: venta.monto,
+          cuando: venta.creada ?? null,
         });
         continue;
       }
@@ -132,6 +165,8 @@ export function cotejar(ventas: VentaDeAtlas[], filas: FilaDeWompi[]): Cotejo {
         ventaId: venta.id,
         wompiId: contradice.id,
         motivo: `Atlas la tiene pagada y Wompi dice ${contradice.status}.`,
+        monto: venta.monto,
+        cuando: venta.creada ?? null,
       });
     }
   }

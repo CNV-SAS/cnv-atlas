@@ -16,6 +16,7 @@ import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { canDeliverSale } from "./policies/can-deliver-sale";
 import { canViewRevenue } from "./policies/can-view-revenue";
+import { resumirDiscrepancias } from "./conciliacion";
 import { cotejarConWompi } from "./services/conciliacion-service";
 import { abrirContracargo, registrarNotaCreditoDeReversa, resolverReversa } from "./services/reversas-service";
 import { ReversaError } from "./data/reversas-writer";
@@ -465,11 +466,10 @@ export async function cotejarConWompiAction(
     if (r.discrepancias.length > 0) {
       // CON EL MOTIVO, NO SOLO EL NUMERO (smoke del 2026-09-17): "1 no cuadra" sin decir cual ni por que no le
       // sirve a quien tiene que resolverlo. El detalle completo queda ademas en el panel, bajo la ultima revisión.
-      const detalle = r.discrepancias.slice(0, 3).map((d) => d.motivo).join(" · ");
       return {
         error: null,
         success: null,
-        warning: `${r.discrepancias.length} de las ${r.revisadas} ventas revisadas no cuadran: ${detalle}${r.discrepancias.length > 3 ? " (y más, en el panel)" : ""}`,
+        warning: `De las ${r.revisadas} ventas revisadas, ${resumirDiscrepancias(r.discrepancias).join(" · ")}`,
       };
     }
     return {

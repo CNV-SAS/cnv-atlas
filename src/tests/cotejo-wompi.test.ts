@@ -70,7 +70,7 @@ describe("lo que el cotejo solo ANOTA, sin tocar", () => {
     const r = cotejar([venta({ estado: "pagada" })], [fila({ status: "VOIDED" })]);
     expect(r.recuperar).toEqual([]);
     expect(r.discrepancias).toEqual([
-      { ventaId: "venta-1", wompiId: "wompi-1", motivo: "Atlas la tiene pagada y Wompi dice VOIDED." },
+      { ventaId: "venta-1", wompiId: "wompi-1", motivo: "Atlas la tiene pagada y Wompi dice VOIDED.", monto: "11900", cuando: null },
     ]);
   });
 
@@ -159,7 +159,7 @@ describe("la anulación que Wompi hace sobre una venta ya pagada", () => {
       [fila({ id: "w-la-que-pago", status: "VOIDED" }), fila({ id: "w-otro-intento", status: "APPROVED" })],
     );
     expect(r.discrepancias, "con otra aprobada del mismo link, la anulacion pasaba en silencio").toEqual([
-      { ventaId: "venta-1", wompiId: "w-la-que-pago", motivo: "Atlas la tiene pagada y Wompi dice VOIDED." },
+      { ventaId: "venta-1", wompiId: "w-la-que-pago", motivo: "Atlas la tiene pagada y Wompi dice VOIDED.", monto: "11900", cuando: null },
     ]);
   });
 
@@ -172,5 +172,38 @@ describe("la anulación que Wompi hace sobre una venta ya pagada", () => {
   it("sin saber cual transaccion pago (ventas viejas), se cae a la regla anterior", () => {
     const r = cotejar([venta({ estado: "pagada", wompiId: null })], [fila({ status: "VOIDED" })]);
     expect(r.discrepancias).toHaveLength(1);
+  });
+});
+
+describe("el aviso de lo que no cuadra", () => {
+  const d = (over: Partial<import("@/modules/payments/conciliacion").Discrepancia> = {}) => ({
+    ventaId: "v-1",
+    wompiId: "w-1",
+    motivo: "Atlas la tiene pagada y Wompi dice VOIDED.",
+    monto: "11900",
+    cuando: "2026-09-18T02:07:05.000Z",
+    ...over,
+  });
+
+  it("AGRUPA POR CAUSA Y NOMBRA LAS VENTAS: con dos iguales repetia la frase y no decia cuales", async () => {
+    const { resumirDiscrepancias } = await import("@/modules/payments/conciliacion");
+    const [linea, ...resto] = resumirDiscrepancias([d(), d({ ventaId: "v-2", cuando: "2026-09-18T13:05:10.000Z" })]);
+    expect(resto, "dos veces la misma causa es UNA linea").toEqual([]);
+    expect(linea).toContain("2 ventas: Atlas la tiene pagada y Wompi dice VOIDED.");
+    expect(linea).toContain("11.900 COP del");
+    expect(linea.match(/11\.900 COP/g), "las dos, nombradas").toHaveLength(2);
+  });
+
+  it("con muchas, nombra las primeras y remite al panel: diez seria ilegible", async () => {
+    const { resumirDiscrepancias } = await import("@/modules/payments/conciliacion");
+    const muchas = Array.from({ length: 10 }, (_, i) => d({ ventaId: `v-${i}` }));
+    const [linea] = resumirDiscrepancias(muchas);
+    expect(linea).toContain("10 ventas:");
+    expect(linea).toContain("y 7 más (están en el panel)");
+  });
+
+  it("CONTROL: dos causas distintas son dos lineas", async () => {
+    const { resumirDiscrepancias } = await import("@/modules/payments/conciliacion");
+    expect(resumirDiscrepancias([d(), d({ ventaId: "v-2", motivo: "Wompi aprobó 990000 centavos y la venta dice 1190000." })])).toHaveLength(2);
   });
 });
