@@ -162,7 +162,8 @@ describe.skipIf(!HAS_DB)("el cotejo con Wompi (BD real)", () => {
     // no le sirve a quien tiene que resolverlo (smoke del 2026-09-17).
     const { ultimaCorrida } = await import("@/modules/payments/data/conciliacion-repository");
     const u = await ultimaCorrida();
-    expect(u!.motivos.join(" ")).toContain("Wompi dice VOIDED");
+    expect(u!.detalle.map((d) => d.motivo).join(" ")).toContain("Wompi dice VOIDED");
+    expect(u!.detalle[0].monto, "sin el monto y la hora, el aviso no dice CUAL venta es").toBe(MONTO);
   });
 
   it("SI WOMPI NO RESPONDE, la corrida queda escrita con su motivo: el hueco no se cierra en silencio", async () => {

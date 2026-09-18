@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format/date";
 
 import { cotejarConWompiAction } from "../actions";
-import type { UltimaCorrida } from "../conciliacion";
+import { resumirDiscrepancias, type UltimaCorrida } from "../conciliacion";
 
 // ═══ "PREGUNTARLE A WOMPI" (Bloque 3b, sesion 3) ═══
 //
@@ -51,11 +51,11 @@ export function CotejoConWompi({ ultima }: { ultima: UltimaCorrida | null }) {
       ) : (
         <p className="text-xs text-muted-foreground">Todavía no se ha hecho ninguna revisión.</p>
       )}
-      {ultima && ultima.motivos.length > 0 ? (
+      {ultima && ultima.detalle.length > 0 ? (
         <ul className="flex flex-col gap-1 rounded-md border border-destructive/30 bg-destructive/5 p-2">
-          {ultima.motivos.map((m) => (
-            <li key={m} className="text-xs text-destructive">
-              {m}
+          {resumirDiscrepancias(ultima.detalle).map((linea) => (
+            <li key={linea} className="text-xs text-destructive">
+              {linea}
             </li>
           ))}
         </ul>
