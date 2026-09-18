@@ -1,5 +1,7 @@
 # BACKLOG.md — Post-MVP de Atlas (CNV)
 
+> **ANTES DE PLANEAR SOBRE ESTE DOCUMENTO, lee `docs/BARRIDO_CIENTIFICO_2026-09-18.md`.** Ese barrido verifico contra el CODIGO lo que aqui se daba por pendiente, y varias cosas ya estaban hechas: el gate de "Otra" vacia, las nueve preguntas con "Otra", el borrador de la encuesta, el envio de la HC al paciente, P-109, los cuatro bloques de Seguimiento, el cierre de la consulta y el prompt de IA por los cinco dominios. Planear sobre una lista que envejecio fue justo el error que ese barrido corrigio.
+
 > **POR QUE ESTA LISTA SE DESACTUALIZA, y la regla que lo corta (2026-09-03).**
 >
 > Un barrido de los once ítems marcados abiertos encontró que **cinco no reflejaban el estado**: dos

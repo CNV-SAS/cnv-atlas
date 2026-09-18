@@ -1,5 +1,7 @@
 # Estado de Atlas (dónde vamos)
 
+> **ANTES DE PLANEAR SOBRE ESTE DOCUMENTO, lee `docs/BARRIDO_CIENTIFICO_2026-09-18.md`.** Ese barrido verifico contra el CODIGO lo que aqui se daba por pendiente, y varias cosas ya estaban hechas: el gate de "Otra" vacia, las nueve preguntas con "Otra", el borrador de la encuesta, el envio de la HC al paciente, P-109, los cuatro bloques de Seguimiento, el cierre de la consulta y el prompt de IA por los cinco dominios. Planear sobre una lista que envejecio fue justo el error que ese barrido corrigio.
+
 Documento para consultar cuando se pierda el hilo. Lenguaje llano, sin tecnicismos. **Se actualiza al CERRAR cada bloque, no al planearlo.** Si el bloque lo cierra Santiago en consolas (un despliegue, sembrar la nube), ese trabajo no deja un commit al que colgar la actualización, así que la regla del "mismo commit" no se dispara. **Regla complementaria: cuando un bloque lo cierra Santiago, es Claude quien actualiza este estado en el turno siguiente.** No hay commit, pero sí hay turno. (Este desfase se repitió 7 veces; esta es la mitigación de la causa raíz.)
 
 Última actualización: 2026-08-11, al cerrar el bloque de **retención en la fuente** (estado tributario del integrante + verificación del RUT + rechazo con motivo + aviso por correo).
