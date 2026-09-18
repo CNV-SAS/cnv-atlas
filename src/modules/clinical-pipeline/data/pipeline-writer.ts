@@ -175,6 +175,10 @@ export async function writePipeline(
         // LO QUE SE REGISTRA NO ES UN "ESTOY DE ACUERDO", ES QUIEN ATENDIO: el actor que genero (que puede
         // ser un administrador actuando por el profesional, y por eso no se deduce de la evaluacion) y la
         // profesion CON QUE lo hizo, sellada en el momento porque puede cambiar despues.
+        //
+        // Y "QUIEN GENERO" NO ES QUIEN PULSA UN BOTON: desde el 2026-09-09 el diagnostico se genera SOLO al
+        // entrar a la pestaña Diagnostico con la identidad confirmada y el BIS importado. El actor es quien
+        // tenia la pestaña delante, que es exactamente quien esta atendiendo.
         confirmedBy: input.actorId,
         confirmedAt: sql`now()`,
         confirmedProfession: profesionDelActor as Profession | null,
