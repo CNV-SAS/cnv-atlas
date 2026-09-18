@@ -56,6 +56,8 @@ export type UltimaCorrida = {
   revisadas: number;
   recuperadas: number;
   discrepancias: number;
+  /** El motivo de cada discrepancia, para que la pantalla diga CUAL no cuadro y por que. */
+  motivos: string[];
   falloPor: string | null;
 };
 

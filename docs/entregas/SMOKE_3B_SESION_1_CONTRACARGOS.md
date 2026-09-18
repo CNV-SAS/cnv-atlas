@@ -63,14 +63,20 @@ Repite el paso 1 con **otra** venta pagada, ábrele el contracargo (paso 2) y ah
 
 ## 6. La anulación que antes pasaba en silencio
 
-> **Corregido el 2026-09-17, tras el primer intento.** Anular en Wompi no hizo nada en Atlas. Antes de repetirlo, pega `scripts/revision-anulaciones-de-wompi.sql` en el editor SQL de Supabase (solo lee) y pásame el resultado: dice si Wompi mandó el aviso de la anulación y con qué estado. Si no lo mandó, el camino que queda es el cotejo diario, y hay que correrlo a mano (`Buscar pagos sin registrar`) para ver si detecta la anulación.
+> **VERIFICADO EL 2026-09-17, y cambia el paso: WOMPI NO AVISA AL ANULAR.** Santiago anuló una venta tres minutos después de pagarla. El único evento que llegó fue el `APPROVED` del pago, cuatro segundos después; de la anulación, nada. Consultada por su referencia, Wompi la da como `VOIDED`, y su listado trae las anuladas ({"VOIDED":3,"APPROVED":24,"DECLINED":1}).
+>
+> **Consecuencia:** para una anulación no existe el camino del webhook. El único es el **cotejo**, que por eso corre cada mañana.
 
-Esta es la parte que no se puede provocar desde Atlas: necesita que Wompi anule un pago aprobado. Si no tienes cómo hacerlo en el panel de Wompi sandbox, **sáltalo y dímelo**: queda cubierto por el candado `reversa-db`.
+1. Cobra con QR una unidad, **págala** con la 4242 y **anúlala en Wompi** (dentro de las 2 horas, sin costo).
+2. En **/pagos**, pulsa **Buscar pagos sin registrar**.
 
-Si puedes anular una transacción aprobada desde Wompi:
-
-- [ ] A los pocos minutos, en **/pagos**, aparece esa venta en el panel como **Anulada en Wompi · Disputa abierta**, abierta *por Atlas, desde Wompi*.
+- [ ] **Debe dar:** un aviso naranja que dice cuál venta no cuadra: *Atlas la tiene pagada y Wompi dice VOIDED. Se abrió el caso para resolverlo.*
+- [ ] Ese mismo motivo queda bajo **Última revisión**, en el panel, hasta la siguiente revisión.
+- [ ] Arriba aparece el panel **Contracargos y anulaciones** con esa venta como **Anulada en Wompi · Disputa abierta**, abierta *por Atlas, desde Wompi*.
+- [ ] En la lista de **Transacciones**, esa venta dice *Contracargo abierto: el banco devolvió el dinero y la disputa sigue viva.*
 - [ ] En **Sentry** hay un error: *Wompi reportó VOIDED sobre una venta pagada: se abrió una reversa*.
+
+**No limpies todavía:** la limpieza borra los avisos de Wompi de esas ventas, y con ellos la evidencia.
 
 ## 7. Limpiar
 

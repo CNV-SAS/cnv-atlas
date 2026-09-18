@@ -51,6 +51,15 @@ export function CotejoConWompi({ ultima }: { ultima: UltimaCorrida | null }) {
       ) : (
         <p className="text-xs text-muted-foreground">Todavía no se ha hecho ninguna revisión.</p>
       )}
+      {ultima && ultima.motivos.length > 0 ? (
+        <ul className="flex flex-col gap-1 rounded-md border border-destructive/30 bg-destructive/5 p-2">
+          {ultima.motivos.map((m) => (
+            <li key={m} className="text-xs text-destructive">
+              {m}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }
