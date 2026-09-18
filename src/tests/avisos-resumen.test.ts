@@ -149,3 +149,20 @@ describe("agrupado por causa", () => {
     expect(r.cuerpo.match(/Ventas cobradas sin factura/g)).toHaveLength(2);
   });
 });
+
+describe("un pendiente que cambia de significado sin dejar de existir", () => {
+  it("LA REVERSA QUE PASA DE ABIERTA A PERDIDA es NUEVA, no la misma linea de ayer", () => {
+    const abierta = p({ tipo: "reversa", transactionId: "v-1", subclave: "abierta", diasHabilesDePlazo: 3, causa: "Disputa abierta: hay que responderle al banco con los soportes" });
+    const perdida = p({ tipo: "reversa", transactionId: "v-1", subclave: "perdida", diasHabilesDePlazo: 5, desde: "2026-09-16T15:00:00Z", causa: "Disputa perdida: falta la nota crédito manual en Alegra" });
+    const r = armarResumen({ pendientes: [perdida], anteriores: [clave(abierta)], ahora: am("2026-09-16"), franja: "am", enlace: ENLACE });
+    expect(r.conteo, "con la misma clave, el cambio de estado no salia en el correo").toMatchObject({ nuevos: 1, siguen: 0 });
+    expect(r.cuerpo).toContain("── NUEVO ──");
+    expect(r.cuerpo).toContain("falta la nota crédito");
+  });
+
+  it("CONTROL: la misma reversa en el mismo estado sigue siendo la de ayer", () => {
+    const abierta = p({ tipo: "reversa", transactionId: "v-1", subclave: "abierta", diasHabilesDePlazo: 3 });
+    const r = armarResumen({ pendientes: [abierta], anteriores: [clave(abierta)], ahora: am("2026-09-16"), franja: "am", enlace: ENLACE });
+    expect(r.conteo).toMatchObject({ nuevos: 0, siguen: 1 });
+  });
+});

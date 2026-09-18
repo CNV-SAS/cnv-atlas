@@ -21,8 +21,8 @@ export type { UltimaCorrida };
  * (regla del Bloque 2a).
  */
 export async function ventasParaCotejar(desde: Date, ambiente: "test" | "produccion"): Promise<VentaDeAtlas[]> {
-  const filas = await db.execute<{ id: string; status: string; amount: string }>(sql`
-    select id, status, amount::text as amount
+  const filas = await db.execute<{ id: string; status: string; amount: string; wompi_transaction_id: string | null }>(sql`
+    select id, status, amount::text as amount, wompi_transaction_id
       from transactions
      where payment_method = 'wompi'
        and wompi_env = ${ambiente}
@@ -33,6 +33,7 @@ export async function ventasParaCotejar(desde: Date, ambiente: "test" | "producc
     id: f.id,
     estado: f.status === "paid" ? "pagada" : "esperando",
     monto: String(f.amount),
+    wompiId: f.wompi_transaction_id,
   }));
 }
 

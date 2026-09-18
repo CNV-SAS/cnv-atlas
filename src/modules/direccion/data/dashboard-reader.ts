@@ -25,10 +25,15 @@ function sum(rows: { v: string | number | null }[]): number {
 export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   const supabase = await createSupabaseServerClient();
 
-  const [paid, cnv, commissions, inventory] = await Promise.all([
+  const [paid, cnv, perdidas, commissions, inventory] = await Promise.all([
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
-    supabase.from("transactions").select("amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null),
+    supabase.from("transactions").select("id, amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null),
     supabase.from("cnv_revenue").select("amount"),
+    // LAS DISPUTAS PERDIDAS SALEN DEL BRUTO (smoke del 3b, 2026-09-17). El ingreso de CNV y la comision ya bajaban
+    // solas, porque se suman de filas de ingreso y la reversa agrega las negativas; el bruto no, porque suma las
+    // VENTAS. Una venta cuyo contracargo se perdio es plata que CNV devolvio: contarla en el bruto diria que se
+    // facturo algo que ya no existe. Mismo trato que el efectivo no recibido y que lo que esta en revision.
+    supabase.from("sale_reversals").select("transaction_id").eq("state", "perdida"),
     supabase.from("professional_revenue").select("commission_amount"),
     // SIN PRODUCTOS DE PRUEBA (smoke del Bloque 3, 2026-09-14): los "PRUEBA SMOKE BLOQUE 3" de cada smoke dejan
     // saldo que no se puede borrar (movimientos inmutables), y sumaban 18 unidades a la vitrina real.
@@ -38,7 +43,8 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
       .eq("nutraceuticals.is_test", false),
   ]);
 
-  const paidRows = paid.data ?? [];
+  const revertidas = new Set((perdidas.data ?? []).map((r) => r.transaction_id));
+  const paidRows = (paid.data ?? []).filter((r) => !revertidas.has(r.id));
   const inventoryRows = inventory.data ?? [];
 
   return {

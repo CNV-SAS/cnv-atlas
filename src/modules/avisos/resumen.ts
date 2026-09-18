@@ -25,6 +25,8 @@ export type Franja = "am" | "pm";
 
 export type Pendiente = {
   tipo: TipoDePendiente;
+  /** Distingue dos momentos del mismo pendiente (el estado de la reversa). Ver `clave`. */
+  subclave?: string | null;
   /**
    * Dias habiles de plazo desde `desde`, para los tipos cuyo plazo no se deduce del tipo. La reversa tiene dos:
    * 3 para responderle al banco (una disputa sin respuesta a tiempo se PIERDE por silencio) y 5 desde la
@@ -43,7 +45,14 @@ export type Pendiente = {
   enGestionPor: string | null;
 };
 
-export const clave = (p: Pick<Pendiente, "tipo" | "transactionId">) => `${p.tipo}:${p.transactionId}`;
+/**
+ * Lo que identifica un pendiente entre un envio y el siguiente. Lleva `subclave` cuando el MISMO pendiente puede
+ * cambiar de significado sin dejar de existir: una reversa pasa de "responde al banco" a "falta la nota credito",
+ * y eso es una novedad, no la misma linea de ayer (smoke del 2026-09-17: el cambio de estado no salia en el
+ * correo, porque la clave era la misma y contaba como visto).
+ */
+export const clave = (p: Pick<Pendiente, "tipo" | "transactionId" | "subclave">) =>
+  p.subclave ? `${p.tipo}:${p.transactionId}:${p.subclave}` : `${p.tipo}:${p.transactionId}`;
 
 const TITULO: Record<TipoDePendiente, string> = {
   revision: "Pagos en revisión (pago sobre un link anulado)",

@@ -183,6 +183,9 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   const sinDocumentoPorDia = paneles[3]?.dato ?? [];
   const pendientes = paneles[4]?.dato ?? [];
   const reversas = paneles[5]?.dato ?? [];
+  // EL ESTADO DE LA REVERSA, TAMBIEN EN LA LISTA (smoke del 2026-09-17): una venta con la disputa perdida se veia
+  // ahi como cualquier otra, con su factura y su entrega, sin rastro de que el dinero se habia devuelto.
+  const reversaDe = new Map(reversas.map((r) => [r.transactionId, r]));
   const algoNoCargo = transacciones.fallo || perfil.fallo || paneles.some((p) => p.fallo);
   // El "en gestion" VIGENTE (hasta hoy o despues) de cada pendiente. Uno vencido ya no se muestra como en gestion.
   const hoyBogota = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
@@ -325,6 +328,15 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
                         </div>
                       ) : null}
                       <EntregaDeLaVenta tx={tx} puedeEntregar={canDeliverSale(user, tx, perfilPropio)} />
+                      {reversaDe.has(tx.id) ? (
+                        <span className="text-xs text-destructive">
+                          {reversaDe.get(tx.id)!.estado === "abierta"
+                            ? "Contracargo abierto: el banco devolvió el dinero y la disputa sigue viva."
+                            : reversaDe.get(tx.id)!.estado === "perdida"
+                              ? `Disputa PERDIDA: el ingreso y la comisión se revirtieron${reversaDe.get(tx.id)!.notaCredito ? `, nota crédito ${reversaDe.get(tx.id)!.notaCredito}` : "; falta la nota crédito"}.`
+                              : "Disputa ganada: el dinero volvió y la venta sigue en pie."}
+                        </span>
+                      ) : null}
                       {/* EL CONTRACARGO LLEGA POR CORREO DE WOMPI, no por Atlas: por eso se registra desde la
                           venta. Solo sobre una pagada de Wompi, que es la unica que el banco puede devolver. */}
                       {canView && tx.status === "paid" && tx.payment_method === "wompi" ? (

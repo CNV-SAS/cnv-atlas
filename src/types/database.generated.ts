@@ -2822,6 +2822,59 @@ export type Database = {
           },
         ]
       }
+      payment_reconciliation_runs: {
+        Row: {
+          actor_id: string | null
+          checked: number
+          detail: Json
+          failed_reason: string | null
+          from_date: string
+          id: string
+          mismatched: number
+          origin: string
+          ran_at: string
+          recovered: number
+          until_date: string
+          wompi_env: string
+        }
+        Insert: {
+          actor_id?: string | null
+          checked?: number
+          detail?: Json
+          failed_reason?: string | null
+          from_date: string
+          id?: string
+          mismatched?: number
+          origin: string
+          ran_at?: string
+          recovered?: number
+          until_date: string
+          wompi_env: string
+        }
+        Update: {
+          actor_id?: string | null
+          checked?: number
+          detail?: Json
+          failed_reason?: string | null
+          from_date?: string
+          id?: string
+          mismatched?: number
+          origin?: string
+          ran_at?: string
+          recovered?: number
+          until_date?: string
+          wompi_env?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reconciliation_runs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_webhook_events: {
         Row: {
           created_at: string
@@ -3723,6 +3776,88 @@ export type Database = {
           name?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
+      }
+      sale_reversals: {
+        Row: {
+          created_at: string
+          credit_note_manual_number: string | null
+          debited_amount: number | null
+          debited_at: string | null
+          dispute_reference: string | null
+          id: string
+          kind: string
+          note: string | null
+          opened_at: string
+          opened_by: string | null
+          product_ownership: string
+          resolution_reference: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          state: string
+          transaction_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_note_manual_number?: string | null
+          debited_amount?: number | null
+          debited_at?: string | null
+          dispute_reference?: string | null
+          id?: string
+          kind: string
+          note?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          product_ownership: string
+          resolution_reference?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          state?: string
+          transaction_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_note_manual_number?: string | null
+          debited_amount?: number | null
+          debited_at?: string | null
+          dispute_reference?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          product_ownership?: string
+          resolution_reference?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          state?: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_reversals_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_reversals_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_reversals_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {

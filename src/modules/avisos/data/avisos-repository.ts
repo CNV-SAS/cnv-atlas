@@ -30,6 +30,7 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
     en_gestion_nota: string | null;
     en_gestion_por: string | null;
     dias_habiles: number | null;
+    subclave: string | null;
   }>(sql`
     with pendientes as (
       -- Pagos en revision abiertos (panel "Ventas por revisar").
@@ -38,13 +39,13 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
              case when t.review_professional_version is null
                   then 'Falta la versión del Integrante'
                   else 'Tiene la versión del Integrante: falta decidir' end as causa,
-             null::int as dias_habiles
+             null::int as dias_habiles, null::text as subclave
         from transactions t
        where t.status = 'paid' and t.review_reason is not null and t.review_resolution is null
       union all
       -- Efectivo que no se recibio, con la nota credito manual pendiente.
       select 'nota_credito', t.id, t.cash_not_received_at, t.amount,
-             'Falta registrar la nota crédito manual en Alegra', null::int
+             'Falta registrar la nota crédito manual en Alegra', null::int, null::text
         from transactions t
        where t.cash_not_received_at is not null and t.credit_note_manual_number is null
       union all
@@ -57,7 +58,7 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
              case when r.state = 'abierta'
                   then 'Disputa abierta: hay que responderle al banco con los soportes'
                   else 'Disputa perdida: falta la nota crédito manual en Alegra' end,
-             case when r.state = 'abierta' then 3 else 5 end
+             case when r.state = 'abierta' then 3 else 5 end, r.state
         from sale_reversals r join transactions t on t.id = r.transaction_id
        where r.state = 'abierta'
           or (r.state = 'perdida' and r.credit_note_manual_number is null)
@@ -68,12 +69,12 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
                when transactions.alegra_invoice_state = 'emitida' then 'Facturada, pago no registrado en Alegra'
                when transactions.alegra_last_error is not null then left(transactions.alegra_last_error, 160)
                else 'Sin intentar facturar'
-             end, null::int
+             end, null::int, null::text
         from transactions
        where transactions.status = 'paid' and ${LE_FALTA_ALGO} and ${FACTURABLE}
     )
     select p.tipo, p.transaction_id, p.desde::text as desde, p.amount::text as monto,
-           p.dias_habiles,
+           p.dias_habiles, p.subclave,
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
               from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
              where ti.transaction_id = p.transaction_id) as productos,
@@ -90,6 +91,7 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
   return filas.map((f) => ({
     tipo: f.tipo,
     diasHabilesDePlazo: f.dias_habiles == null ? null : Number(f.dias_habiles),
+    subclave: f.subclave,
     transactionId: f.transaction_id,
     desde: String(f.desde),
     monto: String(f.monto),
