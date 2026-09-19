@@ -134,12 +134,26 @@ export function EntradaEvaluacion({
           <h3 className="text-base font-semibold text-foreground">Encuesta del paciente</h3>
           {/* "Ver o editar" (no solo "ver"): la pantalla deja editar (pre-diagnostico) o corregir versionado
               (con diagnostico). El boton decia "ver" cuando tambien edita (Santiago 2026-08-15, b). */}
-          <Link
-            href={`/ani-bis-e/${evaluationId}/encuesta`}
-            className="inline-flex items-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
-          >
-            Ver o editar encuesta
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/ani-bis-e/${evaluationId}/encuesta`}
+              className="inline-flex items-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+            >
+              Ver o editar encuesta
+            </Link>
+            {/* DESCARGAR LAS RESPUESTAS (observación f). Es para que el profesional conserve las de SUS
+                pacientes, asi que vive junto a la encuesta y no en un menu de exportaciones. Un enlace
+                normal y no un boton con JavaScript: la descarga la resuelve el navegador, y asi funciona
+                igual en un telefono. La descarga queda registrada en la auditoria (ver la ruta). */}
+            {total > 0 ? (
+              <a
+                href={`/ani-bis-e/${evaluationId}/encuesta/csv`}
+                className="inline-flex items-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+              >
+                Descargar respuestas
+              </a>
+            ) : null}
+          </div>
         </div>
         {total > 0 ? (
           <div className="flex flex-col gap-1.5">

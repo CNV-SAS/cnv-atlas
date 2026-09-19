@@ -314,7 +314,10 @@ describe.skipIf(!HAS_DB)("la venta mueve inventario (BD real)", () => {
     expect(v.status, "un fallo de inventario deshizo el pago").toBe("paid");
     expect(v.stock_state).toBe("fallido");
     expect(v.stock_last_error).toMatch(/ubicación/);
-    expect(await listarDescuentosPendientes(1000)).toContain(id);
+    // El tope va alto a proposito: la lista se ordena por fecha ascendente y la venta de este caso es la
+    // ULTIMA, asi que con una base local que acumula miles de ventas de otras corridas, un tope corto
+    // hace fallar el caso por el tamaño del vecindario y no por el codigo.
+    expect(await listarDescuentosPendientes(100_000)).toContain(id);
   });
 
   // ── EL AMBIENTE DEL PAGO ─────────────────────────────────────────────────────────────────────
