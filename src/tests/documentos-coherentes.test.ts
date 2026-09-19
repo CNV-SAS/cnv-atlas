@@ -111,7 +111,9 @@ describe("el reporte del paciente ya no se contradice consigo mismo", () => {
     // Las versiones son la constelación de la regla dura 7 y NO se pierden: viven selladas en el snapshot
     // y en el diagnóstico. En el documento del paciente no informan a nadie.
     const pie = DOC.slice(DOC.indexOf("styles.footer"));
-    expect(pie).toContain("Reporte {meta.reportId}");
+    // "Informe" desde el 2026-09-19: el documento del paciente tomo el nombre que usa el archivo de
+    // Gildardo ("informe al paciente"). Lo que se blinda no cambia: el pie lleva el identificador y nada mas.
+    expect(pie).toContain("Informe {meta.reportId}");
     expect(pie).not.toContain("versions.engine");
     expect(pie).not.toContain("versions.model");
   });

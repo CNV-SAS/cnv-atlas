@@ -64,10 +64,21 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
   // UNA FILA POR LOTE desde la 0121: se suman. Un mapa directo dejaba solo el ultimo lote.
   const stockByNutra = saldoPorProducto(inv ?? []);
 
-  const { data: cat, error: cErr } = await supabase
-    .from("nutraceuticals")
-    .select("id, name, indication, commercial_availability")
-    .order("name");
+  // ── EL CATALOGO SE PIDE ACOTADO, NO ENTERO (2026-09-19) ────────────────────────────────────────
+  //
+  // Se pedia la tabla completa y se filtraba en memoria. PostgREST corta en 1000 filas SIN AVISAR, asi
+  // que con un catalogo grande los productos del final (por nombre) desaparecian del inventario del
+  // profesional aunque tuviera existencias: un saldo que no se ve es un saldo que no se vende y que nadie
+  // cuadra. Salio a la luz en la base local, con 3.084 productos.
+  //
+  // LO QUE SE PIDE es exactamente lo que esta pantalla muestra: lo que tiene saldo, mas los
+  // `en_consultorio` (que salen con 0 para poder recibir).
+  const idsConSaldo = [...stockByNutra.keys()];
+  const catalogo = supabase.from("nutraceuticals").select("id, name, indication, commercial_availability");
+  const { data: cat, error: cErr } = await (idsConSaldo.length
+    ? catalogo.or(`commercial_availability.eq.en_consultorio,id.in.(${idsConSaldo.join(",")})`)
+    : catalogo.eq("commercial_availability", "en_consultorio")
+  ).order("name");
   if (cErr) throw new Error(`inventory-service: catalogo: ${cErr.message}`);
 
   return (cat ?? [])

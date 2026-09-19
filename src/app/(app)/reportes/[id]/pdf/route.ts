@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/format/date";
 import { downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { ultimaObservacionDeLaConsulta } from "@/modules/reports/data/freno-de-trayectoria";
+import { getInformeDelPaciente } from "@/modules/reports/data/informe-paciente-reader";
 import { getPlanPaciente } from "@/modules/reports/data/plan-paciente-reader";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
@@ -64,6 +65,9 @@ export async function GET(
       // EL PLAN TAMBIEN EN EL PREVIEW, y es la mitad que se olvida: el profesional aprueba mirando ESTO.
       // Un preview sin el plan le haria aprobar un documento que no es el que se envia.
       plan: await getPlanPaciente(dispatch.evaluationId, dispatch.snapshot),
+      // Y EL RESTO DEL INFORME, por la misma razon que el plan: el preview tiene que ser el documento que
+      // sale. Un preview al que le falta la mitad ensena un documento que el paciente no va a recibir.
+      informe: await getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot),
     },
   );
   return new NextResponse(new Uint8Array(pdf), {

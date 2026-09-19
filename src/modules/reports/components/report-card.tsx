@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { formatDate, formatDateOnly } from "@/lib/format/date";
@@ -52,6 +52,10 @@ export function ReportCard({ report }: { report: ReportCardView }) {
   useFormToast(sendState);
   useFormToast(resendState);
 
+  // LA CONFIRMACION VIVE EN LA TARJETA, un paso antes de cada salida hacia el paciente.
+  const [confirmandoEnvio, setConfirmandoEnvio] = useState(false);
+  const [confirmandoReenvio, setConfirmandoReenvio] = useState(false);
+
   const t = report.trajectory;
   const resentCount = report.resentCount ?? 0;
   const enviado = report.status === "sent";
@@ -80,20 +84,16 @@ export function ReportCard({ report }: { report: ReportCardView }) {
         </span>
       </CardHeader>
       <CardContent className="flex flex-col items-start gap-3">
+        {/* SE RETIRO "Ver resultados" (Santiago, 2026-09-19): la tarjeta vive DENTRO de la evaluacion, asi
+            que enlazaba a donde el profesional ya esta. Lo que hace falta aqui es el documento. */}
         <div className="flex flex-wrap items-center gap-4">
-          <a
-            href={`/ani-bis-e/${report.evaluationId}`}
-            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Ver resultados
-          </a>
           <a
             href={`/reportes/${report.reportId}/pdf`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            {enviado ? "Ver el PDF enviado" : "Ver o imprimir el reporte"}
+            {enviado ? "Ver el informe enviado" : "Ver o imprimir el informe"}
           </a>
         </div>
 
@@ -121,25 +121,55 @@ export function ReportCard({ report }: { report: ReportCardView }) {
           </p>
         ) : null}
 
+        {/* ENVIAR PIDE CONFIRMACION (Santiago, 2026-09-19). Es un correo a un paciente con su documento
+            clinico: sale una vez y no se recoge. El paso intermedio cuesta un clic y evita el envio por
+            error, que no tiene deshacer.
+
+            DOS PASOS EN LA MISMA TARJETA y no un dialogo del navegador: `confirm()` bloquea el hilo, se
+            ve ajeno a la aplicacion y en algunos navegadores se puede silenciar. */}
         {!enviado ? (
           <form onSubmit={enviarSinReset(send)} className="flex w-full flex-col gap-2">
             <input type="hidden" name="reportId" value={report.reportId} />
             <span className="text-xs text-muted-foreground">
-              Se le envía por correo el reporte de esta consulta con su plan. Si escribiste una observación
-              en Seguimiento, va con él. El envío queda registrado.
+              Se le envía por correo su informe: el diagnóstico en lenguaje claro, su plan, lo que va a
+              trabajar, sus suplementos y su próxima consulta. El envío queda registrado.
             </span>
-            <Button type="submit" size="sm" disabled={sending || frenado} className="self-start">
-              {sending ? "Enviando..." : "Enviar al paciente"}
-            </Button>
+            {confirmandoEnvio ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/30 p-2">
+                <span className="text-xs text-foreground">
+                  Se le enviará a <strong>su correo registrado</strong>. ¿Lo mandamos?
+                </span>
+                <Button type="submit" size="sm" disabled={sending || frenado}>
+                  {sending ? "Enviando..." : "Sí, enviar"}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmandoEnvio(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                disabled={frenado}
+                className="self-start"
+                onClick={() => setConfirmandoEnvio(true)}
+              >
+                Enviar al paciente
+              </Button>
+            )}
           </form>
         ) : null}
 
         {/* REENVIO del MISMO documento. Separado del envio a proposito: el titulo, el texto y el boton
             dicen "el mismo" en los tres sitios, para que no se lea como emitir uno nuevo (que no existe;
             va con el mecanismo de sucesion de versiones).
-            El envio va por onSubmit + startTransition y NO por la prop `action`: la prop resetea los
-            inputs no controlados tras la accion, y un error borraria el motivo que el profesional escribio
-            (hazard de React 19 registrado en CLAUDE.md). */}
+
+            EL MOTIVO OBLIGATORIO SE RETIRO (Santiago, 2026-09-19): convertia un gesto de un clic ("el
+            correo reboto") en un formulario, y lo que se escribia no lo leia nadie. LA CUENTA SE QUEDA,
+            que es lo que el profesional si mira: cuantas veces ha salido ya.
+
+            El envio va por onSubmit + startTransition y NO por la prop `action` (hazard de React 19
+            registrado en CLAUDE.md). */}
         {enviado ? (
           <form
             onSubmit={(e) => {
@@ -152,27 +182,39 @@ export function ReportCard({ report }: { report: ReportCardView }) {
             <input type="hidden" name="reportId" value={report.reportId} />
             <span className="text-sm font-semibold">Reenviar el mismo documento</span>
             <span className="text-xs text-muted-foreground">
-              Vuelve a mandar por correo <strong>el mismo reporte</strong>, con el mismo contenido.{" "}
-              No genera un reporte nuevo ni recalcula nada. Úsalo si el correo se perdió o si se corrigió
-              la dirección del paciente.
+              Vuelve a mandar por correo <strong>el mismo informe</strong>, tal cual salió. No genera uno
+              nuevo ni recalcula nada. Úsalo si el correo se perdió o si se corrigió la dirección del
+              paciente.
               {resentCount > 0
                 ? ` Ya se reenvió ${resentCount} ${resentCount === 1 ? "vez" : "veces"}.`
                 : ""}
             </span>
-            <label htmlFor={`motivo-${report.reportId}`} className="text-xs text-muted-foreground">
-              Motivo del reenvío (obligatorio). Queda registrado en la auditoría.
-            </label>
-            <input
-              id={`motivo-${report.reportId}`}
-              name="reason"
-              required
-              maxLength={300}
-              placeholder="Por ejemplo: el correo rebotó, o el paciente corrigió su dirección."
-              className="w-full rounded-md border border-input bg-background p-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            />
-            <Button type="submit" size="sm" variant="outline" disabled={resending} className="self-start">
-              {resending ? "Reenviando…" : "Reenviar el mismo documento"}
-            </Button>
+            {confirmandoReenvio ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-foreground">¿Lo reenviamos?</span>
+                <Button type="submit" size="sm" variant="outline" disabled={resending}>
+                  {resending ? "Reenviando…" : "Sí, reenviar"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmandoReenvio(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="self-start"
+                onClick={() => setConfirmandoReenvio(true)}
+              >
+                Reenviar el mismo documento
+              </Button>
+            )}
           </form>
         ) : null}
 

@@ -2,7 +2,7 @@ import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
 
-import type { PlanPaciente } from "../data/reports-view-types";
+import type { InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
 // EngineOutput que la propagacion dejo en reports). NO es un componente de Next: lo
@@ -92,6 +92,7 @@ export function ReportDocument({
   bandText = null,
   bandAppointmentDate = null,
   plan = null,
+  informe = null,
 }: {
   snapshot: EngineOutput;
   meta: ReportMeta;
@@ -112,6 +113,13 @@ export function ReportDocument({
    * diagnostico primero en la lista por esa misma razon.
    */
   plan?: PlanPaciente | null;
+  /**
+   * LO QUE HACE DE ESTO UN INFORME Y NO SOLO UN PLAN (Santiago, 2026-09-19): las rutas que va a trabajar,
+   * sus suplementos (los que sugiere el modelo y los que le indico su profesional), a que otros
+   * profesionales acudir, y su seguimiento. null = no se pudo reunir, y el documento sale sin esa parte
+   * en vez de no salir.
+   */
+  informe?: InformeDelPaciente | null;
 }) {
   // SOLO SE DESESTRUCTURA LO QUE ESTE DOCUMENTO PUEDE IMPRIMIR. `indicators`, `efrPhenotype`,
   // `structural`, `frSector` y `versions` se retiraron con sus bloques (§7.1): un documento que no tiene
@@ -133,11 +141,11 @@ export function ReportDocument({
   const showBand = showAtlas && Boolean(bandText) && dfi.complete;
   return (
     <Document
-      title={`Reporte clinico ${meta.documentLabel}`}
+      title={`Informe ANI-BIS-E ${meta.documentLabel}`}
       author="Connected Nutrition Ventures"
     >
       <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>Reporte clínico ANI-BIS-E</Text>
+        <Text style={styles.title}>Informe ANI-BIS-E del paciente</Text>
         <Text style={styles.subtitle}>Connected Nutrition Ventures</Text>
 
         <View style={styles.meta}>
@@ -383,10 +391,100 @@ export function ReportDocument({
           </>
         ) : null}
 
+        {/* ═══ LO QUE VA DESPUES DEL PLAN ═══
+
+            EL ORDEN es el de la consulta: que tienes (arriba), que vas a comer (el plan), que vas a
+            trabajar (las rutas), que vas a tomar (los suplementos), a quien mas acudir (las remisiones) y
+            cuando te vuelven a ver (el seguimiento).
+
+            LO DEL MODELO Y LO DEL PROFESIONAL VAN SEPARADOS Y ROTULADOS (Santiago): no es lo mismo lo que
+            sugiere el modelo que lo que su profesional decidio para el. Y si el profesional no indico
+            nada, no se pinta un bloque vacio: sale solo lo del modelo.
+
+            LAS INDICACIONES SON VERBATIM DE GILDARDO, filtradas de lenguaje del modelo en el lector
+            (`informe-paciente-reader`): aqui no se reescribe ninguna. */}
+        {showAtlas && informe && informe.rutas.length ? (
+          <View style={styles.section} break>
+            <Text style={styles.sectionTitle}>Lo que vas a trabajar</Text>
+            {informe.rutas.map((r) => (
+              <View key={r.titulo} style={styles.diaMenu}>
+                <Text style={styles.bold}>{r.titulo}</Text>
+                {r.indicaciones.map((i) => (
+                  <Text key={i} style={styles.para}>
+                    · {i}
+                  </Text>
+                ))}
+                {r.frecuencia ? (
+                  <Text style={styles.para}>Control: {r.frecuencia.toLowerCase()}.</Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {showAtlas ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recomendación de nutracéuticos</Text>
-            <Text style={styles.para}>{nutraceuticos}</Text>
+            <Text style={styles.sectionTitle}>Tus suplementos</Text>
+            {/* LA CADENA DEL MODELO se conserva aunque haya prescripcion: son dos cosas distintas, y el
+                paciente tiene derecho a saber que sugirio el modelo y que decidio su profesional. */}
+            <Text style={styles.para}>
+              <Text style={styles.bold}>Lo que sugiere el modelo: </Text>
+              {informe?.suplementos.delModelo ?? nutraceuticos}
+            </Text>
+            {informe?.suplementos.delProfesional.length ? (
+              <>
+                <Text style={[styles.para, styles.bold]}>Lo que te indicó tu profesional:</Text>
+                {informe.suplementos.delProfesional.map((s) => (
+                  <Text key={s.nombre} style={styles.para}>
+                    · {s.nombre}
+                    {s.dosis ? `: ${s.dosis}` : ""}
+                    {s.duracionDias ? ` durante ${s.duracionDias} días` : ""}
+                  </Text>
+                ))}
+              </>
+            ) : null}
+          </View>
+        ) : null}
+
+        {showAtlas && informe && (informe.remisiones.delModelo.length || informe.remisiones.delProfesional.length) ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Otros profesionales que te pueden acompañar</Text>
+            {informe.remisiones.delModelo.length ? (
+              <>
+                <Text style={[styles.para, styles.bold]}>Lo que sugiere el modelo:</Text>
+                {informe.remisiones.delModelo.map((r) => (
+                  <Text key={r.destino} style={styles.para}>
+                    · {r.destino}
+                    {r.urgencia ? ` (valoración ${r.urgencia.toLowerCase()})` : ""}
+                  </Text>
+                ))}
+              </>
+            ) : null}
+            {informe.remisiones.delProfesional.length ? (
+              <>
+                <Text style={[styles.para, styles.bold]}>A quién te remitió tu profesional:</Text>
+                {informe.remisiones.delProfesional.map((r) => (
+                  <Text key={`${r.destino}-${r.fecha}`} style={styles.para}>
+                    · {r.destino}
+                  </Text>
+                ))}
+              </>
+            ) : null}
+          </View>
+        ) : null}
+
+        {showAtlas && informe && (informe.seguimiento.observacion || informe.seguimiento.proximaCita) ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tu seguimiento</Text>
+            {informe.seguimiento.observacion ? (
+              <Text style={styles.para}>{informe.seguimiento.observacion}</Text>
+            ) : null}
+            {informe.seguimiento.proximaCita ? (
+              <Text style={styles.para}>
+                <Text style={styles.bold}>Tu próxima consulta: </Text>
+                {informe.seguimiento.proximaCita}
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -424,7 +522,7 @@ export function ReportDocument({
             El ID SE QUEDA porque es lo unico del pie que el paciente puede USAR: es como se identifica su
             documento si llama a preguntar. Y desde el se llega a las tres versiones. */}
         <Text style={styles.footer} fixed>
-          Reporte {meta.reportId}
+          Informe {meta.reportId}
         </Text>
       </Page>
     </Document>

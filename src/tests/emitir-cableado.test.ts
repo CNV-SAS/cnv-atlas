@@ -46,7 +46,9 @@ describe("un plan no sale hacia el paciente sin dejar constancia", () => {
     // El plan se lee EN VIVO del protocolo. Si el orden se invierte, un fallo al registrar dejaria un
     // correo enviado sin constancia de que salio, que es justo lo que esta pieza existe para impedir.
     const iEmite = ENVIO.indexOf("await emitirPrescripcion(");
-    const iPlan = ENVIO.indexOf("await getPlanPaciente(");
+    // EL ANCLA SE MUEVE CON EL CODIGO (2026-09-19): el plan y el resto del informe se leen juntos en un
+    // Promise.all, asi que se busca el armado del par, no la llamada suelta.
+    const iPlan = ENVIO.indexOf("getPlanPaciente(dispatch.evaluationId");
     expect(iEmite, "no se encontro la emision en el envio").toBeGreaterThan(-1);
     expect(iPlan, "no se encontro el armado del plan").toBeGreaterThan(-1);
     expect(iEmite, "el plan se arma antes de registrar la entrega").toBeLessThan(iPlan);

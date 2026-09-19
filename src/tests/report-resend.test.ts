@@ -30,8 +30,8 @@ describe("reenvio del reporte", () => {
   it("la pantalla dice EL MISMO documento, en el titulo y en el boton", () => {
     // Si el texto no lo dice, se lee como emitir uno nuevo. Es la confusion que el bloque debe evitar.
     expect(bloqueReenvio).toContain("Reenviar el mismo documento");
-    expect(bloqueReenvio).toContain("el mismo reporte");
-    expect(bloqueReenvio).toContain("No genera un reporte nuevo");
+    expect(bloqueReenvio).toContain("el mismo informe");
+    expect(bloqueReenvio).toContain("No genera uno");
   });
 
   it("NO ofrece elegir modo de envio: cambiarlo cambiaria lo que el paciente recibe", () => {
@@ -40,13 +40,22 @@ describe("reenvio del reporte", () => {
     expect(SERVICE).toContain("dispatch.sendMode ?? \"atlas\"");
   });
 
-  it("el motivo es OBLIGATORIO y acotado (un documento clinico que sale dos veces deja rastro)", () => {
-    expect(bloqueReenvio).toContain('name="reason"');
-    expect(bloqueReenvio).toContain("required");
-    expect(ACTIONS).toMatch(/resendReasonSchema[\s\S]{0,200}\.min\(3/);
+  // EL MOTIVO DEJO DE PEDIRSE (Santiago, 2026-09-19): convertia un gesto de un clic ("el correo reboto")
+  // en un formulario, y lo que se escribia no lo leia nadie. Lo que se blinda ahora es lo que SI queda: la
+  // confirmacion antes de mandar, la cuenta de reenvios, y el tope de tamano si el motivo vuelve a llegar.
+  it("reenviar pide CONFIRMACION, no un motivo escrito", () => {
+    expect(bloqueReenvio, "volvio el campo del motivo").not.toContain('name="reason"');
+    expect(bloqueReenvio).toContain("confirmandoReenvio");
+    expect(bloqueReenvio).toContain("Sí, reenviar");
+    expect(bloqueReenvio).toContain("Cancelar");
+    // El tope sigue en el esquema: toda entrada externa lo lleva, venga de donde venga.
     expect(ACTIONS).toMatch(/resendReasonSchema[\s\S]{0,200}\.max\(300/);
   });
 
+  it("y la CUENTA de reenvios se conserva, que es lo que el profesional sí mira", () => {
+    expect(bloqueReenvio).toContain("resentCount");
+    expect(WRITER).toContain("resentCount");
+  });
   it("el motivo va al AUDIT, que es el registro que no se reescribe (regla 8)", () => {
     expect(WRITER).toContain('event: "report.resent"');
     expect(WRITER).toMatch(/reason: input\.reason/);

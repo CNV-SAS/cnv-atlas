@@ -2,7 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 
 import type { EngineOutput } from "@/clinical-engine";
 
-import type { HistoriaClinicaDoc, PlanPaciente } from "../data/reports-view-types";
+import type { HistoriaClinicaDoc, InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
 import { HistoriaClinicaDocument } from "../pdf/hc-document";
 import { ReportDocument, type ReportMeta, type SendMode } from "../pdf/report-document";
 
@@ -13,6 +13,8 @@ export type RenderReportOptions = {
   bandAppointmentDate?: string | null;
   /** El plan del paciente (Gildardo §7.1). null = la evaluacion no tiene tratamiento con protocolo. */
   plan?: PlanPaciente | null; // §6: fecha de la próxima cita (solo para el "empeoró" confirmado)
+  /** Rutas, suplementos, remisiones y seguimiento: lo que hace de esto un informe y no solo un plan. */
+  informe?: InformeDelPaciente | null;
 };
 
 // Renderiza el reporte a un Buffer PDF en el servidor (Node). Puro respecto a BD y
@@ -32,6 +34,7 @@ export function renderReportPdf(
       bandText={options.bandText}
       bandAppointmentDate={options.bandAppointmentDate}
       plan={options.plan}
+      informe={options.informe}
     />,
   );
 }
