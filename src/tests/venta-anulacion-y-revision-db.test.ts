@@ -98,7 +98,11 @@ async function enColaDeFactura(id: string) {
   const { listarFacturasPendientes } = await import("@/modules/payments/data/facturacion-repository");
   await (await import("@/db")).db.execute(dsql`
     update transactions set alegra_invoice_state = 'pendiente' where id = ${id} and alegra_invoice_state is null`);
-  return (await listarFacturasPendientes(5, 1000)).some((f) => f.id === id);
+  // EL TOPE ERA 1.000 Y LA BASE LOCAL LO PASO EN UN SOLO DIA de correr la suite (1.169 ventas pagadas
+  // el 19/9). La cola se ordena por fecha ASCENDENTE, asi que la venta que este test acaba de crear es la
+  // ULTIMA: con un tope corto, el caso fallaba diciendo que no entro en la cola cuando si habia entrado.
+  // Fallaba por el tamaño del vecindario, no por el codigo, y esa es la peor forma de fallar.
+  return (await listarFacturasPendientes(5, 100_000)).some((f) => f.id === id);
 }
 
 describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD real)", () => {
