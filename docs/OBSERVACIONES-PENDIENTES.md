@@ -21,3 +21,43 @@ k. Cambios de presentación en la encuesta: Lo primero, es en las preguntas que 
 L. Hay forma de eliminar las evaluaciones ya cerradas? es que parecen molestas que sigan en el historial.
 M. Resumen del diagnostico en rutas de atención. Va tambien para reporte/hc. (esto queda en espera de verificación con Gildardo ya que no le entendí que queria decir).
 N. Cambiarle el color a los encabezados de las tablas que tienen por ejemplo: "Nivel V · Cuerpo entero" hoy está en un azul gris claro, pero quiero intentar a ver como se ven con el mismo azul electrico de Atlas. Me imagino que tocará letra blanca.
+---
+
+# REPARTO (Claude, 2026-09-19)
+
+**Qué es esto.** Santiago pidió avanzar en paralelo al bloque de reportes, marcando qué se puede hacer ya
+y qué necesita planearse. Cada ítem queda en una de cuatro casillas:
+
+- **SIMULTÁNEA** · barata, sin relación con reportes, se puede hacer mientras.
+- **BLOQUE PROPIO** · necesita planearse antes de tocar código.
+- **PREGUNTA PRIMERO** · toca contenido clínico, y eso lo decide Gildardo (Regla 0).
+- **EN ESPERA** · depende de algo que aún no llegó.
+
+**Y una regla que aplico a todo el reparto:** lo que toca la ENCUESTA o el CONTENIDO CLÍNICO no se mueve
+sin él, aunque el cambio parezca de forma. Lo que toca la PRESENTACIÓN es nuestro.
+
+| # | Casilla | Por qué |
+|---|---|---|
+| **a** · Editar antropometría/BIS tras el diagnóstico | **BLOQUE PROPIO**, con un parche simultáneo | El fondo es el versionado: hoy "Corregir la evaluación" solo rehace la **encuesta**, y lo que él quiere es rehacer la **medición**, que es otra cadena. Eso se planea. Lo que sí hago ya, si lo apruebas: el bloque en letra pequeña que pediste, diciendo por qué no se puede editar y a dónde ir. Hoy el profesional lo descubre pulsando |
+| **b** · Breadcrumbs | **BLOQUE PROPIO** | Barato por pantalla y caro como decisión: dinámico ("volver a donde estabas") y fijo ("la ruta que elegimos") se comportan distinto cuando alguien llega por un enlace directo. Es una decisión de navegación de toda la app, no un componente |
+| **c** · Alertas de alergias y patrón en el menú | **PREGUNTA PRIMERO** | Choca de frente con lo que Gildardo decidió el 27-ago (§10): las tablas de alérgenos y los **cruces** se retiraron, y el asesor legal rectificó en el mismo sentido (nada de bloquear con una inferencia). Lo que sí es representable sin cruzar nada: pasarle a la IA el **patrón declarado** (vegano, etc.), que es un dato que el paciente dio. La "alerta" no. Se le pregunta antes de tocarlo |
+| **d** · Qué preguntas faltan, en el bloque de la barra | **SIMULTÁNEA** | El dato ya existe y está **sellado** (`missingFieldKeys` en el snapshot, con su `survey_version_id`), y ya se usa para el aviso de dominios incompletos. Falta pintarlo como lista con enlace directo a cada pregunta |
+| **e** · "decisión de negocio, no requisito del motor" | **SIMULTÁNEA** | Copy puro, un sitio (`bis/validations/import-schema`) más el barrido de los mensajes de la misma familia. Tiene razón: al profesional le importa **por qué se pide** (estandarización y comparabilidad científica), no de dónde salió la regla |
+| **f** · Exportar las respuestas de la encuesta | **SIMULTÁNEA** | Ya está dimensionada y **desbloqueada** (es para que cada profesional conserve las de sus pacientes). El lector y los moldes de descarga existen; falta el serializador, la procedencia, la ruta y la auditoría. Es media tanda y no toca nada de reportes |
+| **g** · Alertas redactadas en el diagnóstico IA + historia en SOAP | **EN ESPERA** (y luego bloque propio) | Depende del HTML actualizado de Gildardo: está caracterizando en semáforo las respuestas. Y el propio Santiago ya vio el problema de fondo (se repetiría el contenido entre la HC y el diagnóstico IA). Arrancar antes es construir sobre algo que va a cambiar |
+| **h** · Marca "Atlas pacientes" | **SIMULTÁNEA** | Es copy y una decisión de nombres. Propongo la lista de sitios (QR de consultorio, enlace de encuesta, correos al paciente, pantalla pública de la encuesta) y la aplicamos de una pasada |
+| **i** · Flujo del paciente sin correo | **SIMULTÁNEA (la mitad)** + bloque chico | Encontré el defecto concreto: el mensaje dice *"Termínalo o anúlalo"* y **no existe ninguna pantalla para anular**. Es un guard que promete una salida que no está, y eso se arregla ya. Lo demás (QR además del enlace, y permitir los dos caminos a la vez) es diseño de flujo: bloque chico |
+| **j** · Checkout sin Atlas, con CNV y VITACELLEBIS | **SIMULTÁNEA** | Es una pantalla pública y aislada, y el logo ya está en `public/brand/vitacellebis.png`. Ojo a una cosa que sí decide él: el NIT y la razón social en una pantalla de pago son **información al consumidor**, así que conviene que el texto lo apruebe contabilidad |
+| **k** · Encuesta: el guion del contador y la pregunta 32 | **PARTIDA** | El **guion del contador** es presentación nuestra: simultánea (y el signo de interrogación funciona, aunque propongo dejar el campo vacío con el rótulo "sin responder", que es lo que de verdad significa). La **redacción de la pregunta 32** es CONTENIDO de la encuesta, que está congelado: se le pregunta a Gildardo. Tiene razón en el fondo ("¿cuántas comidas hace?" se lee como "¿cuántas prepara?") |
+| **L** · Eliminar evaluaciones cerradas | **BLOQUE PROPIO (chico)** | Borrar no: una evaluación arrastra diagnóstico sellado, tratamiento y auditoría, y borrarla rompe la trazabilidad que la regla 8 protege (es la misma razón por la que los pacientes se archivan y no se borran). Lo que sí se puede es **ocultarlas del historial** con un interruptor para volver a verlas. Es una decisión de producto, no un formulario |
+| **M** · Resumen del diagnóstico en rutas de atención | **EN ESPERA** | Él mismo lo marcó: no se entendió qué pedía Gildardo. Sin eso no se puede ni dimensionar |
+| **N** · Color de los encabezados de tabla | **SIMULTÁNEA**, dentro del pulido | Es exactamente el tipo de cambio que la pasada de pulido resuelve bien y que suelto produce pantallas que no combinan entre sí. Va anotado en `PULIDO_GRAFICO_PENDIENTE.md` |
+
+## Lo que yo haría primero, si me dices que sí
+
+1. **(e)** y **(j)**: son de una tarde y se notan al día siguiente.
+2. **(i, la anulación)**: es un defecto abierto, no una mejora.
+3. **(d)** y **(f)**: las dos son de dato ya existente.
+4. **(k, el contador)** y **(h)**: copy, con propuesta escrita antes de tocar.
+
+**Lo que NO arrancaría sin respuesta:** (c), (g), (k-pregunta 32) y (M). Las cuatro tocan contenido suyo.
