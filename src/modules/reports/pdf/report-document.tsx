@@ -296,25 +296,6 @@ export function ReportDocument({
               </View>
             ) : null}
 
-            {plan.menu.length ? (
-              <View style={styles.section} break>
-                <Text style={styles.sectionTitle}>Ejemplo de menú para una semana</Text>
-                <Text style={styles.para}>
-                  Es un ejemplo, no una obligación: puedes cambiar preparaciones por otras equivalentes.
-                </Text>
-                {plan.menu.map((d) => (
-                  <View key={d.dia} style={styles.diaMenu}>
-                    <Text style={styles.bold}>{d.dia}</Text>
-                    {d.comidas.map((c) => (
-                      <Text key={c.tiempo} style={styles.para}>
-                        {c.tiempo}: {c.texto}
-                      </Text>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
             {plan.distribucion.length ? (
               <View style={styles.section} break>
                 <Text style={styles.sectionTitle}>Cómo repartir tus porciones en el día</Text>
@@ -380,6 +361,25 @@ export function ReportDocument({
                 </View>
               ))}
             </View>
+
+            {plan.menu.length ? (
+              <View style={styles.section} break>
+                <Text style={styles.sectionTitle}>Ejemplo de menú para una semana</Text>
+                <Text style={styles.para}>
+                  Es un ejemplo, no una obligación: puedes cambiar preparaciones por otras equivalentes.
+                </Text>
+                {plan.menu.map((d) => (
+                  <View key={d.dia} style={styles.diaMenu}>
+                    <Text style={styles.bold}>{d.dia}</Text>
+                    {d.comidas.map((c) => (
+                      <Text key={c.tiempo} style={styles.para}>
+                        {c.tiempo}: {c.texto}
+                      </Text>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </>
         ) : null}
 

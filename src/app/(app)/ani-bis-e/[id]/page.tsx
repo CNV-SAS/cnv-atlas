@@ -969,8 +969,14 @@ export default async function ResultadosEvaluacionPage({
                   planPaciente ? (
                     <PlanImprimible
                       plan={planPaciente}
-                      paciente={hcHeader?.paciente ?? "Paciente"}
-                      fecha={formatDate(hcHeader?.fechaConsulta ?? new Date().toISOString())}
+                      encabezado={{
+                        profesional: hcHeader?.profesional ?? "",
+                        profesion: hcHeader?.profesion ?? null,
+                        paciente: hcHeader?.paciente ?? "Paciente",
+                        documento: hcHeader?.documento ?? null,
+                        edad: hcHeader?.edad ?? null,
+                        fecha: formatDate(hcHeader?.fechaConsulta ?? new Date().toISOString()),
+                      }}
                       evaluationId={id}
                     />
                   ) : null

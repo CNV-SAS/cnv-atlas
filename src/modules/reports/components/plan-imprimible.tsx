@@ -42,15 +42,25 @@ function Bloque({ titulo, children }: { titulo: string; children: React.ReactNod
   );
 }
 
+/** El encabezado que pidio Gildardo (2026-09-18): primero quien lo firma, despues a quien va dirigido. */
+export type EncabezadoDelPlan = {
+  profesional: string;
+  /** La profesion de quien prescribe. Un plan alimentario no lo firma "alguien": lo firma un nutricionista. */
+  profesion: string | null;
+  paciente: string;
+  /** Tipo y numero de documento: es lo que identifica el papel si se traspapela. */
+  documento: string | null;
+  edad: number | null;
+  fecha: string;
+};
+
 export function PlanImprimible({
   plan,
-  paciente,
-  fecha,
+  encabezado,
   evaluationId,
 }: {
   plan: PlanPaciente;
-  paciente: string;
-  fecha: string;
+  encabezado: EncabezadoDelPlan;
   evaluationId: string;
 }) {
   const hayMeta = plan.objetivoTexto || plan.kcalObjetivo != null || plan.pesoMeta != null;
@@ -80,11 +90,30 @@ export function PlanImprimible({
 
       {/* EL DOCUMENTO: en el DOM, invisible en pantalla, y es lo unico que sale al imprimir. */}
       <div className="solo-impresion imprimible flex-col gap-5">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Plan del paciente</h2>
-          <p className="text-xs text-muted-foreground">
-            {paciente} · {fecha}
-          </p>
+        {/* EL ENCABEZADO, EN EL ORDEN QUE PIDIO GILDARDO (2026-09-18): primero quien firma, con su
+            profesion, y despues a quien va dirigido, con lo que lo identifica si el papel se traspapela.
+            El documento va porque un plan sin el es un papel de "Juan"; la edad, porque contextualiza las
+            porciones. No van celular ni direccion: esta hoja se queda sobre la mesa de la cocina. */}
+        <div className="flex flex-col gap-1">
+          <div>
+            <p className="text-sm font-semibold text-foreground">{encabezado.profesional}</p>
+            {encabezado.profesion ? (
+              <p className="text-xs capitalize text-muted-foreground">{encabezado.profesion}</p>
+            ) : null}
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Plan del paciente</h2>
+            <p className="text-xs text-muted-foreground">
+              {[
+                encabezado.paciente,
+                encabezado.documento,
+                encabezado.edad != null ? `${encabezado.edad} años` : null,
+                encabezado.fecha,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </div>
         </div>
 
         {/* LA BANDA DE BORRADOR SE RETIRO (2026-09-09), y se explica aqui porque la pidio Santiago hace
@@ -145,24 +174,6 @@ export function PlanImprimible({
                 </li>
               ))}
             </ul>
-          </Bloque>
-        ) : null}
-
-        {plan.menu.length > 0 ? (
-          <Bloque titulo="Ejemplo de menú para una semana">
-            <p className="text-xs">
-              Es un ejemplo, no una obligación: puedes cambiar preparaciones por otras equivalentes.
-            </p>
-            {plan.menu.map((d) => (
-              <div key={d.dia} className="flex flex-col gap-0.5 break-inside-avoid">
-                <p className="text-xs font-medium text-foreground">{d.dia}</p>
-                {d.comidas.map((c) => (
-                  <p key={c.tiempo} className="text-xs">
-                    <span className="font-medium">{c.tiempo}:</span> {c.texto}
-                  </p>
-                ))}
-              </div>
-            ))}
           </Bloque>
         ) : null}
 
@@ -243,6 +254,24 @@ export function PlanImprimible({
             </div>
           ))}
         </Bloque>
+
+        {plan.menu.length > 0 ? (
+          <Bloque titulo="Ejemplo de menú para una semana">
+            <p className="text-xs">
+              Es un ejemplo, no una obligación: puedes cambiar preparaciones por otras equivalentes.
+            </p>
+            {plan.menu.map((d) => (
+              <div key={d.dia} className="flex flex-col gap-0.5 break-inside-avoid">
+                <p className="text-xs font-medium text-foreground">{d.dia}</p>
+                {d.comidas.map((c) => (
+                  <p key={c.tiempo} className="text-xs">
+                    <span className="font-medium">{c.tiempo}:</span> {c.texto}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </Bloque>
+        ) : null}
       </div>
     </div>
   );

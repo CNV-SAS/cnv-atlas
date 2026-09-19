@@ -12,10 +12,14 @@ import { edadEnFecha } from "@/lib/format/edad";
 
 export type HcHeader = {
   paciente: string;
+  /** Tipo y numero de documento ("CC 1.020.304"), para identificar al paciente en un papel suelto. */
+  documento: string | null;
   edad: number | null;
   sexo: string | null;
   fechaConsulta: string; // ISO; la formatea la vista
   profesional: string;
+  /** La profesion del profesional. Va en el plan que el paciente se lleva (Gildardo, 2026-09-18). */
+  profesion: string | null;
   motivos: string[];
   /** Proxima cita del tratamiento (bloque 13). En VIVO, no sellada: es la cita vigente. */
   proximaCita: string | null;
@@ -34,7 +38,10 @@ export type HcHeader = {
 
 type PerfilEmbed = { first_name: string | null; last_name: string | null; sex: string | null; birth_date: string | null; occupation: string | null };
 type PacienteEmbed = { patient_profiles: PerfilEmbed | PerfilEmbed[] | null };
-type ProfesionalEmbed = { profiles: { full_name: string | null } | { full_name: string | null }[] | null };
+type ProfesionalEmbed = {
+  profession: string | null;
+  profiles: { full_name: string | null } | { full_name: string | null }[] | null;
+};
 
 const uno = <T,>(v: T | T[] | null | undefined): T | null =>
   Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
@@ -48,17 +55,19 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     .select(
       // Hint del FK OBLIGATORIO en professional_profiles -> profiles: hay TRES relaciones (profile_id,
       // rut_verified_by, rut_rejected_by) y un embed sin hint revienta en runtime, no en tsc.
-      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, patients!inner(patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name)",
+      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profession, profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name)",
     )
     .eq("id", evaluationId)
     .maybeSingle();
   if (error) throw new Error(`hc-header-reader: ${error.message}`);
   if (!data) return null;
 
-  const paciente = uno<PerfilEmbed>(uno<PacienteEmbed>(data.patients as never)?.patient_profiles as never);
-  const profesional = uno(uno<ProfesionalEmbed>(data.professional_profiles as never)?.profiles as never) as
-    | { full_name: string | null }
-    | null;
+  const pacienteFila = uno<PacienteEmbed & { document_type: string | null; document_number: string | null }>(
+    data.patients as never,
+  );
+  const paciente = uno<PerfilEmbed>(pacienteFila?.patient_profiles as never);
+  const perfilProfesional = uno<ProfesionalEmbed>(data.professional_profiles as never);
+  const profesional = uno(perfilProfesional?.profiles as never) as { full_name: string | null } | null;
 
   const fechaConsulta = data.created_at as string;
   // reason_for_visit se guarda como JSON de opciones elegidas (con "Otro: <texto>" ya resuelto en el
@@ -90,10 +99,14 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
 
   return {
     paciente: `${paciente?.first_name ?? ""} ${paciente?.last_name ?? ""}`.trim(),
+    documento: pacienteFila?.document_number
+      ? `${pacienteFila.document_type ?? ""} ${pacienteFila.document_number}`.trim()
+      : null,
     edad: edadEnFecha(paciente?.birth_date ?? null, fechaConsulta),
     sexo: paciente?.sex ?? null,
     fechaConsulta,
     profesional: profesional?.full_name ?? "",
+    profesion: perfilProfesional?.profession ?? null,
     motivos,
     proximaCita: (t?.proxima_cita as string | null) ?? null,
     estado: data.status as string,
