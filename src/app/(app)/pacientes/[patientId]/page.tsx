@@ -9,6 +9,8 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/modules/auth/session";
 import { ArchivarPaciente } from "@/modules/patients/components/archivar-paciente";
 import { canArchivePatient } from "@/modules/patients/policies/can-archive-patient";
+import { canEditPatientContact } from "@/modules/patients/policies/can-edit-patient-contact";
+import { EditarContacto } from "@/modules/patients/components/editar-contacto";
 import { AbandonEvaluation } from "@/modules/evaluations/components/abandon-evaluation";
 import { FollowupLinkEmitter } from "@/modules/evaluations/components/followup-link-emitter";
 import {
@@ -59,6 +61,7 @@ export default async function HistoriaPacientePage({
 
   // Solo el profesional dueno puede cerrar un shell firmado sin responder (la RLS ya acota que sea suyo).
   const puedeCerrar = canAbandonEvaluation(user);
+  const puedeEditarContacto = canEditPatientContact(user);
   // Emitir link de seguimiento: sitio FIJO en el perfil (antes vivia en la tarjeta de confirmar identidad,
   // que desaparece al confirmar; Santiago 2026-08-20 §5a). El action re-resuelve el profesional asignado.
   const puedeEmitirSeguimiento = canEmitFollowupLink(user);
@@ -115,11 +118,19 @@ export default async function HistoriaPacientePage({
       {/* ARCHIVAR / DESARCHIVAR (Santiago, 2026-09-10). Va AQUI y no en la fila de la lista: es una
           decision sobre ESTE paciente y se toma con su ficha delante, no de pasada al recorrer un roster.
           Y va DESPUES de la banda de identidad, para que quien lo pulse haya visto de quien es. */}
-      {puedeArchivar ? (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        {/* CORREGIR EL CONTACTO va JUNTO A LAS TARJETAS que lo muestran, no en un menu: el dato que se
+            corrige esta ahi mismo, y quien llega buscando por que no le llego un correo al paciente ya
+            esta mirando esta zona. */}
+        {puedeEditarContacto ? (
+          <EditarContacto patientId={patientId} email={paciente.email} phone={paciente.phone} />
+        ) : (
+          <span />
+        )}
+        {puedeArchivar ? (
           <ArchivarPaciente patientId={patientId} archivado={paciente.status === "inactive"} />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {datos.map((d) => (

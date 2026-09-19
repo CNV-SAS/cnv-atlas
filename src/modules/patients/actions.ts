@@ -5,12 +5,15 @@ import { limitDocumentLookupByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
 
 import { buscarPorDocumento } from "./data/buscar-por-documento";
+import { guardarContactoDelPaciente } from "./data/patient-contact-writer";
+import { getPatientDetail } from "./data/patient-detail-reader";
 import { setPatientArchivado } from "./data/patients-archive-writer";
 import { canArchivePatient } from "./policies/can-archive-patient";
+import { canEditPatientContact } from "./policies/can-edit-patient-contact";
 import { canCreatePatientPresencial } from "./policies/can-create-patient";
 import { documentoAjenoParaProfesional } from "./text/documento-ajeno";
-import type { ArchivarPacienteState, VerificarDocumentoState } from "./types";
-import { archivarPacienteSchema, documentoSchema } from "./validations";
+import type { ArchivarPacienteState, ContactoPacienteState, VerificarDocumentoState } from "./types";
+import { archivarPacienteSchema, contactoPacienteSchema, documentoSchema } from "./validations";
 
 // PRIMER PASO de crear un paciente en consulta: saber si ese documento ya esta en la organizacion.
 //
@@ -124,6 +127,62 @@ export async function archivarPacienteAction(
     success: datos.data.archivar
       ? "Paciente archivado. Sigue completo: se puede desarchivar cuando quieras."
       : "Paciente desarchivado.",
+    warning: null,
+  };
+}
+
+// ═══ CORREGIR EL CONTACTO DEL PACIENTE (2026-09-19) ═══
+//
+// EL CASO QUE LO PIDE: en el smoke, un paciente que empeoró no tenía correo, así que no se le podía
+// entregar ni el reporte ni la historia clínica, y no había forma de agregárselo. La ficha era de solo
+// lectura entera.
+//
+// SOLO CONTACTO. Nombre, documento y fecha de nacimiento siguen sin editarse: ver el porqué en
+// `can-edit-patient-contact`. Esto no es media solución del backlog, es la parte que no depende de la
+// decisión pendiente.
+//
+// LA OWNERSHIP SE VERIFICA LEYENDO bajo RLS antes de escribir (mismo patrón que el resto del proyecto):
+// si el paciente no es suyo, el lector no lo alcanza y aquí es indistinguible de que no exista.
+export async function guardarContactoPacienteAction(
+  _prev: ContactoPacienteState,
+  form: FormData,
+): Promise<ContactoPacienteState> {
+  const user = await requireUser();
+  if (!canEditPatientContact(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const datos = contactoPacienteSchema.safeParse({
+    patientId: form.get("patientId"),
+    email: form.get("email"),
+    phone: form.get("phone"),
+  });
+  if (!datos.success) {
+    return {
+      error: datos.error.issues[0]?.message ?? "Revisa los datos de contacto.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  const paciente = await getPatientDetail(datos.data.patientId);
+  if (!paciente) return { error: "No se encontró ese paciente.", success: null, warning: null };
+
+  const ip = await getClientIp();
+  await guardarContactoDelPaciente(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    // EL VALOR ANTERIOR viaja desde aquí, que es donde se acaba de leer: el writer no vuelve a
+    // consultarlo para no dejar una ventana entre la lectura y la escritura.
+    anterior: { email: paciente.email, phone: paciente.phone },
+    ip: ip === "unknown" ? null : ip,
+  });
+
+  // No revalida: el refresco lo hace la pantalla tras el aviso (misma razón que en archivar, el candado
+  // del doble ciclo).
+  return {
+    error: null,
+    success: datos.data.email
+      ? "Contacto actualizado. Ya se le puede enviar su documentación."
+      : "Contacto actualizado.",
     warning: null,
   };
 }

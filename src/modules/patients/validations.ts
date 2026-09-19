@@ -19,3 +19,28 @@ export const archivarPacienteSchema = z.object({
   patientId: z.guid(),
   archivar: z.boolean(),
 });
+
+// CORREGIR EL CONTACTO (2026-09-19). Los dos campos son OPCIONALES y el vacio se guarda como null a
+// proposito: borrar un correo equivocado es una correccion legitima, y un correo mal escrito es peor que
+// ninguno (el reporte se da por enviado y no llega a nadie).
+//
+// EL CORREO SE VALIDA COMO CORREO, que es justo el defecto que esto viene a arreglar: si se acepta
+// cualquier texto, el envio falla despues, lejos, y con un mensaje que no habla de este formulario.
+const vacioANull = (v: string | null | undefined) => {
+  const s = (v ?? "").trim();
+  return s.length === 0 ? null : s;
+};
+
+export const contactoPacienteSchema = z.object({
+  patientId: z.guid(),
+  email: z
+    .string()
+    .nullish()
+    .transform(vacioANull)
+    .refine((v) => v === null || z.string().email().max(160).safeParse(v).success, {
+      message: "El correo no tiene un formato válido.",
+    }),
+  phone: z.string().nullish().transform(vacioANull).refine((v) => v === null || v.length <= 40, {
+    message: "El teléfono es demasiado largo.",
+  }),
+});
