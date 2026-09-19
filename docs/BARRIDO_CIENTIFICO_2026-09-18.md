@@ -39,7 +39,7 @@
 | **El nutricionista no ve exámenes ni suplementación** | El panel solo se los pasa a la rama médico. Es brecha de contenido: el modelo los produce y quien prescribe la dieta no los ve |
 | **El archivo Biody no se coteja contra el paciente** | El nombre y la fecha de nacimiento del export se descartan como PII antes de validar, así que no hay con qué comparar identidad. La única defensa es humana, y el propio código admite que importar el archivo del paciente equivocado no se corrige |
 | **Corregir medición, condiciones BIS, peso o talla después del diagnóstico** | El motor de corrección por versión nueva existe y funciona, pero su entrada cubre **solo la encuesta**. Lo demás queda sellado sin vía |
-| **Exportar las respuestas de la encuesta** | No existe como función. El lector y los moldes de descarga ya existen; falta el serializador (no hay ni una línea de CSV en el repo), la procedencia, la ruta y la auditoría. **Bloqueado por una pregunta legal sin confirmar** |
+| **Exportar las respuestas de la encuesta** | No existe como función. El lector y los moldes de descarga ya existen; falta el serializador (no hay ni una línea de CSV en el repo), la procedencia, la ruta y la auditoría. **DESBLOQUEADO (Santiago, 2026-09-18):** es para que cada profesional conserve las respuestas **de sus propios pacientes**, no para Himed ni para un tercero, así que la pregunta legal que lo frenaba no aplica |
 
 ## Un punto que cambió de nombre
 
@@ -52,3 +52,25 @@
 3. `PLAN_DISENO_INTAKE.md` dice "sin construir": está **a medias**, con lo listado arriba.
 4. `PLAN_SEGUIMIENTO.md` dice "sin construir": **los cuatro bloques están**.
 5. `LANZAMIENTO.md` afirma que no queda ninguna pregunta abierta con Gildardo, y `PENDIENTES_CIENTIFICOS.md` tiene **17 sin respuesta**. Manda el segundo.
+
+---
+
+## Lo que se construyó DESPUÉS de este barrido (mismo día, 2026-09-18)
+
+El barrido se hizo por la mañana. Esto es lo que se cerró después, en el orden que acordamos, y **actualiza
+las filas de arriba que toca**.
+
+| Qué | Estado |
+|---|---|
+| **El diagnóstico nace firmado** | **HECHO.** `pipeline-writer` sella `confirmed_by`, `confirmed_at` y `confirmed_profession` al generar el diagnóstico. Antes la firma se ponía al aprobar el reporte, así que un diagnóstico generado y nunca aprobado quedaba sin responsable: había **23 así en producción**, y el script de respaldo los firmó con quien los generó (auditoría) o con el profesional de la evaluación. Quedaron **0** |
+| **El plan impreso, en el orden de Gildardo** | **HECHO.** Profesional (con profesión) → paciente (con documento) → plan → porciones → lista de intercambios → **menú al final**. La paridad entre el papel y el PDF del correo la fija `plan-paciente.test.ts` |
+| **Las rutas de atención se imprimen** | **HECHO** (`HojaImprimible`, andamiaje compartido) |
+| **El diagnóstico funcional se imprime** | **HECHO**, con sus mapas |
+| **Una hoja a la vez en el papel** | **HECHO.** Con dos bloques imprimibles montados salían los dos en el mismo papel; `data-hoja-activa` marca la hoja que se manda a imprimir y el CSS esconde las demás |
+| **El registro de entregas dice QUÉ se entregó** | **HECHO** (migración 0148: `hc_deliveries.scope`). Cada documento deja su propia constancia, y cada pantalla lee la suya |
+| **El reporte es una hoja más** | **HECHO.** Se retiraron la aprobación, las notas del reporte y los tres modos de envío. Se ve, se imprime, se envía. `/reportes` salió del menú (la ruta queda como registro) y el contador del tablero se retiró |
+| **El freno del cambio desfavorable** | **MUDADO, no retirado.** Vivía dentro de aprobar; ahora vive en la **entrega** (`freno-de-trayectoria`), donde además alcanza a la impresión, que se lo saltaba. Frena el **reporte** y la **historia clínica**; **no** frena el plan ni las rutas, que dicen qué hacer y no cómo le va. Candados: `freno-entrega-empeoro.test.ts` y el caso de BD real en `report-trajectory-seal` |
+
+**Lo que sigue abierto de este frente:** el smoke de Santiago en un solo recorrido
+(`docs/entregas/SMOKE_REPORTES_POR_PANTALLA.md`), la exportación de respuestas (ya desbloqueada) y la lista
+de mejoras de Gildardo cuando llegue.
