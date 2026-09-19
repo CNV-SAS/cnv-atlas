@@ -574,3 +574,36 @@ y sin registro**, como dijiste tú. Lo que sí se construye es poner las dos dec
 pantalla** (lo que el paciente declaró, textual, y la lista completa de lo que el producto declara), sin
 clasificar ninguna ni deducir nada entre ellas. **No es un cruce: es mostrar dos hechos, que es lo que tu
 punto 1 ya mandaba.** Si lo lees de otra manera, dilo y se retira.
+
+---
+
+## Nueva (2026-09-19) · Las rutas están escritas para el profesional, y ahora las lee el paciente
+
+**Qué cambió de nuestro lado.** El documento que recibe el paciente pasó a ser un **informe completo**
+(diagnóstico en lenguaje llano, plan, rutas, suplementos, remisiones y seguimiento), por decisión de
+Santiago. Hasta ahora las rutas solo las veía el profesional en pantalla.
+
+**El problema, con un ejemplo de tu propio contenido.** En la ruta R1 conviven estas dos indicaciones:
+
+> «Omega-3 dietario: ≥2 porciones pescado graso/semana» — la entiende cualquier paciente y puede actuar.
+>
+> «Valoración médica si IRC > 5.0 — descartar patología inflamatoria subyacente» — es para el profesional,
+> y además nombra un índice del modelo, que tu instrucción §7.1 prohíbe expresamente mandarle al paciente.
+
+**Qué hicimos mientras tanto, y por qué no más.** Filtramos: al informe del paciente viajan las
+indicaciones de **alimentación, actividad física y manejo del estrés** que no nombran ningún índice, y el
+componente **médico** no viaja como texto sino como **remisión** («a quién acudir y con qué urgencia»), que
+es lo accionable para él. **No reescribimos ninguna línea tuya:** suprimir es representar menos; reescribir
+sería atribuirnos un cambio en tu contenido clínico, y eso no nos toca.
+
+**La pregunta es la que manda la Regla 0: ¿por qué no está?** No existe en tu archivo una versión de las
+rutas escrita para el paciente. Puede ser deliberado (las rutas son del profesional y al paciente le basta
+el plan) o puede ser un hueco.
+
+**Lo que necesitamos de ti, una de dos:**
+
+1. **Que las rutas no vayan al paciente**, y entonces el informe lleva solo plan, suplementos, remisiones y
+   seguimiento. Se retira el bloque y no queda nada a medias.
+2. **Tu redacción de las rutas para el paciente**, y la ponemos verbatim, como todo lo demás.
+
+Mientras decides, el filtro se queda: es lo único que respeta tu §7.1 sin inventar texto tuyo.
