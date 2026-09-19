@@ -146,8 +146,26 @@ export function PaseQrPresencial({ documentType, documentNumber, onCreado }: Pas
             ) : (
               <Espera estado={recuperada} fallo={null} agotado={false} />
             )}
-            <Button type="button" variant="outline" onClick={() => setRecuperada(null)} className="self-start">
-              Descartar y empezar otro
+            {/* ANULA DE VERDAD, en el servidor, y solo despues limpia la pantalla. Esconderlo aqui
+                dejaba el pase vivo y el siguiente intento chocaba con el mismo bloqueo. */}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={anulando}
+              className="self-start"
+              onClick={async () => {
+                if (!recuperada) return;
+                setAnulando(true);
+                const r = await abandonarSesionQrAction(recuperada.id);
+                setAnulando(false);
+                if (!r.error) setRecuperada(null);
+              }}
+            >
+              {anulando
+                ? "Anulando..."
+                : recuperada?.estado === "confirmada"
+                  ? "Anular este pase (el paciente tendría que autorizar otra vez)"
+                  : "Anular este pase y empezar otro"}
             </Button>
           </>
         )}

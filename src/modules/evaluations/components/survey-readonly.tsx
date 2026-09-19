@@ -45,7 +45,14 @@ export function SurveyReadonly({ domains }: { domains: SurveyDomain[] }) {
             {d.questions.map((q, i) => {
               const encabezado = encabezadoAntesDe(q.fieldKey, d.questions[i - 1]?.fieldKey ?? null);
               return (
-                <div key={q.questionId} className="flex flex-col gap-2">
+                // EL ANCLA (2026-09-19): el resumen de la pestaña Evaluación enlaza a la pregunta que
+                // falta, no a la pantalla. `scroll-mt` deja sitio para la cabecera pegajosa; sin eso, el
+                // salto deja la pregunta justo debajo del borde y parece que no llevo a ninguna parte.
+                <div
+                  key={q.questionId}
+                  id={`p-${q.questionId}`}
+                  className="flex scroll-mt-24 flex-col gap-2"
+                >
                   {encabezado ? <EncabezadoDeFrecuencia encabezado={encabezado} /> : null}
                   <p className="text-sm font-medium text-foreground">
                     <span className="text-muted-foreground">{q.number}.</span> {q.questionText}

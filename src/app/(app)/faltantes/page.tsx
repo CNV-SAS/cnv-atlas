@@ -60,7 +60,7 @@ function CaseHead({ c }: { c: FaltanteQueueRow }) {
       {c.reincidencia >= 3 ? (
         <p className="text-xs text-clinical-critical">
           Tres o más injustificados en seis meses: además de clasificar este caso, CNV debería revisar las
-          condiciones de consignación de este integrante (decisión de negocio, fuera del sistema).
+          condiciones de consignación de este integrante. Esa revisión se hace por fuera de Atlas.
         </p>
       ) : null}
     </div>
