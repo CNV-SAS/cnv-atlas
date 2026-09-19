@@ -131,3 +131,72 @@ select scope, delivered_at, sent_to
   lo admite a propósito. Si te encuentras uno, envíalo y dime si salió bien.
 - El bloque comercial (3b sesión 2, Alegra producción): pausado, con su estado en
   `ESTADO_COMERCIAL_AL_PAUSAR_2026-09-18.md`.
+
+---
+
+# Segunda vuelta (2026-09-19): lo que cambió tras tu smoke
+
+Esto **reemplaza** los pasos 3, 4, 6 y 10 de arriba; el resto sigue igual.
+
+## 3-bis. El encabezado, en tres bloques
+
+- [ ] Imprime el plan (Tratamiento → **Imprimir el plan**). **Debe dar**, en tres bloques separados:
+      profesional + profesión / paciente + documento + edad / **Plan del paciente** + fecha.
+- [ ] Imprime las **rutas** y el **diagnóstico funcional**. **Debe dar:** el mismo encabezado, con el
+      título de cada hoja. Es el mismo componente en las tres.
+
+## 5-bis. El diagnóstico ya no imprime botones
+
+- [ ] Imprime el **Diagnóstico funcional**. **Debe dar:** sin "Explorar otros estados" y sin el bloque
+      "Cierre del diagnóstico / Corregir evaluación".
+
+> Por qué salían: esa hoja envuelve la **pantalla de trabajo**, no contenido compuesto (el plan y las rutas
+> sí lo son). El CSS oculta lo que está fuera de la hoja, y esos botones estaban dentro. Ahora están
+> marcados para no imprimirse. Si quieres una hoja compuesta de verdad para esa pantalla, es otra tanda.
+
+## 4-bis. La hoja de rutas dice suplementos y remisiones
+
+- [ ] Imprime **Rutas de atención**. **Debe dar**, después de las rutas: **Tus suplementos** (con "Lo que
+      sugiere el modelo" y, si los hay, "Lo que te indicó tu profesional") y **Otros profesionales que te
+      pueden acompañar** (modelo y, si las hay, las que registró el profesional). Y la próxima consulta si
+      está agendada.
+- [ ] Con un paciente **sin nutracéuticos prescritos**. **Debe dar:** sale solo el bloque del modelo, sin
+      un título vacío del profesional.
+
+## 6-bis. El informe
+
+- [ ] Abre **Ver o imprimir el informe**. **Debe dar**, en este orden: título **"Informe ANI-BIS-E del
+      paciente"**, el cambio respecto a la medición anterior (si es seguimiento), **Cómo estás**, tu meta,
+      el plan, las porciones, la lista de intercambio, el menú, **Lo que vas a trabajar**, **Tus
+      suplementos**, **Otros profesionales que te pueden acompañar** y **Tu seguimiento**.
+- [ ] **Y lo que NO debe aparecer:** ninguna sigla del modelo (IFC, IRC, PABU, ICA-BIS, ISCM, IEHH, FFMI,
+      FMI). Si ves una, para y dímelo: es lo único de este bloque que no puede fallar.
+- [ ] La tarjeta del reporte. **Debe dar:** **sin** "Ver resultados"; al pulsar **Enviar al paciente** sale
+      *"¿Lo mandamos?"* con **Sí, enviar** y **Cancelar**; cancelar no manda nada.
+
+## 10-bis. Reenviar
+
+- [ ] En un informe ya enviado, pulsa **Reenviar el mismo documento**. **Debe dar:** pregunta *"¿Lo
+      reenviamos?"*, **sin** pedir motivo, y la tarjeta sigue contando cuántas veces se reenvió.
+- [ ] Compara el PDF que llega con el del primer envío. **Debe dar:** idénticos. Ahora se mandan los bytes
+      guardados, no un render nuevo (antes, si el plan cambiaba entre los dos envíos, "el mismo documento"
+      dejaba de serlo en silencio).
+
+## 11. La ficha del paciente ya se puede corregir
+
+- [ ] Abre la ficha de **"Hhh Ooo"** (el paciente sin correo). **Debe dar:** la tarjeta **Fecha de
+      nacimiento** entre las demás, y un botón **Corregir el contacto** con la línea *"Sin correo no se le
+      puede enviar su reporte ni su historia clínica"*.
+- [ ] Pulsa, escribe un correo y guarda. **Debe dar:** aviso verde, y la tarjeta de Correo actualizada.
+- [ ] **Debe dar también:** el formulario **NO** permite cambiar nombre, documento ni fecha de nacimiento,
+      y lo dice (eso toca identidad y consentimiento, y sigue en el backlog con su decisión pendiente).
+- [ ] Vuelve a su evaluación y envíale el informe. **Debe dar:** ahora sí sale (si tiene la próxima cita
+      agendada, porque empeoró).
+
+## Lo que queda abierto de esta vuelta
+
+- **Los gráficos de trayectoria en el informe:** segunda tanda, como acordamos.
+- **La redacción de las rutas para el paciente:** pregunta abierta con Gildardo
+  (`docs/PENDIENTES_CIENTIFICOS.md`, entrada del 19/9). Hoy se filtra lo que nombra índices del modelo y el
+  componente médico viaja como remisión.
+- **El pulido gráfico:** `PULIDO_GRAFICO_PENDIENTE.md`.
