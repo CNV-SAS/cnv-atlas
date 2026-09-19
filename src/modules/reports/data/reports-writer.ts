@@ -1,14 +1,12 @@
 import "server-only";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { diagnoses, reports, treatments } from "@/db/schema";
-import type { Profession } from "@/modules/auth/admin-validations";
+import { reports } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
-import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 
-// Escritura de la aprobacion y el envio del reporte (Drizzle owner, para el audit
+// Escritura del envio del reporte (Drizzle owner, para el audit
 // INLINE, regla 8). Las actualizaciones tocan solo columnas de estado, NUNCA snapshot,
 // asi que pasan el trigger prevent_report_snapshot_mutation (que solo bloquea DELETE y
 // cambios del snapshot). La autorizacion se verifica antes en el action leyendo el
@@ -23,199 +21,23 @@ export class ReportStateError extends Error {
   }
 }
 
-export type ApproveReportInput = {
-  reportId: string;
-  professionalNotes: string | null; // notas del profesional; se congelan al aprobar
-  actorId: string;
-  actorEmail: string;
-  ip: string | null;
-};
-
-// Aprueba el reporte. Orden (D1): primero confirma el diagnostico, luego aprueba el
-// reporte, cada uno con su audit inline. Si la confirmacion falla (p. ej. el
-// diagnostico ya estaba confirmado), se revierte todo.
-export async function approveReport(input: ApproveReportInput): Promise<{ diagnosisId: string }> {
-  return db.transaction(async (tx) => {
-    const [report] = await tx
-      .select({
-        id: reports.id,
-        evaluationId: reports.evaluationId,
-        status: reports.status,
-        trajectory: reports.trajectory,
-        trajectoryCommunicatedAt: reports.trajectoryCommunicatedAt,
-      })
-      .from(reports)
-      .where(eq(reports.id, input.reportId))
-      .limit(1);
-    if (!report) throw new ReportStateError("Reporte no encontrado.");
-    if (report.status !== "draft") {
-      throw new ReportStateError("El reporte ya fue aprobado o enviado.");
-    }
-
-    // GATE del "empeoró" (2026-08-24). Aprobar es el paso que manda el documento hacia el paciente, y un
-    // documento que dice que empeoró no puede salir sin que alguien lo haya decidido Y sin cita. Hasta hoy
-    // el bloque de confirmación INVITABA: se podía aprobar y enviar saltándoselo, y el paciente recibía la
-    // mala noticia sin saber cuándo lo vuelven a ver.
-    //
-    // El matiz de Gildardo se conserva: confirmar sigue siendo un ACTO APARTE de aprobar (una decisión, no
-    // un automatismo). Lo que cambia es que aprobar ya no puede saltárselo.
-    //
-    // SOLO alcanza a 'empeoro'. Una trayectoria estable o mejor no pide nada, y un reporte sin banda
-    // (inicial, o seguimiento sin previa comparable) tampoco: son la mayoría y no deben notar este gate.
-    const band = (report.trajectory as { band?: string } | null)?.band;
-    if (band === "empeoro" && report.trajectoryCommunicatedAt == null) {
-      throw new ReportStateError(
-        "Este reporte informa un cambio desfavorable. Confirma la comunicación y agenda la próxima cita antes de aprobarlo.",
-      );
-    }
-
-    // 1. Confirmar el diagnostico de la evaluacion, TOLERANTE (mini-bloque de confirmacion como acto
-    //    propio): la confirmacion ya no es exclusiva del reporte. Si el diagnostico YA estaba
-    //    confirmado (por el acto propio, diagnosis.confirmed), NO se re-confirma ni se bloquea. Si se
-    //    confirma AQUI (nadie lo hizo antes), se audita distinto (diagnosis.confirmed_via_report) para
-    //    que el audit distinga "confirmo y luego prescribio" de "aprobo el reporte sin confirmar" (con
-    //    la via propia disponible, esto ultimo significa que se salto un paso).
-    const [diagnosis] = await tx
-      .select({ id: diagnoses.id })
-      .from(diagnoses)
-      .where(eq(diagnoses.evaluationId, report.evaluationId))
-      .limit(1);
-    if (!diagnosis) throw new ReportStateError("La evaluación no tiene diagnóstico que confirmar.");
-    // Profesion con que se confirma via aprobar reporte (misma firma clinica que el acto propio). null si
-    // quien aprueba no es profesional (p. ej. admin, permitido por la policy del reporte).
-    const { profession } = await getActorProfession(input.actorId);
-    const confirmed = await tx
-      .update(diagnoses)
-      .set({ confirmedBy: input.actorId, confirmedAt: sql`now()`, confirmedProfession: profession as Profession | null })
-      .where(and(eq(diagnoses.id, diagnosis.id), isNull(diagnoses.confirmedBy)))
-      .returning({ id: diagnoses.id });
-    if (confirmed.length > 0) {
-      await recordAudit(tx, {
-        event: "diagnosis.confirmed_via_report",
-        actorId: input.actorId,
-        actorEmail: input.actorEmail,
-        entityType: "diagnosis",
-        entityId: diagnosis.id,
-        payload: { evaluation_id: report.evaluationId },
-        ip: input.ip,
-      });
-    }
-
-    // 2. Aprobar el reporte + sellar las notas del profesional (no toca snapshot ->
-    //    compatible con el trigger; el UPDATE es draft->approved, asi que la escritura
-    //    de professional_notes pasa el trigger, y despues queda congelada).
-    const approved = await tx
-      .update(reports)
-      .set({
-        status: "approved",
-        approvedBy: input.actorId,
-        approvedAt: sql`now()`,
-        professionalNotes: input.professionalNotes,
-      })
-      .where(and(eq(reports.id, report.id), eq(reports.status, "draft")))
-      .returning({ id: reports.id });
-    if (approved.length === 0) throw new ReportStateError("No se pudo aprobar el reporte.");
-    await recordAudit(tx, {
-      event: "report.approved",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "report",
-      entityId: report.id,
-      payload: {
-        evaluation_id: report.evaluationId,
-        has_professional_notes: Boolean(input.professionalNotes),
-      },
-      ip: input.ip,
-    });
-
-    return { diagnosisId: diagnosis.id };
-  });
-}
-
-export type ConfirmTrajectoryInput = {
-  reportId: string;
-  actorId: string;
-  actorEmail: string;
-  ip: string | null;
-};
-
-// Confirma comunicar un "empeoro" al paciente (P0 Parte 2, P4). Acto APARTE de aprobar (Gildardo). En
-// UNA transaccion: agenda la proxima cita en el tratamiento Y sella la confirmacion en el reporte. Debe
-// ser atomico: si la confirmacion fallara despues de agendar, no puede quedar la cita puesta sin la
-// confirmacion (el profesional creeria que confirmo y no lo hizo). La autorizacion (ownership) se
-// verifica antes en el action bajo RLS.
-export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInput): Promise<void> {
-  await db.transaction(async (tx) => {
-    const [report] = await tx
-      .select({
-        id: reports.id,
-        evaluationId: reports.evaluationId,
-        status: reports.status,
-        trajectory: reports.trajectory,
-        communicatedAt: reports.trajectoryCommunicatedAt,
-      })
-      .from(reports)
-      .where(eq(reports.id, input.reportId))
-      .limit(1);
-    if (!report) throw new ReportStateError("Reporte no encontrado.");
-    if (report.status !== "draft") {
-      throw new ReportStateError("El reporte ya fue aprobado o enviado; la comunicación ya no se confirma aquí.");
-    }
-    const band = (report.trajectory as { band?: string } | null)?.band;
-    if (band !== "empeoro") {
-      throw new ReportStateError("Solo se confirma la comunicación cuando el cambio empeoro.");
-    }
-    if (report.communicatedAt) throw new ReportStateError("La comunicación ya fue confirmada.");
-    // La cita ya NO llega del formulario del bloque ambar (2026-08-25): se fija en Seguimiento, que es el
-    // unico sitio donde se decide, y aqui solo se VERIFICA que exista. La regla de Gildardo se conserva
-    // entera ("un empeoro no se comunica sin cita agendada"); lo que cambia es que este acto deja de ser
-    // tambien el de agendar, y queda limpio: confirmar que se comunica un empeoramiento.
-
-    // Agendar la cita en el tratamiento (evaluation -> diagnosis -> treatment). La condicion (cita) se
-    // evalua AQUI, al confirmar; si despues alguien borra proxima_cita, la confirmacion queda (el
-    // reporte ya decidio, no se reescribe). proxima_cita es editable tras aprobar por diseno (trigger
-    // 0026), asi que esta escritura pasa aunque el tratamiento este aprobado.
-    const [diag] = await tx
-      .select({ id: diagnoses.id })
-      .from(diagnoses)
-      .where(eq(diagnoses.evaluationId, report.evaluationId))
-      .limit(1);
-    if (!diag) throw new ReportStateError("La evaluación no tiene diagnóstico.");
-    // La cita VIGENTE del tratamiento: es la condicion de este acto y queda en la traza, para que se sepa
-    // con que fecha se autorizo comunicar el cambio.
-    const [prevT] = await tx
-      .select({ cita: treatments.proximaCita })
-      .from(treatments)
-      .where(eq(treatments.diagnosisId, diag.id))
-      .limit(1);
-    if (!prevT) {
-      throw new ReportStateError("La evaluación no tiene tratamiento donde consultar la cita.");
-    }
-    if (!prevT.cita) {
-      throw new ReportStateError(
-        "Para comunicar este cambio hace falta que el paciente tenga la próxima cita agendada. Agéndala en Seguimiento.",
-      );
-    }
-
-    // Sellar la confirmacion en el reporte (draft; se congela al aprobar).
-    const confirmed = await tx
-      .update(reports)
-      .set({ trajectoryCommunicatedAt: sql`now()`, trajectoryCommunicatedBy: input.actorId })
-      .where(and(eq(reports.id, report.id), eq(reports.status, "draft")))
-      .returning({ id: reports.id });
-    if (confirmed.length === 0) throw new ReportStateError("No se pudo confirmar la comunicación.");
-
-    await recordAudit(tx, {
-      event: "report.trajectory_communication_confirmed",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "report",
-      entityId: report.id,
-      payload: { evaluation_id: report.evaluationId, band, proxima_cita: prevT.cita },
-      ip: input.ip,
-    });
-  });
-}
+// ═══ LA APROBACION Y LA CONFIRMACION DEL "EMPEORO" SE RETIRARON (2026-09-18) ═══
+//
+// AQUI VIVIAN `approveReport` (draft -> approved, congelando las notas) y `confirmTrajectoryCommunication`
+// (sellar que se le comunica al paciente un cambio desfavorable). Las dos eran la ceremonia del reporte
+// como bloque propio: aprobar, confirmar, y solo entonces enviar.
+//
+// POR QUE SE VAN, y no solo su pantalla: el reporte pasa a ser UNA HOJA MAS (Santiago, 2026-09-18), como
+// las demas del modelo de Gildardo, que se imprimen o se envian. Aprobar sellaba dos cosas, y ninguna
+// necesita este acto: la firma del diagnostico ahora nace con el diagnostico (`pipeline-writer`), y las
+// notas del reporte se retiraron en favor de la observacion de la consulta, que no se congela aqui.
+//
+// Y LA GARANTIA CLINICA NO SE PIERDE, que es lo unico que no podia caerse con la ceremonia: el freno del
+// cambio desfavorable se mudo a la ENTREGA (`freno-de-trayectoria`), donde es mas fuerte, porque tambien
+// alcanza a la impresion, que se lo saltaba. Lo que se retira es el tramite, no la regla.
+//
+// LAS COLUMNAS SE QUEDAN (`approved_by`, `trajectory_communicated_at`): los reportes ya aprobados en
+// produccion las tienen llenas y son su historia. No se borra un dato clinico por simplificar un flujo.
 
 export type MarkReportSentInput = {
   reportId: string;
@@ -226,9 +48,13 @@ export type MarkReportSentInput = {
   ip: string | null;
 };
 
-// Marca el reporte como enviado (approved -> sent), sella sent_at y storage_path y
-// audita report.sent. Se llama SOLO tras un envio de correo exitoso (el orden lo
-// gobierna el servicio de envio): si el correo falla, el reporte queda approved.
+// Marca el reporte como enviado, sella sent_at y storage_path y audita report.sent. Se llama SOLO tras un
+// envio de correo exitoso (el orden lo gobierna el servicio de envio): si el correo falla, el reporte queda
+// como estaba y se puede reintentar.
+//
+// ACEPTA draft Y approved (2026-09-18). Antes exigia approved, porque aprobar era el paso previo; retirada
+// la aprobacion, los reportes nuevos salen desde draft. `approved` sigue admitido porque en produccion hay
+// reportes que se aprobaron y nunca se enviaron, y esos tienen que poder salir.
 export async function markReportSent(input: MarkReportSentInput): Promise<void> {
   await db.transaction(async (tx) => {
     const [report] = await tx
@@ -237,8 +63,8 @@ export async function markReportSent(input: MarkReportSentInput): Promise<void> 
       .where(eq(reports.id, input.reportId))
       .limit(1);
     if (!report) throw new ReportStateError("Reporte no encontrado.");
-    if (report.status !== "approved") {
-      throw new ReportStateError("El reporte debe estar aprobado para enviarse.");
+    if (report.status === "sent") {
+      throw new ReportStateError("Este reporte ya se envió.");
     }
     const sent = await tx
       .update(reports)
@@ -248,7 +74,9 @@ export async function markReportSent(input: MarkReportSentInput): Promise<void> 
         storagePath: input.storagePath,
         sendMode: input.sendMode,
       })
-      .where(and(eq(reports.id, report.id), eq(reports.status, "approved")))
+      // El WHERE repite la condicion para que dos envios simultaneos no marquen dos veces (el segundo no
+      // encuentra fila y falla, en vez de auditar un envio que no ocurrio).
+      .where(and(eq(reports.id, report.id), ne(reports.status, "sent")))
       .returning({ id: reports.id });
     if (sent.length === 0) throw new ReportStateError("No se pudo marcar el reporte como enviado.");
     await recordAudit(tx, {

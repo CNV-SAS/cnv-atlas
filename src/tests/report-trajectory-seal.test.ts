@@ -175,52 +175,40 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
     });
   }
 
-  it("confirmar 'empeoro' es atomico: agenda la cita en el tratamiento Y sella la confirmacion", async () => {
-    const { confirmTrajectoryCommunication } = await import("@/modules/reports/data/reports-writer");
-    const prior = await makeDiagnosed("CONF", "inicial", "2026-04-01T10:00:00Z");
-    const follow = await makeDiagnosed("CONF", "seguimiento", "2026-08-05T10:00:00Z", prior.patientId);
+  // EL FRENO DE LA ENTREGA, contra BD real. Antes esto probaba `confirmTrajectoryCommunication` (aprobar el
+  // reporte exigia confirmar la comunicacion). La ceremonia se retiro el 2026-09-18 y la garantia clinica
+  // se mudo al acto de ENTREGAR, donde alcanza tambien a la impresion. La regla de Gildardo es la misma:
+  // un "empeoro" no sale sin la proxima cita agendada.
+  it("un 'empeoro' SIN proxima cita no se entrega, y con cita si", async () => {
+    const { frenoDeTrayectoria } = await import("@/modules/reports/data/freno-de-trayectoria");
+    const prior = await makeDiagnosed("FRENO", "inicial", "2026-04-01T10:00:00Z");
+    const follow = await makeDiagnosed("FRENO", "seguimiento", "2026-08-05T10:00:00Z", prior.patientId);
     await forceEmpeoro(follow.evaluationId);
-    const report = (await db.select({ id: schema.reports.id }).from(schema.reports).where(eq(schema.reports.evaluationId, follow.evaluationId)).limit(1))[0];
-
-    // APROBAR el tratamiento antes de confirmar: verifica que escribir proxima_cita pase el trigger de
-    // inmutabilidad de treatments (0026 lo deja editable tras aprobar por diseno; es la 1a vez que algo
-    // lo escribe de verdad). El status draft->approved es la transicion normal, el trigger la permite.
-    const diagPre = (await db.select({ id: schema.diagnoses.id }).from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, follow.evaluationId)).limit(1))[0];
-    await db.update(schema.treatments).set({ status: "approved" }).where(eq(schema.treatments.diagnosisId, diagPre.id));
-
-    // Sin cita AGENDADA: rechaza. Desde 2026-08-25 el gate VERIFICA la cita en vez de fijarla; la cita se
-    // agenda en Seguimiento, que es el unico sitio donde se decide. La regla de Gildardo no cambia
-    // ("un empeoro no se comunica sin cita agendada"), cambia quien la pone.
-    await expect(
-      confirmTrajectoryCommunication({ reportId: report.id, actorId, actorEmail: "traj@cnv", ip: null }),
-    ).rejects.toThrow(/próxima cita/i);
-
-    // Con la cita ya agendada (como la dejaria Seguimiento): sella la confirmacion.
-    await db
-      .update(schema.treatments)
-      .set({ proximaCita: "2026-11-01" })
-      .where(eq(schema.treatments.diagnosisId, diagPre.id));
-    await confirmTrajectoryCommunication({ reportId: report.id, actorId, actorEmail: "traj@cnv", ip: null });
-    const r = (await db.select({ at: schema.reports.trajectoryCommunicatedAt, by: schema.reports.trajectoryCommunicatedBy }).from(schema.reports).where(eq(schema.reports.id, report.id)).limit(1))[0];
-    expect(r.at).not.toBeNull();
-    expect(r.by).toBe(actorId);
     const diag = (await db.select({ id: schema.diagnoses.id }).from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, follow.evaluationId)).limit(1))[0];
-    const treat = (await db.select({ cita: schema.treatments.proximaCita }).from(schema.treatments).where(eq(schema.treatments.diagnosisId, diag.id)).limit(1))[0];
-    expect(treat.cita).toBe("2026-11-01");
 
-    // No se puede re-confirmar.
-    await expect(
-      confirmTrajectoryCommunication({ reportId: report.id, actorId, actorEmail: "traj@cnv", ip: null }),
-    ).rejects.toThrow(/ya fue confirmada/i);
+    // Sin cita: el reporte y la historia clinica se frenan, y el mensaje DICE que hacer.
+    const frenoReporte = await frenoDeTrayectoria(follow.evaluationId, "reporte");
+    expect(frenoReporte).toMatch(/próxima cita|Agéndala/i);
+    expect(await frenoDeTrayectoria(follow.evaluationId, "hc")).not.toBeNull();
+
+    // EL PLAN Y LAS RUTAS NO SE FRENAN (respuesta a Santiago, 2026-09-18): dicen QUE HACER, no que le pasa
+    // a su cuerpo. Bloquear su impresion dejaria al profesional sin poder entregarle al paciente lo que se
+    // lleva de la consulta, con el paciente ahi delante.
+    expect(await frenoDeTrayectoria(follow.evaluationId, "plan")).toBeNull();
+    expect(await frenoDeTrayectoria(follow.evaluationId, "rutas")).toBeNull();
+
+    // Con la cita agendada (como la deja Seguimiento, el unico sitio donde se decide): pasa.
+    await db.update(schema.treatments).set({ proximaCita: "2026-11-01" }).where(eq(schema.treatments.diagnosisId, diag.id));
+    expect(await frenoDeTrayectoria(follow.evaluationId, "reporte")).toBeNull();
+    expect(await frenoDeTrayectoria(follow.evaluationId, "hc")).toBeNull();
   });
 
-  it("solo 'empeoro' pide confirmacion (sin_cambio la rechaza)", async () => {
-    const { confirmTrajectoryCommunication } = await import("@/modules/reports/data/reports-writer");
+  it("una trayectoria que no empeoro no frena nada (son la mayoria de los seguimientos)", async () => {
+    const { frenoDeTrayectoria } = await import("@/modules/reports/data/freno-de-trayectoria");
     const prior = await makeDiagnosed("NOEMP", "inicial", "2026-04-01T10:00:00Z");
     const follow = await makeDiagnosed("NOEMP", "seguimiento", "2026-08-05T10:00:00Z", prior.patientId); // sin_cambio
-    const report = (await db.select({ id: schema.reports.id }).from(schema.reports).where(eq(schema.reports.evaluationId, follow.evaluationId)).limit(1))[0];
-    await expect(
-      confirmTrajectoryCommunication({ reportId: report.id, actorId, actorEmail: "traj@cnv", ip: null }),
-    ).rejects.toThrow(/empeoro/i);
+    // Sin cita agendada a proposito: lo que decide es la BANDA, no la cita.
+    expect(await frenoDeTrayectoria(follow.evaluationId, "reporte")).toBeNull();
+    expect(await frenoDeTrayectoria(follow.evaluationId, "hc")).toBeNull();
   });
 });

@@ -97,15 +97,24 @@ export async function getPatientContactForEvaluation(
   return { patientId: data.patient_id as string, email: contacto?.email ?? null };
 }
 
-/** ¿Cuándo se le entregó por última vez? Para decirlo en la pantalla, que es para lo que existe la tabla. */
+/**
+ * ¿Cuándo se le entregó por última vez ESTE documento? Para decirlo en la pantalla, que es para lo que
+ * existe la tabla.
+ *
+ * FILTRA POR `scope` (2026-09-18), y esto dejo de ser opcional al entrar el reporte al mismo registro
+ * (0148): sin el filtro, la pantalla de la historia clinica diria "última entrega: hoy" porque lo que
+ * salio fue el reporte. Un registro compartido sin filtro por documento no informa, confunde.
+ */
 export async function getUltimaEntregaHc(
   evaluationId: string,
+  documento: DocumentoEntregado = "hc",
 ): Promise<{ fecha: string; enviadaA: string } | null> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("hc_deliveries")
     .select("delivered_at, sent_to")
     .eq("evaluation_id", evaluationId)
+    .eq("scope", documento)
     .order("delivered_at", { ascending: false })
     .limit(1)
     .maybeSingle();

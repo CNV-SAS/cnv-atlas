@@ -8,8 +8,9 @@ import { canManageReports } from "@/modules/reports/policies/can-manage-reports"
 
 export const metadata = { title: "Reportes - Atlas" };
 
-// Listado de reportes del profesional (RLS): borrador, aprobado y enviado. Las
-// acciones (aprobar/enviar) y el preview viven en la propia tarjeta.
+// Listado de reportes del profesional (RLS). SALIO DEL MENU el 2026-09-18 (el reporte se trabaja dentro de
+// la consulta, como una hoja mas), y la ruta se queda viva como REGISTRO: se llega por enlace y sirve para
+// ver o reenviar lo que ya salio. El envio y el preview viven en la propia tarjeta.
 export default async function ReportesPage() {
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");

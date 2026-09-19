@@ -662,9 +662,17 @@ export default async function ResultadosEvaluacionPage({
   // MOSTRAR que la entrego, que es para lo que existe la tabla.
   // `delivered_at` es un timestamptz, asi que se formatea con `formatDate` (zona de Colombia) y NO con
   // `formatDateOnly`, que es para las columnas `date` puras: convertir una fecha pura la retrocede un dia.
-  const entregaHc = await getUltimaEntregaHc(id);
+  const [entregaHc, entregaReporte] = await Promise.all([
+    getUltimaEntregaHc(id),
+    // LA DEL REPORTE, del MISMO registro (0148): desde que el reporte es una hoja mas, su constancia vive
+    // junto a las demas y se lee igual, pidiendo su documento.
+    getUltimaEntregaHc(id, "reporte"),
+  ]);
   const ultimaEntregaHc = entregaHc
     ? { fecha: formatDate(entregaHc.fecha), enviadaA: entregaHc.enviadaA }
+    : null;
+  const ultimaEntregaReporte = entregaReporte
+    ? { fecha: formatDate(entregaReporte.fecha), enviadaA: entregaReporte.enviadaA }
     : null;
 
   const planPaciente = isEngineOutput(results.snapshot)
@@ -1088,7 +1096,7 @@ export default async function ResultadosEvaluacionPage({
                   corto), se explica al profesional junto al reporte, donde estaría la confirmación si la
                   hubiera. Recomputado en vivo; null si hay banda o es inicial. */}
               <TrajectoryNotice notice={trajectoryNotice} />
-              <ReportCard report={reportCard} />
+              <ReportCard report={{ ...reportCard, ultimaEntrega: ultimaEntregaReporte }} />
             </div>
           ) : (
             <EtapaReporte />
