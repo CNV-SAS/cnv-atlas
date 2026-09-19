@@ -163,3 +163,10 @@ export type ArchivarPacienteState = {
   success: string | null;
   warning: string | null;
 };
+
+/** Estado de la accion de corregir el contacto. Misma forma que el resto (`FormToastState`). */
+export type ContactoPacienteState = {
+  error: string | null;
+  success: string | null;
+  warning: string | null;
+};
