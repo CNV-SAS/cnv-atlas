@@ -9,9 +9,10 @@ import { emitirPrescripcion } from "@/modules/treatment/services/treatment-servi
 import { frenoDeTrayectoria, ultimaObservacionDeLaConsulta } from "../data/freno-de-trayectoria";
 import { writeHcDelivery } from "../data/hc-entregas-writer";
 import { getReportDispatch } from "../data/reports-repository";
-import { uploadReportPdf } from "../data/report-storage";
+import { downloadReportPdf, uploadReportPdf } from "../data/report-storage";
 import { markReportResent, markReportSent, ReportStateError } from "../data/reports-writer";
 import type { SendMode } from "../pdf/report-document";
+import { getInformeDelPaciente } from "../data/informe-paciente-reader";
 import { getPlanPaciente } from "../data/plan-paciente-reader";
 import { renderReportPdf } from "./render-report";
 
@@ -103,7 +104,13 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   //
   // Si la evaluacion no tiene tratamiento con protocolo, viaja null y el PDF omite el plan entero: es
   // preferible a mandar un plan a medias.
-  const plan = await getPlanPaciente(dispatch.evaluationId, dispatch.snapshot);
+  // Y LO QUE LO CONVIERTE EN INFORME: rutas, suplementos, remisiones y seguimiento. En paralelo con el
+  // plan porque son lecturas independientes; si fallara, fallaria el envio entero, que es lo correcto:
+  // mandar medio documento sin avisar es peor que no mandarlo.
+  const [plan, informe] = await Promise.all([
+    getPlanPaciente(dispatch.evaluationId, dispatch.snapshot),
+    getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot),
+  ]);
 
   // 1. Render del PDF desde el snapshot inmutable, segun el modo elegido.
   const pdf = await renderReportPdf(
@@ -121,6 +128,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
       plan,
+      informe,
     },
   );
 
@@ -129,11 +137,11 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   if (!uploaded) return err(appError("internal", "No se pudo almacenar el PDF del reporte."));
 
   // 3. Correo con el PDF adjunto (externo). Si falla, el reporte sigue approved.
-  const filename = `reporte-${dispatch.documentLabel.replace(/\s+/g, "-") || "clinico"}.pdf`;
+  const filename = `informe-${dispatch.documentLabel.replace(/\s+/g, "-") || "anibise"}.pdf`;
   const sent = await sendReportEmail({
     to: dispatch.email,
-    subject: "Tu reporte clínico ANI-BIS-E",
-    text: `Hola ${dispatch.patientName || ""}. Adjuntamos tu reporte clinico. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
+    subject: "Tu informe ANI-BIS-E",
+    text: `Hola ${dispatch.patientName || ""}. Adjuntamos tu informe con tu plan y tus indicaciones. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
     pdf: { filename, content: pdf },
   });
   if (!sent.ok) return sent;
@@ -175,7 +183,8 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
 // con el mecanismo de sucesion de versiones.
 export type ResendReportInput = {
   reportId: string;
-  reason: string;
+  /** Motivo del reenvio, OPCIONAL desde el 2026-09-19: la pantalla ya no lo pide. */
+  reason: string | null;
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -190,41 +199,51 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
   if (!dispatch.email) {
     return err(appError("validation", "El paciente no tiene un correo registrado."));
   }
-  // El modo del envio original. Si por cualquier via falta, se cae al reporte de Atlas, que es el que no
-  // depende de las notas: reenviar nunca puede quedarse sin poder mandar nada.
+  // El modo del envio original, solo para el rastro: lo que viaja son los BYTES guardados.
   const mode = (dispatch.sendMode ?? "atlas") as SendMode;
 
-  // El plan tambien en el REENVIO: si uno de los dos sitios se lo olvidara, el reenvio mandaria un
-  // documento distinto del original, que es peor que no reenviar. Se lee igual que en el envio (el
-  // tratamiento aprobado esta congelado, asi que da lo mismo).
-  const plan = await getPlanPaciente(dispatch.evaluationId, dispatch.snapshot);
+  // ═══ SE MANDAN LOS BYTES QUE YA SALIERON, NO UN RENDER NUEVO (2026-09-19) ═══
+  //
+  // Esto se re-renderizaba desde el snapshot, y se justificaba con que el tratamiento quedaba congelado
+  // al aprobarse. DEJO DE SER CIERTO el 2026-09-09: la prescripcion esta siempre abierta, asi que entre
+  // el envio y el reenvio el plan puede haber cambiado, y el "mismo documento" habria dejado de serlo
+  // sin que nadie lo notara. El PDF enviado vive en Storage desde el primer envio.
+  //
+  // EL RENDER SIGUE COMO RESPALDO para los reportes anteriores a que se guardara la copia: entre mandar
+  // una reconstruccion y no poder mandar nada, el paciente prefiere recibir su documento.
+  let pdf = dispatch.storagePath ? await downloadReportPdf(dispatch.storagePath) : null;
+  if (!pdf) {
+    const [plan, informe] = await Promise.all([
+      getPlanPaciente(dispatch.evaluationId, dispatch.snapshot),
+      getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot),
+    ]);
+    pdf = await renderReportPdf(
+      dispatch.snapshot,
+      {
+        patientName: dispatch.patientName || "Paciente",
+        documentLabel: dispatch.documentLabel,
+        evaluationDate: formatDate(dispatch.evaluationDate),
+        consultationDate: formatDate(dispatch.consultationDate),
+        reportId: dispatch.reportId,
+      },
+      {
+        mode,
+        professionalNotes: dispatch.professionalNotes,
+        bandText: dispatch.patientBandText,
+        bandAppointmentDate: dispatch.patientBandAppointmentDate,
+        plan,
+        informe,
+      },
+    );
+    const uploaded = await uploadReportPdf(dispatch.patientId, dispatch.reportId, pdf);
+    if (!uploaded) return err(appError("internal", "No se pudo almacenar el PDF del informe."));
+  }
 
-  const pdf = await renderReportPdf(
-    dispatch.snapshot,
-    {
-      patientName: dispatch.patientName || "Paciente",
-      documentLabel: dispatch.documentLabel,
-      evaluationDate: formatDate(dispatch.evaluationDate),
-      consultationDate: formatDate(dispatch.consultationDate),
-      reportId: dispatch.reportId,
-    },
-    {
-      mode,
-      professionalNotes: dispatch.professionalNotes,
-      bandText: dispatch.patientBandText,
-      bandAppointmentDate: dispatch.patientBandAppointmentDate,
-      plan,
-    },
-  );
-
-  const uploaded = await uploadReportPdf(dispatch.patientId, dispatch.reportId, pdf);
-  if (!uploaded) return err(appError("internal", "No se pudo almacenar el PDF del reporte."));
-
-  const filename = `reporte-${dispatch.documentLabel.replace(/\s+/g, "-") || "clinico"}.pdf`;
+  const filename = `informe-${dispatch.documentLabel.replace(/\s+/g, "-") || "anibise"}.pdf`;
   const sent = await sendReportEmail({
     to: dispatch.email,
-    subject: "Tu reporte clínico ANI-BIS-E",
-    text: `Hola ${dispatch.patientName || ""}. Te reenviamos tu reporte clinico, es el mismo documento. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
+    subject: "Tu informe ANI-BIS-E",
+    text: `Hola ${dispatch.patientName || ""}. Te reenviamos tu informe, es el mismo documento. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
     pdf: { filename, content: pdf },
   });
   if (!sent.ok) return sent;

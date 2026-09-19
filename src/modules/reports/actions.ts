@@ -74,11 +74,15 @@ export async function sendReportAction(
 // Motivo del reenvio: obligatorio y corto. Obligatorio porque un documento clinico que sale dos veces
 // deja rastro de por que; corto porque no es una nota clinica, es una razon operativa ("el correo rebotó",
 // "corrigieron la dirección"). Tope de tamaño como toda entrada externa (regla de validacion).
+// OPCIONAL desde el 2026-09-19: la pantalla ya no lo pide (reenviar es confirmar y listo). El esquema se
+// queda porque la action sigue aceptandolo si algun dia vuelve a haber un sitio donde escribirlo, y el
+// tope de tamano es la regla de toda entrada externa.
 const resendReasonSchema = z
   .string()
   .trim()
-  .min(3, "Escribe el motivo del reenvío.")
-  .max(300, "El motivo es demasiado largo.");
+  .max(300, "El motivo es demasiado largo.")
+  .nullish()
+  .transform((v) => (v && v.length > 0 ? v : null));
 
 export async function resendReportAction(
   _prev: ReportActionState,

@@ -182,3 +182,50 @@ export type HcPlanNutricionalDoc = {
   actividadFisica: string | null;
   sodioMax?: number | null;
 };
+
+// ═══ LO QUE EL INFORME DEL PACIENTE AÑADE AL PLAN (2026-09-19) ═══
+//
+// Viven AQUI, en el modulo NEUTRO, y no junto a su lector: el lector es `server-only` y estos tipos los
+// consume tambien el documento PDF. Es la regla de las fronteras RSC (un tipo compartido vive en un
+// modulo que los dos lados puedan importar), y ya se aplica igual a `PlanPaciente`.
+
+export type RutaDelInforme = {
+  /** El nombre de la ruta, tal como el la titula ("Restauración Celular"). */
+  titulo: string;
+  /** Lo que el paciente puede hacer: alimentación, actividad física y manejo del estrés. */
+  indicaciones: string[];
+  /** Cada cuánto se controla esta ruta ("Cada 30 días"). */
+  frecuencia: string | null;
+};
+
+export type SuplementoIndicado = { nombre: string; dosis: string | null; duracionDias: number | null };
+
+export type RemisionDelInforme = {
+  /** A quién acudir ("Medicina", "Psicología"). */
+  destino: string;
+  /** Verbatim de Gildardo ("recomendada", "prioritaria"): no es un enum nuestro. */
+  urgencia: string | null;
+};
+
+export type InformeDelPaciente = {
+  rutas: RutaDelInforme[];
+  suplementos: {
+    /** La cadena del modelo ("OMEGA COMPLEX, MITO-Q10 PLUS"). null si el estado no sugiere ninguno. */
+    delModelo: string | null;
+    /** Lo que el profesional le indicó de verdad. Vacío = no le indicó ninguno, y entonces no se pinta. */
+    delProfesional: SuplementoIndicado[];
+  };
+  remisiones: {
+    /** Las que el modelo exige por las rutas activas. */
+    delModelo: RemisionDelInforme[];
+    /** Las que el profesional registró en esta consulta. Vacío = no registró ninguna. */
+    delProfesional: { destino: string; fecha: string }[];
+  };
+  seguimiento: {
+    /** La observación que el profesional escribió en Seguimiento. null si no escribió. */
+    observacion: string | null;
+    /** yyyy-MM-dd. null si no hay cita agendada. */
+    proximaCita: string | null;
+  };
+};
+

@@ -94,7 +94,11 @@ export async function markReportSent(input: MarkReportSentInput): Promise<void> 
 
 export type MarkReportResentInput = {
   reportId: string;
-  reason: string; // motivo del reenvio; queda en el audit, que es el registro que no se reescribe
+  // MOTIVO DEL REENVIO, ahora OPCIONAL (2026-09-19). Era obligatorio y se retiro de la pantalla: pedirlo
+  // convertia un gesto de un clic ("el correo reboto") en un formulario, y lo que se escribia no lo leia
+  // nadie. Lo que SI queda es el rastro del acto y su numero de intento, que es lo que se consulta de
+  // verdad. null = se reenvio sin motivo escrito, y el audit lo dice asi en vez de inventar uno.
+  reason: string | null;
   sendMode: string; // el MISMO del envio original: reenviar no cambia el documento
   actorId: string;
   actorEmail: string;
@@ -127,7 +131,8 @@ export async function markReportResent(input: MarkReportResentInput): Promise<{ 
       actorEmail: input.actorEmail,
       entityType: "report",
       entityId: report.id,
-      // El MOTIVO es el dato: un documento clinico que sale dos veces deja rastro de por que.
+      // EL RASTRO ES EL DATO: un documento clinico que sale dos veces deja constancia de cuando y de
+      // quien lo mando. El motivo acompana si lo hay.
       payload: {
         evaluation_id: report.evaluationId,
         send_mode: input.sendMode,

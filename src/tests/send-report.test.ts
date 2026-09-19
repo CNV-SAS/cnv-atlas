@@ -16,6 +16,16 @@ vi.mock("@/modules/reports/data/reports-repository", () => ({
 vi.mock("@/modules/reports/data/plan-paciente-reader", () => ({
   getPlanPaciente: vi.fn(async () => null),
 }));
+// Y el resto del informe (rutas, suplementos, remisiones, seguimiento), por lo mismo: su contenido lo
+// cubre `informe-paciente.test.ts`; aqui importa que el envio lo pida y lo pase al render.
+vi.mock("@/modules/reports/data/informe-paciente-reader", () => ({
+  getInformeDelPaciente: vi.fn(async () => ({
+    rutas: [],
+    suplementos: { delModelo: null, delProfesional: [] },
+    remisiones: { delModelo: [], delProfesional: [] },
+    seguimiento: { observacion: null, proximaCita: null },
+  })),
+}));
 // EL GATE DE EMISION (2026-09-01): el protocolo tiene que estar aprobado para que el reporte salga. Se
 // mockea aprobado por defecto, y hay un caso propio abajo para el borrador: si no se mockeara, TODOS los
 // casos de orquestacion se caerian por el gate y el test diria que el orden de los pasos esta mal.
@@ -35,6 +45,7 @@ vi.mock("@/modules/reports/data/hc-entregas-writer", () => ({
 }));
 vi.mock("@/modules/reports/data/report-storage", () => ({
   uploadReportPdf: vi.fn(),
+  downloadReportPdf: vi.fn(async () => Buffer.from("%PDF-guardado")),
 }));
 vi.mock("@/lib/email/resend", () => ({
   sendReportEmail: vi.fn(),
@@ -50,6 +61,7 @@ const email = await import("@/lib/email/resend");
 const writer = await import("@/modules/reports/data/reports-writer");
 const freno = await import("@/modules/reports/data/freno-de-trayectoria");
 const entregas = await import("@/modules/reports/data/hc-entregas-writer");
+const almacenamiento = await import("@/modules/reports/data/report-storage");
 const treatmentService = await import("@/modules/treatment/services/treatment-service");
 const { sendReport, resendReport } = await import("@/modules/reports/services/send-report");
 
@@ -279,10 +291,59 @@ describe("el REENVIO no lleva el gate, a proposito", () => {
     vi.mocked(storage.uploadReportPdf).mockReset().mockResolvedValue({ path: "pat-1/rep-1.pdf" });
     vi.mocked(email.sendReportEmail).mockReset().mockResolvedValue(okResult({ id: "email-1" }));
     vi.mocked(writer.markReportResent).mockReset().mockResolvedValue({ attempt: 1 });
+    vi.mocked(almacenamiento.downloadReportPdf)
+      .mockReset()
+      .mockResolvedValue(Buffer.from("%PDF-guardado"));
     vi.mocked(freno.frenoDeTrayectoria).mockReset().mockResolvedValue(null);
     vi.mocked(treatmentService.emitirPrescripcion)
       .mockReset()
       .mockResolvedValue({ ok: true, value: undefined });
+  });
+
+  it("manda los BYTES GUARDADOS, no un render nuevo", async () => {
+    // Es lo que hace que "el mismo documento" sea verdad. Se re-renderizaba desde el snapshot, y eso valia
+    // mientras el tratamiento quedara congelado al aprobarse; desde el 2026-09-09 la prescripcion esta
+    // siempre abierta, asi que un render nuevo podia salir distinto del que recibio el paciente.
+    const render = await import("@/modules/reports/services/render-report");
+    vi.mocked(render.renderReportPdf).mockClear();
+    vi.mocked(repo.getReportDispatch).mockResolvedValue({
+      ...dispatch(),
+      status: "sent",
+      sendMode: "atlas",
+      storagePath: "pat-1/rep-1.pdf",
+    });
+    const r = await resendReport({
+      reportId: "rep-1",
+      reason: null,
+      actorId: "u-1",
+      actorEmail: "pro@cnv.test",
+      ip: null,
+    });
+    expect(r.ok).toBe(true);
+    expect(almacenamiento.downloadReportPdf).toHaveBeenCalledWith("pat-1/rep-1.pdf");
+    expect(
+      render.renderReportPdf,
+      "el reenvio re-renderizo el documento en vez de mandar el que salio",
+    ).not.toHaveBeenCalled();
+  });
+
+  it("y si no hay copia guardada (reportes viejos), lo reconstruye antes que no mandar nada", async () => {
+    vi.mocked(almacenamiento.downloadReportPdf).mockResolvedValueOnce(null);
+    vi.mocked(repo.getReportDispatch).mockResolvedValue({
+      ...dispatch(),
+      status: "sent",
+      sendMode: "atlas",
+      storagePath: null,
+    });
+    const r = await resendReport({
+      reportId: "rep-1",
+      reason: null,
+      actorId: "u-1",
+      actorEmail: "pro@cnv.test",
+      ip: null,
+    });
+    expect(r.ok).toBe(true);
+    expect(email.sendReportEmail).toHaveBeenCalledTimes(1);
   });
 
   it("reenvia aunque la prescripcion este en borrador", async () => {
@@ -292,7 +353,7 @@ describe("el REENVIO no lleva el gate, a proposito", () => {
     vi.mocked(repo.getReportDispatch).mockResolvedValue({ ...dispatch(), status: "sent", sendMode: "atlas" });
     const r = await resendReport({
       reportId: "rep-1",
-      reason: "el correo rebotó",
+      reason: null,
       actorId: "u-1",
       actorEmail: "pro@cnv.test",
       ip: null,
