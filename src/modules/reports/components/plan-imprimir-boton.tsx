@@ -6,6 +6,7 @@ import { useActionState } from "react";
 
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
+import { imprimirHoja } from "@/components/shared/imprimir-hoja";
 import { registrarPlanImpresoAction } from "@/modules/treatment/actions";
 import type { TreatmentActionState } from "@/modules/treatment/actions";
 
@@ -38,11 +39,12 @@ export function PlanImprimirBoton({ evaluationId }: { evaluationId: string }) {
   const [state, registrar, registrando] = useActionState(registrarPlanImpresoAction, VACIO);
   useFormToastAndRefresh(state);
 
-  const imprimir = () => {
+  const imprimir = (e: React.MouseEvent<HTMLButtonElement>) => {
     const datos = new FormData();
     datos.set("evaluationId", evaluationId);
     ejecutarAccion(registrar, datos);
-    window.print();
+    // SU hoja, no todas las montadas: ver `shared/imprimir-hoja`.
+    imprimirHoja(e.currentTarget);
   };
 
   return (
