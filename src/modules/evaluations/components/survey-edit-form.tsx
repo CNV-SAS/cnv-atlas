@@ -110,6 +110,11 @@ export function SurveyEditForm({
               return (
                 <Fragment key={q.questionId}>
                   {encabezado ? <EncabezadoDeFrecuencia encabezado={encabezado} /> : null}
+                  {/* EL ANCLA (2026-09-19): el resumen de la pestaña Evaluación enlaza a la pregunta que
+                      falta, y enlaza AQUI, no a la vista de solo lectura: quien va a completar una
+                      pregunta quiere el campo, no el dato (Santiago). `scroll-mt` deja sitio para la
+                      cabecera; sin eso el salto la deja justo debajo del borde. */}
+                  <div id={`p-${q.questionId}`} className="scroll-mt-24">
                   <SurveyQuestion
                     q={{
                       id: q.questionId,
@@ -123,6 +128,7 @@ export function SurveyEditForm({
                     }}
                     answer={q.answerValue}
                   />
+                  </div>
                 </Fragment>
               );
             })}

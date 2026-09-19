@@ -186,7 +186,7 @@ export function EntradaEvaluacion({
                   {faltantes.map((f) => (
                     <li key={f.questionId} className="text-xs leading-snug text-foreground">
                       <Link
-                        href={`/ani-bis-e/${evaluationId}/encuesta#p-${f.questionId}`}
+                        href={`/ani-bis-e/${evaluationId}/encuesta/editar#p-${f.questionId}`}
                         className="underline-offset-2 hover:underline"
                       >
                         <span className="text-muted-foreground">{f.number}.</span> {f.questionText}

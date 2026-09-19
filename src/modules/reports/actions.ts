@@ -188,9 +188,11 @@ export async function emitirVersionNuevaAction(
     throw e;
   }
 
-  revalidatePath("/ani-bis-e");
-  revalidatePath("/ani-bis-e/[id]", "page");
-  revalidatePath("/reportes");
+  // NO REVALIDA: el refresco lo hace la PANTALLA (`useFormToastAndRefresh` en la tarjeta), porque aqui el
+  // documento que la tarjeta muestra CAMBIA (pasa a ser la version nueva, en borrador) y sin refrescar
+  // seguiria ofreciendo reenviar algo que ya no es lo vigente. Uno de los dos, nunca los dos: con
+  // revalidate + refresh son dos ciclos que montan segmentos, o sea dos saltos al inicio y un formulario
+  // que se desmonta antes de que se vea el aviso (candado `refresco-una-sola-vez`).
   return {
     error: null,
     success: "Versión nueva lista. Revísala y envíasela al paciente.",

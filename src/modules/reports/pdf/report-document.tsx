@@ -488,9 +488,17 @@ export function ReportDocument({
           </View>
         ) : null}
 
-        {showNotes ? (
+        {/* "NOTAS DEL PROFESIONAL" SE RETIRO (smoke de Santiago, 2026-09-19): salia DOS VECES lo mismo.
+            La observacion de la consulta ya viaja arriba, en "Tu seguimiento", que es su sitio (va con la
+            proxima cita, que es la otra cosa que el paciente necesita saber de su seguimiento). Este
+            bloque era el de las notas del REPORTE, que se retiraron; al empezar a mandar la observacion
+            por el camino del modo de envio, el mismo texto se pinto en dos sitios con dos rotulos.
+
+            SE CONSERVA PARA LOS INFORMES VIEJOS, que no traen `informe`: ahi la nota es lo unico que hay
+            y no puede desaparecer al reconstruir el documento. */}
+        {showNotes && !informe ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notas del profesional</Text>
+            <Text style={styles.sectionTitle}>Nota de tu profesional</Text>
             <Text style={styles.para}>{notes}</Text>
           </View>
         ) : null}

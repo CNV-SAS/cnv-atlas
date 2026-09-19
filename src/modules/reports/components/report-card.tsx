@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { useFormToast } from "@/components/shared/use-form-toast";
+import { useFormToast, useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { formatDate, formatDateOnly } from "@/lib/format/date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,12 +57,31 @@ export function ReportCard({ report }: { report: ReportCardView }) {
   const [reemitirState, reemitir, reemitiendo] = useActionState(emitirVersionNuevaAction, initialState);
   useFormToast(sendState);
   useFormToast(resendState);
-  useFormToast(reemitirState);
+  // EMITIR CAMBIA EL DOCUMENTO QUE LA TARJETA MUESTRA (pasa a ser el nuevo, en borrador), asi que esta
+  // accion SI refresca: sin refrescar, la tarjeta seguia diciendo "enviado" y ofrecia reenviar una
+  // version que nunca habia salido. Las otras dos no lo necesitan (el revalidate de la accion basta).
+  useFormToastAndRefresh(reemitirState);
 
   // LA CONFIRMACION VIVE EN LA TARJETA, un paso antes de cada salida hacia el paciente.
   const [confirmandoEnvio, setConfirmandoEnvio] = useState(false);
   const [confirmandoReenvio, setConfirmandoReenvio] = useState(false);
   const [confirmandoVersion, setConfirmandoVersion] = useState(false);
+
+  // AL ACTUAR SE CIERRAN LAS CONFIRMACIONES (smoke de Santiago, 2026-09-19). Al emitir una version nueva
+  // la pagina traia el informe nuevo, pero los dos bloques seguian ABIERTOS con su "¿lo reenviamos?" y su
+  // "¿emitimos una version nueva?" encima: preguntas de un acto que ya ocurrio, sobre un documento que ya
+  // no es el mismo. Es el mismo defecto que "en gestion" y la ficha del paciente, resuelto igual:
+  // ajustando el estado durante el render, no en un efecto.
+  const [ultimoEstado, setUltimoEstado] = useState(initialState);
+  const estadoVivo = reemitirState !== initialState ? reemitirState : resendState !== initialState ? resendState : sendState;
+  if (estadoVivo !== ultimoEstado) {
+    setUltimoEstado(estadoVivo);
+    if (estadoVivo.success) {
+      setConfirmandoEnvio(false);
+      setConfirmandoReenvio(false);
+      setConfirmandoVersion(false);
+    }
+  }
 
   const t = report.trajectory;
   const resentCount = report.resentCount ?? 0;
