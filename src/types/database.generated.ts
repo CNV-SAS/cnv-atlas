@@ -1477,6 +1477,7 @@ export type Database = {
           id: string
           medium: string
           patient_id: string
+          scope: string
           sent_to: string
         }
         Insert: {
@@ -1487,6 +1488,7 @@ export type Database = {
           id?: string
           medium?: string
           patient_id: string
+          scope?: string
           sent_to: string
         }
         Update: {
@@ -1497,6 +1499,7 @@ export type Database = {
           id?: string
           medium?: string
           patient_id?: string
+          scope?: string
           sent_to?: string
         }
         Relationships: [

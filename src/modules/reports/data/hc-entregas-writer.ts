@@ -17,9 +17,17 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // Inline, nunca por el bus (regla dura 8): sacar la historia clinica de un paciente es un evento clinico
 // critico, y su rastro no puede depender de que otro proceso lo recoja.
 
+/**
+ * QUE se entrego. Cada hoja que sale hacia el paciente escribe con su valor (0148): asi el modelo por
+ * pantallas de Gildardo conserva la constancia de entrega en vez de perderla al retirar el reporte global.
+ */
+export type DocumentoEntregado = "hc" | "plan" | "diagnostico" | "rutas" | "reporte";
+
 export type HcDeliveryWrite = {
   evaluationId: string;
   patientId: string;
+  /** Por defecto la historia clinica, que es lo unico que se entregaba cuando esto se construyo. */
+  documento?: DocumentoEntregado;
   sentTo: string;
   actorId: string;
   actorEmail: string;
@@ -34,6 +42,7 @@ export async function writeHcDelivery(input: HcDeliveryWrite): Promise<void> {
         evaluationId: input.evaluationId,
         patientId: input.patientId,
         medium: "email",
+        scope: input.documento ?? "hc",
         sentTo: input.sentTo,
         deliveredBy: input.actorId,
         deliveredByEmail: input.actorEmail,
@@ -48,7 +57,13 @@ export async function writeHcDelivery(input: HcDeliveryWrite): Promise<void> {
       entityId: input.evaluationId,
       // El destino va al rastro: "se le envio a su correo" sin decir a cual no prueba nada, y el contacto
       // del paciente puede cambiar despues.
-      payload: { delivery_id: fila?.id ?? null, medium: "email", sent_to: input.sentTo },
+      payload: {
+        delivery_id: fila?.id ?? null,
+        medium: "email",
+        // El rastro dice QUE salio: con varias hojas entregables, "se entrego algo" no prueba nada.
+        scope: input.documento ?? "hc",
+        sent_to: input.sentTo,
+      },
       ip: input.ip,
     });
   });

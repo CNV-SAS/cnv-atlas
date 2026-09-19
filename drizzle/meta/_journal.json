@@ -1037,6 +1037,13 @@
       "when": 1791861126099,
       "tag": "0147_reversas_de_venta",
       "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1791951126099,
+      "tag": "0148_entregas_por_documento",
+      "breakpoints": true
     }
   ]
 }
