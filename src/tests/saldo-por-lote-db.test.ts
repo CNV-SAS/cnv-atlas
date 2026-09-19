@@ -34,6 +34,12 @@ describe.skipIf(!HAS_DB)("los lectores contra la base (BD real)", () => {
       select pp.profile_id, i.nutraceutical_id, sum(i.stock_quantity)::int as total, count(*)::int as lotes
         from nutraceutical_inventory i
         join professional_profiles pp on pp.id = i.professional_id
+        join nutraceuticals n on n.id = i.nutraceutical_id
+      -- FUERA LOS PRODUCTOS QUE INVENTAN OTROS TESTS ("TEST VENTA <id>"). No son del catalogo, asi que el
+      -- lector no los devuelve y el caso se caia por la base sucia, no por el codigo: en la suite completa
+      -- fallaba y corriendo el archivo solo pasaba. Un fixture que elige cualquier fila elige tambien la
+      -- basura que dejo el vecino.
+       where n.name not like 'TEST VENTA %'
        group by pp.profile_id, i.nutraceutical_id
       -- DOS LOTES CON EXISTENCIAS, no solo dos filas. La primera version aceptaba un lote en 0, y ahi "el
       -- ultimo lote" puede coincidir con el total: el test paso con el codigo viejo, que es como se descubrio.

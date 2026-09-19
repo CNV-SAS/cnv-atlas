@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, ClipboardList, FileText, Package, Receipt, Wallet } from "lucide-react";
+import { CalendarClock, ClipboardList, Package, Receipt, Wallet } from "lucide-react";
 
 import { Banda } from "@/components/shared/banda";
 import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
@@ -75,14 +75,10 @@ export default async function DashboardPage() {
           href="/pacientes"
           acento
         />
-        <TarjetaMetrica
-          icono={FileText}
-          rotulo="Reportes por aprobar"
-          valor={t.reportesPorAprobar}
-          detalle="En borrador: falta aprobarlos y enviarlos"
-          href="/reportes"
-          acento
-        />
+        {/* SE RETIRO LA TARJETA "Reportes por aprobar" (2026-09-18). Aprobar dejo de existir: el reporte
+            es una hoja mas de la consulta, que se imprime o se envia. La tarjeta habria quedado contando
+            borradores que nadie puede "resolver" y llevando a una pantalla que salio del menu, que es
+            exactamente el numero con urgencia y sin salida que este corte existe para evitar. */}
 
         {/* LAS PROXIMAS CONSULTAS SON UN LISTADO, NO UN NUMERO (Santiago). "3 consultas esta semana" no
             dice a quien ni cuando, asi que obliga a ir a buscarlo: la cifra da el trabajo y no la

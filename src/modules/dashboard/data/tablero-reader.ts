@@ -35,8 +35,10 @@ export type ProximaConsulta = {
 export type Tablero = {
   /** Pacientes con algo parado. Lleva a /pacientes, donde la columna dice QUE es. */
   pacientesConPendiente: number;
-  /** Reportes en borrador: falta aprobarlos y enviarlos. */
-  reportesPorAprobar: number;
+  // "REPORTES POR APROBAR" SE RETIRO (2026-09-18): con la aprobacion retirada, un reporte en borrador no
+  // es un pendiente de nadie, es el estado normal de la fila que crea el pipeline. La tarjeta habria
+  // pintado para siempre un numero que solo sube y que nadie puede bajar, y el pendiente que SI importa
+  // ("no se le envio al paciente") ya lo dice el cierre de la consulta.
   /** Las TRES proximas, como listado. Ver la nota de la pantalla sobre por que no es un numero. */
   proximasConsultas: ProximaConsulta[];
   /** Comision del profesional en el mes en curso, en pesos. */
@@ -56,7 +58,7 @@ export async function getTablero(): Promise<Tablero> {
   const supabase = await createSupabaseServerClient();
   const desde = inicioDelMes();
 
-  const [pacientes, reportes, citas, comision, ventas, inventario] = await Promise.all([
+  const [pacientes, citas, comision, ventas, inventario] = await Promise.all([
     // LOS PENDIENTES SALEN DE LA MISMA REGLA QUE LA COLUMNA (`pendienteDelPaciente`), no de un conteo
     // paralelo: si aqui se contara "evaluaciones en progreso" y alli se dijera otra cosa, el tablero y la
     // lista discreparian sobre el mismo paciente.
@@ -66,10 +68,6 @@ export async function getTablero(): Promise<Tablero> {
         "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, status, bis_measurements(id), diagnoses(id), reports(status))",
       )
       .is("deleted_at", null),
-    // REPORTES EN BORRADOR YA NO SE CUENTAN (2026-09-18): con el retiro de la aprobacion, un borrador no es
-    // un pendiente de nadie, es el estado normal de la fila que el pipeline crea. Contarlo pintaba un numero
-    // que solo podia crecer y que nadie podia bajar.
-    Promise.resolve({ count: 0 }),
     // LA PROXIMA CITA VIVE EN EL TRATAMIENTO y es EN VIVO (no sellada): es la vigente, no la del dia de
     // la consulta. Se piden cuatro y se muestran tres: asi la pantalla sabe si hay mas sin otra consulta.
     supabase
@@ -156,7 +154,6 @@ export async function getTablero(): Promise<Tablero> {
 
   return {
     pacientesConPendiente: conPendiente,
-    reportesPorAprobar: reportes.count ?? 0,
     proximasConsultas,
     comisionDelMes: suma(comision.data, "commission_amount"),
     ventasDelMes: suma(ventas.data, "amount"),
