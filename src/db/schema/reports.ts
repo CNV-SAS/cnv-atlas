@@ -75,6 +75,9 @@ export const hcDeliveries = pgTable(
       .references(() => patients.id, { onDelete: "restrict" }),
     /** Medio por el que salio. Hoy solo 'email'. */
     medium: text("medium").notNull().default("email"),
+    // QUE se entrego (0148). Cada hoja que sale hacia el paciente escribe con su valor: asi el modelo por
+    // pantallas conserva la constancia en vez de perderla. 'hc' por defecto, que es lo ya registrado.
+    scope: text("scope").notNull().default("hc"),
     /** A DONDE se envio, tal como estaba: el contacto puede cambiar despues. */
     sentTo: text("sent_to").notNull(),
     deliveredBy: uuid("delivered_by")
