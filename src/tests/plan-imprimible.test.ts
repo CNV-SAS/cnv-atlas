@@ -126,3 +126,41 @@ describe("la hoja sale bien en papel", () => {
     expect(CODIGO).toContain("se le envía");
   });
 });
+
+describe("el encabezado y el orden que pidió Gildardo (2026-09-18)", () => {
+  // SIN COMENTARIOS: los dos archivos NOMBRAN sus bloques en comentarios ("BLOQUE 7 · la lista de
+  // intercambio..."), y una comparacion de posiciones sobre el texto crudo mediria el comentario, no el
+  // codigo. Es el mismo detector flojo que ya nos engano una vez.
+  const hoja = sinComentarios(readFileSync("src/modules/reports/components/plan-imprimible.tsx", "utf8"));
+  const pdf = sinComentarios(readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8"));
+
+  it("ENCABEZA EL PROFESIONAL, con su profesión, y después el paciente con lo que lo identifica", () => {
+    const profesional = hoja.indexOf("encabezado.profesional");
+    const profesion = hoja.indexOf("encabezado.profesion");
+    const paciente = hoja.indexOf("encabezado.paciente");
+    expect(profesional, "el plan no lo firma nadie").toBeGreaterThan(-1);
+    expect(profesion, "un plan alimentario lo firma un nutricionista, no 'alguien'").toBeGreaterThan(-1);
+    expect(profesional, "el profesional va primero").toBeLessThan(paciente);
+    expect(hoja, "sin documento, el papel es de 'Juan'").toContain("encabezado.documento");
+    expect(hoja).toContain("encabezado.edad");
+  });
+
+  it("LAS PORCIONES VAN ANTES DE LA LISTA, y el ejemplo de menú DESPUÉS, en las DOS superficies", () => {
+    const orden = (t: string, marcas: string[]) => marcas.map((m) => t.indexOf(m));
+    const [porcionesH, listaH, menuH] = orden(hoja, [
+      'Bloque titulo="Cómo repartir tus porciones en el día"',
+      'Bloque titulo="Tu lista de intercambio"',
+      'Bloque titulo="Ejemplo de menú para una semana"',
+    ]);
+    expect(porcionesH).toBeLessThan(listaH);
+    expect(listaH, "el menú tiene que ir al final, después de la lista").toBeLessThan(menuH);
+
+    const [porcionesP, listaP, menuP] = orden(pdf, [
+      "Cómo repartir tus porciones en el día",
+      "Tu lista de intercambio",
+      "Ejemplo de menú para una semana",
+    ]);
+    expect(porcionesP).toBeLessThan(listaP);
+    expect(listaP, "el PDF y la hoja tienen que contar el mismo plan en el mismo orden").toBeLessThan(menuP);
+  });
+});
