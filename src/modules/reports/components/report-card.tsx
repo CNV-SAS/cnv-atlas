@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { type ReportActionState, resendReportAction, sendReportAction } from "../actions";
+import {
+  emitirVersionNuevaAction,
+  type ReportActionState,
+  resendReportAction,
+  sendReportAction,
+} from "../actions";
 import type { TrajectoryConfirmation } from "../data/reports-view-types";
 import { ejecutarAccion, enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
@@ -49,12 +54,15 @@ const initialState: ReportActionState = { error: null, success: null, warning: n
 export function ReportCard({ report }: { report: ReportCardView }) {
   const [sendState, send, sending] = useActionState(sendReportAction, initialState);
   const [resendState, resend, resending] = useActionState(resendReportAction, initialState);
+  const [reemitirState, reemitir, reemitiendo] = useActionState(emitirVersionNuevaAction, initialState);
   useFormToast(sendState);
   useFormToast(resendState);
+  useFormToast(reemitirState);
 
   // LA CONFIRMACION VIVE EN LA TARJETA, un paso antes de cada salida hacia el paciente.
   const [confirmandoEnvio, setConfirmandoEnvio] = useState(false);
   const [confirmandoReenvio, setConfirmandoReenvio] = useState(false);
+  const [confirmandoVersion, setConfirmandoVersion] = useState(false);
 
   const t = report.trajectory;
   const resentCount = report.resentCount ?? 0;
@@ -218,6 +226,54 @@ export function ReportCard({ report }: { report: ReportCardView }) {
           </form>
         ) : null}
 
+        {/* ═══ ¿CAMBIÓ ALGO DESPUÉS DE ENVIARLO? (Santiago, 2026-09-19) ═══
+
+            LA PREGUNTA QUE LO PIDIÓ, literal: *"que pasa si cambio algo del diagnostico o de las notas de
+            seguimiento y quiero que vayan en el nuevo reporte? no hay forma, ya que solo puedo reenviar el
+            anterior"*. Tenía razón, y es el caso normal de una consulta.
+
+            LAS TRES SALIDAS, DICHAS DONDE SE ELIGEN: reenviar (el mismo, arriba), emitir una versión nueva
+            (aquí) y corregir la evaluación (en Diagnóstico, cuando lo que está mal es un DATO). Se explica
+            la diferencia en una línea porque las tres se parecen y confundirlas tiene consecuencias
+            distintas: una manda lo mismo, otra manda lo nuevo y la tercera rehace la cadena. */}
+        {enviado ? (
+          <form onSubmit={enviarSinReset(reemitir)} className="flex w-full flex-col gap-2">
+            <input type="hidden" name="reportId" value={report.reportId} />
+            <span className="text-sm font-semibold">¿Cambió algo después de enviarlo?</span>
+            <span className="text-xs text-muted-foreground">
+              Emite una <strong>versión nueva</strong> con lo que cambió (tu observación de la consulta, el
+              plan ajustado). El diagnóstico es el mismo: si lo que está mal es un dato, corrige la
+              evaluación desde Diagnóstico. El informe que ya recibió el paciente se conserva tal cual.
+            </span>
+            {confirmandoVersion ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-foreground">¿Emitimos una versión nueva?</span>
+                <Button type="submit" size="sm" variant="outline" disabled={reemitiendo}>
+                  {reemitiendo ? "Emitiendo…" : "Sí, emitirla"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmandoVersion(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="self-start"
+                onClick={() => setConfirmandoVersion(true)}
+              >
+                Emitir una versión nueva
+              </Button>
+            )}
+          </form>
+        ) : null}
+
         {/* CUANDO SALIO Y A DONDE, del mismo registro que las demas hojas (0148): el profesional necesita
             poder MOSTRAR que lo entrego. Un registro que se escribe y no se ve nunca es medio registro. */}
         {report.ultimaEntrega ? (
@@ -228,8 +284,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
 
         {enviado ? (
           <p className="text-xs text-muted-foreground">
-            El documento que recibió el paciente queda guardado tal cual salió. Para cambiar su contenido
-            se genera una corrección (una versión nueva del reporte).
+            El documento que recibió el paciente queda guardado tal cual salió.
           </p>
         ) : null}
       </CardContent>

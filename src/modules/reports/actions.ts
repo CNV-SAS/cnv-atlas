@@ -8,6 +8,8 @@ import { getClientIp } from "@/core/http/client-ip";
 import { limitReportSendByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
 
+import { getReportDispatch } from "./data/reports-repository";
+import { emitirVersionNueva, ReportStateError } from "./data/reports-writer";
 import { entregarHistoriaClinica } from "./services/entregar-hc";
 import { canManageReports } from "./policies/can-manage-reports";
 import { resendReport, sendReport } from "./services/send-report";
@@ -150,6 +152,48 @@ export async function entregarHistoriaClinicaAction(
     error: null,
     // Se dice A DONDE se envio: "enviada" a secas deja al profesional sin saber si fue al correo correcto.
     success: `Historia clínica enviada a ${result.value.enviadaA}. Queda registrada la entrega.`,
+    warning: null,
+  };
+}
+
+// EMITIR UNA VERSIÓN NUEVA del informe (2026-09-19). Es la tercera salida, y la que faltaba: reenviar
+// manda el mismo documento, corregir rehace la cadena porque un dato estaba mal, y esta manda el MISMO
+// diagnóstico con lo que cambió después (una observación escrita tras el envío, un plan ajustado).
+//
+// Rate limit compartido con el envío: emitir sin enviar no cuesta nada, pero esta acción existe para
+// mandar, y quien la pulsa en serie está mandando correos en serie.
+export async function emitirVersionNuevaAction(
+  _prev: ReportActionState,
+  form: FormData,
+): Promise<ReportActionState> {
+  const user = await requireUser();
+  if (!canManageReports(user)) return fail("No autorizado.");
+  const reportId = reportIdOf(form);
+  if (!reportId) return fail("Informe inválido.");
+
+  // La ownership se verifica leyendo el informe bajo RLS antes de escribir (regla dura 3).
+  const dispatch = await getReportDispatch(reportId);
+  if (!dispatch) return fail("Informe no encontrado.");
+
+  const ip = await getClientIp();
+  try {
+    await emitirVersionNueva({
+      reportId,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: ip === "unknown" ? null : ip,
+    });
+  } catch (e) {
+    if (e instanceof ReportStateError) return fail(e.message);
+    throw e;
+  }
+
+  revalidatePath("/ani-bis-e");
+  revalidatePath("/ani-bis-e/[id]", "page");
+  revalidatePath("/reportes");
+  return {
+    error: null,
+    success: "Versión nueva lista. Revísala y envíasela al paciente.",
     warning: null,
   };
 }
