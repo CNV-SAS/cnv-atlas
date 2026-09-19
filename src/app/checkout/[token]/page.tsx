@@ -4,22 +4,31 @@ import { reportServerError } from "@/lib/observability/report-error";
 import { getCheckoutByToken, type CheckoutView } from "@/modules/payments/data/checkout-reader";
 import { buildWompiCheckoutParams } from "@/modules/payments/services/payments-service";
 
-export const metadata = { title: "Pago - Atlas" };
+export const metadata = { title: "Pago - VITACELLEBIS" };
 
-// Contenedor centrado de la superficie publica de pago (sin shell de la app).
+// Contenedor centrado de la superficie publica de pago (sin shell de la app). La marca que ve el paciente
+// es la del PRODUCTO (VITACELLEBIS) con quien le cobra (CNV, con su NIT), no la de la herramienta del
+// profesional: ver el porque en el bloque de arriba.
 function CheckoutShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-svh items-center justify-center bg-muted/30 px-4 py-12">
       <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-border bg-background p-8 shadow-sm">
-        <Image
-          src="/brand/logo-horizontal.svg"
-          alt="Atlas"
-          width={140}
-          height={28}
-          priority
-          unoptimized
-          className="h-7 w-auto"
-        />
+        <div className="flex flex-col items-center gap-2">
+          <Image
+            src="/brand/vitacellebis.png"
+            alt="VITACELLEBIS"
+            width={160}
+            height={40}
+            priority
+            unoptimized
+            className="h-10 w-auto"
+          />
+          <p className="text-center text-[11px] leading-tight text-muted-foreground">
+            CONNECTED NUTRITION VENTURES S.A.S.
+            <br />
+            NIT 902045562-3
+          </p>
+        </div>
         {children}
       </div>
     </main>

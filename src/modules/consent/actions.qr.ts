@@ -68,8 +68,12 @@ export async function emitirSesionQrAction(
     // EL LIMITE, DICHO CON PALABRAS y con el documento concreto, en vez de un error de base de datos. Y
     // con la salida: anular siempre es posible mientras no se haya declarado, asi que nadie queda
     // bloqueado.
+    // EL AVISO DICE DONDE, no solo que (2026-09-19). Decia "Termínalo o anúlalo" sin decir desde donde,
+    // y el bloque que lo permite estaba arriba en la misma pantalla: el profesional leia una instruccion
+    // sin sitio donde cumplirla.
     return fail(
-      `Ya tienes un pase en curso con el documento ${s.documento}. Termínalo o anúlalo antes de empezar otro.`,
+      `Ya tienes un pase en curso con el documento ${s.documento}. Arriba, en "Tienes un pase en curso", ` +
+        "puedes terminarlo o anularlo para empezar otro.",
     );
   }
   return { error: null, token: s.token, sessionId: s.id };

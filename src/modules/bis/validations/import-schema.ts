@@ -190,9 +190,13 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
   if (missing.length > 0) {
     const missingFields: Record<string, string> = {};
     for (const m of missing) {
+      // EL MENSAJE ES PARA EL PROFESIONAL, no para nosotros (Santiago, 2026-09-19). Decia "decisión de
+      // negocio, no requisito del motor", que es una distincion NUESTRA: le explicaba de que lado del
+      // sistema sale la regla en vez de por que le pedimos el dato. Lo que a el le sirve es lo segundo.
+      // La distincion interna se conserva en el comentario de arriba, que es donde importa.
       missingFields[m.label] = m.business
-        ? "Circunferencia medida obligatoria (decisión de negocio, no requisito del motor)."
-        : "Requerido por el motor para un diagnóstico válido.";
+        ? "Se mide siempre: es parte del estándar de la medición y de los datos que sostienen la investigación."
+        : "Sin este dato no se puede emitir un diagnóstico válido.";
     }
     return err(
       appError(

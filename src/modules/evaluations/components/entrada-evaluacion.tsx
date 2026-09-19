@@ -91,6 +91,18 @@ export function EntradaEvaluacion({
   // Porcentaje de completitud de la encuesta (Gildardo 2026-08-17, b): junto al boton de ver/editar, con
   // barra. Antes solo estaba el conteo en texto; no se perdio al dividir en subpestañas, nunca hubo barra.
   const surveyPct = total > 0 ? Math.round((answered / total) * 100) : 0;
+  // LAS QUE FALTAN, con su numero, su texto y su dominio, en el orden del instrumento. Se derivan de lo
+  // mismo que el contador: si se contaran aparte, el numero y la lista podrian discrepar.
+  const faltantes = domains.flatMap((d) =>
+    d.questions
+      .filter((q) => !isAnswered(q.answerValue))
+      .map((q) => ({
+        questionId: q.questionId,
+        number: q.number,
+        questionText: q.questionText,
+        section: d.section,
+      })),
+  );
 
   // Aviso de SECUENCIA (care Santiago 2026-08-15): Antropometria DEPENDE de Encuesta. Si la identidad
   // esta confirmada pero las condiciones de la toma aun no se guardaron, la segunda subpestaña lo dice y
@@ -138,6 +150,39 @@ export function EntradaEvaluacion({
               <span className="font-semibold tabular-nums text-foreground">{surveyPct}%</span>
             </div>
             <Progress value={surveyPct} aria-label={`Encuesta ${surveyPct}% completada`} />
+            {/* ═══ CUALES FALTAN, AQUI MISMO (Santiago, 2026-09-19) ═══
+
+                SU PEDIDO: que el bloque diga las preguntas que quedaron sin responder sin tener que entrar
+                a "Ver o editar". La barra decia CUANTAS y eso obliga a abrir la encuesta entera y
+                recorrerla para encontrarlas, que con 60 preguntas es buscar una aguja.
+
+                CADA UNA ENLAZA A SI MISMA, no a la pantalla: llegar a la encuesta y seguir buscando es la
+                mitad del trabajo, no la solucion.
+
+                EL PREDICADO ES EL MISMO (`isAnswered`) que el gate, el aviso del paciente y la
+                previsualizacion: ya hubo cuatro sitios contando distinto, y el quinto no lo abrimos. */}
+            {faltantes.length > 0 ? (
+              <div className="flex flex-col gap-1.5 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2">
+                <span className="text-xs font-semibold text-clinical-warning">
+                  {faltantes.length === 1
+                    ? "Falta 1 pregunta por responder"
+                    : `Faltan ${faltantes.length} preguntas por responder`}
+                </span>
+                <ul className="flex flex-col gap-1">
+                  {faltantes.map((f) => (
+                    <li key={f.questionId} className="text-xs leading-snug text-foreground">
+                      <Link
+                        href={`/ani-bis-e/${evaluationId}/encuesta#p-${f.questionId}`}
+                        className="underline-offset-2 hover:underline"
+                      >
+                        <span className="text-muted-foreground">{f.number}.</span> {f.questionText}
+                      </Link>
+                      <span className="text-muted-foreground"> · {f.section}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">

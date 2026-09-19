@@ -251,12 +251,12 @@ export function PillsMulti({
 }
 
 // Contador +/- para cantidades (bebidas/dia). Rango 0-30 (como el prototipo). Arranca SIN valor
-// (vacio, "-") hasta que alguien lo toca: un contador sin tocar NO es 0, es sin responder (Gildardo:
+// (rotulado "sin responder") hasta que alguien lo toca: un contador sin tocar NO es 0, es sin responder (Gildardo:
 // un dominio sin responder no se corre con defaults, eso inventa una respuesta que el paciente no dio).
 // El 0 deliberado si es alcanzable: el primer "-" desde vacio da 0, distinguible de no haberlo tocado.
 // El hidden input solo se emite cuando hay valor (igual que Scale); vacio no envia nada.
 export function Counter({ id, defaultValue = null }: { id: string; defaultValue?: number | null }) {
-  // Arranca SIN valor (null = "-"), NUNCA en 0: un contador sin tocar es AUSENCIA, no "consume 0" (seria
+  // Arranca SIN valor (null = "sin responder"), NUNCA en 0: un contador sin tocar es AUSENCIA, no "consume 0" (seria
   // ausencia disfrazada de dato, y el agua entra al LE8). Para responder "cero" el paciente pulsa "Ninguno"
   // (0 EXPLICITO, tocado). El input oculto solo se emite cuando hay valor, asi el gate distingue sin
   // responder de cero. Comparte familia con la guarda de calcLE8.
@@ -272,7 +272,15 @@ export function Counter({ id, defaultValue = null }: { id: string; defaultValue?
       >
         <span aria-hidden>-</span>
       </Button>
-      <span className="w-8 text-center text-sm font-semibold tabular-nums">{count ?? "-"}</span>
+      {/* SIN RESPONDER SE DICE CON PALABRAS (Santiago, 2026-09-19). Iba un guion, y el guion se lee como
+          CERO: la gente lo dejaba asi creyendo que ya habia contestado. El signo de interrogacion tampoco
+          servia, porque se lee como "no se", que es otra respuesta. La palabra no se puede malinterpretar,
+          y ademas dice lo que falta hacer. El "0" de verdad se sigue poniendo con "Ninguno". */}
+      {count === null ? (
+        <span className="w-24 text-center text-xs italic text-muted-foreground">sin responder</span>
+      ) : (
+        <span className="w-24 text-center text-sm font-semibold tabular-nums">{count}</span>
+      )}
       <Button
         type="button"
         variant="outline"
