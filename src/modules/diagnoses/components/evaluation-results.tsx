@@ -833,7 +833,10 @@ export function EvaluationResults({
                 corregir es un acto sobre la EVIDENCIA del modelo, que es lo que esta pestaña muestra. El
                 criterio es lo que el profesional ESCRIBE encima. Mandarlos juntos a la cuarta habría
                 dejado a Funcional siendo una lectura sin salida. */}
-            {confirmCorrect}
+            {/* `no-print`: cerrar o corregir el diagnostico son actos del profesional sobre la
+                pantalla. En el papel del paciente serian botones impresos, que es como se ve que una hoja
+                no es un documento sino una captura. */}
+            <div className="no-print">{confirmCorrect}</div>
           </div>
           </HojaImprimible>
         }

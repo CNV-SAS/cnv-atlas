@@ -331,7 +331,9 @@ export function DianaExplorer({
             Y LA PISTA VA CON EL, no treinta lineas mas abajo: un boton que se pulsa y no dice que hacer
             despues manda a buscar otra vez. */}
         {canExplore ? (
-          <div className="flex w-full max-w-[44rem] flex-col items-center gap-1.5">
+          // `no-print`: explorar otros estados es una herramienta de lectura en pantalla. Impresa es un
+          // boton muerto, y ademas invita al paciente a algo que en el papel no existe.
+          <div className="no-print flex w-full max-w-[44rem] flex-col items-center gap-1.5">
             {/* CENTRADO Y EN AZUL DE MARCA (2026-09-09, segunda vuelta: Gildardo tampoco lo encontro).
                 Estaba alineado a la izquierda mientras la Diana y la escala van centradas, asi que quedaba
                 descolgado del eje que la vista ya tiene; y con borde fino sobre la tarjeta seguia leyendose

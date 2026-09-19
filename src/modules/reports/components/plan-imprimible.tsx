@@ -1,6 +1,7 @@
 import type { PlanPaciente } from "../data/reports-view-types";
 
 import { bloqueCls } from "@/components/shared/bloque";
+import { EncabezadoImpreso, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
 
 import { PlanImprimirBoton } from "./plan-imprimir-boton";
 
@@ -42,17 +43,11 @@ function Bloque({ titulo, children }: { titulo: string; children: React.ReactNod
   );
 }
 
-/** El encabezado que pidio Gildardo (2026-09-18): primero quien lo firma, despues a quien va dirigido. */
-export type EncabezadoDelPlan = {
-  profesional: string;
-  /** La profesion de quien prescribe. Un plan alimentario no lo firma "alguien": lo firma un nutricionista. */
-  profesion: string | null;
-  paciente: string;
-  /** Tipo y numero de documento: es lo que identifica el papel si se traspapela. */
-  documento: string | null;
-  edad: number | null;
-  fecha: string;
-};
+/**
+ * El encabezado que pidio Gildardo (2026-09-18), en los tres bloques que pidio Santiago (2026-09-19). Es
+ * EL MISMO de las otras dos hojas: se comparte para que no puedan divergir (aqui vivia una copia).
+ */
+export type EncabezadoDelPlan = EncabezadoDeHoja;
 
 export function PlanImprimible({
   plan,
@@ -90,31 +85,10 @@ export function PlanImprimible({
 
       {/* EL DOCUMENTO: en el DOM, invisible en pantalla, y es lo unico que sale al imprimir. */}
       <div className="solo-impresion imprimible flex-col gap-5">
-        {/* EL ENCABEZADO, EN EL ORDEN QUE PIDIO GILDARDO (2026-09-18): primero quien firma, con su
-            profesion, y despues a quien va dirigido, con lo que lo identifica si el papel se traspapela.
-            El documento va porque un plan sin el es un papel de "Juan"; la edad, porque contextualiza las
-            porciones. No van celular ni direccion: esta hoja se queda sobre la mesa de la cocina. */}
-        <div className="flex flex-col gap-1">
-          <div>
-            <p className="text-sm font-semibold text-foreground">{encabezado.profesional}</p>
-            {encabezado.profesion ? (
-              <p className="text-xs capitalize text-muted-foreground">{encabezado.profesion}</p>
-            ) : null}
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Plan del paciente</h2>
-            <p className="text-xs text-muted-foreground">
-              {[
-                encabezado.paciente,
-                encabezado.documento,
-                encabezado.edad != null ? `${encabezado.edad} años` : null,
-                encabezado.fecha,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          </div>
-        </div>
+        {/* EL ENCABEZADO COMPARTIDO: quien firma, a quien va, que es y de cuando. El documento va porque
+            un plan sin el es un papel de "Juan"; la edad, porque contextualiza las porciones. No van
+            celular ni direccion: esta hoja se queda sobre la mesa de la cocina. */}
+        <EncabezadoImpreso titulo="Plan del paciente" encabezado={encabezado} />
 
         {/* LA BANDA DE BORRADOR SE RETIRO (2026-09-09), y se explica aqui porque la pidio Santiago hace
             dos rondas y no se quita en silencio.
