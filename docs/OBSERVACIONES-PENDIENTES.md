@@ -61,3 +61,20 @@ sin él, aunque el cambio parezca de forma. Lo que toca la PRESENTACIÓN es nues
 4. **(k, el contador)** y **(h)**: copy, con propuesta escrita antes de tocar.
 
 **Lo que NO arrancaría sin respuesta:** (c), (g), (k-pregunta 32) y (M). Las cuatro tocan contenido suyo.
+
+
+---
+
+## HECHAS el 2026-09-19 (mismo día del reparto)
+
+| # | Qué quedó |
+|---|---|
+| **e** | Los mensajes dicen por qué se pide el dato (estándar de la medición e investigación), no de qué lado del sistema sale la regla. Barrido el de faltantes también |
+| **j** | El checkout sale con VITACELLEBIS, CONNECTED NUTRITION VENTURES S.A.S. y el NIT, sin el logo de Atlas |
+| **k** (la mitad nuestra) | El contador dice **sin responder** en vez de un guion. La redacción de la pregunta 32 sigue esperando a Gildardo: es contenido de la encuesta |
+| **i** (la mitad que era defecto) | "Descartar y empezar otro" **anula de verdad** el pase; antes solo lo escondía y el siguiente intento chocaba con el mismo bloqueo. El aviso dice dónde está la salida. El QR y la simultaneidad de los dos caminos siguen como bloque aparte |
+| **d** | El bloque de la encuesta lista las preguntas que faltan, con su número y su dominio, y cada una enlaza **a sí misma** |
+| **f** | Descargar las respuestas en CSV, con procedencia, sin nada del modelo y con su registro de auditoría |
+
+**Sigue abierto del reparto:** a, b, L (bloques propios), c, g, M y la pregunta 32 de k (esperan a
+Gildardo), h y N (copy y pulido, con propuesta antes de tocar).
