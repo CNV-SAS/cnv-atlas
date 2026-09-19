@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 
 import { getClientIp } from "@/core/http/client-ip";
+import { qrDelLink } from "@/modules/payments/services/qr-del-link";
 import { requireUser } from "@/modules/auth/session";
 import { canCreatePatientPresencial } from "@/modules/patients/policies/can-create-patient";
 
@@ -33,6 +34,8 @@ export type SesionQrState = {
   error: string | null;
   token: string | null;
   sessionId: string | null;
+  /** El QR del enlace, como imagen `data:`. null si falta la URL de la app: el pase sale igual. */
+  qrDataUrl: string | null;
 };
 
 // ── PROFESIONAL: emitir el QR ─────────────────────────────────────────────────────────────────────
@@ -40,7 +43,7 @@ export async function emitirSesionQrAction(
   _prev: SesionQrState,
   form: FormData,
 ): Promise<SesionQrState> {
-  const fail = (error: string): SesionQrState => ({ error, token: null, sessionId: null });
+  const fail = (error: string): SesionQrState => ({ error, token: null, sessionId: null, qrDataUrl: null });
   const user = await requireUser();
   if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
 
@@ -76,7 +79,12 @@ export async function emitirSesionQrAction(
         "puedes terminarlo o anularlo para empezar otro.",
     );
   }
-  return { error: null, token: s.token, sessionId: s.id };
+  // EL QR SE ARMA EN EL SERVIDOR, sin red (la libreria dibuja el codigo): no hay llamada externa que
+  // necesite timeout. Si falta la URL de la app, el pase NO se cae: sale con su enlace, que es lo que
+  // sostiene la via. Un QR ausente estorba; un pase que no se puede emitir deja al paciente sin firmar.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  const qrDataUrl = appUrl ? await qrDelLink(`${appUrl}/consentimiento/${s.token}`) : null;
+  return { error: null, token: s.token, sessionId: s.id, qrDataUrl };
 }
 
 // ── PROFESIONAL: mirar si el paciente ya termino ──────────────────────────────────────────────────
