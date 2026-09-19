@@ -4,6 +4,7 @@ import { appError, err, ok, type Result } from "@/core/errors";
 import { sendReportEmail } from "@/lib/email/resend";
 
 import { getHistoriaClinicaDoc } from "../data/hc-documento-reader";
+import { frenoDeTrayectoria } from "../data/freno-de-trayectoria";
 import { getPatientContactForEvaluation, writeHcDelivery } from "../data/hc-entregas-writer";
 import { renderHistoriaClinicaPdf } from "./render-report";
 
@@ -44,6 +45,12 @@ export async function entregarHistoriaClinica(
       ),
     );
   }
+
+  // EL MISMO FRENO QUE EL REPORTE (2026-09-18): la historia clinica tambien le cuenta al paciente como va,
+  // asi que un cambio desfavorable sin cita agendada no sale por aqui tampoco. El plan y las rutas no se
+  // frenan: dicen que hacer, no que le pasa a su cuerpo.
+  const freno = await frenoDeTrayectoria(input.evaluationId, "hc");
+  if (freno) return err(appError("conflict", freno));
 
   const hc = await getHistoriaClinicaDoc(input.evaluationId);
   if (!hc) return err(appError("not_found", "Esta evaluación no tiene historia clínica."));

@@ -55,12 +55,12 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
 
   // EL PENDIENTE DE "EL DIAGNOSTICO NO SE CONFIRMO" SE RETIRO (2026-09-10).
   //
-  // Apuntaba a un acto que ya no existe: confirmar dejo de ser un boton, y la firma clinica se sella sola
-  // al aprobar el reporte. Dejarlo listaria para siempre algo que el profesional no puede hacer, que es
-  // justo lo que el tercer estado de este archivo (IMPOSIBLE) existe para evitar.
+  // Apuntaba a un acto que ya no existe: confirmar dejo de ser un boton. Dejarlo listaria para siempre
+  // algo que el profesional no puede hacer, que es justo lo que el tercer estado de este archivo
+  // (IMPOSIBLE) existe para evitar.
   //
-  // Y NO SE PIERDE NADA: `confirmed_at` se llena exactamente al aprobar el reporte, asi que este pendiente
-  // coincidia siempre con el de abajo ("El reporte no se aprobó ni se envió"), que si nombra un acto suyo.
+  // Y NO SE PIERDE NADA: desde el 2026-09-18 el diagnostico NACE FIRMADO, con quien lo genero y su
+  // profesion (`pipeline-writer`), asi que no hay un momento en que este sin responsable.
 
   // EL PENDIENTE CAMBIO DE HECHO (2026-09-09): antes era "el tratamiento no se aprobó" y ahora es "el
   // plan no se le entregó al paciente".
@@ -83,19 +83,14 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
     });
   }
 
-  if (e.reporteEstado === "draft") {
+  // YA NO HAY APROBACION (2026-09-18): el reporte es una hoja mas, que se imprime o se envia. Antes esto
+  // distinguia "sin aprobar" de "aprobado y sin enviar", y ese par ya no existe. Lo que sigue siendo cierto es
+  // lo unico que le importa al paciente: si lo recibio o no.
+  if (e.reporteEstado !== null && e.reporteEstado !== "sent") {
     out.push({
       id: "reporte",
-      titulo: "El reporte no se aprobó ni se envió",
-      detalle: "El paciente todavía no recibió su informe de esta consulta.",
-      etapa: "reporte",
-      bloqueadoPor: null,
-    });
-  } else if (e.reporteEstado === "approved") {
-    out.push({
-      id: "reporte",
-      titulo: "El reporte está aprobado pero no se envió",
-      detalle: "El paciente todavía no lo recibió.",
+      titulo: "El reporte no se le envió al paciente",
+      detalle: "Todavía no recibió el informe de esta consulta en su idioma.",
       etapa: "reporte",
       bloqueadoPor: null,
     });

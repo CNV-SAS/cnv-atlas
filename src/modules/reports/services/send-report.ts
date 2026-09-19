@@ -6,6 +6,8 @@ import { sendReportEmail } from "@/lib/email/resend";
 import { formatDate } from "@/lib/format/date";
 import { emitirPrescripcion } from "@/modules/treatment/services/treatment-service";
 
+import { frenoDeTrayectoria, ultimaObservacionDeLaConsulta } from "../data/freno-de-trayectoria";
+import { writeHcDelivery } from "../data/hc-entregas-writer";
 import { getReportDispatch } from "../data/reports-repository";
 import { uploadReportPdf } from "../data/report-storage";
 import { markReportResent, markReportSent, ReportStateError } from "../data/reports-writer";
@@ -20,7 +22,6 @@ import { renderReportPdf } from "./render-report";
 
 export type SendReportInput = {
   reportId: string;
-  mode: SendMode; // que recibe el paciente: 'atlas' | 'notas' | 'ambos'
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -29,26 +30,30 @@ export type SendReportInput = {
 export async function sendReport(input: SendReportInput): Promise<Result<{ emailId: string }>> {
   const dispatch = await getReportDispatch(input.reportId);
   if (!dispatch) return err(appError("not_found", "Reporte no encontrado."));
-  if (dispatch.status !== "approved") {
-    return err(appError("conflict", "El reporte debe estar aprobado para enviarse."));
+  // YA NO SE APRUEBA (2026-09-18). El reporte pasa a ser una hoja mas, como en el archivo de Gildardo: se
+  // imprime o se envia. Lo que se retira es la ceremonia, no el documento.
+  if (dispatch.status === "sent") {
+    // Volver a mandarlo tiene su propio camino (`resendReport`), que reenvia EL MISMO archivo con su motivo.
+    return err(appError("conflict", "Este reporte ya se envió. Para mandarlo otra vez, usa el reenvío."));
   }
+
+  // EL FRENO DEL CAMBIO DESFAVORABLE, que antes vivia en aprobar y ahora vive en entregar: asi tambien
+  // alcanza a la impresion, que se lo saltaba. Ver `freno-de-trayectoria`.
+  const freno = await frenoDeTrayectoria(dispatch.evaluationId, "reporte");
+  if (freno) return err(appError("conflict", freno));
   if (!dispatch.email) {
     return err(appError("validation", "El paciente no tiene un correo registrado."));
   }
 
-  // Validacion del modo (B10.1): si incluye las notas del profesional y no hay notas
-  // escritas, se bloquea el envio. Las notas se congelaron al aprobar; si faltan, el
-  // profesional debe enviar el reporte de Atlas o rehacer el flujo con notas.
-  const needsNotes = input.mode === "notas" || input.mode === "ambos";
-  const notes = (dispatch.professionalNotes ?? "").trim();
-  if (needsNotes && !notes) {
-    return err(
-      appError(
-        "validation",
-        "El modo elegido incluye las notas del profesional, pero el reporte no tiene notas. Elige enviar el reporte de Atlas, o vuelve a generar el reporte y escribe las notas antes de aprobar.",
-      ),
-    );
-  }
+  // LOS TRES MODOS SE RETIRARON (Santiago, 2026-09-18). Existian para elegir entre el reporte de Atlas y
+  // las notas del reporte, y esas notas ya no se escriben: la unica superficie de notas es la OBSERVACION DE
+  // LA CONSULTA, en Seguimiento, que es la que el profesional usa de verdad. Elegir entre dos cosas cuando
+  // solo hay una es una decision que no aporta.
+  //
+  // Y ES LA QUE ACOMPAÑA LA ENTREGA: lo que el profesional escribio sobre esta consulta viaja con el
+  // documento. Si no escribio nada, sale el reporte solo.
+  const notasDeLaConsulta = await ultimaObservacionDeLaConsulta(dispatch.evaluationId);
+  const modo: SendMode = notasDeLaConsulta ? "ambos" : "atlas";
 
   // ENVIAR ES EMITIR (2026-09-09). A partir de aqui el paciente tiene el plan, asi que este es el acto
   // que deja constancia de QUE recibio.
@@ -111,8 +116,8 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       reportId: dispatch.reportId,
     },
     {
-      mode: input.mode,
-      professionalNotes: dispatch.professionalNotes,
+      mode: modo,
+      professionalNotes: notasDeLaConsulta,
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
       plan,
@@ -133,12 +138,25 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   });
   if (!sent.ok) return sent;
 
+  // 3bis. EL REGISTRO DE ENTREGAS, con su documento (0148). El estado del reporte dice que salio; esta fila
+  // dice QUE salio, a donde y quien lo mando, junto a las demas hojas. En el modelo por pantallas, la
+  // constancia tiene que estar en un solo sitio o no se puede responder "que recibio este paciente".
+  await writeHcDelivery({
+    evaluationId: dispatch.evaluationId,
+    patientId: dispatch.patientId,
+    documento: "reporte",
+    sentTo: dispatch.email,
+    actorId: input.actorId,
+    actorEmail: input.actorEmail,
+    ip: input.ip,
+  });
+
   // 4. Marcar enviado + audit report.sent (solo tras el correo OK).
   try {
     await markReportSent({
       reportId: dispatch.reportId,
       storagePath: uploaded.path,
-      sendMode: input.mode,
+      sendMode: modo,
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       ip: input.ip,

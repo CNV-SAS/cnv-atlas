@@ -12,14 +12,18 @@ const SERVICE = readFileSync("src/modules/reports/services/send-report.ts", "utf
 const WRITER = readFileSync("src/modules/reports/data/reports-writer.ts", "utf8");
 const ACTIONS = readFileSync("src/modules/reports/actions.ts", "utf8");
 
+// EL ANCLA CAMBIO CON LA HOJA (2026-09-18): la tarjeta dejo de ramificar por los tres estados (el
+// reporte ya no se aprueba) y ahora pregunta `enviado`. Lo que se blinda no cambia: el bloque de reenvio
+// existe SOLO cuando el documento ya salio.
 const bloqueReenvio = CARD.slice(
-  CARD.indexOf('{report.status === "sent" ? ('),
-  CARD.indexOf('{report.status === "approved" || report.status === "sent" ? ('),
+  CARD.indexOf("{enviado ? ("),
+  CARD.indexOf("{/* CUANDO SALIO Y A DONDE"),
 );
 
 describe("reenvio del reporte", () => {
   it("el bloque solo aparece con el reporte ENVIADO", () => {
-    expect(CARD).toContain('{report.status === "sent" ? (');
+    expect(CARD).toContain('const enviado = report.status === "sent";');
+    expect(CARD).toContain("{enviado ? (");
     expect(bloqueReenvio.length).toBeGreaterThan(0);
   });
 

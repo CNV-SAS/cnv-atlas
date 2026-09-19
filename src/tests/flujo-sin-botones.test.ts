@@ -152,13 +152,18 @@ describe("prescribir no depende de confirmar", () => {
     }
   });
 
-  it("pero la FIRMA CLINICA se sigue sellando al aprobar el reporte", () => {
+  it("pero la FIRMA CLINICA se sigue sellando: ahora el diagnóstico NACE firmado", () => {
     // ES LA MITAD QUE NO SE PUEDE PERDER. Sin esto, retirar el acto habría dejado los diagnósticos sin
     // constancia de quién los asumió, que es lo contrario de lo que se quería.
-    const REPORTES = readFileSync("src/modules/reports/data/reports-writer.ts", "utf8");
-    expect(REPORTES).toContain("confirmedAt: sql`now()`");
-    expect(REPORTES).toContain("confirmedProfession");
-    expect(REPORTES).toContain('event: "diagnosis.confirmed_via_report"');
+    //
+    // DONDE VIVE AHORA (2026-09-18): en el pipeline que genera el diagnóstico. Antes se sellaba al aprobar
+    // el reporte, y eso ataba la firma clínica a un trámite administrativo: un diagnóstico generado y
+    // nunca aprobado quedaba sin responsable (23 así en producción). Al retirarse la aprobación, la firma
+    // no se perdió: se adelantó al único momento que siempre ocurre, el de generarlo.
+    const PIPELINE = readFileSync("src/modules/clinical-pipeline/data/pipeline-writer.ts", "utf8");
+    expect(PIPELINE).toContain("confirmedBy: input.actorId");
+    expect(PIPELINE).toContain("confirmedAt: sql`now()`");
+    expect(PIPELINE).toContain("confirmedProfession");
   });
 
   it("y el bloque de pantalla rinde el HECHO, sin ofrecer el acto", () => {

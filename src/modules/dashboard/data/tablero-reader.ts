@@ -66,7 +66,10 @@ export async function getTablero(): Promise<Tablero> {
         "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, status, bis_measurements(id), diagnoses(id), reports(status))",
       )
       .is("deleted_at", null),
-    supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "draft"),
+    // REPORTES EN BORRADOR YA NO SE CUENTAN (2026-09-18): con el retiro de la aprobacion, un borrador no es
+    // un pendiente de nadie, es el estado normal de la fila que el pipeline crea. Contarlo pintaba un numero
+    // que solo podia crecer y que nadie podia bajar.
+    Promise.resolve({ count: 0 }),
     // LA PROXIMA CITA VIVE EN EL TRATAMIENTO y es EN VIVO (no sellada): es la vigente, no la del dia de
     // la consulta. Se piden cuatro y se muestran tres: asi la pantalla sabe si hay mas sin otra consulta.
     supabase

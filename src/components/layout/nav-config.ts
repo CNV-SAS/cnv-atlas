@@ -124,14 +124,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["admin", "professional", "direccion", "soporte", "obbia"],
     group: "clinica",
   },
-  {
-    // Reportes tambien es clinico (RLS: profesional dueno o admin). Fuera para direccion/obbia.
-    label: "Reportes",
-    href: "/reportes",
-    icon: "reportes",
-    roles: ["admin", "professional"],
-    group: "clinica",
-  },
+  // REPORTES SALIO DEL MENU (2026-09-18). Era un indice sin logica propia que pintaba la MISMA tarjeta que
+  // vive dentro de la evaluacion, y con el modelo por hojas (cada pantalla se imprime o se envia) no hay una
+  // bandeja de reportes que atender: lo que se atiende es la consulta. La ruta se conserva para los enlaces
+  // que ya existan y para el PDF.
   {
     label: "Comercial",
     href: "/comercial",

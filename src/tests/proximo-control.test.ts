@@ -75,7 +75,6 @@ describe("ruta primaria", () => {
 
 const WRITER = readFileSync("src/modules/followups/data/proximo-control-writer.ts", "utf8");
 const UI = readFileSync("src/modules/followups/components/proximo-control.tsx", "utf8");
-const REPORTS = readFileSync("src/modules/reports/data/reports-writer.ts", "utf8");
 
 describe("la sugerida NO se guarda sola", () => {
   it("el componente no envía nada al montarse: solo hay un submit", () => {
@@ -103,12 +102,14 @@ describe("la traza distingue quién puso la cita", () => {
     expect(WRITER).toContain("acepto_sugerida");
   });
 
-  it("y el bloque del empeoró YA NO fija la cita: la verifica", () => {
-    // Desde 2026-08-25 hay UN SOLO sitio donde se fija (Seguimiento) y el ámbar es la condición: verifica
-    // que exista y confirma la comunicación. La regla de Gildardo se conserva entera; lo que se quitó es
-    // que el mismo acto fuera también el de agendar.
-    const fn = REPORTS.slice(REPORTS.indexOf("export async function confirmTrajectoryCommunication"));
-    expect(fn).toContain("Agéndala en Seguimiento");
-    expect(fn).not.toContain("set({ proximaCita:");
+  it("y el freno del empeoró NO fija la cita: la verifica", () => {
+    // Desde 2026-08-25 hay UN SOLO sitio donde se fija (Seguimiento) y el otro lado solo la VERIFICA. La
+    // regla de Gildardo se conserva entera; lo que se quitó es que el mismo acto fuera también el de
+    // agendar. Desde el 2026-09-18 quien verifica es el freno de la ENTREGA (la aprobación se retiró), y
+    // por eso el candado mira ese archivo: la garantía cambió de sitio, no de contenido.
+    const FRENO = readFileSync("src/modules/reports/data/freno-de-trayectoria.ts", "utf8");
+    expect(FRENO).toContain("Agéndala en Seguimiento");
+    expect(FRENO).toContain("proxima_cita");
+    expect(FRENO).not.toContain("update(");
   });
 });

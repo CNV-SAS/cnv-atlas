@@ -23,6 +23,16 @@ vi.mock("@/modules/reports/data/plan-paciente-reader", () => ({
 vi.mock("@/modules/treatment/services/treatment-service", () => ({
   emitirPrescripcion: vi.fn(async () => ({ ok: true, value: undefined })),
 }));
+// EL FRENO DEL CAMBIO DESFAVORABLE y LA OBSERVACION DE LA CONSULTA: dos lecturas de BD que el servicio
+// hace ahora (2026-09-18). Por defecto no frena y no hay observacion; cada caso propio los cambia.
+vi.mock("@/modules/reports/data/freno-de-trayectoria", () => ({
+  frenoDeTrayectoria: vi.fn(async () => null),
+  ultimaObservacionDeLaConsulta: vi.fn(async () => null),
+}));
+// EL REGISTRO DE ENTREGAS (0148): el reporte deja su fila junto a las demas hojas.
+vi.mock("@/modules/reports/data/hc-entregas-writer", () => ({
+  writeHcDelivery: vi.fn(async () => undefined),
+}));
 vi.mock("@/modules/reports/data/report-storage", () => ({
   uploadReportPdf: vi.fn(),
 }));
@@ -38,6 +48,8 @@ const repo = await import("@/modules/reports/data/reports-repository");
 const storage = await import("@/modules/reports/data/report-storage");
 const email = await import("@/lib/email/resend");
 const writer = await import("@/modules/reports/data/reports-writer");
+const freno = await import("@/modules/reports/data/freno-de-trayectoria");
+const entregas = await import("@/modules/reports/data/hc-entregas-writer");
 const treatmentService = await import("@/modules/treatment/services/treatment-service");
 const { sendReport, resendReport } = await import("@/modules/reports/services/send-report");
 
@@ -46,7 +58,7 @@ function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
     reportId: "rep-1",
     evaluationId: "ev-1",
     patientId: "pat-1",
-    status: "approved",
+    status: "draft",
     // snapshot parcial: sendReport solo se lo pasa a renderReportPdf, que esta mockeado.
     snapshot: { versions: { engine: "anibise-1.0.0" } } as unknown as ReportDispatch["snapshot"],
     professionalNotes: null,
@@ -67,7 +79,6 @@ const baseInput = () => ({ ...input });
 
 const input = {
   reportId: "rep-1",
-  mode: "atlas" as const,
   actorId: "u-1",
   actorEmail: "pro@cnv",
   ip: null,
@@ -79,6 +90,9 @@ describe("sendReport (orquestacion D4)", () => {
     vi.mocked(email.sendReportEmail).mockReset().mockResolvedValue(okResult({ id: "email-1" }));
     vi.mocked(writer.markReportSent).mockReset().mockResolvedValue(undefined);
     vi.mocked(repo.getReportDispatch).mockReset().mockResolvedValue(dispatch());
+    vi.mocked(freno.frenoDeTrayectoria).mockReset().mockResolvedValue(null);
+    vi.mocked(freno.ultimaObservacionDeLaConsulta).mockReset().mockResolvedValue(null);
+    vi.mocked(entregas.writeHcDelivery).mockReset().mockResolvedValue(undefined);
     vi.mocked(writer.markReportResent).mockReset().mockResolvedValue({ attempt: 1 });
     vi.mocked(treatmentService.emitirPrescripcion)
       .mockReset()
@@ -94,7 +108,8 @@ describe("sendReport (orquestacion D4)", () => {
     const mark = vi.mocked(writer.markReportSent).mock.invocationCallOrder[0];
     expect(up).toBeLessThan(send);
     expect(send).toBeLessThan(mark);
-    // marca enviado con el path subido y el modo elegido (trazabilidad).
+    // marca enviado con el path subido y con lo que EFECTIVAMENTE salio (trazabilidad). Sin observacion
+    // de la consulta, lo que sale es el reporte solo.
     expect(vi.mocked(writer.markReportSent).mock.calls[0][0]).toMatchObject({
       reportId: "rep-1",
       storagePath: "pat-1/rep-1.pdf",
@@ -102,24 +117,43 @@ describe("sendReport (orquestacion D4)", () => {
     });
   });
 
-  it("bloquea el envio si el modo incluye notas y no hay notas escritas", async () => {
-    for (const mode of ["notas", "ambos"] as const) {
-      vi.mocked(repo.getReportDispatch).mockResolvedValue(dispatch({ professionalNotes: null }));
-      const res = await sendReport({ ...input, mode });
-      expect(res.ok).toBe(false);
-      if (res.ok) return;
-      expect(res.error.code).toBe("validation");
-      expect(storage.uploadReportPdf).not.toHaveBeenCalled();
-    }
-  });
-
-  it("permite modo 'ambos' cuando hay notas, y sella el modo", async () => {
-    vi.mocked(repo.getReportDispatch).mockResolvedValue(
-      dispatch({ professionalNotes: "Interpretacion del profesional." }),
-    );
-    const res = await sendReport({ ...input, mode: "ambos" });
+  // LOS TRES MODOS SE RETIRARON (2026-09-18): elegir entre el reporte y unas notas que ya no se escriben
+  // era una decision que no aportaba. Lo que decide ahora es un hecho, no una eleccion: si el profesional
+  // dejo su observacion de la consulta (en Seguimiento), viaja con el reporte.
+  it("si el profesional escribio la observacion de la consulta, viaja con el reporte", async () => {
+    vi.mocked(freno.ultimaObservacionDeLaConsulta).mockResolvedValue("Toleró bien el cambio de porciones.");
+    const res = await sendReport(baseInput());
     expect(res.ok).toBe(true);
     expect(vi.mocked(writer.markReportSent).mock.calls[0][0]).toMatchObject({ sendMode: "ambos" });
+  });
+
+  it("y si no escribio nada, sale el reporte solo (no se bloquea el envio)", async () => {
+    const res = await sendReport(baseInput());
+    expect(res.ok).toBe(true);
+    expect(vi.mocked(writer.markReportSent).mock.calls[0][0]).toMatchObject({ sendMode: "atlas" });
+  });
+
+  // EL FRENO CLINICO, que es lo unico de la ceremonia retirada que NO podia caerse: un documento que
+  // informa un cambio desfavorable no sale si el paciente no tiene la proxima cita agendada.
+  it("un cambio desfavorable sin cita agendada no sale, y no toca nada externo", async () => {
+    vi.mocked(freno.frenoDeTrayectoria).mockResolvedValue("Agéndala en Seguimiento antes de entregarlo.");
+    const res = await sendReport(baseInput());
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error.code).toBe("conflict");
+    expect(storage.uploadReportPdf).not.toHaveBeenCalled();
+    expect(email.sendReportEmail).not.toHaveBeenCalled();
+    expect(writer.markReportSent).not.toHaveBeenCalled();
+  });
+
+  it("la entrega queda registrada con SU documento, junto a las demas hojas", async () => {
+    const res = await sendReport(baseInput());
+    expect(res.ok).toBe(true);
+    expect(vi.mocked(entregas.writeHcDelivery).mock.calls[0][0]).toMatchObject({
+      evaluationId: "ev-1",
+      documento: "reporte",
+      sentTo: "ana@example.com",
+    });
   });
 
   it("si el correo falla, NO marca enviado (reintentable)", async () => {
@@ -140,8 +174,18 @@ describe("sendReport (orquestacion D4)", () => {
     expect(writer.markReportSent).not.toHaveBeenCalled();
   });
 
-  it("rechaza si el reporte no esta aprobado", async () => {
+  // YA NO SE APRUEBA (2026-09-18): un reporte en borrador SE ENVIA, porque el borrador es el estado normal
+  // de una hoja que nadie ha mandado todavia. Lo que se rechaza es mandar dos veces el primer envio: para
+  // eso esta el reenvio, que manda el MISMO archivo con su motivo.
+  it("un reporte en borrador SI se envia (la aprobacion se retiro)", async () => {
     vi.mocked(repo.getReportDispatch).mockResolvedValue(dispatch({ status: "draft" }));
+    const res = await sendReport(input);
+    expect(res.ok).toBe(true);
+    expect(email.sendReportEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("rechaza si el reporte YA se envio (eso es el reenvio)", async () => {
+    vi.mocked(repo.getReportDispatch).mockResolvedValue(dispatch({ status: "sent" }));
     const res = await sendReport(input);
     expect(res.ok).toBe(false);
     if (res.ok) return;
@@ -180,6 +224,9 @@ describe("enviar el reporte deja constancia de la entrega", () => {
     vi.mocked(email.sendReportEmail).mockReset().mockResolvedValue(okResult({ id: "email-1" }));
     vi.mocked(writer.markReportSent).mockReset().mockResolvedValue(undefined);
     vi.mocked(repo.getReportDispatch).mockReset().mockResolvedValue(dispatch());
+    vi.mocked(freno.frenoDeTrayectoria).mockReset().mockResolvedValue(null);
+    vi.mocked(freno.ultimaObservacionDeLaConsulta).mockReset().mockResolvedValue(null);
+    vi.mocked(entregas.writeHcDelivery).mockReset().mockResolvedValue(undefined);
     vi.mocked(treatmentService.emitirPrescripcion)
       .mockReset()
       .mockResolvedValue({ ok: true, value: undefined });
@@ -232,6 +279,7 @@ describe("el REENVIO no lleva el gate, a proposito", () => {
     vi.mocked(storage.uploadReportPdf).mockReset().mockResolvedValue({ path: "pat-1/rep-1.pdf" });
     vi.mocked(email.sendReportEmail).mockReset().mockResolvedValue(okResult({ id: "email-1" }));
     vi.mocked(writer.markReportResent).mockReset().mockResolvedValue({ attempt: 1 });
+    vi.mocked(freno.frenoDeTrayectoria).mockReset().mockResolvedValue(null);
     vi.mocked(treatmentService.emitirPrescripcion)
       .mockReset()
       .mockResolvedValue({ ok: true, value: undefined });

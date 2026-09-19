@@ -5,13 +5,14 @@ import { getReportDispatch } from "@/modules/reports/data/reports-repository";
 import { formatDate } from "@/lib/format/date";
 import { downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
+import { ultimaObservacionDeLaConsulta } from "@/modules/reports/data/freno-de-trayectoria";
 import { getPlanPaciente } from "@/modules/reports/data/plan-paciente-reader";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
 // Acceso interno al PDF del reporte. Valida ownership (sesion + RLS via
 // getReportDispatch) y entrega el PDF nunca como HTML (adjunto/visor, SECURITY.md):
 //   - reporte enviado (con storage_path): redirige a una URL firmada de corta vida.
-//   - draft/approved: render on-the-fly para el preview (no se almacena).
+//   - sin enviar: render on-the-fly para el preview (no se almacena).
 // @react-pdf/renderer necesita el runtime de Node.
 export const runtime = "nodejs";
 
@@ -42,9 +43,10 @@ export async function GET(
     });
   }
 
-  // Preview: render del snapshot inmutable, en linea (visor del navegador). Se muestra
-  // TODO lo disponible (modo 'ambos': reporte + notas si las hay) para que el profesional
-  // vea el contenido completo antes de elegir el modo de envio.
+  // Preview: render del snapshot inmutable, en linea (visor del navegador). ES EL MISMO DOCUMENTO QUE
+  // SALE, y de la misma fuente: la observacion de la consulta (Seguimiento), no las notas del reporte, que
+  // se retiraron con la ceremonia (2026-09-18). Un preview que lea otra cosa le enseña al profesional un
+  // documento que el paciente no va a recibir.
   const pdf = await renderReportPdf(
     dispatch.snapshot,
     {
@@ -56,7 +58,7 @@ export async function GET(
     },
     {
       mode: "ambos",
-      professionalNotes: dispatch.professionalNotes,
+      professionalNotes: await ultimaObservacionDeLaConsulta(dispatch.evaluationId),
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
       // EL PLAN TAMBIEN EN EL PREVIEW, y es la mitad que se olvida: el profesional aprueba mirando ESTO.
