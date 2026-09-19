@@ -39,6 +39,106 @@ export class ReportStateError extends Error {
 // LAS COLUMNAS SE QUEDAN (`approved_by`, `trajectory_communicated_at`): los reportes ya aprobados en
 // produccion las tienen llenas y son su historia. No se borra un dato clinico por simplificar un flujo.
 
+export type ReemitirInput = {
+  reportId: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// ═══ EMITIR UNA VERSION NUEVA DEL INFORME (Santiago, 2026-09-19) ═══
+//
+// EL CASO, QUE ES EL NORMAL DE UNA CONSULTA: se le envia el informe al paciente, el profesional recuerda
+// algo y lo escribe en Seguimiento, y quiere mandarselo corregido. Hasta hoy no habia salida: reenviar
+// manda EL MISMO archivo (a proposito: es la constancia de lo que recibio), y corregir la evaluacion solo
+// cubre la encuesta.
+//
+// LAS TRES SALIDAS, QUE AHORA SE DISTINGUEN:
+//   · REENVIAR             el mismo documento, otra vez (correo perdido, direccion corregida).
+//   · VERSION NUEVA        el mismo diagnostico, con lo que cambio despues (esta funcion).
+//   · CORREGIR             rehace la cadena entera porque un DATO estaba mal (otra evaluacion).
+//
+// EL DIAGNOSTICO NO SE RECALCULA, y esa es la linea que separa esto de una correccion: se copia el
+// snapshot SELLADO tal cual. Lo que cambia al renderizar es lo que se lee en vivo (el plan y la
+// observacion de la consulta). Si lo que esta mal es el diagnostico, la via es corregir la evaluacion.
+//
+// LA TRAYECTORIA SE COPIA por la misma razon: es la banda que se sello ese dia, y el freno del cambio
+// desfavorable tiene que seguir aplicando sobre la version nueva. Si no se copiara, emitir una version
+// nueva seria la forma de saltarse el freno.
+//
+// EL ANTERIOR NO SE TOCA. Queda enviado, con su PDF en Storage y su fila de entrega: es lo que el
+// paciente tiene en su correo, y eso no se reescribe nunca.
+export async function emitirVersionNueva(input: ReemitirInput): Promise<{ reportId: string }> {
+  return db.transaction(async (tx) => {
+    const [anterior] = await tx
+      .select({
+        id: reports.id,
+        evaluationId: reports.evaluationId,
+        patientId: reports.patientId,
+        type: reports.type,
+        status: reports.status,
+        snapshot: reports.snapshot,
+        trajectory: reports.trajectory,
+        trajectoryCommunicatedAt: reports.trajectoryCommunicatedAt,
+        trajectoryCommunicatedBy: reports.trajectoryCommunicatedBy,
+      })
+      .from(reports)
+      .where(eq(reports.id, input.reportId))
+      .limit(1);
+    if (!anterior) throw new ReportStateError("Informe no encontrado.");
+    if (anterior.status !== "sent") {
+      // Si todavia no salio, no hace falta una version nueva: se envia ESTE. Ofrecer las dos cosas
+      // dejaria dos borradores del mismo informe sin que nadie sepa cual es el bueno.
+      throw new ReportStateError("Este informe todavía no se ha enviado: envíalo en vez de emitir otro.");
+    }
+
+    // UNA SOLA VERSION ABIERTA A LA VEZ. Sin esto, dos pulsaciones seguidas dejan dos borradores del mismo
+    // informe y la pantalla (que muestra el mas reciente) empieza a contradecir al registro.
+    const [yaHayBorrador] = await tx
+      .select({ id: reports.id })
+      .from(reports)
+      .where(
+        and(
+          eq(reports.evaluationId, anterior.evaluationId),
+          eq(reports.type, anterior.type),
+          ne(reports.status, "sent"),
+        ),
+      )
+      .limit(1);
+    if (yaHayBorrador) {
+      throw new ReportStateError("Ya hay una versión nueva sin enviar de este informe.");
+    }
+
+    const [nuevo] = await tx
+      .insert(reports)
+      .values({
+        evaluationId: anterior.evaluationId,
+        patientId: anterior.patientId,
+        type: anterior.type,
+        status: "draft",
+        snapshot: anterior.snapshot as object,
+        trajectory: anterior.trajectory as object | null,
+        trajectoryCommunicatedAt: anterior.trajectoryCommunicatedAt,
+        trajectoryCommunicatedBy: anterior.trajectoryCommunicatedBy,
+      })
+      .returning({ id: reports.id });
+
+    await recordAudit(tx, {
+      event: "report.reissued",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "report",
+      entityId: nuevo.id,
+      // DE CUAL VIENE, que es lo que permite reconstruir la sucesion: el paciente tiene dos documentos de
+      // la misma consulta y el registro tiene que decir cual sucede a cual.
+      payload: { evaluation_id: anterior.evaluationId, version_anterior: anterior.id },
+      ip: input.ip,
+    });
+
+    return { reportId: nuevo.id };
+  });
+}
+
 export type MarkReportSentInput = {
   reportId: string;
   storagePath: string;
