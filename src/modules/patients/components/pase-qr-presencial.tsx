@@ -41,7 +41,7 @@ export type PaseQrProps = {
   onCreado: (resumeToken: string) => void;
 };
 
-const inicial: SesionQrState = { error: null, token: null, sessionId: null };
+const inicial: SesionQrState = { error: null, token: null, sessionId: null, qrDataUrl: null };
 
 export function PaseQrPresencial({ documentType, documentNumber, onCreado }: PaseQrProps) {
   const [sesion, emitir, emitiendo] = useActionState(emitirSesionQrAction, inicial);
@@ -214,6 +214,21 @@ export function PaseQrPresencial({ documentType, documentNumber, onCreado }: Pas
           autorizaciones: eso es lo único que sostiene esta modalidad.
         </p>
       </div>
+
+      {/* EL QR, que es la via principal: la pantalla dice "que lo escanee con su telefono". Se dibuja en
+          el servidor y viaja como imagen `data:` (misma forma que el QR de MFA y el del link de pago):
+          nada de `dangerouslySetInnerHTML`, y sin llamada externa que necesite timeout. */}
+      {sesion.qrDataUrl ? (
+        <div className="flex justify-center rounded-lg border border-border bg-white p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element -- es un data URL; next/image no aplica */}
+          <img
+            src={sesion.qrDataUrl}
+            alt="Código QR del consentimiento, para que el paciente lo escanee"
+            width={240}
+            height={240}
+          />
+        </div>
+      ) : null}
 
       {/* El enlace en claro, ademas del QR: un telefono viejo sin camara util, o una camara que no lee,
           no pueden dejar al paciente fuera. */}

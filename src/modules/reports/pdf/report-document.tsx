@@ -476,8 +476,14 @@ export function ReportDocument({
         {showAtlas && informe && (informe.seguimiento.observacion || informe.seguimiento.proximaCita) ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tu seguimiento</Text>
+            {/* LA OBSERVACION LLEVA SU ROTULO (Santiago, 2026-09-19): suelta debajo del titulo parecia un
+                texto del sistema. Decir de quien es cambia como se lee: no es una nota automatica, es lo
+                que su profesional escribio sobre ESTA consulta. */}
             {informe.seguimiento.observacion ? (
-              <Text style={styles.para}>{informe.seguimiento.observacion}</Text>
+              <>
+                <Text style={[styles.para, styles.bold]}>Observaciones de tu profesional:</Text>
+                <Text style={styles.para}>{informe.seguimiento.observacion}</Text>
+              </>
             ) : null}
             {informe.seguimiento.proximaCita ? (
               <Text style={styles.para}>

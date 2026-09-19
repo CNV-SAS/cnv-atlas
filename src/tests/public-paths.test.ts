@@ -21,6 +21,11 @@ describe("isPublicPath: rutas accesibles sin sesion", () => {
       // Reanudacion del intake (fase 2 sin sesion): el enlace del correo tiene que abrir sin rebote.
       "/encuesta/reanudar/tok123",
       "/checkout/tok123",
+      // EL CONSENTIMIENTO POR QR (2026-09-19). Lo abre el PACIENTE en su telefono y no tiene cuenta: con
+      // el rebote a /login, la via no existia. Es la TERCERA vez que la misma clase de defecto entra por
+      // una superficie publica nueva (antes /forgot-password y la reanudacion del intake), y por eso el
+      // caso se anade aqui en vez de solo arreglar la lista.
+      "/consentimiento/tok123",
       "/privacy",
       "/terms",
     ]) {

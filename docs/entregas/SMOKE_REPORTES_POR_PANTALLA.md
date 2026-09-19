@@ -245,3 +245,41 @@ Esto **reemplaza** los pasos 3, 4, 6 y 10 de arriba; el resto sigue igual.
 
 - [ ] Corrige el contacto de un paciente y guarda. **Debe dar:** el formulario **se cierra** y la tarjeta
       de Correo muestra el valor nuevo (antes se quedaba abierto tapándola).
+
+---
+
+# Cuarta vuelta (2026-09-19, noche)
+
+## 16. El consentimiento por QR abre sin sesión
+
+- [ ] Genera un pase (**Si el paciente no tiene correo** → *Mostrar el código al paciente*). **Debe dar:**
+      un **QR** además del enlace.
+- [ ] Abre el enlace en el teléfono, **o en una ventana de incógnito**. **Debe dar:** la pantalla del
+      consentimiento del paciente. **No debe pedir iniciar sesión** (era el defecto: el proxy lo rebotaba a
+      `/login`, y el paciente no tiene cuenta).
+- [ ] Escanea el QR con un teléfono. **Debe dar:** la misma pantalla.
+
+## 17. El informe, dos detalles
+
+- [ ] Abre el informe de una consulta con observación. **Debe dar:** dentro de *Tu seguimiento*, el rótulo
+      **"Observaciones de tu profesional:"** y debajo el texto. Una sola vez.
+- [ ] Abre un link de pago. **Debe dar:** el logo de VITACELLEBIS **sin deformar** (antes iba estirado
+      porque las medidas declaradas no eran las del archivo).
+
+## 18. La pregunta 32
+
+Después de aplicar `0149_pregunta_32_mas_clara.sql`:
+
+- [ ] Abre la encuesta del paciente. **Debe dar:** *"¿Cuántas comidas consume al día?"*
+- [ ] Descarga las respuestas (paso 14). **Debe dar:** la misma redacción en el CSV.
+
+## 19. Si el scroll de "Agregar observación" vuelve
+
+No lo he podido reproducir leyendo el código: ese formulario ya pasa por el guard y su acción no revalida.
+Si lo ves otra vez, pega esto en la consola del navegador (F12 → Consola) **antes** de pulsar el botón:
+
+```js
+(() => { const t0 = Date.now(); addEventListener("scroll", () => console.log("scroll", ((Date.now()-t0)/1000).toFixed(1)+"s", Math.round(scrollY)), { passive: true }); console.log("mirando. Ahora pulsa Agregar observación."); })()
+```
+
+Y pásame lo que imprima. Con eso se sabe si la página se movió una vez o dos, cuándo, y si volvió sola.

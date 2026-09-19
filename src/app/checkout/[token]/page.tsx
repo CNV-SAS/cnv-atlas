@@ -17,13 +17,16 @@ function CheckoutShell({ children }: { children: React.ReactNode }) {
           <Image
             src="/brand/vitacellebis.png"
             alt="VITACELLEBIS"
-            width={480}
-            height={120}
+            // LAS MEDIDAS SON LAS REALES DEL ARCHIVO (1632x465). Iban 480x120, que es otra proporcion, y
+            // con `w-auto` el navegador calcula el ancho con la proporcion DECLARADA: por eso se veia
+            // estirado. El tamaño no era el problema, la deformacion si.
+            width={1632}
+            height={465}
             priority
             unoptimized
-            // TRES VECES EL TAMAÑO INICIAL (Santiago, 2026-09-19): es la marca que el paciente tiene que
-            // reconocer antes de pagar, no un sello al pie.
-            className="h-32 w-auto"
+            // DOS VECES el tamaño inicial (Santiago, segunda vuelta): es la marca que el paciente tiene
+            // que reconocer antes de pagar, y a tres veces quedaba angosta en un telefono.
+            className="h-20 w-auto"
           />
           <p className="text-center text-[11px] leading-tight text-muted-foreground">
             CONNECTED NUTRITION VENTURES S.A.S.
