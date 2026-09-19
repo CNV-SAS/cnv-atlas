@@ -37,14 +37,31 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
   const { data, error } = await supabase
     .from("reports")
     .select(
-      "id, evaluation_id, snapshot, evaluations!inner(superseded_at, bis_measurements(measurement_date))",
+      "id, evaluation_id, created_at, snapshot, evaluations!inner(superseded_at, bis_measurements(measurement_date))",
     )
     .eq("patient_id", patientId)
-    .eq("type", "paciente");
+    .eq("type", "paciente")
+    // Mas reciente primero: de cada evaluacion se queda el PRIMERO que se vea (ver el dedupe abajo).
+    .order("created_at", { ascending: false });
   if (error) throw new Error(`serie-reader: ${error.message}`);
 
   const puntos: PuntoSerie[] = [];
+  // ═══ UN PUNTO POR EVALUACION, NO POR REPORTE (2026-09-19) ═══
+  //
+  // EL DEFECTO QUE CIERRA, reportado por Santiago: en las tres graficas salian TRES puntos el mismo dia
+  // donde solo habia UNA evaluacion. La serie recorria los REPORTES, y una evaluacion puede tener varios:
+  // regenerar el diagnostico crea otro, y desde el 2026-09-19 tambien lo hace emitir una version nueva del
+  // informe. Cada uno se convertia en un punto de la trayectoria, en la misma fecha.
+  //
+  // NO ES COSMETICO: la trayectoria es lo que el profesional lee para decidir si el paciente mejora, y una
+  // grafica que pinta tres veces la misma medicion sugiere tres controles que no existieron.
+  //
+  // SE QUEDA EL MAS RECIENTE de cada evaluacion, que es el documento vigente (el mismo criterio que usan
+  // la tarjeta del informe y el lector del tratamiento).
+  const vistas = new Set<string>();
   for (const row of (data ?? []) as unknown as (Fila & { evaluation_id: string })[]) {
+    if (vistas.has(row.evaluation_id)) continue;
+    vistas.add(row.evaluation_id);
     const ev = row.evaluations;
     // Una evaluacion REEMPLAZADA por una correccion no es un punto de la trayectoria: comparariamos
     // contra el yo pre-correccion del paciente (misma regla que ya aplica comparison-chronology).

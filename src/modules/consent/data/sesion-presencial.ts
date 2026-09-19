@@ -43,6 +43,12 @@ export type SesionAbierta = {
 };
 
 // ── 1. EMITIR (pantalla del profesional, con sesion) ───────────────────────────────────────────────
+/**
+ * LOS ESTADOS QUE OCUPAN AL PROFESIONAL: mientras una sesion este en uno de estos, no se puede empezar
+ * otra. La lista la comparten el BLOQUEO y la RECUPERACION a proposito: si bloquea, tiene que verse.
+ */
+export const ESTADOS_QUE_OCUPAN = ["emitida", "abierta", "confirmada", "discrepancia"] as const;
+
 export async function crearSesionPresencial(input: {
   organizationId: string;
   professionalId: string;
@@ -78,12 +84,7 @@ export async function crearSesionPresencial(input: {
       .where(
         and(
           eq(presencialConsentSessions.professionalId, input.professionalId),
-          inArray(presencialConsentSessions.estado, [
-            "emitida",
-            "abierta",
-            "confirmada",
-            "discrepancia",
-          ]),
+          inArray(presencialConsentSessions.estado, [...ESTADOS_QUE_OCUPAN]),
         ),
       )
       .limit(1);
@@ -373,8 +374,10 @@ export async function sesionEnCursoDelProfesional(): Promise<EstadoSesion | null
     .select(
       "id, estado, opened_at, confirmed_at, declarado_nombres, declarado_apellidos, declarado_document_number",
     )
-    .in("estado", ["emitida", "abierta", "confirmada", "discrepancia"])
-    .gt("lectura_hasta", new Date(Date.now() - 5 * 60_000).toISOString())
+    // MISMA LISTA QUE EL BLOQUEO, y SIN filtro de tiempo: ver el bloque de arriba. El filtro por
+    // `lectura_hasta` dejaba invisibles justo las que no se vencen solas (confirmada y discrepancia),
+    // que son las que de verdad encierran al profesional.
+    .in("estado", [...ESTADOS_QUE_OCUPAN])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

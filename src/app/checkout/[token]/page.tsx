@@ -17,11 +17,13 @@ function CheckoutShell({ children }: { children: React.ReactNode }) {
           <Image
             src="/brand/vitacellebis.png"
             alt="VITACELLEBIS"
-            width={160}
-            height={40}
+            width={480}
+            height={120}
             priority
             unoptimized
-            className="h-10 w-auto"
+            // TRES VECES EL TAMAÑO INICIAL (Santiago, 2026-09-19): es la marca que el paciente tiene que
+            // reconocer antes de pagar, no un sello al pie.
+            className="h-32 w-auto"
           />
           <p className="text-center text-[11px] leading-tight text-muted-foreground">
             CONNECTED NUTRITION VENTURES S.A.S.

@@ -112,6 +112,10 @@ describe.skipIf(!HAS_DB)("los avisos (BD real)", () => {
       insert into transactions (id, organization_id, status, amount, currency, wompi_env, idempotency_key, alegra_invoice_state)
       values (${id}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`fallo-${id}`}, 'pendiente')`);
     try {
+      // SE LIMPIA LO QUE HAYA DE OTRA CORRIDA. La fecha del fixture es aleatoria entre unas 600
+      // combinaciones, asi que tras muchas corridas del dia dos caen en la misma y este caso empezaba en
+      // "ya_enviado": fallaba por una colision de fixture, no por el codigo.
+      await db.execute(dsql`delete from alert_digest_runs where run_date = ${DIA_FALLO}::date`);
       enviados.length = 0;
       fallar.length = 0;
       fallar.push(true);

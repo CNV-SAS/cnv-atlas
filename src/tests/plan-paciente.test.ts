@@ -160,7 +160,8 @@ describe("los DOS canales son el mismo documento, no dos documentos", () => {
     "Cómo estás":
       "el diagnóstico abre el REPORTE completo; la hoja impresa es solo el plan, lo que el paciente necesita en la cocina (declarado en plan-imprimible.tsx)",
     "Tus suplementos": "va con el informe completo, no con la hoja de la cocina",
-    "Notas del profesional": "lo mismo",
+    "Nota de tu profesional":
+      "solo para informes VIEJOS, que no traen el bloque de seguimiento: la observación de la consulta ya va en \"Tu seguimiento\"",
     // LAS TRES DEL INFORME (2026-09-19). El informe reúne la consulta entera; la hoja impresa del plan
     // sigue siendo solo el plan, que es lo que el paciente pega en la nevera.
     "Lo que vas a trabajar": "son las rutas de atención: viven en su propia hoja imprimible y en el informe",
