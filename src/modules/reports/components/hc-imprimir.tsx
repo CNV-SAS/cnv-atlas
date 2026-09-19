@@ -3,6 +3,7 @@
 import { Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { imprimirHoja } from "@/components/shared/imprimir-hoja";
 
 // IMPRIMIR / GUARDAR LA HISTORIA CLINICA COMO PDF.
 //
@@ -31,7 +32,7 @@ export function HcImprimir() {
       // `no-print`: el boton no sale en el papel. Un documento clinico con un boton impreso encima se ve
       // como una captura de pantalla, no como un documento.
       className="no-print self-start"
-      onClick={() => window.print()}
+      onClick={(e) => imprimirHoja(e.currentTarget)}
     >
       <Printer className="size-4" aria-hidden />
       Imprimir o guardar PDF

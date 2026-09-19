@@ -34,6 +34,7 @@ import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { formatDate, formatDateOnly, formatDateTime } from "@/lib/format/date";
 import { ResumenDiagnostico } from "@/modules/diagnoses/components/resumen-diagnostico";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
+import { RutasImprimible } from "@/modules/diagnoses/components/rutas-imprimible";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { REFERRAL_TARGET_LABEL } from "@/modules/referrals/components/patient-referrals-section";
 import { getPendingReferralHints, listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
@@ -907,7 +908,20 @@ export default async function ResultadosEvaluacionPage({
                   </section>
                 ) : null}
                 <SeccionRuta n={1} titulo="Rutas de atención activadas" />
-                <RutasSection rutas={rutas} />
+                {/* IMPRIMIBLE, como en su archivo (2026-09-18): las rutas son lo que el paciente se lleva
+                    para saber a donde va. Aqui la pantalla ES el documento, asi que se imprime lo mismo
+                    que se mira, con un encabezado que solo sale en papel. */}
+                <RutasImprimible
+                  encabezado={{
+                    profesional: hcHeader?.profesional ?? "",
+                    profesion: hcHeader?.profesion ?? null,
+                    paciente: hcHeader?.paciente ?? "Paciente",
+                    documento: hcHeader?.documento ?? null,
+                    fecha: formatDate(hcHeader?.fechaConsulta ?? new Date().toISOString()),
+                  }}
+                >
+                  <RutasSection rutas={rutas} />
+                </RutasImprimible>
                 {/* Nutraceuticos (checkpoint 2.3): la prescripcion PRIMERO, la venta DESPUES, para que se
                     lea la secuencia (primero se prescribe, luego se vende y se entrega) y nadie venda sin mirar
                     lo prescrito. El orden Rutas -> Nutraceuticos -> Remisiones sigue al HTML (Sec 1/2/3). */}

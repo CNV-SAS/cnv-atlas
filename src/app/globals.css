@@ -367,6 +367,14 @@
     display: none !important;
   }
 
+  /* UNA HOJA A LA VEZ (2026-09-18). Las etapas visitadas no se desmontan, asi que puede haber DOS hojas
+     imprimibles en el DOM (el plan del paciente y la historia clinica) y la regla de arriba deja salir las
+     dos: el plan pegado a la historia. El boton marca la suya con `data-hoja-activa` (ver
+     `shared/imprimir-hoja`) y aqui se esconden las demas. Aditivo: sin marca (Ctrl+P), todo como antes. */
+  body:has([data-hoja-activa]) .imprimible:not([data-hoja-activa]) {
+    display: none !important;
+  }
+
   /* Lo de DENTRO de la hoja que no va en papel: botones, avisos de la interfaz. */
   .imprimible .no-print,
   .imprimible .no-print * {

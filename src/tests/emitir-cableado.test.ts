@@ -62,7 +62,9 @@ describe("un plan no sale hacia el paciente sin dejar constancia", () => {
     expect(ACTIONS).toContain("export async function registrarPlanImpresoAction");
     expect(ACTIONS).toContain('"impresa",');
     expect(BOTON).toContain("useActionState(registrarPlanImpresoAction");
-    expect(BOTON).toContain("window.print()");
+    // IMPRIME POR `imprimirHoja`, NO POR `window.print()` a pelo (2026-09-18): con dos hojas montadas a la
+    // vez salian las dos. Lo que este candado protege sigue igual: que imprimir REGISTRE la entrega.
+    expect(BOTON).toContain("imprimirHoja(");
   });
 
   it("y el boton imprime YA, sin esperar al registro", () => {
@@ -73,7 +75,7 @@ describe("un plan no sale hacia el paciente sin dejar constancia", () => {
     // la accion se lanza en una transicion y no bloquea.
     expect(BOTON).toContain("ejecutarAccion(");
     expect(BOTON, "el registro dejo de ir en paralelo con la impresion").toMatch(
-      /ejecutarAccion\([\s\S]{0,80}\);\s*window\.print\(\);/,
+      /ejecutarAccion\([\s\S]{0,80}\);[\s\S]{0,160}imprimirHoja\(/,
     );
   });
 
