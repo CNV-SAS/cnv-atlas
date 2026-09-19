@@ -22,7 +22,11 @@ describe("arriba solo va lo que lleva a algun sitio", () => {
     // Una metrica accionable que no lleva a ninguna lista es solo un numero con urgencia: le da al
     // profesional el problema y no la salida.
     expect(PAGINA).toContain('href="/pacientes"');
-    expect(PAGINA).toContain('href="/reportes"');
+    // LA TARJETA DE REPORTES SE RETIRO (2026-09-18) al retirarse la aprobacion: contaba borradores que
+    // nadie podia resolver y llevaba a una pantalla que salio del menu. El criterio no cambia, se aplica:
+    // lo que no lleva a algo que se pueda hacer, no va arriba.
+    expect(PAGINA).not.toContain('href="/reportes"');
+    expect(PAGINA).not.toContain("reportesPorAprobar");
   });
 
   it("y las próximas consultas llevan a SU evaluación, una por una", () => {
