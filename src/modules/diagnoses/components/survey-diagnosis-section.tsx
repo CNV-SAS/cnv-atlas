@@ -107,7 +107,7 @@ function GrupoGrid({ grupos }: { grupos: PatronGrupoView[] }) {
           <div key={g.n} className="flex items-center justify-between rounded-lg border px-2 py-1" style={{ borderColor: col + "22", background: col + "0d" }}>
             <span className="text-xs text-foreground">{g.label}</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ color: col, background: col + "1f" }}>
-              {v !== null ? FREQ_LABELS[v] : "—"}
+              {v !== null ? FREQ_LABELS[v] : "-"}
             </span>
           </div>
         );

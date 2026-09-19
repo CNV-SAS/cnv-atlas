@@ -132,7 +132,7 @@ export function indicesAniAlterados(
       // LA MISMA FUENTE QUE EL DIAGNOSTICO. El EB no la tiene (su fila toma el veredicto del IAE y su
       // referencia es la edad cronologica), asi que ahi la raya es correcta.
       delta:
-        (indicadores ? indicatorRange(fila.codigo, indicadores, sexoM)?.delta : null) ?? "—",
+        (indicadores ? indicatorRange(fila.codigo, indicadores, sexoM)?.delta : null) ?? "-",
     });
   }
   return out;

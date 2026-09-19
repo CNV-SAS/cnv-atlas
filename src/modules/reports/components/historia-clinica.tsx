@@ -276,7 +276,7 @@ export function HcRutasActivadas({ rutas }: { rutas: HcRuta[] }) {
           {rutas.map((r) => (
             <div key={r.id} className="rounded-md border border-border bg-muted/40 p-3">
               <span className="text-sm font-semibold text-primary">
-                {r.id} — {r.label}
+                {r.id} · {r.label}
               </span>
               <p className="text-xs text-muted-foreground">Indicador: {r.activacion}</p>
             </div>

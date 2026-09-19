@@ -163,7 +163,7 @@ export async function buildCriterionInput(
       const dec = decimalesDe(code);
       return {
         nombre: indicatorNames[code] ?? code,
-        valor: typeof v === "number" && Number.isFinite(v) ? v.toFixed(dec) : "—",
+        valor: typeof v === "number" && Number.isFinite(v) ? v.toFixed(dec) : "-",
         clasificacion: c.label,
       };
     });

@@ -165,9 +165,9 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
           {hc.indices.map((i) => (
             <View key={i.codigo} style={styles.fila} wrap={false}>
               <Text style={[styles.etiqueta, { width: 150 }]}>{i.nombre}</Text>
-              <Text style={styles.valor}>{i.valor ?? "—"}</Text>
-              <Text style={styles.valor}>{i.clasificacion ?? "—"}</Text>
-              <Text style={styles.valor}>{i.referencia ?? "—"}</Text>
+              <Text style={styles.valor}>{i.valor ?? "-"}</Text>
+              <Text style={styles.valor}>{i.clasificacion ?? "-"}</Text>
+              <Text style={styles.valor}>{i.referencia ?? "-"}</Text>
             </View>
           ))}
         </Seccion>

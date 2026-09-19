@@ -3426,11 +3426,11 @@ function ValidacionSection({
                   <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + cobColor(n)}>
                     {Math.round(n.cob)}%
                   </td>
-                  {/* ICN: texto "límite" para los a limitar (sodio), "—" para energia, si no el valor. El COLOR
+                  {/* ICN: texto "límite" para los a limitar (sodio), "-" para energia, si no el valor. El COLOR
                       va por el ICN incluso para el sodio (fiel al v8: interIcnColor(interICN("na")) lo colorea;
                       un sodio denso -> ICN alto -> rojo, que refuerza el "te pasas"). kcal (icn null) -> gris. */}
                   <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + icnColor(n.icn)}>
-                    {n.lim ? "límite" : n.k === "kcal" ? "—" : n.icn == null ? "—" : n.icn.toFixed(2)}
+                    {n.lim ? "límite" : n.k === "kcal" ? "-" : n.icn == null ? "-" : n.icn.toFixed(2)}
                   </td>
                 </tr>
               ))}

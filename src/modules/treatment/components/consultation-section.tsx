@@ -89,7 +89,7 @@ export function ConsultationSection({
             <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
               {examenes.map((e, i) => (
                 <li key={i}>
-                  <span className="font-medium text-foreground">{e.nombre}</span> — {e.razon} (
+                  <span className="font-medium text-foreground">{e.nombre}</span>: {e.razon} (
                   {e.protocolo}, prioridad {e.prioridad})
                 </li>
               ))}
@@ -113,7 +113,7 @@ export function ConsultationSection({
           <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
             {suplementacion.map((s, i) => (
               <li key={i}>
-                <span className="font-medium text-foreground">{s.nombre}</span> {s.dosis} — {s.razon}
+                <span className="font-medium text-foreground">{s.nombre}</span> {s.dosis}: {s.razon}
               </li>
             ))}
           </ul>
