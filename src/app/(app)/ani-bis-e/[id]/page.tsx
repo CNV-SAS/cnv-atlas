@@ -143,6 +143,8 @@ import {
 } from "@/modules/treatment/components/profession-treatment-section";
 import { TreatmentSubtabs } from "@/modules/treatment/components/treatment-subtabs";
 import { getPlanPaciente } from "@/modules/reports/data/plan-paciente-reader";
+import { ComplementosDeLaRuta } from "@/modules/reports/components/complementos-de-la-ruta";
+import { getInformeDelPaciente } from "@/modules/reports/data/informe-paciente-reader";
 import { PlanImprimible } from "@/modules/reports/components/plan-imprimible";
 import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
@@ -830,6 +832,12 @@ export default async function ResultadosEvaluacionPage({
   // Contenido de las rutas activas, congelado en el snapshot (T1). [] para snapshots incompatibles o
   // previos a T1 (la seccion muestra "sin rutas" en vez de tronar).
   const rutas = results.rutasContent;
+
+  // LOS COMPLEMENTOS DE LA HOJA DE RUTAS (suplementos, remisiones y proxima cita, en lenguaje del
+  // paciente). Se le pasa el contenido de rutas ya resuelto en vez del snapshot crudo: la pagina ya lo
+  // tiene, y asi el lector no depende de la forma del snapshot en esta superficie.
+  const informeDelPaciente = await getInformeDelPaciente(id, { rutasContent: rutas });
+
   // Texto del abordaje del rol del actor para el panel de consulta (medico/deportologo); null si el
   // snapshot es incompatible o la profesion no aplica.
   const abordajeText = abordaje.kind === "text" ? abordaje.text : null;
@@ -931,6 +939,11 @@ export default async function ResultadosEvaluacionPage({
                     que se mira, con un encabezado que solo sale en papel. */}
                 <HojaImprimible titulo="Rutas de atención" encabezado={encabezadoDeHoja}>
                   <RutasSection rutas={rutas} />
+                  {/* Y LO QUE PIDIO SANTIAGO QUE LLEVARA ADEMAS (2026-09-19): los suplementos y las
+                      remisiones, diciendo que sugiere el modelo y que indico el profesional. Sale del
+                      MISMO lector que el informe del correo, para que el papel y el correo no puedan
+                      decir cosas distintas de la misma consulta. */}
+                  {informeDelPaciente ? <ComplementosDeLaRuta informe={informeDelPaciente} /> : null}
                 </HojaImprimible>
                 {/* Nutraceuticos (checkpoint 2.3): la prescripcion PRIMERO, la venta DESPUES, para que se
                     lea la secuencia (primero se prescribe, luego se vende y se entrega) y nadie venda sin mirar
