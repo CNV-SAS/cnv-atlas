@@ -134,15 +134,33 @@ describe("el encabezado y el orden que pidió Gildardo (2026-09-18)", () => {
   const hoja = sinComentarios(readFileSync("src/modules/reports/components/plan-imprimible.tsx", "utf8"));
   const pdf = sinComentarios(readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8"));
 
+  // EL ENCABEZADO SE COMPARTIO (2026-09-19): vivia copiado aqui y ahora es `EncabezadoImpreso`, el mismo
+  // de las otras dos hojas. El candado sigue el dato: mide donde vive la garantia, y de paso exige que el
+  // plan USE el compartido (si volviera a escribir el suyo, esta linea se cae).
+  const encabezadoCompartido = sinComentarios(
+    readFileSync("src/components/shared/hoja-imprimible.tsx", "utf8"),
+  );
+
   it("ENCABEZA EL PROFESIONAL, con su profesión, y después el paciente con lo que lo identifica", () => {
-    const profesional = hoja.indexOf("encabezado.profesional");
-    const profesion = hoja.indexOf("encabezado.profesion");
-    const paciente = hoja.indexOf("encabezado.paciente");
-    expect(profesional, "el plan no lo firma nadie").toBeGreaterThan(-1);
+    expect(hoja, "el plan dejo de usar el encabezado compartido").toContain("<EncabezadoImpreso");
+    const profesional = encabezadoCompartido.indexOf("encabezado.profesional");
+    const profesion = encabezadoCompartido.indexOf("encabezado.profesion");
+    const paciente = encabezadoCompartido.indexOf("encabezado.paciente");
+    expect(profesional, "el documento no lo firma nadie").toBeGreaterThan(-1);
     expect(profesion, "un plan alimentario lo firma un nutricionista, no 'alguien'").toBeGreaterThan(-1);
     expect(profesional, "el profesional va primero").toBeLessThan(paciente);
-    expect(hoja, "sin documento, el papel es de 'Juan'").toContain("encabezado.documento");
-    expect(hoja).toContain("encabezado.edad");
+    expect(encabezadoCompartido, "sin documento, el papel es de 'Juan'").toContain("encabezado.documento");
+    expect(encabezadoCompartido).toContain("encabezado.edad");
+  });
+
+  it("y va en TRES BLOQUES: quien firma, a quien va, y qué documento es (Santiago, 2026-09-19)", () => {
+    // El titulo quedaba EN MEDIO de los datos del paciente, y la fecha pegada al nombre. Cada bloque
+    // responde una pregunta; la fecha baja con el titulo, que es a lo que pertenece.
+    const paciente = encabezadoCompartido.indexOf("encabezado.paciente");
+    const titulo = encabezadoCompartido.indexOf("{titulo}");
+    const fecha = encabezadoCompartido.indexOf("encabezado.fecha");
+    expect(paciente, "el titulo del documento volvio a meterse entre los datos").toBeLessThan(titulo);
+    expect(titulo, "la fecha es del documento: va con su titulo").toBeLessThan(fecha);
   });
 
   it("LAS PORCIONES VAN ANTES DE LA LISTA, y el ejemplo de menú DESPUÉS, en las DOS superficies", () => {
