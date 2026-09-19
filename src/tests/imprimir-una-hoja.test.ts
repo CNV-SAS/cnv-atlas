@@ -19,7 +19,7 @@ const HELPER = sinComentarios(readFileSync("src/components/shared/imprimir-hoja.
 const BOTONES = [
   "src/modules/reports/components/hc-imprimir.tsx",
   "src/modules/reports/components/plan-imprimir-boton.tsx",
-  "src/modules/diagnoses/components/rutas-imprimible.tsx",
+  "src/components/shared/hoja-imprimible.tsx",
 ];
 
 describe("imprimir una sola hoja", () => {
@@ -44,5 +44,26 @@ describe("imprimir una sola hoja", () => {
 
   it("CONTROL: el helper SI llama a window.print(), que es donde tiene que estar", () => {
     expect(HELPER.match(/window\.print\(\)/g)?.length, "una vez sin hoja y otra con la hoja marcada").toBe(2);
+  });
+});
+
+describe("las pantallas que se imprimen", () => {
+  const PAGE = sinComentarios(readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8"));
+  const DIAGNOSTICO = sinComentarios(
+    readFileSync("src/modules/diagnoses/components/evaluation-results.tsx", "utf8"),
+  );
+
+  it("RUTAS DE ATENCIÓN y DIAGNÓSTICO FUNCIONAL son hojas, como en el archivo de Gildardo", () => {
+    expect(PAGE).toContain('<HojaImprimible titulo="Rutas de atención"');
+    expect(DIAGNOSTICO).toContain('<HojaImprimible titulo="Diagnóstico funcional"');
+  });
+
+  it("toda hoja dice QUIEN la firma y DE QUIEN es: si no, es un volante", () => {
+    const hoja = sinComentarios(readFileSync("src/components/shared/hoja-imprimible.tsx", "utf8"));
+    for (const dato of ["encabezado.profesional", "encabezado.profesion", "encabezado.paciente", "encabezado.documento"]) {
+      expect(hoja, `falta ${dato} en el encabezado impreso`).toContain(dato);
+    }
+    // El encabezado NO se ve en pantalla: ahi ya esta arriba, en la cabecera de la pagina.
+    expect(hoja).toContain("solo-impresion");
   });
 });

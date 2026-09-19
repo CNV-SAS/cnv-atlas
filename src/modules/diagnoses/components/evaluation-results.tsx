@@ -37,6 +37,8 @@ import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
+import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
+
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
 import { fmtDec } from "@/lib/format/decimal";
 
@@ -219,6 +221,7 @@ function AbordajeCard({ abordaje }: { abordaje: AbordajeCardData }) {
 
 export function EvaluationResults({
   results,
+  encabezado,
   composition,
   efrStates,
   abordaje,
@@ -228,6 +231,8 @@ export function EvaluationResults({
   surveyDiagnosis = null,
 }: {
   results: Results;
+  /** Para la hoja impresa del Diagnostico Funcional. La pagina lo arma una vez para todas sus hojas. */
+  encabezado: EncabezadoDeHoja;
   composition?: ReactNode;
   // Nodos que la pagina arma y esta vista COLOCA en su subpestaña: el criterio del profesional y el par
   // confirmar/corregir van en Funcional; el read-out D1-D8 en Encuesta. Slots (no logica) para no
@@ -514,6 +519,10 @@ export function EvaluationResults({
           cambia con el reorden: cambió cuál va primero en la fila, no cuál se abre). */}
       <DiagnosisSubtabs
         funcional={
+          // IMPRIMIBLE (2026-09-18): es la pantalla que mas le sirve al paciente en papel, porque los mapas
+          // se entienden sin explicacion. La Diana y el radar son SVG, asi que salen; y el CSS de impresion
+          // ya fuerza el color, que aqui es informacion clinica y no adorno.
+          <HojaImprimible titulo="Diagnóstico funcional" encabezado={encabezado}>
           <div className="flex flex-col gap-8">
             {/* Orden conclusion -> detalle (V3): el DFI (riesgo integrado + 5 dominios) va arriba,
                 luego los mapas (Diana + radar), pegado el detalle de las 6 cards del estado, y la tabla
@@ -826,6 +835,7 @@ export function EvaluationResults({
                 dejado a Funcional siendo una lectura sin salida. */}
             {confirmCorrect}
           </div>
+          </HojaImprimible>
         }
         composicion={
           <div className="flex flex-col gap-8">
