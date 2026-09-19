@@ -200,3 +200,48 @@ Esto **reemplaza** los pasos 3, 4, 6 y 10 de arriba; el resto sigue igual.
   (`docs/PENDIENTES_CIENTIFICOS.md`, entrada del 19/9). Hoy se filtra lo que nombra índices del modelo y el
   componente médico viaja como remisión.
 - **El pulido gráfico:** `PULIDO_GRAFICO_PENDIENTE.md`.
+
+---
+
+# Tercera vuelta (2026-09-19, tarde): lo del informe y las simultáneas
+
+## 12. Ningún índice en el informe
+
+- [ ] Abre el informe de un paciente con rutas activas. **Debe dar:** en *Otros profesionales que te pueden
+      acompañar*, la urgencia dice **"(valoración recomendada)"** o **"(valoración obligatoria)"**, y
+      **nunca** "si IAE > 10 años" ni ningún otro índice.
+- [ ] Mira *Lo que vas a trabajar*. **Debe dar:** indicaciones que el paciente puede hacer, sin siglas del
+      modelo y **sin guiones largos**.
+
+## 13. La tercera salida del informe
+
+- [ ] En un informe ya **enviado**, mira el bloque **¿Cambió algo después de enviarlo?**
+- [ ] Escribe una observación nueva en **Seguimiento** y pulsa **Emitir una versión nueva** → **Sí,
+      emitirla**. **Debe dar:** la tarjeta vuelve a **Sin enviar**, con el informe nuevo.
+- [ ] Ábrelo. **Debe dar:** trae la observación nueva. El anterior sigue enviado en `/reportes`.
+- [ ] Vuelve a pulsar **Emitir una versión nueva** sin enviar la que acabas de crear. **Debe dar:** avisa
+      que ya hay una versión nueva sin enviar.
+
+## 14. Las simultáneas
+
+- [ ] **Checkout:** abre un link de pago. **Debe dar:** el logo de **VITACELLEBIS**, debajo *CONNECTED
+      NUTRITION VENTURES S.A.S. / NIT 902045562-3*, y **sin** el logo de Atlas.
+- [ ] **Import BIS sin cintura:** intenta importar un XLSX al que le falte. **Debe dar:** *"Se mide
+      siempre: es parte del estándar de la medición y de los datos que sostienen la investigación"*, sin
+      hablar de "decisión de negocio" ni del "motor".
+- [ ] **Encuesta, contador:** abre la encuesta del paciente. **Debe dar:** donde había un guion, dice
+      **sin responder**; pulsar "Ninguno" pone **0**.
+- [ ] **Pase sin correo:** con un pase en curso, entra a crear otro. **Debe dar:** el bloque *"Tienes un
+      pase en curso"* con **Anular este pase y empezar otro**; al pulsarlo, el pase se anula **de verdad**
+      y el siguiente intento funciona.
+- [ ] **Preguntas que faltan:** en una evaluación con encuesta incompleta, mira el bloque de la barra.
+      **Debe dar:** la lista de preguntas sin responder, con su número y su dominio; al pulsar una, la
+      encuesta abre **en esa pregunta**.
+- [ ] **Descargar respuestas:** junto a "Ver o editar encuesta", pulsa **Descargar respuestas**. **Debe
+      dar:** un CSV que abre bien en Excel (con tildes), con el paciente y la fecha arriba, y las preguntas
+      sin responder marcadas como *(sin responder)*.
+
+## 15. La ficha se cierra al guardar
+
+- [ ] Corrige el contacto de un paciente y guarda. **Debe dar:** el formulario **se cierra** y la tarjeta
+      de Correo muestra el valor nuevo (antes se quedaba abierto tapándola).
