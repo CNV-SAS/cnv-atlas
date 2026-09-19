@@ -19,6 +19,7 @@ import { PanelAutorizaciones } from "@/modules/consent/components/panel-autoriza
 import { getPatientConsents } from "@/modules/consent/data/consent-reader";
 import { canRevokeConsent } from "@/modules/consent/policies/can-revoke-consent";
 import { getPatientDetail } from "@/modules/patients/data/patient-detail-reader";
+import { formatDateOnlyShort } from "@/lib/format/date";
 import { edadEnAnios, fechaCorta } from "@/modules/patients/format";
 import {
   estadoEvaluacionLabel,
@@ -79,6 +80,13 @@ export default async function HistoriaPacientePage({
   // El resto sigue en tarjetas: son datos de CONTACTO y de caracterizacion, que se consultan cuando hacen
   // falta y no identifican al paciente de un vistazo.
   const datos: { label: string; value: string }[] = [
+    // LA FECHA DE NACIMIENTO VA EN TARJETA, no en la banda (2026-09-19). En la banda esta la EDAD, que es
+    // lo que se mira de un vistazo; la fecha exacta se CONSULTA (para cotejar identidad, o para entender
+    // una edad que no cuadra), que es justo el criterio que separa las dos superficies.
+    //
+    // Y SE FORMATEA CON EL HELPER DE FECHA PURA: `birth_date` es una columna `date`, y pasarla por el
+    // formateador con zona la retrocede un dia (alguien nacido el 1 saldria naciendo el 31 del mes anterior).
+    { label: "Fecha de nacimiento", value: formatDateOnlyShort(paciente.birthDate) || "-" },
     { label: "Correo", value: paciente.email ?? "-" },
     { label: "Teléfono", value: paciente.phone ?? "-" },
     { label: "Estado", value: estadoPacienteLabel(paciente.status) },
