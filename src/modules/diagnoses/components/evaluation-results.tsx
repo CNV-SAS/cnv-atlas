@@ -38,6 +38,7 @@ import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-se
 import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
 import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
+import { sinGuionLargo } from "@/lib/format/guion";
 
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
 import { fmtDec } from "@/lib/format/decimal";
@@ -310,7 +311,9 @@ export function EvaluationResults({
   };
   const clasesPorCodigo: Record<string, { label: string } | null> = {
     ...classifications,
-    "ICA-BIS": claseIca ? { label: claseIca.l } : null,
+    // Su rotulo trae guion largo ("Zona φ — Homeostasis óptima"): se limpia al MOSTRARLO, no en el
+    // clasificador, que esta bajo candado de fidelidad. Ver `lib/format/guion`.
+    "ICA-BIS": claseIca ? { label: sinGuionLargo(claseIca.l) } : null,
   };
   // Contenido del estado del paciente, SIEMPRE del snapshot inmutable (para el panel permanente y
   // para la celda propia durante la exploracion; nunca del registry).

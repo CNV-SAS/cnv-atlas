@@ -70,6 +70,18 @@ function FormConReferencia({
   const [abierto, setAbierto] = useState(false);
   const [referencia, setReferencia] = useState("");
 
+  // AL RESOLVER SE CIERRA (barrido del 2026-09-19). Tenia el mismo defecto que "en gestion" y que la ficha
+  // del paciente: la pagina se refrescaba con la reversa ya resuelta y el formulario seguia abierto encima,
+  // asi que parecia que no habia pasado nada. Se ajusta durante el render, no en un efecto.
+  const [estadoVisto, setEstadoVisto] = useState(state);
+  if (state !== estadoVisto) {
+    setEstadoVisto(state);
+    if (state.success) {
+      setAbierto(false);
+      setReferencia("");
+    }
+  }
+
   if (!abierto) {
     return (
       <Button key={`pedir-${etiqueta}`} type="button" size="sm" variant="outline" onClick={() => setAbierto(true)}>

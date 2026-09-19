@@ -82,13 +82,13 @@ export function HcConsentimiento({
                         ? "No vigente"
                         : "No otorgada"}
                 </td>
-                <td className="py-1 pr-3">{a.version ?? "—"}</td>
+                <td className="py-1 pr-3">{a.version ?? "-"}</td>
                 <td className="py-1">
                   {a.revocadaEl
                     ? formatDate(a.revocadaEl)
                     : a.firmadaEl
                       ? formatDate(a.firmadaEl)
-                      : "—"}
+                      : "-"}
                 </td>
               </tr>
             ))}

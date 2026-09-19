@@ -11,6 +11,9 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// SU CONTENIDO TRAE GUIONES LARGOS y no se edita su archivo (rompería la fidelidad del port y sus golden
+// tests): se limpian AQUI, que es donde los ve una persona. Ver `lib/format/guion`.
+import { sinGuionLargo } from "@/lib/format/guion";
 import type { RutaComponent, RutaContent } from "@/clinical-engine/rutas-content";
 
 // Sección 1 del Tratamiento: las rutas de atención ACTIVAS (salida del DFI), con su contenido
@@ -55,7 +58,7 @@ function ComponentBox({
         {label}
       </span>
       <ul className="list-inside list-disc text-xs text-muted-foreground">
-        {indicaciones.map((ind, i) => (
+        {indicaciones.map(sinGuionLargo).map((ind, i) => (
           <li key={i}>{ind}</li>
         ))}
       </ul>
@@ -103,8 +106,8 @@ function RutaCard({ ruta }: { ruta: RutaContent }) {
         <p className="text-xs font-semibold uppercase tracking-wide text-clinical-optimal">
           Seguimiento
         </p>
-        <p className="text-sm text-foreground">Frecuencia: {ruta.seguimiento.frecuencia}</p>
-        <p className="text-sm text-foreground">Egreso: {ruta.seguimiento.criterioEgreso}</p>
+        <p className="text-sm text-foreground">Frecuencia: {sinGuionLargo(ruta.seguimiento.frecuencia)}</p>
+        <p className="text-sm text-foreground">Egreso: {sinGuionLargo(ruta.seguimiento.criterioEgreso)}</p>
       </div>
     </div>
   );

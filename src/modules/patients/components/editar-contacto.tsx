@@ -37,6 +37,16 @@ export function EditarContacto({
   const [state, formAction, pending] = useActionState(guardarContactoPacienteAction, VACIO);
   useFormToastAndRefresh(state);
 
+  // AL GUARDAR SE CIERRA, igual que al cancelar (Santiago, 2026-09-19). La pagina se refresca y trae el
+  // contacto nuevo, pero el formulario seguia abierto TAPANDO la tarjeta que acaba de cambiar: parecia que
+  // no habia pasado nada. Es el mismo defecto que ya se corrigio en "en gestion", y por eso se resuelve
+  // igual: ajustando el estado durante el render, no en un efecto (regla de lint set-state-in-effect).
+  const [estadoVisto, setEstadoVisto] = useState(state);
+  if (state !== estadoVisto) {
+    setEstadoVisto(state);
+    if (state.success) setAbierto(false);
+  }
+
   if (!abierto) {
     return (
       <div className="flex flex-col items-start gap-1">

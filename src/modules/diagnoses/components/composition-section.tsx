@@ -1,6 +1,10 @@
 "use client";
 
 import { Panel } from "@/components/shared/panel";
+
+// Los rotulos clinicos son de su archivo y traen guiones largos: se limpian al MOSTRARLOS, nunca en el
+// original, que esta bajo golden tests. Ver `lib/format/guion`.
+import { sinGuionLargo } from "@/lib/format/guion";
 import { Fragment } from "react";
 import { Zap } from "lucide-react";
 
@@ -16,6 +20,9 @@ import {
 import { SEV_CLS } from "./risk-severity";
 import { decimalesEsp, fmtDec } from "@/lib/format/decimal";
 
+// Los rotulos clinicos son de su archivo y traen guiones largos; se limpian al MOSTRARLOS (no en el
+// original, que esta bajo golden tests). Ver `lib/format/guion`.
+//
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
 // bis_raw_values (inmutable por medicion), no del registry vivo. La clasificacion antropometrica
 // es REFERENCIA MEDICA ESTANDAR (OMS), NO output del motor ANI-BIS-E: se rotula como tal.
@@ -95,7 +102,7 @@ function DxBadge({ dx, title }: { dx: DisplayDx; title?: string }) {
       className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, dx.sev))]}`}
       title={title}
     >
-      {dx.label}
+      {sinGuionLargo(dx.label)}
     </span>
   );
 }
@@ -457,8 +464,8 @@ export function CompositionSection({
                     <tr className="border-b border-border/40">
                       <td className="py-1.5 pl-3 pr-4 text-foreground">Fenotipo MCCB (FFMI×FMI)</td>
                       <td className="py-1.5 pr-4 text-right text-foreground">{fenotipoMccb.nombre}</td>
-                      <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
-                      <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
+                      <td className="py-1.5 pr-4 text-right text-muted-foreground">-</td>
+                      <td className="py-1.5 pr-4 text-right text-muted-foreground">-</td>
                       <td className="py-1.5 pr-3 text-foreground">{fenotipoMccb.nombre}</td>
                     </tr>
                   ) : null}

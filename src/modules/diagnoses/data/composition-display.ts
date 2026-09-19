@@ -150,7 +150,7 @@ export function clasifNHLBI(imc: number | null, cintura: number | null, sexoM: b
   const label = clase + (riesgo ? " · riesgo " + riesgo.toLowerCase() : "");
   const color = riesgo ? COL[riesgo] : b >= 18.5 && b < 25 ? "#16a34a" : "#64748b";
   const base = dx(label, color);
-  const ccAltaText = ccAlta === null ? "—" : ccAlta ? "CC elevada" : "CC normal";
+  const ccAltaText = ccAlta === null ? "-" : ccAlta ? "CC elevada" : "CC normal";
   return base ? { ...base, clase, ccAltaText } : null;
 }
 
@@ -208,7 +208,7 @@ export function pscAFxIR(
   const afK = !af || af <= 0 ? "N/D" : sexoM ? (af < 6.5 ? "Bajo" : af <= 7 ? "Normal" : "Alto") : af < 6 ? "Bajo" : af <= 6.5 ? "Normal" : "Alto";
   const t = sexoM ? 0.78 : 0.82;
   const irK = !ir || ir <= 0 ? "N/D" : ir < t * 0.97 ? "Bajo" : ir <= t * 1.03 ? "Normal" : "Elevado";
-  const valueText = afK !== "N/D" && irK !== "N/D" ? `IR ${irK} · AF ${afK}` : "—";
+  const valueText = afK !== "N/D" && irK !== "N/D" ? `IR ${irK} · AF ${afK}` : "-";
   const clave = `${irK}_${afK}`;
   const interp = PSC_INTERP[clave];
   return { valueText, dx: interp ? { label: interp, sev: PSC_SEV[clave] ?? 2 } : null };
@@ -446,8 +446,8 @@ export function wangRowDx(
         dx: n,
         referenceLabel: sexoM ? "IMC 18.5–24.9 · CC ≤102 cm" : "IMC 18.5–24.9 · CC ≤88 cm",
         cut: null,
-        valueText: n?.clase ?? "—",
-        deltaText: n?.ccAltaText ?? "—",
+        valueText: n?.clase ?? "-",
+        deltaText: n?.ccAltaText ?? "-",
       };
     }
     case "FFMI": return { dx: dFFMI(value, sexoM), referenceLabel: sexoM ? "17–25" : "15–23", cut: sexoM ? 17 : 15 }; // borde inferior (Gildardo §2)
@@ -465,7 +465,7 @@ export function wangRowDx(
     case "IR": return { dx: dIR(value, sexoM), referenceLabel: sexoM ? "<0.78" : "<0.82", cut: sexoM ? 0.78 : 0.82 };
     case "psc": {
       const p = pscAFxIR(ctx.af, ctx.ir, sexoM);
-      return { dx: p.dx, referenceLabel: "—", cut: null, valueText: p.valueText };
+      return { dx: p.dx, referenceLabel: "-", cut: null, valueText: p.valueText };
     }
     // EL CORTE ES 73,2 Y NO 73 (cotejo 2026-09-05, punto 8). Aqui vivia un 73 redondeado mientras el
     // dato derivado usa `hidSG_ref = 73.2`, que es SU cifra (§9, "hidratacion 73,2%") y la que su archivo
