@@ -105,3 +105,71 @@ Con la forma A o con la salida (b), es otra conversación y otro tamaño.
   probatorio, se lee como que no se evaluó.
 - **La encuesta redactada es tan buena como la encuesta respondida.** Si el paciente dejó la mitad sin
   contestar, el párrafo lo dirá; no se rellena con supuestos.
+
+---
+
+# Adiciones al plan (Santiago, 2026-09-20)
+
+## 6. El apartado libre del profesional: sí es lo normal, con una diferencia importante
+
+**Lo que hacen los demás.** En la práctica hay dos cosas distintas, y conviene no mezclarlas:
+
+1. **Texto libre del clínico por apartado**: es el estándar. SOAP nació justamente para dar estructura a una
+   nota que antes era narrativa libre, y los sistemas lo implementan como campos discretos (S, O, A, P)
+   donde el clínico escribe.
+2. **Editar la narrativa autogenerada**: también es lo habitual **cuando la narrativa es una transcripción**.
+   Los "AI scribes" generan el SOAP a partir de la conversación y el clínico **revisa y edita antes de
+   firmar**; el patrón defendible añade además una sección de *audit trail* que deja constancia de que hubo
+   IA, y las correcciones se hacen como **anexos que no alteran el original**, nunca reescribiendo.
+
+**Y aquí está la diferencia que decide el diseño:** nuestra narrativa **no es una transcripción, es un
+dato**. Cada frase sale de una respuesta que el paciente marcó. Editarla no sería corregir una
+interpretación: sería **cambiar lo que el paciente respondió** en un documento probatorio. Así que la
+reserva de Santiago aplica, y con más fuerza de la que él le daba.
+
+**Lo que se construye, entonces:**
+
+- **Texto libre SÍ, en su propio bloque**, debajo de lo generado y con su rótulo: *"Escrito por {profesional}
+  el {fecha}"*. Nunca intercalado.
+- **Lo generado NO se edita.** Si el profesional no está de acuerdo con lo que dice una respuesta, lo dice en
+  su bloque; corregir la respuesta es el flujo de corrección de la encuesta, que versiona.
+- **Append-only**, como las observaciones de la consulta: corregirse es escribir otra, y las dos quedan.
+  Es lo mismo que ya decidió Gildardo para `treatment_notes` (§8) y coincide con el patrón defendible de
+  los anexos.
+
+**Y una cosa que salió al mirarlo: solo hace falta UN campo nuevo, no cuatro.**
+
+| Apartado | Texto del profesional | ¿Existe hoy? |
+|---|---|---|
+| **S** | Lo que el paciente contó en consulta y no estaba en la encuesta (la anamnesis suya) | **No. Es el único que falta** |
+| **O** | No lo necesita: lo objetivo lo produce el equipo | — |
+| **A** | El resumen del diagnóstico, que él escribe | **Sí** (`resumenProfesional`) |
+| **P** | El objetivo del tratamiento y las observaciones de la consulta | **Sí** (`objetivoTratamiento`, `observaciones`) |
+
+El campo nuevo se guarda con el mismo mecanismo que las observaciones (append-only, con autor y fecha) y
+lleva un marcador de apartado, para que el bloque de observaciones de la historia clínica siga mostrando lo
+suyo y no se dupliquen.
+
+## 7. Copiar y pegar
+
+Un integrante usa la historia clínica copiándola. El SOAP lo tiene que permitir **igual o mejor**: lleva un
+botón **Copiar** que pone el documento entero en el portapapeles **como texto plano**, con sus cuatro
+apartados rotulados. Texto plano y no HTML a propósito: lo que se pega va a un correo, a un WhatsApp o a
+otro sistema, y ahí el formato estorba más de lo que ayuda.
+
+## 8. Simplificación: el caso "sin A ni P" no ocurre
+
+El plan decía que un documento sin diagnóstico saldría con la S y la O y explicando por qué faltan las otras
+dos. **Santiago tiene razón y está verificado:** la pestaña de Reporte/HC no ofrece nada mientras no haya
+diagnóstico (muestra el aviso de `EtapaReporte`), y el diagnóstico no se genera con la encuesta incompleta
+(gate D-007). El SOAP vive donde vive la historia clínica, así que cuando existe, existen los cuatro
+apartados. **Se retira esa rama del plan.**
+
+## 9. En dos pasos, por la migración
+
+1. **Ahora:** el documento SOAP completo con lo que ya hay (los cuatro apartados, la encuesta redactada, el
+   botón de copiar y su hoja imprimible).
+2. **Cuando Santiago aplique la migración del campo nuevo:** el bloque de texto libre del apartado S.
+
+Se parte así porque leer una columna que todavía no existe rompe la pantalla en producción, y el resto del
+documento no depende de ella.
