@@ -132,7 +132,7 @@ export function HistoriaClinicaSoapDoc({
           </p>
         ) : null}
         {soap.objetivo.composicion.map((c) => (
-          <p key={c.etiqueta}>
+          <p key={c.clave}>
             <span className="font-medium text-foreground">{c.etiqueta}:</span> {c.valor}
             {c.clasificacion ? ` (${c.clasificacion})` : ""}
           </p>

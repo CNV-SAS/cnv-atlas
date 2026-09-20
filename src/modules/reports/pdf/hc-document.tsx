@@ -136,7 +136,7 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
         <Seccion titulo="Composición corporal">
           {hc.composicion.length > 0 ? (
             hc.composicion.map((c) => (
-              <View key={c.etiqueta} style={styles.fila} wrap={false}>
+              <View key={c.clave} style={styles.fila} wrap={false}>
                 <Text style={[styles.etiqueta, { width: 170 }]}>{c.etiqueta}</Text>
                 <Text style={styles.valor}>{c.valor}</Text>
                 <Text style={styles.valor}>{c.clasificacion ?? ""}</Text>
@@ -228,7 +228,7 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
         <Seccion titulo="Rutas de atención activadas">
           {hc.rutas.length > 0 ? (
             hc.rutas.map((r) => (
-              <Text key={r.label} style={styles.item}>
+              <Text key={r.label + (r.activacion ?? "")} style={styles.item}>
                 {r.label}
                 {r.activacion ? ` · ${r.activacion}` : ""}
               </Text>

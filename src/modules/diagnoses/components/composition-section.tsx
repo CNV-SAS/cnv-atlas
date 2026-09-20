@@ -457,7 +457,12 @@ export function CompositionSection({
                   <tr className="border-y border-primary bg-primary">
                     <td
                       colSpan={colCount}
-                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground"
+                      // `leading-none` mas el padding parejo: el texto se veia LEVANTADO (Santiago,
+                      // 2026-09-20). La culpa era la altura de linea heredada (1.5 sobre 12px): el
+                      // navegador reparte ese sobrante arriba y abajo de la caja de texto, pero las
+                      // mayusculas no llenan su mitad superior, asi que la fila se lee descentrada. Con la
+                      // linea ajustada al texto, el padding es lo unico que centra, y centra parejo.
+                      className="px-3 py-2.5 text-xs font-semibold uppercase leading-none tracking-wide text-primary-foreground"
                     >
                       {lvl.title}
                     </td>
@@ -485,7 +490,12 @@ export function CompositionSection({
                   <tr className="border-y border-primary bg-primary">
                     <td
                       colSpan={colCount}
-                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground"
+                      // `leading-none` mas el padding parejo: el texto se veia LEVANTADO (Santiago,
+                      // 2026-09-20). La culpa era la altura de linea heredada (1.5 sobre 12px): el
+                      // navegador reparte ese sobrante arriba y abajo de la caja de texto, pero las
+                      // mayusculas no llenan su mitad superior, asi que la fila se lee descentrada. Con la
+                      // linea ajustada al texto, el padding es lo unico que centra, y centra parejo.
+                      className="px-3 py-2.5 text-xs font-semibold uppercase leading-none tracking-wide text-primary-foreground"
                     >
                       {bloqueFinal.titulo}
                     </td>

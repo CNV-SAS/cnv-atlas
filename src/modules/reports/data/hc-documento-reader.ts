@@ -241,6 +241,9 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     // clasificador. Ese contexto vive ahora en `composicionClasificada`, que llaman los dos: el veredicto
     // por fila es informacion clinica y no podia estar en una sola de las dos historias.
     composicion: composicionClasificada(composition, sexoM).map((f) => ({
+      // LA CLAVE VIAJA: dos filas pueden compartir rotulo (kg y %), y sin identidad estable React
+      // avisa de claves duplicadas y puede omitir una. En un documento clinico eso es una fila perdida.
+      clave: f.key,
       etiqueta: f.etiqueta,
       valor: f.valor,
       clasificacion: f.clasificacion ?? (f.referencia ? `ref ${f.referencia}` : null),
