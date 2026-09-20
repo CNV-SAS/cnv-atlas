@@ -111,3 +111,28 @@ select pp.first_name || ' ' || pp.last_name as paciente,
 
 -- COMO SE LEE: si `semanas_desde_la_anterior` es menor que 12, NO hay banda y el bloque ámbar no sale.
 -- Es el comportamiento correcto, no un defecto: comparar dos mediciones demasiado cercanas mide ruido.
+
+-- ═══ 6. LAS EVALUACIONES A MEDIAS DE "Hhh Ooo" (2026-09-19) ═══
+--
+-- Tiene TRES seguimientos y solo una medición, y ninguno está marcado como reemplazado. Esto dice en qué
+-- punto quedó cada uno: si el paciente ni respondió (cascarón), si respondió y falta el BIS, o si tiene
+-- todo y falta generar el diagnóstico. Es el insumo de la observación (L) de Gildardo (quitar del
+-- historial las que estorban): antes de decidir cómo se ocultan, hay que saber qué son.
+select e.id,
+       e.type,
+       e.status,
+       e.created_at,
+       (select count(*) from survey_answers a where a.evaluation_id = e.id)   as respuestas,
+       (select count(*) from bis_measurements m where m.evaluation_id = e.id) as mediciones,
+       (select count(*) from diagnoses d where d.evaluation_id = e.id)        as diagnosticos,
+       (select count(*) from reports r where r.evaluation_id = e.id)          as reportes
+  from evaluations e
+  join patients p on p.id = e.patient_id
+ where p.document_number = '222'
+ order by e.created_at desc;
+
+-- COMO SE LEE:
+--   respuestas = 0                 -> cascarón: se emitió el enlace y el paciente no respondió. Es lo que
+--                                     el acto "cerrar evaluación" existe para retirar.
+--   respuestas > 0, mediciones = 0 -> respondió y falta importar el BIS. Está viva, no sobra.
+--   mediciones > 0, diagnosticos=0 -> falta entrar a la pestaña Diagnóstico (se genera al entrar).
