@@ -6,6 +6,8 @@ import { formatDate } from "@/lib/format/date";
 import { requireUser } from "@/modules/auth/session";
 import { HistoriaClinicaSoapDoc } from "@/modules/reports/components/hc-soap";
 import { getHistoriaClinicaSoap } from "@/modules/reports/data/hc-soap-reader";
+import { notasSubjetivasEnOrden } from "@/modules/reports/data/soap-notas-writer";
+import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 
 export const metadata = { title: "Historia clínica (SOAP) - Atlas" };
@@ -29,7 +31,13 @@ export default async function SoapPage({ params }: { params: Promise<{ id: strin
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 
-  const soap = await getHistoriaClinicaSoap(id);
+  const actorProfession = await getActorProfession(user.id);
+  const [soap, notas] = await Promise.all([
+    getHistoriaClinicaSoap(id),
+    // LA ANAMNESIS DEL PROFESIONAL (apartado S). En paralelo: son dos consultas independientes y esta
+    // pantalla ya paga la composicion de la historia entera.
+    notasSubjetivasEnOrden(id),
+  ]);
   // Sin historia no hay SOAP: es el mismo dato en otro orden. Pasa cuando la evaluación no es suya (la
   // RLS no la alcanza) o cuando todavía no tiene diagnóstico, y para quien llama las dos son lo mismo.
   if (!soap) notFound();
@@ -44,7 +52,21 @@ export default async function SoapPage({ params }: { params: Promise<{ id: strin
         />
       </div>
 
-      <HistoriaClinicaSoapDoc soap={soap} fecha={formatDate(soap.fechaConsulta)} />
+      <HistoriaClinicaSoapDoc
+        soap={soap}
+        fecha={formatDate(soap.fechaConsulta)}
+        evaluationId={id}
+        notasSubjetivas={notas.map((n) => ({
+          id: n.id,
+          texto: n.texto,
+          autor: n.autor,
+          profesion: n.profesion,
+          fecha: formatDate(n.creadaEn),
+        }))}
+        // ESCRIBIR ES UN ACTO CLINICO: lo hace quien atiende, no quien administra. El admin puede LEER
+        // la historia (su policy se lo permite) y aqui no escribe, igual que no escribe las demas notas.
+        puedeEscribir={actorProfession.isProfessional}
+      />
     </div>
   );
 }
