@@ -104,19 +104,21 @@ export function soapATexto(
     soap.plan.remisiones.length
       ? `Remisiones registradas: ${soap.plan.remisiones.map((r) => `${r.profesion} (${r.estado})`).join("; ")}.`
       : null,
-    ...soap.plan.observaciones.flatMap((ob) => [
-      `Observación (${ob.fecha}): ${ob.texto}`,
-      // EL RASTRO VIAJA CON LO COPIADO: sin el, un parrafo suelto AFIRMA que eso fue todo lo que se
-      // escribio, y el documento pegado en otro sistema pierde la constancia de que hubo correcciones.
-      ob.rastro,
-    ]),
+    // EL RASTRO NO VIAJA (Santiago, 2026-09-20). "Esta observacion reemplaza a 2 anteriores, desde el
+    // 19/9..." es contabilidad de Atlas: habla de como guardamos las notas, no de la consulta. En la
+    // PANTALLA si va (ahi el profesional decide si mira el historial); en un SOAP que se pega en otro
+    // sistema es ruido que nadie puede accionar.
+    ...soap.plan.observaciones.map((ob) => `Observación (${ob.fecha}): ${ob.texto}`),
     soap.plan.proximaCita ? `Próxima consulta: ${soap.plan.proximaCita}` : null,
   ]);
 
   // EL AVISO DE LAS CIFRAS VIVAS VIAJA CON EL TEXTO. En la pantalla es un recuadro; en lo copiado tiene
   // que ir igual, porque lo copiado es lo que acaba pegado en otro sistema, sin el recuadro que lo decia.
+  // EL AVISO SE DICE EN CLINICO, no en lenguaje de Atlas. "No tiene una emision registrada" nombra un
+  // mecanismo nuestro; lo que el lector necesita saber es que ese plan todavia no se entrego y que por eso
+  // las cifras pueden cambiar. Mismo hecho, dicho para quien lo lee fuera de aqui.
   const pie = soap.prescripcionSinEmitir
-    ? "Nota: las cifras del plan son las vigentes hoy; esta consulta todavía no tiene una emisión registrada."
+    ? "Nota: este plan todavía no se le ha entregado al paciente, así que sus cifras pueden cambiar."
     : null;
 
   return nl([cabecera, "", s, "", o, "", a, "", p, pie ? "" : null, pie]);

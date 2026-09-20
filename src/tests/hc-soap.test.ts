@@ -136,9 +136,18 @@ describe("el texto que se copia dice lo mismo que la pantalla", () => {
     expect(texto).toContain("20/09/2026");
   });
 
+  it("NO arrastra la contabilidad de Atlas: lo copiado es el documento, no la interfaz", () => {
+    // "Esta observación reemplaza a 2 anteriores, desde el 19/9..." habla de cómo guardamos las notas, no
+    // de la consulta. En la pantalla sí va; en un SOAP pegado en otro sistema es ruido que nadie acciona.
+    expect(texto).not.toContain("reemplaza a");
+    expect(texto).not.toContain("quedan registradas en el seguimiento");
+  });
+
   it("el aviso de las cifras vivas viaja con lo copiado", () => {
     // En la pantalla es un recuadro; al pegarlo en otro sistema, el recuadro no va. La advertencia sí.
-    expect(texto).toContain("todavía no tiene una emisión registrada");
+    // Y DICHO EN CLINICO (2026-09-20): "no tiene una emision registrada" nombraba un mecanismo nuestro.
+    // Lo que el lector necesita saber es que el plan no se ha entregado y que por eso puede cambiar.
+    expect(texto).toContain("todavía no se le ha entregado al paciente");
   });
 });
 
