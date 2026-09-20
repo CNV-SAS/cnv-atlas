@@ -152,7 +152,13 @@ export function ReportDocument({
       title={`Informe ANI-BIS-E ${meta.documentLabel}`}
       author="Connected Nutrition Ventures"
     >
-      <Page size="A4" style={styles.page}>
+      {/* CARTA, NO A4 (Santiago, 2026-09-20). Salia en A4 mientras la historia clinica (`hc-document`) y
+          todo lo que se imprime desde pantalla (`@page { size: letter }`) salian en CARTA: el mismo
+          documento tenia dos formas segun por donde se pidiera, y en Colombia el papel es carta. A4 es mas
+          angosta y mas alta (210x297 mm contra 216x279), asi que no es la misma hoja con otro nombre:
+          impresa en carta deja margenes desiguales, y las dos medidas son las que Santiago necesita para
+          la maqueta. */}
+      <Page size="LETTER" style={styles.page}>
         <Text style={styles.title}>Informe ANI-BIS-E del paciente</Text>
         <Text style={styles.subtitle}>Connected Nutrition Ventures</Text>
 

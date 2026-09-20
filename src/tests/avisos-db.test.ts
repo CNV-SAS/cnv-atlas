@@ -56,6 +56,13 @@ describe.skipIf(!HAS_DB)("los avisos (BD real)", () => {
        limit 1`);
     profesionalSolo = p.id;
     await db.execute(dsql`delete from notification_subscriptions where profile_id = ${interno}`);
+    // LAS FRANJAS DEL DIA SIMULADO SE LIMPIAN ANTES DE EMPEZAR. Las fechas son aleatorias justo para no
+    // chocar con corridas anteriores, pero el espacio es pequeño (unos cientos de dias) y una corrida deja
+    // su fila en `alert_digest_runs`: al repetirse un dia, el primer envio sale "ya_enviado" y el test
+    // falla por el historial, no por el codigo. Es el mismo arreglo que ya lleva el dia del reintento.
+    await db.execute(
+      dsql`delete from alert_digest_runs where run_date in (${DIA}::date, ${DIA_FALLO}::date)`,
+    );
   });
 
   afterAll(async () => {
