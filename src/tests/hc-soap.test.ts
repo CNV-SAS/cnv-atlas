@@ -188,6 +188,33 @@ describe("la anamnesis del profesional (apartado S)", () => {
     expect(MIGRACION).toContain("before update or delete");
   });
 
+  it("la anamnesis ABRE el apartado S, antes del motivo y de la encuesta", () => {
+    // La razón la dio quien la escribe: la integrante redacta "paciente viene a consulta presencial...",
+    // que abre el relato. Debajo de la encuesta, ese arranque queda donde no se lee.
+    const s = COMPONENTE.slice(COMPONENTE.indexOf('<Apartado letra="S"'));
+    const anamnesis = s.indexOf("<NotasSubjetivas");
+    const motivo = s.indexOf("soap.subjetivo.motivos.length");
+    const encuesta = s.indexOf("soap.subjetivo.encuesta.map");
+    expect(anamnesis).toBeGreaterThan(-1);
+    expect(anamnesis, "la anamnesis quedó después del motivo").toBeLessThan(motivo);
+    expect(anamnesis, "la anamnesis quedó después de la encuesta").toBeLessThan(encuesta);
+  });
+
+  it("solo la VIGENTE va en el documento; las anteriores quedan plegadas", () => {
+    // Dos versiones de lo mismo en un documento clínico dicen que el profesional sostiene las dos.
+    expect(COMPONENTE).toContain("const vigente = notas.length > 0 ? notas[notas.length - 1] : null;");
+    expect(COMPONENTE).toContain("Reemplaza a");
+    expect(COMPONENTE).toContain("<details");
+  });
+
+  it("y lo COPIADO la incluye: copiar y el documento no pueden decir cosas distintas", () => {
+    // Fue un defecto real del smoke: el botón copiaba un SOAP sin la anamnesis recién escrita.
+    expect(COMPONENTE).toContain("soapATexto(soap, fecha, vigenteParaCopiar)");
+    const TEXTO = readFileSync("src/modules/reports/services/soap-a-texto.ts", "utf8");
+    expect(TEXTO).toContain("anamnesis");
+    expect(TEXTO).toContain("Anamnesis (");
+  });
+
   it("cada nota dice quién y cuándo, con la profesión sellada en el acto", () => {
     expect(WRITER).toContain("authorProfession: input.profesion");
     expect(COMPONENTE).toContain("{n.autor}");

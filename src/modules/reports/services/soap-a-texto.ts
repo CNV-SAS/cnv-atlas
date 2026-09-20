@@ -17,7 +17,21 @@ import type { HistoriaClinicaSoap } from "../data/reports-view-types";
 const nl = (partes: (string | null | undefined)[]): string =>
   partes.filter((p) => p != null && p !== "").join("\n");
 
-export function soapATexto(soap: HistoriaClinicaSoap, fechaFormateada: string): string {
+/**
+ * La anamnesis VIGENTE, tal como la pinta la pantalla. Se pasa aparte porque no vive en el documento SOAP
+ * (es una tabla propia, append-only) y el texto copiado tiene que decir lo MISMO que se ve.
+ *
+ * FUE UN DEFECTO REAL (smoke de Santiago, 2026-09-20): el boton copiaba un documento SIN la anamnesis que
+ * el profesional acababa de escribir, y esa es la peor version del problema: lo copiado y lo mostrado
+ * diciendo cosas distintas del mismo acto clinico.
+ */
+export type AnamnesisVigente = { texto: string; autor: string; profesion: string | null; fecha: string } | null;
+
+export function soapATexto(
+  soap: HistoriaClinicaSoap,
+  fechaFormateada: string,
+  anamnesis: AnamnesisVigente = null,
+): string {
   const edad = soap.edad != null ? `${soap.edad} años` : null;
   const medidas = [
     soap.objetivo.pesoKg != null ? `Peso: ${soap.objetivo.pesoKg} kg` : null,
@@ -33,6 +47,10 @@ export function soapATexto(soap: HistoriaClinicaSoap, fechaFormateada: string): 
 
   const s = nl([
     "S · SUBJETIVO",
+    // ABRE EL APARTADO, igual que en la pantalla: es lo que el profesional escribe para arrancar el relato.
+    anamnesis
+      ? `Anamnesis (${anamnesis.autor}${anamnesis.profesion ? ", " + anamnesis.profesion : ""}, ${anamnesis.fecha}): ${anamnesis.texto}`
+      : null,
     soap.subjetivo.motivos.length ? `Motivo de consulta: ${soap.subjetivo.motivos.join(", ")}.` : null,
     ...soap.subjetivo.antecedentes.map((a) => `${a.grupo}: ${a.items.join(", ")}.`),
     ...soap.subjetivo.encuesta.map((p) => `${p.dominio}. ${p.texto}`),
@@ -86,7 +104,12 @@ export function soapATexto(soap: HistoriaClinicaSoap, fechaFormateada: string): 
     soap.plan.remisiones.length
       ? `Remisiones registradas: ${soap.plan.remisiones.map((r) => `${r.profesion} (${r.estado})`).join("; ")}.`
       : null,
-    ...soap.plan.observaciones.map((ob) => `Observación (${ob.fecha}): ${ob.texto}`),
+    ...soap.plan.observaciones.flatMap((ob) => [
+      `Observación (${ob.fecha}): ${ob.texto}`,
+      // EL RASTRO VIAJA CON LO COPIADO: sin el, un parrafo suelto AFIRMA que eso fue todo lo que se
+      // escribio, y el documento pegado en otro sistema pierde la constancia de que hubo correcciones.
+      ob.rastro,
+    ]),
     soap.plan.proximaCita ? `Próxima consulta: ${soap.plan.proximaCita}` : null,
   ]);
 

@@ -413,6 +413,30 @@
     break-inside: avoid;
   }
 
+  /* PERO UNA SECCION LARGA NO CABE, Y AHI LA REGLA SE VUELVE EN CONTRA (Santiago, 2026-09-20).
+   *
+   * EL SINTOMA: el SOAP salia "con saltos de pagina y texto en blanco". La causa es esta misma regla:
+   * si una seccion no cabe en lo que queda de hoja, el navegador NO puede partirla, asi que la empuja
+   * entera a la siguiente y deja el hueco. En la historia clinica no se notaba porque sus bloques son
+   * cortos; el apartado Subjetivo del SOAP, con la encuesta entera redactada, ocupa mas de una pagina.
+   *
+   * `.hoja-larga` lo declara: sus secciones SI pueden partirse. Se conserva lo que de verdad importa en
+   * un documento clinico, y es mas barato: que un titulo no se quede solo al final de la hoja y que un
+   * parrafo no se parta dejando una linea huerfana. */
+  .hoja-larga section {
+    break-inside: auto;
+  }
+
+  .hoja-larga h2,
+  .hoja-larga h3 {
+    break-after: avoid;
+  }
+
+  .hoja-larga p {
+    orphans: 2;
+    widows: 2;
+  }
+
   @page {
     size: letter;
     margin: 1.6cm 1.8cm;

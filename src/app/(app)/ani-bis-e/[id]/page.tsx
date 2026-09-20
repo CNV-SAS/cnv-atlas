@@ -1136,11 +1136,18 @@ export default async function ResultadosEvaluacionPage({
                   {/* EL SOAP VIVE EN SU PROPIA PANTALLA y aqui solo se enlaza: componerlo exige releer la
                       historia entera, y colgarlo aqui sumaria ese trabajo a CADA visita de la evaluacion,
                       que ya es la pagina mas pesada. Asi lo paga quien lo pide. */}
+                  {/* EN AZUL DE MARCA (Santiago, 2026-09-20): es la via a otro documento, no una accion
+                      mas de la fila, y en gris se perdia entre los otros dos botones. El movimiento al
+                      pasar el puntero es lo que dice que LLEVA a algun sitio; sin el, un enlace pintado
+                      parece una etiqueta. */}
                   <Link
                     href={`/ani-bis-e/${id}/soap`}
-                    className="no-print inline-flex h-8 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+                    className="no-print group inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     Ver en formato SOAP
+                    <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+                      →
+                    </span>
                   </Link>
                   <HcImprimir />
                   <HcEntregar evaluationId={id} ultimaEntrega={ultimaEntregaHc} />
