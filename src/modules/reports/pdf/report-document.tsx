@@ -1,6 +1,7 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
+import { RadarDelPaciente } from "./radar-del-paciente";
 
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
@@ -248,6 +249,10 @@ export function ReportDocument({
               <Text style={styles.bold}>{dfiPac.riesgo}. </Text>
               {dfiPac.enfoque}
             </Text>
+            {/* EL RADAR VA ANTES DEL DETALLE, no despues: es el vistazo, y lo que sigue es la
+                explicacion dominio por dominio. Al reves, quien lee las cinco frases ya no necesita la
+                figura. Se dibuja solo; si faltan dominios medidos, no aparece. */}
+            <RadarDelPaciente dominios={dfiPac.dominios} />
             {dfiPac.dominios.map((d) => (
               <Text key={d.id} style={styles.para}>
                 {/* SIN ETIQUETA cuando el dominio no se midio: su mapa no cubre ese caso porque es
@@ -449,6 +454,24 @@ export function ReportDocument({
         {showAtlas ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tus suplementos</Text>
+            {/* ═══ DE DONDE SALEN, EN UNA LINEA (Santiago, 2026-09-20) ═══
+
+                SU PEDIDO: que el paciente entienda por que le recomiendan justo esos.
+
+                LO QUE SE DICE es la PROCEDENCIA: que salen de su medicion y que pueden cambiar. Eso es
+                verdad literal (la sugerencia del modelo se resuelve con los clasificadores de esta
+                consulta) y no nombra nada del modelo.
+
+                LO QUE NO SE DICE, y es deliberado: POR QUE ESOS Y NO OTROS. La respuesta honesta nombraria
+                los cuatro clasificadores de los que sale la sugerencia, y §7.1 prohibe el CONCEPTO, no
+                solo la sigla (Gildardo retiro hasta "Sector funcional (FyR)"). Una version en lenguaje
+                llano ("por tu funcion celular") seria el mismo indice con otro nombre. Esa mitad es
+                pregunta para el, no decision nuestra. */}
+            <Text style={styles.para}>
+              Estos suplementos no son una recomendación general: salen de tu propia medición de esta
+              consulta y de lo que tu profesional decidió para ti. Si en el próximo control tus resultados
+              cambian, la recomendación puede cambiar contigo.
+            </Text>
             {/* LA CADENA DEL MODELO se conserva aunque haya prescripcion: son dos cosas distintas, y el
                 paciente tiene derecho a saber que sugirio el modelo y que decidio su profesional. */}
             <Text style={styles.para}>

@@ -51,6 +51,14 @@ export type DominioPaciente = {
   dominio: string;
   /** Su etiqueta de severidad, o null si el dominio NO SE MIDIO (ver la nota de abajo). */
   nivel: string | null;
+  /**
+   * La severidad como numero (0 a 3), o null sin dato. **Es para DIBUJAR, no para mostrar.**
+   *
+   * No contradice el punto 2 de abajo: lo que §7.1 prohibe es mandarle al paciente un indice del modelo,
+   * y esto no es un indice, es la posicion de su propia etiqueta en la escala que el ya recibe escrita
+   * ("A vigilar"). Sirve para que el radar sepa donde poner el vertice. Ningun documento lo imprime.
+   */
+  sev: number | null;
   lectura: string;
 };
 
@@ -90,6 +98,7 @@ export function dfiParaPaciente(snapshot: EngineOutput): DfiPaciente | null {
       id: d.id,
       dominio: d.nombre,
       nivel: d.sev == null ? null : (SEVERIDAD_PACIENTE[d.sev] ?? null),
+      sev: d.sev ?? null,
       // Su regla del dominio conductual (`d4`) con severidad alta. El `d.sev != null` es nuestro y es
       // necesario: con severidad nula la comparacion `>= 2` seria falsa por casualidad, no por criterio.
       lectura: d.id === "d4" && d.sev != null && d.sev >= 2 ? ACOMPANAMIENTO_CONDUCTUAL : d.lectura,
