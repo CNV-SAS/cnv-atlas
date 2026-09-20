@@ -18,6 +18,11 @@ vi.mock("@/modules/reports/data/plan-paciente-reader", () => ({
 }));
 // Y el resto del informe (rutas, suplementos, remisiones, seguimiento), por lo mismo: su contenido lo
 // cubre `informe-paciente.test.ts`; aqui importa que el envio lo pida y lo pase al render.
+// LA SERIE DE LA GRAFICA: mismo trato que el plan y el informe. Vacia por defecto, que es el caso de una
+// primera consulta (una trayectoria de un punto no se pinta).
+vi.mock("@/modules/reports/data/serie-del-paciente", () => ({
+  getSerieDelPaciente: vi.fn(async () => []),
+}));
 vi.mock("@/modules/reports/data/informe-paciente-reader", () => ({
   getInformeDelPaciente: vi.fn(async () => ({
     rutas: [],

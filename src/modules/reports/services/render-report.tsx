@@ -2,6 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 
 import type { EngineOutput } from "@/clinical-engine";
 
+import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { HistoriaClinicaDoc, InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
 import { HistoriaClinicaDocument } from "../pdf/hc-document";
 import { ReportDocument, type ReportMeta, type SendMode } from "../pdf/report-document";
@@ -15,6 +16,8 @@ export type RenderReportOptions = {
   plan?: PlanPaciente | null; // §6: fecha de la próxima cita (solo para el "empeoró" confirmado)
   /** Rutas, suplementos, remisiones y seguimiento: lo que hace de esto un informe y no solo un plan. */
   informe?: InformeDelPaciente | null;
+  /** La trayectoria del paciente, para la grafica. Vacia = no hay dos mediciones que comparar. */
+  serie?: PuntoDelPaciente[];
 };
 
 // Renderiza el reporte a un Buffer PDF en el servidor (Node). Puro respecto a BD y
@@ -35,6 +38,7 @@ export function renderReportPdf(
       bandAppointmentDate={options.bandAppointmentDate}
       plan={options.plan}
       informe={options.informe}
+      serie={options.serie}
     />,
   );
 }

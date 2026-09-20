@@ -13,6 +13,7 @@ import { downloadReportPdf, uploadReportPdf } from "../data/report-storage";
 import { markReportResent, markReportSent, ReportStateError } from "../data/reports-writer";
 import type { SendMode } from "../pdf/report-document";
 import { getInformeDelPaciente } from "../data/informe-paciente-reader";
+import { getSerieDelPaciente } from "../data/serie-del-paciente";
 import { getPlanPaciente } from "../data/plan-paciente-reader";
 import { renderReportPdf } from "./render-report";
 
@@ -107,9 +108,11 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   // Y LO QUE LO CONVIERTE EN INFORME: rutas, suplementos, remisiones y seguimiento. En paralelo con el
   // plan porque son lecturas independientes; si fallara, fallaria el envio entero, que es lo correcto:
   // mandar medio documento sin avisar es peor que no mandarlo.
-  const [plan, informe] = await Promise.all([
+  const [plan, informe, serie] = await Promise.all([
     getPlanPaciente(dispatch.evaluationId, dispatch.snapshot),
     getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot),
+    // LA TRAYECTORIA, para la grafica. Una consulta contra el crudo del equipo, no una por evaluacion.
+    getSerieDelPaciente(dispatch.evaluationId),
   ]);
 
   // 1. Render del PDF desde el snapshot inmutable, segun el modo elegido.
@@ -129,6 +132,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
       plan,
       informe,
+      serie,
     },
   );
 
