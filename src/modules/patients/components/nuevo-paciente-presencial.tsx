@@ -105,10 +105,10 @@ export function NuevoPacientePresencial() {
               Si el paciente tiene correo
             </h2>
             <p className="text-sm text-muted-foreground">
-              Usa el enlace de consultorio, como siempre. Es la vía con más
-              respaldo: el código le llega a su correo y lo digita él, y eso es
-              lo que prueba que fue él quien autorizó. Ábrelo en otra pestaña y
-              pásale el dispositivo, o pásale el enlace.
+              Usa el enlace de consultorio, como siempre. Lo abre en <strong>Atlas Pacientes</strong>, que
+              es su superficie. Es la vía con más respaldo: el código le llega a su correo y lo digita él, y
+              eso es lo que prueba que fue él quien autorizó. Ábrelo en otra pestaña y pásale el
+              dispositivo, o pásale el enlace.
             </p>
           </div>
           <ConsultorioLink />
@@ -123,8 +123,8 @@ export function NuevoPacientePresencial() {
               Si el paciente no tiene correo
             </h2>
             <p className="text-sm text-muted-foreground">
-              Puede autorizar desde su propio teléfono, escaneando un código de
-              tu pantalla.
+              Puede autorizar desde su propio teléfono, escaneando un código de tu pantalla. Se abre en
+              <strong> Atlas Pacientes</strong>, sin cuenta ni contraseña.
             </p>
             <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning/10 px-3 py-2 text-sm text-foreground">
               Necesita un teléfono con datos móviles. Que lo haga desde ese dispositivo es lo que

@@ -63,13 +63,13 @@ export function ConsultorioLink() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Link de consultorio</CardTitle>
+        <CardTitle>Link de consultorio · Atlas Pacientes</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">
-          Tu link fijo de encuesta para el consultorio. Imprime el QR y pégalo en la sala: el
-          paciente lo escanea, llena la encuesta, y la evaluación queda atribuida a ti
-          automáticamente. Es estable (no cambia) y el código del enlace es opaco.
+          Tu link fijo de encuesta para el consultorio. Imprime el QR y pégalo en la sala: el paciente lo
+          escanea, entra a <strong>Atlas Pacientes</strong>, llena la encuesta, y la evaluación queda
+          atribuida a ti automáticamente. Es estable (no cambia) y el código del enlace es opaco.
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
