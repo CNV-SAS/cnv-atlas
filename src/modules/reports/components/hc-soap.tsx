@@ -64,6 +64,10 @@ function NotasSubjetivas({
   const [state, action, pending] = useActionState(agregarNotaSubjetivaAction, VACIO);
   useFormToastAndRefresh(state);
 
+  // LAS NOTAS LLEGAN EN ORDEN DE ESCRITURA: la vigente es la ULTIMA.
+  const vigente = notas.length > 0 ? notas[notas.length - 1] : null;
+  const anteriores = notas.slice(0, -1);
+
   // AL GUARDAR SE VACIA EL CAMPO, con una `key` derivada de lo que el servidor YA guardo: cuando la nota
   // entra, la lista crece, el campo se remonta y sale limpio. Asi se vacia cuando la nota EXISTE, no
   // cuando la accion vuelve, y si el servidor rechaza el texto se queda donde estaba.
@@ -72,15 +76,46 @@ function NotasSubjetivas({
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Anamnesis del profesional
       </p>
-      {notas.map((n) => (
-        <div key={n.id} className="flex flex-col gap-0.5 border-l-2 border-border pl-3">
-          <p className="text-sm text-foreground">{n.texto}</p>
+      {/* LA VIGENTE ES LA ULTIMA ESCRITA, y es la unica que va en el documento. Las anteriores no se
+          borran (la tabla es append-only) pero se pliegan: un documento con dos versiones de lo mismo
+          dice que el profesional sostiene las dos. */}
+      {vigente ? (
+        <div className="flex flex-col gap-0.5 border-l-2 border-primary/60 pl-3">
+          <p className="whitespace-pre-line text-sm text-foreground">{vigente.texto}</p>
           <p className="text-[11px] text-muted-foreground">
-            {n.autor}
-            {n.profesion ? ` · ${n.profesion}` : ""} · {n.fecha}
+            {vigente.autor}
+            {vigente.profesion ? ` · ${vigente.profesion}` : ""} · {vigente.fecha}
           </p>
+          {anteriores.length > 0 ? (
+            <p className="pt-1 text-[11px] italic text-muted-foreground">
+              {anteriores.length === 1
+                ? "Reemplaza a una anamnesis anterior, que queda registrada y no se borra."
+                : `Reemplaza a ${anteriores.length} anamnesis anteriores, que quedan registradas y no se borran.`}
+            </p>
+          ) : null}
         </div>
-      ))}
+      ) : null}
+
+      {/* EL HISTORIAL, PLEGADO: esta, no estorba, y se abre cuando alguien necesita ver que se escribio
+          antes. Es el mismo trato que reciben las observaciones de la consulta. */}
+      {anteriores.length > 0 ? (
+        <details className="no-print rounded-md border border-border bg-muted/30 px-3 py-2">
+          <summary className="cursor-pointer text-xs text-muted-foreground">
+            Ver las {anteriores.length === 1 ? "anterior" : `${anteriores.length} anteriores`}
+          </summary>
+          <div className="flex flex-col gap-2 pt-2">
+            {anteriores.map((n) => (
+              <div key={n.id} className="flex flex-col gap-0.5 border-l-2 border-border pl-3">
+                <p className="whitespace-pre-line text-sm text-muted-foreground">{n.texto}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {n.autor}
+                  {n.profesion ? ` · ${n.profesion}` : ""} · {n.fecha}
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
       {notas.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Aquí va lo que el paciente contó en la consulta y no estaba en la encuesta.
@@ -128,10 +163,13 @@ export function HistoriaClinicaSoapDoc({
   puedeEscribir: boolean;
 }) {
   const [copiado, setCopiado] = useState(false);
+  // LA MISMA VIGENTE QUE PINTA EL BLOQUE de arriba: si se calculara aparte, lo copiado podria quedarse
+  // con una version vieja mientras la pantalla enseña la nueva.
+  const vigenteParaCopiar = notasSubjetivas.length > 0 ? notasSubjetivas[notasSubjetivas.length - 1] : null;
 
   async function copiar() {
     try {
-      await navigator.clipboard.writeText(soapATexto(soap, fecha));
+      await navigator.clipboard.writeText(soapATexto(soap, fecha, vigenteParaCopiar));
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
     } catch {
@@ -145,7 +183,9 @@ export function HistoriaClinicaSoapDoc({
   const plan = soap.plan.nutricional;
 
   return (
-    <div className="imprimible flex flex-col gap-5 rounded-xl border border-border bg-card p-5">
+    // `hoja-larga`: el apartado Subjetivo ocupa mas de una pagina, asi que sus secciones tienen que
+    // poder partirse. El porque completo esta en la regla de impresion de globals.css.
+    <div className="imprimible hoja-larga flex flex-col gap-5 rounded-xl border border-border bg-card p-5">
       <div className="no-print flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-sm font-semibold text-foreground">Historia clínica en formato SOAP</h2>
@@ -182,6 +222,12 @@ export function HistoriaClinicaSoapDoc({
       </div>
 
       <Apartado letra="S" titulo="Subjetivo">
+        {/* LA ANAMNESIS ABRE EL APARTADO: es lo que el profesional escribe para arrancar el relato. */}
+        <NotasSubjetivas
+          evaluationId={evaluationId}
+          notas={notasSubjetivas}
+          puedeEscribir={puedeEscribir}
+        />
         {soap.subjetivo.motivos.length > 0 ? (
           <p>
             <span className="font-medium text-foreground">Motivo de consulta:</span>{" "}
@@ -199,11 +245,6 @@ export function HistoriaClinicaSoapDoc({
           </p>
         ))}
         {soap.subjetivo.encuesta.length === 0 ? <p>La encuesta de esta consulta no tiene respuestas.</p> : null}
-        <NotasSubjetivas
-          evaluationId={evaluationId}
-          notas={notasSubjetivas}
-          puedeEscribir={puedeEscribir}
-        />
       </Apartado>
 
       <Apartado letra="O" titulo="Objetivo">
@@ -295,9 +336,14 @@ export function HistoriaClinicaSoapDoc({
           </p>
         ) : null}
         {soap.plan.observaciones.map((ob) => (
-          <p key={ob.creadaEn}>
-            <span className="font-medium text-foreground">Observación ({ob.fecha}):</span> {ob.texto}
-          </p>
+          <div key={ob.creadaEn} className="flex flex-col gap-0.5">
+            <p>
+              <span className="font-medium text-foreground">Observación ({ob.fecha}):</span> {ob.texto}
+            </p>
+            {/* EL RASTRO, en el propio documento: quien lea esta observacion tiene que enterarse ahi
+                mismo de que hubo anteriores y de que no se borraron. */}
+            {ob.rastro ? <p className="text-xs italic">{ob.rastro}</p> : null}
+          </div>
         ))}
         {soap.plan.proximaCita ? (
           <p>

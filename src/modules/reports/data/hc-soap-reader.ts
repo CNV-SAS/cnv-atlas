@@ -3,6 +3,7 @@ import "server-only";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 
 import { getHistoriaClinicaDoc } from "./hc-documento-reader";
+import { lineaDeReemplazo, observacionesVigentes } from "./observaciones-vigentes";
 import { redactarEncuesta } from "../services/encuesta-redactada";
 import type { HistoriaClinicaSoap } from "./reports-view-types";
 
@@ -73,7 +74,25 @@ export async function getHistoriaClinicaSoap(evaluationId: string): Promise<Hist
       recomendaciones: hc.recomendaciones,
       remisionesExigidas: hc.remisionesExigidas,
       remisiones: hc.remisiones,
-      observaciones: hc.observaciones,
+      // SOLO LA VIGENTE DE CADA PROFESION, con su linea de rastro: la MISMA reduccion que usan la
+      // pantalla y el PDF de la historia clinica (`observaciones-vigentes`). Dos superficies del mismo
+      // documento no pueden decidir por separado cual es la vigente.
+      observaciones: observacionesVigentes(
+        hc.observaciones.map((o) => ({
+          id: o.creadaEn,
+          note: o.texto,
+          fecha: o.fecha,
+          creadaEn: o.creadaEn,
+          profesion: o.profesion,
+        })),
+      ).map((o) => ({
+        texto: o.note,
+        autor: null,
+        profesion: o.profesion,
+        fecha: o.fecha,
+        creadaEn: o.creadaEn,
+        rastro: lineaDeReemplazo(o),
+      })),
       proximaCita: hc.proximaCita,
     },
 

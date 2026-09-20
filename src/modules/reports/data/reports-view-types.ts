@@ -282,7 +282,8 @@ export type HistoriaClinicaSoap = {
     recomendaciones: { titulo: string; items: string[]; pendiente?: boolean }[];
     remisionesExigidas: { destino: string; urgencia: string; indicaciones: string[]; registrada: boolean }[];
     remisiones: HcRemisionDoc[];
-    observaciones: HcObservacionDoc[];
+    /** SOLO las vigentes, con la linea que dice a cuantas reemplaza cada una. */
+    observaciones: (HcObservacionDoc & { rastro: string | null })[];
     proximaCita: string | null;
   };
   /** Igual que en la HC: si las cifras son las VIVAS y no las de una emision, el documento lo dice. */

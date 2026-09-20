@@ -316,7 +316,16 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
                         {formatDateTime(tx.created_at)}
                         {" · "}
                         {METODO_LABEL[tx.payment_method] ?? tx.payment_method}
-                        {tx.alegra_invoice_id ? ` · Factura Alegra ${tx.alegra_invoice_id}` : ""}
+                        {/* EL NUMERO DE LA FACTURA, NO SU ID (Santiago, 2026-09-20). El id es la llave
+                            interna de Alegra: no aparece en el documento, no lo tiene el paciente y no
+                            sirve para buscarla. El consecutivo es lo que ve la DIAN, lo que ve el paciente
+                            y lo unico con lo que alguien puede encontrarla. El id se conserva en la base
+                            (es como se consulta la factura por API), solo deja de ser lo que se muestra. */}
+                        {tx.alegra_invoice_number
+                          ? ` · Factura ${tx.alegra_invoice_number}`
+                          : tx.alegra_invoice_id
+                            ? " · Factura emitida"
+                            : ""}
                       </span>
                       {tx.status === "pending" ? (
                         <div className="flex flex-wrap items-center gap-2">
