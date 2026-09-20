@@ -42,7 +42,7 @@ export default async function CorregirEvaluacionPage({
           columna y ahi el ancho de lectura manda sobre el de la pantalla. Es el mismo criterio del ancho
           por tipo de contenido, aplicado al caso opuesto que la tabla. */}
       <TituloPantalla
-        volver={<VolverA href={backHref}>Volver a la evaluación</VolverA>}
+        volver={<VolverA padre={backHref} />}
         titulo="Corregir la evaluación"
         descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
       />

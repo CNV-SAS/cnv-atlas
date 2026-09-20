@@ -54,7 +54,7 @@ export default async function IdentifiedAccessPage({
               esto era un callejon: se entraba y no habia salida hacia la lista de solicitudes. */}
 
           <TituloPantalla
-            volver={<VolverA href="/auditoria/solicitar">Volver a las solicitudes</VolverA>}
+            volver={<VolverA padre="/auditoria/solicitar" />}
             titulo="Acceso identificado"
             descripcion="Acceso excepcional a la historia narrativa de un paciente, con identidad."
           />
@@ -77,7 +77,7 @@ export default async function IdentifiedAccessPage({
           acceso queda registrado. En una superficie de acceso excepcional eso no es un adorno: es el
           recordatorio de que lo que se hace aqui deja rastro. */}
       <TituloPantalla
-        volver={<VolverA href="/auditoria/solicitar">Volver a las solicitudes</VolverA>}
+        volver={<VolverA padre="/auditoria/solicitar" />}
         titulo={heading}
         descripcion={`${view.patient.documentType} ${view.patient.documentNumber}. Tu permiso vence el ${fmt(expiresAt.toISOString())}. Este acceso queda registrado.`}
       />

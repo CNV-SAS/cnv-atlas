@@ -30,7 +30,11 @@ describe("arriba solo va lo que lleva a algun sitio", () => {
   });
 
   it("y las próximas consultas llevan a SU evaluación, una por una", () => {
-    expect(PAGINA).toContain("href={`/ani-bis-e/${c.evaluationId}`}");
+    // LLEVANDO DE DONDE SALEN (observacion b, 2026-09-20): el padre declarado de una evaluacion es la
+    // FICHA del paciente, asi que sin el origen el profesional que entra desde aqui volveria a un sitio
+    // en el que no ha estado. Lo que este candado guarda sigue siendo lo mismo: una consulta, su
+    // evaluacion.
+    expect(PAGINA).toContain("conOrigen(`/ani-bis-e/${c.evaluationId}`, \"/dashboard\")");
   });
 
   it("la tarjeta sabe llevar: no es un div con onClick", () => {

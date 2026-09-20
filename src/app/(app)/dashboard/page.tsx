@@ -4,6 +4,7 @@ import { CalendarClock, ClipboardList, Package, Receipt, Wallet } from "lucide-r
 import { Banda } from "@/components/shared/banda";
 import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
+import { conOrigen } from "@/components/shared/volver-a-destino";
 import { formatDate } from "@/lib/format/date";
 import { requireUser } from "@/modules/auth/session";
 import { navGroupsForRoles } from "@/components/layout/nav-config";
@@ -109,7 +110,7 @@ export default async function DashboardPage() {
                 {t.proximasConsultas.map((c) => (
                   <li key={c.evaluationId}>
                     <Link
-                      href={`/ani-bis-e/${c.evaluationId}`}
+                      href={conOrigen(`/ani-bis-e/${c.evaluationId}`, "/dashboard")}
                       className="flex items-baseline justify-between gap-3 text-sm hover:underline"
                     >
                       <span className="min-w-0 truncate font-medium text-foreground">

@@ -97,7 +97,7 @@ export default async function HistoriaPacientePage({
       {/* BANDA, no encabezado plano: es una de las dos pantallas donde se gana el sitio, porque aqui la
           cabecera tiene que cargar IDENTIDAD (ver `banda.tsx`). */}
       <Banda
-        volver={<VolverA href="/pacientes">Volver a pacientes</VolverA>}
+        volver={<VolverA padre="/pacientes" />}
         antetitulo="Paciente"
         titulo={nombre}
         bajada="Historia clínica del paciente."

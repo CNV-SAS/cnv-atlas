@@ -192,7 +192,7 @@ function CabeceraEvaluacion({ header }: { header: EvaluationHeader }) {
     <Banda
       compacta
       volver={
-        <VolverA href={`/pacientes/${header.patientId}`}>Volver a la ficha del paciente</VolverA>
+        <VolverA padre={`/pacientes/${header.patientId}`} />
       }
       antetitulo="Evaluación"
       titulo={header.patientName}

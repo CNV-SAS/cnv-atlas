@@ -11,6 +11,7 @@ import { ANCHO_NOMBRE, COLUMNAS_PACIENTES } from "../columnas";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { FilaLista, ListaFilas } from "@/components/shared/fila-lista";
 import { PillEstado } from "@/components/shared/pill-estado";
+import { useConOrigen } from "@/components/shared/usar-origen";
 import { formatDateOnlyShort } from "@/lib/format/date";
 import { edadEnAnios } from "../format";
 import type { PatientListItem } from "../types";
@@ -73,6 +74,9 @@ export function ListaPacientes({
   /** Si el usuario puede archivar. La policy la resuelve la PAGINA; la vista solo pinta. */
   puedeArchivar: boolean;
 }) {
+  // DE AQUI SE SALE A UNA EVALUACION, y el "volver" de esa pantalla tiene que traer de vuelta A LA LISTA,
+  // no a la ficha del paciente (que es su padre declarado). Ver `volver-a-destino.ts`.
+  const conOrigenActual = useConOrigen();
   const [busqueda, setBusqueda] = useState("");
   const [orden, setOrden] = useState<Orden>("alfabetico");
   const [pagina, setPagina] = useState(1);
@@ -301,7 +305,7 @@ export function ListaPacientes({
             : p.pendiente.evaluationId != null
               ? {
                   texto: textoPend,
-                  href: `/ani-bis-e/${p.pendiente.evaluationId}`,
+                  href: conOrigenActual(`/ani-bis-e/${p.pendiente.evaluationId}`),
                   etiqueta: `${pend?.texto}: ir a esa evaluación`,
                 }
               : textoPend,
@@ -360,7 +364,7 @@ export function ListaPacientes({
                           profesional viene a mirar cuando abre una consulta pasada, y ahorra el clic de
                           la pestaña. */}
                       <Link
-                        href={`/ani-bis-e/${e.evaluationId}?etapa=encuesta`}
+                        href={conOrigenActual(`/ani-bis-e/${e.evaluationId}?etapa=encuesta`)}
                         className="flex flex-wrap items-baseline gap-x-3 rounded-md px-2 py-1.5 text-sm hover:bg-background"
                       >
                         <span className="font-medium text-foreground">{e.rotulo}</span>
