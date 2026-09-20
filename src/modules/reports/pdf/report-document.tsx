@@ -2,7 +2,9 @@ import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
 
+import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
+import { GraficaTrayectoria } from "./grafica-trayectoria";
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
 // EngineOutput que la propagacion dejo en reports). NO es un componente de Next: lo
@@ -93,6 +95,7 @@ export function ReportDocument({
   bandAppointmentDate = null,
   plan = null,
   informe = null,
+  serie = [],
 }: {
   snapshot: EngineOutput;
   meta: ReportMeta;
@@ -120,6 +123,11 @@ export function ReportDocument({
    * en vez de no salir.
    */
   informe?: InformeDelPaciente | null;
+  /**
+   * LA TRAYECTORIA DEL PACIENTE (peso, masa grasa y masa sin grasa por consulta). Vacia = no hay dos
+   * mediciones que comparar, y entonces el bloque no se pinta: una trayectoria de un punto no lo es.
+   */
+  serie?: PuntoDelPaciente[];
 }) {
   // SOLO SE DESESTRUCTURA LO QUE ESTE DOCUMENTO PUEDE IMPRIMIR. `indicators`, `efrPhenotype`,
   // `structural`, `frSector` y `versions` se retiraron con sus bloques (§7.1): un documento que no tiene
@@ -389,6 +397,16 @@ export function ReportDocument({
               </View>
             ) : null}
           </>
+        ) : null}
+
+        {showAtlas && serie.length >= 2 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Cómo has cambiado</Text>
+            <Text style={styles.para}>
+              Tus medidas en las últimas consultas. Son las mismas que te toma el equipo cada vez.
+            </Text>
+            <GraficaTrayectoria puntos={serie} />
+          </View>
         ) : null}
 
         {/* ═══ LO QUE VA DESPUES DEL PLAN ═══

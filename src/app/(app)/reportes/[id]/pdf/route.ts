@@ -7,6 +7,7 @@ import { downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { ultimaObservacionDeLaConsulta } from "@/modules/reports/data/freno-de-trayectoria";
 import { getInformeDelPaciente } from "@/modules/reports/data/informe-paciente-reader";
+import { getSerieDelPaciente } from "@/modules/reports/data/serie-del-paciente";
 import { getPlanPaciente } from "@/modules/reports/data/plan-paciente-reader";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
@@ -68,6 +69,7 @@ export async function GET(
       // Y EL RESTO DEL INFORME, por la misma razon que el plan: el preview tiene que ser el documento que
       // sale. Un preview al que le falta la mitad ensena un documento que el paciente no va a recibir.
       informe: await getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot),
+      serie: await getSerieDelPaciente(dispatch.evaluationId),
     },
   );
   return new NextResponse(new Uint8Array(pdf), {
