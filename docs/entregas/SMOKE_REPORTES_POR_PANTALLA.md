@@ -80,8 +80,15 @@ Sobre **otra** evaluación (o antes de enviar, si aún no enviaste):
 
 ## 8. El freno del cambio desfavorable (el paso que más importa)
 
-Solo aplica a un **seguimiento cuyo EB-BIS empeoró**. Si no tienes uno a mano, dime y te paso la consulta
-para encontrarlo (solo lee).
+> **HOY NO SE PUEDE EJERCITAR, y está verificado (2026-09-19):** en la nube no hay **ningún** seguimiento
+> con banda `empeoro`. Con "Hhh Ooo" salieron 8,9 semanas entre mediciones y la banda exige **12**
+> (decisión de Gildardo), así que no se sella banda y el ámbar no sale: el comportamiento es correcto.
+>
+> Para fabricar el caso sobre un paciente **de prueba**, está `scripts/preparar-caso-empeoro.sql` (lo
+> corres tú; aborta si el paciente no está marcado como de prueba). Hacen falta las dos condiciones a la
+> vez: **12 semanas o más** entre mediciones **y** que la edad bioeléctrica **suba 2 años o más**.
+
+Solo aplica a un **seguimiento cuyo EB-BIS empeoró**.
 
 - [ ] Con el paciente **sin próxima cita agendada**, mira el bloque **Reporte**. **Debe dar:** un aviso
       ámbar que dice que informa un cambio desfavorable y que no tiene la cita, con un enlace **Agéndala en

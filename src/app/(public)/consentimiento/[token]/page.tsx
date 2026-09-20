@@ -5,7 +5,7 @@ import { ConsentimientoQr } from "@/modules/consent/components/consentimiento-qr
 import { resolverSesionPorToken } from "@/modules/consent/data/sesion-presencial";
 import { getProfessionalForConsent } from "@/modules/evaluations/data/survey-links-reader";
 
-export const metadata = { title: "Autorización - Atlas" };
+export const metadata = { title: "Autorización - Atlas Pacientes" };
 
 // LA PAGINA DEL PACIENTE · MODALIDAD 2 (QR). Superficie PUBLICA: se abre en el telefono del paciente, sin
 // sesion, autenticada solo por el token que vio en la pantalla del profesional.
@@ -27,6 +27,9 @@ function Shell({ children }: { children: React.ReactNode }) {
             unoptimized
             className="h-7 w-auto"
           />
+          <span className="text-lg font-semibold tracking-tight text-muted-foreground">
+            Pacientes
+          </span>
         </div>
         {children}
       </div>

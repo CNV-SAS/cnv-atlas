@@ -41,15 +41,32 @@ describe("la franja de nivel va en color de marca; la cabecera, sin fondo", () =
   // queda gris." SEGUNDA VUELTA (tarde, variante (c)): el gris y el azul chocaban pegados, asi que la
   // cabecera pierde el fondo y queda UNA sola superficie pintada. Ver el caso de abajo.
 
-  it("la franja de nivel lleva el azul de marca, y muy leve", () => {
-    // TERCERA VUELTA DEL TONO (Santiago, 2026-09-10). Fue gris, luego bg-primary/10 con el rótulo en azul,
-    // y su lectura final: "no que quede en gris ni con ese azul eléctrico". El tinte baja a /5 y el rótulo
-    // vuelve al gris de texto: se ve que empieza otra cosa sin competir con los chips de veredicto, que es
-    // lo único que en esta tabla debe reclamar la mirada.
+  it("la franja de nivel lleva el azul de marca, PLENO", () => {
+    // ═══ CUARTA VUELTA DEL TONO (Santiago, 2026-09-19) ═══
     //
-    // La aserción no cambia (lleva marca, no lleva riesgo); se ajusta la intensidad, que es decisión suya.
-    expect(CODIGO, "la franja de nivel volvió a gris").toContain("bg-primary/5");
-    expect(CODIGO).toContain("border-primary/20");
+    // EL HISTORIAL, porque aquí se revierte una decisión suya y eso no se hace en silencio:
+    //   · gris            -> "las franjas en color de marca, no gris" (10/9, mañana).
+    //   · bg-primary/10   -> con el rótulo en azul.
+    //   · bg-primary/5    -> su lectura del 10/9 por la tarde: "no que quede en gris NI CON ESE AZUL
+    //                        ELÉCTRICO". El tinte bajó casi a blanco.
+    //   · bg-primary      -> hoy pide justo lo contrario: "el mismo azul eléctrico de Atlas... me imagino
+    //                        que tocará letra blanca". Se aplica lo que pide ahora, y queda escrito que
+    //                        ya lo había descartado una vez, para que pueda volver atrás sabiendo cuál de
+    //                        las dos lecturas prefiere con la pantalla delante.
+    //
+    // LO QUE NO CAMBIA EN NINGUNA VUELTA, y es lo único que BRAND.md protege aquí: la franja lleva color
+    // de MARCA (capa de interfaz), nunca de RIESGO. El verde/ámbar/rojo sigue reservado a los veredictos.
+    expect(CODIGO, "la franja de nivel perdió el azul de marca").toContain("bg-primary");
+    expect(CODIGO, "sobre el azul pleno, la letra va en blanco o no se lee").toContain(
+      "text-primary-foreground",
+    );
+    // El color de riesgo se mira EN LA FRANJA, no en el archivo: los chips de veredicto de esta misma
+    // tabla sí lo llevan, y con razón. Un detector de archivo entero cazaría a los vecinos.
+    const franja = CODIGO.slice(CODIGO.indexOf("<tr className=\"border-y border-primary"));
+    const linea = franja.slice(0, franja.indexOf(">"));
+    for (const riesgo of ["clinical-critical", "clinical-warning", "clinical-optimal"]) {
+      expect(linea, "la franja no puede llevar color de riesgo: " + riesgo).not.toContain(riesgo);
+    }
   });
 
   it("y la cabecera de columnas NO lleva fondo: una sola superficie pintada", () => {

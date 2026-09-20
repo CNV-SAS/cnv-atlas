@@ -445,13 +445,19 @@ export function CompositionSection({
                       BRAND.md sobre lo demas: "hay libertad de paleta y se usan neutros o el azul de
                       marca".
 
-                      Y LA CABECERA DE COLUMNAS SE QUEDA GRIS, a proposito: si las dos van en color, la
-                      franja deja de separar niveles y la tabla se lee como un solo bloque. El azul marca
-                      donde EMPIEZA cada nivel de Wang; el gris solo rotula columnas. */}
-                  <tr className="border-y border-primary/20 bg-primary/5">
+                      Y LA CABECERA DE COLUMNAS SE QUEDA SIN FONDO, a proposito: si las dos van en color,
+                      la franja deja de separar niveles y la tabla se lee como un solo bloque. El azul
+                      marca donde EMPIEZA cada nivel de Wang; la cabecera solo rotula columnas.
+
+                      AZUL PLENO, NO UN TINTE (Santiago, 2026-09-19): iba en `bg-primary/5`, que sobre el
+                      blanco es casi gris, y por eso no se leia como la marca ni separaba con fuerza. Con
+                      el azul entero y la letra en blanco, la franja hace su trabajo de un vistazo. Sigue
+                      siendo capa de INTERFAZ: no insinua severidad, que es lo unico que BRAND.md protege
+                      aqui. */}
+                  <tr className="border-y border-primary bg-primary">
                     <td
                       colSpan={colCount}
-                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground"
                     >
                       {lvl.title}
                     </td>
@@ -476,10 +482,10 @@ export function CompositionSection({
                   y sin padding, y se leia como dos tablas apiladas que no se parecen. */}
               {bloqueFinal && bloqueFinal.filas.length > 0 ? (
                 <Fragment key={bloqueFinal.titulo}>
-                  <tr className="border-y border-primary/20 bg-primary/5">
+                  <tr className="border-y border-primary bg-primary">
                     <td
                       colSpan={colCount}
-                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-primary-foreground"
                     >
                       {bloqueFinal.titulo}
                     </td>
