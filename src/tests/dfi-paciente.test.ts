@@ -135,7 +135,17 @@ describe("lo que NO viaja, y es deliberado", () => {
 
   it("ni el color ni el nivel de zona: son de la presentación de su app", () => {
     const r = dfiParaPaciente(snap("ALTO", [D("d1", 2)]));
-    expect(Object.keys(r?.dominios[0] ?? {})).toEqual(["id", "dominio", "nivel", "lectura"]);
+    // `sev` SE AÑADIO el 2026-09-20, con el radar del informe, y no contradice nada de lo anterior: no es
+    // un índice del modelo, es la posición de la etiqueta que el paciente YA recibe escrita ("A
+    // trabajar"), y existe para que el dibujo sepa dónde poner el vértice. Ningún documento la imprime;
+    // eso lo guarda `radar-del-paciente.test.ts`. Lo que sigue fuera es `lvl` y `color`, que sí son de la
+    // presentación de su app.
+    expect(Object.keys(r?.dominios[0] ?? {})).toEqual(["id", "dominio", "nivel", "sev", "lectura"]);
+    expect(r?.dominios[0]).not.toHaveProperty("lvl");
+    expect(r?.dominios[0]).not.toHaveProperty("color");
+    // Y es la MISMA severidad que la etiqueta: si divergieran, el radar diría una cosa y el texto otra.
+    expect(r?.dominios[0].sev).toBe(2);
+    expect(r?.dominios[0].nivel).toBe("A trabajar");
   });
 });
 
