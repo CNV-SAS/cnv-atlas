@@ -290,3 +290,45 @@ Si lo ves otra vez, pega esto en la consola del navegador (F12 → Consola) **an
 ```
 
 Y pásame lo que imprima. Con eso se sabe si la página se movió una vez o dos, cuándo, y si volvió sola.
+
+---
+
+# Quinta vuelta (2026-09-20): el SOAP y lo demás de hoy
+
+## 20. La historia clínica en formato SOAP
+
+- [ ] En una evaluación con diagnóstico, pestaña **Reporte / Historia clínica**, pulsa **Ver en formato
+      SOAP**. **Debe dar:** una pantalla con los cuatro apartados (S, O, A, P) y la cabecera del paciente.
+- [ ] Mira el apartado **S**. **Debe dar:** el motivo de consulta, los antecedentes y **la encuesta
+      redactada por dominio**, con cada frase en la forma *"cuántas comidas consume al día: 3"*.
+- [ ] Si la encuesta tenía preguntas sin responder. **Debe dar:** al final del párrafo, *"Quedaron sin
+      responder las preguntas N, M"*. No deben desaparecer en silencio.
+- [ ] Pulsa **Copiar** y pega en un correo o en el bloc de notas. **Debe dar:** el documento entero en
+      texto plano, con los cuatro apartados y la cabecera.
+- [ ] Pulsa **Imprimir o guardar PDF**. **Debe dar:** solo el documento, sin los botones.
+- [ ] Vuelve a la evaluación. **Debe dar:** la historia clínica sigue **igual que antes**. El SOAP no la
+      reemplaza.
+
+## 21. El caso del "empeoró", preparado en LOCAL
+
+No hace falta tocar la nube. En tu base local ya quedó listo:
+
+- **Paciente:** *Demo Trayectoria Empeoro 1 (confirmar y agendar)*, documento `TRAJ-DEMO-00`.
+- **Evaluación:** `a0000000-0000-4000-8000-0000ee010002` (banda `empeoro`, informe en borrador y **sin
+  próxima cita**, que es lo que faltaba).
+
+- [ ] Ábrelo en local y ve a **Reporte**. **Debe dar:** el aviso ámbar y el botón **Enviar al paciente**
+      apagado.
+- [ ] Intenta entregar la **historia clínica**. **Debe dar:** el mismo motivo, y no sale el correo.
+- [ ] Imprime el **plan** y las **rutas**. **Debe dar:** imprimen normal (el freno no alcanza a lo que el
+      paciente se lleva en la mano).
+- [ ] Agenda la próxima cita en **Seguimiento** y vuelve. **Debe dar:** el aviso pasa a gris con la fecha y
+      el botón se activa.
+
+## 22. "Atlas Pacientes", donde debía verse
+
+- [ ] Abre **Link de consultorio**. **Debe dar:** el título dice *"Link de consultorio · Atlas Pacientes"*.
+- [ ] Pulsa **Mostrar QR de consultorio**. **Debe dar:** el diálogo se titula *"QR de consultorio · Atlas
+      Pacientes"*.
+- [ ] Entra a crear un paciente en consulta. **Debe dar:** las dos vías (con correo y sin correo) nombran
+      **Atlas Pacientes** como el sitio al que entra el paciente.
