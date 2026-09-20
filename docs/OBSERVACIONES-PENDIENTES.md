@@ -95,6 +95,17 @@ e tocará letra blanca.
 | **b** + **L** | `PLAN_NAVEGACION_Y_EVALUACIONES.md` | Se planean juntas porque tocan la misma pantalla. La navegación: **dinámica con respaldo fijo** (si hay origen se usa, si no el padre declarado), con candado para que ninguna pantalla vuelva a escribir su "volver" a mano. La (L): no se borra nada, y la clave es que **no todas las que estorban son iguales** (cascarón, a medias, terminada); las **a medias nunca se ocultan**, porque esconder trabajo pendiente es perderlo |
 | Diseño | `PLAN_DISENO_DOCUMENTOS.md` | Ni Canva ni editor visual como entregable (los documentos se generan, no se maquetan): una **capa común** (encabezado, escala tipográfica, espaciado, pie, color) y lo propio de cada documento encima. Y el informe **sigue llevando el plan dentro**, con la razón |
 
-**Los mapas en el informe (pregunta de Santiago del 20/9):** verificado y reportado aparte. El **radar** es
-portable a lenguaje del paciente; la **Diana** no, porque sus ejes nombran los índices (IFC × IRC, FFMI ×
-FMI) y su lectura es el código de estado. Está en la respuesta de esa fecha.
+**Los mapas en el informe (pregunta de Santiago del 20/9): HECHO el radar, la Diana no va.**
+
+- El **radar** se portó al informe del paciente (`radar-del-paciente.tsx`): sus ejes son los cinco dominios
+  con el nombre que el propio `informePaciente` de Gildardo ya le manda al paciente, y la escala son sus
+  cuatro etiquetas ('En equilibrio', 'A vigilar', 'A trabajar', 'Prioritario'). Sin ninguna cifra. Candado:
+  `radar-del-paciente.test.ts`, que además renderiza el PDF de verdad.
+- La **Diana** no: sus ejes nombran los índices (IFC × IRC, FFMI × FMI) y su lectura es el código de estado.
+  Y la prohibición del §7.1 cubre el **concepto**, no solo la sigla: Gildardo retiró de su informe hasta
+  'Sector funcional (FyR)', que ya era un nombre largo. Decirlo en lenguaje llano ('función celular',
+  'riesgo celular') sería el mismo índice con otro nombre.
+- **La explicación de los nutracéuticos, partida en dos.** Lo que se puso: de dónde salen (de su medición de
+  esta consulta, y pueden cambiar en el próximo control), que es verdad literal y no nombra nada del modelo.
+  Lo que **espera a Gildardo**: por qué esos y no otros, porque la respuesta honesta nombraría los cuatro
+  clasificadores de los que sale `getDX`.
