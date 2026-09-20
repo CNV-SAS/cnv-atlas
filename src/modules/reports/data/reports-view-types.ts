@@ -229,3 +229,50 @@ export type InformeDelPaciente = {
   };
 };
 
+
+// ═══ LA HISTORIA CLINICA EN SOAP (2026-09-20) ═══
+//
+// Los MISMOS datos de `HistoriaClinicaDoc`, repartidos por acto clinico. Vive aqui, en el modulo NEUTRO,
+// porque lo consumen el lector (`server-only`), la pantalla (cliente) y el texto para el portapapeles.
+//
+// SE DECLARA CON LOS TIPOS DE LA HC, no con copias: si un bloque de la historia cambia de forma, el SOAP
+// no puede quedarse con la forma vieja sin que tsc lo diga.
+
+export type HistoriaClinicaSoap = {
+  paciente: string;
+  edad: number | null;
+  sexo: string | null;
+  fechaConsulta: string;
+  profesional: string;
+  subjetivo: {
+    motivos: string[];
+    antecedentes: { grupo: string; items: string[] }[];
+    /** La encuesta redactada, un parrafo por dominio (forma B del plan). */
+    encuesta: { dominio: string; texto: string; sinResponder: number }[];
+  };
+  objetivo: {
+    pesoKg: number | null;
+    tallaCm: number | null;
+    composicion: { etiqueta: string; valor: string; clasificacion: string | null }[];
+    indices: HcIndiceDoc[];
+  };
+  analisis: {
+    resumenProfesional: string | null;
+    dfiParrafo: string | null;
+    metaTerapeutica: string | null;
+    motivoSinNarrativa: string | null;
+    rutas: { label: string; activacion: string | null }[];
+  };
+  plan: {
+    objetivoModelo: string | null;
+    objetivoTratamiento: string | null;
+    nutricional: HcPlanNutricionalDoc | null;
+    recomendaciones: { titulo: string; items: string[]; pendiente?: boolean }[];
+    remisionesExigidas: { destino: string; urgencia: string; indicaciones: string[]; registrada: boolean }[];
+    remisiones: HcRemisionDoc[];
+    observaciones: HcObservacionDoc[];
+    proximaCita: string | null;
+  };
+  /** Igual que en la HC: si las cifras son las VIVAS y no las de una emision, el documento lo dice. */
+  prescripcionSinEmitir: boolean;
+};

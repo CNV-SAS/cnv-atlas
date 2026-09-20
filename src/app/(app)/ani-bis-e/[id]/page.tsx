@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Banda } from "@/components/shared/banda";
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
@@ -1124,6 +1125,15 @@ export default async function ResultadosEvaluacionPage({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-foreground">Historia clínica</h2>
                 <div className="flex flex-wrap items-start gap-3">
+                  {/* EL SOAP VIVE EN SU PROPIA PANTALLA y aqui solo se enlaza: componerlo exige releer la
+                      historia entera, y colgarlo aqui sumaria ese trabajo a CADA visita de la evaluacion,
+                      que ya es la pagina mas pesada. Asi lo paga quien lo pide. */}
+                  <Link
+                    href={`/ani-bis-e/${id}/soap`}
+                    className="no-print inline-flex h-8 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+                  >
+                    Ver en formato SOAP
+                  </Link>
                   <HcImprimir />
                   <HcEntregar evaluationId={id} ultimaEntrega={ultimaEntregaHc} />
                 </div>
