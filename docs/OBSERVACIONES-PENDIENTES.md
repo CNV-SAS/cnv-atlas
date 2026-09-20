@@ -78,3 +78,16 @@ e tocará letra blanca.
 
 **Sigue abierto del reparto:** a, b, L (bloques propios), c, g, M y la pregunta 32 de k (esperan a
 Gildardo), h y N (copy y pulido, con propuesta antes de tocar).
+
+---
+
+## Planes escritos el 2026-09-20 (sin construir)
+
+| # | Documento | Qué dice en una línea |
+|---|---|---|
+| **b** + **L** | `PLAN_NAVEGACION_Y_EVALUACIONES.md` | Se planean juntas porque tocan la misma pantalla. La navegación: **dinámica con respaldo fijo** (si hay origen se usa, si no el padre declarado), con candado para que ninguna pantalla vuelva a escribir su "volver" a mano. La (L): no se borra nada, y la clave es que **no todas las que estorban son iguales** (cascarón, a medias, terminada); las **a medias nunca se ocultan**, porque esconder trabajo pendiente es perderlo |
+| Diseño | `PLAN_DISENO_DOCUMENTOS.md` | Ni Canva ni editor visual como entregable (los documentos se generan, no se maquetan): una **capa común** (encabezado, escala tipográfica, espaciado, pie, color) y lo propio de cada documento encima. Y el informe **sigue llevando el plan dentro**, con la razón |
+
+**Los mapas en el informe (pregunta de Santiago del 20/9):** verificado y reportado aparte. El **radar** es
+portable a lenguaje del paciente; la **Diana** no, porque sus ejes nombran los índices (IFC × IRC, FFMI ×
+FMI) y su lectura es el código de estado. Está en la respuesta de esa fecha.
