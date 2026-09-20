@@ -74,3 +74,22 @@ las filas de arriba que toca**.
 **Lo que sigue abierto de este frente:** el smoke de Santiago en un solo recorrido
 (`docs/entregas/SMOKE_REPORTES_POR_PANTALLA.md`), la exportación de respuestas (ya desbloqueada) y la lista
 de mejoras de Gildardo cuando llegue.
+
+
+---
+
+## El bloque de reportes, CERRADO (2026-09-20)
+
+Las dos que quedaban abiertas el 19/9 se cerraron el 20:
+
+| Qué | Estado |
+|---|---|
+| **Los gráficos del informe** | **HECHO.** Peso, masa grasa y masa sin grasa por consulta, dibujados en SVG dentro del PDF. Ningún índice del modelo (§7.1): son las cifras de composición que su propio archivo ya le manda al paciente. No se dibuja con menos de dos consultas, y el documento dice que el eje no arranca en cero |
+| **La hoja del diagnóstico funcional** | **HECHO.** Dejó de imprimir la pantalla de trabajo: ahora compone el diagnóstico en lenguaje del paciente, desde la MISMA fuente que el informe del correo |
+
+**Y el SOAP** (observación g de Gildardo, la mitad que no dependía de él) quedó entero: los cuatro
+apartados, la encuesta redactada por dominio, el botón de copiar, su hoja imprimible y la anamnesis del
+profesional (append-only, migración 0150).
+
+**Lo que sigue abierto del lado científico:** las observaciones (a), (b) y (L) como bloques propios; (c) y
+(M) esperando a Gildardo; y de la (g), la mitad de las alertas, que también es suya.
