@@ -25,6 +25,7 @@ import {
   computeProtocoloEfectivo,
   dfiNarrativeFromOutput,
   indicatorSeverities,
+  dfiParaPaciente,
   isEngineOutput,
 } from "@/clinical-engine";
 import {
@@ -1331,6 +1332,13 @@ export default async function ResultadosEvaluacionPage({
         <EvaluationResults
           results={results}
           encabezado={encabezadoDeHoja}
+          // LA HOJA DEL PACIENTE se compone en el SERVIDOR y baja lista: el diagnostico traducido y las
+          // rutas ya filtradas salen de la misma fuente que el informe del correo (`informeDelPaciente`),
+          // asi que el papel de la consulta y el correo no pueden decir cosas distintas.
+          hojaDelPaciente={{
+            dfi: isEngineOutput(results.snapshot) ? dfiParaPaciente(results.snapshot) : null,
+            rutas: informeDelPaciente.rutas,
+          }}
           efrStates={efrStates}
           abordaje={abordaje}
           // D-007 Fase A: dominios de encuesta incompletos (derivados de lo sellado), para el aviso.
