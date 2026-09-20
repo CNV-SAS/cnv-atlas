@@ -332,3 +332,42 @@ No hace falta tocar la nube. En tu base local ya quedó listo:
       Pacientes"*.
 - [ ] Entra a crear un paciente en consulta. **Debe dar:** las dos vías (con correo y sin correo) nombran
       **Atlas Pacientes** como el sitio al que entra el paciente.
+
+---
+
+# Sexta vuelta (2026-09-20): lo último del bloque de reportes
+
+Con esto **el bloque de reportes queda cerrado**. Es el recorrido final.
+
+## 23. La gráfica del informe
+
+- [ ] Abre el informe (**Ver o imprimir el informe**) de un paciente con **dos o más consultas medidas**.
+      **Debe dar:** el bloque **Cómo has cambiado**, con tres líneas (peso, masa grasa, masa sin grasa),
+      cada una con su rótulo y su último valor al final, y las fechas debajo.
+- [ ] **Debe dar también:** la nota *"La escala se ajusta a tus valores... no empieza en cero"*.
+- [ ] Abre el informe de un paciente con **una sola consulta**. **Debe dar:** **no** aparece el bloque. Una
+      trayectoria de un punto no es una trayectoria.
+- [ ] Y lo que no puede fallar: **ninguna sigla del modelo** en la gráfica (nada de PABU, ICA-BIS o edad
+      bioeléctrica). Solo peso, masa grasa y masa sin grasa, en kilos.
+
+## 24. La hoja del diagnóstico funcional
+
+- [ ] Pestaña **Diagnóstico**, subpestaña **Funcional**. **Debe dar:** arriba, el bloque *"Imprimir el
+      diagnóstico para entregarlo"* con su botón. La pantalla de trabajo sigue igual debajo.
+- [ ] Pulsa **Imprimir el diagnóstico**. **Debe dar:** una hoja con el encabezado (profesional, paciente,
+      título y fecha), **Cómo estás** con los cinco dominios y su lectura, y **Lo que vas a trabajar**.
+- [ ] **Debe dar también:** en el papel **no** salen la Diana, el radar, la tabla de índices ni el bloque
+      de cierre. Eso es la pantalla de trabajo, no el documento del paciente.
+- [ ] Compara con el informe del correo. **Debe dar:** el mismo diagnóstico, con las mismas palabras.
+
+## 25. El SOAP con la anamnesis (después de aplicar la 0150)
+
+- [ ] En el SOAP, apartado **S**, al final. **Debe dar:** el bloque **Anamnesis del profesional** con su
+      campo de texto.
+- [ ] Escribe una y guarda. **Debe dar:** aparece con tu nombre, tu profesión y la fecha, **encima** del
+      campo, y separada de la encuesta redactada.
+- [ ] Escribe otra. **Debe dar:** las dos, en orden. No hay editar ni borrar: corregirse es escribir otra.
+- [ ] Pulsa **Copiar**. **Debe dar:** el texto pegado incluye la anamnesis en su apartado.
+
+> **Dónde está la línea de consola del scroll:** en este mismo documento, **paso 19**. Solo hace falta si
+> el salto vuelve a pasar al pulsar "Agregar observación".
