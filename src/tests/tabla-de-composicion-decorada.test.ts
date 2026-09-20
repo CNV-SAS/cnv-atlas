@@ -114,7 +114,16 @@ describe("y las celdas tienen padding a los dos lados", () => {
   });
 
   it("y la franja, que ocupa el ancho entero, tampoco", () => {
-    expect(CODIGO).toContain('className="px-3 py-2 text-xs font-semibold uppercase');
+    // El padding lateral es lo que se afirma; el vertical subio a 2.5 al centrar el texto (2026-09-20),
+    // asi que la asercion mira los lados y no la clase entera, que es lo que la hacia fragil.
+    expect(CODIGO).toContain("px-3 py-2.5 text-xs font-semibold uppercase");
+  });
+
+  it("y el texto de la franja va centrado, no levantado", () => {
+    // EL DEFECTO (Santiago, 2026-09-20): con la altura de linea heredada (1.5 sobre 12px) el navegador
+    // reparte el sobrante arriba y abajo, y como las mayusculas no llenan su mitad superior, la fila se
+    // lee descentrada. Con `leading-none` el padding es lo unico que centra, y centra parejo.
+    expect(CODIGO).toContain("uppercase leading-none tracking-wide text-primary-foreground");
   });
 
   it("la última columna cierra con su padding", () => {

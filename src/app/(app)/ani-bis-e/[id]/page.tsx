@@ -837,7 +837,14 @@ export default async function ResultadosEvaluacionPage({
   // LOS COMPLEMENTOS DE LA HOJA DE RUTAS (suplementos, remisiones y proxima cita, en lenguaje del
   // paciente). Se le pasa el contenido de rutas ya resuelto en vez del snapshot crudo: la pagina ya lo
   // tiene, y asi el lector no depende de la forma del snapshot en esta superficie.
-  const informeDelPaciente = await getInformeDelPaciente(id, { rutasContent: rutas });
+  // SE LE PASA LO QUE LA PAGINA YA CARGO (el protocolo y las remisiones registradas): sin eso, este
+  // lector repetia las dos lecturas mas caras en cada visita. La pagina de la evaluacion es la mas pesada
+  // de la aplicacion y cada duplicado se nota, que es lo que mostro la terminal del smoke.
+  const informeDelPaciente = await getInformeDelPaciente(
+    id,
+    { rutasContent: rutas },
+    { protocolo: protocol, registradas: hcRemisiones },
+  );
 
   // Texto del abordaje del rol del actor para el panel de consulta (medico/deportologo); null si el
   // snapshot es incompatible o la profesion no aplica.

@@ -157,18 +157,35 @@ function indicacionesParaElPaciente(ruta: RutaContent): string[] {
  * Reúne lo que el informe añade al plan. Recibe el snapshot ya leído (mismo trato que `getPlanPaciente`):
  * quien compone el documento ya lo tiene, y volver a pedirlo sería una segunda lectura del mismo dato.
  */
+/**
+ * LO QUE EL LLAMADOR YA TENGA, para no volver a pedirlo. La pantalla de la evaluación ya carga el
+ * protocolo (el lector más pesado del proyecto: nueve consultas) y las remisiones registradas, así que
+ * pedirlas otra vez era duplicar ese trabajo en CADA visita. Se vio en la terminal de Santiago: la página
+ * tardaba 12 a 15 segundos en local. El envío del informe sí los deja vacíos y los lee él mismo.
+ */
+export type YaCargado = {
+  protocolo?: Awaited<ReturnType<typeof getTreatmentProtocol>> | null;
+  registradas?: { referredTo: string; referredToOther: string | null; referredAt: string }[];
+};
+
 export async function getInformeDelPaciente(
   evaluationId: string,
   snapshot: unknown,
+  yaCargado: YaCargado = {},
 ): Promise<InformeDelPaciente> {
   const rutasContent = ((snapshot as { rutasContent?: RutaContent[] } | null)?.rutasContent ?? []).filter(
     Boolean,
   );
 
-  const protocolo = await getTreatmentProtocol(evaluationId);
+  const protocolo =
+    yaCargado.protocolo !== undefined ? yaCargado.protocolo : await getTreatmentProtocol(evaluationId);
 
   const [registradas, observacion, cita] = await Promise.all([
-    protocolo ? listReferralsForTreatment(protocolo.treatmentId) : Promise.resolve([]),
+    yaCargado.registradas !== undefined
+      ? Promise.resolve(yaCargado.registradas)
+      : protocolo
+        ? listReferralsForTreatment(protocolo.treatmentId)
+        : Promise.resolve([]),
     ultimaObservacionDeLaConsulta(evaluationId),
     getProximaCita(evaluationId),
   ]);

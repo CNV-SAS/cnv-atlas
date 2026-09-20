@@ -93,6 +93,18 @@ export type HcObservacionDoc = {
   creadaEn: string;
 };
 
+/**
+ * Una fila de composicion en el documento. LLEVA SU CLAVE (la del dato crudo, unica por fila) ademas del
+ * rotulo: hay rotulos REPETIDOS a proposito, porque el equipo llama igual al valor en kg y al porcentaje
+ * ("Masa grasa bruta", "AEC con grasa"). Sin la clave, quien pinte la lista no tiene identidad estable.
+ */
+export type HcFilaComposicionDoc = {
+  clave: string;
+  etiqueta: string;
+  valor: string;
+  clasificacion: string | null;
+};
+
 export type HcIndiceDoc = {
   codigo: string;
   nombre: string;
@@ -130,7 +142,7 @@ export type HistoriaClinicaDoc = {
     registrada: boolean;
   }[];
   /** Composicion corporal del equipo, con su clasificacion. Peso y talla van arriba, en los datos. */
-  composicion: { etiqueta: string; valor: string; clasificacion: string | null }[];
+  composicion: HcFilaComposicionDoc[];
   edad: number | null;
   sexo: string | null;
   pesoKg: number | null;
@@ -253,7 +265,7 @@ export type HistoriaClinicaSoap = {
   objetivo: {
     pesoKg: number | null;
     tallaCm: number | null;
-    composicion: { etiqueta: string; valor: string; clasificacion: string | null }[];
+    composicion: HcFilaComposicionDoc[];
     indices: HcIndiceDoc[];
   };
   analisis: {
