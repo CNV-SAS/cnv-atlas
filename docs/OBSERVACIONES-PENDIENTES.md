@@ -78,3 +78,17 @@ sin él, aunque el cambio parezca de forma. Lo que toca la PRESENTACIÓN es nues
 
 **Sigue abierto del reparto:** a, b, L (bloques propios), c, g, M y la pregunta 32 de k (esperan a
 Gildardo), h y N (copy y pulido, con propuesta antes de tocar).
+
+
+## HECHAS el 2026-09-19 (segunda tanda, noche)
+
+| # | Qué quedó |
+|---|---|
+| **k** | **CERRADA.** La pregunta 32 dice "consume" (migración 0149, aplicada). El export salió corregido solo |
+| **i** | **CERRADA.** El enlace del paciente ya no pide sesión (faltaba `/consentimiento` en las rutas públicas del proxy) y el pase muestra su QR |
+| **h** | El nombre "Atlas Pacientes" en las cuatro puertas del paciente (encuesta, retomar, gracias, autorización) y en el diálogo del QR de consultorio. En las pantallas del profesional no se repite |
+| **N** | La franja de nivel de la tabla, en azul de marca pleno con letra blanca. **Ojo:** revierte una lectura suya del 10/9; el candado guarda las cuatro vueltas del tono por si con la pantalla delante prefiere la anterior |
+| **g** (la mitad que no depende de Gildardo) | **PLAN ESCRITO**, sin construir: `docs/PLAN_HC_SOAP.md`. Es viable y casi todo el dato ya está; lo nuevo es la redacción de la encuesta. Hay una decisión que tomar antes de escribir código (si el SOAP reemplaza la HC de Gildardo o es un documento aparte) |
+
+**Sigue abierto:** a, b, L (bloques propios), c y M (esperan a Gildardo), g (esperando la decisión del plan
+y, para la parte de alertas, a Gildardo).
