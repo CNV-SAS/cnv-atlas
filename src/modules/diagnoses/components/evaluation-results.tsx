@@ -37,7 +37,9 @@ import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
-import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
+import { type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
+import type { DfiPaciente } from "@/clinical-engine";
+import { HojaDiagnosticoFuncional, type RutaParaElPaciente } from "./hoja-diagnostico-funcional";
 import { sinGuionLargo } from "@/lib/format/guion";
 
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
@@ -223,6 +225,7 @@ function AbordajeCard({ abordaje }: { abordaje: AbordajeCardData }) {
 export function EvaluationResults({
   results,
   encabezado,
+  hojaDelPaciente,
   composition,
   efrStates,
   abordaje,
@@ -234,6 +237,12 @@ export function EvaluationResults({
   results: Results;
   /** Para la hoja impresa del Diagnostico Funcional. La pagina lo arma una vez para todas sus hojas. */
   encabezado: EncabezadoDeHoja;
+  /**
+   * LO QUE LLEVA LA HOJA DEL PACIENTE: su diagnostico ya traducido y sus rutas ya filtradas. Se calcula
+   * en el servidor (misma fuente que el informe del correo) y llega compuesto: si se armara aqui, la hoja
+   * y el correo podrian decir cosas distintas del mismo diagnostico.
+   */
+  hojaDelPaciente: { dfi: DfiPaciente | null; rutas: RutaParaElPaciente[] };
   composition?: ReactNode;
   // Nodos que la pagina arma y esta vista COLOCA en su subpestaña: el criterio del profesional y el par
   // confirmar/corregir van en Funcional; el read-out D1-D8 en Encuesta. Slots (no logica) para no
@@ -522,11 +531,21 @@ export function EvaluationResults({
           cambia con el reorden: cambió cuál va primero en la fila, no cuál se abre). */}
       <DiagnosisSubtabs
         funcional={
-          // IMPRIMIBLE (2026-09-18): es la pantalla que mas le sirve al paciente en papel, porque los mapas
-          // se entienden sin explicacion. La Diana y el radar son SVG, asi que salen; y el CSS de impresion
-          // ya fuerza el color, que aqui es informacion clinica y no adorno.
-          <HojaImprimible titulo="Diagnóstico funcional" encabezado={encabezado}>
+          // ═══ LA PANTALLA YA NO ES LA HOJA (Santiago, 2026-09-19) ═══
+          //
+          // Antes esto se envolvia entero en `HojaImprimible`, asi que el papel salia con la pantalla de
+          // trabajo dentro (y con sus botones, hasta que se taparon). Su lectura: "una cosa es imprimir la
+          // pagina tal cual y otra imprimir algo que le sirva al paciente".
+          //
+          // AHORA la pestaña es para TRABAJAR (los mapas, la tabla de indices, el cierre) y el documento
+          // del paciente es `HojaDiagnosticoFuncional`, que compone su diagnostico en lenguaje claro desde
+          // la MISMA fuente que el informe del correo.
           <div className="flex flex-col gap-8">
+            <HojaDiagnosticoFuncional
+              encabezado={encabezado}
+              dfi={hojaDelPaciente.dfi}
+              rutas={hojaDelPaciente.rutas}
+            />
             {/* Orden conclusion -> detalle (V3): el DFI (riesgo integrado + 5 dominios) va arriba,
                 luego los mapas (Diana + radar), pegado el detalle de las 6 cards del estado, y la tabla
                 completa de indices. Las rutas (salida del DFI) viven en la etapa de Tratamiento. */}
@@ -841,7 +860,6 @@ export function EvaluationResults({
                 no es un documento sino una captura. */}
             <div className="no-print">{confirmCorrect}</div>
           </div>
-          </HojaImprimible>
         }
         composicion={
           <div className="flex flex-col gap-8">

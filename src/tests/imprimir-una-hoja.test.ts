@@ -53,9 +53,31 @@ describe("las pantallas que se imprimen", () => {
     readFileSync("src/modules/diagnoses/components/evaluation-results.tsx", "utf8"),
   );
 
-  it("RUTAS DE ATENCIÓN y DIAGNÓSTICO FUNCIONAL son hojas, como en el archivo de Gildardo", () => {
+  it("RUTAS DE ATENCIÓN es una hoja, como en el archivo de Gildardo", () => {
     expect(PAGE).toContain('<HojaImprimible titulo="Rutas de atención"');
-    expect(DIAGNOSTICO).toContain('<HojaImprimible titulo="Diagnóstico funcional"');
+  });
+
+  it("y el DIAGNÓSTICO FUNCIONAL dejo de imprimir la pantalla: ahora compone su documento", () => {
+    // ═══ EL CAMBIO (Santiago, 2026-09-19) ═══
+    //
+    // La pestaña se envolvia entera en `HojaImprimible`, asi que el papel salia con la pantalla de
+    // trabajo dentro (y con sus botones, hasta que se taparon). Su lectura: "una cosa es imprimir la
+    // pagina tal cual y otra imprimir algo que le sirva al paciente".
+    //
+    // Ahora la pestaña es para TRABAJAR y el documento del paciente es `HojaDiagnosticoFuncional`, que
+    // compone el diagnostico en SU lenguaje desde la misma fuente que el informe del correo.
+    expect(DIAGNOSTICO, "la pestaña volvio a envolverse entera").not.toContain(
+      '<HojaImprimible titulo="Diagnóstico funcional"',
+    );
+    expect(DIAGNOSTICO).toContain("<HojaDiagnosticoFuncional");
+
+    const HOJA = readFileSync("src/modules/diagnoses/components/hoja-diagnostico-funcional.tsx", "utf8");
+    // El documento vive en el DOM y solo aparece al imprimir, como el del plan.
+    expect(HOJA).toContain("solo-impresion imprimible");
+    // Y no lleva NADA del modelo: es el DFI ya traducido, el mismo que el informe.
+    for (const idx of ["IFC", "IRC", "PABU", "stateNumber", "efrPhenotype"]) {
+      expect(HOJA, idx + " no puede salir en la hoja del paciente").not.toContain(idx);
+    }
   });
 
   it("toda hoja dice QUIEN la firma y DE QUIEN es: si no, es un volante", () => {
