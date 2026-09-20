@@ -59,7 +59,7 @@ describe("el lector de la serie", () => {
   });
 
   it("y acota cuántas consultas se muestran", () => {
-    // Más puntos en una hoja A4 no se leen.
+    // Más puntos en una hoja carta no se leen.
     expect(LECTOR).toContain("MAX_PUNTOS");
     expect(LECTOR).toContain("slice(-MAX_PUNTOS)");
   });

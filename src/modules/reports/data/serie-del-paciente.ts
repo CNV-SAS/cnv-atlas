@@ -3,6 +3,7 @@ import "server-only";
 import { BIODY_COLUMNS } from "@/clinical-engine/edge/biody-columns";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { corteDeLaSerie, dentroDelCorte } from "@/modules/followups/corte-de-la-serie";
 
 // ═══ LA TRAYECTORIA QUE EL PACIENTE PUEDE VER (2026-09-20) ═══
 //
@@ -26,7 +27,7 @@ export type PuntoDelPaciente = {
   magraKg: number | null;
 };
 
-/** Cuantas consultas se muestran. Mas puntos en una hoja A4 no se leen. */
+/** Cuantas consultas se muestran. Mas puntos en una hoja carta no se leen. */
 export const MAX_PUNTOS = 6;
 
 type Fila = {
@@ -49,11 +50,20 @@ export async function getSerieDelPaciente(evaluationId: string): Promise<PuntoDe
 
   const { data: ev } = await supabase
     .from("evaluations")
-    .select("patient_id")
+    .select("patient_id, created_at, bis_measurements(measurement_date)")
     .eq("id", evaluationId)
     .maybeSingle();
   const patientId = ev?.patient_id as string | undefined;
   if (!patientId) return [];
+  // HASTA DONDE LLEGA ESTA EVALUACION (Santiago, 2026-09-20). El informe que se emite desde una evaluación
+  // es el documento de ESE día: si la gráfica pintara consultas posteriores, reimprimir un informe viejo
+  // devolvería otro documento. Ver `corte-de-la-serie.ts`.
+  const corte = corteDeLaSerie(
+    ((ev as { bis_measurements?: { measurement_date: string | null }[] }).bis_measurements ?? []).map(
+      (m) => m.measurement_date,
+    ),
+    (ev as { created_at: string }).created_at,
+  );
 
   const columnas = {
     peso: normalizeHeader(BIODY_COLUMNS.peso.header),
@@ -75,6 +85,8 @@ export async function getSerieDelPaciente(evaluationId: string): Promise<PuntoDe
     const m = fila.bis_measurements;
     const fecha = m?.measurement_date?.slice(0, 10);
     if (!fecha) continue;
+    // Lo posterior a esta evaluacion no es parte de SU trayectoria.
+    if (!dentroDelCorte(fecha, corte)) continue;
     const punto = porFecha.get(fecha) ?? { fecha, pesoKg: null, grasaKg: null, magraKg: null };
     if (fila.variable_name === columnas.peso) punto.pesoKg = num(fila.value);
     if (fila.variable_name === columnas.grasa) punto.grasaKg = num(fila.value);

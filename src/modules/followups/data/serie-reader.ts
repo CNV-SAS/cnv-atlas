@@ -5,6 +5,7 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { capRef, clasificarCapacitancia } from "@/clinical-engine/capacitancia";
+import { corteDeLaSerie, dentroDelCorte } from "../corte-de-la-serie";
 import { edadEnFecha } from "@/lib/format/edad";
 
 import { SERIE_MAX, type PuntoSerie, type RefCapacitancia, type SerieSeguimiento } from "./serie-types";
@@ -12,8 +13,12 @@ import { SERIE_MAX, type PuntoSerie, type RefCapacitancia, type SerieSeguimiento
 export { SERIE_MAX };
 export type { PuntoSerie, SerieSeguimiento };
 
-// SERIE de seguimiento: todas las evaluaciones VIGENTES del paciente con su medición y su snapshot, en
-// orden cronológico. Alimenta los gráficos de tendencia y el radar comparativo.
+// SERIE de seguimiento: las evaluaciones VIGENTES del paciente con su medición y su snapshot, en orden
+// cronológico, HASTA la evaluación desde la que se mira. Alimenta los gráficos de tendencia y el radar.
+//
+// EL TECHO NO ES UN DETALLE (Santiago, 2026-09-20): sin él, abrir la evaluación inicial mostraba el mismo
+// radar que la de seguimiento, porque pintaba consultas que ese día no habían ocurrido. Ver
+// `corte-de-la-serie.ts`.
 //
 type Fila = {
   id: string;
@@ -29,11 +34,19 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
   // el alcance (si la evaluacion no es del profesional, no hay fila y la serie sale vacia).
   const { data: ev } = await supabase
     .from("evaluations")
-    .select("patient_id")
+    .select("patient_id, created_at, bis_measurements(measurement_date)")
     .eq("id", evaluationId)
     .maybeSingle();
   const patientId = ev?.patient_id as string | undefined;
   if (!patientId) return { puntos: [], omitidas: 0, refC: null };
+  // HASTA DONDE LLEGA ESTA EVALUACION. Sin este techo, la pestaña Seguimiento de una evaluacion vieja
+  // pintaba las consultas POSTERIORES, que el dia que se selló no existían. Ver `corte-de-la-serie.ts`.
+  const corte = corteDeLaSerie(
+    ((ev as { bis_measurements?: { measurement_date: string | null }[] }).bis_measurements ?? []).map(
+      (m) => m.measurement_date,
+    ),
+    (ev as { created_at: string }).created_at,
+  );
   const { data, error } = await supabase
     .from("reports")
     .select(
@@ -69,6 +82,8 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     const fechas = (ev.bis_measurements ?? []).map((m) => m.measurement_date).filter((d): d is string => d != null);
     if (fechas.length === 0) continue; // sin medicion no hay punto en el tiempo
     const fecha = fechas.reduce((max, d) => (d > max ? d : max), fechas[0]);
+    // Lo posterior a esta evaluacion no es parte de SU trayectoria.
+    if (!dentroDelCorte(fecha, corte)) continue;
     const snap = row.snapshot as { indicators?: Record<string, unknown>; dfi?: { domains?: unknown } } | null;
     const ind = snap?.indicators ?? {};
     const dom = snap?.dfi?.domains;
