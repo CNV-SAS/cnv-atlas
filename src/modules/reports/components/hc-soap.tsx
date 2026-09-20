@@ -101,7 +101,7 @@ function NotasSubjetivas({
       {anteriores.length > 0 ? (
         <details className="no-print rounded-md border border-border bg-muted/30 px-3 py-2">
           <summary className="cursor-pointer text-xs text-muted-foreground">
-            Ver las {anteriores.length === 1 ? "anterior" : `${anteriores.length} anteriores`}
+            Ver el historial de la anamnesis ({anteriores.length})
           </summary>
           <div className="flex flex-col gap-2 pt-2">
             {anteriores.map((n) => (
