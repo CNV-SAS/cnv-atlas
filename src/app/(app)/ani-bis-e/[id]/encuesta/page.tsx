@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Panel } from "@/components/shared/panel";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
+import { conOrigen } from "@/components/shared/volver-a-destino";
 import { notFound, redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ export default async function EncuestaEvaluacionPage({
           evaluacion, con eso ya resuelto, asi que el titulo es lo que estas haciendo y el paciente baja a
           la descripcion, como confirmacion. */}
       <TituloPantalla
-        volver={<VolverA href={`/ani-bis-e/${id}`}>Volver a la evaluación</VolverA>}
+        volver={<VolverA padre={`/ani-bis-e/${id}`} />}
         titulo="Encuesta del paciente"
         descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
       />
@@ -80,7 +81,9 @@ export default async function EncuestaEvaluacionPage({
             </p>
             {correctionAvailability.available ? (
               <Button asChild variant="outline" size="sm" className="w-fit">
-                <Link href={`/ani-bis-e/${id}/corregir`}>Corregir la evaluación</Link>
+                <Link href={conOrigen(`/ani-bis-e/${id}/corregir`, `/ani-bis-e/${id}/encuesta`)}>
+                  Corregir la evaluación
+                </Link>
               </Button>
             ) : (
               <div className="flex flex-col gap-1">

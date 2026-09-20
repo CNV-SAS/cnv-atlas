@@ -45,11 +45,11 @@ export default async function SoapPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="mx-auto flex w-full max-w-[60rem] flex-col gap-4">
       <div className="no-print flex flex-col gap-4">
-        {/* DICE DE DONDE VIENE, no a donde sube (Santiago, 2026-09-20): a esta pantalla se llega desde
-            el bloque de la historia clinica, y devolver a la evaluacion "en general" obliga a volver a
-            buscar la pestaña. La regla completa (dinamico contra fijo) es la observacion (b), que se
-            planea aparte; esto es el caso concreto, resuelto donde duele. */}
-        <VolverA href={`/ani-bis-e/${id}?etapa=reporte`}>Volver a Reporte / Historia clínica</VolverA>
+        {/* EL PADRE ES LA PESTAÑA, no la evaluacion "en general" (Santiago, 2026-09-20): a esta pantalla
+            se llega desde el bloque de la historia clinica, y devolver al conjunto obliga a buscar otra
+            vez la pestaña. Este fue el caso que destapo la observacion (b); ahora el rotulo lo pone el
+            destino y, si alguien llega desde otro sitio, ese otro sitio gana. */}
+        <VolverA padre={`/ani-bis-e/${id}?etapa=reporte`} />
         <TituloPantalla
           titulo="Historia clínica en formato SOAP"
           descripcion="Los mismos datos de la historia clínica, ordenados por acto clínico: lo que el paciente refiere, lo que se mide, lo que concluyes y lo que se va a hacer."

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { type ReactNode } from "react";
 
 import { Progress } from "@/components/ui/progress";
+import { conOrigen } from "@/components/shared/volver-a-destino";
 import { formatDateLong } from "@/lib/format/date";
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import type { BisImportEvaluation } from "@/modules/bis/data/bis-evaluations-reader";
@@ -75,6 +76,9 @@ export function EntradaEvaluacion({
 }) {
   // Identidad confirmada (in_progress): se puede capturar condiciones e importar. La ausencia de
   // bisImportEval significa que aun no esta lista (o ya paso a diagnostico, otra rama).
+  // LOS ENLACES DE ESTE BLOQUE LLEVAN DE DONDE SALEN: la encuesta y la correccion tienen como padre la
+  // evaluacion "en general", y volver ahi obliga a buscar otra vez la pestaña. Ver `volver-a-destino.ts`.
+  const origen = `/ani-bis-e/${evaluationId}?etapa=encuesta`;
   const identityConfirmed = bisImportEval != null;
   const gate = evaluateBisImportGate(bisIntake);
   // Contador respondidas/total con el total REAL de preguntas del instrumento (no hardcodeado): el
@@ -136,7 +140,7 @@ export function EntradaEvaluacion({
               (con diagnostico). El boton decia "ver" cuando tambien edita (Santiago 2026-08-15, b). */}
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={`/ani-bis-e/${evaluationId}/encuesta`}
+              href={conOrigen(`/ani-bis-e/${evaluationId}/encuesta`, origen)}
               className="inline-flex items-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
             >
               Ver o editar encuesta
@@ -186,7 +190,7 @@ export function EntradaEvaluacion({
                   {faltantes.map((f) => (
                     <li key={f.questionId} className="text-xs leading-snug text-foreground">
                       <Link
-                        href={`/ani-bis-e/${evaluationId}/encuesta/editar#p-${f.questionId}`}
+                        href={conOrigen(`/ani-bis-e/${evaluationId}/encuesta/editar#p-${f.questionId}`, origen)}
                         className="underline-offset-2 hover:underline"
                       >
                         <span className="text-muted-foreground">{f.number}.</span> {f.questionText}

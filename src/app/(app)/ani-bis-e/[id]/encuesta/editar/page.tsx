@@ -35,7 +35,7 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
   return (
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
       <TituloPantalla
-        volver={<VolverA href={backHref}>Volver a la encuesta</VolverA>}
+        volver={<VolverA padre={backHref} />}
         titulo="Completar la encuesta"
         descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
       />

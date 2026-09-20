@@ -76,8 +76,15 @@ e tocará letra blanca.
 | **d** | El bloque de la encuesta lista las preguntas que faltan, con su número y su dominio, y cada una enlaza **a sí misma** |
 | **f** | Descargar las respuestas en CSV, con procedencia, sin nada del modelo y con su registro de auditoría |
 
-**Sigue abierto del reparto:** a, b, L (bloques propios), c, g, M y la pregunta 32 de k (esperan a
-Gildardo), h y N (copy y pulido, con propuesta antes de tocar).
+## HECHAS el 2026-09-20
+
+| # | Qué quedó |
+|---|---|
+| **L** | El historial del paciente pliega las **terminadas** y las **retiradas**, y deja siempre a la vista las **abiertas** (trabajo pendiente). Nada se borra, y el interruptor lo dice. Candado: `historial-evaluaciones.test.ts` |
+| **b** | La vuelta es **dinámica con respaldo fijo**: el enlace que trae al profesional dice de dónde viene (`?desde=`) y gana sobre el padre declarado; sin origen, el padre. El TEXTO se deriva del destino, ya no se escribe. Candado: `volver-a-navegacion.test.ts` |
+
+**Sigue abierto del reparto:** a (bloque propio), c, g, M y la pregunta 32 de k (esperan a Gildardo), h y N
+(copy y pulido, con propuesta antes de tocar).
 
 ---
 

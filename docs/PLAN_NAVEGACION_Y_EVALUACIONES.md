@@ -1,5 +1,20 @@
 # Plan conjunto: la navegación (b) y las evaluaciones que estorban (L) — 2026-09-20
 
+> **ESTADO: las dos construidas (2026-09-20).** Y el estado no se afirma, se corre:
+> `pnpm vitest run src/tests/volver-a-navegacion.test.ts src/tests/historial-evaluaciones.test.ts`.
+>
+> **Una cosa salió distinta del plan, y a mejor.** El plan hablaba de arreglar el DESTINO del enlace; al
+> construirlo quedó claro que el defecto del SOAP tenía dos mitades, y la segunda era el TEXTO: decía
+> "Volver a la evaluación" porque alguien lo escribió a mano el día que solo había una vía de entrada.
+> Así que el rótulo también se deriva ahora del destino (`etiquetaDeDestino`), y `VolverA` ya no recibe
+> texto. Es la misma lección de `etapas.ts`: un texto que nombra un sitio, escrito a mano, sobrevive a
+> que su premisa deje de ser cierta.
+
+> **Lo que el candado NO cubre, dicho aquí para que no se lea como cubierto:** que un enlace NUEVO hacia
+> una pantalla de detalle se acuerde de llevar el origen. Si se olvida, la vuelta sigue funcionando (cae
+> al padre declarado), así que es una oportunidad perdida, no un defecto: por eso no hay candado, que
+> tendría que adivinar qué enlaces son navegación de verdad.
+
 Santiago pidió planear las dos juntas y ejecutarlas juntas. **Tienen más en común de lo que parece**, y por
 eso la planeación conjunta sale mejor que dos planes seguidos: las dos son sobre **cómo se recorre el
 trabajo**, no sobre qué hace el sistema.
