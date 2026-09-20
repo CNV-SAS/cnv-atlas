@@ -1,11 +1,14 @@
 "use client";
 
 import { Check, ClipboardCopy, Printer } from "lucide-react";
-import { useState } from "react";
+import { useActionState, useState } from "react";
 
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { imprimirHoja } from "@/components/shared/imprimir-hoja";
+import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 
+import { agregarNotaSubjetivaAction, type ReportActionState } from "../actions";
 import type { HistoriaClinicaSoap } from "../data/reports-view-types";
 import { soapATexto } from "../services/soap-a-texto";
 
@@ -16,6 +19,8 @@ import { soapATexto } from "../services/soap-a-texto";
 //
 // CLIENTE Y NO SERVIDOR, aunque no tenga formularios: el boton de copiar necesita el portapapeles del
 // navegador. El DOCUMENTO se compone en el servidor y llega ya armado; aqui solo se pinta y se copia.
+
+const VACIO: ReportActionState = { error: null, success: null, warning: null };
 
 function Apartado({
   letra,
@@ -38,13 +43,89 @@ function Apartado({
   );
 }
 
+// ═══ LA ANAMNESIS DEL PROFESIONAL (apartado S) ═══
+//
+// LO QUE SOSTIENE LA SEPARACION, y es la condicion con la que se aprobo redactar la encuesta: lo escrito
+// a mano NO se mezcla con lo generado. Va en su propio bloque, debajo, con su autor y su fecha.
+//
+// Y LO GENERADO NO SE EDITA. En otros sistemas editar la narrativa autogenerada es lo normal, y con razon:
+// alli esa narrativa es una TRANSCRIPCION, o sea una interpretacion que puede estar mal. Aqui cada frase
+// sale de una respuesta que el paciente marco, asi que editarla no seria corregir una interpretacion,
+// seria cambiar lo que el paciente respondio. Si el profesional no esta de acuerdo, lo dice aqui.
+function NotasSubjetivas({
+  evaluationId,
+  notas,
+  puedeEscribir,
+}: {
+  evaluationId: string;
+  notas: { id: string; texto: string; autor: string; profesion: string | null; fecha: string }[];
+  puedeEscribir: boolean;
+}) {
+  const [state, action, pending] = useActionState(agregarNotaSubjetivaAction, VACIO);
+  useFormToastAndRefresh(state);
+
+  // AL GUARDAR SE VACIA EL CAMPO, con una `key` derivada de lo que el servidor YA guardo: cuando la nota
+  // entra, la lista crece, el campo se remonta y sale limpio. Asi se vacia cuando la nota EXISTE, no
+  // cuando la accion vuelve, y si el servidor rechaza el texto se queda donde estaba.
+  return (
+    <div className="flex flex-col gap-2 border-t border-dashed border-border pt-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Anamnesis del profesional
+      </p>
+      {notas.map((n) => (
+        <div key={n.id} className="flex flex-col gap-0.5 border-l-2 border-border pl-3">
+          <p className="text-sm text-foreground">{n.texto}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {n.autor}
+            {n.profesion ? ` · ${n.profesion}` : ""} · {n.fecha}
+          </p>
+        </div>
+      ))}
+      {notas.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Aquí va lo que el paciente contó en la consulta y no estaba en la encuesta.
+        </p>
+      ) : null}
+
+      {puedeEscribir ? (
+        <form onSubmit={enviarSinReset(action)} className="no-print flex flex-col gap-2 pt-1">
+          <input type="hidden" name="evaluationId" value={evaluationId} />
+          <textarea
+            key={`nota-${notas.length}`}
+            name="nota"
+            rows={3}
+            required
+            maxLength={4000}
+            placeholder="Lo que refirió en consulta y no estaba en la encuesta"
+            className="w-full rounded-md border border-input bg-background p-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" size="sm" variant="outline" disabled={pending}>
+              {pending ? "Guardando..." : "Agregar anamnesis"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Queda con tu nombre y no se puede borrar: si te corriges, escribe otra.
+            </span>
+          </div>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
 export function HistoriaClinicaSoapDoc({
   soap,
   fecha,
+  evaluationId,
+  notasSubjetivas,
+  puedeEscribir,
 }: {
   soap: HistoriaClinicaSoap;
   /** La fecha de la consulta ya formateada: el formato de fecha vive en un solo sitio y no es este. */
   fecha: string;
+  evaluationId: string;
+  notasSubjetivas: { id: string; texto: string; autor: string; profesion: string | null; fecha: string }[];
+  puedeEscribir: boolean;
 }) {
   const [copiado, setCopiado] = useState(false);
 
@@ -118,6 +199,11 @@ export function HistoriaClinicaSoapDoc({
           </p>
         ))}
         {soap.subjetivo.encuesta.length === 0 ? <p>La encuesta de esta consulta no tiene respuestas.</p> : null}
+        <NotasSubjetivas
+          evaluationId={evaluationId}
+          notas={notasSubjetivas}
+          puedeEscribir={puedeEscribir}
+        />
       </Apartado>
 
       <Apartado letra="O" titulo="Objetivo">

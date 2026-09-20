@@ -161,3 +161,59 @@ describe("el SOAP no es una segunda construcción de la historia clínica", () =
     expect(COMPONENTE).not.toContain("Alertas");
   });
 });
+
+
+describe("la anamnesis del profesional (apartado S)", () => {
+  const WRITER = readFileSync("src/modules/reports/data/soap-notas-writer.ts", "utf8");
+  const COMPONENTE = readFileSync("src/modules/reports/components/hc-soap.tsx", "utf8");
+  const MIGRACION = readFileSync("drizzle/0150_nota_subjetiva_soap.sql", "utf8");
+
+  it("lo escrito a mano NO se mezcla con lo generado", () => {
+    // Es la condición con la que se aprobó redactar la encuesta: cada frase generada es trazable a una
+    // respuesta, y si el texto libre se intercalara, esa propiedad se perdería.
+    expect(COMPONENTE).toContain("Anamnesis del profesional");
+    expect(COMPONENTE).toContain("<NotasSubjetivas");
+  });
+
+  it("y lo generado NO se puede editar", () => {
+    // En otros sistemas editar la narrativa autogenerada es lo normal, porque allí es una TRANSCRIPCIÓN.
+    // Aquí cada frase sale de una respuesta que el paciente marcó: editarla sería cambiar lo que
+    // respondió. Si el profesional no está de acuerdo, lo dice en su bloque.
+    expect(COMPONENTE, "apareció una vía para editar el texto generado").not.toContain("editarEncuesta");
+    expect(COMPONENTE).not.toContain("defaultValue={p.texto}");
+  });
+
+  it("es append-only, y lo impone la BASE, no el código", () => {
+    expect(MIGRACION).toContain("prevent_soap_note_mutation");
+    expect(MIGRACION).toContain("before update or delete");
+  });
+
+  it("cada nota dice quién y cuándo, con la profesión sellada en el acto", () => {
+    expect(WRITER).toContain("authorProfession: input.profesion");
+    expect(COMPONENTE).toContain("{n.autor}");
+  });
+
+  it("el rastro va inline y SIN el texto de la nota", () => {
+    // El contenido clínico ya vive en su tabla, que el profesional sí puede leer; duplicarlo en el audit
+    // (admin-only) multiplicaría copias de PHI sin ganar nada.
+    expect(WRITER).toContain('event: "soap.subjective_note_added"');
+    expect(WRITER).toContain("recordAudit(tx");
+    expect(WRITER, "el texto de la nota no va al audit").not.toContain("nota: input.nota");
+  });
+
+  it("vive en su propia tabla: la historia clínica no tiene que filtrar por clase de nota", () => {
+    // Con una columna en treatment_notes, un filtro que faltara dejaría notas de un apartado saliendo en
+    // el bloque del otro, que en un documento clínico es un error de atribución.
+    expect(MIGRACION).toContain("create table if not exists soap_subjective_notes");
+    // La migración NOMBRA treatment_notes en su comentario (explica por qué no se usó); lo que no puede
+    // es TOCARLA. Se mira el SQL, no la prosa: el detector que cazó su propia documentación ya nos pasó.
+    const sqlSolo = MIGRACION.split("\n")
+      .filter((l) => !l.trimStart().startsWith("--"))
+      .join(" ");
+    // Se miran las SENTENCIAS y no la palabra: la migracion NOMBRA treatment_notes para explicar por
+    // que no se uso, y un detector que cazara la prosa cazaria su propia documentacion (ya nos paso).
+    for (const toque of ["alter table treatment_notes", "update treatment_notes", "drop table treatment_notes"]) {
+      expect(sqlSolo.toLowerCase(), "la migracion no puede tocar treatment_notes: " + toque).not.toContain(toque);
+    }
+  });
+});

@@ -88,3 +88,30 @@ export const hcDeliveries = pgTable(
   },
   (t) => [index("hc_deliveries_evaluation_idx").on(t.evaluationId, t.deliveredAt)],
 );
+
+// ═══ LA ANAMNESIS DEL PROFESIONAL PARA EL SOAP (migracion 0150) ═══
+//
+// Lo que el paciente conto en consulta y no estaba en la encuesta. Vive APARTE de `treatment_notes` para
+// que la historia clinica no tenga que filtrar por clase de nota: un filtro que falte deja notas de un
+// apartado saliendo en el bloque del otro, y eso es un error de atribucion en un documento clinico.
+//
+// APPEND-ONLY por trigger (0150): corregirse es escribir otra, y las dos quedan.
+export const soapSubjectiveNotes = pgTable(
+  "soap_subjective_notes",
+  {
+    id: pk(),
+    evaluationId: uuid("evaluation_id")
+      .notNull()
+      .references(() => evaluations.id, { onDelete: "cascade" }),
+    note: text("note").notNull(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => profiles.id),
+    authorEmail: text("author_email").notNull(),
+    // La profesion CON QUE se escribio, sellada en el acto: el autor puede cambiar de rol despues, y el
+    // documento tiene que seguir diciendo desde que profesion se asumio esta anamnesis.
+    authorProfession: text("author_profession"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("soap_subjective_notes_evaluation_idx").on(t.evaluationId, t.createdAt)],
+);

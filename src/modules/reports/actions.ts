@@ -7,9 +7,12 @@ import { z } from "zod";
 import { getClientIp } from "@/core/http/client-ip";
 import { limitReportSendByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
+import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 
 import { getReportDispatch } from "./data/reports-repository";
 import { emitirVersionNueva, ReportStateError } from "./data/reports-writer";
+import { getHistoriaClinicaSoap } from "./data/hc-soap-reader";
+import { escribirNotaSubjetiva } from "./data/soap-notas-writer";
 import { entregarHistoriaClinica } from "./services/entregar-hc";
 import { canManageReports } from "./policies/can-manage-reports";
 import { resendReport, sendReport } from "./services/send-report";
@@ -198,4 +201,50 @@ export async function emitirVersionNuevaAction(
     success: "Versión nueva lista. Revísala y envíasela al paciente.",
     warning: null,
   };
+}
+
+// ESCRIBIR LA ANAMNESIS DEL APARTADO S (2026-09-20). Es lo que el paciente contó en consulta y no estaba
+// en la encuesta: lo único del apartado Subjetivo que no puede salir de un formulario.
+//
+// APPEND-ONLY: no hay editar ni borrar. Corregirse es escribir otra, y las dos quedan (decisión de
+// Gildardo para las notas clínicas, §8).
+//
+// LA PROFESIÓN SE SELLA EN EL ACTO, como en las demás notas clínicas: quien escribe puede cambiar de rol
+// después, y el documento tiene que seguir diciendo desde qué profesión se asumió esta anamnesis.
+const notaSubjetivaSchema = z
+  .string()
+  .trim()
+  .min(3, "Escribe la anamnesis antes de guardarla.")
+  .max(4000, "La nota es demasiado larga.");
+
+export async function agregarNotaSubjetivaAction(
+  _prev: ReportActionState,
+  form: FormData,
+): Promise<ReportActionState> {
+  const user = await requireUser();
+  if (!canManageReports(user)) return fail("No autorizado.");
+  const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
+  if (!evaluationId) return fail("Evaluación inválida.");
+
+  const parsed = notaSubjetivaSchema.safeParse((form.get("nota") as string | null) ?? "");
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Nota inválida.");
+
+  // La ownership se verifica leyendo el documento bajo RLS antes de escribir (regla dura 3): si la
+  // evaluación no es suya, sus lectores no la alcanzan y aquí es indistinguible de que no exista.
+  const soap = await getHistoriaClinicaSoap(evaluationId);
+  if (!soap) return fail("Esta evaluación no tiene historia clínica.");
+
+  const { profession } = await getActorProfession(user.id);
+  const ip = await getClientIp();
+  await escribirNotaSubjetiva({
+    evaluationId,
+    nota: parsed.data,
+    actorId: user.id,
+    actorEmail: user.email,
+    profesion: profession,
+    ip: ip === "unknown" ? null : ip,
+  });
+
+  // No revalida: el refresco lo hace la pantalla tras el aviso (candado `refresco-una-sola-vez`).
+  return { error: null, success: "Anamnesis agregada.", warning: null };
 }
