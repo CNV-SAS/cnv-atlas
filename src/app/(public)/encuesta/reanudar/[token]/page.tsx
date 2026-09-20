@@ -7,7 +7,7 @@ import {
   readSurveyProgress,
 } from "@/modules/evaluations/services/survey-intake";
 
-export const metadata = { title: "Retomar encuesta - Atlas" };
+export const metadata = { title: "Retomar encuesta - Atlas Pacientes" };
 
 // Contenedor de la superficie publica (sin shell de la app), igual que la pagina de la encuesta.
 // EL `items-start` NO ES DECORACION (cotejo 2026-09-05, punto 1). Sin el, `main` es un flex en fila con
@@ -29,6 +29,9 @@ function Shell({ children }: { children: React.ReactNode }) {
             unoptimized
             className="h-7 w-auto"
           />
+          <span className="text-lg font-semibold tracking-tight text-muted-foreground">
+            Pacientes
+          </span>
           <span className="text-lg font-semibold tracking-tight text-muted-foreground">Pacientes</span>
         </div>
         {children}

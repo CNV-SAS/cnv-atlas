@@ -49,7 +49,11 @@ export function QrConsultorioBoton() {
       <Dialog open={abierto} onOpenChange={setAbierto}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>QR de consultorio</DialogTitle>
+            {/* EL NOMBRE DE LA SUPERFICIE DEL PACIENTE (observacion h, 2026-09-19): el profesional abre
+                aqui la puerta de "Atlas Pacientes", y decirlo es lo que hace que las dos se distingan.
+                Va en el TITULO del dialogo y no en el boton: el boton dice el ACTO, que es lo que se
+                busca con la vista en una pantalla llena. */}
+            <DialogTitle>QR de consultorio · Atlas Pacientes</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-3">
             <p className="text-sm text-muted-foreground">

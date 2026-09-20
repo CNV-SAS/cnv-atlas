@@ -11,7 +11,7 @@ import {
 import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
 import { CONSENT_VERSION, requiresReconsent } from "@/modules/consent/versions";
 
-export const metadata = { title: "Encuesta - Atlas" };
+export const metadata = { title: "Encuesta - Atlas Pacientes" };
 
 // Contenedor de la superficie publica de la encuesta (sin shell de la app). Mas
 // ancho que el checkout y alineado arriba: es un formulario largo.
