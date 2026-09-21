@@ -607,3 +607,41 @@ el plan) o puede ser un hueco.
 2. **Tu redacción de las rutas para el paciente**, y la ponemos verbatim, como todo lo demás.
 
 Mientras decides, el filtro se queda: es lo único que respeta tu §7.1 sin inventar texto tuyo.
+
+
+---
+
+## Nueva (2026-09-21) · Tu banda media del IFC y del IRC tiene tres nombres, y uno dice «normal»
+
+**Qué pasó.** Una integrante vio, en la misma paciente (mujer, IFC 2,11, IRC 2,79), que el diagnóstico y
+el SOAP se contradecían: la tabla decía «Disfunción celular establecida» y el párrafo del análisis decía
+«presenta una función celular en rango normal con riesgo celular en rango normal».
+
+**Lo que era NUESTRO, y ya está corregido.** La tabla estaba mal. Su rótulo del IFC reclasificaba con
+**3,5/6,0**, los cortes históricos únicos que tu prompt prohíbe expresamente («desplazaban
+sistemáticamente la lectura de las mujeres»). Con tu `cIFC` (2,08/3,28 en mujeres), 2,11 es la banda
+**media**, y el color de la fila ya lo decía (ámbar). Ahora la tabla dice «Alerta funcional», que es lo
+que dice tu clasificador sellado. Conservamos tu palabra «establecida» para el escalón malo; lo que cambió
+es quién decide el escalón.
+
+**Lo que es TUYO, y por eso te lo preguntamos.** Aun corregida la tabla, queda una contradicción de
+PALABRAS, no de banda. Tu archivo llama a la banda media de tres maneras:
+
+| Dónde | IFC 2,11 (mujer) | IRC 2,79 (mujer) |
+|---|---|---|
+| Tus clasificadores `cIFC` / `cIRC` (tabla, índices alterados de la HC, IA) | Alerta funcional | Riesgo moderado |
+| Tu `idx` interno del DFI (el que alimenta el párrafo) | Normal | Normal |
+| Tu párrafo `_seg1` del DFI (HC y análisis del SOAP) | «en rango normal» | «en rango normal» |
+
+Es la **misma banda** en los tres, así que no hay un error de clasificación. Pero un profesional que lee
+«Riesgo moderado» en una línea y «riesgo celular en rango normal» dos párrafos más abajo entiende que el
+sistema se contradice, y fue exactamente lo que pasó.
+
+**La pregunta:** para la banda media, ¿qué debe decir tu párrafo? ¿«en rango normal», como hoy, o algo
+alineado con tus clasificadores («en alerta funcional», «con riesgo celular moderado»)? El texto es tuyo y
+se pone verbatim; no lo cambiamos por nuestra cuenta.
+
+**Y una del mismo tema, más pequeña.** El criterio de egreso de tu ruta R1 dice *«IFC ≥ 4.5 y IRC < 3.5
+sostenido 2 controles»*. Son cortes únicos, sin sexo. Para una mujer, tu corte superior del IFC es 3,28:
+con ese criterio **no sale nunca** de la ruta, aunque su función celular sea óptima. ¿Es a propósito, o se
+quedó con los cortes viejos?
