@@ -34,7 +34,6 @@
   --color-attention-bg: var(--attention-bg);
   --color-delta-favorable: var(--delta-favorable);
   --color-delta-adversa: var(--delta-adversa);
-  --color-nivel-wang: var(--nivel-wang);
   /*
    * ESCALA TIPOGRAFICA de interfaz. Inter se queda (la familia no era el problema); lo que cambia es la
    * DENSIDAD. Un `text-3xl font-extrabold` de pagina de marketing en una herramienta de trabajo grita y
@@ -195,14 +194,6 @@
    */
   --delta-favorable: #047857;
   --delta-adversa: #b91c1c;
-
-  /* LA FRANJA DE LOS NIVELES DE WANG, en su AZUL REY (ATLAS_v9, cambio 2, 2026-09-21). Iba en el azul de
-   * marca (`--primary`, #205dfd) desde el 2026-09-10; su v9 unifica las cuatro bandas en #4169E1, y en un
-   * color que el eligio para su tabla, el suyo gana (Santiago). Blanco encima da 4,8:1 (AA). Token propio
-   * y no `--primary` porque en el tema oscuro `--primary` se vuelve casi blanco y la franja dejaria de
-   * leerse como franja. Es capa de INTERFAZ: no insinua severidad.
-   */
-  --nivel-wang: #4169e1;
 
   /* Sidebar de shadcn: cromo claro, como el resto de la barra. */
   --sidebar: #ffffff;
