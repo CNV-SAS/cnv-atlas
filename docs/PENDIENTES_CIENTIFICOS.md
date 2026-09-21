@@ -4,6 +4,42 @@
 
 **Connected Nutrition Ventures · Atlas · 2026-09-06, actualizado el 2026-09-07** con lo que salió de tu revisión de Atlas.
 
+> **BARRIDO CONTRA EL ATLAS_v9 Y CONTRA TODAS TUS RESPUESTAS (2026-09-21).** Se buscó cada pregunta en tus
+> respuestas inline de este documento, en los `RESPUESTA_GILDARDO_*` posteriores a cada una y en el v9. **El
+> v9 no responde ninguna por sí mismo:** el diff contra la entrega del 4 contiene exactamente los cuatro
+> cambios de tu guía (y un comentario sobre la avena), así que todo lo que tu archivo hacía el 4 lo sigue
+> haciendo igual. Lo que cambió de estado lo cambiaron tus respuestas escritas.
+>
+> | # | Estado | Dónde |
+> |---|---|---|
+> | Primero (el ejemplo con nombre) | **SIGUE ABIERTA a medias** | Respondiste que no se envíe el nombre (inline) y así está en Atlas. La pregunta de fondo, **si es una persona real**, no tiene respuesta, y **el ejemplo sigue en el v9** |
+> | 1 · Apertura del párrafo de IA | RESPONDIDA | Inline, 2026-09-07 |
+> | 2 · Criterio en la HC | RESPONDIDA | Inline: "de momento no" |
+> | 3 · Fila PABU | RESPONDIDA | Inline, 2026-09-07: *"está bien como lo tienen"*. **El barrido de rótulos del 9-sep la había reabierto sin tu instrucción; restituida el 21** |
+> | 4 · Tres entradas en Leche semidescremada | RESPONDIDA | RESPUESTA 09-05, cierre del §8: *"Queda señalado, sin tocar"*. Se quedan como están |
+> | 5 · Revisión ortográfica de los 350 | RESPONDIDA | RESPUESTA 09-05 §8: hecha, dieciséis nombres. Portada |
+> | 6 · P23 y P44 | RESPONDIDA | Inline: *"No importa. Ya lo tienen bien en Atlas"* |
+> | 7 · Los dos guiones | RESPONDIDA | No pedía respuesta; inline: *"ANI-BIS-E es correcto"* |
+> | Aviso del LE8 | RESPONDIDA | Inline |
+> | 8 · ICA-BIS, dos reglas | SIGUE ABIERTA | |
+> | 9 · % de grasa, dos cortes | SIGUE ABIERTA | |
+> | 10 · Dos clasificadores del ICC | SIGUE ABIERTA | |
+> | 11 · `clasifLancet` | SIGUE ABIERTA | |
+> | 12 · Fórmula sintética | SIGUE ABIERTA | |
+> | 13 · Estado PBI | SIGUE ABIERTA | |
+> | 14 · Qué más alimenta el menú | SIGUE ABIERTA | Acceso y distribución por tiempos. **Las alergias no están en la pregunta**, porque ya las respondiste (27-ago §10 y 11-sep §1) |
+> | 15 · IAE "Concordante" en ámbar | SIGUE ABIERTA | |
+> | 16 · Casilla de la matriz IFC×IRC | SIGUE ABIERTA | Tu §1 del 09-05 cambió los rótulos de los nueve sectores, no los colores |
+> | 17 · Badges del Nivel III | SIGUE ABIERTA | |
+> | 18 · "Otros medicamentos" en el prompt | SIGUE ABIERTA | |
+> | 19 · Pasos 1 a 3 que no llegan al 4 | SIGUE ABIERTA | |
+> | 20 · Observaciones en la HC | SIGUE ABIERTA | |
+> | 21 · Diez alertas que leen `cons` | SIGUE ABIERTA | Tu §4 del 09-05 dice DÓNDE van las alertas, no qué hacer con las diez que no pueden salir. Los colores del v9 tampoco la cierran |
+> | 22 · El PABU con dos veredictos | **YA NO APLICA** | Preguntaba lo que ya respondía la 3. Con la tabla restituida, la tabla y la HC dicen lo mismo |
+> | Nueva 09-19 · Las rutas y el paciente | SIGUE ABIERTA | |
+> | Nueva 09-21 · La banda media con tres nombres | ABIERTA (de hoy) | |
+
+
 Este es **el documento único**: todo lo que quedó abierto de tu lado después del cotejo visual completo de
 Atlas contra tu HTML. Antes estaba repartido en dos sitios y eso hacía que algo se quedara sin llegarte;
 ahora es uno solo.
@@ -453,6 +489,8 @@ es tuyo.
 
 ## 22 · El PABU sale con dos veredictos distintos según dónde se lea, y los dos son tuyos
 
+> **YA NO APLICA (2026-09-21).** Preguntaba lo que ya estaba respondido en la 3 (*"está bien como lo tienen"*, 2026-09-07). La tabla se había pasado a `dPABU` en un barrido nuestro del 9-sep sin tu instrucción; se restituyó a `cPABU`, y la tabla y la historia clínica vuelven a decir lo mismo.
+
 **AÑADIDO EL 2026-09-10**, después de que empezaras a responder este documento.
 
 Un profesional vio esto en el mismo paciente, en la misma consulta:
@@ -636,6 +674,12 @@ PALABRAS, no de banda. Tu archivo llama a la banda media de tres maneras:
 Es la **misma banda** en los tres, así que no hay un error de clasificación. Pero un profesional que lee
 «Riesgo moderado» en una línea y «riesgo celular en rango normal» dos párrafos más abajo entiende que el
 sistema se contradice, y fue exactamente lo que pasó.
+
+**Buscado antes de preguntarte, para no traerte algo ya decidido.** No hay respuesta tuya sobre esto en
+ningún documento. Lo más cercano es tu §1 del 5 de septiembre, que para los nueve sectores cruza IFC
+Alto/Normal/Bajo (*función normal · función · disfunción*) con IRC Bajo/Normal/Alto (*con bajo riesgo ·
+sin riesgo · con riesgo*). O sea que en tu vocabulario más reciente la banda media del IRC se lee **"sin
+riesgo"**, y tu `cIRC` la rotula **"Riesgo moderado"**. Es la misma tensión, y es tuya.
 
 **La pregunta:** para la banda media, ¿qué debe decir tu párrafo? ¿«en rango normal», como hoy, o algo
 alineado con tus clasificadores («en alerta funcional», «con riesgo celular moderado»)? El texto es tuyo y
