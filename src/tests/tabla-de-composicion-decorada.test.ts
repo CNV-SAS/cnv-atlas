@@ -41,7 +41,7 @@ describe("la franja de nivel va en color de marca; la cabecera, sin fondo", () =
   // queda gris." SEGUNDA VUELTA (tarde, variante (c)): el gris y el azul chocaban pegados, asi que la
   // cabecera pierde el fondo y queda UNA sola superficie pintada. Ver el caso de abajo.
 
-  it("la franja de nivel lleva el azul de marca, PLENO", () => {
+  it("la franja de nivel lleva un azul PLENO, hoy el azul rey de su v9", () => {
     // ═══ CUARTA VUELTA DEL TONO (Santiago, 2026-09-19) ═══
     //
     // EL HISTORIAL, porque aquí se revierte una decisión suya y eso no se hace en silencio:
@@ -56,13 +56,15 @@ describe("la franja de nivel va en color de marca; la cabecera, sin fondo", () =
     //
     // LO QUE NO CAMBIA EN NINGUNA VUELTA, y es lo único que BRAND.md protege aquí: la franja lleva color
     // de MARCA (capa de interfaz), nunca de RIESGO. El verde/ámbar/rojo sigue reservado a los veredictos.
-    expect(CODIGO, "la franja de nivel perdió el azul de marca").toContain("bg-primary");
-    expect(CODIGO, "sobre el azul pleno, la letra va en blanco o no se lee").toContain(
-      "text-primary-foreground",
-    );
+    //   · bg-nivel-wang  -> QUINTA VUELTA (2026-09-21), y esta no es de gusto: su ATLAS_v9 unifica las
+    //                        cuatro bandas en su azul rey (#4169E1) y en un color de su tabla el suyo gana
+    //                        (Santiago). El tono exacto lo guarda `azul-rey-wang.test.ts`, derivado de su
+    //                        archivo; aqui se guarda lo que no cambia: azul pleno, letra blanca, sin riesgo.
+    expect(CODIGO, "la franja de nivel perdió su azul").toContain("bg-nivel-wang");
+    expect(CODIGO, "sobre el azul pleno, la letra va en blanco o no se lee").toContain("text-white");
     // El color de riesgo se mira EN LA FRANJA, no en el archivo: los chips de veredicto de esta misma
     // tabla sí lo llevan, y con razón. Un detector de archivo entero cazaría a los vecinos.
-    const franja = CODIGO.slice(CODIGO.indexOf("<tr className=\"border-y border-primary"));
+    const franja = CODIGO.slice(CODIGO.indexOf("<tr className=\"border-y border-nivel-wang"));
     const linea = franja.slice(0, franja.indexOf(">"));
     for (const riesgo of ["clinical-critical", "clinical-warning", "clinical-optimal"]) {
       expect(linea, "la franja no puede llevar color de riesgo: " + riesgo).not.toContain(riesgo);
@@ -123,7 +125,7 @@ describe("y las celdas tienen padding a los dos lados", () => {
     // EL DEFECTO (Santiago, 2026-09-20): con la altura de linea heredada (1.5 sobre 12px) el navegador
     // reparte el sobrante arriba y abajo, y como las mayusculas no llenan su mitad superior, la fila se
     // lee descentrada. Con `leading-none` el padding es lo unico que centra, y centra parejo.
-    expect(CODIGO).toContain("uppercase leading-none tracking-wide text-primary-foreground");
+    expect(CODIGO).toContain("uppercase leading-none tracking-wide text-white");
   });
 
   it("la última columna cierra con su padding", () => {

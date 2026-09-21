@@ -453,8 +453,11 @@ export function CompositionSection({
                       blanco es casi gris, y por eso no se leia como la marca ni separaba con fuerza. Con
                       el azul entero y la letra en blanco, la franja hace su trabajo de un vistazo. Sigue
                       siendo capa de INTERFAZ: no insinua severidad, que es lo unico que BRAND.md protege
-                      aqui. */}
-                  <tr className="border-y border-primary bg-primary">
+                      aqui.
+
+                      Y EL AZUL ES EL SUYO desde el ATLAS_v9 (2026-09-21): unifico las cuatro bandas en su
+                      azul rey (#4169E1, token `--nivel-wang`), y en un color de su tabla el suyo gana. */}
+                  <tr className="border-y border-nivel-wang bg-nivel-wang">
                     <td
                       colSpan={colCount}
                       // `leading-none` mas el padding parejo: el texto se veia LEVANTADO (Santiago,
@@ -462,7 +465,7 @@ export function CompositionSection({
                       // navegador reparte ese sobrante arriba y abajo de la caja de texto, pero las
                       // mayusculas no llenan su mitad superior, asi que la fila se lee descentrada. Con la
                       // linea ajustada al texto, el padding es lo unico que centra, y centra parejo.
-                      className="px-3 py-2.5 text-xs font-semibold uppercase leading-none tracking-wide text-primary-foreground"
+                      className="px-3 py-2.5 text-xs font-semibold uppercase leading-none tracking-wide text-white"
                     >
                       {lvl.title}
                     </td>
@@ -487,7 +490,7 @@ export function CompositionSection({
                   y sin padding, y se leia como dos tablas apiladas que no se parecen. */}
               {bloqueFinal && bloqueFinal.filas.length > 0 ? (
                 <Fragment key={bloqueFinal.titulo}>
-                  <tr className="border-y border-primary bg-primary">
+                  <tr className="border-y border-nivel-wang bg-nivel-wang">
                     <td
                       colSpan={colCount}
                       // `leading-none` mas el padding parejo: el texto se veia LEVANTADO (Santiago,
@@ -495,7 +498,7 @@ export function CompositionSection({
                       // navegador reparte ese sobrante arriba y abajo de la caja de texto, pero las
                       // mayusculas no llenan su mitad superior, asi que la fila se lee descentrada. Con la
                       // linea ajustada al texto, el padding es lo unico que centra, y centra parejo.
-                      className="px-3 py-2.5 text-xs font-semibold uppercase leading-none tracking-wide text-primary-foreground"
+                      className="px-3 py-2.5 text-xs font-semibold uppercase leading-none tracking-wide text-white"
                     >
                       {bloqueFinal.titulo}
                     </td>
