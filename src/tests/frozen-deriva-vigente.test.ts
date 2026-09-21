@@ -432,10 +432,19 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
     // la forma de la caida, de "compone solo si falta la clave entera" a "campo por campo, tratando la
     // raya como ausencia". Es la diferencia con mas efecto visible de las cinco que trajo: es la que hace
     // que veintiun estados dejen de mostrarle "—" al paciente en mecanismo y biomarcadores.
-    const anterior = readFileSync(
-      htmlDeEntrega(ENTREGAS[ENTREGAS.length - 2]),
-      "utf8",
-    );
+    // Y DESDE EL v9 (2026-09-21) EL ANCLA DEJA DE GIRAR, porque la entrega del 21 no toca el motor: sus
+    // cuatro cambios son de presentacion (colores de la encuesta, azul de Wang, cintura en linea y la
+    // seccion de otros productos), y su guia lo dice ("no se toco ningun calculo"). Contra la del 4 la
+    // cabeza de `getDX` es IDENTICA, asi que "la anterior no la tenia" dejo de ser cierto y el caso se
+    // ponia rojo diciendo una verdad. Se hace lo mismo que el control de arriba: se BUSCA HACIA ATRAS la
+    // entrega donde esa diferencia ocurrio, en vez de suponer que es la inmediatamente anterior. Asi el
+    // ancla no se reescribe en cada entrega que no toque el motor, y sigue exigiendo una diferencia real.
+    const CAIDA_BUSCADA = sinEspacio("const _fb = (a, b) => {");
+    const sinLaCaida = ENTREGAS.slice(0, -1)
+      .reverse()
+      .find((c) => !sinEspacio(readFileSync(htmlDeEntrega(c), "utf8")).includes(CAIDA_BUSCADA));
+    expect(sinLaCaida, "ninguna entrega anterior carece de la caida: el ancla ya no distingue nada").toBeDefined();
+    const anterior = readFileSync(htmlDeEntrega(sinLaCaida as string), "utf8");
     const vigenteTxt = readFileSync(HTML_VIGENTE, "utf8");
     const core = readFileSync(
       "src/clinical-engine/frozen/engine.core.js",

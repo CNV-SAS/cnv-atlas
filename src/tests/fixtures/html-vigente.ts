@@ -38,8 +38,21 @@ function entregasOrdenadas(): string[] {
 
 export const ENTREGAS = entregasOrdenadas();
 
-/** Ruta del ATLAS_v8.html de la ULTIMA entrega. Todo test de paridad ancla aqui, nunca a una ruta suelta. */
-export const HTML_VIGENTE = `${DIR}/${ENTREGAS[ENTREGAS.length - 1]}/ATLAS_v8.html`;
+// EL NOMBRE DEL ARCHIVO TAMBIEN SE DERIVA (2026-09-21). Estaba fijo en `ATLAS_v8.html`, y el 21 de
+// septiembre llego `ATLAS_v9.html`: la carpeta vigente se derivaba bien y el archivo no existia, asi que
+// todo candado de paridad reventaba con ENOENT. Mejor eso que pasar verde contra el v8, pero es la misma
+// leccion de la cabecera un nivel mas abajo: lo que se escribe a mano envejece. Cada carpeta de entrega
+// trae UN html; si trajera cero o varios, se falla ruidoso en vez de elegir uno.
+function htmlDeLaCarpeta(carpeta: string): string {
+  const htmls = readdirSync(`${DIR}/${carpeta}`).filter((f) => /^ATLAS_v\d+\.html$/.test(f));
+  if (htmls.length !== 1) {
+    throw new Error(`la entrega ${carpeta} trae ${htmls.length} HTML de ATLAS; se esperaba exactamente uno`);
+  }
+  return `${DIR}/${carpeta}/${htmls[0]}`;
+}
+
+/** Ruta del HTML de la ULTIMA entrega. Todo test de paridad ancla aqui, nunca a una ruta suelta. */
+export const HTML_VIGENTE = htmlDeLaCarpeta(ENTREGAS[ENTREGAS.length - 1]);
 
 /**
  * Ruta del HTML de UNA entrega concreta. Existe para que NINGUN test construya rutas de entrega a mano,
@@ -49,7 +62,7 @@ export const HTML_VIGENTE = `${DIR}/${ENTREGAS[ENTREGAS.length - 1]}/ATLAS_v8.ht
  */
 export function htmlDeEntrega(carpeta: string): string {
   if (!ENTREGAS.includes(carpeta)) throw new Error(`no existe la entrega ${carpeta}`);
-  return `${DIR}/${carpeta}/ATLAS_v8.html`;
+  return htmlDeLaCarpeta(carpeta);
 }
 
 

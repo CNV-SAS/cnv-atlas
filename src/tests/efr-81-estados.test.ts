@@ -216,6 +216,8 @@ describe("y el candado sigue mirando la entrega de HOY", () => {
     // mismo defecto dentro del test que lo vigila. (El candado de anclajes lo atrapo al primer intento.)
     expect(ENTREGAS.length).toBeGreaterThan(0);
     expect(HTML_VIGENTE).toContain(ENTREGAS[ENTREGAS.length - 1]);
-    expect(HTML_VIGENTE.endsWith("ATLAS_v8.html")).toBe(true);
+    // El NOMBRE del archivo cambia con la version (el 21-sep llego `ATLAS_v9.html`): se exige que sea un
+    // HTML de ATLAS versionado, no una version concreta, que era otra cadena escrita a mano.
+    expect(HTML_VIGENTE).toMatch(/\/ATLAS_v\d+\.html$/);
   });
 });
