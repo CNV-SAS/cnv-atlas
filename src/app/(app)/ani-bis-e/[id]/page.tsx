@@ -127,7 +127,6 @@ import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repos
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { bloqueCls } from "@/components/shared/bloque";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
-import { patronDeclarado } from "@/modules/treatment/services/patron-declarado";
 import { VentaEnConsultaSection } from "@/modules/treatment/components/venta-en-consulta-section";
 import { NutraDecisionSection } from "@/modules/treatment/components/nutra-decision-section";
 import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
@@ -1004,11 +1003,6 @@ export default async function ResultadosEvaluacionPage({
                 abordaje={abordajeText}
                 rutas={rutas}
                 narrative={treatmentNarrative}
-                patronAlimentario={patronDeclarado(
-                  (entrySurvey ?? []).flatMap((d) =>
-                    d.questions.map((q) => ({ fieldKey: q.fieldKey, valor: q.answerValue })),
-                  ),
-                )}
                 prescripcion={prescripcionNutricional}
                 asesoria={asesoriaMacros}
                 planImprimible={

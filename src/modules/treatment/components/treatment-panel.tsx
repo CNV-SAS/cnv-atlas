@@ -1155,16 +1155,11 @@ function CadenaCaloricaSection({
 export function TreatmentPanel({
   evaluationId,
   protocol,
-  patronAlimentario,
   prescripcion,
   asesoria,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  // Lo que el paciente DECLARO (d4_34). Llega como prop desde la pagina, que ya leyo la encuesta: es una
-  // de las TRES fuentes de restriccion que deciden si la IA entra, y sin ella la pantalla diria "no hay
-  // nada que adaptar" a un vegano. Un texto que describe mal lo que hace el motor es defecto de seguridad.
-  patronAlimentario: string[];
   // Prescripcion del motor que gobierna (motorTratNutri), computada al vuelo por la pagina. null si la
   // evaluacion no tiene encuesta legible: ahi se cae a lo sellado, marcado como tal.
   prescripcion: PrescripcionNutricional | null;
@@ -1531,7 +1526,6 @@ export function TreatmentPanel({
             <AdaptarMenuBoton
               evaluationId={evaluationId}
               protocol={protocol}
-              patronAlimentario={patronAlimentario}
               sinGuardar={sinGuardar}
             />
           )}
@@ -1539,8 +1533,8 @@ export function TreatmentPanel({
         <MenuSection
           evaluationId={evaluationId}
           protocol={protocol}
-          // LAS MISMAS TRES LISTAS QUE COTEJA `generateMenu`: las del motor que gobierna, las del profesional
-          // y el patron declarado por el paciente. Si aqui se mirara un subconjunto, una cita legitima
+          // LAS MISMAS LISTAS QUE COTEJA `generateMenu`: las del motor que gobierna y las del profesional (que
+          // desde el 2026-09-21 traen precargado lo que el paciente declaro). Si aqui se mirara un subconjunto, una cita legitima
           // saldria marcada, que es justo el defecto que esto viene a cerrar.
           restriccionesVigentes={[
             ...(prescripcion?.limites ?? protocol.protocolSuggested?.restricciones ?? []).map(
@@ -1548,7 +1542,6 @@ export function TreatmentPanel({
             ),
             ...(prescripcion?.atributos ?? []),
             ...protocol.restricciones,
-            ...patronAlimentario,
           ]}
           menuSinGuardar={sucias.includes("menuSemanal")}
         />
@@ -1635,12 +1628,10 @@ const MENU_STATUS: Record<string, { label: string; cls: string }> = {
 function AdaptarMenuBoton({
   evaluationId,
   protocol,
-  patronAlimentario,
   sinGuardar,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  patronAlimentario: string[];
   /** Hay restricciones escritas y todavia no guardadas. */
   sinGuardar: boolean;
 }) {
@@ -1658,8 +1649,7 @@ function AdaptarMenuBoton({
   // el sistema esta roto. Las tres fuentes son las mismas que viajan en el prompt.
   const hayRestricciones =
     (protocol.protocolSuggested?.restricciones?.length ?? 0) > 0 ||
-    protocol.restricciones.length > 0 ||
-    patronAlimentario.length > 0;
+    protocol.restricciones.length > 0;
   const disabled = pending || !cadenaLista || !hayRestricciones || sinGuardar;
 
   return (
@@ -1685,8 +1675,8 @@ function AdaptarMenuBoton({
         </p>
       ) : !hayRestricciones ? (
         <p className="max-w-prose text-xs text-muted-foreground">
-          Este paciente no tiene restricciones registradas (ni del modelo, ni tuyas, ni patrón
-          alimentario declarado), así que no hay nada que adaptar: el menú del ciclo es el que aplica.
+          Este paciente no tiene restricciones registradas (ni del modelo, ni tuyas), así que no hay nada
+          que adaptar: el menú del ciclo es el que aplica.
         </p>
       ) : (
         <p className="max-w-prose text-xs text-muted-foreground">

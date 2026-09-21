@@ -220,14 +220,17 @@ describe("la cita de una propuesta se coteja por TERMINOS, no por contencion", (
     );
   });
 
-  it("y se coteja contra las MISMAS tres listas que usó la generación", () => {
+  it("y se coteja contra las MISMAS listas que usó la generación", () => {
     // Si aquí se mirara un subconjunto, una cita legítima saldría marcada: el defecto de vuelta por otra
-    // puerta.
+    // puerta. Eran TRES hasta el 2026-09-21; el patrón alimentario dejó de ser fuente propia y viaja dentro
+    // de las restricciones del profesional (precargado desde la encuesta al crear el tratamiento).
     const GENERA = readFileSync("src/modules/treatment/services/generate-menu.ts", "utf8");
-    for (const fuente of ["restriccionesModelo", "protocol.restricciones", "patron"]) {
+    for (const fuente of ["restriccionesModelo", "protocol.restricciones"]) {
       expect(GENERA, `la generación dejó de cotejar contra ${fuente}`).toContain(fuente);
     }
     expect(PANEL).toContain("...protocol.restricciones,");
-    expect(PANEL).toContain("...patronAlimentario,");
+    // UN SOLO CAMINO: si el patrón volviera como lista aparte, lo que el profesional borra seguiría llegando.
+    expect(PANEL).not.toContain("...patronAlimentario,");
+    expect(GENERA).not.toContain("patronDeclarado(");
   });
 });
