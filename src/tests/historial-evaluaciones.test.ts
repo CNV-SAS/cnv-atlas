@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import { claseDeEvaluacion, repartirEvaluaciones } from "@/modules/patients/clasificar-evaluaciones";
 
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 // ═══ LO QUE ESTORBA SE PLIEGA; LO PENDIENTE, NUNCA (observación L, 2026-09-20) ═══
 //
 // EL PEDIDO ERA "eliminar las evaluaciones ya cerradas". Borrar no es una opción: una evaluación arrastra
@@ -48,7 +50,9 @@ describe("el reparto", () => {
   it("deja fuera de lo plegado todo lo que está abierto", () => {
     const { abiertas, plegadas } = repartirEvaluaciones(evaluaciones);
     expect(abiertas.map((e) => e.id)).toEqual(["1", "3"]);
-    expect(plegadas.map((e) => e.id)).toEqual(["2", "4"]);
+    // La "2" es la UNICA completada, asi que es la ultima y se queda a la vista (regla del 2026-09-21,
+    // abajo). Lo que no cambia es lo que este test protege: nada abierto termina plegado.
+    expect(plegadas.map((e) => e.id)).toEqual(["4"]);
   });
 
   it("y conserva el orden en que venían: la cronología no se reordena al clasificar", () => {
@@ -75,5 +79,56 @@ describe("la pantalla dice que nada se borra", () => {
   it("la clasificación no se decide en la pantalla", () => {
     // Si la pantalla decidiera qué es historia, otra superficie podría decidir distinto sobre lo mismo.
     expect(COMPONENTE).toContain("repartirEvaluaciones(evaluaciones)");
+  });
+});
+
+// ═══ LA ULTIMA COMPLETADA SE QUEDA A LA VISTA (Santiago, 2026-09-21) ═══
+//
+// Es el punto de partida de la siguiente consulta: plegarla obligaria a abrir el interruptor en cada
+// seguimiento. Las anteriores si se pliegan, y una reemplazada o una retirada nunca es la referencia.
+describe("la última completada no se pliega", () => {
+  const evaluaciones = [
+    { id: "vieja", status: "completed", superseded: false, measurementDate: "2026-03-01" },
+    { id: "abierta", status: "in_progress", superseded: false, measurementDate: "2026-09-20" },
+    { id: "ultima", status: "completed", superseded: false, measurementDate: "2026-07-13" },
+    { id: "reemplazada", status: "completed", superseded: true, measurementDate: "2026-08-30" },
+    { id: "retirada", status: "abandoned", superseded: false, measurementDate: "2026-09-01" },
+  ];
+
+  it("a la vista: lo abierto y la completada más reciente", () => {
+    const { visibles } = repartirEvaluaciones(evaluaciones);
+    expect(visibles.map((e) => e.id)).toEqual(["abierta", "ultima"]);
+  });
+
+  it("las completadas anteriores, la reemplazada y la retirada se pliegan", () => {
+    const { plegadas } = repartirEvaluaciones(evaluaciones);
+    expect(plegadas.map((e) => e.id)).toEqual(["vieja", "reemplazada", "retirada"]);
+  });
+
+  it("una reemplazada no es la referencia aunque sea la más reciente", () => {
+    // La del 30/08 es posterior a la del 13/07, pero fue reemplazada por una corrección: lo vigente es otra.
+    const { visibles } = repartirEvaluaciones(evaluaciones);
+    expect(visibles.map((e) => e.id)).not.toContain("reemplazada");
+  });
+
+  it("y `abiertas` sigue siendo solo el trabajo pendiente", () => {
+    // La completada se ve, pero no es trabajo pendiente: quien cuente pendientes no la puede contar.
+    expect(repartirEvaluaciones(evaluaciones).abiertas.map((e) => e.id)).toEqual(["abierta"]);
+  });
+});
+
+describe("el chip de estado no habla el idioma del semáforo clínico", () => {
+  // Verde, ámbar y rojo dicen cómo está el PACIENTE. Un estado de trabajo no dice nada de él: pintar
+  // "Completada" en verde o "Abandonada" en rojo haría leer un veredicto donde hay un trámite.
+  // Sin comentarios: la cabecera del componente NOMBRA los colores prohibidos para explicar por que.
+  const CHIP = sinComentarios(readFileSync("src/modules/patients/components/chip-estado-evaluacion.tsx", "utf8"));
+
+  it("no usa la escala clínica ni colores de semáforo", () => {
+    expect(CHIP).not.toMatch(/clinical-|green-|emerald-|red-|rose-|amber-|yellow-|attention/);
+  });
+
+  it("y el historial lo usa en la columna de estado", () => {
+    const COMPONENTE = readFileSync("src/modules/patients/components/historial-evaluaciones.tsx", "utf8");
+    expect(COMPONENTE).toContain("<ChipEstadoEvaluacion status={e.status} />");
   });
 });
