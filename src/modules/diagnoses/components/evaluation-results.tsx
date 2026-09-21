@@ -390,7 +390,11 @@ export function EvaluationResults({
                 // `rotuloDisplayDeIndice`): su tabla dice "Envejecimiento acelerado" y el clasificador
                 // cientifico "Acelerado". El COLOR sigue siendo el sellado; solo cambia el texto.
                 const classLabel =
-                  rotuloDisplayDeIndice(classCode, indicators[isEb ? "iae" : key] as number | null) ??
+                  rotuloDisplayDeIndice(
+                    classCode,
+                    indicators[isEb ? "iae" : key] as number | null,
+                    clasesPorCodigo[classCode]?.label,
+                  ) ??
                   clasesPorCodigo[classCode]?.label ??
                   "N/D";
                 return (

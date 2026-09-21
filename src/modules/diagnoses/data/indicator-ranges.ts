@@ -169,8 +169,7 @@ export function clasificarIcaBis(icaBis: number | null): ClaseIcaBis | null {
 // SE COMPUTA AL MOSTRAR, desde el valor SELLADO, igual que `clasificarIcaBis` y que las severidades de
 // AF/IR: asi el rotulo correcto aparece tambien en los diagnosticos ya emitidos.
 const ROTULOS_DISPLAY: Record<string, (v: number) => string> = {
-  // dIFC (L14436): solo cambia el escalon malo, "Disfunción celular" -> "Disfunción celular establecida".
-  IFC: (v) => (v < 3.5 ? "Disfunción celular establecida" : v <= 6.0 ? "Alerta funcional" : "Función óptima"),
+
   // dPABU (L14440): aqui NO es que se acortara, es que dice OTRA cosa. Su tabla nombra la direccion por
   // el indicador ("PABU bajo"/"PABU elevado") y el clasificador cientifico la nombra por el mecanismo
   // ("Desviación por déficit"/"por exceso"). Se porta el suyo porque es la tabla que el enseña.
@@ -196,8 +195,41 @@ const ROTULOS_DISPLAY: Record<string, (v: number) => string> = {
  * NO cubre ICA-BIS, que ya se resuelve entero por `clasificarIcaBis` (label y color), ni IRC/ISCM, cuyos
  * rotulos de display coinciden con los nuestros (su `dIRC` delega literalmente en `cIRC`).
  */
-export function rotuloDisplayDeIndice(codigo: string, valor: number | null): string | null {
+// ═══ EL IFC SE TRADUCE POR SU BANDA SELLADA, NO SE RECLASIFICA (2026-09-21) ═══
+//
+// EL DEFECTO, reportado por una integrante: una paciente con IFC 2,11 salia en la tabla como "Disfunción
+// celular establecida" y en el SOAP como "función celular en rango normal". Tenia razon en que se
+// contradecian, y el que estaba mal era ESTA tabla.
+//
+// La entrada del IFC portaba el `dIFC` de su display CON SUS CORTES: 3,5/6,0, los historicos unicos, sin
+// sexo. Y esos cortes estan PROHIBIDOS por el mismo Gildardo: su prompt de IA dice textualmente *"Esta
+// prohibido usar los cortes historicos unicos (IFC 3,5/6,0...): fueron reemplazados porque desplazaban
+// sistematicamente la lectura de las mujeres"*, y DIVERGENCIAS.md ya lo tenia decidido (manda `cIFC`, con
+// 2,08/3,28 en mujeres). Para una mujer con 2,11, el corte viejo la pone en el escalon MALO y el suyo en
+// el de en medio. Es justo el sesgo que el describio, reintroducido por la puerta del rotulo.
+//
+// Y LA TABLA SE CONTRADECIA SOLA: el color sale del clasificador sellado (ambar, banda media) y el texto
+// de los cortes viejos ("establecida", banda mala). El comentario de arriba prometia "SOLO EL ROTULO",
+// pero una funcion que recibe el VALOR y lo compara contra sus propios cortes no cambia el rotulo:
+// reclasifica.
+//
+// LO QUE SE CONSERVA de aquel porte es su PALABRA: "establecida" en el escalon malo. Lo que cambia es
+// quien decide el escalon, que es el clasificador sellado. Por eso el IFC ya no entra por valor: entra por
+// el rotulo sellado y se traduce a su vocabulario de display.
+const IFC_DISPLAY_POR_BANDA: Record<string, string> = {
+  "Disfunción celular": "Disfunción celular establecida",
+  "Alerta funcional": "Alerta funcional",
+  "Función óptima": "Función óptima",
+};
+
+export function rotuloDisplayDeIndice(
+  codigo: string,
+  valor: number | null,
+  /** El rotulo del clasificador SELLADO. Hace falta para el IFC, cuyos cortes dependen del sexo. */
+  rotuloSellado?: string | null,
+): string | null {
   if (valor == null) return null;
+  if (codigo === "IFC") return rotuloSellado ? (IFC_DISPLAY_POR_BANDA[rotuloSellado] ?? null) : null;
   return ROTULOS_DISPLAY[codigo]?.(valor) ?? null;
 }
 

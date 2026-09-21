@@ -33,7 +33,8 @@ function rotulosDeSuDisplay(nombre: string): string[] {
 // Valor que cae en cada escalon, en el MISMO orden en que su clasificador los declara. Es lo unico
 // escrito a mano, y tiene que serlo: son sus cortes. Se elige un valor por rama, no el corte exacto.
 const SONDAS: Record<string, number[]> = {
-  IFC: [2, 5, 8], // <3.5 · 3.5-6.0 · >6.0
+  // El IFC YA NO SE SONDEA POR VALOR (2026-09-21): sus cortes de display (3,5/6,0) son los historicos
+  // que el propio Gildardo prohibio. Se traduce por su banda sellada; ver el bloque de abajo.
   PABU: [1.2, 2.0], // <phi · >phi (la rama de igualdad exacta no se sondea)
   IAE: [-8, 0, 8], // <-5 · -5..5 · >5
   IEHH: [-1, 0.5, 1.5, 3], // <=0 · <=1 · <=2 · resto
@@ -76,5 +77,40 @@ describe("los rótulos de los índices son los de SU capa de display", () => {
 
   it("y sin valor no hay rótulo que inventar", () => {
     expect(rotuloDisplayDeIndice("IAE", null)).toBeNull();
+  });
+});
+
+// ═══ EL IFC: SU PALABRA, CON EL ESCALON DEL CLASIFICADOR SELLADO (2026-09-21) ═══
+//
+// EL CASO REAL, de una integrante: paciente MUJER con IFC 2,11. La tabla decia "Disfunción celular
+// establecida" y el SOAP "función celular en rango normal". Estaba mal la tabla: su entrada del IFC
+// reclasificaba con 3,5/6,0, los cortes historicos unicos que Gildardo prohibio en su prompt porque
+// "desplazaban sistematicamente la lectura de las mujeres". Con su `cIFC` (2,08/3,28 en mujeres), 2,11 es
+// banda media: "Alerta funcional". Y el color de la fila ya lo decia (ambar), porque sale del sellado: la
+// tabla se contradecia sola.
+describe("el IFC se traduce por su banda sellada, no se reclasifica", () => {
+  it("el caso de la integrante: 2,11 en una mujer es banda media, no disfunción establecida", () => {
+    expect(rotuloDisplayDeIndice("IFC", 2.11, "Alerta funcional")).toBe("Alerta funcional");
+    expect(rotuloDisplayDeIndice("IFC", 2.11, "Alerta funcional")).not.toContain("establecida");
+  });
+
+  it("el escalón lo decide el sellado: el mismo valor en un hombre sí es disfunción", () => {
+    // 2,11 en un hombre cae bajo su corte (4,12): ahi SI es el escalon malo, y la palabra es la suya.
+    expect(rotuloDisplayDeIndice("IFC", 2.11, "Disfunción celular")).toBe("Disfunción celular establecida");
+  });
+
+  it("sin rótulo sellado no se reclasifica por valor", () => {
+    // Es exactamente lo que produjo el defecto: volver a los cortes del display cuando falta el sellado.
+    expect(rotuloDisplayDeIndice("IFC", 2.11)).toBeNull();
+    expect(rotuloDisplayDeIndice("IFC", 2.11, null)).toBeNull();
+  });
+
+  it("las tres palabras siguen siendo las de su display, en su orden", () => {
+    // Lo que se conserva del porte del 2026-09-09 es su VOCABULARIO. Se deriva de su archivo vigente.
+    const suyos = rotulosDeSuDisplay("dIFC");
+    const nuestros = ["Disfunción celular", "Alerta funcional", "Función óptima"].map((sellado) =>
+      rotuloDisplayDeIndice("IFC", 1, sellado),
+    );
+    expect(nuestros).toEqual(suyos.slice(0, 3));
   });
 });
