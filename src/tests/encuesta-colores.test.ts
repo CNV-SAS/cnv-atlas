@@ -168,3 +168,22 @@ describe("el gris no es normal", () => {
     expect(COLOR_DE_NIVEL.sin_dato).not.toBe(COLOR_DE_NIVEL.adecuado);
   });
 });
+
+describe("un solo semáforo en la pantalla de la encuesta", () => {
+  // Santiago: los chips de D2-D8 se veían distintos a los de D1. Los hex eran los mismos; la FORMA no
+  // (tamaño, fondo, borde). Un semáforo con dos verdes en la misma pantalla se lee como dos significados.
+  const SECCION = readFileSync("src/modules/diagnoses/components/survey-diagnosis-section.tsx", "utf8");
+
+  it("D1 y D2-D8 usan la misma pastilla", () => {
+    expect(SECCION).toContain("function PastillaDeColor(");
+    expect(SECCION).not.toContain("function PastillaDeRespuesta(");
+    // Una en la grilla de D1 y otra en el read-out de D2-D8.
+    expect((SECCION.match(/<PastillaDeColor\s/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("y los colores de D1 son los mismos del clasificador de D2-D8", () => {
+    for (const hex of [COLOR_DE_NIVEL.adecuado, COLOR_DE_NIVEL.vigilar, COLOR_DE_NIVEL.atencion, COLOR_DE_NIVEL.sin_dato]) {
+      expect(SECCION, `D1 no usa ${hex}`).toContain(`"${hex}"`);
+    }
+  });
+});

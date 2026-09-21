@@ -470,7 +470,11 @@ export function SurveyAnswerReadonly({
    */
   colorHeredado?: boolean;
 }) {
+  // Dentro de la pastilla hereda COLOR Y TAMAÑO: con `text-sm` la respuesta salia mas grande que la de D1.
   const tinta = colorHeredado ? "text-inherit" : "text-foreground";
+  // Sin clase de tamaño se hereda el de la pastilla; un valor arbitrario tipo `text-[length:inherit]` es de
+  // los que Tailwind puede no generar sin avisar.
+  const cuerpo = colorHeredado ? "" : "text-sm";
   if (answerValue == null || answerValue === "") {
     return <span className="text-sm italic text-muted-foreground">Sin responder</span>;
   }
@@ -485,7 +489,7 @@ export function SurveyAnswerReadonly({
         return s && s.text ? `${s.base}: ${s.text}` : s ? s.base : v;
       });
       return (
-        <span className={`text-sm font-semibold ${tinta}`}>{labels.join(", ")}</span>
+        <span className={`${cuerpo} font-semibold ${tinta}`}>{labels.join(", ")}</span>
       );
     }
     // Descompone cada valor guardado igual que el form de edicion: "Otra: penicilina" -> base "Otra" +
@@ -523,5 +527,5 @@ export function SurveyAnswerReadonly({
   }
 
   // contador / escala / numero / texto: el valor tal cual.
-  return <span className={`text-sm font-semibold tabular-nums ${tinta}`}>{answerValue}</span>;
+  return <span className={`${cuerpo} font-semibold tabular-nums ${tinta}`}>{answerValue}</span>;
 }
