@@ -1,4 +1,5 @@
 import type { PatronGrupoView, PatronResolution } from "@/clinical-engine";
+import { COLOR_DE_NIVEL, nivelDeRespuesta, type ValorEncuesta } from "@/clinical-engine/encuesta-colores";
 import type { EvaluationCharacterization, SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
 import { SurveyAnswerReadonly } from "@/modules/evaluations/components/survey-widgets";
 
@@ -163,7 +164,50 @@ function PatronD1({ patron }: { patron: PatronResolution }) {
 // solo LEE lo que el paciente dijo: se muestran SOLO las preguntas respondidas. Sin ninguna (dominio
 // ausente o todo sin responder, solo alcanzable en un diagnostico viejo pre-gate): dice "sin
 // respuestas", no queda en blanco.
-function DomainReadout({ domain }: { domain: SurveyDomain | undefined }) {
+// ═══ D2-D8 EN COLORES (porte del ATLAS_v9, 2026-09-21) ═══
+//
+// Cada respuesta va dentro de una pastilla del color de su nivel, igual que las de D1. El nivel lo decide
+// su clasificador portado (`clinical-engine/encuesta-colores`), no esta pantalla. Y el GRIS no es
+// "normal": es que Atlas registra el dato y no emite juicio sobre el (su guia, verbatim en el modulo).
+function PastillaDeRespuesta({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <span
+      className="inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-bold"
+      style={{ color, background: `${color}18`, borderColor: `${color}33` }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Las respuestas de TODA la encuesta por `field_key`: la actividad fisica se juzga con dos preguntas. */
+function respuestasPorCampo(domains: SurveyDomain[] | null | undefined): Record<string, ValorEncuesta> {
+  const out: Record<string, ValorEncuesta> = {};
+  for (const d of domains ?? []) {
+    for (const q of d.questions) {
+      if (!q.fieldKey || q.answerValue == null) continue;
+      out[q.fieldKey] = q.questionType === "opcion_multiple" ? leerMultiple(q.answerValue) : q.answerValue;
+    }
+  }
+  return out;
+}
+
+function leerMultiple(valor: string): string[] {
+  try {
+    const v: unknown = JSON.parse(valor);
+    return Array.isArray(v) ? v.map(String) : [valor];
+  } catch {
+    return [valor];
+  }
+}
+
+function DomainReadout({
+  domain,
+  encuesta,
+}: {
+  domain: SurveyDomain | undefined;
+  encuesta: Record<string, ValorEncuesta>;
+}) {
   const answered = domain?.questions.filter((q) => q.answerValue != null && q.answerValue !== "") ?? [];
   if (!answered.length) {
     return (
@@ -180,12 +224,21 @@ function DomainReadout({ domain }: { domain: SurveyDomain | undefined }) {
             <span className="tabular-nums">{q.number}.</span> {q.questionText}
           </p>
           <div className="shrink-0 text-right">
-            <SurveyAnswerReadonly
-              questionType={q.questionType}
-              answerValue={q.answerValue}
-              options={q.options}
-              variant="plain"
-            />
+            <PastillaDeRespuesta
+              color={
+                COLOR_DE_NIVEL[
+                  q.fieldKey ? nivelDeRespuesta(q.fieldKey, encuesta[q.fieldKey], encuesta) : "informativo"
+                ]
+              }
+            >
+              <SurveyAnswerReadonly
+                questionType={q.questionType}
+                answerValue={q.answerValue}
+                options={q.options}
+                variant="plain"
+                colorHeredado
+              />
+            </PastillaDeRespuesta>
           </div>
         </div>
       ))}
@@ -258,6 +311,7 @@ export function SurveyDiagnosisSection({
   // ¿El perfil del paciente tiene sociodemograficos? Para el mensaje honesto cuando la evaluacion no los trae.
   profileHasCharacterization?: boolean;
 }) {
+  const encuesta = respuestasPorCampo(surveyDomains);
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
@@ -275,14 +329,14 @@ export function SurveyDiagnosisSection({
             ) : i === 7 ? (
               // D8 lleva ademas el contexto sociodemografico del encuentro (verbatim del v8: al final de D8).
               <div className="flex flex-col gap-4">
-                <DomainReadout domain={surveyDomains?.[i]} />
+                <DomainReadout domain={surveyDomains?.[i]} encuesta={encuesta} />
                 <CharacterizationBlock
                   characterization={characterization}
                   profileHasData={profileHasCharacterization}
                 />
               </div>
             ) : (
-              <DomainReadout domain={surveyDomains?.[i]} />
+              <DomainReadout domain={surveyDomains?.[i]} encuesta={encuesta} />
             )}
           </DetailsSection>
         ))}

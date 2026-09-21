@@ -458,12 +458,19 @@ export function SurveyAnswerReadonly({
   answerValue,
   options,
   variant = "chips",
+  colorHeredado = false,
 }: {
   questionType: string;
   answerValue: string | null;
   options: string[];
   variant?: "chips" | "plain";
+  /**
+   * El texto toma el color de quien lo envuelve en vez del de primer plano. Lo usa la pastilla de color de
+   * D2-D8 (porte del v9), donde el color ES la lectura de la respuesta.
+   */
+  colorHeredado?: boolean;
 }) {
+  const tinta = colorHeredado ? "text-inherit" : "text-foreground";
   if (answerValue == null || answerValue === "") {
     return <span className="text-sm italic text-muted-foreground">Sin responder</span>;
   }
@@ -478,7 +485,7 @@ export function SurveyAnswerReadonly({
         return s && s.text ? `${s.base}: ${s.text}` : s ? s.base : v;
       });
       return (
-        <span className="text-sm font-semibold text-foreground">{labels.join(", ")}</span>
+        <span className={`text-sm font-semibold ${tinta}`}>{labels.join(", ")}</span>
       );
     }
     // Descompone cada valor guardado igual que el form de edicion: "Otra: penicilina" -> base "Otra" +
@@ -516,5 +523,5 @@ export function SurveyAnswerReadonly({
   }
 
   // contador / escala / numero / texto: el valor tal cual.
-  return <span className="text-sm font-semibold tabular-nums text-foreground">{answerValue}</span>;
+  return <span className={`text-sm font-semibold tabular-nums ${tinta}`}>{answerValue}</span>;
 }
