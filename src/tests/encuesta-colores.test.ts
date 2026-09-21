@@ -187,3 +187,19 @@ describe("un solo semáforo en la pantalla de la encuesta", () => {
     }
   });
 });
+
+describe("el tamaño de la pastilla sigue a su contexto", () => {
+  // Santiago: en D2-D8 la pastilla se leía pequeña al lado de la pregunta. Mide lo que la pregunta.
+  const SECCION = readFileSync("src/modules/diagnoses/components/survey-diagnosis-section.tsx", "utf8");
+
+  it("en D2-D8, del tamaño de la pregunta", () => {
+    expect(SECCION).toContain('tamano="respuesta"');
+    expect(SECCION).toContain('"px-2.5 py-0.5 text-sm"');
+  });
+
+  it("en D1, un escalón más que antes, grupo y pastilla juntos", () => {
+    expect(SECCION).toContain('"px-2 py-0.5 text-xs"');
+    expect(SECCION).toContain('<span className="text-sm text-foreground">{g.label}</span>');
+    expect(SECCION).not.toContain("text-[10px]");
+  });
+});
