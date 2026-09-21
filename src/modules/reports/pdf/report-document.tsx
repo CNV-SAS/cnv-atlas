@@ -478,8 +478,8 @@ export function ReportDocument({
                 LO QUE NO SE DICE, y es deliberado: POR QUE ESOS Y NO OTROS. La respuesta honesta nombraria
                 los cuatro clasificadores de los que sale la sugerencia, y §7.1 prohibe el CONCEPTO, no
                 solo la sigla (Gildardo retiro hasta "Sector funcional (FyR)"). Una version en lenguaje
-                llano ("por tu funcion celular") seria el mismo indice con otro nombre. Esa mitad es
-                pregunta para el, no decision nuestra. */}
+                llano ("por tu funcion celular") seria el mismo indice con otro nombre. Santiago decidio
+                (2026-09-21) que la procedencia basta y que no se le pregunta a Gildardo. */}
             <Text style={styles.para}>
               Estos suplementos no son una recomendación general: salen de tu propia medición de esta
               consulta y de lo que tu profesional decidió para ti. Si en el próximo control tus resultados
