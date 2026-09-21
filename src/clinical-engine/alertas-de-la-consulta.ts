@@ -20,6 +20,7 @@
 // PURO: sin app ni BD (regla dura 12). Recibe las respuestas ya leidas.
 
 import { alertasDisponibles, encDesdeRespuestas, type AlertaClinica } from "./alertas-disponibles";
+import { dominioDeCampo } from "./dominios-encuesta";
 import { nivelDeRespuesta, type ValorEncuesta } from "./encuesta-colores";
 
 /** Una respuesta tal como la leen la IA y el SOAP: su campo, su pregunta y lo que el paciente dijo. */
@@ -28,7 +29,7 @@ export type RespuestaConPregunta = { fieldKey: string | null; pregunta: string; 
 /** Una respuesta que su clasificador marca en rojo. */
 export type RespuestaEnRojo = {
   fieldKey: string;
-  /** El dominio de la encuesta (D2..D8), del prefijo del campo. */
+  /** El dominio de la encuesta con su titulo ("D6 · Salud Digestiva"), para agrupar. */
   dominio: string;
   pregunta: string;
   /** Lo que el paciente respondio, tal cual (varias opciones, unidas por coma). */
@@ -69,6 +70,17 @@ function leerValor(v: string | null): ValorEncuesta {
 
 const comoTexto = (v: ValorEncuesta): string => (Array.isArray(v) ? v.join(", ") : v == null ? "" : String(v));
 
+/** Las respuestas en rojo agrupadas por dominio, en el orden de la encuesta. La IA y el SOAP las leen asi. */
+export function rojasPorDominio(rojas: RespuestaEnRojo[]): { dominio: string; respuestas: RespuestaEnRojo[] }[] {
+  const grupos: { dominio: string; respuestas: RespuestaEnRojo[] }[] = [];
+  for (const r of rojas) {
+    const g = grupos.find((x) => x.dominio === r.dominio);
+    if (g) g.respuestas.push(r);
+    else grupos.push({ dominio: r.dominio, respuestas: [r] });
+  }
+  return grupos;
+}
+
 /** Las alertas de una consulta: sus reglas vivas y las respuestas en rojo que no repiten a una regla. */
 export function alertasDeLaConsulta(respuestas: RespuestaConPregunta[]): AlertasDeLaConsulta {
   const reglas = alertasDisponibles(
@@ -90,7 +102,7 @@ export function alertasDeLaConsulta(respuestas: RespuestaConPregunta[]): Alertas
     const original = respuestas.find((x) => x.fieldKey === campo) ?? r;
     respuestasEnRojo.push({
       fieldKey: campo,
-      dominio: campo.slice(0, 2).toUpperCase(),
+      dominio: dominioDeCampo(campo),
       pregunta: original.pregunta,
       // En la fundida van las dos respuestas: "3 · 0 minutos a la semana" dice por que es rojo; una sola no.
       respuesta:

@@ -1,4 +1,4 @@
-import type { HistoriaClinicaSoap } from "../data/reports-view-types";
+import type { AlertasDelSoap, HistoriaClinicaSoap } from "../data/reports-view-types";
 
 // ═══ EL SOAP COMO TEXTO PLANO, PARA COPIAR (Santiago, 2026-09-20) ═══
 //
@@ -70,7 +70,7 @@ export function soapATexto(
 
   const a = nl([
     "A · ANÁLISIS",
-    soap.analisis.alertas,
+    ...alertasEnTexto(soap.analisis.alertas),
     soap.analisis.resumenProfesional,
     soap.analisis.dfiParrafo,
     soap.analisis.metaTerapeutica ? `Meta terapéutica: ${soap.analisis.metaTerapeutica}` : null,
@@ -123,4 +123,19 @@ export function soapATexto(
     : null;
 
   return nl([cabecera, "", s, "", o, "", a, "", p, pie ? "" : null, pie]);
+}
+
+// LAS ALERTAS DE LA A, linea por linea. Vive aqui y no junto a su composicion porque este modulo corre en el
+// NAVEGADOR (el boton de copiar): importar aquel arrastraria el motor de alertas al cliente, y aqui solo
+// hace falta la forma ya compuesta.
+/** Las mismas alertas, como lineas de texto para el portapapeles. */
+function alertasEnTexto(alertas: AlertasDelSoap | null): string[] {
+  if (!alertas) return [];
+  const lineas: string[] = [];
+  if (alertas.reglas) lineas.push(`Alertas de la consulta: ${alertas.reglas}.`);
+  if (alertas.rojas.length) {
+    lineas.push("Respuestas de la encuesta en rojo:");
+    for (const g of alertas.rojas) lineas.push(`  ${g.dominio}: ${g.respuestas.join("; ")}.`);
+  }
+  return lineas;
 }
