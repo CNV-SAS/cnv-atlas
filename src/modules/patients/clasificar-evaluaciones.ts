@@ -23,6 +23,9 @@ export type EvaluacionClasificable = {
   status: string;
   /** Reemplazada por una correccion. Su contenido sigue, pero el vigente es otro. */
   superseded: boolean;
+  /** Para saber cual es la ULTIMA completada. La cronologia clinica es la de la medicion. */
+  measurementDate?: string | null;
+  createdAt?: string;
 };
 
 /**
@@ -40,15 +43,45 @@ export function claseDeEvaluacion(e: EvaluacionClasificable): ClaseDeEvaluacion 
   return "abierta";
 }
 
-/** Las que se ven siempre y las que se pliegan, en el orden en que llegaron. */
+// ═══ LA ULTIMA COMPLETADA SE QUEDA A LA VISTA (Santiago, 2026-09-21) ═══
+//
+// Es la que el profesional busca al empezar la siguiente consulta: el punto de partida contra el que va a
+// comparar. Plegarla le obligaria a abrir el interruptor en CADA consulta de seguimiento, que es
+// justamente el caso de uso de la ficha. Las completadas ANTERIORES si se pliegan: ya no son la
+// referencia, son historia.
+//
+// Solo UNA, y solo una completada de verdad: una reemplazada o una retirada no es punto de partida de
+// nada, y dejar varias a la vista devolveria la ficha al estado que motivo la (L).
+const fechaDe = (e: EvaluacionClasificable): string => e.measurementDate ?? e.createdAt ?? "";
+
+/** La completada mas reciente, o null. */
+export function ultimaCompletada<T extends EvaluacionClasificable>(evaluaciones: T[]): T | null {
+  let ultima: T | null = null;
+  for (const e of evaluaciones) {
+    if (e.status !== "completed" || e.superseded) continue;
+    if (!ultima || fechaDe(e) > fechaDe(ultima)) ultima = e;
+  }
+  return ultima;
+}
+
+/**
+ * Las que se ven siempre y las que se pliegan, en el orden en que llegaron.
+ *
+ * `abiertas` es el trabajo pendiente, y no se pliega NUNCA. `visibles` es lo que la pantalla muestra con
+ * el interruptor apagado: las abiertas mas la ultima completada.
+ */
 export function repartirEvaluaciones<T extends EvaluacionClasificable>(
   evaluaciones: T[],
-): { abiertas: T[]; plegadas: T[] } {
+): { abiertas: T[]; visibles: T[]; plegadas: T[] } {
+  const referencia = ultimaCompletada(evaluaciones);
   const abiertas: T[] = [];
+  const visibles: T[] = [];
   const plegadas: T[] = [];
   for (const e of evaluaciones) {
-    if (claseDeEvaluacion(e) === "abierta") abiertas.push(e);
+    const abierta = claseDeEvaluacion(e) === "abierta";
+    if (abierta) abiertas.push(e);
+    if (abierta || e === referencia) visibles.push(e);
     else plegadas.push(e);
   }
-  return { abiertas, plegadas };
+  return { abiertas, visibles, plegadas };
 }

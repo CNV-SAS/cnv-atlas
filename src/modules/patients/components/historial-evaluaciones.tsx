@@ -8,8 +8,8 @@ import { tabla, td, tdApagado, tdFuerte, tdNum, th, theadTr, thNum, tr } from "@
 import { AbandonEvaluation } from "@/modules/evaluations/components/abandon-evaluation";
 
 import { repartirEvaluaciones } from "../clasificar-evaluaciones";
+import { ChipEstadoEvaluacion } from "./chip-estado-evaluacion";
 import { fechaCorta } from "../format";
-import { estadoEvaluacionLabel } from "../labels";
 import type { PatientEvaluationItem } from "../types";
 
 // ═══ EL HISTORIAL DE EVALUACIONES, SIN LO QUE ESTORBA (observación L) ═══
@@ -44,7 +44,9 @@ function Fila({ e, puedeCerrar }: { e: PatientEvaluationItem; puedeCerrar: boole
       </td>
       {/* Motivo de consulta (caracterizacion del encuentro, multi); "-" si no se dio. */}
       <td className={tdApagado}>{e.reasonForVisit.length ? e.reasonForVisit.join(", ") : "-"}</td>
-      <td className={tdApagado}>{estadoEvaluacionLabel(e.status)}</td>
+      <td className={td}>
+        <ChipEstadoEvaluacion status={e.status} />
+      </td>
       <td className={tdNum}>
         {/* Segun estado: firmada sin responder -> cerrar (si es su profesional); cerrada -> rotulo sin
             accion; el resto -> ver resultados. Un shell no tiene resultados que ver. */}
@@ -77,7 +79,7 @@ export function HistorialEvaluaciones({
   puedeCerrar: boolean;
 }) {
   const [verTodas, setVerTodas] = useState(false);
-  const { abiertas, plegadas } = repartirEvaluaciones(evaluaciones);
+  const { visibles: aLaVista, plegadas } = repartirEvaluaciones(evaluaciones);
 
   if (evaluaciones.length === 0) {
     return (
@@ -87,7 +89,8 @@ export function HistorialEvaluaciones({
     );
   }
 
-  const visibles = verTodas ? evaluaciones : abiertas;
+  // A LA VISTA: lo abierto y la ultima completada (es el punto de partida de la siguiente consulta).
+  const visibles = verTodas ? evaluaciones : aLaVista;
 
   return (
     <div className="flex flex-col gap-3">
