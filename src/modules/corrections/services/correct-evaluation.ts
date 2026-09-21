@@ -34,6 +34,7 @@ import {
   formatIncompleteSurveyMessage,
 } from "@/modules/clinical-pipeline/services/survey-completeness";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
+import { restriccionesDeLaEncuesta } from "@/modules/treatment/services/restricciones-de-la-encuesta";
 
 // Flujo de correccion post-diagnostico, S1 (el motor, sin UI). Ver docs/PLAN_FLUJO_CORRECCION.md.
 // NO edita ni borra nada: crea una VERSION NUEVA de la evaluacion (insumos copiados con la
@@ -453,6 +454,11 @@ export async function correctEvaluation(
           rutasContent,
           protocolSuggested,
           protocolFailMotive,
+          // La version corregida nace como cualquier evaluacion: con lo que el paciente declaro en SU encuesta
+          // (la corregida), precargado. Si la correccion cambio la P43, la precarga lo refleja.
+          restriccionesIniciales: restriccionesDeLaEncuesta(
+            engineAnswers.map((a) => ({ fieldKey: a.fieldKey, valor: a.value })),
+          ),
           surveyVersionId: inputs.surveyVersionId!,
           modelVersionId: model.id,
           indicatorDefIdByCode: model.indicatorDefIdByCode,

@@ -9,6 +9,7 @@ import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditio
 
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
+import { restriccionesDeLaEncuesta } from "@/modules/treatment/services/restricciones-de-la-encuesta";
 import { buildEngineInput } from "./build-engine-input";
 import { formatIncompleteSurveyMessage } from "./survey-completeness";
 
@@ -140,6 +141,11 @@ export async function runClinicalPipeline(
       rutasContent,
       protocolSuggested,
       protocolFailMotive,
+      // LA PRECARGA DE RESTRICCIONES sale de las MISMAS respuestas que alimentan el motor, ya leidas: no
+      // hay una segunda lectura de la encuesta que pudiera ver otra version.
+      restriccionesIniciales: restriccionesDeLaEncuesta(
+        inputs.surveyAnswers.map((a) => ({ fieldKey: a.fieldKey, valor: a.value })),
+      ),
       surveyVersionId: inputs.surveyVersionId,
       modelVersionId: model.id,
       indicatorDefIdByCode: model.indicatorDefIdByCode,

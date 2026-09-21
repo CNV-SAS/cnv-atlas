@@ -16,8 +16,6 @@ import { getTreatmentProtocol } from "../data/treatment-reader";
 import { recordMenuSuggestion, type MenuSuggestionStatus } from "../data/menu-writer";
 import { requireNutricionista } from "./require-profession";
 import { getPrescripcionNutricional, getProtKgPrescrito } from "../data/dieta-resumen-reader";
-import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
-import { patronDeclarado } from "./patron-declarado";
 
 import {
   buildMenuAdaptarPrompt,
@@ -149,12 +147,11 @@ export async function generateMenu(
   const { structural, frSector, dfi } = results.snapshot;
   // Contrato PII-free: solo objetivos y variables clinicas seudonimizadas. El texto de
   // sistema es lo unico parametrizable; el mensaje de usuario se arma dentro de buildMenuPrompt.
-  // PATRON ALIMENTARIO declarado (3.2b de Gildardo del 26): sin esto el generador le propone carne a un
-  // vegano. Es leer un campo de la encuesta, no una tabla de exclusiones (ver patron-declarado).
-  const dominios = await getSurveyAnswersForEvaluation(evaluationId);
-  const patron = patronDeclarado(
-    (dominios ?? []).flatMap((d) => d.questions.map((q) => ({ fieldKey: q.fieldKey, valor: q.answerValue }))),
-  );
+  // EL PATRON ALIMENTARIO YA NO SE LEE AQUI (2026-09-21). Hasta hoy se leia de la encuesta y viajaba
+  // directo al modelo (3.2b de Gildardo del 26-ago). Desde la decision de Gildardo via Santiago, lo que el
+  // paciente declaro en patron, alergias e intolerancias se PRECARGA en el campo de restricciones del
+  // profesional al crear el tratamiento (`restricciones-de-la-encuesta`), y de ahi viaja. UN SOLO CAMINO:
+  // si el profesional lo borra porque en consulta el paciente cambio, no puede seguir llegando por el otro.
 
   // LAS RESTRICCIONES QUE VIAJAN AL MODELO SALEN DEL MOTOR QUE GOBIERNA (Gildardo, respuesta a la ronda
   // del 2026-08-23: "motorTratNutri gobierna la prescripcion nutricional... los 2.300 del otro motor son
@@ -188,7 +185,7 @@ export async function generateMenu(
   // No es un error: es una respuesta. Por eso vuelve `ok` con su propio estado y NO deja fila en
   // ai_menu_suggestions (no hubo intento que dejar en procedencia).
   const hayRestricciones =
-    restriccionesModelo.length > 0 || protocol.restricciones.length > 0 || patron.length > 0;
+    restriccionesModelo.length > 0 || protocol.restricciones.length > 0;
   if (!hayRestricciones) return ok({ status: "sin_restricciones" as const });
 
   // LA SEMANA QUE SE ADAPTA ES LA QUE EL PROFESIONAL TIENE DELANTE, no una recien sacada del ciclo: si
@@ -211,7 +208,10 @@ export async function generateMenu(
       fenotipoEstructural: structural.nombre,
       sectorFuncional: frSector.nombre,
       rutasAtencion: dfi.rutas,
-      patronAlimentario: patron,
+      // Vacio a proposito: el patron viaja dentro de las restricciones del profesional (ver arriba). El
+      // contrato v4 conserva el campo y no pinta su bloque cuando llega vacio, asi que el texto del prompt
+      // no cambia y no hace falta subir de version.
+      patronAlimentario: [],
       base,
     },
     activePrompt?.content,
@@ -242,7 +242,6 @@ export async function generateMenu(
     const todasLasRestricciones = [
       ...restriccionesModelo.map((r) => r.nombre),
       ...protocol.restricciones,
-      ...patron,
     ];
     const menuJson = parsed
       ? {

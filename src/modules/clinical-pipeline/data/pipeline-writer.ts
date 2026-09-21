@@ -69,6 +69,12 @@ export type PipelineWriteInput = {
   // Motivo del fallo del protocolo (nivel motor, sin PII), o null si se computo bien. Si no es null,
   // se registra protocol.compute_failed INLINE (regla 8) para que un fallo sistematico sea buscable.
   protocolFailMotive: string | null;
+  /**
+   * Lo que el paciente declaro en patron alimentario, alergias e intolerancias, PRECARGADO en el campo de
+   * restricciones del profesional (Gildardo via Santiago, 2026-09-21). Se escribe UNA vez, aqui, al nacer
+   * el tratamiento: despues el campo es del profesional y nada lo vuelve a llenar. [] si no declaro nada.
+   */
+  restriccionesIniciales: string[];
   surveyVersionId: string;
   modelVersionId: string;
   indicatorDefIdByCode: Record<string, string>;
@@ -208,6 +214,7 @@ export async function writePipeline(
         diagnosisId: diagnosis.id,
         createdBy: input.actorId,
         protocolSuggested: input.protocolSuggested,
+        restricciones: input.restriccionesIniciales,
       })
       .returning({ id: treatments.id });
     if (output.resumenClinico) {
@@ -222,7 +229,13 @@ export async function writePipeline(
       actorEmail: input.actorEmail,
       entityType: "treatment",
       entityId: treatment.id,
-      payload: { diagnosis_id: diagnosis.id, protocol_sealed: input.protocolSuggested != null },
+      // Cuantas se precargaron, no CUALES: una alergia es dato de salud y el audit no la necesita para
+      // reconstruir que el campo nacio lleno.
+      payload: {
+        diagnosis_id: diagnosis.id,
+        protocol_sealed: input.protocolSuggested != null,
+        restricciones_precargadas: input.restriccionesIniciales.length,
+      },
       ip: input.ip,
     });
     // Si el orquestador no produjo protocolo, se sello null; se deja rastro BUSCABLE inline (regla 8)

@@ -173,14 +173,12 @@ async function Panel({
   evaluationId,
   protocol,
   narrative,
-  patronAlimentario,
   prescripcion,
   asesoria,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol | null;
   narrative: TreatmentNarrative;
-  patronAlimentario: string[];
   prescripcion: PrescripcionNutricional | null;
   /**
    * Los rangos que su ciencia SUGIERE para proteina y grasa segun el diagnostico del paciente, para
@@ -230,7 +228,6 @@ async function Panel({
       <TreatmentPanel
         evaluationId={evaluationId}
         protocol={protocol}
-        patronAlimentario={patronAlimentario}
         prescripcion={prescripcion}
         asesoria={asesoria}
       />
@@ -431,7 +428,6 @@ export function ProfessionTreatmentSection({
   abordaje,
   rutas,
   narrative,
-  patronAlimentario,
   prescripcion,
   asesoria,
   planImprimible,
@@ -444,9 +440,6 @@ export function ProfessionTreatmentSection({
   rutas: RutaContent[];
   // Resumen funcional + meta del DFI, computados en la pagina. Solo lo consume el panel del Nutricionista.
   narrative: TreatmentNarrative;
-  // Patron alimentario DECLARADO por el paciente (d4_34), leido en la pagina. Baja hasta la seccion de
-  // adaptacion del menu: es una de las tres fuentes de restriccion que deciden si la IA entra.
-  patronAlimentario: string[];
   prescripcion: PrescripcionNutricional | null;
   /**
    * Los rangos que su ciencia SUGIERE para proteina y grasa segun el diagnostico del paciente, para
@@ -509,7 +502,6 @@ export function ProfessionTreatmentSection({
         evaluationId={evaluationId}
         protocol={protocol}
         narrative={narrative}
-        patronAlimentario={patronAlimentario}
         prescripcion={prescripcion}
         asesoria={asesoria}
       />
