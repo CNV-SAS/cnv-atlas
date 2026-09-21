@@ -91,6 +91,23 @@ function CategoryCards({ grupos }: { grupos: PatronGrupoView[] }) {
   );
 }
 
+// ═══ UNA SOLA PASTILLA PARA D1 Y PARA D2-D8 (Santiago, 2026-09-21) ═══
+//
+// Los HEX ya eran los mismos (los de su archivo: #059669, #d97706, #dc2626), pero la forma no: D1 iba en
+// 10 px con fondo al 12% y sin borde, y D2-D8 en 11 px con fondo al 9% y borde. Visto de pie, el verde
+// de una pestaña y el de la otra no parecian el mismo verde, y un semaforo con dos verdes en la misma
+// pantalla se lee como dos significados. La forma es la de D1, que es la que el enseña.
+function PastillaDeColor({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <span
+      className="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold"
+      style={{ color, background: `${color}1f` }}
+    >
+      {children}
+    </span>
+  );
+}
+
 // Grilla de los 15 grupos con su frecuencia (v8 L13847-13859, verbatim en logica de color).
 function GrupoGrid({ grupos }: { grupos: PatronGrupoView[] }) {
   return (
@@ -107,9 +124,7 @@ function GrupoGrid({ grupos }: { grupos: PatronGrupoView[] }) {
         return (
           <div key={g.n} className="flex items-center justify-between rounded-lg border px-2 py-1" style={{ borderColor: col + "22", background: col + "0d" }}>
             <span className="text-xs text-foreground">{g.label}</span>
-            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ color: col, background: col + "1f" }}>
-              {v !== null ? FREQ_LABELS[v] : "-"}
-            </span>
+            <PastillaDeColor color={col}>{v !== null ? FREQ_LABELS[v] : "-"}</PastillaDeColor>
           </div>
         );
       })}
@@ -169,16 +184,7 @@ function PatronD1({ patron }: { patron: PatronResolution }) {
 // Cada respuesta va dentro de una pastilla del color de su nivel, igual que las de D1. El nivel lo decide
 // su clasificador portado (`clinical-engine/encuesta-colores`), no esta pantalla. Y el GRIS no es
 // "normal": es que Atlas registra el dato y no emite juicio sobre el (su guia, verbatim en el modulo).
-function PastillaDeRespuesta({ color, children }: { color: string; children: React.ReactNode }) {
-  return (
-    <span
-      className="inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-bold"
-      style={{ color, background: `${color}18`, borderColor: `${color}33` }}
-    >
-      {children}
-    </span>
-  );
-}
+// La pastilla es `PastillaDeColor`, la misma de D1.
 
 /** Las respuestas de TODA la encuesta por `field_key`: la actividad fisica se juzga con dos preguntas. */
 function respuestasPorCampo(domains: SurveyDomain[] | null | undefined): Record<string, ValorEncuesta> {
@@ -224,7 +230,7 @@ function DomainReadout({
             <span className="tabular-nums">{q.number}.</span> {q.questionText}
           </p>
           <div className="shrink-0 text-right">
-            <PastillaDeRespuesta
+            <PastillaDeColor
               color={
                 COLOR_DE_NIVEL[
                   q.fieldKey ? nivelDeRespuesta(q.fieldKey, encuesta[q.fieldKey], encuesta) : "informativo"
@@ -238,7 +244,7 @@ function DomainReadout({
                 variant="plain"
                 colorHeredado
               />
-            </PastillaDeRespuesta>
+            </PastillaDeColor>
           </div>
         </div>
       ))}
