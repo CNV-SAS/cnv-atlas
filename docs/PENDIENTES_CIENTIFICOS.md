@@ -689,3 +689,21 @@ se pone verbatim; no lo cambiamos por nuestra cuenta.
 sostenido 2 controles»*. Son cortes únicos, sin sexo. Para una mujer, tu corte superior del IFC es 3,28:
 con ese criterio **no sale nunca** de la ruta, aunque su función celular sea óptima. ¿Es a propósito, o se
 quedó con los cortes viejos?
+
+---
+
+## Nueva (2026-09-21) · Te declaramos una regla que le pusimos a tu prompt del resumen de IA
+
+**No pide respuesta, salvo que no estés de acuerdo.** Tu estructura pide *"redactar clínicamente conectando
+causas entre dominios"*, y eso se conserva tal cual. En la prueba con un paciente cargado de alertas, el
+modelo usó esa instrucción para escribir cosas que ningún dato respalda: *"falta de nutrientes esenciales"*,
+*"deterioro celular"*, *"exposición crónica a factores de riesgo"*.
+
+**Le añadimos el límite:** cada causa y cada efecto que conecte tienen que estar en los datos que se le dan,
+y tampoco puede introducirlos como hipótesis ("sugiere", "podría", "a largo plazo"). Es la misma familia
+que la regla del laboratorio que ya te declaramos: *todo lo que escriba tiene que poder señalarse en los
+datos*. Si prefieres otra redacción, se cambia en una línea.
+
+**Y dos precisiones de lectura,** que son tuyas y el modelo no respetó: una PABU por debajo de φ se lee como
+exceso de adiposidad (la describió como "sobrecarga estructural"), y las respuestas en rojo se mencionan
+todas y solo esas.
