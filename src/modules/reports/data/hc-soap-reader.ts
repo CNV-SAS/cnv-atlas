@@ -5,6 +5,8 @@ import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey
 import { getHistoriaClinicaDoc } from "./hc-documento-reader";
 import { lineaDeReemplazo, observacionesVigentes } from "./observaciones-vigentes";
 import { redactarEncuesta } from "../services/encuesta-redactada";
+import { alertasDeLaConsulta } from "@/clinical-engine/alertas-de-la-consulta";
+import { lineaDeAlertas } from "../services/alertas-en-el-soap";
 import type { HistoriaClinicaSoap } from "./reports-view-types";
 
 // ═══ LA HISTORIA CLINICA EN FORMATO SOAP (plan aprobado, 2026-09-20) ═══
@@ -21,7 +23,8 @@ import type { HistoriaClinicaSoap } from "./reports-view-types";
 // `getHistoriaClinicaDoc` (los catorce bloques) y desde el lector de respuestas. Dos formas de armar el
 // mismo insumo es como se termina con dos verdades sobre la misma consulta.
 //
-// LO QUE NO LLEVA: alertas, semaforo ni cruces entre respuestas. Es la mitad que espera a Gildardo.
+// LAS ALERTAS VAN EN LA A (observacion g, 2026-09-21), como primera linea, de la MISMA fuente que el
+// resumen de IA. La S sigue sin semaforo: es lo que el paciente respondio, y la alerta es su lectura.
 
 export async function getHistoriaClinicaSoap(evaluationId: string): Promise<HistoriaClinicaSoap | null> {
   const [hc, domains] = await Promise.all([
@@ -59,6 +62,13 @@ export async function getHistoriaClinicaSoap(evaluationId: string): Promise<Hist
     // quien firma, y el del modelo es su respaldo. En la historia de Gildardo el orden es el contrario
     // porque alli manda el origen del dato.
     analisis: {
+      alertas: lineaDeAlertas(
+        alertasDeLaConsulta(
+          (domains ?? []).flatMap((d) =>
+            d.questions.map((q) => ({ fieldKey: q.fieldKey, pregunta: q.questionText, valor: q.answerValue })),
+          ),
+        ),
+      ),
       resumenProfesional: hc.resumenProfesional,
       dfiParrafo: hc.dfiParrafo,
       metaTerapeutica: hc.metaTerapeutica,

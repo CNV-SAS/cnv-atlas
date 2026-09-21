@@ -1,4 +1,4 @@
-import { alertasDisponibles, encDesdeRespuestas } from "@/clinical-engine/alertas-disponibles";
+import { alertasDeLaConsulta } from "@/clinical-engine/alertas-de-la-consulta";
 import "server-only";
 
 import { isEngineOutput, type EngineOutput } from "@/clinical-engine";
@@ -168,6 +168,8 @@ export async function buildCriterionInput(
       };
     });
 
+  const consulta = alertasDeLaConsulta(encuesta);
+
   return {
     sexo: snap.sexo === "M" ? "Masculino" : "Femenino",
     ...contexto,
@@ -191,9 +193,15 @@ export async function buildCriterionInput(
     // LAS MISMAS QUE VE EL PROFESIONAL EN PANTALLA, por la misma funcion y sobre las mismas respuestas.
     // Si aqui se filtrara o se calculara distinto, el resumen hablaria de alertas que la pantalla no
     // muestra (o al reves), que es la peor forma de perder la confianza en las dos.
-    alertas: alertasDisponibles(
-      encDesdeRespuestas(encuesta.map((r) => ({ fieldKey: r.fieldKey, answerValue: r.valor }))),
-    ).map((a) => ({ nivel: a.niv, titulo: a.t, dominio: a.dom })),
+    // v5: UNA SOLA FUENTE para la IA y el SOAP (`alertasDeLaConsulta`): sus reglas vivas y las respuestas
+    // en rojo que no repiten a una regla. Si cada superficie armara su lista, el resumen podria nombrar lo
+    // que la historia no tiene.
+    alertas: consulta.reglas.map((a) => ({ nivel: a.niv, titulo: a.t, dominio: a.dom })),
+    respuestasEnRojo: consulta.respuestasEnRojo.map((r) => ({
+      dominio: r.dominio,
+      pregunta: r.pregunta,
+      respuesta: r.respuesta,
+    })),
     composicion: filasComposicion,
     estadoEfr: efr?.diagnosisName ?? snap.efrPhenotype.diagnostico,
     fenotipoEstructural: snap.structural.nombre,

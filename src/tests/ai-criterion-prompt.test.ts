@@ -47,6 +47,8 @@ const input: CriterionPromptInput = {
     { nivel: "crítico", titulo: "Riesgo glucémico crítico", dominio: "D1+D5" },
     { nivel: "moderado", titulo: "Estrés alto + azúcares elevados", dominio: "D3+D1" },
   ],
+  // v5: vacías por defecto; los casos que las usan las ponen ellos.
+  respuestasEnRojo: [],
   edad: 61,
   ocupacion: "Docente",
   estadoCivil: "Separado",
@@ -267,21 +269,21 @@ describe("el porte del paso 4 llega entero", () => {
   });
 });
 
-describe("el texto de sistema canónico es el v4", () => {
+describe("el texto de sistema canónico es el v5", () => {
   it("y el seed publica esa misma versión", () => {
     // Los dos canales del prompt: el JSON que consume la app y la version que el seed (y su migracion)
     // publican. Si divergen, local y nube corren textos distintos sin que nada de error.
     const modulo = readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.ts", "utf8");
-    expect(modulo).toContain("criterion.system.v4.json");
+    expect(modulo).toContain("criterion.system.v5.json");
     const seed = readFileSync("supabase/seed.ts", "utf8");
-    expect(seed).toContain("criterion.system.v4.json");
-    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 4 },');
+    expect(seed).toContain("criterion.system.v5.json");
+    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 5 },');
   });
 
   it("y las versiones anteriores NO se borran", () => {
     // Los borradores ya generados apuntan a su version en la procedencia. Borrar el texto deja registros
     // que dicen "generado con la v3" sin que exista la v3. Misma disciplina que las versiones de motor.
-    for (const v of ["v1", "v2", "v3"]) {
+    for (const v of ["v1", "v2", "v3", "v4"]) {
       expect(
         existsSync(`src/modules/diagnoses/ai/prompts/criterion.system.${v}.json`),
         `se borró el texto de la ${v}`,
@@ -345,7 +347,42 @@ describe("las alertas clínicas viajan al resumen (v4, instrucción de Gildardo 
     // Dos fuentes del mismo dato sin nada que las compare es como el resumen acaba hablando de una alerta
     // que la pantalla no muestra. Aquí no hay dos: hay una función y dos sitios de llamada.
     const reader = readFileSync("src/modules/diagnoses/data/criterion-input-reader.ts", "utf8");
-    expect(reader).toContain("alertasDisponibles(");
-    expect(reader).toContain("encDesdeRespuestas(");
+    // Desde la v5 la función es `alertasDeLaConsulta`, que envuelve a `alertasDisponibles` y es la misma
+    // que usa el SOAP.
+    expect(reader).toContain("alertasDeLaConsulta(");
+  });
+});
+
+describe("las respuestas en rojo viajan en el mismo párrafo (v5, observación g)", () => {
+  const armar = (i: CriterionPromptInput) =>
+    buildCriterionPrompt(i)
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .join("\n");
+
+  it("van dentro del bloque de alertas, rotuladas aparte y sin nivel", () => {
+    const texto = armar({
+      ...input,
+      respuestasEnRojo: [{ dominio: "D3", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" }],
+    });
+    expect(texto).toContain("Respuestas de la encuesta en rojo (lo que el paciente respondió):");
+    expect(texto).toContain("¿Cuántas horas duerme por noche?: Menos de 5h (D3)");
+    // Sin corchetes de nivel: el grado es de las reglas, no de la respuesta.
+    expect(texto).not.toContain("] ¿Cuántas horas duerme");
+  });
+
+  it("con solo respuestas en rojo y ninguna regla, el párrafo se escribe", () => {
+    const texto = armar({
+      ...input,
+      alertas: [],
+      respuestasEnRojo: [{ dominio: "D7", pregunta: "¿Color de su orina habitualmente?", respuesta: "Oscuro" }],
+    });
+    expect(texto).toContain("ALERTAS CLÍNICAS DE LA ENCUESTA (menciónalas");
+    expect(texto).not.toContain("ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna");
+  });
+
+  it("y el sistema le prohíbe marcar en rojo por su cuenta y ponerles nivel", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("LAS RESPUESTAS EN ROJO SON SOLO LAS QUE TE DOY");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("no la presentes como crítica ni como alta");
   });
 });

@@ -279,6 +279,9 @@ export function HistoriaClinicaSoapDoc({
       </Apartado>
 
       <Apartado letra="A" titulo="Análisis">
+        {/* LAS ALERTAS ABREN LA A (observacion g): son la lectura de lo que el paciente respondio en la S.
+            Misma linea que el texto copiado, compuesta en un solo sitio (`alertas-en-el-soap`). */}
+        {soap.analisis.alertas ? <p className="font-medium">{soap.analisis.alertas}</p> : null}
         {/* EL DEL PROFESIONAL VA PRIMERO: en un SOAP el analisis es de quien firma, y el del modelo es su
             respaldo. En la historia de Gildardo el orden es el contrario, y ahi tambien es correcto. */}
         {soap.analisis.resumenProfesional ? <p>{soap.analisis.resumenProfesional}</p> : null}
