@@ -107,5 +107,7 @@ e tocará letra blanca.
   'riesgo celular') sería el mismo índice con otro nombre.
 - **La explicación de los nutracéuticos, partida en dos.** Lo que se puso: de dónde salen (de su medición de
   esta consulta, y pueden cambiar en el próximo control), que es verdad literal y no nombra nada del modelo.
-  Lo que **espera a Gildardo**: por qué esos y no otros, porque la respuesta honesta nombraría los cuatro
-  clasificadores de los que sale `getDX`.
+  Lo que **no se dice**: por qué esos y no otros, porque la respuesta honesta nombraría los cuatro
+  clasificadores de los que sale `getDX`. **Santiago decidió (2026-09-21) que se queda así y no se le
+  pregunta a Gildardo:** la procedencia basta. Se renombró "Lo que sugiere el modelo" a "Nutracéuticos
+  recomendados".
