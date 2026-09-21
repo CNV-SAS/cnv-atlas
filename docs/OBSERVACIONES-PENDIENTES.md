@@ -18,9 +18,10 @@ Pago seguro procesado por Wompi."
 La idea entonces, es quitar el logo de Atlas y poner en texto el nombre de la empresa CONNECTED NUTRITION VENTURES S.A.S. con el NIT: 902045562-3 y el logo de la marca VITACELLEBIS que ya lo puse en la carpeta de donde está el logo de Atlas y es vitacellebis.png
 
 k. **CERRADA** Cambios de presentación en la encuesta: Lo primero, es en las preguntas que tienen contadores como las bebidas, la idea es en vez de guion poner un signo de interrogacion, ya que el guion lo confuden con 0 y casi siempre lo dejan asi en guión. Entonces se me ocurre poner signo de interrogación (por default). O que piensas? hay otra estrategia? Lo segundo, es mejorar la redacción de la pregunta: "32. ¿Cuántas comidas hace al día?" Ya que la gente se confunde y piensa que cuantas comida prepara en el dia (por la palabra hace). Cuando en realidad la encuesta se refiere a cuantas comidas se come. Es muy chistoso, pero es una mejora oportuna. Ya que hay personas que se toman las cosas muy literal.
-L. Hay forma de eliminar las evaluaciones ya cerradas? es que parecen molestas que sigan en el historial.
+L. **CERRADA** Hay forma de eliminar las evaluaciones ya cerradas? es que parecen molestas que sigan en el historial.
 M. Resumen del diagnostico en rutas de atención. Va tambien para reporte/hc. (esto queda en espera de verificación con Gildardo ya que no le entendí que queria decir).
 N. **CERRADA** Cambiarle el color a los encabezados de las tablas que tienen por ejemplo: "Nivel V · Cuerpo entero" hoy está en un azul gris claro, pero quiero intentar a ver como se ven con el mismo azul electrico de Atlas. Me imagino qu
+O. Poder exportar pacientes del html e importarlos a atlas web sin importar que hayan diferencias de preguntas y calculos, es decir, que solo importariamos a Atlas las respuestas de la encuesta, observaciones, notas, y revisar que mas podemos importar para que los pacientes que ya han trabajado mucho con el html, no pierdan sus pacientes al momento de migrar a Atlas web.
 ---
 
 # REPARTO (Claude, 2026-09-19)
