@@ -1,4 +1,4 @@
-import promptV5 from "./criterion.system.v5.json";
+import promptV6 from "./criterion.system.v6.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -60,4 +60,15 @@ import promptV5 from "./criterion.system.v5.json";
 // la misma que usa el SOAP.
 //
 // LA V4 NO SE RETIRA: los resumenes generados con ella apuntan a esa version en su procedencia.
-export const CRITERION_SYSTEM_PROMPT: string = promptV5.system;
+// V6 (2026-09-21, la prueba de Santiago con un paciente cargado de alertas). Tres defectos de la v5:
+//   1. INVENTABA CAUSAS ("falta de nutrientes esenciales", "deterioro celular"). Su estructura pide
+//      conectar causas entre dominios, y eso se conserva; lo que faltaba es que cada causa y cada efecto
+//      esten en los datos. La regla es nuestra, como la del laboratorio, y va declarada a Gildardo.
+//   2. METIA EN ROJO LO QUE NO LO ESTABA ("medicamentos antihipertensivos", ambar en su clasificador, que
+//      el modelo tomo de los datos crudos). Se le prohibe presentar como rojo lo que no esta en el bloque.
+//   3. OMITIA respuestas en rojo (los siete sintomas digestivos). Ahora debe mencionarlas TODAS, y le
+//      llegan agrupadas por dominio para que pueda nombrarlas asi.
+// Y dos precisiones: la PABU por debajo de phi (la leyo como "sobrecarga estructural") y la concordancia.
+//
+// LA V5 NO SE RETIRA: los resumenes generados con ella apuntan a esa version.
+export const CRITERION_SYSTEM_PROMPT: string = promptV6.system;

@@ -250,6 +250,14 @@ export type InformeDelPaciente = {
 // SE DECLARA CON LOS TIPOS DE LA HC, no con copias: si un bloque de la historia cambia de forma, el SOAP
 // no puede quedarse con la forma vieja sin que tsc lo diga.
 
+/** Lo que la A del SOAP muestra de las alertas. Compuesto en `alertas-en-el-soap`, un solo sitio. */
+export type AlertasDelSoap = {
+  /** "TCA activo detectado (crítico); ...", o null si no se disparo ninguna regla. */
+  reglas: string | null;
+  /** Por dominio, cada respuesta como "pregunta: respuesta". Vacio si no hay ninguna en rojo. */
+  rojas: { dominio: string; respuestas: string[] }[];
+};
+
 export type HistoriaClinicaSoap = {
   paciente: string;
   edad: number | null;
@@ -269,8 +277,11 @@ export type HistoriaClinicaSoap = {
     indices: HcIndiceDoc[];
   };
   analisis: {
-    /** Primera linea de la A: alertas de sus reglas y respuestas en rojo (observacion g). null = ninguna. */
-    alertas: string | null;
+    /**
+     * Lo primero de la A (observacion g): las alertas de sus reglas en una linea y las respuestas en rojo
+     * agrupadas por dominio. null = la consulta no tiene ninguna.
+     */
+    alertas: AlertasDelSoap | null;
     resumenProfesional: string | null;
     dfiParrafo: string | null;
     metaTerapeutica: string | null;

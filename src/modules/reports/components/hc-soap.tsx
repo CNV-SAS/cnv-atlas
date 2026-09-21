@@ -281,7 +281,28 @@ export function HistoriaClinicaSoapDoc({
       <Apartado letra="A" titulo="Análisis">
         {/* LAS ALERTAS ABREN LA A (observacion g): son la lectura de lo que el paciente respondio en la S.
             Misma linea que el texto copiado, compuesta en un solo sitio (`alertas-en-el-soap`). */}
-        {soap.analisis.alertas ? <p className="font-medium">{soap.analisis.alertas}</p> : null}
+        {soap.analisis.alertas ? (
+          // AGRUPADAS POR DOMINIO: en una sola linea eran casi quince respuestas seguidas, y no se leian.
+          <div className="flex flex-col gap-1.5">
+            {soap.analisis.alertas.reglas ? (
+              <p>
+                <span className="font-semibold">Alertas de la consulta:</span> {soap.analisis.alertas.reglas}.
+              </p>
+            ) : null}
+            {soap.analisis.alertas.rojas.length ? (
+              <div className="flex flex-col gap-1">
+                <p className="font-semibold">Respuestas de la encuesta en rojo:</p>
+                <ul className="flex flex-col gap-1 pl-4">
+                  {soap.analisis.alertas.rojas.map((g) => (
+                    <li key={g.dominio} className="list-disc">
+                      <span className="font-medium">{g.dominio}:</span> {g.respuestas.join("; ")}.
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {/* EL DEL PROFESIONAL VA PRIMERO: en un SOAP el analisis es de quien firma, y el del modelo es su
             respaldo. En la historia de Gildardo el orden es el contrario, y ahi tambien es correcto. */}
         {soap.analisis.resumenProfesional ? <p>{soap.analisis.resumenProfesional}</p> : null}

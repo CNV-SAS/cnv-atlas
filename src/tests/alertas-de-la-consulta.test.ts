@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { alertasDeLaConsulta, type RespuestaConPregunta } from "@/clinical-engine/alertas-de-la-consulta";
-import { lineaDeAlertas } from "@/modules/reports/services/alertas-en-el-soap";
+import { alertasParaElSoap } from "@/modules/reports/services/alertas-en-el-soap";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
@@ -25,7 +25,7 @@ describe("qué entra", () => {
   it("una respuesta en rojo entra, con su pregunta y lo que respondió", () => {
     const { respuestasEnRojo } = alertasDeLaConsulta([SUENO_ROJO]);
     expect(respuestasEnRojo).toEqual([
-      { fieldKey: "d3_26", dominio: "D3", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" },
+      { fieldKey: "d3_26", dominio: "D3 · Hábitos de Vida", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" },
     ]);
   });
 
@@ -58,31 +58,39 @@ describe("sin duplicados", () => {
   });
 });
 
-describe("la línea de la A del SOAP", () => {
-  it("abre con las alertas ordenadas por nivel y sigue con las respuestas en rojo", () => {
-    const linea = lineaDeAlertas({
-      reglas: [
-        { niv: "moderado", ico: "", t: "Estrés alto + azúcares elevados", txt: "Patrón de alimentación emocional probable.", dom: "D3+D1" },
-        { niv: "crítico", ico: "", t: "TCA activo detectado", txt: "Derivación urgente a psicología/psiquiatría.", dom: "D2" },
-      ],
-      respuestasEnRojo: [{ fieldKey: "d3_26", dominio: "D3", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" }],
-    });
-    expect(linea).toBe(
-      "Alertas de la consulta: TCA activo detectado (crítico); Estrés alto + azúcares elevados (moderado). " +
-        "Respuestas de la encuesta en rojo: cuántas horas duerme por noche: Menos de 5h.",
+describe("lo primero de la A del SOAP", () => {
+  const reglas = [
+    { niv: "moderado" as const, ico: "", t: "Estrés alto + azúcares elevados", txt: "Patrón de alimentación emocional probable.", dom: "D3+D1" },
+    { niv: "crítico" as const, ico: "", t: "TCA activo detectado", txt: "Derivación urgente a psicología/psiquiatría.", dom: "D2" },
+  ];
+
+  it("las alertas en una línea, ordenadas por nivel", () => {
+    expect(alertasParaElSoap({ reglas, respuestasEnRojo: [] })?.reglas).toBe(
+      "TCA activo detectado (crítico); Estrés alto + azúcares elevados (moderado)",
     );
   });
 
-  it("NUNCA lleva la conducta de la alerta: eso lo decide quien firma", () => {
-    const linea = lineaDeAlertas({
-      reglas: [{ niv: "crítico", ico: "", t: "TCA activo detectado", txt: "Derivación urgente a psicología/psiquiatría.", dom: "D2" }],
-      respuestasEnRojo: [],
+  it("y las respuestas en rojo AGRUPADAS POR DOMINIO: casi quince seguidas no se leían", () => {
+    const soap = alertasParaElSoap({
+      reglas: [],
+      respuestasEnRojo: alertasDeLaConsulta([
+        p("d6_45", "Hinchazón abdominal", "Siempre"),
+        p("d3_26", "¿Cuántas horas duerme por noche?", "Menos de 5h"),
+        p("d6_46", "Gases / flatulencia", "Siempre"),
+      ]).respuestasEnRojo,
     });
-    expect(linea).not.toContain("Derivación");
+    expect(soap?.rojas).toEqual([
+      { dominio: "D6 · Salud Digestiva", respuestas: ["hinchazón abdominal: Siempre", "gases / flatulencia: Siempre"] },
+      { dominio: "D3 · Hábitos de Vida", respuestas: ["cuántas horas duerme por noche: Menos de 5h"] },
+    ]);
   });
 
-  it("sin nada que decir, no hay línea", () => {
-    expect(lineaDeAlertas({ reglas: [], respuestasEnRojo: [] })).toBeNull();
+  it("NUNCA lleva la conducta de la alerta: eso lo decide quien firma", () => {
+    expect(JSON.stringify(alertasParaElSoap({ reglas, respuestasEnRojo: [] }))).not.toContain("Derivación");
+  });
+
+  it("sin nada que decir, no hay bloque", () => {
+    expect(alertasParaElSoap({ reglas: [], respuestasEnRojo: [] })).toBeNull();
   });
 });
 
@@ -103,7 +111,9 @@ describe("una sola fuente para la IA y el SOAP", () => {
   it("la pantalla y el texto copiado imprimen la misma línea", () => {
     const PANTALLA = readFileSync("src/modules/reports/components/hc-soap.tsx", "utf8");
     const COPIA = readFileSync("src/modules/reports/services/soap-a-texto.ts", "utf8");
-    expect(PANTALLA).toContain("soap.analisis.alertas");
-    expect(COPIA).toContain("soap.analisis.alertas");
+    expect(PANTALLA).toContain("soap.analisis.alertas.rojas.map(");
+    expect(COPIA).toContain("alertasEnTexto(soap.analisis.alertas)");
+    // Y la copia no arrastra el motor al navegador: el boton de copiar corre en el cliente.
+    expect(COPIA).not.toContain("clinical-engine");
   });
 });

@@ -1065,6 +1065,13 @@
       "when": 1791951326100,
       "tag": "0151_prompt_criterio_v5",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1791951326101,
+      "tag": "0152_prompt_criterio_v6",
+      "breakpoints": true
     }
   ]
 }

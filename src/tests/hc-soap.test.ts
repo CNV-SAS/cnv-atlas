@@ -124,6 +124,31 @@ describe("el texto que se copia dice lo mismo que la pantalla", () => {
 
   const texto = soapATexto(soap, "20/09/2026");
 
+  it("las alertas de la A salen agrupadas por dominio, una línea por dominio", () => {
+    const conAlertas = soapATexto(
+      {
+        ...soap,
+        analisis: {
+          ...soap.analisis,
+          alertas: {
+            reglas: "TCA activo detectado (crítico)",
+            rojas: [
+              { dominio: "D6 · Salud Digestiva", respuestas: ["hinchazón abdominal: Siempre", "gases / flatulencia: Siempre"] },
+              { dominio: "D3 · Hábitos de Vida", respuestas: ["cuántas horas duerme por noche: Menos de 5h"] },
+            ],
+          },
+        },
+      },
+      "20/09/2026",
+    );
+    const a = conAlertas.slice(conAlertas.indexOf("A · ANÁLISIS"));
+    expect(a).toContain(
+      "A · ANÁLISIS\nAlertas de la consulta: TCA activo detectado (crítico).\nRespuestas de la encuesta en rojo:",
+    );
+    expect(a).toContain("  D6 · Salud Digestiva: hinchazón abdominal: Siempre; gases / flatulencia: Siempre.");
+    expect(a).toContain("  D3 · Hábitos de Vida: cuántas horas duerme por noche: Menos de 5h.");
+  });
+
   it("lleva los cuatro apartados, rotulados", () => {
     for (const apartado of ["S · SUBJETIVO", "O · OBJETIVO", "A · ANÁLISIS", "P · PLAN"]) {
       expect(texto).toContain(apartado);

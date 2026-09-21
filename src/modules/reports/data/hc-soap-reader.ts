@@ -6,7 +6,7 @@ import { getHistoriaClinicaDoc } from "./hc-documento-reader";
 import { lineaDeReemplazo, observacionesVigentes } from "./observaciones-vigentes";
 import { redactarEncuesta } from "../services/encuesta-redactada";
 import { alertasDeLaConsulta } from "@/clinical-engine/alertas-de-la-consulta";
-import { lineaDeAlertas } from "../services/alertas-en-el-soap";
+import { alertasParaElSoap } from "../services/alertas-en-el-soap";
 import type { HistoriaClinicaSoap } from "./reports-view-types";
 
 // ═══ LA HISTORIA CLINICA EN FORMATO SOAP (plan aprobado, 2026-09-20) ═══
@@ -62,7 +62,7 @@ export async function getHistoriaClinicaSoap(evaluationId: string): Promise<Hist
     // quien firma, y el del modelo es su respaldo. En la historia de Gildardo el orden es el contrario
     // porque alli manda el origen del dato.
     analisis: {
-      alertas: lineaDeAlertas(
+      alertas: alertasParaElSoap(
         alertasDeLaConsulta(
           (domains ?? []).flatMap((d) =>
             d.questions.map((q) => ({ fieldKey: q.fieldKey, pregunta: q.questionText, valor: q.answerValue })),

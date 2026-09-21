@@ -269,21 +269,21 @@ describe("el porte del paso 4 llega entero", () => {
   });
 });
 
-describe("el texto de sistema canónico es el v5", () => {
+describe("el texto de sistema canónico es el v6", () => {
   it("y el seed publica esa misma versión", () => {
     // Los dos canales del prompt: el JSON que consume la app y la version que el seed (y su migracion)
     // publican. Si divergen, local y nube corren textos distintos sin que nada de error.
     const modulo = readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.ts", "utf8");
-    expect(modulo).toContain("criterion.system.v5.json");
+    expect(modulo).toContain("criterion.system.v6.json");
     const seed = readFileSync("supabase/seed.ts", "utf8");
-    expect(seed).toContain("criterion.system.v5.json");
-    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 5 },');
+    expect(seed).toContain("criterion.system.v6.json");
+    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 6 },');
   });
 
   it("y las versiones anteriores NO se borran", () => {
     // Los borradores ya generados apuntan a su version en la procedencia. Borrar el texto deja registros
     // que dicen "generado con la v3" sin que exista la v3. Misma disciplina que las versiones de motor.
-    for (const v of ["v1", "v2", "v3", "v4"]) {
+    for (const v of ["v1", "v2", "v3", "v4", "v5"]) {
       expect(
         existsSync(`src/modules/diagnoses/ai/prompts/criterion.system.${v}.json`),
         `se borró el texto de la ${v}`,
@@ -365,8 +365,8 @@ describe("las respuestas en rojo viajan en el mismo párrafo (v5, observación g
       ...input,
       respuestasEnRojo: [{ dominio: "D3", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" }],
     });
-    expect(texto).toContain("Respuestas de la encuesta en rojo (lo que el paciente respondió):");
-    expect(texto).toContain("¿Cuántas horas duerme por noche?: Menos de 5h (D3)");
+    expect(texto).toContain("Respuestas de la encuesta en rojo (lo que el paciente respondió), 1 en total; menciónalas TODAS:");
+    expect(texto).toContain("D3 (1): ¿Cuántas horas duerme por noche?: Menos de 5h");
     // Sin corchetes de nivel: el grado es de las reglas, no de la respuesta.
     expect(texto).not.toContain("] ¿Cuántas horas duerme");
   });
@@ -379,6 +379,38 @@ describe("las respuestas en rojo viajan en el mismo párrafo (v5, observación g
     });
     expect(texto).toContain("ALERTAS CLÍNICAS DE LA ENCUESTA (menciónalas");
     expect(texto).not.toContain("ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna");
+  });
+
+  it("v6: agrupadas por dominio y con cuántas son, para que no omita ninguna", () => {
+    // En la prueba del 21 omitió los siete síntomas digestivos: con la lista plana no sabía que eran un bloque.
+    const texto = armar({
+      ...input,
+      respuestasEnRojo: [
+        { dominio: "D6 · Salud Digestiva", pregunta: "Hinchazón abdominal", respuesta: "Siempre" },
+        { dominio: "D6 · Salud Digestiva", pregunta: "Gases / flatulencia", respuesta: "Siempre" },
+        { dominio: "D3 · Hábitos de Vida", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" },
+      ],
+    });
+    expect(texto).toContain("3 en total; menciónalas TODAS");
+    expect(texto).toContain("D6 · Salud Digestiva (2): Hinchazón abdominal: Siempre; Gases / flatulencia: Siempre");
+  });
+
+  it("v6: le obliga a mencionarlas todas y le prohíbe añadir lo que no está en rojo", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("MENCIONA TODAS las que trae el bloque, sin omitir ninguna");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("lo que no está en rojo no se presenta como si lo estuviera");
+  });
+
+  it("v6: las causas solo entre hallazgos dados, también como hipótesis", () => {
+    // Los tres inventos de la prueba del 21: nutrientes, deterioro celular, exposición crónica.
+    expect(CRITERION_SYSTEM_PROMPT).toContain("CADA CAUSA Y CADA EFECTO TIENEN QUE ESTAR EN LOS DATOS QUE TE DOY");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("\"falta de nutrientes esenciales\"");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("\"sugiere\"");
+    // Y lo SUYO se conserva: su estructura pide conectar causas entre dominios.
+    expect(CRITERION_SYSTEM_PROMPT).toContain("conectando causas entre dominios");
+  });
+
+  it("v6: la PABU por debajo de phi es exceso de adiposidad y nada más", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("no la describas como sobrecarga ni déficit estructural");
   });
 
   it("y el sistema le prohíbe marcar en rojo por su cuenta y ponerles nivel", () => {

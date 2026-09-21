@@ -257,11 +257,19 @@ export function buildCriterionPrompt(
       "ALERTAS CLÍNICAS DE LA ENCUESTA (menciónalas en el párrafo inmediatamente posterior a la presentación):",
       ...input.alertas.map((a) => `[${a.nivel}] ${a.titulo} (dominio ${a.dominio})`),
     );
+    // v6: AGRUPADAS POR DOMINIO y con cuantas son. En la prueba del 21 el modelo omitio los siete sintomas
+    // digestivos: con la lista plana no tenia como saber que eran un bloque, ni cuantas le faltaban.
     if (input.respuestasEnRojo.length > 0) {
-      L.push(
-        "Respuestas de la encuesta en rojo (lo que el paciente respondió):",
-        ...input.respuestasEnRojo.map((r) => `${r.pregunta}: ${r.respuesta} (${r.dominio})`),
-      );
+      L.push(`Respuestas de la encuesta en rojo (lo que el paciente respondió), ${input.respuestasEnRojo.length} en total; menciónalas TODAS:`);
+      const grupos: { dominio: string; items: RespuestaEnRojoDelPrompt[] }[] = [];
+      for (const r of input.respuestasEnRojo) {
+        const g = grupos.find((x) => x.dominio === r.dominio);
+        if (g) g.items.push(r);
+        else grupos.push({ dominio: r.dominio, items: [r] });
+      }
+      for (const g of grupos) {
+        L.push(`${g.dominio} (${g.items.length}): ${g.items.map((r) => `${r.pregunta}: ${r.respuesta}`).join("; ")}`);
+      }
     }
   } else {
     L.push("", "ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna. No escribas ese párrafo ni comentes su ausencia.");
