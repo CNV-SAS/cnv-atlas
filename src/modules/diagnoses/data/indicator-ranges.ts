@@ -170,10 +170,14 @@ export function clasificarIcaBis(icaBis: number | null): ClaseIcaBis | null {
 // AF/IR: asi el rotulo correcto aparece tambien en los diagnosticos ya emitidos.
 const ROTULOS_DISPLAY: Record<string, (v: number) => string> = {
 
-  // dPABU (L14440): aqui NO es que se acortara, es que dice OTRA cosa. Su tabla nombra la direccion por
-  // el indicador ("PABU bajo"/"PABU elevado") y el clasificador cientifico la nombra por el mecanismo
-  // ("Desviación por déficit"/"por exceso"). Se porta el suyo porque es la tabla que el enseña.
-  PABU: (v) => (v < 1.618 ? "PABU bajo" : v > 1.618 ? "PABU elevado" : "Homeostasis óptima"),
+  // EL PABU NO ENTRA AQUI, Y NO ES UN OLVIDO (2026-09-21). Estuvo (`dPABU`, "PABU bajo"/"PABU elevado")
+  // desde el barrido del 2026-09-09, y ese barrido paso por encima de una pregunta que Gildardo YA HABIA
+  // CERRADO: la 3 de PENDIENTES_CIENTIFICOS ("la fila PABU de tu tabla usa un clasificador distinto del
+  // congelado"), respondida el 2026-09-07 con *"Ya revisé ATLAS y está bien como lo tienen"*. Lo que
+  // teniamos entonces era `cPABU` ("Desviación por exceso"), asi que su respuesta fija el sellado. El
+  // barrido del 9 vino por el IAE, que si reporto el delante de Santiago, y arrastro al PABU por ser de
+  // la misma familia. Es el patron del alergeno: una pregunta cerrada que vuelve porque nadie miro donde
+  // estaba la respuesta.
   // dIAE (L14444): es el que reporto Santiago. Dos de los tres escalones llevan la palabra que faltaba.
   IAE: (v) => (v < -5 ? "Envejecimiento desacelerado" : v <= 5 ? "Concordante" : "Envejecimiento acelerado"),
   // dIEHH (L14445): los cuatro escalones. "Óptimo/Leve/Moderado/Severo" no dice de QUE, y en una tabla

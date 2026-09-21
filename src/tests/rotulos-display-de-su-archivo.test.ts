@@ -35,7 +35,6 @@ function rotulosDeSuDisplay(nombre: string): string[] {
 const SONDAS: Record<string, number[]> = {
   // El IFC YA NO SE SONDEA POR VALOR (2026-09-21): sus cortes de display (3,5/6,0) son los historicos
   // que el propio Gildardo prohibio. Se traduce por su banda sellada; ver el bloque de abajo.
-  PABU: [1.2, 2.0], // <phi · >phi (la rama de igualdad exacta no se sondea)
   IAE: [-8, 0, 8], // <-5 · -5..5 · >5
   IEHH: [-1, 0.5, 1.5, 3], // <=0 · <=1 · <=2 · resto
 };
@@ -112,5 +111,22 @@ describe("el IFC se traduce por su banda sellada, no se reclasifica", () => {
       rotuloDisplayDeIndice("IFC", 1, sellado),
     );
     expect(nuestros).toEqual(suyos.slice(0, 3));
+  });
+});
+
+// ═══ EL PABU LO RESPONDIO GILDARDO, Y MANDA EL SELLADO (2026-09-21) ═══
+//
+// Su respuesta a la pregunta 3 (2026-09-07): *"Ya revisé ATLAS y está bien como lo tienen"*, cuando la
+// tabla mostraba `cPABU`. El barrido del 2026-09-09 la cambio a `dPABU` sin instruccion suya. Este test
+// impide que el siguiente barrido de rotulos la vuelva a abrir.
+describe("el PABU de la tabla es el sellado, por respuesta de Gildardo", () => {
+  it("no tiene rótulo de display: manda `cPABU`", () => {
+    expect(rotuloDisplayDeIndice("PABU", 1.2)).toBeNull();
+    expect(rotuloDisplayDeIndice("PABU", 2.36)).toBeNull();
+  });
+
+  it("y la respuesta sigue escrita donde se la hicimos", () => {
+    const pendientes = readFileSync("docs/PENDIENTES_CIENTIFICOS.md", "utf8");
+    expect(pendientes).toContain("Ya revisé ATLAS y está bien como lo tienen");
   });
 });
