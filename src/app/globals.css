@@ -34,6 +34,8 @@
   --color-attention-bg: var(--attention-bg);
   --color-delta-favorable: var(--delta-favorable);
   --color-delta-adversa: var(--delta-adversa);
+  --color-franja-nivel: var(--franja-nivel);
+  --color-franja-nivel-texto: var(--franja-nivel-texto);
   /*
    * ESCALA TIPOGRAFICA de interfaz. Inter se queda (la familia no era el problema); lo que cambia es la
    * DENSIDAD. Un `text-3xl font-extrabold` de pagina de marketing en una herramienta de trabajo grita y
@@ -195,6 +197,12 @@
   --delta-favorable: #047857;
   --delta-adversa: #b91c1c;
 
+  /* LA FRANJA DE LOS NIVELES DE WANG (Santiago, 2026-09-21, variante 3 de tres vistas lado a lado): tinte
+   * claro con la letra en azul y un filo de marca a la izquierda. El azul pleno saturaba la tabla; el tinte
+   * separa niveles sin gritar. Capa de INTERFAZ: no insinua severidad. El filo es `--primary`. */
+  --franja-nivel: #edf2ff;
+  --franja-nivel-texto: #1d4fd8;
+
   /* Sidebar de shadcn: cromo claro, como el resto de la barra. */
   --sidebar: #ffffff;
   --sidebar-foreground: #15161a;
@@ -231,6 +239,9 @@
 }
 
 .dark {
+  /* La franja de Wang en oscuro: el tinte se vuelve un azul hondo y la letra se aclara. */
+  --franja-nivel: #16213d;
+  --franja-nivel-texto: #a9c1ff;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

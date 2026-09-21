@@ -1,5 +1,6 @@
 import type { PatronGrupoView, PatronResolution } from "@/clinical-engine";
 import { COLOR_DE_NIVEL, nivelDeRespuesta, type ValorEncuesta } from "@/clinical-engine/encuesta-colores";
+import { DOMINIOS_ENCUESTA } from "@/clinical-engine/dominios-encuesta";
 import type { EvaluationCharacterization, SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
 import { SurveyAnswerReadonly } from "@/modules/evaluations/components/survey-widgets";
 
@@ -25,16 +26,8 @@ import { DetailsSection } from "./details-section";
 // cambian de sentido, no solo de forma (D4 "Conductas Alimentarias" -> "Patrón Horario Alimentario";
 // D6 pierde "Alergias" del rotulo aunque el dominio aun trae esas preguntas, congeladas: reconcilia
 // cuando entre su encuesta final). Es contenido suyo (instruccion de Santiago 2026-08-13).
-const SECTIONS = [
-  "D1 · Patrón Usual de Consumo Alimentario",
-  "D2 · Imagen Corporal y Conducta Alimentaria",
-  "D3 · Hábitos de Vida",
-  "D4 · Patrón Horario Alimentario",
-  "D5 · Determinantes y Epigenética",
-  "D6 · Salud Digestiva",
-  "D7 · Hidratación",
-  "D8 · Contexto Social y Alimentario",
-];
+// Los titulos viven en el motor desde el 2026-09-21: los leen tambien la IA y el SOAP.
+const SECTIONS = DOMINIOS_ENCUESTA;
 
 // Etiquetas ABREVIADAS de frecuencia para la pildora (verbatim del v8 L13728; NO el texto de encuesta).
 const FREQ_LABELS = ["Nunca", "1–2d/sem", "3–4d/sem", "5–6d/sem", "Todos"];
@@ -97,10 +90,23 @@ function CategoryCards({ grupos }: { grupos: PatronGrupoView[] }) {
 // 10 px con fondo al 12% y sin borde, y D2-D8 en 11 px con fondo al 9% y borde. Visto de pie, el verde
 // de una pestaña y el de la otra no parecian el mismo verde, y un semaforo con dos verdes en la misma
 // pantalla se lee como dos significados. La forma es la de D1, que es la que el enseña.
-function PastillaDeColor({ color, children }: { color: string; children: React.ReactNode }) {
+// EL TAMAÑO NO ES EL MISMO EN D1 Y EN D2-D8, y es a proposito (Santiago, 2026-09-21): D1 es una grilla de
+// quince grupos con su propia organizacion, y D2-D8 es pregunta contra respuesta. En D2-D8 la pastilla
+// mide lo mismo que la pregunta (text-sm): a 10 px se leia pequeña al lado. En D1 suben juntos, grupo y
+// pastilla, un escalon. Lo que NO cambia es la forma (fondo al 12%, sin borde) ni el color.
+function PastillaDeColor({
+  color,
+  children,
+  tamano = "grilla",
+}: {
+  color: string;
+  children: React.ReactNode;
+  /** "grilla" = D1 (12 px); "respuesta" = D2-D8, del tamaño de la pregunta (14 px). */
+  tamano?: "grilla" | "respuesta";
+}) {
   return (
     <span
-      className="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold"
+      className={`inline-block rounded-full font-bold ${tamano === "respuesta" ? "px-2.5 py-0.5 text-sm" : "px-2 py-0.5 text-xs"}`}
       style={{ color, background: `${color}1f` }}
     >
       {children}
@@ -123,7 +129,7 @@ function GrupoGrid({ grupos }: { grupos: PatronGrupoView[] }) {
         const col = v === null ? "#94a3b8" : ok ? "#059669" : al ? "#dc2626" : "#d97706";
         return (
           <div key={g.n} className="flex items-center justify-between rounded-lg border px-2 py-1" style={{ borderColor: col + "22", background: col + "0d" }}>
-            <span className="text-xs text-foreground">{g.label}</span>
+            <span className="text-sm text-foreground">{g.label}</span>
             <PastillaDeColor color={col}>{v !== null ? FREQ_LABELS[v] : "-"}</PastillaDeColor>
           </div>
         );
@@ -231,6 +237,7 @@ function DomainReadout({
           </p>
           <div className="shrink-0 text-right">
             <PastillaDeColor
+              tamano="respuesta"
               color={
                 COLOR_DE_NIVEL[
                   q.fieldKey ? nivelDeRespuesta(q.fieldKey, encuesta[q.fieldKey], encuesta) : "informativo"
