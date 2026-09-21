@@ -56,3 +56,18 @@ Quien retome esto dentro de un mes se va a encontrar cosas que parecen reales y 
 ## Por dónde se retoma
 
 Por la **sesión 2 del 3b**, con sus decisiones ya tomadas. Después, el **2b**. El plan vive en `docs/PLAN_BLOQUES_INVENTARIO_VENTAS.md`, que está al día.
+
+## Anotado durante la pausa (2026-09-21): "Otros productos", del ATLAS_v9
+
+Su v9 (cambio 4) saca **"OTROS PRODUCTOS"** de la sección de VITACELLEBIS y la vuelve **sección propia**,
+visible siempre en Rutas de tratamiento, **con BIS o sin él**. La razón es de su lado y es buena: los
+productos externos (hoy solo LUVIA) no salen de un sector EFyR ni de un índice alterado, los ofrece el
+profesional por criterio, y al depender de la sección de VITACELLEBIS desaparecían con la consulta abierta
+antes de cargar el BIS.
+
+**Es del bloque comercial y lo definimos nosotros** (Santiago), no se porta verbatim: su despacho
+(`registrarEnvio`, `nutrSelecTrat`) no es el nuestro. Al retomar, verificar dos cosas:
+
+1. Que en Atlas un producto de terceros (LUVIA) se pueda **indicar y vender sin BIS cargado**, que es el
+   caso que motivó su cambio.
+2. Que no dependa de la sugerencia del modelo: en su archivo, "otros productos" nunca sale del diagnóstico.
