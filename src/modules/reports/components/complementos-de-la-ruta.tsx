@@ -47,9 +47,16 @@ export function ComplementosDeLaRuta({ informe }: { informe: InformeDelPaciente 
     <div className="flex flex-col gap-5">
       {suplementos.delModelo || suplementos.delProfesional.length ? (
         <Bloque titulo="Tus suplementos">
+          {/* LA MISMA FRASE DE PROCEDENCIA QUE EL PDF: son el mismo informe en dos superficies, y si una la
+              dijera y la otra no, el paciente recibiria dos documentos distintos segun por donde se pidio. */}
+          <p className="text-sm text-muted-foreground">
+            Estos suplementos no son una recomendación general: salen de tu propia medición de esta consulta
+            y de lo que tu profesional decidió para ti. Si en el próximo control tus resultados cambian, la
+            recomendación puede cambiar contigo.
+          </p>
           {suplementos.delModelo ? (
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Lo que sugiere el modelo: </span>
+              <span className="font-medium text-foreground">Nutracéuticos recomendados: </span>
               {suplementos.delModelo}
             </p>
           ) : null}

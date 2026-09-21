@@ -77,11 +77,19 @@ describe("el radar habla el idioma del paciente", () => {
     const fuente = sinComentarios(readFileSync("src/modules/reports/pdf/radar-del-paciente.tsx", "utf8"));
     // Los nombres de los indices, en sigla y en su forma larga. La leccion del campo `urgencia`: el
     // filtro tiene que mirar TODO el texto que llega al paciente, no solo el que parece clinico.
-    const PROHIBIDOS = [
-      "IFC", "IRC", "FFMI", "FMI", "PABU", "ICA-BIS", "ISCM", "IEHH", "IAE", "EB-BIS",
-      "edad biológica", "edad bioeléctrica", "función celular", "riesgo celular", "Sector funcional",
-    ];
-    for (const termino of PROHIBIDOS) {
+    // LAS SIGLAS COMO PALABRA ENTERA Y EN MAYUSCULA: buscadas como subcadena sin mayusculas, "IRC" aparece
+    // dentro de "Circle" y el candado se pone rojo por el nombre de un componente de dibujo.
+    const SIGLAS = ["IFC", "IRC", "FFMI", "FMI", "PABU", "ICA-BIS", "ISCM", "IEHH", "IAE", "EB-BIS"];
+    for (const sigla of SIGLAS) {
+      // `\\b` y no `\b`: dentro de una plantilla, `\b` es un RETROCESO, y la expresion no cazaria nunca nada.
+      expect(new RegExp(`\\b${sigla}\\b`).test(fuente), `el radar nombra "${sigla}"`).toBe(false);
+    }
+    // El control: la expresion SI caza una sigla cuando esta, para que el verde de arriba signifique algo.
+    expect(new RegExp(`\\bIRC\\b`).test('label="IRC"')).toBe(true);
+    expect(new RegExp(`\\bIRC\\b`).test("<Circle />")).toBe(false);
+    // Los nombres largos, sin importar mayusculas: son la forma en que el concepto se cuela en llano.
+    const LARGOS = ["edad biológica", "edad bioeléctrica", "función celular", "riesgo celular", "Sector funcional"];
+    for (const termino of LARGOS) {
       expect(fuente.toLowerCase(), `el radar nombra "${termino}"`).not.toContain(termino.toLowerCase());
     }
   });
@@ -100,4 +108,30 @@ describe("el informe con radar se renderiza de verdad", () => {
     });
     expect(pdf.length).toBeGreaterThan(1000);
   }, 30000);
+});
+
+describe("una sola figura, dos vocabularios: los colores son los de la pantalla", () => {
+  // Un PDF no lee variables CSS, así que los hexadecimales van escritos en el radar del informe. Este
+  // bloque los compara con los tokens de la capa clínica: si alguien cambia uno en `globals.css`, el
+  // paciente y su profesional dejarían de mirar el mismo dibujo, y nada lo avisaría.
+  const css = readFileSync("src/app/globals.css", "utf8");
+  const token = (nombre: string): string => {
+    const m = new RegExp(`--${nombre}:\\s*(#[0-9a-fA-F]{6})`).exec(css);
+    if (!m) throw new Error(`no aparece --${nombre} en globals.css`);
+    return m[1].toLowerCase();
+  };
+
+  it("los anillos, del centro al borde, son los del radar de Atlas", async () => {
+    const { ANILLO_RADAR } = await import("@/modules/reports/pdf/radar-del-paciente");
+    expect(ANILLO_RADAR).toEqual(
+      ["clinical-excellent", "clinical-optimal", "clinical-warning", "clinical-critical"].map(token),
+    );
+  });
+
+  it("y las etiquetas llevan el color de su severidad, el mismo de los badges", async () => {
+    const { COLOR_SEVERIDAD } = await import("@/modules/reports/pdf/radar-del-paciente");
+    expect(COLOR_SEVERIDAD).toEqual(
+      ["clinical-optimal", "clinical-warning", "clinical-moderate", "clinical-critical"].map(token),
+    );
+  });
 });

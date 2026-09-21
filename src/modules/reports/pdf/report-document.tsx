@@ -1,7 +1,7 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
-import { RadarDelPaciente } from "./radar-del-paciente";
+import { COLOR_SEVERIDAD, RadarDelPaciente } from "./radar-del-paciente";
 
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
@@ -67,6 +67,11 @@ const styles = StyleSheet.create({
   cellLabel: { width: 90 },
   cellValue: { flex: 1, textAlign: "right" },
   para: { marginBottom: 2 },
+  // CADA DOMINIO, UN BLOQUE (Santiago, 2026-09-21): el nombre en negrita, su etiqueta con su color y la
+  // frase debajo. En parrafo corrido las cinco se leian como un solo texto y no se veia cual pedia trabajo.
+  // La barra de la izquierda repite el color de la etiqueta: refuerza, no sustituye a la palabra.
+  dominio: { marginTop: 5, paddingLeft: 7, borderLeftWidth: 2.5 },
+  dominioLectura: { marginTop: 1, color: "#374151" },
   bold: { fontWeight: "bold" },
   footer: {
     position: "absolute",
@@ -253,15 +258,23 @@ export function ReportDocument({
                 explicacion dominio por dominio. Al reves, quien lee las cinco frases ya no necesita la
                 figura. Se dibuja solo; si faltan dominios medidos, no aparece. */}
             <RadarDelPaciente dominios={dfiPac.dominios} />
-            {dfiPac.dominios.map((d) => (
-              <Text key={d.id} style={styles.para}>
-                {/* SIN ETIQUETA cuando el dominio no se midio: su mapa no cubre ese caso porque es
-                    anterior a su punto 4 del 30-ago, y ponerle una seria agregarle un nivel a su escala.
-                    La lectura que el motor produce ya dice que no se evaluo. */}
-                {d.nivel ? `${d.dominio} (${d.nivel}): ` : `${d.dominio}: `}
-                {d.lectura}
-              </Text>
-            ))}
+            {dfiPac.dominios.map((d) => {
+              // SIN COLOR cuando el dominio no se midio: pintarlo de verde seria la lectura favorable de
+              // un vacio, que su punto 4 del 30-ago prohibe. Y SIN ETIQUETA, porque su mapa no cubre ese
+              // caso; la lectura que el motor produce ya dice que no se evaluo.
+              const color = d.sev == null ? "#d1d5db" : COLOR_SEVERIDAD[Math.min(3, Math.max(0, d.sev))];
+              return (
+                <View key={d.id} style={[styles.dominio, { borderColor: color }]} wrap={false}>
+                  <Text>
+                    <Text style={styles.bold}>{d.dominio}</Text>
+                    {d.nivel ? (
+                      <Text style={{ color, fontFamily: "Helvetica-Bold" }}>{`  ·  ${d.nivel}`}</Text>
+                    ) : null}
+                  </Text>
+                  <Text style={styles.dominioLectura}>{d.lectura}</Text>
+                </View>
+              );
+            })}
             {dfiPac.acompanamiento ? (
               <Text style={styles.para}>{dfiPac.acompanamiento}</Text>
             ) : null}
@@ -475,7 +488,7 @@ export function ReportDocument({
             {/* LA CADENA DEL MODELO se conserva aunque haya prescripcion: son dos cosas distintas, y el
                 paciente tiene derecho a saber que sugirio el modelo y que decidio su profesional. */}
             <Text style={styles.para}>
-              <Text style={styles.bold}>Lo que sugiere el modelo: </Text>
+              <Text style={styles.bold}>Nutracéuticos recomendados: </Text>
               {informe?.suplementos.delModelo ?? nutraceuticos}
             </Text>
             {informe?.suplementos.delProfesional.length ? (
