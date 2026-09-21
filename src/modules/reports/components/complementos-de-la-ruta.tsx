@@ -82,7 +82,7 @@ export function ComplementosDeLaRuta({ informe }: { informe: InformeDelPaciente 
         <Bloque titulo="Otros profesionales que te pueden acompañar">
           {remisiones.delModelo.length ? (
             <>
-              <p className="text-sm font-medium text-foreground">Lo que sugiere el modelo:</p>
+              <p className="text-sm font-medium text-foreground">Remisiones recomendadas:</p>
               <Lista
                 items={remisiones.delModelo.map(
                   (r) => `${r.destino}${r.urgencia ? ` (valoración ${r.urgencia.toLowerCase()})` : ""}`,

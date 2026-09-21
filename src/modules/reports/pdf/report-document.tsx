@@ -511,7 +511,7 @@ export function ReportDocument({
             <Text style={styles.sectionTitle}>Otros profesionales que te pueden acompañar</Text>
             {informe.remisiones.delModelo.length ? (
               <>
-                <Text style={[styles.para, styles.bold]}>Lo que sugiere el modelo:</Text>
+                <Text style={[styles.para, styles.bold]}>Remisiones recomendadas:</Text>
                 {informe.remisiones.delModelo.map((r) => (
                   <Text key={r.destino} style={styles.para}>
                     · {r.destino}
