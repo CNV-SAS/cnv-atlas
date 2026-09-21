@@ -33,7 +33,11 @@ function direccionesDeSuArchivo(): { clave: string; invertido: boolean }[] {
   const filas: { clave: string; invertido: boolean }[] = [];
   for (const m of src.matchAll(/difCell\(([^;]{0,200}?),\s*(true|false)\)/g)) {
     const args = m[1];
-    const clave = /(?:bis|ant)\.([A-Za-z_][A-Za-z0-9_]*)/.exec(args)?.[1];
+    // DESDE EL v9 (2026-09-21) la cintura se lee por `_circAnt('cintura')`, su respaldo de cuatro fuentes
+    // (cambio 3 de su guia), y no por `ant.cintura`. Sin esta segunda forma el extractor perdia la fila y
+    // el candado acusaba una divergencia que no existe: la fila sigue invertida en los dos.
+    const clave =
+      /(?:bis|ant)\.([A-Za-z_][A-Za-z0-9_]*)/.exec(args)?.[1] ?? /_circAnt\('([A-Za-z_]+)'\)/.exec(args)?.[1];
     if (!clave || clave.endsWith("_ref")) continue;
     filas.push({ clave, invertido: m[2] === "true" });
   }
