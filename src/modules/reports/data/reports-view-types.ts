@@ -269,6 +269,8 @@ export type HistoriaClinicaSoap = {
     indices: HcIndiceDoc[];
   };
   analisis: {
+    /** Primera linea de la A: alertas de sus reglas y respuestas en rojo (observacion g). null = ninguna. */
+    alertas: string | null;
     resumenProfesional: string | null;
     dfiParrafo: string | null;
     metaTerapeutica: string | null;

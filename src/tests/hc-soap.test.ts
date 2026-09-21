@@ -102,6 +102,7 @@ describe("el texto que se copia dice lo mismo que la pantalla", () => {
     },
     objetivo: { pesoKg: 70, tallaCm: 165, composicion: [], indices: [] },
     analisis: {
+      alertas: null,
       resumenProfesional: "Paciente estable.",
       dfiParrafo: null,
       metaTerapeutica: null,
@@ -162,12 +163,13 @@ describe("el SOAP no es una segunda construcción de la historia clínica", () =
     );
   });
 
-  it("y NO lleva alertas ni semáforo: esa mitad espera a Gildardo", () => {
-    for (const prohibido of ["alerta", "semaforo", "semáforo"]) {
-      expect(LECTOR.toLowerCase()).not.toContain(`${prohibido}s(`);
-    }
-    const COMPONENTE = readFileSync("src/modules/reports/components/hc-soap.tsx", "utf8");
-    expect(COMPONENTE).not.toContain("Alertas");
+  // LA MITAD QUE ESPERABA A GILDARDO LLEGO (2026-09-21, observacion g): las alertas entran, pero en la A
+  // y de la fuente comun. Lo que este caso sigue guardando es que el LECTOR no arme su propia lista ni su
+  // propio semaforo: si lo hiciera, el SOAP y el resumen de IA podrian nombrar alertas distintas.
+  it("las alertas llegan de la fuente común, no de un cálculo propio del SOAP", () => {
+    expect(LECTOR).toContain("alertasDeLaConsulta(");
+    expect(LECTOR).not.toContain("alertasDisponibles(");
+    expect(LECTOR).not.toContain("nivelDeRespuesta(");
   });
 });
 

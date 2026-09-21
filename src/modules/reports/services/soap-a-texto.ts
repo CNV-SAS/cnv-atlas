@@ -70,6 +70,7 @@ export function soapATexto(
 
   const a = nl([
     "A · ANÁLISIS",
+    soap.analisis.alertas,
     soap.analisis.resumenProfesional,
     soap.analisis.dfiParrafo,
     soap.analisis.metaTerapeutica ? `Meta terapéutica: ${soap.analisis.metaTerapeutica}` : null,

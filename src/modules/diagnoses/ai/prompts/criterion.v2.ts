@@ -44,6 +44,8 @@ export const CRITERION_PROMPT_VERSION = 2;
  * Y NO LLEVA PII: son un nivel, un titulo del catalogo de Gildardo y un codigo de dominio.
  */
 export type AlertaDelPrompt = { nivel: string; titulo: string; dominio: string };
+/** Una respuesta que su clasificador del v9 marca en rojo (v5). Sin nivel: no es una alerta con grado. */
+export type RespuestaEnRojoDelPrompt = { dominio: string; pregunta: string; respuesta: string };
 export { CRITERION_SYSTEM_PROMPT };
 
 /**
@@ -171,6 +173,8 @@ export type CriterionPromptInput = {
   // ── Las alertas clinicas que HOY se pueden evaluar (v4). Vacio = no hay ninguna, y entonces el modelo
   //    se salta ese parrafo en vez de escribir que no hay. ──
   alertas: AlertaDelPrompt[];
+  // ── Las respuestas en rojo del clasificador de la encuesta (v5). Misma fuente que el SOAP. ──
+  respuestasEnRojo: RespuestaEnRojoDelPrompt[];
 
   // ── Composicion corporal y bioelectrica, ya formateadas por su capa de display (etiqueta + valor con
   //    sus unidades y decimales), que es lo que el profesional ve en pantalla. ──
@@ -244,12 +248,21 @@ export function buildCriterionPrompt(
   // EL BLOQUE SE ESCRIBE SIEMPRE, tambien vacio, y esa es la parte que importa: sin la linea que dice que
   // no hay ninguna, el modelo no puede distinguir "no hay alertas" de "no me las mandaron", y ante la duda
   // las inventa a partir de los datos crudos, que son los mismos insumos de las reglas.
-  if (input.alertas.length > 0) {
+  // v5: las RESPUESTAS EN ROJO van en el MISMO bloque, despues de las alertas y rotuladas aparte. Sin
+  // nivel entre corchetes a proposito: el nivel es de las reglas, y ponerle uno a una respuesta seria
+  // inventarle un grado que su clasificador no le da.
+  if (input.alertas.length > 0 || input.respuestasEnRojo.length > 0) {
     L.push(
       "",
       "ALERTAS CLÍNICAS DE LA ENCUESTA (menciónalas en el párrafo inmediatamente posterior a la presentación):",
       ...input.alertas.map((a) => `[${a.nivel}] ${a.titulo} (dominio ${a.dominio})`),
     );
+    if (input.respuestasEnRojo.length > 0) {
+      L.push(
+        "Respuestas de la encuesta en rojo (lo que el paciente respondió):",
+        ...input.respuestasEnRojo.map((r) => `${r.pregunta}: ${r.respuesta} (${r.dominio})`),
+      );
+    }
   } else {
     L.push("", "ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna. No escribas ese párrafo ni comentes su ausencia.");
   }

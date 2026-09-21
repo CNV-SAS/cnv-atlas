@@ -1,4 +1,4 @@
-import promptV4 from "./criterion.system.v4.json";
+import promptV5 from "./criterion.system.v5.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -52,4 +52,12 @@ import promptV4 from "./criterion.system.v4.json";
 // Y ESTE ES SOLO UNO DE LOS DOS LADOS. El otro es el filtro de salida (`limpiarMarcadores`), y hacen
 // falta los dos: un prompt baja la frecuencia con la que el modelo mete markdown, no la lleva a cero.
 // Textual suyo: "por si el modelo desobedece, que es lo que hacen".
-export const CRITERION_SYSTEM_PROMPT: string = promptV4.system;
+// V5 (2026-09-21): LAS RESPUESTAS EN ROJO ENTRAN AL PARRAFO DE ALERTAS (observacion g). Su ATLAS_v9
+// clasifico cada respuesta de D2-D8 en colores; Gildardo pidio que las ROJAS vayan en el segundo parrafo,
+// junto a las alertas de sus reglas. Dos reglas nuevas las acotan: solo las que se le dan (el modelo no
+// marca en rojo por su cuenta) y sin nivel (una respuesta en rojo no es una alerta critica). El ambar y la
+// composicion NO entran (decidido con Santiago): la fuente es `clinical-engine/alertas-de-la-consulta`,
+// la misma que usa el SOAP.
+//
+// LA V4 NO SE RETIRA: los resumenes generados con ella apuntan a esa version en su procedencia.
+export const CRITERION_SYSTEM_PROMPT: string = promptV5.system;
