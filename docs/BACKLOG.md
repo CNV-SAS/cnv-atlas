@@ -19,6 +19,19 @@
 
 ---
 
+## El XLSX del BIS que no se pierda al cambiar de pestaña (2026-09-22) · SEGUNDO PLANO
+
+Hoy, si el profesional elige el archivo, pulsa "Importar medición BIS", le falta la encuesta o las condiciones
+y sale a completarlas, al volver el archivo ya no está y tiene que elegirlo otra vez. Decisión de Santiago
+(2026-09-22): va al backlog, no bloquea nada.
+
+**La propuesta, por si se retoma:** al pulsar "Importar" con el archivo válido, guardar los valores ya leídos
+(sin nombre ni fecha de nacimiento, que el lector del XLSX ya separa) como medición pendiente de la
+evaluación, y que el botón la tome de ahí cuando todo esté completo. Se borra al importar o si la evaluación
+se cierra, se abandona o se reemplaza. Necesita una tabla nueva. Ver `PLAN_IMPORTACION_DESDE_EL_HTML.md`.
+
+---
+
 ## Los documentos del profesional: firmar y verificar (2026-09-10)
 
 **Lo trajo el corte del tablero.** Al ir a construir la tarjeta de "documentos por firmar" apareció que no
