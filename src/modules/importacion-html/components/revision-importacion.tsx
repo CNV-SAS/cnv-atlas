@@ -43,6 +43,9 @@ function FichaDePaciente({ p }: { p: RevisionDePaciente }) {
         <span className="text-sm text-muted-foreground">{p.documento}</span>
         {p.cruce.tipo === "parecido" ? <Aviso>{ETIQUETA_CRUCE.parecido}</Aviso> : <Neutro>{ETIQUETA_CRUCE[p.cruce.tipo]}</Neutro>}
         {p.menorDeEdad ? <Aviso>Menor de edad al firmar</Aviso> : null}
+        {p.fechaNacimientoImposible ? (
+          <Aviso>Fecha de nacimiento imposible ({p.fechaNacimiento}): posterior a su primera consulta</Aviso>
+        ) : null}
       </div>
       {p.cruce.tipo === "existe" ? (
         <p className="text-sm text-muted-foreground">
@@ -61,13 +64,27 @@ function FichaDePaciente({ p }: { p: RevisionDePaciente }) {
           {x}
         </p>
       ))}
+      {p.informesEnviados.length ? (
+        <p className="text-sm text-muted-foreground">
+          {p.informesEnviados.length === 1 ? "Trae 1 informe enviado al paciente" : `Trae ${p.informesEnviados.length} informes enviados al paciente`}
+          {" "}({p.informesEnviados.map((x) => `consulta del ${x.fechaConsulta ?? "(sin fecha)"}, enviado el ${x.fechaEnvio ?? "(sin fecha)"}`).join("; ")}). No
+          es una consulta: se conserva como registro de lo que se le envió.
+        </p>
+      ) : null}
       <ul className="flex flex-col gap-1.5">
         {p.consultas.map((c, i) => (
           <li key={`${c.fecha}-${i}`} className="flex flex-col gap-1 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-foreground">Consulta del {c.fecha ?? "(sin fecha)"}</span>
+              {c.profesional ? (
+                c.deOtroProfesional ? <Aviso>Hecha por {c.profesional}, no por quien exportó</Aviso> : <Neutro>Hecha por {c.profesional}</Neutro>
+              ) : null}
               {c.consentimiento.firmado ? (
-                <Neutro>Firmada por {c.consentimiento.nombre}</Neutro>
+                c.consentimiento.nombreDistinto ? (
+                  <Aviso>Firmada con otro nombre: {c.consentimiento.nombre}</Aviso>
+                ) : (
+                  <Neutro>Firmada por {c.consentimiento.nombre}</Neutro>
+                )
               ) : (
                 <Aviso>Sin firma del consentimiento</Aviso>
               )}
@@ -79,7 +96,22 @@ function FichaDePaciente({ p }: { p: RevisionDePaciente }) {
                 <Neutro>Medición completa</Neutro>
               )}
               {c.preguntasSinResponder > 0 ? <Neutro>{c.preguntasSinResponder} sin responder</Neutro> : null}
+              {c.respuestasDeVersionAnterior > 0 ? (
+                <Neutro>
+                  {c.respuestasDeVersionAnterior === 1
+                    ? "1 respuesta con el texto de una versión anterior de la encuesta"
+                    : `${c.respuestasDeVersionAnterior} respuestas con el texto de una versión anterior de la encuesta`}
+                </Neutro>
+              ) : null}
             </div>
+            {c.medicion.respaldo.length ? (
+              <p className="text-muted-foreground">
+                {c.medicion.respaldo
+                  .map((x) => `${x.campo === "cintura" ? "La cintura" : "La cadera"} sale de ${x.fuente === "excel_guardado" ? "el Excel del Biody guardado" : "lo guardado a mano"} del paciente`)
+                  .join("; ")}
+                : es un solo valor por paciente, así que solo vale para su consulta más reciente.
+              </p>
+            ) : null}
             {c.respuestasQueNoCalzan.length ? (
               <p className="text-clinical-warning">
                 Respuestas que no calzan con la encuesta de hoy:{" "}
@@ -130,6 +162,12 @@ export function RevisionImportacion() {
               {cuenta(pacientes.filter((p) => p.cruce.tipo === "parecido").length, "parecido", "parecidos")} ·{" "}
               {cuenta(consultas.filter((c) => !c.consentimiento.firmado).length, "consulta sin firma", "consultas sin firma")}
             </span>
+            {r.revision.exportadoPor ? (
+              <span className="text-muted-foreground">
+                Lo exportó {r.revision.exportadoPor}. Profesionales que aparecen en las consultas:{" "}
+                {r.revision.profesionalesDelArchivo.join(", ") || "ninguno"}.
+              </span>
+            ) : null}
             <span className="text-muted-foreground">Esta revisión no guarda nada.</span>
           </div>
           {r.revision.documentosRepetidosEnElArchivo.length ? (

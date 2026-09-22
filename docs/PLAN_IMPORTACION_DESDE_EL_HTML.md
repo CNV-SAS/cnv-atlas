@@ -248,3 +248,31 @@ mencionaba como "la nube de Gildardo".
 - **Candado:** `importacion-html-revision.test.ts`, de punta a punta con el exportador real, más que ningún
   archivo del módulo escribe y que solo lo ve admin.
 - **El selector de la cuenta de destino** va en la sesión 4, al importar: la revisión no depende de él.
+
+## La revisión, ajustada con los dos archivos reales de Santiago (2026-09-22)
+
+Los dos JSON que exportó Santiago (no entran al repositorio: `.gitignore`) destaparon seis cosas; las seis
+quedaron en `revisar-lote.ts` con su candado, y se comprobó el informe contra los dos archivos:
+
+1. **Cintura y cadera:** la cadena de `_circAnt` del v9 (L7513): la consulta, el Excel guardado
+   (`atlas_bis_<doc>`) y lo guardado a mano (`atlas:antro:<doc>`), con su `atlasCirc` (20 cm o menos no es una
+   medida). Las dos últimas son una por paciente: solo respaldan su consulta más reciente, y el informe lo dice.
+2. **El informe enviado al paciente** (`informePaciente`, sin `fechaConsulta`) no es una consulta: se separa y
+   se lista aparte. Trae el resumen de IA del HTML y lo que se le mostró al paciente.
+3. **Las respuestas de versiones viejas:** se comparan con las opciones de todas las versiones de la encuesta
+   de Atlas ("Gluten" de v2 a v5); "Otras" calza con "Otra".
+4. **Fecha de nacimiento imposible** (posterior a la primera consulta): se distingue de "menor de edad".
+5. **Consultas de otro profesional:** cada consulta dice quién la hizo, y se marca la que no hizo quien exportó.
+6. **La firma con otro nombre** ("dsadsads" por "Santiago"): se marca; es una firma más débil.
+
+## Lo que se resuelve en la sesión 4 (propuesta, antes de construir)
+
+- **El mismo documento en dos archivos** (el 12345 venía en los dos, con datos distintos): la importación
+  consulta los lotes ya importados. Si el documento ya entró por otro lote, no se vuelve a crear el paciente: el
+  admin ve las consultas que ya están y las que el segundo archivo agrega, y confirma.
+- **Las consultas de otro profesional:** el admin asigna cada nombre que aparece en el archivo a una cuenta de
+  Atlas ("Frank Carrera" a la cuenta de Frank). La consulta queda a nombre de quien la hizo, y se crea la
+  relación de ese paciente con cada profesional que lo atendió. Si ese profesional no tiene cuenta en Atlas, la
+  consulta no se importa hasta que la tenga, o el admin decide a quién queda asignada, con constancia.
+- **El informe enviado al paciente:** se conserva como documento importado (custodia de la historia clínica),
+  sin que cuente como consulta ni entre a la trayectoria.

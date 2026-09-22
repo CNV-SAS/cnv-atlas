@@ -106,9 +106,9 @@ describe("lo que el informe dice de cada consulta", () => {
   });
 
   it("la medición: completa, con faltantes, o sin medición", () => {
-    expect(r.pacientes[0].consultas[0].medicion).toEqual({ tiene: true, faltan: [] });
-    expect(r.pacientes[1].consultas[0].medicion).toEqual({ tiene: true, faltan: ["cintura", "cadera"] });
-    expect(menor.consultas[0].medicion).toEqual({ tiene: false, faltan: [] });
+    expect(r.pacientes[0].consultas[0].medicion).toEqual({ tiene: true, faltan: [], respaldo: [] });
+    expect(r.pacientes[1].consultas[0].medicion).toEqual({ tiene: true, faltan: ["cintura", "cadera"], respaldo: [] });
+    expect(menor.consultas[0].medicion).toEqual({ tiene: false, faltan: [], respaldo: [] });
   });
 
   it("menor de edad cuando firmó, y en orden de fecha", () => {
@@ -158,5 +158,118 @@ describe("la revisión no escribe nada", () => {
     expect(sinComentarios(policy)).toContain('return hasRole(user, "admin");');
     const accion = readFileSync("src/modules/importacion-html/actions.ts", "utf8");
     expect(accion).toContain("if (!canImportFromHtml(user))");
+  });
+});
+
+// ═══ LO QUE DESTAPARON LOS DOS ARCHIVOS REALES DE SANTIAGO (2026-09-22) ═══
+// Mismos casos, con datos de prueba (los archivos reales no entran al repositorio).
+describe("ajustes con los archivos reales", () => {
+  const exportar = (nav: [string, string][], docs: string[]) =>
+    archivoDeExportacionSchema.parse(exportador.construirExportacion(nav, docs, "2026-09-22T10:00:00Z", "2026-09-22T10:00:00Z"));
+  const SESION: [string, string] = ["atlas:sesion:profesional", '{"nombre":"Profesional Que Exporta"}'];
+
+  it("la cintura guardada a mano respalda SOLO la consulta más reciente, y lo dice", () => {
+    const nav: [string, string][] = [
+      [
+        "atlas:900",
+        JSON.stringify([
+          consulta({ fechaConsulta: "2026-08-13", ...bis, cintura: null, cadera: 106 }),
+          consulta({ fechaConsulta: "2026-08-25", ...bis, cintura: null, cadera: 106 }),
+        ]),
+      ],
+      ["atlas:antro:900", '{"cintura":84,"cadera":106}'],
+      // El Excel guardado no la trae; lo guardado a mano si.
+      ["atlas_bis_900", '{"cintura":null,"cadera":106}'],
+      SESION,
+    ];
+    const [p] = revisarLote(exportar(nav, ["900"]), CONTEXTO).pacientes;
+    expect(p.consultas[0].medicion.faltan).toEqual(["cintura"]); // la vieja: no se le presta
+    expect(p.consultas[1].medicion).toEqual({
+      tiene: true,
+      faltan: [],
+      respaldo: [{ campo: "cintura", fuente: "guardado_a_mano" }],
+    });
+  });
+
+  it("un cero guardado a mano no es una cintura (su atlasCirc descarta 20 cm o menos)", () => {
+    const nav: [string, string][] = [
+      ["atlas:901", JSON.stringify([consulta({ ...bis, cintura: null, cadera: 106 })])],
+      ["atlas:antro:901", '{"cintura":0,"cadera":106}'],
+      SESION,
+    ];
+    expect(revisarLote(exportar(nav, ["901"]), CONTEXTO).pacientes[0].consultas[0].medicion.faltan).toEqual(["cintura"]);
+  });
+
+  it("el informe enviado al paciente no es una consulta", () => {
+    const nav: [string, string][] = [
+      [
+        "atlas:902",
+        JSON.stringify([
+          { fecha: "2026-09-04", nombre: "Ana Prueba", documento: "902", informePaciente: { fechaConsulta: "2026-09-04", fechaEnvio: "2026-09-05", resumen: "..." } },
+          consulta({ fechaConsulta: "2026-09-04" }),
+        ]),
+      ],
+      SESION,
+    ];
+    const [p] = revisarLote(exportar(nav, ["902"]), CONTEXTO).pacientes;
+    expect(p.consultas).toHaveLength(1);
+    expect(p.informesEnviados).toEqual([{ fechaConsulta: "2026-09-04", fechaEnvio: "2026-09-05" }]);
+    expect(p.problemas).toEqual([]);
+  });
+
+  it("el texto de una versión anterior de la encuesta y 'Otras' calzan", () => {
+    const ctx: ContextoDeRevision = {
+      pacientesAtlas: [],
+      preguntas: [
+        { clave: "d6_44", tipo: "opcion_multiple", opciones: ["Ninguna", "Gluten (trigo, pan, pasta)", "Otra"], opcionesAnteriores: ["Gluten"] },
+        { clave: "d6_43", tipo: "opcion_multiple", opciones: ["Ninguna", "Maní", "Otra"] },
+      ],
+    };
+    const nav: [string, string][] = [["atlas:903", JSON.stringify([consulta({ d6_44: ["Gluten"], d6_43: ["Otras"] })])], SESION];
+    const [c] = revisarLote(exportar(nav, ["903"]), ctx).pacientes[0].consultas;
+    expect(c.respuestasQueNoCalzan).toEqual([]);
+    expect(c.respuestasDeVersionAnterior).toBe(1);
+  });
+
+  it("nacer después de firmar no es ser menor: es una fecha imposible", () => {
+    const nav: [string, string][] = [
+      ["atlas:904", JSON.stringify([consulta({ fechaNac: "2026-08-06", fechaConsulta: "2026-07-08" })])],
+      SESION,
+    ];
+    const [p] = revisarLote(exportar(nav, ["904"]), CONTEXTO).pacientes;
+    expect(p.fechaNacimientoImposible).toBe(true);
+    expect(p.menorDeEdad).toBe(false);
+  });
+
+  it("la consulta de otro profesional se marca, y el lote dice quiénes aparecen", () => {
+    const nav: [string, string][] = [
+      [
+        "atlas:905",
+        JSON.stringify([
+          consulta({ fechaConsulta: "2026-08-13", profesional: "Profesional Que Exporta" }),
+          consulta({ fechaConsulta: "2026-08-25", profesional: "Otra Profesional" }),
+        ]),
+      ],
+      SESION,
+    ];
+    const r = revisarLote(exportar(nav, ["905"]), CONTEXTO);
+    expect(r.exportadoPor).toBe("Profesional Que Exporta");
+    expect(r.pacientes[0].consultas.map((c) => c.deOtroProfesional)).toEqual([false, true]);
+    expect(r.profesionalesDelArchivo).toEqual(["Otra Profesional", "Profesional Que Exporta"]);
+  });
+
+  it("una firma con otro nombre se avisa; un nombre corto del mismo paciente, no", () => {
+    const nav: [string, string][] = [
+      [
+        "atlas:906",
+        JSON.stringify([
+          consulta({ nombre: "Nico Prueba Completo", firmaNombre: "NICO", fechaConsulta: "2026-08-13" }),
+          consulta({ nombre: "Nico Prueba Completo", firmaNombre: "dsadsads", fechaConsulta: "2026-08-25" }),
+        ]),
+      ],
+      SESION,
+    ];
+    const [p] = revisarLote(exportar(nav, ["906"]), CONTEXTO).pacientes;
+    expect(p.consultas.map((c) => c.consentimiento.nombreDistinto)).toEqual([false, true]);
   });
 });
