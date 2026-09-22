@@ -2,6 +2,7 @@ import { alertasDeLaConsulta } from "@/clinical-engine/alertas-de-la-consulta";
 import "server-only";
 
 import { isEngineOutput, type EngineOutput } from "@/clinical-engine";
+import { dfiNarrativeFromOutput } from "@/clinical-engine/dfi-narrative";
 import { edadEnFecha } from "@/lib/format/edad";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
@@ -9,6 +10,7 @@ import type {
   RespuestaEncuesta,
 } from "@/modules/diagnoses/ai/prompts/criterion.v2";
 
+import { composicionClasificada } from "./composition-clasificada";
 import { getCompositionForEvaluation } from "./composition-reader";
 import { decimalesDe, indicatorBands } from "./indicator-ranges";
 
@@ -138,6 +140,18 @@ function cortesDelSexo(sexoM: boolean): string[] {
 const PHI = 1.618;
 
 /** "por debajo de φ (1,202)", "por encima de φ (2,362)" o "en φ". null sin PABU. */
+/**
+ * La clasificacion del indicador CON SU LECTURA cuando la escala se lee al reves de lo que sugiere la palabra.
+ * El ICEC es el LE8 (0-100) y en su escala mas alto es mejor (bajo <50 · ideal ≥80, sus cortes): "Bajo" es
+ * carga ALTA. Groq escribio "ICEC 33, carga epigenetica baja" (2026-09-22).
+ */
+export function lecturaDelIndicador(code: string, clasificacion: string): string {
+  if (code === "ICEC") {
+    return `${clasificacion}; en la escala LE8 más alto es mejor (ideal 80 o más), así que un puntaje bajo es carga epigenético-contextual alta`;
+  }
+  return clasificacion;
+}
+
 export function direccionDeLaPabu(pabu: number | null | undefined): string | null {
   if (typeof pabu !== "number" || !Number.isFinite(pabu)) return null;
   const cifra = pabu.toFixed(3).replace(".", ",");
@@ -145,8 +159,8 @@ export function direccionDeLaPabu(pabu: number | null | undefined): string | nul
   // CON SU LECTURA (v9): Gemini leyo "por debajo" y aun asi escribio "deficit estructural" junto a "por
   // exceso". La lectura es la de su prompt (por encima, deficit estructural; por debajo, exceso de adiposidad).
   return pabu < PHI
-    ? `por debajo de φ = 1,618 (${cifra}); se lee como exceso de adiposidad`
-    : `por encima de φ = 1,618 (${cifra}); se lee como déficit estructural`;
+    ? `la PABU (${cifra}) está por debajo de φ = 1,618, lo que se lee como exceso de adiposidad`
+    : `la PABU (${cifra}) está por encima de φ = 1,618, lo que se lee como déficit estructural`;
 }
 
 export async function buildCriterionInput(
@@ -164,18 +178,13 @@ export async function buildCriterionInput(
     getCompositionForEvaluation(evaluationId),
   ]);
 
-  // La composicion se manda TAL COMO SE VE EN PANTALLA (etiqueta, valor formateado con su unidad y sus
-  // decimales). Es la misma capa de display que el profesional lee, asi que el borrador y la pantalla no
-  // pueden decir cifras distintas del mismo dato.
-  const filasComposicion = composicion
-    ? [...composicion.eval, ...composicion.diag]
-        .flatMap((n) => n.rows)
-        .filter((r) => r.value != null)
-        .map((r) => ({
-          etiqueta: r.label + (r.unit ? ` (${r.unit})` : ""),
-          valor: String(r.value),
-        }))
-    : [];
+  // LA COMPOSICION VA CLASIFICADA, como en la historia clinica (2026-09-22): la misma funcion
+  // (`composicionClasificada`), con su valor formateado, su unidad y el veredicto de su clasificador. Antes
+  // viajaba la cifra cruda ("IMC 25.663") sin veredicto, y el modelo escribio que un IMC de 25,7 "roza el
+  // sobrepeso": la lectura tiene que llegarle hecha, no deducirla.
+  const filasComposicion = composicionClasificada(composicion, snap.sexo === "M")
+    .filter((f) => f.valor !== "")
+    .map((f) => ({ etiqueta: f.etiqueta, valor: f.valor, clasificacion: f.clasificacion }));
 
   const indicadores = Object.entries(snap.classifications)
     .filter((e): e is [string, NonNullable<(typeof e)[1]>] => e[1] != null)
@@ -185,7 +194,7 @@ export async function buildCriterionInput(
       return {
         nombre: indicatorNames[code] ?? code,
         valor: typeof v === "number" && Number.isFinite(v) ? v.toFixed(dec) : "-",
-        clasificacion: c.label,
+        clasificacion: lecturaDelIndicador(code, c.label),
       };
     });
 
@@ -235,5 +244,8 @@ export async function buildCriterionInput(
     // LA DIRECCION DE LA PABU, resuelta de la cifra sellada: es aritmetica (mayor o menor que phi), no
     // clinica. El modelo leyo el "+" de "desviación de φ +0,42" como "por encima" con la PABU en 1,20.
     direccionPabu: direccionDeLaPabu(snap.indicators.pabu),
+    // EL CIERRE LO ESCRIBE ATLAS (v10): las rutas con su prioridad salen de la MISMA narrativa del DFI que
+    // cierra la A del SOAP. Sin DFI completo no hay narrativa, y entonces no se escribe cierre.
+    rutasActivadas: snap.dfi.complete ? dfiNarrativeFromOutput(snap).rutasActivadas : null,
   };
 }

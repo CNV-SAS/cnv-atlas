@@ -47,6 +47,12 @@ export type DfiMetas = {
 export type DfiNarrative = {
   parrafo: string;
   metas: DfiMetas;
+  /**
+   * Las rutas activadas con su prioridad, la MISMA cadena que cierra `parrafo` ("Ruta 3 (Conductual),
+   * crítica; ..."). Expuesta para el cierre del resumen de IA (2026-09-22): asi el resumen y la historia no
+   * pueden nombrar prioridades distintas. Vacia si no se activa ninguna.
+   */
+  rutasActivadas: string;
 };
 
 type Rol = keyof DfiMetas;
@@ -245,6 +251,7 @@ export function dfiNarrative(i: DfiNarrativeInput): DfiNarrative {
 
   return {
     parrafo,
+    rutasActivadas: rutasTxt,
     metas: {
       nutricion: metaDe("nutricion", i, acts),
       medicina: metaDe("medicina", i, acts),

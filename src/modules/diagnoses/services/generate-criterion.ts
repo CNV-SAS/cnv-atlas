@@ -23,7 +23,7 @@ import {
 } from "../ai/prompts/criterion.v2";
 import { saveAiSummary } from "../data/ai-summary-writer";
 import { buildCriterionInput } from "../data/criterion-input-reader";
-import { insertarParrafoDeAlertas, parrafoDeAlertas } from "./parrafo-de-alertas";
+import { conCierreDeAtlas, insertarParrafoDeAlertas, parrafoDeAlertas, parrafoDeCierre } from "./parrafo-de-alertas";
 
 // Generacion del BORRADOR de criterio por IA. Desde el 2026-09-08 es el PORTE DEL PASO 4 de su Analisis
 // IA (punto 8 de su cotejo): el diagnostico integral estructurado por los cinco dominios del DFI, con los
@@ -95,9 +95,13 @@ export async function generateCriterion(
     // se pinta como texto plano, asi que un `**` que se cuele lo ve el profesional.
     // Y EL PARRAFO DE ALERTAS LO PONE ATLAS (ver `parrafo-de-alertas`): el modelo no lo escribe desde la
     // v8, porque en tres pruebas omitio o invento algo en esa lista. Se inserta despues de su apertura.
-    const limpio = insertarParrafoDeAlertas(
-      limpiarMarcadores(completion.text),
-      parrafoDeAlertas(input.alertas, input.respuestasEnRojo, input.sexo),
+    // Y EL CIERRE TAMBIEN (v10): las rutas con su prioridad, de la narrativa del DFI.
+    const limpio = conCierreDeAtlas(
+      insertarParrafoDeAlertas(
+        limpiarMarcadores(completion.text),
+        parrafoDeAlertas(input.alertas, input.respuestasEnRojo, input.sexo),
+      ),
+      parrafoDeCierre(input.rutasActivadas, input.veto),
     );
     await recordCriterionSuggestion({
       diagnosisId: criterion.diagnosisId,

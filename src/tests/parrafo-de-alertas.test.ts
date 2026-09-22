@@ -80,8 +80,44 @@ describe("dónde va", () => {
 
 describe("la dirección de la PABU, resuelta de la cifra", () => {
   it("por debajo y por encima de φ", () => {
-    expect(direccionDeLaPabu(1.202)).toBe("por debajo de φ = 1,618 (1,202); se lee como exceso de adiposidad");
-    expect(direccionDeLaPabu(2.362)).toBe("por encima de φ = 1,618 (2,362); se lee como déficit estructural");
+    expect(direccionDeLaPabu(1.202)).toBe("la PABU (1,202) está por debajo de φ = 1,618, lo que se lee como exceso de adiposidad");
+    expect(direccionDeLaPabu(2.362)).toBe("la PABU (2,362) está por encima de φ = 1,618, lo que se lee como déficit estructural");
     expect(direccionDeLaPabu(null)).toBeNull();
+  });
+});
+
+// ═══ EL CIERRE LO ESCRIBE ATLAS (v10, 2026-09-22) ═══
+describe("el cierre de las rutas", () => {
+  const rutas = "Ruta 3 (Conductual), crítica; Ruta 4 (Desaceleración del Envejecimiento), prioritaria";
+
+  it("nombra las rutas con su prioridad, sin códigos ni conductas, y el veto cuando lo hay", async () => {
+    const { parrafoDeCierre } = await import("@/modules/diagnoses/services/parrafo-de-alertas");
+    const c = parrafoDeCierre(rutas, true) ?? "";
+    expect(c).toContain("se activan estas rutas de atención: Ruta 3 (Conductual), crítica;");
+    expect(c).toContain("el abordaje psicológico va primero y se excluye la restricción calórica");
+    expect(c).not.toMatch(/R\d\s*·|para abordar/);
+    expect(parrafoDeCierre(rutas, false)).not.toContain("veto");
+    expect(parrafoDeCierre(null, true)).toBeNull();
+  });
+
+  it("quita el cierre del modelo y pone el de Atlas, sin tocar los dominios", async () => {
+    const { conCierreDeAtlas } = await import("@/modules/diagnoses/services/parrafo-de-alertas");
+    const texto = [
+      "Apertura.",
+      "En el dominio Epigenético-Contextual, el ICEC es 33.",
+      "Las Rutas de Atención son la R3 · Conductual (prioritaria) para abordar las conductas.",
+      "El veto conductual activo exige priorizar la intervención psicológica.",
+    ].join("\n\n");
+    expect(conCierreDeAtlas(texto, "CIERRE.")).toBe(
+      "Apertura.\n\nEn el dominio Epigenético-Contextual, el ICEC es 33.\n\nCIERRE.",
+    );
+    // Sin narrativa del DFI, el texto queda como estaba.
+    expect(conCierreDeAtlas(texto, null)).toBe(texto);
+  });
+
+  it("y el servicio lo aplica sobre el texto con las alertas ya insertadas", () => {
+    const S = sinComentarios(readFileSync("src/modules/diagnoses/services/generate-criterion.ts", "utf8"));
+    expect(S).toContain("parrafoDeCierre(input.rutasActivadas, input.veto)");
+    expect(S).toContain("conCierreDeAtlas(");
   });
 });

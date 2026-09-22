@@ -178,7 +178,7 @@ export type CriterionPromptInput = {
 
   // ── Composicion corporal y bioelectrica, ya formateadas por su capa de display (etiqueta + valor con
   //    sus unidades y decimales), que es lo que el profesional ve en pantalla. ──
-  composicion: { etiqueta: string; valor: string }[];
+  composicion: { etiqueta: string; valor: string; clasificacion?: string | null }[];
 
   // ── Estado EFR y fenotipos ──
   estadoEfr: string;
@@ -198,6 +198,8 @@ export type CriterionPromptInput = {
    * tambien cuando la PABU esta POR DEBAJO, y el modelo leyo el "+" como "por encima". null sin PABU.
    */
   direccionPabu: string | null;
+  /** Las rutas activadas con su prioridad, de la narrativa del DFI (v10). El cierre lo escribe Atlas con esto. */
+  rutasActivadas?: string | null;
 };
 
 // NO HAY `biomarcadores`, y su ausencia es el arreglo del punto 9 (2026-09-07): el campo `bio` de su
@@ -308,7 +310,7 @@ export function buildCriterionPrompt(
   if (input.composicion.length > 0) {
     L.push(
       "COMPOSICIÓN CORPORAL Y BIOELÉCTRICA:",
-      ...input.composicion.map((c) => `${c.etiqueta}: ${c.valor}`),
+      ...input.composicion.map((c) => `${c.etiqueta}: ${c.valor}${c.clasificacion ? ` (${c.clasificacion})` : ""}`),
       "",
     );
   }
@@ -339,7 +341,7 @@ export function buildCriterionPrompt(
   }
 
   if (input.direccionPabu) {
-    L.push(`DIRECCIÓN DE LA PABU (úsala tal cual): ${input.direccionPabu}`, "");
+    L.push(`LECTURA DE LA PABU (ya resuelta; dila con tus palabras, sin comillas): ${input.direccionPabu}`, "");
   }
 
   return [

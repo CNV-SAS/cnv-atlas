@@ -37,7 +37,7 @@ import { describe, expect, it } from "vitest";
 // congelada. El ANCLA se mueve; la asercion es la misma.
 // TERCERA VEZ (2026-09-21, la v5 con las respuestas en rojo de la observacion g). Mismo movimiento.
 // CUARTA Y QUINTA VEZ, el mismo dia (la v6 y la v7, las dos por pruebas de Santiago).
-const MIGRACION = "drizzle/0155_prompt_criterio_v9.sql";
+const MIGRACION = "drizzle/0156_prompt_criterio_v10.sql";
 const MIGRACIONES_HISTORICAS = [
   "drizzle/0102_prompt_criterio_v2.sql",
   "drizzle/0103_prompt_criterio_v3.sql",
@@ -46,11 +46,12 @@ const MIGRACIONES_HISTORICAS = [
   "drizzle/0152_prompt_criterio_v6.sql",
   "drizzle/0153_prompt_criterio_v7.sql",
   "drizzle/0154_prompt_criterio_v8.sql",
+  "drizzle/0155_prompt_criterio_v9.sql",
 ];
 const SEED = readFileSync("supabase/seed.ts", "utf8");
 
 function generado(): string {
-  return execFileSync("node", ["scripts/gen-ai-prompt-migration.mjs", "0155", "criterio.generate"], {
+  return execFileSync("node", ["scripts/gen-ai-prompt-migration.mjs", "0156", "criterio.generate"], {
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
   });
@@ -73,7 +74,7 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     expect(
       norm(readFileSync(MIGRACION, "utf8")),
       "el prompt canónico y la migración divergieron: regenera con " +
-        "`node scripts/gen-ai-prompt-migration.mjs 0155 criterio.generate > " + MIGRACION + "`",
+        "`node scripts/gen-ai-prompt-migration.mjs 0156 criterio.generate > " + MIGRACION + "`",
     ).toBe(norm(generado()));
   });
 
@@ -81,7 +82,7 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     // Se DERIVA del JSON, no se escribe la longitud aqui. Un texto truncado en el SQL publicaria un
     // prompt a medias, que es peor que no publicarlo: el modelo obedece lo que lee.
     const canonico = JSON.parse(
-      readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.v9.json", "utf8"),
+      readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.v10.json", "utf8"),
     ).system as string;
     const sql = generado();
     // El SQL duplica las comillas simples; se deshace para comparar el texto real.
@@ -103,7 +104,7 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     // Mismo criterio que el seed: solo se retira lo ANTERIOR (`version <`), y la insercion se activa solo
     // si no quedo ninguna activa. Verificado contra Postgres real en los cuatro escenarios, con rollback.
     const sql = generado();
-    expect(sql).toContain("AND version < 9");
+    expect(sql).toContain("AND version < 10");
     expect(sql).toContain("THEN 'inactive' ELSE 'active' END");
   });
 

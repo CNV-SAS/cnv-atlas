@@ -1,4 +1,4 @@
-import promptV9 from "./criterion.system.v9.json";
+import promptV10 from "./criterion.system.v10.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -90,4 +90,10 @@ import promptV9 from "./criterion.system.v9.json";
 // nuestro salia como lista suelta de rutas); se le prohibe anticipar consecuencias ("susceptibilidad futura")
 // y se le pide releer antes de entregar; y la PABU le llega con su lectura resuelta, porque Gemini escribio
 // "por exceso" y "deficit estructural" en la misma frase. LA V8 NO SE RETIRA.
-export const CRITERION_SYSTEM_PROMPT: string = promptV9.system;
+//
+// V10 (2026-09-22, cuarta prueba): EL CIERRE LO ESCRIBE ATLAS, como el parrafo de alertas (Gemini puso
+// codigos y "para abordar" en las rutas), desde la narrativa del DFI. Y tres lecturas que ahora le llegan
+// hechas: la composicion con su clasificacion (dijo que un IMC de 25,7 "roza el sobrepeso"), el ICEC con su
+// escala (Groq leyo LE8 bajo como carga baja) y la PABU como frase (Gemini pego la cadena entre comillas).
+// Se le prohibe recomendar ("requieren atencion"). LA V9 NO SE RETIRA.
+export const CRITERION_SYSTEM_PROMPT: string = promptV10.system;

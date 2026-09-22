@@ -70,7 +70,7 @@ const menuAdaptSystemPrompt: string = JSON.parse(
 // siembra como ai_prompts criterio.generate v1, para que el admin lo edite en /admin/ia como el del menu.
 const criterionSystemPrompt: string = JSON.parse(
   readFileSync(
-    new URL("../src/modules/diagnoses/ai/prompts/criterion.system.v9.json", import.meta.url),
+    new URL("../src/modules/diagnoses/ai/prompts/criterion.system.v10.json", import.meta.url),
     "utf8",
   ),
 ).system;
@@ -904,7 +904,7 @@ async function main() {
   // admin tiene una v3 activa, el seed no la toca y su v2 entra como historica.
   const PROMPTS_SEED = [
     { prompt_key: "menu.adapt", version: 1 },
-    { prompt_key: "criterio.generate", version: 9 },
+    { prompt_key: "criterio.generate", version: 10 },
     { prompt_key: "menu.generate", version: 1 },
   ];
   for (const { prompt_key, version } of PROMPTS_SEED) {
