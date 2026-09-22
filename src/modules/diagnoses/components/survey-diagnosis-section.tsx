@@ -91,9 +91,11 @@ function CategoryCards({ grupos }: { grupos: PatronGrupoView[] }) {
 // de una pestaña y el de la otra no parecian el mismo verde, y un semaforo con dos verdes en la misma
 // pantalla se lee como dos significados. La forma es la de D1, que es la que el enseña.
 // EL TAMAÑO NO ES EL MISMO EN D1 Y EN D2-D8, y es a proposito (Santiago, 2026-09-21): D1 es una grilla de
-// quince grupos con su propia organizacion, y D2-D8 es pregunta contra respuesta. En D2-D8 la pastilla
-// mide lo mismo que la pregunta (text-sm): a 10 px se leia pequeña al lado. En D1 suben juntos, grupo y
-// pastilla, un escalon. Lo que NO cambia es la forma (fondo al 12%, sin borde) ni el color.
+// quince grupos con su propia organizacion, y D2-D8 es pregunta contra respuesta. En D2-D8
+// la pregunta va en 14 px y la pastilla en 12 px, que en NEGRITA se lee del mismo peso (Santiago: a 14 px la
+// pastilla pesaba mas que la pregunta). Es la proporcion que ya funcionaba en D1. Lo que NO cambia es la
+// forma (fondo al 12%, sin borde) ni el color; la de respuesta es algo menos redonda porque puede partirse en
+// dos lineas, y una pildora de dos lineas se ve rota.
 function PastillaDeColor({
   color,
   children,
@@ -106,7 +108,7 @@ function PastillaDeColor({
 }) {
   return (
     <span
-      className={`inline-block rounded-full font-bold ${tamano === "respuesta" ? "px-2.5 py-0.5 text-sm" : "px-2 py-0.5 text-xs"}`}
+      className={`inline-block font-bold ${tamano === "respuesta" ? "rounded-xl px-2.5 py-0.5 text-xs leading-snug" : "rounded-full px-2 py-0.5 text-xs"}`}
       style={{ color, background: `${color}1f` }}
     >
       {children}
@@ -231,11 +233,17 @@ function DomainReadout({
   return (
     <div className="flex flex-col divide-y divide-border">
       {answered.map((q) => (
-        <div key={q.questionId} className="flex items-baseline justify-between gap-4 py-2">
+        // EN ANGOSTO SE APILAN (Santiago, 2026-09-21): pregunta arriba y respuesta debajo. Lado a lado, una
+        // respuesta larga (varias opciones, o "No hago ejercicio · 0 minutos a la semana") empujaba la pregunta
+        // hasta dejarla en una columna de dos palabras. En ancho vuelven a ir enfrentadas.
+        <div
+          key={q.questionId}
+          className="flex flex-col gap-1 py-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+        >
           <p className="text-sm text-muted-foreground">
             <span className="tabular-nums">{q.number}.</span> {q.questionText}
           </p>
-          <div className="shrink-0 text-right">
+          <div className="sm:max-w-[50%] sm:shrink-0 sm:text-right">
             <PastillaDeColor
               tamano="respuesta"
               color={

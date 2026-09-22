@@ -269,21 +269,21 @@ describe("el porte del paso 4 llega entero", () => {
   });
 });
 
-describe("el texto de sistema canónico es el v6", () => {
+describe("el texto de sistema canónico es el v7", () => {
   it("y el seed publica esa misma versión", () => {
     // Los dos canales del prompt: el JSON que consume la app y la version que el seed (y su migracion)
     // publican. Si divergen, local y nube corren textos distintos sin que nada de error.
     const modulo = readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.ts", "utf8");
-    expect(modulo).toContain("criterion.system.v6.json");
+    expect(modulo).toContain("criterion.system.v7.json");
     const seed = readFileSync("supabase/seed.ts", "utf8");
-    expect(seed).toContain("criterion.system.v6.json");
-    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 6 },');
+    expect(seed).toContain("criterion.system.v7.json");
+    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 7 },');
   });
 
   it("y las versiones anteriores NO se borran", () => {
     // Los borradores ya generados apuntan a su version en la procedencia. Borrar el texto deja registros
     // que dicen "generado con la v3" sin que exista la v3. Misma disciplina que las versiones de motor.
-    for (const v of ["v1", "v2", "v3", "v4", "v5"]) {
+    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6"]) {
       expect(
         existsSync(`src/modules/diagnoses/ai/prompts/criterion.system.${v}.json`),
         `se borró el texto de la ${v}`,
@@ -407,6 +407,20 @@ describe("las respuestas en rojo viajan en el mismo párrafo (v5, observación g
     expect(CRITERION_SYSTEM_PROMPT).toContain("\"sugiere\"");
     // Y lo SUYO se conserva: su estructura pide conectar causas entre dominios.
     expect(CRITERION_SYSTEM_PROMPT).toContain("conectando causas entre dominios");
+  });
+
+  it("v7: la lista roja es cerrada y el consumo de D1 no entra en ella", () => {
+    // Segunda prueba: salieron "sal extra" y "carnes rojas" como rojos. D1 no pasa por su clasificador.
+    expect(CRITERION_SYSTEM_PROMPT).toContain("La lista es CERRADA: se reproduce, no se completa.");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("NUNCA forma parte de las respuestas en rojo");
+  });
+
+  it("v7: el cierre nombra rutas y prioridad, sin conductas", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("Nombra cada ruta con su prioridad y nada más");
+  });
+
+  it("v7: los índices con el nombre que se le da, sin abreviar", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("\"Índice del Estado de Hidratación Humana\"");
   });
 
   it("v6: la PABU por debajo de phi es exceso de adiposidad y nada más", () => {

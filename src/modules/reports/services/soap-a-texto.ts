@@ -1,3 +1,4 @@
+import { fmtDec } from "@/lib/format/decimal";
 import type { AlertasDelSoap, HistoriaClinicaSoap } from "../data/reports-view-types";
 
 // ═══ EL SOAP COMO TEXTO PLANO, PARA COPIAR (Santiago, 2026-09-20) ═══
@@ -34,8 +35,8 @@ export function soapATexto(
 ): string {
   const edad = soap.edad != null ? `${soap.edad} años` : null;
   const medidas = [
-    soap.objetivo.pesoKg != null ? `Peso: ${soap.objetivo.pesoKg} kg` : null,
-    soap.objetivo.tallaCm != null ? `Talla: ${soap.objetivo.tallaCm} cm` : null,
+    soap.objetivo.pesoKg != null ? `Peso: ${fmtDec(soap.objetivo.pesoKg)} kg` : null,
+    soap.objetivo.tallaCm != null ? `Talla: ${fmtDec(soap.objetivo.tallaCm)} cm` : null,
   ].filter(Boolean);
 
   const cabecera = nl([

@@ -1,3 +1,5 @@
+import { decimalesEsp, fmtDec } from "@/lib/format/decimal";
+
 import { allCompositionRows, type Composition } from "./composition-map";
 import { computeRefPob, type RefPobEntry } from "./composition-display";
 import { wangRowDx } from "./composition-display";
@@ -27,8 +29,11 @@ export type FilaClasificada = {
   severidad: number | null;
 };
 
+// COMA DECIMAL (2026-09-21): la HC, su PDF y el SOAP salian con punto ("80.40", "1849.85") mientras los
+// indices del mismo documento iban con coma ("0,81"). En español, coma en todo (lib/format/decimal). Se
+// conserva lo que ya hacia: un entero exacto no arrastra ",00" ("177 cm", no "177,00 cm").
 const fmt = (v: number | null, decimals = 2): string =>
-  v == null ? "" : v.toFixed(decimals).replace(/\.?0+$/, (m) => (m.startsWith(".") ? "" : m));
+  v == null ? "" : fmtDec(v, decimals).replace(/,0+$/, "");
 
 /**
  * Todas las filas de composicion con su valor, su referencia y su veredicto.
@@ -77,7 +82,7 @@ export function composicionClasificada(
         key: r.key,
         etiqueta: r.label,
         valor: `${fmt(r.value, r.decimals ?? 2)} ${r.unit}`.trim(),
-        referencia: w?.referenceLabel ?? (effRef != null ? fmt(effRef, r.decimals ?? 2) : null),
+        referencia: w?.referenceLabel ? decimalesEsp(w.referenceLabel) : effRef != null ? fmt(effRef, r.decimals ?? 2) : null,
         clasificacion: w?.dx?.label ?? null,
         severidad: w?.dx?.sev ?? null,
       };

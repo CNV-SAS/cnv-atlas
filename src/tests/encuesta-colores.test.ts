@@ -192,13 +192,14 @@ describe("el tamaño de la pastilla sigue a su contexto", () => {
   // Santiago: en D2-D8 la pastilla se leía pequeña al lado de la pregunta. Mide lo que la pregunta.
   const SECCION = readFileSync("src/modules/diagnoses/components/survey-diagnosis-section.tsx", "utf8");
 
-  it("en D2-D8, del tamaño de la pregunta", () => {
+  it("en D2-D8, 12 px en negrita junto a la pregunta de 14, como en D1, y apilada en angosto", () => {
+    expect(SECCION).toContain("flex flex-col gap-1 py-2 sm:flex-row");
     expect(SECCION).toContain('tamano="respuesta"');
-    expect(SECCION).toContain('"px-2.5 py-0.5 text-sm"');
+    expect(SECCION).toContain('"rounded-xl px-2.5 py-0.5 text-xs leading-snug"');
   });
 
   it("en D1, un escalón más que antes, grupo y pastilla juntos", () => {
-    expect(SECCION).toContain('"px-2 py-0.5 text-xs"');
+    expect(SECCION).toContain('"rounded-full px-2 py-0.5 text-xs"');
     expect(SECCION).toContain('<span className="text-sm text-foreground">{g.label}</span>');
     expect(SECCION).not.toContain("text-[10px]");
   });

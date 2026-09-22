@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtDec } from "@/lib/format/decimal";
 import { Check, ClipboardCopy, Printer } from "lucide-react";
 import { useActionState, useState } from "react";
 
@@ -251,8 +252,8 @@ export function HistoriaClinicaSoapDoc({
         {soap.objetivo.pesoKg != null || soap.objetivo.tallaCm != null ? (
           <p>
             {[
-              soap.objetivo.pesoKg != null ? `Peso: ${soap.objetivo.pesoKg} kg` : null,
-              soap.objetivo.tallaCm != null ? `Talla: ${soap.objetivo.tallaCm} cm` : null,
+              soap.objetivo.pesoKg != null ? `Peso: ${fmtDec(soap.objetivo.pesoKg)} kg` : null,
+              soap.objetivo.tallaCm != null ? `Talla: ${fmtDec(soap.objetivo.tallaCm)} cm` : null,
             ]
               .filter(Boolean)
               .join(" · ")}
