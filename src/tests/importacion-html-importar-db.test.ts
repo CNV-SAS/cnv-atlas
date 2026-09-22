@@ -215,3 +215,82 @@ describe.skipIf(!HAS_DB)("importar y deshacer un lote (BD real)", () => {
     expect(lote.reverted_at).not.toBeNull();
   });
 });
+
+describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condiciones (BD real)", () => {
+  const rastro: { paciente?: string; lote?: string } = {};
+  afterAll(async () => {
+    const { db } = await import("@/db");
+    // Las evaluaciones NO se van en cascada con el paciente (su FK es restrict): se borran primero.
+    if (rastro.paciente) {
+      await db.execute(dsql`delete from evaluations where patient_id = ${rastro.paciente}`);
+      await db.execute(dsql`delete from patient_external_consents where patient_id = ${rastro.paciente}`);
+      await db.execute(dsql`delete from patients where id = ${rastro.paciente}`);
+    }
+    if (rastro.lote) await db.execute(dsql`delete from html_import_batches where id = ${rastro.lote}`);
+  });
+
+  it("el gate del diagnóstico nombra las condiciones, no la encuesta", async () => {
+    const { db } = await import("@/db");
+    const schema = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const { importarLote } = await import("@/modules/importacion-html/data/importar-lote-writer");
+    const { fillSurveyComplete } = await import("./fixtures/survey-fill");
+    const { runClinicalPipeline } = await import("@/modules/clinical-pipeline/services/run-pipeline");
+
+    const [pp] = await db.execute<{ id: string; profile_id: string; organization_id: string }>(
+      dsql`select pp.id, pp.profile_id, p.organization_id from professional_profiles pp
+             join profiles p on p.id = pp.profile_id limit 1`,
+    );
+    const [version] = await db.execute<{ id: string }>(
+      dsql`select id from survey_versions order by published_at desc limit 1`,
+    );
+    const documento = `IMPGATE-${Date.now()}`;
+    const r = await importarLote({
+      organizationId: pp.organization_id,
+      professionalId: pp.id,
+      actorId: pp.profile_id,
+      actorEmail: "admin@cnv",
+      ip: null,
+      archivo: { nombre: "prueba.json", hash: "b".repeat(64) },
+      declaracion: { version: "1.0", aceptadaEn: "2026-09-22T10:00:00Z" },
+      surveyVersionId: version.id,
+      preguntasPorClave: {},
+      pacientes: [
+        {
+          documento,
+          nombre: "Sintético Gate",
+          consultas: [
+            {
+              fecha: "2026-08-13",
+              consulta: { nombre: "Sintético Gate", sexo: "M", fechaNac: "1990-05-01", Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: 2.96, FM: 18.04, FFMI: 19.9, peso: 80.4, tallaCm: 177 },
+            },
+          ],
+        },
+      ],
+    });
+    rastro.lote = r.batchId;
+    const [paciente] = await db.execute<{ id: string }>(dsql`select id from patients where document_number = ${documento}`);
+    rastro.paciente = paciente.id;
+    const [evaluacion] = await db.execute<{ id: string }>(
+      dsql`select id from evaluations where patient_id = ${paciente.id}`,
+    );
+
+    // La encuesta, COMPLETA (es lo que el profesional hace al retomar al paciente).
+    const [respuesta] = await db
+      .insert(schema.surveyResponses)
+      .values({ evaluationId: evaluacion.id, surveyVersionId: version.id })
+      .returning({ id: schema.surveyResponses.id });
+    await fillSurveyComplete(db, schema, eq, respuesta.id, version.id);
+
+    const res = await runClinicalPipeline({
+      evaluationId: evaluacion.id,
+      actorId: pp.profile_id,
+      actorEmail: "prof@cnv",
+      ip: null,
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.message).toContain("condiciones de la toma BIS");
+    // Llenar las 64 respuestas y correr el pipeline contra la base pasa de los 5 s por defecto cuando la
+    // suite entera esta corriendo.
+  }, 30_000);
+});

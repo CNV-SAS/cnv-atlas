@@ -94,3 +94,41 @@ export async function leerDestinoDeImportacion(professionalId: string): Promise<
   for (const q of encuesta.questions) if (q.fieldKey) preguntasPorClave[q.fieldKey] = q.id;
   return { organizationId, surveyVersionId: encuesta.surveyVersionId, preguntasPorClave };
 }
+
+/** Un lote importado, con lo que trae HOY (no lo que trajo al importarse) y si todavia se puede deshacer. */
+export type LoteImportado = {
+  id: string;
+  importadoEn: string;
+  archivo: string;
+  profesional: string;
+  consultasActuales: number;
+  pacientesCreados: number;
+  conDiagnostico: number;
+  deshechoEn: string | null;
+};
+
+export async function listarLotes(limite = 20): Promise<LoteImportado[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("html_import_batches")
+    .select(
+      "id, imported_at, source_file_name, created_patient_ids, reverted_at, professional_profiles!professional_id ( profiles!profile_id ( full_name ) ), evaluations(id, diagnoses(id))",
+    )
+    .order("imported_at", { ascending: false })
+    .limit(limite);
+  if (error) throw new Error(`contexto-reader: lotes: ${error.message}`);
+  return (data ?? []).map((l) => {
+    const evals = (l.evaluations ?? []) as { id: string; diagnoses: { id: string }[] | null }[];
+    return {
+      id: l.id,
+      importadoEn: l.imported_at,
+      archivo: l.source_file_name,
+      profesional: l.professional_profiles?.profiles?.full_name ?? "(sin nombre)",
+      consultasActuales: evals.length,
+      pacientesCreados: (l.created_patient_ids ?? []).length,
+      // Si alguna ya tiene diagnostico, el lote no se deshace: eso ya es trabajo clinico de Atlas.
+      conDiagnostico: evals.filter((e) => (e.diagnoses ?? []).length > 0).length,
+      deshechoEn: l.reverted_at,
+    };
+  });
+}
