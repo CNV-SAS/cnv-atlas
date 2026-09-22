@@ -7,6 +7,7 @@ import biodyJson from "./fixtures/clinical-engine/biody-demo-realimentacion-f10.
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
 import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-professional";
 import { fillSurveyComplete } from "./fixtures/survey-fill";
+import { sembrarCondicionesBis } from "./helpers/condiciones-bis";
 
 // SEED de los avisos del PLAN ALIMENTARIO. Siembra, por la VIA REAL del pipeline, dos pacientes de
 // demostracion que hacen visible lo que el motor calcula y el nutricionista tiene que ver:
@@ -137,6 +138,8 @@ describe.skipIf(!RUN)("seed demo de los avisos del plan (via pipeline real)", ()
       // La encuesta se responde COMPLETA por TIPO (el pipeline rechaza una incompleta). El relleno se
       // comparte con el seed de trayectoria: tenerlo dos veces fue justo lo que dejo al otro a medias.
       await fillSurveyComplete(db, schema, eq, respId, svId, { overrides, fixture: ANSWERS, resolve: resolveAnswerValue });
+      // El diagnostico exige las condiciones de la toma (2026-09-22).
+      await sembrarCondicionesBis(db, evalId);
       const measId = (
         await db
           .insert(schema.bisMeasurements)

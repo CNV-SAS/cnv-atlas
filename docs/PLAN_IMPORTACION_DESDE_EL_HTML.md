@@ -188,3 +188,34 @@ mencionaba como "la nube de Gildardo".
 
 - **Para el cierre (sesión 5):** retirar el HTML no basta; esa tabla también hay que purgarla, con constancia.
 - **Para Santiago:** confirmar de quién es ese proyecto de Supabase y si el legal lo tuvo en cuenta.
+
+## Decisiones de Santiago (2026-09-22, segunda ronda): esto manda sobre lo anterior
+
+### El BIS del importado: la medición simplemente existe
+
+- **El importado llega con su medición.** Se importa como medición de la evaluación, con la cintura y la
+  cadera de la antropometría del HTML. Antrop. & BIS muestra la tabla de composición con la nota de que vino
+  del HTML. **El profesional no vuelve a subir el XLSX**: eso queda para las evaluaciones siguientes.
+- **La guarda se movió al diagnóstico, para los dos caminos (HECHO).** El diagnóstico ya exigía la encuesta
+  completa; ahora exige también las condiciones de la toma guardadas y sin contraindicación
+  (`condicionesParaDiagnosticar`, en `run-pipeline`). Así un importado con la encuesta completa y sin
+  condiciones no se diagnostica "como si la toma no tuviera ningún reparo". Es la misma regla del botón de
+  importar, en el sitio que ningún camino se salta. Las pruebas de base real siembran condiciones con
+  `helpers/condiciones-bis.ts`.
+- **La "medición leída pendiente" para el flujo normal** (que el archivo no se pierda al cambiar de pestaña)
+  queda para después. No bloquea la importación.
+
+### El canal: el profesional manda el archivo como le quede fácil
+
+- **Por correo o por WhatsApp.** Pedirles subirlo a Atlas es fricción y formación que hoy no toca.
+- **Riesgo aceptado** (el archivo lleva documento, etnia, salud y la firma), **con dos mitigaciones que no le
+  cuestan nada al profesional:** el archivo se borra de Atlas al terminar el lote, con constancia; y el admin
+  borra el mensaje del correo o del chat cuando lo importa.
+- **Sin cifrado por ahora.** Cifrar con una clave mostrada en pantalla obliga al profesional a mandar la clave
+  por otro lado: es un paso más, y la decisión fue no añadirlos.
+
+### El cierre (sesión 5), con constancia
+
+- Retirar el HTML y purgar las copias locales (Santiago).
+- **Borrar el Supabase del HTML** (tabla `consultas`): es de una cuenta de CNV, de prueba, y no alimenta nada.
+  Santiago le pide a Gildardo que lo borre; se deja constancia.

@@ -52,3 +52,24 @@ export function evaluarRequisitosDelImport(
     message: `Para importar la medición falta ${faltan.join(" y ")}.`,
   };
 }
+
+// ═══ Y EL DIAGNOSTICO LAS EXIGE TAMBIEN (2026-09-22) ═══
+// Mismo criterio que el boton, para la medicion que no paso por el (el paciente importado del HTML). La
+// encuesta completa ya la exige el propio pipeline, con su mensaje por dominio.
+export function condicionesParaDiagnosticar(
+  condiciones: { contraindicated: boolean } | null,
+): { allowed: true } | { allowed: false; message: string } {
+  if (!condiciones) {
+    return {
+      allowed: false,
+      message: "Para generar el diagnóstico falta guardar las condiciones de la toma BIS (subpestaña Encuesta).",
+    };
+  }
+  if (condiciones.contraindicated) {
+    return {
+      allowed: false,
+      message: "No se puede generar el diagnóstico: las condiciones de la toma registran una contraindicación (marcapasos).",
+    };
+  }
+  return { allowed: true };
+}
