@@ -1,73 +1,91 @@
-# Plan (O): traer a Atlas los pacientes atendidos con el HTML (borrador, 2026-09-21)
+# Plan (O): traer a Atlas los pacientes atendidos con el HTML
 
-**Estado: SIN EMPEZAR.** Es bloque propio y espera dos cosas: la respuesta del chat legal (abajo) y la
-decisión de dónde se exporta. El cotejo de los dos consentimientos está en
+**Estado: PLAN DE SESIONES, SIN EMPEZAR (2026-09-21).** La respuesta legal está archivada en
+`docs/entregas/RESPUESTA_LEGAL_IMPORTACION_HTML_2026-09-21.md` y el cotejo de los dos consentimientos en
 `docs/entregas/COTEJO_CONSENTIMIENTO_HTML_VS_ATLAS.md`.
 
 ---
 
-## Lo que encontré en su archivo, antes de planear
+## Lo que decidió el legal, en cinco líneas
 
-1. **No trae ninguna exportación de pacientes.** Lo único que descarga es la historia clínica en HTML.
-2. **Cada paciente es una lista de consultas** (`atlas:<documento>` en el navegador), con la encuesta, la
-   medición, la antropometría, el plan y los tratamientos por profesión. Hay además una docena de datos
-   sueltos por paciente (citas, plan, protocolo, notas de medicina, psicología y ejercicio).
-3. **Las consultas se copian a la nube de Gildardo** (tabla `consultas`), pero **sin correo, teléfono ni la
-   firma del consentimiento**: su propio código las borra antes de subir.
-4. **La firma del consentimiento es un nombre tecleado con fecha**, sin código. Solo queda en el navegador del
-   profesional que atendió.
+1. **La historia clínica se importa por custodia** (Resolución 1995 de 1999): está cubierto.
+2. **El consentimiento se importa como lo que es**: de origen HTML, con su versión, su texto y su hash. **No se
+   marcan las casillas de Atlas.**
+3. **El paciente importado se trabaja con normalidad**, y en su próxima consulta firma el consentimiento de
+   Atlas de forma obligatoria.
+4. **La fuente es el navegador de cada profesional**, con un botón de exportación en el HTML y una declaración
+   suya. Es la única fuente que conserva la prueba de la firma.
+5. **Los indicadores del HTML entran como registro**, sin recalcular ni sobrescribir.
 
-## Las dos fuentes posibles, con lo que cuesta cada una
+## Lo que verifiqué antes de planear
 
-| | Navegador de cada profesional | Nube de Gildardo (`consultas`) |
-|---|---|---|
-| Qué trae | Todo, incluida la firma del consentimiento y el contacto | Las consultas, **sin contacto ni firma** |
-| Cómo se saca | Una página de exportación que cada profesional abre en su equipo, en el mismo sitio donde usa el HTML | Una lectura central, con permiso de Gildardo sobre su proyecto |
-| Riesgo | Equipo por equipo; lo que esté en un navegador borrado se pierde | Sin prueba del consentimiento en la importación |
+- **El enlace de seguimiento tiene hoy el hueco que el legal describe, y peor.** Si el paciente no tiene
+  consentimiento de Atlas, cae en el camino "sin firma" y la acción lo **bloquea** con un aviso de revocación.
+  Un paciente importado quedaría atascado en vez de ver el consentimiento completo. Se arregla en la sesión 1.
+- **El HTML no registra revocaciones en ninguna parte.** No hay pacientes que excluir por esa razón (el legal
+  pedía verificarlo, punto 7).
+- **Ningún paciente del HTML está en la nube** (dato de Santiago). No hace falta el caso "sin prueba de firma"
+  para la nube, aunque el modelo lo admite.
+- **Lo que guarda el HTML por paciente**: `atlas:<documento>` (la lista de consultas completa) y, aparte,
+  citas, plan, protocolo, porciones, objetivo, exámenes y las notas de medicina, psicología y ejercicio.
 
-## La propuesta de Santiago, y la pregunta que abre
+## Las sesiones
 
-**Su intuición:** portar solo las autorizaciones obligatorias, que el paciente ya dio. Las cinco casillas
-del HTML eran obligatorias, y las dos que se parecen a las necesarias de Atlas son **servicio** y **datos
-sensibles**. La tercera necesaria de Atlas (**medio electrónico**) no existía en el HTML.
+### Sesión 1 · La regla del enlace y el consentimiento de origen HTML
 
-**La pregunta es jurídica, no técnica:** el texto que firmaron no es el de Atlas (otro responsable, otras
-finalidades, sin tratamiento internacional ni IA informados, otra conservación). Portarlas es afirmar que son
-equivalentes, y esa afirmación la hace el legal.
+- **La regla del legal, literal:** el enlace de seguimiento omite el consentimiento **solo** si el paciente
+  tiene un consentimiento de Atlas vigente y sin cambio sustantivo posterior. En cualquier otro caso (origen
+  HTML, ninguno, versión reemplazada) presenta el consentimiento completo con código. Candado.
+- **Migración:** una tabla propia para los consentimientos de origen externo (paciente, origen, versión del
+  texto, hash del texto, nombre tecleado, fecha de firma tal como se registró, profesional, "sin prueba de
+  firma", quién y cuándo importó, lote). No toca `patient_consents` ni sus tipos.
+- **El texto del HTML archivado** en el repositorio, versionado y con su hash, como los de Atlas.
+- **La ficha del paciente importado lo dice:** "Consentimiento de origen HTML. Firmará el de Atlas en su
+  próxima consulta."
 
-## Preguntas para el chat legal
+### Sesión 2 · El exportador, en NUESTRA copia del HTML
 
-1. **¿El consentimiento del HTML ("Encuesta CNV v3.0") cubre el tratamiento de esos datos en Atlas?** El
-   responsable cambia (en el HTML es CNV; en Atlas, el profesional para la atención y CNV como plataforma y
-   como responsable autónomo), y Atlas añade finalidades: comercializar estadística anonimizada, control de
-   calidad seudonimizado, acceso excepcional identificado a la historia, IA y tratamiento internacional.
-2. **Si no lo cubre entero, ¿qué se puede hacer mientras el paciente vuelve a consulta?** Por ejemplo:
-   importar la historia como registro de lo ya atendido, solo para custodia y consulta del profesional, y
-   pedir el consentimiento de Atlas en la siguiente atención. ¿O no se puede importar nada antes de ese nuevo
-   consentimiento?
-3. **Las autorizaciones opcionales de Atlas** (investigación, continuidad, publicidad) el HTML nunca las
-   pidió. ¿Se confirma que se piden de nuevo? Y la finalidad (c) del HTML, *"mejorar los algoritmos con datos
-   anonimizados"*, ¿cubre algo de la investigación de Atlas o no?
-4. **¿Hay que avisarle al paciente del cambio de plataforma?** Si es así: ¿por qué medio, antes o después de
-   migrar, y qué tiene que decir el aviso? (El dictamen del 2026-08-20 §3 distingue cambio sustantivo, que
-   exige nueva aceptación, de no sustantivo, que basta con informar.)
-5. **La prueba del consentimiento.** En el HTML la firma es un nombre tecleado, sin código, y la copia en la
-   nube de Gildardo ni siquiera la conserva. ¿Qué hay que conservar al importar para poder probar la
-   autorización? ¿Basta con el nombre y la fecha del registro local?
-6. **Los menores.** El HTML no tenía bloque de representante legal. ¿Qué pasa con un menor que firmó él mismo?
-7. **La conservación.** El HTML prometía eliminar o anonimizar en 15 días hábiles al revocar; Atlas conserva
-   la historia 15 años. ¿Rige lo que firmaron para los datos que vienen del HTML?
-8. **El profesional.** Si en Atlas él es el responsable y custodio de la historia, ¿hace falta su autorización
-   expresa para mover a sus pacientes, o basta con que él mismo haga la exportación?
+- **No se toca el HTML de Gildardo:** se entrega una copia derivada (`ATLAS_v9` más el exportador) que Santiago
+  distribuye a los integrantes.
+- **El botón lista los pacientes del navegador**, el profesional marca cuáles exportar y **marca la
+  declaración** del punto 8 del legal (le pidieron continuar en Atlas web, obtuvo su consentimiento con el texto
+  del HTML, la exportación es fiel).
+- **El archivo lleva todo**, incluida la etnia y la firma del consentimiento, más la declaración, la fecha, la
+  versión del formato y un hash del contenido.
+- **Candado** sobre una copia sintética del navegador: exporta lo que hay, no inventa y no pierde claves.
 
-## Cómo se construiría, una vez respondido
+### Sesión 3 · La revisión, sin escribir nada
 
-1. **Exportación** desde la fuente elegida, en un archivo.
-2. **Revisión sin escribir nada:** qué pacientes, qué consultas, qué respuestas no calzan con la encuesta de
-   hoy, qué pacientes ya existen en Atlas (por documento exacto; ante duda, el profesional confirma).
-3. **Importación** con su procedencia ("importada del HTML", con la fecha original) y su auditoría. El orden
-   inicial/seguimiento lo confirma el profesional: Atlas no lo decide solo.
-4. **Smoke con datos sintéticos.** La corrida con datos reales la hace Santiago.
+- **Pantalla para CNV** (admin/soporte): sube el archivo y elige la cuenta del profesional.
+- **El informe:** qué pacientes y qué consultas trae; cuáles ya existen en Atlas por documento exacto (ante
+  duda, el profesional confirma); qué respuestas no calzan con la encuesta vigente; quién es menor de edad; a
+  quién le falta la prueba de firma.
+- **No escribe nada**, y hay candado de eso.
 
-**Tamaño estimado: 3 a 4 sesiones**, según lo que responda el legal (si solo se custodia, es menos; si hay que
-recalcular con el motor de hoy, es más).
+### Sesión 4 · La importación
+
+- **A la cuenta del profesional**, con procedencia "importado del HTML" y la fecha original de cada consulta.
+- **Auditoría del lote**: quién, cuándo, cuántos, desde qué archivo (con su hash).
+- **Los indicadores del HTML como registro**, sin recalcular.
+- **Una decisión que tomar ahí** (abajo, pregunta 4).
+
+### Sesión 5 · Smoke con datos sintéticos
+
+- De punta a punta: exportar, revisar, importar, abrir la ficha, mandar el enlace de seguimiento y firmar el
+  consentimiento de Atlas. La corrida con datos reales la hace Santiago.
+- **El cierre** (retirar el HTML y purgar las copias locales con constancia) lo hace Santiago.
+
+**Tamaño: cinco sesiones.** La 1 es independiente y se puede hacer ya; las demás esperan las respuestas de
+abajo.
+
+## Lo que necesito de Santiago antes de la sesión 2
+
+1. **¿Cómo abren el HTML los integrantes: como archivo en su equipo, o desde una dirección web?** Decide cómo
+   funciona el exportador: el navegador solo deja leer lo guardado desde el mismo sitio donde se guardó.
+2. **¿Con qué navegador?** Lo guardado vive en ese navegador; si alguien usó dos, tiene dos copias.
+3. **¿Quién importa en Atlas?** El legal dice que CNV. Propongo admin y soporte.
+4. **Las consultas importadas, ¿solo se consultan, o también cuentan como punto de la trayectoria?** Si cuentan,
+   el primer seguimiento en Atlas ya compara contra la última consulta del HTML, que es lo que el paciente
+   espera; pero sus indicadores salieron del motor del HTML, no del de Atlas. Mi recomendación: que se vean en la
+   historia y en la ficha, y que **no** entren a la trayectoria hasta que se recalculen con el motor de hoy (el
+   legal ya dejó abierta esa puerta como "derivado nuevo").
