@@ -206,6 +206,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "administracion",
   },
   {
+    // La importacion de pacientes del HTML de Gildardo (plan en docs/PLAN_IMPORTACION_DESDE_EL_HTML.md).
+    label: "Importar del HTML",
+    href: "/admin/importar-html",
+    icon: "admin",
+    roles: ["admin"],
+    group: "administracion",
+  },
+  {
     label: "Auditoria",
     href: "/admin/auditoria",
     icon: "auditoria",

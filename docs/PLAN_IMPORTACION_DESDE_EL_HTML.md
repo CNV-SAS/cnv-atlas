@@ -234,3 +234,17 @@ mencionaba como "la nube de Gildardo".
   pierde claves ni mezcla pacientes de documento parecido) y sobre la copia (el HTML intacto más el exportador,
   al día con el script).
 - **Pendiente de un navegador real:** el smoke en Chrome, Brave y Safari va en la sesión 5.
+
+## Estado: la sesión 3 está HECHA (2026-09-22)
+
+- **La pantalla:** `/admin/importar-html` (solo admin, `canImportFromHtml`; en el menú de administración como
+  "Importar del HTML"). Se sube el archivo que mandó el profesional y muestra el informe. **No guarda nada**:
+  ni base ni almacenamiento; el archivo se lee en memoria.
+- **El informe, por paciente:** si ya existe en Atlas (documento normalizado), si se parece a otro (un dígito
+  distinto, o mismo nombre y fecha de nacimiento: no se une ni se crea), si era menor al firmar, y por cada
+  consulta: la firma del consentimiento, las respuestas que no calzan con la encuesta de hoy ("Otra: texto"
+  calza), cuántas quedaron sin responder y si la medición trae lo que exigen el motor y la regla de negocio
+  (cintura y cadera). Avisa si el archivo trae el mismo documento dos veces.
+- **Candado:** `importacion-html-revision.test.ts`, de punta a punta con el exportador real, más que ningún
+  archivo del módulo escribe y que solo lo ve admin.
+- **El selector de la cuenta de destino** va en la sesión 4, al importar: la revisión no depende de él.
