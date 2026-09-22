@@ -203,6 +203,47 @@ create table public.patient_professional_relationships (
 create index ppr_professional_idx on patient_professional_relationships(professional_id);
 ```
 
+#### Importación desde el HTML de Gildardo (0159, 2026-09-22)
+
+El consentimiento que el paciente firmó en el HTML se importa **como lo que es** (respuesta legal del
+2026-09-21, punto 2): en una tabla propia, nunca en `patient_consents`, porque esa es la que lee el gate de
+la regla dura 15 y un consentimiento firmado sin código de verificación no habilita una evaluación de Atlas.
+Texto archivado y hash: `src/modules/consent/text/consent-html-cnv-v3.0.ts`.
+
+```sql
+-- El lote: quién importó (solo admin), a qué profesional, desde qué archivo y con qué declaración.
+create table public.html_import_batches (
+  id uuid primary key default gen_random_uuid(),
+  professional_id uuid not null references professional_profiles(id) on delete restrict,
+  imported_by uuid not null references profiles(id) on delete restrict,
+  imported_at timestamptz not null default now(),
+  source_file_name text not null,
+  source_file_hash text not null,          -- sha-256 del archivo de exportación
+  declaration_version text not null,       -- la declaración del profesional al exportar (punto 8 del legal)
+  declared_at timestamptz not null,
+  patient_count integer not null default 0,
+  consultation_count integer not null default 0
+);
+
+-- Uno por consulta del HTML (el HTML pedía el consentimiento en cada una). Inmutable (trigger).
+create table public.patient_external_consents (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references patients(id) on delete cascade,
+  batch_id uuid not null references html_import_batches(id) on delete restrict,
+  origin text not null,                    -- check: 'html'
+  text_version text not null,              -- 'Encuesta CNV v3.0'
+  document_hash text not null,             -- hash del texto archivado
+  typed_name text not null,                -- el nombre tecleado (firmaNombre)
+  recorded_date text not null,             -- la fecha tal como la guardó el HTML (fechaConsentimiento)
+  source_consultation_date date not null,  -- la consulta del HTML (fechaConsulta)
+  signature_method text not null,          -- check: 'nombre_tecleado_sin_codigo'
+  created_at timestamptz not null default now(),
+  unique (patient_id, origin, source_consultation_date)
+);
+-- RLS: lectura para el profesional del paciente y admin (el lote, solo admin). Ninguna escritura desde sesión:
+-- la importación corre en el servidor como owner, auditada por el lote.
+```
+
 ### Grupo 3: modelo científico (registry)
 ```sql
 create table public.model_versions (

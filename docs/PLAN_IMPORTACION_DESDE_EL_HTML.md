@@ -56,7 +56,7 @@
 
 ### Sesión 3 · La revisión, sin escribir nada
 
-- **Pantalla para CNV** (admin/soporte): sube el archivo y elige la cuenta del profesional.
+- **Pantalla para CNV** (solo admin, decisión de Santiago del 2026-09-21): toma el archivo que subió el profesional y elige la cuenta a la que se importa.
 - **El informe:** qué pacientes y qué consultas trae; cuáles ya existen en Atlas por documento exacto (ante
   duda, el profesional confirma); qué respuestas no calzan con la encuesta vigente; quién es menor de edad; a
   quién le falta la prueba de firma.
@@ -113,8 +113,6 @@ entrar a trabajar la consulta) **no la soporta hoy el flujo tal cual**, y hay qu
   generar el diagnóstico de esa consulta exige que el profesional capture las condiciones o declare que no se
   registraron (y eso se congela en el diagnóstico). Ningún número del BIS se recalcula.
 
-**Estado de la sesión 1:** la regla del enlace está hecha (`modoDelSeguimiento` en `consent/versions.ts`,
-candado en `consent-versions.test.ts`). Falta la tabla del consentimiento de origen HTML y su texto archivado.
 
 ## Cambio del 2026-09-22: el BIS ya no necesita un estado nuevo
 
@@ -128,3 +126,65 @@ con todo completo, igual que cualquier otra. Nada nuevo en la base.
 **A verificar cuando se retome la (O):** el navegador no deja precargar un campo de archivo. Si la medición
 viene en el archivo de importación, se guarda del lado del servidor y "Importar medición BIS" la toma de ahí
 en vez de pedir el XLSX.
+
+## Revisión de Claude web y verificaciones (2026-09-22)
+
+### Estado: la sesión 1 está HECHA
+
+- **La regla del enlace:** `modoDelSeguimiento` (`consent/versions.ts`), candado en `consent-versions.test.ts`.
+  Smoke de Santiago en local: pide el consentimiento con código cuando no hay uno vigente, y no lo pide cuando
+  ya lo hay.
+- **La tabla del consentimiento de origen HTML** y la del lote: migración `0159`, documentadas en
+  `DATABASE.md` (grupo 2). Inmutable, fuera de `patient_consents`, y el gate de la regla 15 no la lee.
+- **El texto archivado con su hash:** `consent/text/consent-html-cnv-v3.0.ts`. **Es el mismo texto en las 14
+  versiones del HTML del repositorio** (julio a 21 de septiembre), así que todo paciente importado firmó este.
+  El candado `consent-html-archivado.test.ts` comprueba que cada frase está en el HTML, que no se omitió nada
+  del documento y que el texto no cambió entre versiones.
+- **La ficha lo dice:** "Consentimiento de origen HTML. Firmará el de Atlas en su próxima consulta".
+
+### La verificación del XLSX: el HTML guarda VALORES, no el archivo
+
+El HTML lee el XLSX en el navegador (`importarComposicion`) y guarda en cada consulta **los valores ya leídos**
+(con las mismas claves de nuestro `BIODY_COLUMNS`, que salió de esa función), más los índices que calculó. El
+archivo no se conserva. Y **cintura y cadera no vienen del XLSX**: el HTML las toma de su antropometría manual.
+
+Lo que cambia:
+- Para los importados no hay archivo que subir: llega **una medición ya leída**. La pieza es "la medición
+  leída, pendiente de importar", y el botón "Importar medición BIS" la toma de ahí.
+- **Propongo que el flujo normal use la misma pieza.** En vez de guardar el XLSX (que trae nombre y fecha de
+  nacimiento del paciente), al pulsar "Importar" con el archivo válido se guardan los valores ya leídos, sin
+  los datos de identificación que el lector ya separa. Una sola pieza para los dos caminos, y ningún archivo
+  con el nombre del paciente esperando. Necesita una tabla nueva; se construye en la sesión 4.
+- **Cuándo se borra la medición pendiente:** al completar la importación; y también si la evaluación se
+  cierra, se abandona o se reemplaza (va colgada de la evaluación, así que se va con ella).
+- **La idea de Santiago va encima:** en la revisión (sesión 3), la medición de cada consulta se valida en ese
+  momento, y el informe dice por paciente qué le falta (cintura, cadera, datos del motor) antes de que el
+  profesional pulse nada.
+
+### Los cuatro ajustes
+
+- **a) Solo admin**, también en la sesión 3 (corregido arriba).
+- **b) El canal del archivo.** El archivo de exportación lleva documento, etnia, salud y la firma: no puede
+  viajar por correo ni por WhatsApp. **Propuesta: el profesional lo sube desde su propia cuenta de Atlas**, en
+  una pantalla "Traer mis pacientes del HTML". Ya tiene sesión, así que no hace falta un enlace nuevo. El
+  archivo queda en un espacio privado, lo ve solo admin para revisar e importar, y **se borra al terminar la
+  importación del lote**, con constancia en el lote. Así "enviar a CNV" es subirlo a Atlas.
+- **c) El cruce por documento.** El documento del HTML se tecleó a mano. Antes de comparar se normaliza
+  (sin puntos, espacios, guiones ni ceros a la izquierda). Si hay coincidencia exacta normalizada, es el mismo
+  paciente y el profesional confirma el orden (regla 18). Si solo hay parecido (un dígito distinto, mismo
+  nombre y fecha de nacimiento), **no se une ni se crea nada**: la revisión lo muestra al admin como posible
+  duplicado.
+- **d) El mapeo de la encuesta. Existe, y es por clave.** Las 64 preguntas de la encuesta de Atlas tienen la
+  misma clave que en el HTML (se portaron de ahí; verificado pregunta por pregunta, 64 de 64). Lo que puede no
+  calzar son los **valores**: una consulta vieja pudo guardar una opción que la versión de hoy ya no tiene. La
+  sesión 3 lo revisa opción por opción y la consulta queda con el aviso para corregir.
+
+### Un hallazgo para el cierre: la copia en la nube del HTML
+
+El HTML también sube cada consulta a una tabla `consultas` en un Supabase en la nube (la dirección y la clave
+se retiraron de nuestra copia; están en el original). Esa copia lleva **documento, nombre, profesional, fecha y
+todos los datos clínicos**; solo quita correo, teléfono y la firma. El cotejo del consentimiento ya la
+mencionaba como "la nube de Gildardo".
+
+- **Para el cierre (sesión 5):** retirar el HTML no basta; esa tabla también hay que purgarla, con constancia.
+- **Para Santiago:** confirmar de quién es ese proyecto de Supabase y si el legal lo tuvo en cuenta.

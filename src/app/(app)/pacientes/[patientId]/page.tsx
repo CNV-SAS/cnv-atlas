@@ -15,7 +15,8 @@ import {
   canEmitFollowupLink,
 } from "@/modules/evaluations/policies/can-manage-evaluations";
 import { PanelAutorizaciones } from "@/modules/consent/components/panel-autorizaciones";
-import { getPatientConsents } from "@/modules/consent/data/consent-reader";
+import { ConsentimientosOrigenHtml } from "@/modules/consent/components/consentimientos-origen-html";
+import { getExternalConsents, getPatientConsents } from "@/modules/consent/data/consent-reader";
 import { canRevokeConsent } from "@/modules/consent/policies/can-revoke-consent";
 import { getPatientDetail } from "@/modules/patients/data/patient-detail-reader";
 import { formatDateOnlyShort } from "@/lib/format/date";
@@ -46,7 +47,11 @@ export default async function HistoriaPacientePage({
 
   // Autorizaciones del paciente y la via para registrar una revocacion (CONSENT_ATLAS seccion 10). Se lee
   // DESPUES del 404: si el paciente no es suyo, no se consulta nada mas.
-  const autorizaciones = await getPatientConsents(patientId);
+  const [autorizaciones, deOrigenHtml] = await Promise.all([
+    getPatientConsents(patientId),
+    // Los del HTML de Gildardo, importados como lo que son (0159). Aparte: no habilitan evaluaciones.
+    getExternalConsents(patientId),
+  ]);
 
   // Solo el profesional dueno puede cerrar un shell firmado sin responder (la RLS ya acota que sea suyo).
   const puedeCerrar = canAbandonEvaluation(user);
@@ -146,6 +151,11 @@ export default async function HistoriaPacientePage({
             clasificacion (que es historia y que es trabajo pendiente) vive aparte y es pura. */}
         <HistorialEvaluaciones evaluaciones={paciente.evaluations} puedeCerrar={puedeCerrar} />
       </Panel>
+
+      <ConsentimientosOrigenHtml
+        consentimientos={deOrigenHtml}
+        tieneElDeAtlas={autorizaciones.some((a) => a.tipo === "servicio" && a.vigente)}
+      />
 
       <PanelAutorizaciones
         patientId={patientId}

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { CONSENT_TEXT_HTML_CNV_V3_0 } from "./text/consent-html-cnv-v3.0";
 import { CONSENT_TEXT_V1_0, CONSENT_VERSION } from "./text/consent-v1.0";
 
 // Calculo reproducible de patient_consents.document_hash (regla C1 de DELTA.md).
@@ -31,3 +32,7 @@ export function computeConsentHash(text: string): string {
 export const CONSENT_DOCUMENT_HASH = computeConsentHash(CONSENT_TEXT_V1_0);
 
 export { CONSENT_VERSION };
+
+// Hash del consentimiento del HTML de Gildardo, archivado para la importacion (0159). Se calcula igual que el
+// de Atlas; el candado `consent-html-archivado.test.ts` ancla su valor.
+export const CONSENT_HTML_DOCUMENT_HASH = computeConsentHash(CONSENT_TEXT_HTML_CNV_V3_0);

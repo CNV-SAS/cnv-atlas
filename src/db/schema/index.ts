@@ -28,3 +28,4 @@ export * from "./ai"; // grupo 17
 export * from "./bis-conditions"; // grupo 18
 export * from "./corrections"; // flujo de correccion post-diagnostico (gate del Hito 1)
 export * from "./reparto"; // el reparto del precio con vigencia (Bloque 1, 2026-09-11)
+export * from "./html-import"; // importacion desde el HTML de Gildardo (0159)

@@ -52,3 +52,30 @@ export async function getPatientConsents(patientId: string): Promise<Autorizacio
     ];
   });
 }
+
+// ── EL CONSENTIMIENTO DE ORIGEN HTML (0159) ─────────────────────────────────────────────────────────────
+// Lo que el paciente firmo en el HTML de Gildardo, importado como lo que es (respuesta legal del 2026-09-21).
+// Se lee APARTE de las autorizaciones de Atlas y nunca se mezcla con ellas: no habilita evaluaciones.
+// Misma RLS que `patient_consents` (su profesional y admin).
+export type ConsentimientoDeOrigenHtml = {
+  fechaConsulta: string; // la consulta del HTML (fecha pura)
+  nombreTecleado: string;
+  fechaRegistrada: string; // tal como la guardo el HTML
+  versionDelTexto: string;
+};
+
+export async function getExternalConsents(patientId: string): Promise<ConsentimientoDeOrigenHtml[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("patient_external_consents")
+    .select("source_consultation_date, typed_name, recorded_date, text_version")
+    .eq("patient_id", patientId)
+    .order("source_consultation_date", { ascending: false });
+  if (error) throw new Error(`consent-reader: getExternalConsents: ${error.message}`);
+  return (data ?? []).map((r) => ({
+    fechaConsulta: r.source_consultation_date,
+    nombreTecleado: r.typed_name,
+    fechaRegistrada: r.recorded_date,
+    versionDelTexto: r.text_version,
+  }));
+}
