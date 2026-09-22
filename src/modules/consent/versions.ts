@@ -37,3 +37,18 @@ export function requiresReconsent(
   if (idxSealed < 0 || idxCurrent < 0 || idxCurrent < idxSealed) return true;
   return CONSENT_VERSIONS.slice(idxSealed + 1, idxCurrent + 1).some((v) => v.substantive);
 }
+
+// ¿El enlace de seguimiento pide firmar? (respuesta legal 2026-09-21, observacion O). El seguimiento solo
+// omite el consentimiento si el paciente TIENE uno de Atlas vigente y su version no exige re-consentir. Sin
+// consentimiento vigente (paciente traido del HTML, o que revoco), se presenta el consentimiento completo con
+// su codigo antes de retomar: antes quedaba "sin firma" y el paciente chocaba con el aviso de revocacion.
+export type ModoDelSeguimiento = { modo: "nosign" | "sign"; motivo: "vigente" | "cambio_sustantivo" | "sin_consentimiento" };
+
+export function modoDelSeguimiento(
+  versionVigente: string | null,
+  currentVersion: string = CONSENT_VERSION,
+): ModoDelSeguimiento {
+  if (versionVigente == null) return { modo: "sign", motivo: "sin_consentimiento" };
+  if (requiresReconsent(versionVigente, currentVersion)) return { modo: "sign", motivo: "cambio_sustantivo" };
+  return { modo: "nosign", motivo: "vigente" };
+}

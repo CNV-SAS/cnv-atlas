@@ -21,7 +21,7 @@ k. **CERRADA** Cambios de presentación en la encuesta: Lo primero, es en las pr
 L. **CERRADA** Hay forma de eliminar las evaluaciones ya cerradas? es que parecen molestas que sigan en el historial.
 M. Resumen del diagnostico en rutas de atención. Va tambien para reporte/hc. (esto queda en espera de verificación con Gildardo ya que no le entendí que queria decir).
 N. **CERRADA** Cambiarle el color a los encabezados de las tablas que tienen por ejemplo: "Nivel V · Cuerpo entero" hoy está en un azul gris claro, pero quiero intentar a ver como se ven con el mismo azul electrico de Atlas. Me imagino qu
-O. **EN PLAN** (respuesta legal recibida el 2026-09-21; plan de sesiones en `docs/PLAN_IMPORTACION_DESDE_EL_HTML.md`) Poder exportar pacientes del html e importarlos a atlas web sin importar que hayan diferencias de preguntas y calculos, es decir, que solo importariamos a Atlas las respuestas de la encuesta, observaciones, notas, y revisar que mas podemos importar para que los pacientes que ya han trabajado mucho con el html, no pierdan sus pacientes al momento de migrar a Atlas web.
+O. **EN PLAN** (respuesta legal y respuestas de Santiago recibidas el 2026-09-21; plan de sesiones en `docs/PLAN_IMPORTACION_DESDE_EL_HTML.md`; la regla del enlace de seguimiento ya está hecha) Poder exportar pacientes del html e importarlos a atlas web sin importar que hayan diferencias de preguntas y calculos, es decir, que solo importariamos a Atlas las respuestas de la encuesta, observaciones, notas, y revisar que mas podemos importar para que los pacientes que ya han trabajado mucho con el html, no pierdan sus pacientes al momento de migrar a Atlas web.
 ---
 
 # REPARTO (Claude, 2026-09-19)
