@@ -1,4 +1,4 @@
-import promptV10 from "./criterion.system.v10.json";
+import promptV11 from "./criterion.system.v11.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -96,4 +96,9 @@ import promptV10 from "./criterion.system.v10.json";
 // hechas: la composicion con su clasificacion (dijo que un IMC de 25,7 "roza el sobrepeso"), el ICEC con su
 // escala (Groq leyo LE8 bajo como carga baja) y la PABU como frase (Gemini pego la cadena entre comillas).
 // Se le prohibe recomendar ("requieren atencion"). LA V9 NO SE RETIRA.
-export const CRITERION_SYSTEM_PROMPT: string = promptV10.system;
+//
+// V11 (2026-09-22, quinta prueba): una alerta se nombra como alerta y no como diagnostico ("presenta un TCA
+// activo"), y los sintomas digestivos no se usan como evidencia de un dominio (su DFI no los lee en ninguno;
+// Gemini los puso en el Epigenetico-Contextual). La lactancia y el IEHH le llegan con su lectura. LA V10 NO SE
+// RETIRA.
+export const CRITERION_SYSTEM_PROMPT: string = promptV11.system;

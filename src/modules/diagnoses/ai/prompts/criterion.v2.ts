@@ -101,6 +101,23 @@ export const CAMPOS: { seccion: string; claves: string[] }[] = [
 ];
 
 /** Las claves de la lista blanca, en plano. Para el candado y para el propio builder. */
+// LAS RESPUESTAS QUE EL MODELO LEYO AL REVES, con su lectura en palabras (2026-09-22). Con
+// "¿Fue amamantado/a en su infancia?: No", Gemini escribio "es amamantado". Es la misma respuesta dicha como
+// afirmacion, con las opciones de su encuesta; no se anade nada.
+const LECTURAS_DE_RESPUESTA: Record<string, Record<string, string>> = {
+  d5_41: {
+    No: "no fue amamantado/a",
+    "Sí, menos de 6 meses": "fue amamantado/a menos de 6 meses",
+    "Sí, 6 meses o más": "fue amamantado/a 6 meses o más",
+    "No sé": "no sabe si fue amamantado/a",
+  },
+};
+
+export function lecturaDeLaRespuesta(fieldKey: string | null, valor: string | null): string {
+  const lectura = fieldKey && valor ? LECTURAS_DE_RESPUESTA[fieldKey]?.[valor] : undefined;
+  return lectura ? ` (es decir, ${lectura})` : "";
+}
+
 export const CLAVES_PERMITIDAS: ReadonlySet<string> = new Set(CAMPOS.flatMap((s) => s.claves));
 
 /**
@@ -302,7 +319,7 @@ export function buildCriterionPrompt(
     const filas = claves
       .map((k) => porClave.get(k))
       .filter((r): r is RespuestaEncuesta => r != null)
-      .map((r) => `${r.pregunta}: ${guion(r.valor)}`);
+      .map((r) => `${r.pregunta}: ${guion(r.valor)}${lecturaDeLaRespuesta(r.fieldKey, r.valor)}`);
     if (filas.length === 0) continue;
     L.push(`${seccion}:`, ...filas, "");
   }
