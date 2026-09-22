@@ -276,3 +276,17 @@ quedaron en `revisar-lote.ts` con su candado, y se comprobó el informe contra l
   consulta no se importa hasta que la tenga, o el admin decide a quién queda asignada, con constancia.
 - **El informe enviado al paciente:** se conserva como documento importado (custodia de la historia clínica),
   sin que cuente como consulta ni entre a la trayectoria.
+
+## Las tres decisiones de la sesión 4 (Santiago, 2026-09-22)
+
+1. **El mismo documento en dos archivos:** la importación revisa los lotes ya importados. Si el documento ya
+   entró, no se crea otro paciente; el admin ve qué consultas ya están y cuáles agrega el archivo nuevo.
+2. **La cuenta del profesional la decide el admin, no el archivo.** Muchos nombres se escribieron en pruebas
+   (a veces el de Gildardo, porque él estaba explicando) y algunos de esos profesionales ni existen. El nombre
+   del archivo es informativo: la revisión lo muestra y no sugiere ninguna cuenta.
+3. **El informe enviado al paciente NO se importa.** Puede ser de prácticas, y además lo escribió el motor del
+   HTML, con recomendaciones que Atlas ya no admite ("la estrategia clínica debe priorizar..."). Si entrara a
+   la historia, algún día alguien lo leería como nuestro. La revisión dice que existe y que se queda fuera.
+
+Y la firma con un nombre distinto al del paciente queda como **dato menor**, no como alerta: en Atlas la firma
+va con código; en el HTML era un nombre tecleado.
