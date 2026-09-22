@@ -68,7 +68,8 @@ function FichaDePaciente({ p }: { p: RevisionDePaciente }) {
         <p className="text-sm text-muted-foreground">
           {p.informesEnviados.length === 1 ? "Trae 1 informe enviado al paciente" : `Trae ${p.informesEnviados.length} informes enviados al paciente`}
           {" "}({p.informesEnviados.map((x) => `consulta del ${x.fechaConsulta ?? "(sin fecha)"}, enviado el ${x.fechaEnvio ?? "(sin fecha)"}`).join("; ")}). No
-          es una consulta: se conserva como registro de lo que se le envió.
+          es una consulta y no se importa: lo escribió el motor del HTML, con recomendaciones que Atlas ya no
+          admite.
         </p>
       ) : null}
       <ul className="flex flex-col gap-1.5">
@@ -76,15 +77,17 @@ function FichaDePaciente({ p }: { p: RevisionDePaciente }) {
           <li key={`${c.fecha}-${i}`} className="flex flex-col gap-1 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-foreground">Consulta del {c.fecha ?? "(sin fecha)"}</span>
+              {/* INFORMATIVO (Santiago, 2026-09-22): muchos nombres se escribieron en pruebas, y algunos de
+                  esos profesionales ni existen. La cuenta a la que va cada consulta la decide el admin al
+                  importar; de aqui no sale ninguna sugerencia. */}
               {c.profesional ? (
                 c.deOtroProfesional ? <Aviso>Hecha por {c.profesional}, no por quien exportó</Aviso> : <Neutro>Hecha por {c.profesional}</Neutro>
               ) : null}
               {c.consentimiento.firmado ? (
-                c.consentimiento.nombreDistinto ? (
-                  <Aviso>Firmada con otro nombre: {c.consentimiento.nombre}</Aviso>
-                ) : (
-                  <Neutro>Firmada por {c.consentimiento.nombre}</Neutro>
-                )
+                <Neutro>
+                  Firmada por {c.consentimiento.nombre}
+                  {c.consentimiento.nombreDistinto ? " (un nombre distinto al del paciente)" : ""}
+                </Neutro>
               ) : (
                 <Aviso>Sin firma del consentimiento</Aviso>
               )}
@@ -165,7 +168,8 @@ export function RevisionImportacion() {
             {r.revision.exportadoPor ? (
               <span className="text-muted-foreground">
                 Lo exportó {r.revision.exportadoPor}. Profesionales que aparecen en las consultas:{" "}
-                {r.revision.profesionalesDelArchivo.join(", ") || "ninguno"}.
+                {r.revision.profesionalesDelArchivo.join(", ") || "ninguno"}. Es informativo: la cuenta a la que
+                va cada consulta la eliges tú al importar.
               </span>
             ) : null}
             <span className="text-muted-foreground">Esta revisión no guarda nada.</span>
