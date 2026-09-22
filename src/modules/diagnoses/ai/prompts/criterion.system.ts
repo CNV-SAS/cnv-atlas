@@ -1,4 +1,4 @@
-import promptV11 from "./criterion.system.v11.json";
+import promptV12 from "./criterion.system.v12.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -101,4 +101,7 @@ import promptV11 from "./criterion.system.v11.json";
 // activo"), y los sintomas digestivos no se usan como evidencia de un dominio (su DFI no los lee en ninguno;
 // Gemini los puso en el Epigenetico-Contextual). La lactancia y el IEHH le llegan con su lectura. LA V10 NO SE
 // RETIRA.
-export const CRITERION_SYSTEM_PROMPT: string = promptV11.system;
+//
+// V12 (2026-09-22, sexta prueba): las respuestas del paciente van sin comillas, integradas en la prosa. Gemini
+// escribia pierde el control al comer "Siempre". Es la regla que ya tenia la PABU, extendida. LA V11 NO SE RETIRA.
+export const CRITERION_SYSTEM_PROMPT: string = promptV12.system;

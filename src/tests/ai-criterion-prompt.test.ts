@@ -273,21 +273,21 @@ describe("el porte del paso 4 llega entero", () => {
   });
 });
 
-describe("el texto de sistema canónico es el v11", () => {
+describe("el texto de sistema canónico es el v12", () => {
   it("y el seed publica esa misma versión", () => {
     // Los dos canales del prompt: el JSON que consume la app y la version que el seed (y su migracion)
     // publican. Si divergen, local y nube corren textos distintos sin que nada de error.
     const modulo = readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.ts", "utf8");
-    expect(modulo).toContain("criterion.system.v11.json");
+    expect(modulo).toContain("criterion.system.v12.json");
     const seed = readFileSync("supabase/seed.ts", "utf8");
-    expect(seed).toContain("criterion.system.v11.json");
-    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 11 },');
+    expect(seed).toContain("criterion.system.v12.json");
+    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 12 },');
   });
 
   it("y las versiones anteriores NO se borran", () => {
     // Los borradores ya generados apuntan a su version en la procedencia. Borrar el texto deja registros
     // que dicen "generado con la v3" sin que exista la v3. Misma disciplina que las versiones de motor.
-    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10"]) {
+    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11"]) {
       expect(
         existsSync(`src/modules/diagnoses/ai/prompts/criterion.system.${v}.json`),
         `se borró el texto de la ${v}`,
@@ -436,5 +436,11 @@ describe("v11: la alerta no es diagnóstico, y dos lecturas más llegan hechas",
       "Leve; gradúa el equilibrio hídrico del organismo (hidro-homeostasis), no la deshidratación",
     );
     expect(lecturaDelIndicador("IFC", "Alto")).toBe("Alto");
+  });
+});
+
+describe("v12: las respuestas van sin comillas", () => {
+  it("la regla de la PABU se extiende a toda respuesta y dato", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("LAS RESPUESTAS DEL PACIENTE VAN SIN COMILLAS");
   });
 });
