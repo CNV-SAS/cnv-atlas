@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, join } from "node:path";
+import vm from "node:vm";
 
 import { describe, expect, it } from "vitest";
 
@@ -103,6 +104,33 @@ describe("el exportador, sobre un navegador sintético", () => {
     expect(exp.declaracion.texto.join(" ")).toContain("voluntad de continuar su atención en Atlas web");
     expect(exp.declaracion.texto.join(" ")).toContain("con el texto del consentimiento de este HTML");
     expect(exp.declaracion.texto.join(" ")).toContain("Esta exportación es fiel");
+  });
+});
+
+// ═══ EL BOTON APARECE DENTRO DEL HTML (smoke de Santiago, 2026-09-22) ═══
+// En el navegador no aparecia: el HTML define `var module={exports:{}}` (L26), el exportador lo tomaba por
+// Node, salia sin montar el boton y pisaba el `module.exports` del HTML. Se reproduce ese entorno: un `module`
+// global y un `document`.
+describe("dentro del HTML, el exportador monta su botón", () => {
+  it("con un `module` global del HTML, monta el botón y no toca su module.exports", () => {
+    const agregados: { id?: string; textContent?: string }[] = [];
+    const nodo = () => ({ setAttribute() {}, appendChild() {}, remove() {}, textContent: "", id: "" });
+    const documento = {
+      readyState: "complete",
+      getElementById: () => null,
+      createElement: () => nodo(),
+      body: { appendChild: (n: { id?: string; textContent?: string }) => agregados.push(n) },
+      addEventListener() {},
+    };
+    const moduloDelHtml = { exports: { default: "App del HTML" } };
+    const contexto = vm.createContext({ document: documento, module: moduloDelHtml, window: undefined });
+    contexto.window = contexto;
+    vm.runInContext(readFileSync("scripts/exportador-html/exportador.js", "utf8"), contexto);
+    const boton = agregados.find((n) => n.id === "atlas-exportador-boton");
+    expect(boton, "no se montó el botón").toBeTruthy();
+    expect(boton?.textContent).toBe("Exportar a Atlas web");
+    expect(moduloDelHtml.exports).toEqual({ default: "App del HTML" });
+    expect(typeof (contexto as { AtlasExportador?: unknown }).AtlasExportador).toBe("object");
   });
 });
 
