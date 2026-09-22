@@ -707,3 +707,9 @@ datos*. Si prefieres otra redacción, se cambia en una línea.
 **Y dos precisiones de lectura,** que son tuyas y el modelo no respetó: una PABU por debajo de φ se lee como
 exceso de adiposidad (la describió como "sobrecarga estructural"), y las respuestas en rojo se mencionan
 todas y solo esas.
+
+**Añadido el mismo día (v7).** El cierre de tu estructura pide *"las rutas de atención y la prioridad de
+intervención"*. En la segunda prueba, el modelo aprovechó el cierre para recomendar (*"reducción de la
+exposición a alimentos ultraprocesados y a la sal"*). Le añadimos que nombre cada ruta con su prioridad y
+nada más, sin conductas: es la misma frontera que tu prohibición de prescribir. Si prefieres que el cierre
+diga algo más, se cambia en una línea.
