@@ -115,3 +115,16 @@ entrar a trabajar la consulta) **no la soporta hoy el flujo tal cual**, y hay qu
 
 **Estado de la sesión 1:** la regla del enlace está hecha (`modoDelSeguimiento` en `consent/versions.ts`,
 candado en `consent-versions.test.ts`). Falta la tabla del consentimiento de origen HTML y su texto archivado.
+
+## Cambio del 2026-09-22: el BIS ya no necesita un estado nuevo
+
+Santiago simplificó el flujo general, para toda evaluación: el bloque de Medición BIS está siempre
+disponible, y el botón **"Importar medición BIS"** es el único guardián. Si faltan las condiciones de la
+toma, la encuesta al 100 % o el archivo no sirve (cintura, cadera, datos del motor), lo dice todo junto y no
+deja pasar (`evaluarRequisitosDelImport`). **Esto reemplaza la propuesta de "condiciones no registradas"** de
+la sección anterior: la consulta importada queda sin medición confirmada hasta que el profesional la importe
+con todo completo, igual que cualquier otra. Nada nuevo en la base.
+
+**A verificar cuando se retome la (O):** el navegador no deja precargar un campo de archivo. Si la medición
+viene en el archivo de importación, se guarda del lado del servidor y "Importar medición BIS" la toma de ahí
+en vez de pedir el XLSX.
