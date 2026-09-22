@@ -76,3 +76,16 @@ export function formatIncompleteSurveyMessage(
   const plural = total === 1 ? "falta 1 respuesta" : `faltan ${total} respuestas`;
   return `La encuesta está incompleta: ${plural}. Por dominio: ${porDominio}. Complétala con el paciente antes de ${action} el diagnóstico.`;
 }
+
+/**
+ * Los mismos huecos, desde la encuesta ya agrupada por dominio (la que leen las pantallas). La usa el
+ * guardian del import BIS (2026-09-22), para que ese boton y el diagnostico cuenten igual.
+ */
+export function computeSurveyGapsFromDomains(
+  domains: { section: string; questions: { answerValue: string | null }[] }[],
+): SurveyGap[] {
+  let orden = 0;
+  return computeSurveyGaps(
+    domains.flatMap((d) => d.questions.map((q) => ({ section: d.section, orderIndex: orden++, answerValue: q.answerValue }))),
+  );
+}

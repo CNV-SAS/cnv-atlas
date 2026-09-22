@@ -6,7 +6,7 @@ import {
   activeWarnings,
   computeContraindicated,
 } from "@/modules/bis-intake/services/contraindication";
-import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
+import { evaluarRequisitosDelImport } from "@/modules/bis-intake/services/import-gate";
 import { buildValidityCaveats } from "@/modules/bis-intake/services/validity";
 import type { BisCondition, BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import {
@@ -264,7 +264,7 @@ describe("validez (no bloquea, no exige reconocimiento, sella caveat)", () => {
   });
 });
 
-describe("evaluateBisImportGate (orden + seguridad del import)", () => {
+describe("evaluarRequisitosDelImport (orden + seguridad del import)", () => {
   const intake = (over: Partial<BisIntakeRecord>): BisIntakeRecord => ({
     versionId: "v1",
     answers: {},
@@ -276,19 +276,62 @@ describe("evaluateBisImportGate (orden + seguridad del import)", () => {
   });
 
   it("sin captura de condiciones NO habilita el import (orden impuesto por el sistema)", () => {
-    const g = evaluateBisImportGate(null);
+    const g = evaluarRequisitosDelImport(null, []);
     expect(g.allowed).toBe(false);
-    if (!g.allowed) expect(g.reason).toBe("conditions_missing");
+    if (!g.allowed) expect(g.message).toContain("guardar las condiciones de la toma BIS");
   });
 
   it("con contraindicacion (marcapasos) bloquea el import", () => {
-    const g = evaluateBisImportGate(intake({ contraindicated: true }));
+    const g = evaluarRequisitosDelImport(intake({ contraindicated: true }), []);
     expect(g.allowed).toBe(false);
     if (!g.allowed) expect(g.reason).toBe("contraindicated");
   });
 
   it("con condiciones respondidas y sin contraindicacion habilita el import", () => {
-    expect(evaluateBisImportGate(intake({})).allowed).toBe(true);
+    expect(evaluarRequisitosDelImport(intake({}), []).allowed).toBe(true);
+  });
+});
+
+// ═══ EL BOTON ES EL GUARDIAN (Santiago, 2026-09-22) ═══
+describe("el import BIS exige condiciones y encuesta completa, todo en un mensaje", () => {
+  const intake = (): BisIntakeRecord => ({
+    versionId: "v1",
+    answers: {},
+    contraindicated: false,
+    gripStrengthKg: null,
+    weightGoalKg: null,
+    updatedAt: NOW,
+  });
+
+  it("con la encuesta incompleta no deja pasar y dice cuántas faltan por dominio", () => {
+    const g = evaluarRequisitosDelImport(intake(), [{ section: "Hábitos", missing: 2 }]);
+    expect(g.allowed).toBe(false);
+    if (!g.allowed) expect(g.message).toBe("Para importar la medición falta completar la encuesta: faltan 2 respuestas (Hábitos (2)).");
+  });
+
+  it("sin encuesta y sin condiciones, lo dice todo junto", () => {
+    const g = evaluarRequisitosDelImport(null, null);
+    if (!g.allowed) {
+      expect(g.message).toContain("guardar las condiciones de la toma BIS");
+      expect(g.message).toContain(" y que el paciente responda la encuesta");
+    } else throw new Error("dejó pasar");
+  });
+
+  it("la contraindicación manda sobre lo demás", () => {
+    const g = evaluarRequisitosDelImport({ ...intake(), contraindicated: true }, null);
+    if (!g.allowed) expect(g.reason).toBe("contraindicated");
+  });
+
+  it("el action lo aplica con la misma cuenta que el diagnóstico, y la pantalla ya no bloquea", () => {
+    const action = readFileSync("src/modules/bis/actions.ts", "utf8");
+    expect(action).toContain("evaluarRequisitosDelImport(intake, domains ? computeSurveyGapsFromDomains(domains) : null)");
+    const pantalla = readFileSync("src/modules/evaluations/components/entrada-evaluacion.tsx", "utf8");
+    expect(pantalla).not.toContain("Primero, las condiciones de la toma");
+    expect(pantalla).toContain("<BisImportForm evaluation={bisImportEval} />");
+    const form = readFileSync("src/modules/bis/components/bis-import-form.tsx", "utf8");
+    expect(form).not.toContain("disabledReason");
+    // Y el archivo elegido sobrevive a un error (hazard 2 de formularios).
+    expect(form).toContain("onSubmit={enviarSinReset(action)}");
   });
 });
 

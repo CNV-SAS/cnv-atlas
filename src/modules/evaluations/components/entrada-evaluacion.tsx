@@ -10,7 +10,6 @@ import type { BisImportEvaluation } from "@/modules/bis/data/bis-evaluations-rea
 import { BisConditionsCapture } from "@/modules/bis-intake/components/bis-conditions-capture";
 import { BisConditionsReadonly } from "@/modules/bis-intake/components/bis-conditions-readonly";
 import type { BisConditionsReadonly as BisConditionsReadonlyData } from "@/modules/bis-intake/data/bis-conditions-reader";
-import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
 import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import { MedidasConTabla } from "@/modules/bis-intake/components/medidas-con-tabla";
 import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
@@ -80,7 +79,6 @@ export function EntradaEvaluacion({
   // evaluacion "en general", y volver ahi obliga a buscar otra vez la pestaña. Ver `volver-a-destino.ts`.
   const origen = `/ani-bis-e/${evaluationId}?etapa=encuesta`;
   const identityConfirmed = bisImportEval != null;
-  const gate = evaluateBisImportGate(bisIntake);
   // Contador respondidas/total con el total REAL de preguntas del instrumento (no hardcodeado): el
   // reader devuelve todas las preguntas con answerValue null si no se respondio. Usa EL MISMO predicado
   // (isAnswered) que el gate, el aviso del paciente, el modo edicion y la previsualizacion: era el CUARTO
@@ -108,10 +106,6 @@ export function EntradaEvaluacion({
       })),
   );
 
-  // Aviso de SECUENCIA (care Santiago 2026-08-15): Antropometria DEPENDE de Encuesta. Si la identidad
-  // esta confirmada pero las condiciones de la toma aun no se guardaron, la segunda subpestaña lo dice y
-  // remite a la primera (sin las condiciones, el import no se habilita). "contraindicated" ya se captura.
-  const conditionsPending = identityConfirmed && !gate.allowed && gate.reason !== "contraindicated";
 
   // ASMI y AF para el diagnostico de sarcopenia (EWGSOP2): se leen de las filas de la composicion (ASMI =
   // MMEM/talla^2 computado; AF = columna del equipo). La fuerza prensil (dinamometria, criterio PRIMARIO) SI
@@ -210,7 +204,7 @@ export function EntradaEvaluacion({
       </section>
 
       {/* Condiciones de la toma BIS: se responden ANTES del import. El sistema impone el orden; sin este
-          checklist guardado, el import (en Antropometría) no se habilita. Se muestra tambien cuando ya hay
+          checklist guardado, el boton de importar (en Antropometría) no deja pasar. Se muestra tambien cuando ya hay
           medicion (caso borde: registrar condiciones despues de un BIS previo). */}
       {identityConfirmed && bisCatalog ? (
         <BisConditionsCapture
@@ -229,19 +223,6 @@ export function EntradaEvaluacion({
   // referencias entran en el siguiente paso.) Depende de la subpestaña Encuesta: el aviso lo hace explicito.
   const antropometriaPanel = (
     <div className="flex flex-col gap-8">
-      {conditionsPending ? (
-        <div
-          role="alert"
-          className="flex flex-col gap-1 rounded-lg border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning"
-        >
-          <span className="font-medium">Primero, las condiciones de la toma</span>
-          <span>
-            Responde y guarda las condiciones de la toma BIS en la subpestaña{" "}
-            <span className="font-semibold">Encuesta</span>: sin ellas no se habilita el import.
-          </span>
-        </div>
-      ) : null}
-
       {/* Seccion Medicion BIS SIEMPRE presente (no aparece/desaparece: eso confunde). Con medicion,
           muestra un mensaje de exito PERSISTENTE + la composicion; sin medicion, el import GATEADO
           (boton deshabilitado con explicacion en gris). Mismo criterio de "estados vacios limpios". */}
@@ -299,20 +280,11 @@ export function EntradaEvaluacion({
             Aún sin medición BIS. Confirma la identidad del paciente para poder importar la medición
             (XLSX de Biody Manager).
           </p>
-        ) : !gate.allowed && gate.reason === "contraindicated" ? (
-          <p className="text-sm font-semibold text-clinical-critical">
-            Import bloqueado: hay una contraindicación (marcapasos). No se realiza la bioimpedancia.
-            Ver el detalle en las condiciones de la toma (subpestaña Encuesta).
-          </p>
         ) : (
-          <BisImportForm
-            evaluation={bisImportEval}
-            disabledReason={
-              gate.allowed
-                ? null
-                : "Responde y guarda las condiciones de la toma (subpestaña Encuesta) para habilitar el import."
-            }
-          />
+          // SIEMPRE DISPONIBLE (Santiago, 2026-09-22): sin aviso previo ni boton deshabilitado. El boton
+          // "Importar medición BIS" es el guardian: si faltan las condiciones, la encuesta o el archivo no
+          // sirve, lo dice al pulsarlo y no deja pasar (`evaluarRequisitosDelImport`, en el servidor).
+          <BisImportForm evaluation={bisImportEval} />
         )}
       </section>
 

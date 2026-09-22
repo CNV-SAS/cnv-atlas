@@ -183,9 +183,11 @@ describe("retirar las colas de lote no dejo nada sin camino", () => {
   it("importar BIS sigue estando en cada evaluacion, con sus guardas", () => {
     const entrada = readFileSync("src/modules/evaluations/components/entrada-evaluacion.tsx", "utf8");
     expect(entrada).toContain("BisImportForm");
-    // Y con las DOS guardas que la cola no tenia, que es lo que hace mejor al camino por evaluacion.
-    expect(entrada).toContain("contraindicated");
+    // Y con las DOS guardas que la cola no tenia, que es lo que hace mejor al camino por evaluacion. La de la
+    // contraindicacion vive desde el 2026-09-22 en el boton que importa (servidor), no en la pantalla.
     expect(entrada).toContain("modoReemplazo");
+    expect(readFileSync("src/modules/bis/actions.ts", "utf8")).toContain("evaluarRequisitosDelImport(");
+    expect(readFileSync("src/modules/bis-intake/services/import-gate.ts", "utf8")).toContain('reason: "contraindicated"');
   });
 
   it("generar diagnostico sigue estando en la evaluacion", () => {

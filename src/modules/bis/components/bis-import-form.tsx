@@ -34,7 +34,6 @@ const initialState: ImportBisState = {
 
 export function BisImportForm({
   evaluation,
-  disabledReason = null,
   modoReemplazo = false,
 }: {
   evaluation: BisImportEvaluationView;
@@ -49,10 +48,6 @@ export function BisImportForm({
    * Cambia los TEXTOS, no el camino: la accion es la misma y el writer decide si puede.
    */
   modoReemplazo?: boolean;
-  // Motivo por el que el import esta deshabilitado (p. ej. condiciones sin responder). Si no es
-  // null, el boton y el archivo quedan deshabilitados con la explicacion en gris (ensena que falta,
-  // en vez de esconder la seccion). null = habilitado.
-  disabledReason?: string | null;
 }) {
   const [state, action, pending] = useActionState(importBisAction, initialState);
   /** Nombre del archivo elegido, solo para confirmarlo en pantalla. El que viaja es el del FormData. */
@@ -62,7 +57,6 @@ export function BisImportForm({
 
   // Ya importado (en la carga de la pagina o tras un envio exitoso): no se reimporta.
   const done = (evaluation.alreadyImported || state.imported) && !modoReemplazo;
-  const blocked = Boolean(disabledReason);
 
   return (
     <Card>
@@ -119,7 +113,7 @@ export function BisImportForm({
                 type="file"
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 required
-                disabled={pending || blocked}
+                disabled={pending}
                 onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)}
               />
               {/* CONFIRMACION DE LO ELEGIDO (cotejo 2026-09-05, punto 7). El control nativo pone el nombre
@@ -135,10 +129,8 @@ export function BisImportForm({
               ) : null}
             </div>
 
-            {disabledReason ? (
-              <p className="text-xs text-muted-foreground">{disabledReason}</p>
-            ) : null}
-
+            {/* YA NO HAY ESTADO DESHABILITADO (2026-09-22): lo que falte lo dice el boton al pulsarlo, en el
+                recuadro de error de abajo, y el archivo elegido se conserva (`enviarSinReset`). */}
             {state.error ? (
               <div className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
                 <span className="text-sm font-medium text-destructive">{state.error}</span>
@@ -154,7 +146,7 @@ export function BisImportForm({
               </div>
             ) : null}
 
-            <Button type="submit" disabled={pending || blocked} className="w-fit">
+            <Button type="submit" disabled={pending} className="w-fit">
               {pending
                 ? modoReemplazo
                   ? "Reemplazando..."

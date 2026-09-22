@@ -6,7 +6,9 @@ import { getClientIp } from "@/core/http/client-ip";
 import { limitImportByUser } from "@/core/rate-limit";
 import { getEvaluationOwnership, getPatientSex } from "@/modules/evaluations/data/evaluations-repository";
 import { getBisIntakeForEvaluation } from "@/modules/bis-intake/data/bis-conditions-reader";
-import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
+import { evaluarRequisitosDelImport } from "@/modules/bis-intake/services/import-gate";
+import { computeSurveyGapsFromDomains } from "@/modules/clinical-pipeline/services/survey-completeness";
+import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { requireUser } from "@/modules/auth/session";
 
 import { canImportBis } from "./policies/can-import-bis";
@@ -71,11 +73,14 @@ export async function importBisAction(
     return fail("La evaluación no esta lista para importar BIS. Confirma la identidad primero.");
   }
 
-  // Gate de orden + seguridad (ST-B3): las condiciones de la toma BIS deben estar respondidas
-  // ANTES del import (el sistema impone el orden; la compuerta no puede llegar tarde) y no puede
-  // haber contraindicacion (marcapasos). Defensa server autoritativa; la UI la refuerza.
-  const intake = await getBisIntakeForEvaluation(evaluationId);
-  const gate = evaluateBisImportGate(intake);
+  // EL GUARDIAN ES ESTE BOTON (Santiago, 2026-09-22): el bloque ya no se deshabilita en pantalla, y aqui
+  // se exige todo junto: condiciones de la toma guardadas y sin contraindicacion (ST-B3: nada se guarda sin
+  // ellas) y la encuesta al 100 %, contada como la cuenta el diagnostico. Si falta algo, se dice todo.
+  const [intake, domains] = await Promise.all([
+    getBisIntakeForEvaluation(evaluationId),
+    getSurveyAnswersForEvaluation(evaluationId),
+  ]);
+  const gate = evaluarRequisitosDelImport(intake, domains ? computeSurveyGapsFromDomains(domains) : null);
   if (!gate.allowed) return fail(gate.message);
 
   const file = form.get("file");
