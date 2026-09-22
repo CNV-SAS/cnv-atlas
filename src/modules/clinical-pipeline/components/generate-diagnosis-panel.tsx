@@ -164,8 +164,13 @@ export function GenerateDiagnosisPanel({
 
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
+      {/* NO DICE "TODO LISTO" SI ALGO FALTO (smoke de Santiago, 2026-09-22): decia "Todo listo" y justo
+          debajo "la encuesta está incompleta: faltan 61 respuestas". Esos dos pasos (identidad y medicion) si
+          estan; lo que falta lo dice el error de abajo, que es del intento de generar. */}
       <p className="text-sm text-foreground">
-        Todo listo: identidad confirmada y medición BIS importada.
+        {state.error
+          ? "Falta algo para generar el diagnóstico."
+          : "Todo listo: identidad confirmada y medición BIS importada."}
       </p>
       <div className="flex flex-col items-center gap-2">
         {state.error ? (

@@ -6,7 +6,7 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { deshacerLoteAction, revisarOImportarAction, type DeshacerState, type RevisionState } from "../actions";
+import { revisarOImportarAction, type RevisionState } from "../actions";
 import type { RevisionDePaciente } from "../services/revisar-lote";
 
 // LA REVISION DE UN LOTE DEL HTML (sesion 3). Sube el archivo que mando el profesional y muestra, por
@@ -16,7 +16,6 @@ import type { RevisionDePaciente } from "../services/revisar-lote";
 // la capa clinica, que significan un resultado sobre el paciente.
 
 const inicial: RevisionState = { error: null, resultado: null, resumen: null };
-const inicialDeshacer: DeshacerState = { error: null, mensaje: null };
 
 const ETIQUETA_CRUCE: Record<RevisionDePaciente["cruce"]["tipo"], string> = {
   nuevo: "Nuevo en Atlas",
@@ -135,7 +134,6 @@ export function RevisionImportacion({
   profesionales: { id: string; nombre: string; correo: string }[];
 }) {
   const [state, action, pending] = useActionState(revisarOImportarAction, inicial);
-  const [deshecho, deshacer, deshaciendo] = useActionState(deshacerLoteAction, inicialDeshacer);
   const r = state.resultado;
   const pacientes = r?.revision.pacientes ?? [];
   const consultas = pacientes.flatMap((p) => p.consultas);
@@ -199,17 +197,9 @@ export function RevisionImportacion({
               {state.resumen.consultasOmitidas.map((c) => `${c.documento} (${c.fecha})`).join(", ")}.
             </span>
           ) : null}
-          <form onSubmit={enviarSinReset(deshacer)} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="batchId" value={state.resumen.batchId} />
-            <Button type="submit" variant="secondary" disabled={deshaciendo} className="w-fit">
-              {deshaciendo ? "Deshaciendo..." : "Deshacer este lote"}
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              Retira sus consultas y los pacientes que creó. No se puede si ya se generó un diagnóstico.
-            </span>
-          </form>
-          {deshecho.error ? <p className="text-sm text-destructive">{deshecho.error}</p> : null}
-          {deshecho.mensaje ? <p className="text-sm text-foreground">{deshecho.mensaje}</p> : null}
+          <span className="text-muted-foreground">
+            Para deshacerlo, búscalo abajo en Lotes importados: están todos, con su archivo y su fecha.
+          </span>
         </div>
       ) : null}
 

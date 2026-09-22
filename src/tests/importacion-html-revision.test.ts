@@ -284,3 +284,24 @@ describe("ajustes con los archivos reales", () => {
     expect(p.consultas.map((c) => c.consentimiento.nombreDistinto)).toEqual([false, true]);
   });
 });
+
+// ═══ DESHACER: CADA LOTE, EL SUYO (smoke de Santiago, 2026-09-22) ═══
+// El boton salia solo tras importar y apuntaba al ultimo lote: quien importo dos veces se quedo sin forma de
+// deshacer el primero, y al pulsarlo deshizo el segundo, que estaba vacio ("0 consultas, 0 pacientes").
+describe("los lotes importados se ven siempre, y cada uno deshace el suyo", () => {
+  it("la pantalla los lista, y la fila manda SU propio lote", () => {
+    const pagina = readFileSync("src/app/(app)/admin/importar-html/page.tsx", "utf8");
+    expect(pagina).toContain("listarLotes()");
+    expect(pagina).toContain("<LotesImportados lotes={lotes} />");
+    const lista = readFileSync("src/modules/importacion-html/components/lotes-importados.tsx", "utf8");
+    expect(lista).toContain('<input type="hidden" name="batchId" value={lote.id} />');
+    // Un lote con diagnostico no se deshace, y se dice en la fila.
+    expect(lista).toContain("lote.conDiagnostico > 0");
+  });
+
+  it("y el resumen de la importación ya no trae su propio botón", () => {
+    const revision = readFileSync("src/modules/importacion-html/components/revision-importacion.tsx", "utf8");
+    expect(revision).not.toContain("deshacerLoteAction");
+    expect(revision).toContain("Lotes importados");
+  });
+});

@@ -134,6 +134,7 @@ export function pendienteDelPaciente(
 ): PendienteDelPaciente {
   // SE CONSERVA DE QUE EVALUACION ES CADA ACCION: sin eso la celda puede decir "Montar BIS" y no saber a
   // cual de las tres consultas del paciente llevar.
+  const pendientes = evaluaciones.filter((e) => accionDeEvaluacion(e) != null);
   const acciones = evaluaciones
     .map((e) => ({ accion: accionDeEvaluacion(e), evaluationId: e.evaluationId }))
     .filter((x): x is { accion: AccionPendiente; evaluationId: string } => x.accion != null)
@@ -150,7 +151,13 @@ export function pendienteDelPaciente(
 
   // SIN AUTORIZACION VIGENTE MANDA SOBRE TODO, pero solo si hay algo que hacer con este paciente: a un
   // paciente cerrado y al dia no hay que renovarle nada para seguir, porque no hay nada que seguir.
-  if (sinAutorizacionVigente && acciones.length > 0) {
+  //
+  // SALVO EN EL PACIENTE IMPORTADO DEL HTML (smoke de Santiago, 2026-09-22). Ahi la autorizacion NO esta
+  // vencida ni se olvido: nunca firmo la de Atlas, y la firma en su proxima consulta (el enlace de
+  // seguimiento se la exige). Decir "Renovar autorización" tapaba lo unico accionable hoy, que son las
+  // condiciones de la toma; y que le falta la autorizacion ya lo dice su chip en la misma fila.
+  const soloImportadas = pendientes.length > 0 && pendientes.every((e) => e.importada === true);
+  if (sinAutorizacionVigente && acciones.length > 0 && !soloImportadas) {
     // LA AUTORIZACION NO ES DE UNA EVALUACION: es del paciente. Llevar a una consulta concreta desde ahi
     // mandaria al sitio donde NO se arregla.
     return { principal: SIN_AUTORIZACION, evaluationId: null, otras: acciones.length };
