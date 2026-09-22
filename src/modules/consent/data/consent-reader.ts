@@ -59,7 +59,8 @@ export async function getPatientConsents(patientId: string): Promise<Autorizacio
 // Misma RLS que `patient_consents` (su profesional y admin).
 export type ConsentimientoDeOrigenHtml = {
   fechaConsulta: string; // la consulta del HTML (fecha pura)
-  nombreTecleado: string;
+  /** El nombre que se tecleo al firmar. null: esa consulta del HTML no traia firma. */
+  nombreTecleado: string | null;
   fechaRegistrada: string; // tal como la guardo el HTML
   versionDelTexto: string;
 };

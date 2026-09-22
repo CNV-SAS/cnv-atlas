@@ -52,6 +52,8 @@ export const bisMeasurements = pgTable(
     deviceId: uuid("device_id").references(() => devices.id),
     measurementDate: timestamp("measurement_date", { withTimezone: true }).notNull(),
     deviceCalibrationDate: date("device_calibration_date"), // snapshot de calibracion al escanear
+    // Procedencia: el lote que la importo del HTML (0162). null = se importo del XLSX en Atlas.
+    importBatchId: uuid("import_batch_id"),
     createdAt: createdAt(),
   },
   (t) => [index("bis_measurements_eval_idx").on(t.evaluationId)],

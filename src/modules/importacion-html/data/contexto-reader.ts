@@ -58,3 +58,39 @@ export async function leerContextoDeRevision(): Promise<ContextoDeRevision> {
       }),
   };
 }
+
+/** Las cuentas de profesional a las que se puede importar, para el selector del admin. */
+export async function listarProfesionalesParaImportar(): Promise<{ id: string; nombre: string; correo: string }[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("professional_profiles")
+    // Hint del FK: professional_profiles tiene dos relaciones a profiles (profile_id y rut_verified_by).
+    .select("id, profiles!profile_id ( full_name, email )");
+  if (error) throw new Error(`contexto-reader: profesionales: ${error.message}`);
+  return (data ?? [])
+    .map((r) => ({ id: r.id, nombre: r.profiles?.full_name ?? "(sin nombre)", correo: r.profiles?.email ?? "" }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
+/** A donde va la importacion: la organizacion del profesional elegido y la encuesta vigente con sus preguntas. */
+export async function leerDestinoDeImportacion(professionalId: string): Promise<{
+  organizationId: string;
+  surveyVersionId: string;
+  preguntasPorClave: Record<string, string>;
+} | null> {
+  const supabase = await createSupabaseServerClient();
+  const [{ data: prof, error }, encuesta] = await Promise.all([
+    supabase
+      .from("professional_profiles")
+      .select("id, profiles!profile_id ( organization_id )")
+      .eq("id", professionalId)
+      .maybeSingle(),
+    getActiveSurvey(),
+  ]);
+  if (error) throw new Error(`contexto-reader: destino: ${error.message}`);
+  const organizationId = prof?.profiles?.organization_id ?? null;
+  if (!organizationId || !encuesta) return null;
+  const preguntasPorClave: Record<string, string> = {};
+  for (const q of encuesta.questions) if (q.fieldKey) preguntasPorClave[q.fieldKey] = q.id;
+  return { organizationId, surveyVersionId: encuesta.surveyVersionId, preguntasPorClave };
+}

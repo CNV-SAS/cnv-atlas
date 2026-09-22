@@ -23,6 +23,10 @@ export const htmlImportBatches = pgTable("html_import_batches", {
   declaredAt: timestamp("declared_at", { withTimezone: true }).notNull(),
   patientCount: integer("patient_count").notNull().default(0),
   consultationCount: integer("consultation_count").notNull().default(0),
+  // Los pacientes que CREO el lote: deshacer borra solo estos, no a quien ya existia (0162).
+  createdPatientIds: uuid("created_patient_ids").array().notNull().default([]),
+  revertedAt: timestamp("reverted_at", { withTimezone: true }),
+  revertedBy: uuid("reverted_by").references(() => profiles.id, { onDelete: "restrict" }),
 });
 
 // El consentimiento que el paciente firmo en el HTML, uno por consulta. NO es un `patient_consents`: esa
@@ -40,7 +44,7 @@ export const patientExternalConsents = pgTable(
     origin: text("origin").notNull(), // 'html'
     textVersion: text("text_version").notNull(),
     documentHash: text("document_hash").notNull(),
-    typedName: text("typed_name").notNull(),
+    typedName: text("typed_name"), // null cuando la consulta no traia firma (0162)
     recordedDate: text("recorded_date").notNull(), // la fecha tal como la guardo el HTML
     sourceConsultationDate: date("source_consultation_date").notNull(),
     signatureMethod: text("signature_method").notNull(), // 'nombre_tecleado_sin_codigo'

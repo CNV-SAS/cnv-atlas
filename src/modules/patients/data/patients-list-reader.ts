@@ -37,7 +37,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // embed mas en la consulta que ya se hacia, no una consulta nueva por paciente.
       // `created_at` DEL PACIENTE (no de su evaluacion): es la columna "Fecha de creacion", y la tiene
       // tambien quien no tiene ninguna evaluacion, que es justo cuando mas informa.
-      "id, created_at, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, bis_measurements(measurement_date), diagnoses(id), reports(status))",
+      "id, created_at, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -58,7 +58,9 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
             superseded_at: string | null;
             status: string;
             created_at: string;
+            import_batch_id: string | null;
             bis_measurements: { measurement_date: string | null }[] | null;
+            evaluation_bis_intake: { evaluation_id: string }[] | null;
             diagnoses: { id: string }[] | null;
             reports: { status: string }[] | null;
           }[]
@@ -127,6 +129,8 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
             evaluationId: e.id,
             status: e.status,
             tieneBis: (e.bis_measurements ?? []).length > 0,
+            importada: e.import_batch_id != null,
+            tieneCondicionesBis: (e.evaluation_bis_intake ?? []).length > 0,
             tieneDiagnostico: (e.diagnoses ?? []).length > 0,
             reporte: e.reports?.[0]?.status ?? null,
           })),

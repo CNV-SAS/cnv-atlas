@@ -474,6 +474,7 @@ export type Database = {
           device_id: string | null
           evaluation_id: string
           id: string
+          import_batch_id: string | null
           measurement_date: string
         }
         Insert: {
@@ -482,6 +483,7 @@ export type Database = {
           device_id?: string | null
           evaluation_id: string
           id?: string
+          import_batch_id?: string | null
           measurement_date: string
         }
         Update: {
@@ -490,6 +492,7 @@ export type Database = {
           device_id?: string | null
           evaluation_id?: string
           id?: string
+          import_batch_id?: string | null
           measurement_date?: string
         }
         Relationships: [
@@ -505,6 +508,13 @@ export type Database = {
             columns: ["evaluation_id"]
             isOneToOne: false
             referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bis_measurements_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "html_import_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -1261,6 +1271,7 @@ export type Database = {
           ethnicity: string | null
           id: string
           identity_conflict: boolean
+          import_batch_id: string | null
           marital_status: string | null
           occupation: string | null
           organization_id: string
@@ -1288,6 +1299,7 @@ export type Database = {
           ethnicity?: string | null
           id?: string
           identity_conflict?: boolean
+          import_batch_id?: string | null
           marital_status?: string | null
           occupation?: string | null
           organization_id: string
@@ -1315,6 +1327,7 @@ export type Database = {
           ethnicity?: string | null
           id?: string
           identity_conflict?: boolean
+          import_batch_id?: string | null
           marital_status?: string | null
           occupation?: string | null
           organization_id?: string
@@ -1336,6 +1349,13 @@ export type Database = {
             columns: ["closed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "html_import_batches"
             referencedColumns: ["id"]
           },
           {
@@ -1529,6 +1549,7 @@ export type Database = {
       html_import_batches: {
         Row: {
           consultation_count: number
+          created_patient_ids: string[]
           declaration_version: string
           declared_at: string
           id: string
@@ -1536,11 +1557,14 @@ export type Database = {
           imported_by: string
           patient_count: number
           professional_id: string
+          reverted_at: string | null
+          reverted_by: string | null
           source_file_hash: string
           source_file_name: string
         }
         Insert: {
           consultation_count?: number
+          created_patient_ids?: string[]
           declaration_version: string
           declared_at: string
           id?: string
@@ -1548,11 +1572,14 @@ export type Database = {
           imported_by: string
           patient_count?: number
           professional_id: string
+          reverted_at?: string | null
+          reverted_by?: string | null
           source_file_hash: string
           source_file_name: string
         }
         Update: {
           consultation_count?: number
+          created_patient_ids?: string[]
           declaration_version?: string
           declared_at?: string
           id?: string
@@ -1560,6 +1587,8 @@ export type Database = {
           imported_by?: string
           patient_count?: number
           professional_id?: string
+          reverted_at?: string | null
+          reverted_by?: string | null
           source_file_hash?: string
           source_file_name?: string
         }
@@ -1576,6 +1605,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "html_import_batches_reverted_by_fkey"
+            columns: ["reverted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2743,7 +2779,7 @@ export type Database = {
           signature_method: string
           source_consultation_date: string
           text_version: string
-          typed_name: string
+          typed_name: string | null
         }
         Insert: {
           batch_id: string
@@ -2756,7 +2792,7 @@ export type Database = {
           signature_method: string
           source_consultation_date: string
           text_version: string
-          typed_name: string
+          typed_name?: string | null
         }
         Update: {
           batch_id?: string
@@ -2769,7 +2805,7 @@ export type Database = {
           signature_method?: string
           source_consultation_date?: string
           text_version?: string
-          typed_name?: string
+          typed_name?: string | null
         }
         Relationships: [
           {
@@ -4293,6 +4329,7 @@ export type Database = {
           created_at: string
           evaluation_id: string
           id: string
+          import_batch_id: string | null
           ip_address: unknown
           survey_version_id: string
         }
@@ -4300,6 +4337,7 @@ export type Database = {
           created_at?: string
           evaluation_id: string
           id?: string
+          import_batch_id?: string | null
           ip_address?: unknown
           survey_version_id: string
         }
@@ -4307,6 +4345,7 @@ export type Database = {
           created_at?: string
           evaluation_id?: string
           id?: string
+          import_batch_id?: string | null
           ip_address?: unknown
           survey_version_id?: string
         }
@@ -4316,6 +4355,13 @@ export type Database = {
             columns: ["evaluation_id"]
             isOneToOne: false
             referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_responses_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "html_import_batches"
             referencedColumns: ["id"]
           },
           {

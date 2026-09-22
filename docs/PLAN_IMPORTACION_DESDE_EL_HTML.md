@@ -290,3 +290,29 @@ quedaron en `revisar-lote.ts` con su candado, y se comprobó el informe contra l
 
 Y la firma con un nombre distinto al del paciente queda como **dato menor**, no como alerta: en Atlas la firma
 va con código; en el HTML era un nombre tecleado.
+
+## Estado: la sesión 4 está HECHA (2026-09-22)
+
+**Lo que escribe, por consulta del HTML, todo en UNA transacción por lote** (`importar-lote-writer`):
+`html_import_batches` (el lote), `patients` + `patient_profiles` + `patient_contacts` (solo si el paciente es
+nuevo), `patient_professional_relationships` con la cuenta que elige el admin, `evaluations` **con la fecha
+original** (`created_at` es la fecha de la consulta en toda la app), `survey_responses` + `survey_answers`,
+`bis_measurements` + `bis_raw_values` (ningún número se recalcula) y `patient_external_consents`, **también
+cuando la consulta no traía firma**, marcada "sin prueba de firma" (migración 0162). Y `clinical_audit_log`
+por consulta, inline.
+
+**Lo que NO escribe:** diagnóstico, tratamiento, reporte, condiciones de la toma BIS, ni el informe que el
+HTML le envió al paciente.
+
+**Las cuatro verificaciones de Claude web:**
+- **(a) Deshacer un lote:** `revertirLote` retira sus consultas (con sus respuestas y su medición, por
+  cascada), sus consentimientos de origen HTML y **solo los pacientes que el lote creó**; a uno que ya existía
+  se le quitan las consultas, no la ficha. No se puede deshacer si alguna consulta ya tiene diagnóstico: eso ya
+  es trabajo clínico. La fila del lote se conserva, marcada con quién y cuándo lo deshizo.
+- **(b) La columna de pendientes** dice "Importada del HTML: registrar condiciones", no "Montar BIS".
+- **(c) El orden inicial/seguimiento:** si el paciente ya tiene evaluaciones en Atlas, **todas** las
+  importadas entran como seguimiento, aunque sean anteriores. Solo un paciente nuevo estrena inicial.
+- **(d) Las consultas sin firma** se importan igual, con el consentimiento marcado "sin prueba de firma".
+
+**Y el mismo documento en dos archivos:** una consulta del mismo paciente y la misma fecha ya importada no se
+duplica; el resumen dice cuáles se omitieron.

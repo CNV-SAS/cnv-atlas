@@ -99,6 +99,8 @@ export const evaluations = pgTable(
     // (regla 15) corre ANTES de crear la evaluacion (si alguna necesaria fue revocada, el flujo se detiene sin
     // crear nada). Nullable: las evaluaciones anteriores a esta columna quedan en null (no se fabrica el dato).
     consentVersion: text("consent_version"),
+    // Procedencia: el lote que la importo del HTML (0162). null = nacio en Atlas.
+    importBatchId: uuid("import_batch_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

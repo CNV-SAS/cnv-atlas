@@ -96,6 +96,8 @@ export const surveyResponses = pgTable(
       .notNull()
       .references(() => surveyVersions.id),
     ipAddress: inet("ip_address"),
+    // Procedencia: el lote que las importo del HTML (0162).
+    importBatchId: uuid("import_batch_id"),
     createdAt: createdAt(),
   },
   (t) => [index("survey_responses_eval_idx").on(t.evaluationId)],

@@ -6,7 +6,7 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { revisarArchivoAction, type RevisionState } from "../actions";
+import { deshacerLoteAction, revisarOImportarAction, type DeshacerState, type RevisionState } from "../actions";
 import type { RevisionDePaciente } from "../services/revisar-lote";
 
 // LA REVISION DE UN LOTE DEL HTML (sesion 3). Sube el archivo que mando el profesional y muestra, por
@@ -15,7 +15,8 @@ import type { RevisionDePaciente } from "../services/revisar-lote";
 // Estado de proceso, no veredicto clinico: los avisos van en ambar (algo que mirar), nunca en los colores de
 // la capa clinica, que significan un resultado sobre el paciente.
 
-const inicial: RevisionState = { error: null, resultado: null };
+const inicial: RevisionState = { error: null, resultado: null, resumen: null };
+const inicialDeshacer: DeshacerState = { error: null, mensaje: null };
 
 const ETIQUETA_CRUCE: Record<RevisionDePaciente["cruce"]["tipo"], string> = {
   nuevo: "Nuevo en Atlas",
@@ -128,8 +129,13 @@ function FichaDePaciente({ p }: { p: RevisionDePaciente }) {
   );
 }
 
-export function RevisionImportacion() {
-  const [state, action, pending] = useActionState(revisarArchivoAction, inicial);
+export function RevisionImportacion({
+  profesionales,
+}: {
+  profesionales: { id: string; nombre: string; correo: string }[];
+}) {
+  const [state, action, pending] = useActionState(revisarOImportarAction, inicial);
+  const [deshecho, deshacer, deshaciendo] = useActionState(deshacerLoteAction, inicialDeshacer);
   const r = state.resultado;
   const pacientes = r?.revision.pacientes ?? [];
   const consultas = pacientes.flatMap((p) => p.consultas);
@@ -142,11 +148,70 @@ export function RevisionImportacion() {
           Archivo que exportó el profesional (.json)
         </label>
         <Input id="archivo-html" name="archivo" type="file" accept=".json,application/json" required disabled={pending} />
-        <Button type="submit" disabled={pending} className="w-fit">
-          {pending ? "Revisando..." : "Revisar el archivo"}
-        </Button>
+
+        <label htmlFor="cuenta-destino" className="text-sm font-medium">
+          Cuenta del profesional a la que se importa
+        </label>
+        {/* LA ELIGE EL ADMIN, no el archivo (Santiago, 2026-09-22): en el HTML muchos nombres se escribieron
+            en pruebas, y algunos de esos profesionales ni existen. */}
+        <select
+          id="cuenta-destino"
+          name="professionalId"
+          defaultValue=""
+          disabled={pending}
+          className="w-fit rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
+        >
+          <option value="">— Elegir —</option>
+          {profesionales.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre} · {p.correo}
+            </option>
+          ))}
+        </select>
+
+        {/* DOS BOTONES DEL MISMO FORMULARIO, con `key` distintas (el hazard 1 de formularios: con la misma
+            clave React reutiliza el nodo y el envio se dispara solo). Lo que decide cual corrio es el
+            `name`/`value` del boton, que viaja porque `enviarSinReset` pasa el submitter. */}
+        <div className="flex flex-wrap gap-2">
+          <Button key="revisar" type="submit" name="intencion" value="revisar" disabled={pending} variant="secondary" className="w-fit">
+            {pending ? "Procesando..." : "Revisar el archivo"}
+          </Button>
+          <Button key="importar" type="submit" name="intencion" value="importar" disabled={pending} className="w-fit">
+            Importar a esa cuenta
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Revisar no guarda nada. Importar escribe los pacientes y sus consultas, y queda un lote que se puede
+          deshacer.
+        </p>
         {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
       </form>
+
+      {state.resumen ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 text-sm">
+          <span className="font-medium text-foreground">
+            Importado: {state.resumen.consultasImportadas} consultas · {state.resumen.pacientesCreados} pacientes
+            nuevos · {state.resumen.pacientesExistentes} que ya existían.
+          </span>
+          {state.resumen.consultasOmitidas.length ? (
+            <span className="text-muted-foreground">
+              No se repitieron {state.resumen.consultasOmitidas.length} consultas que ya estaban importadas:{" "}
+              {state.resumen.consultasOmitidas.map((c) => `${c.documento} (${c.fecha})`).join(", ")}.
+            </span>
+          ) : null}
+          <form onSubmit={enviarSinReset(deshacer)} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="batchId" value={state.resumen.batchId} />
+            <Button type="submit" variant="secondary" disabled={deshaciendo} className="w-fit">
+              {deshaciendo ? "Deshaciendo..." : "Deshacer este lote"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Retira sus consultas y los pacientes que creó. No se puede si ya se generó un diagnóstico.
+            </span>
+          </form>
+          {deshecho.error ? <p className="text-sm text-destructive">{deshecho.error}</p> : null}
+          {deshecho.mensaje ? <p className="text-sm text-foreground">{deshecho.mensaje}</p> : null}
+        </div>
+      ) : null}
 
       {r ? (
         <div className="flex flex-col gap-4">
