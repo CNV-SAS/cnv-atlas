@@ -25,15 +25,15 @@ tabla dice qué significaba.
 | Modelo | **semver de tres** | `1.0.0` | fila de `model_versions` (`version_name`) |
 | Reglas | **semver de tres** | `1.0.0` | fila de `model_versions` (`rules_version`) |
 | Encuesta | **entero** | `6` | fila de `survey_versions` (`version_number`) |
-| Prompt del resumen de IA | **entero** | `6` | fila de `ai_prompts` (`criterio.generate`, `version`) y su JSON en `src/modules/diagnoses/ai/prompts/` |
+| Prompt del resumen de IA | **entero** | `7` | fila de `ai_prompts` (`criterio.generate`, `version`) y su JSON en `src/modules/diagnoses/ai/prompts/` |
 
 **Los prompts NO se renumeran a v1 (pregunta de Santiago, 2026-09-21).** Es la misma razon que el sello del
 motor: cada resumen de IA guarda con que version se genero (`ai_criterion_suggestions.prompt_version`), y en
 la nube ya hay **11 diagnosticos** con resumen (1 con la v1, 5 con la v3, 5 con la v4). Renumerar haria que
 esos registros apuntaran a un texto que no es el que los genero. Ademas `ai_prompts` no admite dos filas con
 la misma clave y version: la v1 nueva chocaria con la v1 vieja, y la unica forma de meterla seria borrar la
-historia. **Lo mas barato es no hacer nada**: la version vigente es la que sale a produccion (hoy la v6, que corrige
-lo que la prueba de Santiago encontro en la v5), y si se quiere un nombre oficial basta con una linea aqui:
+historia. **Lo mas barato es no hacer nada**: la version vigente es la que sale a produccion (hoy la v7, que corrige
+lo que las pruebas de Santiago encontraron en la v5 y la v6), y si se quiere un nombre oficial basta con una linea aqui:
 *la version vigente de `criterio.generate` al salir a produccion es la primera oficial*.
 
 **Tres números, ni dos ni cuatro.** Con dos no se puede corregir un decimal sin anunciar cambio de ciencia;
