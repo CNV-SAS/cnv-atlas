@@ -10,6 +10,7 @@ import {
   borrarPreguntaSinFieldKey,
   crearPreguntaSinFieldKey,
 } from "./fixtures/pregunta-sin-field-key";
+import { sembrarCondicionesBis } from "./helpers/condiciones-bis";
 
 // Flujo de correccion S1: verificacion ejecutando contra la BD local seedada, como
 // pipeline-propagation. Prueba las dos mitades (PLAN): el camino feliz completo, y cada gate
@@ -98,6 +99,8 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: nonFieldQId, answerValue: "original" });
     // Y el juego COMPLETO de field_key: el diagnostico sale con dfi.complete=true y el gate deja sellar.
     await seedFieldKeyAnswers(respId);
+    // El diagnostico exige las condiciones de la toma (2026-09-22).
+    await sembrarCondicionesBis(db, evaluationId);
     const measId = (
       await db
         .insert(schema.bisMeasurements)
@@ -297,6 +300,8 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     )[0].id;
     // Encuesta INCOMPLETA: solo una pregunta sin field_key; ningun field_key del diagnostico respondido.
     await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: nonFieldQId, answerValue: "algo" });
+    // El diagnostico exige las condiciones de la toma (2026-09-22).
+    await sembrarCondicionesBis(db, evaluationId);
     const measId = (
       await db.insert(schema.bisMeasurements).values({ evaluationId, measurementDate: new Date("2026-06-22T15:09:00Z") }).returning({ id: schema.bisMeasurements.id })
     )[0].id;

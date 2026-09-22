@@ -7,6 +7,7 @@ import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-p
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
 import { fillSurveyComplete, lastOptionByFieldKey } from "./fixtures/survey-fill";
+import { sembrarCondicionesBis } from "./helpers/condiciones-bis";
 
 // SEED del smoke de P0 Parte 2 (trayectoria de EB-BIS). Fabrica, por la VIA REAL del pipeline, tres
 // pacientes que ejercitan las tres superficies distintas: EMPEORO (confirmacion + PDF), MEJORO (PDF
@@ -111,6 +112,8 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
       ? {}
       : await lastOptionByFieldKey(db, schema, eq, svId, Object.keys(ANSWERS).filter((k) => !PARTIAL.has(k)));
     await fillSurveyComplete(db, schema, eq, respId, svId, { overrides, fixture: ANSWERS, resolve: resolveAnswerValue });
+    // El diagnostico exige las condiciones de la toma (2026-09-22).
+    await sembrarCondicionesBis(db, evalId);
     const measId = (await db.insert(schema.bisMeasurements).values({ evaluationId: evalId, measurementDate: new Date(measurementDate) }).returning({ id: schema.bisMeasurements.id }))[0].id;
     await db.insert(schema.bisRawValues).values(bisRawRows(biody).map((r) => ({ measurementId: measId, variableName: r.name, value: r.value })));
     const res = await runClinicalPipeline({ evaluationId: evalId, actorId, actorEmail: "traj-demo@cnv", ip: null });

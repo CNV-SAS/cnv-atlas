@@ -5,6 +5,7 @@ import { desc, eq, inArray, sql } from "drizzle-orm";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue, defaultAnswerFor } from "./fixtures/clinical-engine/dfi-complete-answers";
+import { sembrarCondicionesBis } from "./helpers/condiciones-bis";
 
 // P0 Parte 2 (P3): verifica EJECUTANDO que la banda de EB-BIS se SELLA en el reporte de un seguimiento,
 // por measurement_date (C2-a) y con el gate de 12 semanas, contra la BD local. Se AUTO-SALTA sin
@@ -86,6 +87,8 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
           : defaultAnswerFor(q.type, texts);
       await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
     }
+    // El diagnostico exige las condiciones de la toma (2026-09-22).
+    await sembrarCondicionesBis(db, evaluationId);
     const measId = (
       await db.insert(schema.bisMeasurements).values({ evaluationId, measurementDate: new Date(measurementDate) }).returning({ id: schema.bisMeasurements.id })
     )[0].id;

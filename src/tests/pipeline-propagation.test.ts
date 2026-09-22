@@ -11,6 +11,7 @@ import {
   borrarPreguntaSinFieldKey,
   crearPreguntaSinFieldKey,
 } from "./fixtures/pregunta-sin-field-key";
+import { sembrarCondicionesBis } from "./helpers/condiciones-bis";
 
 // Propagacion (B11 ST7): input REAL (fila anonimizada del Biody, guardada como la guarda
 // B8: header normalizado -> valor) -> motor real -> persistencia -> relectura. Aserta
@@ -118,6 +119,8 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
         await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
       }
     }
+    // El diagnostico exige las condiciones de la toma (2026-09-22).
+    await sembrarCondicionesBis(db, evaluationId);
     const measId = (
       await db
         .insert(schema.bisMeasurements)

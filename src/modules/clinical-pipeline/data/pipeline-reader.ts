@@ -48,6 +48,8 @@ export type PipelineInputs = {
   // opcional, y la ausencia NO es un cero (con 0 el clasificador corta pidiendo el dato, que es lo
   // correcto, pero el 0 tiene que venir de que falta, no de un paciente con fuerza cero).
   gripStrengthKg: number | null;
+  // Las condiciones de la toma BIS (2026-09-22): null si no se guardaron. Las exige el gate del diagnostico.
+  bisConditions: { contraindicated: boolean } | null;
 };
 
 export async function readPipelineInputs(evaluationId: string): Promise<PipelineInputs | null> {
@@ -136,7 +138,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
 
   // Condiciones de la toma: de ahi sale la fuerza prensil que el profesional midio en consulta.
   const [intake] = await db
-    .select({ gripStrengthKg: evaluationBisIntake.gripStrengthKg })
+    .select({ gripStrengthKg: evaluationBisIntake.gripStrengthKg, contraindicated: evaluationBisIntake.contraindicated })
     .from(evaluationBisIntake)
     .where(eq(evaluationBisIntake.evaluationId, evaluationId))
     .limit(1);
@@ -163,6 +165,8 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     bisRaw,
     hasBis,
     gripStrengthKg: intake?.gripStrengthKg == null ? null : Number(intake.gripStrengthKg),
+    // Las condiciones de la toma: si se guardaron y si hay contraindicacion. El gate del diagnostico las exige.
+    bisConditions: intake ? { contraindicated: intake.contraindicated } : null,
   };
 }
 

@@ -6,7 +6,7 @@ import {
   activeWarnings,
   computeContraindicated,
 } from "@/modules/bis-intake/services/contraindication";
-import { evaluarRequisitosDelImport } from "@/modules/bis-intake/services/import-gate";
+import { condicionesParaDiagnosticar, evaluarRequisitosDelImport } from "@/modules/bis-intake/services/import-gate";
 import { buildValidityCaveats } from "@/modules/bis-intake/services/validity";
 import type { BisCondition, BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import {
@@ -571,5 +571,28 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     );
     expect(ANTRO).toContain('name="gripStrengthKg"');
     expect(ENTRADA).toContain("sellada={diagnosticoGenerado}");
+  });
+});
+
+// ═══ EL DIAGNOSTICO TAMBIEN EXIGE LAS CONDICIONES (2026-09-22) ═══
+// La medicion del paciente importado del HTML no pasa por el boton de importar. Sin este gate se diagnosticaria
+// como si la toma no tuviera ningun reparo.
+describe("el diagnóstico exige las condiciones de la toma, venga de donde venga la medición", () => {
+  it("sin condiciones no deja generar, y con contraindicación tampoco", () => {
+    const sin = condicionesParaDiagnosticar(null);
+    expect(sin.allowed).toBe(false);
+    if (!sin.allowed) expect(sin.message).toContain("guardar las condiciones de la toma BIS");
+    expect(condicionesParaDiagnosticar({ contraindicated: true }).allowed).toBe(false);
+    expect(condicionesParaDiagnosticar({ contraindicated: false }).allowed).toBe(true);
+  });
+
+  it("el pipeline lo aplica después del gate de encuesta completa", () => {
+    const pipeline = readFileSync("src/modules/clinical-pipeline/services/run-pipeline.ts", "utf8");
+    const encuesta = pipeline.indexOf("formatIncompleteSurveyMessage(inputs.surveyGaps)");
+    const condiciones = pipeline.indexOf("condicionesParaDiagnosticar(inputs.bisConditions)");
+    expect(encuesta).toBeGreaterThan(-1);
+    expect(condiciones).toBeGreaterThan(encuesta);
+    const lector = readFileSync("src/modules/clinical-pipeline/data/pipeline-reader.ts", "utf8");
+    expect(lector).toContain("bisConditions: intake ? { contraindicated: intake.contraindicated } : null");
   });
 });

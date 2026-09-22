@@ -6,6 +6,7 @@ import { computeProtocolo, runEngine, type ProtocoloSnapshot } from "@/clinical-
 import { resolveRutasContent } from "@/clinical-engine/rutas-content";
 import { appError, err, ok, type Result } from "@/core/errors";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
+import { condicionesParaDiagnosticar } from "@/modules/bis-intake/services/import-gate";
 
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
@@ -68,6 +69,14 @@ export async function runClinicalPipeline(
       }),
     );
   }
+
+  // LAS CONDICIONES DE LA TOMA, TAMBIEN AQUI (2026-09-22). Despues de la encuesta: si faltan las dos, se
+  // dice primero la encuesta, con su lista por dominio, como hasta ahora. El boton "Importar medición BIS" ya las exige,
+  // pero una medicion que llega por otro camino (la de un paciente importado del HTML) no pasa por el. Sin
+  // este gate se diagnosticaria como si la toma no tuviera ningun reparo, que no es lo mismo que "no se
+  // registraron". Es la misma regla del boton, en el sitio que ningun camino puede saltarse.
+  const condiciones = condicionesParaDiagnosticar(inputs.bisConditions);
+  if (!condiciones.allowed) return err(appError("validation", condiciones.message));
 
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una versión del modelo activa."));

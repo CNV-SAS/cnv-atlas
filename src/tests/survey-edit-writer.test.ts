@@ -10,6 +10,7 @@ import {
   borrarPreguntaSinFieldKey,
   crearPreguntaSinFieldKey,
 } from "./fixtures/pregunta-sin-field-key";
+import { sembrarCondicionesBis } from "./helpers/condiciones-bis";
 
 // (a) Edicion de la encuesta por el profesional ANTES del diagnostico. Verificacion contra la BD real
 // (como correct-evaluation): el camino feliz + los guards que importan (asignacion, y sobre todo el de
@@ -97,6 +98,8 @@ describe.skipIf(!HAS_DB)("saveSurveyEdit (BD real)", () => {
           : defaultAnswerFor(q.type, texts);
       await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
     }
+    // El diagnostico exige las condiciones de la toma (2026-09-22).
+    await sembrarCondicionesBis(db, evaluationId);
     const measId = (
       await db.insert(schema.bisMeasurements).values({ evaluationId, measurementDate: new Date("2026-06-22T15:09:00Z") }).returning({ id: schema.bisMeasurements.id })
     )[0].id;
