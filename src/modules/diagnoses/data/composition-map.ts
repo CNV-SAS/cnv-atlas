@@ -3,6 +3,7 @@ import { decimalesDe, esIndicadorAni } from "./indicator-ranges";
 import {
   MEASURED_HIPS_HEADER,
   MEASURED_WAIST_HEADER,
+  MEASURED_X50_HEADER,
   normalizeHeader,
 } from "@/modules/bis/services/header-map";
 
@@ -167,7 +168,9 @@ const EVAL_LEVELS: { title: string; rows: LevelRow[] }[] = [
       ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "% de MLG"],
       // Bioelectrico crudo del nivel celular: impedancias (Gildardo las reparte a Nivel III). Icono de rayo.
       ["Resistencia 50 kHz (R50)", "R50", null, "Ω", bio],
-      ["Reactancia 50 kHz (Xc)", "Xc", null, "Ω", bio],
+      // X50, NO Xc (2026-09-22): la fila mostraba la reactancia del centro del circulo, negativa, bajo el
+      // rotulo de la de 50 kHz. Su tabla lee `bis.X50` en esta fila.
+      ["Reactancia 50 kHz (Xc)", "X50", null, "Ω", bio],
       ["Impedancia 5 kHz (Z5)", "Z5", null, "Ω", bio],
       ["Impedancia 50 kHz (Z50)", "Z50", null, "Ω", bio],
       ["Impedancia 200 kHz (Z200)", "Z200", null, "Ω", bio],
@@ -329,6 +332,7 @@ export function buildComposition(
   // Valores COMPUTADOS (no columnas del equipo): circunferencias medidas, ratios y derivados. El resto
   // sale por su header. La clasificacion sexo-dependiente la resuelve composition-section.
   const computed: Record<string, number | null> = {
+    X50: measured(MEASURED_X50_HEADER),
     cintura,
     cadera,
     icc,

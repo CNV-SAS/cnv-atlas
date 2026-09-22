@@ -62,6 +62,10 @@ const MEASUREMENT_DATE_HEADERS = new Set<string>(["Measurement date"]);
 // el bloqueo del import por regla de negocio (cintura/cadera, sub-bloque B).
 export const MEASURED_WAIST_HEADER = "Waist Size cm"; // cintura
 export const MEASURED_HIPS_HEADER = "Hips Size cm"; // cadera
+// Reactancia MEDIDA a 50 kHz. Es la que su tabla de Wang pone en "Reactancia 50 kHz" (`bis.X50`, v9 L6515 y
+// L7792). NO es `Xc` del contrato del motor, que es la reactancia del CENTRO DEL CIRCULO de Cole (negativa
+// por definicion, su L81). Se lee aqui y no en BIODY_COLUMNS para no tocar la entrada del motor.
+export const MEASURED_X50_HEADER = "Reactancia à 50khz Ohm";
 
 function roleOf(normalized: string): HeaderRole {
   if (normalized === "") return "metadata"; // columna sin encabezado: se ignora
