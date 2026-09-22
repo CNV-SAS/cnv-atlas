@@ -193,6 +193,11 @@ export type CriterionPromptInput = {
 
   // ── Cortes por sexo, ya resueltos: su prompt insiste en que se citen ESOS y no los historicos. ──
   cortes: string[];
+  /**
+   * La DIRECCION de la PABU respecto de phi, resuelta (v8). Su cadena del DFI dice "desviación de φ +0,42"
+   * tambien cuando la PABU esta POR DEBAJO, y el modelo leyo el "+" como "por encima". null sin PABU.
+   */
+  direccionPabu: string | null;
 };
 
 // NO HAY `biomarcadores`, y su ausencia es el arreglo del punto 9 (2026-09-07): el campo `bio` de su
@@ -254,13 +259,13 @@ export function buildCriterionPrompt(
   if (input.alertas.length > 0 || input.respuestasEnRojo.length > 0) {
     L.push(
       "",
-      "ALERTAS CLÍNICAS DE LA ENCUESTA (menciónalas en el párrafo inmediatamente posterior a la presentación):",
+      "ALERTAS CLÍNICAS DE LA ENCUESTA (Atlas las presenta en el segundo párrafo: NO las enumeres; úsalas para leer su dominio):",
       ...input.alertas.map((a) => `[${a.nivel}] ${a.titulo} (dominio ${a.dominio})`),
     );
     // v6: AGRUPADAS POR DOMINIO y con cuantas son. En la prueba del 21 el modelo omitio los siete sintomas
     // digestivos: con la lista plana no tenia como saber que eran un bloque, ni cuantas le faltaban.
     if (input.respuestasEnRojo.length > 0) {
-      L.push(`Respuestas de la encuesta en rojo (lo que el paciente respondió), ${input.respuestasEnRojo.length} en total; menciónalas TODAS:`);
+      L.push(`Respuestas de la encuesta en rojo (lo que el paciente respondió), ${input.respuestasEnRojo.length} en total; Atlas las presenta, no las enumeres:`);
       const grupos: { dominio: string; items: RespuestaEnRojoDelPrompt[] }[] = [];
       for (const r of input.respuestasEnRojo) {
         const g = grupos.find((x) => x.dominio === r.dominio);
@@ -272,7 +277,7 @@ export function buildCriterionPrompt(
       }
     }
   } else {
-    L.push("", "ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna. No escribas ese párrafo ni comentes su ausencia.");
+    L.push("", "ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna. No comentes su ausencia.");
   }
 
   L.push("", "=== DATOS CRUDOS DEL PACIENTE (evidencia de respaldo) ===", "");
@@ -331,6 +336,10 @@ export function buildCriterionPrompt(
     // Su prompt PROHIBE los cortes historicos unicos y exige los del sexo del paciente. Se los damos ya
     // resueltos, que es lo que el hace, para que no tenga que elegir.
     L.push("CORTES DEL SEXO DE ESTE PACIENTE (cita estos y sólo estos):", ...input.cortes, "");
+  }
+
+  if (input.direccionPabu) {
+    L.push(`DIRECCIÓN DE LA PABU (úsala tal cual): ${input.direccionPabu}`, "");
   }
 
   return [

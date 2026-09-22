@@ -5,6 +5,7 @@ import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey
 import { getHistoriaClinicaDoc } from "./hc-documento-reader";
 import { lineaDeReemplazo, observacionesVigentes } from "./observaciones-vigentes";
 import { redactarEncuesta } from "../services/encuesta-redactada";
+import { preguntasDeLosAntecedentes } from "./hc-antecedentes-map";
 import { alertasDeLaConsulta } from "@/clinical-engine/alertas-de-la-consulta";
 import { alertasParaElSoap, CAMPOS_DEL_PARRAFO_DE_DIETA } from "../services/alertas-en-el-soap";
 import type { HistoriaClinicaSoap } from "./reports-view-types";
@@ -49,8 +50,19 @@ export async function getHistoriaClinicaSoap(evaluationId: string): Promise<Hist
     // ── S · lo que el paciente refiere ───────────────────────────────────────────────────────────
     subjetivo: {
       motivos: hc.motivos,
-      antecedentes: hc.antecedentes,
-      encuesta: redactarEncuesta(domains ?? []),
+      // EL ROTULO NO SE REPITE (Santiago, 2026-09-21): el grupo "Diagnósticos personales" trae una fila que se
+      // llama igual, y salia "Diagnósticos personales: Diagnósticos personales: Obesidad". Se quita el prefijo
+      // cuando coincide con el grupo.
+      antecedentes: hc.antecedentes.map((a) => ({
+        grupo: a.grupo,
+        items: a.items.map((i) => (i.startsWith(`${a.grupo}: `) ? i.slice(a.grupo.length + 2) : i)),
+      })),
+      // Y LA ENCUESTA NO REPITE LO QUE YA DICEN LOS ANTECEDENTES: la hipertension, los contaminantes y las
+      // alergias salian dos veces en la S. La misma funcion que arma los antecedentes decide cuales son.
+      encuesta: redactarEncuesta(
+        domains ?? [],
+        preguntasDeLosAntecedentes((domains ?? []).flatMap((d) => d.questions)),
+      ),
     },
 
     // ── O · lo que se mide ───────────────────────────────────────────────────────────────────────

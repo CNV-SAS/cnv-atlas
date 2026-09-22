@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtDec } from "@/lib/format/decimal";
+import { sinGuionLargo } from "@/lib/format/guion";
 import { Check, ClipboardCopy, Printer } from "lucide-react";
 import { useActionState, useState } from "react";
 
@@ -331,7 +332,7 @@ export function HistoriaClinicaSoapDoc({
             {[
               plan.kcalObjetivo != null ? `Energía: ${plan.kcalObjetivo} kcal/día` : null,
               plan.proteinaG != null
-                ? `Proteína: ${plan.proteinaG} g${plan.proteinaGKg != null ? ` (${plan.proteinaGKg} g/kg)` : ""}`
+                ? `Proteína: ${plan.proteinaG} g${plan.proteinaGKg != null ? ` (${fmtDec(plan.proteinaGKg)} g/kg)` : ""}`
                 : null,
               plan.carbohidratosG != null ? `Carbohidratos: ${plan.carbohidratosG} g` : null,
               plan.grasasG != null ? `Grasas: ${plan.grasasG} g` : null,
@@ -349,7 +350,7 @@ export function HistoriaClinicaSoapDoc({
           <p>
             <span className="font-medium text-foreground">Remisiones indicadas por el modelo:</span>{" "}
             {soap.plan.remisionesExigidas
-              .map((r) => `${r.destino} (${r.urgencia}${r.registrada ? ", registrada" : ", sin registrar"})`)
+              .map((r) => `${r.destino} (${sinGuionLargo(r.urgencia)}${r.registrada ? ", registrada" : ", sin registrar"})`)
               .join("; ")}
             .
           </p>

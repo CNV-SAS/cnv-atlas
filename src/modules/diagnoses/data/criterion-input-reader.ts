@@ -128,6 +128,16 @@ function cortesDelSexo(sexoM: boolean): string[] {
   return out;
 }
 
+const PHI = 1.618;
+
+/** "por debajo de φ (1,202)", "por encima de φ (2,362)" o "en φ". null sin PABU. */
+export function direccionDeLaPabu(pabu: number | null | undefined): string | null {
+  if (typeof pabu !== "number" || !Number.isFinite(pabu)) return null;
+  const cifra = pabu.toFixed(3).replace(".", ",");
+  if (Math.abs(pabu - PHI) < 0.0005) return `en φ (${cifra})`;
+  return pabu < PHI ? `por debajo de φ = 1,618 (${cifra})` : `por encima de φ = 1,618 (${cifra})`;
+}
+
 export async function buildCriterionInput(
   evaluationId: string,
   snapshot: unknown,
@@ -211,5 +221,8 @@ export async function buildCriterionInput(
     riesgos: efr?.risks ?? null,
     indicadores,
     cortes: cortesDelSexo(snap.sexo === "M"),
+    // LA DIRECCION DE LA PABU, resuelta de la cifra sellada: es aritmetica (mayor o menor que phi), no
+    // clinica. El modelo leyo el "+" de "desviación de φ +0,42" como "por encima" con la PABU en 1,20.
+    direccionPabu: direccionDeLaPabu(snap.indicators.pabu),
   };
 }

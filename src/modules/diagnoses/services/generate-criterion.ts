@@ -23,6 +23,7 @@ import {
 } from "../ai/prompts/criterion.v2";
 import { saveAiSummary } from "../data/ai-summary-writer";
 import { buildCriterionInput } from "../data/criterion-input-reader";
+import { insertarParrafoDeAlertas, parrafoDeAlertas } from "./parrafo-de-alertas";
 
 // Generacion del BORRADOR de criterio por IA. Desde el 2026-09-08 es el PORTE DEL PASO 4 de su Analisis
 // IA (punto 8 de su cotejo): el diagnostico integral estructurado por los cinco dominios del DFI, con los
@@ -92,7 +93,12 @@ export async function generateCriterion(
     // El filtro de marcadores (Gildardo §8, 2026-09-01). El prompt ya se lo pide, pero un prompt no es un
     // contrato: esto es lo que se aplica "por si el modelo desobedece, que es lo que hacen". El criterio
     // se pinta como texto plano, asi que un `**` que se cuele lo ve el profesional.
-    const limpio = limpiarMarcadores(completion.text);
+    // Y EL PARRAFO DE ALERTAS LO PONE ATLAS (ver `parrafo-de-alertas`): el modelo no lo escribe desde la
+    // v8, porque en tres pruebas omitio o invento algo en esa lista. Se inserta despues de su apertura.
+    const limpio = insertarParrafoDeAlertas(
+      limpiarMarcadores(completion.text),
+      parrafoDeAlertas(input.alertas, input.respuestasEnRojo, input.sexo),
+    );
     await recordCriterionSuggestion({
       diagnosisId: criterion.diagnosisId,
       provider: completion.provider,

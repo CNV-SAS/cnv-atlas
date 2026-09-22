@@ -67,3 +67,64 @@ describe("la A", () => {
     expect(SU_FUNCION).toContain("defic.push(g.label.toLowerCase())");
   });
 });
+
+// ═══ LA S Y LA P, TERCERA PRUEBA (2026-09-21) ═══
+describe("la S", () => {
+  it("las respuestas de opción múltiple salen como texto, no como JSON", async () => {
+    const { redactarDominio } = await import("@/modules/reports/services/encuesta-redactada");
+    const texto = redactarDominio({
+      section: "D2",
+      questions: [
+        {
+          questionId: "q1", number: 21, questionText: "¿Qué métodos ha usado para cambiar su peso?", questionHint: null,
+          questionType: "opcion_multiple", fieldKey: "d2_21", usedInDiagnosis: true,
+          answerValue: '["Ejercicio excesivo","Vómito"]', options: [],
+        },
+      ],
+    }).texto;
+    expect(texto).toContain("Ejercicio excesivo, Vómito");
+    expect(texto).not.toContain('["');
+  });
+
+  it("lo que ya dicen los antecedentes no se repite en la encuesta", async () => {
+    const { redactarDominio } = await import("@/modules/reports/services/encuesta-redactada");
+    const q = {
+      questionId: "hta", number: 36, questionText: "¿Le han diagnosticado hipertensión arterial?", questionHint: null,
+      questionType: "opcion", fieldKey: "d5_36", usedInDiagnosis: true, answerValue: "Sí", options: [],
+    };
+    expect(redactarDominio({ section: "D5", questions: [q] }, new Set(["hta"])).texto).toBe("");
+    expect(redactarDominio({ section: "D5", questions: [q] }).texto).toContain("hipertensión arterial: Sí");
+  });
+
+  it("y el rótulo del grupo no se repite en su fila", () => {
+    const LECTOR = sinComentarios(readFileSync("src/modules/reports/data/hc-soap-reader.ts", "utf8"));
+    expect(LECTOR).toContain("i.startsWith(`${a.grupo}: `) ? i.slice(a.grupo.length + 2) : i");
+    expect(LECTOR).toContain("preguntasDeLosAntecedentes(");
+  });
+});
+
+describe("la fecha de la consulta", () => {
+  it("una fecha ya formateada no se vuelve a formatear (salía 8/10/2026 por 10/9/2026)", async () => {
+    const { formatDate } = await import("@/lib/format/date");
+    expect(formatDate("10/9/2026")).toBe("10/9/2026");
+    const PAGINA = sinComentarios(readFileSync("src/app/(app)/ani-bis-e/[id]/soap/page.tsx", "utf8"));
+    expect(PAGINA).toContain("fecha={soap.fechaConsulta}");
+  });
+});
+
+describe("la P", () => {
+  it("coma decimal y sin guion largo, en la pantalla y en la copia", () => {
+    for (const f of ["src/modules/reports/services/soap-a-texto.ts", "src/modules/reports/components/hc-soap.tsx"]) {
+      const src = readFileSync(f, "utf8");
+      expect(src, f).toContain("fmtDec(plan.proteinaGKg)");
+      expect(src, f).toContain("sinGuionLargo(r.urgencia)");
+    }
+  });
+
+  it("la historia clínica habla en tercera persona; el plan del paciente, de tú", () => {
+    const COMPOSICION = readFileSync("src/modules/reports/data/hc-composicion.ts", "utf8");
+    expect(COMPOSICION).toContain('voz: "clinica"');
+    const RECS = readFileSync("src/modules/reports/data/hc-recomendaciones.ts", "utf8");
+    expect(RECS).toContain('voz === "clinica" ? "para su peso" : "para tu peso"');
+  });
+});

@@ -1,4 +1,4 @@
-import promptV7 from "./criterion.system.v7.json";
+import promptV8 from "./criterion.system.v8.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -79,4 +79,10 @@ import promptV7 from "./criterion.system.v7.json";
 // indices se nombran como vienen en el bloque de indicadores.
 //
 // LA V6 NO SE RETIRA, por la misma razon.
-export const CRITERION_SYSTEM_PROMPT: string = promptV7.system;
+//
+// V8 (2026-09-21, tercera prueba): EL PARRAFO DE ALERTAS LO ESCRIBE ATLAS. En las tres pruebas el modelo
+// fallo algo en esa lista, y en las dos ultimas omitio la alerta critica de TCA: un prompt no garantiza
+// "todas y solo esas". Se compone en `services/parrafo-de-alertas` y se inserta tras la apertura. El
+// modelo sigue viendo las alertas para leerlas en su dominio. Y dos cosas mas: cita los datos de cada
+// dominio (le llegaban y no los usaba; el HTML de Gildardo si) y recibe la direccion de la PABU resuelta.
+export const CRITERION_SYSTEM_PROMPT: string = promptV8.system;

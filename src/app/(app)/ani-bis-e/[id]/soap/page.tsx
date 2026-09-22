@@ -58,7 +58,9 @@ export default async function SoapPage({ params }: { params: Promise<{ id: strin
 
       <HistoriaClinicaSoapDoc
         soap={soap}
-        fecha={formatDate(soap.fechaConsulta)}
+        // YA VIENE FORMATEADA de la historia clinica: formatearla otra vez leia "10/9/2026" como mes/dia
+        // (9 de octubre) y el cambio de zona la corria al 8. Salia una fecha de consulta en el futuro.
+        fecha={soap.fechaConsulta}
         evaluationId={id}
         notasSubjetivas={notas.map((n) => ({
           id: n.id,
