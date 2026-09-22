@@ -31,6 +31,10 @@ export type EvaluacionPendiente = {
   tieneDiagnostico: boolean;
   /** Estado del reporte, si existe. `null` = todavia no hay reporte. */
   reporte: string | null;
+  /** Vino de un lote del HTML: lo que le falta es distinto, y decirlo evita que se lea como trabajo perdido. */
+  importada?: boolean;
+  /** Las condiciones de la toma BIS, que el diagnostico exige desde el 2026-09-22. */
+  tieneCondicionesBis?: boolean;
 };
 
 export type AccionPendiente = {
@@ -85,6 +89,16 @@ export function accionDeEvaluacion(e: EvaluacionPendiente): AccionPendiente | nu
     return { texto: "Esperando al paciente", de: "paciente", orden: 2 };
   }
   if (!e.tieneBis) return { texto: "Montar BIS", de: "profesional", orden: 3 };
+  // LA IMPORTADA LLEGA CON SU MEDICION Y SIN CONDICIONES (2026-09-22). Decir "Montar BIS" seria mentir (ya
+  // esta montada) y "Generar diagnostico" mandaria a un boton que va a rebotar: lo que falta son las
+  // condiciones de la toma, que el HTML no capturaba.
+  if (e.tieneCondicionesBis === false && !e.tieneDiagnostico) {
+    return {
+      texto: e.importada ? "Importada del HTML: registrar condiciones" : "Registrar condiciones de la toma",
+      de: "profesional",
+      orden: 3,
+    };
+  }
   if (!e.tieneDiagnostico) return { texto: "Generar diagnóstico", de: "profesional", orden: 4 };
   if (e.reporte == null || e.reporte === "draft") {
     return { texto: "Aprobar y enviar el reporte", de: "profesional", orden: 5 };

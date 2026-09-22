@@ -65,7 +65,7 @@ export async function getTablero(): Promise<Tablero> {
     supabase
       .from("patients")
       .select(
-        "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, status, bis_measurements(id), diagnoses(id), reports(status))",
+        "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, status, import_batch_id, bis_measurements(id), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
       )
       .is("deleted_at", null),
     // LA PROXIMA CITA VIVE EN EL TRATAMIENTO y es EN VIVO (no sellada): es la vigente, no la del dia de
@@ -92,7 +92,9 @@ export async function getTablero(): Promise<Tablero> {
     id: string;
     superseded_at: string | null;
     status: string;
+    import_batch_id: string | null;
     bis_measurements: { id: string }[] | null;
+    evaluation_bis_intake: { evaluation_id: string }[] | null;
     diagnoses: { id: string }[] | null;
     reports: { status: string }[] | null;
   };
@@ -116,6 +118,8 @@ export async function getTablero(): Promise<Tablero> {
         evaluationId: e.id,
         status: e.status,
         tieneBis: (e.bis_measurements ?? []).length > 0,
+        importada: e.import_batch_id != null,
+        tieneCondicionesBis: (e.evaluation_bis_intake ?? []).length > 0,
         tieneDiagnostico: (e.diagnoses ?? []).length > 0,
         reporte: e.reports?.[0]?.status ?? null,
       })),

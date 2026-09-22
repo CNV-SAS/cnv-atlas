@@ -1,6 +1,5 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -131,23 +130,35 @@ describe("el archivo", () => {
 });
 
 describe("la revisión no escribe nada", () => {
-  it("ningún archivo del módulo inserta, actualiza, borra ni sube", () => {
-    const archivos: string[] = [];
-    const walk = (d: string) => {
-      for (const f of readdirSync(d)) {
-        const p = join(d, f);
-        if (statSync(p).isDirectory()) walk(p);
-        else archivos.push(p);
-      }
-    };
-    walk("src/modules/importacion-html");
-    for (const f of archivos) {
+  // SOLO LA REVISION: desde la sesion 4 el modulo tambien importa, y eso SI escribe. Lo que este candado
+  // protege es que el camino de revisar siga sin tocar nada: se puede revisar un archivo las veces que haga
+  // falta sin consecuencias.
+  const DE_LA_REVISION = [
+    "src/modules/importacion-html/services/revisar-lote.ts",
+    "src/modules/importacion-html/services/revisar-archivo.ts",
+    "src/modules/importacion-html/services/normalizar.ts",
+    "src/modules/importacion-html/data/contexto-reader.ts",
+    "src/modules/importacion-html/validations/archivo.ts",
+  ];
+
+  it("ningún archivo de la revisión inserta, actualiza, borra ni sube", () => {
+    for (const f of DE_LA_REVISION) {
       const s = sinComentarios(readFileSync(f, "utf8"));
       // Escrituras de Supabase (from(...).insert/update/upsert/delete), de Drizzle (db.insert/update/delete,
       // transacciones) y de almacenamiento. El `.update(` del hash no es una escritura.
       expect(s, `${f} escribe`).not.toMatch(
         /\.from\([^)]*\)[\s\S]{0,40}?\.(insert|update|upsert|delete)\(|\bdb\.(insert|update|delete)\(|db\.transaction|\.rpc\(|storage\.from/,
       );
+    }
+  });
+
+  it("y el escritor de la importación sí escribe, pero solo él y en una transacción", () => {
+    const escritor = sinComentarios(readFileSync("src/modules/importacion-html/data/importar-lote-writer.ts", "utf8"));
+    expect(escritor).toContain("db.transaction(");
+    expect(escritor).toContain("recordAudit(tx,");
+    // Ni diagnostico, ni tratamiento, ni reporte, ni condiciones de la toma: eso lo hace el profesional.
+    for (const tabla of ["diagnoses", "treatments", "reports", "evaluationBisIntake"]) {
+      expect(escritor, `el escritor escribe en ${tabla}`).not.toContain(`insert(${tabla})`);
     }
   });
 

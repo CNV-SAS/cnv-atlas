@@ -1,0 +1,217 @@
+import { sql as dsql } from "drizzle-orm";
+import { afterAll, describe, expect, it, vi } from "vitest";
+
+import {
+  instanteDeLaConsulta,
+  partirNombre,
+  respuestasDeLaConsulta,
+  tipoDeDocumento,
+  tipoDeLaConsulta,
+  valoresBisDeLaConsulta,
+} from "@/modules/importacion-html/services/mapeo-de-la-consulta";
+
+vi.mock("server-only", () => ({}));
+
+// ═══ LA IMPORTACION Y EL DESHACER (sesion 4, 2026-09-22) ═══
+//
+// Lo puro se prueba sin base; lo que escribe, CONTRA LA BASE REAL, porque es lo unico que atrapa un CHECK, un
+// FK o una cascada mal puesta. Con datos sinteticos (ningun paciente real entra a una prueba).
+
+describe("el mapeo de una consulta del HTML", () => {
+  it("las respuestas viajan como las de Atlas: la opción múltiple, en JSON", () => {
+    const c = { d3_27: "Muy mala", d2_21: ["Vómito", "Ejercicio excesivo"], d3_29: 10, d1_1_i: null, d4_32: "" };
+    expect(respuestasDeLaConsulta(c, ["d3_27", "d2_21", "d3_29", "d1_1_i", "d4_32", "d9_nada"])).toEqual([
+      { clave: "d3_27", valor: "Muy mala" },
+      { clave: "d2_21", valor: '["Vómito","Ejercicio excesivo"]' },
+      { clave: "d3_29", valor: "10" },
+    ]);
+  });
+
+  it("la medición usa los nombres de variable de Atlas, y la cintura sigue la cadena de respaldo", () => {
+    const valores = valoresBisDeLaConsulta(
+      { Re: 627.3, Ri: 1306.4, FM: 18.04, tallaCm: 177, peso: 80.4, cintura: null, cadera: 0 },
+      { excel: { cintura: null }, aMano: { cintura: 84, cadera: 106 } },
+    );
+    const por = Object.fromEntries(valores.map((v) => [v.variableName, v.value]));
+    expect(por["Extracellular resistance"]).toBe(627.3);
+    expect(por["Altura cm"]).toBe(177);
+    expect(por["Waist Size cm"]).toBe(84);
+    expect(por["Hips Size cm"]).toBe(106);
+  });
+
+  it("un cero no es una medida, y un ratio colado en la cintura tampoco", () => {
+    const valores = valoresBisDeLaConsulta({ Re: 0, cintura: 0.84, cadera: 106 });
+    expect(valores.find((v) => v.variableName === "Waist Size cm")).toBeUndefined();
+    expect(valores.find((v) => v.variableName === "Extracellular resistance")).toBeUndefined();
+  });
+
+  it("si el paciente ya tenía evaluaciones en Atlas, ninguna importada es su inicial", () => {
+    expect(tipoDeLaConsulta(0, false)).toBe("inicial");
+    expect(tipoDeLaConsulta(1, false)).toBe("seguimiento");
+    expect(tipoDeLaConsulta(0, true)).toBe("seguimiento");
+  });
+
+  it("el nombre se parte, y el tipo de documento cae en CC si no es de los nuestros", () => {
+    expect(partirNombre("Ana María Prueba Gómez")).toEqual({ firstName: "Ana María", lastName: "Prueba Gómez" });
+    expect(partirNombre("Ana")).toEqual({ firstName: "Ana", lastName: "" });
+    expect(tipoDeDocumento("ce")).toBe("CE");
+    expect(tipoDeDocumento("cedula")).toBe("CC");
+  });
+
+  it("la fecha de la consulta se guarda al mediodía de Bogotá, así ningún huso la corre de día", () => {
+    expect(instanteDeLaConsulta("2026-08-13").toISOString()).toBe("2026-08-13T17:00:00.000Z");
+  });
+});
+
+let HAS_DB = false;
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  // sin .env.local: se salta
+}
+HAS_DB = Boolean(process.env.DATABASE_URL);
+
+const creado: { paciente?: string; lote?: string } = {};
+
+describe.skipIf(!HAS_DB)("importar y deshacer un lote (BD real)", () => {
+  afterAll(async () => {
+    const { db } = await import("@/db");
+    if (creado.paciente) await db.execute(dsql`delete from patients where id = ${creado.paciente}`);
+    if (creado.lote) await db.execute(dsql`delete from html_import_batches where id = ${creado.lote}`);
+  });
+
+  it("escribe la consulta con su fecha, su encuesta, su medición y su consentimiento; y se deshace entero", async () => {
+    const { db } = await import("@/db");
+    const { importarLote, revertirLote } = await import("@/modules/importacion-html/data/importar-lote-writer");
+
+    const [pp] = await db.execute<{ id: string; profile_id: string; organization_id: string }>(
+      dsql`select pp.id, pp.profile_id, p.organization_id from professional_profiles pp
+             join profiles p on p.id = pp.profile_id limit 1`,
+    );
+    const [version] = await db.execute<{ id: string }>(
+      dsql`select id from survey_versions order by published_at desc limit 1`,
+    );
+    const preguntas = await db.execute<{ id: string; field_key: string }>(
+      dsql`select id, field_key from survey_questions where survey_version_id = ${version.id} and field_key in ('d3_27','d2_21')`,
+    );
+    const preguntasPorClave = Object.fromEntries(preguntas.map((q) => [q.field_key, q.id]));
+    const documento = `IMP-${Date.now()}`;
+
+    const r = await importarLote({
+      organizationId: pp.organization_id,
+      professionalId: pp.id,
+      actorId: pp.profile_id,
+      actorEmail: "admin@cnv",
+      ip: null,
+      archivo: { nombre: "prueba.json", hash: "a".repeat(64) },
+      declaracion: { version: "1.0", aceptadaEn: "2026-09-22T10:00:00Z" },
+      surveyVersionId: version.id,
+      preguntasPorClave,
+      pacientes: [
+        {
+          documento,
+          nombre: "Sintético Prueba",
+          consultas: [
+            {
+              fecha: "2026-08-13",
+              consulta: {
+                nombre: "Sintético Prueba",
+                fechaNac: "1990-05-01",
+                sexo: "M",
+                tipoDoc: "CC",
+                email: "sintetico@example.com",
+                consentimientoAceptado: true,
+                firmaNombre: "Sintético Prueba",
+                fechaConsentimiento: "13 de agosto de 2026",
+                motivo: ["Control de peso"],
+                d3_27: "Muy mala",
+                Re: 627.3,
+                Ri: 1306.4,
+                FM: 18.04,
+                peso: 80.4,
+                tallaCm: 177,
+                cintura: 84,
+                cadera: 106,
+              },
+            },
+            {
+              // La segunda, SIN firma: el legal dijo que se importa igual, con esa marca.
+              fecha: "2026-09-04",
+              consulta: { nombre: "Sintético Prueba", consentimientoAceptado: false, firmaNombre: "", d2_21: ["Vómito"] },
+            },
+          ],
+        },
+      ],
+    });
+    creado.lote = r.batchId;
+    expect(r.pacientesCreados).toBe(1);
+    expect(r.consultasImportadas).toBe(2);
+
+    const [paciente] = await db.execute<{ id: string }>(
+      dsql`select id from patients where document_number = ${documento}`,
+    );
+    creado.paciente = paciente.id;
+
+    const evals = await db.execute<{ id: string; type: string; status: string; created_at: string; import_batch_id: string }>(
+      dsql`select id, type, status, created_at, import_batch_id from evaluations where patient_id = ${paciente.id} order by created_at`,
+    );
+    expect(evals.map((e) => e.type)).toEqual(["inicial", "seguimiento"]);
+    expect(evals.every((e) => e.status === "in_progress")).toBe(true);
+    expect(evals.every((e) => e.import_batch_id === r.batchId)).toBe(true);
+    // La fecha de la consulta es la del HTML, no la de hoy.
+    expect(new Date(evals[0].created_at).toISOString().slice(0, 10)).toBe("2026-08-13");
+
+    // Encuesta, medicion y consentimiento de la primera.
+    const [respuestas] = await db.execute<{ n: number }>(
+      dsql`select count(*)::int as n from survey_answers sa join survey_responses sr on sr.id = sa.response_id
+             where sr.evaluation_id = ${evals[0].id}`,
+    );
+    expect(respuestas.n).toBe(1);
+    const valores = await db.execute<{ variable_name: string; value: string }>(
+      dsql`select variable_name, value from bis_raw_values brv join bis_measurements bm on bm.id = brv.measurement_id
+             where bm.evaluation_id = ${evals[0].id}`,
+    );
+    expect(valores.find((v) => v.variable_name === "Waist Size cm")?.value).toBe("84");
+    const consentimientos = await db.execute<{ signature_method: string; typed_name: string | null }>(
+      dsql`select signature_method, typed_name from patient_external_consents where patient_id = ${paciente.id}
+             order by source_consultation_date`,
+    );
+    expect(consentimientos.map((c) => c.signature_method)).toEqual([
+      "nombre_tecleado_sin_codigo",
+      "sin_prueba_de_firma",
+    ]);
+    expect(consentimientos[1].typed_name).toBeNull();
+
+    // NO se escribe ni diagnostico ni condiciones de la toma: eso lo hace el profesional en Atlas.
+    const [sinDx] = await db.execute<{ n: number }>(
+      dsql`select count(*)::int as n from diagnoses where evaluation_id = ${evals[0].id}`,
+    );
+    expect(sinDx.n).toBe(0);
+    const [sinCondiciones] = await db.execute<{ n: number }>(
+      dsql`select count(*)::int as n from evaluation_bis_intake where evaluation_id = ${evals[0].id}`,
+    );
+    expect(sinCondiciones.n).toBe(0);
+
+    // Y la auditoria, por consulta.
+    const [auditoria] = await db.execute<{ n: number }>(
+      dsql`select count(*)::int as n from clinical_audit_log where event = 'importacion_html.consulta_importada'
+             and payload->>'lote' = ${r.batchId}`,
+    );
+    expect(auditoria.n).toBe(2);
+
+    // ── DESHACER ──────────────────────────────────────────────────────────────────────────────────
+    const deshecho = await revertirLote({ batchId: r.batchId, actorId: pp.profile_id, actorEmail: "admin@cnv", ip: null });
+    expect(deshecho.consultasRetiradas).toBe(2);
+    expect(deshecho.pacientesBorrados).toBe(1);
+    const [quedan] = await db.execute<{ n: number }>(
+      dsql`select count(*)::int as n from patients where document_number = ${documento}`,
+    );
+    expect(quedan.n).toBe(0);
+    creado.paciente = undefined;
+    // El lote NO se borra: queda la constancia de que existio y de que se deshizo.
+    const [lote] = await db.execute<{ reverted_at: string | null }>(
+      dsql`select reverted_at from html_import_batches where id = ${r.batchId}`,
+    );
+    expect(lote.reverted_at).not.toBeNull();
+  });
+});

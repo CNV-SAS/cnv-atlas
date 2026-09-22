@@ -27,9 +27,16 @@ export function ConsentimientosOrigenHtml({
         <ul className="flex flex-col gap-1 text-muted-foreground">
           {consentimientos.map((c) => (
             <li key={c.fechaConsulta}>
-              Consulta del {formatDateOnly(c.fechaConsulta)} · firmado con el nombre{" "}
-              <span className="font-medium text-foreground">{c.nombreTecleado}</span> el {c.fechaRegistrada} ·{" "}
-              {c.versionDelTexto}, sin código de verificación
+              Consulta del {formatDateOnly(c.fechaConsulta)} ·{" "}
+              {c.nombreTecleado ? (
+                <>
+                  firmado con el nombre <span className="font-medium text-foreground">{c.nombreTecleado}</span> el{" "}
+                  {c.fechaRegistrada}
+                </>
+              ) : (
+                "sin prueba de firma en el HTML"
+              )}{" "}
+              · {c.versionDelTexto}, sin código de verificación
             </li>
           ))}
         </ul>
