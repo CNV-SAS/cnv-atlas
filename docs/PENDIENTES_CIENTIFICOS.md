@@ -726,3 +726,12 @@ ya resuelta, porque leyó el "+" de la desviación como "por encima".
 entre dominios*, y eso sigue: lo que se le prohíbe es **anticipar consecuencias** ("susceptibilidad futura",
 "si no se abordan"), porque eso no está en los datos de hoy. Y el cierre queda como el tuyo, **un párrafo**
 que nombra las rutas con su prioridad (salía como una lista suelta), sin la parte de conductas.
+
+**Añadido el 2026-09-22 (v10).** El cierre ya no lo escribe el modelo: en la cuarta prueba volvió a poner los
+códigos de las rutas y una conducta ("para abordar las conductas de riesgo"). Lo compone Atlas con la misma
+frase de rutas y prioridades con la que cierra tu resumen funcional (`_prW`: crítica, prioritaria,
+complementaria), y, si hay veto, con tu instrucción del paso 4 (*"antepón el abordaje psicológico y excluye la
+restricción calórica"*). Y al modelo le llegan hechas tres lecturas que confundía: la composición con la
+clasificación de tu tabla (escribió que un IMC de 25,7 "roza el sobrepeso"), el ICEC con su escala (en LE8 más
+alto es mejor, así que 33 es carga alta; lo leyó al revés) y la PABU con su dirección y su lectura, que son las
+de tu `cPABU` (v9, L3971-3988): por debajo de φ, *"Desviación por exceso"*, que es exceso de adiposidad.

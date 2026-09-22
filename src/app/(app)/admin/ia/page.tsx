@@ -18,9 +18,10 @@ export default async function AdminAiPage() {
     redirect("/no-autorizado");
   }
 
-  const [view, promptView] = await Promise.all([
+  const [view, promptView, criterioView] = await Promise.all([
     getAiConfigView(),
     getPromptView("menu.generate"),
+    getPromptView("criterio.generate"),
   ]);
 
   return (
@@ -48,6 +49,24 @@ export default async function AdminAiPage() {
           nueva auditada; la version activa es la que se usa al generar.
         </p>
         <AiPromptForm view={promptView} />
+      </section>
+
+      {/* EL DEL RESUMEN, SOLO LECTURA (Santiago, 2026-09-22). No se edita aqui a proposito: su texto vive en
+          el repositorio (JSON versionado) y llega a la base por migracion. Una edicion desde este panel
+          crearia una version que el codigo no tiene, y la siguiente migracion la retiraria sin aviso. */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold text-foreground">Prompt del resumen de IA</h2>
+        <p className="text-sm text-muted-foreground">
+          {criterioView.activeVersion != null
+            ? `Versión activa: v${criterioView.activeVersion}. `
+            : "Sin versión activa en la base: se usa el texto del código. "}
+          Solo lectura: los cambios se hacen en el código y se publican con una versión nueva.
+        </p>
+        {criterioView.activeContent ? (
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-3 text-xs leading-relaxed text-foreground">
+            {criterioView.activeContent}
+          </pre>
+        ) : null}
       </section>
     </div>
   );

@@ -270,21 +270,21 @@ describe("el porte del paso 4 llega entero", () => {
   });
 });
 
-describe("el texto de sistema canónico es el v9", () => {
+describe("el texto de sistema canónico es el v10", () => {
   it("y el seed publica esa misma versión", () => {
     // Los dos canales del prompt: el JSON que consume la app y la version que el seed (y su migracion)
     // publican. Si divergen, local y nube corren textos distintos sin que nada de error.
     const modulo = readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.ts", "utf8");
-    expect(modulo).toContain("criterion.system.v9.json");
+    expect(modulo).toContain("criterion.system.v10.json");
     const seed = readFileSync("supabase/seed.ts", "utf8");
-    expect(seed).toContain("criterion.system.v9.json");
-    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 9 },');
+    expect(seed).toContain("criterion.system.v10.json");
+    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 10 },');
   });
 
   it("y las versiones anteriores NO se borran", () => {
     // Los borradores ya generados apuntan a su version en la procedencia. Borrar el texto deja registros
     // que dicen "generado con la v3" sin que exista la v3. Misma disciplina que las versiones de motor.
-    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8"]) {
+    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9"]) {
       expect(
         existsSync(`src/modules/diagnoses/ai/prompts/criterion.system.${v}.json`),
         `se borró el texto de la ${v}`,
@@ -331,7 +331,7 @@ describe("las alertas: el modelo las ve y Atlas escribe su párrafo (v8)", () =>
     expect(CRITERION_SYSTEM_PROMPT).toContain("No inventes alertas");
     expect(CRITERION_SYSTEM_PROMPT).toContain("NO INDIQUES QUÉ HACER CON UNA ALERTA");
     expect(CRITERION_SYSTEM_PROMPT).toContain("3) Un párrafo por cada dominio funcional");
-    expect(CRITERION_SYSTEM_PROMPT).toContain("4) Cierre: UN PÁRRAFO DE PROSA con las RUTAS DE ATENCIÓN");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("4) Cierre: ESE PÁRRAFO TAMPOCO LO ESCRIBES TÚ");
   });
 
   it("las alertas son las MISMAS que ve el SOAP: la misma fuente", () => {
@@ -346,8 +346,8 @@ describe("lo que la v6 y la v7 corrigieron, y sigue en pie", () => {
     expect(CRITERION_SYSTEM_PROMPT).toContain("conectando causas entre dominios");
   });
 
-  it("el cierre nombra rutas y prioridad, sin conductas", () => {
-    expect(CRITERION_SYSTEM_PROMPT).toContain("Nombra cada ruta con su prioridad y nada más");
+  it("el cierre ya no lo escribe el modelo (v10): no nombra rutas", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("No nombres las rutas de atención en ningún párrafo");
   });
 
   it("los índices con el nombre que se le da, sin abreviar", () => {
@@ -364,22 +364,17 @@ describe("v8: más largo con datos, no con interpretación", () => {
 
   it("la dirección de la PABU le llega resuelta, y se le dice que la use", () => {
     // En la tercera prueba dijo "PABU 1,20 por encima de φ": leyó el "+" de "desviación de φ +0,42".
-    const texto = buildCriterionPrompt({ ...input, direccionPabu: "por debajo de φ = 1,618 (1,202)" })
+    const texto = buildCriterionPrompt({ ...input, direccionPabu: "la PABU (1,202) está por debajo de φ = 1,618" })
       .filter((m) => m.role === "user")
       .map((m) => m.content)
       .join("\n");
-    expect(texto).toContain("DIRECCIÓN DE LA PABU (úsala tal cual): por debajo de φ = 1,618 (1,202)");
+    // v10: "dila con tus palabras, sin comillas": Gemini pego la cadena entre comillas con "úsala tal cual".
+    expect(texto).toContain("LECTURA DE LA PABU (ya resuelta; dila con tus palabras, sin comillas): la PABU (1,202)");
     expect(CRITERION_SYSTEM_PROMPT).toContain("El signo que acompaña a la");
   });
 });
 
 describe("v9: el cierre en prosa, sin futuro y con la PABU leída", () => {
-  it("el cierre es un párrafo, con las rutas dentro de la frase y sin conductas", () => {
-    expect(CRITERION_SYSTEM_PROMPT).toContain("4) Cierre: UN PÁRRAFO DE PROSA");
-    expect(CRITERION_SYSTEM_PROMPT).toContain("sin ponerlas en lista ni en líneas aparte");
-    expect(CRITERION_SYSTEM_PROMPT).toContain("Nombra cada ruta con su prioridad y nada más");
-  });
-
   it("no anticipa consecuencias, y relee antes de entregar", () => {
     expect(CRITERION_SYSTEM_PROMPT).toContain("NO ANTICIPES EL FUTURO DEL PACIENTE");
     expect(CRITERION_SYSTEM_PROMPT).toContain("ANTES DE ENTREGAR, RELEE TU TEXTO");
@@ -389,5 +384,30 @@ describe("v9: el cierre en prosa, sin futuro y con la PABU leída", () => {
 
   it("la PABU: 'por exceso' no se mezcla con 'déficit'", () => {
     expect(CRITERION_SYSTEM_PROMPT).toContain("no la mezcles con \"déficit\" en la misma frase");
+  });
+});
+
+describe("v10: el cierre lo escribe Atlas y las lecturas llegan hechas", () => {
+  it("las clasificaciones se repiten, no se matizan, y no se recomienda", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("LA CLASIFICACIÓN QUE ACOMPAÑA A CADA CIFRA");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("no \"roza el sobrepeso\"");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("NO RECOMIENDES NI GRADÚES LA URGENCIA");
+  });
+
+  it("la composición viaja con su clasificación", () => {
+    const texto = buildCriterionPrompt({
+      ...input,
+      composicion: [{ etiqueta: "IMC", valor: "25,7 kg/m²", clasificacion: "Sobrepeso" }],
+    })
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .join("\n");
+    expect(texto).toContain("IMC: 25,7 kg/m² (Sobrepeso)");
+  });
+
+  it("el lector la toma de la misma función que la historia clínica", () => {
+    const reader = readFileSync("src/modules/diagnoses/data/criterion-input-reader.ts", "utf8");
+    expect(reader).toContain("composicionClasificada(composicion, snap.sexo === \"M\")");
+    expect(reader).toContain("dfiNarrativeFromOutput(snap).rutasActivadas");
   });
 });

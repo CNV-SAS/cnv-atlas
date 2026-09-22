@@ -78,3 +78,36 @@ export function insertarParrafoDeAlertas(texto: string, parrafo: string | null):
   if (parrafos.length === 0) return parrafo;
   return [parrafos[0], parrafo, ...parrafos.slice(1)].join("\n\n");
 }
+
+// ═══ Y EL CIERRE TAMBIEN LO ESCRIBE ATLAS (v10, 2026-09-22) ═══
+//
+// Se le pidio al modelo que cerrara con un parrafo, nombrando las rutas con su prioridad, sin codigos y sin
+// conductas. Gemini escribio "R3 · Conductual (prioritaria) para abordar las conductas de riesgo": codigos y
+// conducta, las dos cosas prohibidas. Mismo caso que el parrafo de alertas: una frase que tiene que decir
+// EXACTAMENTE una lista la compone Atlas. La lista sale de la narrativa del DFI (`rutasActivadas`), la
+// misma que cierra la A del SOAP, asi que las dos superficies no pueden dar prioridades distintas. La frase
+// del veto es su instruccion del paso 4 ("antepón el abordaje psicológico y excluye la restricción calórica").
+
+/** El parrafo de cierre, o null si no hay narrativa del DFI (entonces el texto queda como lo dejo el modelo). */
+export function parrafoDeCierre(rutasActivadas: string | null | undefined, veto: boolean): string | null {
+  if (rutasActivadas == null) return null;
+  const rutas = rutasActivadas.trim()
+    ? `Como resultado del diagnóstico funcional integrado, se activan estas rutas de atención: ${rutasActivadas}.`
+    : "El diagnóstico funcional integrado no activa rutas de atención.";
+  return veto
+    ? `${rutas} Con el veto conductual activo, el abordaje psicológico va primero y se excluye la restricción calórica.`
+    : rutas;
+}
+
+// Un parrafo del modelo que habla de rutas o del veto como cierre. Solo se buscan AL FINAL del texto: los
+// dominios van antes, y cortar desde el final nunca se come uno.
+const ES_CIERRE_DEL_MODELO = /\brutas?\b|\bR[1-6]\s*·|^\s*(?:el|dado el|por el|con el|ante el)\s+veto conductual/i;
+
+/** Quita el cierre que haya escrito el modelo y pone el de Atlas al final. */
+export function conCierreDeAtlas(texto: string, cierre: string | null): string {
+  if (!cierre) return texto;
+  const parrafos = texto.split(/\n\s*\n/).filter((p) => p.trim() !== "");
+  // Nunca se toca la apertura (el primer parrafo), aunque nombre algo parecido.
+  while (parrafos.length > 1 && ES_CIERRE_DEL_MODELO.test(parrafos[parrafos.length - 1])) parrafos.pop();
+  return [...parrafos, cierre].join("\n\n");
+}
