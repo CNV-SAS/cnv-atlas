@@ -78,14 +78,40 @@
 **Tamaño: cinco sesiones.** La 1 es independiente y se puede hacer ya; las demás esperan las respuestas de
 abajo.
 
-## Lo que necesito de Santiago antes de la sesión 2
+## Lo que respondió Santiago (2026-09-21) y lo que cambia en el plan
 
-1. **¿Cómo abren el HTML los integrantes: como archivo en su equipo, o desde una dirección web?** Decide cómo
-   funciona el exportador: el navegador solo deja leer lo guardado desde el mismo sitio donde se guardó.
-2. **¿Con qué navegador?** Lo guardado vive en ese navegador; si alguien usó dos, tiene dos copias.
-3. **¿Quién importa en Atlas?** El legal dice que CNV. Propongo admin y soporte.
-4. **Las consultas importadas, ¿solo se consultan, o también cuentan como punto de la trayectoria?** Si cuentan,
-   el primer seguimiento en Atlas ya compara contra la última consulta del HTML, que es lo que el paciente
-   espera; pero sus indicadores salieron del motor del HTML, no del de Atlas. Mi recomendación: que se vean en la
-   historia y en la ficha, y que **no** entren a la trayectoria hasta que se recalculen con el motor de hoy (el
-   legal ya dejó abierta esa puerta como "derivado nuevo").
+1. **El HTML se abre como archivo en el equipo, sin web.** Consecuencia técnica: el navegador guarda los datos
+   por "origen", y con un archivo local ese origen puede ser el archivo mismo (Safari lo hace así). Un
+   exportador en un archivo NUEVO podría no ver lo guardado por el viejo. **Por eso la sesión 2 entrega dos
+   vías:** la copia con el exportador, para reemplazar el archivo en la MISMA carpeta y con el MISMO nombre, y
+   un exportador de consola (un texto que se pega en las herramientas del navegador con el HTML viejo abierto)
+   como respaldo si la primera no ve los datos. Las dos se prueban en la sesión 5.
+2. **Navegadores: Chrome, Brave y Safari, en Windows y en Apple.** El smoke de la sesión 5 cubre los tres. Si
+   alguien usó dos navegadores, exporta de cada uno y la revisión (sesión 3) muestra las consultas repetidas.
+3. **Solo admin importa.** La pantalla de la sesión 3 es de admin (soporte no).
+4. **Las consultas importadas entran a la trayectoria cuando tengan diagnóstico generado desde Atlas.** Se
+   importan SIN diagnóstico; mientras no lo tengan, se ven en la ficha y en la historia como "importada del
+   HTML", pero no son punto de la serie.
+5. **Respuestas de la encuesta que no calzan con la vigente:** alerta para corregir, no se descartan. La
+   revisión (sesión 3) las lista y, ya importadas, la consulta muestra el aviso hasta que se corrijan con el
+   flujo de corrección que ya existe.
+6. **El paciente ya existe en Atlas por cédula:** la importación no decide sola si una consulta es inicial o
+   seguimiento (regla 18). Ordena las consultas por fecha y el profesional confirma.
+7. **Selección en el exportador:** con "marcar todos" y "desmarcar todos".
+
+**El BIS importado (verificado en el código, 2026-09-21).** La idea de Claude web (el BIS entra como medición
+importada pendiente de confirmar, con las condiciones de la toma sin marcar, y el diagnóstico se genera al
+entrar a trabajar la consulta) **no la soporta hoy el flujo tal cual**, y hay que construirla en la sesión 4:
+
+- Hoy el orden lo impone la importación del XLSX: `bis/actions.ts` exige las condiciones de la toma
+  respondidas ANTES de aceptar el archivo. Un BIS importado desde el HTML entra por otro camino y llegaría sin
+  condiciones.
+- Y el diagnóstico (`clinical-pipeline`) NO revisa las condiciones: exige BIS y encuesta completa, y congela
+  los reparos de validez de las condiciones que haya. Sin condiciones, el diagnóstico saldría como si la toma
+  no tuviera ningún reparo, que no es lo mismo que "no se registraron".
+- **Lo que propongo construir (decides tú):** el BIS importado queda marcado "importado del HTML, condiciones no registradas", y
+  generar el diagnóstico de esa consulta exige que el profesional capture las condiciones o declare que no se
+  registraron (y eso se congela en el diagnóstico). Ningún número del BIS se recalcula.
+
+**Estado de la sesión 1:** la regla del enlace está hecha (`modoDelSeguimiento` en `consent/versions.ts`,
+candado en `consent-versions.test.ts`). Falta la tabla del consentimiento de origen HTML y su texto archivado.

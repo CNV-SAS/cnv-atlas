@@ -9,7 +9,7 @@ import {
   resolveSurveyLinkByToken,
 } from "@/modules/evaluations/data/survey-links-reader";
 import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
-import { CONSENT_VERSION, requiresReconsent } from "@/modules/consent/versions";
+import { CONSENT_VERSION, modoDelSeguimiento } from "@/modules/consent/versions";
 
 export const metadata = { title: "Encuesta - Atlas Pacientes" };
 
@@ -76,10 +76,11 @@ export default async function EncuestaPage({
     license: null,
   };
 
-  // SEGUIMIENTO (dictamen legal 2026-08-20 §3): el camino normal NO re-firma (el consentimiento vigente lo
-  // cubre). Solo va al camino con firma si hubo un cambio SUSTANTIVO de version desde que el paciente firmo.
-  // Se decide leyendo la version que TIENE el paciente (service role, autorizado por el token del link). Si no
-  // tiene 'servicio' vigente (anomalo), queda "nosign" y el gate del action lo detiene con el aviso de revocacion.
+  // SEGUIMIENTO (dictamen legal 2026-08-20 §3 y respuesta legal 2026-09-21): el camino normal NO re-firma (el
+  // consentimiento vigente lo cubre). Va al camino con firma si hubo un cambio SUSTANTIVO de version o si el
+  // paciente NO TIENE un consentimiento de Atlas vigente (traido del HTML, o revoco): el seguimiento solo puede
+  // omitir el consentimiento cuando hay uno vigente. Lo decide `modoDelSeguimiento`, con la version que TIENE
+  // el paciente (service role, autorizado por el token del link).
   let followupMode: "nosign" | "sign" = "sign";
   let substantiveBump = false;
   // Prefill de identidad SOLO en seguimiento (para el camino con firma: excepcion/bump). Se lee FRESCO (no del
@@ -91,8 +92,11 @@ export default async function EncuestaPage({
       getHeldConsentVersion(link.patientId),
       getFollowupIdentityPrefill(link.patientId),
     ]);
-    substantiveBump = heldVersion ? requiresReconsent(heldVersion, CONSENT_VERSION) : false;
-    followupMode = substantiveBump ? "sign" : "nosign";
+    const decision = modoDelSeguimiento(heldVersion, CONSENT_VERSION);
+    followupMode = decision.modo;
+    // El aviso "actualizamos el documento" solo es cierto con cambio de version; sin consentimiento previo, el
+    // paso de consentimiento ya dice por que se le pide.
+    substantiveBump = decision.motivo === "cambio_sustantivo";
     signPrefill = prefill;
   }
 
