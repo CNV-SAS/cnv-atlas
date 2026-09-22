@@ -32,21 +32,24 @@ export type RecomendacionBloque = { titulo: string; items: string[]; pendiente?:
  */
 const ML_POR_VASO = 200;
 
-function hidratacion(pesoKg: number | null): string {
+// LA VOZ DEPENDE DE QUIEN LEE (2026-09-21): el plan que se lleva el paciente le habla de tu ("para tu peso");
+// la historia clinica y el SOAP son documentos del profesional y hablan en tercera persona. Salia "para tu
+// peso" en un documento clinico.
+function hidratacion(pesoKg: number | null, voz: "paciente" | "clinica" = "paciente"): string {
   const base = "Hidratación de 30 a 35 mL/kg/día";
   if (pesoKg == null || !(pesoKg > 0)) return base;
   const min = Math.round(30 * pesoKg);
   const max = Math.round(35 * pesoKg);
   const litros = (n: number) => (n / 1000).toFixed(1).replace(".", ",");
   const vasos = `${Math.round(min / ML_POR_VASO)} a ${Math.round(max / ML_POR_VASO)}`;
-  return `${base}: para tu peso son ${litros(min)} a ${litros(max)} litros al día, unos ${vasos} vasos`;
+  return `${base}: ${voz === "clinica" ? "para su peso" : "para tu peso"} son ${litros(min)} a ${litros(max)} litros al día, unos ${vasos} vasos`;
 }
 
 // Verbatim de su archivo, salvo la hidratación, que lleva su traducción al lado (ver arriba).
-const general = (pesoKg: number | null): RecomendacionBloque => ({
+const general = (pesoKg: number | null, voz: "paciente" | "clinica" = "paciente"): RecomendacionBloque => ({
   titulo: "Alimentación saludable general",
   items: [
-    hidratacion(pesoKg),
+    hidratacion(pesoKg, voz),
     "Frutas y verduras de varios colores en cada comida",
     "Preparaciones al vapor, al horno o a la plancha",
     "Planificar las compras según el plan",
@@ -123,6 +126,8 @@ export type RecomendacionesContexto = {
   tieneHTA: boolean;
   tieneIRC: boolean;
   sarcopenia: boolean; // FFMI < 17 (su corte)
+  /** Quien lee: el paciente (tu) o el profesional (tercera persona). Por defecto, el paciente. */
+  voz?: "paciente" | "clinica";
   exceso: boolean; // deficit calorico > 0
   // Cifras del motor que GOBIERNA (`motorTratNutri`), conectado el 2026-08-31. null si la evaluacion no
   // tiene encuesta legible: los tres bloques que las citan vuelven a marcarse como pendientes antes que
@@ -160,6 +165,6 @@ export function recomendacionesDe(ctx: RecomendacionesContexto): RecomendacionBl
     if (p.activa(ctx)) out.push({ titulo: p.titulo, items: [], pendiente: true });
   }
   // El generico va SIEMPRE y al final, como en su archivo.
-  out.push(general(ctx.pesoKg ?? null));
+  out.push(general(ctx.pesoKg ?? null, ctx.voz ?? "paciente"));
   return out;
 }

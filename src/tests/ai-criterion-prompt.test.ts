@@ -49,6 +49,7 @@ const input: CriterionPromptInput = {
   ],
   // v5: vacías por defecto; los casos que las usan las ponen ellos.
   respuestasEnRojo: [],
+  direccionPabu: null,
   edad: 61,
   ocupacion: "Docente",
   estadoCivil: "Separado",
@@ -269,21 +270,21 @@ describe("el porte del paso 4 llega entero", () => {
   });
 });
 
-describe("el texto de sistema canónico es el v7", () => {
+describe("el texto de sistema canónico es el v8", () => {
   it("y el seed publica esa misma versión", () => {
     // Los dos canales del prompt: el JSON que consume la app y la version que el seed (y su migracion)
     // publican. Si divergen, local y nube corren textos distintos sin que nada de error.
     const modulo = readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.ts", "utf8");
-    expect(modulo).toContain("criterion.system.v7.json");
+    expect(modulo).toContain("criterion.system.v8.json");
     const seed = readFileSync("supabase/seed.ts", "utf8");
-    expect(seed).toContain("criterion.system.v7.json");
-    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 7 },');
+    expect(seed).toContain("criterion.system.v8.json");
+    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 8 },');
   });
 
   it("y las versiones anteriores NO se borran", () => {
     // Los borradores ya generados apuntan a su version en la procedencia. Borrar el texto deja registros
     // que dicen "generado con la v3" sin que exista la v3. Misma disciplina que las versiones de motor.
-    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6"]) {
+    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6", "v7"]) {
       expect(
         existsSync(`src/modules/diagnoses/ai/prompts/criterion.system.${v}.json`),
         `se borró el texto de la ${v}`,
@@ -292,143 +293,82 @@ describe("el texto de sistema canónico es el v7", () => {
   });
 });
 
-describe("las alertas clínicas viajan al resumen (v4, instrucción de Gildardo 2026-09-10)", () => {
-  // SU INSTRUCCION: que el resumen de IA mencione las alertas "en el párrafo inmediato después de la
-  // presentación del paciente". Eso es el prompt, no mover un bloque: hasta la v3 las alertas NO viajaban.
-  //
-  // LO QUE SI VIAJABA son sus INSUMOS CRUDOS (ítem 21, diagnósticos, azúcares, agua, estrés), o sea que el
-  // modelo tenía los datos y no los veredictos. De ahí la regla de no inventarlas.
-
-  // El bloque de alertas va en el mensaje de USUARIO (es un dato del paciente), no en el de sistema.
+// ═══ LAS ALERTAS: EL MODELO LAS VE, ATLAS ESCRIBE SU PARRAFO (v8, 2026-09-21) ═══
+//
+// Desde la v4 el modelo escribia el parrafo de alertas; en tres pruebas de Santiago (v5, v6, v7) omitio o
+// invento algo en esa lista, y en las dos ultimas se comio la alerta critica de TCA. Desde la v8 el parrafo
+// lo compone Atlas (`services/parrafo-de-alertas`) y el modelo solo las usa para leer cada dominio.
+describe("las alertas: el modelo las ve y Atlas escribe su párrafo (v8)", () => {
   const armar = (i: CriterionPromptInput) =>
     buildCriterionPrompt(i)
       .filter((m) => m.role === "user")
       .map((m) => m.content)
       .join("\n");
-  const texto = () => armar(input);
 
-  it("van con nivel, título y dominio", () => {
-    expect(texto()).toContain("[crítico] Riesgo glucémico crítico (dominio D1+D5)");
+  it("las alertas y las rojas viajan como contexto, con nivel, título y dominio", () => {
+    const texto = armar({
+      ...input,
+      respuestasEnRojo: [{ dominio: "D3 · Hábitos de Vida", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" }],
+    });
+    expect(texto).toContain("[crítico] Riesgo glucémico crítico (dominio D1+D5)");
+    expect(texto).toContain("Atlas las presenta en el segundo párrafo: NO las enumeres");
+    expect(texto).toContain("D3 · Hábitos de Vida (1): ¿Cuántas horas duerme por noche?: Menos de 5h");
   });
 
   it("y NO viaja el texto de la alerta, que lleva la conducta dentro", () => {
-    // "Derivación urgente a psicología/psiquiatría" es una INDICACIÓN, y este mismo prompt le prohíbe
-    // prescribir. Mandarle la instrucción y prohibirle repetirla es pedirle dos cosas contrarias.
-    const conTca = armar({
-      ...input,
-      alertas: [{ nivel: "crítico", titulo: "TCA activo detectado", dominio: "D2" }],
-    });
+    const conTca = armar({ ...input, alertas: [{ nivel: "crítico", titulo: "TCA activo detectado", dominio: "D2" }] });
     expect(conTca).toContain("TCA activo detectado");
     expect(conTca, "viajó la conducta dentro del texto de la alerta").not.toContain("Derivación urgente");
   });
 
-  it("el bloque se escribe también cuando NO hay ninguna", () => {
-    // Sin la línea que lo dice, el modelo no distingue "no hay alertas" de "no me las mandaron", y ante la
-    // duda las deduce de los datos crudos, que son los mismos insumos de las reglas.
-    const sinAlertas = armar({ ...input, alertas: [] });
-    expect(sinAlertas).toContain("ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna");
-    expect(sinAlertas).toContain("No escribas ese párrafo");
+  it("sin alertas, el bloque lo dice y no pide nada", () => {
+    const sin = armar({ ...input, alertas: [], respuestasEnRojo: [] });
+    expect(sin).toContain("ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna. No comentes su ausencia.");
   });
 
-  it("el bloque de sistema pide el párrafo donde él lo pidió, y acota qué puede hacer con él", () => {
-    expect(CRITERION_SYSTEM_PROMPT).toContain("INMEDIATAMENTE POSTERIOR a la presentación del paciente");
+  it("el sistema le dice que ese párrafo no lo escribe, y conserva el resto de la estructura", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("ESE PÁRRAFO NO LO ESCRIBES TÚ");
     expect(CRITERION_SYSTEM_PROMPT).toContain("No inventes alertas");
     expect(CRITERION_SYSTEM_PROMPT).toContain("NO INDIQUES QUÉ HACER CON UNA ALERTA");
-  });
-
-  it("y el resto de la estructura sigue en pie: los dominios y el cierre solo se renumeran", () => {
-    // CONTROL: si al insertar el paso nuevo se hubiera comido uno de los otros, el diagnóstico perdería su
-    // esqueleto y este candado sería el único que podría verlo.
     expect(CRITERION_SYSTEM_PROMPT).toContain("3) Un párrafo por cada dominio funcional");
     expect(CRITERION_SYSTEM_PROMPT).toContain("4) Cierre: las RUTAS DE ATENCIÓN");
   });
 
-  it("las alertas son las MISMAS que ve el profesional: la misma función, sobre las mismas respuestas", () => {
-    // Dos fuentes del mismo dato sin nada que las compare es como el resumen acaba hablando de una alerta
-    // que la pantalla no muestra. Aquí no hay dos: hay una función y dos sitios de llamada.
+  it("las alertas son las MISMAS que ve el SOAP: la misma fuente", () => {
     const reader = readFileSync("src/modules/diagnoses/data/criterion-input-reader.ts", "utf8");
-    // Desde la v5 la función es `alertasDeLaConsulta`, que envuelve a `alertasDisponibles` y es la misma
-    // que usa el SOAP.
     expect(reader).toContain("alertasDeLaConsulta(");
   });
 });
 
-describe("las respuestas en rojo viajan en el mismo párrafo (v5, observación g)", () => {
-  const armar = (i: CriterionPromptInput) =>
-    buildCriterionPrompt(i)
-      .filter((m) => m.role === "user")
-      .map((m) => m.content)
-      .join("\n");
-
-  it("van dentro del bloque de alertas, rotuladas aparte y sin nivel", () => {
-    const texto = armar({
-      ...input,
-      respuestasEnRojo: [{ dominio: "D3", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" }],
-    });
-    expect(texto).toContain("Respuestas de la encuesta en rojo (lo que el paciente respondió), 1 en total; menciónalas TODAS:");
-    expect(texto).toContain("D3 (1): ¿Cuántas horas duerme por noche?: Menos de 5h");
-    // Sin corchetes de nivel: el grado es de las reglas, no de la respuesta.
-    expect(texto).not.toContain("] ¿Cuántas horas duerme");
-  });
-
-  it("con solo respuestas en rojo y ninguna regla, el párrafo se escribe", () => {
-    const texto = armar({
-      ...input,
-      alertas: [],
-      respuestasEnRojo: [{ dominio: "D7", pregunta: "¿Color de su orina habitualmente?", respuesta: "Oscuro" }],
-    });
-    expect(texto).toContain("ALERTAS CLÍNICAS DE LA ENCUESTA (menciónalas");
-    expect(texto).not.toContain("ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna");
-  });
-
-  it("v6: agrupadas por dominio y con cuántas son, para que no omita ninguna", () => {
-    // En la prueba del 21 omitió los siete síntomas digestivos: con la lista plana no sabía que eran un bloque.
-    const texto = armar({
-      ...input,
-      respuestasEnRojo: [
-        { dominio: "D6 · Salud Digestiva", pregunta: "Hinchazón abdominal", respuesta: "Siempre" },
-        { dominio: "D6 · Salud Digestiva", pregunta: "Gases / flatulencia", respuesta: "Siempre" },
-        { dominio: "D3 · Hábitos de Vida", pregunta: "¿Cuántas horas duerme por noche?", respuesta: "Menos de 5h" },
-      ],
-    });
-    expect(texto).toContain("3 en total; menciónalas TODAS");
-    expect(texto).toContain("D6 · Salud Digestiva (2): Hinchazón abdominal: Siempre; Gases / flatulencia: Siempre");
-  });
-
-  it("v6: le obliga a mencionarlas todas y le prohíbe añadir lo que no está en rojo", () => {
-    expect(CRITERION_SYSTEM_PROMPT).toContain("MENCIONA TODAS las que trae el bloque, sin omitir ninguna");
-    expect(CRITERION_SYSTEM_PROMPT).toContain("lo que no está en rojo no se presenta como si lo estuviera");
-  });
-
-  it("v6: las causas solo entre hallazgos dados, también como hipótesis", () => {
-    // Los tres inventos de la prueba del 21: nutrientes, deterioro celular, exposición crónica.
+describe("lo que la v6 y la v7 corrigieron, y sigue en pie", () => {
+  it("las causas solo entre hallazgos dados, también como hipótesis", () => {
     expect(CRITERION_SYSTEM_PROMPT).toContain("CADA CAUSA Y CADA EFECTO TIENEN QUE ESTAR EN LOS DATOS QUE TE DOY");
-    expect(CRITERION_SYSTEM_PROMPT).toContain("\"falta de nutrientes esenciales\"");
-    expect(CRITERION_SYSTEM_PROMPT).toContain("\"sugiere\"");
-    // Y lo SUYO se conserva: su estructura pide conectar causas entre dominios.
     expect(CRITERION_SYSTEM_PROMPT).toContain("conectando causas entre dominios");
   });
 
-  it("v7: la lista roja es cerrada y el consumo de D1 no entra en ella", () => {
-    // Segunda prueba: salieron "sal extra" y "carnes rojas" como rojos. D1 no pasa por su clasificador.
-    expect(CRITERION_SYSTEM_PROMPT).toContain("La lista es CERRADA: se reproduce, no se completa.");
-    expect(CRITERION_SYSTEM_PROMPT).toContain("NUNCA forma parte de las respuestas en rojo");
-  });
-
-  it("v7: el cierre nombra rutas y prioridad, sin conductas", () => {
+  it("el cierre nombra rutas y prioridad, sin conductas", () => {
     expect(CRITERION_SYSTEM_PROMPT).toContain("Nombra cada ruta con su prioridad y nada más");
   });
 
-  it("v7: los índices con el nombre que se le da, sin abreviar", () => {
-    expect(CRITERION_SYSTEM_PROMPT).toContain("\"Índice del Estado de Hidratación Humana\"");
+  it("los índices con el nombre que se le da, sin abreviar", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain('"Índice del Estado de Hidratación Humana"');
+  });
+});
+
+describe("v8: más largo con datos, no con interpretación", () => {
+  it("le pide citar los datos de cada dominio, también cuando está bien", () => {
+    // El HTML de Gildardo cita IMC, ICC, ICT, masa muscular, ASMI, MCA, estrato... y los datos ya le llegaban.
+    expect(CRITERION_SYSTEM_PROMPT).toContain("EN CADA DOMINIO, CITA LOS DATOS QUE LO SUSTENTAN");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("Más largo con datos, nunca con interpretación");
   });
 
-  it("v6: la PABU por debajo de phi es exceso de adiposidad y nada más", () => {
-    expect(CRITERION_SYSTEM_PROMPT).toContain("no la describas como sobrecarga ni déficit estructural");
-  });
-
-  it("y el sistema le prohíbe marcar en rojo por su cuenta y ponerles nivel", () => {
-    expect(CRITERION_SYSTEM_PROMPT).toContain("LAS RESPUESTAS EN ROJO SON SOLO LAS QUE TE DOY");
-    expect(CRITERION_SYSTEM_PROMPT).toContain("no la presentes como crítica ni como alta");
+  it("la dirección de la PABU le llega resuelta, y se le dice que la use", () => {
+    // En la tercera prueba dijo "PABU 1,20 por encima de φ": leyó el "+" de "desviación de φ +0,42".
+    const texto = buildCriterionPrompt({ ...input, direccionPabu: "por debajo de φ = 1,618 (1,202)" })
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .join("\n");
+    expect(texto).toContain("DIRECCIÓN DE LA PABU (úsala tal cual): por debajo de φ = 1,618 (1,202)");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("El signo que acompaña a la");
   });
 });

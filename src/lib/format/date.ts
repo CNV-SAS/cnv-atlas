@@ -15,6 +15,10 @@ function toDate(iso: string | number | Date): Date {
 // dd/mm/aaaa (zona Bogota). Si la fecha es invalida, devuelve el insumo tal cual (string) o "".
 export function formatDate(iso: string | number | Date | null | undefined): string {
   if (iso == null) return "";
+  // UNA FECHA YA FORMATEADA SE DEVUELVE TAL CUAL (2026-09-21). El SOAP formateaba la fecha que ya le llegaba
+  // formateada de la historia clinica: "10/9/2026" se leia como mes/dia (9 de octubre), la zona la corria al
+  // 8, y el documento decia una fecha de consulta en el futuro. Sin error y con cara de fecha valida.
+  if (typeof iso === "string" && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(iso.trim())) return iso.trim();
   const d = toDate(iso);
   if (Number.isNaN(d.getTime())) return typeof iso === "string" ? iso : "";
   return d.toLocaleDateString("es-CO", { timeZone: BOGOTA });

@@ -20,6 +20,16 @@ import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-typ
 function respuestaEnTexto(valor: unknown): string {
   if (valor == null) return "";
   if (Array.isArray(valor)) return valor.map((v) => String(v).trim()).filter(Boolean).join(", ");
+  // LAS DE OPCION MULTIPLE LLEGAN COMO JSON ("[\"Ejercicio excesivo\",\"Vómito\"]"), y salian asi, crudas, en la S
+  // (Santiago, 2026-09-21). Se leen como lista; si no parsean, se muestran tal cual antes que perderlas.
+  if (typeof valor === "string" && valor.trim().startsWith("[")) {
+    try {
+      const lista: unknown = JSON.parse(valor);
+      if (Array.isArray(lista)) return lista.map((v) => String(v).trim()).filter(Boolean).join(", ");
+    } catch {
+      // no era JSON
+    }
+  }
   if (typeof valor === "boolean") return valor ? "sí" : "no";
   if (typeof valor === "object") return JSON.stringify(valor);
   return String(valor).trim();
@@ -56,11 +66,16 @@ export type ParrafoDeDominio = {
 };
 
 /** Redacta UN dominio. Devuelve el párrafo y cuántas preguntas quedaron sin responder. */
-export function redactarDominio(dominio: SurveyDomain): ParrafoDeDominio {
+export function redactarDominio(
+  dominio: SurveyDomain,
+  /** Preguntas que ya dice otro bloque del documento (los antecedentes): no se repiten aqui. */
+  omitir: ReadonlySet<string> = new Set(),
+): ParrafoDeDominio {
   const conRespuesta: string[] = [];
   const faltantes: number[] = [];
 
   for (const q of dominio.questions) {
+    if (omitir.has(q.questionId)) continue;
     if (!respondida(q.answerValue)) {
       faltantes.push(q.number);
       continue;
@@ -83,6 +98,9 @@ export function redactarDominio(dominio: SurveyDomain): ParrafoDeDominio {
 }
 
 /** Redacta la encuesta entera, un párrafo por dominio. Los dominios sin nada que contar se omiten. */
-export function redactarEncuesta(domains: SurveyDomain[]): ParrafoDeDominio[] {
-  return domains.map(redactarDominio).filter((p) => p.texto !== "");
+export function redactarEncuesta(
+  domains: SurveyDomain[],
+  omitir: ReadonlySet<string> = new Set(),
+): ParrafoDeDominio[] {
+  return domains.map((d) => redactarDominio(d, omitir)).filter((p) => p.texto !== "");
 }

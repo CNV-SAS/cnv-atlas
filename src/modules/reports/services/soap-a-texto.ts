@@ -1,4 +1,5 @@
-import { fmtDec } from "@/lib/format/decimal";
+import { decimalesEsp, fmtDec } from "@/lib/format/decimal";
+import { sinGuionLargo } from "@/lib/format/guion";
 import type { AlertasDelSoap, HistoriaClinicaSoap } from "../data/reports-view-types";
 
 // ═══ EL SOAP COMO TEXTO PLANO, PARA COPIAR (Santiago, 2026-09-20) ═══
@@ -90,17 +91,17 @@ export function soapATexto(
       ? nl([
           plan.kcalObjetivo != null ? `Energía: ${plan.kcalObjetivo} kcal/día` : null,
           plan.proteinaG != null
-            ? `Proteína: ${plan.proteinaG} g${plan.proteinaGKg != null ? ` (${plan.proteinaGKg} g/kg)` : ""}`
+            ? `Proteína: ${plan.proteinaG} g${plan.proteinaGKg != null ? ` (${fmtDec(plan.proteinaGKg)} g/kg)` : ""}`
             : null,
           plan.carbohidratosG != null ? `Carbohidratos: ${plan.carbohidratosG} g` : null,
           plan.grasasG != null ? `Grasas: ${plan.grasasG} g` : null,
-          plan.actividadFisica ? `Actividad física: ${plan.actividadFisica}` : null,
+          plan.actividadFisica ? `Actividad física: ${decimalesEsp(plan.actividadFisica)}` : null,
         ])
       : null,
     ...soap.plan.recomendaciones.map((r) => `${r.titulo}: ${r.items.join("; ")}.`),
     soap.plan.remisionesExigidas.length
       ? `Remisiones indicadas por el modelo: ${soap.plan.remisionesExigidas
-          .map((r) => `${r.destino} (${r.urgencia}${r.registrada ? ", registrada" : ", sin registrar"})`)
+          .map((r) => `${r.destino} (${sinGuionLargo(r.urgencia)}${r.registrada ? ", registrada" : ", sin registrar"})`)
           .join("; ")}.`
       : null,
     soap.plan.remisiones.length

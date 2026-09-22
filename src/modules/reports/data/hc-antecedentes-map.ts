@@ -151,3 +151,23 @@ export function resolverAntecedentes(
     }),
   }));
 }
+
+/**
+ * Las preguntas cuya respuesta YA SALE en los antecedentes (con al menos un valor). La usa el SOAP para no
+ * repetirlas en la encuesta redactada de la S: salian dos veces la hipertension, los contaminantes y las
+ * alergias (Santiago, 2026-09-21). Se decide con el MISMO `encontrar` que arma los antecedentes, asi que
+ * no puede haber una pregunta que salga en los dos sitios ni una que no salga en ninguno.
+ */
+export function preguntasDeLosAntecedentes(
+  answers: SurveyAnswerView[],
+  grupos: HcAntecedenteGrupo[] = HC_ANTECEDENTES,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const g of grupos) {
+    for (const fila of g.filas) {
+      const q = encontrar(answers, fila);
+      if (q && valoresDeRespuesta(q.answerValue).length > 0) ids.add(q.questionId);
+    }
+  }
+  return ids;
+}

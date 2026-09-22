@@ -225,6 +225,8 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
   const diagnosticos = decodificarMulti(e.d5_39);
 
   const recomendaciones = recomendacionesDe({
+    // La historia clinica es del profesional: tercera persona.
+    voz: "clinica",
     diagnosticos,
     tieneHTA: e.flags.tieneHTA,
     tieneIRC: e.flags.tieneIRC,
