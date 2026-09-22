@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 
 import { agregarNotaSubjetivaAction, type ReportActionState } from "../actions";
 import type { HistoriaClinicaSoap } from "../data/reports-view-types";
-import { soapATexto } from "../services/soap-a-texto";
+import { conClasificacion, soapATexto } from "../services/soap-a-texto";
 
 // ═══ LA HISTORIA CLINICA EN SOAP, EN PANTALLA Y EN PAPEL (2026-09-20) ═══
 //
@@ -263,7 +263,7 @@ export function HistoriaClinicaSoapDoc({
         {soap.objetivo.composicion.map((c) => (
           <p key={c.clave}>
             <span className="font-medium text-foreground">{c.etiqueta}:</span> {c.valor}
-            {c.clasificacion ? ` (${c.clasificacion})` : ""}
+            {conClasificacion(c.clasificacion)}
           </p>
         ))}
         {soap.objetivo.indices.length > 0 ? (
@@ -272,7 +272,7 @@ export function HistoriaClinicaSoapDoc({
             {soap.objetivo.indices.map((i) => (
               <p key={i.codigo}>
                 {i.nombre}: {i.valor ?? "-"}
-                {i.clasificacion ? ` (${i.clasificacion})` : ""}
+                {conClasificacion(i.clasificacion)}
                 {i.referencia ? ` · referencia ${i.referencia}` : ""}
               </p>
             ))}

@@ -28,7 +28,7 @@ import { decimalesDe, indicatorBands } from "./indicator-ranges";
 // ascendencia. No se leen y luego se filtran: no se leen.
 
 /** Respuestas de la encuesta de una evaluacion, con el TEXTO DE LA PREGUNTA (no un rotulo nuestro). */
-async function leerEncuesta(evaluationId: string): Promise<RespuestaEncuesta[]> {
+async function leerEncuesta(evaluationId: string): Promise<{ legible: RespuestaEncuesta[]; cruda: RespuestaEncuesta[] }> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("survey_responses")
@@ -37,7 +37,7 @@ async function leerEncuesta(evaluationId: string): Promise<RespuestaEncuesta[]> 
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`criterion-input-reader: encuesta: ${error.message}`);
-  if (!data) return [];
+  if (!data) return { legible: [], cruda: [] };
 
   type Fila = {
     answer_value: string | null;
@@ -47,13 +47,20 @@ async function leerEncuesta(evaluationId: string): Promise<RespuestaEncuesta[]> 
     .filter((f) => f.survey_questions != null)
     .sort((a, b) => (a.survey_questions!.order_index ?? 0) - (b.survey_questions!.order_index ?? 0));
 
-  return filas.map((f) => ({
+  const cruda = filas.map((f) => ({
     fieldKey: f.survey_questions!.field_key,
     pregunta: f.survey_questions!.question_text,
+    valor: f.answer_value,
+  }));
+  return {
     // Las de opcion multiple viajan como JSON: se despliegan a texto legible, que es lo que el modelo
     // tiene que leer. Un `["Metformina"]` crudo le ensena nuestra serializacion, no la respuesta.
-    valor: legible(f.answer_value),
-  }));
+    legible: cruda.map((r) => ({ ...r, valor: legible(r.valor) })),
+    // Y LAS ALERTAS SE CALCULAN SOBRE LA CRUDA, como en el SOAP (2026-09-22). Sus reglas leen la opcion
+    // multiple como lista (`Array.isArray`); con el texto ya desplegado, la del TCA (metodos para cambiar el
+    // peso) no disparaba y el resumen la omitia mientras el SOAP de la misma evaluacion si la traia.
+    cruda,
+  };
 }
 
 function legible(v: string | null): string | null {
@@ -135,7 +142,11 @@ export function direccionDeLaPabu(pabu: number | null | undefined): string | nul
   if (typeof pabu !== "number" || !Number.isFinite(pabu)) return null;
   const cifra = pabu.toFixed(3).replace(".", ",");
   if (Math.abs(pabu - PHI) < 0.0005) return `en φ (${cifra})`;
-  return pabu < PHI ? `por debajo de φ = 1,618 (${cifra})` : `por encima de φ = 1,618 (${cifra})`;
+  // CON SU LECTURA (v9): Gemini leyo "por debajo" y aun asi escribio "deficit estructural" junto a "por
+  // exceso". La lectura es la de su prompt (por encima, deficit estructural; por debajo, exceso de adiposidad).
+  return pabu < PHI
+    ? `por debajo de φ = 1,618 (${cifra}); se lee como exceso de adiposidad`
+    : `por encima de φ = 1,618 (${cifra}); se lee como déficit estructural`;
 }
 
 export async function buildCriterionInput(
@@ -147,7 +158,7 @@ export async function buildCriterionInput(
   if (!isEngineOutput(snapshot)) return null;
   const snap: EngineOutput = snapshot;
 
-  const [encuesta, contexto, composicion] = await Promise.all([
+  const [{ legible: encuesta, cruda: encuestaCruda }, contexto, composicion] = await Promise.all([
     leerEncuesta(evaluationId),
     leerContexto(evaluationId),
     getCompositionForEvaluation(evaluationId),
@@ -178,7 +189,7 @@ export async function buildCriterionInput(
       };
     });
 
-  const consulta = alertasDeLaConsulta(encuesta);
+  const consulta = alertasDeLaConsulta(encuestaCruda);
 
   return {
     sexo: snap.sexo === "M" ? "Masculino" : "Femenino",

@@ -722,17 +722,7 @@ escribiendo todo lo demás y sigue viendo las alertas para leer cada dominio. Ad
 dominio los datos que lo sustentan (como hace tu análisis), y la dirección de la PABU respecto de φ le llega
 ya resuelta, porque leyó el "+" de la desviación como "por encima".
 
-## Nueva (2026-09-21) · Tu meta dice «proteína alta» y tu motor propone 0,8 g/kg en la misma consulta
-
-**Pide respuesta.** En la consulta de prueba, la meta terapéutica de nutrición (tu `_metaDe`, rama del veto
-conductual con D3 comprometido) dice *"y asegurando proteína alta para desacelerar el envejecimiento"*. En el
-mismo documento, el plan nutricional sale con **0,8 g/kg**, que es la cifra que propone tu motor
-(`_mtn.protKg`) y que el profesional puede editar (tu respuesta del 09-05, §3).
-
-Las dos cosas son tuyas y las dos se representan tal cual, así que el documento que firma el profesional
-dice «proteína alta» junto a la cifra del mínimo poblacional. **¿Cuál manda?** Tres salidas posibles, y
-ninguna la tomamos nosotros:
-
-1. La frase es una orientación y la cifra la ajusta el profesional: se deja como está.
-2. Tu motor debería proponer más proteína cuando se da esa rama: sería un cambio en tu archivo.
-3. La frase debería decir otra cosa cuando la cifra queda en el mínimo.
+**Añadido el 2026-09-22 (v9).** Dos precisiones más, en la misma familia. Tu estructura pide *conectar causas
+entre dominios*, y eso sigue: lo que se le prohíbe es **anticipar consecuencias** ("susceptibilidad futura",
+"si no se abordan"), porque eso no está en los datos de hoy. Y el cierre queda como el tuyo, **un párrafo**
+que nombra las rutas con su prioridad (salía como una lista suelta), sin la parte de conductas.

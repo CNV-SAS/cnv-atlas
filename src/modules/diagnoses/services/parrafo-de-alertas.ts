@@ -20,12 +20,18 @@ import type { AlertaDelPrompt, RespuestaEnRojoDelPrompt } from "../ai/prompts/cr
 
 const ORDEN_DE_NIVEL: Record<string, number> = { crítico: 0, alto: 1, moderado: 2, positivo: 3 };
 
-/** "D6 · Salud Digestiva" -> "salud digestiva": dentro de una frase, el codigo sobra. */
-const enFrase = (dominio: string): string => {
-  const sin = dominio.replace(/^D\d\s*·\s*/, "");
-  // Los titulos vienen en mayuscula inicial por palabra ("Salud Digestiva"); dentro de una frase van en minuscula.
-  return sin.toLocaleLowerCase("es-CO");
+/** "D6 · Salud Digestiva" -> "Salud digestiva": encabeza su renglon, sin el codigo. */
+const enRenglon = (dominio: string): string => {
+  const sin = dominio.replace(/^D\d\s*·\s*/, "").toLocaleLowerCase("es-CO");
+  return sin.charAt(0).toLocaleUpperCase("es-CO") + sin.slice(1);
 };
+
+const conMayuscula = (s: string): string => s.charAt(0).toLocaleUpperCase("es-CO") + s.slice(1);
+
+// UNA LISTA LIMPIA, NO PROSA ENCADENADA (Santiago, 2026-09-22): "Y en hábitos de vida... Y en patrón
+// horario... Y en determinantes..." era una lista disfrazada de prosa. Las respuestas en rojo son pares
+// pregunta-respuesta y no se vuelven prosa sin reescribir lo que el paciente dijo, asi que van como lista:
+// un renglon por dominio, igual que en la A del SOAP.
 
 /** El parrafo de alertas, o null si la consulta no tiene ninguna (y entonces no se inserta nada). */
 export function parrafoDeAlertas(
@@ -34,12 +40,12 @@ export function parrafoDeAlertas(
   sexo: string,
 ): string | null {
   if (!alertas.length && !respuestasEnRojo.length) return null;
-  const sujeto = /^f/i.test(sexo) ? "la paciente" : "el paciente";
+  const delSujeto = /^f/i.test(sexo) ? "de la paciente" : "del paciente";
 
-  const frases: string[] = [];
+  const bloques: string[] = [];
   if (alertas.length) {
     const ordenadas = [...alertas].sort((a, b) => (ORDEN_DE_NIVEL[a.nivel] ?? 9) - (ORDEN_DE_NIVEL[b.nivel] ?? 9));
-    frases.push(
+    bloques.push(
       `En la encuesta se registran estas alertas clínicas: ${ordenadas.map((a) => `${a.titulo} (${a.nivel})`).join("; ")}.`,
     );
   }
@@ -52,13 +58,14 @@ export function parrafoDeAlertas(
       if (g) g.items.push(item);
       else grupos.push({ dominio: r.dominio, items: [item] });
     }
-    frases.push(
-      `Entre sus respuestas, ${sujeto} tiene estas marcadas en rojo por el clasificador de la encuesta: ${grupos
-        .map((g) => `en ${enFrase(g.dominio)}, ${g.items.join("; ")}`)
-        .join(". Y ")}.`,
+    bloques.push(
+      [
+        `Respuestas ${delSujeto} marcadas en rojo por el clasificador de la encuesta:`,
+        ...grupos.map((g) => `${enRenglon(g.dominio)}. ${conMayuscula(g.items.join("; "))}.`),
+      ].join("\n"),
     );
   }
-  return frases.join(" ");
+  return bloques.join("\n");
 }
 
 /**

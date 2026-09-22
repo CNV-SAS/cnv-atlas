@@ -32,6 +32,26 @@ export function sinConducta(rotulo: string): string {
   return rotulo.split(/\s+—\s+/)[0].trim();
 }
 
+const palabras = (s: string): string[] =>
+  s.toLocaleLowerCase("es-CO").split(/[^\p{L}]+/u).filter((w) => w.length > 3);
+
+/** ¿El rotulo de la fila dice lo mismo que su grupo? Todas las palabras con peso del grupo estan en el rotulo. */
+export function repiteElGrupo(grupo: string, rotulo: string): boolean {
+  const delRotulo = new Set(palabras(rotulo));
+  const delGrupo = palabras(grupo);
+  return delGrupo.length > 0 && delGrupo.every((w) => delRotulo.has(w));
+}
+
+export function sinRotuloRepetido(grupo: string, item: string): string {
+  const i = item.indexOf(": ");
+  if (i < 0) return item;
+  return repiteElGrupo(grupo, item.slice(0, i)) ? item.slice(i + 2) : item;
+}
+
+export function sinAlergiasSiNoLasTrae(dominio: string, texto: string): string {
+  return /alerg/i.test(texto) ? dominio : dominio.replace(/Alergias y digestión/i, "Digestión");
+}
+
 export async function getHistoriaClinicaSoap(evaluationId: string): Promise<HistoriaClinicaSoap | null> {
   const [hc, domains] = await Promise.all([
     getHistoriaClinicaDoc(evaluationId),
@@ -50,19 +70,21 @@ export async function getHistoriaClinicaSoap(evaluationId: string): Promise<Hist
     // ── S · lo que el paciente refiere ───────────────────────────────────────────────────────────
     subjetivo: {
       motivos: hc.motivos,
-      // EL ROTULO NO SE REPITE (Santiago, 2026-09-21): el grupo "Diagnósticos personales" trae una fila que se
-      // llama igual, y salia "Diagnósticos personales: Diagnósticos personales: Obesidad". Se quita el prefijo
-      // cuando coincide con el grupo.
+      // EL ROTULO NO SE REPITE (Santiago, 2026-09-21 y 22): "Diagnósticos personales: Diagnósticos personales:"
+      // y "Exposición a contaminantes: Exposición habitual a contaminantes:". Se quita el rotulo de la fila
+      // cuando dice lo mismo que el grupo (ver `repiteElGrupo`).
       antecedentes: hc.antecedentes.map((a) => ({
         grupo: a.grupo,
-        items: a.items.map((i) => (i.startsWith(`${a.grupo}: `) ? i.slice(a.grupo.length + 2) : i)),
+        items: a.items.map((i) => sinRotuloRepetido(a.grupo, i)),
       })),
       // Y LA ENCUESTA NO REPITE LO QUE YA DICEN LOS ANTECEDENTES: la hipertension, los contaminantes y las
       // alergias salian dos veces en la S. La misma funcion que arma los antecedentes decide cuales son.
+      // Y SI LA SECCION PIERDE SUS ALERGIAS (van en los antecedentes), su nombre tampoco las promete:
+      // "Alergias y digestión" queda "Digestión" (Santiago, 2026-09-22). Solo en el SOAP; la encuesta no cambia.
       encuesta: redactarEncuesta(
         domains ?? [],
         preguntasDeLosAntecedentes((domains ?? []).flatMap((d) => d.questions)),
-      ),
+      ).map((p) => ({ ...p, dominio: sinAlergiasSiNoLasTrae(p.dominio, p.texto) })),
     },
 
     // ── O · lo que se mide ───────────────────────────────────────────────────────────────────────

@@ -117,3 +117,28 @@ describe("una sola fuente para la IA y el SOAP", () => {
     expect(COPIA).not.toContain("clinical-engine");
   });
 });
+
+// ═══ EL TCA SE PERDIA SOLO EN EL RESUMEN (smoke de Santiago, 2026-09-22) ═══
+//
+// Misma evaluacion: el SOAP traia "TCA activo detectado (crítico)" y el parrafo de alertas del resumen no.
+// La causa: el lector de la IA desplegaba la opcion multiple a texto ("Ejercicio excesivo, Vómito") ANTES de
+// calcular las alertas, y la regla del TCA lee esa respuesta como lista. Las dos superficies tienen que
+// calcular sobre la respuesta CRUDA, tal como se guardo.
+describe("la IA y el SOAP calculan las alertas sobre la respuesta cruda", () => {
+  const cruda = [p("d2_21", "¿Qué métodos ha usado para cambiar su peso?", '["Ejercicio excesivo","Vómito"]')];
+
+  it("con la respuesta cruda, el TCA sale; con el texto desplegado, no (por eso importa cuál llega)", () => {
+    const titulos = (r: RespuestaConPregunta[]) => alertasDeLaConsulta(r).reglas.map((a) => a.t);
+    expect(titulos(cruda)).toContain("TCA activo detectado");
+    const desplegada = [p("d2_21", "¿Qué métodos ha usado para cambiar su peso?", "Ejercicio excesivo, Vómito")];
+    expect(titulos(desplegada)).not.toContain("TCA activo detectado");
+  });
+
+  it("el lector de la IA calcula las alertas sobre la cruda, y el SOAP sobre la respuesta sin tocar", () => {
+    const ia = sinComentarios(readFileSync("src/modules/diagnoses/data/criterion-input-reader.ts", "utf8"));
+    expect(ia).toContain("alertasDeLaConsulta(encuestaCruda)");
+    expect(ia).toMatch(/const cruda = filas\.map\(\(f\) => \(\{[^}]*valor: f\.answer_value,/);
+    const soap = sinComentarios(readFileSync("src/modules/reports/data/hc-soap-reader.ts", "utf8"));
+    expect(soap).toContain("valor: q.answerValue");
+  });
+});
