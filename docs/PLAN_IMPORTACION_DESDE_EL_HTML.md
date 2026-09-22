@@ -316,3 +316,23 @@ HTML le envió al paciente.
 
 **Y el mismo documento en dos archivos:** una consulta del mismo paciente y la misma fecha ya importada no se
 duplica; el resumen dice cuáles se omitieron.
+
+## El smoke con datos sintéticos (sesión 5, primera parte)
+
+Hay un archivo de ejemplo con pacientes inventados: `docs/distribucion/exportador-html/ejemplo-sintetico.json`
+(se regenera con `node scripts/exportador-html/ejemplo-sintetico.mjs`). Trae los casos que importan: un
+paciente con dos consultas y la cintura solo en lo guardado a mano, uno sin firma y con un informe enviado, y
+uno sin medición.
+
+**Los pasos, en "Importar del HTML":**
+1. Súbelo y pulsa **Revisar el archivo**. Debe decir 3 pacientes, 4 consultas, 1 sin firma, y en SINT-002 que
+   trae un informe que no se importa.
+2. Elige una cuenta de profesional y pulsa **Importar a esa cuenta**. Debe decir 4 consultas y 3 pacientes
+   nuevos.
+3. Abre la lista de pacientes con esa cuenta: los tres aparecen, con "Sin autorización vigente" y con
+   **"Importada del HTML: registrar condiciones"** en la columna de pendientes.
+4. Abre SINT-001: dos consultas con sus fechas (13 de agosto y 4 de septiembre), la tabla de composición ya
+   calculada, y en la ficha "Consentimiento de origen HTML".
+5. Pulsa generar diagnóstico: debe decir lo que falta, no generarlo.
+6. Vuelve a subir el MISMO archivo e impórtalo otra vez: debe decir que no repitió ninguna consulta.
+7. Pulsa **Deshacer este lote**: los tres pacientes desaparecen de la lista.
