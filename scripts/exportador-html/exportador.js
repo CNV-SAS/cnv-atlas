@@ -313,8 +313,13 @@
     abrir: abrir,
   };
 
-  if (typeof module !== "undefined" && module.exports) {
-    module.exports = api;
+  // SIN NAVEGADOR (las pruebas en Node): se exporta la logica y no se monta nada. SE DECIDE POR `document`,
+  // NO POR `module` (2026-09-22): el HTML de Gildardo define un `module` global (L26: `var module={exports:{}}`,
+  // que su codigo compilado usa), y con la comprobacion por `module` el exportador creia estar en una prueba,
+  // salia sin montar el boton y ademas pisaba el `module.exports` del HTML. Solo se vio al abrirlo en un
+  // navegador real.
+  if (typeof document === "undefined") {
+    if (typeof module !== "undefined" && module.exports) module.exports = api;
     return;
   }
   global.AtlasExportador = api;
