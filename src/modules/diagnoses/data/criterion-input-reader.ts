@@ -161,6 +161,21 @@ export function lecturaDelIndicador(code: string, clasificacion: string): string
   return clasificacion;
 }
 
+/**
+ * ¿Discrepan el IFC y el angulo de fase? Con los COLORES de sus clasificadores, que es lo que el profesional
+ * ve: el IFC en verde ("Función óptima") con el AF en rojo ("Bajo"), o el IFC en rojo ("Disfunción celular")
+ * con el AF en verde ("Normal" o "Alto"). El ambar ("Alerta funcional") no discrepa con nada: no dice lo
+ * contrario, dice "atencion". Sin alguno de los dos, no hay con que comparar.
+ */
+export function ifcYAfDiscrepan(ifc: string | null | undefined, af: string | null | undefined): boolean {
+  if (!ifc || !af) return false;
+  const ifcBien = /^función óptima$/i.test(ifc);
+  const ifcMal = /^disfunción celular$/i.test(ifc);
+  const afBien = /^(normal|alto)$/i.test(af);
+  const afMal = /^bajo$/i.test(af);
+  return (ifcBien && afMal) || (ifcMal && afBien);
+}
+
 export function direccionDeLaPabu(pabu: number | null | undefined): string | null {
   if (typeof pabu !== "number" || !Number.isFinite(pabu)) return null;
   const cifra = pabu.toFixed(3).replace(".", ",");
@@ -253,6 +268,7 @@ export async function buildCriterionInput(
     // LA DIRECCION DE LA PABU, resuelta de la cifra sellada: es aritmetica (mayor o menor que phi), no
     // clinica. El modelo leyo el "+" de "desviación de φ +0,42" como "por encima" con la PABU en 1,20.
     direccionPabu: direccionDeLaPabu(snap.indicators.pabu),
+    ifcYAfDiscrepan: ifcYAfDiscrepan(snap.classifications.IFC?.label, snap.classifications.AF?.label),
     // EL CIERRE LO ESCRIBE ATLAS (v10): las rutas con su prioridad salen de la MISMA narrativa del DFI que
     // cierra la A del SOAP. Sin DFI completo no hay narrativa, y entonces no se escribe cierre.
     rutasActivadas: snap.dfi.complete ? dfiNarrativeFromOutput(snap).rutasActivadas : null,

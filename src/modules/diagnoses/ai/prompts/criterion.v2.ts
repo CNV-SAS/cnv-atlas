@@ -215,6 +215,12 @@ export type CriterionPromptInput = {
    * tambien cuando la PABU esta POR DEBAJO, y el modelo leyo el "+" como "por encima". null sin PABU.
    */
   direccionPabu: string | null;
+  /**
+   * ¿El IFC y el angulo de fase DISCREPAN en este paciente? (v14). Su regla "si discrepan, prevalece el IFC"
+   * viajaba siempre, y el modelo la aplicaba siempre, tambien con un AF normal. Ahora solo llega cuando es
+   * cierto. Ver `ifcYAfDiscrepan` en el lector.
+   */
+  ifcYAfDiscrepan?: boolean;
   /** Las rutas activadas con su prioridad, de la narrativa del DFI (v10). El cierre lo escribe Atlas con esto. */
   rutasActivadas?: string | null;
 };
@@ -355,6 +361,11 @@ export function buildCriterionPrompt(
     // Su prompt PROHIBE los cortes historicos unicos y exige los del sexo del paciente. Se los damos ya
     // resueltos, que es lo que el hace, para que no tenga que elegir.
     L.push("CORTES DEL SEXO DE ESTE PACIENTE (cita estos y sólo estos):", ...input.cortes, "");
+  }
+
+  // SU REGLA, TAL CUAL, Y SOLO CUANDO APLICA (v14).
+  if (input.ifcYAfDiscrepan) {
+    L.push("EL IFC Y EL ÁNGULO DE FASE DISCREPAN EN ESTE PACIENTE. Si el IFC y el ángulo de fase discrepan, prevalece el IFC y explica por qué: mide las propiedades primarias de membrana en lugar de estimarlas a una sola frecuencia, y es estable con la edad, mientras que el AF desciende con los años y exige referencia etaria.", "");
   }
 
   if (input.direccionPabu) {
