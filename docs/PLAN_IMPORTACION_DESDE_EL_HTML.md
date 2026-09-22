@@ -219,3 +219,18 @@ mencionaba como "la nube de Gildardo".
 - Retirar el HTML y purgar las copias locales (Santiago).
 - **Borrar el Supabase del HTML** (tabla `consultas`): es de una cuenta de CNV, de prueba, y no alimenta nada.
   Santiago le pide a Gildardo que lo borre; se deja constancia.
+
+## Estado: la sesión 2 está HECHA (2026-09-22)
+
+- **El exportador:** `scripts/exportador-html/exportador.js`, inyectado en nuestra copia del v9 por
+  `scripts/exportador-html/construir.mjs` (el archivo de Gildardo no se toca). Lista los pacientes del
+  navegador, marcar y desmarcar todos, las tres declaraciones del punto 8 del legal, y descarga el archivo.
+- **Fiel:** copia cada valor tal cual está guardado (la historia, sus claves relacionadas del BIS, la
+  antropometría y el plan, y la sesión del profesional), sin leerlo ni reescribirlo. Lee el navegador directo,
+  no la nube, porque la nube no lleva la firma.
+- **Lo que se distribuye:** `docs/distribucion/exportador-html/` con la copia (`ATLAS_v9.html`), el script para
+  la consola y las instrucciones para los integrantes.
+- **Candado:** `exportador-html.test.ts`, sobre un navegador sintético (exporta lo que hay, no inventa, no
+  pierde claves ni mezcla pacientes de documento parecido) y sobre la copia (el HTML intacto más el exportador,
+  al día con el script).
+- **Pendiente de un navegador real:** el smoke en Chrome, Brave y Safari va en la sesión 5.
