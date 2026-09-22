@@ -93,15 +93,17 @@ export async function generateCriterion(
     // EL PASO DETERMINISTA (2026-09-22, ver `pulir-resumen`): se quitan comillas y cadenas internas, y si
     // el texto trae una forma prohibida (una hipotesis, una recomendacion) se REGENERA UNA VEZ. Si vuelve, se
     // guarda el texto con menos formas de los dos y la pantalla avisa al profesional; no se falla.
+    // Las respuestas del paciente, para pasarlas a minuscula cuando el modelo las integra a media frase.
+    const respuestas = input.encuesta.map((r) => r.valor).filter((v): v is string => typeof v === "string");
     const primero = await generateText(messages, config);
-    const formasDelPrimero = formasProhibidas(pulirResumen(limpiarMarcadores(primero.text)));
+    const formasDelPrimero = formasProhibidas(pulirResumen(limpiarMarcadores(primero.text), respuestas));
     let completion = primero;
     if (formasDelPrimero.length > 0) {
       const segundo = await generateText(messages, config);
-      const formasDelSegundo = formasProhibidas(pulirResumen(limpiarMarcadores(segundo.text)));
+      const formasDelSegundo = formasProhibidas(pulirResumen(limpiarMarcadores(segundo.text), respuestas));
       if (formasDelSegundo.length <= formasDelPrimero.length) completion = segundo;
     }
-    const formasFinales = formasProhibidas(pulirResumen(limpiarMarcadores(completion.text)));
+    const formasFinales = formasProhibidas(pulirResumen(limpiarMarcadores(completion.text), respuestas));
     // El filtro de marcadores (Gildardo §8, 2026-09-01). El prompt ya se lo pide, pero un prompt no es un
     // contrato: esto es lo que se aplica "por si el modelo desobedece, que es lo que hacen". El criterio
     // se pinta como texto plano, asi que un `**` que se cuele lo ve el profesional.
@@ -110,7 +112,7 @@ export async function generateCriterion(
     // Y EL CIERRE TAMBIEN (v10): las rutas con su prioridad, de la narrativa del DFI.
     const limpio = conCierreDeAtlas(
       insertarParrafoDeAlertas(
-        pulirResumen(limpiarMarcadores(completion.text)),
+        pulirResumen(limpiarMarcadores(completion.text), respuestas),
         parrafoDeAlertas(input.alertas, input.respuestasEnRojo, input.sexo),
       ),
       parrafoDeCierre(input.rutasActivadas, input.veto),
