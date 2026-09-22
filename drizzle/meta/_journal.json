@@ -1121,6 +1121,13 @@
       "when": 1791951626103,
       "tag": "0159_consentimiento_de_origen_html",
       "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1791951686103,
+      "tag": "0160_prompt_criterio_v13",
+      "breakpoints": true
     }
   ]
 }

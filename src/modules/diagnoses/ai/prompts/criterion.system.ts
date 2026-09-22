@@ -1,4 +1,4 @@
-import promptV12 from "./criterion.system.v12.json";
+import promptV13 from "./criterion.system.v13.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -104,4 +104,8 @@ import promptV12 from "./criterion.system.v12.json";
 //
 // V12 (2026-09-22, sexta prueba): las respuestas del paciente van sin comillas, integradas en la prosa. Gemini
 // escribia pierde el control al comer "Siempre". Es la regla que ya tenia la PABU, extendida. LA V11 NO SE RETIRA.
-export const CRITERION_SYSTEM_PROMPT: string = promptV12.system;
+//
+// V13 (2026-09-22, septima prueba): los electrolitos entran a la prohibicion de laboratorio (escribio
+// "equilibrio electrolitico", que nadie midio), la lectura de una clasificacion se dice como hallazgo y no se
+// copia, y una cifra sin clasificacion no recibe una. LA V12 NO SE RETIRA.
+export const CRITERION_SYSTEM_PROMPT: string = promptV13.system;
