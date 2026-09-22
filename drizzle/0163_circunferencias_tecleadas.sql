@@ -1,0 +1,11 @@
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+-- LA CINTURA Y LA CADERA TECLEADAS EN ATLAS  ·  Solo para el paciente importado  ·  2026-09-22
+--
+-- POR QUE (Santiago): esos tamizajes se hicieron hace meses y no hay forma de repetirlos. Volver a medir no
+-- es una opcion real para un paciente importado del HTML, y sin cintura y cadera su diagnostico no se genera.
+--
+-- Y POR QUE SOLO AHI: para un paciente que esta delante, con el equipo, la regla sigue siendo volver a medir.
+-- Un dato tecleado despues no es lo mismo que uno medido, asi que se guarda CON SU MARCA: el origen dice de
+-- donde salio cada valor, y ya distinguia lo medido de lo derivado.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+ALTER TYPE "bis_value_origin" ADD VALUE IF NOT EXISTS 'tecleado';

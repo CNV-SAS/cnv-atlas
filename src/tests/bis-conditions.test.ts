@@ -615,9 +615,23 @@ describe("el diagnóstico exige la cintura y la cadera, venga de donde venga la 
 
   it("el pipeline la aplica, con las circunferencias medidas", () => {
     const pipeline = readFileSync("src/modules/clinical-pipeline/services/run-pipeline.ts", "utf8");
-    expect(pipeline).toContain("circunferenciasParaDiagnosticar(inputs.circunferencias)");
+    expect(pipeline).toContain("circunferenciasParaDiagnosticar(inputs.circunferencias, inputs.importada)");
     const lector = readFileSync("src/modules/clinical-pipeline/data/pipeline-reader.ts", "utf8");
     expect(lector).toContain("cintura: bisRaw[normalizeHeader(MEASURED_WAIST_HEADER)] ?? null");
     expect(lector).toContain("cadera: bisRaw[normalizeHeader(MEASURED_HIPS_HEADER)] ?? null");
+  });
+});
+
+// El remedio no es el mismo en los dos caminos (Santiago, 2026-09-22).
+describe("lo que se le ofrece al profesional depende del camino", () => {
+  it("en una importada se teclean; en una de Atlas se vuelve a medir", async () => {
+    const { circunferenciasParaDiagnosticar } = await import("@/modules/bis-intake/services/import-gate");
+    const importada = circunferenciasParaDiagnosticar({ cintura: 84, cadera: null }, true);
+    if (!importada.allowed) {
+      expect(importada.message).toContain("Escríbela en Antropometría");
+      expect(importada.message).toContain("no se puede repetir");
+    }
+    const deAtlas = circunferenciasParaDiagnosticar({ cintura: 84, cadera: null }, false);
+    if (!deAtlas.allowed) expect(deAtlas.message).toContain("Vuelve a tomar la medida en Biody Manager");
   });
 });

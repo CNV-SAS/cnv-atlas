@@ -36,7 +36,9 @@ export const professionalProfession = pgEnum("professional_profession", [
 // reconstruyen a partir de lo que si viene. 'derivado' marca lo reconstruido para que el profesional
 // lo distinga de lo MEDIDO por el equipo: un valor derivado NUNCA se muestra como si fuera medido, y
 // un valor medido JAMAS se sobrescribe (la derivacion solo rellena huecos).
-export const bisValueOrigin = pgEnum("bis_value_origin", ["medido", "derivado"]);
+// "tecleado": lo escribio el profesional en Atlas, no el equipo (0163). Hoy solo la cintura y la cadera de
+// una consulta importada del HTML, donde volver a medir no es posible.
+export const bisValueOrigin = pgEnum("bis_value_origin", ["medido", "derivado", "tecleado"]);
 
 export const patientStatus = pgEnum("patient_status", ["active", "inactive"]);
 

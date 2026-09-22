@@ -336,3 +336,23 @@ uno sin medición.
 5. Pulsa generar diagnóstico: debe decir lo que falta, no generarlo.
 6. Vuelve a subir el MISMO archivo e impórtalo otra vez: debe decir que no repitió ninguna consulta.
 7. Pulsa **Deshacer este lote**: los tres pacientes desaparecen de la lista.
+
+## La cintura y la cadera del paciente importado se teclean (Santiago, 2026-09-22)
+
+**La decisión:** opción (b), y solo para los importados. Ese tamizaje se hizo hace meses y no hay forma de
+repetirlo; volver a medir no es una opción real. Para el paciente que está delante, con el equipo, la regla
+sigue siendo volver a medir y re-importar el XLSX.
+
+**Cómo quedó:**
+- En Antropometría, **solo si la consulta vino del HTML y le falta alguna medida**, aparece un formulario para
+  escribirla. Desaparece cuando ya no falta, y no existe en una consulta de Atlas (la guarda también está en
+  el servidor, no solo en la pantalla).
+- **El valor queda marcado como `tecleado`** (migración 0163), distinto de lo medido y de lo derivado: un dato
+  escrito después no es lo mismo que uno medido, y el registro lo dice.
+- **El ICC y el ICT se recalculan con la fórmula de Gildardo** (`cintura / cadera` y `cintura / talla`, a tres
+  decimales, v9 L7154-7155). Sin eso, teclear la cadera dejaba los dos índices con el valor viejo, que es
+  justo el defecto que encontramos.
+- **El diagnóstico ofrece el remedio que corresponde:** en una importada dice que se escriban en
+  Antropometría; en una de Atlas, que se vuelva a medir y se re-importe el XLSX.
+- Verificado antes de decidir: **la cintura y la cadera no entran en ninguna otra fórmula del modelo** (el
+  ISCM sale de IFC, MCA, E/I, FMI y FFW). Solo en el ICC, el ICT y el predicado de la ruta R2.

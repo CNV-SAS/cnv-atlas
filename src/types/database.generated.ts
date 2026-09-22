@@ -5194,7 +5194,7 @@ export type Database = {
         | "advertencia"
         | "validez"
       bis_condition_scope: "general" | "mujeres"
-      bis_value_origin: "medido" | "derivado"
+      bis_value_origin: "medido" | "derivado" | "tecleado"
       consent_type_enum:
         | "servicio"
         | "datos_sensibles"
@@ -5441,7 +5441,7 @@ export const Constants = {
         "validez",
       ],
       bis_condition_scope: ["general", "mujeres"],
-      bis_value_origin: ["medido", "derivado"],
+      bis_value_origin: ["medido", "derivado", "tecleado"],
       consent_type_enum: [
         "servicio",
         "datos_sensibles",

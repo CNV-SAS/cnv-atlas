@@ -305,3 +305,104 @@ describe("el ICC y el ICT de la consulta importada", () => {
     expect(por[normalizeHeader(BIODY_COLUMNS.ict.header)]).toBe(0.47);
   });
 });
+
+describe.skipIf(!HAS_DB)("teclear la cintura y la cadera de una importada (BD real)", () => {
+  const rastro: { paciente?: string; lote?: string } = {};
+  afterAll(async () => {
+    const { db } = await import("@/db");
+    if (rastro.paciente) {
+      await db.execute(dsql`delete from evaluations where patient_id = ${rastro.paciente}`);
+      await db.execute(dsql`delete from patient_external_consents where patient_id = ${rastro.paciente}`);
+      await db.execute(dsql`delete from patients where id = ${rastro.paciente}`);
+    }
+    if (rastro.lote) await db.execute(dsql`delete from html_import_batches where id = ${rastro.lote}`);
+  });
+
+  it("se guardan con su marca, y el ICC y el ICT se recalculan con la fórmula del HTML", async () => {
+    const { db } = await import("@/db");
+    const { BIODY_COLUMNS } = await import("@/clinical-engine");
+    const { normalizeHeader } = await import("@/modules/bis/services/header-map");
+    const { importarLote } = await import("@/modules/importacion-html/data/importar-lote-writer");
+    const { guardarCircunferenciasTecleadas, CircunferenciasNoEditablesError } = await import(
+      "@/modules/bis/data/circunferencias-writer"
+    );
+
+    const [pp] = await db.execute<{ id: string; profile_id: string; organization_id: string }>(
+      dsql`select pp.id, pp.profile_id, p.organization_id from professional_profiles pp
+             join profiles p on p.id = pp.profile_id limit 1`,
+    );
+    const [version] = await db.execute<{ id: string }>(
+      dsql`select id from survey_versions order by published_at desc limit 1`,
+    );
+    const documento = `IMPCIRC-${Date.now()}`;
+    const r = await importarLote({
+      organizationId: pp.organization_id,
+      professionalId: pp.id,
+      actorId: pp.profile_id,
+      actorEmail: "admin@cnv",
+      ip: null,
+      archivo: { nombre: "prueba.json", hash: "c".repeat(64) },
+      declaracion: { version: "1.0", aceptadaEn: "2026-09-22T10:00:00Z" },
+      surveyVersionId: version.id,
+      preguntasPorClave: {},
+      pacientes: [
+        {
+          documento,
+          nombre: "Sintético Sin Cadera",
+          // Como el paciente real de Santiago: con cintura y SIN cadera.
+          consultas: [
+            {
+              fecha: "2026-08-13",
+              consulta: { nombre: "Sintético Sin Cadera", Re: 627.3, FM: 18.04, peso: 80.4, tallaCm: 177, cintura: 84, cadera: 0 },
+            },
+          ],
+        },
+      ],
+    });
+    rastro.lote = r.batchId;
+    const [paciente] = await db.execute<{ id: string }>(dsql`select id from patients where document_number = ${documento}`);
+    rastro.paciente = paciente.id;
+    const [evaluacion] = await db.execute<{ id: string }>(
+      dsql`select id from evaluations where patient_id = ${paciente.id}`,
+    );
+
+    await guardarCircunferenciasTecleadas({
+      evaluationId: evaluacion.id,
+      cintura: null, // ya estaba
+      cadera: 106,
+      actorId: pp.profile_id,
+      actorEmail: "prof@cnv",
+      ip: null,
+    });
+
+    const valores = await db.execute<{ variable_name: string; value: string; origin: string }>(
+      dsql`select variable_name, value, origin from bis_raw_values brv
+             join bis_measurements bm on bm.id = brv.measurement_id where bm.evaluation_id = ${evaluacion.id}`,
+    );
+    const por = Object.fromEntries(valores.map((v) => [v.variable_name, v]));
+    expect(por["Hips Size cm"].value).toBe("106");
+    expect(por["Hips Size cm"].origin).toBe("tecleado");
+    // ICC = cintura / cadera y ICT = cintura / talla, a tres decimales (v9 L7154-7155).
+    expect(Number(por[normalizeHeader(BIODY_COLUMNS.icc.header)].value)).toBeCloseTo(84 / 106, 3);
+    expect(Number(por[normalizeHeader(BIODY_COLUMNS.ict.header)].value)).toBeCloseTo(84 / 177, 3);
+    // Y la cintura que ya estaba no cambia de origen: no se tecleo.
+    expect(por["Waist Size cm"].origin).toBe("medido");
+
+    // En una evaluación que NO vino del HTML, esto no se puede: ahí se vuelve a medir.
+    const [propia] = await db.execute<{ id: string }>(
+      dsql`select id from evaluations where import_batch_id is null limit 1`,
+    );
+    if (propia) {
+      await expect(
+        guardarCircunferenciasTecleadas({
+          evaluationId: propia.id,
+          cintura: 84,
+          cadera: 106,
+          actorId: pp.profile_id,
+          actorEmail: "prof@cnv",
+          ip: null,
+        }),
+      ).rejects.toBeInstanceOf(CircunferenciasNoEditablesError);
+    }
+  }, 30_000);
+});
