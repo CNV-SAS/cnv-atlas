@@ -735,3 +735,15 @@ restricción calórica"*). Y al modelo le llegan hechas tres lecturas que confun
 clasificación de tu tabla (escribió que un IMC de 25,7 "roza el sobrepeso"), el ICEC con su escala (en LE8 más
 alto es mejor, así que 33 es carga alta; lo leyó al revés) y la PABU con su dirección y su lectura, que son las
 de tu `cPABU` (v9, L3971-3988): por debajo de φ, *"Desviación por exceso"*, que es exceso de adiposidad.
+
+**Añadido el 2026-09-22 (v11).** Dos reglas más, y una pregunta.
+- **Una alerta se nombra como alerta, no como diagnóstico.** Tu regla dice *"TCA activo detectado"*: es una
+  bandera de la encuesta. El modelo escribió *"el paciente presenta un TCA activo"*, que ya es un diagnóstico
+  que nadie hizo.
+- **El IEHH gradúa la hidro-homeostasis** (tu `cIEHH`: Óptimo, Leve, Moderado, Severo), y así le llega. El
+  modelo había escrito "Leve, lo que sugiere una leve deshidratación".
+- **La pregunta, sin urgencia: ¿en qué dominio van los síntomas digestivos?** Tu DFI no los lee en ninguno de
+  los cinco dominios (sus ítems no usan `d6_45` a `d6_51`), y tu paso 4 los manda en el bloque "D6 · Síntomas
+  digestivos". El modelo los metió en el Epigenético-Contextual. Por ahora le pedimos que no los use como
+  evidencia de ningún dominio: ya salen en el párrafo de respuestas en rojo. Si prefieres que se lean en
+  alguno, dinos en cuál.

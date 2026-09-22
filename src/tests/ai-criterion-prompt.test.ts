@@ -1,5 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Para leer `lecturaDelIndicador` del lector (server-only) sin servidor.
+vi.mock("server-only", () => ({}));
 
 import {
   buildCriterionPrompt,
@@ -270,21 +273,21 @@ describe("el porte del paso 4 llega entero", () => {
   });
 });
 
-describe("el texto de sistema canónico es el v10", () => {
+describe("el texto de sistema canónico es el v11", () => {
   it("y el seed publica esa misma versión", () => {
     // Los dos canales del prompt: el JSON que consume la app y la version que el seed (y su migracion)
     // publican. Si divergen, local y nube corren textos distintos sin que nada de error.
     const modulo = readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.ts", "utf8");
-    expect(modulo).toContain("criterion.system.v10.json");
+    expect(modulo).toContain("criterion.system.v11.json");
     const seed = readFileSync("supabase/seed.ts", "utf8");
-    expect(seed).toContain("criterion.system.v10.json");
-    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 10 },');
+    expect(seed).toContain("criterion.system.v11.json");
+    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 11 },');
   });
 
   it("y las versiones anteriores NO se borran", () => {
     // Los borradores ya generados apuntan a su version en la procedencia. Borrar el texto deja registros
     // que dicen "generado con la v3" sin que exista la v3. Misma disciplina que las versiones de motor.
-    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9"]) {
+    for (const v of ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10"]) {
       expect(
         existsSync(`src/modules/diagnoses/ai/prompts/criterion.system.${v}.json`),
         `se borró el texto de la ${v}`,
@@ -409,5 +412,29 @@ describe("v10: el cierre lo escribe Atlas y las lecturas llegan hechas", () => {
     const reader = readFileSync("src/modules/diagnoses/data/criterion-input-reader.ts", "utf8");
     expect(reader).toContain("composicionClasificada(composicion, snap.sexo === \"M\")");
     expect(reader).toContain("dfiNarrativeFromOutput(snap).rutasActivadas");
+  });
+});
+
+describe("v11: la alerta no es diagnóstico, y dos lecturas más llegan hechas", () => {
+  it("una alerta se nombra como alerta, y los digestivos no son evidencia de un dominio", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("UNA ALERTA SE NOMBRA COMO ALERTA, NUNCA COMO DIAGNÓSTICO");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("Los síntomas digestivos no forman parte de ninguno de los cinco dominios del DFI");
+  });
+
+  it("la lactancia llega dicha como afirmación, con las opciones de su encuesta", () => {
+    // Con "¿Fue amamantado/a en su infancia?: No", Gemini escribió "es amamantado".
+    const texto = buildCriterionPrompt({
+      ...input,
+      encuesta: [{ fieldKey: "d5_41", pregunta: "¿Fue amamantado/a en su infancia?", valor: "No" }],
+    })[1].content;
+    expect(texto).toContain("¿Fue amamantado/a en su infancia?: No (es decir, no fue amamantado/a)");
+  });
+
+  it("el IEHH llega con lo que gradúa, que no es la deshidratación", async () => {
+    const { lecturaDelIndicador } = await import("@/modules/diagnoses/data/criterion-input-reader");
+    expect(lecturaDelIndicador("IEHH", "Leve")).toBe(
+      "Leve; gradúa el equilibrio hídrico del organismo (hidro-homeostasis), no la deshidratación",
+    );
+    expect(lecturaDelIndicador("IFC", "Alto")).toBe("Alto");
   });
 });

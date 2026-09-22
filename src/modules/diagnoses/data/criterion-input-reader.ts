@@ -146,6 +146,11 @@ const PHI = 1.618;
  * carga ALTA. Groq escribio "ICEC 33, carga epigenetica baja" (2026-09-22).
  */
 export function lecturaDelIndicador(code: string, clasificacion: string): string {
+  // EL IEHH GRADUA LA HIDRO-HOMEOSTASIS (su cIEHH, v9 L4029: Óptimo, Leve, Moderado, Severo), no la
+  // deshidratacion. Gemini escribio "IEHH 0,81 (Leve), lo que sugiere una leve deshidratacion" (2026-09-22).
+  if (code === "IEHH") {
+    return `${clasificacion}; gradúa el equilibrio hídrico del organismo (hidro-homeostasis), no la deshidratación`;
+  }
   if (code === "ICEC") {
     return `${clasificacion}; en la escala LE8 más alto es mejor (ideal 80 o más), así que un puntaje bajo es carga epigenético-contextual alta`;
   }
