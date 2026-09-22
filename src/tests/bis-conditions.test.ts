@@ -596,3 +596,28 @@ describe("el diagnóstico exige las condiciones de la toma, venga de donde venga
     expect(lector).toContain("bisConditions: intake ? { contraindicated: intake.contraindicated } : null");
   });
 });
+
+// ═══ Y LA CINTURA Y LA CADERA (smoke de Santiago, 2026-09-22) ═══
+// Un paciente importado del HTML sin cadera genero diagnostico: su guarda vivia solo en el boton del XLSX.
+describe("el diagnóstico exige la cintura y la cadera, venga de donde venga la medición", () => {
+  it("dice cuál falta y qué hacer", async () => {
+    const { circunferenciasParaDiagnosticar } = await import("@/modules/bis-intake/services/import-gate");
+    expect(circunferenciasParaDiagnosticar({ cintura: 84, cadera: 106 }).allowed).toBe(true);
+    const sinCadera = circunferenciasParaDiagnosticar({ cintura: 84, cadera: null });
+    expect(sinCadera.allowed).toBe(false);
+    if (!sinCadera.allowed) {
+      expect(sinCadera.message).toContain("falta la cadera de la medición");
+      expect(sinCadera.message).toContain("re-importa el XLSX");
+    }
+    const ninguna = circunferenciasParaDiagnosticar({ cintura: 0, cadera: 0 });
+    if (!ninguna.allowed) expect(ninguna.message).toContain("la cintura y la cadera");
+  });
+
+  it("el pipeline la aplica, con las circunferencias medidas", () => {
+    const pipeline = readFileSync("src/modules/clinical-pipeline/services/run-pipeline.ts", "utf8");
+    expect(pipeline).toContain("circunferenciasParaDiagnosticar(inputs.circunferencias)");
+    const lector = readFileSync("src/modules/clinical-pipeline/data/pipeline-reader.ts", "utf8");
+    expect(lector).toContain("cintura: bisRaw[normalizeHeader(MEASURED_WAIST_HEADER)] ?? null");
+    expect(lector).toContain("cadera: bisRaw[normalizeHeader(MEASURED_HIPS_HEADER)] ?? null");
+  });
+});

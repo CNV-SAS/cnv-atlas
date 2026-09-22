@@ -6,7 +6,7 @@ import { computeProtocolo, runEngine, type ProtocoloSnapshot } from "@/clinical-
 import { resolveRutasContent } from "@/clinical-engine/rutas-content";
 import { appError, err, ok, type Result } from "@/core/errors";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
-import { condicionesParaDiagnosticar } from "@/modules/bis-intake/services/import-gate";
+import { circunferenciasParaDiagnosticar, condicionesParaDiagnosticar } from "@/modules/bis-intake/services/import-gate";
 
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
@@ -77,6 +77,11 @@ export async function runClinicalPipeline(
   // registraron". Es la misma regla del boton, en el sitio que ningun camino puede saltarse.
   const condiciones = condicionesParaDiagnosticar(inputs.bisConditions);
   if (!condiciones.allowed) return err(appError("validation", condiciones.message));
+
+  // Y LA CINTURA Y LA CADERA, por la misma razon: la regla de negocio las exige y su guarda vivia solo en el
+  // boton del XLSX. Un importado del HTML sin cadera se diagnosticaba igual.
+  const circunferencias = circunferenciasParaDiagnosticar(inputs.circunferencias);
+  if (!circunferencias.allowed) return err(appError("validation", circunferencias.message));
 
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una versión del modelo activa."));
