@@ -25,7 +25,7 @@ tabla dice qué significaba.
 | Modelo | **semver de tres** | `1.0.0` | fila de `model_versions` (`version_name`) |
 | Reglas | **semver de tres** | `1.0.0` | fila de `model_versions` (`rules_version`) |
 | Encuesta | **entero** | `6` | fila de `survey_versions` (`version_number`) |
-| Prompt del resumen de IA | **entero** | `12` | fila de `ai_prompts` (`criterio.generate`, `version`) y su JSON en `src/modules/diagnoses/ai/prompts/` |
+| Prompt del resumen de IA | **entero** | `13` | fila de `ai_prompts` (`criterio.generate`, `version`) y su JSON en `src/modules/diagnoses/ai/prompts/` |
 
 **Los prompts NO se renumeran a v1 (pregunta de Santiago, 2026-09-21).** Es la misma razon que el sello del
 motor: cada resumen de IA guarda con que version se genero (`ai_criterion_suggestions.prompt_version`), y en
