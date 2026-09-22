@@ -1526,6 +1526,60 @@ export type Database = {
           },
         ]
       }
+      html_import_batches: {
+        Row: {
+          consultation_count: number
+          declaration_version: string
+          declared_at: string
+          id: string
+          imported_at: string
+          imported_by: string
+          patient_count: number
+          professional_id: string
+          source_file_hash: string
+          source_file_name: string
+        }
+        Insert: {
+          consultation_count?: number
+          declaration_version: string
+          declared_at: string
+          id?: string
+          imported_at?: string
+          imported_by: string
+          patient_count?: number
+          professional_id: string
+          source_file_hash: string
+          source_file_name: string
+        }
+        Update: {
+          consultation_count?: number
+          declaration_version?: string
+          declared_at?: string
+          id?: string
+          imported_at?: string
+          imported_by?: string
+          patient_count?: number
+          professional_id?: string
+          source_file_hash?: string
+          source_file_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "html_import_batches_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "html_import_batches_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       indicator_definitions: {
         Row: {
           code: string
@@ -2673,6 +2727,63 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_external_consents: {
+        Row: {
+          batch_id: string
+          created_at: string
+          document_hash: string
+          id: string
+          origin: string
+          patient_id: string
+          recorded_date: string
+          signature_method: string
+          source_consultation_date: string
+          text_version: string
+          typed_name: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          document_hash: string
+          id?: string
+          origin: string
+          patient_id: string
+          recorded_date: string
+          signature_method: string
+          source_consultation_date: string
+          text_version: string
+          typed_name: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          document_hash?: string
+          id?: string
+          origin?: string
+          patient_id?: string
+          recorded_date?: string
+          signature_method?: string
+          source_consultation_date?: string
+          text_version?: string
+          typed_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_external_consents_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "html_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_external_consents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -3858,6 +3969,51 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      soap_subjective_notes: {
+        Row: {
+          author_email: string
+          author_id: string
+          author_profession: string | null
+          created_at: string
+          evaluation_id: string
+          id: string
+          note: string
+        }
+        Insert: {
+          author_email: string
+          author_id: string
+          author_profession?: string | null
+          created_at?: string
+          evaluation_id: string
+          id?: string
+          note: string
+        }
+        Update: {
+          author_email?: string
+          author_id?: string
+          author_profession?: string | null
+          created_at?: string
+          evaluation_id?: string
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "soap_subjective_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "soap_subjective_notes_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
             referencedColumns: ["id"]
           },
         ]
