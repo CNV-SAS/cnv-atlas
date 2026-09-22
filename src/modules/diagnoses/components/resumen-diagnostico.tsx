@@ -9,6 +9,7 @@ import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { generateCriterionAction } from "../actions";
+import { formasProhibidas } from "../services/pulir-resumen";
 
 // RESUMEN DEL DIAGNOSTICO · SOLO IA, NO EDITABLE (2026-09-08).
 //
@@ -98,6 +99,15 @@ export function ResumenDiagnostico({
 
       {/* SIN LIMITE DE LONGITUD y en un bloque de lectura, no en un campo: son cinco parrafos, uno por
           dominio. `whitespace-pre-wrap` conserva los saltos que el modelo escribe, igual que el suyo. */}
+      {/* EL AVISO SI EL MODELO INSISTIO (2026-09-22). El servicio ya regenero una vez; si la forma volvio, el
+          texto se guarda igual y aqui se dice cual, para que el profesional la lea con cuidado. Se calcula del
+          texto mismo, asi que vale tambien para un resumen generado antes de este paso. */}
+      {visible && formasProhibidas(visible).length > 0 ? (
+        <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+          Este resumen conserva expresiones de hipótesis o de recomendación que el modelo no debería usar (
+          {formasProhibidas(visible).join(", ")}). Léelo con cuidado o vuelve a generarlo.
+        </p>
+      ) : null}
       {visible ? (
         <div className="whitespace-pre-wrap rounded-xl border border-border bg-card p-6 text-sm leading-relaxed text-foreground">
           {visible}

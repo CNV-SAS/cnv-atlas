@@ -1,4 +1,4 @@
-import promptV13 from "./criterion.system.v13.json";
+import promptV14 from "./criterion.system.v14.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -108,4 +108,9 @@ import promptV13 from "./criterion.system.v13.json";
 // V13 (2026-09-22, septima prueba): los electrolitos entran a la prohibicion de laboratorio (escribio
 // "equilibrio electrolitico", que nadie midio), la lectura de una clasificacion se dice como hallazgo y no se
 // copia, y una cifra sin clasificacion no recibe una. LA V12 NO SE RETIRA.
-export const CRITERION_SYSTEM_PROMPT: string = promptV13.system;
+//
+// V14 (2026-09-22): NO SUMA REGLAS, QUITA UNA. "Si el IFC y el angulo de fase discrepan, prevalece el IFC" ya
+// no va en el texto fijo: el modelo la aplicaba siempre, tambien con un AF normal. Llega en los datos solo
+// cuando discrepan (`ifcYAfDiscrepan`). Lo demas del resumen lo resuelve el paso determinista
+// (`pulir-resumen`), no el prompt. LA V13 NO SE RETIRA.
+export const CRITERION_SYSTEM_PROMPT: string = promptV14.system;

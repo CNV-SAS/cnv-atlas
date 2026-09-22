@@ -24,6 +24,7 @@ import {
 import { saveAiSummary } from "../data/ai-summary-writer";
 import { buildCriterionInput } from "../data/criterion-input-reader";
 import { conCierreDeAtlas, insertarParrafoDeAlertas, parrafoDeAlertas, parrafoDeCierre } from "./parrafo-de-alertas";
+import { formasProhibidas, pulirResumen } from "./pulir-resumen";
 
 // Generacion del BORRADOR de criterio por IA. Desde el 2026-09-08 es el PORTE DEL PASO 4 de su Analisis
 // IA (punto 8 de su cotejo): el diagnostico integral estructurado por los cinco dominios del DFI, con los
@@ -89,7 +90,18 @@ export async function generateCriterion(
   }
 
   try {
-    const completion = await generateText(messages, config);
+    // EL PASO DETERMINISTA (2026-09-22, ver `pulir-resumen`): se quitan comillas y cadenas internas, y si
+    // el texto trae una forma prohibida (una hipotesis, una recomendacion) se REGENERA UNA VEZ. Si vuelve, se
+    // guarda el texto con menos formas de los dos y la pantalla avisa al profesional; no se falla.
+    const primero = await generateText(messages, config);
+    const formasDelPrimero = formasProhibidas(pulirResumen(limpiarMarcadores(primero.text)));
+    let completion = primero;
+    if (formasDelPrimero.length > 0) {
+      const segundo = await generateText(messages, config);
+      const formasDelSegundo = formasProhibidas(pulirResumen(limpiarMarcadores(segundo.text)));
+      if (formasDelSegundo.length <= formasDelPrimero.length) completion = segundo;
+    }
+    const formasFinales = formasProhibidas(pulirResumen(limpiarMarcadores(completion.text)));
     // El filtro de marcadores (Gildardo §8, 2026-09-01). El prompt ya se lo pide, pero un prompt no es un
     // contrato: esto es lo que se aplica "por si el modelo desobedece, que es lo que hacen". El criterio
     // se pinta como texto plano, asi que un `**` que se cuele lo ve el profesional.
@@ -98,7 +110,7 @@ export async function generateCriterion(
     // Y EL CIERRE TAMBIEN (v10): las rutas con su prioridad, de la narrativa del DFI.
     const limpio = conCierreDeAtlas(
       insertarParrafoDeAlertas(
-        limpiarMarcadores(completion.text),
+        pulirResumen(limpiarMarcadores(completion.text)),
         parrafoDeAlertas(input.alertas, input.respuestasEnRojo, input.sexo),
       ),
       parrafoDeCierre(input.rutasActivadas, input.veto),
@@ -117,6 +129,10 @@ export async function generateCriterion(
         latency_ms: completion.latencyMs,
         // Para MEDIR cuanto desobedece, que es lo que dira si el bloque del prompt sirve.
         traia_marcadores: traiaMarcadores(completion.text),
+        // Y cuanto desobedece en las formas prohibidas, que es lo que dira si el paso determinista basta.
+        intentos: formasDelPrimero.length > 0 ? 2 : 1,
+        formas_prohibidas_primer_intento: formasDelPrimero,
+        formas_prohibidas_final: formasFinales,
       },
       status: "success",
       latencyMs: completion.latencyMs,

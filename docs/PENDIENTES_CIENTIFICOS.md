@@ -747,3 +747,13 @@ de tu `cPABU` (v9, L3971-3988): por debajo de φ, *"Desviación por exceso"*, qu
   digestivos". El modelo los metió en el Epigenético-Contextual. Por ahora le pedimos que no los use como
   evidencia de ningún dominio: ya salen en el párrafo de respuestas en rojo. Si prefieres que se lean en
   alguno, dinos en cuál.
+
+**Añadido el 2026-09-22 (v14).** Dos cambios de mecanismo, sin reglas nuevas.
+- **Tu regla "si el IFC y el ángulo de fase discrepan, prevalece el IFC" ahora llega solo cuando discrepan.**
+  Iba siempre en las instrucciones y el modelo la aplicaba siempre, también con un AF normal ("a pesar de la
+  deshidratación, el IFC prevalece sobre el ángulo de fase"). Discrepan cuando tus clasificadores dan colores
+  opuestos: IFC en verde ("Función óptima") con AF en rojo ("Bajo"), o IFC en rojo ("Disfunción celular") con
+  AF en verde. El ámbar ("Alerta funcional") no discrepa con nada. Si prefieres otro criterio, dinos cuál.
+- **Lo que el modelo seguía rompiendo lo corrige Atlas después de generar**: quita comillas y cadenas internas
+  (como "k=0,78 (H)"), y si el texto trae una hipótesis o una recomendación ("sugiere", "posible", "podría",
+  "requiere atención") lo genera otra vez. Si vuelve, lo guarda y le avisa al profesional.
