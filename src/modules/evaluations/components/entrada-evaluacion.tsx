@@ -11,6 +11,7 @@ import { BisConditionsCapture } from "@/modules/bis-intake/components/bis-condit
 import { BisConditionsReadonly } from "@/modules/bis-intake/components/bis-conditions-readonly";
 import type { BisConditionsReadonly as BisConditionsReadonlyData } from "@/modules/bis-intake/data/bis-conditions-reader";
 import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
+import { CircunferenciasImportadas } from "@/modules/bis/components/circunferencias-importadas";
 import { MedidasConTabla } from "@/modules/bis-intake/components/medidas-con-tabla";
 import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
 import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
@@ -39,6 +40,7 @@ export function EntradaEvaluacion({
   patientIsFemale,
   bisReadonly,
   diagnosticoGenerado,
+  importada = false,
   identityConfirmationSlot = null,
 }: {
   /**
@@ -50,6 +52,12 @@ export function EntradaEvaluacion({
    */
   panel: "encuesta" | "antropometria";
   evaluationId: string;
+  /**
+   * ¿La medicion llego importada del HTML? Solo ahi se pueden teclear la cintura y la cadera que falten: ese
+   * tamizaje fue hace meses y no se puede repetir (Santiago, 2026-09-22). En una medicion tomada en Atlas la
+   * regla sigue siendo volver a medir y re-importar el XLSX.
+   */
+  importada?: boolean;
   // ¿Ya se genero el diagnostico? Es lo que SELLA las medidas: despues de diagnosticar, cambiarlas no
   // es editar, es corregir, y va por el flujo que versiona. No se deriva de bisReadonly porque ese es
   // otro hecho (si hay condiciones capturadas), y confundirlos dejaria la edicion abierta en un caso.
@@ -265,6 +273,13 @@ export function EntradaEvaluacion({
                 MIENTRAS se escribe la meta y no al salir del campo. Los dos son componentes cliente pero
                 los montaba este archivo, que es de SERVIDOR, asi que no tenian estado en comun. Ver
                 `medidas-con-tabla.tsx`: es lo unico que los une, y el guardado no cambia. */}
+            {importada && !diagnosticoGenerado ? (
+              <CircunferenciasImportadas
+                evaluationId={evaluationId}
+                cintura={composition.cintura}
+                cadera={composition.cadera}
+              />
+            ) : null}
             <MedidasConTabla
               evaluationId={evaluationId}
               composition={composition}

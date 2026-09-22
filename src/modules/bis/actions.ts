@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getClientIp } from "@/core/http/client-ip";
+import { reportServerError } from "@/lib/observability/report-error";
 import { limitImportByUser } from "@/core/rate-limit";
 import { getEvaluationOwnership, getPatientSex } from "@/modules/evaluations/data/evaluations-repository";
 import { getBisIntakeForEvaluation } from "@/modules/bis-intake/data/bis-conditions-reader";
@@ -11,7 +12,9 @@ import { computeSurveyGapsFromDomains } from "@/modules/clinical-pipeline/servic
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { requireUser } from "@/modules/auth/session";
 
+import { CircunferenciasNoEditablesError, guardarCircunferenciasTecleadas } from "./data/circunferencias-writer";
 import { canImportBis } from "./policies/can-import-bis";
+import { circunferenciasSchema } from "./validations/circunferencias";
 import { importBisMeasurement } from "./services/bis-import";
 
 // Estado del formulario de import (useActionState). Incluye la forma de
@@ -123,4 +126,47 @@ export async function importBisAction(
     imported: true,
     valueCount: result.value.valueCount,
   };
+}
+
+// ── LA CINTURA Y LA CADERA TECLEADAS (solo consultas importadas del HTML, 2026-09-22) ──────────────────
+// La forma de FormToastState (error/success/warning), para que la pantalla dispare el toast y refresque.
+export type CircunferenciasState = { error: string | null; success: string | null; warning: string | null };
+
+export async function guardarCircunferenciasAction(
+  _prev: CircunferenciasState,
+  form: FormData,
+): Promise<CircunferenciasState> {
+  const user = await requireUser();
+  if (!canImportBis(user)) return { error: "No autorizado.", success: null, warning: null };
+  const evaluationId = String(form.get("evaluationId") ?? "");
+  if (!evaluationId) return { error: "Evaluación inválida.", success: null, warning: null };
+  // Ownership bajo RLS: la sesion debe poder leer la evaluacion (su paciente o admin).
+  const ownership = await getEvaluationOwnership(evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };
+
+  const datos = circunferenciasSchema.safeParse({
+    cintura: String(form.get("cintura") ?? ""),
+    cadera: String(form.get("cadera") ?? ""),
+  });
+  if (!datos.success) {
+    return { error: datos.error.issues[0]?.message ?? "Revisa las medidas.", success: null, warning: null };
+  }
+  try {
+    const ip = await getClientIp();
+    const r = await guardarCircunferenciasTecleadas({
+      evaluationId,
+      cintura: datos.data.cintura,
+      cadera: datos.data.cadera,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: ip === "unknown" ? null : ip,
+    });
+    // SIN revalidatePath: la pantalla ya refresca con `useFormToastAndRefresh`, y los dos juntos montan
+    // los segmentos dos veces (candado `refresco-una-sola-vez`).
+    return { error: null, success: `Medidas guardadas (${r.escritas} valores, con el ICC y el ICT al día).`, warning: null };
+  } catch (e) {
+    if (e instanceof CircunferenciasNoEditablesError) return { error: e.message, success: null, warning: null };
+    reportServerError("guardarCircunferenciasAction", e);
+    return { error: "No se pudieron guardar las medidas.", success: null, warning: null };
+  }
 }

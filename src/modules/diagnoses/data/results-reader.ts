@@ -93,6 +93,8 @@ export type EvaluationHeader = {
   evaluationDate: string;
   /** inicial | seguimiento. Ubica la evaluacion sin abrir ninguna etapa. */
   evaluationType: string;
+  /** Vino de un lote importado del HTML (2026-09-22). */
+  importada: boolean;
   /**
    * QUIEN ATIENDE, no quien mira. Es el profesional de la EVALUACION, no el de la sesion: en un documento
    * clinico y en la pantalla que lo produce, la pregunta es de quien es este acto.
@@ -122,7 +124,7 @@ export async function getEvaluationHeaderForSession(
       // EL PROFESIONAL entra en la MISMA consulta: cero consultas nuevas, igual que `type` y la medicion.
       // El hint `profiles!profile_id` es obligatorio: hay TRES relaciones de professional_profiles hacia
       // profiles y sin el PostgREST no sabe por cual resolver el embed (ver la nota de ARCHITECTURE).
-      "created_at, type, patient_id, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), professional_profiles(profession, profiles!profile_id(full_name))",
+      "created_at, type, patient_id, import_batch_id, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), professional_profiles(profession, profiles!profile_id(full_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -170,6 +172,9 @@ export async function getEvaluationHeaderForSession(
     // Caida a `created_at` solo si aun no se midio, igual que hace la ficha: asi las dos coinciden.
     evaluationDate: latestMeasurementDate(data.bis_measurements) ?? data.created_at,
     evaluationType: data.type as string,
+    // ¿Vino de un lote del HTML? Decide lo que la pantalla ofrece: en una importada la cintura y la cadera se
+    // pueden teclear (el tamizaje fue hace meses y no hay forma de repetirlo); en una de Atlas, no.
+    importada: data.import_batch_id != null,
   };
 }
 

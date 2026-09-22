@@ -54,11 +54,13 @@ export type PipelineInputs = {
   bisConditions: { contraindicated: boolean } | null;
   /** La cintura y la cadera MEDIDAS (cm), que el gate del diagnostico exige. */
   circunferencias: { cintura: number | null; cadera: number | null };
+  /** Vino de un lote del HTML: cambia el remedio que se le ofrece al profesional. */
+  importada: boolean;
 };
 
 export async function readPipelineInputs(evaluationId: string): Promise<PipelineInputs | null> {
   const [ev] = await db
-    .select({ patientId: evaluations.patientId, evaluationType: evaluations.type })
+    .select({ patientId: evaluations.patientId, evaluationType: evaluations.type, importBatchId: evaluations.importBatchId })
     .from(evaluations)
     .where(eq(evaluations.id, evaluationId))
     .limit(1);
@@ -171,6 +173,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     gripStrengthKg: intake?.gripStrengthKg == null ? null : Number(intake.gripStrengthKg),
     // Las condiciones de la toma: si se guardaron y si hay contraindicacion. El gate del diagnostico las exige.
     bisConditions: intake ? { contraindicated: intake.contraindicated } : null,
+    importada: ev.importBatchId != null,
     // Las circunferencias MEDIDAS, que el gate del diagnostico tambien exige (regla de negocio).
     circunferencias: {
       cintura: bisRaw[normalizeHeader(MEASURED_WAIST_HEADER)] ?? null,

@@ -61,6 +61,10 @@ export function evaluarRequisitosDelImport(
 // regla se repite en el sitio que ningun camino puede saltarse.
 export function circunferenciasParaDiagnosticar(
   medidas: { cintura: number | null; cadera: number | null },
+  // EL REMEDIO NO ES EL MISMO EN LOS DOS CAMINOS (Santiago, 2026-09-22): con el paciente delante se vuelve a
+  // medir; en una consulta importada del HTML el tamizaje fue hace meses y no se puede repetir, asi que se
+  // teclean en Antropometria.
+  importada = false,
 ): { allowed: true } | { allowed: false; message: string } {
   const faltan = [
     medidas.cintura == null || medidas.cintura <= 0 ? "la cintura" : null,
@@ -69,8 +73,9 @@ export function circunferenciasParaDiagnosticar(
   if (faltan.length === 0) return { allowed: true };
   return {
     allowed: false,
-    message:
-      `Para generar el diagnóstico falta ${faltan.join(" y ")} de la medición. Vuelve a tomar la medida en Biody Manager con esos datos y re-importa el XLSX.`,
+    message: importada
+      ? `Para generar el diagnóstico falta ${faltan.join(" y ")} de la medición. Escríbela en Antropometría: esta consulta se importó del HTML y su toma no se puede repetir.`
+      : `Para generar el diagnóstico falta ${faltan.join(" y ")} de la medición. Vuelve a tomar la medida en Biody Manager con esos datos y re-importa el XLSX.`,
   };
 }
 

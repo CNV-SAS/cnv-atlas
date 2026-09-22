@@ -80,7 +80,7 @@ export async function runClinicalPipeline(
 
   // Y LA CINTURA Y LA CADERA, por la misma razon: la regla de negocio las exige y su guarda vivia solo en el
   // boton del XLSX. Un importado del HTML sin cadera se diagnosticaba igual.
-  const circunferencias = circunferenciasParaDiagnosticar(inputs.circunferencias);
+  const circunferencias = circunferenciasParaDiagnosticar(inputs.circunferencias, inputs.importada);
   if (!circunferencias.allowed) return err(appError("validation", circunferencias.message));
 
   const model = await readActiveModel();

@@ -361,6 +361,7 @@ export default async function ResultadosEvaluacionPage({
     const entradaSinDiagnostico = {
       evaluationId: id,
       diagnosticoGenerado: false,
+      importada: header.importada,
       consentStatus: entryConsent,
       surveyDomains: entrySurvey,
       composition: entryComposition,
