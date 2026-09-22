@@ -129,15 +129,15 @@ describe("buildComposition: disposiciones eval/diag y reparto del bioelectrico (
     const iiiKeys = (nivelIII?.rows ?? []).map((r) => r.key);
     const iiKeys = (nivelII?.rows ?? []).map((r) => r.key);
     // Impedancias -> Nivel III; Cole-Cole -> Nivel II (como los reparte Gildardo en el frozen).
-    for (const k of ["R50", "Xc", "Z5", "Z50", "Z200"]) expect(iiiKeys).toContain(k);
+    for (const k of ["R50", "X50", "Z5", "Z50", "Z200"]) expect(iiiKeys).toContain(k);
     for (const k of ["Re", "Ri", "Rinf", "C", "Fo"]) expect(iiKeys).toContain(k);
     // Todos marcados como bioelectricos (llevan el icono de rayo).
-    for (const k of ["R50", "Xc", "Z5", "Z50", "Z200", "Re", "Ri", "Rinf", "C", "Fo"]) {
+    for (const k of ["R50", "X50", "Z5", "Z50", "Z200", "Re", "Ri", "Rinf", "C", "Fo"]) {
       expect(byKey(k)?.bioelectric, `${k} debe llevar el icono bioelectrico`).toBe(true);
     }
     // NO existe un nivel "Bioeléctrico" aparte; y NINGUN crudo bioelectrico aparece en Diagnostico.
     expect(comp.eval.some((l) => l.title.startsWith("Bioeléctrico"))).toBe(false);
-    for (const k of ["R50", "Xc", "Z5", "Z50", "Z200", "Re", "Ri", "Rinf", "C", "Fo"]) {
+    for (const k of ["R50", "X50", "Z5", "Z50", "Z200", "Re", "Ri", "Rinf", "C", "Fo"]) {
       expect(diagKeys.has(k), `${k} no debe estar en Diagnostico`).toBe(false);
     }
   });
@@ -245,5 +245,19 @@ describe("buildComposition: % sin grasa derivados sobre FFW cuando el equipo no 
     const dev = raw[h("ECW_sg_pct")];
     const fila = allCompositionRows(conPct).find((r) => r.key === "ECW_sg_pct");
     expect(fila?.value).toBe(dev);
+  });
+});
+
+// ═══ LA REACTANCIA A 50 kHz ES LA MEDIDA, NO LA DEL CENTRO DEL CIRCULO (2026-09-22) ═══
+// La fila "Reactancia 50 kHz (Xc)" mostraba `Xc` del contrato del motor, que es la reactancia del CENTRO
+// DEL CIRCULO de Cole (negativa por definicion; su v9 L81). Su tabla de Wang lee `bis.X50` (v9 L7792).
+describe("la fila de la reactancia a 50 kHz", () => {
+  it("lee la reactancia medida a 50 kHz, positiva, y no la del centro del círculo", () => {
+    const c = buildComposition(
+      { "Reactancia à 50khz Ohm": 52.1, "Xcc reactance of center of circle": -52.7 },
+      null,
+    );
+    const fila = [...c.eval, ...c.diag].flatMap((n) => n.rows).find((r) => r.label === "Reactancia 50 kHz (Xc)");
+    expect(fila?.value).toBe(52.1);
   });
 });
