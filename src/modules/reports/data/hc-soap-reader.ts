@@ -6,7 +6,7 @@ import { getHistoriaClinicaDoc } from "./hc-documento-reader";
 import { lineaDeReemplazo, observacionesVigentes } from "./observaciones-vigentes";
 import { redactarEncuesta } from "../services/encuesta-redactada";
 import { alertasDeLaConsulta } from "@/clinical-engine/alertas-de-la-consulta";
-import { alertasParaElSoap } from "../services/alertas-en-el-soap";
+import { alertasParaElSoap, CAMPOS_DEL_PARRAFO_DE_DIETA } from "../services/alertas-en-el-soap";
 import type { HistoriaClinicaSoap } from "./reports-view-types";
 
 // ═══ LA HISTORIA CLINICA EN FORMATO SOAP (plan aprobado, 2026-09-20) ═══
@@ -25,6 +25,11 @@ import type { HistoriaClinicaSoap } from "./reports-view-types";
 //
 // LAS ALERTAS VAN EN LA A (observacion g, 2026-09-21), como primera linea, de la MISMA fuente que el
 // resumen de IA. La S sigue sin semaforo: es lo que el paciente respondio, y la alerta es su lectura.
+
+/** Lo que un rotulo dice ANTES del guion largo: la lectura, sin la conducta que trae detras. */
+export function sinConducta(rotulo: string): string {
+  return rotulo.split(/\s+—\s+/)[0].trim();
+}
 
 export async function getHistoriaClinicaSoap(evaluationId: string): Promise<HistoriaClinicaSoap | null> {
   const [hc, domains] = await Promise.all([
@@ -52,7 +57,15 @@ export async function getHistoriaClinicaSoap(evaluationId: string): Promise<Hist
     objetivo: {
       pesoKg: hc.pesoKg,
       tallaCm: hc.tallaCm,
-      composicion: hc.composicion,
+      // DOS AJUSTES DE LA O (2026-09-21), los dos por lo mismo: la O es lo que se MIDE.
+      //   · Peso y estatura ya abren la O en su propia linea: en la tabla salian por segunda vez.
+      //   · Algunos rotulos de su tabla traen una CONDUCTA detras del guion largo ("Déficit matriz — considerar
+      //     colágeno", "vigilar colágeno"). Es la misma regla que las alertas: el sistema no pone conductas en
+      //     un documento que firma el profesional. Queda la lectura, sin la recomendacion. La HC, que es su
+      //     documento, no se toca.
+      composicion: hc.composicion
+        .filter((f) => f.clave !== "peso" && f.clave !== "talla")
+        .map((f) => ({ ...f, clasificacion: f.clasificacion ? sinConducta(f.clasificacion) : null })),
       indices: hc.indices,
     },
 
@@ -68,6 +81,8 @@ export async function getHistoriaClinicaSoap(evaluationId: string): Promise<Hist
             d.questions.map((q) => ({ fieldKey: q.fieldKey, pregunta: q.questionText, valor: q.answerValue })),
           ),
         ),
+        // El parrafo de dieta va en la A: lo que ya dice no se repite en la lista roja.
+        hc.resumenProfesional ? CAMPOS_DEL_PARRAFO_DE_DIETA : undefined,
       ),
       resumenProfesional: hc.resumenProfesional,
       dfiParrafo: hc.dfiParrafo,

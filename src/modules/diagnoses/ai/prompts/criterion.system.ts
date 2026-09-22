@@ -1,4 +1,4 @@
-import promptV6 from "./criterion.system.v6.json";
+import promptV7 from "./criterion.system.v7.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -71,4 +71,12 @@ import promptV6 from "./criterion.system.v6.json";
 // Y dos precisiones: la PABU por debajo de phi (la leyo como "sobrecarga estructural") y la concordancia.
 //
 // LA V5 NO SE RETIRA: los resumenes generados con ella apuntan a esa version.
-export const CRITERION_SYSTEM_PROMPT: string = promptV6.system;
+//
+// V7 (2026-09-21, segunda prueba de Santiago con el mismo paciente). La v6 arreglo lo grande (salieron los
+// siete digestivos y no invento causas) y quedaron tres detalles: metio como rojo el consumo de D1 ("sal
+// extra", "carnes rojas"), el cierre recomendo ("reducción de la exposición a la sal") y abrevio mal el
+// IEHH. La lista roja pasa a ser CERRADA y sin D1; el cierre nombra rutas y prioridad, sin conductas; y los
+// indices se nombran como vienen en el bloque de indicadores.
+//
+// LA V6 NO SE RETIRA, por la misma razon.
+export const CRITERION_SYSTEM_PROMPT: string = promptV7.system;

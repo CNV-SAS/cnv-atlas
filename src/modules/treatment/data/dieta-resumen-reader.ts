@@ -6,7 +6,7 @@ import { getCompositionForEvaluation } from "@/modules/diagnoses/data/compositio
 import { allCompositionRows, type Composition } from "@/modules/diagnoses/data/composition-map";
 import { edadEnFecha } from "@/lib/format/edad";
 import { decodeSurveyValue } from "@/modules/clinical-pipeline/services/build-engine-input";
-import { FREQ_OPC, FREQ_SUP } from "@/clinical-engine/frozen/engine.patron.js";
+import { FREQ_GROUPS, FREQ_OPC, FREQ_SUP } from "@/clinical-engine/frozen/engine.patron.js";
 import { resumenDietaParrafo } from "@/clinical-engine/resumen-dieta";
 import {
   resumenEjercicioParrafo,
@@ -128,13 +128,25 @@ async function buildEnc(
   return enc;
 }
 
+// LAS SIGLAS DE LOS GRUPOS VUELVEN A MAYUSCULA AL MOSTRARSE (2026-09-21). Su parrafo (verbatim, con golden)
+// pasa el rotulo ENTERO a minusculas, y "Ultraprocesados (PCBU)" sale como "ultraprocesados (pcbu)": una
+// sigla que nadie reconoce. No se toca su funcion, que esta bajo paridad; se corrige al MOSTRAR, igual que el
+// guion largo. Las siglas salen de sus propios rotulos, no de una lista nuestra.
+const SIGLAS_DE_LOS_GRUPOS: string[] = (FREQ_GROUPS as { label: string }[]).flatMap((g) =>
+  [...g.label.matchAll(/(([A-ZÁÉÍÓÚÑ]{2,}))/g)].map((m) => m[1]),
+);
+
+export function siglasEnMayuscula(texto: string): string {
+  return SIGLAS_DE_LOS_GRUPOS.reduce((t, s) => t.split(`(${s.toLowerCase()})`).join(`(${s})`), texto);
+}
+
 export async function getDietaResumenForEvaluation(
   evaluationId: string,
   sexo: string,
 ): Promise<string | null> {
   const enc = await buildEnc(evaluationId, sexo);
   if (!enc) return null;
-  const parrafo = resumenDietaParrafo(enc);
+  const parrafo = siglasEnMayuscula(resumenDietaParrafo(enc));
   return parrafo === "" ? null : parrafo; // "" = nada legible: se omite (no se muestra un parrafo vacio)
 }
 
