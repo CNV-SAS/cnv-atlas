@@ -35,6 +35,7 @@ export const QUE_HACE: Record<string, string> = {
   "/verificaciones": "La cola de RUT por verificar, para que se les pueda pagar.",
   "/admin": "Altas, bajas y roles de las cuentas.",
   "/admin/ia": "El proveedor de IA y los textos de los prompts, por versión.",
+  "/admin/importar-html": "Revisar e importar los pacientes que un profesional exportó del HTML.",
   "/admin/auditoria": "El registro de todo lo que ocurre sobre un dato clínico.",
   "/auditoria/notas": "Notas clínicas seudonimizadas, bajo un permiso con vigencia.",
   "/auditoria/solicitar": "Pedir acceso temporal a datos clínicos, con su motivo.",
