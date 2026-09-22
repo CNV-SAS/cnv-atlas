@@ -29,9 +29,40 @@ describe("pulir: lo que se arregla sin cambiar el sentido", () => {
     expect(pulirResumen("PABU 1,05 (k = 0.72 (M)) por debajo de φ")).toBe("PABU 1,05 por debajo de φ");
   });
 
-  it("y no toca ninguna palabra", () => {
+  it("y no toca lo que no tiene que tocar", () => {
     const limpio = "El IFC es 6,98 (Alto) y el IRC 1,62 (Bajo).";
     expect(pulirResumen(limpio)).toBe(limpio);
+  });
+});
+
+describe("pulir, segunda ronda (2026-09-22): sugiere e indica, y las respuestas en minúscula", () => {
+  it("'sugiere' y 'sugiriendo' dicen lo que la clasificación dice: se cambian por 'indica'", () => {
+    const f = pulirResumen("El IRC es de 1,62 (Bajo), sugiriendo un bajo riesgo. Sugiere integridad.");
+    expect(f).toBe("El IRC es de 1,62 (Bajo), indicando un bajo riesgo. Indica integridad.");
+    expect(formasProhibidas(f)).toEqual([]);
+  });
+
+  it("las respuestas del paciente a media frase van en minúscula; las clasificaciones y las siglas no", () => {
+    const respuestas = [
+      "Cereales refinados y harinas blancas",
+      "Todos los días",
+      "Ultraprocesados (PCBU)",
+      "Obesidad",
+      "Sobrepeso",
+    ];
+    const f = pulirResumen(
+      "Consume Cereales refinados y harinas blancas y Ultraprocesados (PCBU) Todos los días. Percibe su cuerpo como Obesidad. Su IMC es 25,7 (Sobrepeso). Obesidad en la familia.",
+      respuestas,
+    );
+    expect(f).toBe(
+      "Consume cereales refinados y harinas blancas y ultraprocesados (PCBU) todos los días. Percibe su cuerpo como obesidad. Su IMC es 25,7 (Sobrepeso). Obesidad en la familia.",
+    );
+  });
+
+  it("y el servicio le pasa las respuestas del paciente", () => {
+    const S = sinComentarios(readFileSync("src/modules/diagnoses/services/generate-criterion.ts", "utf8"));
+    expect(S).toContain("pulirResumen(limpiarMarcadores(completion.text), respuestas)");
+    expect(S).toContain("const respuestas = input.encuesta.map((r) => r.valor)");
   });
 });
 
@@ -41,7 +72,7 @@ describe("detectar: lo que no se borra, se avisa", () => {
       formasProhibidas(
         "lo que sugiere una posible disociación entre los indicadores; requiere atención a largo plazo",
       ),
-    ).toEqual(["sugiere", "posible", "a largo plazo", "requiere atención"]);
+    ).toEqual(["posible", "a largo plazo", "requiere atención"]);
     // "imposible" no es "posible".
     expect(formasProhibidas("Es imposible afirmarlo con estos datos.")).toEqual([]);
   });
@@ -50,7 +81,7 @@ describe("detectar: lo que no se borra, se avisa", () => {
     const S = sinComentarios(readFileSync("src/modules/diagnoses/services/generate-criterion.ts", "utf8"));
     expect(S).toContain("if (formasDelPrimero.length > 0) {");
     expect(S.match(/await generateText\(messages, config\)/g)).toHaveLength(2);
-    expect(S).toContain("pulirResumen(limpiarMarcadores(completion.text))");
+    expect(S).toContain("pulirResumen(limpiarMarcadores(completion.text), respuestas)");
     expect(S).toContain("formas_prohibidas_final: formasFinales");
   });
 

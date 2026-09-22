@@ -63,3 +63,6 @@ docs/entregas/cotejo-visual/**/*.jpeg
 
 # Script de limpieza puntual de la nube (no se versiona: lleva un id de produccion)
 limpieza-demo.sql
+
+# Exportaciones del HTML con datos de pacientes (importacion desde el HTML): nunca al repositorio.
+atlas-exportacion-*.json
