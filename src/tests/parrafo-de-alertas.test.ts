@@ -36,8 +36,10 @@ describe("el párrafo", () => {
   });
 
   it("y TODAS las rojas, agrupadas por dominio, tal cual respondió", () => {
-    expect(p).toContain("en salud digestiva, hinchazón abdominal: Siempre; náuseas: Siempre");
-    expect(p).toContain("en hábitos de vida, cuántas horas duerme por noche: Menos de 5h");
+    expect(p).toContain("\nSalud digestiva. Hinchazón abdominal: Siempre; náuseas: Siempre.");
+    expect(p).toContain("\nHábitos de vida. Cuántas horas duerme por noche: Menos de 5h.");
+    // Lista limpia, no prosa encadenada (Santiago, 2026-09-22).
+    expect(p).not.toContain(". Y en ");
   });
 
   it("y nada más: ni la conducta de la regla ni una respuesta que no se le dio", () => {
@@ -78,8 +80,8 @@ describe("dónde va", () => {
 
 describe("la dirección de la PABU, resuelta de la cifra", () => {
   it("por debajo y por encima de φ", () => {
-    expect(direccionDeLaPabu(1.202)).toBe("por debajo de φ = 1,618 (1,202)");
-    expect(direccionDeLaPabu(2.362)).toBe("por encima de φ = 1,618 (2,362)");
+    expect(direccionDeLaPabu(1.202)).toBe("por debajo de φ = 1,618 (1,202); se lee como exceso de adiposidad");
+    expect(direccionDeLaPabu(2.362)).toBe("por encima de φ = 1,618 (2,362); se lee como déficit estructural");
     expect(direccionDeLaPabu(null)).toBeNull();
   });
 });

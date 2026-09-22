@@ -92,12 +92,15 @@ export function formatDateLong(iso: string | number | Date | null | undefined): 
 // Aqui se leen los componentes del texto y se formatean tal cual, sin construir un Date intermedio.
 const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
-/** dd/mm/aaaa de una fecha PURA (YYYY-MM-DD). Sin conversion de zona. */
+/**
+ * d/m/aaaa de una fecha PURA (YYYY-MM-DD), sin ceros a la izquierda: el MISMO formato que `formatDate`
+ * (2026-09-22). Salian dos formatos en el mismo documento ("10/9/2026" y "25/09/2026"). Sin conversion de zona.
+ */
 export function formatDateOnly(iso: string | null | undefined): string {
   if (!iso) return "";
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!m) return iso; // no es una fecha pura: se devuelve tal cual antes que mentir
-  return `${m[3]}/${m[2]}/${m[1]}`;
+  return `${Number(m[3])}/${Number(m[2])}/${m[1]}`;
 }
 
 /** "4 sep 2026" de una fecha PURA. Sin conversion de zona. */

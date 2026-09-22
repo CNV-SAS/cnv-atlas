@@ -1,4 +1,4 @@
-import promptV8 from "./criterion.system.v8.json";
+import promptV9 from "./criterion.system.v9.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -85,4 +85,9 @@ import promptV8 from "./criterion.system.v8.json";
 // "todas y solo esas". Se compone en `services/parrafo-de-alertas` y se inserta tras la apertura. El
 // modelo sigue viendo las alertas para leerlas en su dominio. Y dos cosas mas: cita los datos de cada
 // dominio (le llegaban y no los usaba; el HTML de Gildardo si) y recibe la direccion de la PABU resuelta.
-export const CRITERION_SYSTEM_PROMPT: string = promptV8.system;
+//
+// V9 (2026-09-22, prueba con Gemini y Groq): el cierre va en un parrafo de prosa (el suyo cierra asi, y el
+// nuestro salia como lista suelta de rutas); se le prohibe anticipar consecuencias ("susceptibilidad futura")
+// y se le pide releer antes de entregar; y la PABU le llega con su lectura resuelta, porque Gemini escribio
+// "por exceso" y "deficit estructural" en la misma frase. LA V8 NO SE RETIRA.
+export const CRITERION_SYSTEM_PROMPT: string = promptV9.system;

@@ -12,7 +12,7 @@ import { formatDate, formatDateOnly, formatDateOnlyShort } from "@/lib/format/da
 
 describe("formato de fechas puras", () => {
   it("NO retrocede un día: es el defecto que corrige", () => {
-    expect(formatDateOnly("2026-09-04")).toBe("04/09/2026");
+    expect(formatDateOnly("2026-09-04")).toBe("4/9/2026");
     expect(formatDateOnlyShort("2026-09-04")).toBe("4 sep 2026");
   });
 
@@ -23,7 +23,7 @@ describe("formato de fechas puras", () => {
   });
 
   it("el primer día del mes y del año no se caen al anterior", () => {
-    expect(formatDateOnly("2026-01-01")).toBe("01/01/2026");
+    expect(formatDateOnly("2026-01-01")).toBe("1/1/2026");
     expect(formatDateOnlyShort("2027-03-01")).toBe("1 mar 2027");
   });
 
@@ -38,7 +38,7 @@ describe("formato de fechas puras", () => {
   });
 
   it("tolera un timestamp completo tomando solo su parte de fecha", () => {
-    expect(formatDateOnly("2026-09-04T23:30:00Z")).toBe("04/09/2026");
+    expect(formatDateOnly("2026-09-04T23:30:00Z")).toBe("4/9/2026");
   });
 });
 
@@ -59,5 +59,12 @@ describe("los consumidores de fechas puras", () => {
     expect(PAGE).toContain("formatDateOnly(r.referredAt)");
     expect(PAGE).toContain("formatDateOnly(r.returnedAt)");
     expect(PAGE).toContain("formatDateOnly(hcHeader.proximaCita)");
+  });
+});
+
+describe("un solo formato de fecha en toda la app (2026-09-22)", () => {
+  it("la fecha pura y la del instante se escriben igual", () => {
+    // Mediodia en Bogota: el instante cae el mismo dia en cualquier zona razonable del runtime.
+    expect(formatDateOnly("2026-09-25")).toBe(formatDate("2026-09-25T17:00:00Z"));
   });
 });

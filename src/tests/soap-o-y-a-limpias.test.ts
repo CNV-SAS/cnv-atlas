@@ -98,7 +98,7 @@ describe("la S", () => {
 
   it("y el rótulo del grupo no se repite en su fila", () => {
     const LECTOR = sinComentarios(readFileSync("src/modules/reports/data/hc-soap-reader.ts", "utf8"));
-    expect(LECTOR).toContain("i.startsWith(`${a.grupo}: `) ? i.slice(a.grupo.length + 2) : i");
+    expect(LECTOR).toContain("a.items.map((i) => sinRotuloRepetido(a.grupo, i))");
     expect(LECTOR).toContain("preguntasDeLosAntecedentes(");
   });
 });
@@ -126,5 +126,38 @@ describe("la P", () => {
     expect(COMPOSICION).toContain('voz: "clinica"');
     const RECS = readFileSync("src/modules/reports/data/hc-recomendaciones.ts", "utf8");
     expect(RECS).toContain('voz === "clinica" ? "para su peso" : "para tu peso"');
+  });
+});
+
+// ═══ LOS CINCO DETALLES DEL SOAP (Santiago, 2026-09-22) ═══
+describe("el SOAP, los detalles del 22 de septiembre", () => {
+  it("el rótulo que dice lo mismo que su grupo no se repite", async () => {
+    const { sinRotuloRepetido } = await import("@/modules/reports/data/hc-soap-reader");
+    expect(
+      sinRotuloRepetido("Exposición a contaminantes", "Exposición habitual a contaminantes: Pesticidas / agroquímicos"),
+    ).toBe("Pesticidas / agroquímicos");
+    expect(sinRotuloRepetido("Diagnósticos personales", "Diagnósticos personales: Obesidad")).toBe("Obesidad");
+    // Y el que dice otra cosa se queda.
+    expect(sinRotuloRepetido("Alergias e intolerancias", "Alergias alimentarias: Ninguna")).toBe(
+      "Alergias alimentarias: Ninguna",
+    );
+    expect(sinRotuloRepetido("Antecedentes quirúrgicos", "Cirugía digestiva o metabólica: Ninguna")).toBe(
+      "Cirugía digestiva o metabólica: Ninguna",
+    );
+  });
+
+  it("la sección que ya no trae alergias se llama Digestión", async () => {
+    const { sinAlergiasSiNoLasTrae } = await import("@/modules/reports/data/hc-soap-reader");
+    expect(sinAlergiasSiNoLasTrae("Alergias y digestión", "Refiere hinchazón abdominal: Siempre")).toBe("Digestión");
+    expect(sinAlergiasSiNoLasTrae("Alergias y digestión", "Refiere alergias alimentarias: Maní")).toBe(
+      "Alergias y digestión",
+    );
+  });
+
+  it("sin paréntesis anidados en la clasificación", async () => {
+    const { conClasificacion } = await import("@/modules/reports/services/soap-a-texto");
+    expect(conClasificacion("Ganancia real (no agua/grasa)")).toBe(" · Ganancia real (no agua/grasa)");
+    expect(conClasificacion("Normal")).toBe(" (Normal)");
+    expect(conClasificacion(null)).toBe("");
   });
 });

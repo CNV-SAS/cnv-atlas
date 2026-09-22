@@ -29,6 +29,16 @@ const nl = (partes: (string | null | undefined)[]): string =>
  */
 export type AnamnesisVigente = { texto: string; autor: string; profesion: string | null; fecha: string } | null;
 
+/**
+ * La clasificacion detras de la cifra. Va entre parentesis, salvo que ella misma los traiga ("Ganancia real
+ * (no agua/grasa)", rotulo de su clasificador que no se toca): entonces va tras un punto medio, para no dejar
+ * parentesis anidados (Santiago, 2026-09-22).
+ */
+export function conClasificacion(clasificacion: string | null | undefined): string {
+  if (!clasificacion) return "";
+  return clasificacion.includes("(") ? ` · ${clasificacion}` : ` (${clasificacion})`;
+}
+
 export function soapATexto(
   soap: HistoriaClinicaSoap,
   fechaFormateada: string,
@@ -62,11 +72,11 @@ export function soapATexto(
     "O · OBJETIVO",
     medidas.length ? medidas.join(" · ") : null,
     ...soap.objetivo.composicion.map(
-      (c) => `${c.etiqueta}: ${c.valor}${c.clasificacion ? ` (${c.clasificacion})` : ""}`,
+      (c) => `${c.etiqueta}: ${c.valor}${conClasificacion(c.clasificacion)}`,
     ),
     soap.objetivo.indices.length ? "Índices alterados:" : null,
     ...soap.objetivo.indices.map(
-      (i) => `  ${i.nombre}: ${i.valor}${i.clasificacion ? ` (${i.clasificacion})` : ""}`,
+      (i) => `  ${i.nombre}: ${i.valor}${conClasificacion(i.clasificacion)}`,
     ),
   ]);
 
@@ -115,16 +125,10 @@ export function soapATexto(
     soap.plan.proximaCita ? `Próxima consulta: ${soap.plan.proximaCita}` : null,
   ]);
 
-  // EL AVISO DE LAS CIFRAS VIVAS VIAJA CON EL TEXTO. En la pantalla es un recuadro; en lo copiado tiene
-  // que ir igual, porque lo copiado es lo que acaba pegado en otro sistema, sin el recuadro que lo decia.
-  // EL AVISO SE DICE EN CLINICO, no en lenguaje de Atlas. "No tiene una emision registrada" nombra un
-  // mecanismo nuestro; lo que el lector necesita saber es que ese plan todavia no se entrego y que por eso
-  // las cifras pueden cambiar. Mismo hecho, dicho para quien lo lee fuera de aqui.
-  const pie = soap.prescripcionSinEmitir
-    ? "Nota: este plan todavía no se le ha entregado al paciente, así que sus cifras pueden cambiar."
-    : null;
-
-  return nl([cabecera, "", s, "", o, "", a, "", p, pie ? "" : null, pie]);
+  // EL AVISO DE LAS CIFRAS VIVAS NO VIAJA CON LO COPIADO (Santiago, 2026-09-22). Es operativo: dice en que
+  // punto del flujo de Atlas esta el plan, no algo de la consulta, y es la misma regla que ya saco de lo
+  // copiado la linea de rastro de las observaciones. En la pantalla sigue el recuadro, que es donde se acciona.
+  return nl([cabecera, "", s, "", o, "", a, "", p]);
 }
 
 // LAS ALERTAS DE LA A, linea por linea. Vive aqui y no junto a su composicion porque este modulo corre en el

@@ -169,11 +169,12 @@ describe("el texto que se copia dice lo mismo que la pantalla", () => {
     expect(texto).not.toContain("quedan registradas en el seguimiento");
   });
 
-  it("el aviso de las cifras vivas viaja con lo copiado", () => {
-    // En la pantalla es un recuadro; al pegarlo en otro sistema, el recuadro no va. La advertencia sí.
-    // Y DICHO EN CLINICO (2026-09-20): "no tiene una emision registrada" nombraba un mecanismo nuestro.
-    // Lo que el lector necesita saber es que el plan no se ha entregado y que por eso puede cambiar.
-    expect(texto).toContain("todavía no se le ha entregado al paciente");
+  it("el aviso de las cifras vivas NO viaja con lo copiado: es operativo", () => {
+    // Decision de Santiago, 2026-09-22: en la pantalla es un recuadro; en un SOAP pegado en otro sistema es
+    // ruido de nuestro flujo, como la linea de rastro de las observaciones.
+    expect(texto).not.toContain("todavía no se le ha entregado");
+    const pantalla = readFileSync("src/modules/reports/components/hc-soap.tsx", "utf8");
+    expect(pantalla).toContain("soap.prescripcionSinEmitir ?");
   });
 });
 
