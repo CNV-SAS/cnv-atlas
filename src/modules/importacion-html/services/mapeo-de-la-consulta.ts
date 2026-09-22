@@ -56,6 +56,16 @@ export function valoresBisDeLaConsulta(
     const talla = Number(consulta.tallaCm) || 0;
     if (talla > 0) out.push({ variableName: normalizeHeader(BIODY_COLUMNS.talla.header), value: talla });
   }
+  // EL ICC Y EL ICT QUE EL HTML CALCULO (sus claves van en mayuscula). Su archivo los recalcula desde la
+  // cintura, la cadera y la talla tecleadas (v9 L7154-7155), asi que el valor bueno es el suyo, no el que
+  // trajera el equipo. Se guardan en las columnas que Atlas lee para esas dos filas.
+  for (const [campo, clave] of [
+    ["ICC", "icc"],
+    ["ICT", "ict"],
+  ] as const) {
+    const v = Number(consulta[campo]) || 0;
+    if (v > 0) out.push({ variableName: normalizeHeader(BIODY_COLUMNS[clave].header), value: v });
+  }
   for (const [campo, header] of [
     ["cintura", MEASURED_WAIST_HEADER],
     ["cadera", MEASURED_HIPS_HEADER],

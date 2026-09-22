@@ -294,3 +294,14 @@ describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condi
     // suite entera esta corriendo.
   }, 30_000);
 });
+
+describe("el ICC y el ICT de la consulta importada", () => {
+  it("son los que calculó el HTML desde la cintura y la cadera tecleadas, no los del equipo", async () => {
+    const { BIODY_COLUMNS } = await import("@/clinical-engine");
+    const { normalizeHeader } = await import("@/modules/bis/services/header-map");
+    const valores = valoresBisDeLaConsulta({ Re: 627.3, ICC: 0.79, ICT: 0.47, cintura: 84, cadera: 106 });
+    const por = Object.fromEntries(valores.map((v) => [v.variableName, v.value]));
+    expect(por[normalizeHeader(BIODY_COLUMNS.icc.header)]).toBe(0.79);
+    expect(por[normalizeHeader(BIODY_COLUMNS.ict.header)]).toBe(0.47);
+  });
+});

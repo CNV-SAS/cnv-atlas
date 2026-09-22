@@ -53,6 +53,27 @@ export function evaluarRequisitosDelImport(
   };
 }
 
+// ═══ LA CINTURA Y LA CADERA, TAMBIEN EN EL DIAGNOSTICO (smoke de Santiago, 2026-09-22) ═══
+//
+// Las exige el import del XLSX como regla de negocio (estandar de la medicion y de la investigacion), pero esa
+// guarda vive en el boton, y una medicion que llega por otro camino no pasa por el: un paciente importado del
+// HTML sin cadera genero diagnostico. Es el mismo hueco que tenian las condiciones, y se cierra igual: la
+// regla se repite en el sitio que ningun camino puede saltarse.
+export function circunferenciasParaDiagnosticar(
+  medidas: { cintura: number | null; cadera: number | null },
+): { allowed: true } | { allowed: false; message: string } {
+  const faltan = [
+    medidas.cintura == null || medidas.cintura <= 0 ? "la cintura" : null,
+    medidas.cadera == null || medidas.cadera <= 0 ? "la cadera" : null,
+  ].filter((x): x is string => x != null);
+  if (faltan.length === 0) return { allowed: true };
+  return {
+    allowed: false,
+    message:
+      `Para generar el diagnóstico falta ${faltan.join(" y ")} de la medición. Vuelve a tomar la medida en Biody Manager con esos datos y re-importa el XLSX.`,
+  };
+}
+
 // ═══ Y EL DIAGNOSTICO LAS EXIGE TAMBIEN (2026-09-22) ═══
 // Mismo criterio que el boton, para la medicion que no paso por el (el paciente importado del HTML). La
 // encuesta completa ya la exige el propio pipeline, con su mensaje por dominio.

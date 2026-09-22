@@ -2,6 +2,8 @@ import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
 
+import { MEASURED_HIPS_HEADER, MEASURED_WAIST_HEADER, normalizeHeader } from "@/modules/bis/services/header-map";
+
 import { db } from "@/db";
 import {
   bisMeasurements,
@@ -50,6 +52,8 @@ export type PipelineInputs = {
   gripStrengthKg: number | null;
   // Las condiciones de la toma BIS (2026-09-22): null si no se guardaron. Las exige el gate del diagnostico.
   bisConditions: { contraindicated: boolean } | null;
+  /** La cintura y la cadera MEDIDAS (cm), que el gate del diagnostico exige. */
+  circunferencias: { cintura: number | null; cadera: number | null };
 };
 
 export async function readPipelineInputs(evaluationId: string): Promise<PipelineInputs | null> {
@@ -167,6 +171,11 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     gripStrengthKg: intake?.gripStrengthKg == null ? null : Number(intake.gripStrengthKg),
     // Las condiciones de la toma: si se guardaron y si hay contraindicacion. El gate del diagnostico las exige.
     bisConditions: intake ? { contraindicated: intake.contraindicated } : null,
+    // Las circunferencias MEDIDAS, que el gate del diagnostico tambien exige (regla de negocio).
+    circunferencias: {
+      cintura: bisRaw[normalizeHeader(MEASURED_WAIST_HEADER)] ?? null,
+      cadera: bisRaw[normalizeHeader(MEASURED_HIPS_HEADER)] ?? null,
+    },
   };
 }
 

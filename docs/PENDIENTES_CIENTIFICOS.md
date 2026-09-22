@@ -757,3 +757,19 @@ de tu `cPABU` (v9, L3971-3988): por debajo de φ, *"Desviación por exceso"*, qu
 - **Lo que el modelo seguía rompiendo lo corrige Atlas después de generar**: quita comillas y cadenas internas
   (como "k=0,78 (H)"), y si el texto trae una hipótesis o una recomendación ("sugiere", "posible", "podría",
   "requiere atención") lo genera otra vez. Si vuelve, lo guarda y le avisa al profesional.
+
+## Nueva (2026-09-22) · Atlas toma el ICC y el ICT del equipo; tú los recalculas
+
+**No pide respuesta urgente, pero conviene que la sepas.** Tu HTML **recalcula** los dos índices desde lo que
+el profesional teclea: `ICC = cintura / cadera` y `ICT = cintura / talla` (v9, L7154-7155). Atlas, en cambio,
+los **lee del export del Biody** (las columnas `Ratio Altura/Cadera` y `Ratio Cintura/Altura`, que calcula el
+equipo). Mientras la cintura y la cadera se tecleen en el Biody antes de medir, los dos caminos coinciden; si
+se teclean después, solo el tuyo se corrige.
+
+**Lo que hicimos por ahora:** en las consultas que se importan del HTML se guarda **tu** valor, el que tu
+archivo calculó, no el del equipo. Y el diagnóstico ahora exige cintura y cadera por cualquier camino.
+
+**Lo que queda por decidir (es de Santiago, con tu criterio si quieres darlo):** si Atlas debe recalcularlos
+como tú, para que teclear una cintura después arregle los dos índices. Verificamos que la cintura y la cadera
+**no entran en ninguna otra fórmula del modelo**: ni en el ISCM (que sale de IFC, MCA, E/I, FMI y FFW), ni en
+los índices bioeléctricos. Solo en el ICC, el ICT y, a través de ellos, en el predicado de la ruta R2.
