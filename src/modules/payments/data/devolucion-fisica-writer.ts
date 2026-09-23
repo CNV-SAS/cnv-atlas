@@ -123,6 +123,23 @@ export async function verificarDevuelta(input: {
   if (input.motivo.trim().length < 5) {
     throw new DevolucionNoRegistrableError("Escribe el resultado de la verificación (al menos cinco letras).");
   }
+  // EL PRODUCTO DE TERCERO NO SE REINCORPORA AL INVENTARIO DE CNV (D-3b-3): reingresa a la consignacion del
+  // proveedor, y si el proveedor no lo recibe, lo asume CNV. Ese circuito NO esta construido (no existe una
+  // ubicacion de consignacion de proveedor), asi que aqui se BLOQUEA en vez de dejar que una unidad de un
+  // tercero entre al stock vendible de CNV, que es justo lo que contabilidad dijo que no pasa. La salida que
+  // si existe hoy es darla de baja, y la devolucion al proveedor se gestiona por fuera.
+  //
+  // VA ANTES DEL SALDO a proposito: es una propiedad del PRODUCTO, no del saldo, y asi el mensaje que ve la
+  // persona dice la razon verdadera en vez de hablar de existencias.
+  if (input.decision === "reincorporar") {
+    const [producto] = await db.execute<{ ownership: string | null; brand_owner: string | null }>(sql`
+      select ownership, brand_owner from nutraceuticals where id = ${input.nutraceuticalId}`);
+    if (producto?.ownership === "tercero") {
+      throw new DevolucionNoRegistrableError(
+        `Este producto es de un tercero${producto.brand_owner ? ` (${producto.brand_owner})` : ""}: no se reincorpora al inventario de CNV, vuelve a la consignación del proveedor. Ese circuito todavía no existe en Atlas, así que por ahora la unidad se da de baja y la devolución al proveedor se gestiona por fuera.`,
+      );
+    }
+  }
   return db.transaction(async (tx) => {
     const origen = await cuarentena(tx);
     const [saldo] = await tx.execute<{ stock_quantity: number }>(sql`
@@ -136,6 +153,7 @@ export async function verificarDevuelta(input: {
 
     if (input.decision === "reincorporar") {
       if (!input.destinoId) throw new DevolucionNoRegistrableError("Elige a qué ubicación vuelve.");
+
       const [destino] = await tx.execute<{ id: string; professional_id: string | null; sellable: boolean }>(sql`
         select id, professional_id, sellable from inventory_locations where id = ${input.destinoId} and is_active`);
       if (!destino) throw new DevolucionNoRegistrableError("Esa ubicación no existe o está inactiva.");

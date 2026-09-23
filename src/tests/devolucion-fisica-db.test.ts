@@ -223,6 +223,37 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
     ).rejects.toBeInstanceOf(DevolucionNoRegistrableError);
   }, 30_000);
 
+  it("EL PRODUCTO DE TERCERO no se reincorpora al inventario de CNV (D-3b-3)", async () => {
+    const { verificarDevuelta, DevolucionNoRegistrableError } = await import(
+      "@/modules/payments/data/devolucion-fisica-writer"
+    );
+    const { db } = await import("@/db");
+    // Lo devuelto de un tercero vuelve a la consignacion del PROVEEDOR, no al stock vendible de CNV. El
+    // circuito del proveedor no existe todavia, asi que lo que se protege es que no entre por error.
+    //
+    // SE PRUEBA CON EL TERCERO REAL (hoy LUVIA) y sin tocar un solo dato: el fixture de prueba no puede ser
+    // de tercero (un CHECK de la base lo prohibe, `nutra_prueba_no_es_de_tercero`, y hace bien). Si algun dia
+    // no hay ningun producto de tercero, el caso se salta solo en vez de mentir.
+    const [tercero] = await db.execute<{ id: string }>(
+      dsql`select id from nutraceuticals where ownership = 'tercero' limit 1`,
+    );
+    if (!tercero) return;
+    const intento = verificarDevuelta({
+      nutraceuticalId: tercero.id,
+      lotId,
+      cantidad: 1,
+      decision: "reincorporar",
+      destinoId: suyaId,
+      motivo: "Sellada, íntegra y sin vencer",
+      actorId: profileId,
+      actorEmail: "fixture@cnv",
+      ip: null,
+    });
+    await expect(intento).rejects.toBeInstanceOf(DevolucionNoRegistrableError);
+    // Y por la razon VERDADERA: sin esto el caso pasaria igual por no haber existencias en cuarentena.
+    await expect(intento).rejects.toThrow(/tercero/);
+  }, 30_000);
+
   it("DAR DE BAJA: sale de cuarentena con su motivo y no vuelve a nadie", async () => {
     const { verificarDevuelta, DevolucionNoRegistrableError } = await import(
       "@/modules/payments/data/devolucion-fisica-writer"
