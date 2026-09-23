@@ -54,6 +54,24 @@ export type PatronResolution =
   // Respondio al menos un grupo: el patron calculado (grupos sin responder -> -1, diseno de Gildardo).
   | { status: "ok"; patron: PatronResult; respondidos: number; grupos: PatronGrupoView[] };
 
+/**
+ * El TEXTO canonico de una opcion del patron a partir de su ORDINAL (0-4, o 0-3 en los horarios).
+ *
+ * EXISTE POR EL HTML (2026-09-23): el HTML guarda la frecuencia como el INDICE de la opcion elegida
+ * (`val === i`, v9 L1725) y Atlas guarda el TEXTO. Son las dos mitades del mismo acoplamiento doble que
+ * describe la cabecera de este archivo: posicion y texto. Quien importe del HTML tiene que traducir, y la
+ * traduccion vive aqui, contra los textos del frozen, por la misma razon que el reader: no confiar en el
+ * orden de la base. Devuelve null si la clave no es del patron o el ordinal no existe.
+ *
+ * NO ES MATEMATICA CLINICA: es la misma tabla que el reader usa al reves.
+ */
+export function opcionCanonicaDelPatron(fieldKey: string, ordinal: number): string | null {
+  const opciones = CANON[fieldKey];
+  if (!opciones) return null;
+  if (!Number.isInteger(ordinal) || ordinal < 0 || ordinal >= opciones.length) return null;
+  return opciones[ordinal];
+}
+
 // declaredPatronKeys: los field_key de patron que DECLARA la version de la encuesta de esta evaluacion
 // (para distinguir "anterior a C9" de "no respondio"). answers: respuestas con field_key de patron.
 export function resolvePatron(
