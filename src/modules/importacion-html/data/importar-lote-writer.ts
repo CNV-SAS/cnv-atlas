@@ -30,6 +30,7 @@ import {
   valoresBisDeLaConsulta,
   type ConsultaDelHtml,
 } from "../services/mapeo-de-la-consulta";
+import { sexoDeAtlas } from "../services/formas-del-html";
 import { normalizarDocumento } from "../services/normalizar";
 
 // ═══ LA IMPORTACION (sesion 4, 2026-09-22) ═══
@@ -139,9 +140,21 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
           firstName,
           lastName,
           birthDate: typeof primera.fechaNac === "string" && primera.fechaNac ? primera.fechaNac : null,
-          sex: primera.sexo === "M" || primera.sexo === "F" ? (primera.sexo as string) : null,
+          // EL HTML GUARDA LA PALABRA, ATLAS LA LETRA (barrido del 2026-09-23). Antes este guard solo
+          // aceptaba "M"/"F" y el HTML nunca las manda, asi que TODO paciente importado quedaba con el sexo
+          // nulo: ninguno podia diagnosticarse, y en dos lectores que caen a masculino cuando falta, una
+          // paciente se clasificaba y se trataba como hombre sin que nada lo dijera.
+          sex: sexoDeAtlas(primera.sexo),
           country: typeof primera.pais === "string" ? primera.pais : null,
           city: typeof primera.ciudad === "string" ? primera.ciudad : null,
+          // LOS SOCIODEMOGRAFICOS VAN TAMBIEN AQUI (barrido del 2026-09-23). Se escribian solo en la
+          // evaluacion, que es "el valor DE ESTE ENCUENTRO"; el perfil es "el ultimo valor conocido" y es
+          // lo que lee su ficha y lo que precarga su proximo seguimiento. Con la mitad del cable, el
+          // paciente importado se veia sin escolaridad ni ocupacion aunque el dato SI habia entrado.
+          educationLevel: texto(primera.educacion),
+          occupation: texto(primera.ocupacion),
+          maritalStatus: texto(primera.estadoCivil),
+          socioeconomicStratum: texto(primera.estrato),
         });
         await tx.insert(patientContacts).values({
           patientId,

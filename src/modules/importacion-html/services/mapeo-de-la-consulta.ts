@@ -1,5 +1,12 @@
 import { BIODY_COLUMNS, opcionCanonicaDelPatron } from "@/clinical-engine";
-import { MEASURED_HIPS_HEADER, MEASURED_WAIST_HEADER, normalizeHeader } from "@/modules/bis/services/header-map";
+import {
+  MEASURED_HIPS_HEADER,
+  MEASURED_WAIST_HEADER,
+  MEASURED_X50_HEADER,
+  normalizeHeader,
+} from "@/modules/bis/services/header-map";
+
+import { conElTextoDeOtra, tipoDeDocumentoDeAtlas } from "./formas-del-html";
 
 // ═══ DE UNA CONSULTA DEL HTML A LAS FILAS DE ATLAS (sesion 4, 2026-09-22) ═══
 //
@@ -29,12 +36,19 @@ export type ConsultaDelHtml = Record<string, unknown>;
  * Asi que se traduce contra el canonico del frozen. Un ordinal que no exista NO se inventa: se deja como
  * venia para que la revision lo marque como que no calza, en vez de guardar una opcion plausible y falsa.
  */
-export function valorParaAtlas(clave: string, v: unknown): string | null {
+export function valorParaAtlas(clave: string, v: unknown, consulta?: ConsultaDelHtml): string | null {
   if (v == null || v === "") return null;
-  if (Array.isArray(v)) return v.length === 0 ? null : JSON.stringify(v);
+  // EL TEXTO LIBRE DE "OTRA" vive en un campo aparte del HTML (`<clave>_otro`) y en Atlas va dentro del
+  // mismo valor ("Otra: <texto>"). Sin la consulta a mano no hay de donde sacarlo, y la opcion queda pelada.
+  const conOtra = (valor: string) =>
+    consulta ? conElTextoDeOtra(valor, consulta[`${clave}_otro`]) : valor;
+  if (Array.isArray(v)) {
+    if (v.length === 0) return null;
+    return JSON.stringify(v.map((el) => (typeof el === "string" ? conOtra(el) : el)));
+  }
   if (typeof v === "number") return opcionCanonicaDelPatron(clave, v) ?? String(v);
   if (typeof v === "boolean") return String(v);
-  if (typeof v === "string") return v;
+  if (typeof v === "string") return conOtra(v);
   return null;
 }
 
@@ -45,7 +59,7 @@ export function respuestasDeLaConsulta(
 ): { clave: string; valor: string }[] {
   const out: { clave: string; valor: string }[] = [];
   for (const clave of claves) {
-    const valor = valorParaAtlas(clave, consulta[clave]);
+    const valor = valorParaAtlas(clave, consulta[clave], consulta);
     if (valor != null) out.push({ clave, valor });
   }
   return out;
@@ -88,6 +102,11 @@ export function valoresBisDeLaConsulta(
     const v = Number(consulta[campo]) || 0;
     if (v > 0) out.push({ variableName: normalizeHeader(BIODY_COLUMNS[clave].header), value: v });
   }
+  // LA REACTANCIA MEDIDA A 50 kHz (X50) no esta en BIODY_COLUMNS a proposito (vive aparte para no tocar la
+  // entrada del motor), asi que habia que copiarla explicitamente: sin esto, la fila "Reactancia 50 kHz" de
+  // la tabla de composicion sale vacia en toda medicion importada. No alimenta ningun indice; es display.
+  const x50 = Number(consulta.X50) || 0;
+  if (x50 > 0) out.push({ variableName: normalizeHeader(MEASURED_X50_HEADER), value: x50 });
   for (const [campo, header] of [
     ["cintura", MEASURED_WAIST_HEADER],
     ["cadera", MEASURED_HIPS_HEADER],
@@ -127,8 +146,17 @@ export function partirNombre(nombre: string): { firstName: string; lastName: str
 const TIPOS = ["CC", "CE", "TI", "PA", "NIT"] as const;
 export type TipoDocumento = (typeof TIPOS)[number];
 
-/** El tipo de documento del HTML, si es uno de los que Atlas admite. Por defecto, CC. */
+/**
+ * El tipo de documento del HTML, si es uno de los que Atlas admite. Por defecto, CC.
+ *
+ * TRADUCE LA ETIQUETA COMPLETA desde el 2026-09-23 (`tipoDeDocumentoDeAtlas`): el HTML guarda
+ * "Cédula de ciudadanía" y antes eso no calzaba con ningun codigo, asi que TODO entraba como CC. En la
+ * muestra real acertaba por casualidad; un pasaporte habria entrado como cedula con el mismo numero, y la
+ * llave del paciente es (organizacion, tipo, numero): el dia que alguien lo creara bien, quedaba duplicado.
+ */
 export function tipoDeDocumento(valor: unknown): TipoDocumento {
+  const traducido = tipoDeDocumentoDeAtlas(valor);
+  if (traducido) return traducido;
   const v = typeof valor === "string" ? valor.trim().toUpperCase() : "";
   return (TIPOS as readonly string[]).includes(v) ? (v as TipoDocumento) : "CC";
 }
