@@ -16,6 +16,17 @@ const bis = {
   FM: 18.04, FFM: 62.36, FFMI: 19.9, peso: 80.4, tallaCm: 177,
 };
 
+
+// EL PATRON ALIMENTARIO, EN LA FORMA DEL HTML: el INDICE de la opcion (0-4), no su texto. Es lo que el HTML
+// guarda de verdad (v9 L1725) y lo que el importador tiene que traducir. Sin esto, el archivo de prueba no
+// ejercitaba el patron en absoluto y el defecto que salio en produccion el 2026-09-23 no lo habria visto
+// nadie en el smoke.
+const patron = {};
+for (let i = 1; i <= 15; i++) patron[`d1_${i}_i`] = i % 5; // 0..4, variado
+patron.d1f_sal_i = 1;     // "Rara vez"
+patron.d1f_des_i = 0;     // "Si, todos los dias"
+patron.d1f_noche_i = 2;   // "Entre 8 y 9 pm"
+
 const consulta = (extra) => ({
   profesional: "Profesional Sintético",
   tipoProfesionalConsulta: "Nutricionista",
@@ -36,6 +47,7 @@ const consulta = (extra) => ({
   d3_27: "Muy mala",
   d3_26: "Menos de 5h",
   d2_21: ["Ninguno"],
+  ...patron,
   ...extra,
 });
 
