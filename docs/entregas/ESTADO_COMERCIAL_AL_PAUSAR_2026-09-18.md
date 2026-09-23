@@ -15,13 +15,14 @@ Lo comercial se pausa aquí para pulir el flujo científico, que es lo que Gilda
 | A · Avisos | Hecho y cerrado (2026-09-16), migración 0145, smoke pasado |
 | 3b sesión 3 · Cotejo con Wompi | Hecha (2026-09-16), migración 0146, smoke pasado |
 | 3b sesión 1 · Contracargos y anulaciones | Hecha (2026-09-17), migración 0147, smoke pasado salvo el detalle de abajo |
+| 3b sesión 2 · La devolución física | Hecha (2026-09-22), migraciones 0164 a 0168. El estado lo dice el candado: `pnpm vitest run devolucion-fisica-db`. Falta el smoke |
 
 **Migraciones aplicadas en la nube: 148.**
 
 ## Lo que quedó a medias
 
 1. **3b sesión 1, último repaso del smoke.** Las dos reversas del smoke quedaron **abiertas** en la nube (`anulacion_wompi`, del 17 y del 18). Falta volver a pulsar **Buscar pagos sin registrar** después del último push para ver el texto corregido, y la limpieza del producto de prueba. No bloquea nada.
-2. **3b sesión 2 · La devolución física: NO construida.** Es lo único del 3b que falta. Sus decisiones ya están tomadas por contabilidad (ver `PLAN_BLOQUES_INVENTARIO_VENTAS.md`, D-3b-3): ubicación de **"devueltas pendientes de verificación"**, que no es vendible, y la reincorporación al lote como **decisión humana registrada**, nunca automática. Y el tipo de movimiento `devolucion` que ya existe **no sirve**: significa "el Integrante devuelve a CNV", así que la devolución de una venta lleva su propio tipo.
+2. **3b sesión 2 · La devolución física: CONSTRUIDA el 2026-09-22, falta el smoke.** Quedó como la pedía D-3b-3: la cuarentena es una UBICACIÓN no vendible (`kind = cuarentena`, `sellable = false`), los tres hechos tienen tipo de movimiento propio (`devolucion_paciente`, `reincorporacion`, `baja`), y la decisión humana la exige la base: un CHECK obliga a que toda reincorporación lleve quién la hizo y toda baja su motivo. Se opera desde /pagos.
 3. **2b · Alegra a producción: preparado y esperando.** Guía en `docs/entregas/GUIA_2B_PASO_A_PRODUCCION.md`.
 
 ## Lo que espera a una persona, no a código
@@ -55,7 +56,7 @@ Quien retome esto dentro de un mes se va a encontrar cosas que parecen reales y 
 
 ## Por dónde se retoma
 
-Por la **sesión 2 del 3b**, con sus decisiones ya tomadas. Después, el **2b**. El plan vive en `docs/PLAN_BLOQUES_INVENTARIO_VENTAS.md`, que está al día.
+Orden vigente desde el 2026-09-22 (Santiago): **3b sesión 2 (hecha) → R → 4 → 5 → 6 → 2b**. Alegra a producción queda de último. El plan vive en `docs/PLAN_BLOQUES_INVENTARIO_VENTAS.md`, que está al día.
 
 ## Anotado durante la pausa (2026-09-21): "Otros productos", del ATLAS_v9
 

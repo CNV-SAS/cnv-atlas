@@ -136,8 +136,10 @@ export const suppliers = pgTable("suppliers", {
 export const inventoryLocations = pgTable("inventory_locations", {
   id: pk(),
   name: text("name").notNull(),
-  /** 'central' | 'integrante'. La central es la unica sin dueño (restriccion en la migracion). */
+  /** 'central' | 'integrante' | 'cuarentena'. Central y cuarentena van sin dueño (restriccion en la migracion). */
   kind: text("kind").notNull(),
+  /** ¿Lo que esta aqui se puede vender? La cuarentena de devoluciones, no (0164, decision D-3b-3). */
+  sellable: boolean("sellable").notNull().default(true),
   professionalId: uuid("professional_id").references(() => professionalProfiles.id),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: createdAt(),

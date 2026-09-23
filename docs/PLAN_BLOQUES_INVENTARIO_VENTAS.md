@@ -25,7 +25,7 @@ que algo ya hecho se vuelva a planear).
 | **2b** · Paso a producción | **PREPARADO, ESPERA** (guía en `docs/entregas/`). Santiago, 2026-09-14: primero se cierran todos los bloques y se confirma que el flujo funciona; después 2b, después Supabase Pro, y al final los Integrantes | Primero una venta real pequeña y controlada. Credenciales, cinco ítems, centros de costo y cuentas puente en producción, fila de `alegra_config`. Numeración compartida: sin trámite. El gate de ambiente ya está (0135) |
 | **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
 | **3** · La venta nace en Tratamiento | **HECHO (2026-09-15), migraciones 0138-0144.** Sesiones 1 y 2, pasos 5 a 8 y el titular de marca verificado en una factura de sandbox. Smoke de cierre pasado, incluido el filtro por día. **Anotado (2026-09-15): cada filtrado se siente lento** con pocas ventas; cada "Ver ese día" rehace la página entera (tres tandas de consultas en serie, la lista completa de transacciones sin límite y todos los pacientes), aunque solo cambia una consulta. Por medir antes de tocar: ver 3.8 | Sesión 1: servicio de venta. Sesión 2: venta en Tratamiento, anular, entrega auditada, revisión con su soporte y el efectivo no recibido. Candados: `venta-inventario`, `venta-anulacion-y-revision-db`, `payments-service`, `plazo-de-revision`, `cobro-reconocido-db`. Smokes: `SMOKE_BLOQUE_3_SESION_1.md` y `_SESION_2.md` |
-| 3b · Reversa | **EN CURSO. Sesiones 3 y 1 CONSTRUIDAS (2026-09-16), con sus smokes por correr; falta la 2 (devolucion fisica)** (orden de contabilidad: 3 -> 1 -> 2). Las cinco decisiones, respondidas. Empieza con el sondeo de la consulta de Wompi, que la documentacion no confirma | Registrar y sacar de las cifras, la devolucion fisica y el cotejo con Wompi. La nota credito se queda manual |
+| 3b · Reversa | **LAS TRES SESIONES CONSTRUIDAS (3 y 1 el 2026-09-16, la 2 el 2026-09-22), con sus smokes por correr** (orden de contabilidad: 3 -> 1 -> 2). Las cinco decisiones, respondidas. Empieza con el sondeo de la consulta de Wompi, que la documentacion no confirma | Registrar y sacar de las cifras, la devolucion fisica y el cotejo con Wompi. La nota credito se queda manual |
 | 4 · Liquidaciones | Pendiente | — |
 | 5 · Distribución | Pendiente | — |
 | 6 · Domicilio | Pendiente | — |
@@ -1424,12 +1424,19 @@ Santiago, en el smoke de cierre: "funciona, solo que es algo lento". Con 10 vent
 | Sesión | Qué trae | Migración | Smoke en navegador |
 |---|---|---|---|
 | **1 · La reversa se registra y sale de las cifras** | **CONSTRUIDA (2026-09-16), falta el smoke** (`SMOKE_3B_SESION_1_CONTRACARGOS.md`). Migracion 0147. Candados: `reversa`, `reversa-db` | Sí (0147) | Sí |
-| **2 · La devolución física** | El reingreso de la unidad, ligado a la línea de venta, con su tipo de movimiento propio | Sí (tipo de movimiento nuevo y su CHECK) | Sí |
+| **2 · La devolución física** | **CONSTRUIDA (2026-09-22), falta el smoke.** El estado lo dice el candado, no esta fila: `pnpm vitest run devolucion-fisica-db`. Migraciones 0164 a 0168 | Sí (0164 a 0168: la ubicación de cuarentena, tres tipos de movimiento y sus CHECK) | Sí |
 | **3 · El cotejo con Wompi** | **CONSTRUIDA (2026-09-16), falta el smoke** (`SMOKE_3B_SESION_3_COTEJO_WOMPI.md`). Migración 0146. Candados: `cotejo-wompi`, `cotejo-wompi-db` | Sí (0146, el rastro de cada corrida) | Sí |
 
 **Sesión 1.** Una reversa NO es un campo más en la venta: es un caso que dura días y cambia de estado (abierta → ganada o perdida), así que va en su tabla, como el faltante. Dirección la abre con la referencia de Wompi. Solo al **perderse** se revierten el ingreso y la comisión, con filas negativas que apuntan a las originales (la forma de la 0142, ya construida), y queda pendiente la nota crédito manual. Un `VOIDED` sobre una venta pagada abre la reversa solo y avisa.
 
-**Sesión 2.** **Ojo con el tipo de movimiento:** el `devolucion` que existe significa "el Integrante devuelve a CNV", no "el paciente devuelve el producto". Reusarlo mezclaría dos hechos distintos en el saldo, así que la devolución de una venta lleva su propio tipo, ligado a la línea de venta. El destino de la unidad depende de la decisión D-3b-3 de abajo.
+**Sesión 2 (construida el 2026-09-22).** **Ojo con el tipo de movimiento:** el `devolucion` que existe significa "el Integrante devuelve a CNV", no "el paciente devuelve el producto". Reusarlo mezclaría dos hechos distintos en el saldo, así que la devolución de una venta lleva su propio tipo, ligado a la línea de venta. El destino de la unidad depende de la decisión D-3b-3 de abajo.
+
+Cómo quedó, en la forma que exige D-3b-3:
+
+- **La cuarentena es una UBICACIÓN, no un estado del producto**, porque lo que decide si una unidad se puede vender es dónde está. `inventory_locations.sellable` es del sitio; "Devueltas pendientes de verificación" es su propia clase de ubicación (`kind = 'cuarentena'`), una sola y sin dueño, igual que la central.
+- **Tres tipos de movimiento nuevos**, uno por hecho: `devolucion_paciente` (suma, exige su línea de venta), `reincorporacion` (dos movimientos, sale de cuarentena y entra a una ubicación vendible) y `baja` (resta, exige motivo escrito). Cada valor de enum va en su propia migración: `ALTER TYPE ... ADD VALUE` no corre dentro de una transacción, y un valor recién creado tampoco se puede usar en ella.
+- **La decisión humana la exige la BASE, no la pantalla:** un CHECK obliga a que toda reincorporación lleve `created_by`, y otro a que toda baja lleve su motivo (cinco letras o más). Así ninguna ruta futura puede reincorporar sin responsable.
+- **No se devuelven más unidades de las que salieron**, contando lo ya devuelto de esa misma línea.
 
 **Lo que el sondeo dejo confirmado (2026-09-16), y que la sesion 1 usa:**
 

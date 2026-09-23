@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { conLimite } from "@/lib/observability/con-limite";
 import { CotejoConWompi } from "@/modules/payments/components/cotejo-con-wompi";
+import { DevueltasPendientes } from "@/modules/payments/components/devueltas-pendientes";
+import { listarDestinosVendibles, listarDevueltasPendientes } from "@/modules/payments/data/devolucion-fisica-writer";
 import { ReversasDeVenta } from "@/modules/payments/components/reversas-de-venta";
 import { listarReversas } from "@/modules/payments/data/reversas-writer";
 import { ultimaCorrida } from "@/modules/payments/data/conciliacion-repository";
@@ -172,6 +174,9 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
         conLimite("pagos.dias-con-ventas-sin-cerrar", contarVentasSinDocumentoPorDia, []),
         conLimite("pagos.pendientes-de-accion", listarPendientesDeAccion, []),
         conLimite("pagos.reversas", listarReversas, []),
+        // La devolucion fisica (3b sesion 2): lo que volvio del paciente y espera verificacion.
+        conLimite("pagos.devueltas", listarDevueltasPendientes, []),
+        conLimite("pagos.destinos-vendibles", listarDestinosVendibles, []),
       ])
     : [];
   // El cotejo con Wompi lo ve quien responde por el dinero (no soporte): recuperar un pago sella ingreso,
@@ -183,6 +188,8 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   const sinDocumentoPorDia = paneles[3]?.dato ?? [];
   const pendientes = paneles[4]?.dato ?? [];
   const reversas = paneles[5]?.dato ?? [];
+  const devueltas = paneles[6]?.dato ?? [];
+  const destinos = paneles[7]?.dato ?? [];
   // EL ESTADO DE LA REVERSA, TAMBIEN EN LA LISTA (smoke del 2026-09-17): una venta con la disputa perdida se veia
   // ahi como cualquier otra, con su factura y su entrega, sin rastro de que el dinero se habia devuelto.
   const reversaDe = new Map(reversas.map((r) => [r.transactionId, r]));
@@ -275,6 +282,12 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
           final de la pagina no lo mira nadie. Contabilidad lo quiere en CERO al cierre de cada dia. */}
       {verPaneles && reversas.length > 0 ? (
         <ReversasDeVenta reversas={reversas} puedeResolver={canView} enGestion={enGestion} />
+      ) : null}
+
+      {/* LA DEVOLUCION FISICA (3b sesion 2): va junto a las reversas porque es el otro lado del mismo hecho,
+          pero NO depende de que haya una reversa abierta: una devolucion normal no es un contracargo. */}
+      {canView && devueltas.length > 0 ? (
+        <DevueltasPendientes items={devueltas} destinos={destinos} />
       ) : null}
       {verPaneles && (
         <VentasPorRevisar

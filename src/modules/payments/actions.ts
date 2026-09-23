@@ -19,6 +19,11 @@ import { canViewRevenue } from "./policies/can-view-revenue";
 import { resumirDiscrepancias } from "./conciliacion";
 import { cotejarConWompi } from "./services/conciliacion-service";
 import { abrirContracargo, registrarNotaCreditoDeReversa, resolverReversa } from "./services/reversas-service";
+import {
+  DevolucionNoRegistrableError,
+  registrarDevolucionFisica,
+  verificarDevuelta,
+} from "./data/devolucion-fisica-writer";
 import { ReversaError } from "./data/reversas-writer";
 import { reintentarFacturasPendientes } from "./services/facturacion-service";
 import { reintentarDescuentosPendientes } from "./services/inventario-venta-service";
@@ -596,5 +601,75 @@ export async function registrarNotaCreditoDeReversaFormAction(
   } catch (e) {
     reportServerError("pagos.nota-credito-reversa", e);
     return { error: "No se pudo registrar la nota crédito.", success: null, warning: null };
+  }
+}
+
+// ── LA DEVOLUCION FISICA (Bloque 3b, sesion 2) ────────────────────────────────────────────────────────
+// Quien la registra y quien verifica es la misma gente que ya lleva las reversas (direccion, admin, soporte):
+// decide sobre inventario y sobre dinero, no es del profesional.
+export type DevolucionState = { error: string | null; success: string | null; warning: string | null };
+
+const sinPermiso: DevolucionState = { error: "No autorizado.", success: null, warning: null };
+
+export async function registrarDevolucionFisicaAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  const transactionItemId = String(form.get("transactionItemId") ?? "");
+  const cantidad = Number(form.get("cantidad") ?? 0);
+  const motivo = String(form.get("motivo") ?? "").trim();
+  if (!transactionItemId) return { error: "Falta la línea de venta.", success: null, warning: null };
+  if (motivo.length < 5) return { error: "Escribe por qué se devolvió (al menos cinco letras).", success: null, warning: null };
+  try {
+    await registrarDevolucionFisica({
+      transactionItemId,
+      cantidad,
+      motivo,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    return {
+      error: null,
+      success: "Devolución registrada. La unidad queda en devueltas pendientes de verificación, no vendible.",
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof DevolucionNoRegistrableError) return { error: e.message, success: null, warning: null };
+    reportServerError("registrarDevolucionFisicaAction", e);
+    return { error: "No se pudo registrar la devolución.", success: null, warning: null };
+  }
+}
+
+export async function verificarDevueltaAction(_prev: DevolucionState, form: FormData): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  const decision = String(form.get("decision") ?? "") === "reincorporar" ? "reincorporar" : "dar_de_baja";
+  try {
+    await verificarDevuelta({
+      nutraceuticalId: String(form.get("nutraceuticalId") ?? ""),
+      lotId: String(form.get("lotId") ?? ""),
+      cantidad: Number(form.get("cantidad") ?? 0),
+      decision,
+      destinoId: String(form.get("destinoId") ?? "") || undefined,
+      motivo: String(form.get("motivo") ?? "").trim(),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    return {
+      error: null,
+      success:
+        decision === "reincorporar"
+          ? "Reincorporada al lote, con tu nombre como quien verificó."
+          : "Dada de baja contra gasto, con tu nombre y el motivo.",
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof DevolucionNoRegistrableError) return { error: e.message, success: null, warning: null };
+    reportServerError("verificarDevueltaAction", e);
+    return { error: "No se pudo registrar la verificación.", success: null, warning: null };
   }
 }

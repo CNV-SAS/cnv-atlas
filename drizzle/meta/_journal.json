@@ -1149,6 +1149,41 @@
       "when": 1791951866103,
       "tag": "0163_circunferencias_tecleadas",
       "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1791951926103,
+      "tag": "0164_devolucion_fisica",
+      "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1791951986103,
+      "tag": "0165_movimiento_devolucion_paciente",
+      "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1791952046103,
+      "tag": "0166_movimiento_reincorporacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1791952106103,
+      "tag": "0167_movimiento_baja",
+      "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1791952166103,
+      "tag": "0168_devolucion_fisica_reglas",
+      "breakpoints": true
     }
   ]
 }
