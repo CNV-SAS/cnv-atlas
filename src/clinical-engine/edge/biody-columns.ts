@@ -119,7 +119,23 @@ export const BIODY_COLUMNS: Record<string, BiodyColumn> = {
 export const DERIVED_FIELDS = ['FMI'] as const;
 
 // Insumos que el motor NÚCLEO necesita para IFC/IRC/PABU/fenotipo EFR. Faltante/fuera de rango => falla en voz alta.
-export const ENGINE_REQUIRED = ['Re','Ri','Rinf','C','FM','talla','FFMI','peso'] as const;
+//
+// SE DERIVA DE `required` Y NO SE ESCRIBE A MANO (2026-09-23). Estaba escrita a mano, como copia de los
+// `required: true` de arriba, y las dos copias se separaron: a la lista le faltaba FFM, que la tabla sí
+// declara requerido. El efecto fue invisible mientras todo entró por un export real del Biody (que trae
+// todas las columnas), y apareció con el primer camino que arma la fila a partir de valores guardados: una
+// medición importada del HTML sin FFM pasaba todas las puertas ("no le falta nada") y reventaba al generar
+// el diagnóstico, con un error de Excel en una medición que no tiene Excel.
+//
+// El orden se preserva declarándolo aquí: recorrer el objeto lo daría en orden de definición, y los
+// mensajes al profesional cambiarían de orden sin que nadie lo decidiera.
+const ENGINE_REQUIRED_ORDER = ['Re', 'Ri', 'Rinf', 'C', 'FM', 'FFM', 'talla', 'FFMI', 'peso'] as const;
+export const ENGINE_REQUIRED = ENGINE_REQUIRED_ORDER;
+
+/** Las columnas que la tabla declara requeridas. El candado `insumos-requeridos` exige que sean las mismas. */
+export const REQUIRED_COLUMNS = Object.entries(BIODY_COLUMNS)
+  .filter(([, def]) => def.required)
+  .map(([field]) => field);
 
 // Insumos de los índices SECUNDARIOS (ISCM-BIS, IEHH). Opcionales: si faltan, ISCM/IEHH = null (no se inventan).
 export const SECONDARY_REQUIRED = ['FFW','MCA_dif','ECW_sg','ICW_sg'] as const;

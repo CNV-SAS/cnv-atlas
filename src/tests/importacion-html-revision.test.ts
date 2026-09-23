@@ -20,7 +20,9 @@ type Exportador = {
 };
 const exportador = createRequire(import.meta.url)("../../scripts/exportador-html/exportador.js") as Exportador;
 
-const bis = { Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: 2.96, FM: 18.04, FFMI: 19.9, peso: 80.4, tallaCm: 177 };
+// Los NUEVE insumos del motor. FFM se agrego el 2026-09-23: faltaba aqui y en la lista de requeridos, que
+// era una copia a mano de la tabla de columnas. Sin el, este fixture probaba un caso que la app no acepta.
+const bis = { Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: 2.96, FM: 18.04, FFM: 62.36, FFMI: 19.9, peso: 80.4, tallaCm: 177 };
 const consulta = (extra: Record<string, unknown>) => ({
   nombre: "Ana Prueba",
   fechaNac: "1990-05-01",

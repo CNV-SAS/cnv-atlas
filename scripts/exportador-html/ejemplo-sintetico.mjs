@@ -8,7 +8,13 @@ import { writeFileSync } from "node:fs";
 
 const exportador = createRequire(import.meta.url)("./exportador.js");
 
-const bis = { Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: 2.96, Fo: 27.84, FM: 18.04, FFMI: 19.9, peso: 80.4, tallaCm: 177 };
+// LOS NUEVE INSUMOS DEL MOTOR, NI UNO MENOS (2026-09-23). Faltaba FFM, y el smoke de Santiago lo destapo:
+// sin el, la importacion pasaba (su puerta miraba una lista a la que le faltaba justo ese) y el diagnostico
+// reventaba despues. Un archivo de prueba incompleto no prueba el camino feliz, prueba otro camino.
+const bis = {
+  Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: 2.96, Fo: 27.84,
+  FM: 18.04, FFM: 62.36, FFMI: 19.9, peso: 80.4, tallaCm: 177,
+};
 
 const consulta = (extra) => ({
   profesional: "Profesional Sintético",

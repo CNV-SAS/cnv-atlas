@@ -17,6 +17,10 @@ import { guardarCircunferenciasAction, type CircunferenciasState } from "../acti
 //
 // Y AL GUARDAR SE RECALCULAN EL ICC Y EL ICT con la formula de Gildardo, que es lo que hace su HTML: sin eso,
 // teclear la cadera dejaria los dos indices con el valor viejo.
+//
+// SIN PLACEHOLDER (Santiago, 2026-09-23): decia "84" y "106", que son EL VALOR CORRECTO de un paciente de
+// prueba. Un ejemplo que parece un dato invita a teclearlo, y aqui lo tecleado se guarda como si lo hubiera
+// medido alguien. La unidad ya la dice el rotulo ("Cintura (cm)"), asi que el ejemplo no hacia falta.
 
 const inicial: CircunferenciasState = { error: null, success: null, warning: null };
 
@@ -60,7 +64,6 @@ export function CircunferenciasImportadas({
               id={`cintura-${evaluationId}`}
               name="cintura"
               inputMode="decimal"
-              placeholder="84"
               className="w-32"
               disabled={pending}
             />
@@ -75,7 +78,6 @@ export function CircunferenciasImportadas({
               id={`cadera-${evaluationId}`}
               name="cadera"
               inputMode="decimal"
-              placeholder="106"
               className="w-32"
               disabled={pending}
             />

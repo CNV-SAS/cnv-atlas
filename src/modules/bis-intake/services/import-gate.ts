@@ -1,3 +1,6 @@
+import { BIODY_COLUMNS, ENGINE_REQUIRED } from "@/clinical-engine";
+import { normalizeHeader } from "@/modules/bis/services/header-map";
+
 import type { BisIntakeRecord } from "../types";
 
 // Gate de ORDEN + seguridad del import BIS (ST-B3). El sistema impone el orden: las condiciones de la
@@ -76,6 +79,34 @@ export function circunferenciasParaDiagnosticar(
     message: importada
       ? `Para generar el diagnóstico falta ${faltan.join(" y ")} de la medición. Escríbela en Antropometría: esta consulta se importó del HTML y su toma no se puede repetir.`
       : `Para generar el diagnóstico falta ${faltan.join(" y ")} de la medición. Vuelve a tomar la medida en Biody Manager con esos datos y re-importa el XLSX.`,
+  };
+}
+
+// ═══ LOS INSUMOS DEL MOTOR, EN LA PUERTA Y NO EN LA EXCEPCION (2026-09-23) ═══
+//
+// El lector de la fila del Biody LANZA cuando le falta un insumo requerido, y hace bien: un import incompleto
+// no debe producir un diagnostico plausible pero falso. Pero ese grito estaba pensado para un ARCHIVO, y al
+// profesional que genera el diagnostico de una medicion importada del HTML le llegaba como "Algo salió mal",
+// con el detalle hablando de "columnas del Excel" para una medicion que no tiene Excel.
+//
+// Asi que la falta se mira ANTES, con el mismo criterio, y se dice en el idioma del caso. El grito del lector
+// se queda donde esta: es la red por si alguna via no pasa por aqui.
+export function insumosDelMotorParaDiagnosticar(
+  /** Los `variable_name` que la medicion tiene guardados (headers normalizados). */
+  guardados: string[],
+  importada = false,
+): { allowed: true } | { allowed: false; message: string } {
+  const presentes = new Set(guardados);
+  const faltan = ENGINE_REQUIRED.filter(
+    (campo) => !presentes.has(normalizeHeader(BIODY_COLUMNS[campo].header)),
+  );
+  if (faltan.length === 0) return { allowed: true };
+  const lista = faltan.join(", ");
+  return {
+    allowed: false,
+    message: importada
+      ? `Esta medición importada del HTML no trae datos que el motor necesita (${lista}), así que no se puede generar el diagnóstico. No se pueden escribir a mano: son resultados del equipo, no medidas de cinta. Si el paciente tiene el archivo del Biody de esa toma, se monta la medición con él; si no, esta consulta queda sin diagnóstico.`
+      : `La medición no trae datos que el motor necesita (${lista}). Vuelve a exportar desde Biody Manager y re-importa el XLSX.`,
   };
 }
 
