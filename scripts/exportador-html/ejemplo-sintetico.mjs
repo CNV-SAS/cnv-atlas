@@ -33,8 +33,12 @@ const consulta = (extra) => ({
   pais: "Colombia",
   ciudad: "Medellín",
   motivo: ["Control de peso / composición corporal"],
-  tipoDoc: "CC",
-  sexo: "M",
+  // EN LA FORMA DEL HTML, NO EN LA DE ATLAS (2026-09-23). Decia "CC" y "M", que es lo que Atlas GUARDA, no
+  // lo que el HTML MANDA: el HTML escribe la etiqueta completa y la palabra (v9 L1288 y L7305). Con el
+  // fixture escrito en la forma de destino, cualquier candado pasaba en verde sobre el defecto, y fue lo que
+  // dejo pasar que ningun paciente importado real tuviera sexo.
+  tipoDoc: "Cédula de ciudadanía",
+  sexo: "Masculino",
   fechaNac: "1990-05-01",
   email: "sintetico@example.com",
   telefono: "3000000000",
