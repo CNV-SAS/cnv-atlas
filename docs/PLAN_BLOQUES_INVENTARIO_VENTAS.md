@@ -1438,6 +1438,33 @@ Cómo quedó, en la forma que exige D-3b-3:
 - **La decisión humana la exige la BASE, no la pantalla:** un CHECK obliga a que toda reincorporación lleve `created_by`, y otro a que toda baja lleve su motivo (cinco letras o más). Así ninguna ruta futura puede reincorporar sin responsable.
 - **No se devuelven más unidades de las que salieron**, contando lo ya devuelto de esa misma línea.
 
+#### Lo que la sesión 2 NO cubre, y hay que decidir (verificado el 2026-09-23)
+
+**1. EL DINERO DE UNA DEVOLUCIÓN VOLUNTARIA NO LO CUBRE NADIE TODAVÍA. Es un hueco real.** La sesión 2
+mueve solo inventario, y la sesión 1 solo admite dos clases de reversa (el CHECK `sale_reversals_kind_valido`
+acepta `contracargo` y `anulacion_wompi`, nada más): una devolución voluntaria **no se puede ni registrar**
+como reversa. Así que hoy el producto vuelve, entra a cuarentena, y **el ingreso y la comisión se quedan
+donde estaban**. No es un olvido del plan: la propia D-3b-4 le pone plazo a la "devolución normal" (5 días
+hábiles desde que se acepta), o sea que contabilidad ya la contempló; lo que falta es construirla.
+
+Lo que hace falta decidir antes de construir, porque es de contabilidad y no nuestro: si la devolución
+voluntaria es **una tercera clase de reversa** (mismo caso con estado, misma reversión de ingreso y comisión,
+misma nota crédito manual) o un hecho distinto; y **qué la dispara**, porque a diferencia del contracargo
+aquí el producto vuelve primero. Lo natural con lo ya construido: que registrar la devolución física **abra**
+la reversa de clase `devolucion`, y que el dinero se revierta al **verificar**, no al recibir. Pero eso lo
+confirma contabilidad, no nosotros.
+
+**2. EL PRODUCTO DE TERCERO NO TIENE A DÓNDE VOLVER.** D-3b-3 dice que reingresa a la consignación del
+proveedor, no al inventario de CNV, y que si el proveedor no lo recibe, lo asume CNV. **Esa ubicación de
+consignación de proveedor no existe** (hoy hay una central, una cuarentena y una por integrante), y hoy solo
+un producto es de tercero: LUVIA, de Centro de Nutrición Integral Katherine Ruiz S.A.S.
+
+Mientras se decide, **la reincorporación de un producto de tercero está BLOQUEADA en el writer** (candado
+`devolucion-fisica-db`), con el mensaje que dice la razón: vuelve a la consignación del proveedor, ese
+circuito todavía no existe en Atlas, y por ahora la salida es darla de baja y gestionar la devolución al
+proveedor por fuera. Se bloquea en vez de permitirlo porque lo contrario es escribir en la base justo lo que
+contabilidad dijo que no pasa, y un saldo equivocado no se nota hasta el conteo.
+
 **Lo que el sondeo dejo confirmado (2026-09-16), y que la sesion 1 usa:**
 
 - **El listado de Wompi SI trae las rechazadas y las anuladas**, no solo las aprobadas (`{"DECLINED":1,"APPROVED":23}`). Asi que un `VOIDED` sobre una venta que Atlas tiene pagada se puede detectar por el cotejo diario, sin consultar venta por venta. Es justo lo que hace falta cuando el aviso NO llega; cuando llega, el webhook ya lo marca solo.

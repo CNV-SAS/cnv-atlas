@@ -23,7 +23,9 @@ Lo comercial se pausa aquí para pulir el flujo científico, que es lo que Gilda
 
 1. **3b sesión 1, último repaso del smoke.** Las dos reversas del smoke quedaron **abiertas** en la nube (`anulacion_wompi`, del 17 y del 18). Falta volver a pulsar **Buscar pagos sin registrar** después del último push para ver el texto corregido, y la limpieza del producto de prueba. No bloquea nada.
 2. **3b sesión 2 · La devolución física: CONSTRUIDA el 2026-09-22, falta el smoke.** Quedó como la pedía D-3b-3: la cuarentena es una UBICACIÓN no vendible (`kind = cuarentena`, `sellable = false`), los tres hechos tienen tipo de movimiento propio (`devolucion_paciente`, `reincorporacion`, `baja`), y la decisión humana la exige la base: un CHECK obliga a que toda reincorporación lleve quién la hizo y toda baja su motivo. Se opera desde /pagos.
-3. **2b · Alegra a producción: preparado y esperando.** Guía en `docs/entregas/GUIA_2B_PASO_A_PRODUCCION.md`.
+3. **El DINERO de una devolución voluntaria no lo cubre nadie.** La sesión 2 mueve inventario; la sesión 1 solo admite reversas de tipo `contracargo` y `anulacion_wompi`. Hoy el producto vuelve y el ingreso se queda. Necesita una decisión de contabilidad antes de construirse (ver `PLAN_BLOQUES_INVENTARIO_VENTAS.md`, sesión 2, "lo que NO cubre").
+4. **El producto de TERCERO no tiene a dónde volver.** D-3b-3 dice que reingresa a la consignación del proveedor; esa ubicación no existe. Mientras tanto, reincorporar un producto de tercero está bloqueado con su mensaje, y la salida es darlo de baja. Hoy afecta a un solo producto: LUVIA.
+5. **2b · Alegra a producción: preparado y esperando.** Guía en `docs/entregas/GUIA_2B_PASO_A_PRODUCCION.md`.
 
 ## Lo que espera a una persona, no a código
 
