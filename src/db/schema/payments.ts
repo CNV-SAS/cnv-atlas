@@ -118,6 +118,13 @@ export const transactions = pgTable(
       onDelete: "set null",
     }),
     alegraLegalStatus: text("alegra_legal_status"),
+    // ── LA VENTA RETROACTIVA (Bloque R, 0169) ────────────────────────────────────────────────────────
+    // Cuando se REGISTRO en Atlas una venta que ya habia ocurrido; `createdAt` sigue siendo CUANDO OCURRIO,
+    // que es como toda la app fecha una venta. No nula significa tambien que su factura y su pago se
+    // gestionaron FUERA de Atlas (se facturo a mano en Alegra): no se emite, no se persigue y no aparece
+    // como "por cobrar". Es un solo hecho, por eso una sola columna.
+    registeredRetroactivelyAt: timestamp("registered_retroactively_at", { withTimezone: true }),
+    registeredRetroactivelyBy: uuid("registered_retroactively_by").references(() => profiles.id),
     idempotencyKey: text("idempotency_key").notNull().unique(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

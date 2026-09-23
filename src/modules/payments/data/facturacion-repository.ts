@@ -32,7 +32,18 @@ import type { LineaDeVenta, MapaDeAlegra } from "../facturacion";
  *
  * LOS DOS HUECOS: la factura no esta completa, o esta completa y el pago no se registro.
  */
-export const LE_FALTA_ALGO = sql`(transactions.alegra_invoice_state is distinct from 'emitida' or transactions.alegra_payment_id is null)`;
+// Y LA VENTA RETROACTIVA NO LE FALTA NADA, aunque lo parezca (Bloque R, 2026-09-23): tiene su factura
+// emitida a mano y SIN `alegra_payment_id`, porque su pago tambien se recibio fuera de Atlas. Sin esta
+// condicion, cada venta reconstruida de la integrante aparecia en el panel como "el paciente figura por
+// cobrar", que es falso y ademas empujaria a alguien a cobrarle dos veces.
+export const LE_FALTA_ALGO = sql`(transactions.registered_retroactively_at is null and (transactions.alegra_invoice_state is distinct from 'emitida' or transactions.alegra_payment_id is null))`;
+
+/** Si una venta se registro retroactivamente: su factura ya existe y Atlas no emite ninguna. */
+export async function esVentaRetroactiva(transactionId: string): Promise<boolean> {
+  const filas = await db.execute<{ id: string }>(sql`
+    select id from transactions where id = ${transactionId} and registered_retroactively_at is not null`);
+  return filas.length > 0;
+}
 
 /**
  * UNA VENTA EN REVISION NO SE FACTURA (Santiago, 2026-09-14). Un pago aprobado sobre un link anulado es casi

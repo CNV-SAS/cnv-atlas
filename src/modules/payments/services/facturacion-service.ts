@@ -273,6 +273,14 @@ async function adoptarFactura(
  */
 export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
   try {
+    // UNA VENTA RETROACTIVA NO SE FACTURA NUNCA (Bloque R, 2026-09-23). Su factura ya existe, hecha a mano en
+    // Alegra: emitir otra deja el mismo hecho con dos documentos, que es exactamente lo que una auditoria
+    // mira. Va lo PRIMERO, antes de leer la configuracion y antes de gastar un intento, porque no hay
+    // circunstancia en que el resultado cambie. Ningun camino la llama hoy (no nace por checkout ni por
+    // efectivo), y por eso mismo la puerta va aqui: para que el dia que alguien agregue un camino nuevo, la
+    // regla ya este puesta y no dependa de que se acuerde.
+    if (await fr.esVentaRetroactiva(venta.id)) return;
+
     const mapa = await fr.getMapaDeAlegra();
     if (!mapa) {
       await fr.registrarIntentoDeFactura(venta.id, {
