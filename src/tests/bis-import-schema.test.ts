@@ -29,6 +29,7 @@ const ENGINE_VALUES: Record<string, number> = {
   Rinf: 370,
   C: 2,
   FM: 20,
+  FFM: 50, // el noveno obligatorio: estaba ausente aqui igual que en la lista, hasta el 2026-09-23
   FFMI: 21,
 };
 

@@ -6,7 +6,11 @@ import { computeProtocolo, runEngine, type ProtocoloSnapshot } from "@/clinical-
 import { resolveRutasContent } from "@/clinical-engine/rutas-content";
 import { appError, err, ok, type Result } from "@/core/errors";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
-import { circunferenciasParaDiagnosticar, condicionesParaDiagnosticar } from "@/modules/bis-intake/services/import-gate";
+import {
+  circunferenciasParaDiagnosticar,
+  condicionesParaDiagnosticar,
+  insumosDelMotorParaDiagnosticar,
+} from "@/modules/bis-intake/services/import-gate";
 
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
@@ -82,6 +86,12 @@ export async function runClinicalPipeline(
   // boton del XLSX. Un importado del HTML sin cadera se diagnosticaba igual.
   const circunferencias = circunferenciasParaDiagnosticar(inputs.circunferencias, inputs.importada);
   if (!circunferencias.allowed) return err(appError("validation", circunferencias.message));
+
+  // Y LOS INSUMOS DEL MOTOR (2026-09-23). El lector de la fila ya los exige y LANZA, pero esa excepcion
+  // hablaba de columnas de Excel y llegaba a la pantalla como "Algo salió mal". Mirarlos aqui convierte un
+  // 500 en una frase que dice que falta y por que no se puede escribir a mano.
+  const insumos = insumosDelMotorParaDiagnosticar(Object.keys(inputs.bisRaw), inputs.importada);
+  if (!insumos.allowed) return err(appError("validation", insumos.message));
 
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una versión del modelo activa."));

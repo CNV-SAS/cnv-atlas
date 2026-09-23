@@ -1,7 +1,7 @@
 {
  "formato": "atlas-exportacion-html",
  "version": 1,
- "exportadoEn": "2026-09-22T18:39:58.417Z",
+ "exportadoEn": "2026-09-23T22:23:20.901Z",
  "profesional": "{\"nombre\":\"Profesional Sintético\",\"tipo\":\"nutricionista\"}",
  "declaracion": {
   "version": "1.0",
@@ -10,22 +10,22 @@
    "Obtuve el consentimiento de cada uno con el texto del consentimiento de este HTML.",
    "Esta exportación es fiel: el archivo contiene lo que este navegador tiene registrado, sin cambios."
   ],
-  "aceptadaEn": "2026-09-22T18:39:58.417Z"
+  "aceptadaEn": "2026-09-23T22:23:20.901Z"
  },
  "pacientes": [
   {
    "documento": "SINT-001",
    "clave": "atlas:SINT-001",
-   "historia": "[{\"profesional\":\"Profesional Sintético\",\"tipoProfesionalConsulta\":\"Nutricionista\",\"pais\":\"Colombia\",\"ciudad\":\"Medellín\",\"motivo\":[\"Control de peso / composición corporal\"],\"tipoDoc\":\"CC\",\"sexo\":\"M\",\"fechaNac\":\"1990-05-01\",\"email\":\"sintetico@example.com\",\"telefono\":\"3000000000\",\"educacion\":\"Universitario\",\"ocupacion\":\"Docente\",\"estadoCivil\":\"Soltero/a\",\"estrato\":\"3\",\"consentimientoAceptado\":true,\"fechaConsentimiento\":\"13 de agosto de 2026\",\"d3_27\":\"Muy mala\",\"d3_26\":\"Menos de 5h\",\"d2_21\":[\"Ninguno\"],\"nombre\":\"Sintético Uno\",\"firmaNombre\":\"Sintético Uno\",\"fechaConsulta\":\"2026-08-13\",\"Re\":627.3,\"Ri\":1306.4,\"Rinf\":423.8,\"C\":2.96,\"Fo\":27.84,\"FM\":18.04,\"FFMI\":19.9,\"peso\":80.4,\"tallaCm\":177,\"cintura\":null,\"cadera\":106},{\"profesional\":\"Profesional Sintético\",\"tipoProfesionalConsulta\":\"Nutricionista\",\"pais\":\"Colombia\",\"ciudad\":\"Medellín\",\"motivo\":[\"Control de peso / composición corporal\"],\"tipoDoc\":\"CC\",\"sexo\":\"M\",\"fechaNac\":\"1990-05-01\",\"email\":\"sintetico@example.com\",\"telefono\":\"3000000000\",\"educacion\":\"Universitario\",\"ocupacion\":\"Docente\",\"estadoCivil\":\"Soltero/a\",\"estrato\":\"3\",\"consentimientoAceptado\":true,\"fechaConsentimiento\":\"13 de agosto de 2026\",\"d3_27\":\"Muy mala\",\"d3_26\":\"Menos de 5h\",\"d2_21\":[\"Ninguno\"],\"nombre\":\"Sintético Uno\",\"firmaNombre\":\"Sintético Uno\",\"fechaConsulta\":\"2026-09-04\",\"Re\":627.3,\"Ri\":1306.4,\"Rinf\":423.8,\"C\":2.96,\"Fo\":27.84,\"FM\":18.04,\"FFMI\":19.9,\"peso\":80.4,\"tallaCm\":177,\"cintura\":null,\"cadera\":106}]",
+   "historia": "[{\"profesional\":\"Profesional Sintético\",\"tipoProfesionalConsulta\":\"Nutricionista\",\"pais\":\"Colombia\",\"ciudad\":\"Medellín\",\"motivo\":[\"Control de peso / composición corporal\"],\"tipoDoc\":\"CC\",\"sexo\":\"M\",\"fechaNac\":\"1990-05-01\",\"email\":\"sintetico@example.com\",\"telefono\":\"3000000000\",\"educacion\":\"Universitario\",\"ocupacion\":\"Docente\",\"estadoCivil\":\"Soltero/a\",\"estrato\":\"3\",\"consentimientoAceptado\":true,\"fechaConsentimiento\":\"13 de agosto de 2026\",\"d3_27\":\"Muy mala\",\"d3_26\":\"Menos de 5h\",\"d2_21\":[\"Ninguno\"],\"nombre\":\"Sintético Uno\",\"firmaNombre\":\"Sintético Uno\",\"fechaConsulta\":\"2026-08-13\",\"Re\":627.3,\"Ri\":1306.4,\"Rinf\":423.8,\"C\":2.96,\"Fo\":27.84,\"FM\":18.04,\"FFM\":62.36,\"FFMI\":19.9,\"peso\":80.4,\"tallaCm\":177,\"cintura\":null,\"cadera\":106},{\"profesional\":\"Profesional Sintético\",\"tipoProfesionalConsulta\":\"Nutricionista\",\"pais\":\"Colombia\",\"ciudad\":\"Medellín\",\"motivo\":[\"Control de peso / composición corporal\"],\"tipoDoc\":\"CC\",\"sexo\":\"M\",\"fechaNac\":\"1990-05-01\",\"email\":\"sintetico@example.com\",\"telefono\":\"3000000000\",\"educacion\":\"Universitario\",\"ocupacion\":\"Docente\",\"estadoCivil\":\"Soltero/a\",\"estrato\":\"3\",\"consentimientoAceptado\":true,\"fechaConsentimiento\":\"13 de agosto de 2026\",\"d3_27\":\"Muy mala\",\"d3_26\":\"Menos de 5h\",\"d2_21\":[\"Ninguno\"],\"nombre\":\"Sintético Uno\",\"firmaNombre\":\"Sintético Uno\",\"fechaConsulta\":\"2026-09-04\",\"Re\":627.3,\"Ri\":1306.4,\"Rinf\":423.8,\"C\":2.96,\"Fo\":27.84,\"FM\":18.04,\"FFM\":62.36,\"FFMI\":19.9,\"peso\":80.4,\"tallaCm\":177,\"cintura\":null,\"cadera\":106}]",
    "relacionadas": {
     "atlas:antro:SINT-001": "{\"peso\":80.4,\"tallaCm\":177,\"cintura\":84,\"cadera\":106}",
-    "atlas_bis_SINT-001": "{\"Re\":627.3,\"Ri\":1306.4,\"Rinf\":423.8,\"C\":2.96,\"Fo\":27.84,\"FM\":18.04,\"FFMI\":19.9,\"peso\":80.4,\"tallaCm\":177,\"cintura\":null,\"cadera\":106}"
+    "atlas_bis_SINT-001": "{\"Re\":627.3,\"Ri\":1306.4,\"Rinf\":423.8,\"C\":2.96,\"Fo\":27.84,\"FM\":18.04,\"FFM\":62.36,\"FFMI\":19.9,\"peso\":80.4,\"tallaCm\":177,\"cintura\":null,\"cadera\":106}"
    }
   },
   {
    "documento": "SINT-002",
    "clave": "atlas:SINT-002",
-   "historia": "[{\"fecha\":\"2026-09-04\",\"nombre\":\"Sintético Dos\",\"documento\":\"SINT-002\",\"informePaciente\":{\"fechaConsulta\":\"2026-09-04\",\"fechaEnvio\":\"2026-09-05\",\"resumen\":\"Informe del HTML (no se importa).\"}},{\"profesional\":\"Profesional Sintético\",\"tipoProfesionalConsulta\":\"Nutricionista\",\"pais\":\"Colombia\",\"ciudad\":\"Medellín\",\"motivo\":[\"Control de peso / composición corporal\"],\"tipoDoc\":\"CC\",\"sexo\":\"M\",\"fechaNac\":\"1990-05-01\",\"email\":\"sintetico@example.com\",\"telefono\":\"3000000000\",\"educacion\":\"Universitario\",\"ocupacion\":\"Docente\",\"estadoCivil\":\"Soltero/a\",\"estrato\":\"3\",\"consentimientoAceptado\":false,\"fechaConsentimiento\":\"13 de agosto de 2026\",\"d3_27\":\"Muy mala\",\"d3_26\":\"Menos de 5h\",\"d2_21\":[\"Ninguno\"],\"nombre\":\"Sintético Dos\",\"firmaNombre\":\"\",\"fechaConsulta\":\"2026-09-04\",\"Re\":627.3,\"Ri\":1306.4,\"Rinf\":423.8,\"C\":2.96,\"Fo\":27.84,\"FM\":18.04,\"FFMI\":19.9,\"peso\":80.4,\"tallaCm\":177,\"cintura\":84,\"cadera\":106}]",
+   "historia": "[{\"fecha\":\"2026-09-04\",\"nombre\":\"Sintético Dos\",\"documento\":\"SINT-002\",\"informePaciente\":{\"fechaConsulta\":\"2026-09-04\",\"fechaEnvio\":\"2026-09-05\",\"resumen\":\"Informe del HTML (no se importa).\"}},{\"profesional\":\"Profesional Sintético\",\"tipoProfesionalConsulta\":\"Nutricionista\",\"pais\":\"Colombia\",\"ciudad\":\"Medellín\",\"motivo\":[\"Control de peso / composición corporal\"],\"tipoDoc\":\"CC\",\"sexo\":\"M\",\"fechaNac\":\"1990-05-01\",\"email\":\"sintetico@example.com\",\"telefono\":\"3000000000\",\"educacion\":\"Universitario\",\"ocupacion\":\"Docente\",\"estadoCivil\":\"Soltero/a\",\"estrato\":\"3\",\"consentimientoAceptado\":false,\"fechaConsentimiento\":\"13 de agosto de 2026\",\"d3_27\":\"Muy mala\",\"d3_26\":\"Menos de 5h\",\"d2_21\":[\"Ninguno\"],\"nombre\":\"Sintético Dos\",\"firmaNombre\":\"\",\"fechaConsulta\":\"2026-09-04\",\"Re\":627.3,\"Ri\":1306.4,\"Rinf\":423.8,\"C\":2.96,\"Fo\":27.84,\"FM\":18.04,\"FFM\":62.36,\"FFMI\":19.9,\"peso\":80.4,\"tallaCm\":177,\"cintura\":84,\"cadera\":106}]",
    "relacionadas": {}
   },
   {
