@@ -208,6 +208,11 @@ export const nutraceuticalMovementType = pgEnum("nutraceutical_movement_type", [
   "conciliacion", // ajuste tras conteo fisico (+/-)
   "devolucion", // el integrante devuelve a CNV (-)
   "venta", // salida ligada a una LINEA de venta, al sellar el pago (-) (Bloque 3, 0138)
+  // DEVOLUCION FISICA (3b sesion 2, 0165-0167). El `devolucion` de arriba es "el integrante devuelve a CNV";
+  // estos tres son el camino de la unidad que devuelve el PACIENTE, que nunca vuelve directo al lote vendible.
+  "devolucion_paciente", // vuelve del paciente y entra a cuarentena (+), ligada a la linea de venta
+  "reincorporacion", // sale de cuarentena (-) y entra al lote vendible (+), con quien verifico
+  "baja", // sale de cuarentena (-) contra gasto, con el motivo escrito
 ]);
 
 // Estado del CASO de faltante (T3b-3). El faltante NO es un ajuste: es un caso con estados y consecuencia
