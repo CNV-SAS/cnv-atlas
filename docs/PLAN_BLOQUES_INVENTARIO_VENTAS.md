@@ -1440,6 +1440,25 @@ Cómo quedó, en la forma que exige D-3b-3:
 
 #### Lo que la sesión 2 NO cubre, y hay que decidir (verificado el 2026-09-23)
 
+> **DIFERIDO AL BLOQUE 6 (Santiago, 2026-09-23), y la razón la da el modelo.** §5.7: el derecho de retracto
+> se activa por **venta a distancia**, o sea domicilio. En consulta presencial, un nutracéutico sellado que el
+> paciente se llevó **no genera derecho de devolución**, y el domicilio es el Bloque 6, que no existe. Así que
+> el dinero de la devolución se construye cuando exista el caso que lo genera, y la consulta a contabilidad se
+> le hace entonces, con el domicilio ya construido. Lo construido en esta sesión se queda: la cuarentena y el
+> bloqueo del producto de tercero valen igual, con domicilio o sin él.
+>
+> **El caso que SÍ puede pasar mañana, y no es el retracto: la GARANTÍA LEGAL.** Un frasco defectuoso, mal
+> etiquetado o de un lote retirado por INVIMA vuelve en consulta presencial igual, y ahí la Ley 1480 no
+> distingue el canal (el propio modelo lo dice en §6: CNV responde como titular de la marca por defectos de
+> fabricación, composición o etiquetado). El producto ya tiene camino (cuarentena y baja); lo que no lo tiene
+> es el dinero. **Si ocurre antes del Bloque 6, el arreglo es chico y conviene saberlo: la máquina de reversa
+> de la sesión 1 ya revierte ingreso y comisión, así que basta admitir una clase más en el CHECK
+> `sale_reversals_kind_valido` y abrirla desde la devolución.** No hay que diseñar nada nuevo.
+>
+> Y lo que NO es un caso, aunque lo parezca: **una alergia declarada después de comprar**. Un producto bien
+> etiquetado no es defectuoso, así que no hay obligación legal; honrarla sería una decisión comercial de CNV,
+> no una regla que Atlas deba tener.
+
 **1. EL DINERO DE UNA DEVOLUCIÓN VOLUNTARIA NO LO CUBRE NADIE TODAVÍA. Es un hueco real.** La sesión 2
 mueve solo inventario, y la sesión 1 solo admite dos clases de reversa (el CHECK `sale_reversals_kind_valido`
 acepta `contracargo` y `anulacion_wompi`, nada más): una devolución voluntaria **no se puede ni registrar**
