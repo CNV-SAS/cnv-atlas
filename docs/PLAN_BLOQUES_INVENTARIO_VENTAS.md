@@ -1542,6 +1542,30 @@ lo que tiene.
    venta YA está facturada, con este número"* y no emitir nada. Hoy no existe esa forma: el flujo asume
    que la factura la crea Atlas.
 
+### Cómo quedó (construido el 2026-09-23)
+
+**Santiago quiere la historia completa**, no solo el saldo corregido: las ventas entran a Atlas con su fecha
+real. Se construyó en `/admin/ventas-retroactivas`, solo Dirección, y el estado lo dice su candado:
+`pnpm vitest run venta-retroactiva-db`.
+
+- **La fecha va en `created_at`**, no en una columna nueva: toda la app fecha una venta por ahí (paneles,
+  corte por día de Bogotá, conciliación). Una segunda columna sería una segunda verdad, y las consultas
+  viejas seguirían leyendo la vieja.
+- **Atlas no la factura nunca.** Guarda el número de la factura que ya existe, y la puerta de emisión la
+  rechaza lo primero, antes de gastar un intento. Hoy ningún camino la llama; la puerta está puesta para el
+  día que alguien agregue uno.
+- **Y no aparece como "por cobrar".** Esto salió al construirlo: el panel persigue las emitidas sin pago
+  registrado, y una retroactiva tiene su pago recibido por fuera. Sin esa condición, cada venta reconstruida
+  habría empujado a alguien a cobrarle dos veces al mismo paciente.
+- **El reparto se sella con las vigencias de ESE día**, no las de hoy. El sellado contable leía `now()`; el
+  modelo ya decía que cada venta sella el reparto vigente en el momento en que ocurrió, y faltaba poder
+  decirle cuál es ese momento.
+- **El precio se teclea**, no sale del catálogo: es el que tenía el producto ese día, el que dice la factura.
+- **Descuenta inventario** por el camino de siempre, que es el propósito del bloque. Si el saldo no alcanza,
+  la venta queda `sin_saldo` y se ve: los números no cuadran, y esconderlo no los cuadraría.
+- **Se puede borrar** mientras no haya descontado inventario. Después no: el rastro de custodia quedaría
+  suelto, y se corrige con una devolución como cualquier otra venta.
+
 ### Lo que se decidió mientras tanto, con sus tres opciones evaluadas
 
 **El saldo NO se toca hasta tener las cifras.** Santiago ya le pidió que use solo la parte clínica y no

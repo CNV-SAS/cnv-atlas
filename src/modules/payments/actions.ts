@@ -24,6 +24,13 @@ import {
   registrarDevolucionFisica,
   verificarDevuelta,
 } from "./data/devolucion-fisica-writer";
+import {
+  borrarVentaRetroactiva,
+  registrarVentaRetroactiva,
+  VentaRetroactivaError,
+} from "./data/venta-retroactiva-writer";
+import { lineasRetroactivasSchema } from "./validations/venta-retroactiva";
+import { descontarInventarioDeVenta } from "./services/inventario-venta-service";
 import { ReversaError } from "./data/reversas-writer";
 import { reintentarFacturasPendientes } from "./services/facturacion-service";
 import { reintentarDescuentosPendientes } from "./services/inventario-venta-service";
@@ -671,5 +678,80 @@ export async function verificarDevueltaAction(_prev: DevolucionState, form: Form
     if (e instanceof DevolucionNoRegistrableError) return { error: e.message, success: null, warning: null };
     reportServerError("verificarDevueltaAction", e);
     return { error: "No se pudo registrar la verificación.", success: null, warning: null };
+  }
+}
+
+// ═══ LA VENTA RETROACTIVA (Bloque R) ═══
+//
+// Solo Direccion: reconstruir la historia comercial de una integrante toca ingresos, comisiones e inventario
+// de otra persona, y no es una operacion de consultorio.
+
+export async function registrarVentaRetroactivaAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+
+  // Las lineas viajan como JSON en un campo oculto: la pantalla arma la lista y el servidor la valida entera.
+  let lineas: { nutraceuticalId: string; cantidad: number; precioUnitario: number }[] = [];
+  try {
+    const crudo: unknown = JSON.parse(String(form.get("lineas") ?? "[]"));
+    const parseada = lineasRetroactivasSchema.safeParse(crudo);
+    if (!parseada.success) {
+      return { error: "Revisa los productos, las cantidades y los precios.", success: null, warning: null };
+    }
+    lineas = parseada.data;
+  } catch {
+    return { error: "No se pudieron leer los productos de la venta.", success: null, warning: null };
+  }
+
+  try {
+    const { id, total } = await registrarVentaRetroactiva({
+      organizationId: String(form.get("organizationId") ?? ""),
+      patientId: String(form.get("patientId") ?? ""),
+      professionalId: String(form.get("professionalId") ?? ""),
+      fecha: String(form.get("fecha") ?? ""),
+      numeroDeFactura: String(form.get("numeroDeFactura") ?? ""),
+      medioDePago: String(form.get("medioDePago") ?? "efectivo") === "wompi" ? "wompi" : "efectivo",
+      lineas,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    // EL DESCUENTO DE INVENTARIO VA FUERA de la transaccion de la venta y por el camino de siempre, igual que
+    // en la venta en efectivo: si el saldo no alcanza, la venta queda `sin_saldo` y se ve, en vez de perderse
+    // el registro entero por una existencia que no cuadra.
+    await descontarInventarioDeVenta(id);
+    return {
+      error: null,
+      success: `Venta registrada por ${total.toLocaleString("es-CO")}, con su fecha real y su factura. Atlas no la va a facturar.`,
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof VentaRetroactivaError) return { error: e.message, success: null, warning: null };
+    reportServerError("registrarVentaRetroactivaAction", e);
+    return { error: "No se pudo registrar la venta.", success: null, warning: null };
+  }
+}
+
+export async function borrarVentaRetroactivaAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  try {
+    await borrarVentaRetroactiva({
+      transactionId: String(form.get("transactionId") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    return { error: null, success: "Venta retroactiva borrada.", warning: null };
+  } catch (e) {
+    if (e instanceof VentaRetroactivaError) return { error: e.message, success: null, warning: null };
+    reportServerError("borrarVentaRetroactivaAction", e);
+    return { error: "No se pudo borrar la venta.", success: null, warning: null };
   }
 }

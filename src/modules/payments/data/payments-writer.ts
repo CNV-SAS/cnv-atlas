@@ -43,7 +43,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 // ocurrio meses atras, y sellarla con las vigencias de HOY le pondria una tasa de comision y un reparto de
 // proveedor que no eran los de ese dia. El modelo ya lo dice (cada venta sella el reparto vigente EN EL
 // MOMENTO EN QUE OCURRIO); lo que faltaba era poder decirle cual es ese momento. Por defecto, ahora.
-async function sealAccounting(
+export async function sellarContabilidadDeLaVenta(
   tx: Tx,
   t: { id: string; amount: string; professionalId: string | null },
   cuando: Date | null = null,
@@ -387,7 +387,7 @@ export async function sealPaidTransaction(
       });
     if (updated.length === 0) return null;
     const t = updated[0];
-    if (!sobreLinkAnulado) await sealAccounting(tx, t);
+    if (!sobreLinkAnulado) await sellarContabilidadDeLaVenta(tx, t);
     return { ...t, enRevision: sobreLinkAnulado };
   });
 }
@@ -465,7 +465,7 @@ export async function createPaidCashTransaction(
         })),
       );
     }
-    await sealAccounting(tx, t);
+    await sellarContabilidadDeLaVenta(tx, t);
     // EL VINCULO: cada link anulado sabe que venta en efectivo lo anulo (0142). Si ese pago de Wompi llega
     // despues y resulta que el efectivo no entro, es lo que dice cual venta es la falsa.
     if (linksAnulados.length > 0) {
@@ -686,7 +686,7 @@ export async function resolverRevision(
           patientId: transactions.patientId,
           professionalId: transactions.professionalId,
         });
-      await sealAccounting(tx, w);
+      await sellarContabilidadDeLaVenta(tx, w);
 
       // La venta en efectivo deja de ser una venta: sin estado de entrega (su entrega, si la hubo, es ahora de
       // la venta de Wompi), para que nadie la "entregue" otra vez ni cuente dos veces lo que el paciente recibio.
@@ -750,7 +750,7 @@ export async function resolverRevision(
         patientId: transactions.patientId,
         professionalId: transactions.professionalId,
       });
-    if (resolucion === "segunda_compra") await sealAccounting(tx, t);
+    if (resolucion === "segunda_compra") await sellarContabilidadDeLaVenta(tx, t);
     return { ...t, enRevision: false, efectivoNoRecibido: null };
   });
 }
