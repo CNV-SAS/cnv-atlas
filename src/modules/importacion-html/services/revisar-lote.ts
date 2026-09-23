@@ -2,6 +2,7 @@ import { ENGINE_REQUIRED } from "@/clinical-engine";
 
 import type { ArchivoDeExportacion } from "../validations/archivo";
 import { difierenEnUno, normalizarDocumento, normalizarNombre } from "./normalizar";
+import { valorParaAtlas } from "./mapeo-de-la-consulta";
 
 // ═══ LA REVISION DEL LOTE, SIN ESCRIBIR NADA (plan de la importacion, sesion 3, 2026-09-22) ═══
 //
@@ -134,7 +135,15 @@ function revisarEncuesta(c: Consulta, preguntas: PreguntaDeAtlas[]) {
       continue;
     }
     if (!p.opciones.length) continue;
-    if (p.tipo === "opcion" && typeof v === "string") juzgar(p, v);
+    // SE JUZGA LO QUE SE VA A GUARDAR, NO LO QUE VENIA (2026-09-23). Antes esta linea exigia
+    // `typeof v === "string"`, asi que una respuesta que llegara como NUMERO no la miraba nadie: pasaba la
+    // revision sin aparecer, se guardaba tal cual y solo se supo por Sentry, en produccion, con el patron
+    // alimentario. Ahora se normaliza primero con la misma funcion que usa el escritor y se juzga eso: si la
+    // traduccion existe, calza; si no existe, sale en la lista de lo que no calza, que es donde debe salir.
+    if (p.tipo === "opcion") {
+      const valor = valorParaAtlas(p.clave, v);
+      if (valor != null) juzgar(p, valor);
+    }
     if (p.tipo === "opcion_multiple" && Array.isArray(v)) {
       for (const el of v) if (typeof el === "string") juzgar(p, el);
     }

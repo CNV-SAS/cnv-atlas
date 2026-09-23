@@ -1,4 +1,4 @@
-import { BIODY_COLUMNS } from "@/clinical-engine";
+import { BIODY_COLUMNS, opcionCanonicaDelPatron } from "@/clinical-engine";
 import { MEASURED_HIPS_HEADER, MEASURED_WAIST_HEADER, normalizeHeader } from "@/modules/bis/services/header-map";
 
 // ═══ DE UNA CONSULTA DEL HTML A LAS FILAS DE ATLAS (sesion 4, 2026-09-22) ═══
@@ -8,6 +8,36 @@ import { MEASURED_HIPS_HEADER, MEASURED_WAIST_HEADER, normalizeHeader } from "@/
 
 export type ConsultaDelHtml = Record<string, unknown>;
 
+/**
+ * El valor de UNA respuesta del HTML en la forma que guarda Atlas, o null si no hay respuesta.
+ *
+ * ES UNA SOLA FUNCION A PROPOSITO: la usa el escritor (lo que se guarda) y la revision (lo que se juzga
+ * antes de importar). Cuando eran dos caminos, la revision miraba una forma y el escritor guardaba otra, y
+ * el error salio en produccion (ver abajo).
+ *
+ * ═══ EL PATRON ALIMENTARIO VIAJA COMO NUMERO (2026-09-23) ═══
+ *
+ * El HTML guarda las 18 preguntas de frecuencia como el INDICE de la opcion elegida (0-4), no como su texto
+ * (v9 L1725: `val === i`); Atlas guarda el TEXTO. Al copiarlas tal cual llegaban como "1" o "4", que no
+ * coinciden con ninguna opcion, y el dano NO fue que se viera vacio:
+ *
+ *   · el reader del patron las marcaba ilegibles y avisaba a Sentry, que es como se supo;
+ *   · pero el ICEC SI se calculo, porque su guarda mira PRESENCIA y "1" esta presente. Con el valor en la
+ *     forma equivocada, el puntaje de Alimentacion salia bajo para TODO paciente importado, en silencio,
+ *     y de ahi a la edad biologica y al ICEC.
+ *
+ * Asi que se traduce contra el canonico del frozen. Un ordinal que no exista NO se inventa: se deja como
+ * venia para que la revision lo marque como que no calza, en vez de guardar una opcion plausible y falsa.
+ */
+export function valorParaAtlas(clave: string, v: unknown): string | null {
+  if (v == null || v === "") return null;
+  if (Array.isArray(v)) return v.length === 0 ? null : JSON.stringify(v);
+  if (typeof v === "number") return opcionCanonicaDelPatron(clave, v) ?? String(v);
+  if (typeof v === "boolean") return String(v);
+  if (typeof v === "string") return v;
+  return null;
+}
+
 /** Las respuestas de la consulta, por clave de pregunta. Las de opcion multiple viajan como JSON, igual que las de Atlas. */
 export function respuestasDeLaConsulta(
   consulta: ConsultaDelHtml,
@@ -15,16 +45,8 @@ export function respuestasDeLaConsulta(
 ): { clave: string; valor: string }[] {
   const out: { clave: string; valor: string }[] = [];
   for (const clave of claves) {
-    const v = consulta[clave];
-    if (v == null || v === "") continue;
-    if (Array.isArray(v)) {
-      if (v.length === 0) continue;
-      out.push({ clave, valor: JSON.stringify(v) });
-    } else if (typeof v === "number" || typeof v === "boolean") {
-      out.push({ clave, valor: String(v) });
-    } else if (typeof v === "string") {
-      out.push({ clave, valor: v });
-    }
+    const valor = valorParaAtlas(clave, consulta[clave]);
+    if (valor != null) out.push({ clave, valor });
   }
   return out;
 }
