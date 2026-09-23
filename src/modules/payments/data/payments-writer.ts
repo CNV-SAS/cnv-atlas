@@ -39,10 +39,18 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 //
 // LA BASE ES LA DE CADA LINEA (base unitaria al peso por cantidad), la misma que va en la factura
 // (`desgloseDeLaVenta`). Sacarla del total da un peso de diferencia en dos LUVIA (151.261 contra 151.260).
+// LA FECHA DEL SELLADO ES UN PARAMETRO DESDE EL BLOQUE R (2026-09-23), y no por gusto: una venta RETROACTIVA
+// ocurrio meses atras, y sellarla con las vigencias de HOY le pondria una tasa de comision y un reparto de
+// proveedor que no eran los de ese dia. El modelo ya lo dice (cada venta sella el reparto vigente EN EL
+// MOMENTO EN QUE OCURRIO); lo que faltaba era poder decirle cual es ese momento. Por defecto, ahora.
 async function sealAccounting(
   tx: Tx,
   t: { id: string; amount: string; professionalId: string | null },
+  cuando: Date | null = null,
 ): Promise<void> {
+  // `null` = ahora, en hora de Colombia, que es como estaba escrito.
+  const fecha = sql`coalesce(${cuando ? cuando.toISOString() : null}::timestamptz, now())`;
+  const dia = sql`(${fecha} at time zone 'America/Bogota')::date`;
   const lineas = await tx
     .select({
       id: transactionItems.id,
@@ -64,8 +72,8 @@ async function sealAccounting(
       .where(
         and(
           inArray(revenueSplits.nutraceuticalId, lineas.map((l) => l.nutraceuticalId)),
-          sql`${revenueSplits.validFrom} <= (now() at time zone 'America/Bogota')::date`,
-          sql`(${revenueSplits.validTo} is null or ${revenueSplits.validTo} > (now() at time zone 'America/Bogota')::date)`,
+          sql`${revenueSplits.validFrom} <= ${dia}`,
+          sql`(${revenueSplits.validTo} is null or ${revenueSplits.validTo} > ${dia})`,
         ),
       )
       .orderBy(asc(revenueSplits.validFrom));
@@ -81,8 +89,8 @@ async function sealAccounting(
     const [vigente] = await tx.execute<{ rate: string }>(sql`
       select rate::text as rate from professional_commission_rates
        where professional_id = ${t.professionalId}
-         and valid_from <= (now() at time zone 'America/Bogota')::date
-         and (valid_to is null or valid_to > (now() at time zone 'America/Bogota')::date)
+         and valid_from <= ${dia}
+         and (valid_to is null or valid_to > ${dia})
        order by valid_from desc limit 1`);
     if (vigente) {
       rate = Number(vigente.rate);

@@ -1765,6 +1765,7 @@ export type Database = {
           kind: string
           name: string
           professional_id: string | null
+          sellable: boolean
         }
         Insert: {
           created_at?: string
@@ -1773,6 +1774,7 @@ export type Database = {
           kind: string
           name: string
           professional_id?: string | null
+          sellable?: boolean
         }
         Update: {
           created_at?: string
@@ -1781,6 +1783,7 @@ export type Database = {
           kind?: string
           name?: string
           professional_id?: string | null
+          sellable?: boolean
         }
         Relationships: [
           {
@@ -4527,6 +4530,8 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_method_type: string | null
           professional_id: string | null
+          registered_retroactively_at: string | null
+          registered_retroactively_by: string | null
           review_notified_at: string | null
           review_opened_at: string | null
           review_professional_version: string | null
@@ -4583,6 +4588,8 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
+          registered_retroactively_at?: string | null
+          registered_retroactively_by?: string | null
           review_notified_at?: string | null
           review_opened_at?: string | null
           review_professional_version?: string | null
@@ -4639,6 +4646,8 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_method_type?: string | null
           professional_id?: string | null
+          registered_retroactively_at?: string | null
+          registered_retroactively_by?: string | null
           review_notified_at?: string | null
           review_opened_at?: string | null
           review_professional_version?: string | null
@@ -4713,6 +4722,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_registered_retroactively_by_fkey"
+            columns: ["registered_retroactively_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -5263,6 +5279,9 @@ export type Database = {
         | "conciliacion"
         | "devolucion"
         | "venta"
+        | "devolucion_paciente"
+        | "reincorporacion"
+        | "baja"
       nutraceutical_ownership: "propio" | "tercero"
       patient_status: "active" | "inactive"
       payment_method: "wompi" | "efectivo"
@@ -5519,6 +5538,9 @@ export const Constants = {
         "conciliacion",
         "devolucion",
         "venta",
+        "devolucion_paciente",
+        "reincorporacion",
+        "baja",
       ],
       nutraceutical_ownership: ["propio", "tercero"],
       patient_status: ["active", "inactive"],

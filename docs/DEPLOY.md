@@ -250,6 +250,27 @@ DATABASE_URL="<url-directa-de-la-nube-5432>" pnpm db:check:cloud
 
 (Node: una variable de shell GANA sobre `--env-file`; el comando `:cloud` no usa `--env-file` para que no haya ambigüedad. Sin `DATABASE_URL` seteada, aborta con un mensaje, no chequea local por error.)
 
+### Al escribir una migración a mano: el `when` del journal manda, y es una trampa silenciosa
+
+Una migración escrita a mano se registra agregando su entrada en `drizzle/meta/_journal.json`. **Ese `when`
+no es decorativo: `drizzle-kit migrate` aplica solo las entradas cuyo `when` sea MAYOR que el de la última
+migración ya aplicada.** Si el `when` nuevo queda por debajo, drizzle **no aplica nada y aun así imprime
+"migrations applied successfully"**. El comando dice que sí y la base no tiene la columna.
+
+Pasó el 2026-09-23 con la 0169: las entradas existentes están selladas con fechas por delante del reloj de
+la máquina (la 0168 dice 2026-10-14), así que un `Date.now()` honesto quedaba **atrás** y la migración se
+saltó en silencio.
+
+**Regla:** el `when` de una entrada nueva se calcula como **el `when` de la anterior más 60000**, nunca con
+la fecha real. Y después de migrar, **confirmar contra la base**, que es lo único que no miente:
+
+```sql
+select count(*) from drizzle.__drizzle_migrations;   -- tiene que subir en 1
+```
+
+o `pnpm db:check:cloud`, que es lo mismo con mejor cara. **Que el comando diga "successfully" no es prueba
+de nada**; el conteo sí.
+
 **Paso obligatorio ANTES de CADA push que incluya archivos nuevos en `drizzle/` (commit hecho, push todavía NO):**
 1. **Verificar qué falta:** `DATABASE_URL="<url-nube>" pnpm db:check:cloud` (lista las pendientes; solo LEE, seguro, va por el pooler). Sin pendientes: nada que hacer.
 2. **Aplicarlas:** `pnpm db:migrate` con `DATABASE_URL` de la nube = la conexión DIRECTA de Supabase (puerto 5432, no el pooler 6543: el DDL en transacción no va bien por el pooler).
