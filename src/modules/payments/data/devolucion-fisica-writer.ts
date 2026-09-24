@@ -255,6 +255,26 @@ export async function listarDevueltasPendientes(): Promise<DevueltaPendiente[]> 
   }));
 }
 
+/**
+ * LO DE LA DEVOLUCION FISICA EN UNA SOLA ENTRADA (2026-09-24), y la razon es de POOL, no de consulta.
+ *
+ * `/pagos` dispara sus cargas en paralelo y ya iban ocho; la sesion 2 le sumo DOS mas, y la pantalla se paso
+ * de los 8 s con "pagos.devueltas no respondio". Medida contra la base, la consulta tarda 0,2 ms con 9.291
+ * movimientos: no es que pese, es que cada una ocupa un cupo del pool de transacciones y la decima espera.
+ * Es el mismo caso de `pagos.dias-con-ventas-sin-cerrar`.
+ *
+ * Asi que las dos se piden juntas, y los destinos SOLO cuando hay algo que verificar, que es lo normal que
+ * no haya: en el caso comun esto es una consulta, no dos.
+ */
+export async function leerDevolucionesPendientes(): Promise<{
+  items: DevueltaPendiente[];
+  destinos: { id: string; nombre: string }[];
+}> {
+  const items = await listarDevueltasPendientes();
+  if (items.length === 0) return { items, destinos: [] };
+  return { items, destinos: await listarDestinosVendibles() };
+}
+
 /** Las ubicaciones VENDIBLES, para elegir a donde vuelve una unidad reincorporada. */
 export async function listarDestinosVendibles(): Promise<{ id: string; nombre: string }[]> {
   const filas = await db.execute<{ id: string; name: string }>(sql`

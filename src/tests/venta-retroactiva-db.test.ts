@@ -92,6 +92,36 @@ describe.skipIf(!HAS_DB)("la venta retroactiva (BD real)", () => {
     expect(v.entrega).toBe("entregado");
   }, 30_000);
 
+  // ═══ LOS LECTORES DE LA PANTALLA, QUE ES LO QUE FALTABA (2026-09-24) ═══
+  //
+  // La pantalla no abria: la consulta leia el nombre del paciente de `patients`, donde no esta (vive en
+  // `patient_profiles`). Los candados probaban el ESCRITOR entero y ninguno llamaba a los lectores, asi que
+  // todo pasaba en verde sobre una pantalla que tiraba 500 al abrirse.
+  //
+  // LA LECCION, que es mas general que el bug: un candado que prueba lo que se ESCRIBE no dice nada de lo
+  // que se LEE, y el profesional ve lo que se lee. Toda consulta que una pantalla vaya a correr se ejecuta
+  // aqui aunque no se afirme mucho sobre el resultado: que corra contra la base real ya es la mitad.
+  it("los lectores de la pantalla CORREN contra la base (la pantalla no abría)", async () => {
+    const { listarVentasRetroactivas } = await import("@/modules/payments/data/venta-retroactiva-writer");
+    const { leerContextoDeVentaRetroactiva } = await import(
+      "@/modules/payments/data/venta-retroactiva-reader"
+    );
+
+    const listadas = await listarVentasRetroactivas();
+    const mia = listadas.find((v) => v.factura === FACTURA);
+    expect(mia, "la venta registrada no sale en el listado").toBeTruthy();
+    expect(mia?.paciente, "el listado no trae el nombre del paciente").toBeTruthy();
+
+    const contexto = await leerContextoDeVentaRetroactiva();
+    expect(contexto).toBeTruthy();
+    expect(contexto!.profesionales.length).toBeGreaterThan(0);
+    expect(contexto!.pacientes.length).toBeGreaterThan(0);
+    expect(contexto!.productos.length).toBeGreaterThan(0);
+    // El rótulo del paciente lleva su documento: dos personas pueden llamarse igual, y equivocarse aquí le
+    // cuelga a alguien una compra que no hizo.
+    expect(contexto!.pacientes[0].nombre).toContain("·");
+  }, 30_000);
+
   it("NO aparece como pendiente de facturar ni de cobrar", async () => {
     const { db } = await import("@/db");
     const { LE_FALTA_ALGO } = await import("@/modules/payments/data/facturacion-repository");

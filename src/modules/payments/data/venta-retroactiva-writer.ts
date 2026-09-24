@@ -199,10 +199,13 @@ export async function listarVentasRetroactivas(limite = 100): Promise<
     stock_state: string | null;
   }>(sql`
     select t.id, t.created_at::text as fecha, t.alegra_invoice_number as factura, t.amount::text as total,
-           nullif(trim(coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), '') as paciente,
+           -- EL NOMBRE VIVE EN patient_profiles (la PII demografica), no en patients, que guarda el
+           -- documento y la organizacion. Leerlo de patients fue un error mio que ningun test vio porque
+           -- los candados probaban el ESCRITOR y nadie llamaba a este lector.
+           nullif(trim(coalesce(pp.first_name, '') || ' ' || coalesce(pp.last_name, '')), '') as paciente,
            t.stock_state
       from transactions t
-      left join patients p on p.id = t.patient_id
+      left join patient_profiles pp on pp.patient_id = t.patient_id
      where t.registered_retroactively_at is not null
      order by t.created_at desc
      limit ${limite}`);
