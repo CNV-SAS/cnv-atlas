@@ -130,6 +130,75 @@ describe.skipIf(!HAS_DB)("la encuesta que registra el profesional (BD real)", ()
     expect(r.captured_by).toBeNull();
   }, 30_000);
 
+  // ═══ EDITAR NO ES REGISTRAR (Santiago, 2026-09-24) ═══
+  //
+  // Una cosa es corregir un dato y otra es llenar la encuesta con el paciente al lado. Si editar marcara,
+  // en un mes TODAS las encuestas dirian que las lleno el profesional y la linea dejaria de significar algo:
+  // una marca que se enciende sola no distingue nada.
+  //
+  // HOY NO MARCA, y se comprobo: editar pasa por OTRO escritor (`saveSurveyEdit`), que reemplaza las
+  // respuestas y escribe su propio evento de audit (`survey_edited`), sin tocar la columna. Pero eso es una
+  // casualidad de como esta partido el codigo, y el dia que alguien unifique los dos caminos se encenderia
+  // sin que nadie lo decida. Por eso esta aqui.
+  it("EDITAR la encuesta después NO marca que la registró el profesional", async () => {
+    const { db } = await import("@/db");
+    const { completeSurvey } = await import("@/modules/evaluations/data/intake-writer");
+    const { saveSurveyEdit } = await import("@/modules/evaluations/data/survey-edit-writer");
+    const { evaluationId, resumeToken } = await shellFirmado();
+
+    // El PACIENTE la responde por su enlace: la columna queda nula.
+    await completeSurvey({
+      resumeToken,
+      surveyVersionId,
+      answers: preguntas.map((q) => ({ questionId: q.id, answerValue: "del paciente" })),
+      ipAddress: null,
+      characterization: null,
+    });
+
+    // Y el profesional corrige un dato despues, que es lo que va a pasar casi siempre.
+    const r = await saveSurveyEdit({
+      evaluationId,
+      answers: preguntas.map((q, i) => ({ questionId: q.id, answerValue: i === 0 ? "corregido" : "del paciente" })),
+      actorId: profileId,
+      actorEmail: "prof@cnv",
+      ip: null,
+    });
+    expect(r.ok, "la edición no se pudo hacer, así que el caso no probaría nada").toBe(true);
+
+    const [despues] = await db.execute<{ captured_by: string | null }>(
+      dsql`select captured_by from survey_responses where evaluation_id = ${evaluationId}`,
+    );
+    expect(despues.captured_by, "editar marcó la encuesta como registrada por el profesional").toBeNull();
+  }, 30_000);
+
+  it("y si YA estaba marcada, editar tampoco se la quita", async () => {
+    const { db } = await import("@/db");
+    const { completeSurvey } = await import("@/modules/evaluations/data/intake-writer");
+    const { saveSurveyEdit } = await import("@/modules/evaluations/data/survey-edit-writer");
+    const { evaluationId, resumeToken } = await shellFirmado();
+
+    await completeSurvey({
+      resumeToken,
+      surveyVersionId,
+      answers: preguntas.map((q) => ({ questionId: q.id, answerValue: "en consulta" })),
+      ipAddress: null,
+      characterization: null,
+      capturedBy: profileId,
+    });
+    await saveSurveyEdit({
+      evaluationId,
+      answers: preguntas.map((q, i) => ({ questionId: q.id, answerValue: i === 0 ? "corregido" : "en consulta" })),
+      actorId: profileId,
+      actorEmail: "prof@cnv",
+      ip: null,
+    });
+
+    const [despues] = await db.execute<{ captured_by: string | null }>(
+      dsql`select captured_by from survey_responses where evaluation_id = ${evaluationId}`,
+    );
+    expect(despues.captured_by, "editar borró la marca de quien la registró").toBe(profileId);
+  }, 30_000);
+
   it("ES EL MISMO BORRADOR: lo que el paciente dejó a medias no se pierde", async () => {
     const { db } = await import("@/db");
     const { saveSurveyProgress, completeSurvey } = await import("@/modules/evaluations/data/intake-writer");

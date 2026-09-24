@@ -1,5 +1,11 @@
 # Lo que queda abierto contigo, Gildardo
 
+> **AQUÍ SOLO VA LO QUE DECIDE ÉL** (Santiago, 2026-09-24). Fórmulas, umbrales, clasificaciones, redacción
+> de lo clínico, contenido de la encuesta y de las rutas. Lo de PRODUCTO (una pantalla que falta, un botón
+> sin superficie, una redacción de interfaz) va a `BACKLOG.md`, aunque toque algo clínico: mezclarlas hace
+> que esta cola deje de ser una lista de decisiones suyas y se vuelva un inventario de trabajo nuestro, y
+> entonces nadie sabe qué está esperando a quién. Ya pasó una vez y se corrigió el mismo día.
+
 > **ANTES DE PLANEAR SOBRE ESTE DOCUMENTO, lee `docs/BARRIDO_CIENTIFICO_2026-09-18.md`.** Ese barrido verifico contra el CODIGO lo que aqui se daba por pendiente, y varias cosas ya estaban hechas: el gate de "Otra" vacia, las nueve preguntas con "Otra", el borrador de la encuesta, el envio de la HC al paciente, P-109, los cuatro bloques de Seguimiento, el cierre de la consulta y el prompt de IA por los cinco dominios. Planear sobre una lista que envejecio fue justo el error que ese barrido corrigio.
 
 **Connected Nutrition Ventures · Atlas · 2026-09-06, actualizado el 2026-09-07** con lo que salió de tu revisión de Atlas.
@@ -773,21 +779,3 @@ archivo calculó, no el del equipo. Y el diagnóstico ahora exige cintura y cade
 como tú, para que teclear una cintura después arregle los dos índices. Verificamos que la cintura y la cadera
 **no entran en ninguna otra fórmula del modelo**: ni en el ISCM (que sale de IFC, MCA, E/I, FMI y FFW), ni en
 los índices bioeléctricos. Solo en el ICC, el ICT y, a través de ellos, en el predicado de la ruta R2.
-
-## Nueva (2026-09-24) · Un acto clínico que Atlas sella y nadie puede hacer
-
-**Es un hueco de producto, no una pregunta científica, pero toca un acto clínico y por eso se anota aquí.**
-
-El **reconocimiento de las restricciones del modelo** (T2 A2) existe entero por dentro: hay una policy que
-dice que solo el profesional asignado puede hacerlo, un escritor que sella **quién** y **cuándo** en el
-tratamiento, y su evento en el audit. **Lo que no existe es el botón.** Ninguna pantalla lo ofrece, así que
-el acto no se puede ejecutar y el sello nunca se pone.
-
-Lo encontró el candado `acciones-con-puerta` el 2026-09-24, que salió de otro caso igual: la devolución
-física tenía su cuarentena, su verificación y su candado contra base real, y ninguna pantalla llamaba a la
-acción que la registra. Se había construido el destino y no la puerta.
-
-**Lo que hay que decidir cuando se retome el bloque de tratamiento:** si ese reconocimiento sigue siendo un
-acto que el profesional hace explícitamente (y entonces le falta su superficie), o si la decisión de fondo
-cambió y lo que sobra es el mecanismo. No se conecta un botón a un acto clínico sin que alguien confirme que
-el acto sigue siendo el que era.

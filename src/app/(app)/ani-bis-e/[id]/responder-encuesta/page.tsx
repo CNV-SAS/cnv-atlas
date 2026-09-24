@@ -1,5 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 
+import { Panel } from "@/components/shared/panel";
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
+import { VolverA } from "@/components/shared/volver-a";
 import { requireUser } from "@/modules/auth/session";
 import { SurveyPhaseForm } from "@/modules/evaluations/components/survey-phase-form";
 import { getResumeTokenDeMiEvaluacion } from "@/modules/evaluations/data/evaluations-repository";
@@ -56,28 +59,28 @@ export default async function ResponderEncuestaPage({ params }: { params: Promis
   let initialStep = 0;
   for (let i = 0; i < conRespuesta.length; i++) if (conRespuesta[i]) initialStep = i;
 
+  // SOBRE SUPERFICIE BLANCA, como las demas: el contenido suelto sobre el gris del layout no se lee (el gris
+  // funciona como calle entre bloques, no como fondo de lectura). El formulario es largo, asi que ahi pesa
+  // mas todavia.
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Responder la encuesta con el paciente
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Es la misma encuesta que él tiene en su enlace, y continúa donde la haya dejado. Queda registrado
-          que la respondiste tú, porque no es lo mismo que la conteste él por su cuenta: escribe lo que él te
-          diga, con sus palabras.
-        </p>
-      </div>
-      <SurveyPhaseForm
-        resumeToken={resumeToken}
-        isFollowup={progress.mode === "seguimiento"}
-        questions={survey.questions}
-        prefill={prefill}
-        initialStep={initialStep}
-        characterizationPrefill={progress.characterization}
-        ethnicityAuthorized={progress.ethnicityAuthorized}
-        modo="profesional"
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <TituloPantalla
+        volver={<VolverA padre={`/ani-bis-e/${id}`} />}
+        titulo="Responder la encuesta con el paciente"
+        descripcion="Es la misma encuesta que él tiene en su enlace, y continúa donde la haya dejado. Queda registrado que la respondiste tú, porque no es lo mismo que la conteste él por su cuenta: escribe lo que él te diga, con sus palabras."
       />
+      <Panel>
+        <SurveyPhaseForm
+          resumeToken={resumeToken}
+          isFollowup={progress.mode === "seguimiento"}
+          questions={survey.questions}
+          prefill={prefill}
+          initialStep={initialStep}
+          characterizationPrefill={progress.characterization}
+          ethnicityAuthorized={progress.ethnicityAuthorized}
+          modo="profesional"
+        />
+      </Panel>
     </div>
   );
 }
