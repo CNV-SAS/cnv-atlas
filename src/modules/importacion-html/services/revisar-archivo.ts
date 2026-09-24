@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { appError, err, ok, type Result } from "@/core/errors";
 
 import { leerContextoDeRevision } from "../data/contexto-reader";
-import { archivoDeExportacionSchema, TAMANO_MAXIMO_ARCHIVO } from "../validations/archivo";
+import { archivoDeExportacionSchema, porQueNoPasa, TAMANO_MAXIMO_ARCHIVO } from "../validations/archivo";
 import { revisarLote, type RevisionDelLote } from "./revisar-lote";
 
 // Orquesta la revision de un archivo exportado del HTML: tamano, formato, contexto de Atlas y el informe.
@@ -30,12 +30,9 @@ export async function revisarArchivo(archivo: File): Promise<Result<ResultadoDeR
   }
   const validado = archivoDeExportacionSchema.safeParse(crudo);
   if (!validado.success) {
-    return err(
-      appError(
-        "validation",
-        "El archivo no tiene el formato del exportador del HTML (versión 1). Pídele al profesional que lo exporte otra vez con la copia de CNV.",
-      ),
-    );
+    // EL MENSAJE DICE QUE PASO, no "no tiene el formato" (Santiago, 2026-09-24). Ver `porQueNoPasa`: un
+    // rechazo que echa la culpa al formato sin saberlo manda a repetir un trabajo que quizá ya estaba bien.
+    return err(appError("validation", porQueNoPasa(crudo, validado.error.issues)));
   }
   const contexto = await leerContextoDeRevision();
   return ok({
