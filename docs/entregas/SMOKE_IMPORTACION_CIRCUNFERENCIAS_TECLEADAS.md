@@ -77,5 +77,22 @@ De cada paso: lo que viste, y sobre todo lo que **no** viste. Si algo se ve dist
 mándame la pantalla tal cual, sin arreglarlo: el texto de esta guía es la afirmación que se está probando, y
 si la realidad no coincide, puede estar mal la guía y no el código.
 
-Cuando termines, borra los pacientes sintéticos con **Deshacer** desde la misma pantalla de importación (el
-deshacer es todo o nada: revierte el lote completo, que es como se decidió).
+## Al terminar: la limpieza, en el orden que sí funciona
+
+**Este smoke genera un diagnóstico, y un lote con diagnóstico NO se deja deshacer.** La guía decía
+"deshaz el lote" sin más, así que cada corrida dejaba un lote atascado; se corrigió el 2026-09-24.
+
+El orden correcto:
+
+1. **Primero se borra el diagnóstico** que acabas de generar. Va por SQL, a propósito: un diagnóstico es un
+   registro sellado y Atlas no tiene (ni debe tener) un botón para borrarlo.
+   ```sql
+   delete from diagnoses d
+    using evaluations e, html_import_batches b
+    where d.evaluation_id = e.id and e.import_batch_id = b.id and b.reverted_at is null;
+   ```
+2. **Después, Deshacer** desde la pantalla de importación. El deshacer es todo o nada: revierte el lote
+   completo, que es como se decidió.
+
+El procedimiento completo, con las consultas para ver antes qué se va a borrar, está en
+`DESATASCAR_LOTE_CON_DIAGNOSTICO.md`.
