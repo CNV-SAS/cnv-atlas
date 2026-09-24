@@ -275,3 +275,42 @@ export async function hoyEnBogota(): Promise<string> {
   );
   return f.dia;
 }
+
+/**
+ * Descarta una liquidacion TODAVIA NO GIRADA: sus comisiones vuelven a quedar pendientes.
+ *
+ * EXISTE PORQUE UNA LIQUIDACION MAL HECHA RETIENE COMISIONES. Mientras viva, sus filas tienen dueño y no
+ * entran en la siguiente, asi que un calculo equivocado no es solo un numero feo: deja a alguien sin cobrar
+ * hasta que se resuelva. Una ya PAGADA no se descarta (el trigger de la 0171 lo impide): ahi el dinero salio
+ * y lo que corresponde es la liquidacion siguiente, no borrar la constancia.
+ */
+export async function descartarLiquidacion(input: {
+  settlementId: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [liq] = await tx.execute<{ id: string; pagada: string | null; neto: string }>(sql`
+      select id, paid_at::text as pagada, net_amount::text as neto
+        from commission_settlements where id = ${input.settlementId}`);
+    if (!liq) throw new LiquidacionError("Esa liquidación no existe.");
+    if (liq.pagada) {
+      throw new LiquidacionError(
+        "Esa liquidación ya se giró, así que no se descarta: el dinero salió. Lo que corresponde es ajustarlo en la siguiente.",
+      );
+    }
+    await recordAudit(tx, {
+      event: "comision.liquidacion_descartada",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "commission_settlement",
+      entityId: liq.id,
+      payload: { neto: Number(liq.neto) },
+      ip: input.ip,
+    });
+    // Las comisiones vuelven a quedar libres por el ON DELETE SET NULL de la 0171: no hay que soltarlas a
+    // mano, y por eso no puede quedar ninguna atada a una liquidacion que ya no existe.
+    await tx.execute(sql`delete from commission_settlements where id = ${liq.id}`);
+  });
+}

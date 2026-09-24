@@ -31,6 +31,7 @@ import {
 } from "./data/venta-retroactiva-writer";
 import { lineasRetroactivasSchema } from "./validations/venta-retroactiva";
 import {
+  descartarLiquidacion,
   liquidarHasta,
   LiquidacionError,
   registrarPagoDeLiquidacion,
@@ -808,5 +809,26 @@ export async function registrarPagoDeLiquidacionAction(
     if (e instanceof LiquidacionError) return { error: e.message, success: null, warning: null };
     reportServerError("registrarPagoDeLiquidacionAction", e);
     return { error: "No se pudo registrar el giro.", success: null, warning: null };
+  }
+}
+
+export async function descartarLiquidacionAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  try {
+    await descartarLiquidacion({
+      settlementId: String(form.get("settlementId") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    return { error: null, success: "Liquidación descartada: sus comisiones vuelven a quedar pendientes.", warning: null };
+  } catch (e) {
+    if (e instanceof LiquidacionError) return { error: e.message, success: null, warning: null };
+    reportServerError("descartarLiquidacionAction", e);
+    return { error: "No se pudo descartar la liquidación.", success: null, warning: null };
   }
 }

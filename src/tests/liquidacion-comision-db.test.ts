@@ -181,6 +181,19 @@ describe.skipIf(!HAS_DB)("la liquidación de comisiones (BD real)", () => {
     ).toMatch(/no se cambia/);
   }, 30_000);
 
+  it("una liquidación SIN GIRAR se descarta, y sus comisiones vuelven a quedar pendientes", async () => {
+    const { liquidarHasta, descartarLiquidacion } = await import("@/modules/payments/data/liquidacion-writer");
+    await causarComision(15_000);
+    const antes = await pendienteAhora();
+    const r = await liquidarHasta({ professionalId, hasta: hoy, actorId, actorEmail: "direccion@cnv", ip: null });
+    expect(await pendienteAhora(), "liquidar no retuvo las comisiones").toBe(0);
+
+    // Una liquidación mal hecha RETIENE comisiones: mientras viva, sus filas tienen dueño y no entran en la
+    // siguiente, así que alguien se queda sin cobrar hasta que se resuelva.
+    await descartarLiquidacion({ settlementId: r.id, actorId, actorEmail: "direccion@cnv", ip: null });
+    expect(await pendienteAhora(), "las comisiones no volvieron a quedar libres").toBe(antes);
+  }, 30_000);
+
   it("sin datos tributarios NO se liquida, y dice cuáles faltan", async () => {
     const { db } = await import("@/db");
     const { liquidarHasta, LiquidacionError } = await import("@/modules/payments/data/liquidacion-writer");

@@ -8,7 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDateOnly } from "@/lib/format/date";
 
-import { liquidarComisionAction, registrarPagoDeLiquidacionAction, type DevolucionState } from "../actions";
+import {
+  descartarLiquidacionAction,
+  liquidarComisionAction,
+  registrarPagoDeLiquidacionAction,
+  type DevolucionState,
+} from "../actions";
 
 const inicial: DevolucionState = { error: null, success: null, warning: null };
 
@@ -70,7 +75,9 @@ function FilaPendiente({ item, hasta }: { item: PendienteDeLiquidar; hasta: stri
 
 function FilaLiquidacion({ item, puedePagar }: { item: LiquidacionParaVer; puedePagar: boolean }) {
   const [state, action, pending] = useActionState(registrarPagoDeLiquidacionAction, inicial);
+  const [descarte, descartar, descartando] = useActionState(descartarLiquidacionAction, inicial);
   useFormToastAndRefresh(state);
+  useFormToastAndRefresh(descarte);
   return (
     <li className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -105,8 +112,20 @@ function FilaLiquidacion({ item, puedePagar }: { item: LiquidacionParaVer; puede
           {state.error ? <span className="text-destructive">{state.error}</span> : null}
         </form>
       ) : (
+        // El Integrante ve la suya y no la gira: eso es de Dirección.
         <span className="text-muted-foreground">Calculada, pendiente de giro.</span>
       )}
+      {/* DESCARTAR, SOLO MIENTRAS NO SE HAYA GIRADO. Una liquidación mal hecha RETIENE comisiones: mientras
+          viva, sus filas tienen dueño y no entran en la siguiente, así que alguien se queda sin cobrar. */}
+      {!item.pagadaEn && puedePagar ? (
+        <form onSubmit={enviarSinReset(descartar)}>
+          <input type="hidden" name="settlementId" value={item.id} />
+          <Button type="submit" variant="ghost" disabled={descartando} className="w-fit px-0 text-destructive">
+            Descartarla
+          </Button>
+          {descarte.error ? <p className="text-destructive">{descarte.error}</p> : null}
+        </form>
+      ) : null}
     </li>
   );
 }
