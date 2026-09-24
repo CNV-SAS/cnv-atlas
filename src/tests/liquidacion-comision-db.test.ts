@@ -133,7 +133,6 @@ describe.skipIf(!HAS_DB)("la liquidación de comisiones (BD real)", () => {
   });
 
   it("UNA COMISIÓN SE PAGA UNA VEZ: la segunda liquidación ya no la ve", async () => {
-    const { db } = await import("@/db");
     const { liquidarHasta, LiquidacionError } = await import("@/modules/payments/data/liquidacion-writer");
     const comision = await causarComision(20_000);
     expect(await liquidacionDe(comision), "nació ya liquidada").toBeNull();

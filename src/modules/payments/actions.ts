@@ -12,6 +12,7 @@ import {
   getProfessionalProfileIdByUser,
   getVentaVisible,
 } from "./data/payments-repository";
+import { CHECKOUT_TTL_MS } from "./data/checkout-reader";
 import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { canDeliverSale } from "./policies/can-deliver-sale";
@@ -192,7 +193,19 @@ export async function registerCashSaleFormAction(
           .join("; ");
         return {
           ...vacio,
-          pendingLinkWarning: `Este paciente tiene ${links.length === 1 ? "un link de pago sin pagar" : `${links.length} links de pago sin pagar`} con el mismo producto (${detalle}). Si cobras en efectivo, Atlas lo anula, para que no quede cobrado dos veces.`,
+          // ═══ LA RAZON DEPENDE DE SI EL LINK SIGUE VIVO (Santiago, 2026-09-24) ═══
+          //
+          // El aviso decia siempre "para que no quede cobrado dos veces", y se lo mostro sobre un link de
+          // 117 horas. Un link vencido NO SE PUEDE PAGAR (el checkout lo rechaza a las 24 h y la pagina de
+          // Wompi vence con su firma), asi que esa razon era falsa. Y tampoco retiene inventario: lo
+          // disponible ya descuenta solo las reservas VIVAS (`expires_at > now()`), verificado en
+          // `lotesDisponibles`. La accion sigue valiendo, pero por otra cosa: cierra un link que si no se
+          // queda pendiente para siempre. Un aviso que da una razon falsa enseña a no creerle a los avisos.
+          pendingLinkWarning: `Este paciente tiene ${links.length === 1 ? "un link de pago sin pagar" : `${links.length} links de pago sin pagar`} con el mismo producto (${detalle}). ${
+            links.every((l) => vencido(l.createdAt))
+              ? "Ya venció y no se puede pagar; al cobrar en efectivo, Atlas lo cierra para que deje de aparecer como pendiente."
+              : "Si cobras en efectivo, Atlas lo anula, para que no quede cobrado dos veces."
+          }`,
         };
       }
     }
@@ -231,6 +244,11 @@ export async function registerCashSaleFormAction(
     reportServerError("cash-sale.register", e);
     return { ...vacio, error: "No se pudo registrar la venta en efectivo." };
   }
+}
+
+/** Si un link ya pasó su TTL: vencido NO se puede pagar (el checkout lo rechaza y la firma de Wompi caduca). */
+function vencido(iso: string): boolean {
+  return Date.now() - new Date(iso).getTime() > CHECKOUT_TTL_MS;
 }
 
 function haceCuanto(iso: string): string {
