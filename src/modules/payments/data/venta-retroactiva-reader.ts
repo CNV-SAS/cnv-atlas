@@ -27,10 +27,13 @@ export async function leerContextoDeVentaRetroactiva(): Promise<ContextoDeVentaR
 
   // LOS PACIENTES, CON SU DOCUMENTO EN EL ROTULO: dos personas pueden llamarse igual, y equivocarse aqui le
   // cuelga a alguien una compra que no hizo.
+  // El NOMBRE esta en `patient_profiles` y el DOCUMENTO en `patients`: son dos tablas porque la PII
+  // demografica se separo a proposito. Hay que unirlas, no leer las dos cosas de una.
   const pacientes = await db.execute<{ id: string; nombre: string }>(sql`
-    select id,
-           trim(coalesce(first_name, '') || ' ' || coalesce(last_name, '')) || ' · ' || coalesce(document_number, 's/d') as nombre
-      from patients
+    select p.id,
+           trim(coalesce(pp.first_name, '') || ' ' || coalesce(pp.last_name, '')) || ' · ' || p.document_number as nombre
+      from patients p
+      join patient_profiles pp on pp.patient_id = p.id
      order by 2
      limit 2000`);
 
