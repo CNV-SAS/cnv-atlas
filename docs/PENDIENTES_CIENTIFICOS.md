@@ -773,3 +773,21 @@ archivo calculó, no el del equipo. Y el diagnóstico ahora exige cintura y cade
 como tú, para que teclear una cintura después arregle los dos índices. Verificamos que la cintura y la cadera
 **no entran en ninguna otra fórmula del modelo**: ni en el ISCM (que sale de IFC, MCA, E/I, FMI y FFW), ni en
 los índices bioeléctricos. Solo en el ICC, el ICT y, a través de ellos, en el predicado de la ruta R2.
+
+## Nueva (2026-09-24) · Un acto clínico que Atlas sella y nadie puede hacer
+
+**Es un hueco de producto, no una pregunta científica, pero toca un acto clínico y por eso se anota aquí.**
+
+El **reconocimiento de las restricciones del modelo** (T2 A2) existe entero por dentro: hay una policy que
+dice que solo el profesional asignado puede hacerlo, un escritor que sella **quién** y **cuándo** en el
+tratamiento, y su evento en el audit. **Lo que no existe es el botón.** Ninguna pantalla lo ofrece, así que
+el acto no se puede ejecutar y el sello nunca se pone.
+
+Lo encontró el candado `acciones-con-puerta` el 2026-09-24, que salió de otro caso igual: la devolución
+física tenía su cuarentena, su verificación y su candado contra base real, y ninguna pantalla llamaba a la
+acción que la registra. Se había construido el destino y no la puerta.
+
+**Lo que hay que decidir cuando se retome el bloque de tratamiento:** si ese reconocimiento sigue siendo un
+acto que el profesional hace explícitamente (y entonces le falta su superficie), o si la decisión de fondo
+cambió y lo que sobra es el mecanismo. No se conecta un botón a un acto clínico sin que alguien confirme que
+el acto sigue siendo el que era.
