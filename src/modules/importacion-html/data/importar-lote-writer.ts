@@ -1,13 +1,16 @@
 import "server-only";
 
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
   bisMeasurements,
   bisRawValues,
+  clinicalCorrections,
   evaluationBisIntake,
   diagnoses,
+  reports,
+  treatments,
   evaluations,
   htmlImportBatches,
   patientContacts,
@@ -381,11 +384,52 @@ export async function revertirLote(input: {
       // correccion de evaluacion, y no resuelve nada: el deshacer borra las evaluaciones y los pacientes que
       // creo el lote, asi que si el diagnostico se queda, se quedan tambien la evaluacion y el paciente, y
       // no se deshizo nada.
-      if (conDiagnostico.length > 0) {
+      // SE MIRAN LOS TRES, NO SOLO EL DIAGNOSTICO (2026-09-24). Generar un diagnostico crea ADEMAS un
+      // tratamiento y un reporte, en la misma corrida del pipeline, y los tres bloquean el borrado de la
+      // evaluacion (dos por FK `restrict`, y ademas cada uno con su trigger de inmutabilidad). Mirar solo el
+      // diagnostico hacia que, una vez borrado ese, el deshacer fallara con un "No se pudo deshacer el lote"
+      // sin decir por que: el reporte seguia ahi. Un mensaje que no nombra al que bloquea manda a la persona
+      // a adivinar.
+      // Por el ORM y no con SQL a mano: un `any(array)` escrito a pulso no le llega a Postgres como arreglo
+      // desde aqui, y ademas asi el dia que una de estas tablas cambie de nombre, el compilador lo dice.
+      const conReporte = await tx
+        .select({ id: reports.id })
+        .from(reports)
+        .where(inArray(reports.evaluationId, ids));
+      const conTratamiento = await tx
+        .select({ id: treatments.id })
+        .from(treatments)
+        .innerJoin(diagnoses, eq(diagnoses.id, treatments.diagnosisId))
+        .where(inArray(diagnoses.evaluationId, ids));
+      const conCorreccion = await tx
+        .select({ id: clinicalCorrections.id })
+        .from(clinicalCorrections)
+        .where(
+          or(
+            inArray(clinicalCorrections.oldEvaluationId, ids),
+            inArray(clinicalCorrections.newEvaluationId, ids),
+          ),
+        );
+
+      const bloquean = [
+        conDiagnostico.length > 0 ? `${conDiagnostico.length} diagnóstico(s)` : null,
+        conTratamiento.length > 0 ? `${conTratamiento.length} tratamiento(s)` : null,
+        conReporte.length > 0 ? `${conReporte.length} reporte(s)` : null,
+        conCorreccion.length > 0 ? `${conCorreccion.length} corrección(es)` : null,
+      ].filter((x): x is string => x != null);
+
+      // NO SE DESHACE, Y NO ES UNA LIMITACION TECNICA: esos actos nacen FIRMADOS, y una firma clinica no se
+      // borra (triggers de las migraciones 0026, 0027 y la de reports). Cuando un profesional ya trabajo
+      // sobre un paciente importado, ese import es parte de su historia clinica.
+      //
+      // Se evaluo (2026-09-24) que el deshacer SUPERSEDIERA el diagnostico en vez de borrarlo, como hace la
+      // correccion de evaluacion, y no resuelve nada: el deshacer borra las evaluaciones y los pacientes que
+      // creo el lote, asi que si el acto firmado se queda, se quedan tambien la evaluacion y el paciente.
+      if (bloquean.length > 0) {
         throw new LoteNoReversibleError(
-          "No se puede deshacer: alguna consulta de este lote ya tiene un diagnóstico generado, y un " +
-            "diagnóstico firmado no se borra. Si el paciente sigue en atención, el import se queda; si hay " +
-            "que corregir lo importado, se corrige la evaluación.",
+          `No se puede deshacer: este lote ya tiene ${bloquean.join(", ")} sobre sus consultas, y lo que se ` +
+            "firma no se borra. Lo importado pasó a ser parte de la historia clínica; si hay algo que " +
+            "corregir, se corrige la evaluación.",
         );
       }
       await tx.delete(evaluations).where(inArray(evaluations.id, ids));

@@ -69,6 +69,20 @@ describe.skipIf(!HAS_DB)("los lectores contra la base (BD real)", () => {
     );
     if (existente) {
       nutraceuticalId = existente.id;
+      // EL PROFESIONAL SALE DEL PRODUCTO, NO DE UN `limit 1` (2026-09-24). Arriba se elige "un profesional
+      // con ubicacion", y cual sale depende de que filas haya en la tabla: el dia que otra prueba agrego (y
+      // luego quito) un profesional, este caso empezo a mirar a otra persona y el saldo del fixture le dio
+      // cero. El producto del fixture YA SABE de quien es: se le pregunta a el.
+      const [dueno] = await db.execute<{ professional_id: string; profile_id: string }>(dsql`
+        select i.professional_id, pp.profile_id
+          from nutraceutical_inventory i
+          join professional_profiles pp on pp.id = i.professional_id
+         where i.nutraceutical_id = ${nutraceuticalId}
+         limit 1`);
+      if (dueno) {
+        professionalId = dueno.professional_id;
+        profileId = dueno.profile_id;
+      }
       return;
     }
 
