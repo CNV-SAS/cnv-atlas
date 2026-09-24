@@ -41,3 +41,40 @@ export async function conLimite<T>(
     if (temporizador) clearTimeout(temporizador);
   }
 }
+
+/**
+ * Corre las cargas de a POCAS A LA VEZ, no todas de golpe.
+ *
+ * ═══ POR QUE EXISTE (2026-09-24) ═══
+ *
+ * El pool de la base tiene SEIS conexiones (`src/db/index.ts`). Una pantalla que dispara siete consultas en
+ * paralelo deja a una esperando turno, y el limite de `conLimite` corre MIENTRAS ESPERA: la consulta que no
+ * alcanzo cupo se reporta como "no respondio en 8000 ms" sin haber llegado a correr. Medida sola tardaba
+ * 0,2 ms. Es lo que paso dos veces en /pagos, primero con `dias-con-ventas-sin-cerrar` y despues con
+ * `devueltas`, y la segunda vez arrastro ademas a `pendientes-de-accion`, que fallo por conexion.
+ *
+ * Por eso el limite no se sube: subirlo esconderia la espera en vez de quitarla. Lo que se arregla es que
+ * ninguna carga tenga que esperar cupo, y el temporizador de cada una empieza CUANDO DE VERDAD ARRANCA,
+ * porque recibe una funcion y no una promesa ya lanzada.
+ *
+ * Tres a la vez deja margen: quedan conexiones libres para lo que la misma peticion necesite (la sesion, los
+ * permisos) y para las otras peticiones que esten entrando al mismo tiempo.
+ */
+export async function enTandas<T extends readonly (() => Promise<unknown>)[]>(
+  cargas: [...T],
+  simultaneas = 3,
+): Promise<{ -readonly [K in keyof T]: Awaited<ReturnType<T[K]>> }> {
+  // Tipado como TUPLA y no como arreglo: cada carga devuelve lo suyo, y la pantalla lee `paneles[3]` con su
+  // tipo. Con `T[]` TypeScript intenta unificar los siete en uno solo y se queja de algo que no es un error.
+  const resultados: unknown[] = new Array(cargas.length);
+  let siguiente = 0;
+  async function trabajador() {
+    for (;;) {
+      const i = siguiente++;
+      if (i >= cargas.length) return;
+      resultados[i] = await cargas[i]();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(simultaneas, cargas.length) }, trabajador));
+  return resultados as { -readonly [K in keyof T]: Awaited<ReturnType<T[K]>> };
+}
