@@ -30,6 +30,11 @@ import {
   VentaRetroactivaError,
 } from "./data/venta-retroactiva-writer";
 import { lineasRetroactivasSchema } from "./validations/venta-retroactiva";
+import {
+  liquidarHasta,
+  LiquidacionError,
+  registrarPagoDeLiquidacion,
+} from "./data/liquidacion-writer";
 import { descontarInventarioDeVenta } from "./services/inventario-venta-service";
 import { ReversaError } from "./data/reversas-writer";
 import { reintentarFacturasPendientes } from "./services/facturacion-service";
@@ -753,5 +758,55 @@ export async function borrarVentaRetroactivaAction(
     if (e instanceof VentaRetroactivaError) return { error: e.message, success: null, warning: null };
     reportServerError("borrarVentaRetroactivaAction", e);
     return { error: "No se pudo borrar la venta.", success: null, warning: null };
+  }
+}
+
+// ═══ LA LIQUIDACION DE COMISIONES (Bloque 4) ═══
+
+export async function liquidarComisionAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  try {
+    const { neto } = await liquidarHasta({
+      professionalId: String(form.get("professionalId") ?? ""),
+      hasta: String(form.get("hasta") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    return {
+      error: null,
+      success: `Liquidación calculada: $${neto.toLocaleString("es-CO")} a girar. Registra el giro cuando salga.`,
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof LiquidacionError) return { error: e.message, success: null, warning: null };
+    reportServerError("liquidarComisionAction", e);
+    return { error: "No se pudo liquidar.", success: null, warning: null };
+  }
+}
+
+export async function registrarPagoDeLiquidacionAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  try {
+    await registrarPagoDeLiquidacion({
+      settlementId: String(form.get("settlementId") ?? ""),
+      referencia: String(form.get("referencia") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    return { error: null, success: "Giro registrado.", warning: null };
+  } catch (e) {
+    if (e instanceof LiquidacionError) return { error: e.message, success: null, warning: null };
+    reportServerError("registrarPagoDeLiquidacionAction", e);
+    return { error: "No se pudo registrar el giro.", success: null, warning: null };
   }
 }
