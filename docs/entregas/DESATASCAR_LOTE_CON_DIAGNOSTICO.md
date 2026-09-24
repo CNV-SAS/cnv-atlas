@@ -50,15 +50,29 @@ paciente del lote no es de prueba, no se corre.
 begin;
 set local session_replication_role = replica;
 
-delete from diagnoses d
- using evaluations e
+-- EL ORDEN IMPORTA, y son TRES cosas, no una: generar un diagnóstico crea además un TRATAMIENTO y un
+-- REPORTE en la misma corrida. El tratamiento cuelga del diagnóstico y el reporte de la evaluación.
+delete from treatments t using diagnoses d, evaluations e
+ where t.diagnosis_id = d.id and d.evaluation_id = e.id
+   and e.import_batch_id = '<el id del lote>';
+
+delete from reports r using evaluations e
+ where r.evaluation_id = e.id
+   and e.import_batch_id = '<el id del lote>';
+
+delete from diagnoses d using evaluations e
  where d.evaluation_id = e.id
    and e.import_batch_id = '<el id del lote>';
 
 commit;
 ```
 
-Esto borra **solo** los diagnósticos de ese lote. No deshace nada más: eso viene ahora, por la pantalla, que
+**Ojo con `session_replication_role = replica`:** además de los triggers, desactiva también las llaves
+foráneas. Por eso el orden y la completitud importan: si borras el diagnóstico y dejas su tratamiento, el
+tratamiento queda apuntando a algo que ya no existe y nada te avisa. (Pasó el 2026-09-24: se borró solo el
+diagnóstico, el reporte siguió ahí y el Deshacer falló con un mensaje que no decía por qué.)
+
+Esto borra **solo** los actos clínicos de ese lote. No deshace nada más: eso viene ahora, por la pantalla, que
 es la que deja el rastro en el audit.
 
 ## 3 · Deshacer el lote desde la pantalla
