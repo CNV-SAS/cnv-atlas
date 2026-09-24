@@ -91,6 +91,9 @@ describe.skipIf(!HAS_DB)("importar y deshacer un lote (BD real)", () => {
     const [version] = await db.execute<{ id: string }>(
       dsql`select id from survey_versions order by published_at desc limit 1`,
     );
+    const [versionCondiciones] = await db.execute<{ id: string }>(
+      dsql`select id from bis_condition_versions order by published_at desc limit 1`,
+    );
     const preguntas = await db.execute<{ id: string; field_key: string }>(
       dsql`select id, field_key from survey_questions where survey_version_id = ${version.id} and field_key in ('d3_27','d2_21')`,
     );
@@ -106,6 +109,7 @@ describe.skipIf(!HAS_DB)("importar y deshacer un lote (BD real)", () => {
       archivo: { nombre: "prueba.json", hash: "a".repeat(64) },
       declaracion: { version: "1.0", aceptadaEn: "2026-09-22T10:00:00Z" },
       surveyVersionId: version.id,
+      bisConditionVersionId: versionCondiciones.id,
       preguntasPorClave,
       pacientes: [
         {
@@ -244,6 +248,9 @@ describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condi
     const [version] = await db.execute<{ id: string }>(
       dsql`select id from survey_versions order by published_at desc limit 1`,
     );
+    const [versionCondiciones] = await db.execute<{ id: string }>(
+      dsql`select id from bis_condition_versions order by published_at desc limit 1`,
+    );
     const documento = `IMPGATE-${Date.now()}`;
     const r = await importarLote({
       organizationId: pp.organization_id,
@@ -254,6 +261,7 @@ describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condi
       archivo: { nombre: "prueba.json", hash: "b".repeat(64) },
       declaracion: { version: "1.0", aceptadaEn: "2026-09-22T10:00:00Z" },
       surveyVersionId: version.id,
+      bisConditionVersionId: versionCondiciones.id,
       preguntasPorClave: {},
       pacientes: [
         {
@@ -262,7 +270,12 @@ describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condi
           consultas: [
             {
               fecha: "2026-08-13",
-              consulta: { nombre: "Sintético Gate", sexo: "M", fechaNac: "1990-05-01", Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: 2.96, FM: 18.04, FFMI: 19.9, peso: 80.4, tallaCm: 177 },
+              // CON FUERZA PRENSIL Y PESO META: el HTML los trae y desde el 2026-09-24 se importan. Viven en
+              // la fila de condiciones, asi que este caso prueba las dos mitades a la vez: que los datos
+              // entren, y que la puerta SIGA pidiendo las condiciones (la fila existe, pero nadie las
+              // registro). Antes de la 0170 esto era imposible: crear la fila daba las condiciones por
+              // puestas.
+              consulta: { nombre: "Sintético Gate", sexo: "Masculino", fechaNac: "1990-05-01", Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: 2.96, FM: 18.04, FFM: 62.36, FFMI: 19.9, peso: 80.4, tallaCm: 177, fuerzaPrensil: 34.5, pesoMeta: 75 },
             },
           ],
         },
@@ -290,6 +303,21 @@ describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condi
     });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.message).toContain("condiciones de la toma BIS");
+
+    // LAS DOS MEDIDAS SÍ ENTRARON, y la fila NO cuenta como condiciones registradas.
+    const [intake] = await db.execute<{
+      grip: string | null;
+      meta: string | null;
+      procedencia: string | null;
+      registradas: string | null;
+    }>(dsql`
+      select grip_strength_kg::text as grip, weight_goal_kg::text as meta, weight_goal_set_in as procedencia,
+             conditions_registered_at::text as registradas
+        from evaluation_bis_intake where evaluation_id = ${evaluacion.id}`);
+    expect(Number(intake.grip), "la fuerza prensil del HTML se perdió").toBe(34.5);
+    expect(Number(intake.meta)).toBe(75);
+    expect(intake.procedencia).toBe("entrada");
+    expect(intake.registradas, "la fila importada no puede contar como condiciones registradas").toBeNull();
     // Llenar las 64 respuestas y correr el pipeline contra la base pasa de los 5 s por defecto cuando la
     // suite entera esta corriendo.
   }, 30_000);
@@ -334,6 +362,9 @@ describe.skipIf(!HAS_DB)("teclear la cintura y la cadera de una importada (BD re
     const [version] = await db.execute<{ id: string }>(
       dsql`select id from survey_versions order by published_at desc limit 1`,
     );
+    const [versionCondiciones] = await db.execute<{ id: string }>(
+      dsql`select id from bis_condition_versions order by published_at desc limit 1`,
+    );
     const documento = `IMPCIRC-${Date.now()}`;
     const r = await importarLote({
       organizationId: pp.organization_id,
@@ -344,6 +375,7 @@ describe.skipIf(!HAS_DB)("teclear la cintura y la cadera de una importada (BD re
       archivo: { nombre: "prueba.json", hash: "c".repeat(64) },
       declaracion: { version: "1.0", aceptadaEn: "2026-09-22T10:00:00Z" },
       surveyVersionId: version.id,
+      bisConditionVersionId: versionCondiciones.id,
       preguntasPorClave: {},
       pacientes: [
         {

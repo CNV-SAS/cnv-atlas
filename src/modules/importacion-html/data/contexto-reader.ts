@@ -76,6 +76,8 @@ export async function listarProfesionalesParaImportar(): Promise<{ id: string; n
 export async function leerDestinoDeImportacion(professionalId: string): Promise<{
   organizationId: string;
   surveyVersionId: string;
+  /** La version vigente de las condiciones de la toma: sella la fila que lleva la fuerza prensil importada. */
+  bisConditionVersionId: string;
   preguntasPorClave: Record<string, string>;
 } | null> {
   const supabase = await createSupabaseServerClient();
@@ -87,12 +89,23 @@ export async function leerDestinoDeImportacion(professionalId: string): Promise<
       .maybeSingle(),
     getActiveSurvey(),
   ]);
+  const { data: versionCondiciones } = await supabase
+    .from("bis_condition_versions")
+    .select("id")
+    .order("published_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (error) throw new Error(`contexto-reader: destino: ${error.message}`);
   const organizationId = prof?.profiles?.organization_id ?? null;
-  if (!organizationId || !encuesta) return null;
+  if (!organizationId || !encuesta || !versionCondiciones) return null;
   const preguntasPorClave: Record<string, string> = {};
   for (const q of encuesta.questions) if (q.fieldKey) preguntasPorClave[q.fieldKey] = q.id;
-  return { organizationId, surveyVersionId: encuesta.surveyVersionId, preguntasPorClave };
+  return {
+    organizationId,
+    surveyVersionId: encuesta.surveyVersionId,
+    bisConditionVersionId: versionCondiciones.id,
+    preguntasPorClave,
+  };
 }
 
 /** Un lote importado, con lo que trae HOY (no lo que trajo al importarse) y si todavia se puede deshacer. */

@@ -102,6 +102,7 @@ export async function importarArchivo(input: {
       aceptadaEn: validado.data.declaracion.aceptadaEn,
     },
     surveyVersionId: destino.surveyVersionId,
+    bisConditionVersionId: destino.bisConditionVersionId,
     preguntasPorClave: destino.preguntasPorClave,
     pacientes,
   });

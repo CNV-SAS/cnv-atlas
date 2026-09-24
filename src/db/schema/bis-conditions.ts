@@ -104,6 +104,12 @@ export const evaluationBisIntake = pgTable(
     // acordado con el paciente en la consulta que uno ajustado despues al armar el plan. Viaja SIEMPRE con
     // el valor (CHECK de coherencia en la 0095): un valor sin procedencia es medio dato.
     weightGoalSetIn: text("weight_goal_set_in", { enum: ["entrada", "tratamiento"] }),
+    // CUANDO LAS REGISTRO UNA PERSONA (0170). Nulo = la fila existe por otra via (una consulta importada del
+    // HTML que trae fuerza prensil y peso meta) y las condiciones siguen pendientes. Existe porque la puerta
+    // del diagnostico solo miraba si la fila EXISTE, y crearla al importar habria hecho creer que se
+    // registraron. El snapshot vacio no servia de senal: 484 de 498 filas lo tienen, porque el formulario
+    // solo guarda lo que se responde que SI.
+    conditionsRegisteredAt: timestamp("conditions_registered_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

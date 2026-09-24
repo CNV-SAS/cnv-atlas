@@ -51,6 +51,9 @@ const consulta = (extra) => ({
   d3_27: "Muy mala",
   d3_26: "Menos de 5h",
   d2_21: ["Ninguno"],
+  // Las dos medidas del profesional que el HTML guarda por consulta y que desde el 2026-09-24 se importan.
+  fuerzaPrensil: 34.5,
+  pesoMeta: 75,
   ...patron,
   ...extra,
 });

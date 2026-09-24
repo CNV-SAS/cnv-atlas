@@ -158,10 +158,16 @@ describe("la revisión no escribe nada", () => {
     const escritor = sinComentarios(readFileSync("src/modules/importacion-html/data/importar-lote-writer.ts", "utf8"));
     expect(escritor).toContain("db.transaction(");
     expect(escritor).toContain("recordAudit(tx,");
-    // Ni diagnostico, ni tratamiento, ni reporte, ni condiciones de la toma: eso lo hace el profesional.
-    for (const tabla of ["diagnoses", "treatments", "reports", "evaluationBisIntake"]) {
+    // Ni diagnostico, ni tratamiento, ni reporte: eso lo hace el profesional.
+    for (const tabla of ["diagnoses", "treatments", "reports"]) {
       expect(escritor, `el escritor escribe en ${tabla}`).not.toContain(`insert(${tabla})`);
     }
+    // LA FILA DE CONDICIONES SI SE ESCRIBE DESDE EL 2026-09-24, y la regla no desaparecio: se afino. El HTML
+    // trae la fuerza prensil (que ENTRA AL MOTOR y no se puede volver a medir) y el peso meta, y los dos
+    // viven en esa fila. Lo que sigue prohibido es darlas por REGISTRADAS: eso lo hace una persona, y es lo
+    // que mira la puerta del diagnostico desde la 0170.
+    expect(escritor).toContain("insert(evaluationBisIntake)");
+    expect(escritor, "el importador da las condiciones por registradas").not.toContain("conditionsRegisteredAt");
   });
 
   it("y solo la ve admin", () => {
