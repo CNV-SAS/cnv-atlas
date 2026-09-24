@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { conLimite } from "@/lib/observability/con-limite";
 import { CotejoConWompi } from "@/modules/payments/components/cotejo-con-wompi";
 import { DevueltasPendientes } from "@/modules/payments/components/devueltas-pendientes";
+import { RegistrarDevolucion } from "@/modules/payments/components/registrar-devolucion";
 import { leerDevolucionesPendientes } from "@/modules/payments/data/devolucion-fisica-writer";
 import { ReversasDeVenta } from "@/modules/payments/components/reversas-de-venta";
 import { listarReversas } from "@/modules/payments/data/reversas-writer";
@@ -349,6 +350,18 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
                         </div>
                       ) : null}
                       <EntregaDeLaVenta tx={tx} puedeEntregar={canDeliverSale(user, tx, perfilPropio)} />
+                      {/* LA DEVOLUCION SE REGISTRA DESDE LA VENTA (2026-09-24), que es donde está el hecho:
+                          el paciente devuelve lo que compró, y la unidad que vuelve es la que salió con esa
+                          línea. Solo sobre una venta PAGADA Y ENTREGADA: lo que nunca salió no vuelve. */}
+                      {canView && tx.status === "paid" && tx.fulfillment_state === "entregado" && tx.transaction_items.length > 0 ? (
+                        <RegistrarDevolucion
+                          lineas={tx.transaction_items.map((it) => ({
+                            id: it.id,
+                            producto: it.nutraceuticals?.name ?? "(producto)",
+                            cantidad: it.quantity,
+                          }))}
+                        />
+                      ) : null}
                       {reversaDe.has(tx.id) ? (
                         <span className="text-xs text-destructive">
                           {reversaDe.get(tx.id)!.estado === "abierta"
