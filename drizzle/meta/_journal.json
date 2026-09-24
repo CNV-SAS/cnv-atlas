@@ -1191,6 +1191,13 @@
       "when": 1791952226103,
       "tag": "0169_venta_retroactiva",
       "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1791952286103,
+      "tag": "0170_condiciones_registradas",
+      "breakpoints": true
     }
   ]
 }

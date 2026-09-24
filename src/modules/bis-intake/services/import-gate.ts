@@ -114,9 +114,11 @@ export function insumosDelMotorParaDiagnosticar(
 // Mismo criterio que el boton, para la medicion que no paso por el (el paciente importado del HTML). La
 // encuesta completa ya la exige el propio pipeline, con su mensaje por dominio.
 export function condicionesParaDiagnosticar(
-  condiciones: { contraindicated: boolean } | null,
+  condiciones: { contraindicated: boolean; registradas?: boolean } | null,
 ): { allowed: true } | { allowed: false; message: string } {
-  if (!condiciones) {
+  // LAS REGISTRO ALGUIEN, no basta con que la fila exista (0170). Desde que la importacion del HTML trae la
+  // fuerza prensil y el peso meta, una fila puede existir sin que nadie haya respondido las condiciones.
+  if (!condiciones || condiciones.registradas === false) {
     return {
       allowed: false,
       message: "Para generar el diagnóstico falta guardar las condiciones de la toma BIS (subpestaña Encuesta).",

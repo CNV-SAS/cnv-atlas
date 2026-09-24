@@ -26,6 +26,10 @@ export async function sembrarCondicionesBis(
       conditionAnswers: {},
       contraindicated: false,
       gripStrengthKg: extra.gripStrengthKg ?? null,
+      // LAS REGISTRO ALGUIEN (0170). Este helper representa al profesional respondiendo el formulario, asi
+      // que lleva la marca. La fila SIN marca existe tambien, y significa otra cosa: una consulta importada
+      // del HTML que solo trae medidas, a la que el diagnostico le sigue pidiendo las condiciones.
+      conditionsRegisteredAt: new Date(),
     })
     .onConflictDoNothing();
 }

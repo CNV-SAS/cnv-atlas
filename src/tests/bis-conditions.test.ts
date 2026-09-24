@@ -593,7 +593,11 @@ describe("el diagnóstico exige las condiciones de la toma, venga de donde venga
     expect(encuesta).toBeGreaterThan(-1);
     expect(condiciones).toBeGreaterThan(encuesta);
     const lector = readFileSync("src/modules/clinical-pipeline/data/pipeline-reader.ts", "utf8");
-    expect(lector).toContain("bisConditions: intake ? { contraindicated: intake.contraindicated } : null");
+    // El lector lleva DOS cosas a la puerta desde la 0170: si hay contraindicación y si las condiciones las
+    // REGISTRÓ alguien. Lo segundo se agregó porque una fila puede existir sin que nadie las respondiera: la
+    // consulta importada del HTML crea esa fila para traer la fuerza prensil y el peso meta.
+    expect(lector).toContain("contraindicated: intake.contraindicated");
+    expect(lector).toContain("registradas: intake.conditionsRegisteredAt != null");
   });
 });
 

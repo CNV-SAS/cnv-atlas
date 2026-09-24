@@ -6,6 +6,7 @@ import { db } from "@/db";
 import {
   bisMeasurements,
   bisRawValues,
+  evaluationBisIntake,
   diagnoses,
   evaluations,
   htmlImportBatches,
@@ -71,6 +72,8 @@ export type ImportarLoteInput = {
   archivo: { nombre: string; hash: string };
   declaracion: { version: string; aceptadaEn: string };
   surveyVersionId: string;
+  /** La version vigente de las condiciones: sella la fila que lleva la fuerza prensil y el peso meta. */
+  bisConditionVersionId: string;
   /** Las preguntas de la version vigente: clave -> id. Solo se importan las que Atlas tiene. */
   preguntasPorClave: Record<string, string>;
   pacientes: PacienteParaImportar[];
@@ -245,6 +248,33 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
           await tx.insert(bisRawValues).values(
             valores.map((v) => ({ measurementId: medicion.id, variableName: v.variableName, value: String(v.value) })),
           );
+        }
+
+        // ═══ LA FUERZA PRENSIL Y EL PESO META (2026-09-24) ═══
+        //
+        // El HTML los guarda por consulta y se perdian. La prensil ENTRA AL MOTOR (criterio primario del
+        // fenotipo) y una consulta de hace meses NO SE PUEDE VOLVER A MEDIR: perderla es perderla. El peso
+        // meta gobierna toda la cadena calorica; ese si se puede volver a fijar, pero no hay razon para
+        // hacerselo teclear de nuevo si el archivo lo trae.
+        //
+        // VIVEN EN LA FILA DE CONDICIONES, y por eso hizo falta la 0170: la puerta del diagnostico solo
+        // miraba si esa fila EXISTE, asi que crearla aqui habria hecho creer que las condiciones ya se
+        // registraron. Se crea SIN `conditionsRegisteredAt`, que es lo que ahora mira la puerta: las medidas
+        // entran y las condiciones se siguen pidiendo, que es exactamente lo que queriamos.
+        const prensil = Number(c.consulta.fuerzaPrensil) || 0;
+        const pesoMeta = Number(c.consulta.pesoMeta) || 0;
+        if (prensil > 0 || pesoMeta > 0) {
+          await tx.insert(evaluationBisIntake).values({
+            evaluationId: evaluacion.id,
+            bisConditionVersionId: input.bisConditionVersionId,
+            conditionAnswers: {},
+            contraindicated: false,
+            gripStrengthKg: prensil > 0 ? String(prensil) : null,
+            weightGoalKg: pesoMeta > 0 ? String(pesoMeta) : null,
+            // La procedencia viaja SIEMPRE con el valor (CHECK de la 0095): se fijo en la entrada, no al
+            // armar el tratamiento.
+            weightGoalSetIn: pesoMeta > 0 ? "entrada" : null,
+          });
         }
 
         // EL CONSENTIMIENTO, FIRMADO O NO (respuesta legal: la consulta sin firma se importa igual, con esa

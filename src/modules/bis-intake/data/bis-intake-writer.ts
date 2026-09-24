@@ -53,6 +53,9 @@ export async function writeBisConditionsIntake(
       bisConditionVersionId: input.versionId,
       conditionAnswers: input.answers,
       contraindicated: input.contraindicated,
+      // LAS REGISTRO UNA PERSONA, y eso es lo que mira la puerta del diagnostico (0170). No se deduce de que
+      // la fila exista: desde la importacion del HTML, una fila puede existir solo para traer las medidas.
+      conditionsRegisteredAt: new Date(),
     };
 
     // Una captura por evaluacion (unique en evaluation_id): re-guardar actualiza el sello.
@@ -65,6 +68,7 @@ export async function writeBisConditionsIntake(
           bisConditionVersionId: values.bisConditionVersionId,
           conditionAnswers: values.conditionAnswers,
           contraindicated: values.contraindicated,
+          conditionsRegisteredAt: values.conditionsRegisteredAt,
           updatedAt: sql`now()`,
         },
       });

@@ -1169,6 +1169,7 @@ export type Database = {
         Row: {
           bis_condition_version_id: string
           condition_answers: Json
+          conditions_registered_at: string | null
           contraindicated: boolean
           created_at: string
           evaluation_id: string
@@ -1181,6 +1182,7 @@ export type Database = {
         Insert: {
           bis_condition_version_id: string
           condition_answers: Json
+          conditions_registered_at?: string | null
           contraindicated?: boolean
           created_at?: string
           evaluation_id: string
@@ -1193,6 +1195,7 @@ export type Database = {
         Update: {
           bis_condition_version_id?: string
           condition_answers?: Json
+          conditions_registered_at?: string | null
           contraindicated?: boolean
           created_at?: string
           evaluation_id?: string
