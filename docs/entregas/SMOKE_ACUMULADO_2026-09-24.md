@@ -18,14 +18,18 @@ verificación, y que la decisión de reincorporarlo o darlo de baja la toma una 
 
 ### Preparar
 
-Hace falta **una venta pagada con producto entregado**. Si no tienes una a mano, sirve una venta en efectivo
-nueva desde `/pagos`.
+Hace falta **una venta pagada y marcada como entregada**. Si no tienes una a mano, sirve una venta en efectivo
+nueva desde `/pagos`, entregándola después.
+
+**Dónde está todo esto:** en **/pagos**, no en /admin. Y la sección *Devueltas pendientes de verificación*
+**solo aparece cuando hay algo esperando**: antes de registrar la primera devolución no existe, y eso es
+normal.
 
 ### Los pasos
 
-1. Ve a **/pagos**. Abajo, la sección **Devueltas pendientes de verificación** (si no hay nada, dice que no
-   hay unidades esperando).
-2. Registra una devolución sobre la línea de esa venta: una unidad, con su motivo.
+1. Ve a **/pagos**, a la lista de **Transacciones**. En una venta **pagada y entregada** aparece
+   **"El paciente devolvió algo"**.
+2. Ábrelo y registra la devolución: qué producto de esa venta, cuántas unidades y por qué.
 3. **Qué tiene que verse:** la unidad aparece en *Devueltas pendientes*, con su motivo, y **el saldo del
    integrante NO sube**. Compruébalo en su inventario: lo devuelto no volvió a su vitrina.
 4. En esa unidad, elige **Reincorporar al lote**, con su destino y el resultado de la verificación (por
