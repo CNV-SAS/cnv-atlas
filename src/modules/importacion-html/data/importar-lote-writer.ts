@@ -372,9 +372,20 @@ export async function revertirLote(input: {
         .select({ id: diagnoses.id })
         .from(diagnoses)
         .where(inArray(diagnoses.evaluationId, ids));
+      // NO SE DESHACE, Y NO ES UNA LIMITACION TECNICA: un diagnostico nace FIRMADO, y una firma clinica no
+      // se borra (trigger de la 0027). Deshacer borraria la evaluacion, la cascada llegaria al diagnostico y
+      // el trigger lo impediria, con razon. Cuando un profesional ya diagnostico sobre un paciente
+      // importado, ese import es parte de su historia clinica y deshacerlo seria borrar un acto firmado.
+      //
+      // Se evaluo (2026-09-24) que el deshacer SUPERSEDIERA el diagnostico en vez de borrarlo, como hace la
+      // correccion de evaluacion, y no resuelve nada: el deshacer borra las evaluaciones y los pacientes que
+      // creo el lote, asi que si el diagnostico se queda, se quedan tambien la evaluacion y el paciente, y
+      // no se deshizo nada.
       if (conDiagnostico.length > 0) {
         throw new LoteNoReversibleError(
-          "No se puede deshacer: alguna consulta de este lote ya tiene diagnóstico generado en Atlas.",
+          "No se puede deshacer: alguna consulta de este lote ya tiene un diagnóstico generado, y un " +
+            "diagnóstico firmado no se borra. Si el paciente sigue en atención, el import se queda; si hay " +
+            "que corregir lo importado, se corrige la evaluación.",
         );
       }
       await tx.delete(evaluations).where(inArray(evaluations.id, ids));
