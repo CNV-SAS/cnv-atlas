@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { conLimite } from "@/lib/observability/con-limite";
+import { conLimite, enTandas } from "@/lib/observability/con-limite";
 import { CotejoConWompi } from "@/modules/payments/components/cotejo-con-wompi";
 import { DevueltasPendientes } from "@/modules/payments/components/devueltas-pendientes";
 import { RegistrarDevolucion } from "@/modules/payments/components/registrar-devolucion";
@@ -167,16 +167,21 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
   // transacciones, que se muestra igual.
+  // DE A TRES, NO LAS SIETE DE GOLPE (2026-09-24). El pool tiene SEIS conexiones: siete consultas en paralelo
+  // dejan una esperando turno, y el limite de `conLimite` corre mientras espera, asi que la que no alcanzo
+  // cupo se reporta como "no respondio en 8000 ms" sin haber llegado a correr. Paso dos veces aqui, y la
+  // segunda arrastro ademas a `pendientes-de-accion`, que fallo por conexion. Agrupar las cargas no bastaba:
+  // habia que dejar de pedirlas todas a la vez.
   const paneles = verPaneles
-    ? await Promise.all([
-        conLimite("pagos.ventas-sin-documento", () => listarVentasSinDocumento(50, dia), []),
-        conLimite("pagos.ventas-por-revisar", listarVentasPorRevisar, []),
-        conLimite("pagos.efectivos-no-recibidos", listarEfectivosNoRecibidos, []),
-        conLimite("pagos.dias-con-ventas-sin-cerrar", contarVentasSinDocumentoPorDia, []),
-        conLimite("pagos.pendientes-de-accion", listarPendientesDeAccion, []),
-        conLimite("pagos.reversas", listarReversas, []),
+    ? await enTandas([
+        () => conLimite("pagos.ventas-sin-documento", () => listarVentasSinDocumento(50, dia), []),
+        () => conLimite("pagos.ventas-por-revisar", listarVentasPorRevisar, []),
+        () => conLimite("pagos.efectivos-no-recibidos", listarEfectivosNoRecibidos, []),
+        () => conLimite("pagos.dias-con-ventas-sin-cerrar", contarVentasSinDocumentoPorDia, []),
+        () => conLimite("pagos.pendientes-de-accion", listarPendientesDeAccion, []),
+        () => conLimite("pagos.reversas", listarReversas, []),
         // La devolucion fisica (3b sesion 2): lo que volvio del paciente y espera verificacion.
-        conLimite("pagos.devueltas", leerDevolucionesPendientes, { items: [], destinos: [] }),
+        () => conLimite("pagos.devueltas", leerDevolucionesPendientes, { items: [], destinos: [] }),
       ])
     : [];
   // El cotejo con Wompi lo ve quien responde por el dinero (no soporte): recuperar un pago sella ingreso,

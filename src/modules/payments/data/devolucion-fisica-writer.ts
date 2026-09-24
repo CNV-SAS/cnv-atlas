@@ -226,7 +226,9 @@ export type DevueltaPendiente = {
 
 /** Lo que espera verificacion, por producto y lote. */
 export async function listarDevueltasPendientes(): Promise<DevueltaPendiente[]> {
-  const origen = await cuarentena(db);
+  // LA CUARENTENA VA DENTRO DE LA CONSULTA, no en un viaje aparte (2026-09-24). Preguntarla primero eran DOS
+  // idas a la base para una pantalla que ya pide muchas, y cada ida tiene que esperar cupo en un pool de
+  // seis. Para ESCRIBIR sigue resolviendose aparte, porque ahi hace falta el mensaje propio si no existe.
   const filas = await db.execute<{
     nutraceutical_id: string;
     producto: string;
@@ -243,7 +245,8 @@ export async function listarDevueltasPendientes(): Promise<DevueltaPendiente[]> 
       from nutraceutical_inventory i
       join nutraceuticals n on n.id = i.nutraceutical_id
       join lots l on l.id = i.lot_id
-     where i.location_id = ${origen} and i.stock_quantity > 0
+     where i.location_id = (select id from inventory_locations where kind = 'cuarentena' and is_active limit 1)
+       and i.stock_quantity > 0
      order by n.name`);
   return filas.map((f) => ({
     nutraceuticalId: f.nutraceutical_id,
