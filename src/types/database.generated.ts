@@ -867,6 +867,84 @@ export type Database = {
           },
         ]
       }
+      commission_settlements: {
+        Row: {
+          accumulated_year: number
+          base_amount: number
+          created_at: string
+          created_by: string
+          document_kind: string
+          id: string
+          net_amount: number
+          notes: string | null
+          paid_at: string | null
+          payment_reference: string | null
+          period_to: string
+          professional_id: string
+          tax_must_invoice: boolean | null
+          tax_person_type: string | null
+          tax_vat_responsible: boolean | null
+          vat_amount: number
+          withholding_amount: number
+          withholding_rate: number
+        }
+        Insert: {
+          accumulated_year: number
+          base_amount: number
+          created_at?: string
+          created_by: string
+          document_kind: string
+          id?: string
+          net_amount: number
+          notes?: string | null
+          paid_at?: string | null
+          payment_reference?: string | null
+          period_to: string
+          professional_id: string
+          tax_must_invoice?: boolean | null
+          tax_person_type?: string | null
+          tax_vat_responsible?: boolean | null
+          vat_amount: number
+          withholding_amount: number
+          withholding_rate: number
+        }
+        Update: {
+          accumulated_year?: number
+          base_amount?: number
+          created_at?: string
+          created_by?: string
+          document_kind?: string
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          payment_reference?: string | null
+          period_to?: string
+          professional_id?: string
+          tax_must_invoice?: boolean | null
+          tax_person_type?: string | null
+          tax_vat_responsible?: boolean | null
+          vat_amount?: number
+          withholding_amount?: number
+          withholding_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_settlements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_settlements_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_assignments: {
         Row: {
           actual_return_date: string | null
@@ -3581,6 +3659,7 @@ export type Database = {
           id: string
           professional_id: string
           reversal_of: string | null
+          settlement_id: string | null
           transaction_id: string
         }
         Insert: {
@@ -3590,6 +3669,7 @@ export type Database = {
           id?: string
           professional_id: string
           reversal_of?: string | null
+          settlement_id?: string | null
           transaction_id: string
         }
         Update: {
@@ -3599,6 +3679,7 @@ export type Database = {
           id?: string
           professional_id?: string
           reversal_of?: string | null
+          settlement_id?: string | null
           transaction_id?: string
         }
         Relationships: [
@@ -3614,6 +3695,13 @@ export type Database = {
             columns: ["reversal_of"]
             isOneToOne: false
             referencedRelation: "professional_revenue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_revenue_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "commission_settlements"
             referencedColumns: ["id"]
           },
           {

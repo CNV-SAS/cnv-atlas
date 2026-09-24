@@ -1,5 +1,7 @@
 import {
   type AnyPgColumn,
+  boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -185,7 +187,49 @@ export const professionalRevenue = pgTable("professional_revenue", {
   commissionAmount: numeric("commission_amount").notNull(),
   // Fila NEGATIVA que revierte a otra (0142): la comision de un efectivo que no se recibio no se borra.
   reversalOf: uuid("reversal_of").references((): AnyPgColumn => professionalRevenue.id, { onDelete: "restrict" }),
+  // LA LIQUIDACION QUE SE LA LLEVO (0171). Nula = pendiente de pagar. Es lo que impide pagarla dos veces, y
+  // tambien lo que hace que una reversion posterior netee sola: nace sin liquidar y entra en la siguiente.
+  settlementId: uuid("settlement_id").references((): AnyPgColumn => commissionSettlements.id, {
+    onDelete: "set null",
+  }),
   createdAt: createdAt(),
+});
+
+// ═══ LA LIQUIDACION DE COMISIONES (Bloque 4, 0171) ═══
+//
+// AGRUPA, NO RECALCULA: la comision de cada venta ya quedo sellada en su fila causada, con la tasa de su
+// dia. Una liquidacion dice QUE filas entraron y cuanto se giro por ellas. Por eso la marca va en la fila
+// (`professionalRevenue.settlementId`): una comision se liquida UNA vez, y que sea imposible liquidarla dos
+// veces es el proposito del bloque.
+//
+// EL PERFIL TRIBUTARIO SE SELLA, no se apunta: la tarifa de retencion, el IVA y el documento dependen del
+// perfil, y el perfil cambia. Una liquidacion tiene que poder explicar su cuenta dentro de un año.
+export const commissionSettlements = pgTable("commission_settlements", {
+  id: pk(),
+  professionalId: uuid("professional_id")
+    .notNull()
+    .references(() => professionalProfiles.id),
+  /** Se liquida todo lo causado sin liquidar hasta este dia (inclusive), en hora de Colombia. */
+  periodTo: date("period_to").notNull(),
+  baseAmount: numeric("base_amount").notNull(),
+  vatAmount: numeric("vat_amount").notNull(),
+  withholdingRate: numeric("withholding_rate").notNull(),
+  withholdingAmount: numeric("withholding_amount").notNull(),
+  netAmount: numeric("net_amount").notNull(),
+  /** El acumulado del año DESPUES de este pago: decide la tarifa de la siguiente (umbral de 3.300 UVT). */
+  accumulatedYear: numeric("accumulated_year").notNull(),
+  documentKind: text("document_kind").notNull(), // factura_del_integrante | documento_soporte
+  taxPersonType: text("tax_person_type"),
+  taxVatResponsible: boolean("tax_vat_responsible"),
+  taxMustInvoice: boolean("tax_must_invoice"),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => profiles.id),
+  createdAt: createdAt(),
+  /** Cuando se giro de verdad. Nulo = calculada, no pagada. Una vez puesto, no se cambia (trigger 0171). */
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  paymentReference: text("payment_reference"),
+  notes: text("notes"),
 });
 
 export const cnvRevenue = pgTable("cnv_revenue", {
