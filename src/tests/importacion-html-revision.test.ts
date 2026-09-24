@@ -313,3 +313,81 @@ describe("los lotes importados se ven siempre, y cada uno deshace el suyo", () =
     expect(revision).toContain("Lotes importados");
   });
 });
+
+// ═══ UN PACIENTE MALO NO TUMBA A LOS DEMAS (Santiago, 2026-09-24) ═══
+//
+// El primer archivo REAL traia 160 pacientes y UNO sin documento, y el validador exigia documento a todos:
+// ese uno dejaba fuera a los otros 159. Y va a volver a pasar, porque en el HTML el documento se teclea a
+// mano y nunca fue obligatorio.
+//
+// La regla que sale de ahi: lo que esta mal en un PACIENTE lo excluye a EL. Solo tumba el archivo lo que hace
+// que el archivo entero no sea lo que dice ser (el formato, la version, que no haya pacientes).
+describe("un paciente sin documento", () => {
+  const consultaConDoc = (doc: string) => ({
+    fechaConsulta: "2026-08-13",
+    nombre: "Paciente Prueba",
+    documento: doc,
+  });
+
+  const archivoCon = (pacientes: { documento: string; historia: unknown }[]) => ({
+    formato: "atlas-exportacion-html" as const,
+    version: 1 as const,
+    exportadoEn: "2026-09-24T10:00:00.000Z",
+    profesional: null,
+    declaracion: { version: "1.0", texto: ["a", "b", "c"], aceptadaEn: "2026-09-24T10:00:00.000Z" },
+    pacientes: pacientes.map((p) => ({
+      documento: p.documento,
+      clave: `atlas:${p.documento}`,
+      historia: JSON.stringify(p.historia),
+      relacionadas: {},
+    })),
+  });
+
+  it("EL ARCHIVO PASA LA VALIDACIÓN aunque un paciente venga sin documento", () => {
+    const archivo = archivoCon([
+      { documento: "111", historia: [consultaConDoc("111")] },
+      { documento: "", historia: [{ fechaConsulta: "2026-08-13", nombre: "Sin documento" }] },
+    ]);
+    expect(archivoDeExportacionSchema.safeParse(archivo).success).toBe(true);
+  });
+
+  it("se marca como NO IMPORTABLE, con su razón, y los demás no se tocan", () => {
+    const revision = revisarLote(
+      archivoDeExportacionSchema.parse(
+        archivoCon([
+          { documento: "111", historia: [consultaConDoc("111")] },
+          { documento: "", historia: [{ fechaConsulta: "2026-08-13", nombre: "Sin documento" }] },
+        ]),
+      ),
+      { pacientesAtlas: [], preguntas: [] },
+    );
+    expect(revision.pacientes[0].noImportable).toBeNull();
+    expect(revision.pacientes[1].noImportable).toContain("documento");
+  });
+
+  it("y SI la consulta trae el documento, se recupera: el paciente entra", () => {
+    // En el HTML el paciente vive bajo "atlas:{documento}", pero cada consulta guarda el suyo. Que la clave
+    // esté vacía no significa que el dato no exista.
+    const revision = revisarLote(
+      archivoDeExportacionSchema.parse(archivoCon([{ documento: "", historia: [consultaConDoc("222")] }])),
+      { pacientesAtlas: [], preguntas: [] },
+    );
+    expect(revision.pacientes[0].noImportable).toBeNull();
+    expect(revision.pacientes[0].documento).toBe("222");
+    expect(revision.pacientes[0].problemas.join(" ")).toContain("consulta más reciente");
+  });
+
+  it("y el repetido se cuenta DESPUÉS de recuperar, no antes", () => {
+    // Si no, un paciente con la clave vacía y otro con su documento real serían el mismo sin que nadie lo vea.
+    const revision = revisarLote(
+      archivoDeExportacionSchema.parse(
+        archivoCon([
+          { documento: "333", historia: [consultaConDoc("333")] },
+          { documento: "", historia: [consultaConDoc("333")] },
+        ]),
+      ),
+      { pacientesAtlas: [], preguntas: [] },
+    );
+    expect(revision.documentosRepetidosEnElArchivo).toEqual(["333", "333"]);
+  });
+});

@@ -85,6 +85,11 @@ export type RevisionDePaciente = {
   /** Los informes que el HTML le envio al paciente. Viajan en el arreglo de consultas y no son consultas. */
   informesEnviados: { fechaConsulta: string | null; fechaEnvio: string | null }[];
   problemas: string[];
+  /**
+   * Por que este paciente NO se puede importar, o null si si. Excluye a ESTE, no al archivo: el primer
+   * archivo real traia 160 pacientes y uno sin documento, y ese uno dejaba fuera a los otros 159.
+   */
+  noImportable: string | null;
 };
 
 export type RevisionDelLote = {
@@ -237,13 +242,10 @@ function nombreDeLaSesion(sesion: string | null): string | null {
 
 export function revisarLote(archivo: ArchivoDeExportacion, contexto: ContextoDeRevision): RevisionDelLote {
   const exportadoPor = nombreDeLaSesion(archivo.profesional);
-  const vistos = new Map<string, number>();
   const profesionales = new Set<string>();
 
   const pacientes = archivo.pacientes.map((p): RevisionDePaciente => {
     const problemas: string[] = [];
-    const clave = normalizarDocumento(p.documento);
-    vistos.set(clave, (vistos.get(clave) ?? 0) + 1);
 
     let entradas: Consulta[] = [];
     if (p.historia == null) {
@@ -286,13 +288,30 @@ export function revisarLote(archivo: ArchivoDeExportacion, contexto: ContextoDeR
       aMano: leerObjeto(p.relacionadas[`atlas:antro:${p.documento}`]),
     };
 
+    // ═══ EL DOCUMENTO SE RECUPERA DE LAS CONSULTAS SI LA CLAVE NO LO TRAE ═══
+    //
+    // En el HTML el paciente se guarda bajo la clave "atlas:{documento}", asi que si el profesional no lo
+    // tecleo, la clave queda en "atlas:" y el export sale con el documento vacio. Pero CADA CONSULTA guarda
+    // su propio `documento`, asi que casi siempre esta ahi. Se recupera de la mas reciente que lo tenga.
+    const documentoRecuperado =
+      p.documento.trim() ||
+      [...consultas].reverse().map((c) => (typeof c.documento === "string" ? c.documento.trim() : ""))
+        .find((d) => d.length > 0) ||
+      "";
+    if (!p.documento.trim() && documentoRecuperado) {
+      problemas.push("El archivo no trae su documento en la clave; se tomó el de su consulta más reciente.");
+    }
+    // SIN DOCUMENTO NO ENTRA, y la razon es de identidad, no de formato: un paciente sin documento no se
+    // puede cruzar con los de Atlas (regla dura 18) ni volver a encontrar despues. Se excluye EL, no el lote.
+    const noImportable = documentoRecuperado ? null : "No tiene documento en ninguna parte del archivo, así que no se puede identificar ni cruzar con los pacientes de Atlas.";
+
     return {
-      documento: p.documento,
+      documento: documentoRecuperado,
       nombre,
       fechaNacimiento,
       menorDeEdad: edadAlFirmar != null && edadAlFirmar >= 0 && edadAlFirmar < 18,
       fechaNacimientoImposible: edadAlFirmar != null && edadAlFirmar < 0,
-      cruce: cruzar(p.documento, nombre, fechaNacimiento, contexto.pacientesAtlas),
+      cruce: cruzar(documentoRecuperado, nombre, fechaNacimiento, contexto.pacientesAtlas),
       consultas: consultas.map((c, i) => {
         const encuesta = revisarEncuesta(c, contexto.preguntas);
         const firma = typeof c.firmaNombre === "string" ? c.firmaNombre.trim() : "";
@@ -315,6 +334,7 @@ export function revisarLote(archivo: ArchivoDeExportacion, contexto: ContextoDeR
           medicion: revisarMedicion(c, i === consultas.length - 1 ? respaldos : null),
         };
       }),
+      noImportable,
       informesEnviados: informes.map((c) => {
         const inf = (c.informePaciente ?? {}) as Record<string, unknown>;
         return {
@@ -326,14 +346,24 @@ export function revisarLote(archivo: ArchivoDeExportacion, contexto: ContextoDeR
     };
   });
 
+  // LOS REPETIDOS SE CUENTAN AL FINAL, CON EL DOCUMENTO YA RECUPERADO (2026-09-24). Antes se contaban con el
+  // de la clave, y desde que un documento puede salir de las consultas eso deja de ser lo mismo: un paciente
+  // con la clave vacia y otro con su documento real serian el MISMO, y contados aparte nadie lo veria.
+  const cuantos = new Map<string, number>();
+  for (const pac of pacientes) {
+    const k = normalizarDocumento(pac.documento);
+    if (k) cuantos.set(k, (cuantos.get(k) ?? 0) + 1);
+  }
+
   return {
     exportadoEn: archivo.exportadoEn,
     exportadoPor,
     declaracion: { version: archivo.declaracion.version, aceptadaEn: archivo.declaracion.aceptadaEn },
     pacientes,
-    documentosRepetidosEnElArchivo: archivo.pacientes
-      .map((p) => p.documento)
-      .filter((d) => (vistos.get(normalizarDocumento(d)) ?? 0) > 1),
+    // Una entrada por APARICION, como antes: la pantalla cuenta cuantas veces sale cada uno.
+    documentosRepetidosEnElArchivo: pacientes
+      .map((pac) => pac.documento)
+      .filter((d) => (cuantos.get(normalizarDocumento(d)) ?? 0) > 1),
     profesionalesDelArchivo: [...profesionales].sort((a, b) => a.localeCompare(b, "es")),
   };
 }

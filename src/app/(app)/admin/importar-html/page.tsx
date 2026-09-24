@@ -9,6 +9,17 @@ import { canImportFromHtml } from "@/modules/importacion-html/policies/can-impor
 
 export const metadata = { title: "Importar del HTML - Atlas" };
 
+// ═══ EL TIEMPO DE LA IMPORTACION (2026-09-24) ═══
+//
+// MEDIDO, NO ESTIMADO: 160 pacientes con 3 consultas cada uno (el tamaño del primer archivo real) tardan
+// ~14 s contra la base LOCAL. Son unas 4.600 idas a la base, y en la nube cada una cuesta mas, así que el
+// valor por defecto de Vercel (15 s) lo cortaría a la mitad.
+//
+// Cortarse a la mitad NO deja medio import: todo va en UNA transacción, así que se deshace entero. Pero el
+// admin vería un fallo sin remedio y con un archivo perfectamente bueno. Se declara explícito, como en
+// /pagos, para no depender del valor por defecto del proyecto.
+export const maxDuration = 300;
+
 // LA IMPORTACION DE PACIENTES DEL HTML DE GILDARDO (plan en docs/PLAN_IMPORTACION_DESDE_EL_HTML.md). Solo
 // admin. Hoy es la revision (sesion 3), que no escribe nada; la importacion misma llega en la sesion 4.
 export default async function ImportarHtmlPage() {

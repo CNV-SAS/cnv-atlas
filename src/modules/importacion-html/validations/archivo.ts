@@ -8,21 +8,39 @@ import { z } from "zod";
 
 export const TAMANO_MAXIMO_ARCHIVO = 25 * 1024 * 1024; // 25 MB: cientos de pacientes con su historia
 
+// ═══ LO QUE TUMBA EL ARCHIVO Y LO QUE NO (Santiago, 2026-09-24) ═══
+//
+// EL PRIMER ARCHIVO REAL TRAIA 160 PACIENTES Y UNO SIN DOCUMENTO. El esquema exigia documento a TODOS, asi
+// que ese uno dejaba fuera a los otros 159. Y va a volver a pasar: en el HTML el documento se teclea a mano
+// y nunca fue obligatorio.
+//
+// LA REGLA QUE SALE DE AHI: lo que esta MAL EN UN PACIENTE excluye A ESE PACIENTE, no al archivo. Solo tumba
+// el archivo lo que hace que el archivo entero no sea lo que dice ser:
+//
+//   · `formato` y `version`: si no son los nuestros, no hay nada que leer;
+//   · `pacientes` ausente o vacio: no hay nada que importar (y tiene su propio mensaje);
+//   · y el tamaño, que es una defensa de la frontera.
+//
+// Todo lo demas es PERMISIVO aqui y lo juzga la REVISION, que puede decir "este paciente no, y por que"
+// mientras deja pasar a los demas. Tambien se solto `declaracion.texto`, que exigia EXACTAMENTE tres lineas:
+// el dia que la declaracion cambie de forma, no puede morir el import de todos.
 export const archivoDeExportacionSchema = z.object({
   formato: z.literal("atlas-exportacion-html"),
   version: z.literal(1),
-  exportadoEn: z.string().min(10).max(40),
+  exportadoEn: z.string().max(40),
   profesional: z.string().max(10_000).nullable(),
   declaracion: z.object({
     version: z.string().min(1).max(20),
-    texto: z.array(z.string().max(500)).length(3),
-    aceptadaEn: z.string().min(10).max(40),
+    texto: z.array(z.string().max(500)).min(1).max(10),
+    aceptadaEn: z.string().max(40),
   }),
   pacientes: z
     .array(
       z.object({
-        documento: z.string().min(1).max(60),
-        clave: z.string().min(1).max(80),
+        // Permisivos A PROPOSITO: un paciente sin documento se EXCLUYE en la revision, con su razon, en vez
+        // de tumbar el archivo. Ver `revisarLote`.
+        documento: z.string().max(60),
+        clave: z.string().max(80),
         historia: z.string().max(5_000_000).nullable(),
         relacionadas: z.record(z.string().max(200), z.string().max(2_000_000)),
       }),

@@ -76,8 +76,20 @@ export async function importarArchivo(input: {
       aMano: objeto(p.relacionadas[`atlas:antro:${p.documento}`]),
     };
     const ultima = consultas[consultas.length - 1];
+    // EL DOCUMENTO PUEDE VENIR DE LA CONSULTA, no solo de la clave (2026-09-24). En el HTML el paciente se
+    // guarda bajo "atlas:{documento}", asi que si no se tecleo, la clave queda vacia; cada consulta si guarda
+    // el suyo. Es la MISMA recuperacion que hace la revision, para que lo que se importa sea lo que se vio.
+    const documento =
+      p.documento.trim() ||
+      [...consultas].reverse().map((c) => (typeof c.documento === "string" ? c.documento.trim() : ""))
+        .find((d) => d.length > 0) ||
+      "";
+    // SIN DOCUMENTO NO ENTRA ESTE PACIENTE, y los demas si: un paciente sin documento no se puede cruzar
+    // (regla dura 18) ni volver a encontrar. Antes esto tumbaba el archivo entero en la validacion, y el
+    // primer archivo real (160 pacientes, uno sin documento) dejaba fuera a los otros 159.
+    if (!documento) continue;
     pacientes.push({
-      documento: p.documento,
+      documento,
       nombre: typeof ultima.nombre === "string" ? ultima.nombre : "",
       consultas: consultas.map((c) => ({
         fecha: String(c.fechaConsulta).slice(0, 10),

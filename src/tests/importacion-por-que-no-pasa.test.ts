@@ -55,22 +55,31 @@ describe("por qué no pasó un archivo", () => {
   });
 
   it("le falta un campo: lo NOMBRA, con su camino", () => {
-    const sinDeclaracion = { ...base, declaracion: { version: "1.0", texto: ["a"], aceptadaEn: "2026-09-24" } };
-    const m = motivo(sinDeclaracion);
-    expect(m).toContain("declaracion.texto");
+    // Sin `version` en la declaración: es de la envoltura, no de un paciente, así que sí tumba el archivo.
+    const m = motivo({ ...base, declaracion: { version: "", texto: ["a"], aceptadaEn: "2026-09-24" } });
+    expect(m).toContain("declaracion.version");
     expect(m).toContain("1 paciente(s)");
   });
 
   it("y NUNCA dice el valor del campo, que sería PII", () => {
-    const conDocumentoMalo = {
+    // Una historia que no es texto: el paciente existe y trae su documento, así que si el mensaje echara
+    // valores, ahí saldría.
+    const m = motivo({
       ...base,
-      pacientes: [{ documento: "", clave: "atlas:CC-1020304050", historia: null, relacionadas: {} }],
-    };
-    const m = motivo(conDocumentoMalo);
+      pacientes: [{ documento: "CC-1020304050", clave: "atlas:CC-1020304050", historia: 123, relacionadas: {} }],
+    });
     // Nombra dónde está el problema...
-    expect(m).toContain("pacientes.[1].documento");
+    expect(m).toContain("pacientes.[1].historia");
     // ...y no el documento ni la clave, que identifican a una persona.
     expect(m).not.toContain("1020304050");
     expect(m).not.toContain("atlas:");
+  });
+
+  it("y un paciente sin documento YA NO tumba el archivo (lo excluye la revisión)", () => {
+    const conUnoSinDocumento = {
+      ...base,
+      pacientes: [...base.pacientes, { documento: "", clave: "atlas:", historia: "[]", relacionadas: {} }],
+    };
+    expect(archivoDeExportacionSchema.safeParse(conUnoSinDocumento).success).toBe(true);
   });
 });
