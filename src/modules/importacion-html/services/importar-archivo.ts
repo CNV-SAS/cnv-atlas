@@ -10,7 +10,7 @@ import {
   type ImportarLoteResultado,
   type PacienteParaImportar,
 } from "../data/importar-lote-writer";
-import { archivoDeExportacionSchema, TAMANO_MAXIMO_ARCHIVO } from "../validations/archivo";
+import { archivoDeExportacionSchema, porQueNoPasa, TAMANO_MAXIMO_ARCHIVO } from "../validations/archivo";
 import type { ConsultaDelHtml } from "./mapeo-de-la-consulta";
 
 // Orquesta la importacion de un archivo exportado del HTML (sesion 4): valida igual que la revision, arma las
@@ -49,7 +49,9 @@ export async function importarArchivo(input: {
   }
   const validado = archivoDeExportacionSchema.safeParse(crudo);
   if (!validado.success) {
-    return err(appError("validation", "El archivo no tiene el formato del exportador del HTML (versión 1)."));
+    // EL MENSAJE DICE QUE PASO, no "no tiene el formato" (Santiago, 2026-09-24). Ver `porQueNoPasa`: un
+    // rechazo que echa la culpa al formato sin saberlo manda a repetir un trabajo que quizá ya estaba bien.
+    return err(appError("validation", porQueNoPasa(crudo, validado.error.issues)));
   }
   const destino = await leerDestinoDeImportacion(input.professionalId);
   if (!destino) {
