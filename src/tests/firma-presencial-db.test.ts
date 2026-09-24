@@ -62,6 +62,9 @@ async function profesionalDemo() {
     })
     .from(schema.professionalProfiles)
     .innerJoin(schema.profiles, eq(schema.profiles.id, schema.professionalProfiles.profileId))
+    // EL DEL SEED, QUE ES EL MAS VIEJO, y no "el primero": sin orden, cual toca depende del orden fisico de
+    // la tabla, y una fila creada por otra prueba cambia el resultado de esta. Paso el 2026-09-24.
+    .orderBy(schema.professionalProfiles.createdAt)
     .limit(1);
   return p;
 }

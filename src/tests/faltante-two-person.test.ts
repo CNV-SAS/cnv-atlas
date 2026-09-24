@@ -48,7 +48,14 @@ describe.skipIf(!HAS_DB)("faltante: gate de dos personas (BD real)", () => {
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
-    const [prof] = await db.select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
+    // EL PROFESIONAL DEL SEED, NO "EL PRIMERO" (2026-09-24). Esto decia `.limit(1)` sin orden, asi que cual
+    // tocaba dependia del orden FISICO de la tabla: una fila nueva en otra prueba cambiaba el resultado de
+    // esta, y fue lo que paso. "El primero" de una tabla no existe si nadie dice por que campo.
+    const [prof] = await db
+      .select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId })
+      .from(schema.professionalProfiles)
+      .orderBy(schema.professionalProfiles.createdAt)
+      .limit(1);
     profId = prof.id;
     actorId = prof.pid;
     // MULTICELL (702): producto DEDICADO (ver faltante-case.test). El settle al cerrar muta su saldo, pero
