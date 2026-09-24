@@ -2247,3 +2247,21 @@ el correo hace de constancia, y esta vía existe precisamente porque no hay corr
 **Lo que sí se reusa** es el contenido: `buildConsentInstance` ya arma la instancia con el bloque del
 profesional, la rama de edad y las autorizaciones otorgadas. Falta el renderizador y el botón.
 **Media tanda.**
+
+## Nueva (2026-09-24) · Un acto clínico que Atlas sella y nadie puede hacer
+
+**Estuvo un día en `PENDIENTES_CIENTIFICOS.md` y se movió aquí (Santiago, 2026-09-24): toca un acto clínico, pero lo que falta es una pantalla, y eso lo decidimos nosotros.**
+
+El **reconocimiento de las restricciones del modelo** (T2 A2) existe entero por dentro: hay una policy que
+dice que solo el profesional asignado puede hacerlo, un escritor que sella **quién** y **cuándo** en el
+tratamiento, y su evento en el audit. **Lo que no existe es el botón.** Ninguna pantalla lo ofrece, así que
+el acto no se puede ejecutar y el sello nunca se pone.
+
+Lo encontró el candado `acciones-con-puerta` el 2026-09-24, que salió de otro caso igual: la devolución
+física tenía su cuarentena, su verificación y su candado contra base real, y ninguna pantalla llamaba a la
+acción que la registra. Se había construido el destino y no la puerta.
+
+**Lo que hay que decidir cuando se retome el bloque de tratamiento:** si ese reconocimiento sigue siendo un
+acto que el profesional hace explícitamente (y entonces le falta su superficie), o si la decisión de fondo
+cambió y lo que sobra es el mecanismo. No se conecta un botón a un acto clínico sin que alguien confirme que
+el acto sigue siendo el que era.
