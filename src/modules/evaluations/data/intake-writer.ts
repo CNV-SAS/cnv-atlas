@@ -694,6 +694,9 @@ async function upsertResponseAndAnswers(
   surveyVersionId: string,
   answers: SurveyAnswer[],
   ipAddress: string | null,
+  // QUIEN CIERRA la encuesta cuando no es el paciente (0172). `undefined` = no se toca (un guardado de
+  // progreso no decide autoria); `null` = la cerro el paciente; un id = la cerro ese profesional.
+  capturedBy?: string | null,
 ): Promise<void> {
   let [response] = await tx
     .select({ id: surveyResponses.id })
@@ -703,8 +706,13 @@ async function upsertResponseAndAnswers(
   if (!response) {
     [response] = await tx
       .insert(surveyResponses)
-      .values({ evaluationId, surveyVersionId, ipAddress })
+      .values({ evaluationId, surveyVersionId, ipAddress, capturedBy: capturedBy ?? null })
       .returning({ id: surveyResponses.id });
+  } else if (capturedBy !== undefined) {
+    // Se escribe SOLO al cerrar: el envio es el acto que sella el conjunto (las respuestas se reemplazan
+    // enteras con lo que hay en pantalla). El caso mixto (el paciente responde parte en casa y el profesional
+    // la termina) queda con quien cerro, que es un hecho y no una interpretacion.
+    await tx.update(surveyResponses).set({ capturedBy }).where(eq(surveyResponses.id, response.id));
   }
   // Reemplaza el snapshot completo (borra e inserta): el cliente manda todo lo contestado.
   await tx.delete(surveyAnswers).where(eq(surveyAnswers.responseId, response.id));
@@ -727,19 +735,28 @@ export async function saveSurveyProgress(input: SurveyPhase2Input): Promise<{ ev
 
 // COMPLETAR: guardado final + pasa a 'draft' (ya es una evaluacion normal, confirmable y diagnosticable).
 // El token deja de habilitar (la evaluacion ya no esta 'awaiting_survey').
-export async function completeSurvey(input: SurveyPhase2Input): Promise<{ evaluationId: string }> {
+export async function completeSurvey(
+  input: SurveyPhase2Input & { capturedBy?: string | null },
+): Promise<{ evaluationId: string }> {
   return db.transaction(async (tx) => {
     const ev = await findAwaitingByToken(tx, input.resumeToken);
-    await upsertResponseAndAnswers(tx, ev.id, input.surveyVersionId, input.answers, input.ipAddress);
+    await upsertResponseAndAnswers(
+      tx,
+      ev.id,
+      input.surveyVersionId,
+      input.answers,
+      input.ipAddress,
+      input.capturedBy ?? null,
+    );
     await writeCharacterization(tx, { evaluationId: ev.id, patientId: ev.patientId }, input.characterization);
     await tx.update(evaluations).set({ status: "draft" }).where(eq(evaluations.id, ev.id));
     await recordAudit(tx, {
       event: "evaluation.survey_submitted",
-      actorId: null,
+      actorId: input.capturedBy ?? null,
       actorEmail: null,
       entityType: "evaluation",
       entityId: ev.id,
-      payload: { answers: input.answers.length },
+      payload: { answers: input.answers.length, registrada_por_el_profesional: input.capturedBy != null },
       ip: input.ipAddress,
     });
     return { evaluationId: ev.id };

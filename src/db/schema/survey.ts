@@ -98,6 +98,11 @@ export const surveyResponses = pgTable(
     ipAddress: inet("ip_address"),
     // Procedencia: el lote que las importo del HTML (0162).
     importBatchId: uuid("import_batch_id"),
+    // QUIEN CERRO LA ENCUESTA cuando no fue el paciente (0172): el profesional que la registro en consulta.
+    // NULA = la autodiligencio el paciente, que es el caso normal. No es la misma evidencia: la seccion S de
+    // la HC dice "lo que el paciente refiere", y la presencia del profesional cambia lo que la gente
+    // responde. Se escribe desde la RUTA AUTENTICADA, no desde una casilla que alguien marca.
+    capturedBy: uuid("captured_by").references(() => profiles.id),
     createdAt: createdAt(),
   },
   (t) => [index("survey_responses_eval_idx").on(t.evaluationId)],

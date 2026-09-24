@@ -23,6 +23,15 @@ export type HcHeader = {
   motivos: string[];
   /** Proxima cita del tratamiento (bloque 13). En VIVO, no sellada: es la cita vigente. */
   proximaCita: string | null;
+  /**
+   * QUIEN REGISTRO LA ENCUESTA cuando no fue el paciente (0172): el nombre del profesional que la respondio
+   * con el al lado. Nulo = la autodiligencio el paciente, que es el caso normal.
+   *
+   * VA EN LA HISTORIA porque no es la misma evidencia: la seccion S dice "lo que el paciente refiere", y
+   * quien lea el documento dentro de un año tiene que poder saber si lo leyo de su puño o lo transcribio
+   * alguien en consulta.
+   */
+  encuestaRegistradaPor: string | null;
   /** Cierre de la consulta: estado y quien/cuando. */
   estado: string;
   cerradaEl: string | null;
@@ -55,7 +64,10 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     .select(
       // Hint del FK OBLIGATORIO en professional_profiles -> profiles: hay TRES relaciones (profile_id,
       // rut_verified_by, rut_rejected_by) y un embed sin hint revienta en runtime, no en tsc.
-      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profession, profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name)",
+      // El embed de `survey_responses` trae QUIEN la registro, con hint del FK (`captured_by`): la tabla
+      // tiene mas de una relacion hacia profiles a traves de la evaluacion, y un embed sin hint revienta en
+      // runtime, no en tsc.
+      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profession, profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name), survey_responses(registrada:profiles!captured_by(full_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -109,6 +121,9 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     profesion: perfilProfesional?.profession ?? null,
     motivos,
     proximaCita: (t?.proxima_cita as string | null) ?? null,
+    encuestaRegistradaPor:
+      (uno(uno(data.survey_responses as never) as never) as { registrada: { full_name: string | null } | null } | null)
+        ?.registrada?.full_name ?? null,
     estado: data.status as string,
     cerradaEl: (data.closed_at as string | null) ?? null,
     cerradaPor:

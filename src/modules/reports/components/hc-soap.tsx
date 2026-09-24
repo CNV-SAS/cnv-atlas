@@ -230,6 +230,16 @@ export function HistoriaClinicaSoapDoc({
           notas={notasSubjetivas}
           puedeEscribir={puedeEscribir}
         />
+        {/* QUIEN REGISTRO LA ENCUESTA, si no fue el paciente (0172). Va aqui y no en la cabecera porque esta
+            es LA seccion de "lo que el paciente refiere": transcribir lo que dice sigue siendo "refiere",
+            pero no es la misma evidencia y quien lea esto dentro de un año no puede tener que adivinarlo. */}
+        {soap.subjetivo.encuestaRegistradaPor ? (
+          <p>
+            <span className="font-medium text-foreground">Encuesta:</span>{" "}
+            registrada en consulta por {soap.subjetivo.encuestaRegistradaPor}, no autodiligenciada por el
+            paciente.
+          </p>
+        ) : null}
         {soap.subjetivo.motivos.length > 0 ? (
           <p>
             <span className="font-medium text-foreground">Motivo de consulta:</span>{" "}

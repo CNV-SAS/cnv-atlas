@@ -1158,6 +1158,7 @@ export default async function ResultadosEvaluacionPage({
                   fecha: formatDate(hcHeader.fechaConsulta),
                   profesional: hcHeader.profesional,
                   ocupacion: hcHeader.ocupacion,
+                  encuestaRegistradaPor: hcHeader.encuestaRegistradaPor,
                 }}
               />
               <HcMotivoDeConsulta motivos={hcHeader.motivos} />

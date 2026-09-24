@@ -30,3 +30,16 @@ export function canManageBaseSurveyLink(user: CurrentUser): boolean {
 export function canAbandonEvaluation(user: CurrentUser): boolean {
   return hasAnyRole(user, ["professional"]);
 }
+
+// ═══ REGISTRAR LA ENCUESTA CON EL PACIENTE AL LADO (2026-09-24) ═══
+//
+// Hay pacientes que firman y dejan la encuesta sin responder (sin conexion, o porque la llenan con la
+// profesional en consulta). El enlace de reanudacion solo se le muestra al PACIENTE, asi que ella no tenia
+// como abrirla: la unica accion disponible en ese estado era CERRAR la evaluacion, o sea archivar un
+// consentimiento ya firmado y empezar de cero.
+//
+// SOLO EL PROFESIONAL DUEÑO, igual que cerrar y por la misma razon: es su paciente y es un acto de su
+// consulta. El alcance fino (que sea SU paciente) lo impone la RLS al leer la evaluacion en el action.
+export function canRegistrarEncuestaDelPaciente(user: CurrentUser): boolean {
+  return hasAnyRole(user, ["professional"]);
+}

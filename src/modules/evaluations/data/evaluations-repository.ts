@@ -215,3 +215,25 @@ export async function pacienteTieneCorreo(patientId: string): Promise<boolean | 
   if (error) return null;
   return Boolean(data?.email);
 }
+
+/**
+ * El resume_token de una evaluacion que espera la encuesta, para que el PROFESIONAL la registre con el
+ * paciente al lado (2026-09-24).
+ *
+ * LEE CON RLS a proposito: es lo que impone que sea SU paciente. Devuelve null si la evaluacion no es suya,
+ * no existe, o ya no espera la encuesta (entonces no hay nada que registrar).
+ *
+ * El token no se le muestra a nadie: viaja del servidor al formulario y de vuelta, igual que en el camino
+ * del paciente. Lo que lo autoriza aqui no es el token, es la sesion; el token solo dice CUAL evaluacion.
+ */
+export async function getResumeTokenDeMiEvaluacion(evaluationId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .select("resume_token, status")
+    .eq("id", evaluationId)
+    .maybeSingle();
+  if (error) throw new Error(`evaluations-repository: getResumeTokenDeMiEvaluacion: ${error.message}`);
+  if (!data || data.status !== "awaiting_survey") return null;
+  return data.resume_token;
+}

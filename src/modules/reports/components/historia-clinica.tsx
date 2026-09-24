@@ -43,6 +43,8 @@ export type HcDatosPaciente = {
   fecha: string;
   profesional: string;
   ocupacion: string | null;
+  /** Quien REGISTRO la encuesta si no fue el paciente (0172). Nulo = la autodiligenció él. */
+  encuestaRegistradaPor?: string | null;
 };
 
 const SIN_DATO = "No se registró";
@@ -75,6 +77,11 @@ export function HcDatosDelPaciente({ datos }: { datos: HcDatosPaciente }) {
         <Dato etiqueta="Peso / Talla" valor={pesoTalla || SIN_DATO} />
         <Dato etiqueta="Fecha" valor={datos.fecha} />
         <Dato etiqueta="Profesional" valor={datos.profesional || SIN_DATO} />
+        {/* SOLO CUANDO NO LA RESPONDIO EL PACIENTE (0172). En el caso normal no aparece: un documento no
+            necesita decir que pasó lo que suele pasar. */}
+        {datos.encuestaRegistradaPor ? (
+          <Dato etiqueta="Encuesta" valor={`Registrada en consulta por ${datos.encuestaRegistradaPor}`} />
+        ) : null}
         <Dato etiqueta="Ocupación" valor={datos.ocupacion || SIN_DATO} />
       </div>
     </Tarjeta>

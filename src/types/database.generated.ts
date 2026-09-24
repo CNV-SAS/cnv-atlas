@@ -4420,6 +4420,7 @@ export type Database = {
       }
       survey_responses: {
         Row: {
+          captured_by: string | null
           created_at: string
           evaluation_id: string
           id: string
@@ -4428,6 +4429,7 @@ export type Database = {
           survey_version_id: string
         }
         Insert: {
+          captured_by?: string | null
           created_at?: string
           evaluation_id: string
           id?: string
@@ -4436,6 +4438,7 @@ export type Database = {
           survey_version_id: string
         }
         Update: {
+          captured_by?: string | null
           created_at?: string
           evaluation_id?: string
           id?: string
@@ -4444,6 +4447,13 @@ export type Database = {
           survey_version_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "survey_responses_captured_by_fkey"
+            columns: ["captured_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "survey_responses_evaluation_id_evaluations_id_fk"
             columns: ["evaluation_id"]
