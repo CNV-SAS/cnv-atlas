@@ -21,21 +21,45 @@ select b.id as lote, b.source_file_name, e.id as evaluacion, d.id as diagnostico
 
 Si sale algo que **no** esperabas (un paciente que no es de prueba ni de los importados), para ahí y dime.
 
-## 2 · Borrar el diagnóstico de esas consultas
+## 2 · Por qué el borrado directo NO funciona, y qué hace falta
 
-```sql
-delete from diagnoses d
- using evaluations e, html_import_batches b
- where d.evaluation_id = e.id
-   and e.import_batch_id = b.id
-   and b.reverted_at is null;
+El `delete` simple falla:
+
+```
+P0001: Un diagnostico confirmado es inmutable (firma clinica): no se puede borrar.
 ```
 
-Si quieres hacerlo de a un lote, agrega `and b.id = '<el id del lote>'`.
+Y hace bien. Un diagnóstico nace **firmado** desde el 2026-09-18, y la firma clínica no se borra
+(trigger `diagnoses_confirmation_immutability`, migración 0027).
 
-**Si eso falla por una referencia** (un tratamiento o un reporte colgando del diagnóstico), significa que
-alguien trabajó encima: bórralos primero, o dime y lo miramos, porque entonces ya no es solo un lote de
-prueba.
+**La regla del producto se queda como está:** cuando un profesional ya diagnosticó sobre un paciente
+importado, ese import es parte de su historia clínica y el lote no se deshace. Se evaluaron las dos salidas
+obvias y las dos son peores:
+
+- **Desactivar el trigger dentro del deshacer.** Haría reversible cualquier lote, incluido uno donde se
+  firmó un diagnóstico sobre un paciente real. Un botón que borra una firma clínica no debe existir.
+- **Que el deshacer supersediera el diagnóstico** en vez de borrarlo, como la corrección de evaluación. No
+  resuelve nada: el deshacer borra las evaluaciones y los pacientes que creó el lote, así que si el
+  diagnóstico se queda, se quedan también la evaluación y el paciente, y no se deshizo nada.
+
+Así que para un lote **de prueba** hay que levantar el trigger una vez, a mano, con la vía de escape que el
+propio trigger documenta y acota a pre-producción. **Antes de correrlo, el paso 1 es obligatorio**: si algún
+paciente del lote no es de prueba, no se corre.
+
+```sql
+begin;
+set local session_replication_role = replica;
+
+delete from diagnoses d
+ using evaluations e
+ where d.evaluation_id = e.id
+   and e.import_batch_id = '<el id del lote>';
+
+commit;
+```
+
+Esto borra **solo** los diagnósticos de ese lote. No deshace nada más: eso viene ahora, por la pantalla, que
+es la que deja el rastro en el audit.
 
 ## 3 · Deshacer el lote desde la pantalla
 

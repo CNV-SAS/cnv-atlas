@@ -84,13 +84,10 @@ si la realidad no coincide, puede estar mal la guía y no el código.
 
 El orden correcto:
 
-1. **Primero se borra el diagnóstico** que acabas de generar. Va por SQL, a propósito: un diagnóstico es un
-   registro sellado y Atlas no tiene (ni debe tener) un botón para borrarlo.
-   ```sql
-   delete from diagnoses d
-    using evaluations e, html_import_batches b
-    where d.evaluation_id = e.id and e.import_batch_id = b.id and b.reverted_at is null;
-   ```
+1. **Primero se borra el diagnóstico** que acabas de generar. Va por SQL y levantando el trigger de la
+   firma clínica, porque un diagnóstico nace firmado y una firma no se borra. El procedimiento completo,
+   con la verificación previa de que todos los pacientes del lote son de prueba, está en
+   `DESATASCAR_LOTE_CON_DIAGNOSTICO.md`. **No lo corras sin hacer esa verificación.**
 2. **Después, Deshacer** desde la pantalla de importación. El deshacer es todo o nada: revierte el lote
    completo, que es como se decidió.
 

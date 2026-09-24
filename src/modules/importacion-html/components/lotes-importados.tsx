@@ -46,7 +46,9 @@ function FilaDeLote({ lote }: { lote: LoteImportado }) {
           </Button>
           {lote.conDiagnostico > 0 ? (
             <span className="text-xs text-muted-foreground">
-              No se puede deshacer: ya se generó un diagnóstico sobre una de sus consultas.
+              No se puede deshacer: ya se generó un diagnóstico sobre una de sus consultas, y un diagnóstico
+              firmado no se borra. Lo importado pasó a ser parte de su historia clínica; si hay algo que
+              corregir, se corrige la evaluación.
             </span>
           ) : (
             <span className="text-xs text-muted-foreground">
