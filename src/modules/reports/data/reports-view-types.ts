@@ -149,6 +149,8 @@ export type HistoriaClinicaDoc = {
   tallaCm: number | null;
   fechaConsulta: string;
   profesional: string;
+  /** Quien REGISTRO la encuesta si no fue el paciente (0172). Nulo = la autodiligencio el. */
+  encuestaRegistradaPor: string | null;
   motivos: string[];
   antecedentes: { grupo: string; items: string[] }[];
   /**
@@ -265,6 +267,12 @@ export type HistoriaClinicaSoap = {
   fechaConsulta: string;
   profesional: string;
   subjetivo: {
+    /**
+     * Quien REGISTRO la encuesta si no fue el paciente. Va en la S porque es justo la seccion rotulada "lo
+     * que el paciente refiere": transcribir lo que dice sigue siendo "refiere", pero no es la misma
+     * evidencia, y quien lea el documento dentro de un año no puede tener que adivinarlo.
+     */
+    encuestaRegistradaPor: string | null;
     motivos: string[];
     antecedentes: { grupo: string; items: string[] }[];
     /** La encuesta redactada, un parrafo por dominio (forma B del plan). */

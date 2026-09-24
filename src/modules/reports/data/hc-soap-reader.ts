@@ -69,6 +69,10 @@ export async function getHistoriaClinicaSoap(evaluationId: string): Promise<Hist
 
     // ── S · lo que el paciente refiere ───────────────────────────────────────────────────────────
     subjetivo: {
+      // Y SI LA ENCUESTA NO LA RESPONDIO EL (0172), esta seccion tiene que decirlo: "refiere" sigue siendo
+      // cierto cuando el profesional transcribe lo que el paciente dice, pero no es la misma evidencia, y
+      // quien lea el documento dentro de un año no puede tener que adivinarlo.
+      encuestaRegistradaPor: hc.encuestaRegistradaPor,
       motivos: hc.motivos,
       // EL ROTULO NO SE REPITE (Santiago, 2026-09-21 y 22): "Diagnósticos personales: Diagnósticos personales:"
       // y "Exposición a contaminantes: Exposición habitual a contaminantes:". Se quita el rotulo de la fila

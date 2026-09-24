@@ -18,7 +18,12 @@ import {
 
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
-import { saveProgressAction, submitSurveyAnswersAction } from "../actions";
+import {
+  enviarEncuestaDelPacienteAction,
+  guardarEncuestaDelPacienteAction,
+  saveProgressAction,
+  submitSurveyAnswersAction,
+} from "../actions";
 import type { SaveProgressState, SurveyFormState } from "../validations";
 import type { SurveyQuestionView } from "../data/survey-view-types";
 import { AboutYouSection, type AboutYouPrefill } from "./about-you-section";
@@ -79,6 +84,13 @@ export type SurveyPhaseFormProps = {
   characterizationPrefill?: AboutYouPrefill | null;
   // Etnia: el campo solo aparece si el paciente otorgo la autorizacion de investigacion (consent v1.0).
   ethnicityAuthorized?: boolean;
+  /**
+   * QUIEN LA ESTA LLENANDO (2026-09-24). "paciente" es el camino de siempre (enlace publico). "profesional"
+   * es la misma encuesta y el MISMO BORRADOR, abierta desde la consulta: cambia a que acciones se envia, y
+   * esas exigen sesion, propiedad del paciente y sellan quien cerro. La procedencia sale del camino, no de
+   * una casilla: por eso es un parametro del servidor y no algo que el formulario decida.
+   */
+  modo?: "paciente" | "profesional";
 };
 
 // Introduccion por seccion (ECA2): encuadra la pregunta ANTES de responder. La de Alimentacion es la que
@@ -97,9 +109,17 @@ export function SurveyPhaseForm({
   initialStep = 0,
   characterizationPrefill = null,
   ethnicityAuthorized = false,
+  modo = "paciente",
 }: SurveyPhaseFormProps) {
-  const [state, submit, submitting] = useActionState(submitSurveyAnswersAction, initialSubmit);
-  const [saveState, save, saving] = useActionState(saveProgressAction, initialSave);
+  const delProfesional = modo === "profesional";
+  const [state, submit, submitting] = useActionState(
+    delProfesional ? enviarEncuestaDelPacienteAction : submitSurveyAnswersAction,
+    initialSubmit,
+  );
+  const [saveState, save, saving] = useActionState(
+    delProfesional ? guardarEncuestaDelPacienteAction : saveProgressAction,
+    initialSave,
+  );
   const formRef = useRef<HTMLFormElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
@@ -380,8 +400,10 @@ export function SurveyPhaseForm({
       <div ref={topRef} />
 
       {/* Enlace de reanudacion + aviso de que puede pausar. Al inicio de la fase 2 (no en una pantalla
-          aparte): el paciente lo ve y lo puede copiar ANTES de empezar, no solo tras guardar. */}
-      <ResumeLinkBox resumeToken={resumeToken} />
+          aparte): el paciente lo ve y lo puede copiar ANTES de empezar, no solo tras guardar.
+          NO SE LE MUESTRA AL PROFESIONAL: es el enlace para que el PACIENTE siga desde su telefono, y en la
+          consulta no hace falta; ademas es una credencial, y cuantas menos pantallas la pinten, mejor. */}
+      {delProfesional ? null : <ResumeLinkBox resumeToken={resumeToken} />}
 
       {/* Progreso */}
       <div className="flex flex-col gap-2">

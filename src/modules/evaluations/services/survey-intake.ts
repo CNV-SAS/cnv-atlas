@@ -358,7 +358,9 @@ export async function saveProgress(input: SurveyPhase2Input): Promise<Result<{ e
 }
 
 // COMPLETAR: guardado final + pasa a 'draft'.
-export async function submitSurveyAnswers(input: SurveyPhase2Input): Promise<Result<{ evaluationId: string }>> {
+export async function submitSurveyAnswers(
+  input: SurveyPhase2Input & { capturedBy?: string | null },
+): Promise<Result<{ evaluationId: string }>> {
   const answers = intakeAnswersSchema.safeParse(input.answers);
   if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
   const characterization = characterizationSchema.safeParse(input.characterization);
@@ -373,6 +375,8 @@ export async function submitSurveyAnswers(input: SurveyPhase2Input): Promise<Res
       answers: answers.data,
       ipAddress: input.ipAddress,
       characterization: characterization.success ? characterization.data : null,
+      // Nulo cuando la cierra el paciente por su enlace, que es el camino de siempre.
+      capturedBy: input.capturedBy ?? null,
     });
     return ok({ evaluationId: res.evaluationId });
   } catch (e) {

@@ -96,6 +96,7 @@ describe("el texto que se copia dice lo mismo que la pantalla", () => {
     fechaConsulta: "2026-09-20T12:00:00Z",
     profesional: "Profesional Demo",
     subjetivo: {
+      encuestaRegistradaPor: null,
       motivos: ["Control de peso"],
       antecedentes: [{ grupo: "Personales", items: ["Hipertensión"] }],
       encuesta: [{ dominio: "D4 · Conductas alimentarias", texto: "Refiere 3 comidas al día.", sinResponder: 0 }],

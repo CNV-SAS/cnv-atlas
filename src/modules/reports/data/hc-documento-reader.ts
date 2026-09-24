@@ -254,6 +254,8 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     tallaCm: composition?.talla ?? null,
     fechaConsulta: formatDate(header.fechaConsulta),
     profesional: header.profesional,
+    // QUIEN REGISTRO LA ENCUESTA si no fue el paciente (0172). Nulo = la autodiligencio el.
+    encuestaRegistradaPor: header.encuestaRegistradaPor,
     motivos: header.motivos,
     // Los antecedentes salen del MISMO resolvedor que la pantalla, y se aplanan a texto aqui: el
     // documento no necesita la estructura de filas, necesita lo que el paciente declaro.

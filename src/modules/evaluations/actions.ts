@@ -45,6 +45,7 @@ import {
 import { emitFollowupLink } from "./data/survey-links-writer";
 import {
   CONSENT_REVOKED_DURING_SURVEY,
+  readSurveyProgress,
   saveProgress,
   signSurveyIntake,
   submitSurveyAnswers,
@@ -57,6 +58,7 @@ import {
 } from "./data/survey-links-reader";
 import {
   canAbandonEvaluation,
+  canRegistrarEncuestaDelPaciente,
   canConfirmIdentity,
   canEmitFollowupLink,
   canManageBaseSurveyLink,
@@ -939,4 +941,63 @@ function otpCheckMessage(status: "expired" | "invalid" | "too_many_attempts"): s
     case "too_many_attempts":
       return "Demasiados intentos con ese código. Pide uno nuevo para continuar.";
   }
+}
+
+// ═══ LA ENCUESTA REGISTRADA POR EL PROFESIONAL (2026-09-24) ═══
+//
+// MISMO FORMULARIO Y MISMO BORRADOR que el del paciente: la evaluacion tiene UNA fila de respuestas, asi que
+// abrir por aqui continua lo que el paciente hubiera dejado a medias en casa, no empieza de cero.
+//
+// LO QUE CAMBIA ES QUIEN AUTENTICA Y QUE SE REGISTRA. El resume_token sigue identificando la evaluacion
+// (es la credencial que ya existe y ya tiene la vida correcta: vale mientras la evaluacion espere la
+// encuesta), pero ADEMAS se exige sesion y propiedad del paciente, y se sella `captured_by`. Por eso la
+// procedencia no puede mentir: sale del camino por el que entro, no de una casilla que alguien marca.
+
+async function profesionalDeLaEncuesta(resumeToken: string) {
+  const user = await requireUser();
+  if (!canRegistrarEncuestaDelPaciente(user)) return null;
+  // La evaluacion se resuelve por el token y se COMPRUEBA que sea del profesional: leerla con RLS es lo que
+  // impone el alcance fino (que sea SU paciente), igual que en cerrar.
+  const progreso = await readSurveyProgress(resumeToken);
+  if (!progreso) return null;
+  const ownership = await getEvaluationOwnership(progreso.evaluationId);
+  if (!ownership) return null;
+  return user;
+}
+
+export async function guardarEncuestaDelPacienteAction(
+  _prev: SaveProgressState,
+  form: FormData,
+): Promise<SaveProgressState> {
+  const resumeToken = str(form, "resumeToken");
+  if (!resumeToken) return { saved: false, error: "Falta la encuesta." };
+  const user = await profesionalDeLaEncuesta(resumeToken);
+  if (!user) return { saved: false, error: "No autorizado." };
+  // El guardado de progreso NO decide autoria: la decide quien CIERRA. Por eso reusa el mismo camino.
+  return saveProgressAction(_prev, form);
+}
+
+export async function enviarEncuestaDelPacienteAction(
+  _prev: SurveyFormState,
+  form: FormData,
+): Promise<SurveyFormState> {
+  const fail = (error: string): SurveyFormState => ({ error, fields: null, done: false });
+  const resumeToken = str(form, "resumeToken");
+  if (!resumeToken) return fail("Falta la encuesta.");
+  const user = await profesionalDeLaEncuesta(resumeToken);
+  if (!user) return fail("No autorizado.");
+  const survey = await getActiveSurvey();
+  if (!survey) return fail("La encuesta no esta disponible en este momento.");
+  const ip = await getClientIp();
+  const res = await submitSurveyAnswers({
+    resumeToken,
+    surveyVersionId: survey.surveyVersionId,
+    answers: readAnswersFromForm(form, survey.questions),
+    ipAddress: ip === "unknown" ? null : ip,
+    characterization: readCharacterizationFromForm(form),
+    // AQUI SE SELLA QUIEN LA CERRO. Es lo unico que distingue esta ruta de la del paciente.
+    capturedBy: user.id,
+  });
+  if (!res.ok) return fail(res.error.message);
+  redirect(`/ani-bis-e/${res.value.evaluationId}`);
 }

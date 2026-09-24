@@ -52,7 +52,18 @@ function Fila({ e, puedeCerrar }: { e: PatientEvaluationItem; puedeCerrar: boole
             accion; el resto -> ver resultados. Un shell no tiene resultados que ver. */}
         {e.status === "awaiting_survey" ? (
           puedeCerrar ? (
-            <AbandonEvaluation evaluationId={e.evaluationId} />
+            // DOS SALIDAS, NO UNA (2026-09-24). Hasta hoy la unica era CERRAR, o sea archivar un
+            // consentimiento ya firmado y empezar de cero. Si el paciente esta en consulta, lo que hace
+            // falta es RESPONDERLA con el, y eso continua el mismo borrador que el hubiera dejado en casa.
+            <div className="flex items-center justify-end gap-3">
+              <Link
+                href={`/ani-bis-e/${e.evaluationId}/responder-encuesta`}
+                className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
+              >
+                Responder con el paciente
+              </Link>
+              <AbandonEvaluation evaluationId={e.evaluationId} />
+            </div>
           ) : (
             <span className="text-xs text-muted-foreground">Esperando la encuesta</span>
           )

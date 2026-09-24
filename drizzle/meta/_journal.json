@@ -1205,6 +1205,13 @@
       "when": 1791952346103,
       "tag": "0171_liquidacion_de_comisiones",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1791952406103,
+      "tag": "0172_encuesta_registrada_por_el_profesional",
+      "breakpoints": true
     }
   ]
 }
