@@ -43,6 +43,9 @@ function FichaDePaciente({ p }: { p: RevisionDePaciente }) {
         <span className="text-sm text-muted-foreground">{p.documento}</span>
         {p.cruce.tipo === "parecido" ? <Aviso>{ETIQUETA_CRUCE.parecido}</Aviso> : <Neutro>{ETIQUETA_CRUCE[p.cruce.tipo]}</Neutro>}
         {p.menorDeEdad ? <Aviso>Menor de edad al firmar</Aviso> : null}
+        {/* NO ENTRA ESTE, ENTRAN LOS DEMAS (2026-09-24): lo que está mal en un paciente lo excluye a él, no
+            al archivo. El primer archivo real traía 160 y uno sin documento dejaba fuera a los otros 159. */}
+        {p.noImportable ? <Aviso>No se importa</Aviso> : null}
         {p.fechaNacimientoImposible ? (
           <Aviso>Fecha de nacimiento imposible ({p.fechaNacimiento}): posterior a su primera consulta</Aviso>
         ) : null}
@@ -59,6 +62,7 @@ function FichaDePaciente({ p }: { p: RevisionDePaciente }) {
           {p.cruce.candidatos.map((c) => `${c.nombre || "sin nombre"} (${c.documento})`).join("; ")}.
         </p>
       ) : null}
+      {p.noImportable ? <p className="text-sm text-destructive">{p.noImportable}</p> : null}
       {p.problemas.map((x) => (
         <p key={x} className="text-sm text-clinical-warning">
           {x}
