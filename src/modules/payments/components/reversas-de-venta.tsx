@@ -39,15 +39,19 @@ export type ReversaEnPanel = Reversa & {
   nota: string | null;
 };
 
+// Los rótulos son de un Record exhaustivo a propósito: si mañana aparece otra clase de reversa, tsc obliga a
+// nombrarla aquí. Es lo que faltó con la devolución, que salía con la etiqueta en blanco.
 const ESTADO: Record<Reversa["estado"], string> = {
   abierta: "Disputa abierta",
   ganada: "Disputa ganada",
   perdida: "Disputa perdida",
+  devuelta: "Producto devuelto",
 };
 
 const TIPO: Record<Reversa["tipo"], string> = {
   contracargo: "Contracargo",
   anulacion_wompi: "Anulada en Wompi",
+  devolucion: "Devolución del paciente",
 };
 
 function FormConReferencia({
@@ -204,7 +208,12 @@ export function ReversasDeVenta({
                     />
                   </>
                 ) : null}
-                {puedeResolver && r.estado === "perdida" && !r.notaCredito ? <NotaCreditoForm reversaId={r.id} /> : null}
+                {/* Las DOS que corrigen una factura emitida piden su número: la disputa perdida y la
+                    devolución. Con solo "perdida", la devolución pedía una nota crédito que no se podía
+                    registrar en ninguna parte. */}
+                {puedeResolver && (r.estado === "perdida" || r.estado === "devuelta") && !r.notaCredito ? (
+                  <NotaCreditoForm reversaId={r.id} />
+                ) : null}
                 <EnGestionForm tipo="reversa" transactionId={r.transactionId} vigente={enGestion[`reversa:${r.transactionId}`] ?? null} />
               </div>
             </li>

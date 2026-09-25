@@ -641,7 +641,11 @@ export async function registrarNotaCreditoDeReversaFormAction(
     const ok = await registrarNotaCreditoDeReversa(parsed.data.reversaId, parsed.data.numero);
     return ok
       ? { error: null, success: "Nota crédito registrada. El caso queda cerrado.", warning: null }
-      : { error: "Esa reversa no está perdida o ya tenía su nota crédito.", success: null, warning: null };
+      : {
+          error: "Esa reversa no pide nota crédito (solo una disputa perdida o una devolución), o ya tenía la suya.",
+          success: null,
+          warning: null,
+        };
   } catch (e) {
     reportServerError("pagos.nota-credito-reversa", e);
     return { error: "No se pudo registrar la nota crédito.", success: null, warning: null };

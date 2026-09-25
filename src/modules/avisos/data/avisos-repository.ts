@@ -52,16 +52,22 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
       -- LAS REVERSAS (Bloque 3b, sesion 1), con sus DOS plazos, que no se deducen del tipo y por eso viajan en
       -- su propia columna: una disputa abierta pide responderle al banco (3 dias habiles, porque sin respuesta a
       -- tiempo se pierde por silencio) y una perdida pide su nota credito manual (5 dias desde la resolucion).
+      --
+      -- LA DEVOLUCION ENTRA EN LA MISMA RAMA (2026-09-25): tambien corrige una factura ya emitida y tambien pide
+      -- su nota credito, con el mismo plazo. Faltaba, y faltar aqui significaba que la unica cosa que la iba a
+      -- recordar no la nombraba: la devolucion movia el dinero y su nota credito no aparecia en ningun aviso.
       select 'reversa', r.transaction_id,
              case when r.state = 'abierta' then r.opened_at else coalesce(r.resolved_at, r.opened_at) end,
              t.amount,
              case when r.state = 'abierta'
                   then 'Disputa abierta: hay que responderle al banco con los soportes'
+                  when r.state = 'devuelta'
+                  then 'Devolución del paciente: falta la nota crédito manual en Alegra, por la parte devuelta'
                   else 'Disputa perdida: falta la nota crédito manual en Alegra' end,
              case when r.state = 'abierta' then 3 else 5 end, r.state
         from sale_reversals r join transactions t on t.id = r.transaction_id
        where r.state = 'abierta'
-          or (r.state = 'perdida' and r.credit_note_manual_number is null)
+          or (r.state in ('perdida', 'devuelta') and r.credit_note_manual_number is null)
       union all
       -- Ventas cobradas sin factura o sin pago registrado (panel de facturas), con la misma condicion.
       select 'sin_documento', transactions.id, transactions.created_at, transactions.amount,

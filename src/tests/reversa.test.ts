@@ -94,3 +94,49 @@ describe("el producto de tercero", () => {
     expect(avisoDeTercero({ propiedad: "tercero", estado: "ganada" })).toBeNull();
   });
 });
+
+// ═══ LA DEVOLUCION ES UNA REVERSA Y TIENE QUE PODER CERRARSE (2026-09-25) ═══
+//
+// EL DEFECTO QUE ESTO FIJA no fue una cifra mal calculada: la devolucion movia bien el dinero y avisaba que
+// hacia falta una nota credito que NO HABIA FORMA DE REGISTRAR. El tipo del dominio no conocia 'devuelta', asi
+// que el rotulo del panel salia vacio, `loQuePideLaReversa` devolvia null (nadie la reclamaba), el campo del
+// numero no se mostraba y el escritor la rechazaba. Cinco silencios de la misma causa.
+describe("la devolucion como reversa", () => {
+  it("revierte el ingreso y pide su nota credito, igual que una disputa perdida", () => {
+    expect(efectosDe("devuelta")).toEqual({ revierteElIngreso: true, pideNotaCredito: true });
+  });
+
+  it("reclama la nota credito POR LO DEVUELTO, no por la venta entera", () => {
+    const pendiente = loQuePideLaReversa({
+      id: "r1",
+      transactionId: "t1",
+      tipo: "devolucion",
+      estado: "devuelta",
+      montoDeLaVenta: "180000",
+      montoDebitado: "90000", // la parte devuelta
+      propiedad: "propio",
+      abiertaEn: "2026-09-25T15:00:00Z",
+      resueltaEn: "2026-09-25T15:00:00Z",
+      notaCredito: null,
+    });
+    expect(pendiente).not.toBeNull();
+    // Lo que importa del texto: que nombre la parte devuelta y NO mande a emitirla por el total.
+    expect(pendiente?.causa).toContain("90.000");
+    expect(pendiente?.causa).not.toContain("180.000");
+  });
+
+  it("y deja de pedir nada cuando su nota credito ya esta escrita", () => {
+    const base = {
+      id: "r1",
+      transactionId: "t1",
+      tipo: "devolucion" as const,
+      estado: "devuelta" as const,
+      montoDeLaVenta: "180000",
+      montoDebitado: "90000",
+      propiedad: "propio" as const,
+      abiertaEn: "2026-09-25T15:00:00Z",
+      resueltaEn: "2026-09-25T15:00:00Z",
+    };
+    expect(loQuePideLaReversa({ ...base, notaCredito: "NC-77" })).toBeNull();
+  });
+});
