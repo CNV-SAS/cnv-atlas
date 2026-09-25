@@ -115,6 +115,18 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
       insert into nutraceutical_stock_movements
         (professional_id, nutraceutical_id, location_id, lot_id, type, delta, reason, transaction_item_id)
       values (${professionalId}, ${nutraceuticalId}, ${suyaId}, ${lotId}, 'venta', -4, 'fixture venta', ${lineaId})`);
+
+    // Y SU REPARTO SELLADO, como cualquier venta real (0143). Sin esto el fixture no representaba una venta:
+    // desde que la devolución revierte el dinero, la parte proporcional sale del reparto sellado en la línea,
+    // y una venta sin sellar se rechaza a propósito (repartirla con las tasas de hoy inventaría una cifra).
+    const { sellarContabilidadDeLaVenta } = await import("@/modules/payments/data/payments-writer");
+    await db.transaction(async (tx) => {
+      await sellarContabilidadDeLaVenta(tx, {
+        id: transactionId,
+        amount: "360000",
+        professionalId,
+      });
+    });
   }, 30_000);
 
   const saldo = async (locationId: string): Promise<number> => {

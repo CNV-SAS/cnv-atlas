@@ -18,7 +18,7 @@ import {
   correctBisValue,
 } from "./data/bis-correction-writer";
 import { writeMedidasDelProfesional } from "./data/medidas-profesional-writer";
-import { CORREGIBLES } from "./services/medidas-corregibles";
+import { CORREGIBLES, RANGO_CORREGIBLE } from "./services/medidas-corregibles";
 import { writeBisConditionsIntake } from "./data/bis-intake-writer";
 import { canCaptureBisConditions } from "./policies/can-capture-bis-conditions";
 import { saveBisConditionsSchema, validateBisConditionsCapture } from "./validations";
@@ -102,13 +102,21 @@ export async function saveBisConditionsAction(
 // porque un boton oculto no es un candado.
 export type BisCorrectionState = { error: string | null; success: string | null; warning: string | null };
 
-const correctionSchema = z.object({
-  evaluationId: z.guid(),
-  variableName: z.enum(CORREGIBLES),
-  // Se acepta coma decimal, que es como se escribe aqui. Tope alto y bajo para atrapar el dedo gordo:
-  // una talla de 1770 o un peso de 8 no son correcciones, son errores de tecleo.
-  value: z.coerce.number().positive().max(400),
-});
+const correctionSchema = z
+  .object({
+    evaluationId: z.guid(),
+    variableName: z.enum(CORREGIBLES),
+    // Se acepta coma decimal, que es como se escribe aqui.
+    value: z.coerce.number().positive(),
+  })
+  // EL RANGO ES POR MEDIDA, CON SU PISO (2026-09-25). Esto tenia `max(400)` para todas y su comentario decia
+  // para que: "una talla de 1770 o un peso de 8 no son correcciones, son errores de tecleo". Pero solo estaba
+  // el techo, asi que "1,75" (la estatura en METROS, que es como la dice la gente) pasaba como 1,75 cm y
+  // entraba al motor. El rango de cada una vive en `RANGO_CORREGIBLE`, al lado de su header.
+  .refine((d) => {
+    const r = RANGO_CORREGIBLE[d.variableName];
+    return d.value >= r.min && d.value <= r.max;
+  }, "La medida no está en un rango posible: revisa la unidad (la estatura va en centímetros, no en metros).");
 
 export async function correctBisValueAction(
   _prev: BisCorrectionState,
@@ -122,7 +130,10 @@ export async function correctBisValueAction(
     variableName: form.get("variableName"),
     value: String(form.get("value") ?? "").replace(",", "."),
   });
-  if (!parsed.success) return { error: "Valor inválido.", success: null, warning: null };
+  // EL MENSAJE DEL SCHEMA, no "Valor inválido": si alguien escribio la talla en metros, hay que decirselo.
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Valor inválido.", success: null, warning: null };
+  }
 
   const ownership = await getEvaluationOwnership(parsed.data.evaluationId);
   if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };

@@ -808,6 +808,7 @@ export type Database = {
           created_at: string
           id: string
           reversal_of: string | null
+          sale_reversal_id: string | null
           transaction_id: string
         }
         Insert: {
@@ -815,6 +816,7 @@ export type Database = {
           created_at?: string
           id?: string
           reversal_of?: string | null
+          sale_reversal_id?: string | null
           transaction_id: string
         }
         Update: {
@@ -822,6 +824,7 @@ export type Database = {
           created_at?: string
           id?: string
           reversal_of?: string | null
+          sale_reversal_id?: string | null
           transaction_id?: string
         }
         Relationships: [
@@ -830,6 +833,13 @@ export type Database = {
             columns: ["reversal_of"]
             isOneToOne: false
             referencedRelation: "cnv_revenue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cnv_revenue_sale_reversal_id_fkey"
+            columns: ["sale_reversal_id"]
+            isOneToOne: false
+            referencedRelation: "sale_reversals"
             referencedColumns: ["id"]
           },
           {
@@ -3662,6 +3672,7 @@ export type Database = {
           id: string
           professional_id: string
           reversal_of: string | null
+          sale_reversal_id: string | null
           settlement_id: string | null
           transaction_id: string
         }
@@ -3672,6 +3683,7 @@ export type Database = {
           id?: string
           professional_id: string
           reversal_of?: string | null
+          sale_reversal_id?: string | null
           settlement_id?: string | null
           transaction_id: string
         }
@@ -3682,6 +3694,7 @@ export type Database = {
           id?: string
           professional_id?: string
           reversal_of?: string | null
+          sale_reversal_id?: string | null
           settlement_id?: string | null
           transaction_id?: string
         }
@@ -3698,6 +3711,13 @@ export type Database = {
             columns: ["reversal_of"]
             isOneToOne: false
             referencedRelation: "professional_revenue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_revenue_sale_reversal_id_fkey"
+            columns: ["sale_reversal_id"]
+            isOneToOne: false
+            referencedRelation: "sale_reversals"
             referencedColumns: ["id"]
           },
           {
@@ -4040,8 +4060,10 @@ export type Database = {
           resolution_reference: string | null
           resolved_at: string | null
           resolved_by: string | null
+          returned_quantity: number | null
           state: string
           transaction_id: string
+          transaction_item_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4059,8 +4081,10 @@ export type Database = {
           resolution_reference?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          returned_quantity?: number | null
           state?: string
           transaction_id: string
+          transaction_item_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4078,8 +4102,10 @@ export type Database = {
           resolution_reference?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          returned_quantity?: number | null
           state?: string
           transaction_id?: string
+          transaction_item_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4102,6 +4128,13 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_reversals_transaction_item_id_fkey"
+            columns: ["transaction_item_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_items"
             referencedColumns: ["id"]
           },
         ]

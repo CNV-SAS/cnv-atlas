@@ -61,7 +61,7 @@ describe.skipIf(!HAS_DB)("las reversas de venta (BD real)", () => {
       transactionId: id,
       tipo: "contracargo",
       referenciaDeLaDisputa: "DISPUTA-1",
-      montoDebitado: "105000",
+      montoDebitado: 105000,
       debitadoEn: "2026-09-16",
       nota: null,
       actorId: null,

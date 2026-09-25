@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { nutraceuticalStockMovements } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
+import { revertirDineroDeLaDevolucion } from "./reversas-writer";
+
 // ═══ LA DEVOLUCION FISICA (Bloque 3b, sesion 2, 2026-09-22) ═══
 //
 // LA DECISION D-3b-3 DE CONTABILIDAD, y su razon es SANITARIA antes que contable: el producto es alimento
@@ -44,7 +46,7 @@ export async function registrarDevolucionFisica(input: {
   actorId: string;
   actorEmail: string;
   ip: string | null;
-}): Promise<{ movimientoId: string }> {
+}): Promise<{ movimientoId: string; alPaciente: number }> {
   if (!Number.isInteger(input.cantidad) || input.cantidad <= 0) {
     throw new DevolucionNoRegistrableError("La cantidad devuelta tiene que ser un número entero mayor que cero.");
   }
@@ -86,16 +88,38 @@ export async function registrarDevolucionFisica(input: {
       })
       .returning({ id: nutraceuticalStockMovements.id });
 
+    // ═══ Y EL DINERO, EN LA MISMA TRANSACCION (2026-09-25) ═══
+    //
+    // El smoke lo destapo: el producto volvia y el ingreso se quedaba. O vuelven los dos o no vuelve ninguno,
+    // por eso va aqui dentro y no en un paso aparte que alguien pueda olvidar.
+    //
+    // Y NO DEPENDE DE LA VERIFICACION: que el frasco sea reincorporable o haya que darlo de baja es otra
+    // decision, sobre el producto. El paciente devolvio y su dinero se le devuelve pase lo que pase con el
+    // frasco; si no es apto para reventa, eso lo pierde CNV, no el paciente.
+    const dinero = await revertirDineroDeLaDevolucion(tx, {
+      transactionItemId: input.transactionItemId,
+      cantidadDevuelta: input.cantidad,
+      actorId: input.actorId,
+    });
+
     await recordAudit(tx, {
       event: "inventario.devolucion_fisica_registrada",
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       entityType: "transaction_item",
       entityId: input.transactionItemId,
-      payload: { cantidad: input.cantidad, motivo: input.motivo, movimiento: movimiento.id },
+      payload: {
+        cantidad: input.cantidad,
+        motivo: input.motivo,
+        movimiento: movimiento.id,
+        reversa: dinero.reversaId,
+        al_paciente: dinero.alPaciente,
+        comision_revertida: dinero.comisionRevertida,
+        ingreso_revertido: dinero.ingresoRevertido,
+      },
       ip: input.ip,
     });
-    return { movimientoId: movimiento.id };
+    return { movimientoId: movimiento.id, alPaciente: dinero.alPaciente };
   });
 }
 

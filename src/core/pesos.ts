@@ -58,3 +58,48 @@ export function enteroDeTexto(valor: string): number | null {
   const n = pesosDeTexto(valor);
   return n != null && Number.isInteger(n) ? n : null;
 }
+
+// ═══ LOS DOS LECTORES PARA ZOD (2026-09-25) ═══
+//
+// Existen para que un schema no tenga que elegir entre `z.coerce.number()` (que es `Number()`, con el defecto
+// de arriba) y escribir el parseo a mano en cada sitio. Se usan asi:
+//
+//   physicalQty: cantidadTecleada(0, 1_000_000)
+//   montoDebitado: importeTecleado()
+//
+// Y LO QUE ARREGLAN NO ES SOLO EL RECHAZO: "1.000" unidades se leia como 1 con `z.coerce.number().int()`
+// (entero y positivo, asi que PASABA), y en el conteo fisico eso abre un faltante de 999 unidades con cargo
+// economico al Integrante. El caso silencioso siempre es el multiplo exacto de mil escrito con punto.
+
+import { z } from "zod";
+
+/** Un IMPORTE en pesos tecleado por una persona. Rechaza lo que no se pueda leer con certeza. */
+export function importeTecleado(opciones: { min?: number; max?: number } = {}) {
+  const { min = 0, max = 1_000_000_000 } = opciones;
+  return z
+    .union([z.string(), z.number()])
+    .transform((v, ctx) => {
+      const n = typeof v === "number" ? v : pesosDeTexto(v);
+      if (n == null) {
+        ctx.addIssue({ code: "custom", message: "Escribe la cifra en números (por ejemplo 11.900 o 11900)." });
+        return z.NEVER;
+      }
+      return n;
+    })
+    .refine((n) => n >= min && n <= max, `La cifra tiene que estar entre ${min} y ${max}.`);
+}
+
+/** Una CANTIDAD entera tecleada por una persona. */
+export function cantidadTecleada(min = 1, max = 1_000_000) {
+  return z
+    .union([z.string(), z.number()])
+    .transform((v, ctx) => {
+      const n = typeof v === "number" ? v : enteroDeTexto(v);
+      if (n == null) {
+        ctx.addIssue({ code: "custom", message: "Escribe una cantidad en números enteros." });
+        return z.NEVER;
+      }
+      return n;
+    })
+    .refine((n) => Number.isInteger(n) && n >= min && n <= max, `La cantidad tiene que estar entre ${min} y ${max}.`);
+}
