@@ -22,7 +22,6 @@ import {
   declareRemesaSchema,
   resolveSobranteSchema,
   createNutraceuticalSchema,
-  receptionSchema,
   recordCountSchema,
   registerUsageSchema,
   submitJustificationSchema,
@@ -157,34 +156,10 @@ export async function updateNutraceuticalFormAction(
   return { error: null, success: "Nutracéutico actualizado.", warning: null };
 }
 
-// Registrar una RECEPCION en el inventario del profesional (Mi inventario, consignacion). Solo el
-// profesional (canLoadOwnStock); la RLS acota a que sea su propio inventario.
-export async function recordReceptionFormAction(
-  _prev: NutraceuticalFormState,
-  formData: FormData,
-): Promise<NutraceuticalFormState> {
-  const user = await getCurrentUser();
-  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
-  if (!canLoadOwnStock(user)) {
-    return { error: "Solo el profesional registra recepciones en su inventario.", success: null, warning: null };
-  }
-  const parsed = receptionSchema.safeParse({
-    nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
-    quantity: String(formData.get("quantity") ?? ""),
-    lote: optStr(formData, "lote"),
-  });
-  if (!parsed.success) return { error: "Datos de recepción inválidos.", success: null, warning: null };
-
-  const res = await inventoryService.recordReception({
-    userId: user.id,
-    nutraceuticalId: parsed.data.nutraceuticalId,
-    quantity: parsed.data.quantity,
-    lote: parsed.data.lote ?? null,
-  });
-  if (!res.ok) return { error: res.message ?? "No se pudo registrar la recepción.", success: null, warning: null };
-  revalidatePath("/mi-inventario");
-  return { error: null, success: "Recepción registrada.", warning: null };
-}
+// LA RECEPCION QUE TECLEABA EL PROFESIONAL SE RETIRO (Santiago, 2026-09-25). Aqui vivia
+// `recordReceptionFormAction`. El mecanismo bueno ya existia: CNV declara la remesa y el integrante la
+// confirma, que ademas deja el rastro de quien mando que. Con las dos, podia entrar inventario que CNV nunca
+// declaro, y eso hace que el saldo deje de ser cotejable contra lo enviado.
 
 // Declarar una REMESA (E2): CNV declara un envío en consignación a un integrante. Solo admin/soporte
 // (Operaciones); el integrante no declara. No mueve el saldo (eso pasa al confirmar la recepción).

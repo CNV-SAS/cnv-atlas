@@ -82,7 +82,7 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
     await db.execute(dsql`
       insert into nutraceutical_stock_movements
         (professional_id, nutraceutical_id, location_id, lot_id, type, delta, reason)
-      values (${professionalId}, ${nutraceuticalId}, ${suyaId}, ${lotId}, 'recepcion', 6, 'fixture devolución física')`);
+      values (${professionalId}, ${nutraceuticalId}, ${suyaId}, ${lotId}, 'recepcion', 12, 'fixture devolución física')`);
 
     // LA VENTA TAMBIEN ES FIJA, y no por comodidad: el movimiento de inventario tiene un FK a la linea de
     // venta, asi que una venta de usar y tirar NO SE PUEDE BORRAR despues (la base defiende el registro de
@@ -99,22 +99,22 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
       lineaId = linea.id;
     } else {
       const [tx] = await db.execute<{ id: string }>(dsql`
-        insert into transactions (organization_id, status, amount, currency, payment_method, wompi_env,
-                                  idempotency_key)
-        select p.organization_id, 'pending', '0', 'COP', 'efectivo', 'test', ${LLAVE_FIXTURE}
+        insert into transactions (organization_id, professional_id, status, amount, currency, payment_method,
+                                  wompi_env, idempotency_key)
+        select p.organization_id, pp.id, 'paid', '360000', 'COP', 'efectivo', 'test', ${LLAVE_FIXTURE}
           from professional_profiles pp join profiles p on p.id = pp.profile_id
          where pp.id = ${professionalId}
         returning id`);
       transactionId = tx.id;
       const [linea] = await db.execute<{ id: string }>(dsql`
         insert into transaction_items (transaction_id, nutraceutical_id, quantity, unit_price)
-        values (${transactionId}, ${nutraceuticalId}, 4, '90000') returning id`);
+        values (${transactionId}, ${nutraceuticalId}, 8, '90000') returning id`);
       lineaId = linea.id;
     }
     await db.execute(dsql`
       insert into nutraceutical_stock_movements
         (professional_id, nutraceutical_id, location_id, lot_id, type, delta, reason, transaction_item_id)
-      values (${professionalId}, ${nutraceuticalId}, ${suyaId}, ${lotId}, 'venta', -4, 'fixture venta', ${lineaId})`);
+      values (${professionalId}, ${nutraceuticalId}, ${suyaId}, ${lotId}, 'venta', -8, 'fixture venta', ${lineaId})`);
 
     // Y SU REPARTO SELLADO, como cualquier venta real (0143). Sin esto el fixture no representaba una venta:
     // desde que la devolución revierte el dinero, la parte proporcional sale del reparto sellado en la línea,
@@ -123,11 +123,21 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
     await db.transaction(async (tx) => {
       await sellarContabilidadDeLaVenta(tx, {
         id: transactionId,
-        amount: "360000",
+        amount: "720000",
         professionalId,
       });
     });
   }, 30_000);
+
+  /** El neto de una tabla de ingreso para esta venta (originales menos reversiones). */
+  const netoDe = async (tabla: string, columna: string): Promise<number> => {
+    const { db } = await import("@/db");
+    const [r] = await db.execute<{ total: string }>(
+      dsql`select coalesce(sum(${dsql.raw(columna)}), 0)::text as total from ${dsql.raw(tabla)}
+             where transaction_id = ${transactionId}`,
+    );
+    return Number(r?.total ?? 0);
+  };
 
   const saldo = async (locationId: string): Promise<number> => {
     const { db } = await import("@/db");
@@ -161,6 +171,71 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
     const mia = pendientes.find((p) => p.nutraceuticalId === nutraceuticalId && p.lotId === lotId);
     expect(mia?.cantidad).toBe(enEsperaAntes + 1);
     expect(mia?.ultimoMotivo).toBe("El paciente la devolvió sin abrir");
+  }, 30_000);
+
+  // ═══ EL DINERO (2026-09-25) ═══
+  //
+  // El smoke lo destapó: el producto volvía y el ingreso se quedaba. Lo que se prueba aquí es lo que hace que
+  // la devolución esté completa, y es lo que ninguna lectura del código garantiza: que la parte revertida sea
+  // PROPORCIONAL a las unidades devueltas, que salga del reparto SELLADO (no recalculada con las tasas de
+  // hoy), y que dos devoluciones sobre la misma venta puedan convivir.
+  it("EL DINERO SE REVIERTE PROPORCIONAL a las unidades devueltas", async () => {
+    const { db } = await import("@/db");
+    const { registrarDevolucionFisica } = await import("@/modules/payments/data/devolucion-fisica-writer");
+
+    // El reparto sellado de la línea, que es de donde tiene que salir la cuenta.
+    const [linea] = await db.execute<{ quantity: number; comision: string; cnv: string }>(dsql`
+      select quantity, commission_amount::text as comision, cnv_amount::text as cnv
+        from transaction_items where id = ${lineaId}`);
+    expect(linea.comision, "el fixture no tiene reparto sellado, así que no probaría nada").toBeTruthy();
+
+    const comisionAntes = await netoDe("professional_revenue", "commission_amount");
+    const ingresoAntes = await netoDe("cnv_revenue", "amount");
+
+    await registrarDevolucionFisica({
+      transactionItemId: lineaId,
+      cantidad: 1,
+      motivo: "El paciente devolvió una de las ocho",
+      actorId: profileId,
+      actorEmail: "fixture@cnv",
+      ip: null,
+    });
+
+    // Una de cuatro: un cuarto de la comisión y un cuarto del ingreso de esa línea.
+    const proporcion = 1 / Number(linea.quantity);
+    const esperadoComision = Math.round(Number(linea.comision) * proporcion * 100) / 100;
+    const esperadoIngreso = Math.round(Number(linea.cnv) * proporcion * 100) / 100;
+    expect(comisionAntes - (await netoDe("professional_revenue", "commission_amount"))).toBeCloseTo(
+      esperadoComision,
+      2,
+    );
+    expect(ingresoAntes - (await netoDe("cnv_revenue", "amount"))).toBeCloseTo(esperadoIngreso, 2);
+
+    // Y queda su caso, con la línea y las unidades, para poder cuadrarlo.
+    const [reversa] = await db.execute<{ kind: string; state: string; devueltas: number; nota: string | null }>(dsql`
+      select kind, state, returned_quantity as devueltas, credit_note_manual_number as nota
+        from sale_reversals where transaction_item_id = ${lineaId} order by opened_at desc limit 1`);
+    expect(reversa.kind).toBe("devolucion");
+    expect(reversa.state).toBe("devuelta");
+    expect(reversa.devueltas).toBe(1);
+    // La nota crédito la hace contabilidad a mano: nace pendiente, y por eso aparece en la cola.
+    expect(reversa.nota).toBeNull();
+  }, 30_000);
+
+  it("y DOS devoluciones sobre la misma venta conviven (una unidad hoy, otra después)", async () => {
+    const { registrarDevolucionFisica } = await import("@/modules/payments/data/devolucion-fisica-writer");
+    // Antes de la 0176 esto chocaba: "una fila se revierte una sola vez" era cierto para una reversión TOTAL,
+    // y una devolución parcial puede repetirse.
+    const comisionAntes = await netoDe("professional_revenue", "commission_amount");
+    await registrarDevolucionFisica({
+      transactionItemId: lineaId,
+      cantidad: 1,
+      motivo: "Y devolvió otra la semana siguiente",
+      actorId: profileId,
+      actorEmail: "fixture@cnv",
+      ip: null,
+    });
+    expect(comisionAntes - (await netoDe("professional_revenue", "commission_amount"))).toBeGreaterThan(0);
   }, 30_000);
 
   it("no se devuelven más unidades de las que salieron", async () => {

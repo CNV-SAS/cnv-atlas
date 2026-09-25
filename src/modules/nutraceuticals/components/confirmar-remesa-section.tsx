@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Badge } from "@/components/ui/badge";
@@ -20,36 +20,64 @@ function fmtDate(iso: string): string {
   return iso.slice(0, 10);
 }
 
-// Confirmar UNA remesa (acto de reconocer custodia, no un botón de aceptar): el integrante escribe cuánto
-// llegó REALMENTE, que puede diferir de lo declarado. El default es lo declarado, pero es editable. Si no
-// llegó nada, confirma 0 (queda como faltante total). El aviso del action dice qué pasó con las cantidades.
+// ═══ CONFIRMAR ES UN CLIC; TECLEAR ES LA EXCEPCION (Santiago, 2026-09-25) ═══
+//
+// Antes esto pedia SIEMPRE "cuántas llegaron", con lo declarado como valor por defecto. En la practica eso es
+// pedirle al integrante que transcriba un numero que CNV ya escribio, y lo normal es que coincida: el
+// formulario le daba trabajo de digitacion en el caso comun y trataba igual los dos casos.
+//
+// Ahora el camino normal es UN BOTON ("Llegó completo"), y objetar es lo que abre el campo. Sigue siendo un
+// acto de reconocer custodia y no un "aceptar": lo que cambia es que solo escribe quien tiene algo distinto
+// que decir. El mecanismo de abajo no se toco: la cantidad real sigue viajando y sigue abriendo el caso.
 function ConfirmRemesaForm({ remesa }: { remesa: PendingRemesa }) {
   const [state, action, pending] = useActionState(confirmRemesaFormAction, initial);
   useFormToastAndRefresh(state);
+  const [objetando, setObjetando] = useState(false);
+
+  if (!objetando) {
+    return (
+      <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+        <input type="hidden" name="remesaId" value={remesa.remesaId} />
+        {/* Lo declarado viaja tal cual: confirmar es decir "llegó lo que dice". */}
+        <input type="hidden" name="actualQuantity" value={remesa.declaredQuantity} />
+        <input type="hidden" name="lote" value={remesa.lote ?? ""} />
+        <Button type="submit" disabled={pending}>
+          {pending ? "Confirmando..." : `Llegó completo (${remesa.declaredQuantity})`}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setObjetando(true)} disabled={pending}>
+          No llegó así
+        </Button>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3 border-t border-border pt-3">
       <input type="hidden" name="remesaId" value={remesa.remesaId} />
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`qty-${remesa.remesaId}`}>Cuántas llegaron</Label>
+        <Label htmlFor={`qty-${remesa.remesaId}`}>Cuántas llegaron de verdad</Label>
         <Input
           id={`qty-${remesa.remesaId}`}
           name="actualQuantity"
-          type="number"
           inputMode="numeric"
-          min={0}
           defaultValue={remesa.declaredQuantity}
           required
           className="w-32"
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`lote-${remesa.remesaId}`}>Lote (opcional)</Label>
+        <Label htmlFor={`lote-${remesa.remesaId}`}>Lote</Label>
         <Input id={`lote-${remesa.remesaId}`} name="lote" defaultValue={remesa.lote ?? ""} placeholder="Lote" className="w-40" />
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Confirmando..." : "Confirmar recepción"}
+        {pending ? "Registrando..." : "Registrar lo que llegó"}
       </Button>
+      <Button type="button" variant="ghost" onClick={() => setObjetando(false)} disabled={pending}>
+        Cancelar
+      </Button>
+      <p className="w-full text-xs text-muted-foreground">
+        Si llegó menos, la diferencia queda registrada y CNV la ve. Si no llegó nada, escribe 0.
+      </p>
     </form>
   );
 }

@@ -8,7 +8,6 @@ import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { ConfirmarRemesaSection } from "@/modules/nutraceuticals/components/confirmar-remesa-section";
 import { MiConteoForm } from "@/modules/nutraceuticals/components/mi-conteo-form";
-import { MiInventarioForm } from "@/modules/nutraceuticals/components/mi-inventario-form";
 import { MisFaltantesSection } from "@/modules/nutraceuticals/components/mis-faltantes-section";
 import { canLoadOwnStock } from "@/modules/nutraceuticals/policies/can-load-own-stock";
 import { getOwnInventory, getOwnMovements } from "@/modules/nutraceuticals/services/inventory-service";
@@ -46,7 +45,6 @@ export default async function MiInventarioPage() {
     getPendingRemesasForOwn(user.id),
   ]);
   const lines = inventory ?? [];
-  const recibibles = lines.filter((l) => l.commercialAvailability === "en_consultorio");
 
   return (
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
@@ -62,24 +60,10 @@ export default async function MiInventarioPage() {
 
       <MisFaltantesSection userId={user.id} />
 
-      <Panel titulo="Registrar recepción">
-        <Card>
-          <CardHeader>
-            <CardDescription>
-              Registra las unidades que recibiste de CNV. Escribe la cantidad; el lote es opcional. Cada
-              recepcion es un movimiento; para corregir un error, se registra otro en sentido contrario (no
-              se edita).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recibibles.length ? (
-              <MiInventarioForm products={recibibles.map((l) => ({ id: l.nutraceuticalId, name: l.name }))} />
-            ) : (
-              <p className="text-sm text-muted-foreground">No hay productos disponibles en consultorio para recibir.</p>
-            )}
-          </CardContent>
-        </Card>
-      </Panel>
+      {/* ═══ AQUI IBA "REGISTRAR RECEPCION", Y SE RETIRO (Santiago, 2026-09-25) ═══
+          El profesional no teclea lo que recibio. El mecanismo bueno ya existia: CNV DECLARA la remesa y el
+          CONFIRMA, arriba. Tener las dos cosas dejaba una puerta por la que podia entrar inventario que CNV
+          nunca declaro, y ademas le pedia al integrante un trabajo de digitacion que no es suyo. */}
 
       <Panel titulo="Conteo físico">
         <Card>
