@@ -49,6 +49,8 @@ export type MapaDeAlegra = {
   costCenterTerceroId: string;
   bankAccountEfectivoId: string;
   bankAccountPasarelaId: string;
+  /** Cuenta puente de las transferencias. NULA = no configurada: la factura espera y el panel dice por que. */
+  bankAccountTransferenciaId: string | null;
 };
 
 export type LineaDeFactura = {
@@ -200,11 +202,17 @@ export function armarFactura(lineas: LineaDeVenta[], mapa: MapaDeAlegra): Armado
  * modalidad Distribucion. Un null aqui significa "no se registra pago", no "no se sabe".
  */
 export function cuentaDelPago(
-  canal: "wompi" | "efectivo" | "quincenal_integrante",
+  canal: "wompi" | "efectivo" | "transferencia" | "quincenal_integrante",
   mapa: MapaDeAlegra,
 ): number | null {
   if (canal === "efectivo") return Number(mapa.bankAccountEfectivoId);
   if (canal === "wompi") return Number(mapa.bankAccountPasarelaId);
+  // LA TRANSFERENCIA NO HEREDA LA DEL EFECTIVO (2026-09-25): "Efectivo en poder de Integrantes" dice que la
+  // plata esta en el bolsillo de alguien, y una transferencia ya llego a una cuenta. Sin la suya configurada
+  // devuelve null, y quien llama decide; lo que NO puede es apuntarla a la cuenta equivocada.
+  if (canal === "transferencia") {
+    return mapa.bankAccountTransferenciaId ? Number(mapa.bankAccountTransferenciaId) : null;
+  }
   return null;
 }
 

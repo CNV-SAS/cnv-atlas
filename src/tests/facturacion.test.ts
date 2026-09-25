@@ -33,6 +33,10 @@ const MAPA: MapaDeAlegra = {
   costCenterTerceroId: "2",
   bankAccountEfectivoId: "5",
   bankAccountPasarelaId: "6",
+  // Sin configurar, que es el estado de hoy: una venta por transferencia se registra bien y su factura
+  // espera, con el motivo a la vista. Heredar la cuenta del efectivo seria decir que un dinero que ya esta
+  // en el banco sigue por recoger.
+  bankAccountTransferenciaId: null,
 };
 
 const linea = (over: Partial<LineaDeVenta> = {}): LineaDeVenta => ({

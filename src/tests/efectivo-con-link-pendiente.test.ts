@@ -73,7 +73,9 @@ describe("efectivo con un link pendiente del mismo producto", () => {
       expect.objectContaining({ patientId: PACIENTE }),
       expect.anything(),
       expect.any(String),
-      { anularLinksQueComparten: true },
+      // EL CANAL VIAJA DESDE EL 2026-09-25: "Cómo pagó" (efectivo o transferencia). Sin el formulario, el
+      // valor por defecto sigue siendo efectivo, que es lo que estas pruebas ejercitan.
+      { anularLinksQueComparten: true, canal: "efectivo" },
     );
     expect(r.success).toMatch(/Se anuló el link de pago pendiente/);
   });
@@ -85,7 +87,7 @@ describe("efectivo con un link pendiente del mismo producto", () => {
       expect.anything(),
       expect.anything(),
       expect.any(String),
-      { anularLinksQueComparten: false },
+      { anularLinksQueComparten: false, canal: "efectivo" },
     );
     expect(r.error).toBeNull();
   });

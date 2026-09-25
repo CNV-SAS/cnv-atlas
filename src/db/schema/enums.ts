@@ -132,7 +132,11 @@ export const transactionStatus = pgEnum("transaction_status", [
 // efectivo) se modela como DOS transacciones, una por medio (no una con dos pagos): reusa el sellado
 // actual y la liquidacion las suma igual. La comision de cada una va sobre SU monto, asi que la del total
 // es la suma; el efectivo solo define cuanto custodia el integrante.
-export const paymentMethod = pgEnum("payment_method", ["wompi", "efectivo"]);
+// COMO LLEGO LA PLATA A CNV. `transferencia` se agrega el 2026-09-25 (0173): existia en la practica desde
+// antes de Atlas y solo se podia anotar como efectivo, y eso no es un matiz de etiqueta: el medio viaja a la
+// factura electronica (la DIAN separa efectivo de transferencia debito) y decide la cuenta del pago.
+// Un pago mixto = dos transacciones, una por medio.
+export const paymentMethod = pgEnum("payment_method", ["wompi", "efectivo", "transferencia"]);
 
 // ESTADO DE LA FACTURA EN ALEGRA (0129). La distincion que importa es BORRADOR contra EMITIDA: un
 // borrador NO tiene consecutivo, y sin consecutivo no es un documento fiscal, aunque exista en Alegra y

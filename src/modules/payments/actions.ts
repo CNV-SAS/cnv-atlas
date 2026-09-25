@@ -13,6 +13,7 @@ import {
   getVentaVisible,
 } from "./data/payments-repository";
 import { CHECKOUT_TTL_MS } from "./data/checkout-reader";
+import type { CanalDePago } from "./medio-de-pago";
 import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { canDeliverSale } from "./policies/can-deliver-sale";
@@ -229,6 +230,10 @@ export async function registerCashSaleFormAction(
 
     const { amount, linksAnulados } = await registerCashSale(sale, user, idempotencyKey, {
       anularLinksQueComparten: anularLinks,
+      // COMO LLEGO LA PLATA (2026-09-25). Las dos nacen pagadas y ninguna pasa por la pasarela, pero no son
+      // lo mismo para la DIAN ni para la cuenta del pago: registrar una transferencia como efectivo diria
+      // que el dinero sigue en el bolsillo del Integrante cuando ya esta en una cuenta.
+      canal: String(formData.get("canal") ?? "") === "transferencia" ? "transferencia" : "efectivo",
     });
     revalidatePath("/pagos");
     const evaluationId = String(formData.get("evaluationId") ?? "");
@@ -249,6 +254,12 @@ export async function registerCashSaleFormAction(
 /** Si un link ya pasó su TTL: vencido NO se puede pagar (el checkout lo rechaza y la firma de Wompi caduca). */
 function vencido(iso: string): boolean {
   return Date.now() - new Date(iso).getTime() > CHECKOUT_TTL_MS;
+}
+
+/** El canal que llego del formulario, o efectivo si no es ninguno de los tres. */
+function medioDePagoDeLaForma(valor: FormDataEntryValue | null): CanalDePago {
+  const v = String(valor ?? "");
+  return v === "wompi" || v === "transferencia" ? v : "efectivo";
 }
 
 function haceCuanto(iso: string): string {
@@ -753,7 +764,7 @@ export async function registrarVentaRetroactivaAction(
       professionalId: String(form.get("professionalId") ?? ""),
       fecha: String(form.get("fecha") ?? ""),
       numeroDeFactura: String(form.get("numeroDeFactura") ?? ""),
-      medioDePago: String(form.get("medioDePago") ?? "efectivo") === "wompi" ? "wompi" : "efectivo",
+      medioDePago: medioDePagoDeLaForma(form.get("medioDePago")),
       lineas,
       actorId: user.id,
       actorEmail: user.email,

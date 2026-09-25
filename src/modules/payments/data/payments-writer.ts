@@ -202,6 +202,12 @@ export type NewCashTransaction = NewTransaction & {
   anularLinksQueComparten?: boolean;
   /** Quien registra la venta: queda como quien anulo el link. */
   actorId?: string | null;
+  /**
+   * COMO LLEGO LA PLATA (2026-09-25): billetes o transferencia a una cuenta. Las dos se registran aqui porque
+   * las dos NACEN PAGADAS y ninguna pasa por la pasarela. No es una etiqueta: el medio viaja a la factura
+   * electronica (la DIAN los separa) y decide la cuenta contra la que se registra el pago.
+   */
+  canal?: "efectivo" | "transferencia";
 };
 
 // Crea la transaccion (pending), sus items y SUS RESERVAS en una sola transaccion de BD.
@@ -426,7 +432,7 @@ export async function createPaidCashTransaction(
         patientId: input.patientId,
         professionalId: input.professionalId,
         status: "paid",
-        paymentMethod: "efectivo",
+        paymentMethod: input.canal ?? "efectivo",
         amount: String(input.amount),
         currency: input.currency,
         idempotencyKey: input.idempotencyKey,

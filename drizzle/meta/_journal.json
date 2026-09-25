@@ -1212,6 +1212,20 @@
       "when": 1791952406103,
       "tag": "0172_encuesta_registrada_por_el_profesional",
       "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1791952466103,
+      "tag": "0173_medio_transferencia",
+      "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1791952526103,
+      "tag": "0174_cuenta_de_transferencias",
+      "breakpoints": true
     }
   ]
 }

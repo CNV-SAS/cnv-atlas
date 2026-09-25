@@ -25,7 +25,7 @@ import {
 } from "../facturacion";
 import * as fr from "../data/facturacion-repository";
 import { motivoSiLaVentaNoEsDeEsteAmbiente } from "../ambiente";
-import { codigoAlegraDelPago } from "../medio-de-pago";
+import { codigoAlegraDelPago, type CanalDePago } from "../medio-de-pago";
 
 // ═══ EMITIR LA FACTURA DE VERDAD, Y REGISTRAR SU PAGO ═══
 //
@@ -90,7 +90,7 @@ export type VentaSellada = {
   id: string;
   amount: string;
   patientId: string | null;
-  canal: "wompi" | "efectivo";
+  canal: CanalDePago;
 };
 
 /**
@@ -203,6 +203,18 @@ async function completarFactura(
   const cuenta = cuentaDelPago(venta.canal, mapa);
 
   let pago: { paymentId: string | null; error: string | null } = { paymentId: null, error: null };
+  // LA TRANSFERENCIA SIN SU CUENTA CONFIGURADA NO SE APUNTA A OTRA (2026-09-25). La factura sale igual (se le
+  // debe a la DIAN pase lo que pase), pero el pago espera y el panel dice POR QUE: sin este mensaje la venta
+  // aparecia como "el paciente figura por cobrar", que es falso y manda a alguien a cobrar dos veces. El
+  // remedio no es contable, es de configuracion: falta la cuenta puente de transferencias en Alegra.
+  if (!cuenta && venta.canal === "transferencia") {
+    pago = {
+      paymentId: null,
+      error:
+        "Falta configurar la cuenta puente de transferencias en Alegra (alegra_config.bank_account_transferencia_id). " +
+        "La factura salió; el pago no se registró para no apuntarlo a la cuenta del efectivo, que diría que la plata sigue por recoger.",
+    };
+  }
   if (cuenta) {
     const clientId = await resolverContacto(venta.patientId!, mapa.env);
     pago = await registrarPagoSiFalta(clientId, factura, cobrado, cuenta, hoy());

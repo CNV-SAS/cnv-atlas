@@ -7,6 +7,7 @@ import { transactionItems, transactions } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 import { wompiEnvDeLaLlave } from "../ambiente";
+import type { CanalDePago } from "../medio-de-pago";
 import { ubicacionDeLaVenta } from "./inventario-de-venta";
 import { sellarContabilidadDeLaVenta } from "./payments-writer";
 
@@ -44,7 +45,7 @@ export type NuevaVentaRetroactiva = {
   fecha: string;
   /** El consecutivo de la factura que YA existe en Alegra. Sin el, registrarla no sirve para nada. */
   numeroDeFactura: string;
-  medioDePago: "efectivo" | "wompi";
+  medioDePago: CanalDePago;
   lineas: LineaRetroactiva[];
   actorId: string;
   actorEmail: string;
