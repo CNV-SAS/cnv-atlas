@@ -1473,16 +1473,19 @@ aquí el producto vuelve primero. Lo natural con lo ya construido: que registrar
 la reversa de clase `devolucion`, y que el dinero se revierta al **verificar**, no al recibir. Pero eso lo
 confirma contabilidad, no nosotros.
 
-**2. EL PRODUCTO DE TERCERO NO TIENE A DÓNDE VOLVER.** D-3b-3 dice que reingresa a la consignación del
-proveedor, no al inventario de CNV, y que si el proveedor no lo recibe, lo asume CNV. **Esa ubicación de
-consignación de proveedor no existe** (hoy hay una central, una cuarentena y una por integrante), y hoy solo
-un producto es de tercero: LUVIA, de Centro de Nutrición Integral Katherine Ruiz S.A.S.
+**2. EL PRODUCTO DE TERCERO SÍ VUELVE, y el bloqueo que se construyó el 22 estaba mal (corregido el
+2026-09-25).** Se bloqueaba leyendo D-3b-3 ("vuelve a la consignación del proveedor") como si esa
+consignación fuera un sitio que Atlas no tiene. Es al revés: **el inventario de un producto de tercero en
+Atlas YA ES esa consignación** (§10.3: cuentas de orden, sin valor contable propio). Y §7.3, que es la ruta
+adoptada y vinculante, lo remata: la compraventa encadenada contra reporte de ventas dice que **en el momento
+de la venta el producto ya es de CNV**, que es lo que permite facturarle el PVP completo al paciente. Si la
+venta se deshace, se deshace ese acto y la unidad vuelve al lote de donde salió.
 
-Mientras se decide, **la reincorporación de un producto de tercero está BLOQUEADA en el writer** (candado
-`devolucion-fisica-db`), con el mensaje que dice la razón: vuelve a la consignación del proveedor, ese
-circuito todavía no existe en Atlas, y por ahora la salida es darla de baja y gestionar la devolución al
-proveedor por fuera. Se bloquea en vez de permitirlo porque lo contrario es escribir en la base justo lo que
-contabilidad dijo que no pasa, y un saldo equivocado no se nota hasta el conteo.
+**Lo que SÍ queda pendiente, y no es de la devolución:** esa venta se le **reporta al proveedor al corte**, y
+contra ese reporte el proveedor factura (§7.3, pasos 2 y 3). Una unidad devuelta tiene que **dejar de contar
+en ese reporte**, o restarse en el corte siguiente si ya se reportó. Va con el reporte al proveedor, que hoy
+no existe. Mientras tanto, el audit de cada reincorporación deja escrito si el producto era de tercero, para
+poder cuadrarlo cuando ese reporte se construya.
 
 **Lo que el sondeo dejo confirmado (2026-09-16), y que la sesion 1 usa:**
 

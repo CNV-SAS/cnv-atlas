@@ -6,6 +6,7 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { enteroDeTexto, pesosDeTexto } from "@/core/pesos";
 import { Label } from "@/components/ui/label";
 
 import { registrarVentaRetroactivaAction, type DevolucionState } from "../actions";
@@ -49,18 +50,34 @@ export function VentaRetroactivaForm({
     setLineas((prev) => [...prev, { nutraceuticalId: productos[0]?.id ?? "", cantidad: "1", precioUnitario: "" }]);
   const quitar = (i: number) => setLineas((prev) => prev.filter((_, j) => j !== i));
 
-  const total = lineas.reduce(
-    (s, l) => s + (Number(l.precioUnitario) || 0) * (Number(l.cantidad) || 0),
-    0,
-  );
+  // SE LEE COMO LO TECLEA UNA PERSONA, no con `Number()`: "11.900" son once mil novecientos, y `Number()`
+  // lo leía como 11,9 y lo dejaba pasar. Una venta de doce pesos entra en la comisión y en la liquidación
+  // sin que nada avise.
+  const leidas = lineas.map((l) => ({
+    nutraceuticalId: l.nutraceuticalId,
+    cantidad: enteroDeTexto(l.cantidad),
+    precioUnitario: pesosDeTexto(l.precioUnitario),
+  }));
+  const total = leidas.reduce((s, l) => s + (l.precioUnitario ?? 0) * (l.cantidad ?? 0), 0);
+  // El aviso dice QUÉ línea y QUÉ campo, aquí mismo, antes de enviar: el servidor volvía a validar y
+  // respondía "Revisa los productos, las cantidades y los precios", que no dice cuál ni por qué.
+  const problemas = leidas
+    .map((l, i) => {
+      const faltan = [
+        l.cantidad == null || l.cantidad <= 0 ? "la cantidad" : null,
+        l.precioUnitario == null || l.precioUnitario <= 0 ? "el precio" : null,
+      ].filter(Boolean);
+      return faltan.length ? `Producto ${i + 1}: revisa ${faltan.join(" y ")}.` : null;
+    })
+    .filter((x): x is string => x != null);
 
   // Las lineas viajan como JSON: el servidor las valida enteras con Zod. `enviarSinReset` evita que un error
   // borre lo tecleado (React 19 resetea los campos con `action` como prop).
   const paraEnviar = JSON.stringify(
-    lineas.map((l) => ({
+    leidas.map((l) => ({
       nutraceuticalId: l.nutraceuticalId,
-      cantidad: Number(l.cantidad) || 0,
-      precioUnitario: Number(l.precioUnitario) || 0,
+      cantidad: l.cantidad ?? 0,
+      precioUnitario: l.precioUnitario ?? 0,
     })),
   );
 
@@ -168,9 +185,14 @@ export function VentaRetroactivaForm({
         </p>
       </div>
 
-      <Button type="submit" disabled={pending} className="w-fit">
+      <Button type="submit" disabled={pending || problemas.length > 0} className="w-fit">
         Registrar la venta
       </Button>
+      {problemas.map((x) => (
+        <p key={x} className="text-sm text-destructive">
+          {x}
+        </p>
+      ))}
       {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
     </form>
   );

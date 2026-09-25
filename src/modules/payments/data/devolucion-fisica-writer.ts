@@ -123,23 +123,26 @@ export async function verificarDevuelta(input: {
   if (input.motivo.trim().length < 5) {
     throw new DevolucionNoRegistrableError("Escribe el resultado de la verificación (al menos cinco letras).");
   }
-  // EL PRODUCTO DE TERCERO NO SE REINCORPORA AL INVENTARIO DE CNV (D-3b-3): reingresa a la consignacion del
-  // proveedor, y si el proveedor no lo recibe, lo asume CNV. Ese circuito NO esta construido (no existe una
-  // ubicacion de consignacion de proveedor), asi que aqui se BLOQUEA en vez de dejar que una unidad de un
-  // tercero entre al stock vendible de CNV, que es justo lo que contabilidad dijo que no pasa. La salida que
-  // si existe hoy es darla de baja, y la devolucion al proveedor se gestiona por fuera.
+  // ═══ EL PRODUCTO DE TERCERO SI SE REINCORPORA, Y EL BLOQUEO ERA MIO (Santiago, 2026-09-25) ═══
   //
-  // VA ANTES DEL SALDO a proposito: es una propiedad del PRODUCTO, no del saldo, y asi el mensaje que ve la
-  // persona dice la razon verdadera en vez de hablar de existencias.
-  if (input.decision === "reincorporar") {
-    const [producto] = await db.execute<{ ownership: string | null; brand_owner: string | null }>(sql`
-      select ownership, brand_owner from nutraceuticals where id = ${input.nutraceuticalId}`);
-    if (producto?.ownership === "tercero") {
-      throw new DevolucionNoRegistrableError(
-        `Este producto es de un tercero${producto.brand_owner ? ` (${producto.brand_owner})` : ""}: no se reincorpora al inventario de CNV, vuelve a la consignación del proveedor. Ese circuito todavía no existe en Atlas, así que por ahora la unidad se da de baja y la devolución al proveedor se gestiona por fuera.`,
-      );
-    }
-  }
+  // Lo bloqueaba leyendo D-3b-3 ("vuelve a la consignacion del proveedor") como si esa consignacion fuera un
+  // sitio que Atlas no tiene. Es al reves: EL INVENTARIO DE UN PRODUCTO DE TERCERO EN ATLAS YA ES ESA
+  // CONSIGNACION. El producto esta en la vitrina del integrante y sigue siendo del proveedor hasta que se
+  // vende (modelo §10.3: cuentas de orden, sin valor contable propio).
+  //
+  // Y lo que lo confirma es §7.3, la ruta adoptada y vinculante: la compraventa encadenada contra reporte de
+  // ventas. Su punto 4 dice que EN EL MOMENTO DE LA VENTA EL PRODUCTO YA ES DE CNV, que es lo que permite
+  // facturarle al paciente el PVP completo. Si la venta se deshace, se deshace ese acto: la unidad vuelve a
+  // la consignacion, que es justo el lote de donde salio.
+  //
+  // LO QUE SI QUEDA PENDIENTE, y no es de aqui: esa venta se le REPORTA al proveedor al corte, y contra ese
+  // reporte el proveedor factura. Una unidad devuelta tiene que dejar de contar en ese reporte (o restarse
+  // en el corte siguiente si ya se reporto). Vive con el reporte al proveedor, en el bloque comercial que lo
+  // construya; queda escrito en el plan para que no se pierda.
+  const [producto] = await db.execute<{ ownership: string | null }>(sql`
+    select ownership from nutraceuticals where id = ${input.nutraceuticalId}`);
+  const deTercero = producto?.ownership === "tercero";
+
   return db.transaction(async (tx) => {
     const origen = await cuarentena(tx);
     const [saldo] = await tx.execute<{ stock_quantity: number }>(sql`
@@ -209,6 +212,9 @@ export async function verificarDevuelta(input: {
         cantidad: input.cantidad,
         motivo: input.motivo,
         destino: input.decision === "reincorporar" ? input.destinoId : null,
+        // DE TERCERO O PROPIO: si es de tercero, esta unidad tiene que dejar de contar en el reporte de
+        // ventas al proveedor. Queda en el rastro para poder cuadrarlo cuando ese reporte exista.
+        de_tercero: deTercero,
       },
       ip: input.ip,
     });
