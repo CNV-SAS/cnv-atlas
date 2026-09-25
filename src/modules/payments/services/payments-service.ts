@@ -34,6 +34,7 @@ import {
 } from "../data/inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
 
+import type { CanalDePago } from "../medio-de-pago";
 import { ESCALADA_EFECTIVO_NO_RECIBIDO } from "../revision";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import { avisarAlIntegranteDeRevision } from "@/modules/avisos/services/avisos-service";
@@ -176,7 +177,7 @@ export async function registerCashSale(
   input: CreateCheckoutInput,
   user: CurrentUser,
   idempotencyKey: string,
-  opciones: { anularLinksQueComparten?: boolean } = {},
+  opciones: { anularLinksQueComparten?: boolean; canal?: "efectivo" | "transferencia" } = {},
 ): Promise<CashSaleCreated> {
   const { professionalId, lines, amount } = await resolveSale(input, user);
   const { id, linksAnulados } = await createPaidCashTransaction({
@@ -190,6 +191,7 @@ export async function registerCashSale(
     treatmentId: input.treatmentId ?? null,
     anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
     actorId: user.id,
+    canal: opciones.canal ?? "efectivo",
   });
   // La venta en efectivo NACE pagada, asi que no hay webhook que dispare la factura: se emite aqui. No
   // revienta la venta si falla (el servicio escribe el desenlace y la deja en la cola): el dinero ya lo
@@ -199,7 +201,8 @@ export async function registerCashSale(
   await descontarInventarioDeVenta(id);
   await facturarVentaSellada(
     { id, amount: String(amount), patientId: input.patientId },
-    "efectivo",
+    // EL CANAL REAL, no "efectivo" fijo: decide el medio en la factura electronica y la cuenta del pago.
+    opciones.canal ?? "efectivo",
   );
   return { transactionId: id, amount, linksAnulados: linksAnulados.length };
 }
@@ -404,7 +407,7 @@ export async function aplicarPagoAprobado(e: {
 // EL CANAL lo decide `payment_method` de la transaccion, y es lo que elige la cuenta puente del pago.
 async function facturarVentaSellada(
   sealed: Pick<SealedTransaction, "id" | "amount" | "patientId">,
-  canal: "wompi" | "efectivo",
+  canal: CanalDePago,
 ): Promise<void> {
   await marcarFacturaPendiente(sealed.id);
   await emitirFacturaDeVenta({

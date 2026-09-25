@@ -225,6 +225,7 @@ export type Database = {
         Row: {
           bank_account_efectivo_id: string
           bank_account_pasarela_id: string
+          bank_account_transferencia_id: string | null
           cost_center_propio_id: string
           cost_center_tercero_id: string
           credit_note_template_id: string | null
@@ -238,6 +239,7 @@ export type Database = {
         Insert: {
           bank_account_efectivo_id: string
           bank_account_pasarela_id: string
+          bank_account_transferencia_id?: string | null
           cost_center_propio_id: string
           cost_center_tercero_id: string
           credit_note_template_id?: string | null
@@ -251,6 +253,7 @@ export type Database = {
         Update: {
           bank_account_efectivo_id?: string
           bank_account_pasarela_id?: string
+          bank_account_transferencia_id?: string | null
           cost_center_propio_id?: string
           cost_center_tercero_id?: string
           credit_note_template_id?: string | null
@@ -5385,7 +5388,7 @@ export type Database = {
         | "baja"
       nutraceutical_ownership: "propio" | "tercero"
       patient_status: "active" | "inactive"
-      payment_method: "wompi" | "efectivo"
+      payment_method: "wompi" | "efectivo" | "transferencia"
       professional_document_type: "anexo3"
       professional_profession:
         | "medico"
@@ -5645,7 +5648,7 @@ export const Constants = {
       ],
       nutraceutical_ownership: ["propio", "tercero"],
       patient_status: ["active", "inactive"],
-      payment_method: ["wompi", "efectivo"],
+      payment_method: ["wompi", "efectivo", "transferencia"],
       professional_document_type: ["anexo3"],
       professional_profession: [
         "medico",

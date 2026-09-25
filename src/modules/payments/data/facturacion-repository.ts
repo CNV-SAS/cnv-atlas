@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { CanalDePago } from "../medio-de-pago";
 import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -79,10 +80,11 @@ export async function getMapaDeAlegra(): Promise<MapaDeAlegra | null> {
     cost_center_tercero_id: string;
     bank_account_efectivo_id: string;
     bank_account_pasarela_id: string;
+    bank_account_transferencia_id: string | null;
   }>(sql`
     select env, iva_tax_id, invoice_template_id, credit_note_template_id,
            cost_center_propio_id, cost_center_tercero_id,
-           bank_account_efectivo_id, bank_account_pasarela_id
+           bank_account_efectivo_id, bank_account_pasarela_id, bank_account_transferencia_id
       from alegra_config where env = ${env} limit 1`);
   const c = filas[0];
   if (!c) return null;
@@ -95,6 +97,7 @@ export async function getMapaDeAlegra(): Promise<MapaDeAlegra | null> {
     costCenterTerceroId: c.cost_center_tercero_id,
     bankAccountEfectivoId: c.bank_account_efectivo_id,
     bankAccountPasarelaId: c.bank_account_pasarela_id,
+    bankAccountTransferenciaId: c.bank_account_transferencia_id ?? null,
   };
 }
 
@@ -185,7 +188,7 @@ export async function getDatosDelContacto(patientId: string): Promise<DatosDelCo
 /** La venta, con lo que la facturacion necesita saber de ella. La usa la cola de reintento. */
 export async function getVentaParaFacturar(
   txId: string,
-): Promise<{ id: string; amount: string; patientId: string | null; canal: "wompi" | "efectivo" } | null> {
+): Promise<{ id: string; amount: string; patientId: string | null; canal: CanalDePago } | null> {
   const [t] = await db
     .select({
       id: transactions.id,
@@ -197,7 +200,12 @@ export async function getVentaParaFacturar(
     .where(eq(transactions.id, txId))
     .limit(1);
   if (!t) return null;
-  return { ...t, canal: t.canal === "efectivo" ? "efectivo" : "wompi" };
+  // LOS TRES CANALES, no dos (2026-09-25). Esto normalizaba "cualquier cosa que no sea efectivo" a wompi, y
+  // con la transferencia eso la habria facturado como pasarela: el medio equivocado en la factura y el pago
+  // contra la cuenta equivocada. Lo que no reconoce cae a wompi, que es como estaba, pero ya reconoce tres.
+  const canal: CanalDePago =
+    t.canal === "efectivo" ? "efectivo" : t.canal === "transferencia" ? "transferencia" : "wompi";
+  return { ...t, canal };
 }
 
 /** Con que pago el paciente, para el medio de pago de la factura. Leido de la fila, igual que el ambiente. */

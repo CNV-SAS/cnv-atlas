@@ -24,6 +24,18 @@
 export type MedioDian = "tarjeta_credito" | "tarjeta_debito" | "transferencia_debito" | "efectivo";
 
 /**
+ * COMO LLEGO LA PLATA A CNV. No es el instrumento (eso lo dice `payment_method_type`), es el camino:
+ *
+ *   · `wompi`         la pasarela;
+ *   · `efectivo`      billetes, que quedan en poder del Integrante hasta que consigne;
+ *   · `transferencia` el paciente consigno a una cuenta (2026-09-25).
+ *
+ * La transferencia existia en la practica desde antes de Atlas y solo se podia anotar como efectivo. No es
+ * un matiz: el medio viaja a la factura electronica (la DIAN los separa) y decide la cuenta del pago.
+ */
+export type CanalDePago = "wompi" | "efectivo" | "transferencia";
+
+/**
  * De Wompi a DIAN. Es la tabla de contabilidad del 2026-09-13, literal.
  *
  * LA REGLA PARA LO QUE VENGA, de contabilidad: si la plata sale de una cuenta o deposito, es transferencia
@@ -33,11 +45,13 @@ export type MedioDian = "tarjeta_credito" | "tarjeta_debito" | "transferencia_de
  * Wompi no puede heredar por parecido el medio de otro. Se agrega aplicando esa regla, a proposito.
  */
 export function medioDianDelPago(pago: {
-  canal: "wompi" | "efectivo";
+  canal: CanalDePago;
   tipo: string | null;
   tipoTarjeta: string | null;
 }): MedioDian | null {
   if (pago.canal === "efectivo") return "efectivo";
+  // La regla de contabilidad, literal: si la plata sale de una cuenta o deposito, es transferencia debito.
+  if (pago.canal === "transferencia") return "transferencia_debito";
 
   switch ((pago.tipo ?? "").toUpperCase()) {
     case "CARD":
@@ -138,7 +152,7 @@ export const CODIGO_ALEGRA: Record<
 
 /** Lo que viaja a Alegra: el codigo si esta verificado, nada si no. */
 export function codigoAlegraDelPago(pago: {
-  canal: "wompi" | "efectivo";
+  canal: CanalDePago;
   tipo: string | null;
   tipoTarjeta: string | null;
 }): string | null {

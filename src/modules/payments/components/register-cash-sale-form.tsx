@@ -168,8 +168,19 @@ export function RegisterCashSaleForm({
           </Button>
         </div>
 
+        {/* COMO LLEGO LA PLATA (2026-09-25). Antes solo habia efectivo, y una transferencia se anotaba como
+            efectivo: eso pone en la factura un medio que la DIAN distingue y apunta el dinero a la cuenta
+            "Efectivo en poder de Integrantes", que dice que sigue por recoger cuando ya esta en un banco. */}
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="canal-del-pago">Cómo pagó</Label>
+          <select id="canal-del-pago" name="canal" defaultValue="efectivo" className={selectClass} disabled={pending}>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+
         <Button type="submit" disabled={pending}>
-          {pending ? "Registrando..." : "Registrar venta en efectivo"}
+          {pending ? "Registrando..." : "Registrar la venta"}
         </Button>
 
         {state.pendingLinkWarning ? (

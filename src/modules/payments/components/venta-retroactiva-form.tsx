@@ -123,9 +123,13 @@ export function VentaRetroactivaForm({
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="vr-medio">Cómo pagó</Label>
+          {/* LOS TRES, y la transferencia es la que faltaba: antes de Atlas se cobraba en efectivo o por
+              transferencia, y anotar una transferencia como efectivo es la pequeña mentira que este bloque
+              existe para evitar. */}
           <select id="vr-medio" name="medioDePago" className={selectClass} disabled={pending} defaultValue="efectivo">
             <option value="efectivo">Efectivo</option>
-            <option value="wompi">Pasarela</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="wompi">Pasarela (Wompi)</option>
           </select>
         </div>
       </div>
