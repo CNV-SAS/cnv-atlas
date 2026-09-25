@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
@@ -30,9 +32,12 @@ export default async function AdminPage() {
   // Perfil profesional (profesion + registro) por profile_id. Consulta plana aparte (no embed) para
   // no acoplar el tipo del select. Es la vista donde el registro profesional tiene sentido: un
   // profesional sin registro no puede ejercer, y aqui se ve "sin registro" a simple vista.
+  // `id` va en el select para poder enlazar a su operacion: la pantalla de /admin/integrantes/[id] se
+  // identifica por professional_profiles.id, que es la llave con la que el inventario, las ventas y las
+  // comisiones apuntan al integrante (no por profile_id).
   const { data: profRows } = await supabase
     .from("professional_profiles")
-    .select("profile_id, profession, license");
+    .select("id, profile_id, profession, license");
   const byProfile = new Map((profRows ?? []).map((p) => [p.profile_id, p]));
   const internos = await listarUsuariosInternosConMarcas();
 
@@ -62,6 +67,16 @@ export default async function AdminPage() {
                   </span>
                 ) : null}
               </span>
+              {/* Su operación: inventario, ventas y comisión. Solo para quien es integrante, porque es lo que
+                  ahí se mira; un usuario interno sin perfil profesional no tiene nada que mostrar. */}
+              {prof ? (
+                <Link
+                  href={`/admin/integrantes/${prof.id}`}
+                  className="text-sm underline underline-offset-4"
+                >
+                  Ver su inventario, sus ventas y su comisión
+                </Link>
+              ) : null}
               {/* Las acciones no se ofrecen sobre la propia cuenta del admin (evita reiniciar su propio acceso por error). */}
               {u.id === user.id ? (
                 <span className="text-xs text-muted-foreground">Tu cuenta</span>
