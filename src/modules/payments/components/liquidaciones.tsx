@@ -93,10 +93,12 @@ function FilaLiquidacion({ item, puedePagar }: { item: LiquidacionParaVer; puede
         {item.iva > 0 ? ` + IVA ${pesos(item.iva)}` : " (sin IVA)"} − retención{" "}
         {Math.round(item.tarifa * 100)} % {pesos(item.retencion)}
       </span>
+      {/* EL DOCUMENTO SALE DEL PERFIL, y el rótulo dice de dónde: "obligado a facturar" es la condición del
+          RUT que lo decide (modelo §3), y sin nombrarla el profesional no sabe por qué le toca una u otra. */}
       <span className="text-muted-foreground">
         {item.documento === "factura_del_integrante"
-          ? "Él emite la factura a CNV."
-          : "CNV emite documento soporte electrónico."}
+          ? "Obligado a facturar: él le emite la factura a CNV."
+          : "No obligado a facturar: CNV emite el documento soporte electrónico."}
       </span>
       {item.pagadaEn ? (
         <span className="text-muted-foreground">

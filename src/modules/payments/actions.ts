@@ -723,7 +723,23 @@ export async function registrarVentaRetroactivaAction(
     const crudo: unknown = JSON.parse(String(form.get("lineas") ?? "[]"));
     const parseada = lineasRetroactivasSchema.safeParse(crudo);
     if (!parseada.success) {
-      return { error: "Revisa los productos, las cantidades y los precios.", success: null, warning: null };
+      // EL MENSAJE DICE CUAL Y QUE (Santiago, 2026-09-25). Antes decia "Revisa los productos, las cantidades
+      // y los precios" sobre un formulario con varias lineas, asi que no decia nada: el primer intento real
+      // se quedo ahi sin saber que mirar. La pantalla ademas ya avisa antes de enviar; esto es la red.
+      const donde = parseada.error.issues
+        .map((i) => {
+          const linea = typeof i.path[0] === "number" ? i.path[0] + 1 : null;
+          const campo = i.path[1] === "cantidad" ? "la cantidad" : i.path[1] === "precioUnitario" ? "el precio" : "el producto";
+          return linea ? `producto ${linea} (${campo})` : campo;
+        })
+        .filter((x, i, a) => a.indexOf(x) === i)
+        .slice(0, 4)
+        .join(", ");
+      return {
+        error: `Revisa ${donde || "los productos, las cantidades y los precios"}. Las cifras se pueden escribir con puntos o comas (11.900 o 11900).`,
+        success: null,
+        warning: null,
+      };
     }
     lineas = parseada.data;
   } catch {

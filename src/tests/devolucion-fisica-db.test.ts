@@ -223,35 +223,60 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
     ).rejects.toBeInstanceOf(DevolucionNoRegistrableError);
   }, 30_000);
 
-  it("EL PRODUCTO DE TERCERO no se reincorpora al inventario de CNV (D-3b-3)", async () => {
-    const { verificarDevuelta, DevolucionNoRegistrableError } = await import(
+  it("EL PRODUCTO DE TERCERO SÍ se reincorpora: su inventario YA ES la consignación", async () => {
+    const { db } = await import("@/db");
+    const { verificarDevuelta, registrarDevolucionFisica } = await import(
       "@/modules/payments/data/devolucion-fisica-writer"
     );
-    const { db } = await import("@/db");
-    // Lo devuelto de un tercero vuelve a la consignacion del PROVEEDOR, no al stock vendible de CNV. El
-    // circuito del proveedor no existe todavia, asi que lo que se protege es que no entre por error.
+    // ═══ ESTE CASO DECÍA LO CONTRARIO HASTA EL 2026-09-25 ═══
     //
-    // SE PRUEBA CON EL TERCERO REAL (hoy LUVIA) y sin tocar un solo dato: el fixture de prueba no puede ser
-    // de tercero (un CHECK de la base lo prohibe, `nutra_prueba_no_es_de_tercero`, y hace bien). Si algun dia
-    // no hay ningun producto de tercero, el caso se salta solo en vez de mentir.
+    // Lo bloqueaba leyendo D-3b-3 ("vuelve a la consignación del proveedor") como si esa consignación fuera
+    // un sitio que Atlas no tiene. Es al revés: el inventario de un producto de tercero en Atlas YA ES esa
+    // consignación (§10.3: cuentas de orden, sin valor contable propio), y §7.3 —la ruta vinculante— dice
+    // que en el momento de la venta el producto ya es de CNV. Deshacer la venta deshace ese acto.
     const [tercero] = await db.execute<{ id: string }>(
       dsql`select id from nutraceuticals where ownership = 'tercero' limit 1`,
     );
     if (!tercero) return;
-    const intento = verificarDevuelta({
-      nutraceuticalId: tercero.id,
-      lotId,
-      cantidad: 1,
-      decision: "reincorporar",
-      destinoId: suyaId,
-      motivo: "Sellada, íntegra y sin vencer",
-      actorId: profileId,
-      actorEmail: "fixture@cnv",
-      ip: null,
-    });
-    await expect(intento).rejects.toBeInstanceOf(DevolucionNoRegistrableError);
-    // Y por la razon VERDADERA: sin esto el caso pasaria igual por no haber existencias en cuarentena.
-    await expect(intento).rejects.toThrow(/tercero/);
+
+    // Se marca el producto del fixture como de tercero por un momento: usar el real movería su saldo.
+    // TODO JUNTO, porque la base exige coherencia: un producto de prueba no puede ser de tercero, y uno de
+    // tercero tiene que declarar su proveedor y su titular de marca. Los dos CHECK dicen algo verdadero, así
+    // que el fixture se ajusta a ellos en vez de rodearlos.
+    const [proveedor] = await db.execute<{ id: string }>(dsql`select id from suppliers limit 1`);
+    await db.execute(dsql`
+      update nutraceuticals
+         set is_test = false, ownership = 'tercero', supplier_id = ${proveedor.id},
+             brand_owner = 'ZZ Fixture proveedor'
+       where id = ${nutraceuticalId}`);
+    try {
+      await registrarDevolucionFisica({
+        transactionItemId: lineaId,
+        cantidad: 1,
+        motivo: "Devuelta sellada, producto de tercero",
+        actorId: profileId,
+        actorEmail: "fixture@cnv",
+        ip: null,
+      });
+      const vendibleAntes = await saldo(suyaId);
+      await verificarDevuelta({
+        nutraceuticalId,
+        lotId,
+        cantidad: 1,
+        decision: "reincorporar",
+        destinoId: suyaId,
+        motivo: "Sellada, íntegra y sin vencer",
+        actorId: profileId,
+        actorEmail: "fixture@cnv",
+        ip: null,
+      });
+      expect(await saldo(suyaId), "un producto de tercero no volvió a la consignación").toBe(vendibleAntes + 1);
+    } finally {
+      await db.execute(dsql`
+        update nutraceuticals
+           set ownership = 'propio', is_test = true, supplier_id = null, brand_owner = null
+         where id = ${nutraceuticalId}`);
+    }
   }, 30_000);
 
   it("DAR DE BAJA: sale de cuarentena con su motivo y no vuelve a nadie", async () => {
