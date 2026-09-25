@@ -19,6 +19,31 @@
 
 ---
 
+## HECHO (2026-09-25) · Lo que salio del smoke acumulado del 24
+
+Los cinco hallazgos de Santiago, todos cerrados. **El estado de cada uno lo dice su test, no esta linea:**
+
+| Hallazgo | Donde quedo | Su candado |
+| --- | --- | --- |
+| 1 · La devolucion no mueve el dinero | Reversion proporcional desde el reparto sellado de la linea (0175, 0176) | `reversa.test.ts`, `devolucion-*-db` |
+| 2 · LUVIA: el bloqueo partia de lo contrario | Bloqueo RETIRADO; al vender, el producto ya es de CNV | candado invertido |
+| 3 · Admin no puede ver a un profesional | `/admin/integrantes/[id]`, solo lectura | `integrante-reader-db.test.ts` |
+| 4 · La venta no dejaba registrar el medio | `transferencia` como medio de pago (0173, 0174) | `medio-de-pago` |
+| 5 · La recepcion que el profesional teclea | Confirma lo que CNV declaro; un boton | `cifras-tecleadas-en-formularios.test.ts` |
+
+**Y dos que aparecieron al cerrarlos, de la misma familia (una pieza sin su ultimo cable):**
+
+- La devolucion **exigia** una nota credito que **no se podia registrar**: el tipo del dominio no conocia
+  `devuelta`, y eso daba cinco silencios (rotulo vacio, nadie la reclamaba, campo oculto, escritor que la
+  rechazaba, aviso que no la nombraba). Cerrado con rotulos en un `Record` exhaustivo, que obliga a nombrar
+  la siguiente clase de reversa.
+- El lote de la remesa decia **"(opcional)"** y la base lo exige desde la 0121. Cerrado del lado de la base.
+
+**Recorrido para verificarlo:** `docs/entregas/SMOKE_ACUMULADO_2026-09-25.md`. **Migraciones 0172 a 0176
+pendientes en la nube** (repo 177, nube 172); sin ellas las partes 1, 3 y 5 no arrancan.
+
+---
+
 ## El XLSX del BIS que no se pierda al cambiar de pestaña (2026-09-22) · SEGUNDO PLANO
 
 Hoy, si el profesional elige el archivo, pulsa "Importar medición BIS", le falta la encuesta o las condiciones
