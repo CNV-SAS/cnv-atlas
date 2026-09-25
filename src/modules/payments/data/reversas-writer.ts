@@ -112,11 +112,17 @@ export async function resolverReversa(e: {
   });
 }
 
-/** El numero de la nota credito que contabilidad hizo a mano en Alegra. Solo sobre una reversa PERDIDA. */
+/**
+ * El numero de la nota credito que contabilidad hizo a mano en Alegra. Sobre una reversa PERDIDA o DEVUELTA:
+ * las dos corrigen una factura ya emitida, y las dos la piden (la 0175 abrio el CHECK para las dos).
+ *
+ * DECIA SOLO 'perdida' Y ESO DEJABA LA DEVOLUCION SIN CIERRE: movia el dinero, avisaba que hacia falta la
+ * nota credito, y no habia forma de escribir su numero.
+ */
 export async function registrarNotaCreditoDeReversa(reversaId: string, numero: string): Promise<boolean> {
   const filas = await db.execute<{ id: string }>(sql`
     update sale_reversals set credit_note_manual_number = ${numero}, updated_at = now()
-     where id = ${reversaId} and state = 'perdida' and credit_note_manual_number is null
+     where id = ${reversaId} and state in ('perdida', 'devuelta') and credit_note_manual_number is null
     returning id`);
   return filas.length > 0;
 }
@@ -161,7 +167,9 @@ export async function listarReversas(limite = 50): Promise<ReversaEnPantalla[]> 
       left join profiles pa on pa.id = r.opened_by
       left join profiles pr on pr.id = r.resolved_by
      where r.state = 'abierta'
-        or (r.state = 'perdida' and r.credit_note_manual_number is null)
+        -- LAS DOS QUE PIDEN NOTA CREDITO, no solo la perdida: una devolucion tambien corrige una factura ya
+        -- emitida. Sin esto desaparecia del panel a los 30 dias con su nota credito sin emitir.
+        or (r.state in ('perdida', 'devuelta') and r.credit_note_manual_number is null)
         or r.resolved_at > now() - interval '30 days'
      order by r.opened_at desc
      limit ${limite}`);

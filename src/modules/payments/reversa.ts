@@ -6,8 +6,15 @@ import { addBusinessDays } from "@/core/dates/colombia-business-days";
 // DEL DE RESULTADO. El banco debita al abrirse la disputa, y eso es un hecho; pero el ingreso no se toca hasta
 // perderla, porque la factura sigue siendo valida mientras la disputa viva.
 
-export type EstadoDeReversa = "abierta" | "ganada" | "perdida";
-export type TipoDeReversa = "contracargo" | "anulacion_wompi";
+// LA DEVOLUCION ES UNA CLASE MAS, y se agrega aqui y no aparte (2026-09-25). Nace resuelta ('devuelta': el
+// producto ya volvio, no hay disputa que esperar) y revierte SOLO LA PARTE devuelta, no la venta entera.
+//
+// SE AGREGO AL TIPO PORQUE NO ESTABA, y faltar aqui no daba error, daba SILENCIO: el lector casteaba
+// 'devuelta' a este tipo, la etiqueta del panel salia vacia, `loQuePideLaReversa` no reclamaba nada y el campo
+// para escribir el numero de la nota credito no se mostraba. O sea: la devolucion movia el dinero y AVISABA
+// que hacia falta una nota credito que no habia forma de registrar.
+export type EstadoDeReversa = "abierta" | "ganada" | "perdida" | "devuelta";
+export type TipoDeReversa = "contracargo" | "anulacion_wompi" | "devolucion";
 export type Propiedad = "propio" | "tercero" | "mixto" | "desconocido";
 
 /** Dias habiles para responderle al banco antes de que el aviso escale. Una disputa sin respuesta SE PIERDE. */
@@ -69,8 +76,11 @@ export type EfectosDeResolver = {
 
 export function efectosDe(estado: EstadoDeReversa): EfectosDeResolver {
   // GANADA: el banco repone y el ingreso nunca se movio. ABIERTA: el debito ya ocurrio, pero el ingreso tampoco
-  // se toca. Solo PERDIDA mueve el resultado.
-  return { revierteElIngreso: estado === "perdida", pideNotaCredito: estado === "perdida" };
+  // se toca. PERDIDA mueve el resultado, y DEVUELTA tambien: la factura emitida cobra un producto que el
+  // paciente ya no tiene, asi que hay que corregirla. La diferencia entre las dos no es el efecto, es el ALCANCE
+  // (la perdida se lleva la venta entera; la devuelta, solo la parte devuelta).
+  const revierte = estado === "perdida" || estado === "devuelta";
+  return { revierteElIngreso: revierte, pideNotaCredito: revierte };
 }
 
 const aMediodia = (ymd: string): Date => {
@@ -93,10 +103,18 @@ export function loQuePideLaReversa(r: Reversa): { causa: string; limite: string;
       limite: comoDia(addBusinessDays(aMediodia(r.abiertaEn.slice(0, 10)), DIAS_PARA_RESPONDER_LA_DISPUTA)),
     };
   }
-  if (r.estado === "perdida" && !r.notaCredito) {
+  if ((r.estado === "perdida" || r.estado === "devuelta") && !r.notaCredito) {
     const desde = r.resueltaEn ?? r.abiertaEn;
+    // LA CAUSA Y EL VALOR SON DISTINTOS EN CADA UNA, y decirlo mal manda a emitir la nota crédito equivocada:
+    // la disputa perdida se lleva la venta entera; la devolución, solo lo devuelto (`montoDebitado`, que en una
+    // devolución guarda lo que hay que devolverle al paciente).
+    const devuelto = aNumero(r.montoDebitado);
+    const causa =
+      r.estado === "devuelta"
+        ? `Devolución registrada: falta la nota crédito manual en Alegra${devuelto != null ? `, por ${devuelto.toLocaleString("es-CO")} COP` : ""}, que es la parte devuelta y no la venta entera.`
+        : "Disputa perdida: falta la nota crédito manual en Alegra, por el valor de la venta.";
     return {
-      causa: "Disputa perdida: falta la nota crédito manual en Alegra, por el valor de la venta.",
+      causa,
       desde,
       limite: comoDia(addBusinessDays(aMediodia(desde.slice(0, 10)), DIAS_PARA_LA_NOTA_CREDITO)),
     };
