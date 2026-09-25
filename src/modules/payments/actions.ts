@@ -13,6 +13,8 @@ import {
   getVentaVisible,
 } from "./data/payments-repository";
 import { CHECKOUT_TTL_MS } from "./data/checkout-reader";
+import { enteroDeTexto } from "@/core/pesos";
+
 import type { CanalDePago } from "./medio-de-pago";
 import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
@@ -660,12 +662,19 @@ export async function registrarDevolucionFisicaAction(
   const user = await getCurrentUser();
   if (!user || !canViewRevenue(user)) return sinPermiso;
   const transactionItemId = String(form.get("transactionItemId") ?? "");
-  const cantidad = Number(form.get("cantidad") ?? 0);
+  // SE LEE COMO LO TECLEA UNA PERSONA (2026-09-25): era el unico sitio de inventario sin ningun schema, y
+  // "1.000" pasaba como 1 (entero y positivo). En una devolucion las cantidades son de 1 a 3, asi que el
+  // riesgo practico era bajo, pero el mensaje de un campo vacio decia "tiene que ser un numero entero mayor
+  // que cero" sin decir que FALTABA el dato.
+  const cantidad = enteroDeTexto(String(form.get("cantidad") ?? ""));
+  if (cantidad == null) {
+    return { error: "Escribe cuántas unidades devolvió, en números.", success: null, warning: null };
+  }
   const motivo = String(form.get("motivo") ?? "").trim();
   if (!transactionItemId) return { error: "Falta la línea de venta.", success: null, warning: null };
   if (motivo.length < 5) return { error: "Escribe por qué se devolvió (al menos cinco letras).", success: null, warning: null };
   try {
-    await registrarDevolucionFisica({
+    const { alPaciente } = await registrarDevolucionFisica({
       transactionItemId,
       cantidad,
       motivo,
@@ -675,7 +684,9 @@ export async function registrarDevolucionFisicaAction(
     });
     return {
       error: null,
-      success: "Devolución registrada. La unidad queda en devueltas pendientes de verificación, no vendible.",
+      // EL AVISO DICE LAS DOS COSAS, porque las dos pasaron: el producto y el dinero. Antes decia solo lo del
+      // producto y el ingreso se quedaba entero sin que nadie lo notara.
+      success: `Devolución registrada. La unidad queda en devueltas pendientes de verificación, no vendible. Se revirtió el ingreso y la comisión de esas unidades: hay que emitir la nota crédito por ${alPaciente.toLocaleString("es-CO")} en Alegra.`,
       warning: null,
     };
   } catch (e) {
@@ -693,7 +704,7 @@ export async function verificarDevueltaAction(_prev: DevolucionState, form: Form
     await verificarDevuelta({
       nutraceuticalId: String(form.get("nutraceuticalId") ?? ""),
       lotId: String(form.get("lotId") ?? ""),
-      cantidad: Number(form.get("cantidad") ?? 0),
+      cantidad: enteroDeTexto(String(form.get("cantidad") ?? "")) ?? 0,
       decision,
       destinoId: String(form.get("destinoId") ?? "") || undefined,
       motivo: String(form.get("motivo") ?? "").trim(),

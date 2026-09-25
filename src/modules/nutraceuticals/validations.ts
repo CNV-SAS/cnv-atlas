@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { cantidadTecleada, importeTecleado } from "@/core/pesos";
+
 // Validaciones de nutraceuticos. Ids con z.guid() (no z.uuid(): rechazaria los
 // UUIDs fijos del seed; ver hallazgo de B4). Numeros con coerce porque la UI los
 // envia como strings de FormData.
@@ -10,7 +12,10 @@ export const createNutraceuticalSchema = z.object({
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000).optional(),
   unit: z.string().trim().max(40).optional(),
-  unitPrice: z.coerce.number().nonnegative().max(1_000_000_000).optional(),
+  // EL PRECIO QUE SELLA TODAS LAS VENTAS (2026-09-25), asi que aqui un 11,9 no contamina una venta:
+  // contamina todas, y tambien el precio sellado de un faltante. Era `z.coerce.number()`, o sea `Number()`:
+  // "11.900" daba 11,9. Lo tapaba el `step={1}` del campo, que es una defensa del NAVEGADOR y no del lector.
+  unitPrice: importeTecleado({ max: 1_000_000_000 }).optional(),
 });
 export type CreateNutraceuticalInput = z.infer<typeof createNutraceuticalSchema>;
 
@@ -29,7 +34,7 @@ export type UpdateNutraceuticalInput = z.infer<typeof updateNutraceuticalSchema>
 // entera positiva; lote opcional (lo pide el reporte de faltante).
 export const receptionSchema = z.object({
   nutraceuticalId: dbUuid,
-  quantity: z.coerce.number().int().min(1).max(1_000_000),
+  quantity: cantidadTecleada(1, 1_000_000),
   lote: z.string().trim().max(120).optional(),
 });
 export type ReceptionInput = z.infer<typeof receptionSchema>;
@@ -38,7 +43,7 @@ export type ReceptionInput = z.infer<typeof receptionSchema>;
 export const declareRemesaSchema = z.object({
   professionalId: dbUuid,
   nutraceuticalId: dbUuid,
-  quantity: z.coerce.number().int().min(1).max(1_000_000),
+  quantity: cantidadTecleada(1, 1_000_000),
   lote: z.string().trim().max(120).optional(),
 });
 export type DeclareRemesaInput = z.infer<typeof declareRemesaSchema>;
@@ -47,7 +52,7 @@ export type DeclareRemesaInput = z.infer<typeof declareRemesaSchema>;
 // llegó nada = faltante total; es la vía para "rechazar" una remesa que nunca llegó).
 export const confirmRemesaSchema = z.object({
   remesaId: dbUuid,
-  actualQuantity: z.coerce.number().int().min(0).max(1_000_000),
+  actualQuantity: cantidadTecleada(0, 1_000_000),
   lote: z.string().trim().max(120).optional(),
 });
 export type ConfirmRemesaInput = z.infer<typeof confirmRemesaSchema>;
@@ -57,7 +62,10 @@ export type ConfirmRemesaInput = z.infer<typeof confirmRemesaSchema>;
 export const countLineSchema = z.object({
   nutraceuticalId: z.guid("Producto invalido."),
   lote: z.string().trim().max(120).optional(),
-  physicalQty: z.coerce.number().int().min(0).max(1_000_000),
+  // EL CONTEO FISICO ES EL DE MAS CONSECUENCIA de todas estas cantidades: su diferencia contra el saldo abre
+  // un caso de faltante con precio sellado y CARGO ECONOMICO al Integrante. Con `z.coerce.number().int()`,
+  // contar "1.000" se leia como 1 (entero y positivo, asi que pasaba) y abria un faltante de 999 unidades.
+  physicalQty: cantidadTecleada(0, 1_000_000),
 });
 export const recordCountSchema = z.object({
   note: z.string().trim().max(500).optional(),
@@ -103,7 +111,7 @@ export const resolveSobranteSchema = z.object({
 export const registerUsageSchema = z.object({
   treatmentId: dbUuid,
   nutraceuticalId: dbUuid,
-  quantity: z.coerce.number().int().positive().max(100_000),
+  quantity: cantidadTecleada(1, 100_000),
 });
 export type RegisterUsageInput = z.infer<typeof registerUsageSchema>;
 

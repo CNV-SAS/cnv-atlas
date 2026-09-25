@@ -1226,6 +1226,20 @@
       "when": 1791952526103,
       "tag": "0174_cuenta_de_transferencias",
       "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1791952586103,
+      "tag": "0175_devolucion_con_su_dinero",
+      "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1791952646103,
+      "tag": "0176_reversion_parcial_por_caso",
+      "breakpoints": true
     }
   ]
 }

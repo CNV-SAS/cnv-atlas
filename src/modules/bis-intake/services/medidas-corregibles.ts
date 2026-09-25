@@ -22,6 +22,27 @@ export const MEDIDAS_CORREGIBLES = {
   cadera: MEASURED_HIPS_HEADER,
 } as const;
 
+/**
+ * EL RANGO DE CADA MEDIDA, CON SU PISO (2026-09-25).
+ *
+ * El schema de la correccion tenia `positive().max(400)` y su propio comentario decia para que: "atrapar el
+ * dedo gordo: una talla de 1770 o un peso de 8 no son correcciones, son errores de tecleo". Pero solo se puso
+ * el TECHO, asi que "1,75" (la estatura en METROS, que es como la dice la gente) se guardaba como una talla
+ * de 1,75 cm y entraba al motor: al IMC, al ICT y a todo lo que cuelga de ellos.
+ *
+ * Los rangos son GENEROSOS a proposito, con el mismo criterio que las circunferencias tecleadas: atrapan una
+ * unidad equivocada o un decimal perdido, no rechazan a un paciente real.
+ *
+ * Y NO SON TOPES CLINICOS: no limitan ningun criterio del profesional (Regla 0, 2026-08-27 §5). Son de
+ * plausibilidad de la UNIDAD sobre una medida antropometrica, que es justo lo que el schema ya decia querer.
+ */
+export const RANGO_CORREGIBLE: Record<MedidaCorregible, { min: number; max: number; unidad: string }> = {
+  peso: { min: 20, max: 350, unidad: "kilogramos" },
+  talla: { min: 100, max: 230, unidad: "centímetros" },
+  cintura: { min: 21, max: 249, unidad: "centímetros" },
+  cadera: { min: 21, max: 249, unidad: "centímetros" },
+};
+
 export type MedidaCorregible = keyof typeof MEDIDAS_CORREGIBLES;
 export const CORREGIBLES = Object.keys(MEDIDAS_CORREGIBLES) as MedidaCorregible[];
 

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { cantidadTecleada, importeTecleado } from "@/core/pesos";
+
 // Validaciones de pagos. Ids con z.guid() (no z.uuid(): rechazaria los UUIDs fijos
 // del seed; hallazgo de B4). Cantidades con coerce porque la UI las envia como
 // strings de FormData.
@@ -18,7 +20,7 @@ export const createCheckoutSchema = z.object({
     .array(
       z.object({
         nutraceuticalId: dbUuid,
-        quantity: z.coerce.number().int().positive().max(100_000),
+        quantity: cantidadTecleada(1, 100_000),
       }),
     )
     .min(1)
@@ -135,11 +137,12 @@ export type RetryFormState = {
 export const abrirContracargoSchema = z.object({
   transactionId: dbUuid,
   referencia: z.string().trim().min(2, "Escribe la referencia de la disputa.").max(120),
-  montoDebitado: z
-    .string()
-    .trim()
-    .min(1, "Escribe el monto que debitó el banco.")
-    .refine((v) => Number.isFinite(Number(v)) && Number(v) > 0, "El monto debitado tiene que ser un número mayor que cero."),
+  // SE LEE COMO LO TECLEA UNA PERSONA (2026-09-25). Era `Number()` sobre el texto, asi que "150.000" pasaba
+  // como 150 y quedaba registrado un debito de ciento cincuenta pesos: de ahi al aviso de conciliacion, que
+  // decia "difiere en 149.850" y mandaba a cuadrar una diferencia que no existia. Y el string crudo seguia
+  // hasta el SQL como `::numeric`, asi que Postgres leia lo mismo: dos parsers de acuerdo en la cifra
+  // equivocada. Ahora entra ya convertido a numero.
+  montoDebitado: importeTecleado({ min: 1 }),
   debitadoEn: z
     .string()
     .trim()

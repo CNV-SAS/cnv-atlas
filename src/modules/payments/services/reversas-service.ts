@@ -19,7 +19,12 @@ import * as writer from "../data/reversas-writer";
 export type AperturaManual = {
   transactionId: string;
   referenciaDeLaDisputa: string | null;
-  montoDebitado: string | null;
+  /**
+   * Lo que el banco debito, YA CONVERTIDO A NUMERO (2026-09-25). Antes viajaba como TEXTO CRUDO hasta el SQL
+   * (`::numeric`), asi que "150.000" se guardaba como 150: el validador y Postgres coincidian en la cifra
+   * equivocada. La lectura vive ahora en el schema, con `importeTecleado`, y aqui llega un numero.
+   */
+  montoDebitado: number | null;
   debitadoEn: string | null;
   nota: string | null;
   actorId: string;
