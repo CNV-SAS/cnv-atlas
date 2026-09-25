@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 
 import { cantidadTecleada, importeTecleado } from "@/core/pesos";
 import { RANGO_CORREGIBLE } from "@/modules/bis-intake/services/medidas-corregibles";
-import { countLineSchema, receptionSchema } from "@/modules/nutraceuticals/validations";
+import { confirmRemesaSchema, countLineSchema } from "@/modules/nutraceuticals/validations";
 import { abrirContracargoSchema } from "@/modules/payments/validations";
 
 // ═══ EL BARRIDO DE LAS CIFRAS TECLEADAS (Santiago, 2026-09-25) ═══
@@ -58,15 +58,14 @@ describe("los formularios que mueven dinero o inventario", () => {
     if (r.success) expect(r.data.physicalQty).toBe(1000);
   });
 
-  it("y la recepción en consignación, igual", () => {
-    const r = receptionSchema.safeParse({
-      nutraceuticalId: "11111111-1111-1111-1111-111111111111",
-      quantity: "1.200",
+  it("y la confirmación de una remesa, igual", () => {
+    const r = confirmRemesaSchema.safeParse({
+      remesaId: "11111111-1111-1111-1111-111111111111",
+      actualQuantity: "1.200",
       lote: "L-1",
-      expiresOn: "2027-12-31",
     });
     expect(r.success).toBe(true);
-    if (r.success) expect(r.data.quantity).toBe(1200);
+    if (r.success) expect(r.data.actualQuantity).toBe(1200);
   });
 });
 

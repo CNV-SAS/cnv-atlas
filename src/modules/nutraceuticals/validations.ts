@@ -32,12 +32,8 @@ export type UpdateNutraceuticalInput = z.infer<typeof updateNutraceuticalSchema>
 
 // Recepcion en consignacion (Mi inventario): reconoce N unidades recibidas de CNV en custodia. Cantidad
 // entera positiva; lote opcional (lo pide el reporte de faltante).
-export const receptionSchema = z.object({
-  nutraceuticalId: dbUuid,
-  quantity: cantidadTecleada(1, 1_000_000),
-  lote: z.string().trim().max(120).optional(),
-});
-export type ReceptionInput = z.infer<typeof receptionSchema>;
+// `receptionSchema` se retiro con la recepcion tecleada (2026-09-25): el profesional ya no escribe lo que
+// recibio, confirma lo que CNV declaro.
 
 // Declarar una remesa (E2): CNV envía N unidades de un producto a un integrante. Cantidad entera positiva.
 export const declareRemesaSchema = z.object({
