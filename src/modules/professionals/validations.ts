@@ -20,20 +20,43 @@ export type TaxStatusFields = {
   bankAccountHolderDocument: string | null;
 };
 
-// Lo que el integrante envia (sin el archivo del RUT, que va aparte en el FormData; sin los certificados).
-export const taxStatusSchema = z.object({
+// ═══ DOS ENVIOS, NO UNO (2026-09-25) ═══
+//
+// Eran un solo schema y un solo formulario porque nacieron juntos, y al pasar el perfil a pestañas hay que
+// partirlos: lo tributario y lo bancario son asuntos distintos y quien viene a cambiar su banco no tiene por
+// que atravesar su clasificacion tributaria.
+//
+// PERO EL CORTE NO ES LIMPIO, Y ESO ES LO QUE HAY QUE CUIDAR. Dos cosas ataban las mitades:
+//
+//   1 · EL TITULAR DE LA CUENTA SE VALIDA CONTRA EL DOCUMENTO DEL INTEGRANTE. Con un solo envio los dos
+//       numeros venian en el mismo FormData. Partido, el envio bancario NO trae el documento tributario, asi
+//       que tiene que LEERLO de la fila; y si todavia no existe, no hay contra que validar y se dice que
+//       primero va la pestaña tributaria. El orden no es capricho: sin saber quien es el integrante, la
+//       comprobacion de "el titular eres tu" no se puede hacer.
+//   2 · `tax_status_completed_at` (el gate que deja LIQUIDAR la comision) lo ponia ese envio unico. Partido,
+//       guardar solo lo tributario dejaria el perfil "completo" sin cuenta bancaria, y la liquidacion
+//       dejaria pasar un giro que no tiene a donde ir. La marca se calcula desde la fila, exigiendo LAS DOS
+//       mitades (ver `marcarCompletoSiLasDosMitades` en el escritor).
+
+/** Lo tributario que el integrante SABE (sin el archivo del RUT, que va aparte en el FormData). */
+export const taxIdentitySchema = z.object({
   personType: z.enum(["natural", "juridica"]),
   hasRut: z.boolean(),
   idType: z.enum(["CC", "CE", "TI", "PA", "NIT"]),
   idNumber: z.string().trim().min(3).max(30),
   idDv: z.string().trim().max(2).nullish().transform((v) => v ?? null),
+});
+export type TaxIdentityInput = z.infer<typeof taxIdentitySchema>;
+
+/** La cuenta a donde se gira el margen. */
+export const bankAccountSchema = z.object({
   bankName: z.string().trim().min(2).max(80),
   bankAccountType: z.enum(["ahorros", "corriente"]),
   bankAccountNumber: z.string().trim().min(4).max(40),
   bankAccountHolderName: z.string().trim().min(2).max(120),
   bankAccountHolderDocument: z.string().trim().min(3).max(30),
 });
-export type TaxStatusInput = z.infer<typeof taxStatusSchema>;
+export type BankAccountInput = z.infer<typeof bankAccountSchema>;
 
 // Estado del formulario del estado tributario (useActionState).
 export type TaxStatusFormState = {
