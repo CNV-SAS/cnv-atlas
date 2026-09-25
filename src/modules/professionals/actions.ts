@@ -8,14 +8,15 @@ import { requireUser } from "@/modules/auth/session";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
 import { getRutPath, isPdfBuffer, uploadRutPdf } from "./data/rut-storage";
-import { saveTaxStatus } from "./data/tax-status-writer";
+import { documentoTributarioGuardado, saveBankAccount, saveTaxIdentity } from "./data/tax-status-writer";
 import { getProfessionalEmail } from "./data/tax-verification-reader";
 import { rejectTaxRut, verifyTaxStatus } from "./data/tax-verification-writer";
 import { canVerifyTaxStatus } from "./policies/can-verify-tax-status";
 import { bankHolderMatchesIntegrante, rutNeedsRenewal, validateTaxIdentity } from "./tax-rules";
 import {
+  bankAccountSchema,
+  taxIdentitySchema,
   taxRejectSchema,
-  taxStatusSchema,
   taxVerifySchema,
   type TaxStatusFormState,
   type TaxVerificationFormState,
@@ -47,9 +48,12 @@ function str(form: FormData, name: string): string {
 
 const fail = (error: string): TaxStatusFormState => ({ error, success: false });
 
-// El integrante guarda su parte del estado tributario (A2): lo que sabe + el RUT. Los campos certificados
-// los llena CNV al verificar. El professionalId sale de la sesion; solo escribe su propia fila.
-export async function saveTaxStatusAction(
+// El integrante guarda su parte tributaria (A2): lo que sabe + el RUT. Los campos certificados los llena CNV
+// al verificar. El professionalId sale de la sesion; solo escribe su propia fila.
+//
+// SON DOS ACCIONES desde que el perfil tiene pestañas: esta y la bancaria. La marca de "dio su parte" no la
+// pone ninguna de las dos (la calcula el escritor exigiendo las dos mitades); ver el comentario del schema.
+export async function saveTaxIdentityAction(
   _prev: TaxStatusFormState,
   formData: FormData,
 ): Promise<TaxStatusFormState> {
@@ -57,37 +61,19 @@ export async function saveTaxStatusAction(
   const professionalId = await getProfessionalProfileIdByUser(user.id);
   if (!professionalId) return fail("Tu cuenta no tiene un perfil profesional.");
 
-  const parsed = taxStatusSchema.safeParse({
+  const parsed = taxIdentitySchema.safeParse({
     personType: str(formData, "personType"),
     hasRut: ynBool(formData, "hasRut"),
     idType: str(formData, "idType"),
     idNumber: str(formData, "idNumber"),
     idDv: str(formData, "idDv") || null,
-    bankName: str(formData, "bankName"),
-    bankAccountType: str(formData, "bankAccountType"),
-    bankAccountNumber: str(formData, "bankAccountNumber"),
-    bankAccountHolderName: str(formData, "bankAccountHolderName"),
-    bankAccountHolderDocument: str(formData, "bankAccountHolderDocument"),
   });
   if (!parsed.success) return fail("Revisa el formulario: falta responder algún campo.");
   const data = parsed.data;
 
   // Validacion cruzada (reglas puras): juridica sin RUT es imposible, y el DV del NIT debe cuadrar.
-  const idErr = validateTaxIdentity({
-    personType: data.personType,
-    hasRut: data.hasRut,
-    idType: data.idType,
-    idNumber: data.idNumber,
-    idDv: data.idDv,
-  });
+  const idErr = validateTaxIdentity(data);
   if (idErr) return fail(idErr);
-
-  // El titular de la cuenta debe ser el integrante (por DOCUMENTO, no por nombre; juridica -> el NIT).
-  if (!bankHolderMatchesIntegrante(data.idNumber, data.bankAccountHolderDocument)) {
-    return fail(
-      "El documento del titular de la cuenta debe ser el mismo del integrante (por requisito tributario, quien recibe la comisión debe ser quien emite el soporte).",
-    );
-  }
 
   // RUT: obligatorio si el integrante dice que tiene uno (y no lo habia subido antes). Se valida que sea un
   // PDF DE VERDAD (contenido, no extension) antes de subirlo.
@@ -110,7 +96,50 @@ export async function saveTaxStatusAction(
     }
   }
 
-  await saveTaxStatus(professionalId, data, newRutPath);
+  await saveTaxIdentity(professionalId, data, newRutPath);
+  revalidatePath("/perfil");
+  revalidatePath("/dashboard");
+  return { error: null, success: true };
+}
+
+/**
+ * La cuenta a donde se gira el margen.
+ *
+ * VALIDA EL TITULAR CONTRA EL DOCUMENTO GUARDADO, no contra uno que venga en el envio: partido el formulario,
+ * ese numero ya no viaja aqui. Y si no hay documento guardado todavia, NO se acepta la cuenta: sin saber quien
+ * es el integrante, "el titular eres tu" no se puede comprobar, y guardarla sin comprobar es justo el
+ * requisito tributario que esta regla existe para sostener (dos incidentes reales).
+ */
+export async function saveBankAccountAction(
+  _prev: TaxStatusFormState,
+  formData: FormData,
+): Promise<TaxStatusFormState> {
+  const user = await requireUser();
+  const professionalId = await getProfessionalProfileIdByUser(user.id);
+  if (!professionalId) return fail("Tu cuenta no tiene un perfil profesional.");
+
+  const parsed = bankAccountSchema.safeParse({
+    bankName: str(formData, "bankName"),
+    bankAccountType: str(formData, "bankAccountType"),
+    bankAccountNumber: str(formData, "bankAccountNumber"),
+    bankAccountHolderName: str(formData, "bankAccountHolderName"),
+    bankAccountHolderDocument: str(formData, "bankAccountHolderDocument"),
+  });
+  if (!parsed.success) return fail("Revisa la cuenta: falta responder algún campo.");
+
+  const documento = await documentoTributarioGuardado(professionalId);
+  if (!documento) {
+    return fail(
+      "Primero completa tus datos tributarios. Tu documento es lo que nos deja comprobar que la cuenta está a tu nombre.",
+    );
+  }
+  if (!bankHolderMatchesIntegrante(documento, parsed.data.bankAccountHolderDocument)) {
+    return fail(
+      "El documento del titular de la cuenta debe ser el mismo del integrante (por requisito tributario, quien recibe el dinero debe ser quien emite el soporte).",
+    );
+  }
+
+  await saveBankAccount(professionalId, parsed.data);
   revalidatePath("/perfil");
   revalidatePath("/dashboard");
   return { error: null, success: true };
