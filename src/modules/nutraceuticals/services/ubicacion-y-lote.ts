@@ -59,7 +59,10 @@ export async function resolverLoteDeRecepcion(
 ): Promise<{ lotId: string | null; message?: string }> {
   const code = (codigo ?? "").trim();
   if (!code) {
-    return { lotId: null, message: "Indica el lote del producto que estás recibiendo." };
+    // DEFENSA, NO VALIDACION DE PANTALLA: quien llama ya exige el lote en su schema, con un mensaje escrito
+    // para su caso. El de aquí no puede hablar de "recibir" porque también lo alcanza CNV al DECLARAR, y ese
+    // mensaje, puesto en la pantalla equivocada, fue lo que hizo ilegible el rechazo de la remesa.
+    return { lotId: null, message: "Falta el lote del producto." };
   }
 
   const { data: existente } = await supabase

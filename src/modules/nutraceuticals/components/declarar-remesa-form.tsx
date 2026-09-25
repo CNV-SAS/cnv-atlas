@@ -69,8 +69,10 @@ export function DeclararRemesaForm({
         <Input id="quantity" name="quantity" type="number" inputMode="numeric" min={1} required className="w-32" />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="lote">Lote (opcional)</Label>
-        <Input id="lote" name="lote" placeholder="Lote" className="w-40" />
+        {/* OBLIGATORIO: el inventario se lleva por lote, así que sin él la remesa no se puede registrar. Decía
+            "(opcional)" y el servicio la rechazaba al enviar. */}
+        <Label htmlFor="lote">Lote</Label>
+        <Input id="lote" name="lote" placeholder="El que viene en la caja" required className="w-40" />
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? "Declarando..." : "Declarar remesa"}

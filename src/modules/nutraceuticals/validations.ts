@@ -36,11 +36,23 @@ export type UpdateNutraceuticalInput = z.infer<typeof updateNutraceuticalSchema>
 // recibio, confirma lo que CNV declaro.
 
 // Declarar una remesa (E2): CNV envía N unidades de un producto a un integrante. Cantidad entera positiva.
+//
+// EL LOTE ES OBLIGATORIO, y la pantalla decía "opcional" (2026-09-25). No era un matiz de etiqueta: el saldo
+// se lleva por (ubicación, producto, lote) desde la 0121, así que el servicio rechazaba la remesa sin lote. La
+// pantalla prometía que se podía dejar en blanco y al enviar no dejaba continuar, con un mensaje escrito
+// además para quien RECIBE ("Indica el lote del producto que estás recibiendo"), no para CNV declarando.
+//
+// Es el caso de dos partes que LEEN FUENTES DISTINTAS: se unen del lado de la que manda, que es la base. Y se
+// exige también aquí, no solo en el formulario, porque el `required` del navegador se puede saltar.
 export const declareRemesaSchema = z.object({
   professionalId: dbUuid,
   nutraceuticalId: dbUuid,
   quantity: cantidadTecleada(1, 1_000_000),
-  lote: z.string().trim().max(120).optional(),
+  lote: z
+    .string()
+    .trim()
+    .min(1, "Indica el lote que viene en la caja: el inventario se lleva por lote y sin él no se puede rastrear un retiro.")
+    .max(120),
 });
 export type DeclareRemesaInput = z.infer<typeof declareRemesaSchema>;
 

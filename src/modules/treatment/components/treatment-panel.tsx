@@ -207,6 +207,20 @@ function usePublicar(
 // que "fijado" se vea.
 // Entrada <-> numero para los ajustes. "" = sin ajuste (usar el valor del modelo). Basura tecleada (NaN)
 // tambien cuenta como sin ajuste, para que la vista previa no muestre NaN mientras el profesional escribe.
+//
+// ── POR QUE AQUI `Number()` SI ES CORRECTO, Y POR QUE NO SE USA EL LECTOR DE PESOS (2026-09-25) ──
+//
+// El barrido de cifras tecleadas cambio `Number()` por `pesosDeTexto` en toda la plata, porque
+// `Number("11.900")` da 11,9. AQUI NO SE HACE, y no es un olvido: son dos cosas distintas.
+//
+//   1 · ESTOS CAMPOS SON `type="number"`, y por especificacion su `value` solo puede ser cadena vacia o un
+//       numero con PUNTO decimal: el navegador normaliza antes de que este lector lo vea. Nunca llega una
+//       coma ni un separador de miles, asi que no hay nada que desambiguar.
+//   2 · Y EL LECTOR DE PESOS LOS LEERIA MAL. Su regla es "ultimo grupo de tres digitos = miles", que es
+//       cierta para la plata y falsa para un factor clinico: el PAL 1.375 del modelo se volveria 1375 y una
+//       proteina de 1.600 g/kg, 1600. La regla de la plata no se exporta a lo clinico.
+//
+// El candado que fija esta frontera esta en `cifras-tecleadas-en-formularios.test.ts`.
 const numToInput = (n: number | null): string => (n != null ? String(n) : "");
 const inputToNum = (s: string): number | null => {
   const t = s.trim();

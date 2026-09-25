@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { cantidadTecleada, importeTecleado } from "@/core/pesos";
+import { cantidadTecleada, importeTecleado, pesosDeTexto } from "@/core/pesos";
 import { RANGO_CORREGIBLE } from "@/modules/bis-intake/services/medidas-corregibles";
-import { confirmRemesaSchema, countLineSchema } from "@/modules/nutraceuticals/validations";
+import { confirmRemesaSchema, countLineSchema, declareRemesaSchema } from "@/modules/nutraceuticals/validations";
 import { abrirContracargoSchema } from "@/modules/payments/validations";
 
 // ═══ EL BARRIDO DE LAS CIFRAS TECLEADAS (Santiago, 2026-09-25) ═══
@@ -83,5 +83,65 @@ describe("las medidas antropométricas corregibles", () => {
       expect(RANGO_CORREGIBLE[m].max).toBeGreaterThan(RANGO_CORREGIBLE[m].min);
       expect(RANGO_CORREGIBLE[m].unidad.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ═══ Y LO QUE LA PANTALLA PROMETE TIENE QUE SER LO QUE LA BASE ACEPTA (2026-09-25) ═══
+//
+// No es una cifra tecleada, es el mismo defecto de fondo: la pantalla decía "Lote (opcional)" y el servicio
+// rechazaba la remesa sin lote, porque el saldo se lleva por (ubicación, producto, lote) desde la 0121. El
+// usuario lo veía como "puse todo y no me deja continuar", y el mensaje hablaba además de RECIBIR cuando quien
+// estaba en la pantalla era CNV DECLARANDO.
+describe("el lote de una remesa", () => {
+  it("es obligatorio, porque el inventario se lleva por lote", () => {
+    const base = {
+      professionalId: "33333333-3333-3333-3333-333333333333",
+      nutraceuticalId: "77777777-7777-7777-7777-777777777703",
+      quantity: "10",
+    };
+    expect(declareRemesaSchema.safeParse({ ...base, lote: "" }).success).toBe(false);
+    expect(declareRemesaSchema.safeParse({ ...base, lote: "   " }).success).toBe(false);
+    // Y sin la clave siquiera: era `.optional()`, así que pasaba y el rechazo llegaba después de enviar.
+    expect(declareRemesaSchema.safeParse(base).success).toBe(false);
+    const ok = declareRemesaSchema.safeParse({ ...base, lote: " 19826 " });
+    expect(ok.success).toBe(true);
+    if (ok.success) expect(ok.data.lote).toBe("19826");
+  });
+
+  it("y el mensaje dice qué escribir, no solo que falta", () => {
+    const r = declareRemesaSchema.safeParse({
+      professionalId: "33333333-3333-3333-3333-333333333333",
+      nutraceuticalId: "77777777-7777-7777-7777-777777777703",
+      quantity: "10",
+      lote: "",
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues.some((i) => /caja/i.test(i.message))).toBe(true);
+  });
+});
+
+// ═══ LA FRONTERA DEL BARRIDO: LA REGLA DE LA PLATA NO SE EXPORTA A LO CLINICO (2026-09-25) ═══
+//
+// Este candado existe para el PROXIMO barrido, no para el de hoy. Al revisar los lectores de la prescripción
+// quedó claro que aplicarles `pesosDeTexto` sería un daño, no un arreglo: su regla ("último grupo de tres
+// dígitos = miles") es cierta para el dinero y falsa para un factor clínico. El PAL del modelo es 1.375 y una
+// proteína son 1.6 g/kg; leídos como plata serían 1375 y 16.
+//
+// Y los ajustes NO lo necesitan: sus campos son `type="number"`, cuyo `value` por especificación es cadena
+// vacía o un número con punto, así que el navegador normaliza antes de que el lector corra. No hay coma ni
+// separador de miles que desambiguar.
+describe("la frontera entre leer plata y leer una cifra clínica", () => {
+  it("el lector de pesos leería mal los factores del modelo, y por eso la prescripción no lo usa", () => {
+    // El PAL de "Ligera" es 1.375. Como plata, son mil trescientos setenta y cinco pesos.
+    expect(pesosDeTexto("1.375")).toBe(1375);
+    // Y una proteína de 1.600 g/kg pasaría a ser 1600.
+    expect(pesosDeTexto("1.600")).toBe(1600);
+    // Lo correcto para esos campos es lo que ya hacen: el valor normalizado por el navegador.
+    expect(Number("1.375")).toBe(1.375);
+  });
+
+  it("y para la plata sigue siendo al revés, que es la razón de que exista", () => {
+    expect(pesosDeTexto("11.900")).toBe(11900);
+    expect(Number("11.900")).toBe(11.9);
   });
 });
