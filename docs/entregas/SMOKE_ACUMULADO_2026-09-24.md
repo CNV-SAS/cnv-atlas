@@ -1,5 +1,11 @@
 # Smoke acumulado · un solo recorrido
 
+> **REEMPLAZADA por `SMOKE_ACUMULADO_2026-09-25.md`.** No se sigue tal cual: dos de sus afirmaciones
+> cayeron. (1) El control de LUVIA de la parte 1 esta AL REVES: al momento de la venta el producto ya es de
+> CNV, asi que reincorporarlo tiene que funcionar, y el bloqueo se retiro. (2) La devolucion de la parte 1
+> ya SI mueve el dinero. Se conserva porque el resto de sus pasos y sus datos de preparacion siguen siendo
+> los mismos, y porque el error de LUVIA explica por que la guia no es la autoridad: el modelo lo es.
+
 **Para Santiago, 2026-09-24.** Todo lo construido desde que se retomó lo comercial, en el orden en que tiene
 sentido probarlo. Son tres partes y cada una se puede parar sin dañar la siguiente.
 
