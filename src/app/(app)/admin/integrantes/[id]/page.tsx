@@ -9,6 +9,8 @@ import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
 import { leerIntegrante } from "@/modules/payments/data/integrante-reader";
+import { leerModalidad } from "@/modules/payments/data/modalidad-writer";
+import { ModalidadDelIntegrante } from "@/modules/payments/components/modalidad-del-integrante";
 
 export const metadata = { title: "Integrante - Atlas" };
 
@@ -58,8 +60,9 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
   if (!canAccessAdmin(user)) redirect("/no-autorizado");
 
   const { id } = await params;
-  const integrante = await leerIntegrante(id);
+  const [integrante, modalidad] = await Promise.all([leerIntegrante(id), leerModalidad(id)]);
   if (!integrante) redirect("/admin");
+
 
   const profesion =
     PROFESSION_LABELS[integrante.profesion as keyof typeof PROFESSION_LABELS] ?? integrante.profesion;
@@ -94,6 +97,19 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           href="/faltantes"
         />
       </section>
+
+      {/* ═══ LA MODALIDAD ═══ Va en esta pantalla y no en una propia: es un dato DE ESTE INTEGRANTE, y aqui es
+          donde se mira todo lo suyo. Una pantalla aparte para un solo dato obligaria a saber que existe. */}
+      <Panel titulo="Modalidad de consignación">
+        <ModalidadDelIntegrante
+          professionalId={id}
+          modalidad={modalidad.modalidad}
+          rigeDesde={modalidad.rigeDesde}
+          pendiente={modalidad.pendiente}
+          proximoCorte={modalidad.proximoCorte}
+          puedeCambiar
+        />
+      </Panel>
 
       {/* ═══ INVENTARIO ═══ Por lote y ubicación, no agregado por producto: cuando una cifra no cuadra, lo que
           hay que ver es de qué lote salió, y si lo que quedó está en la vitrina o en la cuarentena. */}

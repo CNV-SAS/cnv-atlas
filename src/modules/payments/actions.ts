@@ -19,6 +19,8 @@ import type { CanalDePago } from "./medio-de-pago";
 import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { canDeliverSale } from "./policies/can-deliver-sale";
+import { MODALIDAD_LABEL } from "./modalidad";
+import { cambiarModalidad, ModalidadError } from "./data/modalidad-writer";
 import { canViewRevenue } from "./policies/can-view-revenue";
 import { resumirDiscrepancias } from "./conciliacion";
 import { cotejarConWompi } from "./services/conciliacion-service";
@@ -890,5 +892,48 @@ export async function descartarLiquidacionAction(
     if (e instanceof LiquidacionError) return { error: e.message, success: null, warning: null };
     reportServerError("descartarLiquidacionAction", e);
     return { error: "No se pudo descartar la liquidación.", success: null, warning: null };
+  }
+}
+
+// ═══ CAMBIAR LA MODALIDAD DE UN INTEGRANTE (0178, 2026-09-25) ═══
+//
+// SOLO DIRECCION/ADMIN, y no es una preferencia del integrante: la modalidad decide quien le factura al
+// paciente, si su margen lleva retencion y quien asume la relacion de consumo. El modelo (§13) lo dice
+// textual: "La modalidad activa la asigna un administrador de CNV".
+//
+// EL AVISO DICE DESDE CUANDO RIGE, y esa frase no es cortesia: el cambio se pide hoy y hoy NO PASA NADA
+// (entra al inicio del siguiente corte, modelo §2). Sin decirlo, se lee como que el boton no funciono.
+export async function cambiarModalidadFormAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  const professionalId = String(form.get("professionalId") ?? "");
+  const hacia = String(form.get("hacia") ?? "");
+  if (hacia !== "comision" && hacia !== "distribucion") {
+    return { error: "Modalidad inválida.", success: null, warning: null };
+  }
+  const nota = String(form.get("nota") ?? "").trim();
+  try {
+    const { rigeDesde } = await cambiarModalidad({
+      professionalId,
+      hacia,
+      actorId: user.id,
+      actorEmail: user.email,
+      requisitosVerificados: form.get("requisitos") === "on",
+      nota: nota === "" ? null : nota,
+      ip: null,
+    });
+    revalidatePath(`/admin/integrantes/${professionalId}`);
+    return {
+      error: null,
+      success: `Modalidad ${MODALIDAD_LABEL[hacia]} registrada, y rige desde el ${rigeDesde}. Lo que se venda hasta ese día se liquida bajo la modalidad anterior, para no partir el período en dos regímenes.`,
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof ModalidadError) return { error: e.message, success: null, warning: null };
+    reportServerError("cambiarModalidadFormAction", e);
+    return { error: "No se pudo cambiar la modalidad.", success: null, warning: null };
   }
 }
