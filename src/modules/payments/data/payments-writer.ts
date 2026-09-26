@@ -1,6 +1,7 @@
 import "server-only";
 import { wompiEnvDeLaLlave } from "../ambiente";
 import { MODALIDAD_POR_DEFECTO, modalidadEnLaFecha, type Modalidad } from "../modalidad";
+import { exigirRecaudoDeCnv } from "./modalidad-writer";
 import { RepartoInvalidoError, repartir } from "../reparto";
 import { InventarioDeVentaError, reservarVenta, ubicacionDeLaVenta } from "./inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
@@ -269,6 +270,9 @@ export type NewCashTransaction = NewTransaction & {
 export async function createTransactionWithItems(
   input: NewTransaction,
 ): Promise<{ id: string }> {
+  // Ver `exigirRecaudoDeCnv`: este camino recauda en la cuenta de CNV, y bajo Distribucion el dinero del
+  // paciente es del integrante. Va ANTES de abrir la transaccion: no hay nada que deshacer.
+  await exigirRecaudoDeCnv(input.professionalId ?? null);
   return db.transaction(async (tx) => {
     const locationId = await ubicacionDeLaVenta(tx, input.professionalId);
     const [t] = await tx
@@ -461,6 +465,9 @@ export async function sealPaidTransaction(
 export async function createPaidCashTransaction(
   input: NewCashTransaction,
 ): Promise<{ id: string; linksAnulados: string[] }> {
+  // Ver `exigirRecaudoDeCnv`: "efectivo" aqui significa que custodia dinero DE CNV, y bajo Distribucion el
+  // efectivo es suyo.
+  await exigirRecaudoDeCnv(input.professionalId ?? null);
   return db.transaction(async (tx) => {
     // PRIMERO SE ANULAN LOS LINKS: sus reservas se liberan en esta misma transaccion, y el descuento de esta
     // venta (que corre despues) ya encuentra esas unidades disponibles.

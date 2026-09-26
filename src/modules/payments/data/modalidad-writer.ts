@@ -173,3 +173,31 @@ export async function cambiarModalidad(input: {
 }
 
 export { MODALIDAD_POR_DEFECTO };
+
+/**
+ * ═══ EL BLOQUEANTE HONESTO DE DISTRIBUCION (2026-09-25) ═══
+ *
+ * LOS DOS CAMINOS DE VENTA DE HOY ASUMEN QUE COBRA CNV, y bajo Distribucion eso es falso: el paciente le paga
+ * AL INTEGRANTE y el le factura con su propia facturacion (modelo §4). Concretamente:
+ *
+ *   · EL ENLACE DE PAGO recauda el dinero del paciente en la cuenta de CNV. Bajo Distribucion ese dinero es
+ *     del integrante, asi que cobrarlo por ahi mueve plata al bolsillo equivocado. Es un error de DINERO
+ *     REAL, no de etiqueta.
+ *   · LA VENTA EN EFECTIVO significa "el integrante custodia efectivo DE CNV". Bajo Distribucion el efectivo
+ *     es suyo y lo que le debe a CNV es otra cifra (la base menos su descuento, mas IVA).
+ *
+ * ASI QUE SE BLOQUEA, con el motivo dicho, en vez de registrar una venta cuyo significado es falso. El
+ * mecanismo de la modalidad esta completo y el sellado la obedece; lo que falta es el LADO DEL RECAUDO, que es
+ * un bloque propio (factura quincenal de CNV al integrante, cupo de credito, y que el paciente le pague a el).
+ *
+ * NO SE PONE COMO "aviso" NI SE DEJA PASAR: una venta mal atribuida se descubre cuadrando cifras semanas
+ * despues, y para entonces el dinero ya se movio.
+ */
+export async function exigirRecaudoDeCnv(professionalId: string | null): Promise<void> {
+  if (!professionalId) return;
+  const { modalidad } = await leerModalidad(professionalId);
+  if (modalidad === "comision") return;
+  throw new ModalidadError(
+    "Este integrante está en modalidad Distribución: el paciente le paga a él y él le factura, así que esta venta no se puede cobrar por CNV. El registro de ventas bajo Distribución (su facturación al paciente y la factura quincenal de CNV) todavía no está en Atlas.",
+  );
+}
