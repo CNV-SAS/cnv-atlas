@@ -87,6 +87,17 @@ export type CatalogItem = {
   unit: string | null;
   indication: string | null;
   commercialAvailability: string; // en_consultorio | solo_tienda | no_disponible
+  // ── LO QUE SEPARA UN NUTRACEUTICO DE CNV DE UN PRODUCTO DE TERCERO (2026-09-26) ──
+  //
+  // Hasta hoy el desplegable de prescribir traia TODO el catalogo junto, asi que LUVIA (producto de tercero)
+  // salia en la misma lista que los VITACELLEBIS. Es lo que Santiago pidio separar, y con razon: no son lo
+  // mismo ni para el paciente ni para la contabilidad (uno lleva participacion del proveedor).
+  ownership: string | null; // propio | tercero
+  // Los tres campos de la FICHA que Gildardo tiene en su HTML para los productos externos (`OTROS_PRODUCTOS`):
+  // registro sanitario, titular de marca y descripcion. No se inventan: ya estaban en la tabla y no se leian.
+  sanitaryRegistration: string | null;
+  brandOwner: string | null;
+  description: string | null;
   // Posologia y composicion del catalogo (cotejo 2026-08-24). En el v8 la tarjeta muestra "30 mL/dia ·
   // 1 vez al dia · linea liquida" y una descripcion de ingredientes; verificado que NO es calculado: sale
   // de una tabla FIJA por producto (NUTR_DOSIS). Aqui esos datos ya viven en el catalogo, solo no se
