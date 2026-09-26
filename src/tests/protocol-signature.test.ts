@@ -58,6 +58,12 @@ const BASE: TreatmentProtocol = {
       unit: "frasco",
       indication: "Basal",
       commercialAvailability: "en_consultorio",
+      // Los cuatro campos nuevos del catalogo (2026-09-26): la propiedad separa nutraceutico de producto de
+      // tercero, y los otros tres son la ficha que Gildardo tiene para los externos.
+      ownership: "propio",
+      sanitaryRegistration: null,
+      brandOwner: null,
+      description: null,
       servingSize: "30 mL",
       presentation: "liquida",
       composition: "Multivitaminico con calostro",

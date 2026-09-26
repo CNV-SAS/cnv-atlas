@@ -55,6 +55,10 @@ export function NutraceuticalsSection({
   const [pickId, setPickId] = useState("");
 
   const recommended = resolveRecommendation(protocol.recommendedNutraceuticals, protocol.catalog);
+  // LAS DOS LISTAS SALEN DE LA PROPIEDAD DEL PRODUCTO, no de una lista de nombres a mano: un producto de
+  // tercero nuevo aparece en su bloque sin que nadie lo agregue aqui.
+  const nutraceuticosDeCnv = protocol.catalog.filter((c) => c.ownership !== "tercero");
+  const productosDeTercero = protocol.catalog.filter((c) => c.ownership === "tercero");
   const isAdded = (id: string) => nutras.some((n) => n.nutraceuticalId === id);
   // El producto del desplegable, para poner sus declaraciones junto a las del paciente mientras elige.
   const seleccionado = protocol.catalog.find((c) => c.id === pickId) ?? null;
@@ -156,9 +160,20 @@ export function NutraceuticalsSection({
         <input type="hidden" name="nutraceuticals" value={nutrasPayload} />
         <fieldset className="flex flex-col gap-3">
           <RecommendedList recommended={recommended} isAdded={isAdded} onAdd={addProduct} />
-          <p className="text-xs text-muted-foreground">
-            Abajo agregas los que prescribes; son tu decisión, distinta de la recomendación del modelo.
-          </p>
+
+          {/* ═══ PRESCRIBIR ALGO QUE EL MODELO NO RECOMENDO: PLEGADO (Santiago, 2026-09-26) ═══
+              Estaba siempre abierto y con el catalogo entero a la vista, al mismo nivel que la recomendacion
+              del modelo, y eso hacia que prescribir CONTRA el modelo se viera igual de normal que seguirlo. No
+              lo es: el modelo es lo que Atlas propone y lo otro es una decision propia del profesional. Plegarlo
+              no lo esconde (el rotulo dice exactamente lo que hay dentro), lo pone en su lugar. */}
+          <details className="rounded-lg border border-border">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-foreground">
+              ¿Quieres prescribir un nutracéutico que el modelo no recomendó?
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-border p-3">
+              <p className="text-xs text-muted-foreground">
+                Lo que agregues aquí es tu decisión, distinta de la recomendación del modelo.
+              </p>
           <div className="flex gap-2">
             <select
               value={pickId}
@@ -172,7 +187,7 @@ export function NutraceuticalsSection({
                   prescribir un producto que no existe todavia y el paciente se va con una indicacion que
                   no puede cumplir. Los no disponibles NO se ocultan (el profesional debe saber que el
                   modelo los contempla), se marcan. */}
-              {protocol.catalog.map((c) => (
+              {nutraceuticosDeCnv.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                   {c.commercialAvailability === "en_consultorio"
@@ -202,12 +217,72 @@ export function NutraceuticalsSection({
               antes de agregarlo. Y sale con cualquier producto que declare algo, no solo cuando algo
               coincide: si apareciera al coincidir, su presencia sería una clasificación. */}
           {seleccionado && (
-            <YuxtaposicionAlergenos
-              paciente={protocol.declaracionesPaciente}
-              producto={{ alergenos: seleccionado.alergenosDeclarados }}
-              nombreProducto={seleccionado.name}
-            />
-          )}
+                <YuxtaposicionAlergenos
+                  paciente={protocol.declaracionesPaciente}
+                  producto={{ alergenos: seleccionado.alergenosDeclarados }}
+                  nombreProducto={seleccionado.name}
+                />
+              )}
+            </div>
+          </details>
+
+          {/* ═══ BLOQUE B · PRODUCTOS QUE NO SON NUTRACEUTICOS DE CNV ═══
+              SALEN DEL DESPLEGABLE DE ARRIBA, que es lo que mas confundia: LUVIA aparecia en la misma lista que
+              los VITACELLEBIS, y no son lo mismo ni para el paciente ni para la contabilidad (uno lleva
+              participacion del proveedor).
+              LA FICHA ES LA DE GILDARDO, PORTADA: su HTML v9 tiene `OTROS_PRODUCTOS` con descripcion,
+              presentacion, dosis, INVIMA, alergenos y fabricante, y esos campos YA estaban en nuestra tabla sin
+              que nadie los leyera. No se mejora ni se resume.
+              Y LO QUE SU COMENTARIO DICE Y AQUI SE RESPETA: "el alergeno se muestra tal como lo declara la
+              ficha. El sistema NO lo cruza con las alergias de la encuesta." Es la misma decision que ya
+              teniamos: yuxtaponer y que valore el profesional. */}
+          {productosDeTercero.length > 0 ? (
+            <details className="rounded-lg border border-border">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-foreground">
+                ¿Quieres prescribir un producto que no es un nutracéutico de CNV?
+              </summary>
+              <div className="flex flex-col gap-3 border-t border-border p-3">
+                {productosDeTercero.map((c) => (
+                  <div key={c.id} className="flex flex-col gap-1.5 rounded-lg bg-muted/30 p-3 text-sm">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-semibold text-foreground">{c.name}</span>
+                      <Button
+                        type="button"
+                        variant={isAdded(c.id) ? "outline" : "default"}
+                        onClick={() => addProduct(c.id)}
+                        disabled={isAdded(c.id)}
+                      >
+                        {isAdded(c.id) ? "Agregado" : "Agregar"}
+                      </Button>
+                    </div>
+                    {c.description ? <p className="text-muted-foreground">{c.description}</p> : null}
+                    <p className="text-muted-foreground">
+                      {[
+                        c.presentation && c.servingSize ? `${c.presentation} · ${c.servingSize}` : c.presentation,
+                        c.servingSize && !c.presentation ? c.servingSize : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {[
+                        c.sanitaryRegistration ? `INVIMA ${c.sanitaryRegistration}` : null,
+                        c.brandOwner,
+                        c.commercialAvailability === "en_consultorio" ? "se vende en consultorio" : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    {c.alergenosDeclarados.length > 0 ? (
+                      <p className="text-xs font-medium text-attention">
+                        {c.alergenosDeclarados.join(" · ")}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null}
           {nutras.length ? (
             <ul className="flex flex-col gap-2">
               {nutras.map((n, i) => (
