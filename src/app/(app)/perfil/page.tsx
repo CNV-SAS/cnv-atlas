@@ -1,6 +1,8 @@
+import { FileText, UserCheck, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { Panel } from "@/components/shared/panel";
+import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { requireUser } from "@/modules/auth/session";
@@ -60,16 +62,6 @@ function Dato({ rotulo, valor, nota }: { rotulo: string; valor: string | null; n
   );
 }
 
-function Indicador({ rotulo, valor, detalle }: { rotulo: string; valor: string; detalle?: string }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border p-4">
-      <span className="text-xs text-muted-foreground">{rotulo}</span>
-      <span className="text-xl font-medium tabular-nums">{valor}</span>
-      {detalle ? <span className="text-xs text-muted-foreground">{detalle}</span> : null}
-    </div>
-  );
-}
-
 export default async function PerfilPage() {
   const user = await requireUser();
   const professionalId = await getProfessionalProfileIdByUser(user.id);
@@ -98,9 +90,10 @@ export default async function PerfilPage() {
       />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Indicador
+        <TarjetaMetrica
           rotulo="Documentos firmados"
           valor={String(perfil.documentosFirmados.length)}
+          icono={FileText}
           detalle={
             perfil.documentosFirmados.length > 0
               ? perfil.documentosFirmados
@@ -109,9 +102,14 @@ export default async function PerfilPage() {
               : "Ninguno todavía"
           }
         />
-        <Indicador
+        <TarjetaMetrica
           rotulo="Tu perfil"
           valor={`${completitud.porcentaje} %`}
+          icono={UserCheck}
+          // LA UNICA ACCIONABLE DE LAS TRES, y la regla de la tarjeta es justo esa: una metrica tiene que
+          // decir QUE HACER. Las otras dos son cifras que se consultan; esta nombra trabajo pendiente, y
+          // solo se enciende cuando de verdad falta algo.
+          acento={completitud.faltantes.length > 0}
           detalle={
             completitud.faltantes.length === 0
               ? "Completo"
@@ -122,9 +120,10 @@ export default async function PerfilPage() {
             al Integrante el mismo margen del 20 %"), y es la única verdadera en las dos modalidades: en
             Comisión lo que recibe ES una comisión, pero en Distribución es un descuento comercial, y de esa
             diferencia depende su tratamiento tributario. */}
-        <Indicador
+        <TarjetaMetrica
           rotulo="Tu margen"
           valor={pesos(margen.causado)}
+          icono={Wallet}
           detalle={
             margen.pendiente !== 0
               ? `${pesos(margen.pendiente)} pendiente de liquidar`

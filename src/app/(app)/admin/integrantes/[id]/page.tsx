@@ -1,4 +1,8 @@
+import { Boxes, TriangleAlert, Users, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
+
+import { Panel } from "@/components/shared/panel";
+import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
@@ -68,29 +72,32 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
         descripcion={`${profesion} · ${integrante.correo}. Lo que hay en su vitrina, lo que ha vendido y lo que se le debe. Esta pantalla solo muestra: para corregir algo, usa el camino que corresponda.`}
       />
 
-      <section className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-        <div className="flex flex-col gap-1 rounded-md border p-3">
-          <span className="text-xs text-muted-foreground">Unidades en custodia</span>
-          <span className="text-lg font-medium tabular-nums">{unidades}</span>
-        </div>
-        <div className="flex flex-col gap-1 rounded-md border p-3">
-          <span className="text-xs text-muted-foreground">Pacientes asignados</span>
-          <span className="text-lg font-medium tabular-nums">{integrante.pacientes}</span>
-        </div>
-        <div className="flex flex-col gap-1 rounded-md border p-3">
-          <span className="text-xs text-muted-foreground">Comisión pendiente</span>
-          <span className="text-lg font-medium tabular-nums">{pesos(integrante.comision.pendiente)}</span>
-        </div>
-        <div className="flex flex-col gap-1 rounded-md border p-3">
-          <span className="text-xs text-muted-foreground">Faltantes abiertos</span>
-          <span className="text-lg font-medium tabular-nums">{integrante.faltantesAbiertos.length}</span>
-        </div>
+      {/* LAS CUATRO CIFRAS VAN EN LA TARJETA COMPARTIDA, no en divs propios. Las hice a mano y salieron sin
+          fondo sobre el gris del layout, que es el mismo defecto que ya habia aparecido en la pantalla de
+          responder la encuesta. La tarjeta trae su superficie, y con ella la regla de cuando una cifra se
+          enciende: solo la que pide trabajo. */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <TarjetaMetrica rotulo="Unidades en custodia" valor={unidades} icono={Boxes} detalle="En su vitrina ahora" />
+        <TarjetaMetrica rotulo="Pacientes asignados" valor={integrante.pacientes} icono={Users} />
+        <TarjetaMetrica
+          rotulo="Margen pendiente"
+          valor={pesos(integrante.comision.pendiente)}
+          icono={Wallet}
+          detalle="Sin liquidar"
+          href="/comercial"
+        />
+        <TarjetaMetrica
+          rotulo="Faltantes abiertos"
+          valor={integrante.faltantesAbiertos.length}
+          icono={TriangleAlert}
+          acento
+          href="/faltantes"
+        />
       </section>
 
       {/* ═══ INVENTARIO ═══ Por lote y ubicación, no agregado por producto: cuando una cifra no cuadra, lo que
           hay que ver es de qué lote salió, y si lo que quedó está en la vitrina o en la cuarentena. */}
-      <section className="flex flex-col gap-2">
-        <h2 className="font-bold">Inventario actual</h2>
+      <Panel titulo="Inventario actual">
         {integrante.inventario.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tiene producto en custodia.</p>
         ) : (
@@ -110,12 +117,11 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
             ))}
           </ul>
         )}
-      </section>
+      </Panel>
 
       {/* ═══ VENTAS ═══ Las últimas 30, con su estado de pago y de inventario. El estado de inventario es lo
           que deja ver una venta cobrada cuyo producto todavía no salió del saldo. */}
-      <section className="flex flex-col gap-2">
-        <h2 className="font-bold">Sus ventas</h2>
+      <Panel titulo="Sus ventas">
         {integrante.ventas.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tiene ventas registradas.</p>
         ) : (
@@ -135,12 +141,11 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
             ))}
           </ul>
         )}
-      </section>
+      </Panel>
 
       {/* ═══ COMISION ═══ Causada, liquidada y pendiente. Las reversiones son filas negativas, así que una
           devolución se ve aquí como una causada más baja, sin que nada se haya borrado. */}
-      <section className="flex flex-col gap-2">
-        <h2 className="font-bold">Comisión</h2>
+      <Panel titulo="Margen causado">
         <ul className="flex flex-col gap-2 text-sm">
           <li className="flex justify-between border-b pb-2">
             <span>Causada, neta de reversiones</span>
@@ -155,11 +160,10 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
             <span className="font-medium tabular-nums">{pesos(integrante.comision.pendiente)}</span>
           </li>
         </ul>
-      </section>
+      </Panel>
 
       {integrante.faltantesAbiertos.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="font-bold">Faltantes abiertos</h2>
+        <Panel titulo="Faltantes abiertos">
           <ul className="flex flex-col gap-2 text-sm">
             {integrante.faltantesAbiertos.map((f) => (
               <li key={`${f.producto}-${f.reportado}`} className="flex flex-col gap-1 border-b pb-2">
@@ -172,7 +176,7 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
               </li>
             ))}
           </ul>
-        </section>
+        </Panel>
       ) : null}
     </div>
   );

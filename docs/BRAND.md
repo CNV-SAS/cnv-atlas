@@ -110,6 +110,33 @@ El gráfico polar de 81 estados es la imagen característica de Atlas. Reglas: u
 - Header: `h-16`/`h-20`, fondo blanco, border-bottom sutil, avatar con dropdown a la derecha.
 - Páginas: contenido `max-w-7xl` centrado; padding lateral `px-6` (móvil) / `px-10` (desktop); vertical `py-10`.
 
+## Superficies de lo que NO es clínico: `Panel` y `TarjetaMetrica`
+
+**Esta sección se agrega el 2026-09-25 porque su ausencia ya causó tres defectos, y los tres iguales.** El
+vocabulario clínico (`bloque`, abajo) estaba documentado; el de todo lo demás vivía solo en los comentarios
+de dos componentes, así que quien construía una pantalla nueva **no sabía que existían y los rehacía a mano**,
+sin fondo. Salió en la pantalla de responder la encuesta, en los indicadores del perfil y en la pantalla de
+admin por integrante, en dos días.
+
+**La causa de fondo:** desde que el contenido va sobre gris, **el gris es la calle entre bloques, no un fondo
+de lectura**. Contenido suelto sobre él no se lee. Así que toda pantalla necesita superficie, y hay
+exactamente dos formas de dársela:
+
+| Componente | Para qué | Cuándo |
+|---|---|---|
+| `components/shared/bloque.tsx` | Contenido **clínico** | Cuando el NIVEL dice qué es (decisión / derivado / registro) |
+| `components/shared/panel.tsx` | Todo lo demás | Datos tributarios, un historial de inventario, una lista administrativa |
+| `components/shared/tarjeta-metrica.tsx` | Las **cifras de cabecera** | Siempre que una pantalla abra con números |
+
+**Nunca se hace a mano un `div` con borde y padding para cumplir esto.** No es purismo: `TarjetaMetrica`
+trae, además de la superficie, la regla de cuándo una cifra se enciende (`acento`, que se apaga solo en 0
+para que una tarjeta encendida diciendo "0 pendientes" no entrene a ignorar el color) y a dónde lleva
+(`href`). Una copia a mano pierde eso en silencio, y fue lo que pasó las tres veces.
+
+**La prueba de que la sección hacía falta:** los dos componentes están bien comentados por dentro, con su
+razón y su regla. No faltaba el código ni la explicación: faltaba en el sitio donde alguien mira ANTES de
+construir una pantalla.
+
 ## Bloques de una pantalla clínica: los tres niveles
 
 **Decisión de sistema, no de pantalla.** Un bloque se ve igual en Diagnóstico, en Tratamiento y en
@@ -150,6 +177,21 @@ optimizar para la velocidad, lo que probablemente significa poner más de una co
 nutricionista vive en su panel todos los días; partirlo le cobraría navegación en cada consulta.
 
 No unificar el criterio entre las dos clases: la regla correcta de una es la equivocada de la otra.
+
+> **Precisión (2026-09-25).** Esta regla es del **panel clínico de trabajo**, y su propio argumento lo dice:
+> *"el nutricionista vive en su panel todos los días; partirlo le cobraría navegación en cada consulta"*. No
+> alcanza a una pantalla **administrativa** que se abre dos veces al año para cambiar una cosa: ahí el
+> razonamiento se invierte, porque quien entra a corregir su cuenta bancaria no quiere atravesar su
+> clasificación tributaria para llegar. Por eso `/perfil` tiene pestañas (Santiago, 2026-09-25) y eso **no**
+> contradice esta regla.
+>
+> Se escribe porque la frase decía "las pantallas del profesional" a secas, y el perfil es una pantalla del
+> profesional: leída al pie de la letra, la regla mandaría a quitarle las pestañas. Es el mismo modo de fallo
+> que ya quedó registrado arriba con las franjas grises de la tabla de composición.
+>
+> **Dónde sí manda:** en Diagnóstico, Tratamiento y Seguimiento, que son las pantallas de la consulta. (Las
+> etapas de la ruta ANI-BIS-E son otra cosa: no parten una pantalla larga, son los seis módulos del archivo
+> de Gildardo, y ese orden es suyo.)
 
 ### Lo que el componente NO hace
 
