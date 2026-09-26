@@ -16,6 +16,30 @@
 
 ---
 
+## ➜ ARRANQUE DE OPERACIÓN REAL · el checklist vive en su propio documento (2026-09-26)
+
+**Santiago arranca operación real con todos los Integrantes.** El checklist completo y verificado contra el
+código está en **`docs/entregas/ARRANQUE_OPERACION_REAL_2026-09-26.md`**: las ocho cosas antes del primer
+Integrante, el orden de la mañana, y lo que NO se hace.
+
+**Las decisiones que cambian lo que dice este documento más abajo:**
+
+| | Antes decía | Ahora |
+| --- | --- | --- |
+| **MFA** | Era la condición 1 de las cuatro que "van juntas" | **NO se activa** (Santiago, 2026-09-26): falta organizarlo con correo y hay cosas más urgentes. **La exposición se acepta a sabiendas.** Las otras tres condiciones siguen en pie |
+| **Separar ambientes** | Implícito en los hitos | **No se separa.** Lo que protege es por VENTA (`wompi_env`, `alegra_env`), no por proyecto |
+
+**Y tres cosas que aparecieron al revisarlo, que no estaban en ninguna lista:**
+
+1. **`alegra_config` solo tiene la fila `sandbox`.** Facturar en producción necesita la de producción, con
+   sus cuatro ids leídos de la API (y el del IVA mal puesto **saca la factura al 0 % sin que nada falle**).
+2. **`alegra_items` también es por ambiente:** hay que crear las filas de los cinco productos en producción.
+3. **La regla de facturación NO hay que quitarla.** Lo que niega es mandar la identidad de un paciente real al
+   sandbox de Alegra; quitarla filtraría PII a un tercero y la venta saldría bien. Lo que falta es apuntar
+   Alegra a producción. El detalle está en el checklist.
+
+---
+
 ## ⚠ LA REGLA SE ROMPIÓ: estamos en el Hito 3 con gates abiertos (2026-09-09)
 
 **La junta se saltó el Hito 2 y hoy hay PII clínica real en producción.** Esto no es un cambio de plan que
@@ -47,7 +71,7 @@ Hobby.)
 
 | | Qué | Estado |
 |---|---|---|
-| 1 | **MFA encendido** (TOTP) | Es borrar una variable de Vercel |
+| 1 | **MFA encendido** (TOTP) | **APLAZADO por decisión de Santiago (2026-09-26).** Sigue siendo borrar una variable de Vercel, pero no se hace en el arranque. La exposición se acepta a sabiendas; ver el checklist de arranque |
 | 2 | **Supabase Pro contratado** | 25 USD/mes |
 | 3 | **Dump externo funcionando** y con una restauración probada | Unas horas de trabajo |
 | 4 | **Vercel Pro contratado** (NECESARIO, confirmado por Santiago el 2026-09-15) | **Por licencia:** el plan Hobby prohíbe el uso comercial, y Atlas cobra a pacientes, factura y reparte comisiones. No hay margen. **Y por el Bloque A (Avisos):** sus correos salen de tareas programadas, y en Hobby cada tarea corre una vez al día con hasta 59 minutos de desfase (el de las 7 a. m. puede llegar a las 7:59); en Pro corren a la hora exacta y con la frecuencia que haga falta |

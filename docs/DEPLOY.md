@@ -50,6 +50,21 @@ ALEGRA_DEFAULT_CLIENT_ID=            # solo server, cliente por defecto para la 
 ALEGRA_DEFAULT_ITEM_ID=              # solo server, item generico por defecto (MVP)
 ALEGRA_IVA_TAX_ID=                   # solo server, id del impuesto IVA 19% en Alegra
 
+# ===== Fase de operacion y segundo factor =====
+ATLAS_FASE=                          # solo server. "pruebas" | "lanzamiento" | ausente. Decide el AVISO de arriba
+                                     # de la pantalla. AUSENTE = ningun aviso, y ese es el defecto seguro a
+                                     # proposito: callar es molesto, pero decir "entorno de pruebas, nada es real"
+                                     # sobre datos reales invita a registrar basura y eso no se deshace. Un valor
+                                     # desconocido se trata como ausente.
+                                     # NO cuelga del segundo factor: antes el aviso salia de ATLAS_MFA_RELAXED, y al
+                                     # arrancar operacion real sin separar ambientes (y con el MFA aun relajado) las
+                                     # dos cosas dejaron de coincidir.
+ATLAS_MFA_RELAXED=                   # solo server. NO es "1": es la URL de Supabase del entorno donde se relaja el
+                                     # segundo factor, y la relajacion se activa SOLO si coincide exactamente con
+                                     # NEXT_PUBLIC_SUPABASE_URL (confirmacion positiva, fail-safe). Borrarla y
+                                     # redesplegar es lo que ENCIENDE el MFA. Aplazado por decision de Santiago
+                                     # (2026-09-26); ver LANZAMIENTO.md.
+
 # ===== Rate limiting =====
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=

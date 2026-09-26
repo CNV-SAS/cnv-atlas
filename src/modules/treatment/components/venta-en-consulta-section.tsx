@@ -55,7 +55,28 @@ export async function VentaEnConsultaSection({
   // LA VENTA CUELGA DE HABER ENTREGADO LA PRESCRIPCION, igual que colgaba la entrega (2026-09-09): es un acto
   // POSTERIOR a prescribir, y lo que marca ese momento es haberla entregado (impresa o por correo). Un gate
   // por la confirmacion del diagnostico la dejaria inalcanzable sin dar ningun error.
-  if (protocol.emisiones.length === 0) return null;
+  //
+  // ── PERO DECIRLO, NO DESAPARECER (defecto reportado por Santiago, 2026-09-25) ──
+  //
+  // Esto hacia `return null`, y el sintoma que vivio un integrante fue exactamente este: marco "el paciente
+  // SI los adquiere", y debajo NO APARECIO NADA. Ni el enlace de pago, ni un aviso, ni una caja en gris. El
+  // aviso de la pagina ("la venta se habilita cuando el paciente los adquiere") solo sale cuando la respuesta
+  // NO fue "si", asi que en el camino correcto la pantalla se quedaba muda.
+  //
+  // Y la leccion estaba escrita VEINTE LINEAS MAS ABAJO, en el caso de "nada vendible": *"la leccion de la
+  // ausencia contra la fila vacia: un bloque que no esta no informa de nada"*. Se aplico a un gate y no al otro.
+  if (protocol.emisiones.length === 0) {
+    return (
+      <section className={bloqueCls("derivado")}>
+        <h3 className="text-sm font-semibold text-foreground">Venta y entrega de nutracéuticos</h3>
+        <p className="text-sm text-muted-foreground">
+          El cobro se habilita cuando le entregues el plan al paciente, porque venderle un producto es un acto
+          posterior a prescribirlo. Queda entregado cuando imprimes el plan desde{" "}
+          <span className="font-medium text-foreground">Reporte / HC</span> o cuando le envías el reporte.
+        </p>
+      </section>
+    );
+  }
 
   // Vendibles = prescritos que son en_consultorio, sin duplicados por producto.
   const availById = new Map(protocol.catalog.map((c) => [c.id, c.commercialAvailability]));

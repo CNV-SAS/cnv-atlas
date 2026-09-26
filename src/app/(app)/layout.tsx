@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { MfaRelaxedBanner } from "@/components/layout/mfa-relaxed-banner";
+import { AvisoDeFase } from "@/components/layout/aviso-de-fase";
 import { AvisoDePendientes } from "@/modules/avisos/components/aviso-de-pendientes";
 import { navGroupsForRoles } from "@/components/layout/nav-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MFA_REQUIRED_ROLES, mfaRequirement } from "@/modules/auth/mfa-policy";
+import { faseDeOperacion } from "@/modules/auth/fase-de-operacion";
 import { mfaRelaxedForTesting } from "@/modules/auth/mfa-relaxation";
 import { hasAnyRole } from "@/modules/auth/roles";
 import { requireUser } from "@/modules/auth/session";
@@ -22,6 +23,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // como exento: mfaRequirement sigue pidiendo "enroll", asi que al quitarla todos caen al enroll). Se
   // avisa con un banner permanente para todos, incluido el admin.
   const mfaRelaxed = mfaRelaxedForTesting();
+  // LA FASE ES OTRO HECHO, no el mismo: el aviso de arriba colgaba de la relajacion del segundo factor, y al
+  // arrancar operacion real sin separar ambientes las dos dejaron de coincidir (ver `fase-de-operacion.ts`).
+  const fase = faseDeOperacion();
 
   if (hasAnyRole(user, MFA_REQUIRED_ROLES) && !mfaRelaxed) {
     const supabase = await createSupabaseServerClient();
@@ -41,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {mfaRelaxed ? <MfaRelaxedBanner /> : null}
+      <AvisoDeFase fase={fase} />
       {/* Bloque A: lo que pide accion de ventas, en cualquier pantalla, para quien tiene la marca. */}
       <AvisoDePendientes user={user} />
       <AppShell

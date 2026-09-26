@@ -46,11 +46,22 @@ describe.skipIf(!HAS_DB)("ventas sin documento por dia (BD real)", () => {
         values (${id}, ${org.id}, 'paid', 11900, 'COP', 'test', ${`por-dia-${id}`}, 'pendiente', ${creada}::timestamptz)`);
     }
 
-    const delDia = await listarVentasSinDocumento(500, f.dia);
+    // ── EL TOPE VA MUY ALTO, Y NO ES PEREZA (2026-09-26) ──
+    //
+    // Este test fallo sin que nada del codigo cambiara: pedia 500 y el dia que le tocaba ("hace 3 dias") tenia
+    // 569 ventas sin documento en la base local, asi que una de sus dos filas quedaba fuera del tope. Y fallo
+    // solo al RODAR LA FECHA, porque el dia que mira se mueve cada dia: es la peor clase de test flaky, el que
+    // se rompe sin que nadie toque nada y manda a buscar un defecto que no existe.
+    //
+    // LO QUE ESTE TEST COMPRUEBA ES EL FILTRO POR DIA CIVIL DE BOGOTA, no el tope del reporte. El tope es una
+    // propiedad de la PANTALLA (cuantas filas muestra), asi que atarlo aqui mezcla dos cosas. Se pide muy por
+    // encima de cualquier volumen diario real y el filtro se sigue comprobando entero.
+    const TOPE_HOLGADO = 20_000;
+    const delDia = await listarVentasSinDocumento(TOPE_HOLGADO, f.dia);
     expect(delDia.filter((v) => creadas.includes(v.id))).toHaveLength(2);
     // CONTROL: el dia siguiente (el de la noche en UTC) no las trae.
     const siguiente = await db.execute<{ d: string }>(dsql`select (${f.dia}::date + 1)::text as d`);
-    const delSiguiente = await listarVentasSinDocumento(500, siguiente[0].d);
+    const delSiguiente = await listarVentasSinDocumento(TOPE_HOLGADO, siguiente[0].d);
     expect(delSiguiente.filter((v) => creadas.includes(v.id))).toHaveLength(0);
 
     const conteo = await contarVentasSinDocumentoPorDia(30);
