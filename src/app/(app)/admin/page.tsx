@@ -9,6 +9,8 @@ import { CreateUserForm } from "@/modules/auth/components/create-user-form";
 import { UserRowActions } from "@/modules/auth/components/user-row-actions";
 import { MarcaDeAvisos } from "@/modules/avisos/components/marca-de-avisos";
 import { listarUsuariosInternosConMarcas } from "@/modules/avisos/data/avisos-repository";
+import { ResolverPropuestas } from "@/modules/patients/components/propuestas-de-prueba";
+import { propuestasDePruebaPendientes } from "@/modules/patients/data/de-prueba-writer";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
 
@@ -40,6 +42,7 @@ export default async function AdminPage() {
     .select("id, profile_id, profession, license");
   const byProfile = new Map((profRows ?? []).map((p) => [p.profile_id, p]));
   const internos = await listarUsuariosInternosConMarcas();
+  const propuestasDePrueba = await propuestasDePruebaPendientes();
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -114,6 +117,22 @@ export default async function AdminPage() {
           <p className="text-sm text-destructive">Nadie recibe los pendientes de ventas.</p>
         ) : null}
       </section>
+      {/* ═══ PACIENTES PROPUESTOS COMO DE PRUEBA (0180) ═══
+          VA AQUI PORQUE SI NO, UNA PROPUESTA NO LA VE NADIE: el profesional la manda y se queda esperando a un
+          administrador que no tiene donde mirarla. Es el patron de la "pieza terminada sin el ultimo cable",
+          que ya nos paso varias veces.
+          Y SOLO APARECE CUANDO HAY ALGO: una seccion vacia permanente entrena a no mirarla. */}
+      {propuestasDePrueba.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-bold">Pacientes propuestos como de prueba</h2>
+          <p className="text-sm text-muted-foreground">
+            Marcarlo lo saca de las cifras y de la facturación, y lo deja visible en la lista del profesional
+            para que pueda seguir trabajando con él. Mientras no lo confirmes, sigue contando como cualquier
+            otro paciente.
+          </p>
+          <ResolverPropuestas propuestas={propuestasDePrueba} />
+        </section>
+      ) : null}
       <section className="flex flex-col gap-2">
         <h2 className="font-bold">Crear usuario</h2>
         <CreateUserForm />

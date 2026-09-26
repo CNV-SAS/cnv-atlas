@@ -111,10 +111,15 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
      order by f.reported_at desc
      limit 20`);
 
+  // FUERA LOS DE PRUEBA, y por eso hace falta el join: la relacion no sabe si el paciente es de prueba. Es una
+  // CIFRA (ver `patients/de-prueba.ts`, capa 1), y sin el join un integrante que creo tres pacientes para
+  // probar figuraba con tres pacientes de mas justo en la pantalla que existe para verificar.
   const pacientes = await db.execute<{ n: number }>(sql`
     select count(*)::int as n
-      from patient_professional_relationships
-     where professional_id = ${professionalId}::uuid and status = 'active'`);
+      from patient_professional_relationships r
+      join patients p on p.id = r.patient_id
+     where r.professional_id = ${professionalId}::uuid and r.status = 'active'
+       and coalesce(p.is_test, false) = false and p.deleted_at is null`);
 
   return {
     nombre: quien.nombre,

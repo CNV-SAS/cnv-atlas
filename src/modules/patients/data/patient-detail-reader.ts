@@ -62,7 +62,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, reason_for_visit, bis_measurements(measurement_date))",
+      "id, document_type, document_number, status, is_test, test_proposed_at, test_proposed_reason, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, reason_for_visit, bis_measurements(measurement_date))",
     )
     .eq("id", patientId)
     .is("deleted_at", null)
@@ -99,6 +99,9 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
 
   return {
     patientId: data.id,
+    esDePrueba: data.is_test === true,
+    propuestoDePrueba: data.is_test !== true && data.test_proposed_at != null,
+    motivoDePrueba: data.test_proposed_reason ?? null,
     documentType: data.document_type as DocumentType,
     documentNumber: data.document_number,
     status: data.status,

@@ -10,6 +10,7 @@ import { AccionesPaciente } from "./acciones-paciente";
 import { ANCHO_NOMBRE, COLUMNAS_PACIENTES } from "../columnas";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { FilaLista, ListaFilas } from "@/components/shared/fila-lista";
+import { ROTULO_DE_PRUEBA } from "../de-prueba";
 import { PillEstado } from "@/components/shared/pill-estado";
 import { useConOrigen } from "@/components/shared/usar-origen";
 import { formatDateOnlyShort } from "@/lib/format/date";
@@ -405,7 +406,27 @@ export function ListaPacientes({
               // ARCHIVADO MANDA SOBRE EL OTRO CHIP: si esta fuera de la lista de trabajo, eso es lo
               // primero que hay que saber de la fila; que ademas le falte una autorizacion es
               // informacion de segundo orden mientras este archivado.
-              p.status === "inactive" ? (
+              // DE PRUEBA VA PRIMERO, incluso antes de archivado, y no por importancia sino porque CAMBIA
+              // COMO SE LEE TODA LA FILA: sus cifras no cuentan, su pendiente no es trabajo real y no se le
+              // factura. Saber que esta archivado despues de saber que no es un paciente real no aporta.
+              //
+              // Y LA PROPUESTA NO DICE "de prueba": mientras admin no confirme, el paciente SIGUE CONTANDO en
+              // las cifras, asi que decirlo ya haria que la fila y el tablero se contradijeran.
+              p.esDePrueba ? (
+                <PillEstado
+                  tono="neutro"
+                  title="Paciente de prueba: no cuenta en las cifras ni se factura. Sigue aquí para poder trabajar con él."
+                >
+                  {ROTULO_DE_PRUEBA}
+                </PillEstado>
+              ) : p.propuestoDePrueba ? (
+                <PillEstado
+                  tono="atencion"
+                  title="Propuesto como de prueba, esperando que un administrador lo confirme. Mientras tanto sigue contando en las cifras."
+                >
+                  Propuesto de prueba
+                </PillEstado>
+              ) : p.status === "inactive" ? (
                 <PillEstado tono="neutro" title="Archivado: no aparece en la lista por defecto.">
                   Archivado
                 </PillEstado>

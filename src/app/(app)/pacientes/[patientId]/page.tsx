@@ -15,6 +15,9 @@ import {
   canEmitFollowupLink,
 } from "@/modules/evaluations/policies/can-manage-evaluations";
 import { PanelAutorizaciones } from "@/modules/consent/components/panel-autorizaciones";
+import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
+import { DesmarcarDePrueba, ProponerDePrueba } from "@/modules/patients/components/propuestas-de-prueba";
+import { leyendaDePrueba } from "@/modules/patients/de-prueba";
 import { ConsentimientosOrigenHtml } from "@/modules/consent/components/consentimientos-origen-html";
 import { getExternalConsents, getPatientConsents } from "@/modules/consent/data/consent-reader";
 import { canRevokeConsent } from "@/modules/consent/policies/can-revoke-consent";
@@ -164,6 +167,47 @@ export default async function HistoriaPacientePage({
       />
 
       <PatientReferralsSection patientId={patientId} canMarkReturn={canRegisterReferral(user)} />
+
+      {/* ═══ PACIENTE DE PRUEBA (0180) ═══
+          VA AL FINAL Y NO EN LA COLUMNA DE ACCIONES DE LA LISTA: esa tiene dos botones a proposito (su propio
+          comentario explica por que no tres), y ademas esto pide escribir un motivo, que no cabe en un icono.
+          Aqui esta al lado de archivar, que es el acto hermano: los dos sacan al paciente de algo. */}
+      <Panel titulo={paciente.esDePrueba ? "Paciente de prueba" : "¿Es un paciente de prueba?"}>
+        {leyendaDePrueba({
+          esDePrueba: paciente.esDePrueba,
+          propuesto: paciente.propuestoDePrueba,
+          motivoPropuesto: paciente.motivoDePrueba,
+        }) ? (
+          <p className="text-sm text-muted-foreground">
+            {leyendaDePrueba({
+              esDePrueba: paciente.esDePrueba,
+              propuesto: paciente.propuestoDePrueba,
+              motivoPropuesto: paciente.motivoDePrueba,
+            })}
+            {paciente.motivoDePrueba ? (
+              <span className="ml-1">Motivo: &ldquo;{paciente.motivoDePrueba}&rdquo;</span>
+            ) : null}
+          </p>
+        ) : null}
+
+        {/* LAS TRES SALIDAS SON EXCLUYENTES, y el orden lo dice el estado: si ya esta marcado, lo unico que
+            queda por hacer es desmarcarlo (y solo admin); si esta propuesto, no se propone otra vez. */}
+        {paciente.esDePrueba ? (
+          canAccessAdmin(user) ? (
+            <DesmarcarDePrueba patientId={patientId} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Si esto es un error, escríbele a un administrador para que lo quite.
+            </p>
+          )
+        ) : paciente.propuestoDePrueba ? (
+          <p className="text-sm text-muted-foreground">
+            La propuesta está en la pantalla de administración, esperando confirmación.
+          </p>
+        ) : (
+          <ProponerDePrueba patientId={patientId} />
+        )}
+      </Panel>
     </div>
   );
 }

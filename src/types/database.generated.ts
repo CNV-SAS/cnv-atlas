@@ -3034,6 +3034,11 @@ export type Database = {
           is_test: boolean
           organization_id: string
           status: Database["public"]["Enums"]["patient_status"]
+          test_marked_at: string | null
+          test_marked_by: string | null
+          test_proposed_at: string | null
+          test_proposed_by: string | null
+          test_proposed_reason: string | null
         }
         Insert: {
           alegra_contact_id?: string | null
@@ -3046,6 +3051,11 @@ export type Database = {
           is_test?: boolean
           organization_id: string
           status?: Database["public"]["Enums"]["patient_status"]
+          test_marked_at?: string | null
+          test_marked_by?: string | null
+          test_proposed_at?: string | null
+          test_proposed_by?: string | null
+          test_proposed_reason?: string | null
         }
         Update: {
           alegra_contact_id?: string | null
@@ -3058,6 +3068,11 @@ export type Database = {
           is_test?: boolean
           organization_id?: string
           status?: Database["public"]["Enums"]["patient_status"]
+          test_marked_at?: string | null
+          test_marked_by?: string | null
+          test_proposed_at?: string | null
+          test_proposed_by?: string | null
+          test_proposed_reason?: string | null
         }
         Relationships: [
           {
@@ -3065,6 +3080,20 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_test_marked_by_fkey"
+            columns: ["test_marked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_test_proposed_by_fkey"
+            columns: ["test_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3412,6 +3441,76 @@ export type Database = {
           },
         ]
       }
+      professional_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          document_date: string | null
+          id: string
+          kind: string
+          original_name: string | null
+          path: string
+          professional_id: string
+          size_bytes: number | null
+          superseded_at: string | null
+          superseded_by: string | null
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          document_date?: string | null
+          id?: string
+          kind: string
+          original_name?: string | null
+          path: string
+          professional_id: string
+          size_bytes?: number | null
+          superseded_at?: string | null
+          superseded_by?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          document_date?: string | null
+          id?: string
+          kind?: string
+          original_name?: string | null
+          path?: string
+          professional_id?: string
+          size_bytes?: number | null
+          superseded_at?: string | null
+          superseded_by?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_attachments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_attachments_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "professional_attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_certifications: {
         Row: {
           certification_name: string
@@ -3533,6 +3632,60 @@ export type Database = {
           },
         ]
       }
+      professional_modalities: {
+        Row: {
+          created_at: string
+          decided_at: string
+          decided_by: string | null
+          id: string
+          modality: string
+          note: string | null
+          professional_id: string
+          requisitos_verificados_at: string | null
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string
+          decided_by?: string | null
+          id?: string
+          modality: string
+          note?: string | null
+          professional_id: string
+          requisitos_verificados_at?: string | null
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string
+          decided_by?: string | null
+          id?: string
+          modality?: string
+          note?: string | null
+          professional_id?: string
+          requisitos_verificados_at?: string | null
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_modalities_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_modalities_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_profiles: {
         Row: {
           bank_account_holder_document: string | null
@@ -3547,6 +3700,9 @@ export type Database = {
           created_at: string
           id: string
           license: string | null
+          office_address: string | null
+          office_city: string | null
+          phone: string | null
           profession: Database["public"]["Enums"]["professional_profession"]
           profile_id: string
           rut_document_date: string | null
@@ -3581,6 +3737,9 @@ export type Database = {
           created_at?: string
           id?: string
           license?: string | null
+          office_address?: string | null
+          office_city?: string | null
+          phone?: string | null
           profession: Database["public"]["Enums"]["professional_profession"]
           profile_id: string
           rut_document_date?: string | null
@@ -3617,6 +3776,9 @@ export type Database = {
           created_at?: string
           id?: string
           license?: string | null
+          office_address?: string | null
+          office_city?: string | null
+          phone?: string | null
           profession?: Database["public"]["Enums"]["professional_profession"]
           profile_id?: string
           rut_document_date?: string | null
