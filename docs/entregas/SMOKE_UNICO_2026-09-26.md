@@ -191,10 +191,26 @@ reales.
      hoja de medidas se llama con el **nombre del paciente**; ahora la hoja se busca por sus columnas.
    - **"Exportar solo datos del paciente"** → se rechaza, y **el mensaje dice cuál archivo es y cuál hace
      falta**. Ese archivo no trae ninguna columna de medición: no hay nada que podamos hacer con él.
-2. **El cobro en tratamiento.** Prescribe un nutracéutico, guarda, y marca **"el paciente sí los adquiere"**.
-   **Qué tiene que verse ahora:** si todavía no le entregaste el plan, un bloque que **lo dice** y dice dónde se
-   entrega (Reporte / HC). Antes ahí no aparecía **nada**, y eso es lo que viviste como "no se abría el enlace".
-3. Entrega el plan (imprímelo desde Reporte / HC) y vuelve: **ahora sí** aparece el cobro, con su link.
+2. **El cobro, sin esperar el reporte.** Prescribe un nutracéutico y guarda. **Qué tiene que verse:** el bloque
+   de venta con su link y su QR, **sin haber impreso ni enviado nada**. Antes exigía haber entregado el plan, y
+   con la respuesta correcta ahí no aparecía nada: eso es lo que viviste como "no se abría el enlace".
+3. **Ya no hay pregunta de tres opciones.** Donde estaba "¿el paciente adquiere los nutracéuticos?", ahora hay
+   **un solo botón bajo los recomendados: "El paciente no los adquiere por ahora"**, que abre un campo de
+   motivo. Pruébalo y comprueba que **no se vuelve a ofrecer** (dice lo que quedó registrado).
+4. **El "sí" no se declara.** Véndele el producto sin tocar ningún botón de decisión, y mira el **cierre de la
+   consulta**: el pendiente de nutracéuticos **ya no está**. La venta es el "sí".
+   Y al revés: en una consulta sin venta y sin el botón, el pendiente **sí está**, y su texto nombra las dos
+   salidas.
+5. **Lo clínico, en la línea del producto.** En cada nutracéutico prescrito hay **"No lo recomiendo por razón
+   clínica"**. Úsalo y comprueba que la contraindicación queda **con el nombre del producto**, no como
+   "General" (antes quedaba general, aunque el motivo fuera de un producto concreto).
+6. **Los dos bloques.** El desplegable de nutracéuticos ya **no trae LUVIA**, y hay un bloque aparte:
+   **"¿Quieres prescribir un producto diferente para el tratamiento del paciente?"** con la ficha de LUVIA
+   (presentación, INVIMA, fabricante, y el alérgeno aparte en ámbar). El alérgeno **se muestra**, no se cruza
+   con lo que declaró el paciente: eso lo sigue haciendo la yuxtaposición, como siempre.
+7. **El stock que no bloquea a ciegas.** Con la vitrina en cero de un producto, el mensaje ahora dice **cuántas
+   hay en la bodega de CNV** y que pidas una remesa. Antes decía "Sin unidades disponibles" y ahí terminaba,
+   aunque en bodega hubiera de sobra.
 
 ---
 
