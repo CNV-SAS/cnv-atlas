@@ -1,6 +1,6 @@
 # Smoke acumulado · un solo recorrido
 
-> **REEMPLAZADA por `SMOKE_ACUMULADO_2026-09-25.md`.** No se sigue tal cual: dos de sus afirmaciones
+> **REEMPLAZADA, y su sucesora tambien: la guia viva es `SMOKE_UNICO_2026-09-26.md`.** (Lo fue primero por `SMOKE_ACUMULADO_2026-09-25.md`.) No se sigue tal cual: dos de sus afirmaciones
 > cayeron. (1) El control de LUVIA de la parte 1 esta AL REVES: al momento de la venta el producto ya es de
 > CNV, asi que reincorporarlo tiene que funcionar, y el bloqueo se retiro. (2) La devolucion de la parte 1
 > ya SI mueve el dinero. Se conserva porque el resto de sus pasos y sus datos de preparacion siguen siendo

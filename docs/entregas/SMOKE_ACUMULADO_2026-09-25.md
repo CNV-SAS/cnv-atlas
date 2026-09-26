@@ -1,5 +1,9 @@
 # Recorrido completo · 2026-09-25
 
+> **REEMPLAZADO por `SMOKE_UNICO_2026-09-26.md`.** Santiago tenia tres guias abiertas y no encontraba una
+> de ellas, asi que se refundieron en un solo documento. Sus pasos estan alli, con las afirmaciones corregidas.
+> Este se conserva por su registro, no para seguirlo.
+
 **Para Santiago.** Reemplaza al `SMOKE_ACUMULADO_2026-09-24.md`, que ya no sirve tal cual: dos de sus
 afirmaciones cambiaron (el control de LUVIA se **invirtió** y la devolución ahora **sí** mueve el dinero).
 
