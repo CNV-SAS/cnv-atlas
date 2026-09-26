@@ -3,6 +3,8 @@ import { formatDateTime } from "@/lib/format/date";
 import { requireUser } from "@/modules/auth/session";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
 import { getDespachosForTreatment } from "@/modules/nutraceuticals/services/inventory-service";
+import { ubicacionDelProfesional } from "@/modules/nutraceuticals/services/ubicacion-y-lote";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AccionDeVentaButton } from "@/modules/payments/components/accion-de-venta-button";
 import { VersionDelIntegranteForm } from "@/modules/payments/components/version-del-integrante-form";
 import { CheckoutLink } from "@/modules/payments/components/checkout-link";
@@ -124,6 +126,11 @@ export async function VentaEnConsultaSection({
     getDespachosForTreatment(protocol.treatmentId),
     getProfessionalProfileIdByUser(user.id),
   ]);
+  // SU PROPIA UBICACION, para saber que ventas salieron de otra parte. Se lee una vez y se compara; la
+  // alternativa (guardar "por despachar" en la venta) seria una segunda fuente del mismo hecho.
+  const ubicacionPropia = perfilPropio
+    ? await ubicacionDelProfesional(await createSupabaseServerClient(), perfilPropio)
+    : null;
   const precio = new Map(catalogo.map((c) => [c.id, c.unit_price == null ? null : Number(c.unit_price)]));
   const productos = ids.map((id) => ({
     id,
@@ -179,6 +186,15 @@ export async function VentaEnConsultaSection({
                 <span className="text-xs text-muted-foreground">
                   {formatDateTime(v.created_at)} · {v.payment_method === "efectivo" ? "Efectivo" : "QR"}
                 </span>
+                {/* SALE DE LA BODEGA: se dice en la venta ya creada y no solo al cobrar. Es lo que evita que el
+                    profesional la dé por entregada: el producto no estuvo nunca en sus manos, y si esta linea no
+                    lo dijera, en la lista se veria igual que una que sí entregó. */}
+                {v.location_id != null && ubicacionPropia != null && v.location_id !== ubicacionPropia ? (
+                  <span className="text-xs text-attention">
+                    Sale de la bodega de CNV: falta despacharla.
+                    {v.fulfillment_state === "entregado" ? null : " Un administrador ya tiene el aviso."}
+                  </span>
+                ) : null}
                 <EstadoDeLaVenta
                   venta={v}
                   qr={qrs.get(v.id) ?? null}

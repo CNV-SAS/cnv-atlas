@@ -146,7 +146,12 @@ export async function createCheckoutFormAction(
     }
   }
 
-  const result = await createCheckoutAction({ patientId, items: lineas, treatmentId });
+  const result = await createCheckoutAction({
+    patientId,
+    items: lineas,
+    treatmentId,
+    desdeLaBodega: String(formData.get("desdeLaBodega") ?? "") === "true",
+  });
   if (!result.ok) {
     return { error: result.error.message, success: null, checkoutUrl: null, duplicateWarning: null };
   }
@@ -183,6 +188,7 @@ export async function registerCashSaleFormAction(
     idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
     items: lineas,
     treatmentId: String(formData.get("treatmentId") ?? "") || undefined,
+    desdeLaBodega: String(formData.get("desdeLaBodega") ?? "") === "true",
   });
   if (!parsed.success) return { ...vacio, error: "Datos de la venta inválidos." };
   const { idempotencyKey, ...sale } = parsed.data;

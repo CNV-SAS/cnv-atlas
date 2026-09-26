@@ -20,7 +20,7 @@ import { plazoDeRevision } from "@/modules/payments/plazo-de-revision";
 //   · AGRUPADO POR CAUSA: doce fallos del mismo motivo se arreglan una vez, y son una linea.
 //   · SIN NADA NUEVO, NADA VENCIDO Y LO DEMAS EN GESTION, NO LLEGA CORREO.
 
-export type TipoDePendiente = "revision" | "sin_documento" | "nota_credito" | "reversa";
+export type TipoDePendiente = "revision" | "sin_documento" | "nota_credito" | "reversa" | "por_despachar";
 export type Franja = "am" | "pm";
 
 export type Pendiente = {
@@ -59,6 +59,8 @@ const TITULO: Record<TipoDePendiente, string> = {
   nota_credito: "Efectivo que no se recibió: falta la nota crédito manual",
   sin_documento: "Ventas cobradas sin factura o sin pago registrado",
   reversa: "Contracargos y anulaciones (el banco devolvió el dinero)",
+  // Va a ADMIN y no al profesional: el no puede despachar desde una bodega que no es suya.
+  por_despachar: "Ventas pagadas cuyo producto sale de la bodega y falta despachar",
 };
 
 function diaEnColombia(fecha: Date): string {

@@ -213,6 +213,8 @@ export type VentaDeTratamiento = {
   stock_state: string | null;
   stock_last_error: string | null;
   fulfillment_state: string | null;
+  /** De donde sale el producto. Si NO es la ubicacion del profesional, hay que despacharla (2026-09-26). */
+  location_id: string | null;
   delivered_at: string | null;
   cancelled_at: string | null;
   review_reason: string | null;
@@ -229,7 +231,7 @@ export async function listVentasDeTratamiento(treatmentId: string): Promise<Vent
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "id, status, amount, created_at, payment_method, stock_state, stock_last_error, fulfillment_state, delivered_at, cancelled_at, review_reason, review_resolution, review_professional_version, cash_not_received_at, professional_id, transaction_items(quantity, nutraceuticals(name))",
+      "id, status, amount, created_at, payment_method, stock_state, stock_last_error, fulfillment_state, delivered_at, cancelled_at, review_reason, review_resolution, review_professional_version, cash_not_received_at, professional_id, location_id, transaction_items(quantity, nutraceuticals(name))",
     )
     .eq("treatment_id", treatmentId)
     .order("created_at", { ascending: false });

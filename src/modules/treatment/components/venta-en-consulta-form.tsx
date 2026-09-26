@@ -51,6 +51,10 @@ export function VentaEnConsultaForm({
 }) {
   const [checkout, accionCheckout, generando] = useActionState(createCheckoutFormAction, checkoutInicial);
   const [efectivo, accionEfectivo, registrando] = useActionState(registerCashSaleFormAction, efectivoInicial);
+  // NO ARRANCA ENCENDIDO aunque le falte todo: encenderlo solo haria que una venta saliera de la bodega sin que
+  // el profesional lo decidiera, y la consecuencia (el paciente se va sin el producto) tiene que ser una
+  // eleccion suya.
+  const [desdeLaBodega, setDesdeLaBodega] = useState(false);
   const pending = generando || registrando;
 
   // Lo marcado y su cantidad. Nada marcado al abrir: el paciente dijo que SI los adquiere, no cuales ni
@@ -130,6 +134,7 @@ export function VentaEnConsultaForm({
     fd.set("treatmentId", treatmentId);
     fd.set("evaluationId", evaluationId);
     fd.set("lineas", JSON.stringify(lineas));
+    if (desdeLaBodega) fd.set("desdeLaBodega", "true");
     return fd;
   };
   const cobrarConQr = (confirmDuplicate = false) => {
@@ -146,9 +151,22 @@ export function VentaEnConsultaForm({
     ejecutarAccion(accionEfectivo, fd);
   };
 
+  // ═══ COBRAR PIDIENDO DESPACHO DESDE LA BODEGA (Santiago, 2026-09-26) ═══
+  //
+  // TODA LA VENTA SALE DE UN SOLO SITIO, y eso no es una simplificacion nuestra: `transactions.location_id` es
+  // UNA columna, "de donde sale el producto", sellada al crear la venta. Asi que si necesita unas de su vitrina y
+  // otras de la bodega, son DOS ventas, y la pantalla lo dice en vez de mezclarlas y sellar una mentira.
+  //
+  // La disponibilidad contra la que se valida cambia con el interruptor: su vitrina, o la bodega.
+  const disponibleEfectivo = (p: { disponible: number; enCentral: number }) =>
+    desdeLaBodega ? p.enCentral : p.disponible;
+
+  // ¿Hace falta ofrecerlo? Solo si algo de lo PRESCRITO no lo tiene y la bodega si.
+  const hayQueDespachar = productos.some((p) => p.disponible <= 0 && p.enCentral > 0);
+
   const excede = lineas.some((l) => {
     const p = productos.find((x) => x.id === l.nutraceuticalId);
-    return p != null && Number(l.quantity) > p.disponible;
+    return p != null && Number(l.quantity) > disponibleEfectivo(p);
   });
   const listo = lineas.length > 0 && lineas.every((l) => Number.isInteger(Number(l.quantity)) && Number(l.quantity) > 0);
 
@@ -158,7 +176,7 @@ export function VentaEnConsultaForm({
         {productos.map((p) => {
           const marcado = p.id in cantidades;
           const sinPrecio = p.unitPrice == null;
-          const agotado = p.disponible <= 0;
+          const agotado = disponibleEfectivo(p) <= 0;
           const campo = `venta-${p.id}`;
           return (
             <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border px-3 py-2">
@@ -175,7 +193,9 @@ export function VentaEnConsultaForm({
                 <span className="text-xs text-muted-foreground">
                   {sinPrecio
                     ? "Sin precio configurado: no se puede cobrar."
-                    : `${p.unitPrice!.toLocaleString("es-CO")} COP · disponibles: ${p.disponible}`}
+                    : `${p.unitPrice!.toLocaleString("es-CO")} COP · disponibles: ${disponibleEfectivo(p)}${
+                        desdeLaBodega ? " en la bodega de CNV" : ""
+                      }`}
                 </span>
               </label>
               {marcado ? (
@@ -184,7 +204,7 @@ export function VentaEnConsultaForm({
                   type="number"
                   inputMode="numeric"
                   min={1}
-                  max={p.disponible}
+                  max={disponibleEfectivo(p)}
                   step={1}
                   value={cantidades[p.id]}
                   onChange={(e) => setCantidades((prev) => ({ ...prev, [p.id]: e.target.value }))}
@@ -210,6 +230,43 @@ export function VentaEnConsultaForm({
           );
         })}
       </ul>
+
+      {/* ═══ EL INTERRUPTOR DE LA BODEGA ═══
+          SOLO APARECE CUANDO SIRVE: hay algun producto sin unidades en su vitrina y con unidades en la bodega.
+          Un interruptor permanente para un caso excepcional se lee como parte del marco y se deja de mirar.
+          Y DICE LA CONSECUENCIA ANTES DE COBRAR, que es lo que Santiago pidio: el paciente no se lleva el
+          producto hoy, y alguien en CNV tiene que despacharlo. Sin esa frase, el profesional cobra creyendo que
+          entrega, y el paciente se va sin nada. */}
+      {hayQueDespachar ? (
+        <div className="flex flex-col gap-1.5 rounded-md border border-attention/40 bg-attention-bg/50 p-3">
+          <label className="flex items-start gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={desdeLaBodega}
+              onChange={(e) => setDesdeLaBodega(e.target.checked)}
+              disabled={pending}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>
+              Cobrar y pedir que CNV lo despache desde la bodega
+              {desdeLaBodega ? null : (
+                <span className="text-muted-foreground"> (no tienes unidades de algo que prescribiste)</span>
+              )}
+            </span>
+          </label>
+          {desdeLaBodega ? (
+            <p className="text-xs text-attention">
+              El paciente <strong>no se lleva el producto hoy</strong>: la venta sale de la bodega de CNV y queda
+              pendiente de despacho. Le va a llegar el aviso a un administrador para que lo despache.
+            </p>
+          ) : null}
+          {/* UNA VENTA SALE DE UN SOLO SITIO. Se dice aqui y no se descubre al fallar. */}
+          <p className="text-xs text-muted-foreground">
+            Toda la venta sale del mismo sitio. Si quieres entregarle hoy lo que sí tienes, cóbralo en una venta
+            aparte y deja esta solo para lo que hay que despachar.
+          </p>
+        </div>
+      ) : null}
 
       {lineas.length > 0 ? (
         <p className="text-sm text-muted-foreground">
