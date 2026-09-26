@@ -234,3 +234,52 @@ describe.skipIf(!HAS_DB)("el sellado de una venta obedece la modalidad (BD real)
     await db.execute(dsql`delete from professional_modalities where professional_id = ${professionalId}::uuid`);
   }, 30_000);
 });
+
+// ═══ EL BLOQUEANTE DE DISTRIBUCION, Y QUE SU MOTIVO LLEGUE (2026-09-25) ═══
+//
+// Los dos caminos de venta de hoy asumen que cobra CNV. Bajo Distribucion el paciente le paga AL INTEGRANTE,
+// asi que el enlace de pago mandaria plata a la cuenta equivocada y el "efectivo" diria que custodia dinero de
+// CNV cuando es suyo. Se bloquea con el motivo dicho, en vez de registrar una venta cuyo significado es falso.
+//
+// Y SE PRUEBA QUE EL GUARD ES ALCANZABLE Y QUE SU MOTIVO SOBREVIVE: un guard correcto cuyo mensaje se pierde en
+// un catch generico se siente como un defecto del sistema, no como una regla.
+describe.skipIf(!HAS_DB)("el bloqueo de venta bajo Distribucion (BD real)", () => {
+  afterAll(async () => {
+    if (!HAS_DB) return;
+    const { db } = await import("@/db");
+    await db.execute(dsql`delete from professional_modalities where professional_id = ${professionalId}::uuid`);
+  }, 30_000);
+
+  it("en Comisión no bloquea nada", async () => {
+    const { db } = await import("@/db");
+    const { exigirRecaudoDeCnv } = await import("@/modules/payments/data/modalidad-writer");
+    await db.execute(dsql`delete from professional_modalities where professional_id = ${professionalId}::uuid`);
+    await expect(exigirRecaudoDeCnv(professionalId)).resolves.toBeUndefined();
+  }, 30_000);
+
+  it("en Distribución bloquea, y el motivo NOMBRA por qué y qué falta", async () => {
+    const { db } = await import("@/db");
+    const { exigirRecaudoDeCnv, ModalidadError } = await import("@/modules/payments/data/modalidad-writer");
+    await db.execute(dsql`delete from professional_modalities where professional_id = ${professionalId}::uuid`);
+    await db.execute(dsql`
+      insert into professional_modalities (professional_id, modality, valid_from, decided_by)
+      values (${professionalId}::uuid, 'distribucion', '2026-01-01'::date, ${actorId}::uuid)`);
+
+    await expect(exigirRecaudoDeCnv(professionalId)).rejects.toThrow(ModalidadError);
+    try {
+      await exigirRecaudoDeCnv(professionalId);
+    } catch (e) {
+      const mensaje = (e as Error).message;
+      // No basta con negarse: tiene que decir POR QUE (el paciente le paga a él) y QUE FALTA (el registro de
+      // ventas bajo Distribución). Un "no se pudo" manda a buscar un fallo técnico donde hay una regla.
+      expect(mensaje).toContain("Distribución");
+      expect(mensaje).toContain("le paga a él");
+      expect(mensaje).toContain("todavía no está en Atlas");
+    }
+  }, 30_000);
+
+  it("una venta sin profesional no se bloquea: no hay modalidad de nadie", async () => {
+    const { exigirRecaudoDeCnv } = await import("@/modules/payments/data/modalidad-writer");
+    await expect(exigirRecaudoDeCnv(null)).resolves.toBeUndefined();
+  }, 30_000);
+});

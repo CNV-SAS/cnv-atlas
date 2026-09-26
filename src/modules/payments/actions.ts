@@ -102,6 +102,10 @@ export async function createCheckoutAction(
     return ok(created);
   } catch (e) {
     if (e instanceof CheckoutError) return err(appError("validation", e.message));
+    // EL MOTIVO DE LA MODALIDAD LLEGA A LA PANTALLA, y no es un detalle: sin este caso, el bloqueo de
+    // Distribucion caia en el catch generico y decia "No se pudo crear el checkout", que manda a buscar un
+    // fallo tecnico donde hay una regla del modelo. Ademas ensuciaba Sentry con un error que no es un error.
+    if (e instanceof ModalidadError) return err(appError("validation", e.message));
     reportServerError("checkout.create", e);
     return err(appError("internal", "No se pudo crear el checkout."));
   }
@@ -250,6 +254,7 @@ export async function registerCashSaleFormAction(
     };
   } catch (e) {
     if (e instanceof CheckoutError) return { ...vacio, error: e.message };
+    if (e instanceof ModalidadError) return { ...vacio, error: e.message };
     reportServerError("cash-sale.register", e);
     return { ...vacio, error: "No se pudo registrar la venta en efectivo." };
   }
