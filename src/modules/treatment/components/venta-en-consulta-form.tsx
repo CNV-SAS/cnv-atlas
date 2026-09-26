@@ -17,6 +17,12 @@ export type ProductoVendible = {
   unitPrice: number | null;
   /** Saldo menos reservas vivas en la ubicacion de donde sale la venta. */
   disponible: number;
+  /**
+   * Lo que hay en la BODEGA CENTRAL del mismo producto. Solo para DECIRLO cuando su vitrina esta en cero: un
+   * "Sin unidades disponibles" a secas dejaba al profesional bloqueado sin saber que si habia producto, y
+   * pidiendoselo al paciente para otro dia cuando bastaba pedir una remesa.
+   */
+  enCentral: number;
 };
 
 const checkoutInicial: PaymentFormState = { error: null, success: null, checkoutUrl: null, duplicateWarning: null };
@@ -185,7 +191,20 @@ export function VentaEnConsultaForm({
                   className="h-9 w-24"
                 />
               ) : agotado && !sinPrecio ? (
-                <span className="text-xs text-clinical-warning">Sin unidades disponibles</span>
+                // ── NO BASTA CON DECIR QUE NO HAY: HAY QUE DECIR DONDE SI (Santiago, 2026-09-26) ──
+                // El producto puede estar en bodega central, y entonces lo que falta no es producto sino una
+                // remesa. La frase nombra la accion y a quien pedirsela; sin eso el profesional le dice al
+                // paciente que vuelva otro dia por algo que CNV tiene en existencia.
+                <span className="flex flex-col text-xs text-clinical-warning">
+                  <span>No tienes unidades en tu vitrina.</span>
+                  {p.enCentral > 0 ? (
+                    <span className="text-muted-foreground">
+                      Hay {p.enCentral} en la bodega de CNV: pídele una remesa a un administrador.
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Tampoco hay en la bodega de CNV.</span>
+                  )}
+                </span>
               ) : null}
             </li>
           );

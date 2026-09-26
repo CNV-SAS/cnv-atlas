@@ -34,7 +34,16 @@ export type EstadoConsulta = {
   /** null = la evaluacion no llego a generar reporte. */
   reporteEstado: "draft" | "approved" | "sent" | null;
   /** Decision sobre nutraceuticos: null = nunca se pregunto. */
+  /**
+   * La decision registrada, que despues del rediseño del 2026-09-26 solo puede ser "no" (o nula): la pregunta de
+   * tres opciones se retiro y el "si" YA NO SE DECLARA, se demuestra con la venta.
+   */
   nutraceuticosDecision: "si" | "no" | "pendiente" | null;
+  /**
+   * Si esta consulta tiene una venta de nutraceuticos. ES EL "SI", y por eso entra aqui: un hecho (el paciente
+   * pago y se los llevo) vale mas que una casilla marcada, y ademas no hay que acordarse de marcarla.
+   */
+  hayVentaDeNutraceuticos: boolean;
   proximaCita: string | null;
   remisionesSinRetorno: number;
 };
@@ -96,17 +105,28 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
     });
   }
 
-  if (e.nutraceuticosDecision === null || e.nutraceuticosDecision === "pendiente") {
+  // ═══ LA DECISION SOBRE LOS NUTRACEUTICOS, DESPUES DEL REDISEÑO (2026-09-26) ═══
+  //
+  // ANTES colgaba de una pregunta de tres opciones ("¿el paciente los adquiere?"), y el pendiente decia "se
+  // pregunta siempre". Esa pregunta se retiro: el "si" ya no se declara, LO DEMUESTRA LA VENTA, y el "no" es un
+  // boton con su motivo.
+  //
+  // Asi que esto queda resuelto por CUALQUIERA de las dos vias, y sigue pendiente solo cuando no pasa ninguna:
+  // ni se le vendieron ni se registro por que no. Un "pendiente" viejo (de antes del rediseño) se sigue
+  // tratando como resuelto-con-nota, porque es una respuesta que alguien dio.
+  const resueltoPorLaVenta = e.hayVentaDeNutraceuticos;
+  const resueltoPorElNo = e.nutraceuticosDecision === "no";
+  if (!resueltoPorLaVenta && !resueltoPorElNo) {
     out.push({
       id: "nutraceuticos",
       titulo:
         e.nutraceuticosDecision === "pendiente"
           ? "El paciente quedó de pensar los nutracéuticos"
-          : "No se registró la decisión sobre los nutracéuticos",
+          : "No se registró si el paciente se lleva los nutracéuticos",
       detalle:
         e.nutraceuticosDecision === "pendiente"
           ? "Es una respuesta válida: se puede cerrar así y registrarla cuando el paciente decida."
-          : "Se pregunta siempre, aunque la respuesta sea que no los lleva.",
+          : "Si se los llevó, queda registrado con la venta. Si no, usa el botón que hay debajo de los recomendados para decir por qué.",
       etapa: "tratamiento",
       bloqueadoPor: null,
     });

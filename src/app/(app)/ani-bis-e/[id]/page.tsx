@@ -39,6 +39,7 @@ import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-sec
 import { HojaImprimible } from "@/components/shared/hoja-imprimible";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { REFERRAL_TARGET_LABEL } from "@/modules/referrals/components/patient-referrals-section";
+import { listVentasDeTratamiento } from "@/modules/payments/data/payments-repository";
 import { getPendingReferralHints, listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
 import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
 import { missingDomainsFrom } from "@/modules/diagnoses/missing-domains";
@@ -128,7 +129,6 @@ import { canManageReports } from "@/modules/reports/policies/can-manage-reports"
 import { bloqueCls } from "@/components/shared/bloque";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { VentaEnConsultaSection } from "@/modules/treatment/components/venta-en-consulta-section";
-import { NutraDecisionSection } from "@/modules/treatment/components/nutra-decision-section";
 import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
@@ -692,6 +692,12 @@ export default async function ResultadosEvaluacionPage({
 
   // Bloque 12: las remisiones de ESTA consulta (ancladas al tratamiento, no al paciente).
   const hcRemisiones = protocol?.treatmentId ? await listReferralsForTreatment(protocol.treatmentId) : [];
+  // LAS VENTAS DE ESTA CONSULTA, para el cierre. Va junto a las remisiones porque es lo mismo: un hecho del
+  // tratamiento que el cierre necesita. Desde el rediseño del 2026-09-26 la VENTA ES EL "SI" de los
+  // nutraceuticos, asi que sin esto el cierre pediria una decision que ya se tomo vendiendo.
+  const ventasDeLaConsulta = protocol?.treatmentId
+    ? await listVentasDeTratamiento(protocol.treatmentId)
+    : [];
 
   // Bloques 10 y 11: salen del protocolo SELLADO (protocol_suggested), no se recalculan. El sodio no
   // viaja: lo fija el motor de prescripcion que aun no se porta.
@@ -966,16 +972,16 @@ export default async function ResultadosEvaluacionPage({
                     canPrescribe={canPrescribeNutraceuticals}
                   />
                 ) : null}
-                {/* LA DECISION VA ANTES DE LA ENTREGA, y ese orden es el diseño: antes se entregaba sin
-                    haber preguntado si el paciente puede tomarlos ni si los quiere.
-                    Y NO APARECE SIN PRESCRIPCION GUARDADA: preguntar "¿el paciente los adquiere?" sin que
-                    haya nada prescrito es preguntar si adquiere QUE. Se podia marcar "si" con la lista
-                    vacia, que no significa nada. Ojo con la distincion, que es clinica: NO PRESCRIBIR no
-                    es lo mismo que prescribir y que el paciente NO los compre; lo segundo es una
-                    indicacion que no se cumple, y por eso la opcion "no" sigue existiendo aqui. */}
-                {protocol && actorProfession.isProfessional && protocol.nutraceuticals.length > 0 ? (
-                  <NutraDecisionSection evaluationId={id} protocol={protocol} />
-                ) : null}
+                {/* ═══ LA PREGUNTA DE TRES OPCIONES SE RETIRO (Santiago, 2026-09-26) ═══
+                    Aqui vivia "¿El paciente adquiere los nutraceuticos?" con si / no / pendiente y seis razones.
+                    Se quita entera: el "SI" ya no se declara, LO DEMUESTRA LA VENTA (un hecho, y nadie tiene que
+                    acordarse de marcarlo), y el "no" es un boton con su motivo debajo de los recomendados, que
+                    son los que importan para la investigacion.
+                    LO CLINICO NO SE PERDIO: el descarte por razon clinica esta en la linea del producto
+                    prescrito, que es donde el profesional lo decide, y sigue escribiendo la contraindicacion del
+                    paciente. Lo que si se perdio a proposito es lo comercial agregado (costo, lo piensa, ya toma
+                    otros), confirmado por Santiago: era un formulario en cada consulta para un dato que nadie
+                    consultaba. */}
                 {/* La VENTA Y SU ENTREGA solo si la respuesta fue que si (Bloque 3, sesion 2: reemplaza a la
                     seccion de despacho). Un aviso, no un formulario deshabilitado: un bloque en gris invita a
                     buscar como habilitarlo; una frase dice que falta. */}
@@ -1320,6 +1326,9 @@ export default async function ResultadosEvaluacionPage({
                 protocoloEmitido: emisiones.length > 0,
                 reporteEstado: reportCard?.status ?? null,
                 nutraceuticosDecision: protocol?.nutraceuticalDecision?.decision ?? null,
+                // LA VENTA ES EL "SI". Basta con que exista una PAGADA: una pendiente de pago todavia no dice
+                // que el paciente se los llevo.
+                hayVentaDeNutraceuticos: ventasDeLaConsulta.some((v) => v.status === "paid"),
                 proximaCita: hcHeader.proximaCita,
                 remisionesSinRetorno: hcRemisiones.filter((r) => !r.returnedAt).length,
               })}

@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
+import { DescartarPorRazonClinica } from "./descartar-por-razon-clinica";
+import { NoLosAdquiereForm } from "./no-los-adquiere-form";
 import { YuxtaposicionAlergenos } from "@/modules/nutraceuticals/components/yuxtaposicion-alergenos";
 
 import { saveNutraceuticalsAction, type TreatmentActionState } from "../actions";
@@ -161,6 +163,22 @@ export function NutraceuticalsSection({
         <fieldset className="flex flex-col gap-3">
           <RecommendedList recommended={recommended} isAdded={isAdded} onAdd={addProduct} />
 
+          {/* ═══ EL "NO" VA AQUI, SOBRE LOS RECOMENDADOS (Santiago, 2026-09-26) ═══
+              Un solo boton donde habia una pregunta de tres opciones. El "SI" no se pregunta: lo demuestra la
+              venta. Y va sobre los RECOMENDADOS POR EL MODELO y no sobre toda la prescripcion, porque son los
+              que importan para la investigacion: que el modelo recomiende algo y el paciente no lo tome es EL
+              dato. Solo aparece si el modelo recomendo algo; si no, no hay nada que no adquirir. */}
+          {recommended.length > 0 ? (
+            <NoLosAdquiereForm
+              evaluationId={evaluationId}
+              yaRegistrado={
+                protocol.nutraceuticalDecision?.decision === "no"
+                  ? (protocol.nutraceuticalDecision.note ?? "")
+                  : null
+              }
+            />
+          ) : null}
+
           {/* ═══ PRESCRIBIR ALGO QUE EL MODELO NO RECOMENDO: PLEGADO (Santiago, 2026-09-26) ═══
               Estaba siempre abierto y con el catalogo entero a la vista, al mismo nivel que la recomendacion
               del modelo, y eso hacia que prescribir CONTRA el modelo se viera igual de normal que seguirlo. No
@@ -239,13 +257,34 @@ export function NutraceuticalsSection({
           {productosDeTercero.length > 0 ? (
             <details className="rounded-lg border border-border">
               <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-foreground">
-                ¿Quieres prescribir un producto que no es un nutracéutico de CNV?
+                ¿Quieres prescribir un producto diferente para el tratamiento del paciente?
               </summary>
               <div className="flex flex-col gap-3 border-t border-border p-3">
                 {productosDeTercero.map((c) => (
-                  <div key={c.id} className="flex flex-col gap-1.5 rounded-lg bg-muted/30 p-3 text-sm">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="font-semibold text-foreground">{c.name}</span>
+                  // LA TARJETA, DECORADA CON LA REFERENCIA DE GILDARDO Y NUESTRA REGLA DE COLOR.
+                  //
+                  // De su HTML se adopta la DISPOSICION: el nombre y su accion arriba, la descripcion como
+                  // cuerpo, y debajo los datos de ficha en una tira de etiquetas (presentacion, dosis, INVIMA,
+                  // fabricante), con el alergeno separado del resto.
+                  //
+                  // EL COLOR NO SALE DE LA CAPA CLINICA, y es la unica cosa donde no seguimos su hoja: sus
+                  // `--clinical-*` significan severidad del PACIENTE, y este es un producto, no un veredicto.
+                  // Va con el azul de marca (capa de interfaz). La UNICA excepcion es el ALERGENO, que va en
+                  // `attention`: ahi si hay algo que mirar antes de prescribir, y `attention` es el eje
+                  // operativo, que existe justamente separado del clinico.
+                  <div
+                    key={c.id}
+                    className="flex flex-col gap-2 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-base font-bold tracking-tight text-foreground">{c.name}</span>
+                        {/* PRODUCTO EXTERNO, dicho de frente: es lo que separa esta tarjeta de un nutraceutico
+                            de CNV, y el profesional tiene que saberlo antes de prescribirlo. */}
+                        <span className="text-xs font-medium uppercase tracking-wide text-primary">
+                          Producto externo
+                        </span>
+                      </div>
                       <Button
                         type="button"
                         variant={isAdded(c.id) ? "outline" : "default"}
@@ -255,27 +294,42 @@ export function NutraceuticalsSection({
                         {isAdded(c.id) ? "Agregado" : "Agregar"}
                       </Button>
                     </div>
-                    {c.description ? <p className="text-muted-foreground">{c.description}</p> : null}
-                    <p className="text-muted-foreground">
+
+                    {c.description ? <p className="max-w-prose text-muted-foreground">{c.description}</p> : null}
+
+                    {/* LA TIRA DE FICHA. Cada dato con su rotulo, porque un "RSA-0019736-2022" suelto no dice
+                        que es un registro sanitario. Los que falten no se muestran: no se inventa ninguno. */}
+                    <dl className="flex flex-wrap gap-x-6 gap-y-2">
                       {[
-                        c.presentation && c.servingSize ? `${c.presentation} · ${c.servingSize}` : c.presentation,
-                        c.servingSize && !c.presentation ? c.servingSize : null,
+                        { r: "Presentación", v: [c.presentation, c.servingSize].filter(Boolean).join(" · ") },
+                        { r: "Registro INVIMA", v: c.sanitaryRegistration },
+                        { r: "Fabricante", v: c.brandOwner },
                       ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[
-                        c.sanitaryRegistration ? `INVIMA ${c.sanitaryRegistration}` : null,
-                        c.brandOwner,
-                        c.commercialAvailability === "en_consultorio" ? "se vende en consultorio" : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
+                        .filter((d) => d.v)
+                        .map((d) => (
+                          <div key={d.r} className="flex flex-col">
+                            <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">
+                              {d.r}
+                            </dt>
+                            <dd className="text-foreground">{d.v}</dd>
+                          </div>
+                        ))}
+                    </dl>
+
+                    {/* EL ALERGENO, SEPARADO Y EN `attention`. Se muestra TAL COMO LO DECLARA LA FICHA y no se
+                        cruza con la encuesta: eso lo dice el propio comentario de Gildardo y coincide con lo que
+                        ya teniamos decidido (yuxtaponer, no inferir). Comparar aqui seria inferencia clinica. */}
                     {c.alergenosDeclarados.length > 0 ? (
-                      <p className="text-xs font-medium text-attention">
+                      <p className="rounded-md bg-attention-bg px-3 py-1.5 text-xs font-medium text-attention">
                         {c.alergenosDeclarados.join(" · ")}
+                      </p>
+                    ) : null}
+
+                    {c.commercialAvailability !== "en_consultorio" ? (
+                      <p className="text-xs text-muted-foreground">
+                        {c.commercialAvailability === "solo_tienda"
+                          ? "Se compra en la tienda, no en consultorio."
+                          : "Aún no está disponible."}
                       </p>
                     ) : null}
                   </div>
@@ -319,6 +373,13 @@ export function NutraceuticalsSection({
                   {/* Y TAMBIEN SOBRE LO YA PRESCRITO, no solo al elegir: quien abre esta pantalla puede
                       ser otro profesional, o el mismo en una consulta posterior, y la declaración del
                       paciente puede haber cambiado desde que el producto entró a la lista. */}
+                  {/* DESCARTAR POR RAZON CLINICA, en la linea del producto. Es lo unico CLINICO que tenia la
+                      pregunta retirada, y aqui ademas sabe DE QUE producto habla. */}
+                  <DescartarPorRazonClinica
+                    evaluationId={evaluationId}
+                    nutraceuticalId={n.nutraceuticalId}
+                    nombre={n.name}
+                  />
                   <div className="w-full">
                     <YuxtaposicionAlergenos
                       paciente={protocol.declaracionesPaciente}

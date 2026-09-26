@@ -43,7 +43,9 @@ describe("los dos bloques de prescripcion", () => {
     // Abierto y al mismo nivel que la recomendacion, prescribir contra el modelo se veia igual de normal que
     // seguirlo, y no lo es.
     expect(src).toContain("¿Quieres prescribir un nutracéutico que el modelo no recomendó?");
-    expect(src).toContain("¿Quieres prescribir un producto que no es un nutracéutico de CNV?");
+    // EL ROTULO LO CAMBIO SANTIAGO EL 2026-09-26: "que no es un nutracéutico de CNV" definia el bloque por lo
+    // que NO es, y quien prescribe piensa en lo que quiere hacer, no en nuestra taxonomia de catalogo.
+    expect(src).toContain("¿Quieres prescribir un producto diferente para el tratamiento del paciente?");
   });
 
   it("la ficha del producto externo lleva los campos de la de Gildardo", () => {
