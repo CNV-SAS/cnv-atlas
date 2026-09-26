@@ -17,6 +17,7 @@ marcados como reemplazados: sus pasos están aquí, y sus afirmaciones caídas e
 | 7 | El perfil en pestañas | Perfil |
 | 8 | La modalidad de consignación | Perfil |
 | 9 | Los tres exports del Biody y el cobro en tratamiento | Lanzamiento |
+| 10 | Vender desde la bodega, y que alguien la despache | Lanzamiento |
 
 ---
 
@@ -208,9 +209,43 @@ reales.
    **"¿Quieres prescribir un producto diferente para el tratamiento del paciente?"** con la ficha de LUVIA
    (presentación, INVIMA, fabricante, y el alérgeno aparte en ámbar). El alérgeno **se muestra**, no se cruza
    con lo que declaró el paciente: eso lo sigue haciendo la yuxtaposición, como siempre.
-7. **El stock que no bloquea a ciegas.** Con la vitrina en cero de un producto, el mensaje ahora dice **cuántas
-   hay en la bodega de CNV** y que pidas una remesa. Antes decía "Sin unidades disponibles" y ahí terminaba,
-   aunque en bodega hubiera de sobra.
+7. **El stock que no bloquea a ciegas.** Con la vitrina en cero de un producto, el mensaje dice **cuántas hay en
+   la bodega de CNV**. Antes decía "Sin unidades disponibles" y ahí terminaba. Lo que se puede hacer con eso es
+   la parte 10.
+
+---
+
+## Parte 10 · Vender desde la bodega, y que alguien la despache
+
+**Qué se prueba:** que un profesional con la vitrina en cero pueda **cobrar** y que CNV despache, y sobre todo
+que esa venta **no se pueda olvidar**.
+
+**Por qué esto último es el punto:** vender desde la bodega convierte un bloqueo visible ("no puedo vender") en
+un olvido invisible ("cobré y nadie llevó nada"). Lo que lo hace seguro es el aviso, así que **el paso 5 es el
+que importa.**
+
+1. Como **integrante**, en una evaluación con un nutracéutico prescrito **del que no tengas unidades** (y que sí
+   haya en bodega): en el bloque de venta aparece un interruptor, **"Cobrar y pedir que CNV lo despache desde la
+   bodega"**.
+2. **Qué tiene que verse ANTES de cobrar, al encenderlo:** que el paciente **no se lleva el producto hoy**, que
+   la venta sale de la bodega, y que le llega el aviso a un administrador. Si no dice eso, avísame: cobrar
+   creyendo que entregas es el error que esto viene a evitar.
+3. **Y la línea que evita una segunda equivocación:** dice que **toda la venta sale del mismo sitio**, y que si
+   quieres entregarle hoy lo que sí tienes, lo cobres en una venta aparte. Es porque la venta guarda **una sola**
+   ubicación de origen.
+4. Con el interruptor encendido, el producto **se puede marcar** y las unidades disponibles que muestra son
+   **las de la bodega** (lo dice: "disponibles: N en la bodega de CNV"). Cobra, con QR o en efectivo.
+5. **EL CONTROL QUE IMPORTA.** En la lista de ventas de esa consulta, la venta dice **"Sale de la bodega de CNV:
+   falta despacharla"**. Y como **admin**, mira el correo de pendientes de ventas (o dispáralo): tiene que
+   aparecer **"Ventas pagadas cuyo producto sale de la bodega y falta despachar"**.
+   Si el aviso no está, el resto no sirve: significa que la venta puede quedarse sin que nadie la lleve.
+6. **Registra la entrega** de esa venta. El aviso **desaparece**.
+7. **El control de que no hace ruido:** una venta normal (de tu propia vitrina) pagada y sin entregar **no**
+   aparece en ese aviso. Si apareciera, el aviso sonaría todo el día con ventas que se entregan en minutos y se
+   dejaría de mirar.
+
+**Y una cosa que NO cambió, a propósito:** el interruptor **no se enciende solo**. Si le falta producto, hay que
+marcarlo. Encenderlo por su cuenta haría que una venta saliera de la bodega sin que nadie lo decidiera.
 
 ---
 
