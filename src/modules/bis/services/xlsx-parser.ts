@@ -99,7 +99,7 @@ export async function parseBisXlsx(input: Buffer | ArrayBuffer): Promise<Result<
       appError(
         "validation",
         soloPacientes
-          ? "Este archivo es el de datos del paciente, y no trae las mediciones. En el Biody Manager, exporta “medidas” (o las dos cosas juntas) y sube ese archivo."
+          ? "Este archivo es el de “Exportar datos del paciente”, y no trae ninguna medición. Vuelve al Biody Manager y exporta con “Exportar medidas” marcada (sola o junto con los datos del paciente); ese archivo sí sirve."
           : "El archivo no trae una hoja con mediciones de bioimpedancia. Tiene que ser un export de medidas del Biody Manager.",
       ),
     );

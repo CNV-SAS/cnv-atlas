@@ -25,6 +25,14 @@ export const createCheckoutSchema = z.object({
     )
     .min(1)
     .max(50),
+  /**
+   * COBRAR PIDIENDO DESPACHO DESDE LA BODEGA (2026-09-26). Toda la venta sale de la bodega central en vez de la
+   * vitrina del profesional, y queda pendiente de despacho.
+   *
+   * PASA POR EL SCHEMA y no solo por el FormData porque es entrada externa: mueve stock de CNV y decide de que
+   * ubicacion sale. El servidor ademas comprueba que de verdad haga falta (ver el service).
+   */
+  desdeLaBodega: z.coerce.boolean().optional(),
 });
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 

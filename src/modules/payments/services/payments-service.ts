@@ -151,6 +151,9 @@ export async function createCheckout(
       idempotencyKey: randomUUID(),
       items: lines,
       treatmentId: input.treatmentId ?? null,
+      // DESDE LA BODEGA, si el profesional lo pidio. El escritor sella `location_id` con la central y la venta
+      // queda pendiente de despacho; el aviso a admin sale de esa ubicacion, sin columna nueva.
+      desdeLaBodega: input.desdeLaBodega === true,
     }));
   } catch (e) {
     // SIN EXISTENCIAS NO HAY CHECKOUT (D3): la reserva va dentro de la creacion y, si no alcanza, la venta
@@ -189,6 +192,7 @@ export async function registerCashSale(
     idempotencyKey,
     items: lines,
     treatmentId: input.treatmentId ?? null,
+    desdeLaBodega: input.desdeLaBodega === true,
     anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
     actorId: user.id,
     canal: opciones.canal ?? "efectivo",

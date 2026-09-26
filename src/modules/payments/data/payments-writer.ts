@@ -243,6 +243,12 @@ export type NewTransaction = {
   items: NewOrderLine[];
   /** El tratamiento del que nace la venta. Nulo en `/pagos` (el paciente que vuelve solo a comprar). */
   treatmentId?: string | null;
+  /**
+   * COBRAR PIDIENDO DESPACHO DESDE LA BODEGA (2026-09-26). El profesional sin unidades en su vitrina cobra y
+   * CNV despacha. La venta se sella contra la bodega central, asi que su `location_id` YA DICE que hay que
+   * despacharla: no hace falta una columna nueva, y una columna nueva seria una segunda fuente del mismo hecho.
+   */
+  desdeLaBodega?: boolean;
 };
 
 export type NewCashTransaction = NewTransaction & {
@@ -274,7 +280,7 @@ export async function createTransactionWithItems(
   // paciente es del integrante. Va ANTES de abrir la transaccion: no hay nada que deshacer.
   await exigirRecaudoDeCnv(input.professionalId ?? null);
   return db.transaction(async (tx) => {
-    const locationId = await ubicacionDeLaVenta(tx, input.professionalId);
+    const locationId = await ubicacionDeLaVenta(tx, input.professionalId, input.desdeLaBodega === true);
     const [t] = await tx
       .insert(transactions)
       .values({
@@ -482,7 +488,7 @@ export async function createPaidCashTransaction(
         if ((await anularCheckout(id, input.actorId ?? null, tx)) === "anulado") linksAnulados.push(id);
       }
     }
-    const locationId = await ubicacionDeLaVenta(tx, input.professionalId);
+    const locationId = await ubicacionDeLaVenta(tx, input.professionalId, input.desdeLaBodega === true);
     const inserted = await tx
       .insert(transactions)
       .values({

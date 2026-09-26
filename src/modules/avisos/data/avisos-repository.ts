@@ -78,6 +78,40 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
              end, null::int, null::text
         from transactions
        where transactions.status = 'paid' and ${LE_FALTA_ALGO} and ${FACTURABLE}
+      union all
+      -- ═══ PAGADA Y SIN ENTREGAR, PORQUE SALE DE LA BODEGA (2026-09-26) ═══
+      --
+      -- POR QUE ESTA RAMA EXISTE, y por que sin ella no se podia construir vender desde la bodega: el
+      -- profesional cobra, el paciente paga, y el producto NO ESTA EN SU VITRINA. Alguien en CNV tiene que
+      -- despacharlo. Sin este aviso, ese "alguien" no existe, y lo que era un bloqueo VISIBLE (no puedo vender)
+      -- se habria convertido en un olvido INVISIBLE (cobre y nadie llevo nada), que es peor.
+      --
+      -- Y LLEGA A ADMIN, no al profesional: este digest lo reciben los usuarios INTERNOS con la marca de
+      -- pendientes de ventas. Es lo correcto, porque el profesional no puede despachar desde una bodega que no
+      -- es suya; el que tiene que actuar es quien la maneja.
+      --
+      -- LA CONDICION NO NECESITA COLUMNA NUEVA: la venta ya sella location_id ("de donde sale el producto"),
+      -- asi que "sale de una ubicacion que no es la del profesional" ES el hecho de que hay que despacharla. Una
+      -- columna "por_despachar" seria una segunda fuente del mismo dato, capaz de contradecir a la primera.
+      select 'por_despachar', t.id,
+             -- DESDE CUANDO SE OPERO la venta (operated_at), con created_at de respaldo para las anteriores al
+             -- Bloque 3. NO hay columna de "cuando se pago": lo comprobe contra la base antes de escribirla, y
+             -- paid_at NO EXISTE. En una venta de consulta las dos fechas son la misma tarde.
+             --
+             -- Y OJO CON LOS BACKTICKS AQUI DENTRO: esto vive en un template SQL, asi que un backtick en un
+             -- comentario CIERRA la cadena. Me paso dos veces seguidas escribiendo esta misma rama.
+             coalesce(t.operated_at, t.created_at), t.amount,
+             'Pagada y sin entregar: el producto sale de la bodega, hay que despacharlo', null::int, null::text
+        from transactions t
+        left join inventory_locations loc on loc.id = t.location_id
+       where t.status = 'paid'
+         and coalesce(t.fulfillment_state, 'pendiente') = 'pendiente'
+         and t.professional_id is not null
+         and t.location_id is not null
+         -- La ubicacion de la venta NO es la del profesional que la hizo.
+         and coalesce(loc.professional_id, '00000000-0000-0000-0000-000000000000'::uuid) is distinct from t.professional_id
+         and t.cancelled_at is null
+         and t.review_reason is null
     )
     select p.tipo, p.transaction_id, p.desde::text as desde, p.amount::text as monto,
            p.dias_habiles, p.subclave,

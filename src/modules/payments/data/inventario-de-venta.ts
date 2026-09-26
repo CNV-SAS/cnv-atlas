@@ -48,8 +48,18 @@ export class InventarioDeVentaError extends Error {
 export async function ubicacionDeLaVenta(
   ex: Ejecutor,
   professionalId: string | null,
+  /**
+   * DESDE LA BODEGA, a pedido (Santiago, 2026-09-26). El profesional cuya vitrina esta en cero puede cobrar y
+   * pedir que CNV despache: el producto existe, solo no lo tiene el en la mano.
+   *
+   * ES EXPLICITO Y NO AUTOMATICO A PROPOSITO. Caer a central "cuando no alcance" habria hecho que una venta
+   * saliera de la bodega SIN QUE NADIE LO DECIDIERA, y la diferencia importa: si sale de su vitrina, el producto
+   * se lo entrega al paciente ahi mismo; si sale de la bodega, alguien en CNV tiene que despacharlo. Un cambio
+   * de ubicacion en silencio es un producto que nadie lleva.
+   */
+  desdeLaBodega = false,
 ): Promise<string | null> {
-  if (professionalId) {
+  if (professionalId && !desdeLaBodega) {
     const [propia] = await ex.execute<{ id: string }>(sql`
       select id from inventory_locations
        where professional_id = ${professionalId} and is_active limit 1`);
