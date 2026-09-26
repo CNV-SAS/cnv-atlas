@@ -6,6 +6,8 @@ import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { requireUser } from "@/modules/auth/session";
+import { ModalidadDelIntegrante } from "@/modules/payments/components/modalidad-del-integrante";
+import { leerModalidad } from "@/modules/payments/data/modalidad-writer";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 import { BankAccountForm, TaxIdentityForm } from "@/modules/professionals/components/tax-status-form";
 import { PerfilTabs } from "@/modules/professionals/components/perfil-tabs";
@@ -67,9 +69,10 @@ export default async function PerfilPage() {
   const professionalId = await getProfessionalProfileIdByUser(user.id);
   if (!professionalId) redirect("/no-autorizado");
 
-  const [perfil, view] = await Promise.all([
+  const [perfil, view, modalidad] = await Promise.all([
     getPerfilDelIntegrante(professionalId, user.id),
     getTaxStatusView(professionalId),
+    leerModalidad(professionalId),
   ]);
   if (!perfil) redirect("/no-autorizado");
 
@@ -183,6 +186,27 @@ export default async function PerfilPage() {
               </p>
             ) : null}
             <TaxIdentityForm professionalId={professionalId} current={view.fields} />
+
+            {/* ═══ SU MODALIDAD, EN SOLO LECTURA ═══ Las dos cards son texto del modelo comercial §13, y el
+                propio §13 dice quien decide: "La modalidad activa la asigna un administrador de CNV". Asi que
+                aqui se VE cual le aplica y por que las dos se diferencian, y no se ofrece cambiarla: no es una
+                preferencia suya, decide quien le factura al paciente y si su margen lleva retencion. */}
+            <div className="flex flex-col gap-3 border-t border-border pt-4">
+              <h3 className="font-bold">Tu modalidad de consignación</h3>
+              <p className="text-sm text-muted-foreground">
+                La asigna un administrador de CNV. Las dos te dejan el mismo margen del 20 %: lo que cambia es
+                la operación, el riesgo y la carga administrativa. Si quieres cambiarla, escríbele a un
+                administrador.
+              </p>
+              <ModalidadDelIntegrante
+                professionalId={professionalId}
+                modalidad={modalidad.modalidad}
+                rigeDesde={modalidad.rigeDesde}
+                pendiente={modalidad.pendiente}
+                proximoCorte={modalidad.proximoCorte}
+                puedeCambiar={false}
+              />
+            </div>
           </Panel>
         }
         bancaria={

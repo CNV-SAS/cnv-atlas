@@ -1240,6 +1240,27 @@
       "when": 1791952646103,
       "tag": "0176_reversion_parcial_por_caso",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1791952706103,
+      "tag": "0177_celular_y_consultorio",
+      "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1791952766103,
+      "tag": "0178_modalidad_con_vigencia",
+      "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1791952826103,
+      "tag": "0179_adjuntos_del_integrante",
+      "breakpoints": true
     }
   ]
 }

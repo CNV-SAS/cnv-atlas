@@ -73,6 +73,47 @@ export const professionalCommissionRates = pgTable(
 );
 
 /**
+ * LA MODALIDAD DEL INTEGRANTE, CON VIGENCIA (0178).
+ *
+ * POR QUE CON VIGENCIA Y NO UNA COLUMNA, que es lo que decide el diseño: el modelo comercial §2 dice que el
+ * cambio "surte efecto al inicio del siguiente periodo de corte" y que "el periodo en curso se cierra bajo la
+ * modalidad anterior, PARA NO PARTIR UNA LIQUIDACION EN DOS REGIMENES". Una columna no puede cumplir eso: al
+ * cambiarla, las ventas ya hechas del periodo en curso se leerian bajo el regimen nuevo.
+ *
+ * SIN FILA = COMISION, asi que ningun integrante existente necesita backfill. `validFrom` NO es la fecha del
+ * cambio: es el inicio del siguiente corte, que calcula `payments/modalidad.ts` porque el corte no es el
+ * mismo en las dos modalidades (comision liquida mensual, distribucion corta quincenal).
+ */
+export const professionalModalities = pgTable(
+  "professional_modalities",
+  {
+    id: pk(),
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+    /** 'comision' | 'distribucion' (CHECK en la migracion). */
+    modality: text("modality").notNull(),
+    /** El inicio del CORTE en que empieza a regir, no cuando admin pulso el boton. */
+    validFrom: date("valid_from").notNull(),
+    /** null = vigente. */
+    validTo: date("valid_to"),
+    decidedBy: uuid("decided_by").references(() => profiles.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Que admin verifico los requisitos de Distribucion (§2). La base NO los valida: dos no los sabe Atlas. */
+    requisitosVerificadosAt: timestamp("requisitos_verificados_at", { withTimezone: true }),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  // UNA SOLA VIGENTE POR PROFESIONAL, por la base: dos vigentes harian que "su modalidad" tuviera dos
+  // respuestas y el sellado de una venta elegiria una cualquiera.
+  (t) => [
+    uniqueIndex("prof_modalidad_una_vigente")
+      .on(t.professionalId)
+      .where(sql`valid_to IS NULL`),
+  ],
+);
+
+/**
  * LA PARTICIPACION DEL PROVEEDOR EXTERNO, POR PRODUCTO Y CON VIGENCIA.
  *
  * SOLO LLEVA LA DEL PROVEEDOR. La del Integrante no va aqui (es suya y vale para todos los productos) y

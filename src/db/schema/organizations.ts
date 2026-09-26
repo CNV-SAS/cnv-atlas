@@ -131,6 +131,13 @@ export const professionalProfiles = pgTable("professional_profiles", {
   bankAccountNumber: text("bank_account_number"),
   bankAccountHolderName: text("bank_account_holder_name"),
   bankAccountHolderDocument: text("bank_account_holder_document"),
+  // ── LO QUE EL INTEGRANTE SI EDITA DE SI MISMO (0177) ──
+  // El celular y donde atiende son suyos y cambian; el nombre, el correo y la profesion los pone admin. El
+  // consultorio va aqui como DATO DE CONTACTO y no como entidad: la ubicacion que gobierna inventario es
+  // inventory_locations, y una tabla de sedes sin nada colgando de ella seria una relacion para un texto.
+  phone: text("phone"),
+  officeAddress: text("office_address"),
+  officeCity: text("office_city"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -158,6 +165,38 @@ export const professionalDocumentSignatures = pgTable(
     unique("professional_document_signatures_prof_doc_unique").on(t.professionalId, t.documentType),
     index("professional_document_signatures_prof_idx").on(t.professionalId),
   ],
+);
+
+// ═══ ADJUNTOS DEL INTEGRANTE, CON HISTORIAL (0179) ═══
+//
+// El RUT era UNA RUTA en la fila del profesional: subir uno nuevo pisaba la del anterior y no quedaba
+// historial. GENERICA desde el principio, con el precedente de professional_document_signatures: el RUT es el
+// primer adjunto, no el unico. `professional_profiles.rut_path` se queda como CACHE del vigente (lo leen el
+// gate de la liquidacion, la cola de verificacion y /rut/[id]); la fuente de verdad es esta tabla.
+export const professionalAttachments = pgTable(
+  "professional_attachments",
+  {
+    id: pk(),
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+    /** 'rut' | 'certificado_bancario' | 'tarjeta_profesional' | 'diploma' | 'otro' (CHECK en la migracion). */
+    kind: text("kind").notNull(),
+    /** Ruta en el bucket privado professional-documents. NO es una URL publica. */
+    path: text("path").notNull(),
+    originalName: text("original_name"),
+    contentType: text("content_type"),
+    sizeBytes: integer("size_bytes"),
+    /** La fecha que TRAE el documento, distinta de cuando se subio: el RUT envejece por la suya. */
+    documentDate: date("document_date"),
+    uploadedBy: uuid("uploaded_by").references(() => profiles.id),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Reemplazado por otro. No se borra: el historial es el punto. */
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    supersededBy: uuid("superseded_by"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("prof_adjunto_prof_idx").on(t.professionalId, t.uploadedAt.desc())],
 );
 
 export const professionalCertifications = pgTable("professional_certifications", {

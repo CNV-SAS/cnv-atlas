@@ -1,5 +1,6 @@
 import "server-only";
 import { wompiEnvDeLaLlave } from "../ambiente";
+import { MODALIDAD_POR_DEFECTO, modalidadEnLaFecha, type Modalidad } from "../modalidad";
 import { RepartoInvalidoError, repartir } from "../reparto";
 import { InventarioDeVentaError, reservarVenta, ubicacionDeLaVenta } from "./inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
@@ -103,6 +104,41 @@ export async function sellarContabilidadDeLaVenta(
     }
   }
 
+  // ── LA MODALIDAD DEL INTEGRANTE, TAMBIEN CON VIGENCIA Y EN LA FECHA DE LA VENTA (0178) ──
+  //
+  // Antes se sellaba `modality: "comision"` a mano, porque Distribucion no existia. Ahora se LEE, y se lee
+  // por la fecha de la venta y no "la de hoy": el cambio de modalidad rige desde el inicio del siguiente
+  // corte justamente para que lo ya vendido se liquide entero bajo el regimen anterior (modelo §2). Leer la
+  // de hoy partiria esa liquidacion en dos, que es lo que la regla prohibe.
+  //
+  // SIN FILA = COMISION, que es lo que eran todos antes de esta migracion.
+  // EL DIA VIENE EN LA MISMA CONSULTA y la eleccion la hace el modulo puro, en vez de repetir el filtro de
+  // vigencia en SQL como hacen la tasa y el proveedor. No es estilo: "cual vigencia aplica en esta fecha" es
+  // UNA regla, y tenerla en dos sitios (aqui en SQL y en el lector que muestra el historial) es como se
+  // desincronizan. `dia` es una expresion SQL, no una cadena, asi que se pide su texto aqui.
+  let modalidad: Modalidad = MODALIDAD_POR_DEFECTO;
+  if (t.professionalId) {
+    const vigencias = await tx.execute<{
+      modality: string;
+      valid_from: string;
+      valid_to: string | null;
+      dia: string;
+    }>(sql`
+      select m.modality, m.valid_from::text as valid_from, m.valid_to::text as valid_to,
+             (${dia})::text as dia
+        from professional_modalities m where m.professional_id = ${t.professionalId}`);
+    if (vigencias.length > 0) {
+      modalidad = modalidadEnLaFecha(
+        vigencias.map((v) => ({
+          modality: v.modality as Modalidad,
+          validFrom: v.valid_from,
+          validTo: v.valid_to,
+        })),
+        vigencias[0].dia,
+      );
+    }
+  }
+
   // Una venta sin lineas no la crea ningun camino actual; si llegara una, se reparte su total sin proveedor
   // en vez de dejar el pago sin contabilidad.
   const tramos: { lineaId: string | null; base: number; proveedor: number }[] =
@@ -145,8 +181,7 @@ export async function sellarContabilidadDeLaVenta(
           vatRate: String(IVA_RATE),
           commissionRate: String(rate),
           supplierShare: String(tramo.proveedor),
-          // La unica modalidad que existe hasta el Bloque 5 (Distribucion).
-          modality: "comision",
+          modality: modalidad,
           baseAmount: String(Math.round(tramo.base * 100) / 100),
           commissionAmount: String(r.montoIntegrante),
           supplierAmount: String(r.montoProveedor),
@@ -159,7 +194,23 @@ export async function sellarContabilidadDeLaVenta(
   comision = Math.round(comision * 100) / 100;
   cnv = Math.round(cnv * 100) / 100;
 
-  if (t.professionalId) {
+  // ── LA COMISION SOLO EXISTE EN MODALIDAD COMISION, y esto es lo que hace que el cambio MANDE ──
+  //
+  // El reparto ARITMETICO es el mismo en las dos (el integrante se queda con su 20 % de la base), pero la
+  // DIRECCION DE LA OBLIGACION se invierte, y eso es lo que decide si esta fila existe:
+  //
+  //   · COMISION: CNV le cobro al paciente, asi que LE DEBE al integrante su parte. La fila es una cuenta
+  //     POR PAGAR y es lo que /comercial liquida.
+  //   · DISTRIBUCION: el paciente le pago A EL, y su margen es un DESCUENTO COMERCIAL que ya se quedo. No
+  //     hay nada que liquidarle; al contrario, el le debe a CNV el precio base menos su descuento, mas IVA
+  //     (modelo §4). Crear la fila aqui seria prometerle un giro que nadie le debe, y ademas lo haria
+  //     aparecer en la liquidacion mensual, que en Distribucion no le aplica.
+  //
+  // LO QUE CNV LE VA A FACTURAR NO NECESITA TABLA NUEVA: es la suma de `cnv_amount` de sus lineas selladas
+  // con modalidad 'distribucion' en el corte, mas IVA, y la factura quincenal las agrupa (el modelo pide
+  // justamente "referenciar el detalle de las ventas que la componen"). Una tabla aparte seria una segunda
+  // fuente del mismo numero, capaz de contradecir a la linea.
+  if (t.professionalId && modalidad === "comision") {
     await tx.insert(professionalRevenue).values({
       transactionId: t.id,
       professionalId: t.professionalId,
