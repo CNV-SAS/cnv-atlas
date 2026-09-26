@@ -47,12 +47,20 @@ describe("parseBisXlsx", () => {
     expect(res.error.message).toContain("XLSX");
   });
 
-  it("rechaza un archivo sin la hoja Measures", async () => {
+  // ESTE TEST CAMBIO DE EXPECTATIVA EL 2026-09-25, y el cambio es el punto: antes exigia que el mensaje
+  // NOMBRARA la hoja ("Measures"), y eso era pedirle al profesional que supiera como se llaman las hojas de un
+  // archivo que no abrio. Con esa frase no hay nada que pueda hacer. Ahora el mensaje habla de lo que el si
+  // puede reconocer (que archivo exporto), y por eso se comprueba que YA NO diga "Measures".
+  //
+  // Y la hoja ya no se busca por nombre sino por su huella de columnas, porque el export "medidas + datos"
+  // llama a la hoja de medidas con el NOMBRE DEL PACIENTE. Ver `biody-tres-exports.test.ts`.
+  it("rechaza un archivo sin ninguna hoja de mediciones, sin hablar de nombres de hoja", async () => {
     const buf = await makeWorkbookBuffer("Otra", [["a", "b"], [1, 2]]);
     const res = await parseBisXlsx(buf);
     expect(res.ok).toBe(false);
     if (res.ok) return;
-    expect(res.error.message).toContain(BIS_SHEET_NAME);
+    expect(res.error.message).toContain("bioimpedancia");
+    expect(res.error.message).not.toContain(BIS_SHEET_NAME);
   });
 
   it("rechaza una hoja Measures sin filas de datos (solo encabezados)", async () => {

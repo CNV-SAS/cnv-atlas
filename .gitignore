@@ -66,3 +66,7 @@ limpieza-demo.sql
 
 # Exportaciones del HTML con datos de pacientes (importacion desde el HTML): nunca al repositorio.
 atlas-exportacion-*.json
+
+# Exports del Biody Manager que Santiago deja para diagnosticar: traen nombre, correo y medidas de
+# pacientes (aunque sean de prueba). Se miran en local y NUNCA se versionan.
+docs/entregas/exports/*.xlsx

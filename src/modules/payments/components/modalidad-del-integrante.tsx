@@ -14,7 +14,10 @@ import { MODALIDAD_LABEL, type Modalidad } from "../modalidad";
 //
 // LAS DOS CARDS SON TEXTO DEL MODELO COMERCIAL §13, no redaccion nuestra: ese texto esta validado y dice cosas
 // con consecuencia tributaria y legal (quien practica retencion, quien asume el retracto). Se porta, no se
-// mejora. La nota de diseño del propio §13 dice ademas que las dos dejan el MISMO margen del 20 % y que "las
+// mejora, SALVO LA PERSONA GRAMATICAL: el §13 esta escrito en segunda persona ("usted cobra y factura") porque
+// ahi se le habla al Integrante, y esta pantalla es de ADMIN. Al pasarlo a tercera quedo lleno de "el" y "le",
+// que en una lista de viñetas no dicen de quien se habla (Santiago, 2026-09-25); se nombra "el Integrante", que
+// es como lo llama el modelo. La nota de diseño del propio §13 dice ademas que las dos dejan el MISMO margen del 20 % y que "las
 // cards deben transmitir eso, para que la decision se tome por el criterio correcto"; por eso el margen no se
 // usa como argumento de venta de ninguna de las dos.
 //
@@ -32,42 +35,42 @@ const REQUISITOS = [
 
 const CARDS: Record<Modalidad, { encabezado: string; explicacion: string; aFavor: string[]; enContra: string[] }> = {
   comision: {
-    encabezado: "CNV cobra al paciente y él recibe una comisión.",
+    encabezado: "CNV cobra al paciente y el Integrante recibe una comisión.",
     explicacion:
-      "El paciente paga directamente a CNV por el enlace de pago que genera Atlas. CNV emite la factura al paciente. Él recibe su comisión en la liquidación mensual.",
+      "El paciente paga directamente a CNV por el enlace de pago que genera Atlas. CNV emite la factura al paciente. El Integrante recibe su comisión en la liquidación mensual.",
     aFavor: [
-      "No maneja facturación al paciente, ni notas crédito, ni pagos a CNV.",
+      "El Integrante no maneja facturación al paciente, ni notas crédito, ni pagos a CNV.",
       "No requiere ser responsable de IVA.",
       "Sin cupo de crédito ni plazos de pago que cumplir.",
       "No asume el riesgo de la relación de consumo con el paciente (garantías, retracto en ventas a domicilio).",
       "No necesita capital de trabajo: nunca le compra inventario a CNV.",
     ],
     enContra: [
-      "Si él también le cobra al paciente por consulta u otros productos, el paciente hace dos pagos a dos destinatarios.",
+      "Si el Integrante también le cobra al paciente por consulta u otros productos, el paciente hace dos pagos a dos destinatarios.",
       "No define el precio de venta al público.",
-      "CNV le practica retención en la fuente sobre su comisión (10 % u 11 % según su situación).",
-      "Si es responsable de IVA, su comisión lleva IVA del 19 % y debe declararlo; si está obligado a facturar, debe emitirle factura a CNV por cada liquidación.",
+      "CNV le practica retención en la fuente al Integrante sobre su comisión (10 % u 11 % según su situación).",
+      "Si el Integrante es responsable de IVA, su comisión lleva IVA del 19 % y debe declararlo; si está obligado a facturar, debe emitirle factura a CNV por cada liquidación.",
     ],
   },
   distribucion: {
-    encabezado: "Él cobra y factura al paciente, y CNV le factura a él.",
+    encabezado: "El Integrante cobra y factura al paciente, y CNV le factura a él.",
     explicacion:
-      "El paciente le paga a él, y él le factura con su propia facturación, en un solo documento junto con sus demás servicios. Cada quincena CNV le factura los productos vendidos al precio base menos su descuento comercial, más IVA.",
+      "El paciente le paga al Integrante, y él le factura con su propia facturación, en un solo documento junto con sus demás servicios. Cada quincena CNV le factura los productos vendidos al precio base menos su descuento comercial, más IVA.",
     aFavor: [
       "El paciente hace un solo pago por todo.",
-      "Él define el precio final de venta.",
+      "El Integrante define el precio final de venta.",
       "Mayor control sobre su relación comercial con el paciente.",
-      "No se le practica retención sobre su margen, porque su ganancia es un descuento comercial y no un pago de CNV a él.",
-      "El IVA que CNV le factura es descontable para él, así que no es un costo.",
+      "Al Integrante no se le practica retención sobre su margen, porque su ganancia es un descuento comercial y no un pago de CNV a él.",
+      "El IVA que CNV le factura es descontable para el Integrante, así que no es un costo.",
       "Paga después de vender: la factura quincenal cubre solo lo efectivamente vendido en el período.",
     ],
     enContra: [
-      "Asume su propia facturación al paciente y las notas crédito de estos productos.",
+      "El Integrante asume su propia facturación al paciente y las notas crédito de estos productos.",
       "Recibe factura de CNV cada quincena y debe pagarla en el plazo acordado.",
       "Opera con un cupo de crédito que, al agotarse, suspende los despachos.",
-      "Asume la relación de consumo con el paciente: garantías, reclamos y, en ventas a domicilio, el derecho de retracto.",
-      "Requiere estar al día en sus obligaciones tributarias, porque él factura y declara el IVA de estas ventas.",
-      "Si es agente de retención, deberá practicarle retención a CNV y expedirle el certificado.",
+      "El Integrante asume la relación de consumo con el paciente: garantías, reclamos y, en ventas a domicilio, el derecho de retracto.",
+      "Requiere estar al día en sus obligaciones tributarias, porque es el Integrante quien factura y declara el IVA de estas ventas.",
+      "Si el Integrante es agente de retención, deberá practicarle retención a CNV y expedirle el certificado.",
     ],
   },
 };
@@ -83,7 +86,7 @@ function Card({ modalidad, activa }: { modalidad: Modalidad; activa: boolean }) 
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-bold">Modalidad {MODALIDAD_LABEL[modalidad]}</h3>
-        {activa ? <span className="text-xs font-medium text-primary">La que le aplica hoy</span> : null}
+        {activa ? <span className="text-xs font-medium text-primary">La que aplica hoy</span> : null}
       </div>
       <p className="font-medium">{c.encabezado}</p>
       <p className="text-muted-foreground">{c.explicacion}</p>
@@ -131,8 +134,8 @@ export function ModalidadDelIntegrante({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        Hoy le aplica <strong className="text-foreground">{MODALIDAD_LABEL[modalidad]}</strong>
-        {rigeDesde ? `, desde el ${rigeDesde}` : " (por defecto: nunca se le ha asignado otra)"}.
+        Hoy aplica <strong className="text-foreground">{MODALIDAD_LABEL[modalidad]}</strong>
+        {rigeDesde ? `, desde el ${rigeDesde}` : " (es el valor por defecto: nunca se le ha asignado otra)"}.
         {pendiente ? (
           <span className="ml-1 font-medium text-attention">
             Hay un cambio a {MODALIDAD_LABEL[pendiente.modalidad]} que empieza el {pendiente.rigeDesde}.
