@@ -67,7 +67,11 @@ export async function getTablero(): Promise<Tablero> {
       .select(
         "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, status, import_batch_id, bis_measurements(id), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
       )
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      // FUERA LOS DE PRUEBA: esto es una CIFRA (ver `patients/de-prueba.ts`, capa 1). Un profesional que se
+      // creo a si mismo como paciente para probar veia su tablero diciendo un paciente mas, y lo mismo sus
+      // pendientes. La LISTA si los muestra, marcados, porque ahi es donde se trabaja con ellos.
+      .eq("is_test", false),
     // LA PROXIMA CITA VIVE EN EL TRATAMIENTO y es EN VIVO (no sellada): es la vigente, no la del dia de
     // la consulta. Se piden cuatro y se muestran tres: asi la pantalla sabe si hay mas sin otra consulta.
     supabase

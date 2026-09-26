@@ -2,9 +2,17 @@
 
 import { getClientIp } from "@/core/http/client-ip";
 import { limitDocumentLookupByUser } from "@/core/rate-limit";
+import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
+import { reportServerError } from "@/lib/observability/report-error";
 
 import { buscarPorDocumento } from "./data/buscar-por-documento";
+import {
+  desmarcarPacienteDePrueba,
+  MarcaDePruebaError,
+  proponerPacienteDePrueba,
+  resolverPropuestaDePrueba,
+} from "./data/de-prueba-writer";
 import { guardarContactoDelPaciente } from "./data/patient-contact-writer";
 import { getPatientDetail } from "./data/patient-detail-reader";
 import { setPatientArchivado } from "./data/patients-archive-writer";
@@ -185,4 +193,98 @@ export async function guardarContactoPacienteAction(
       : "Contacto actualizado.",
     warning: null,
   };
+}
+
+// ═══ MARCAR UN PACIENTE COMO DE PRUEBA (0180, 2026-09-25) ═══
+//
+// DOS ACTOS Y DOS PERMISOS DISTINTOS, y eso es el diseño, no un detalle: el profesional PROPONE y admin
+// CONFIRMA. Marcar saca al paciente de las cifras, asi que quien se beneficia de la exclusion no puede
+// autorizarla (ver `de-prueba-writer.ts`).
+
+export type MarcaDePruebaState = { error: string | null; success: string | null; warning: string | null };
+
+/** El profesional propone. `canArchivePatient` es el permiso correcto: es el mismo alcance (su paciente). */
+export async function proponerPacienteDePruebaAction(
+  _prev: MarcaDePruebaState,
+  form: FormData,
+): Promise<MarcaDePruebaState> {
+  const user = await requireUser();
+  if (!canArchivePatient(user)) return { error: "No autorizado.", success: null, warning: null };
+  try {
+    await proponerPacienteDePrueba({
+      patientId: String(form.get("patientId") ?? ""),
+      motivo: String(form.get("motivo") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+    // NO REVALIDA: la pantalla refresca con `useFormToastAndRefresh` (regla `refresco-una-sola-vez`, y el
+    // candado de este archivo lo vigila). Con los dos, el formulario se desmonta antes de que se vea el aviso.
+    return {
+      error: null,
+      success: null,
+      // ES UN AVISO, NO UN EXITO, y el tono importa: lo que dice es que TODAVIA NO PASO NADA. Sin esa frase, el
+      // profesional cree que ya quedo fuera de las cifras y al ver el conteo igual piensa que el sistema falla.
+      warning:
+        "Propuesto como de prueba. Un administrador lo confirma; hasta entonces sigue contando en las cifras.",
+    };
+  } catch (e) {
+    if (e instanceof MarcaDePruebaError) return { error: e.message, success: null, warning: null };
+    reportServerError("paciente.proponer-de-prueba", e);
+    return { error: "No se pudo registrar la propuesta.", success: null, warning: null };
+  }
+}
+
+/** Admin resuelve: confirmar saca al paciente de las cifras, rechazar limpia la propuesta. */
+export async function resolverPropuestaDePruebaAction(
+  _prev: MarcaDePruebaState,
+  form: FormData,
+): Promise<MarcaDePruebaState> {
+  const user = await requireUser();
+  if (!canAccessAdmin(user)) return { error: "Solo un administrador confirma esto.", success: null, warning: null };
+  const confirmar = String(form.get("confirmar") ?? "") === "true";
+  try {
+    await resolverPropuestaDePrueba({
+      patientId: String(form.get("patientId") ?? ""),
+      confirmar,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+    // No revalida: la pantalla refresca (ver arriba).
+    return {
+      error: null,
+      warning: null,
+      success: confirmar
+        ? "Marcado como de prueba. Sale de las cifras y no se factura; sigue visible en la lista."
+        : "Propuesta rechazada. El paciente sigue contando como cualquier otro.",
+    };
+  } catch (e) {
+    if (e instanceof MarcaDePruebaError) return { error: e.message, success: null, warning: null };
+    reportServerError("paciente.resolver-de-prueba", e);
+    return { error: "No se pudo resolver la propuesta.", success: null, warning: null };
+  }
+}
+
+/** Desmarcar: un paciente real marcado por error vuelve a contar. Solo admin, por simetria. */
+export async function desmarcarPacienteDePruebaAction(
+  _prev: MarcaDePruebaState,
+  form: FormData,
+): Promise<MarcaDePruebaState> {
+  const user = await requireUser();
+  if (!canAccessAdmin(user)) return { error: "Solo un administrador puede desmarcarlo.", success: null, warning: null };
+  try {
+    await desmarcarPacienteDePrueba({
+      patientId: String(form.get("patientId") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+    // No revalida: la pantalla refresca (ver arriba).
+    return { error: null, success: "Ya no está marcado como de prueba. Vuelve a contar en las cifras.", warning: null };
+  } catch (e) {
+    if (e instanceof MarcaDePruebaError) return { error: e.message, success: null, warning: null };
+    reportServerError("paciente.desmarcar-de-prueba", e);
+    return { error: "No se pudo desmarcarlo.", success: null, warning: null };
+  }
 }

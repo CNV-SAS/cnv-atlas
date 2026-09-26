@@ -85,6 +85,17 @@ export type PatientListItem = {
    */
   sinAutorizacionVigente: boolean;
   /**
+   * DE PRUEBA, Y SE MUESTRA AQUI A PROPOSITO. La lista es una superficie de TRABAJO (capa 3 de
+   * `de-prueba.ts`), asi que el paciente de prueba sigue en ella: si desapareciera, el profesional no
+   * podria usarlo para probar, que es para lo que lo creo. Lo que no hace es contar en las cifras.
+   *
+   * `propuestoDePrueba` es distinto: el profesional lo propuso y admin no lo ha confirmado, asi que TODAVIA
+   * cuenta en todo. Mezclarlos haria que la lista dijera "de prueba" y la cifra lo siguiera contando, que es
+   * la clase de contradiccion que ya nos costo un diagnostico mal leido.
+   */
+  esDePrueba: boolean;
+  propuestoDePrueba: boolean;
+  /**
    * QUE LE FALTA, dicho como accion ("Montar BIS", "Generar diagnostico"), y cuantas evaluaciones mas
    * suyas estan paradas. Instruccion de Santiago (2026-09-10): la columna dice la ACCION, no el estado.
    * La regla vive en `pendientes.ts`, que es puro.
@@ -122,6 +133,11 @@ export type PatientDetail = {
   documentType: DocumentType;
   documentNumber: string;
   status: string;
+  /** De prueba (confirmado por admin): fuera de las cifras y de la facturacion, visible aqui. */
+  esDePrueba: boolean;
+  /** Propuesto por el profesional y sin confirmar: TODAVIA cuenta en todo. Ver `de-prueba.ts`. */
+  propuestoDePrueba: boolean;
+  motivoDePrueba: string | null;
   firstName: string;
   lastName: string;
   birthDate: string | null;

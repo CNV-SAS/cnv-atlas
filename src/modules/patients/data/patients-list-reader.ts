@@ -37,7 +37,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // embed mas en la consulta que ya se hacia, no una consulta nueva por paciente.
       // `created_at` DEL PACIENTE (no de su evaluacion): es la columna "Fecha de creacion", y la tiene
       // tambien quien no tiene ninguna evaluacion, que es justo cuando mas informa.
-      "id, created_at, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
+      "id, created_at, document_type, document_number, status, is_test, test_proposed_at, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -136,6 +136,9 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
           })),
         !canCreateEvaluation(vigentes).ok,
       ),
+      // LA LISTA SI LOS MUESTRA (capa de TRABAJO), marcados. El conteo del tablero no los cuenta.
+      esDePrueba: row.is_test === true,
+      propuestoDePrueba: row.is_test !== true && row.test_proposed_at != null,
     } satisfies PatientListItem;
   });
 
