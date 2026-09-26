@@ -232,6 +232,14 @@ describe.skipIf(!HAS_DB)("el sellado de una venta obedece la modalidad (BD real)
     if (!HAS_DB) return;
     const { db } = await import("@/db");
     await db.execute(dsql`delete from professional_modalities where professional_id = ${professionalId}::uuid`);
+    // SE BORRAN TAMBIEN LAS VENTAS QUE ESTE TEST CREA, y la razon la aprendi el mismo dia: se acumularon 22 y
+    // ayudaron a que OTRO test (el del reporte por dia) fallara al pasar de 500 filas en un dia. Un fixture que
+    // no se limpia no ensucia solo su propio test.
+    //
+    // Los MOVIMIENTOS de inventario que dejo no se borran: son append-only por diseño y borrarlos seria saltarse
+    // justo el invariante que los protege. Es basura acotada y no la mira ningun reporte por dia.
+    await db.execute(dsql`
+      delete from transactions where alegra_invoice_number like 'ZZ-MODALIDAD-%'`);
   }, 30_000);
 });
 
