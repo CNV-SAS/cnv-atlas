@@ -19,6 +19,40 @@
 
 ---
 
+## PENDIENTE (2026-09-25) · Carril 2: borrar pacientes de prueba, con solicitud
+
+**Diferido por decision de Santiago**, despues de construir el carril 1 (marcar, que ya esta). No es un olvido:
+el carril 1 resuelve el problema entero ("que no contaminen la data") para TODOS los casos, y el borrado solo
+aplica a una parte.
+
+**Lo que hay que saber antes de retomarlo, verificado en el esquema el 2026-09-25:**
+
+- **Un paciente con diagnostico confirmado, reporte aprobado o remision enviada NO SE PUEDE BORRAR.** Seis
+  llaves dicen `ON DELETE restrict` y cuatro triggers bloquean el DELETE, no solo el UPDATE. Y **ese es el caso
+  de prueba mas comun** (el profesional que se creo a si mismo y corrio un diagnostico completo).
+- **Borrar al paciente deja una factura SIN paciente** (`transactions.patient_id` es `ON DELETE set null`): una
+  cifra de ingreso que ya no se puede explicar. Peor que dejarla.
+- Los movimientos de inventario son append-only e inmutables: borrar no los deshace.
+- **El mecanismo NO hay que diseñarlo:** `clinical_access_grants` ya tiene esa forma exacta (solicitante, rol
+  aprobador calculado al solicitar, aprobador que nunca es el solicitante, motivo NOT NULL, estados y
+  vencimiento por fecha). Se reutiliza la forma, no la tabla.
+- **Lo primero a construir es el gate**, no el borrado: la solicitud tiene que negarse sola, con el motivo
+  exacto, cuando el paciente tiene algo sellado. Sin el, admin aprueba borrados que la base va a rechazar.
+
+## PENDIENTE (2026-09-25) · El lado del RECAUDO de la modalidad Distribucion
+
+El mecanismo de la modalidad esta construido y el sellado de la venta lo obedece (candados `modalidad` y
+`modalidad-db`). Lo que falta es bloque propio:
+
+- que el paciente le pague AL INTEGRANTE y el le facture con su propia facturacion;
+- la factura quincenal de CNV al integrante (base menos su descuento comercial, mas IVA, con el detalle de las
+  ventas que la componen, que el modelo exige poder objetar);
+- y el cupo de credito que, al agotarse, suspende los despachos.
+
+**Mientras tanto no hay nada silencioso:** los dos caminos de venta (enlace de pago y efectivo) BLOQUEAN a un
+integrante en Distribucion diciendo por que y que falta. **No hay que construir la factura quincenal desde
+cero:** es la suma de `cnv_amount` de sus lineas selladas como 'distribucion' en el corte.
+
 ## HECHO (2026-09-25) · Lo que salio del smoke acumulado del 24
 
 Los cinco hallazgos de Santiago, todos cerrados. **El estado de cada uno lo dice su test, no esta linea:**

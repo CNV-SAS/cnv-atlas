@@ -1,5 +1,21 @@
 # Dos planes · depurar pacientes y el perfil del integrante
 
+> **DECIDIDO Y CONSTRUIDO EL MISMO DIA (Santiago, 2026-09-25).** Las tres decisiones y lo que quedo:
+>
+> | Decision | Lo que dijo | Estado |
+> | --- | --- | --- |
+> | 1 · Depuracion | **Carril 1 primero**: que `is_test` sea de verdad, antes del borrado | **HECHO.** Candados: `paciente-de-prueba-barrido`, `paciente-de-prueba-db` |
+> | 2 · Modalidad | **Se construye**, no solo se registra; que el cambio mande | **HECHO** el mecanismo y el sellado. Candados: `modalidad`, `modalidad-db` |
+> | 3 · Adjuntos | Tabla generica, no solo el RUT | **HECHO.** Candado: `adjuntos-del-integrante-db` |
+>
+> Migraciones 0177 a 0183. **El carril 2 (borrado con solicitud) queda dimensionado aqui y sin construir**, por
+> decision de orden, y hay UN BLOQUEANTE reportado: el lado del RECAUDO de Distribucion (que el paciente le
+> pague al integrante, su facturacion, la factura quincenal de CNV y el cupo de credito) es bloque propio. Los
+> dos caminos de venta de hoy BLOQUEAN a un integrante en Distribucion, con el motivo dicho, en vez de registrar
+> una venta cuyo significado es falso.
+>
+> El resto del documento se conserva como quedo al planear: es lo que explica por que cada cosa es asi.
+
 **Para Santiago, 2026-09-25.** Los dos dimensionados, con lo que verifiqué contra el código antes de
 proponer. Lo que no necesita decisión lo estoy construyendo mientras revisas; está marcado al final.
 
