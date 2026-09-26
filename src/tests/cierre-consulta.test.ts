@@ -17,7 +17,11 @@ const completa: EstadoConsulta = {
   protocoloComputado: true,
   protocoloEmitido: true,
   reporteEstado: "sent",
-  nutraceuticosDecision: "si",
+  // EL "SI" YA NO SE DECLARA (rediseño del 2026-09-26): la pregunta de tres opciones se retiro y lo que dice
+  // que el paciente se los llevo es la VENTA. Se deja la decision en null a proposito, para que el fixture
+  // "completa" pruebe que la venta sola cierra el pendiente.
+  nutraceuticosDecision: null,
+  hayVentaDeNutraceuticos: true,
   proximaCita: "2026-11-22",
   remisionesSinRetorno: 0,
 };
@@ -73,8 +77,32 @@ describe("pendientes del cierre", () => {
   });
 
   it("'pendiente' de nutracéuticos se lee como decisión válida, no como olvido", () => {
-    const p = con({ nutraceuticosDecision: "pendiente" }).find((x) => x.id === "nutraceuticos");
+    const p = con({ nutraceuticosDecision: "pendiente", hayVentaDeNutraceuticos: false }).find(
+      (x) => x.id === "nutraceuticos",
+    );
     expect(p?.detalle).toContain("Es una respuesta válida");
+  });
+
+  // ═══ LAS DOS VIAS QUE CIERRAN LO DE NUTRACEUTICOS (2026-09-26) ═══
+  //
+  // Antes habia UNA: contestar la pregunta. Ahora hay dos, y la primera es un HECHO y no una declaracion, que es
+  // lo que hace que nadie tenga que acordarse de marcarla.
+  it("la VENTA sola cierra el pendiente: el 'sí' no se declara, se demuestra", () => {
+    expect(ids({ nutraceuticosDecision: null, hayVentaDeNutraceuticos: true })).not.toContain("nutraceuticos");
+  });
+
+  it("y el 'no' con su motivo tambien lo cierra, sin venta", () => {
+    expect(ids({ nutraceuticosDecision: "no", hayVentaDeNutraceuticos: false })).not.toContain("nutraceuticos");
+  });
+
+  it("sin venta y sin 'no', sigue pendiente, y el texto dice las DOS salidas", () => {
+    const p = con({ nutraceuticosDecision: null, hayVentaDeNutraceuticos: false }).find(
+      (x) => x.id === "nutraceuticos",
+    );
+    expect(p).toBeDefined();
+    // Un pendiente que no dice como resolverse obliga a adivinar. Nombra la venta y el boton.
+    expect(p?.detalle).toContain("venta");
+    expect(p?.detalle).toContain("botón");
   });
 
   it("NINGÚN texto de la lista regaña: sin 'falta', sin 'debes', sin 'no hiciste'", () => {
@@ -85,6 +113,7 @@ describe("pendientes del cierre", () => {
       protocoloEmitido: false,
       reporteEstado: "draft",
       nutraceuticosDecision: null,
+      hayVentaDeNutraceuticos: false,
       proximaCita: null,
       remisionesSinRetorno: 1,
     });

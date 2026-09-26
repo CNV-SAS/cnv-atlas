@@ -13,6 +13,7 @@ import {
   type VentaDeTratamiento,
 } from "@/modules/payments/data/payments-repository";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
+import { disponibleEnCentral } from "@/modules/payments/data/inventario-de-venta";
 import { disponibleParaVender } from "@/modules/payments/services/payments-service";
 import { bloqueadaPorRevision } from "@/modules/payments/revision";
 import { qrDelLink } from "@/modules/payments/services/qr-del-link";
@@ -52,31 +53,23 @@ export async function VentaEnConsultaSection({
   evaluationId: string;
   protocol: TreatmentProtocol;
 }) {
-  // LA VENTA CUELGA DE HABER ENTREGADO LA PRESCRIPCION, igual que colgaba la entrega (2026-09-09): es un acto
-  // POSTERIOR a prescribir, y lo que marca ese momento es haberla entregado (impresa o por correo). Un gate
-  // por la confirmacion del diagnostico la dejaria inalcanzable sin dar ningun error.
+  // ═══ EL COBRO NO PIDE HABER ENTREGADO EL PLAN (Santiago, 2026-09-26) ═══
   //
-  // ── PERO DECIRLO, NO DESAPARECER (defecto reportado por Santiago, 2026-09-25) ──
+  // AQUI HABIA UN GATE: la venta no aparecia hasta que la prescripcion estuviera ENTREGADA (impresa desde
+  // Reporte/HC o enviada). Se quita por decision de Santiago, y su razon es buena: exigir entregar el reporte
+  // para poder cobrar no se sostiene cuando Reporte/HC acaba de rehacerse, y ademas el cobro con QR ocurre CON
+  // EL PACIENTE DELANTE, antes de imprimir nada.
   //
-  // Esto hacia `return null`, y el sintoma que vivio un integrante fue exactamente este: marco "el paciente
-  // SI los adquiere", y debajo NO APARECIO NADA. Ni el enlace de pago, ni un aviso, ni una caja en gris. El
-  // aviso de la pagina ("la venta se habilita cuando el paciente los adquiere") solo sale cuando la respuesta
-  // NO fue "si", asi que en el camino correcto la pantalla se quedaba muda.
+  // ── QUE SE PIERDE AL QUITARLO, verificado y no supuesto ──
   //
-  // Y la leccion estaba escrita VEINTE LINEAS MAS ABAJO, en el caso de "nada vendible": *"la leccion de la
-  // ausencia contra la fila vacia: un bloque que no esta no informa de nada"*. Se aplico a un gate y no al otro.
-  if (protocol.emisiones.length === 0) {
-    return (
-      <section className={bloqueCls("derivado")}>
-        <h3 className="text-sm font-semibold text-foreground">Venta y entrega de nutracéuticos</h3>
-        <p className="text-sm text-muted-foreground">
-          El cobro se habilita cuando le entregues el plan al paciente, porque venderle un producto es un acto
-          posterior a prescribirlo. Queda entregado cuando imprimes el plan desde{" "}
-          <span className="font-medium text-foreground">Reporte / HC</span> o cuando le envías el reporte.
-        </p>
-      </section>
-    );
-  }
+  // Solo el ORDEN "entregado antes que cobrado". Nada mas, y en particular NO se pierde la guarda de "no
+  // cobrar antes de prescribir", que era la preocupacion razonable: lo vendible sale de `protocol.nutraceuticals`
+  // (abajo, `byId`), o sea EXCLUSIVAMENTE de lo prescrito y en_consultorio. Sin prescripcion no hay nada que
+  // cobrar, y eso lo dice su propio mensaje.
+  //
+  // Lo que el gate SI hacia y ya no: impedir cobrar y no entregar nunca el plan. Eso queda como riesgo de
+  // proceso (el profesional esta con el paciente) y no de sistema; la linea que avisa "todavia no le has
+  // entregado este plan" sigue en el panel de tratamiento, donde estaba.
 
   // Vendibles = prescritos que son en_consultorio, sin duplicados por producto.
   const availById = new Map(protocol.catalog.map((c) => [c.id, c.commercialAvailability]));
@@ -121,9 +114,12 @@ export async function VentaEnConsultaSection({
 
   const user = await requireUser();
   const ids = [...byId.keys()];
-  const [catalogo, disponible, ventas, despachos, perfilPropio] = await Promise.all([
+  const [catalogo, disponible, enCentral, ventas, despachos, perfilPropio] = await Promise.all([
     nutraService.listCatalog(),
     disponibleParaVender(user, ids),
+    // LO QUE HAY EN CENTRAL, solo para poder DECIRLO: sin esto, un profesional con la vitrina en cero leia
+    // "Sin unidades disponibles" y ahi terminaba, aunque en bodega hubiera de sobra.
+    disponibleEnCentral(ids),
     listVentasDeTratamiento(protocol.treatmentId),
     getDespachosForTreatment(protocol.treatmentId),
     getProfessionalProfileIdByUser(user.id),
@@ -134,6 +130,7 @@ export async function VentaEnConsultaSection({
     name: byId.get(id) ?? "",
     unitPrice: precio.get(id) ?? null,
     disponible: disponible[id] ?? 0,
+    enCentral: enCentral[id] ?? 0,
   }));
 
   // La pagina es dinamica (requireUser): el tiempo del request es el que se quiere mostrar.

@@ -317,3 +317,24 @@ export async function disponibleDondeVende(
   if (!locationId) return Object.fromEntries(nutraceuticalIds.map((id) => [id, 0]));
   return disponiblePorProducto(locationId, nutraceuticalIds);
 }
+
+/**
+ * LO QUE HAY EN LA BODEGA CENTRAL, por producto (Santiago, 2026-09-26).
+ *
+ * POR QUE HACE FALTA UNA LECTURA APARTE: `disponibleDondeVende` mira la ubicacion DE DONDE SALDRIA la venta, y
+ * para un profesional con vitrina propia esa es la suya. Si tiene cero, la pantalla decia "Sin unidades
+ * disponibles" y ahi terminaba, aunque en central hubiera producto de sobra. El profesional quedaba bloqueado
+ * SIN SABER QUE SI HAY, que es exactamente lo que no puede pasar.
+ *
+ * Esto NO habilita vender desde central (eso mueve stock que el profesional no tiene en la mano, y necesita
+ * decidirse aparte). Solo deja DECIRLO.
+ *
+ * Devuelve {} si no hay bodega central activa: entonces no hay nada que decir y la pantalla no afirma nada.
+ */
+export async function disponibleEnCentral(nutraceuticalIds: string[]): Promise<Record<string, number>> {
+  if (nutraceuticalIds.length === 0) return {};
+  const [central] = await db.execute<{ id: string }>(sql`
+    select id from inventory_locations where kind = 'central' and is_active limit 1`);
+  if (!central) return {};
+  return disponiblePorProducto(central.id, nutraceuticalIds);
+}
