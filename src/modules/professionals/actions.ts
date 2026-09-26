@@ -8,13 +8,14 @@ import { requireUser } from "@/modules/auth/session";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
 import { getRutPath, isPdfBuffer, uploadRutPdf } from "./data/rut-storage";
-import { documentoTributarioGuardado, saveBankAccount, saveTaxIdentity } from "./data/tax-status-writer";
+import { documentoTributarioGuardado, saveBankAccount, saveMisDatos, saveTaxIdentity } from "./data/tax-status-writer";
 import { getProfessionalEmail } from "./data/tax-verification-reader";
 import { rejectTaxRut, verifyTaxStatus } from "./data/tax-verification-writer";
 import { canVerifyTaxStatus } from "./policies/can-verify-tax-status";
 import { bankHolderMatchesIntegrante, rutNeedsRenewal, validateTaxIdentity } from "./tax-rules";
 import {
   bankAccountSchema,
+  misDatosSchema,
   taxIdentitySchema,
   taxRejectSchema,
   taxVerifySchema,
@@ -96,7 +97,7 @@ export async function saveTaxIdentityAction(
     }
   }
 
-  await saveTaxIdentity(professionalId, data, newRutPath);
+  await saveTaxIdentity(professionalId, data, newRutPath, user.id);
   revalidatePath("/perfil");
   revalidatePath("/dashboard");
   return { error: null, success: true };
@@ -212,6 +213,27 @@ export async function rejectTaxRutAction(
 
   after(() => notifyTaxStatus(d.professionalId, "rejected", d.reason));
   revalidatePath("/verificaciones");
+  revalidatePath("/perfil");
+  return { error: null, success: true };
+}
+
+/** Sus datos de contacto. El unico formulario del perfil que edita lo que es SUYO y cambia. */
+export async function saveMisDatosAction(
+  _prev: TaxStatusFormState,
+  formData: FormData,
+): Promise<TaxStatusFormState> {
+  const user = await requireUser();
+  const professionalId = await getProfessionalProfileIdByUser(user.id);
+  if (!professionalId) return fail("Tu cuenta no tiene un perfil profesional.");
+
+  const parsed = misDatosSchema.safeParse({
+    phone: str(formData, "phone"),
+    officeAddress: str(formData, "officeAddress"),
+    officeCity: str(formData, "officeCity"),
+  });
+  if (!parsed.success) return fail("Revisa los datos: alguno es demasiado largo.");
+
+  await saveMisDatos(professionalId, parsed.data);
   revalidatePath("/perfil");
   return { error: null, success: true };
 }

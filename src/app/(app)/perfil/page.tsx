@@ -8,8 +8,9 @@ import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { requireUser } from "@/modules/auth/session";
 import { ModalidadDelIntegrante } from "@/modules/payments/components/modalidad-del-integrante";
 import { leerModalidad } from "@/modules/payments/data/modalidad-writer";
+import { listarAdjuntos, registrarRutQueYaEstaba } from "@/modules/professionals/data/adjuntos-writer";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
-import { BankAccountForm, TaxIdentityForm } from "@/modules/professionals/components/tax-status-form";
+import { BankAccountForm, MisDatosForm, TaxIdentityForm } from "@/modules/professionals/components/tax-status-form";
 import { PerfilTabs } from "@/modules/professionals/components/perfil-tabs";
 import { getPerfilDelIntegrante } from "@/modules/professionals/data/perfil-reader";
 import { getTaxStatusView } from "@/modules/professionals/data/tax-status-reader";
@@ -47,6 +48,17 @@ const DOCUMENTO: Record<string, string> = {
   NIT: "NIT",
 };
 
+const TIPO_DE_ADJUNTO: Record<string, string> = {
+  rut: "RUT",
+  certificado_bancario: "Certificado bancario",
+  tarjeta_profesional: "Tarjeta profesional",
+  diploma: "Diploma",
+  otro: "Otro documento",
+};
+
+const fechaCorta = (iso: string | null) =>
+  iso == null ? "" : new Date(iso).toLocaleDateString("es-CO", { timeZone: "America/Bogota" });
+
 const TIPO_DE_DOCUMENTO_FIRMADO: Record<string, string> = {
   anexo3: "Anexo 3 · Tratamiento",
 };
@@ -69,10 +81,16 @@ export default async function PerfilPage() {
   const professionalId = await getProfessionalProfileIdByUser(user.id);
   if (!professionalId) redirect("/no-autorizado");
 
-  const [perfil, view, modalidad] = await Promise.all([
+  // EL RUT QUE YA ESTABA gana su fila de historial la primera vez que alguien mira. Sin esto, un integrante que
+  // subio su RUT antes de la 0179 veria la pestaña diciendo "no has subido ninguno" junto al enlace para verlo,
+  // que es la contradiccion que hay que evitar. Va antes de leer, para que la lectura ya lo incluya.
+  await registrarRutQueYaEstaba(professionalId);
+
+  const [perfil, view, modalidad, adjuntos] = await Promise.all([
     getPerfilDelIntegrante(professionalId, user.id),
     getTaxStatusView(professionalId),
     leerModalidad(professionalId),
+    listarAdjuntos(professionalId),
   ]);
   if (!perfil) redirect("/no-autorizado");
 
@@ -161,6 +179,17 @@ export default async function PerfilPage() {
                 nota="Se edita en la pestaña Tributaria, que es donde lo declaras."
               />
             </div>
+
+            {/* ═══ Y LO QUE SI EDITA (0177) ═══ En su propio formulario y no junto a los datos fijos: si
+                estuvieran mezclados habria que deshabilitar los de arriba, y un campo deshabilitado dentro de
+                un formulario invita a intentar escribirlo. Aqui el formulario contiene solo lo que se guarda. */}
+            <div className="flex flex-col gap-3 border-t border-border pt-4">
+              <h3 className="font-bold">Tu contacto y tu consultorio</h3>
+              <p className="text-sm text-muted-foreground">
+                Estos sí los cambias tú, cuando cambien.
+              </p>
+              <MisDatosForm current={perfil.contacto} />
+            </div>
           </Panel>
         }
         tributaria={
@@ -215,31 +244,53 @@ export default async function PerfilPage() {
           </Panel>
         }
         adjuntos={
-          <Panel titulo="Adjuntos">
-            {/* PENDIENTE DE DECISION, y se dice en vez de dejar la pestaña vacía: hoy solo se guarda EL ULTIMO
-                RUT (una sola ruta en la fila), así que no hay historial que mostrar. Construirlo es la
-                decisión 2 del plan del 2026-09-25. */}
+          <Panel titulo="Tus documentos">
             <p className="text-sm text-muted-foreground">
-              Aquí va a vivir el historial de tus documentos. Hoy Atlas guarda tu RUT vigente
-              {view.fields.rutUploaded ? (
-                <>
-                  {" "}
-                  (
-                  <a
-                    href={`/rut/${professionalId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary underline"
-                  >
-                    verlo
-                  </a>
-                  )
-                </>
-              ) : (
-                " (todavía no has subido ninguno)"
-              )}
-              , y los anteriores no quedan listados. El historial está dimensionado y espera una decisión.
+              El vigente de cada tipo y los anteriores. Un documento no se borra cuando subes uno nuevo: queda
+              como reemplazado, con su fecha, porque lo que se verificó sobre él sigue explicando decisiones que
+              ya se tomaron.
             </p>
+            {adjuntos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Todavía no has subido ningún documento. El RUT se sube en la pestaña Tributaria.
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-2 text-sm">
+                {adjuntos.map((a) => (
+                  <li key={a.id} className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-2">
+                    <span>
+                      {TIPO_DE_ADJUNTO[a.kind] ?? a.kind}
+                      {a.originalName ? <span className="text-muted-foreground"> · {a.originalName}</span> : null}
+                      {a.documentDate ? (
+                        <span className="text-muted-foreground"> · del {a.documentDate}</span>
+                      ) : null}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      {a.vigente ? (
+                        <span className="text-xs font-medium text-primary">Vigente</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Reemplazado el {fechaCorta(a.reemplazadoEn)}
+                        </span>
+                      )}
+                      {/* SOLO EL VIGENTE SE PUEDE ABRIR: la ruta /rut/[id] sirve el que dice el perfil, que es
+                          el vigente. Ofrecer el enlace en uno reemplazado abriria el nuevo, diciendo algo
+                          falso. Servir los anteriores es trabajo aparte y no lo pidio nadie. */}
+                      {a.vigente && a.kind === "rut" ? (
+                        <a
+                          href={`/rut/${professionalId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary underline"
+                        >
+                          Verlo
+                        </a>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Panel>
         }
       />

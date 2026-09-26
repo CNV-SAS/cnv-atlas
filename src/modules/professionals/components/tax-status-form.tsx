@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { saveBankAccountAction, saveTaxIdentityAction } from "../actions";
+import { saveBankAccountAction, saveMisDatosAction, saveTaxIdentityAction } from "../actions";
 import type { TaxStatusFields, TaxStatusFormState } from "../validations";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
@@ -229,6 +229,63 @@ export function BankAccountForm({ current }: { current: TaxStatusFields }) {
 
       <Button type="submit" disabled={pending} className="self-start">
         {pending ? "Guardando..." : "Guardar mi cuenta"}
+      </Button>
+    </form>
+  );
+}
+
+/**
+ * Sus datos de contacto: lo unico de la pestaña "Mis datos" que el edita.
+ *
+ * SEPARADO DE LOS DATOS FIJOS a proposito. Los tres campos de arriba (nombre, correo, profesion) los pone un
+ * administrador y se ven como datos; si estuvieran en el mismo formulario habria que deshabilitarlos, y un
+ * campo deshabilitado dentro de un formulario invita a intentar escribirlo. Aqui el formulario contiene solo lo
+ * que de verdad se puede guardar.
+ */
+export function MisDatosForm({
+  current,
+}: {
+  current: { phone: string | null; officeAddress: string | null; officeCity: string | null };
+}) {
+  const [state, action, pending] = useActionState(saveMisDatosAction, initial);
+  useAvisoDeGuardado(state, "Datos guardados.");
+
+  return (
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="phone" className="text-xs">
+            Celular
+          </Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            defaultValue={current.phone ?? ""}
+            className="h-9"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="officeCity" className="text-xs">
+            Ciudad del consultorio
+          </Label>
+          <Input id="officeCity" name="officeCity" defaultValue={current.officeCity ?? ""} className="h-9" />
+        </div>
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <Label htmlFor="officeAddress" className="text-xs">
+            Dirección del consultorio
+          </Label>
+          <Input
+            id="officeAddress"
+            name="officeAddress"
+            defaultValue={current.officeAddress ?? ""}
+            className="h-9"
+          />
+        </div>
+      </div>
+      <Button type="submit" disabled={pending} className="self-start">
+        {pending ? "Guardando..." : "Guardar mis datos"}
       </Button>
     </form>
   );

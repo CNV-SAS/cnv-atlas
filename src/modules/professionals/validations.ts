@@ -94,3 +94,28 @@ export const taxRejectSchema = z.object({
   professionalId: z.guid(),
   reason: z.string().trim().min(5).max(500),
 });
+
+// ═══ LO QUE EL INTEGRANTE SI EDITA DE SI MISMO (0177, 2026-09-25) ═══
+//
+// Su celular y donde atiende. El nombre, el correo y la profesion NO estan aqui a proposito: los registra un
+// administrador, y la pestaña los muestra como datos con el aviso de a quien escribirle. Un campo editable que
+// al guardar no cambia nada seria peor que un dato fijo.
+//
+// LOS TRES SON OPCIONALES Y SE GUARDAN COMO NULO CUANDO VIENEN VACIOS. Cadena vacia y nulo tienen que ser la
+// misma cosa aqui: si se guardara "", la completitud del perfil contaria el campo como lleno.
+const opcional = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v === "" ? null : v))
+    .nullable();
+
+export const misDatosSchema = z.object({
+  // Celular colombiano o internacional; no se fuerza el formato porque un integrante puede tener un numero de
+  // otro pais y rechazarlo lo dejaria sin poder guardarlo.
+  phone: opcional(30),
+  officeAddress: opcional(200),
+  officeCity: opcional(80),
+});
+export type MisDatosInput = z.infer<typeof misDatosSchema>;
