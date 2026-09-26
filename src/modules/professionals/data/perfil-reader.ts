@@ -22,6 +22,8 @@ export type PerfilDelIntegrante = {
   profesion: string;
   registroProfesional: string | null;
   documento: { tipo: string | null; numero: string | null; dv: string | null };
+  /** Lo que el integrante SI edita (0177). */
+  contacto: { phone: string | null; officeAddress: string | null; officeCity: string | null };
   /** Firmas de documentos del integrante (hoy solo el Anexo 3 existe como tipo). */
   documentosFirmados: { tipo: string; version: string; firmadoEn: string }[];
   margen: { causado: number; liquidado: number; pendiente: number };
@@ -45,7 +47,7 @@ export async function getPerfilDelIntegrante(
   const { data: prof, error: ePP } = await supabase
     .from("professional_profiles")
     .select(
-      "profession, license, tax_person_type, tax_has_rut, tax_id_type, tax_id_number, tax_id_dv, rut_path, rut_verified_at, bank_name, bank_account_number, bank_account_holder_document",
+      "profession, license, phone, office_address, office_city, tax_person_type, tax_has_rut, tax_id_type, tax_id_number, tax_id_dv, rut_path, rut_verified_at, bank_name, bank_account_number, bank_account_holder_document",
     )
     .eq("id", professionalId)
     .maybeSingle();
@@ -80,6 +82,7 @@ export async function getPerfilDelIntegrante(
     profesion: prof.profession,
     registroProfesional: prof.license,
     documento: { tipo: prof.tax_id_type, numero: prof.tax_id_number, dv: prof.tax_id_dv },
+    contacto: { phone: prof.phone, officeAddress: prof.office_address, officeCity: prof.office_city },
     documentosFirmados: (firmas ?? []).map((f) => ({
       tipo: f.document_type,
       version: f.signed_version,

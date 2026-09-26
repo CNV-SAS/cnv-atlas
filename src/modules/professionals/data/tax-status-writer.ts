@@ -5,7 +5,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { professionalProfiles } from "@/db/schema";
 
-import type { BankAccountInput, TaxIdentityInput } from "../validations";
+import { registrarAdjunto } from "./adjuntos-writer";
+import type { BankAccountInput, MisDatosInput, TaxIdentityInput } from "../validations";
 
 // Guarda la PARTE DEL INTEGRANTE del estado tributario (lo que sabe: tipo de persona, documento, cuenta
 // bancaria) + el RUT si lo subio. Drizzle (owner): escritura server-side de la propia fila (el
@@ -24,6 +25,8 @@ export async function saveTaxIdentity(
   professionalId: string,
   input: TaxIdentityInput,
   rutPath: string | null,
+  /** Quien subio el RUT, para el historial de adjuntos. Es el propio integrante. */
+  actorId?: string,
 ): Promise<void> {
   const base = {
     taxPersonType: input.personType,
@@ -56,7 +59,20 @@ export async function saveTaxIdentity(
         }
       : base;
 
-  await db.update(professionalProfiles).set(values).where(eq(professionalProfiles.id, professionalId));
+  // EL CACHE Y EL HISTORIAL SE ESCRIBEN JUNTOS (0179). Es la unica forma de que no puedan discrepar: si el
+  // adjunto se registrara aparte, un fallo entre los dos dejaria un `rut_path` sin fila de historial (o al
+  // reves), y la pestaña de adjuntos diria algo distinto del gate de la liquidacion.
+  await db.transaction(async (tx) => {
+    await tx.update(professionalProfiles).set(values).where(eq(professionalProfiles.id, professionalId));
+    if (rutPath != null) {
+      await registrarAdjunto(tx, {
+        professionalId,
+        kind: "rut",
+        path: rutPath,
+        uploadedBy: actorId ?? null,
+      });
+    }
+  });
   await marcarCompletoSiLasDosMitades(professionalId);
 }
 
@@ -117,5 +133,24 @@ async function marcarCompletoSiLasDosMitades(professionalId: string): Promise<vo
   await db
     .update(professionalProfiles)
     .set({ taxStatusCompletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(professionalProfiles.id, professionalId));
+}
+
+/**
+ * Los datos de contacto que el integrante edita de si mismo (0177).
+ *
+ * NO PASA POR `marcarCompletoSiLasDosMitades`: el celular y el consultorio no son parte de "dio su parte" para
+ * cobrar (eso son el documento y la cuenta). Meterlos ahi retrasaria su liquidacion por un dato que no la
+ * afecta, y la completitud del perfil ya los cuenta aparte.
+ */
+export async function saveMisDatos(professionalId: string, input: MisDatosInput): Promise<void> {
+  await db
+    .update(professionalProfiles)
+    .set({
+      phone: input.phone,
+      officeAddress: input.officeAddress,
+      officeCity: input.officeCity,
+      updatedAt: new Date(),
+    })
     .where(eq(professionalProfiles.id, professionalId));
 }
