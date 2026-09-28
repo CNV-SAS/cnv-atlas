@@ -63,6 +63,8 @@ const BASE: TreatmentProtocol = {
       ownership: "propio",
       sanitaryRegistration: null,
       brandOwner: null,
+      manufacturer: null,
+      doseFrequency: null,
       description: null,
       servingSize: "30 mL",
       presentation: "liquida",

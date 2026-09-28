@@ -75,15 +75,20 @@ describe.skipIf(!HAS_DB)("cobertura del mapeo de alérgenos (BD real)", () => {
   });
 
   it("y LUVIA declara avena tal como lo dice su ficha, sin deducir nada", async () => {
-    // Lo que el producto DICE es avena. Lo que eso implique no lo decidimos nosotros, y hoy no lo decide
-    // nadie. `absence_certified_for` queda nulo porque ya no cuelga nada de él.
+    // Lo que el producto DICE. Lo que eso implique no lo decidimos nosotros, y hoy no lo decide nadie.
+    // `absence_certified_for` queda nulo porque ya no cuelga nada de él.
+    //
+    // EL TEXTO SE CORRIGIO EL 2026-09-28: este test decia "tal como lo dice su ficha" y esperaba "avena", que era
+    // NUESTRA abreviacion. Su ficha (OTROS_PRODUCTOS, ATLAS_v9.html) dice textual `alergenos: "Contiene avena"`, y
+    // la pantalla lo muestra tal cual, asi que el dato tenia que decirlo tal cual (0184). El test afirmaba una
+    // cosa y comprobaba otra.
     const { db } = await import("@/db");
     const [r] = await db.execute<{ declared_as: string; absence_certified_for: string | null }>(dsql`
       select na.declared_as, na.absence_certified_for
         from nutraceutical_allergens na
         join nutraceuticals n on n.id = na.nutraceutical_id
        where n.name = 'LUVIA'`);
-    expect(r?.declared_as).toBe("avena");
+    expect(r?.declared_as).toBe("Contiene avena");
     expect(r?.absence_certified_for).toBeNull();
   });
 

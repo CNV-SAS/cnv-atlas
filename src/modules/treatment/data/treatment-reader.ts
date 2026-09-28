@@ -129,7 +129,7 @@ export async function getTreatmentProtocol(
     supabase
       .from("nutraceuticals")
       .select(
-        "id, name, unit, indication, commercial_availability, serving_size, presentation, composition, ownership, sanitary_registration, brand_owner, description",
+        "id, name, unit, indication, commercial_availability, serving_size, presentation, composition, ownership, sanitary_registration, brand_owner, manufacturer, dose_frequency, description",
       )
       // LOS PRODUCTOS DE PRUEBA RETIRADOS NO SE OFRECEN (Santiago, smoke del Bloque 3, 2026-09-14): cada smoke
       // deja un "PRUEBA SMOKE BLOQUE 3 (retirado ...)" que no se puede borrar (sus movimientos son inmutables),
@@ -317,6 +317,8 @@ export async function getTreatmentProtocol(
       ownership: c.ownership ?? null,
       sanitaryRegistration: c.sanitary_registration ?? null,
       brandOwner: c.brand_owner ?? null,
+      manufacturer: c.manufacturer ?? null,
+      doseFrequency: c.dose_frequency ?? null,
       description: c.description ?? null,
       servingSize: c.serving_size ?? null,
       presentation: c.presentation ?? null,

@@ -200,11 +200,25 @@ export async function getInformeDelPaciente(
       delModelo: protocolo?.recommendedNutraceuticals?.trim()
         ? sinGuionLargo(protocolo.recommendedNutraceuticals.trim())
         : null,
-      delProfesional: (protocolo?.nutraceuticals ?? []).map((n) => ({
-        nombre: n.name,
-        dosis: n.dosage,
-        duracionDias: n.durationDays,
-      })),
+      // ═══ LA POSOLOGIA SALE DEL CATALOGO (Santiago, 2026-09-28) ═══
+      //
+      // ANTES salia lo que el profesional tecleaba en dos campos, y el informe decia cosas como "LUVIA: 1
+      // durante 1 dias", que es lo que alguien escribio para salir del campo. Esos campos se retiraron: SU
+      // ARCHIVO NO LOS PIDE, tiene una tabla FIJA por producto y la imprime.
+      //
+      // `dosage` y `durationDays` SE SIGUEN LEYENDO como respaldo, y no es indecision: las prescripciones
+      // ANTERIORES si los tienen, y un informe de una consulta vieja debe seguir diciendo lo que se le dijo al
+      // paciente ese dia. Para las nuevas estan en null y manda el catalogo.
+      delProfesional: (protocolo?.nutraceuticals ?? []).map((n) => {
+        const c = protocolo?.catalog?.find((x) => x.id === n.nutraceuticalId);
+        const delCatalogo = [c?.servingSize, c?.doseFrequency].filter(Boolean).join(" · ");
+        return {
+          nombre: n.name,
+          dosis: n.dosage ?? (delCatalogo || null),
+          // Los dias nunca estuvieron en su archivo, asi que solo salen si una prescripcion vieja los trae.
+          duracionDias: n.durationDays,
+        };
+      }),
     },
     remisiones: {
       // Del MISMO derivador que la historia clinica: si aqui se dedujeran otra vez, el documento del
