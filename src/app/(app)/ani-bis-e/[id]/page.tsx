@@ -957,8 +957,22 @@ export default async function ResultadosEvaluacionPage({
                   {/* Y LO QUE PIDIO SANTIAGO QUE LLEVARA ADEMAS (2026-09-19): los suplementos y las
                       remisiones, diciendo que sugiere el modelo y que indico el profesional. Sale del
                       MISMO lector que el informe del correo, para que el papel y el correo no puedan
-                      decir cosas distintas de la misma consulta. */}
-                  {informeDelPaciente ? <ComplementosDeLaRuta informe={informeDelPaciente} /> : null}
+                      decir cosas distintas de la misma consulta.
+
+                      SOLO EN PAPEL (Santiago, 2026-09-28). Se veia tambien en la pantalla del profesional, y
+                      ahi desentona: su texto esta escrito PARA EL PACIENTE ("salen de tu propia medicion",
+                      "tu profesional decidio para ti"), asi que en la pantalla de quien lo decidio se lee como
+                      si el sistema le hablara a el. Y ademas repite lo que ya tiene arriba en su forma de
+                      trabajo: los nutraceuticos estan en la seccion 2 y las remisiones en la 3.
+
+                      La decision del 19 NO cambia: el papel lo sigue llevando, del mismo lector. Lo que cambia
+                      es a quien se le muestra en pantalla. Es la misma razon por la que el plan del paciente ya
+                      era `solo-impresion` desde el 2026-09-02, y el mismo mecanismo. */}
+                  {informeDelPaciente ? (
+                    <div className="solo-impresion">
+                      <ComplementosDeLaRuta informe={informeDelPaciente} />
+                    </div>
+                  ) : null}
                 </HojaImprimible>
                 {/* Nutraceuticos (checkpoint 2.3): la prescripcion PRIMERO, la venta DESPUES, para que se
                     lea la secuencia (primero se prescribe, luego se vende y se entrega) y nadie venda sin mirar
