@@ -6,9 +6,7 @@ import { useActionState, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
-import { DescartarPorRazonClinica } from "./descartar-por-razon-clinica";
 import { NoLosAdquiereForm } from "./no-los-adquiere-form";
 import { YuxtaposicionAlergenos } from "@/modules/nutraceuticals/components/yuxtaposicion-alergenos";
 
@@ -286,7 +284,7 @@ export function NutraceuticalsSection({
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-base font-bold tracking-tight text-foreground">{c.name}</span>
+                        <span className="text-base font-extrabold tracking-tight text-foreground">{c.name}</span>
                         {/* PRODUCTO EXTERNO, dicho de frente: es lo que separa esta tarjeta de un nutraceutico
                             de CNV, y el profesional tiene que saberlo antes de prescribirlo. */}
                         <span className="text-xs font-medium uppercase tracking-wide text-primary">
@@ -312,39 +310,57 @@ export function NutraceuticalsSection({
                           INVIMA RSA-... · Laboratorio Naturex S.A.S.
                         Yo la habia partido en una tira de etiquetas, y eso perdia la lectura corrida que su
                         ficha tiene. */}
-                    <p className="font-medium text-foreground">
-                      {[c.servingSize, c.presentation].filter(Boolean).join(" · ")}
+                    {/* ═══ LA JERARQUIA ES LA DE SU FICHA (Santiago, 2026-09-28) ═══
+                        Lo que hace que la suya se vea trabajada y la nuestra plana NO es el color: es que cada
+                        linea tiene su PESO y su TAMAÑO, y una sola lleva acento. En su HTML:
+
+                          nombre        13px, peso 800, texto oscuro
+                          dosis · pres  11px, peso 700, ACENTO (el unico color de la tarjeta)
+                          descripcion   11px, gris medio
+                          alergenos     11px, peso 700, ambar, con su simbolo
+                          INVIMA · fab  10px, gris claro
+
+                        Se porta esa escala. EL ACENTO ES EL NUESTRO y no su verde azulado: el suyo es el color de
+                        una seccion de su hoja, y meter una quinta tinta en Atlas para un bloque es justo lo que
+                        BRAND.md llama el arcoiris. El ambar del alergeno SI se conserva, porque ahi el color
+                        significa: es el eje operativo (attention), no la capa clinica. */}
+                    <p className="text-sm font-bold text-primary">
+                      {[c.servingSize, c.doseFrequency, c.presentation].filter(Boolean).join(" · ")}
                     </p>
 
-                    {/* LOS INGREDIENTES SALEN DE `composition`, NO DE `description` (2026-09-28). Es donde
-                        estan, y coinciden palabra por palabra con la descripcion de su ficha; `description`
-                        traia un resumen nuestro ("Producto de tercero. Contiene avena.") que repetia dos cosas
-                        que ya se dicen en su propio sitio. */}
+                    {/* LOS INGREDIENTES SALEN DE composition: es donde estan y coinciden palabra por palabra con
+                        la descripcion de su ficha. La columna description traia un resumen nuestro. */}
                     {c.composition ? (
-                      <p className="max-w-prose text-muted-foreground">{c.composition}</p>
+                      <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">{c.composition}</p>
                     ) : c.description ? (
-                      <p className="max-w-prose text-muted-foreground">{c.description}</p>
+                      <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">{c.description}</p>
                     ) : null}
 
-                    {/* EL ALERGENO CON SU SIMBOLO, como en su ficha. El simbolo no es adorno: es lo que hace que
-                        se encuentre de un vistazo entre el resto del texto, y Santiago lo pidio expresamente.
-                        Y se MUESTRA tal como lo declara la ficha, sin cruzarlo con la encuesta. */}
+                    {/* EL ALERGENO CON SU SIMBOLO Y SU ROTULO, textual de su ficha ("Alérgenos: Contiene avena").
+                        El texto que sale es el que DECLARA la ficha del producto, no una version nuestra: la 0184
+                        corrigio el dato para que diga "Contiene avena" y no "avena".
+                        Y no se cruza con la encuesta: eso lo hace la yuxtaposicion, aparte. */}
                     {c.alergenosDeclarados.length > 0 ? (
-                      <p className="flex items-start gap-1.5 rounded-md bg-attention-bg px-3 py-1.5 text-xs font-medium text-attention">
-                        <span aria-hidden>⚠</span>
-                        <span>Alérgenos: {c.alergenosDeclarados.join(" · ")}</span>
+                      <p className="text-sm font-bold text-attention">
+                        <span aria-hidden>⚠</span> Alérgenos: {c.alergenosDeclarados.join(" · ")}
                       </p>
                     ) : null}
 
-                    {/* LA LINEA DE REGISTRO, corrida como en su ficha. Y el rotulo del titular NO dice
-                        "Fabricante": el modelo comercial separa FABRICANTE (el maquilador), TITULAR DE MARCA y
-                        TITULAR DEL REGISTRO, y dice que "conviene no confundirlas". Lo que tenemos cargado es el
-                        titular de marca, que es ademas el que §7.7 obliga a mostrarle al paciente. */}
-                    {c.sanitaryRegistration || c.brandOwner ? (
-                      <p className="text-xs text-muted-foreground">
-                        {c.sanitaryRegistration ? `INVIMA ${c.sanitaryRegistration}` : null}
-                        {c.sanitaryRegistration && c.brandOwner ? " · " : null}
-                        {c.brandOwner ? `Titular de la marca: ${c.brandOwner}` : null}
+                    {/* LA LINEA DE REGISTRO, la mas pequeña y la mas apagada, como en su ficha.
+                        VAN LAS DOS PARTES, y esto resuelve un conflicto real entre dos documentos suyos: su ficha
+                        nombra al FABRICANTE (Naturex, el maquilador) y la §7.7 obliga a mostrar el TITULAR DE
+                        MARCA (Katherine Ruiz), por la doctrina del fabricante aparente. Mostrar las dos no cambia
+                        nada de lo suyo: le agrega lo que la ley exige, y el modelo comercial pide expresamente no
+                        confundirlas. */}
+                    {c.sanitaryRegistration || c.manufacturer || c.brandOwner ? (
+                      <p className="text-xs text-muted-foreground/80">
+                        {[
+                          c.sanitaryRegistration ? `INVIMA ${c.sanitaryRegistration}` : null,
+                          c.manufacturer,
+                          c.brandOwner ? `Titular de marca: ${c.brandOwner}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     ) : null}
 
@@ -368,24 +384,16 @@ export function NutraceuticalsSection({
                   className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3"
                 >
                   <span className="min-w-[8rem] flex-1 font-medium text-foreground">{n.name}</span>
-                  <Input
-                    value={n.dosage}
-                    onChange={(e) =>
-                      setNutras(nutras.map((x, j) => (j === i ? { ...x, dosage: e.target.value } : x)))
-                    }
-                    placeholder="Dosis (ej. 1 capsula/día)"
-                    className="w-48"
-                  />
-                  <Input
-                    value={n.durationDays}
-                    onChange={(e) =>
-                      setNutras(nutras.map((x, j) => (j === i ? { ...x, durationDays: e.target.value } : x)))
-                    }
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="Días"
-                    className="w-24"
-                  />
+                  {/* ═══ LA POSOLOGIA SALE DEL CATALOGO, NO SE TECLEA (Santiago, 2026-09-28) ═══
+                      AQUI HABIA DOS CAMPOS, "Dosis" y "Dias", que el profesional llenaba a mano. Se retiran
+                      porque SU ARCHIVO NO LOS PIDE: el HTML tiene una tabla FIJA por producto (NUTR_DOSIS, con
+                      dosis y frecuencia) y la imprime; el profesional nunca la escribe. Era una adicion nuestra,
+                      y la Regla 0 dice que lo que el archivo no tiene se retira, no se defiende.
+                      Y se veia el daño: el informe del paciente salia con "LUVIA: 1 durante 1 días", que es lo
+                      que alguien tecleo para salir del campo.
+                      La 0184 trajo la dosis y la frecuencia de su tabla, asi que lo que se muestra debajo del
+                      nombre es su posologia, igual para todos los pacientes, como en su archivo. */}
+                  <span className="text-xs font-medium text-primary">{posologiaDelCatalogo(protocol, n.nutraceuticalId)}</span>
                   <Button
                     type="button"
                     variant="outline"
@@ -396,13 +404,6 @@ export function NutraceuticalsSection({
                   {/* Y TAMBIEN SOBRE LO YA PRESCRITO, no solo al elegir: quien abre esta pantalla puede
                       ser otro profesional, o el mismo en una consulta posterior, y la declaración del
                       paciente puede haber cambiado desde que el producto entró a la lista. */}
-                  {/* DESCARTAR POR RAZON CLINICA, en la linea del producto. Es lo unico CLINICO que tenia la
-                      pregunta retirada, y aqui ademas sabe DE QUE producto habla. */}
-                  <DescartarPorRazonClinica
-                    evaluationId={evaluationId}
-                    nutraceuticalId={n.nutraceuticalId}
-                    nombre={n.name}
-                  />
                   <div className="w-full">
                     <YuxtaposicionAlergenos
                       paciente={protocol.declaracionesPaciente}
@@ -468,6 +469,19 @@ function ContraindicacionesAviso({ protocol }: { protocol: TreatmentProtocol }) 
       </ul>
     </div>
   );
+}
+
+/**
+ * LA POSOLOGIA DE UN PRESCRITO, desde el catalogo (2026-09-28).
+ *
+ * Es lo que reemplazo a los dos campos que el profesional tecleaba. Sale de la tabla de Gildardo (0184): dosis,
+ * frecuencia y linea, en ese orden, como en su archivo. Si el catalogo no tiene nada del producto, no se
+ * inventa: se devuelve cadena vacia y la linea no se pinta.
+ */
+function posologiaDelCatalogo(protocol: TreatmentProtocol, nutraceuticalId: string): string {
+  const c = protocol.catalog.find((x) => x.id === nutraceuticalId);
+  if (!c) return "";
+  return [c.servingSize, c.doseFrequency, c.presentation].filter(Boolean).join(" · ");
 }
 
 // "30 mL · linea liquida" a partir de lo que el catalogo ya tiene. Sin inventar nada: si falta un campo,

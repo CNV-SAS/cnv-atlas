@@ -106,6 +106,15 @@ export type CatalogItem = {
    * quien no lo fabrica.
    */
   brandOwner: string | null;
+  /**
+   * FABRICANTE (maquilador), de la ficha de Gildardo. Distinto de `brandOwner` a proposito: el modelo comercial
+   * separa fabricante, titular de marca y titular del registro, y pide no confundirlos. LAS DOS se muestran, y
+   * eso resuelve el conflicto aparente: su ficha nombra a Naturex y la §7.7 obliga a mostrar el titular de marca,
+   * asi que mostrar las dos no cambia nada de lo suyo, le agrega lo que la ley exige.
+   */
+  manufacturer: string | null;
+  /** La FRECUENCIA de su tabla NUTR_DOSIS: "1 vez al dia · linea liquida". 0184. */
+  doseFrequency: string | null;
   description: string | null;
   // Posologia y composicion del catalogo (cotejo 2026-08-24). En el v8 la tarjeta muestra "30 mL/dia ·
   // 1 vez al dia · linea liquida" y una descripcion de ingredientes; verificado que NO es calculado: sale

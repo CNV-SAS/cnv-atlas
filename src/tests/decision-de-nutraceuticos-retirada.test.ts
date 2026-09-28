@@ -34,31 +34,26 @@ describe("la pregunta retirada", () => {
   });
 });
 
-describe("lo clinico, que no se podia perder", () => {
-  const clinica = leer("src/modules/treatment/components/descartar-por-razon-clinica.tsx");
-
-  it("el descarte clinico existe y escribe la contraindicacion del paciente", () => {
-    expect(clinica).toContain('value="profesional_clinica"');
-    // Y se le DICE al profesional que lo que escribe viaja a la historia del paciente. Pedir un dato que va a
-    // la HC sin avisar es peor que no pedirlo; la frase viene de la pantalla que esto reemplaza.
-    expect(clinica).toContain("contraindicación del paciente");
+describe("el descarte por razon clinica, retirado el 2026-09-28", () => {
+  // SE QUITO A PEDIDO DE SANTIAGO, y su razon es buena: no tiene sentido que el profesional AGREGUE un producto
+  // y en la misma linea diga que no lo recomienda. Si no lo recomienda, no lo agrega.
+  //
+  // PERO ERA EL UNICO ESCRITOR DE patient_contraindications, y eso hay que dejarlo dicho para que nadie lo
+  // reintroduzca aqui creyendo que falta: el registro de contraindicaciones se queda SIN NINGUNA superficie que
+  // lo escriba. La tabla estaba vacia (0 filas), asi que no se perdio nada registrado; lo que se perdio es la
+  // capacidad, y su sitio propio ya esta previsto en el enum de origenes: 'observacion_clinica', que es una
+  // contraindicacion del paciente independiente de prescribir. Eso es lo que hay que construir cuando se
+  // retome, no volver a poner el boton en la linea del producto.
+  it("ya no se ofrece en la linea del producto", () => {
+    const seccion = sinComentarios(leer("src/modules/treatment/components/nutraceuticals-section.tsx"));
+    expect(seccion).not.toContain("DescartarPorRazonClinica");
   });
 
-  it("MANDA EL PRODUCTO, que es lo que la pantalla vieja no hacia", () => {
-    // Sin esto la contraindicacion queda "General" y el siguiente profesional lee "no se lo recomiendo" sin
-    // saber de que producto.
-    expect(clinica).toContain('name="contraindicationFor"');
-  });
-
-  it("y el schema sigue exigiendo el motivo cuando la razon es clinica", () => {
-    const sinMotivo = saveNutraDecisionSchema.safeParse({
-      evaluationId: "11111111-1111-1111-1111-111111111111",
-      decision: "no",
-      reason: "profesional_clinica",
-      note: null,
-      contraindicationFor: "22222222-2222-2222-2222-222222222222",
-    });
-    expect(sinMotivo.success).toBe(false);
+  it("y el aviso de contraindicaciones del paciente SIGUE, para cuando vuelva a haber quien las escriba", () => {
+    // El bloque que las muestra no se toca: si se quitara tambien, el dia que exista el registro habria que
+    // rehacer la pantalla, y las contraindicaciones de origen antiguo dejarian de verse.
+    const seccion = leer("src/modules/treatment/components/nutraceuticals-section.tsx");
+    expect(seccion).toContain("ContraindicacionesAviso");
   });
 });
 
