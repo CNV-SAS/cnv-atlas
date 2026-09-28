@@ -19,6 +19,26 @@
 
 ---
 
+## PENDIENTE (2026-09-28) · El Dedicated Pooler de Supabase Pro
+
+**Diferido por decision de Santiago**, para no tocar la cadena de conexion el mismo dia del arranque.
+
+**Que es:** con el plan Pro, Supabase ofrece un pooler DEDICADO en vez del compartido. El compartido se reparte
+entre proyectos; el dedicado es solo nuestro, con mejor latencia y mas conexiones disponibles.
+
+**Que hay que tocar, cuando se retome:**
+
+1. `DATABASE_URL` en Vercel: es la MISMA cadena con OTRO HOST (se copia de Connect settings en el panel del
+   proyecto). Nada mas cambia: ni usuario, ni base, ni el resto de las variables.
+2. Redesplegar, porque las variables no se recargan solas.
+3. Y **recien despues** revisar el `max: 6` del pool en `src/db/index.ts`. NO se sube en el mismo paso: ese
+   limite existe porque el pooler compartido lo imponia, y con el dedicado deja de ser el cuello. Subirlo a
+   ciegas cambia dos cosas a la vez y, si algo va mal, no se sabe cual fue.
+
+**Por que no urge:** el tope de 6 ya no esta causando fallos (el timeout de /pagos era por 8 lecturas en
+paralelo contra ese tope, y se resolvio con `enTandas`, no subiendo el tope). Es una mejora de latencia, no un
+arreglo.
+
 ## PENDIENTE (2026-09-25) · Carril 2: borrar pacientes de prueba, con solicitud
 
 **Diferido por decision de Santiago**, despues de construir el carril 1 (marcar, que ya esta). No es un olvido:

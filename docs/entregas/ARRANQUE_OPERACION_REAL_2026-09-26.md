@@ -33,6 +33,10 @@ instancia Nano** aunque se cobre como Micro. Hay que subirla a mano en *Settings
 2 minutos de caída). Después: que la app abra, `pnpm db:check:cloud`, y mirar en los reportes de un día normal
 que el disco y la memoria no toquen techo.
 
+**Y el Dedicated Pooler queda para despues** (decision de Santiago, 2026-09-28): es una mejora de latencia, no
+un arreglo, y cambiar la cadena de conexion el dia del arranque agrega una variable sin necesidad. Esta
+dimensionado en `BACKLOG.md`.
+
 **PITR sigue siendo NO.** 100 USD/mes por cada 7 días de ventana, más un add-on de cómputo obligatorio (unos
 130 en total), **reemplaza los backups diarios en vez de sumarse**, y **está excluido del tope de gasto**. La
 condición que lo cambia, escrita para no volver a discutirla: *entra cuando perder una jornada de trabajo
