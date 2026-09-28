@@ -59,7 +59,15 @@ export function NutraceuticalsSection({
   const recommended = resolveRecommendation(protocol.recommendedNutraceuticals, protocol.catalog);
   // LAS DOS LISTAS SALEN DE LA PROPIEDAD DEL PRODUCTO, no de una lista de nombres a mano: un producto de
   // tercero nuevo aparece en su bloque sin que nadie lo agregue aqui.
-  const nutraceuticosDeCnv = protocol.catalog.filter((c) => c.ownership !== "tercero");
+  // LOS RECOMENDADOS NO SE REPITEN ABAJO (Santiago, 2026-09-28). El desplegable de "lo que el modelo no
+  // recomendo" traia el catalogo entero, incluidos los que estan arriba en su propia lista. Ademas de repetir,
+  // contradecia su rotulo: ofrecia como "no recomendado" algo que el modelo SI recomendo.
+  const idsRecomendados = new Set(
+    recommended.map((r) => (r.status === "en_catalogo" ? r.product.id : null)).filter((id): id is string => id != null),
+  );
+  const nutraceuticosDeCnv = protocol.catalog.filter(
+    (c) => c.ownership !== "tercero" && !idsRecomendados.has(c.id),
+  );
   const productosDeTercero = protocol.catalog.filter((c) => c.ownership === "tercero");
   const isAdded = (id: string) => nutras.some((n) => n.nutraceuticalId === id);
   // El producto del desplegable, para poner sus declaraciones junto a las del paciente mientras elige.
@@ -295,33 +303,48 @@ export function NutraceuticalsSection({
                       </Button>
                     </div>
 
-                    {c.description ? <p className="max-w-prose text-muted-foreground">{c.description}</p> : null}
+                    {/* ═══ EL ORDEN ES EL DE SU FICHA (Santiago, 2026-09-28) ═══
+                        Su HTML la dispone asi, y se porta asi:
+                          LUVIA
+                          1 scoop (15 g) en un vaso con agua · Polvo · 600 g     <- la posologia, arriba
+                          Mezcla en polvo ... arroz con avena, linaza, psyllium   <- los INGREDIENTES
+                          ⚠ Alergenos: Contiene avena
+                          INVIMA RSA-... · Laboratorio Naturex S.A.S.
+                        Yo la habia partido en una tira de etiquetas, y eso perdia la lectura corrida que su
+                        ficha tiene. */}
+                    <p className="font-medium text-foreground">
+                      {[c.servingSize, c.presentation].filter(Boolean).join(" · ")}
+                    </p>
 
-                    {/* LA TIRA DE FICHA. Cada dato con su rotulo, porque un "RSA-0019736-2022" suelto no dice
-                        que es un registro sanitario. Los que falten no se muestran: no se inventa ninguno. */}
-                    <dl className="flex flex-wrap gap-x-6 gap-y-2">
-                      {[
-                        { r: "Presentación", v: [c.presentation, c.servingSize].filter(Boolean).join(" · ") },
-                        { r: "Registro INVIMA", v: c.sanitaryRegistration },
-                        { r: "Fabricante", v: c.brandOwner },
-                      ]
-                        .filter((d) => d.v)
-                        .map((d) => (
-                          <div key={d.r} className="flex flex-col">
-                            <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">
-                              {d.r}
-                            </dt>
-                            <dd className="text-foreground">{d.v}</dd>
-                          </div>
-                        ))}
-                    </dl>
+                    {/* LOS INGREDIENTES SALEN DE `composition`, NO DE `description` (2026-09-28). Es donde
+                        estan, y coinciden palabra por palabra con la descripcion de su ficha; `description`
+                        traia un resumen nuestro ("Producto de tercero. Contiene avena.") que repetia dos cosas
+                        que ya se dicen en su propio sitio. */}
+                    {c.composition ? (
+                      <p className="max-w-prose text-muted-foreground">{c.composition}</p>
+                    ) : c.description ? (
+                      <p className="max-w-prose text-muted-foreground">{c.description}</p>
+                    ) : null}
 
-                    {/* EL ALERGENO, SEPARADO Y EN `attention`. Se muestra TAL COMO LO DECLARA LA FICHA y no se
-                        cruza con la encuesta: eso lo dice el propio comentario de Gildardo y coincide con lo que
-                        ya teniamos decidido (yuxtaponer, no inferir). Comparar aqui seria inferencia clinica. */}
+                    {/* EL ALERGENO CON SU SIMBOLO, como en su ficha. El simbolo no es adorno: es lo que hace que
+                        se encuentre de un vistazo entre el resto del texto, y Santiago lo pidio expresamente.
+                        Y se MUESTRA tal como lo declara la ficha, sin cruzarlo con la encuesta. */}
                     {c.alergenosDeclarados.length > 0 ? (
-                      <p className="rounded-md bg-attention-bg px-3 py-1.5 text-xs font-medium text-attention">
-                        {c.alergenosDeclarados.join(" · ")}
+                      <p className="flex items-start gap-1.5 rounded-md bg-attention-bg px-3 py-1.5 text-xs font-medium text-attention">
+                        <span aria-hidden>⚠</span>
+                        <span>Alérgenos: {c.alergenosDeclarados.join(" · ")}</span>
+                      </p>
+                    ) : null}
+
+                    {/* LA LINEA DE REGISTRO, corrida como en su ficha. Y el rotulo del titular NO dice
+                        "Fabricante": el modelo comercial separa FABRICANTE (el maquilador), TITULAR DE MARCA y
+                        TITULAR DEL REGISTRO, y dice que "conviene no confundirlas". Lo que tenemos cargado es el
+                        titular de marca, que es ademas el que §7.7 obliga a mostrarle al paciente. */}
+                    {c.sanitaryRegistration || c.brandOwner ? (
+                      <p className="text-xs text-muted-foreground">
+                        {c.sanitaryRegistration ? `INVIMA ${c.sanitaryRegistration}` : null}
+                        {c.sanitaryRegistration && c.brandOwner ? " · " : null}
+                        {c.brandOwner ? `Titular de la marca: ${c.brandOwner}` : null}
                       </p>
                     ) : null}
 

@@ -96,6 +96,15 @@ export type CatalogItem = {
   // Los tres campos de la FICHA que Gildardo tiene en su HTML para los productos externos (`OTROS_PRODUCTOS`):
   // registro sanitario, titular de marca y descripcion. No se inventan: ya estaban en la tabla y no se leian.
   sanitaryRegistration: string | null;
+  /**
+   * TITULAR DE LA MARCA, que NO es el fabricante. El modelo comercial lo dice sin lugar a dudas: son tres partes
+   * distintas y "conviene no confundirlas": FABRICANTE (Naturex, el maquilador), TITULAR DE MARCA (Centro de
+   * Nutricion Integral Katherine Ruiz) y TITULAR DEL REGISTRO (sin dato todavia).
+   *
+   * El que §7.7 obliga a mostrar al paciente es ESTE, por la doctrina del fabricante aparente: el articulo 20
+   * presume productor a quien pone su marca en el producto. Rotularlo "Fabricante" seria afirmar que lo fabrica
+   * quien no lo fabrica.
+   */
   brandOwner: string | null;
   description: string | null;
   // Posologia y composicion del catalogo (cotejo 2026-08-24). En el v8 la tarjeta muestra "30 mL/dia ·
