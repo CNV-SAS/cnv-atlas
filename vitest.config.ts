@@ -26,6 +26,7 @@ const DB_TESTS = [
   "src/tests/vencimientos-db.test.ts",
   "src/tests/devolucion-a-cnv-db.test.ts",
   "src/tests/distribucion-db.test.ts",
+  "src/tests/domicilio-db.test.ts",
   "src/tests/venta-inventario.test.ts",
   "src/tests/factura-huerfana-db.test.ts",
   "src/tests/venta-anulacion-y-revision-db.test.ts",

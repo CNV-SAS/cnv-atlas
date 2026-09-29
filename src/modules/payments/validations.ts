@@ -33,6 +33,20 @@ export const createCheckoutSchema = z.object({
    * ubicacion sale. El servidor ademas comprueba que de verdad haga falta (ver el service).
    */
   desdeLaBodega: z.coerce.boolean().optional(),
+  /**
+   * ENVIO A DOMICILIO (0190). Las tres partes van juntas o no va ninguna: un domicilio sin direccion no se
+   * puede despachar, y por eso la base tambien lo prohibe con un CHECK.
+   *
+   * LA TARIFA NO VIAJA DESDE EL NAVEGADOR. Se lee de la configuracion en el servidor y se sella ahi: si
+   * viajara, cualquiera podria cobrarse el flete que quisiera.
+   */
+  domicilio: z
+    .object({
+      ciudad: z.string().trim().min(1, "Elige la ciudad de destino.").max(120),
+      departamento: z.string().trim().max(120).optional(),
+      direccion: z.string().trim().min(5, "Escribe la dirección completa de entrega.").max(300),
+    })
+    .optional(),
 });
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 

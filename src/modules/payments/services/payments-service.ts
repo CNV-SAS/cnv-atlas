@@ -6,6 +6,7 @@ import type { CurrentUser } from "@/modules/auth/roles";
 import { listNutraceuticals } from "@/modules/nutraceuticals/data/nutraceuticals-repository";
 
 import type { CheckoutView } from "../data/checkout-reader";
+import { daneDe, departamentoDe, ofertaVigente } from "../data/domicilio-reader";
 import * as repo from "../data/payments-repository";
 import {
   anularCheckout,
@@ -63,12 +64,20 @@ export class CheckoutError extends Error {
 export type CheckoutCreated = { transactionId: string; checkoutUrl: string };
 
 // Resuelve una venta ANTES de cobrarla, comun al checkout (Wompi) y a la venta en efectivo: el profesional
+type ResueltoDomicilio = {
+  direccion: string;
+  ciudad: string;
+  departamento: string | null;
+  daneCode: string | null;
+  flete: number;
+} | null;
+
 // para la comision (el que la crea; si es admin, el asignado al paciente; null => todo va a CNV) y las
 // lineas con el precio SELLADO desde el catalogo (nunca del cliente). CNV vende: el precio lo pone CNV.
 async function resolveSale(
   input: CreateCheckoutInput,
   user: CurrentUser,
-): Promise<{ professionalId: string | null; lines: NewOrderLine[]; amount: number }> {
+): Promise<{ professionalId: string | null; lines: NewOrderLine[]; amount: number; domicilio: ResueltoDomicilio }> {
   let professionalId = await repo.getProfessionalProfileIdByUser(user.id);
   const propio = professionalId;
   if (!professionalId) {
@@ -127,7 +136,39 @@ async function resolveSale(
   }
   amount = Math.round(amount * 100) / 100;
   if (amount <= 0) throw new CheckoutError("El monto de la venta debe ser mayor a cero.");
-  return { professionalId, lines, amount };
+
+  // ═══ EL DOMICILIO SE RESUELVE EN EL SERVIDOR (0190) ═══
+  //
+  // LA TARIFA NO VIAJA DESDE EL NAVEGADOR: se lee de la configuracion aqui y se sella en la venta. Si
+  // viajara, cualquiera podria cobrarse el flete que quisiera, y el checkout es superficie del profesional,
+  // no de CNV.
+  //
+  // Y LA COBERTURA SE VUELVE A COMPROBAR aunque la pantalla ya la haya mirado: la pantalla decide que
+  // OFRECER, el servidor decide que se puede COBRAR. Un destino que salio de la lista entre que se abrio el
+  // formulario y se pulso el boton no puede colarse.
+  let domicilio: ResueltoDomicilio = null;
+  if (input.domicilio) {
+    const oferta = await ofertaVigente({
+      ciudad: input.domicilio.ciudad,
+      departamento: input.domicilio.departamento ?? null,
+    });
+    if (!oferta.ofrece) throw new CheckoutError(oferta.motivo);
+    const departamento = input.domicilio.departamento?.trim() || (await departamentoDe(input.domicilio.ciudad));
+    domicilio = {
+      direccion: input.domicilio.direccion,
+      ciudad: input.domicilio.ciudad,
+      departamento,
+      daneCode: await daneDe(input.domicilio.ciudad, departamento),
+      flete: oferta.tarifa,
+    };
+    // EL FLETE SE SUMA AL MONTO bajo Comision: el paciente paga a CNV el producto MAS el flete, en el mismo
+    // checkout (§5.3). Bajo Distribucion el flete se suma a la cuenta quincenal del Integrante y no a este
+    // cobro, pero hoy los dos caminos de venta bloquean a un Integrante en Distribucion, asi que aqui no
+    // puede llegar una: cuando se desbloquee, este es el sitio que hay que partir en dos.
+    amount = Math.round((amount + oferta.tarifa) * 100) / 100;
+  }
+
+  return { professionalId, lines, amount, domicilio };
 }
 
 // Crea el checkout: sella los precios desde el catalogo, crea la transaccion pending con sus items y
@@ -136,7 +177,7 @@ export async function createCheckout(
   input: CreateCheckoutInput,
   user: CurrentUser,
 ): Promise<CheckoutCreated> {
-  const { professionalId, lines, amount } = await resolveSale(input, user);
+  const { professionalId, lines, amount, domicilio } = await resolveSale(input, user);
   // EL MINIMO DE WOMPI, ANTES DE CREAR NADA: un link por menos de $1.500 falla en la pagina de Wompi con el
   // paciente delante, y deja una reserva viva 24 horas. Solo el checkout: el efectivo no tiene minimo.
   if (amount < WOMPI_MONTO_MINIMO) throw new CheckoutError(MENSAJE_MINIMO_WOMPI);
@@ -154,6 +195,7 @@ export async function createCheckout(
       // DESDE LA BODEGA, si el profesional lo pidio. El escritor sella `location_id` con la central y la venta
       // queda pendiente de despacho; el aviso a admin sale de esa ubicacion, sin columna nueva.
       desdeLaBodega: input.desdeLaBodega === true,
+      domicilio,
     }));
   } catch (e) {
     // SIN EXISTENCIAS NO HAY CHECKOUT (D3): la reserva va dentro de la creacion y, si no alcanza, la venta
@@ -182,7 +224,7 @@ export async function registerCashSale(
   idempotencyKey: string,
   opciones: { anularLinksQueComparten?: boolean; canal?: "efectivo" | "transferencia" } = {},
 ): Promise<CashSaleCreated> {
-  const { professionalId, lines, amount } = await resolveSale(input, user);
+  const { professionalId, lines, amount, domicilio } = await resolveSale(input, user);
   const { id, linksAnulados } = await createPaidCashTransaction({
     organizationId: user.organizationId,
     patientId: input.patientId,
@@ -193,6 +235,7 @@ export async function registerCashSale(
     items: lines,
     treatmentId: input.treatmentId ?? null,
     desdeLaBodega: input.desdeLaBodega === true,
+    domicilio,
     anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
     actorId: user.id,
     canal: opciones.canal ?? "efectivo",

@@ -13,6 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
+import { BloqueRetracto, type RetractoDeLaVenta } from "@/modules/payments/components/bloque-retracto";
+import { retractosDeLasVentas } from "@/modules/payments/data/retracto-writer";
+import {
+  ciudadesConCobertura,
+  tarifaDeFlete as tarifaDeFleteVigente,
+} from "@/modules/payments/data/domicilio-reader";
 import { formatDateTime } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
 import { AccionDeVentaButton } from "@/modules/payments/components/accion-de-venta-button";
@@ -88,7 +94,18 @@ const METODO_LABEL: Record<string, string> = { wompi: "Pasarela", efectivo: "Efe
 // LA ENTREGA DE LA VENTA (Bloque 3, sesion 2). Una venta pagada muestra si el paciente ya se llevo el producto
 // y, a quien puede entregarla, el boton. Aqui entrega el paciente que vuelve SOLO A COMPRAR, sin consulta: sin
 // esto, su venta no tendria donde registrarse como entregada.
-function EntregaDeLaVenta({ tx, puedeEntregar }: { tx: TransactionWithItems; puedeEntregar: boolean }) {
+// EL RETRACTO SE PINTA JUNTO A LA ENTREGA, y no en una columna aparte, porque su reloj ARRANCA con la
+// entrega: los cinco dias habiles se cuentan desde ahi (Ley 1480/2011, art. 47). Verlos separados invitaria
+// a leerlos como dos cosas sin relacion.
+function EntregaDeLaVenta({
+  tx,
+  puedeEntregar,
+  retracto,
+}: {
+  tx: TransactionWithItems;
+  puedeEntregar: boolean;
+  retracto?: RetractoDeLaVenta;
+}) {
   if (tx.cash_not_received_at) {
     return (
       <span className="text-xs text-muted-foreground">
@@ -99,7 +116,12 @@ function EntregaDeLaVenta({ tx, puedeEntregar }: { tx: TransactionWithItems; pue
   if (tx.fulfillment_state === "entregado" && tx.delivered_at) {
     // CON LA HORA, no solo el dia (Santiago, smoke del 2026-09-14): orienta al profesional sobre en que
     // momento de la consulta se entrego.
-    return <span className="text-xs text-muted-foreground">Entregado el {formatDateTime(tx.delivered_at)}</span>;
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted-foreground">Entregado el {formatDateTime(tx.delivered_at)}</span>
+        {retracto ? <BloqueRetracto retracto={retracto} /> : null}
+      </div>
+    );
   }
   if (tx.fulfillment_state !== "pendiente" || tx.status !== "paid") return null;
   if (bloqueadaPorRevision(tx)) {
@@ -127,6 +149,7 @@ function EntregaDeLaVenta({ tx, puedeEntregar }: { tx: TransactionWithItems; pue
         <span className="text-xs text-clinical-warning">· tu inventario en Atlas no alcanzaba; CNV lo revisa</span>
       ) : null}
       {puedeEntregar ? <AccionDeVentaButton transactionId={tx.id} tipo="entregar" /> : null}
+      {retracto ? <BloqueRetracto retracto={retracto} /> : null}
     </div>
   );
 }
@@ -163,6 +186,9 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
     conLimite("pagos.perfil-propio", () => getProfessionalProfileIdByUser(user.id), null as string | null),
   ]);
   const transactions = transacciones.dato;
+  // EL RETRACTO DE LAS VENTAS A DOMICILIO, EN UNA SOLA CONSULTA. Preguntar una por fila seria una consulta
+  // por venta, y el pool tiene seis conexiones: es justo el problema que ya se pago una vez en esta pantalla.
+  const retractos = await retractosDeLasVentas(transactions.map((t) => t.id));
   const perfilPropio = perfil.dato;
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
@@ -218,11 +244,19 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
 
   let patients: CheckoutPatient[] = [];
   let nutraceuticals: CheckoutNutraceutical[] = [];
+  // EL DOMICILIO SOLO SE OFRECE SI ESTA CONFIGURADO. Sin tarifa o sin ciudades, el bloque ni se pinta: el
+  // modelo §5.5 prefiere no ofrecer el envío a un destino antes que ofrecerlo y perder dinero en cada uno.
+  let ciudadesDeDomicilio: { city: string; department: string }[] = [];
+  let tarifaDeFlete: number | null = null;
   if (canCreate) {
-    const [pts, catalog] = await Promise.all([
+    const [pts, catalog, ciudades, tarifa] = await Promise.all([
       listSelectablePatients(),
       nutraService.listCatalog(),
+      ciudadesConCobertura(),
+      tarifaDeFleteVigente(),
     ]);
+    ciudadesDeDomicilio = ciudades.map((c) => ({ city: c.city, department: c.department }));
+    tarifaDeFlete = tarifa;
     patients = pts;
     // ═══ LA DISPONIBILIDAD TAMBIEN GATEA LA VENTA, NO SOLO LA ENTREGA (2026-09-11) ═══
     //
@@ -263,7 +297,12 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CreateCheckoutForm patients={patients} nutraceuticals={nutraceuticals} />
+            <CreateCheckoutForm
+              patients={patients}
+              nutraceuticals={nutraceuticals}
+              ciudadesDeDomicilio={ciudadesDeDomicilio}
+              tarifaDeFlete={tarifaDeFlete}
+            />
           </CardContent>
         </Card>
       ) : null}
@@ -278,7 +317,12 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RegisterCashSaleForm patients={patients} nutraceuticals={nutraceuticals} />
+            <RegisterCashSaleForm
+              patients={patients}
+              nutraceuticals={nutraceuticals}
+              ciudadesDeDomicilio={ciudadesDeDomicilio}
+              tarifaDeFlete={tarifaDeFlete}
+            />
           </CardContent>
         </Card>
       ) : null}
@@ -354,7 +398,11 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
                           {canCreate && tx.payment_method === "wompi" ? <AccionDeVentaButton transactionId={tx.id} tipo="anular" /> : null}
                         </div>
                       ) : null}
-                      <EntregaDeLaVenta tx={tx} puedeEntregar={canDeliverSale(user, tx, perfilPropio)} />
+                      <EntregaDeLaVenta
+                        tx={tx}
+                        puedeEntregar={canDeliverSale(user, tx, perfilPropio)}
+                        retracto={retractos.get(tx.id)}
+                      />
                       {/* LA DEVOLUCION SE REGISTRA DESDE LA VENTA (2026-09-24), que es donde está el hecho:
                           el paciente devuelve lo que compró, y la unidad que vuelve es la que salió con esa
                           línea. Solo sobre una venta PAGADA Y ENTREGADA: lo que nunca salió no vuelve. */}
