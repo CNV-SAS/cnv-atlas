@@ -101,6 +101,8 @@ export const transactions = pgTable(
     // Es lo que impide facturar dos veces la misma venta, igual que `settlement_id` con la comision. Sin
     // `.references` aqui porque la tabla se declara mas abajo en este mismo archivo; la FK existe en SQL.
     distribucionStatementId: uuid("distribucion_statement_id"),
+    /** Quien REGISTRO la venta. No siempre es el profesional de la comision: admin puede cobrar por otro. */
+    createdBy: uuid("created_by"),
     // reservado | pendiente | descontado | sin_saldo | fallido | liberado. NULL = anterior al Bloque 3.
     stockState: text("stock_state"),
     stockLastError: text("stock_last_error"),

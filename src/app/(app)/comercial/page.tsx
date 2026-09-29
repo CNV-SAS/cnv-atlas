@@ -84,6 +84,7 @@ export default async function ComercialPage() {
     nombre: p.nombre,
     base: p.base,
     filas: p.filas,
+    reversiones: p.reversiones,
     faltantes: liquidarComision({ base: p.base, perfil: p.perfil, acumuladoPrevio: p.acumuladoPrevio })
       .faltantes,
   }));

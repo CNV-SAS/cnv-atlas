@@ -130,6 +130,9 @@ export async function registrarNotaCreditoDeReversa(reversaId: string, numero: s
 export type ReversaEnPantalla = Reversa & {
   referenciaDeLaDisputa: string | null;
   productos: string | null;
+  /** Unidades devueltas y de qué producto. Nulos en un contracargo, que no es por unidades. */
+  unidadesDevueltas: number | null;
+  productoDevuelto: string | null;
   abiertaPor: string | null;
   resueltaPor: string | null;
   nota: string | null;
@@ -150,6 +153,8 @@ export async function listarReversas(limite = 50): Promise<ReversaEnPantalla[]> 
     nota_credito: string | null;
     referencia: string | null;
     productos: string | null;
+    devueltas: number | null;
+    producto_devuelto: string | null;
     abierta_por: string | null;
     resuelta_por: string | null;
     nota: string | null;
@@ -158,6 +163,12 @@ export async function listarReversas(limite = 50): Promise<ReversaEnPantalla[]> 
            r.debited_amount::text as debitado, r.product_ownership as propiedad,
            r.opened_at::text as abierta_en, r.resolved_at::text as resuelta_en,
            r.credit_note_manual_number as nota_credito, r.dispute_reference as referencia,
+           -- CUANTAS UNIDADES Y DE QUE, que es el dato de una devolucion (smoke del 2026-09-29): el panel
+           -- listaba los productos de TODA la venta, que en una devolucion parcial dice lo contrario de lo
+           -- que paso. Nulos en un contracargo, que no es por unidades.
+           r.returned_quantity as devueltas,
+           (select n.name from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
+             where ti.id = r.transaction_item_id) as producto_devuelto,
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
               from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
              where ti.transaction_id = t.id) as productos,
@@ -186,6 +197,8 @@ export async function listarReversas(limite = 50): Promise<ReversaEnPantalla[]> 
     notaCredito: f.nota_credito,
     referenciaDeLaDisputa: f.referencia,
     productos: f.productos,
+    unidadesDevueltas: f.devueltas == null ? null : Number(f.devueltas),
+    productoDevuelto: f.producto_devuelto,
     abiertaPor: f.abierta_por,
     resueltaPor: f.resuelta_por,
     nota: f.nota,

@@ -798,6 +798,14 @@ export async function registrarVentaRetroactivaAction(
       // EL MENSAJE DICE CUAL Y QUE (Santiago, 2026-09-25). Antes decia "Revisa los productos, las cantidades
       // y los precios" sobre un formulario con varias lineas, asi que no decia nada: el primer intento real
       // se quedo ahi sin saber que mirar. La pantalla ademas ya avisa antes de enviar; esto es la red.
+      // ── Y EL MENSAJE NO CULPA AL FORMATO SI EL FALLO NO ES DE UNA CIFRA (smoke del 2026-09-29) ──
+      //
+      // Decia siempre "las cifras se pueden escribir con puntos o comas". Cuando lo que fallaba era el
+      // PRODUCTO (un id que el validador rechazaba), esa frase mandaba a mirar los numeros, que estaban
+      // bien. Es el mismo defecto que ya nos costo una tarde con el archivo del HTML: un mensaje que nombra
+      // una causa plausible y equivocada cuesta mas que uno que no dice nada.
+      const campos = parseada.error.issues.map((i) => i.path[1]);
+      const hayCifras = campos.some((c) => c === "cantidad" || c === "precioUnitario");
       const donde = parseada.error.issues
         .map((i) => {
           const linea = typeof i.path[0] === "number" ? i.path[0] + 1 : null;
@@ -808,7 +816,9 @@ export async function registrarVentaRetroactivaAction(
         .slice(0, 4)
         .join(", ");
       return {
-        error: `Revisa ${donde || "los productos, las cantidades y los precios"}. Las cifras se pueden escribir con puntos o comas (11.900 o 11900).`,
+        error: hayCifras
+          ? `Revisa ${donde}. Las cifras se pueden escribir con puntos o comas (11.900 o 11900).`
+          : `Revisa ${donde || "los datos de la venta"}. Si vuelve a pasar con el mismo producto, avísame: puede ser del producto y no de lo que escribiste.`,
         success: null,
         warning: null,
       };

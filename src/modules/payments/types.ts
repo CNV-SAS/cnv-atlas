@@ -13,4 +13,12 @@ export type TransactionStatus = Database["public"]["Enums"]["transaction_status"
 // Transaccion con sus items y el nombre del nutraceutico, para los listados de UI.
 export type TransactionWithItems = Transaction & {
   transaction_items: (TransactionItem & { nutraceuticals: { name: string } | null })[];
+  /**
+   * El perfil del profesional que se lleva la comisión (0193).
+   *
+   * Viene para poder decir QUIÉN REGISTRÓ la venta: `created_by` es la persona que tecleó y
+   * `professional_id` la que cobra, y cuando un administrador vende por el paciente de otro no coinciden.
+   * Sin esto las dos ventas se ven iguales, y si una sale mal no se sabe a quién preguntarle.
+   */
+  professional_profiles: { profile_id: string } | null;
 };

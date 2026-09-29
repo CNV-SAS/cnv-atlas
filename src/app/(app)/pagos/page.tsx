@@ -314,10 +314,12 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
       {canCreate ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Registrar venta en efectivo</CardTitle>
+            {/* EL ROTULO DECIA SOLO "EFECTIVO" y el bloque ya ofrece TRANSFERENCIA (smoke del 2026-09-29).
+                Un titulo que nombra un medio y ofrece dos hace dudar de si la transferencia se registra bien. */}
+            <CardTitle className="text-lg">Registrar una venta ya cobrada</CardTitle>
             <CardDescription>
-              Cobro en efectivo, ya pagado. El precio y el producto son de CNV; el dinero que recaudas es de
-              CNV y lo custodias hasta consignar.
+              En efectivo o por transferencia, ya pagada. El precio y el producto son de CNV; si la cobraste
+              en efectivo, ese dinero es de CNV y lo custodias hasta consignar.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -403,6 +405,16 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
                           {canCreate && tx.payment_method === "wompi" ? <AccionDeVentaButton transactionId={tx.id} tipo="anular" /> : null}
                         </div>
                       ) : null}
+                      {/* QUIÉN LA REGISTRÓ (0193, smoke del 2026-09-29). Solo se dice cuando NO fue el
+                          profesional que se lleva la comisión: lo normal no necesita rótulo, y lo que hay que
+                          poder ver es la excepción. Las anteriores a la 0193 no lo guardan y no dicen nada:
+                          no se inventa un autor. */}
+                      {tx.created_by && tx.professional_profiles?.profile_id &&
+                      tx.created_by !== tx.professional_profiles.profile_id ? (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          Registrada por CNV
+                        </span>
+                      ) : null}
                       <EntregaDeLaVenta
                         tx={tx}
                         puedeEntregar={canDeliverSale(user, tx, perfilPropio)}
@@ -420,13 +432,20 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
                           }))}
                         />
                       ) : null}
+                      {/* ═══ EL ROTULO SALE DE LO QUE PASO, NO DEL ESTADO A SECAS (smoke del 2026-09-29) ═══
+                          Este ternario tenía tres ramas y la última se comía la DEVOLUCION: tras devolver un
+                          producto, la venta decía en rojo "Disputa ganada: el dinero volvió y la venta sigue
+                          en pie". No hubo banco ni disputa, y la venta NO sigue en pie entera. Un rótulo
+                          prestado de otro caso hace dudar de lo que uno acaba de hacer. */}
                       {reversaDe.has(tx.id) ? (
                         <span className="text-xs text-destructive">
-                          {reversaDe.get(tx.id)!.estado === "abierta"
-                            ? "Contracargo abierto: el banco devolvió el dinero y la disputa sigue viva."
-                            : reversaDe.get(tx.id)!.estado === "perdida"
-                              ? `Disputa PERDIDA: el ingreso y la comisión se revirtieron${reversaDe.get(tx.id)!.notaCredito ? `, nota crédito ${reversaDe.get(tx.id)!.notaCredito}` : "; falta la nota crédito"}.`
-                              : "Disputa ganada: el dinero volvió y la venta sigue en pie."}
+                          {reversaDe.get(tx.id)!.estado === "devuelta"
+                            ? `Producto devuelto: se le reintegraron ${Number(reversaDe.get(tx.id)!.montoDebitado ?? 0).toLocaleString("es-CO")} COP${reversaDe.get(tx.id)!.notaCredito ? `, nota crédito ${reversaDe.get(tx.id)!.notaCredito}` : "; falta la nota crédito"}.`
+                            : reversaDe.get(tx.id)!.estado === "abierta"
+                              ? "Contracargo abierto: el banco devolvió el dinero y la disputa sigue viva."
+                              : reversaDe.get(tx.id)!.estado === "perdida"
+                                ? `Disputa PERDIDA: el ingreso y la comisión se revirtieron${reversaDe.get(tx.id)!.notaCredito ? `, nota crédito ${reversaDe.get(tx.id)!.notaCredito}` : "; falta la nota crédito"}.`
+                                : "Disputa ganada: el dinero volvió y la venta sigue en pie."}
                         </span>
                       ) : null}
                       {/* EL CONTRACARGO LLEGA POR CORREO DE WOMPI, no por Atlas: por eso se registra desde la

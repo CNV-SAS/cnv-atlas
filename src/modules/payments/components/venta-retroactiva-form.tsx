@@ -24,6 +24,8 @@ const selectClass =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
 
 export type OpcionSimple = { id: string; nombre: string };
+/** El paciente trae los profesionales a los que esta asignado: la lista se filtra por el que vendio. */
+export type OpcionDePaciente = OpcionSimple & { profesionales: string[] };
 
 type Linea = { nutraceuticalId: string; cantidad: string; precioUnitario: string };
 
@@ -35,7 +37,7 @@ export function VentaRetroactivaForm({
 }: {
   organizationId: string;
   profesionales: OpcionSimple[];
-  pacientes: OpcionSimple[];
+  pacientes: OpcionDePaciente[];
   productos: OpcionSimple[];
 }) {
   const [state, action, pending] = useActionState(registrarVentaRetroactivaAction, inicial);
@@ -44,11 +46,28 @@ export function VentaRetroactivaForm({
     { nutraceuticalId: productos[0]?.id ?? "", cantidad: "1", precioUnitario: "" },
   ]);
 
+  // QUE CAMPOS SE HAN TOCADO, por línea: es lo que decide si un campo vacío ya puede quejarse.
+  // EL PROFESIONAL ELEGIDO FILTRA LOS PACIENTES (smoke del 2026-09-29): la lista traía a todos, y en una
+  // lista de cientos es como se le cuelga una compra a quien no la hizo. Si el elegido no tiene pacientes
+  // asignados se muestran todos, con su aviso: es mejor poder registrar la venta que quedarse sin lista.
+  const [profesionalId, setProfesionalId] = useState(profesionales[0]?.id ?? "");
+  const suyos = pacientes.filter((x) => x.profesionales.includes(profesionalId));
+  const pacientesVisibles = suyos.length > 0 ? suyos : pacientes;
+
+  const [tocadas, setTocadas] = useState<{ cantidad?: boolean; precioUnitario?: boolean }[]>([{}]);
+  const tocar = (i: number, campo: "cantidad" | "precioUnitario") =>
+    setTocadas((prev) => prev.map((t, j) => (j === i ? { ...t, [campo]: true } : t)));
+
   const cambiar = (i: number, campo: Partial<Linea>) =>
     setLineas((prev) => prev.map((l, j) => (j === i ? { ...l, ...campo } : l)));
-  const anadir = () =>
+  const anadir = () => {
     setLineas((prev) => [...prev, { nutraceuticalId: productos[0]?.id ?? "", cantidad: "1", precioUnitario: "" }]);
-  const quitar = (i: number) => setLineas((prev) => prev.filter((_, j) => j !== i));
+    setTocadas((prev) => [...prev, {}]);
+  };
+  const quitar = (i: number) => {
+    setLineas((prev) => prev.filter((_, j) => j !== i));
+    setTocadas((prev) => prev.filter((_, j) => j !== i));
+  };
 
   // SE LEE COMO LO TECLEA UNA PERSONA, no con `Number()`: "11.900" son once mil novecientos, y `Number()`
   // lo leía como 11,9 y lo dejaba pasar. Una venta de doce pesos entra en la comisión y en la liquidación
@@ -61,15 +80,26 @@ export function VentaRetroactivaForm({
   const total = leidas.reduce((s, l) => s + (l.precioUnitario ?? 0) * (l.cantidad ?? 0), 0);
   // El aviso dice QUÉ línea y QUÉ campo, aquí mismo, antes de enviar: el servidor volvía a validar y
   // respondía "Revisa los productos, las cantidades y los precios", que no dice cuál ni por qué.
+  //
+  // PERO SOLO SOBRE LO QUE YA SE TOCÓ (smoke del 2026-09-29). Antes salía "Producto 1: revisa el precio"
+  // AL ABRIR LA PANTALLA, sobre un campo que nadie había tocado todavía, y con el botón deshabilitado. Un
+  // formulario que se queja antes de que escribas nada enseña a ignorar sus avisos, que es lo contrario de
+  // lo que este aviso existe para hacer.
   const problemas = leidas
     .map((l, i) => {
       const faltan = [
-        l.cantidad == null || l.cantidad <= 0 ? "la cantidad" : null,
-        l.precioUnitario == null || l.precioUnitario <= 0 ? "el precio" : null,
+        tocadas[i]?.cantidad && (l.cantidad == null || l.cantidad <= 0) ? "la cantidad" : null,
+        tocadas[i]?.precioUnitario && (l.precioUnitario == null || l.precioUnitario <= 0) ? "el precio" : null,
       ].filter(Boolean);
       return faltan.length ? `Producto ${i + 1}: revisa ${faltan.join(" y ")}.` : null;
     })
     .filter((x): x is string => x != null);
+
+  // Y EL BOTÓN NO SE DESHABILITA POR LO NO TOCADO: lo que falta de verdad se dice al intentar enviar. Un
+  // botón muerto sin explicación es peor que un error claro.
+  const incompleto = leidas.some(
+    (l) => l.cantidad == null || l.cantidad <= 0 || l.precioUnitario == null || l.precioUnitario <= 0,
+  );
 
   // Las lineas viajan como JSON: el servidor las valida enteras con Zod. `enviarSinReset` evita que un error
   // borre lo tecleado (React 19 resetea los campos con `action` como prop).
@@ -89,7 +119,14 @@ export function VentaRetroactivaForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <Label htmlFor="vr-profesional">Quién la vendió</Label>
-          <select id="vr-profesional" name="professionalId" className={selectClass} disabled={pending}>
+          <select
+            id="vr-profesional"
+            name="professionalId"
+            className={selectClass}
+            disabled={pending}
+            value={profesionalId}
+            onChange={(e) => setProfesionalId(e.target.value)}
+          >
             {profesionales.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre}
@@ -100,12 +137,18 @@ export function VentaRetroactivaForm({
         <div className="flex flex-col gap-1">
           <Label htmlFor="vr-paciente">A quién</Label>
           <select id="vr-paciente" name="patientId" className={selectClass} disabled={pending}>
-            {pacientes.map((p) => (
+            {pacientesVisibles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre}
               </option>
             ))}
           </select>
+          {suyos.length === 0 ? (
+            <span className="text-xs text-muted-foreground">
+              Ese profesional no tiene pacientes asignados, así que salen todos. Revisa bien a quién se la
+              registras.
+            </span>
+          ) : null}
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="vr-fecha">Cuándo ocurrió</Label>
@@ -156,7 +199,10 @@ export function VentaRetroactivaForm({
               inputMode="numeric"
               className="w-20"
               value={l.cantidad}
-              onChange={(e) => cambiar(i, { cantidad: e.target.value })}
+              onChange={(e) => {
+                tocar(i, "cantidad");
+                cambiar(i, { cantidad: e.target.value });
+              }}
               disabled={pending}
             />
             <Input
@@ -165,7 +211,10 @@ export function VentaRetroactivaForm({
               placeholder="Precio de ese día"
               className="w-40"
               value={l.precioUnitario}
-              onChange={(e) => cambiar(i, { precioUnitario: e.target.value })}
+              onChange={(e) => {
+                tocar(i, "precioUnitario");
+                cambiar(i, { precioUnitario: e.target.value });
+              }}
               disabled={pending}
             />
             {lineas.length > 1 ? (
@@ -189,7 +238,7 @@ export function VentaRetroactivaForm({
         </p>
       </div>
 
-      <Button type="submit" disabled={pending || problemas.length > 0} className="w-fit">
+      <Button type="submit" disabled={pending || incompleto} className="w-fit">
         Registrar la venta
       </Button>
       {problemas.map((x) => (

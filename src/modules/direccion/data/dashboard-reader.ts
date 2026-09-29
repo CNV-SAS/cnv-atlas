@@ -1,7 +1,15 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { COLUMNA_EFECTIVO_NO_RECIBIDO, FILTRO_FUERA_DE_REVISION } from "@/modules/payments/cobro-reconocido";
+import {
+  brutoReconocido,
+  COLUMNA_EFECTIVO_NO_RECIBIDO,
+  COLUMNA_PRODUCTO_DE_PRUEBA,
+  EMBED_PRODUCTO_NO_DE_PRUEBA,
+  ESTADO_DEVUELTA,
+  ESTADO_DISPUTA_PERDIDA,
+  FILTRO_FUERA_DE_REVISION,
+} from "@/modules/payments/cobro-reconocido";
 
 // Tablero consolidado de direccion (B14). Solo agregados financieros e inventario, leidos por
 // RLS (direccion/admin): transacciones, ingreso CNV, comisiones e inventario. Sin PII: se
@@ -25,7 +33,7 @@ function sum(rows: { v: string | number | null }[]): number {
 export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   const supabase = await createSupabaseServerClient();
 
-  const [paid, cnv, perdidas, commissions, inventory] = await Promise.all([
+  const [paid, cnv, perdidas, devueltas, commissions, inventory] = await Promise.all([
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
     supabase.from("transactions").select("id, amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null),
     supabase.from("cnv_revenue").select("amount"),
@@ -33,23 +41,35 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
     // solas, porque se suman de filas de ingreso y la reversa agrega las negativas; el bruto no, porque suma las
     // VENTAS. Una venta cuyo contracargo se perdio es plata que CNV devolvio: contarla en el bruto diria que se
     // facturo algo que ya no existe. Mismo trato que el efectivo no recibido y que lo que esta en revision.
-    supabase.from("sale_reversals").select("transaction_id").eq("state", "perdida"),
+    supabase.from("sale_reversals").select("transaction_id").eq("state", ESTADO_DISPUTA_PERDIDA),
+    // LO DEVUELTO POR EL PACIENTE TAMBIEN SALE DEL BRUTO (smoke del 2026-09-29). La disputa perdida ya salia;
+    // la devolucion se construyo despues y tiene otro estado, asi que se quedo contando una venta que ya
+    // no existe. Se resta `debited_amount` y no la venta entera: una devolucion es por UNIDADES de una
+    // linea, y quien devolvio una de cuatro sigue habiendo comprado tres.
+    supabase.from("sale_reversals").select("debited_amount").eq("state", ESTADO_DEVUELTA),
     supabase.from("professional_revenue").select("commission_amount"),
     // SIN PRODUCTOS DE PRUEBA (smoke del Bloque 3, 2026-09-14): los "PRUEBA SMOKE BLOQUE 3" de cada smoke dejan
     // saldo que no se puede borrar (movimientos inmutables), y sumaban 18 unidades a la vitrina real.
     supabase
       .from("nutraceutical_inventory")
-      .select("stock_quantity, nutraceutical_id, location_id, nutraceuticals!inner(is_test)")
-      .eq("nutraceuticals.is_test", false),
+      .select(`stock_quantity, nutraceutical_id, location_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}`)
+      .eq(COLUMNA_PRODUCTO_DE_PRUEBA, false),
   ]);
 
-  const revertidas = new Set((perdidas.data ?? []).map((r) => r.transaction_id));
-  const paidRows = (paid.data ?? []).filter((r) => !revertidas.has(r.id));
+  const paidRows = (paid.data ?? []).filter(
+    (r) => !new Set((perdidas.data ?? []).map((x) => x.transaction_id)).has(r.id),
+  );
   const inventoryRows = inventory.data ?? [];
 
   return {
     paidCount: paidRows.length,
-    grossPaid: sum(paidRows.map((r) => ({ v: r.amount }))),
+    // LA CUENTA LA HACE EL MODULO NEUTRO, que es el mismo que usa Inicio: es lo unico que impide que las dos
+    // pantallas vuelvan a decir cifras distintas del mismo hecho.
+    grossPaid: brutoReconocido({
+      pagadas: paid.data ?? [],
+      disputasPerdidas: (perdidas.data ?? []).map((r) => r.transaction_id),
+      devoluciones: (devueltas.data ?? []).map((r) => r.debited_amount),
+    }),
     cnvRevenue: sum((cnv.data ?? []).map((r) => ({ v: r.amount }))),
     professionalCommissions: sum(
       (commissions.data ?? []).map((r) => ({ v: r.commission_amount })),

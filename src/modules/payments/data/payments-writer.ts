@@ -265,6 +265,8 @@ export type NewTransaction = {
    * despacharla: no hace falta una columna nueva, y una columna nueva seria una segunda fuente del mismo hecho.
    */
   desdeLaBodega?: boolean;
+  /** Quien teclea la venta. Se sella aparte del profesional de la comision (0193). */
+  actorId?: string | null;
   /**
    * ENVIO A DOMICILIO (0190). Su presencia decide tres cosas a la vez, y por eso viaja junta:
    *
@@ -339,6 +341,9 @@ export async function createTransactionWithItems(
         shippingFee: input.domicilio ? String(input.domicilio.flete) : null,
         shippingCost: input.domicilio ? String(input.domicilio.costo) : null,
         operatedAt: new Date(),
+        // QUIEN LA REGISTRO, que no siempre es el profesional de la comision (0193): un administrador puede
+        // cobrar por el paciente de otro, y si la venta sale mal hay que saber a quien preguntarle.
+        createdBy: input.actorId ?? null,
         // Toda venta nace con su entrega pendiente (sesion 2): es lo que hace que ninguna quede sin camino
         // para entregarse.
         fulfillmentState: "pendiente",
@@ -557,6 +562,9 @@ export async function createPaidCashTransaction(
         shippingFee: input.domicilio ? String(input.domicilio.flete) : null,
         shippingCost: input.domicilio ? String(input.domicilio.costo) : null,
         operatedAt: new Date(),
+        // QUIEN LA REGISTRO, que no siempre es el profesional de la comision (0193): un administrador puede
+        // cobrar por el paciente de otro, y si la venta sale mal hay que saber a quien preguntarle.
+        createdBy: input.actorId ?? null,
         stockState: "pendiente",
         fulfillmentState: "pendiente",
       })

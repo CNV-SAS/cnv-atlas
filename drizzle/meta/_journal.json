@@ -1352,6 +1352,13 @@
       "when": 1791953606103,
       "tag": "0192_el_flete_se_teclea_por_envio",
       "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1791953666103,
+      "tag": "0193_quien_registro_la_venta",
+      "breakpoints": true
     }
   ]
 }
