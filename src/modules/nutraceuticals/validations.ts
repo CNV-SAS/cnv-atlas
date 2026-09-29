@@ -134,3 +134,10 @@ export type NutraceuticalFormState = {
 export const marcarVencimientoVistoSchema = z.object({
   alertaId: z.guid("Alerta invalida."),
 });
+
+// Completar el vencimiento de un lote PROVISIONAL (0186). La fecha se exige entera: un lote sin vencimiento
+// real no dispara su alerta, que es el hueco que esto cierra.
+export const completarVencimientoSchema = z.object({
+  lotId: z.guid("Lote invalido."),
+  vence: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Escribe la fecha de vencimiento del lote."),
+});

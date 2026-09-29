@@ -1,7 +1,8 @@
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { Badge } from "@/components/ui/badge";
 
-import { vencimientosParaCnv } from "../services/vencimientos-lectura";
+import { lotesProvisionales, vencimientosParaCnv } from "../services/vencimientos-lectura";
+import { CompletarVencimientoForm } from "./completar-vencimiento-form";
 
 // ═══ LOS VENCIMIENTOS, DEL LADO DE CNV (0186) ═══
 //
@@ -15,8 +16,8 @@ import { vencimientosParaCnv } from "../services/vencimientos-lectura";
 // Gildardo. Un lote vencido es un aviso sobre el TRABAJO. Lo exige el candado `capa-clinica-solo-veredictos`,
 // que atrapo este mismo archivo al escribirlo.
 export async function VencimientosCnvSection() {
-  const todos = await vencimientosParaCnv();
-  if (todos.length === 0) return null;
+  const [todos, provisionales] = await Promise.all([vencimientosParaCnv(), lotesProvisionales()]);
+  if (todos.length === 0 && provisionales.length === 0) return null;
 
   const vencidos = todos.filter((v) => v.vencido);
   const porVencer = todos.filter((v) => !v.vencido);
@@ -24,6 +25,38 @@ export async function VencimientosCnvSection() {
   return (
     <section className="flex flex-col gap-3">
       <TituloSeccion>Vencimientos de lote</TituloSeccion>
+
+      {/* ═══ EL HUECO POR EL QUE LA ALERTA NO PUEDE DISPARARSE ═══
+          Cuando el Integrante reconoce una recepción de un lote que CNV no había dado de alta, Atlas lo CREA
+          con un vencimiento inventado a un año (negarlo alejaría el saldo de la vitrina, que es peor). Un lote
+          así NUNCA entra en la ventana, aunque en la realidad venza el mes que viene: el aviso existe y no se
+          dispara, que es la peor forma de no tener un control. Por eso se listan CON el campo para cerrarlo:
+          una lista sin forma de arreglarla sería el mismo hueco con más pasos. */}
+      {provisionales.length > 0 ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-attention bg-attention-bg p-4">
+          <p className="max-w-prose text-sm text-foreground">
+            <strong>Estos lotes no tienen fecha de vencimiento real.</strong> La puso Atlas al reconocer una
+            recepción, porque el lote no estaba dado de alta. Mientras no se complete,{" "}
+            <strong>su alerta de vencimiento no puede dispararse</strong>. Mira el envase y escríbela.
+          </p>
+          {provisionales.map((l) => (
+            <div
+              key={l.lotId}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background p-3"
+            >
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">
+                  {l.producto} · lote {l.codigo}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {l.unidades} {l.unidades === 1 ? "unidad" : "unidades"} · {l.donde}
+                </span>
+              </div>
+              <CompletarVencimientoForm lotId={l.lotId} />
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {vencidos.length > 0 ? (
         <div className="flex flex-col gap-3">
