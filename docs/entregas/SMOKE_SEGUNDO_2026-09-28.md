@@ -137,3 +137,61 @@ vencimiento de un lote de prueba a dentro de 30 días.
      como devolución con guía.
 5. **Confirma con 0** en otra: se cierra igual y no mueve nada. Cerrada con cero no es lo mismo que abierta.
 6. **Intenta cerrarla dos veces:** no deja.
+
+## Parte 10 · Distribución: lo que CNV le factura al Integrante
+
+**Ojo: hoy los dos caminos de venta BLOQUEAN a un Integrante en Distribución**, así que para verlo necesitas
+que yo te prepare unas ventas de prueba o que decidamos desbloquear la venta en esa modalidad. Dime cuál.
+
+1. Como **admin**, en **/comercial** tiene que salir un bloque aparte, **"Distribución: lo que CNV le factura
+   al Integrante"**, con su propio encabezado, separado de las liquidaciones.
+2. **La razón de que estén separados:** bajo Comisión CNV **paga**; bajo Distribución **cobra**. Si los ves
+   mezclados, avísame: así es como alguien termina girando plata que en realidad le deben.
+3. Emite un corte. Verifica: la cuenta dice el período, las ventas y el total.
+4. **EL CONTROL QUE IMPORTA:** vuelve a emitir el mismo corte. Tiene que decir que **no hay ventas sin
+   facturar**. Una venta no puede entrar en dos cuentas.
+5. Como **Integrante**, en /comercial sale **"Tus cuentas de Distribución"**, con el **detalle abierto**: día,
+   producto, base con descuento e IVA por renglón. Sin eso no se puede objetar de forma sustentada.
+6. Objeta una con un motivo. Como admin, **"Darle la razón y rehacerla"**: sus ventas vuelven a estar sin
+   facturar y el corte se puede emitir otra vez. Con **"Sostener"**, la cuenta queda como estaba.
+7. Registra el pago. **Intenta registrarlo dos veces:** no deja.
+
+## Parte 11 · El envío a domicilio
+
+**Necesita configuración tuya antes de poder probarse**, y eso es a propósito:
+
+- una **tarifa de flete** en `commercial_config.flete_tarifa` (es lo que se le cobra al paciente, **con IVA
+  dentro**, igual que el PVP);
+- y al menos una fila en **`delivery_cities`** (ciudad, departamento y, si lo tienes, el código DANE).
+
+Sin las dos cosas, **el bloque de envío ni siquiera aparece**. No es un olvido: el modelo dice que es
+preferible no ofrecer el domicilio a un destino antes que ofrecerlo y perder dinero en cada envío.
+
+1. Con eso puesto, en **/pagos** (tanto en el link de pago como en la venta en efectivo) sale **"Enviar a
+   domicilio (flete $X)"**.
+2. Márcalo: aparece la ciudad (**lista, no campo libre**) y la dirección, y el total **con el envío sumado**.
+3. Cobra. **Los tres controles:**
+   - la venta sale de la **bodega de CNV**, no de tu vitrina (y por eso entra en el correo de "falta
+     despachar");
+   - el monto cobrado incluye el flete;
+   - y el ingreso de CNV cuenta la **base** del flete (el IVA no es ingreso).
+4. **Registra la entrega.** Ahí arranca el reloj: bajo la entrega tiene que salir **"Puede retractarse hasta
+   el (fecha)"**, con lo que habría que reintegrarle, **envío incluido**.
+5. **"El paciente se retracta" → "Volvió sellado":** lo acepta, dice el reintegro completo y revierte el
+   flete del ingreso de CNV.
+6. **En otra venta, "Volvió abierto":** NO procede, y lo dice por qué (bien de uso personal, numeral 7). El
+   registro queda igual: un retracto negado también es una decisión.
+7. **Intenta registrarlo dos veces:** no deja.
+
+---
+
+## Lo que NO se construyó, y por qué
+
+- **El cargo por un vencido a cargo del Integrante.** La alerta llega hasta la **propuesta** de quién asume.
+  El cargo se cobra "al precio de facturación", que es justo la cifra que está en consulta
+  (`DECISION_PRECIO_DEL_FALTANTE_2026-09-29.md`). Construirlo antes de esa decisión sería construirlo dos
+  veces.
+- **La emisión de la cuenta de Distribución en Alegra.** La cuenta se arma, se objeta y se cobra en Atlas;
+  emitir el documento fiscal necesita la configuración de producción, que está en el checklist de arranque.
+- **Desbloquear la venta bajo Distribución.** El mecanismo del recaudo ya existe, así que ahora es una
+  decisión tuya, no una falta de construcción.
