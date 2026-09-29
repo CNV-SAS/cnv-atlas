@@ -65,6 +65,7 @@ const DB_TESTS = [
   "src/tests/proteina-forma-vieja.test.ts",
   "src/tests/report-trajectory-seal.test.ts",
   "src/tests/rls.test.ts",
+  "src/tests/reversas-visibles-al-profesional.test.ts",
   "src/tests/sociodemographic-writer.test.ts",
   "src/tests/survey-edit-writer.test.ts",
   "src/tests/survey-engine-coupling.test.ts",

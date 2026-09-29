@@ -25,13 +25,19 @@ export default async function DireccionPage() {
   const d = await getDireccionDashboard();
 
   const cards: { label: string; value: string; hint?: string }[] = [
-    { label: "Ingreso bruto facturado", value: cop.format(d.grossPaid), hint: `${d.paidCount} pagos` },
+    // LAS CIFRAS DICEN QUE DEJAN FUERA (smoke del 2026-09-29): sin decirlo, el número parece moverse solo,
+    // y un número que se mueve solo es indistinguible de un defecto.
+    {
+      label: "Ingreso bruto facturado",
+      value: cop.format(d.grossPaid),
+      hint: `${d.paidCount} pagos · sin lo devuelto ni lo que está en revisión`,
+    },
     { label: "Ingreso CNV", value: cop.format(d.cnvRevenue) },
     { label: "Comisiones a profesionales", value: cop.format(d.professionalCommissions) },
     {
       label: "Inventario",
       value: `${d.inventoryUnits} unidades`,
-      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} ubicaci${d.inventoryLocations === 1 ? "ón" : "ones"}`,
+      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} ubicaci${d.inventoryLocations === 1 ? "ón" : "ones"} · sin los productos de prueba`,
     },
   ];
 
