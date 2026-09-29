@@ -169,7 +169,11 @@ describe("una corrección no pierde los datos de la consulta", () => {
     // no viajaban. Desde el 2026-08-31 la fuerza prensil de esa fila es criterio PRIMARIO del fenotipo
     // (EWGSOP2), asi que perderla degradaba el diagnostico de sarcopenia de una correccion a la siguiente,
     // en silencio y con el numero puesto.
-    expect(CORRECCION).toContain("gripStrengthKg: oldIntake.gripStrengthKg");
+    // LA EXPRESION CAMBIO EL 2026-09-28 (la correccion de CONDICIONES puede no mandarla), pero lo que este
+    // candado afirma no: una correccion NO la pierde. Ahora se conserva por defecto y solo se pisa si de verdad
+    // viene, asi que lo que hay que ver es el respaldo a la vieja.
+    expect(CORRECCION).toContain("oldIntake.gripStrengthKg");
+    expect(CORRECCION).toContain("corr.gripStrengthKg !== undefined");
     expect(CORRECCION).toContain("tx.insert(evaluationBisIntake)");
   });
 

@@ -49,6 +49,33 @@ export type CorrectEvaluationInput = {
   // Correcciones de respuestas de encuesta: por pregunta (questionId) su nuevo valor. Solo encuesta
   // en este bloque (PLAN (f)); antropometria/condiciones reusan el mecanismo con su propia UI luego.
   correctedAnswers: { questionId: string; answerValue: string }[];
+  /**
+   * ═══ LAS CONDICIONES DE LA TOMA, CORREGIDAS (Santiago, 2026-09-28) ═══
+   *
+   * EL CASO REAL, de una integrante: el paciente va al baño DESPUES de que ella ya guardo las condiciones, asi
+   * que "fue al bano antes" queda mal. Hoy, con el diagnostico generado, las condiciones son de SOLO LECTURA y
+   * no hay forma de corregirlas.
+   *
+   * SE HACE POR AQUI Y NO CON UNA EDICION EN SITIO, y es la parte que importa: esas condiciones ALIMENTARON el
+   * diagnostico (la fuerza prensil entra en el fenotipo de sarcopenia, y las advertencias de calidad matizan la
+   * lectura bioelectrica). Editarlas en sitio dejaria un diagnostico afirmando sobre una toma cuyas condiciones
+   * ya no son las que uso. Por eso rehacen la evaluacion, igual que una respuesta de encuesta corregida.
+   *
+   * Nulo = no se corrigen y se copian tal cual, que es lo que hacia antes.
+   */
+  correctedConditions?: {
+    answers: unknown;
+    contraindicated: boolean;
+    /**
+     * LA FUERZA PRENSIL NO SE MANDA AL CORREGIR CONDICIONES, y por eso es opcional: SALIO de ese formulario el
+     * 2026-09-07 y se captura en Antropometria, con su propio schema. Ausente = se conserva la de la evaluacion
+     * vieja. Mandarla desde aqui seria escribir encima de lo que el profesional guardo en la otra pantalla, que
+     * es exactamente el motivo por el que se saco de este formulario.
+     *
+     * Es numeric en la base (cadena en drizzle): convertirlo dos veces es donde se pierde un decimal.
+     */
+    gripStrengthKg?: string | null;
+  } | null;
   reason: string; // motivo obligatorio (PLAN (d))
   triggerType: "correccion_profesional" | "recalibracion_ciencia";
   confirmed: boolean; // confirmacion explicita (Condicion 4): acto irreversible
@@ -380,12 +407,18 @@ export async function correctEvaluation(
         .where(eq(evaluationBisIntake.evaluationId, input.evaluationId))
         .limit(1);
       if (oldIntake) {
+        // LAS CORREGIDAS MANDAN SOBRE LAS COPIADAS (2026-09-28). La VERSION del catalogo de condiciones se
+        // conserva la de la evaluacion vieja a proposito: se esta corrigiendo lo que se respondio, no
+        // cambiando el instrumento con el que se pregunto.
+        const corr = input.correctedConditions ?? null;
         await tx.insert(evaluationBisIntake).values({
           evaluationId: newEval.id,
           bisConditionVersionId: oldIntake.versionId,
-          conditionAnswers: oldIntake.answers,
-          contraindicated: oldIntake.contraindicated,
-          gripStrengthKg: oldIntake.gripStrengthKg,
+          conditionAnswers: corr ? (corr.answers as typeof oldIntake.answers) : oldIntake.answers,
+          contraindicated: corr ? corr.contraindicated : oldIntake.contraindicated,
+          // `undefined` = no se mando: se conserva la vieja. Distinto de `null`, que seria borrarla a proposito.
+          gripStrengthKg:
+            corr && corr.gripStrengthKg !== undefined ? corr.gripStrengthKg : oldIntake.gripStrengthKg,
         });
       }
 

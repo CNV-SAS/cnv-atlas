@@ -109,6 +109,8 @@ export async function getActiveBisConditionCatalog(): Promise<BisConditionCatalo
 // etiquetas tal como se respondieron) + las respuestas. Para la vista de solo lectura tras el
 // diagnostico (la captura ya no es editable). null si no hay intake.
 export type BisConditionsReadonly = {
+  /** Para poder enlazar a la correccion de las condiciones desde la propia vista de solo lectura (2026-09-28). */
+  evaluationId: string;
   conditions: BisCondition[];
   answers: BisConditionAnswers;
   // Fuerza prensil sellada (dinamometria): para la card de sarcopenia en la vista de solo lectura tras el
@@ -136,6 +138,7 @@ export async function getBisConditionsReadonly(
     .order("order_index", { ascending: true });
   if (error) throw new Error(`bis-conditions-reader: readonly: ${error.message}`);
   return {
+    evaluationId,
     conditions: (rows ?? []).map(mapConditionRow),
     answers: intake.answers,
     gripStrengthKg: intake.gripStrengthKg,
