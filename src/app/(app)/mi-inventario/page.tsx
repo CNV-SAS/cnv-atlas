@@ -101,7 +101,17 @@ export default async function MiInventarioPage() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3"
               >
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-medium text-foreground">{l.name}</span>
+                  <span className="font-medium text-foreground">
+                    {l.name}
+                    {/* MARCADOS EN LA LISTA, EXCLUIDOS DE LA CIFRA (smoke del 2026-09-29). Si la lista los
+                        escondiera, su saldo desaparecería sin poder cuadrarlo; si la tarjeta los contara,
+                        diría otro número que la de Dirección sobre el mismo hecho. */}
+                    {l.esDePrueba ? (
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                        De prueba · no cuenta en las cifras
+                      </span>
+                    ) : null}
+                  </span>
                   {l.indication ? <span className="text-xs text-muted-foreground">{l.indication}</span> : null}
                 </div>
                 <div className="flex items-center gap-2">

@@ -19,6 +19,13 @@ export type InventoryLine = {
   indication: string | null;
   commercialAvailability: string; // en_consultorio | solo_tienda | no_disponible
   stock: number;
+  /**
+   * Producto de PRUEBA. La LISTA los muestra MARCADOS y la CIFRA de la tarjeta los excluye, igual que con
+   * los pacientes de prueba: si la lista los escondiera, su saldo desapareceria sin poder cuadrarlo, y si la
+   * cifra los contara, la tarjeta y la de Direccion dirian numeros distintos del mismo hecho (smoke del
+   * 2026-09-29: 1.903 contra 1.820).
+   */
+  esDePrueba: boolean;
 };
 
 export type MovementRow = {
@@ -74,7 +81,9 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
   // LO QUE SE PIDE es exactamente lo que esta pantalla muestra: lo que tiene saldo, mas los
   // `en_consultorio` (que salen con 0 para poder recibir).
   const idsConSaldo = [...stockByNutra.keys()];
-  const catalogo = supabase.from("nutraceuticals").select("id, name, indication, commercial_availability");
+  const catalogo = supabase
+    .from("nutraceuticals")
+    .select("id, name, indication, commercial_availability, is_test");
   const { data: cat, error: cErr } = await (idsConSaldo.length
     ? catalogo.or(`commercial_availability.eq.en_consultorio,id.in.(${idsConSaldo.join(",")})`)
     : catalogo.eq("commercial_availability", "en_consultorio")
@@ -88,6 +97,7 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
       indication: c.indication ?? null,
       commercialAvailability: c.commercial_availability,
       stock: stockByNutra.get(c.id) ?? 0,
+      esDePrueba: c.is_test === true,
     }))
     .filter((l) => l.stock !== 0 || l.commercialAvailability === "en_consultorio");
 }

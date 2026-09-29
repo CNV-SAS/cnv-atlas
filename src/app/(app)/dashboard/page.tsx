@@ -139,12 +139,21 @@ export default async function DashboardPage() {
         <TituloSeccion>Tu mes</TituloSeccion>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
-            { icono: Wallet, rotulo: "Tu comisión", valor: pesos(t.comisionDelMes) },
-            { icono: Receipt, rotulo: "Ventas", valor: pesos(t.ventasDelMes) },
+            { icono: Wallet, rotulo: "Tu comisión", valor: pesos(t.comisionDelMes), nota: null },
+            {
+              icono: Receipt,
+              rotulo: "Ventas",
+              valor: pesos(t.ventasDelMes),
+              // LAS CIFRAS DICEN QUE DEJAN FUERA (smoke del 2026-09-29). Los dos descuentos son correctos,
+              // pero sin decirlos el número parece moverse solo, y un número que se mueve solo es
+              // indistinguible de un defecto: costó media hora de smoke averiguar que estaba bien.
+              nota: "Sin lo devuelto ni lo que está en revisión",
+            },
             {
               icono: Package,
               rotulo: "Unidades en inventario",
               valor: String(t.unidadesEnInventario),
+              nota: "Sin los productos de prueba",
             },
           ].map((m) => (
             <div
@@ -157,6 +166,7 @@ export default async function DashboardPage() {
                 <span className="truncate text-base font-semibold tabular-nums text-foreground">
                   {m.valor}
                 </span>
+                {m.nota ? <span className="text-xs text-muted-foreground">{m.nota}</span> : null}
               </div>
             </div>
           ))}
