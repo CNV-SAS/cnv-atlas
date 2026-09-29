@@ -77,6 +77,23 @@ export async function MisFaltantesSection({ userId }: { userId: string }) {
                 {c.justificationReference ? ` (ref. ${c.justificationReference})` : ""}.
               </p>
             ) : null}
+
+            {/* ═══ A DONDE RECLAMAR (Santiago, 2026-09-28) ═══
+                EL PROBLEMA QUE CIERRA, con sus palabras: "un canal que nadie sabe que existe no es un canal".
+                El integrante ve un cargo en su liquidación y hoy no sabe que puede discutirlo.
+                NO SE MODELA LA OBJECION: con siete integrantes y cero casos abiertos, construir estados para
+                algo que no ha ocurrido es trabajo sin caso. Lo que sí hace falta es que el canal se NOMBRE.
+                Y EL PLAZO NO SE INVENTA: no hay uno escrito en el procedimiento, así que se ancla en un hecho
+                que el sistema sí tiene y el integrante puede comprobar: antes de que se gire la liquidación en
+                la que aparece. Poner "cinco días" aquí sería crear una obligación que nadie acordó. */}
+            {c.chargeStatus !== "sin_cargo" ? (
+              <p className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                Este caso tiene un cargo por {money(c.sealedTotal)}, que se descuenta de tu liquidación.{" "}
+                <strong className="text-foreground">Si no estás de acuerdo</strong>, escríbele a un administrador
+                de CNV antes de que se gire la liquidación en la que aparezca: mientras no se gire, el cargo se
+                puede revisar.
+              </p>
+            ) : null}
           </div>
         ))}
       </div>

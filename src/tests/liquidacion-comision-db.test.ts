@@ -46,6 +46,7 @@ async function motivoDelRechazo(promesa: Promise<unknown>): Promise<string> {
 }
 
 let professionalId = "";
+const faltantesDeLaPrueba: string[] = [];
 let actorId = "";
 let organizationId = "";
 let hoy = "";
@@ -124,6 +125,13 @@ describe.skipIf(!HAS_DB)("la liquidación de comisiones (BD real)", () => {
   afterAll(async () => {
     const { db } = await import("@/db");
     if (!professionalId) return;
+    // SE BORRAN LOS FALTANTES DE LA PRUEBA: un fixture que no se limpia no ensucia solo su propio test (ya
+    // paso: 22 ventas acumuladas hicieron fallar el reporte por dia al cruzar 500 filas).
+    // `in (...)` con join y no `any(array)`: drizzle expande el arreglo como TUPLA, asi que
+    // `any(($1,$2,$3)::uuid[])` no es SQL valido. Es la misma forma que usa el escritor.
+    for (const id of faltantesDeLaPrueba) {
+      await db.execute(dsql`delete from nutraceutical_faltante_cases where id = ${id}::uuid`);
+    }
     // Se le devuelven sus datos tributarios: el profesional es de la base, no de esta prueba.
     await db.execute(dsql`
       update professional_profiles
@@ -131,6 +139,103 @@ describe.skipIf(!HAS_DB)("la liquidación de comisiones (BD real)", () => {
              tax_must_invoice = ${original.factura}
        where id = ${professionalId}`);
   });
+
+
+  // ═══ EL CARGO POR FALTANTE, COBRADO UNA SOLA VEZ (2026-09-28) ═══
+  //
+  // EL HUECO QUE CIERRA: un faltante injustificado materializaba su cargo y NADIE LO COBRABA. Se comprobo
+  // leyendo el codigo: `charge_status` solo se usaba para mostrarlo en pantalla, y la liquidacion no lo miraba.
+  //
+  // Y LO QUE ESTE CANDADO VIGILA es lo mismo que el de la comision, con mas peso: cobrar dos veces el mismo
+  // frasco es cobrarle a una persona una deuda que ya pago. Solo la base puede probarlo.
+  async function abrirFaltanteConCargo(monto: number): Promise<string> {
+    const { db } = await import("@/db");
+    const [nut] = await db.execute<{ id: string }>(dsql`
+      select id from nutraceuticals where coalesce(is_test, false) = false order by name limit 1`);
+    const [fila] = await db.execute<{ id: string }>(dsql`
+      insert into nutraceutical_faltante_cases
+        (professional_id, nutraceutical_id, quantity, sealed_unit_price, sealed_total, reported_at,
+         deadline_at, status, charge_status)
+      values (${professionalId}::uuid, ${nut.id}::uuid, 1, ${String(monto)}, ${String(monto)}, now(),
+              now() + interval '5 days', 'injustificado', 'pendiente_liquidacion')
+      returning id`);
+    faltantesDeLaPrueba.push(fila.id);
+    return fila.id;
+  }
+
+  it("UN CARGO POR FALTANTE SE COBRA UNA VEZ: la segunda liquidación ya no lo ve", async () => {
+    const { db } = await import("@/db");
+    const { liquidarHasta, LiquidacionError } = await import("@/modules/payments/data/liquidacion-writer");
+    await causarComision(50_000);
+    const cargoId = await abrirFaltanteConCargo(30_000);
+
+    const r = await liquidarHasta({ professionalId, hasta: hoy, actorId, actorEmail: "direccion@cnv", ip: null });
+
+    // El cargo quedo ligado a ESA liquidacion: es lo que impide cobrarlo otra vez.
+    const [ligado] = await db.execute<{ settlement_id: string | null }>(dsql`
+      select settlement_id::text as settlement_id from nutraceutical_faltante_cases where id = ${cargoId}::uuid`);
+    expect(ligado.settlement_id).toBe(r.id);
+
+    // SE AFIRMA LA RELACION, NO UN NUMERO. Mi primera version esperaba 24.500 y salio 59.380: el integrante
+    // tenia comisiones pendientes de otros tests y de la base local, asi que la base no era la que yo suponia.
+    // Un candado que depende de cuanta comision haya acumulada falla sin que nada este mal, que es la peor
+    // clase. Lo que de verdad hay que probar es que el cargo SE RESTA del neto y no de la base gravada.
+    const [liqFila] = await db.execute<{
+      base: string;
+      iva: string;
+      retencion: string;
+      neto: string;
+    }>(dsql`
+      select base_amount::text as base, vat_amount::text as iva, withholding_amount::text as retencion,
+             net_amount::text as neto
+        from commission_settlements where id = ${r.id}::uuid`);
+    expect(Number(liqFila.neto)).toBe(
+      Number(liqFila.base) + Number(liqFila.iva) - Number(liqFila.retencion) - 30_000,
+    );
+    // Y EL IVA Y LA RETENCION SIGUEN SIENDO LOS DE LA COMISION COMPLETA: el cargo no baja la base gravada.
+    expect(Number(liqFila.iva)).toBe(Math.round(Number(liqFila.base) * 0.19));
+    expect(Number(liqFila.retencion)).toBe(Math.round(Number(liqFila.base) * 0.1));
+
+    // Y no queda nada pendiente: una segunda liquidacion no encuentra ni comision ni cargo.
+    await expect(
+      liquidarHasta({ professionalId, hasta: hoy, actorId, actorEmail: "direccion@cnv", ip: null }),
+    ).rejects.toThrow(LiquidacionError);
+  }, 60_000);
+
+  it("un cargo SIN comisiones también se cobra, y el neto queda negativo", async () => {
+    // Es el caso que el modelo llama NORMAL: "un faltante puede superar la comision mensual de quien vende
+    // poco". Antes `liquidarHasta` exigia comisiones, asi que el cargo de quien no vendio nada ese periodo NO SE
+    // COBRABA NUNCA: negarse a liquidar ahi era dejar el frasco sin cobrar.
+    const { liquidarHasta } = await import("@/modules/payments/data/liquidacion-writer");
+    await abrirFaltanteConCargo(40_000);
+    const r = await liquidarHasta({ professionalId, hasta: hoy, actorId, actorEmail: "direccion@cnv", ip: null });
+    // Sin comisiones pendientes (el test anterior se las llevo), el neto ES el cargo en negativo.
+    expect(r.neto).toBe(-40_000);
+  }, 60_000);
+
+  it("un caso JUSTIFICADO no entra: la base lo impide", async () => {
+    // Un caso que CNV acepto no tiene nada que cobrar, y meterlo seria descontarle al Integrante por algo que le
+    // aceptaron. Lo vigila un CHECK, no la aplicacion.
+    const { db } = await import("@/db");
+    const [nut] = await db.execute<{ id: string }>(dsql`
+      select id from nutraceuticals where coalesce(is_test, false) = false order by name limit 1`);
+    const [caso] = await db.execute<{ id: string }>(dsql`
+      insert into nutraceutical_faltante_cases
+        (professional_id, nutraceutical_id, quantity, sealed_unit_price, sealed_total, reported_at,
+         deadline_at, status, charge_status)
+      values (${professionalId}::uuid, ${nut.id}::uuid, 1, '10000', '10000', now(),
+              now() + interval '5 days', 'justificado', 'sin_cargo')
+      returning id`);
+    faltantesDeLaPrueba.push(caso.id);
+    const [liq] = await db.execute<{ id: string }>(dsql`
+      select id from commission_settlements where professional_id = ${professionalId}::uuid
+       order by created_at desc limit 1`);
+    if (!liq) return;
+    await expect(
+      db.execute(dsql`
+        update nutraceutical_faltante_cases set settlement_id = ${liq.id}::uuid where id = ${caso.id}::uuid`),
+    ).rejects.toThrow();
+  }, 30_000);
 
   it("UNA COMISIÓN SE PAGA UNA VEZ: la segunda liquidación ya no la ve", async () => {
     const { liquidarHasta, LiquidacionError } = await import("@/modules/payments/data/liquidacion-writer");

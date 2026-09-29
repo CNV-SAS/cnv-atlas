@@ -43,7 +43,26 @@ export type LiquidacionDeComision = {
   /** La tarifa aplicada (0.10 o 0.11), para que la liquidacion explique su propia cuenta. */
   tarifaDeRetencion: number;
   retencion: number;
-  /** Lo que se le gira: base + IVA - retencion. */
+  /**
+   * ═══ LOS CARGOS POR FALTANTE (2026-09-28) ═══
+   *
+   * Lo que el Integrante le debe a CNV por producto faltante clasificado como injustificado, al PRECIO DE VENTA
+   * sellado a la deteccion (Clausula 5.4). Positivo = le debe.
+   *
+   * ── SE DESCUENTA DEL NETO, NO DE LA BASE, y esto es lo que decide la cuenta ──
+   *
+   * La comision es un servicio que SE PRESTO COMPLETO: su IVA y su retencion van sobre el total causado. El
+   * faltante es OTRA obligacion, del Integrante hacia CNV, y el modelo dice como se resuelve: "las obligaciones
+   * reciprocas SE COMPENSAN y solo se transfiere el saldo neto" (§3). Compensar dos obligaciones no es reducir
+   * la base gravada de una de ellas.
+   *
+   * Bajarlo de la base seria retener y facturar de menos sobre un servicio que si se presto, o sea un error
+   * tributario con plata de por medio. Y por eso el modelo pide ademas que el cargo quede IDENTIFICADO como tal
+   * en el reporte, "separado del efectivo recaudado, para que el Integrante entienda de donde sale": es una
+   * linea propia, no un ajuste invisible del numero de arriba.
+   */
+  cargosDeFaltante: number;
+  /** Lo que se le gira: base + IVA - retencion - cargos. Puede ser NEGATIVO (ver abajo). */
   neto: number;
   /** El acumulado del año DESPUES de este pago, para llevarlo a la siguiente liquidacion. */
   acumuladoDelAno: number;
@@ -67,6 +86,11 @@ export function liquidarComision(input: {
   base: number;
   perfil: PerfilTributario;
   acumuladoPrevio: number;
+  /**
+   * Cargos por faltante injustificado del periodo, al precio de venta sellado. Positivo = el Integrante le debe
+   * a CNV. Ausente = 0 (la conducta anterior, para que nada cambie donde todavia no se leen).
+   */
+  cargosDeFaltante?: number;
   uvt?: number;
 }): LiquidacionDeComision {
   const uvt = input.uvt ?? UVT_2026;
@@ -89,15 +113,23 @@ export function liquidarComision(input: {
   // UNA BASE NEGATIVA NO SE RETIENE NI LLEVA IVA A FAVOR: pasa cuando las reversiones del periodo superan lo
   // causado (D-3b-2: la comision ya liquidada se descuenta en la liquidacion siguiente). El neto queda
   // negativo y eso es lo correcto: es una deuda que arrastra al periodo que viene, no un giro.
+  //
+  // Y CON LOS CARGOS POR FALTANTE PASA LO MISMO, pero el modelo lo dice mas fuerte: "un faltante puede superar
+  // la comision mensual de quien vende poco. El sistema debe tratar el saldo negativo como caso NORMAL, no como
+  // error." Asi que un neto negativo no se recorta a cero: es lo que el Integrante le debe.
   const iva = base > 0 && input.perfil.responsableDeIva === true ? alPeso(base * IVA_COMISION) : 0;
   const retencion = base > 0 ? alPeso(base * tarifaDeRetencion) : 0;
+  // LOS CARGOS NO TOCAN NI EL IVA NI LA RETENCION, que se calculan arriba sobre la comision causada. Ver el
+  // comentario del campo: compensar dos obligaciones no es reducir la base gravada de una de ellas.
+  const cargosDeFaltante = alPeso(input.cargosDeFaltante ?? 0);
 
   return {
     base,
     iva,
     tarifaDeRetencion,
     retencion,
-    neto: base + iva - retencion,
+    cargosDeFaltante,
+    neto: base + iva - retencion - cargosDeFaltante,
     acumuladoDelAno,
     cruzaElUmbral,
     documento: input.perfil.obligadoAFacturar ? "factura_del_integrante" : "documento_soporte",

@@ -34,6 +34,8 @@ export type LiquidacionParaVer = {
   base: number;
   iva: number;
   retencion: number;
+  cargosDeFaltante: number;
+  faltantesCobrados: number;
   tarifa: number;
   neto: number;
   documento: string;
@@ -92,7 +94,24 @@ function FilaLiquidacion({ item, puedePagar }: { item: LiquidacionParaVer; puede
         Comisión {pesos(item.base)}
         {item.iva > 0 ? ` + IVA ${pesos(item.iva)}` : " (sin IVA)"} − retención{" "}
         {Math.round(item.tarifa * 100)} % {pesos(item.retencion)}
+        {/* EL CARGO VA EN LA MISMA CUENTA Y CON SU NOMBRE. El modelo lo pide explícito: "el cargo por faltante
+            debe quedar IDENTIFICADO como tal en el reporte de liquidación, separado del efectivo recaudado,
+            para que el Integrante entienda de dónde sale". Un neto más bajo sin la línea es una resta que
+            nadie puede seguir. */}
+        {item.cargosDeFaltante > 0
+          ? ` − ${item.faltantesCobrados === 1 ? "faltante" : `${item.faltantesCobrados} faltantes`} ${pesos(item.cargosDeFaltante)}`
+          : ""}
       </span>
+      {/* ═══ A DONDE RECLAMAR EL CARGO (Santiago, 2026-09-28) ═══
+          "Un canal que nadie sabe que existe no es un canal." Solo sale cuando hay cargo, y solo mientras NO se
+          haya girado: después el reclamo es otra conversación, y decir que se puede revisar algo ya pagado sería
+          prometer lo que el sistema no sostiene. */}
+      {item.cargosDeFaltante > 0 && !item.pagadaEn ? (
+        <span className="text-xs text-muted-foreground">
+          El descuento por faltante se puede revisar antes del giro: si no estás de acuerdo, escríbele a un
+          administrador de CNV.
+        </span>
+      ) : null}
       {/* EL DOCUMENTO SALE DEL PERFIL, y el rótulo dice de dónde: "obligado a facturar" es la condición del
           RUT que lo decide (modelo §3), y sin nombrarla el profesional no sabe por qué le toca una u otra. */}
       <span className="text-muted-foreground">

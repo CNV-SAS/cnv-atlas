@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { liquidarComision, RETENCION_ALTA, RETENCION_BASE, UMBRAL_UVT, UVT_2026 } from "@/modules/payments/liquidacion";
+import {
+  liquidarComision,
+  type PerfilTributario,
+  RETENCION_ALTA,
+  RETENCION_BASE,
+  UMBRAL_UVT,
+  UVT_2026,
+} from "@/modules/payments/liquidacion";
 
 // ═══ LA CUENTA QUE DECIDE CUANTO SE LE GIRA A UNA PERSONA (Bloque 4) ═══
 //
@@ -100,5 +107,79 @@ describe("la liquidación de la comisión", () => {
       liquidarComision({ base: 1, perfil: { ...natural, obligadoAFacturar: false }, acumuladoPrevio: 0 })
         .documento,
     ).toBe("documento_soporte");
+  });
+});
+
+// ═══ LOS CARGOS POR FALTANTE, COMPENSADOS EN LA LIQUIDACION (2026-09-28) ═══
+//
+// EL HUECO QUE ESTO CIERRA: un faltante clasificado injustificado materializaba `charge_status` y NADIE LO
+// COBRABA. El cargo existia en la pantalla y no llegaba a ninguna liquidacion, asi que el Integrante nunca se
+// le descontaba. La Clausula 5.5 dice que entra en la liquidacion del periodo y se cruza contra la comision.
+//
+// LO QUE ESTE CANDADO VIGILA ES DONDE SE RESTA, que es donde un error cuesta plata: el cargo se descuenta del
+// NETO y NO de la base gravada. La comision es un servicio que se presto completo, asi que su IVA y su retencion
+// van sobre el total causado; el faltante es OTRA obligacion, y el modelo dice que "las obligaciones reciprocas
+// SE COMPENSAN". Bajarlo de la base seria retener y facturar de menos sobre un servicio que si se presto.
+describe("los cargos por faltante en la liquidacion", () => {
+  const perfilConIva: PerfilTributario = {
+    tipoDePersona: "natural",
+    responsableDeIva: true,
+    obligadoAFacturar: true,
+  };
+
+  it("NO cambian el IVA ni la retencion: esos van sobre la comision causada", () => {
+    const sin = liquidarComision({ base: 100_000, perfil: perfilConIva, acumuladoPrevio: 0 });
+    const con = liquidarComision({
+      base: 100_000,
+      perfil: perfilConIva,
+      acumuladoPrevio: 0,
+      cargosDeFaltante: 30_000,
+    });
+    // Es la asercion que importa: el cargo no toca la base gravada.
+    expect(con.base).toBe(sin.base);
+    expect(con.iva).toBe(sin.iva);
+    expect(con.retencion).toBe(sin.retencion);
+    expect(con.tarifaDeRetencion).toBe(sin.tarifaDeRetencion);
+  });
+
+  it("se restan del neto, y la cuenta se puede seguir a mano", () => {
+    const l = liquidarComision({
+      base: 100_000,
+      perfil: perfilConIva,
+      acumuladoPrevio: 0,
+      cargosDeFaltante: 30_000,
+    });
+    // 100.000 de comision + 19.000 de IVA − 10.000 de retencion − 30.000 de cargo = 79.000.
+    expect(l.iva).toBe(19_000);
+    expect(l.retencion).toBe(10_000);
+    expect(l.cargosDeFaltante).toBe(30_000);
+    expect(l.neto).toBe(79_000);
+  });
+
+  it("un cargo que SUPERA la comision deja el neto NEGATIVO, y eso es caso normal", () => {
+    // Textual del modelo: "un faltante puede superar la comision mensual de quien vende poco. El sistema debe
+    // tratar el saldo negativo como caso NORMAL, no como error." Recortarlo a cero le regalaria al Integrante la
+    // diferencia y dejaria a CNV sin cobrar lo que el modelo dice que cobra.
+    const l = liquidarComision({
+      base: 40_000,
+      perfil: perfilConIva,
+      acumuladoPrevio: 0,
+      cargosDeFaltante: 90_000,
+    });
+    expect(l.neto).toBeLessThan(0);
+    // 40.000 + 7.600 − 4.000 − 90.000 = −46.400
+    expect(l.neto).toBe(-46_400);
+  });
+
+  it("sin cargos la cuenta es la de antes: no cambia nada donde todavia no se leen", () => {
+    const sinCampo = liquidarComision({ base: 100_000, perfil: perfilConIva, acumuladoPrevio: 0 });
+    const conCero = liquidarComision({
+      base: 100_000,
+      perfil: perfilConIva,
+      acumuladoPrevio: 0,
+      cargosDeFaltante: 0,
+    });
+    expect(sinCampo.neto).toBe(conCero.neto);
+    expect(sinCampo.cargosDeFaltante).toBe(0);
   });
 });
