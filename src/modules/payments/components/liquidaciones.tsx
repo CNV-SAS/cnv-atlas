@@ -6,6 +6,7 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CANAL_ADMIN } from "@/lib/constants/canales";
 import { formatDateOnly } from "@/lib/format/date";
 
 import {
@@ -108,8 +109,11 @@ function FilaLiquidacion({ item, puedePagar }: { item: LiquidacionParaVer; puede
           prometer lo que el sistema no sostiene. */}
       {item.cargosDeFaltante > 0 && !item.pagadaEn ? (
         <span className="text-xs text-muted-foreground">
-          El descuento por faltante se puede revisar antes del giro: si no estás de acuerdo, escríbele a un
-          administrador de CNV.
+          El descuento por faltante se puede revisar antes del giro: si no estás de acuerdo, escribe a{" "}
+          <a className="font-medium text-foreground underline" href={`mailto:${CANAL_ADMIN}`}>
+            {CANAL_ADMIN}
+          </a>
+          .
         </span>
       ) : null}
       {/* EL DOCUMENTO SALE DEL PERFIL, y el rótulo dice de dónde: "obligado a facturar" es la condición del

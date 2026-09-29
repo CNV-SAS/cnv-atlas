@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { CANAL_ADMIN } from "@/lib/constants/canales";
 
 import { getOwnFaltanteCases } from "../services/faltante-service";
 import { JustificarFaltanteForm } from "./justificar-faltante-form";
@@ -89,9 +90,12 @@ export async function MisFaltantesSection({ userId }: { userId: string }) {
             {c.chargeStatus !== "sin_cargo" ? (
               <p className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                 Este caso tiene un cargo por {money(c.sealedTotal)}, que se descuenta de tu liquidación.{" "}
-                <strong className="text-foreground">Si no estás de acuerdo</strong>, escríbele a un administrador
-                de CNV antes de que se gire la liquidación en la que aparezca: mientras no se gire, el cargo se
-                puede revisar.
+                <strong className="text-foreground">Si no estás de acuerdo</strong>, escribe a{" "}
+                <a className="font-medium text-foreground underline" href={`mailto:${CANAL_ADMIN}`}>
+                  {CANAL_ADMIN}
+                </a>{" "}
+                antes de que se gire la liquidación en la que aparezca: mientras no se gire, el cargo se puede
+                revisar.
               </p>
             ) : null}
           </div>

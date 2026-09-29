@@ -59,6 +59,48 @@ aplica a una parte.
 - **Lo primero a construir es el gate**, no el borrado: la solicitud tiene que negarse sola, con el motivo
   exacto, cuando el paciente tiene algo sellado. Sin el, admin aprueba borrados que la base va a rechazar.
 
+## PENDIENTE (2026-09-28) · La objecion del integrante a un cargo por faltante
+
+**Diferido por decision de Santiago**, con su razon textual: *"con siete integrantes y cero casos abiertos,
+modelarlo es construir para algo que no ha ocurrido"*. Lo que SI se construyo hoy es la parte chica: **que la
+pantalla diga a donde reclamar** (`admin@cnvsystem.com`, en el detalle del faltante y en la liquidacion,
+candado `canal-de-reclamo-del-cargo`). Esta entrada guarda el mecanismo COMPLETO, dimensionado, para no
+rediseñarlo el dia que aparezca el primer caso.
+
+**El hueco que queda, exacto:** el procedimiento le da 5 dias habiles para justificar, pero **una vez
+clasificado no tiene voz**. Si CNV se equivoca al clasificar, el integrante no tiene via dentro del sistema:
+el cargo se materializa, se descuenta de su liquidacion y se gira.
+
+**Lo que NO hay que rediseñar, porque ya existe:**
+
+- **La forma del mecanismo la tiene `clinical_access_grants`**: solicitante, aprobador calculado al solicitar
+  que nunca es el solicitante, motivo `NOT NULL`, estados y vencimiento por fecha. Es la misma forma que se
+  reutiliza para el borrado de pacientes de prueba (entrada de arriba). No se copia la tabla, se copia la
+  forma.
+- **La asimetria de dos personas ya esta construida en el faltante mismo**: clasificar como injustificado lo
+  propone uno y lo confirma otro (`injustificado_pendiente` -> `injustificado`). Una objecion es esa misma
+  maquina al reves, y la pieza cara de esa maquina (que quien propone no pueda confirmar) ya esta hecha y
+  probada.
+- **La ventana de tiempo ya tiene un hecho que la ancla, y no hay que inventar un plazo**: mientras la
+  liquidacion NO se haya girado, el cargo se puede revisar. Es lo que la pantalla dice hoy, y es comprobable
+  por el integrante. Poner "cinco dias" seria crear una obligacion que nadie acordo.
+
+**Lo que si es trabajo nuevo, en orden:**
+
+1. **El estado del caso**, no una tabla aparte: un `objetado` entre `injustificado` y el cobro, con el motivo
+   del integrante. Tabla aparte duplicaria el ciclo de vida del caso en dos sitios.
+2. **Que la objecion FRENE el cobro**, que es el punto entero. Hoy `liquidarHasta` toma los cargos pendientes
+   con `for update` y los sella con su `settlement_id`; un caso objetado tiene que quedar FUERA de esa toma. Si
+   la objecion no frena el giro, es un formulario decorativo.
+3. **Que lo resuelva alguien distinto de quien clasifico**, con motivo, y que el desenlace sea uno de dos:
+   se mantiene el cargo, o se cae a `justificado` (que ya existe y ya significa "sin cargo").
+4. **Que el `clinical_audit_log`** registre la objecion y su resolucion inline, como el resto del ciclo.
+
+**Y una advertencia del terreno**, de lo que costo construir el cobro: el cargo estuvo MATERIALIZADO por dos
+personas y **nunca se cobraba** (se leia solo para mostrarlo). Al construir la objecion, el control que importa
+no es que el estado cambie: es **que el dinero cambie**. Se verifica con la liquidacion, no con la pantalla del
+caso.
+
 ## PENDIENTE (2026-09-25) · El lado del RECAUDO de la modalidad Distribucion
 
 El mecanismo de la modalidad esta construido y el sellado de la venta lo obedece (candados `modalidad` y
