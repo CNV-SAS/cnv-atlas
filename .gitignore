@@ -70,3 +70,10 @@ atlas-exportacion-*.json
 # Exports del Biody Manager que Santiago deja para diagnosticar: traen nombre, correo y medidas de
 # pacientes (aunque sean de prueba). Se miran en local y NUNCA se versionan.
 docs/entregas/exports/*.xlsx
+
+# Prototipos HTML que entrega Gildardo. NO van al repositorio, por dos razones:
+#   · son prototipos (el v10 pesa 1,46 MB) y Santiago ya planea depurar los que hay;
+#   · y traen CREDENCIALES VIVAS. El v9 versionado las tiene tapadas a mano
+#     ("PROYECTO-RETIRADO"), y el v10 llego con la URL y la publishable key reales: el scrub
+#     no se hereda, se vuelve a perder en cada entrega.
+docs/entregas/gildardo-*/ATLAS_*.html
