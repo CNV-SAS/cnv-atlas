@@ -22,6 +22,14 @@ import { canDeliverSale } from "./policies/can-deliver-sale";
 import { MODALIDAD_LABEL } from "./modalidad";
 import { cambiarModalidad, ModalidadError } from "./data/modalidad-writer";
 import { canViewRevenue } from "./policies/can-view-revenue";
+import {
+  CuentaNoEmitibleError,
+  emitirCuenta,
+  objetarCuenta,
+  profesionalDelUsuario,
+  registrarPagoDeCuenta,
+  resolverObjecion,
+} from "./services/distribucion-service";
 import { resumirDiscrepancias } from "./conciliacion";
 import { cotejarConWompi } from "./services/conciliacion-service";
 import { abrirContracargo, registrarNotaCreditoDeReversa, resolverReversa } from "./services/reversas-service";
@@ -946,5 +954,127 @@ export async function cambiarModalidadFormAction(
     if (e instanceof ModalidadError) return { error: e.message, success: null, warning: null };
     reportServerError("cambiarModalidadFormAction", e);
     return { error: "No se pudo cambiar la modalidad.", success: null, warning: null };
+  }
+}
+
+// ═══ EL RECAUDO DE DISTRIBUCION (0188) ═══
+//
+// Cuatro actos: CNV emite la cuenta del corte, el Integrante la objeta, CNV resuelve la objecion y CNV
+// registra el pago. Objetar es lo unico que hace el Integrante, y es un derecho que el modelo le da con
+// plazo; por eso su policy es distinta (es sobre lo suyo, no una capacidad de CNV).
+
+export async function emitirCuentaDistribucionAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  try {
+    const r = await emitirCuenta({
+      professionalId: String(form.get("professionalId") ?? ""),
+      dia: String(form.get("dia") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    return {
+      error: null,
+      success: `Cuenta emitida con ${r.ventas} ${r.ventas === 1 ? "venta" : "ventas"}.`,
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof CuentaNoEmitibleError) return { error: e.message, success: null, warning: null };
+    reportServerError("emitirCuentaDistribucionAction", e);
+    return { error: "No se pudo emitir la cuenta.", success: null, warning: null };
+  }
+}
+
+export async function objetarCuentaDistribucionAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user) return sinPermiso;
+  const motivo = String(form.get("motivo") ?? "").trim();
+  // "DE FORMA SUSTENTADA" (modelo §4): una objecion en blanco no es una objecion, y ademas CNV no podria
+  // corregir nada con ella.
+  if (motivo.length < 10) {
+    return { error: "Escribe en qué no estás de acuerdo: CNV tiene que poder corregirlo.", success: null, warning: null };
+  }
+  try {
+    const professionalId = await profesionalDelUsuario(user.id);
+    if (!professionalId) return sinPermiso;
+    await objetarCuenta({
+      statementId: String(form.get("statementId") ?? ""),
+      professionalId,
+      motivo,
+      actorId: user.id,
+      actorEmail: user.email,
+    });
+    return { error: null, success: "Objeción registrada. CNV tiene tres días hábiles para corregir.", warning: null };
+  } catch (e) {
+    if (e instanceof CuentaNoEmitibleError) return { error: e.message, success: null, warning: null };
+    reportServerError("objetarCuentaDistribucionAction", e);
+    return { error: "No se pudo registrar la objeción.", success: null, warning: null };
+  }
+}
+
+export async function resolverObjecionDistribucionAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  const desenlace = String(form.get("desenlace") ?? "");
+  if (desenlace !== "corregida" && desenlace !== "sostenida") {
+    return { error: "Desenlace invalido.", success: null, warning: null };
+  }
+  try {
+    await resolverObjecion({
+      statementId: String(form.get("statementId") ?? ""),
+      desenlace,
+      actorId: user.id,
+      actorEmail: user.email,
+    });
+    return {
+      error: null,
+      success:
+        desenlace === "corregida"
+          ? "Cuenta retirada: sus ventas vuelven a estar sin facturar y el corte se puede emitir de nuevo."
+          : "Objeción sostenida: la cuenta queda como estaba.",
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof CuentaNoEmitibleError) return { error: e.message, success: null, warning: null };
+    reportServerError("resolverObjecionDistribucionAction", e);
+    return { error: "No se pudo resolver la objeción.", success: null, warning: null };
+  }
+}
+
+export async function registrarPagoDeCuentaDistribucionAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  // El monto se lee como pesos colombianos (el ultimo grupo de tres son miles), igual que el resto de las
+  // cifras que se teclean en /pagos.
+  const monto = enteroDeTexto(String(form.get("monto") ?? ""));
+  if (monto == null || monto <= 0) {
+    return { error: "Escribe el monto que se recibió.", success: null, warning: null };
+  }
+  try {
+    await registrarPagoDeCuenta({
+      statementId: String(form.get("statementId") ?? ""),
+      monto,
+      nota: String(form.get("nota") ?? "").trim() || null,
+      actorId: user.id,
+      actorEmail: user.email,
+    });
+    return { error: null, success: "Pago registrado.", warning: null };
+  } catch (e) {
+    if (e instanceof CuentaNoEmitibleError) return { error: e.message, success: null, warning: null };
+    reportServerError("registrarPagoDeCuentaDistribucionAction", e);
+    return { error: "No se pudo registrar el pago.", success: null, warning: null };
   }
 }

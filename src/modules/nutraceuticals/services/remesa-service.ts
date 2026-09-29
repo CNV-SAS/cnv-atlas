@@ -2,6 +2,7 @@ import "server-only";
 import { resolverLoteDeRecepcion, ubicacionDelProfesional } from "./ubicacion-y-lote";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { estadoDeCreditoDeDistribucion } from "@/modules/payments/data/distribucion-writer";
 
 import type {
   CnvRemesa,
@@ -77,6 +78,21 @@ export async function declareRemesa(input: {
   if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
     return { ok: false, message: "La cantidad declarada debe ser un entero mayor que cero." };
   }
+  // ═══ EL CUPO DE CREDITO SUSPENDE EL DESPACHO (modelo §4, migracion 0188) ═══
+  //
+  // Textual: "Cupo de credito. Tope de saldo pendiente por Integrante. Al alcanzarlo, EL SISTEMA SUSPENDE EL
+  // DESPACHO de nuevo inventario hasta que se ponga al dia". Y la mora lo suspende igual.
+  //
+  // VA AQUI Y NO EN LA PANTALLA porque la remesa es EL despacho: es el unico punto por el que entra
+  // inventario nuevo a una vitrina. Un aviso en la pantalla se puede saltar; esto no.
+  //
+  // SOLO ALCANZA A DISTRIBUCION: en Comision el Integrante no le debe nada a CNV (el paciente le paga a CNV),
+  // asi que no hay saldo que topar y suspenderle el despacho seria inventarle una deuda.
+  const credito = await estadoDeCreditoDeDistribucion(input.professionalId);
+  if (credito && !credito.puede) {
+    return { ok: false, message: credito.motivo ?? "Tiene los despachos suspendidos." };
+  }
+
   const supabase = await createSupabaseServerClient();
   // Desde la migracion 0121 todo movimiento va contra una ubicacion y un lote. La remesa se declara sobre
   // la ubicacion del Integrante DESTINO (es a donde va la mercancia), y su lote se crea si CNV declara uno

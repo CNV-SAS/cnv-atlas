@@ -112,6 +112,10 @@ export const professionalProfiles = pgTable("professional_profiles", {
   taxIsIncomeDeclarant: boolean("tax_is_income_declarant"),
   taxIsVatResponsible: boolean("tax_is_vat_responsible"),
   taxMustInvoice: boolean("tax_must_invoice"), // esta obligado a facturar
+  // Agente de RETENCION (codigo 07 del RUT). No se sigue de los tres de arriba: es otra casilla. Bajo
+  // Distribucion practica retefuente por compra de bienes del 2,5% a CNV (modelo §4.1). NULO = sin
+  // verificar, y entonces no se anticipa retencion.
+  taxIsWithholdingAgent: boolean("tax_is_withholding_agent"),
   // RUT (fuente de verdad) + trazabilidad de la verificacion. rut_document_date es la fecha que trae el
   // propio RUT: si tiene mas de un año, se pide uno actualizado (el RUT cambia; la clasificacion envejece).
   rutPath: text("rut_path"), // ruta en el bucket privado professional-documents
@@ -135,6 +139,8 @@ export const professionalProfiles = pgTable("professional_profiles", {
   // El celular y donde atiende son suyos y cambian; el nombre, el correo y la profesion los pone admin. El
   // consultorio va aqui como DATO DE CONTACTO y no como entidad: la ubicacion que gobierna inventario es
   // inventory_locations, y una tabla de sedes sin nada colgando de ella seria una relacion para un texto.
+  /** Cupo de credito bajo Distribucion. NULO = sin fijar, y no suspende despachos (ver distribucion.ts). */
+  creditLimit: numeric("credit_limit"),
   phone: text("phone"),
   officeAddress: text("office_address"),
   officeCity: text("office_city"),

@@ -148,14 +148,35 @@ export function plazosDelCorte(corte: Corte, emitidaEl?: string): PlazosDelCorte
   };
 }
 
+/**
+ * El precio de facturacion de UNA LINEA YA VENDIDA, a partir de lo que se SELLO en ella.
+ *
+ * POR QUE NO SE RECALCULA DESDE EL PVP: la venta sello su base y el descuento del Integrante en el momento
+ * (`base_amount` y `commission_amount`, migracion 0143). Volver a calcularlos con el precio y la tasa de HOY
+ * produciria una factura que no coincide con la venta que la origina, y es justo lo que el sellado existe
+ * para impedir. Es la misma disciplina del reparto y del precio del faltante.
+ *
+ * Y SIRVE IGUAL PARA PRODUCTO DE TERCERO: el descuento del Integrante es su `commission_amount`, y lo que CNV
+ * le factura es la base menos ESE descuento, no el residuo de CNV. En un producto de tercero el residuo es
+ * mas chico (el proveedor se lleva su parte), y facturar por el residuo cobraria de menos.
+ */
+export function precioDeFacturacionSellado(baseSellada: number, descuentoSellado: number): PrecioDeFacturacion {
+  const base = alPeso(baseSellada);
+  const baseDescontada = base - alPeso(descuentoSellado);
+  const iva = alPeso(baseDescontada * IVA_RATE);
+  return { base, baseDescontada, iva, total: baseDescontada + iva };
+}
+
 export type LineaDeLaCuenta = {
   transactionId: string;
   /** El dia de la venta, para que el Integrante pueda cotejarla con su propia facturacion. */
   dia: string;
   producto: string;
   cantidad: number;
-  /** PVP con IVA sellado en la venta. La cuenta se arma con lo sellado, nunca con el precio de hoy. */
-  pvpUnitario: number;
+  /** `base_amount` de la linea: la base sin IVA de TODA la linea, sellada en la venta. */
+  baseSellada: number;
+  /** `commission_amount` de la linea: el descuento comercial del Integrante, sellado en la venta. */
+  descuentoSellado: number;
 };
 
 export type CuentaQuincenal = {
@@ -189,15 +210,16 @@ export function armarCuentaQuincenal(e: {
   lineas: LineaDeLaCuenta[];
   /** Tarifas de flete del periodo, una por envio a domicilio (§5.3: se suman a la cuenta). */
   fletes: number[];
-  descuento?: number;
   esAgenteRetenedor: boolean;
   uvt: number;
 }): CuentaQuincenal {
-  const descuento = e.descuento ?? DESCUENTO_DISTRIBUCION;
-  const detalle = e.lineas.map((l) => ({ ...l, ...precioDeFacturacion(l.pvpUnitario, descuento) }));
+  const detalle = e.lineas.map((l) => ({ ...l, ...precioDeFacturacionSellado(l.baseSellada, l.descuentoSellado) }));
 
-  const baseProductos = detalle.reduce((s, l) => s + l.baseDescontada * l.cantidad, 0);
-  const ivaProductos = detalle.reduce((s, l) => s + l.iva * l.cantidad, 0);
+  // LA BASE Y EL IVA SE SUMAN POR LINEA, cada uno ya redondeado al peso. Sumar primero y redondear despues
+  // daria otra cifra, y la que tiene que cuadrar es la que el Integrante ve linea por linea en el detalle:
+  // una factura cuyo total no es la suma de sus renglones es una factura que nadie puede objetar.
+  const baseProductos = detalle.reduce((s, l) => s + l.baseDescontada, 0);
+  const ivaProductos = detalle.reduce((s, l) => s + l.iva, 0);
   const fletes = e.fletes.map(fleteFacturado);
   const baseFletes = fletes.reduce((s, f) => s + f.base, 0);
   const ivaFletes = fletes.reduce((s, f) => s + f.iva, 0);

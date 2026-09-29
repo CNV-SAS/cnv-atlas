@@ -1317,6 +1317,20 @@
       "when": 1791953306103,
       "tag": "0187_la_devolucion_del_integrante_a_cnv",
       "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1791953366103,
+      "tag": "0188_la_cuenta_quincenal_de_distribucion",
+      "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1791953426103,
+      "tag": "0189_agente_retenedor_del_integrante",
+      "breakpoints": true
     }
   ]
 }
