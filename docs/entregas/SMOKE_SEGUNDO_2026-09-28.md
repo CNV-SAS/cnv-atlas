@@ -236,3 +236,59 @@ preferible no ofrecer el domicilio a un destino antes que ofrecerlo y perder din
 3. **El total que importa es el del domiciliario**, no el cobrado: es la cifra del soporte.
 4. **Y dice de quién es el documento:** lo emite Alegra (documento soporte o factura). Atlas pone el detalle,
    no el papel.
+
+---
+
+# ARREGLOS DEL SMOKE DEL 29 · repite desde la parte 2
+
+**Migraciones: 194 en el repo.** Pendientes en la nube desde la 0186 (nueve).
+
+**Antes de repetir, corre el SQL de las ciudades:** `docs/entregas/sql/CIUDADES_Y_FLETE_2026-09-29.sql`.
+Sin él, el bloque de domicilio no aparece (y eso es correcto).
+
+## R1 · La venta retroactiva, que era el bloqueante
+
+**Qué pasaba, y no era el separador:** el validador de ids rechazaba los UUID del seed, así que el primer
+producto de la lista era inválido **siempre**. Daba igual escribir 11900, 11.900 o 11,900.
+
+1. Abre **Ventas que ya ocurrieron**. **Al abrir NO debe salir ningún aviso rojo.** Antes decía "Producto 1:
+   revisa el precio" sobre un campo que no habías tocado.
+2. Elige profesional, paciente, fecha, número de factura, producto, cantidad y precio. **Registra.**
+3. **Tiene que pasar con 11900. Y con 11.900. Y con 11,900.** Las tres.
+4. **El filtro nuevo:** al cambiar "Quién la vendió", la lista de "A quién" se reduce a **sus pacientes**. Si
+   ese profesional no tiene ninguno asignado, salen todos con un aviso que lo dice.
+5. Si algo falla ahora, **el mensaje ya no te manda a mirar los números** cuando el problema no es un número.
+
+## R2 · El bruto y el inventario dicen lo mismo en las dos pantallas
+
+1. **Compara Inicio (como admin) con /direccion.** La venta devuelta **ya no debe estar en el bruto** de
+   ninguna de las dos.
+2. **Y el inventario debe dar la misma cifra en las dos.** Antes eran 1.903 y 1.820.
+3. **El control fino:** si devuelves **1 de 4 unidades**, el bruto baja solo esa unidad, no la venta entera.
+   Quien devolvió una de cuatro sigue habiendo comprado tres.
+
+## R3 · Los rótulos de la devolución
+
+1. Devuelve un producto. **La venta ya no debe decir "Disputa ganada"**: tiene que decir **"Producto
+   devuelto: se le reintegraron $X"**, y si falta la nota crédito, decirlo.
+2. **El panel** ya no se llama "Contracargos y anulaciones" sino **"Ventas revertidas"**, y su texto nombra
+   los dos caminos: el banco devolvió el dinero, o el paciente devolvió el producto.
+3. **Y dice cuántas unidades:** "devolvió 1 de LUVIA", no los productos de toda la venta.
+
+## R4 · Las cinco menores
+
+1. **/comercial**: ya no dice "6 comisiones" contando reversiones. Dice las comisiones y, aparte, **"con N
+   reversiones descontadas"**.
+2. **El bloque de cobro** se llama ahora **"Registrar una venta ya cobrada"** (ofrece efectivo y
+   transferencia).
+3. **Una venta registrada por admin** sobre el paciente de otro sale con el rótulo **"Registrada por CNV"**.
+   Las anteriores a hoy no lo llevan: no se guardaba quién la hizo y no se inventa.
+
+## Y las dos que me preguntaste
+
+- **Sí:** "Ventas cobradas sin cerrar en contabilidad" **es** el apartado de facturación que menciona la guía.
+- **Sí:** que **ADAPTO-STRESS falle por no tener item en Alegra es correcto**. Es el freno explícito: un
+  producto sin fila en ese ambiente se rechaza **por su nombre**, para que el error diga cuál falta en vez de
+  facturar cualquier cosa.
+- **Y la cuenta cuadra:** vendiste 2 unidades por 23.800. Con IVA dentro, la base es 20.000; de ahí el 80/20
+  da **16.000 a CNV y 4.000 de comisión**. Exactamente lo que viste.
