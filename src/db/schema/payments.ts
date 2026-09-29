@@ -79,6 +79,10 @@ export const transactions = pgTable(
     locationId: uuid("location_id"),
     deliveryMode: text("delivery_mode"), // en_consulta | domicilio
     operatedAt: timestamp("operated_at", { withTimezone: true }),
+    // LA CUENTA QUINCENAL QUE SE LLEVO ESTA VENTA (0188, solo Distribucion). Nula = pendiente de facturar.
+    // Es lo que impide facturar dos veces la misma venta, igual que `settlement_id` con la comision. Sin
+    // `.references` aqui porque la tabla se declara mas abajo en este mismo archivo; la FK existe en SQL.
+    distribucionStatementId: uuid("distribucion_statement_id"),
     // reservado | pendiente | descontado | sin_saldo | fallido | liberado. NULL = anterior al Bloque 3.
     stockState: text("stock_state"),
     stockLastError: text("stock_last_error"),
@@ -292,3 +296,40 @@ export const paymentReconciliationRuns = pgTable("payment_reconciliation_runs", 
   detail: jsonb("detail").default({}).notNull(),
   failedReason: text("failed_reason"),
 });
+
+// ═══ LA CUENTA QUINCENAL DE DISTRIBUCION (migracion 0188) ═══
+//
+// Bajo Distribucion el paciente le paga AL INTEGRANTE y CNV le factura a EL cada quincena (modelo §4).
+//
+// NO GUARDA TOTALES, y es lo mas importante de esta tabla: la decision ya estaba escrita al sellar la venta
+// ("una tabla aparte seria una segunda fuente del mismo numero, capaz de contradecir a la linea"). Asi que
+// esto es un PERIODO CON ESTADO, y sus cifras se derivan siempre de las lineas selladas que la componen
+// (`base_amount` y `commission_amount` desde la 0143). La aritmetica vive en `distribucion.ts`, con candado.
+//
+// Lo que si hacia falta es que una venta no se facture dos veces, y eso es
+// `transactions.distribucion_statement_id`: el mismo mecanismo que `settlement_id` en la comision.
+export const distribucionStatements = pgTable(
+  "distribucion_statements",
+  {
+    id: pk(),
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id),
+    corteDesde: date("corte_desde").notNull(),
+    corteHasta: date("corte_hasta").notNull(),
+    emittedAt: timestamp("emitted_at", { withTimezone: true }).notNull().defaultNow(),
+    emittedBy: uuid("emitted_by").references(() => profiles.id),
+    /** Objecion del Integrante (§4): dos dias habiles, "de forma sustentada" (el motivo es obligatorio). */
+    objectedAt: timestamp("objected_at", { withTimezone: true }),
+    objectionNote: text("objection_note"),
+    objectionResolvedAt: timestamp("objection_resolved_at", { withTimezone: true }),
+    /** 'corregida' (se reemplaza por otra cuenta) | 'sostenida' (queda como estaba). */
+    objectionOutcome: text("objection_outcome"),
+    /** Una cuenta emitida no se edita: se reemplaza. Misma forma que `superseded_by`. */
+    replacedById: uuid("replaced_by_id"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    paidAmount: numeric("paid_amount"),
+    paidNote: text("paid_note"),
+  },
+  (t) => [index("distribucion_statements_prof_idx").on(t.professionalId, t.corteHasta)],
+);

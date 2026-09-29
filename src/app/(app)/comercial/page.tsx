@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 
-import { TituloPantalla } from "@/components/shared/titulo-pantalla";
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
+import { CuentasDistribucion } from "@/modules/payments/components/cuentas-distribucion";
 import { Liquidaciones } from "@/modules/payments/components/liquidaciones";
+import { MisCuentasDistribucion } from "@/modules/payments/components/mis-cuentas-distribucion";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 import {
   hoyEnBogota,
@@ -11,6 +13,12 @@ import {
 } from "@/modules/payments/data/liquidacion-writer";
 import { liquidarComision } from "@/modules/payments/liquidacion";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
+import {
+  cortesPorEmitir,
+  cuentasParaCnv,
+  detalleDeLaCuenta,
+  misCuentas,
+} from "@/modules/payments/services/distribucion-service";
 
 export const metadata = { title: "Comercial - Atlas" };
 
@@ -34,6 +42,29 @@ export default async function ComercialPage() {
     puedeLiquidar ? listarPendientesDeLiquidar(hasta) : Promise.resolve([]),
     listarLiquidaciones(puedeLiquidar ? undefined : (perfilPropio ?? undefined)),
   ]);
+
+  // EL LADO DE DISTRIBUCION. Se lee aparte porque su corte es otro (quincenal) y su direccion es la
+  // contraria: aqui CNV COBRA. Quien no tiene nada en Distribucion no ve ninguno de los dos bloques.
+  const [cortes, cuentasCnv, mias] = await Promise.all([
+    puedeLiquidar ? cortesPorEmitir(hasta) : Promise.resolve([]),
+    puedeLiquidar ? cuentasParaCnv() : Promise.resolve([]),
+    misCuentas(user.id),
+  ]);
+  // El DETALLE de cada cuenta propia va completo a la pantalla: sin verlo no se puede objetar "de forma
+  // sustentada", que es lo que el modelo exige para que la objecion valga.
+  const misCuentasDeDistribucion = await Promise.all(
+    mias.map(async (c) => ({
+      ...c,
+      detalle: ((await detalleDeLaCuenta(c.id))?.detalle ?? []).map((l) => ({
+        dia: l.dia,
+        producto: l.producto,
+        cantidad: l.cantidad,
+        baseDescontada: l.baseDescontada,
+        iva: l.iva,
+        total: l.total,
+      })),
+    })),
+  );
 
   // La cuenta se hace aquí solo para saber si SE PUEDE liquidar a cada quien (qué datos tributarios le
   // faltan). El cálculo bueno lo rehace el escritor dentro de su transacción, con las filas bloqueadas.
@@ -62,6 +93,25 @@ export default async function ComercialPage() {
         hasta={hasta}
         puedeLiquidar={puedeLiquidar}
       />
+
+      {/* ═══ EL RECAUDO DE DISTRIBUCION (0188) ═══
+          VA EN ESTA MISMA PANTALLA porque es la otra mitad del dinero del Integrante, pero EN SU PROPIO
+          BLOQUE y con su propio encabezado: bajo Comisión CNV le PAGA y bajo Distribución le COBRA, y
+          mezclar las dos listas es como un administrador termina girando plata que en realidad le deben. */}
+      {cortes.length > 0 || cuentasCnv.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          <TituloSeccion>Distribución: lo que CNV le factura al Integrante</TituloSeccion>
+          <CuentasDistribucion cortes={cortes} cuentas={cuentasCnv} hoy={hasta} />
+        </div>
+      ) : null}
+
+      {misCuentasDeDistribucion.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          <TituloSeccion>Tus cuentas de Distribución</TituloSeccion>
+          <MisCuentasDistribucion cuentas={misCuentasDeDistribucion} hoy={hasta} />
+        </div>
+      ) : null}
+
     </div>
   );
 }

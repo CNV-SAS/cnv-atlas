@@ -8,6 +8,7 @@ import {
   fleteFacturado,
   plazosDelCorte,
   precioDeFacturacion,
+  precioDeFacturacionSellado,
   puedeDespacharse,
 } from "@/modules/payments/distribucion";
 
@@ -97,18 +98,22 @@ describe("los plazos", () => {
 
 describe("la cuenta quincenal", () => {
   const corte = corteDe("2026-09-15");
-  const linea = (cantidad: number, pvp: number) => ({
+  // LA LINEA VIENE SELLADA, como en la base: base de TODA la linea y el descuento del Integrante, tal como
+  // los escribio el sellado de la venta. Con PVP 119.000 y tasa del 20%, una unidad sella base 100.000 y
+  // descuento 20.000.
+  const linea = (cantidad: number, baseSellada: number, descuentoSellado: number) => ({
     transactionId: "t1",
     dia: "2026-09-10",
     producto: "MULTICELL BASE",
     cantidad,
-    pvpUnitario: pvp,
+    baseSellada,
+    descuentoSellado,
   });
 
   it("suma productos descontados y fletes sin descontar", () => {
     const c = armarCuentaQuincenal({
       corte,
-      lineas: [linea(2, 119_000)],
+      lineas: [linea(2, 200_000, 40_000)],
       fletes: [12_000],
       esAgenteRetenedor: false,
       uvt: UVT_2026,
@@ -131,7 +136,7 @@ describe("la cuenta quincenal", () => {
   it("el agente retenedor practica 2,5% sobre la base, por encima de 27 UVT", () => {
     const c = armarCuentaQuincenal({
       corte,
-      lineas: [linea(20, 119_000)],
+      lineas: [linea(20, 2_000_000, 400_000)],
       fletes: [],
       esAgenteRetenedor: true,
       uvt: UVT_2026,
@@ -144,7 +149,7 @@ describe("la cuenta quincenal", () => {
   it("por debajo del minimo no retiene", () => {
     const c = armarCuentaQuincenal({
       corte,
-      lineas: [linea(1, 119_000)],
+      lineas: [linea(1, 100_000, 20_000)],
       fletes: [],
       esAgenteRetenedor: true,
       uvt: UVT_2026,
@@ -156,7 +161,7 @@ describe("la cuenta quincenal", () => {
   it("quien no es agente retenedor no retiene aunque pase el minimo", () => {
     const c = armarCuentaQuincenal({
       corte,
-      lineas: [linea(20, 119_000)],
+      lineas: [linea(20, 2_000_000, 400_000)],
       fletes: [],
       esAgenteRetenedor: false,
       uvt: UVT_2026,
@@ -168,7 +173,7 @@ describe("la cuenta quincenal", () => {
   it("la retencion se calcula sobre la base, nunca sobre el IVA", () => {
     const c = armarCuentaQuincenal({
       corte,
-      lineas: [linea(20, 119_000)],
+      lineas: [linea(20, 2_000_000, 400_000)],
       fletes: [50_000],
       esAgenteRetenedor: true,
       uvt: UVT_2026,
@@ -200,5 +205,29 @@ describe("el cupo de credito", () => {
     const r = puedeDespacharse({ saldoPendiente: 0, cupo: 5_000_000, enMoraDesde: "2026-09-20" });
     expect(r.puede).toBe(false);
     expect(r.motivo).toContain("mora");
+  });
+});
+
+// ═══ EL PRODUCTO DE TERCERO, que es donde la cuenta se puede equivocar callada ═══
+//
+// En un producto de tercero el residuo de CNV (`cnv_amount`) es MAS CHICO, porque el proveedor se lleva su
+// parte. Lo que CNV le factura al Integrante NO es ese residuo: es la base menos SU descuento. Facturar por el
+// residuo cobraria de menos, y la diferencia se la comeria CNV sin que nada fallara.
+describe("producto de tercero", () => {
+  it("se factura por la base menos el descuento del Integrante, no por el residuo de CNV", () => {
+    // Base 100.000: integrante 20.000, proveedor 70.000, residuo de CNV 10.000 (el caso de LUVIA, §7.2).
+    const p = precioDeFacturacionSellado(100_000, 20_000);
+    expect(p.baseDescontada).toBe(80_000);
+    expect(p.baseDescontada).not.toBe(10_000);
+    expect(p.iva).toBe(15_200);
+  });
+});
+
+describe("la cuenta sale de lo SELLADO, no del precio de hoy", () => {
+  it("una linea vieja conserva su base y su descuento aunque el catalogo haya cambiado", () => {
+    // La venta sello base 100.000 y descuento 20.000. Que hoy el producto valga otra cosa no la toca.
+    expect(precioDeFacturacionSellado(100_000, 20_000).total).toBe(95_200);
+    // Y si el Integrante tenia otra tasa cuando vendio (25%), la cuenta la respeta.
+    expect(precioDeFacturacionSellado(100_000, 25_000).baseDescontada).toBe(75_000);
   });
 });
