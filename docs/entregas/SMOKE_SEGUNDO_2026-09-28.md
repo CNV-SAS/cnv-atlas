@@ -292,3 +292,37 @@ producto de la lista era inválido **siempre**. Daba igual escribir 11900, 11.90
   facturar cualquier cosa.
 - **Y la cuenta cuadra:** vendiste 2 unidades por 23.800. Con IVA dentro, la base es 20.000; de ahí el 80/20
   da **16.000 a CNV y 4.000 de comisión**. Exactamente lo que viste.
+
+---
+
+# ARREGLOS DEL 29 (tarde) · repite desde la parte 1
+
+**Migraciones: 195 en el repo.** Pendientes en la nube desde la 0186 (diez).
+
+## R5 · Las cifras de arriba, antes de tocar nada
+
+**Lo que se arregló:** tu tarjeta de ventas **no podía ver tus propias devoluciones**. La cuenta era la misma
+para los dos roles, pero `sale_reversals` solo la leían admin, dirección y soporte, así que para el
+profesional la consulta devolvía cero filas y no descontaba nada. De ahí que el admin quedara con menos
+ventas que tú.
+
+1. **Compara Inicio como admin y como Profesional Demo.** Las dos tienen que descontar lo devuelto. El admin
+   ya no puede tener menos ventas que un profesional.
+2. **Las cuatro tarjetas ahora dicen qué dejan fuera:** "sin lo devuelto ni lo que está en revisión" y "sin
+   los productos de prueba". Si una cifra te vuelve a extrañar, la tarjeta te dice por qué.
+3. **En Mi inventario**, los productos de prueba salen ahora marcados: **"De prueba · no cuenta en las
+   cifras"**. Así la lista y la tarjeta dejan de contradecirse (la lista los muestra, la cifra no los cuenta).
+
+**Sobre las cifras que reportaste:**
+
+- **Los 137.600** son las devoluciones del mes. El admin las restaba (bien) y tú no (mal). Ya está.
+- **Tu inventario de 112 a 90** es el filtro de productos de prueba haciendo su trabajo: tus 22 unidades de
+  PRUEBA SMOKE dejaron de contar en la tarjeta. **Siguen en tu lista, marcadas.** Las 4 que agregaste están
+  ahí: en la lista, no en la cifra.
+- **ADAPTO-STRESS (81 cargados, 1 vendido) no se toca.** No es producto de prueba, así que ni la lista ni el
+  saldo cambian; lo único que cambió son las tarjetas agregadas. Verifícalo en Mi inventario: tiene que decir
+  80.
+- **La venta de María Camila (124.260, anulada) no ensucia nada.** Una venta anulada no es `paid`, así que no
+  entra en el bruto ni en el ingreso. Lo que ves en /comercial ("$0 en 1 comisión, con 1 reversión
+  descontadas") es la cuenta correcta y ahora se lee bien: una comisión y su reversión, neto cero. Puedes
+  ignorarla.
