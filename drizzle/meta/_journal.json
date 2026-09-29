@@ -1296,6 +1296,13 @@
       "when": 1791953126103,
       "tag": "0184_posologia_y_fabricante_de_su_archivo",
       "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1791953186103,
+      "tag": "0185_cargo_de_faltante_en_la_liquidacion",
+      "breakpoints": true
     }
   ]
 }

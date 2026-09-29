@@ -99,8 +99,29 @@ export async function liquidarHasta(input: {
          and settlement_id is null
          and (created_at at time zone 'America/Bogota')::date <= ${input.hasta}::date
        for update`);
-    if (pendientes.length === 0) {
-      throw new LiquidacionError("Ese integrante no tiene comisiones pendientes hasta esa fecha.");
+
+    // ═══ LOS CARGOS POR FALTANTE, CON EL MISMO BLOQUEO (2026-09-28) ═══
+    //
+    // EL HUECO QUE ESTO CIERRA: un faltante injustificado materializaba su cargo y NADIE LO COBRABA; esa columna
+    // solo se leia para mostrarla. La Clausula 5.5 dice que entra en la liquidacion del periodo.
+    //
+    // SE BLOQUEAN IGUAL, y con mas razon que las comisiones: cobrar dos veces el mismo frasco es cobrarle a una
+    // persona una deuda que ya pago.
+    const cargos = await tx.execute<{ id: string; monto: string }>(sql`
+      select id, sealed_total::text as monto from nutraceutical_faltante_cases
+       where professional_id = ${input.professionalId}::uuid
+         and settlement_id is null
+         and charge_status <> 'sin_cargo'
+         and (reported_at at time zone 'America/Bogota')::date <= ${input.hasta}::date
+       for update`);
+
+    // SE LIQUIDA SI HAY COMISIONES **O** CARGOS. Antes exigia comisiones, y eso dejaba sin cobrar el cargo de
+    // quien no vendio nada ese periodo, que es justo el caso que el modelo llama normal ("un faltante puede
+    // superar la comision de quien vende poco"). Negarse a liquidar ahi seria no cobrar nunca ese frasco.
+    if (pendientes.length === 0 && cargos.length === 0) {
+      throw new LiquidacionError(
+        "Ese integrante no tiene comisiones ni cargos por faltante pendientes hasta esa fecha.",
+      );
     }
 
     const [perfilFila] = await tx.execute<{
@@ -127,7 +148,13 @@ export async function liquidarHasta(input: {
          and extract(year from period_to) = extract(year from ${input.hasta}::date)`);
 
     const base = pendientes.reduce((s, f) => s + Number(f.monto), 0);
-    const cuenta = liquidarComision({ base, perfil, acumuladoPrevio: Number(acum?.total ?? 0) });
+    const cargosDeFaltante = cargos.reduce((s, f) => s + Number(f.monto), 0);
+    const cuenta = liquidarComision({
+      base,
+      perfil,
+      acumuladoPrevio: Number(acum?.total ?? 0),
+      cargosDeFaltante,
+    });
 
     // SIN LOS DATOS TRIBUTARIOS NO SE LIQUIDA. Asumirlos es girar de menos o de mas, y las dos se arreglan
     // con plata de por medio; el mensaje dice exactamente cual falta para que alguien lo complete.
@@ -148,9 +175,18 @@ export async function liquidarHasta(input: {
               ${perfil.obligadoAFacturar}, ${input.actorId})
       returning id`);
 
-    await tx.execute(sql`
-      update professional_revenue set settlement_id = ${liquidacion.id}
-       where id in (${sql.join(pendientes.map((f) => sql`${f.id}`), sql`, `)})`);
+    if (pendientes.length > 0) {
+      await tx.execute(sql`
+        update professional_revenue set settlement_id = ${liquidacion.id}
+         where id in (${sql.join(pendientes.map((f) => sql`${f.id}`), sql`, `)})`);
+    }
+    // LOS CARGOS SE MARCAN EN LA MISMA TRANSACCION. Si esto quedara fuera, un cargo se descontaria del neto y
+    // seguiria pendiente: se cobraria otra vez en la liquidacion siguiente.
+    if (cargos.length > 0) {
+      await tx.execute(sql`
+        update nutraceutical_faltante_cases set settlement_id = ${liquidacion.id}::uuid
+         where id in (${sql.join(cargos.map((f) => sql`${f.id}::uuid`), sql`, `)})`);
+    }
 
     await recordAudit(tx, {
       event: "comision.liquidada",
@@ -164,6 +200,10 @@ export async function liquidarHasta(input: {
         comisiones: pendientes.length,
         base: cuenta.base,
         retencion: cuenta.retencion,
+        // LOS CARGOS VAN AL AUDIT, con su cuenta y su numero: es plata que se le descuenta a una persona, y el
+        // registro tiene que poder explicar de donde salio un neto mas bajo sin reconstruirlo a mano.
+        cargosDeFaltante: cuenta.cargosDeFaltante,
+        faltantesCobrados: cargos.length,
         neto: cuenta.neto,
         tarifa: cuenta.tarifaDeRetencion,
       },
@@ -216,6 +256,9 @@ export type LiquidacionListada = {
   retencion: number;
   tarifa: number;
   neto: number;
+  /** Los cargos por faltante que se llevo esta liquidacion. Se suman de los casos ligados, no hay columna. */
+  cargosDeFaltante: number;
+  faltantesCobrados: number;
   documento: string;
   pagadaEn: string | null;
   referencia: string | null;
@@ -235,12 +278,20 @@ export async function listarLiquidaciones(professionalId?: string): Promise<Liqu
     documento: string;
     pagada: string | null;
     referencia: string | null;
+    cargos: string;
+    faltantes_cobrados: number;
   }>(sql`
     select s.id, coalesce(p.full_name, p.email, '(sin nombre)') as profesional,
            s.period_to::text as hasta, s.base_amount::text as base, s.vat_amount::text as iva,
            s.withholding_amount::text as retencion, s.withholding_rate::text as tarifa,
            s.net_amount::text as neto, s.document_kind as documento,
-           s.paid_at::text as pagada, s.payment_reference as referencia
+           s.paid_at::text as pagada, s.payment_reference as referencia,
+           -- LOS CARGOS POR FALTANTE de esta liquidacion, sumados de los casos que se llevo. No hay columna a
+           -- proposito: seria un segundo numero capaz de contradecir a los casos, y el neto ya esta guardado.
+           coalesce((select sum(f.sealed_total) from nutraceutical_faltante_cases f
+                      where f.settlement_id = s.id), 0)::text as cargos,
+           coalesce((select count(*) from nutraceutical_faltante_cases f
+                      where f.settlement_id = s.id), 0)::int as faltantes_cobrados
       from commission_settlements s
       join professional_profiles pp on pp.id = s.professional_id
       join profiles p on p.id = pp.profile_id
@@ -256,6 +307,8 @@ export async function listarLiquidaciones(professionalId?: string): Promise<Liqu
     retencion: Number(f.retencion),
     tarifa: Number(f.tarifa),
     neto: Number(f.neto),
+    cargosDeFaltante: Number(f.cargos),
+    faltantesCobrados: Number(f.faltantes_cobrados),
     documento: f.documento,
     pagadaEn: f.pagada,
     referencia: f.referencia,
