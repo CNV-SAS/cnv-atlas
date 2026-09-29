@@ -38,6 +38,7 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
   async function venta(o: {
     domicilio?: boolean;
     flete?: number | null;
+    costo?: number | null;
     entregadaHace?: number;
   } = {}): Promise<string> {
     const entregada =
@@ -45,7 +46,7 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
     const [t] = await db.execute(dsql`
       insert into transactions (organization_id, patient_id, professional_id, status, amount, currency,
                                 payment_method, wompi_env, idempotency_key, operated_at,
-                                delivery_mode, shipping_address, shipping_city, shipping_fee,
+                                delivery_mode, shipping_address, shipping_city, shipping_fee, shipping_cost,
                                 fulfillment_state, delivered_at)
       values (${orgId}, ${patientId}, ${profId}, 'paid', '119000', 'COP', 'efectivo', 'test',
               ${`test-domicilio-${Date.now()}-${Math.random().toString(36).slice(2)}`}, now(),
@@ -53,6 +54,7 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
               ${o.domicilio ? "Calle 1 # 2-3" : null},
               ${o.domicilio ? "Medellín" : null},
               ${o.flete == null ? null : String(o.flete)},
+              ${o.costo == null ? null : String(o.costo)},
               ${entregada ? "entregado" : "pendiente"},
               ${entregada}::timestamptz)
       returning id`);
@@ -182,5 +184,31 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
     const mapa = await writer.retractosDeLasVentas([conEnvio, enConsulta]);
     expect(mapa.has(conEnvio)).toBe(true);
     expect(mapa.has(enConsulta)).toBe(false);
+  });
+  // ═══ EL COSTO DEL DOMICILIARIO Y SU CONSOLIDADO (0192) ═══
+
+  // LO COBRADO NUNCA PUEDE SER MENOR QUE EL COSTO: si lo fuera, CNV estaria pagando por despachar, que es
+  // justo el caso que el margen existe para impedir.
+  it("no se puede cobrar un flete menor que lo que cuesta el envio", async () => {
+    await expect(venta({ domicilio: true, flete: 9_000, costo: 10_000 })).rejects.toThrow();
+    ventas.pop();
+  });
+
+  it("un costo en una venta en consulta tampoco se guarda", async () => {
+    await expect(venta({ domicilio: false, costo: 10_000 })).rejects.toThrow();
+    ventas.pop();
+  });
+
+  it("el consolidado suma lo que hay que pagarle al domiciliario", async () => {
+    const reader = await import("@/modules/payments/data/despachos-reader");
+    const hoy = new Date().toISOString().slice(0, 10);
+    const antes = await reader.consolidadoDeDespachos(hoy);
+    await venta({ domicilio: true, flete: 12_257, costo: 10_000 });
+    await venta({ domicilio: true, flete: 14_000, costo: 11_000 });
+    const despues = await reader.consolidadoDeDespachos(hoy);
+    expect(despues.totalCosto - antes.totalCosto).toBe(21_000);
+    expect(despues.totalFlete - antes.totalFlete).toBe(26_257);
+    // LA DIFERENCIA NO ES MARGEN: es lo que se lleva la pasarela por cobrar el flete.
+    expect(despues.diferencia - antes.diferencia).toBe(5_257);
   });
 });

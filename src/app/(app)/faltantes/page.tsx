@@ -49,7 +49,8 @@ function CaseHead({ c }: { c: FaltanteQueueRow }) {
             {c.lote ? ` · lote ${c.lote}` : ""}
           </span>
           <span className="text-xs text-muted-foreground">
-            {c.integranteName || "Integrante"} · valor {money(c.sealedTotal)} · reportado {fmtDate(c.reportedAt)}
+            {c.integranteName || "Integrante"} · valor de venta {money(c.sealedTotal)} · se le cobrarían{" "}
+            {money(c.sealedCharge)} · reportado {fmtDate(c.reportedAt)}
           </span>
         </div>
         {c.reincidencia > 0 ? (

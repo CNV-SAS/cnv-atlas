@@ -39,6 +39,17 @@ export const commercialConfig = pgTable("commercial_config", {
    * sella el valor con el que se genero.
    */
   diasAlertaVencimiento: integer("dias_alerta_vencimiento").notNull().default(60),
+  /**
+   * Costo SUGERIDO por defecto del domiciliario (no la tarifa al paciente, que se calcula por envio). Se
+   * precarga cuando la ciudad de destino no tiene uno propio.
+   */
+  fleteTarifa: numeric("flete_tarifa"),
+  /**
+   * Margen sobre el costo del domiciliario, antes del IVA. Existe porque la pasarela cobra su comision
+   * TAMBIEN sobre el flete: sin el, cada envio pierde esa diferencia. En configuracion y no en el codigo,
+   * porque la comision de la pasarela cambia y el margen que la compensa tambien.
+   */
+  fleteMargen: numeric("flete_margen").notNull().default("0.03"),
   updatedBy: uuid("updated_by").references(() => profiles.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -289,6 +300,20 @@ export const surveyOptionAllergens = pgTable("survey_option_allergens", {
 // por eso si se guarda, es si la VIO.
 //
 // La regla de quien asume vive en `modules/nutraceuticals/vencimientos.ts`, modulo puro y con candado.
+// Ciudades habilitadas para domicilio (migracion 0190). Vacia = no se ofrece domicilio a ningun destino, y
+// ese defecto es deliberado: el modelo prefiere no ofrecerlo a perder dinero en cada envio.
+export const deliveryCities = pgTable("delivery_cities", {
+  id: pk(),
+  city: text("city").notNull(),
+  department: text("department").notNull(),
+  /** Codigo DANE del municipio: es lo que identifica jurisdiccion para el analisis de ICA territorial. */
+  daneCode: text("dane_code"),
+  /** Lo que suele cobrar el domiciliario ahi. Se precarga y se puede cambiar: manda lo que se teclea. */
+  costoSugerido: numeric("costo_sugerido"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
 export const lotExpiryAlerts = pgTable(
   "lot_expiry_alerts",
   {

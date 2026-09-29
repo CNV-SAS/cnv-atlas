@@ -1338,6 +1338,20 @@
       "when": 1791953486103,
       "tag": "0190_el_domicilio_su_flete_y_su_cobertura",
       "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1791953546103,
+      "tag": "0191_el_faltante_se_cobra_al_precio_de_facturacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1791953606103,
+      "tag": "0192_el_flete_se_teclea_por_envio",
+      "breakpoints": true
     }
   ]
 }

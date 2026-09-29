@@ -2,9 +2,14 @@ import { redirect } from "next/navigation";
 
 import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
+import { ConsolidadoDeDespachosSection } from "@/modules/payments/components/consolidado-de-despachos";
 import { CuentasDistribucion } from "@/modules/payments/components/cuentas-distribucion";
 import { Liquidaciones } from "@/modules/payments/components/liquidaciones";
 import { MisCuentasDistribucion } from "@/modules/payments/components/mis-cuentas-distribucion";
+import {
+  consolidadoDeDespachos,
+  consolidadoDelCorteAnterior,
+} from "@/modules/payments/data/despachos-reader";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 import {
   hoyEnBogota,
@@ -50,6 +55,12 @@ export default async function ComercialPage() {
     puedeLiquidar ? cuentasParaCnv() : Promise.resolve([]),
     misCuentas(user.id),
   ]);
+
+  // EL CONSOLIDADO DE DESPACHOS, solo para quien ve el ingreso: es el papel que soporta el pago al
+  // domiciliario, y sin ese soporte el gasto no es deducible (contabilidad, 2026-09-29).
+  const [despachosCerrado, despachosCorriente] = puedeLiquidar
+    ? await Promise.all([consolidadoDelCorteAnterior(hasta), consolidadoDeDespachos(hasta)])
+    : [null, null];
   // El DETALLE de cada cuenta propia va completo a la pantalla: sin verlo no se puede objetar "de forma
   // sustentada", que es lo que el modelo exige para que la objecion valga.
   const misCuentasDeDistribucion = await Promise.all(
@@ -103,6 +114,10 @@ export default async function ComercialPage() {
           <TituloSeccion>Distribución: lo que CNV le factura al Integrante</TituloSeccion>
           <CuentasDistribucion cortes={cortes} cuentas={cuentasCnv} hoy={hasta} />
         </div>
+      ) : null}
+
+      {despachosCerrado && despachosCorriente ? (
+        <ConsolidadoDeDespachosSection anterior={despachosCerrado} corriente={despachosCorriente} />
       ) : null}
 
       {misCuentasDeDistribucion.length > 0 ? (

@@ -23,7 +23,13 @@ export type FaltanteCaseRow = {
   id: string;
   nutraceuticalName: string;
   quantity: number;
+  /** El valor de VENTA de lo faltante. NO es lo que se cobra. */
   sealedTotal: string;
+  /** La indemnizacion: base sin IVA menos el descuento del Integrante (0191). Es lo que se cobra. */
+  sealedCharge: string;
+  /** La base sin IVA por unidad y la tasa selladas, para poder explicar la cuenta. */
+  sealedBaseUnit: string | null;
+  sealedCommissionRate: string | null;
   lote: string | null;
   status: string;
   chargeStatus: string;
@@ -42,7 +48,7 @@ export async function getOwnFaltanteCases(userId: string): Promise<FaltanteCaseR
 
   const { data, error } = await supabase
     .from("nutraceutical_faltante_cases")
-    .select("id, quantity, sealed_total, lote, status, charge_status, reported_at, deadline_at, justification_category, justification_reference, nutraceuticals(name)")
+    .select("id, quantity, sealed_total, sealed_charge, sealed_base_unit, sealed_commission_rate, lote, status, charge_status, reported_at, deadline_at, justification_category, justification_reference, nutraceuticals(name)")
     .eq("professional_id", prof.id)
     .order("reported_at", { ascending: false });
   if (error) throw new Error(`faltante-service: cases: ${error.message}`);
@@ -56,6 +62,11 @@ export async function getOwnFaltanteCases(userId: string): Promise<FaltanteCaseR
       nutraceuticalName: nutraName(c.nutraceuticals),
       quantity: c.quantity,
       sealedTotal: String(c.sealed_total),
+      // SIN CARGO SELLADO se cae al total, que es lo que se cobraba antes de la 0191. Solo alcanza a casos
+      // ya liquidados: los abiertos los recalculo la migracion.
+      sealedCharge: String(c.sealed_charge ?? c.sealed_total),
+      sealedBaseUnit: c.sealed_base_unit == null ? null : String(c.sealed_base_unit),
+      sealedCommissionRate: c.sealed_commission_rate == null ? null : String(c.sealed_commission_rate),
       lote: c.lote,
       status: c.status,
       chargeStatus: c.charge_status,
@@ -125,7 +136,13 @@ export type FaltanteQueueRow = {
   nutraceuticalName: string;
   integranteName: string;
   quantity: number;
+  /** El valor de VENTA de lo faltante. NO es lo que se cobra. */
   sealedTotal: string;
+  /** La indemnizacion: base sin IVA menos el descuento del Integrante (0191). Es lo que se cobra. */
+  sealedCharge: string;
+  /** La base sin IVA por unidad y la tasa selladas, para poder explicar la cuenta. */
+  sealedBaseUnit: string | null;
+  sealedCommissionRate: string | null;
   lote: string | null;
   status: string;
   reportedAt: string;
@@ -147,7 +164,7 @@ export async function getFaltanteQueue(roles: { admin: boolean; direccion: boole
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("nutraceutical_faltante_cases")
-    .select("id, professional_id, quantity, sealed_total, lote, status, reported_at, deadline_at, justification_category, justification_reference, nutraceuticals(name), professional_profiles(profiles!profile_id(full_name))")
+    .select("id, professional_id, quantity, sealed_total, sealed_charge, sealed_base_unit, sealed_commission_rate, lote, status, reported_at, deadline_at, justification_category, justification_reference, nutraceuticals(name), professional_profiles(profiles!profile_id(full_name))")
     .in("status", statuses)
     .order("reported_at", { ascending: true });
   if (error) throw new Error(`faltante-service: queue: ${error.message}`);
@@ -170,6 +187,9 @@ export async function getFaltanteQueue(roles: { admin: boolean; direccion: boole
     integranteName: relName(c.professional_profiles),
     quantity: c.quantity,
     sealedTotal: String(c.sealed_total),
+    sealedCharge: String(c.sealed_charge ?? c.sealed_total),
+    sealedBaseUnit: c.sealed_base_unit == null ? null : String(c.sealed_base_unit),
+    sealedCommissionRate: c.sealed_commission_rate == null ? null : String(c.sealed_commission_rate),
     lote: c.lote,
     status: c.status,
     reportedAt: c.reported_at,

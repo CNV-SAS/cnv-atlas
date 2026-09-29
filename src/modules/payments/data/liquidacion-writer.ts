@@ -108,7 +108,10 @@ export async function liquidarHasta(input: {
     // SE BLOQUEAN IGUAL, y con mas razon que las comisiones: cobrar dos veces el mismo frasco es cobrarle a una
     // persona una deuda que ya pago.
     const cargos = await tx.execute<{ id: string; monto: string }>(sql`
-      select id, sealed_total::text as monto from nutraceutical_faltante_cases
+      -- SE COBRA sealed_charge, NO sealed_total (0191): el total es el valor de VENTA de lo faltante y el
+      -- cargo es la INDEMNIZACION (base sin IVA menos el descuento del Integrante). Cobrar el total seria
+      -- cobrar un IVA que no se causo y un margen que nadie gano.
+      select id, coalesce(sealed_charge, sealed_total)::text as monto from nutraceutical_faltante_cases
        where professional_id = ${input.professionalId}::uuid
          and settlement_id is null
          and charge_status <> 'sin_cargo'
@@ -288,7 +291,7 @@ export async function listarLiquidaciones(professionalId?: string): Promise<Liqu
            s.paid_at::text as pagada, s.payment_reference as referencia,
            -- LOS CARGOS POR FALTANTE de esta liquidacion, sumados de los casos que se llevo. No hay columna a
            -- proposito: seria un segundo numero capaz de contradecir a los casos, y el neto ya esta guardado.
-           coalesce((select sum(f.sealed_total) from nutraceutical_faltante_cases f
+           coalesce((select sum(coalesce(f.sealed_charge, f.sealed_total)) from nutraceutical_faltante_cases f
                       where f.settlement_id = s.id), 0)::text as cargos,
            coalesce((select count(*) from nutraceutical_faltante_cases f
                       where f.settlement_id = s.id), 0)::int as faltantes_cobrados

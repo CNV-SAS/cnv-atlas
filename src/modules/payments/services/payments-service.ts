@@ -6,7 +6,8 @@ import type { CurrentUser } from "@/modules/auth/roles";
 import { listNutraceuticals } from "@/modules/nutraceuticals/data/nutraceuticals-repository";
 
 import type { CheckoutView } from "../data/checkout-reader";
-import { daneDe, departamentoDe, ofertaVigente } from "../data/domicilio-reader";
+import { configuracionDeFlete, daneDe, departamentoDe, ofertaVigente } from "../data/domicilio-reader";
+import { fleteDelEnvio } from "../domicilio";
 import * as repo from "../data/payments-repository";
 import {
   anularCheckout,
@@ -69,7 +70,10 @@ type ResueltoDomicilio = {
   ciudad: string;
   departamento: string | null;
   daneCode: string | null;
+  /** Lo que paga el paciente por el envio. */
   flete: number;
+  /** Lo que se le paga al domiciliario. */
+  costo: number;
 } | null;
 
 // para la comision (el que la crea; si es admin, el asignado al paciente; null => todo va a CNV) y las
@@ -153,19 +157,31 @@ async function resolveSale(
       departamento: input.domicilio.departamento ?? null,
     });
     if (!oferta.ofrece) throw new CheckoutError(oferta.motivo);
+
+    // EL COSTO LO TECLEA EL PROFESIONAL y el flete LO CALCULA EL SERVIDOR con el margen vigente. Del
+    // navegador viaja el COSTO, no la cifra cobrada: si viajara la cifra, cualquiera podria cobrarse el
+    // flete que quisiera. Y el costo sin teclear cae al sugerido, que tambien sale del servidor.
+    const { margen, costoPorDefecto } = await configuracionDeFlete();
+    const costo = input.domicilio.costo ?? oferta.costoSugerido ?? costoPorDefecto;
+    if (costo == null || !(costo > 0)) {
+      throw new CheckoutError("Escribe cuánto cobra el domiciliario por este envío.");
+    }
+    const flete = fleteDelEnvio({ costo, margen });
+
     const departamento = input.domicilio.departamento?.trim() || (await departamentoDe(input.domicilio.ciudad));
     domicilio = {
       direccion: input.domicilio.direccion,
       ciudad: input.domicilio.ciudad,
       departamento,
       daneCode: await daneDe(input.domicilio.ciudad, departamento),
-      flete: oferta.tarifa,
+      flete: flete.total,
+      costo: flete.costo,
     };
     // EL FLETE SE SUMA AL MONTO bajo Comision: el paciente paga a CNV el producto MAS el flete, en el mismo
     // checkout (§5.3). Bajo Distribucion el flete se suma a la cuenta quincenal del Integrante y no a este
     // cobro, pero hoy los dos caminos de venta bloquean a un Integrante en Distribucion, asi que aqui no
     // puede llegar una: cuando se desbloquee, este es el sitio que hay que partir en dos.
-    amount = Math.round((amount + oferta.tarifa) * 100) / 100;
+    amount = Math.round((amount + flete.total) * 100) / 100;
   }
 
   return { professionalId, lines, amount, domicilio };

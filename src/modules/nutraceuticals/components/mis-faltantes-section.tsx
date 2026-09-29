@@ -49,7 +49,7 @@ export async function MisFaltantesSection({ userId }: { userId: string }) {
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium text-foreground">{c.nutraceuticalName}</span>
                 <span className="text-xs text-muted-foreground">
-                  Faltan {c.quantity} unidad(es){c.lote ? ` · lote ${c.lote}` : ""} · valor {money(c.sealedTotal)} · reportado {fmtDate(c.reportedAt)}
+                  Faltan {c.quantity} unidad(es){c.lote ? ` · lote ${c.lote}` : ""} · valor de venta {money(c.sealedTotal)} · reportado {fmtDate(c.reportedAt)}
                 </span>
               </div>
               <Badge variant="outline" className="font-normal">
@@ -87,9 +87,25 @@ export async function MisFaltantesSection({ userId }: { userId: string }) {
                 Y EL PLAZO NO SE INVENTA: no hay uno escrito en el procedimiento, así que se ancla en un hecho
                 que el sistema sí tiene y el integrante puede comprobar: antes de que se gire la liquidación en
                 la que aparece. Poner "cinco días" aquí sería crear una obligación que nadie acordó. */}
+            {/* ═══ LA CUENTA SE MUESTRA, NO SOLO LA CIFRA (0191) ═══
+                El cargo NO es el precio de venta: es la indemnización, que sale de la base sin IVA menos su
+                propio descuento comercial. Sin la cuenta a la vista, la primera reacción de quien recibe un
+                cargo de 72.000 sobre un producto de 107.100 es pensar que está mal. Con ella, se ve por qué
+                es menos, que es lo que el modelo quiso decir cuando dijo que cobrar el PVP sería cobrar una
+                utilidad que nadie ganó. */}
             {c.chargeStatus !== "sin_cargo" ? (
               <p className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                Este caso tiene un cargo por {money(c.sealedTotal)}, que se descuenta de tu liquidación.{" "}
+                Este caso tiene un cargo por{" "}
+                <strong className="text-foreground">{money(c.sealedCharge)}</strong>, que se descuenta de tu
+                liquidación.
+                {c.sealedBaseUnit && c.sealedCommissionRate ? (
+                  <>
+                    {" "}
+                    Sale del valor sin IVA ({money(String(Number(c.sealedBaseUnit) * c.quantity))}) menos tu
+                    descuento comercial del {Math.round(Number(c.sealedCommissionRate) * 100)}%: no se te cobra
+                    el IVA, porque no hubo venta, ni el margen que habrías ganado.
+                  </>
+                ) : null}{" "}
                 <strong className="text-foreground">Si no estás de acuerdo</strong>, escribe a{" "}
                 <a className="font-medium text-foreground underline" href={`mailto:${CANAL_ADMIN}`}>
                   {CANAL_ADMIN}
