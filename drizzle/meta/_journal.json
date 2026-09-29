@@ -1303,6 +1303,13 @@
       "when": 1791953186103,
       "tag": "0185_cargo_de_faltante_en_la_liquidacion",
       "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1791953246103,
+      "tag": "0186_la_alerta_de_vencimiento_y_su_registro",
+      "breakpoints": true
     }
   ]
 }

@@ -129,3 +129,8 @@ export type NutraceuticalFormState = {
   success: string | null;
   warning: string | null;
 };
+
+// Marcar vista una alerta de vencimiento (0186). Solo el id: no hay nada que el Integrante elija.
+export const marcarVencimientoVistoSchema = z.object({
+  alertaId: z.guid("Alerta invalida."),
+});

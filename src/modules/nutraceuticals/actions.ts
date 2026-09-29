@@ -15,6 +15,7 @@ import * as faltanteService from "./services/faltante-service";
 import * as inventoryService from "./services/inventory-service";
 import * as service from "./services/nutraceuticals-service";
 import * as remesaService from "./services/remesa-service";
+import * as vencimientosLectura from "./services/vencimientos-lectura";
 import {
   classifyFaltanteSchema,
   confirmFaltanteSchema,
@@ -22,6 +23,7 @@ import {
   declareRemesaSchema,
   resolveSobranteSchema,
   createNutraceuticalSchema,
+  marcarVencimientoVistoSchema,
   recordCountSchema,
   registerUsageSchema,
   submitJustificationSchema,
@@ -415,4 +417,29 @@ export async function resolveSobranteFormAction(
   if (!res.ok) return { error: res.message ?? "No se pudo resolver el sobrante.", success: null, warning: null };
   // Sin revalidate: el sobrante deja la lista y el formulario se desmonta; el cliente avisa y refresca.
   return { error: null, success: "Sobrante resuelto: el saldo se ajustó con el motivo registrado.", warning: null };
+}
+
+// El Integrante marca que VIO la alerta de vencimiento de un lote (0186). Es el unico dato de esa fila que se
+// guarda por declaracion, porque es el unico que el sistema no puede deducir: que el lote se atendio lo dice
+// el saldo. La fecha es write-once (trigger): moverla hacia adelante favoreceria a quien quiera discutir el
+// cargo, asi que la primera vez es la que cuenta.
+export async function marcarVencimientoVistoFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canLoadOwnStock(user)) {
+    return { error: "Solo el profesional marca sus propias alertas.", success: null, warning: null };
+  }
+  const parsed = marcarVencimientoVistoSchema.safeParse({ alertaId: String(formData.get("alertaId") ?? "") });
+  if (!parsed.success) return { error: "Alerta invalida.", success: null, warning: null };
+
+  const marcada = await vencimientosLectura.marcarAlertaVista(user.id, parsed.data.alertaId);
+  if (!marcada) {
+    return { error: "Esa alerta no es tuya o ya estaba marcada.", success: null, warning: null };
+  }
+  // Sin revalidate: la pantalla refresca desde el cliente (`useFormToastAndRefresh`). Las dos cosas a la vez
+  // es el defecto de "refresco una sola vez".
+  return { error: null, success: "Queda registrado que viste la alerta.", warning: null };
 }

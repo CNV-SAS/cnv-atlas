@@ -23,6 +23,7 @@ const DB_TESTS = [
   "src/tests/venta-rechazada-no-gasta-intentos.test.ts",
   "src/tests/reparto-sellado.test.ts",
   "src/tests/saldo-por-lote-db.test.ts",
+  "src/tests/vencimientos-db.test.ts",
   "src/tests/venta-inventario.test.ts",
   "src/tests/factura-huerfana-db.test.ts",
   "src/tests/venta-anulacion-y-revision-db.test.ts",

@@ -1,4 +1,4 @@
-import { boolean, date, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 import { createdAt, pk } from "./_columns";
@@ -32,6 +32,13 @@ export const commercialConfig = pgTable("commercial_config", {
   id: pk(),
   /** Umbral de aviso por defecto sobre el RESIDUO de CNV, en fraccion (0,10 = 10%). */
   margenAvisoDefault: numeric("margen_aviso_default").notNull().default("0"),
+  /**
+   * Dias de anticipacion de la alerta de vencimiento de lote. 60 es lo que fija el modelo comercial, no una
+   * preferencia: esta aqui por el principio 2 ("nada de valores fijos en el codigo... dias de alerta de
+   * vencimiento"). Cambiarlo cambia quien asume los vencidos FUTUROS; los pasados no, porque cada alerta
+   * sella el valor con el que se genero.
+   */
+  diasAlertaVencimiento: integer("dias_alerta_vencimiento").notNull().default(60),
   updatedBy: uuid("updated_by").references(() => profiles.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -268,3 +275,49 @@ export const surveyOptionAllergens = pgTable("survey_option_allergens", {
   allergenId: uuid("allergen_id").notNull().references(() => allergens.id),
   createdAt: createdAt(),
 });
+
+// ═══ EL REGISTRO DE LA ALERTA DE VENCIMIENTO (migracion 0186) ═══
+//
+// NO ES EL CORREO, ES EL HECHO. El modelo comercial dice que el sistema "alerta con sesenta dias de
+// anticipacion sobre el vencimiento de cada lote en poder de un Integrante, y registra si la alerta fue vista
+// y atendida", y remata: "ESE REGISTRO ES LO QUE DETERMINA QUIEN ASUME EL VENCIDO". Un aviso que solo existe
+// como correo enviado no se puede oponer a nadie seis meses despues; esta fila si.
+//
+// "ATENDIDA" NO ES COLUMNA a proposito: se deriva de que el saldo del lote en esa ubicacion llegue a cero
+// antes de vencer (se vendio o se devolvio). Una columna declarada podria contradecir al saldo, y esa
+// contradiccion es la familia de defectos mas caras de este proyecto. Lo que el sistema no puede deducir, y
+// por eso si se guarda, es si la VIO.
+//
+// La regla de quien asume vive en `modules/nutraceuticals/vencimientos.ts`, modulo puro y con candado.
+export const lotExpiryAlerts = pgTable(
+  "lot_expiry_alerts",
+  {
+    id: pk(),
+    lotId: uuid("lot_id")
+      .notNull()
+      .references(() => lots.id),
+    locationId: uuid("location_id")
+      .notNull()
+      .references(() => inventoryLocations.id),
+    nutraceuticalId: uuid("nutraceutical_id")
+      .notNull()
+      .references(() => nutraceuticals.id),
+    /** Dueño de la ubicacion. null = bodega central: avisa, pero no desplaza el vencido a nadie. */
+    professionalId: uuid("professional_id").references(() => professionalProfiles.id),
+    /** Copia SELLADA del vencimiento y de las unidades al alertar: sin ellas la fila no explica de que aviso. */
+    expiresOn: date("expires_on").notNull(),
+    unitsAtAlert: integer("units_at_alert").notNull(),
+    /** Los dias de anticipacion vigentes al generarla. Sellados como `sealed_unit_price` en el faltante. */
+    daysAhead: integer("days_ahead").notNull(),
+    createdAt: createdAt(),
+    /** Vista: write-once (trigger). La primera fecha es la que cuenta; moverla favoreceria a quien discute. */
+    seenAt: timestamp("seen_at", { withTimezone: true }),
+    seenBy: uuid("seen_by").references(() => profiles.id),
+  },
+  (t) => [
+    // Una por lote y ubicacion: es lo que vuelve idempotente la tarea diaria y, sobre todo, lo que impide
+    // que la alerta reinicie su reloj cada dia y diga "te avise ayer" para siempre.
+    uniqueIndex("lot_expiry_alerts_una_por_lote_y_ubicacion").on(t.lotId, t.locationId),
+    index("lot_expiry_alerts_prof_idx").on(t.professionalId, t.expiresOn),
+  ],
+);

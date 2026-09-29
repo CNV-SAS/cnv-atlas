@@ -428,13 +428,13 @@ isOneToOne: false
                   ]
                 },"commercial_config": {
                   Row: {
-                    "id": string,"margen_aviso_default": number,"updated_at": string,"updated_by": string | null
+                    "dias_alerta_vencimiento": number,"id": string,"margen_aviso_default": number,"updated_at": string,"updated_by": string | null
                   }
                   Insert: {
-                    "id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
+                    "dias_alerta_vencimiento"?: number,"id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
+                    "dias_alerta_vencimiento"?: number,"id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -956,6 +956,49 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"lot_expiry_alerts": {
+                  Row: {
+                    "created_at": string,"days_ahead": number,"expires_on": string,"id": string,"location_id": string,"lot_id": string,"nutraceutical_id": string,"professional_id": string | null,"seen_at": string | null,"seen_by": string | null,"units_at_alert": number
+                  }
+                  Insert: {
+                    "created_at"?: string,"days_ahead": number,"expires_on": string,"id"?: string,"location_id": string,"lot_id": string,"nutraceutical_id": string,"professional_id"?: string | null,"seen_at"?: string | null,"seen_by"?: string | null,"units_at_alert": number
+                  }
+                  Update: {
+                    "created_at"?: string,"days_ahead"?: number,"expires_on"?: string,"id"?: string,"location_id"?: string,"lot_id"?: string,"nutraceutical_id"?: string,"professional_id"?: string | null,"seen_at"?: string | null,"seen_by"?: string | null,"units_at_alert"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "lot_expiry_alerts_location_id_fkey"
+      columns: ["location_id"]
+isOneToOne: false
+      referencedRelation: "inventory_locations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lot_expiry_alerts_lot_id_fkey"
+      columns: ["lot_id"]
+isOneToOne: false
+      referencedRelation: "lots"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lot_expiry_alerts_nutraceutical_id_fkey"
+      columns: ["nutraceutical_id"]
+isOneToOne: false
+      referencedRelation: "nutraceuticals"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lot_expiry_alerts_professional_id_fkey"
+      columns: ["professional_id"]
+isOneToOne: false
+      referencedRelation: "professional_profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lot_expiry_alerts_seen_by_fkey"
+      columns: ["seen_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"lots": {
                   Row: {
                     "code": string,"created_at": string,"expires_on": string,"id": string,"notes": string | null,"nutraceutical_id": string,"received_on": string | null
@@ -1115,13 +1158,13 @@ isOneToOne: false
                   ]
                 },"nutraceutical_faltante_cases": {
                   Row: {
-                    "charge_status": Database["public"]['Enums']["nutraceutical_faltante_charge"],"count_session_id": string | null,"created_at": string,"created_by": string | null,"deadline_at": string,"id": string,"justification_category": Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference": string | null,"lote": string | null,"nutraceutical_id": string,"professional_id": string,"quantity": number,"reported_at": string,"sealed_total": number,"sealed_unit_price": number,"status": Database["public"]['Enums']["nutraceutical_faltante_status"]
+                    "charge_status": Database["public"]['Enums']["nutraceutical_faltante_charge"],"count_session_id": string | null,"created_at": string,"created_by": string | null,"deadline_at": string,"id": string,"justification_category": Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference": string | null,"lote": string | null,"nutraceutical_id": string,"professional_id": string,"quantity": number,"reported_at": string,"sealed_total": number,"sealed_unit_price": number,"settlement_id": string | null,"status": Database["public"]['Enums']["nutraceutical_faltante_status"]
                   }
                   Insert: {
-                    "charge_status"?: Database["public"]['Enums']["nutraceutical_faltante_charge"],"count_session_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"deadline_at": string,"id"?: string,"justification_category"?: Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference"?: string | null,"lote"?: string | null,"nutraceutical_id": string,"professional_id": string,"quantity": number,"reported_at": string,"sealed_total": number,"sealed_unit_price": number,"status"?: Database["public"]['Enums']["nutraceutical_faltante_status"]
+                    "charge_status"?: Database["public"]['Enums']["nutraceutical_faltante_charge"],"count_session_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"deadline_at": string,"id"?: string,"justification_category"?: Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference"?: string | null,"lote"?: string | null,"nutraceutical_id": string,"professional_id": string,"quantity": number,"reported_at": string,"sealed_total": number,"sealed_unit_price": number,"settlement_id"?: string | null,"status"?: Database["public"]['Enums']["nutraceutical_faltante_status"]
                   }
                   Update: {
-                    "charge_status"?: Database["public"]['Enums']["nutraceutical_faltante_charge"],"count_session_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"deadline_at"?: string,"id"?: string,"justification_category"?: Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference"?: string | null,"lote"?: string | null,"nutraceutical_id"?: string,"professional_id"?: string,"quantity"?: number,"reported_at"?: string,"sealed_total"?: number,"sealed_unit_price"?: number,"status"?: Database["public"]['Enums']["nutraceutical_faltante_status"]
+                    "charge_status"?: Database["public"]['Enums']["nutraceutical_faltante_charge"],"count_session_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"deadline_at"?: string,"id"?: string,"justification_category"?: Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference"?: string | null,"lote"?: string | null,"nutraceutical_id"?: string,"professional_id"?: string,"quantity"?: number,"reported_at"?: string,"sealed_total"?: number,"sealed_unit_price"?: number,"settlement_id"?: string | null,"status"?: Database["public"]['Enums']["nutraceutical_faltante_status"]
                   }
                   Relationships: [
                     {
@@ -1147,6 +1190,12 @@ isOneToOne: false
       columns: ["professional_id"]
 isOneToOne: false
       referencedRelation: "professional_profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_faltante_cases_settlement_id_fkey"
+      columns: ["settlement_id"]
+isOneToOne: false
+      referencedRelation: "commission_settlements"
       referencedColumns: ["id"]
     }
                   ]
