@@ -78,6 +78,22 @@ export const transactions = pgTable(
     // De donde sale el producto, sellado al crear la venta.
     locationId: uuid("location_id"),
     deliveryMode: text("delivery_mode"), // en_consulta | domicilio
+    // ── EL ENVIO A DOMICILIO (0190) ──
+    // El destino se SELLA en la venta y no se lee del paciente (que puede mudarse): el modelo §5.5 lo pide
+    // para el analisis de ICA territorial, y eso necesita saber a donde se entrego ESTA venta.
+    shippingAddress: text("shipping_address"),
+    shippingCity: text("shipping_city"),
+    shippingDepartment: text("shipping_department"),
+    shippingDaneCode: text("shipping_dane_code"),
+    /** El flete sellado al cobrar, con IVA dentro (igual que el precio unitario). Si la tarifa sube, esta no. */
+    shippingFee: numeric("shipping_fee"),
+    // ── EL RETRACTO (Ley 1480/2011, art. 47) ──
+    // La FECHA LIMITE no se guarda: se deduce de la fecha de entrega mas cinco dias habiles. Lo que si se guarda
+    // es el ejercicio, y sobre todo si el producto volvio SELLADO: el sello es la evidencia que acredita la
+    // excepcion del numeral 7, y la doctrina exige acreditarla, no afirmarla.
+    retractoEjercidoAt: timestamp("retracto_ejercido_at", { withTimezone: true }),
+    retractoSelloIntacto: boolean("retracto_sello_intacto"),
+    retractoNota: text("retracto_nota"),
     operatedAt: timestamp("operated_at", { withTimezone: true }),
     // LA CUENTA QUINCENAL QUE SE LLEVO ESTA VENTA (0188, solo Distribucion). Nula = pendiente de facturar.
     // Es lo que impide facturar dos veces la misma venta, igual que `settlement_id` con la comision. Sin

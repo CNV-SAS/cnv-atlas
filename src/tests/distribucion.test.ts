@@ -48,14 +48,17 @@ describe("el precio de facturacion", () => {
 });
 
 describe("el flete", () => {
-  // §5.3: "El Integrante no gana ni pierde en el envio: solo lo traslada". Asi que NO lleva descuento.
+  // §5.3: "El Integrante no gana ni pierde en el envio: solo lo traslada". Asi que NO lleva descuento: su
+  // base es la del flete entero, no el 80%.
   it("no lleva descuento", () => {
-    expect(fleteFacturado(12_000).base).toBe(12_000);
+    expect(fleteFacturado(11_900).base).toBe(10_000);
   });
 
   // §5.4, articulo 447 del Estatuto Tributario: la base gravable incluye acarreos, aunque se facturen aparte.
-  it("si lleva IVA del 19%", () => {
-    expect(fleteFacturado(12_000)).toEqual({ base: 12_000, iva: 2_280, total: 14_280 });
+  // Y LA TARIFA ES LO QUE SE COBRA, con IVA dentro, igual que el PVP: se DESCOMPONE, no se recarga. Dos
+  // convenciones distintas es como se termina cobrando un flete y facturando otro.
+  it("si lleva IVA del 19%, y la tarifa ya lo trae dentro", () => {
+    expect(fleteFacturado(11_900)).toEqual({ base: 10_000, iva: 1_900, total: 11_900 });
   });
 });
 
@@ -114,14 +117,14 @@ describe("la cuenta quincenal", () => {
     const c = armarCuentaQuincenal({
       corte,
       lineas: [linea(2, 200_000, 40_000)],
-      fletes: [12_000],
+      fletes: [11_900],
       esAgenteRetenedor: false,
       uvt: UVT_2026,
     });
     expect(c.baseProductos).toBe(160_000); // 80.000 x 2
-    expect(c.baseFletes).toBe(12_000);
-    expect(c.base).toBe(172_000);
-    expect(c.iva).toBe(30_400 + 2_280);
+    expect(c.baseFletes).toBe(10_000);
+    expect(c.base).toBe(170_000);
+    expect(c.iva).toBe(30_400 + 1_900);
     expect(c.total).toBe(c.base + c.iva);
   });
 

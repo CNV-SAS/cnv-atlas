@@ -192,6 +192,22 @@ export async function sellarContabilidadDeLaVenta(
         .where(eq(transactionItems.id, tramo.lineaId));
     }
   }
+  // ── EL FLETE ES INGRESO DE CNV, Y NO SE REPARTE (0190, modelo §5.3) ──
+  //
+  // Textual: "El Integrante no gana ni pierde en el envio: solo lo traslada". Asi que su base NO pasa por
+  // `repartir`: pasarla le daria al Integrante su porcentaje de un flete que el no presta, y se lo quitaria
+  // a CNV, que es quien contrata la transportadora y le paga.
+  //
+  // Y NO PUEDE QUEDARSE FUERA, que es lo que pasaria si no se sumara aqui: el paciente paga el flete, el
+  // dinero entra, y el ingreso de CNV no lo contaria. Una venta cuya plata no cuadra con su contabilidad es
+  // exactamente lo que este sellado existe para impedir.
+  const [envio] = await tx.execute<{ fee: string | null }>(
+    sql`select shipping_fee as fee from transactions where id = ${t.id}`,
+  );
+  if (envio?.fee != null && Number(envio.fee) > 0) {
+    cnv += baseFromTotal(Number(envio.fee));
+  }
+
   comision = Math.round(comision * 100) / 100;
   cnv = Math.round(cnv * 100) / 100;
 
@@ -249,6 +265,22 @@ export type NewTransaction = {
    * despacharla: no hace falta una columna nueva, y una columna nueva seria una segunda fuente del mismo hecho.
    */
   desdeLaBodega?: boolean;
+  /**
+   * ENVIO A DOMICILIO (0190). Su presencia decide tres cosas a la vez, y por eso viaja junta:
+   *
+   *   ·  pasa a domicilio, que es lo que activa el derecho de retracto (§5.7);
+   *   · la venta sale de la BODEGA CENTRAL, no de la vitrina (§5.1: "cuando la venta se despacha a
+   *     domicilio, el descuento se hace contra la bodega central"), asi que  se fuerza;
+   *   · y el flete queda SELLADO en la venta, no leido de la configuracion despues.
+   */
+  domicilio?: {
+    direccion: string;
+    ciudad: string;
+    departamento: string | null;
+    daneCode: string | null;
+    /** La tarifa vigente al cobrar, con IVA dentro (igual que el PVP). */
+    flete: number;
+  } | null;
 };
 
 export type NewCashTransaction = NewTransaction & {
@@ -280,7 +312,7 @@ export async function createTransactionWithItems(
   // paciente es del integrante. Va ANTES de abrir la transaccion: no hay nada que deshacer.
   await exigirRecaudoDeCnv(input.professionalId ?? null);
   return db.transaction(async (tx) => {
-    const locationId = await ubicacionDeLaVenta(tx, input.professionalId, input.desdeLaBodega === true);
+    const locationId = await ubicacionDeLaVenta(tx, input.professionalId, input.desdeLaBodega === true || input.domicilio != null);
     const [t] = await tx
       .insert(transactions)
       .values({
@@ -295,7 +327,14 @@ export async function createTransactionWithItems(
         wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
         treatmentId: input.treatmentId ?? null,
         locationId,
-        deliveryMode: "en_consulta",
+        // EL DOMICILIO MANDA SOBRE EL MODO: si hay envio, la venta es a distancia y eso es lo que activa el
+        // retracto. Sin el, la venta es en consulta, que es lo que eran todas hasta la 0190.
+        deliveryMode: input.domicilio ? "domicilio" : "en_consulta",
+        shippingAddress: input.domicilio?.direccion ?? null,
+        shippingCity: input.domicilio?.ciudad ?? null,
+        shippingDepartment: input.domicilio?.departamento ?? null,
+        shippingDaneCode: input.domicilio?.daneCode ?? null,
+        shippingFee: input.domicilio ? String(input.domicilio.flete) : null,
         operatedAt: new Date(),
         // Toda venta nace con su entrega pendiente (sesion 2): es lo que hace que ninguna quede sin camino
         // para entregarse.
@@ -488,7 +527,7 @@ export async function createPaidCashTransaction(
         if ((await anularCheckout(id, input.actorId ?? null, tx)) === "anulado") linksAnulados.push(id);
       }
     }
-    const locationId = await ubicacionDeLaVenta(tx, input.professionalId, input.desdeLaBodega === true);
+    const locationId = await ubicacionDeLaVenta(tx, input.professionalId, input.desdeLaBodega === true || input.domicilio != null);
     const inserted = await tx
       .insert(transactions)
       .values({
@@ -505,7 +544,14 @@ export async function createPaidCashTransaction(
         wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
         treatmentId: input.treatmentId ?? null,
         locationId,
-        deliveryMode: "en_consulta",
+        // EL DOMICILIO MANDA SOBRE EL MODO: si hay envio, la venta es a distancia y eso es lo que activa el
+        // retracto. Sin el, la venta es en consulta, que es lo que eran todas hasta la 0190.
+        deliveryMode: input.domicilio ? "domicilio" : "en_consulta",
+        shippingAddress: input.domicilio?.direccion ?? null,
+        shippingCity: input.domicilio?.ciudad ?? null,
+        shippingDepartment: input.domicilio?.departamento ?? null,
+        shippingDaneCode: input.domicilio?.daneCode ?? null,
+        shippingFee: input.domicilio ? String(input.domicilio.flete) : null,
         operatedAt: new Date(),
         stockState: "pendiente",
         fulfillmentState: "pendiente",

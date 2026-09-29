@@ -19,6 +19,7 @@ import type { CanalDePago } from "./medio-de-pago";
 import { leerLineas } from "./lineas-del-formulario";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { canDeliverSale } from "./policies/can-deliver-sale";
+import { registrarRetracto, RetractoError } from "./data/retracto-writer";
 import { MODALIDAD_LABEL } from "./modalidad";
 import { cambiarModalidad, ModalidadError } from "./data/modalidad-writer";
 import { canViewRevenue } from "./policies/can-view-revenue";
@@ -159,6 +160,7 @@ export async function createCheckoutFormAction(
     items: lineas,
     treatmentId,
     desdeLaBodega: String(formData.get("desdeLaBodega") ?? "") === "true",
+    domicilio: leerDomicilio(formData),
   });
   if (!result.ok) {
     return { error: result.error.message, success: null, checkoutUrl: null, duplicateWarning: null };
@@ -170,6 +172,22 @@ export async function createCheckoutFormAction(
     success: "Checkout creado. Comparte el link con el paciente.",
     checkoutUrl: result.value.checkoutUrl,
     duplicateWarning: null,
+  };
+}
+
+/**
+ * EL DOMICILIO DEL FORMULARIO, o undefined si no se pidió envío.
+ *
+ * LA TARIFA NO SE LEE DE AQUI: viaja solo el destino y la dirección. El flete lo pone el servidor desde la
+ * configuración y lo sella en la venta; si viajara por el formulario, cualquiera podría cobrarse el flete
+ * que quisiera.
+ */
+function leerDomicilio(formData: FormData): { ciudad: string; departamento?: string; direccion: string } | undefined {
+  if (String(formData.get("aDomicilio") ?? "") !== "true") return undefined;
+  return {
+    ciudad: String(formData.get("ciudadDestino") ?? ""),
+    departamento: String(formData.get("departamentoDestino") ?? "") || undefined,
+    direccion: String(formData.get("direccionEntrega") ?? ""),
   };
 }
 
@@ -197,6 +215,7 @@ export async function registerCashSaleFormAction(
     items: lineas,
     treatmentId: String(formData.get("treatmentId") ?? "") || undefined,
     desdeLaBodega: String(formData.get("desdeLaBodega") ?? "") === "true",
+    domicilio: leerDomicilio(formData),
   });
   if (!parsed.success) return { ...vacio, error: "Datos de la venta inválidos." };
   const { idempotencyKey, ...sale } = parsed.data;
@@ -1076,5 +1095,42 @@ export async function registrarPagoDeCuentaDistribucionAction(
     if (e instanceof CuentaNoEmitibleError) return { error: e.message, success: null, warning: null };
     reportServerError("registrarPagoDeCuentaDistribucionAction", e);
     return { error: "No se pudo registrar el pago.", success: null, warning: null };
+  }
+}
+
+// EL RETRACTO (0190). Lo registra CNV con la evidencia del sello, y el resultado NO se decide aqui: lo dice
+// el modulo puro con la regla del articulo 47. Un retracto negado tambien se registra, con su razon.
+export async function registrarRetractoFormAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  // ES DECISION DE CNV, no del Integrante: el retracto bajo Comision lo honra CNV, y decidirlo mueve plata
+  // (se reintegra todo, incluido el flete). Misma policy que el resto de los actos de dinero.
+  if (!user || !canViewRevenue(user)) return sinPermiso;
+  const sello = String(form.get("selloIntacto") ?? "");
+  if (sello !== "true" && sello !== "false") {
+    return { error: "Di si el producto volvió con el sello intacto: es la evidencia que decide.", success: null, warning: null };
+  }
+  try {
+    const r = await registrarRetracto({
+      transactionId: String(form.get("transactionId") ?? ""),
+      selloIntacto: sello === "true",
+      nota: String(form.get("nota") ?? "").trim() || null,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    return r.procede
+      ? {
+          error: null,
+          success: `Retracto aceptado. Se le reintegran ${r.reintegro.toLocaleString("es-CO")} COP, incluido el envío. Registra la devolución del producto para devolver su parte del dinero.`,
+          warning: null,
+        }
+      : { error: null, success: null, warning: `Retracto NO procede: ${r.motivo}` };
+  } catch (e) {
+    if (e instanceof RetractoError) return { error: e.message, success: null, warning: null };
+    reportServerError("registrarRetractoFormAction", e);
+    return { error: "No se pudo registrar el retracto.", success: null, warning: null };
   }
 }

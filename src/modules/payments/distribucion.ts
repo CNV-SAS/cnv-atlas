@@ -64,11 +64,15 @@ export function precioDeFacturacion(pvpConIva: number, descuento = DESCUENTO_DIS
  * por el articulo 447 del Estatuto Tributario: la base gravable incluye acarreos y demas erogaciones
  * complementarias, aunque se facturen por separado, y como el producto va al 19% el flete sigue esa suerte
  * (§5.4).
+ *
+ * LA TARIFA ES LO QUE SE COBRA, CON IVA DENTRO, igual que `unit_price` es el PVP con IVA. Es la cifra que se
+ * le muestra al paciente en el checkout, y tener dos convenciones (una tarifa sin IVA aqui y con IVA alla)
+ * es como se termina cobrando un flete y facturando otro. Asi que aqui se DESCOMPONE, no se recarga.
  */
 export function fleteFacturado(tarifa: number): { base: number; iva: number; total: number } {
-  const base = alPeso(tarifa);
-  const iva = alPeso(base * IVA_RATE);
-  return { base, iva, total: base + iva };
+  const total = alPeso(tarifa);
+  const base = baseFromTotal(total);
+  return { base, iva: total - base, total };
 }
 
 export type Corte = {

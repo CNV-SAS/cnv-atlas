@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { createCheckoutFormAction } from "../actions";
+import { BloqueDomicilio, type CiudadParaElegir } from "./bloque-domicilio";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import type { PaymentFormState } from "../validations";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
@@ -31,9 +32,13 @@ export type CheckoutNutraceutical = { id: string; name: string; unitPrice: numbe
 export function CreateCheckoutForm({
   patients,
   nutraceuticals,
+  ciudadesDeDomicilio = [],
+  tarifaDeFlete = null,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
+  ciudadesDeDomicilio?: CiudadParaElegir[];
+  tarifaDeFlete?: number | null;
 }) {
   const [state, action, pending] = useActionState(createCheckoutFormAction, initial);
   // Inputs CONTROLADOS a proposito: React 19 resetea el form tras cada submit (lo del prop `action`), y
@@ -164,6 +169,8 @@ export function CreateCheckoutForm({
             )}
           </div>
         </div>
+
+        <BloqueDomicilio ciudades={ciudadesDeDomicilio} tarifa={tarifaDeFlete} total={total} />
 
         <Button type="submit" disabled={pending || (total > 0 && total < WOMPI_MONTO_MINIMO)}>
           {pending ? "Creando..." : "Crear checkout"}

@@ -1331,6 +1331,13 @@
       "when": 1791953426103,
       "tag": "0189_agente_retenedor_del_integrante",
       "breakpoints": true
+    },
+    {
+      "idx": 190,
+      "version": "7",
+      "when": 1791953486103,
+      "tag": "0190_el_domicilio_su_flete_y_su_cobertura",
+      "breakpoints": true
     }
   ]
 }

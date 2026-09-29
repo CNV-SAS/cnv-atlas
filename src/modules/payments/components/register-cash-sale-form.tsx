@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { registerCashSaleFormAction } from "../actions";
+import { BloqueDomicilio, type CiudadParaElegir } from "./bloque-domicilio";
 import type { CashSaleFormState } from "../validations";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 
@@ -27,9 +28,13 @@ const selectClass =
 export function RegisterCashSaleForm({
   patients,
   nutraceuticals,
+  ciudadesDeDomicilio = [],
+  tarifaDeFlete = null,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
+  ciudadesDeDomicilio?: CiudadParaElegir[];
+  tarifaDeFlete?: number | null;
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
   const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
@@ -178,6 +183,8 @@ export function RegisterCashSaleForm({
             <option value="transferencia">Transferencia</option>
           </select>
         </div>
+
+        <BloqueDomicilio ciudades={ciudadesDeDomicilio} tarifa={tarifaDeFlete} total={total} />
 
         <Button type="submit" disabled={pending}>
           {pending ? "Registrando..." : "Registrar la venta"}
