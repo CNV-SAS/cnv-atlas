@@ -73,3 +73,67 @@ cubre **lo que se construyó después de que empezaras a correrlo**.
 
 Lo mismo que en el otro: lo que viste y **lo que no viste**. Y si algo se ve distinto de lo escrito aquí,
 mándame la pantalla: el texto de esta guía es la afirmación que se está probando.
+
+---
+
+# Lo que se añadió el 29
+
+**Migraciones: 188 en el repo.** La 0186 y la 0187 están pendientes en la nube.
+
+## Parte 6 · Las condiciones BIS se corrigen
+
+1. Abre una evaluación **con diagnóstico confirmado** y ve a la sección donde salen las condiciones BIS
+   (contraindicaciones y dinamometría). Ahí tiene que haber un enlace para **corregirlas**.
+2. Cámbialas y **escribe el motivo** (es obligatorio: sin él no deja).
+3. **El control que importa:** eso **rehace el diagnóstico**. Verifica que la evaluación nueva dice lo que
+   debe, y que la vieja queda **reemplazada** (no borrada: reemplazada, y no debe aparecer en los
+   desplegables de evaluaciones).
+4. Si la corrección no cambia nada clínico, igual queda el registro de quién la hizo y por qué.
+
+## Parte 7 · El cargo por faltante SÍ se cobra
+
+**Esto es lo más importante del segundo smoke.** El cargo existía y nadie lo cobraba.
+
+1. Con un caso de faltante clasificado **injustificado** (las dos personas: admin propone, dirección
+   confirma), ve a **/pagos → liquidaciones** y liquida a ese Integrante.
+2. **Qué tiene que pasar:** la liquidación muestra una línea **"− faltante $X"** y el neto baja en ese valor.
+3. **Y qué NO tiene que pasar:** el IVA y la retención **no** cambian. Se calculan sobre la comisión completa,
+   porque el servicio se prestó entero; el faltante es otra obligación que se compensa. (Esa decisión está en
+   consulta con contabilidad: `CONSULTA_CONTABLE_CARGO_DE_FALTANTE_2026-09-28.md`.)
+4. **El control de no cobrar dos veces:** liquida otra vez. El mismo faltante **no** puede volver a aparecer.
+5. **Y el canal de reclamo:** en el detalle del faltante del Integrante y en su liquidación tiene que salir
+   **admin@cnvsystem.com**, textual y como enlace. En la liquidación solo mientras **no** se haya girado.
+
+## Parte 8 · La alerta de vencimiento
+
+**Ojo, necesita un lote preparado:** para verlo sin esperar meses, pídeme el SQL o cambia la fecha de
+vencimiento de un lote de prueba a dentro de 30 días.
+
+1. **Como Integrante**, en **Mi inventario** tiene que aparecer **"Producto por vencer"**, por LOTE (no por
+   producto), con los días que quedan.
+2. **La frase que importa:** dice que el vencido lo asume CNV **salvo** que hayas recibido el aviso y no hayas
+   actuado. Sin esa frase el aviso es un dato curioso.
+3. Pulsa **"Ya lo vi"**. Vuelve a entrar: ahora dice **"Marcaste que lo viste el (fecha)"** y el botón no
+   está. **Esa fecha no se puede mover** (si alguien lo intenta por base, la base lo rechaza).
+4. **Como admin**, en **Revisión de inventario** tiene que salir **"Vencimientos de lote"**, separado en lo que
+   todavía se puede vender y lo que ya venció. En lo vencido sale **quién lo asume**, con la razón.
+5. **El correo:** la tarea corre a las 8:30 a. m. de Colombia. Si quieres probarla ya, dime y te paso el
+   comando. **Lo que hay que mirar es que el correo le llegue al INTEGRANTE**, no solo a CNV.
+6. **Los lotes con vencimiento inventado:** si en Revisión de inventario sale el bloque ámbar de lotes
+   "sin fecha de vencimiento real", complétalos. Mientras estén así, **su alerta no puede dispararse**.
+
+## Parte 9 · Devolverle producto a CNV
+
+1. **Como Integrante**, en **Mi inventario → "Devolverle producto a CNV"**, elige un lote, pon una cantidad y
+   escribe el motivo. Declara.
+2. **EL CONTROL QUE IMPORTA: tu saldo NO baja todavía.** Míralo en "Saldo actual". La pantalla lo dice antes
+   y después de declarar. Si bajara al declarar, cualquiera podría vaciar su saldo por su propia palabra.
+3. **Como admin**, en **Revisión de inventario → "Devoluciones de Integrantes por recibir"**, confirma lo que
+   llegó.
+4. **Confirma MENOS de lo declarado** (ej. declaró 4, llegaron 1). Verifica las tres cosas:
+   - el saldo del Integrante baja **solo 1**, no 4;
+   - en su pantalla sale **"No llegaron 3: siguen en tu saldo"**;
+   - y esas 3 le van a aparecer como faltante en su próximo conteo, que es lo correcto: las puede justificar
+     como devolución con guía.
+5. **Confirma con 0** en otra: se cierra igual y no mueve nada. Cerrada con cero no es lo mismo que abierta.
+6. **Intenta cerrarla dos veces:** no deja.

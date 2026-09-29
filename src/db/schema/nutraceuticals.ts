@@ -241,3 +241,46 @@ export const nutraceuticalCountLines = pgTable(
   },
   (t) => [index("nutra_count_lines_session_idx").on(t.sessionId)],
 );
+
+// ═══ LA DEVOLUCION DEL INTEGRANTE A CNV (migracion 0187) ═══
+//
+// DOS HECHOS SEPARADOS POR UN TRANSPORTE: el Integrante DECLARA lo que despacha y CNV CONFIRMA lo que
+// recibe. Misma forma que la remesa al reves, y por la misma razon: ninguna de las dos partes mueve sola el
+// saldo en la direccion que le conviene.
+//
+// EL SALDO BAJA AL CONFIRMAR, NUNCA AL DECLARAR. Si bajara al declarar, un Integrante podria vaciar su saldo
+// por su propia palabra, que es justo lo que el caso de faltante existe para impedir. Lo que queda entre el
+// despacho y la recepcion es una diferencia VISIBLE, y el sistema ya sabia tratarla: la categoria de
+// justificacion `devolucion_guia` existe desde la 0042.
+//
+// Y LA ASIMETRIA AL CERRAR, copiada de la remesa: recibir de MENOS mueve por lo recibido (las unidades que no
+// llegaron se quedan en su saldo y apareceran en su conteo, con plazo y justificacion); recibir de MAS mueve
+// solo por lo declarado.
+export const nutraceuticalReturns = pgTable(
+  "nutraceutical_returns",
+  {
+    id: pk(),
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id),
+    locationId: uuid("location_id").notNull(),
+    nutraceuticalId: uuid("nutraceutical_id")
+      .notNull()
+      .references(() => nutraceuticals.id),
+    lotId: uuid("lot_id").notNull(),
+    declaredQuantity: integer("declared_quantity").notNull(),
+    /** Obligatorio: "no rota" y "esta por vencer" piden respuestas distintas de CNV. */
+    reason: text("reason").notNull(),
+    declaredAt: timestamp("declared_at", { withTimezone: true }).notNull().defaultNow(),
+    declaredBy: uuid("declared_by").references(() => profiles.id),
+    /** 0 es un cierre valido y significativo: se declaro y NO llego nada. Distinto de seguir abierta. */
+    receivedQuantity: integer("received_quantity"),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedBy: uuid("closed_by").references(() => profiles.id),
+    closeNote: text("close_note"),
+    /** Los dos movimientos que genero el cierre, para que la fila explique su propio efecto en el saldo. */
+    movementOutId: uuid("movement_out_id"),
+    movementInId: uuid("movement_in_id"),
+  },
+  (t) => [index("nutra_returns_prof_idx").on(t.professionalId, t.declaredAt)],
+);

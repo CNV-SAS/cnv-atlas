@@ -8,6 +8,7 @@ import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { ConfirmarRemesaSection } from "@/modules/nutraceuticals/components/confirmar-remesa-section";
 import { MiConteoForm } from "@/modules/nutraceuticals/components/mi-conteo-form";
+import { MisDevolucionesSection } from "@/modules/nutraceuticals/components/mis-devoluciones-section";
 import { MisFaltantesSection } from "@/modules/nutraceuticals/components/mis-faltantes-section";
 import { MisVencimientosSection } from "@/modules/nutraceuticals/components/mis-vencimientos-section";
 import { canLoadOwnStock } from "@/modules/nutraceuticals/policies/can-load-own-stock";
@@ -60,6 +61,8 @@ export default async function MiInventarioPage() {
       <ConfirmarRemesaSection pending={pendingRemesas ?? []} />
 
       <MisVencimientosSection userId={user.id} />
+
+      <MisDevolucionesSection userId={user.id} />
 
       <MisFaltantesSection userId={user.id} />
 

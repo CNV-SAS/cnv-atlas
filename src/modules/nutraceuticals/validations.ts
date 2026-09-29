@@ -141,3 +141,20 @@ export const completarVencimientoSchema = z.object({
   lotId: z.guid("Lote invalido."),
   vence: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Escribe la fecha de vencimiento del lote."),
 });
+
+// Devolucion del Integrante a CNV (0187). El motivo es obligatorio: "no rota" y "esta por vencer" piden
+// respuestas distintas, y una devolucion sin motivo no se puede leer tres meses despues.
+export const declararDevolucionSchema = z.object({
+  lotId: z.guid("Lote invalido."),
+  nutraceuticalId: z.guid("Producto invalido."),
+  quantity: z.coerce.number().int("Escribe un número entero.").positive("La cantidad tiene que ser mayor que cero."),
+  reason: z.string().trim().min(1, "Escribe por qué lo devuelves.").max(300),
+});
+
+// CNV cierra con lo que DE VERDAD recibio. Cero es valido y significa "no llego nada": no es lo mismo que
+// dejarla abierta, y por eso se puede registrar.
+export const cerrarDevolucionSchema = z.object({
+  returnId: z.guid("Devolución invalida."),
+  recibido: z.coerce.number().int("Escribe un número entero.").min(0, "No puede ser negativo."),
+  nota: z.string().trim().max(300).optional(),
+});

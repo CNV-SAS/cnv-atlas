@@ -1261,6 +1261,67 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"nutraceutical_returns": {
+                  Row: {
+                    "close_note": string | null,"closed_at": string | null,"closed_by": string | null,"declared_at": string,"declared_by": string | null,"declared_quantity": number,"id": string,"location_id": string,"lot_id": string,"movement_in_id": string | null,"movement_out_id": string | null,"nutraceutical_id": string,"professional_id": string,"reason": string,"received_quantity": number | null
+                  }
+                  Insert: {
+                    "close_note"?: string | null,"closed_at"?: string | null,"closed_by"?: string | null,"declared_at"?: string,"declared_by"?: string | null,"declared_quantity": number,"id"?: string,"location_id": string,"lot_id": string,"movement_in_id"?: string | null,"movement_out_id"?: string | null,"nutraceutical_id": string,"professional_id": string,"reason": string,"received_quantity"?: number | null
+                  }
+                  Update: {
+                    "close_note"?: string | null,"closed_at"?: string | null,"closed_by"?: string | null,"declared_at"?: string,"declared_by"?: string | null,"declared_quantity"?: number,"id"?: string,"location_id"?: string,"lot_id"?: string,"movement_in_id"?: string | null,"movement_out_id"?: string | null,"nutraceutical_id"?: string,"professional_id"?: string,"reason"?: string,"received_quantity"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "nutraceutical_returns_closed_by_fkey"
+      columns: ["closed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_returns_declared_by_fkey"
+      columns: ["declared_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_returns_location_id_fkey"
+      columns: ["location_id"]
+isOneToOne: false
+      referencedRelation: "inventory_locations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_returns_lot_id_fkey"
+      columns: ["lot_id"]
+isOneToOne: false
+      referencedRelation: "lots"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_returns_movement_in_id_fkey"
+      columns: ["movement_in_id"]
+isOneToOne: false
+      referencedRelation: "nutraceutical_stock_movements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_returns_movement_out_id_fkey"
+      columns: ["movement_out_id"]
+isOneToOne: false
+      referencedRelation: "nutraceutical_stock_movements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_returns_nutraceutical_id_fkey"
+      columns: ["nutraceutical_id"]
+isOneToOne: false
+      referencedRelation: "nutraceuticals"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_returns_professional_id_fkey"
+      columns: ["professional_id"]
+isOneToOne: false
+      referencedRelation: "professional_profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"nutraceutical_stock_movements": {
                   Row: {
                     "count_line_id": string | null,"created_at": string,"created_by": string | null,"delta": number,"id": string,"location_id": string,"lot_id": string,"lote": string | null,"nutraceutical_id": string,"professional_id": string | null,"reason": string | null,"remesa_id": string | null,"reported_quantity": number | null,"transaction_item_id": string | null,"treatment_id": string | null,"type": Database["public"]['Enums']["nutraceutical_movement_type"]

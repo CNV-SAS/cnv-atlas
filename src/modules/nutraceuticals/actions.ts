@@ -9,11 +9,13 @@ import { getCurrentUser } from "@/modules/auth/session";
 import { canLoadOwnStock } from "./policies/can-load-own-stock";
 import { canManageCatalog } from "./policies/can-manage-catalog";
 import { canRegisterUsage } from "./policies/can-register-usage";
+import { canCerrarDevolucion } from "./policies/can-cerrar-devolucion";
 import { canDeclararRemesa } from "./policies/can-declarar-remesa";
 import { canClassifyFaltante, canConfirmFaltante, canResolveSobrante } from "./policies/can-review-faltante";
 import * as faltanteService from "./services/faltante-service";
 import * as inventoryService from "./services/inventory-service";
 import * as service from "./services/nutraceuticals-service";
+import * as devolucionService from "./services/devolucion-a-cnv-service";
 import * as remesaService from "./services/remesa-service";
 import * as vencimientosLectura from "./services/vencimientos-lectura";
 import {
@@ -23,7 +25,9 @@ import {
   declareRemesaSchema,
   resolveSobranteSchema,
   createNutraceuticalSchema,
+  cerrarDevolucionSchema,
   completarVencimientoSchema,
+  declararDevolucionSchema,
   marcarVencimientoVistoSchema,
   recordCountSchema,
   registerUsageSchema,
@@ -465,4 +469,78 @@ export async function completarVencimientoFormAction(
   if (!listo) return { error: "Ese lote ya no estaba provisional.", success: null, warning: null };
   // Sin revalidate: el lote deja la lista y el formulario se desmonta; el cliente avisa y refresca.
   return { error: null, success: "Vencimiento registrado: ese lote ya entra en la alerta.", warning: null };
+}
+
+// EL INTEGRANTE DECLARA una devolucion a CNV (0187). No mueve saldo: el saldo baja cuando CNV confirma lo
+// que recibio. Declarar y confirmar no pueden ser la misma persona, que es lo que impediria vaciar un saldo
+// por la sola palabra de su custodio.
+export async function declararDevolucionFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canLoadOwnStock(user)) {
+    return { error: "Solo el profesional declara devoluciones de su propia vitrina.", success: null, warning: null };
+  }
+  const parsed = declararDevolucionSchema.safeParse({
+    lotId: String(formData.get("lotId") ?? ""),
+    nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
+    quantity: String(formData.get("quantity") ?? ""),
+    reason: String(formData.get("reason") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos invalidos.", success: null, warning: null };
+
+  const res = await devolucionService.declararMiDevolucion({
+    userId: user.id,
+    lotId: parsed.data.lotId,
+    nutraceuticalId: parsed.data.nutraceuticalId,
+    quantity: parsed.data.quantity,
+    reason: parsed.data.reason,
+  });
+  if (!res.ok) return { error: res.message, success: null, warning: null };
+  // Sin revalidate: la pantalla refresca desde el cliente (`useFormToastAndRefresh`).
+  return {
+    error: null,
+    // SE DICE QUE EL SALDO NO BAJO TODAVIA, para que no crea que ya se descontó y le extrañe su propio conteo.
+    success: "Devolución declarada. Tu saldo baja cuando CNV confirme lo que recibió.",
+    warning: null,
+  };
+}
+
+// CNV CIERRA la devolucion con lo recibido (0187). Ahi si se mueve el saldo: sale de su vitrina y entra a la
+// bodega central, en la misma transaccion.
+export async function cerrarDevolucionFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canCerrarDevolucion(user)) {
+    return { error: "Solo CNV confirma lo que recibió.", success: null, warning: null };
+  }
+  const parsed = cerrarDevolucionSchema.safeParse({
+    returnId: String(formData.get("returnId") ?? ""),
+    recibido: String(formData.get("recibido") ?? ""),
+    nota: String(formData.get("nota") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos invalidos.", success: null, warning: null };
+
+  const res = await devolucionService.cerrarUnaDevolucion({
+    returnId: parsed.data.returnId,
+    recibido: parsed.data.recibido,
+    nota: parsed.data.nota?.trim() ? parsed.data.nota.trim() : null,
+    actorId: user.id,
+    actorEmail: user.email ?? null,
+    ip: null,
+  });
+  if (!res.ok) return { error: res.message, success: null, warning: null };
+  return {
+    error: null,
+    success:
+      res.movidas === 0
+        ? "Cerrada sin recibir nada: las unidades siguen en el saldo del Integrante."
+        : `Recibidas ${res.movidas}: salieron de su vitrina y entraron a la bodega central.`,
+    warning: null,
+  };
 }
