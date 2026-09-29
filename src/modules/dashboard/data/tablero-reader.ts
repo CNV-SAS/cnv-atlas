@@ -1,7 +1,15 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { COLUMNA_EFECTIVO_NO_RECIBIDO, FILTRO_FUERA_DE_REVISION } from "@/modules/payments/cobro-reconocido";
+import {
+  brutoReconocido,
+  COLUMNA_EFECTIVO_NO_RECIBIDO,
+  COLUMNA_PRODUCTO_DE_PRUEBA,
+  EMBED_PRODUCTO_NO_DE_PRUEBA,
+  ESTADO_DEVUELTA,
+  ESTADO_DISPUTA_PERDIDA,
+  FILTRO_FUERA_DE_REVISION,
+} from "@/modules/payments/cobro-reconocido";
 import { pendienteDelPaciente } from "@/modules/patients/pendientes";
 
 // ═══ LO QUE EL TABLERO NECESITA SABER, Y NADA MAS ═══
@@ -58,7 +66,7 @@ export async function getTablero(): Promise<Tablero> {
   const supabase = await createSupabaseServerClient();
   const desde = inicioDelMes();
 
-  const [pacientes, citas, comision, ventas, inventario] = await Promise.all([
+  const [pacientes, citas, comision, ventas, perdidas, devueltas, inventario] = await Promise.all([
     // LOS PENDIENTES SALEN DE LA MISMA REGLA QUE LA COLUMNA (`pendienteDelPaciente`), no de un conteo
     // paralelo: si aqui se contara "evaluaciones en progreso" y alli se dijera otra cosa, el tablero y la
     // lista discreparian sobre el mismo paciente.
@@ -88,8 +96,26 @@ export async function getTablero(): Promise<Tablero> {
       .limit(4),
     supabase.from("professional_revenue").select("commission_amount").gte("created_at", desde),
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
-    supabase.from("transactions").select("amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde),
-    supabase.from("nutraceutical_inventory").select("stock_quantity"),
+    supabase.from("transactions").select("id, amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde),
+    // LO QUE VOLVIO NO SE FACTURO, y esta tarjeta no lo restaba (smoke del 2026-09-29): la venta devuelta de
+    // LUVIA seguia en el bruto, 90.000 de mas. La cuenta la hace ahora el mismo modulo neutro que Direccion.
+    supabase.from("sale_reversals").select("transaction_id").eq("state", ESTADO_DISPUTA_PERDIDA),
+    // ACOTADA AL MISMO PERIODO QUE LAS VENTAS, y esto no es un detalle: esta tarjeta es DEL MES. Restar una
+    // devolucion de una venta de otro mes bajaria un bruto que nunca subio, y la cifra quedaria mal por el
+    // lado contrario. Se acota por la FECHA DE LA VENTA (el embed), no por la de la devolucion, porque lo
+    // que se corrige es lo que ese mes facturo.
+    supabase
+      .from("sale_reversals")
+      .select("debited_amount, transactions!inner(created_at)")
+      .eq("state", ESTADO_DEVUELTA)
+      .gte("transactions.created_at", desde),
+    // SIN PRODUCTOS DE PRUEBA, igual que Direccion (smoke del 2026-09-29): esta tarjeta decia 1.903 y la de
+    // Direccion 1.820 sobre el mismo hecho, y las 83 de diferencia eran saldo de los productos de prueba,
+    // que no se puede borrar porque los movimientos son inmutables.
+    supabase
+      .from("nutraceutical_inventory")
+      .select(`stock_quantity, ${EMBED_PRODUCTO_NO_DE_PRUEBA}`)
+      .eq(COLUMNA_PRODUCTO_DE_PRUEBA, false),
   ]);
 
   type FilaEval = {
@@ -164,7 +190,11 @@ export async function getTablero(): Promise<Tablero> {
     pacientesConPendiente: conPendiente,
     proximasConsultas,
     comisionDelMes: suma(comision.data, "commission_amount"),
-    ventasDelMes: suma(ventas.data, "amount"),
+    ventasDelMes: brutoReconocido({
+      pagadas: ventas.data ?? [],
+      disputasPerdidas: (perdidas.data ?? []).map((r) => r.transaction_id),
+      devoluciones: (devueltas.data ?? []).map((r) => r.debited_amount),
+    }),
     unidadesEnInventario: suma(inventario.data, "stock_quantity"),
   };
 }

@@ -212,6 +212,8 @@ export async function createCheckout(
       // queda pendiente de despacho; el aviso a admin sale de esa ubicacion, sin columna nueva.
       desdeLaBodega: input.desdeLaBodega === true,
       domicilio,
+      // QUIEN LA REGISTRA (0193), que puede no ser el profesional de la comision.
+      actorId: user.id,
     }));
   } catch (e) {
     // SIN EXISTENCIAS NO HAY CHECKOUT (D3): la reserva va dentro de la creacion y, si no alcanza, la venta

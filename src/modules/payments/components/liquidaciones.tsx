@@ -25,6 +25,8 @@ export type PendienteDeLiquidar = {
   nombre: string;
   base: number;
   filas: number;
+  /** Filas NEGATIVAS pendientes (devoluciones y disputas perdidas). No son comisiones. */
+  reversiones: number;
   faltantes: string[];
 };
 
@@ -53,7 +55,15 @@ function FilaPendiente({ item, hasta }: { item: PendienteDeLiquidar; hasta: stri
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-medium text-foreground">{item.nombre}</span>
         <span className="tabular-nums text-foreground">
-          {pesos(item.base)} <span className="text-muted-foreground">en {item.filas} comisiones</span>
+          {pesos(item.base)}{" "}
+          <span className="text-muted-foreground">
+            en {item.filas} {item.filas === 1 ? "comisión" : "comisiones"}
+            {/* LAS REVERSIONES SE NOMBRAN APARTE: son filas negativas, no comisiones, y contarlas juntas
+                producía "$0 en 6 comisiones" sobre tres ventas devueltas. */}
+            {item.reversiones > 0
+              ? `, con ${item.reversiones} ${item.reversiones === 1 ? "reversión" : "reversiones"} descontadas`
+              : ""}
+          </span>
         </span>
       </div>
       {bloqueado ? (

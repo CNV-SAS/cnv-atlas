@@ -13,3 +13,51 @@ export const FILTRO_FUERA_DE_REVISION = "review_reason.is.null,review_resolution
 // UN EFECTIVO QUE NO SE RECIBIO TAMPOCO CUENTA (0142): la venta sigue `paid` porque su factura existe hasta la
 // nota credito, pero ese dinero nunca entro. Va como `.is("cash_not_received_at", null)` en cada lector.
 export const COLUMNA_EFECTIVO_NO_RECIBIDO = "cash_not_received_at";
+
+// ═══ LO QUE VOLVIO NO SE FACTURO (smoke del 2026-09-29) ═══
+//
+// EL HUECO, y es el MISMO que se cerro el 2026-09-17 con otra puerta: el bruto restaba las ventas cuya
+// DISPUTA se perdio (`state = 'perdida'`), porque una venta que CNV devolvio no se puede seguir contando como
+// facturada. La DEVOLUCION DEL PACIENTE se construyo despues (2026-09-22) y tiene otro estado ('devuelta'),
+// asi que se quedo fuera del descuento: el producto volvia, el dinero volvia, y el bruto seguia contandolo.
+//
+// Y NO SE RESTA LA VENTA ENTERA, que es la diferencia con la disputa: una devolucion es POR UNIDADES de UNA
+// LINEA. Si el paciente compro cuatro y devolvio una, lo que dejo de facturarse es esa una. Por eso se resta
+// `debited_amount`, que es lo que la reversa ya sello como devuelto al paciente, y no `transactions.amount`.
+//
+// LA DISPUTA PERDIDA SI RESTA ENTERA, y por eso son dos mecanismos y no uno: ahi el banco devolvio todo.
+export const ESTADO_DEVUELTA = "devuelta";
+export const ESTADO_DISPUTA_PERDIDA = "perdida";
+
+/**
+ * El bruto reconocido: lo pagado, menos las ventas cuya disputa se perdio (enteras) y menos lo devuelto por
+ * los pacientes (proporcional).
+ *
+ * MODULO NEUTRO Y FUNCION PURA a proposito: la usan los DOS tableros (Inicio y Direccion). Tenerla en cada
+ * lector es como se separan, y este defecto salio justamente de que uno restaba y el otro no.
+ */
+export function brutoReconocido(e: {
+  pagadas: { id: string; amount: string | number | null }[];
+  /** `transaction_id` de las reversas con la disputa perdida. */
+  disputasPerdidas: string[];
+  /** `debited_amount` de las devoluciones ya resueltas. */
+  devoluciones: (string | number | null)[];
+}): number {
+  const perdidas = new Set(e.disputasPerdidas);
+  const pagado = e.pagadas
+    .filter((t) => !perdidas.has(t.id))
+    .reduce((n, t) => n + (Number(t.amount) || 0), 0);
+  const devuelto = e.devoluciones.reduce((n: number, d) => n + (Number(d) || 0), 0);
+  return pagado - devuelto;
+}
+
+// ═══ EL INVENTARIO NO CUENTA LOS PRODUCTOS DE PRUEBA (smoke del 2026-09-29) ═══
+//
+// Direccion los excluye desde el 2026-09-18 (los "PRUEBA SMOKE" de cada smoke dejan saldo que no se puede
+// borrar, porque los movimientos son inmutables) y la tarjeta de Inicio no: 1.903 contra 1.820, 83 unidades
+// de diferencia sobre el mismo hecho.
+//
+// Es lo que ya paso con "45 referencias": dos cifras del mismo hecho en dos pantallas. El filtro vive aqui
+// para que no haya un tercer sitio que lo olvide.
+export const EMBED_PRODUCTO_NO_DE_PRUEBA = "nutraceuticals!inner(is_test)";
+export const COLUMNA_PRODUCTO_DE_PRUEBA = "nutraceuticals.is_test";

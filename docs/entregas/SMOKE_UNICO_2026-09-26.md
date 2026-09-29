@@ -257,3 +257,395 @@ no coincide puede estar mal la guía. Ya pasó tres veces, y las tres la guía e
 
 **Al terminar:** las ventas y devoluciones de prueba se pueden dejar. Lo único que conviene no dejar a medias es
 una **liquidación calculada y sin girar**, porque retiene comisiones que quedarían fuera de la siguiente.
+
+// ====== //
+## RESULTADOS SANTIAGO
+
+**Smoke de números que hago a la vez mientras hago el smoke completo:**
+(por favor, revisa los numeros, que no haya nada raro, que todo sume o reste segun lo que deba de dar, ya que estos datos comerciales son extremadamente importantes y criticos).
+// Entro a como admin y en inicio aparece:
+"Tu mes
+Tu comisión
+$ 539.378
+Ventas
+$ 3.233.100
+Unidades en inventario
+1903"
+
+y si voy a /direccion aparece:
+"Dirección
+Agregados, sin datos personales.
+
+Ingreso bruto facturado
+$ 3.233.100
+15 pagos
+Ingreso CNV
+$ 2.104.571
+Comisiones a profesionales
+$ 539.378
+Inventario
+1819 unidades
+6 productos en 9 ubicaciones"
+
+Ahi lo unico raro que veo es que no coinciden en el inventario.
+
+Por otro lado, en la cuenta de profesional demo inicio asi:
+"Tu mes
+Tu comisión
+$ 524.252
+Ventas
+$ 3.143.100
+Unidades en inventario
+34"
+
+Por cierto, el profesional maria Camila habia hecho un ejercicio de prueba vendidendo 1 LUVIA, yo lo devolvií y aparecio asi en inicio de admin:
+"Tu comisión
+$ 524.252
+Ventas
+$ 3.233.100
+Unidades en inventario
+1904"
+
+Por qué aumentaron las ventas sabiendo que antes devolvimos una LUVIA? y los numeros si cuadran?
+
+Y en direccion aparece:
+"Dirección
+Agregados, sin datos personales.
+
+Ingreso bruto facturado
+$ 3.233.100
+15 pagos
+Ingreso CNV
+$ 2.097.008
+Comisiones a profesionales
+$ 524.252
+Inventario
+1820 unidades
+6 productos en 9 ubicaciones"
+
+
+Entonces resumiendo, antes de empezar el smoke completo iniciamos asi:
+Admin pagina inicio:
+"Tu comisión
+$ 524.252
+Ventas
+$ 3.233.100
+Unidades en inventario
+1904"
+
+Admin pagina direccion:
+"Dirección
+Agregados, sin datos personales.
+
+Ingreso bruto facturado
+$ 3.233.100
+15 pagos
+Ingreso CNV
+$ 2.097.008
+Comisiones a profesionales
+$ 524.252
+Inventario
+1820 unidades
+6 productos en 9 ubicaciones"
+
+y voy a hacer el smoke con el producto "PRUEBA SMOKE BLOQUE 3" que tiene 3 unidades. Cada unidad cuesta 11.900
+
+Parte 1:
+
+Ahora entro como profesional demo y al paciente con documento 1000898123 le vendo 2 unidades en efectivo y pongo que lo pagó en efectivo. (23.800). Luego los marco como entregados.
+
+Actualizo entonces el tablero comercial:
+"Admin inicio:
+Tu comisión
+$ 528.252
+Ventas
+$ 3.256.900
+Unidades en inventario
+1902
+"
+"Admin direccion
+Dirección
+Agregados, sin datos personales.
+
+Ingreso bruto facturado
+$ 3.256.900
+16 pagos
+Ingreso CNV
+$ 2.113.008
+Comisiones a profesionales
+$ 528.252
+Inventario
+1820 unidades
+6 productos en 9 ubicaciones
+"
+"Profesional demo inicio:
+Tu comisión
+$ 528.252
+Ventas
+$ 3.166.900
+Unidades en inventario
+32
+"
+
+No entiendo por que difieren las venntas ya que profesional demo es el unico que ha vendido, ya que el producto que vendio Maria Camila se devolvio, entonces adminy  profesional demo deberian dar lo mismo, no?
+
+Ahora voy entro al perfil de admin, voy a /pagos al bloque transacciones y le doy al "paciente devolvio algo" donde voy a devolver solo un producto (11.900) y coloco de motivo "SMOKE PRUEBA PARTE 1".
+
+Aparece este toast de exito:
+"Devolución registrada. La unidad queda en devueltas pendientes de verificación, no vendible. Se revirtió el ingreso y la comisión de esas unidades: hay que emitir la nota crédito por 11.900 en Alegra.
+"
+
+El inventario de profesional demo no subio, apenas quedó una unidad disponible del producto.
+
+Así quedaron los datos:
+"Admin inicio:
+Tu comisión
+$ 526.252
+Ventas
+$ 3.256.900
+Unidades en inventario
+1903
+"
+"Admin direccion:
+Dirección
+Agregados, sin datos personales.
+
+Ingreso bruto facturado
+$ 3.256.900
+16 pagos
+Ingreso CNV
+$ 2.105.008
+Comisiones a profesionales
+$ 526.252
+Inventario
+1820 unidades
+6 productos en 9 ubicaciones
+"
+
+"Profesional demo inicio:
+Tu comisión
+$ 526.252
+Ventas
+$ 3.166.900
+Unidades en inventario
+32
+"
+
+Por otro lado, como admin fui a /comercial y aparece:
+"Profesional Demo
+$2.000 en 5 comisiones"
+Si está bien, verdad? ya que el PVP del producto es 11.900, pero segun entiendo trae IVA, entonces la comision se da sobre la base sin IVA (10.000) entonces creo que está bien, ya que es el 20% de un producto que no se devolvio. El problema es que dice "5 comisiones" cuando realmente apenas fue 1. Me imagino que aparece 5 de smokes acumulados de antes que venia y los devolvia.
+
+Como admin vuelvo a /pagos y en el bloque de transacciones del cual vendí las 2 unidades, pero devolví 1 aparece asi:
+"23.800 COP
+PRUEBA SMOKE BLOQUE 3 x2
+27/9/2026, 1:37 p. m. · Efectivo · Factura SETP990214740
+Entregado el 27/9/2026, 1:37 p. m.
+Disputa ganada: el dinero volvió y la venta sigue en pie.
+Pagado"
+
+Esto si está bien? ese mensaje de disputa ganada aparece en rojo. Y el estado dice pagado. Que piensan?
+
+
+Ahora si voy al panel de reversas en /pagos aparece esto:
+"Contracargos y anulaciones
+El banco devolvió el dinero de una venta ya cobrada. Mientras la disputa esté abierta el ingreso no se toca: la factura sigue siendo válida. Responde al banco con los soportes, porque una disputa sin respuesta a tiempo se pierde.
+
+23.800 COP
+PRUEBA SMOKE BLOQUE 3 x2
+Devolución del paciente · Producto devuelto
+Abierta el 27/9/2026, 1:44 p. m. por Santiago Arroyave · el banco debitó 11.900 COP · resuelta el 27/9/2026 por Santiago Arroyave
+
+El débito difiere del valor de la venta en 11.900 COP menos. La diferencia se concilia con contabilidad: la nota crédito va solo por el valor de la venta."
+
+No dice cuantos productos se devolvieron.
+
+Coloqué la nota credito: "NC-PRUEBA-1" y la registré. Aperece este toast de exito: "Nota crédito registrada. El caso queda cerrado."
+
+Si me deja reincorporar el producto y si selecciono dar de baja, no vuelve a aparecer.
+
+Por cierto, el producto LUVIA que habia vendido Maria Camila en una prueba que hice con ella si me dejó volversela a reincorporar.
+
+Por ultimo, en el mismo bloque que habia vendido los 2 productos, voy a devolver el otro restante para devolverlo al inventario de profesional demo y quedar con 2 productos y todo salio bien.
+
+Este es el cierre de la parte 1, profesional demo quedó con 2 productos del smoke en el inventario, que CC revise que el tercer producto no se haya devuelto a ningun lado.
+
+Los datos quedaron asi:
+"Admin inicio:
+Tu mes
+Tu comisión
+$ 524.252
+Ventas
+$ 3.256.900
+Unidades en inventario
+1903
+"
+"Admin direccion:
+Dirección
+Agregados, sin datos personales.
+
+Ingreso bruto facturado
+$ 3.256.900
+16 pagos
+Ingreso CNV
+$ 2.097.008
+Comisiones a profesionales
+$ 524.252
+Inventario
+1820 unidades
+6 productos en 9 ubicaciones
+"
+"Profesional demo inicio:
+Tu mes
+Tu comisión
+$ 524.252
+Ventas
+$ 3.166.900
+Unidades en inventario
+33
+"
+Porfa revisen que los numeros si cuadran, personalmente me parece un poco extraño.
+
+Ademas, en /comercial aparece esto: "Profesional Demo
+$0 en 6 comisiones" y el botón de liquidar. ¿Aqui hay que corregir algo?
+
+
+Si voy a /pagos al bloque "Registrar venta en efectivo
+Cobro en efectivo, ya pagado. El precio y el producto son de CNV; el dinero que recaudas es de CNV y lo custodias hasta consignar.", ahora aparece un selector "cómo pagó" y pone efectivo o transferencia. Es ilogico? o no es  tan ilogico y solo toca cambiarle el nombre al bloque. Ya que puede pasar que falle wompi y en ese caso toca que paguen directamente a la cuenta bancaria de CNV.
+
+Una duda, yo estaba haciendo el ejercicio con producto smoke y compré 2 unidades que tambien marqué como entregadas.
+Ambas unidades en total valieron 23800.
+Entonces el ingreso bruto facturado si sube 23800, pero en ingresos CNV apenas aumentó 16000. Por que? Tiene iva y luego se quita el 20% a la base sin iva?
+En comisión a profesionales apenas fueron 4000.
+
+
+Parte 2:
+Una observacion que noté, si pongo "quien la vendio" cualquier nombre y "a quien" tambien me deja poner cualquier nombre. Esto no deberia pasar, verdad? solo deberian aparecer los nombres de los pacientes en "a quien" del profesional correspondiente. Ya que asi facilitamos el ejercicio y no mezclamos los pacientes de un profesional que pueden tener 140 con otro profesional de 10 pacientes.
+
+Inicio pruebas nuevamente con el profesional demo y el paciente con identificacion 1000898123:
+
+Factura SMOKE PRUEBA-001 que haya ocurrido el 1/1/2026
+Supongamos que vendí 90 productos MULTICELL BASE a PVP con IVA incluido a 11900.
+
+Aparece este texto rojo en error: "Revisa producto 1 (el producto). Las cifras se pueden escribir con puntos o comas (11.900 o 11900)."
+
+Aparece este toast de error: "Revisa producto 1 (el producto). Las cifras se pueden escribir con puntos o comas (11.900 o 11900)."
+
+Entonces me acordé que solo podia hacer movimiento de las cantidades que tengo en inventario. Asi que fue a mandarle en remesas 81 de adapto estress (ya tenia otros 10 anteriormente enviados). Luego en profesional demo acepté la remesa. Y quedó asi los datos:
+
+"Admin inicio:
+Tu mes
+Tu comisión
+$ 524.252
+Ventas
+$ 3.256.900
+Unidades en inventario
+1984
+"
+
+"Admin direccion:
+Dirección
+Agregados, sin datos personales.
+
+Ingreso bruto facturado
+$ 3.256.900
+16 pagos
+Ingreso CNV
+$ 2.097.008
+Comisiones a profesionales
+$ 524.252
+Inventario
+1901 unidades
+6 productos en 9 ubicaciones
+"
+
+"Profesional demo inicio:
+Tu comisión
+$ 524.252
+Ventas
+$ 3.166.900
+Unidades en inventario
+114"
+
+Si están bien? En inventario del profesional si subieron los 81. Pero en admin antes aparecia 1903 y ahora 1820 y ahora dice 1984 y 1901.
+
+Ahora si me devolvi a ventas-retroactivas y puse que vendí 90 adapto stress a 11900 Total: $1.071.000 con la factura SMOKE PRUEBA-001.
+
+Pero aparecio el mismo texto de error: "Revisa producto 1 (el producto). Las cifras se pueden escribir con puntos o comas (11.900 o 11900)." y toast error: "Revisa producto 1 (el producto). Las cifras se pueden escribir con puntos o comas (11.900 o 11900).
+" 
+Le puse punto y coma al 11900 y da el mismo texto de error. No funciona. No puedo seguir el smoke de esta parte.
+
+
+Parte 3:
+No veo como tal un apartado de registrar una venta cobrada, sino Registrar venta en efectivo y crear checkout. En registrar efectivo aparece la opción de si pagó en efectivo o transferencia. Pienso que habria que revisar si está bien asi o no. O simplemente cambiarle el nombre al bloque.
+
+Voy a vender al mismo paciente con identificacion 1000898123 en efectivo 1 adapto stress y pago transferencia.
+
+Aparece asi en el historial de transacciones:
+"107.100 COP
+ADAPTO-STRESS x1
+27/9/2026, 2:44 p. m. · Efectivo
+Pagado, sin entregar
+Pagado" 
+
+Aparece esto en el bloque Ventas cobradas sin cerrar en contabilidad:
+"107.100 COP
+27/9/2026, 2:44 p. m.
+Falló
+1 de 5 intentos
+Sin ítem en Alegra: ADAPTO-STRESS. La factura diría un producto que no es.
+"
+
+Luego pagué otra en transferencia de SMOKE BLOQUE 3 y aparece esto en el historial de transacciones:
+"11.900 COP
+PRUEBA SMOKE BLOQUE 3 x1
+27/9/2026, 2:47 p. m. · Efectivo · Factura SETP990214741
+Pagado, sin entregar
+"
+
+No entiendo es la parte donde dice CC dice en la guia: "Se registra, y en facturación la factura **espera con el motivo dicho**
+   si la cuenta puente no está configurada. No es un error: es una espera explicada." ¿donde está el apartado de facturacion?
+o es simplemente en el historial de transacciones que dice la factura y si se puede facturar o no?
+
+En ventas retroactivas aparece el desplegable con las opciones (efectivo, transferencia, Pasarela wompi).
+Por cierto, apenas abro ventas retroactivas aparece un texto rojo: "Producto 1: revisa el precio." No entiendo por que.
+
+Por otro lado, yo creo que tal vez me pude haber enredado y haber hecho algunas de las ventas desde admin y no desde profesional demo, pero aun asi aperecen en el perfil de profesional demo. Entonces eso quiere decir que todas las hice desde profesional demo, correcto? pienso que seria bueno marcar que si alguna la hizo un admin quede con un rotulo de admin. En caso de que me confunda y realice un checkout o venta en efectivo/transferencia desde admin.
+
+
+Paro acá y vuelvo a mandar los stats para que revises que todo está bien:
+
+Admin inicio:
+"Tu mes
+Tu comisión
+$ 544.252
+Ventas
+$ 3.375.900
+Unidades en inventario
+1982"
+
+Admin direccion:
+"Dirección
+Agregados, sin datos personales.
+
+Ingreso bruto facturado
+$ 3.375.900
+18 pagos
+Ingreso CNV
+$ 2.177.008
+Comisiones a profesionales
+$ 544.252
+Inventario
+1900 unidades
+6 productos en 9 ubicaciones"
+
+Profesional demo inicio:
+"Tu mes
+Tu comisión
+$ 544.252
+Ventas
+$ 3.285.900
+Unidades en inventario
+112"
+
+Paro acá. Continuo por si toca corregir algo y volver a hacer smoke completo y profundo de esos 3 puntos.

@@ -16,7 +16,11 @@ export async function listTransactions(): Promise<TransactionWithItems[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("transactions")
-    .select("*, transaction_items(*, nutraceuticals(name))")
+    // EL PERFIL DEL PROFESIONAL viene para poder decir QUIEN REGISTRO la venta (0193): `created_by` es la
+    // persona que tecleó y `professional_id` la que se lleva la comisión, y no siempre son la misma.
+    // El embed es inequívoco: `transactions` tiene UN solo FK a `professional_profiles` (a `profiles`
+    // tiene siete, y por eso ninguna consulta lo embebe).
+    .select("*, professional_profiles(profile_id), transaction_items(*, nutraceuticals(name))")
     .order("created_at", { ascending: false });
   if (error) fail("listTransactions", error.message);
   // El embed (items + nombre del nutraceutico) lo garantiza la forma del query;

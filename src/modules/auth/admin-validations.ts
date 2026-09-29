@@ -53,8 +53,11 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 
 // Registrar/editar el registro profesional de un profesional existente (las licencias llegan tarde; el
 // admin las agrega despues). Vacio es valido: significa "sin registro" y guarda null (no una raya).
+// Los ids con z.guid() y no con .uuid(): Zod 4 valida los bits de version/variante del RFC y rechaza los
+// UUID fijos del seed. Aqui estaba LATENTE (ninguna accion de admin se habia probado contra un usuario
+// sembrado); salio al barrer la regla tras el bloqueo del smoke del 2026-09-29.
 export const setProfessionalLicenseSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.guid(),
   license: z.string().trim().max(100),
 });
 export type SetProfessionalLicenseInput = z.infer<typeof setProfessionalLicenseSchema>;
@@ -64,11 +67,11 @@ export const forcePasswordResetSchema = z.object({
 });
 
 export const deactivateUserSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.guid(),
 });
 
 export const resetUserMfaSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.guid(),
   // Motivo obligatorio: el audit registra al admin que EJECUTA, no a quien PIDE. El reason es lo unico
   // que deja rastro de por que y a pedido de quien se reinicio el factor (SECURITY.md, seccion MFA).
   reason: z.string().trim().min(1, "Escribe el motivo del reinicio.").max(500),

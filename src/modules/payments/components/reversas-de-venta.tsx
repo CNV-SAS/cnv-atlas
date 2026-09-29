@@ -34,6 +34,9 @@ const initial: AccionDeVentaState = { error: null, success: null, warning: null 
 export type ReversaEnPanel = Reversa & {
   referenciaDeLaDisputa: string | null;
   productos: string | null;
+  /** Unidades devueltas y de que producto. Nulos en un contracargo, que no es por unidades. */
+  unidadesDevueltas: number | null;
+  productoDevuelto: string | null;
   abiertaPor: string | null;
   resueltaPor: string | null;
   nota: string | null;
@@ -155,11 +158,17 @@ export function ReversasDeVenta({
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
       <div>
-        <h2 className="text-base font-medium text-foreground">Contracargos y anulaciones</h2>
+        <h2 className="text-base font-medium text-foreground">Ventas revertidas</h2>
+        {/* EL TEXTO HABLABA SOLO DEL BANCO (smoke del 2026-09-29), y aquí también caen las devoluciones del
+            paciente, donde no hubo banco ni disputa. Un rótulo prestado de otro caso hace dudar de lo que uno
+            acaba de hacer: Santiago devolvió un producto y la pantalla le dijo "disputa ganada". */}
         <p className="text-sm text-muted-foreground">
-          El banco devolvió el dinero de una venta ya cobrada. Mientras la disputa esté abierta el ingreso no se
-          toca: la factura sigue siendo válida. Responde al banco con los soportes, porque una disputa sin
-          respuesta a tiempo se pierde.
+          Ventas cuyo dinero volvió, por dos caminos distintos:{" "}
+          <strong className="text-foreground">el banco lo devolvió</strong> (contracargo o anulación), o{" "}
+          <strong className="text-foreground">el paciente devolvió el producto</strong>. Mientras una disputa
+          esté abierta el ingreso no se toca y la factura sigue siendo válida; respóndele al banco con los
+          soportes, porque una disputa sin respuesta a tiempo se pierde. Una devolución no se disputa: ya
+          movió el dinero y lo que falta es su nota crédito.
         </p>
       </div>
       <ul className="flex flex-col gap-3">
@@ -170,7 +179,13 @@ export function ReversasDeVenta({
             <li key={r.id} className="flex flex-col gap-1 rounded-md border border-border/60 p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium text-foreground">{Number(r.montoDeLaVenta).toLocaleString("es-CO")} COP</span>
-                <span className="text-sm text-muted-foreground">{r.productos ?? "sin productos"}</span>
+                {/* EN UNA DEVOLUCION SE DICE QUE VOLVIO, no lo que llevaba la venta entera: quien devolvió una
+                    de cuatro unidades no devolvió las cuatro, y el rótulo decía lo contrario. */}
+                <span className="text-sm text-muted-foreground">
+                  {r.unidadesDevueltas != null
+                    ? `devolvió ${r.unidadesDevueltas} de ${r.productoDevuelto ?? "(producto)"}`
+                    : (r.productos ?? "sin productos")}
+                </span>
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   {TIPO[r.tipo]} · {ESTADO[r.estado]}
                 </span>

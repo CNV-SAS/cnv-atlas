@@ -26,6 +26,8 @@ export type ResumenParaLiquidar = {
   /** Lo causado sin liquidar hasta la fecha, ya neteado con las reversiones. */
   base: number;
   filas: number;
+  /** Filas NEGATIVAS pendientes (devoluciones y disputas perdidas). No son comisiones. */
+  reversiones: number;
   /** Lo ya pagado en el año calendario de la fecha de corte: decide la tarifa de retencion. */
   acumuladoPrevio: number;
   perfil: PerfilTributario;
@@ -38,6 +40,7 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
     nombre: string;
     base: string;
     filas: number;
+    reversiones: number;
     acumulado: string;
     tax_person_type: string | null;
     tax_is_vat_responsible: boolean | null;
@@ -46,7 +49,11 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
     select pp.id as professional_id,
            coalesce(p.full_name, p.email, '(sin nombre)') as nombre,
            coalesce(sum(r.commission_amount) filter (where r.settlement_id is null), 0)::text as base,
-           count(r.id) filter (where r.settlement_id is null)::int as filas,
+           -- SE CUENTAN LAS COMISIONES, NO LAS FILAS (smoke del 2026-09-29): una reversion es OTRA fila,
+           -- negativa, apuntando a la original. Contandolas todas, una venta con su devolucion decia "2
+           -- comisiones", y tres asi decian "$0 en 6 comisiones", que no significa nada.
+           count(r.id) filter (where r.settlement_id is null and r.reversal_of is null)::int as filas,
+           count(r.id) filter (where r.settlement_id is null and r.reversal_of is not null)::int as reversiones,
            -- EL ACUMULADO DEL AÑO son las liquidaciones ya PAGADAS de ese mismo año calendario: es lo que la
            -- DIAN cuenta para la tarifa, y se reinicia el 1 de enero.
            coalesce((select sum(s.base_amount) from commission_settlements s
@@ -66,6 +73,7 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
     nombre: f.nombre,
     base: Number(f.base),
     filas: Number(f.filas),
+    reversiones: Number(f.reversiones),
     acumuladoPrevio: Number(f.acumulado),
     perfil: {
       tipoDePersona:
