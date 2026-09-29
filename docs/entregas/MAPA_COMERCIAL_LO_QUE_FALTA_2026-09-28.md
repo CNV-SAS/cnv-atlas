@@ -92,3 +92,32 @@ de una. Antes va B1 (las condiciones BIS), que es lo que tiene a una integrante 
 
 **Y que el Grupo C se resuelva antes de poner las claves reales de Alegra y Wompi**, porque C1 es un derecho
 del integrante y arrancar sin eso significa clasificar faltantes sin vía de reclamo.
+
+---
+
+# Estado al 2026-09-29: el Grupo A está cerrado
+
+**El recorrido se hizo en el orden que impuso el hallazgo del cargo:** vencimientos y devolución primero,
+después recaudo y domicilio.
+
+| | Estado | Su candado |
+| --- | --- | --- |
+| **A1 · Recaudo de Distribución** | **Hecho.** Cuenta quincenal con objeción, pago y cupo de crédito que suspende despachos | `distribucion`, `distribucion-db` |
+| **A2 · Domicilio** | **Hecho.** Flete, cobertura, municipio sellado y derecho de retracto con su evidencia | `domicilio`, `domicilio-db` |
+| **A3 · Devolución del Integrante a CNV** | **Hecho.** Él declara, CNV confirma; el saldo baja al confirmar | `devolucion-a-cnv-db` |
+| **A4 · Vencimientos** | **Hecho.** Alerta a 60 días con su registro, y quién asume el vencido | `vencimientos`, `vencimientos-db` |
+| **B1 · Condiciones BIS corregibles** | **Hecho** (28-sep) | la maquinaria de correcciones |
+
+**El estado de cada uno lo dice su test, no esta tabla.** Corre `pnpm vitest run` y mira esos archivos.
+
+## Lo que queda abierto, y ya no es desarrollo
+
+1. **La decisión del precio del faltante** (`DECISION_PRECIO_DEL_FALTANTE_2026-09-29.md`). Bloquea el cargo
+   por un vencido, porque se cobra al mismo precio.
+2. **La consulta contable** de dónde se resta el cargo (`CONSULTA_CONTABLE_CARGO_DE_FALTANTE_2026-09-28.md`).
+3. **Dos datos operativos tuyos** para que el domicilio se pueda ofrecer: la tarifa de flete y la lista de
+   ciudades. Sin ellos el bloque no aparece, y eso es lo correcto.
+4. **Desbloquear la venta bajo Distribución**, que ahora sí tiene su recaudo detrás.
+5. **B2 · El registro de contraindicaciones** del paciente, que se quedó sin superficie. Sigue pendiente.
+6. **C1 · La objeción del faltante**, dimensionada entera en `BACKLOG.md`. Lo que sí se hizo es que la
+   pantalla diga a dónde reclamar.
