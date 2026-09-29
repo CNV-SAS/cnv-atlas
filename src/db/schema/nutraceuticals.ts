@@ -159,7 +159,17 @@ export const nutraceuticalFaltanteCases = pgTable(
     // Precio de venta SELLADO al momento del faltante (deteccion), NO se re-lee despues (Clausula 5.4 del
     // Anexo 2). Misma disciplina que transaction_items.unit_price en el checkout.
     sealedUnitPrice: numeric("sealed_unit_price").notNull(),
-    sealedTotal: numeric("sealed_total").notNull(), // quantity * sealed_unit_price
+    sealedTotal: numeric("sealed_total").notNull(), // quantity * sealed_unit_price (valor de venta, NO lo que se cobra)
+    // ── LA CUENTA DEL CARGO (0191) ──
+    // El caso sellaba el PVP y cobraba eso. El modelo dice el precio de FACTURACION (base sin IVA menos el
+    // descuento del Integrante), y contabilidad lo confirmo: el IVA no se causo, CNV nunca iba a recibir el
+    // PVP, y cobrar el PVP haria el faltante mas rentable que la venta. Las tres columnas dejan el caso
+    // explicandose solo: PVP -> base -> menos su descuento -> lo que se cobra.
+    sealedBaseUnit: numeric("sealed_base_unit"),
+    /** La tasa VIGENTE A LA DETECCION, sellada como el precio: un caso viejo explica su cuenta. */
+    sealedCommissionRate: numeric("sealed_commission_rate"),
+    /** La indemnizacion. Es lo que lee la liquidacion. */
+    sealedCharge: numeric("sealed_charge"),
     reportedAt: timestamp("reported_at", { withTimezone: true }).notNull(),
     deadlineAt: timestamp("deadline_at", { withTimezone: true }).notNull(), // reported_at + 5 dias habiles
     // Justificacion enviada por el integrante: categoria + referencia OBLIGATORIA (numero de denuncia,

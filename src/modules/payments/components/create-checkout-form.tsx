@@ -33,12 +33,14 @@ export function CreateCheckoutForm({
   patients,
   nutraceuticals,
   ciudadesDeDomicilio = [],
-  tarifaDeFlete = null,
+  costoSugeridoPorDefecto = null,
+  margenDeFlete = 0.03,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
   ciudadesDeDomicilio?: CiudadParaElegir[];
-  tarifaDeFlete?: number | null;
+  costoSugeridoPorDefecto?: number | null;
+  margenDeFlete?: number;
 }) {
   const [state, action, pending] = useActionState(createCheckoutFormAction, initial);
   // Inputs CONTROLADOS a proposito: React 19 resetea el form tras cada submit (lo del prop `action`), y
@@ -170,7 +172,12 @@ export function CreateCheckoutForm({
           </div>
         </div>
 
-        <BloqueDomicilio ciudades={ciudadesDeDomicilio} tarifa={tarifaDeFlete} total={total} />
+        <BloqueDomicilio
+          ciudades={ciudadesDeDomicilio}
+          costoSugeridoPorDefecto={costoSugeridoPorDefecto}
+          margen={margenDeFlete}
+          total={total}
+        />
 
         <Button type="submit" disabled={pending || (total > 0 && total < WOMPI_MONTO_MINIMO)}>
           {pending ? "Creando..." : "Crear checkout"}

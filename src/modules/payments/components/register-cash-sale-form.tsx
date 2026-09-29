@@ -29,12 +29,14 @@ export function RegisterCashSaleForm({
   patients,
   nutraceuticals,
   ciudadesDeDomicilio = [],
-  tarifaDeFlete = null,
+  costoSugeridoPorDefecto = null,
+  margenDeFlete = 0.03,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
   ciudadesDeDomicilio?: CiudadParaElegir[];
-  tarifaDeFlete?: number | null;
+  costoSugeridoPorDefecto?: number | null;
+  margenDeFlete?: number;
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
   const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
@@ -184,7 +186,12 @@ export function RegisterCashSaleForm({
           </select>
         </div>
 
-        <BloqueDomicilio ciudades={ciudadesDeDomicilio} tarifa={tarifaDeFlete} total={total} />
+        <BloqueDomicilio
+          ciudades={ciudadesDeDomicilio}
+          costoSugeridoPorDefecto={costoSugeridoPorDefecto}
+          margen={margenDeFlete}
+          total={total}
+        />
 
         <Button type="submit" disabled={pending}>
           {pending ? "Registrando..." : "Registrar la venta"}

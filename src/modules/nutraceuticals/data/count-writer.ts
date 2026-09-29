@@ -1,8 +1,9 @@
 import "server-only";
 
-import { and, eq, gt, isNull, sum } from "drizzle-orm";
+import { and, eq, gt, isNull, sql as dsql, sum } from "drizzle-orm";
 
 import { addBusinessDays } from "@/core/dates/colombia-business-days";
+import { DESCUENTO_DISTRIBUCION, precioDeFacturacion } from "@/modules/payments/distribucion";
 import { db } from "@/db";
 import {
   nutraceuticalCountLines,
@@ -29,7 +30,7 @@ export type CountLineInput = { nutraceuticalId: string; lote: string | null; phy
 
 export type CountResult = {
   sessionId: string;
-  opened: { nutraceuticalId: string; quantity: number; sealedTotal: string }[];
+  opened: { nutraceuticalId: string; quantity: number; sealedTotal: string; sealedCharge: string }[];
   sobrantes: { nutraceuticalId: string; extra: number }[];
   cuadraron: number;
 };
@@ -80,7 +81,15 @@ export async function recordCount(input: {
 
       const diff = line.physicalQty - systemQty;
       if (diff < 0) {
-        // Faltante: abre un caso con el precio de venta SELLADO ahora (Clausula 5.4).
+        // ═══ EL CASO SELLA DOS CIFRAS DISTINTAS, Y ESA ES LA CORRECCION DEL 2026-09-29 ═══
+        //
+        // Sellaba el PVP CON IVA y cobraba eso. El modelo dice el precio de FACTURACION (base sin IVA menos
+        // el descuento del Integrante), y contabilidad lo confirmo con tres razones: el IVA no se causo
+        // (no hubo venta), CNV nunca iba a recibir el PVP por esa unidad, y cobrar el PVP haria el faltante
+        // MAS RENTABLE QUE LA VENTA. En MULTICELL eran 107.100 contra 72.000.
+        //
+        // SE SELLAN LAS DOS: el PVP de referencia (que explica de donde sale la cuenta) y el CARGO, que es
+        // lo que cobra la liquidacion.
         const [prod] = await tx
           .select({ price: nutraceuticals.unitPrice })
           .from(nutraceuticals)
@@ -88,6 +97,26 @@ export async function recordCount(input: {
         const unitPrice = prod?.price ?? "0";
         const quantity = -diff;
         const sealedTotal = (Number(unitPrice) * quantity).toString();
+
+        // LA TASA VIGENTE A LA DETECCION, no un 20% fijo ni la de hoy: se sella igual que el precio, para
+        // que un caso viejo pueda explicar su cuenta aunque la tasa cambie despues. Sin fila de vigencia se
+        // cae a la del perfil, y sin perfil al 20% que fija el modelo.
+        const [vigente] = await tx.execute<{ rate: string }>(dsql`
+          select rate::text as rate from professional_commission_rates
+           where professional_id = ${input.professionalId}
+             and valid_from <= (${input.now.toISOString()}::timestamptz at time zone 'America/Bogota')::date
+             and (valid_to is null or valid_to > (${input.now.toISOString()}::timestamptz at time zone 'America/Bogota')::date)
+           order by valid_from desc limit 1`);
+        const [perfil] = await tx
+          .select({ rate: professionalProfiles.commissionRate })
+          .from(professionalProfiles)
+          .where(eq(professionalProfiles.id, input.professionalId));
+        const tasa = vigente ? Number(vigente.rate) : Number(perfil?.rate ?? DESCUENTO_DISTRIBUCION);
+
+        // LA MISMA ARITMETICA QUE LA CUENTA DE DISTRIBUCION, y a proposito: el modelo llama a las dos
+        // "precio de facturacion". Dos funciones que calculan lo mismo se separan; esta es una sola.
+        const precio = precioDeFacturacion(Number(unitPrice), tasa);
+        const sealedCharge = (precio.baseDescontada * quantity).toString();
         const [c] = await tx
           .insert(nutraceuticalFaltanteCases)
           .values({
@@ -97,6 +126,9 @@ export async function recordCount(input: {
             quantity,
             sealedUnitPrice: unitPrice,
             sealedTotal,
+            sealedBaseUnit: String(precio.base),
+            sealedCommissionRate: String(tasa),
+            sealedCharge,
             reportedAt: input.now,
             deadlineAt: addBusinessDays(input.now, 5),
             countSessionId: session.id,
@@ -110,7 +142,7 @@ export async function recordCount(input: {
           toStatus: "reportado",
           actorId: input.actorId,
         });
-        opened.push({ nutraceuticalId: line.nutraceuticalId, quantity, sealedTotal });
+        opened.push({ nutraceuticalId: line.nutraceuticalId, quantity, sealedTotal, sealedCharge });
       } else if (diff > 0) {
         sobrantes.push({ nutraceuticalId: line.nutraceuticalId, extra: diff });
       } else {

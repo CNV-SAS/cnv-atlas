@@ -278,8 +278,10 @@ export type NewTransaction = {
     ciudad: string;
     departamento: string | null;
     daneCode: string | null;
-    /** La tarifa vigente al cobrar, con IVA dentro (igual que el PVP). */
+    /** Lo que paga el paciente por el envio, con IVA dentro (igual que el PVP). */
     flete: number;
+    /** Lo que se le paga al domiciliario: soporta su pago quincenal consolidado. */
+    costo: number;
   } | null;
 };
 
@@ -335,6 +337,7 @@ export async function createTransactionWithItems(
         shippingDepartment: input.domicilio?.departamento ?? null,
         shippingDaneCode: input.domicilio?.daneCode ?? null,
         shippingFee: input.domicilio ? String(input.domicilio.flete) : null,
+        shippingCost: input.domicilio ? String(input.domicilio.costo) : null,
         operatedAt: new Date(),
         // Toda venta nace con su entrega pendiente (sesion 2): es lo que hace que ninguna quede sin camino
         // para entregarse.
@@ -552,6 +555,7 @@ export async function createPaidCashTransaction(
         shippingDepartment: input.domicilio?.departamento ?? null,
         shippingDaneCode: input.domicilio?.daneCode ?? null,
         shippingFee: input.domicilio ? String(input.domicilio.flete) : null,
+        shippingCost: input.domicilio ? String(input.domicilio.costo) : null,
         operatedAt: new Date(),
         stockState: "pendiente",
         fulfillmentState: "pendiente",

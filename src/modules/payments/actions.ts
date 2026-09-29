@@ -182,12 +182,18 @@ export async function createCheckoutFormAction(
  * configuración y lo sella en la venta; si viajara por el formulario, cualquiera podría cobrarse el flete
  * que quisiera.
  */
-function leerDomicilio(formData: FormData): { ciudad: string; departamento?: string; direccion: string } | undefined {
+function leerDomicilio(
+  formData: FormData,
+): { ciudad: string; departamento?: string; direccion: string; costo?: number } | undefined {
   if (String(formData.get("aDomicilio") ?? "") !== "true") return undefined;
+  // El costo se lee como pesos colombianos (el ultimo grupo de tres son miles), igual que el resto de las
+  // cifras que se teclean en /pagos.
+  const costo = enteroDeTexto(String(formData.get("costoDelDomiciliario") ?? ""));
   return {
     ciudad: String(formData.get("ciudadDestino") ?? ""),
     departamento: String(formData.get("departamentoDestino") ?? "") || undefined,
     direccion: String(formData.get("direccionEntrega") ?? ""),
+    costo: costo != null && costo > 0 ? costo : undefined,
   };
 }
 

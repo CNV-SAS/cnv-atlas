@@ -87,6 +87,8 @@ export const transactions = pgTable(
     shippingDaneCode: text("shipping_dane_code"),
     /** El flete sellado al cobrar, con IVA dentro (igual que el precio unitario). Si la tarifa sube, esta no. */
     shippingFee: numeric("shipping_fee"),
+    /** Lo que se le paga al domiciliario por ESTE envio. Es lo que soporta su pago quincenal consolidado. */
+    shippingCost: numeric("shipping_cost"),
     // ── EL RETRACTO (Ley 1480/2011, art. 47) ──
     // La FECHA LIMITE no se guarda: se deduce de la fecha de entrega mas cinco dias habiles. Lo que si se guarda
     // es el ejercicio, y sobre todo si el producto volvio SELLADO: el sello es la evidencia que acredita la

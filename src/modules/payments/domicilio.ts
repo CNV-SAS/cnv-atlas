@@ -12,39 +12,46 @@ import type { Modalidad } from "./modalidad";
 /** Cinco dias habiles desde la entrega (Ley 1480 de 2011, articulo 47). */
 export const DIAS_DE_RETRACTO = 5;
 
-export type CiudadHabilitada = { city: string; department: string; daneCode: string | null };
+export type CiudadHabilitada = {
+  city: string;
+  department: string;
+  daneCode: string | null;
+  /** Lo que suele cobrar el domiciliario ahi. Se precarga; manda lo que el profesional teclee. */
+  costoSugerido: number | null;
+};
 
 export type OfertaDeDomicilio =
-  | { ofrece: true; tarifa: number }
+  | { ofrece: true; costoSugerido: number | null }
   | { ofrece: false; motivo: string };
 
 /**
  * ¿Se le puede ofrecer domicilio a este destino?
  *
  * EL CRITERIO ES DEL MODELO §5.5, textual: "es preferible NO ofrecer el domicilio a un destino que ofrecerlo
- * y perder dinero en cada envio". Por eso la ausencia de datos NIEGA en vez de permitir: sin tarifa
- * configurada o sin la ciudad en la lista, no se ofrece.
+ * y perder dinero en cada envio". Por eso la ausencia de datos NIEGA en vez de permitir.
+ *
+ * LO QUE DECIDE ES LA COBERTURA, NO EL PRECIO (decision de Santiago, 2026-09-29): el costo lo teclea el
+ * profesional por envio, porque varia por zona. Una ciudad sin costo sugerido SI se ofrece; lo unico que
+ * pasa es que el campo llega vacio.
  *
  * `ciudad` vacia = todavia no eligio destino; entonces solo se comprueba que el servicio exista.
  */
 export function ofertaDeDomicilio(e: {
-  tarifa: number | null;
   ciudades: CiudadHabilitada[];
   ciudad?: string | null;
   departamento?: string | null;
+  /** Costo sugerido por defecto, cuando la ciudad no trae uno propio. */
+  costoPorDefecto?: number | null;
 }): OfertaDeDomicilio {
-  if (e.tarifa == null || e.tarifa <= 0) {
-    return { ofrece: false, motivo: "El envío a domicilio no está habilitado: falta la tarifa de flete." };
-  }
   if (e.ciudades.length === 0) {
     return { ofrece: false, motivo: "El envío a domicilio no está habilitado: no hay ciudades con cobertura." };
   }
+  const igual = (a: string, b: string) => a.trim().toLocaleLowerCase("es") === b.trim().toLocaleLowerCase("es");
   if (e.ciudad) {
-    const igual = (a: string, b: string) => a.trim().toLocaleLowerCase("es") === b.trim().toLocaleLowerCase("es");
-    const hay = e.ciudades.some(
+    const destino = e.ciudades.find(
       (c) => igual(c.city, e.ciudad as string) && (!e.departamento || igual(c.department, e.departamento)),
     );
-    if (!hay) {
+    if (!destino) {
       return {
         ofrece: false,
         // SE DICE QUE SE PUEDE COTIZAR, no solo que no se puede: §5.5 admite "o la ofrece con cotizacion caso
@@ -52,8 +59,43 @@ export function ofertaDeDomicilio(e: {
         motivo: `Todavía no hay cobertura de domicilio en ${e.ciudad}. Escríbele a CNV si necesitas una cotización para ese destino.`,
       };
     }
+    return { ofrece: true, costoSugerido: destino.costoSugerido ?? e.costoPorDefecto ?? null };
   }
-  return { ofrece: true, tarifa: e.tarifa };
+  return { ofrece: true, costoSugerido: e.costoPorDefecto ?? null };
+}
+
+/** Margen por defecto sobre el costo del domiciliario. El vigente vive en `commercial_config`. */
+export const MARGEN_DE_FLETE_POR_DEFECTO = 0.03;
+
+export type FleteDelEnvio = {
+  /** Lo que se le paga al domiciliario. */
+  costo: number;
+  /** La base gravada: el costo mas el margen. */
+  base: number;
+  iva: number;
+  /** Lo que paga el paciente por el envio. */
+  total: number;
+};
+
+/**
+ * EL FLETE DE UN ENVIO, a partir de lo que cobra el domiciliario.
+ *
+ * POR QUE NO ES UNA TARIFA FIJA (decision de Santiago, 2026-09-29): 14.000 es fijo en Medellin, pero hay
+ * Integrantes en Pereira, Cali y otras zonas, y ahi varia. Una tarifa unica no aplica y una por ciudad seria
+ * adivinar. Asi que el profesional teclea el costo y esto calcula el resto.
+ *
+ * EL MARGEN NO ES GANANCIA: la pasarela cobra su comision TAMBIEN sobre el flete, asi que cobrar el costo
+ * exacto significa pagar 10.000 al domiciliario y recibir menos de 10.000 por el. El margen lo compensa y el
+ * envio queda neutro, que es lo que el modelo quiere ("el Integrante no gana ni pierde en el envio").
+ *
+ * EL IVA VA SOBRE LA BASE CON EL MARGEN, no sobre el costo pelado: la base gravable es lo que se cobra
+ * (articulo 447 del Estatuto Tributario, que ademas mete el acarreo en la base del producto principal).
+ */
+export function fleteDelEnvio(e: { costo: number; margen?: number }): FleteDelEnvio {
+  const costo = Math.round(e.costo);
+  const base = Math.round(costo * (1 + (e.margen ?? MARGEN_DE_FLETE_POR_DEFECTO)));
+  const iva = Math.round(base * 0.19);
+  return { costo, base, iva, total: base + iva };
 }
 
 export type EstadoDelRetracto = {

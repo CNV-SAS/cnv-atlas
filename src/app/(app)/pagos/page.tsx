@@ -15,10 +15,7 @@ import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantal
 import { requireUser } from "@/modules/auth/session";
 import { BloqueRetracto, type RetractoDeLaVenta } from "@/modules/payments/components/bloque-retracto";
 import { retractosDeLasVentas } from "@/modules/payments/data/retracto-writer";
-import {
-  ciudadesConCobertura,
-  tarifaDeFlete as tarifaDeFleteVigente,
-} from "@/modules/payments/data/domicilio-reader";
+import { ciudadesConCobertura, configuracionDeFlete } from "@/modules/payments/data/domicilio-reader";
 import { formatDateTime } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
 import { AccionDeVentaButton } from "@/modules/payments/components/accion-de-venta-button";
@@ -246,17 +243,23 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   let nutraceuticals: CheckoutNutraceutical[] = [];
   // EL DOMICILIO SOLO SE OFRECE SI ESTA CONFIGURADO. Sin tarifa o sin ciudades, el bloque ni se pinta: el
   // modelo §5.5 prefiere no ofrecer el envío a un destino antes que ofrecerlo y perder dinero en cada uno.
-  let ciudadesDeDomicilio: { city: string; department: string }[] = [];
-  let tarifaDeFlete: number | null = null;
+  let ciudadesDeDomicilio: { city: string; department: string; costoSugerido: number | null }[] = [];
+  let costoSugeridoPorDefecto: number | null = null;
+  let margenDeFlete = 0.03;
   if (canCreate) {
     const [pts, catalog, ciudades, tarifa] = await Promise.all([
       listSelectablePatients(),
       nutraService.listCatalog(),
       ciudadesConCobertura(),
-      tarifaDeFleteVigente(),
+      configuracionDeFlete(),
     ]);
-    ciudadesDeDomicilio = ciudades.map((c) => ({ city: c.city, department: c.department }));
-    tarifaDeFlete = tarifa;
+    ciudadesDeDomicilio = ciudades.map((c) => ({
+      city: c.city,
+      department: c.department,
+      costoSugerido: c.costoSugerido,
+    }));
+    costoSugeridoPorDefecto = tarifa.costoPorDefecto;
+    margenDeFlete = tarifa.margen;
     patients = pts;
     // ═══ LA DISPONIBILIDAD TAMBIEN GATEA LA VENTA, NO SOLO LA ENTREGA (2026-09-11) ═══
     //
@@ -301,7 +304,8 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
               patients={patients}
               nutraceuticals={nutraceuticals}
               ciudadesDeDomicilio={ciudadesDeDomicilio}
-              tarifaDeFlete={tarifaDeFlete}
+              costoSugeridoPorDefecto={costoSugeridoPorDefecto}
+              margenDeFlete={margenDeFlete}
             />
           </CardContent>
         </Card>
@@ -321,7 +325,8 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
               patients={patients}
               nutraceuticals={nutraceuticals}
               ciudadesDeDomicilio={ciudadesDeDomicilio}
-              tarifaDeFlete={tarifaDeFlete}
+              costoSugeridoPorDefecto={costoSugeridoPorDefecto}
+              margenDeFlete={margenDeFlete}
             />
           </CardContent>
         </Card>
