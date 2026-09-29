@@ -1,3 +1,25 @@
+# RESPONDIDA: Opción A · 2026-09-29
+
+> **"El cargo por faltante se resta del neto a girar, no de la base gravada. La comisión se factura y se
+> retiene por su valor completo."**
+
+**Es lo que ya estaba construido, así que no hay nada que cambiar.** Lo sostiene el candado
+`liquidacion-comision`: la relación neto = base + IVA − retención − cargo, con el IVA y la retención
+calculados sobre la comisión completa.
+
+**Y contabilidad añadió dos pruebas mejores que las mías**, que conviene guardar porque cierran la discusión
+si alguien la reabre:
+
+1. **Si el faltante supera la comisión, con la opción B la base sería negativa.** ¿Qué facturaría el
+   Integrante, una comisión de menos 50.000? No existe. Con A el caso funciona: el saldo queda a su cargo, que
+   es justo lo que el modelo ya contempla ("el sistema debe tratar el saldo negativo como caso NORMAL, no como
+   error").
+2. **Mezclar un servicio gravado con una indemnización sin IVA junta dos naturalezas tributarias distintas.**
+
+Lo de abajo es la consulta como se envió. Se conserva porque explica de dónde salió la pregunta.
+
+---
+
 # Consulta para contabilidad · dónde se resta el cargo por faltante
 
 **Para que Santiago la lleve. 2026-09-28. Una página.**
