@@ -7,7 +7,9 @@ import { ClasificarFaltanteForm } from "@/modules/nutraceuticals/components/clas
 import { ConfirmarFaltanteForm } from "@/modules/nutraceuticals/components/confirmar-faltante-form";
 import { ResolverSobranteForm } from "@/modules/nutraceuticals/components/resolver-sobrante-form";
 import { RemesasCnvSection } from "@/modules/nutraceuticals/components/remesas-cnv-section";
+import { DevolucionesCnvSection } from "@/modules/nutraceuticals/components/devoluciones-cnv-section";
 import { VencimientosCnvSection } from "@/modules/nutraceuticals/components/vencimientos-cnv-section";
+import { canSeeDevolucionesCnv } from "@/modules/nutraceuticals/policies/can-cerrar-devolucion";
 import { canSeeRemesasCnv } from "@/modules/nutraceuticals/policies/can-declarar-remesa";
 import { canResolveSobrante, canSeeFaltanteQueue } from "@/modules/nutraceuticals/policies/can-review-faltante";
 import { getFaltanteQueue, getPendingSobrantes, type FaltanteQueueRow } from "@/modules/nutraceuticals/services/faltante-service";
@@ -117,6 +119,8 @@ export default async function FaltantesPage() {
           nowMs={nowMs}
         />
       ) : null}
+
+      {canSeeDevolucionesCnv(user) ? <DevolucionesCnvSection /> : null}
 
       {seeFaltantes ? <VencimientosCnvSection /> : null}
 

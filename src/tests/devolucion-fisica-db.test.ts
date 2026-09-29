@@ -238,14 +238,30 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
     expect(comisionAntes - (await netoDe("professional_revenue", "commission_amount"))).toBeGreaterThan(0);
   }, 30_000);
 
+  // LA CANTIDAD SE CALCULA, NO SE ESCRIBE A MANO (arreglado el 2026-09-29).
+  //
+  // Decia 99, y el fixture CRECE cada corrida: suma otra salida de 8 unidades a la misma linea. A las trece
+  // corridas, 99 dejo de ser "mas de las que salieron" y el candado dejo de comprobar lo suyo: la llamada
+  // pasaba el guardia de inventario y moria mas adelante, en la reversion del dinero, con OTRA clase de
+  // error. O sea que el test fallaba por la razon equivocada, y habria seguido "pasando" un rato mas si el
+  // segundo error hubiera sido de la misma clase.
+  //
+  // Es la misma familia que el 500 contra 569 de ventas-sin-documento: una cifra absoluta atada a cuantas
+  // veces se corrio la prueba. La cifra se lee de la base y se pide UNA MAS.
   it("no se devuelven más unidades de las que salieron", async () => {
+    const { db } = await import("@/db");
+    const [c] = await db.execute<{ margen: number }>(dsql`
+      select (coalesce(sum(case when type = 'venta' then abs(delta) else 0 end), 0)
+            - coalesce(sum(case when type = 'devolucion_paciente' then delta else 0 end), 0))::int as margen
+        from nutraceutical_stock_movements where transaction_item_id = ${lineaId}`);
+    const deMas = Number(c.margen) + 1;
     const { registrarDevolucionFisica, DevolucionNoRegistrableError } = await import(
       "@/modules/payments/data/devolucion-fisica-writer"
     );
     await expect(
       registrarDevolucionFisica({
         transactionItemId: lineaId,
-        cantidad: 99,
+        cantidad: deMas,
         motivo: "Más de las vendidas",
         actorId: profileId,
         actorEmail: "fixture@cnv",
