@@ -99,3 +99,15 @@ export async function marcarAlertaVista(userId: string, alertaId: string): Promi
   if (!professionalId) return false;
   return repo.marcarVista(alertaId, professionalId, userId);
 }
+
+export type { LoteProvisional } from "../data/vencimientos-repository";
+
+/** Los lotes con vencimiento inventado y saldo: el hueco por el que la alerta no puede dispararse. */
+export async function lotesProvisionales() {
+  return repo.lotesProvisionalesConSaldo();
+}
+
+/** CNV completa el vencimiento real de un lote provisional. false = ya no era provisional. */
+export async function completarVencimiento(lotId: string, vence: string): Promise<boolean> {
+  return repo.completarVencimientoDeLote(lotId, vence);
+}

@@ -279,3 +279,68 @@ export async function profesionalDelUsuario(profileId: string): Promise<string |
     select id from professional_profiles where profile_id = ${profileId}`);
   return f ? f.id : null;
 }
+
+export type LoteProvisional = {
+  lotId: string;
+  codigo: string;
+  producto: string;
+  vence: string;
+  unidades: number;
+  donde: string;
+};
+
+/**
+ * LOS LOTES CON VENCIMIENTO PROVISIONAL, con saldo. Es el hueco por el que la alerta NO puede funcionar.
+ *
+ * DE DONDE SALEN: cuando el Integrante reconoce una recepcion de un lote que CNV no habia dado de alta,
+ * `resolverLoteDeRecepcion` lo CREA (negarlo alejaria el saldo de la vitrina, que es peor) con un
+ * vencimiento inventado a un año y la nota que lo marca. Un lote asi nunca entra en la ventana de alerta
+ * aunque en la realidad venza el mes que viene: el aviso existe y no se dispara, que es la peor forma de
+ * no tener un control.
+ */
+export async function lotesProvisionalesConSaldo(): Promise<LoteProvisional[]> {
+  const filas = await db.execute<{
+    lot_id: string;
+    codigo: string;
+    producto: string;
+    vence: string;
+    unidades: number;
+    donde: string;
+  }>(sql`
+    select l.id as lot_id, l.code as codigo, n.name as producto,
+           l.expires_on::text as vence,
+           sum(i.stock_quantity)::int as unidades,
+           string_agg(distinct loc.name, ', ') as donde
+      from lots l
+      join nutraceuticals n on n.id = l.nutraceutical_id
+      join nutraceutical_inventory i on i.lot_id = l.id
+      join inventory_locations loc on loc.id = i.location_id
+     where l.notes like 'PROVISIONAL%'
+       and i.stock_quantity > 0
+     group by l.id, l.code, n.name, l.expires_on
+     order by n.name, l.code`);
+  return filas.map((f) => ({
+    lotId: f.lot_id,
+    codigo: f.codigo,
+    producto: f.producto,
+    vence: f.vence,
+    unidades: Number(f.unidades),
+    donde: f.donde,
+  }));
+}
+
+/**
+ * COMPLETA el vencimiento de un lote provisional, y le quita la marca. Solo sobre los provisionales: el
+ * vencimiento de un lote confirmado no se re-escribe desde una pantalla, porque es el dato del que cuelga
+ * la alerta y, con ella, quien asume el vencido.
+ */
+export async function completarVencimientoDeLote(lotId: string, vence: string): Promise<boolean> {
+  const filas = await db.execute<{ id: string }>(sql`
+    update lots
+       set expires_on = ${vence}::date,
+           notes = null
+     where id = ${lotId}
+       and notes like 'PROVISIONAL%'
+    returning id`);
+  return filas.length > 0;
+}

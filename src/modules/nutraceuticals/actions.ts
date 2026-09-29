@@ -23,6 +23,7 @@ import {
   declareRemesaSchema,
   resolveSobranteSchema,
   createNutraceuticalSchema,
+  completarVencimientoSchema,
   marcarVencimientoVistoSchema,
   recordCountSchema,
   registerUsageSchema,
@@ -442,4 +443,26 @@ export async function marcarVencimientoVistoFormAction(
   // Sin revalidate: la pantalla refresca desde el cliente (`useFormToastAndRefresh`). Las dos cosas a la vez
   // es el defecto de "refresco una sola vez".
   return { error: null, success: "Queda registrado que viste la alerta.", warning: null };
+}
+
+// CNV completa el vencimiento de un lote PROVISIONAL (0186). Solo admin (canManageCatalog): es el dato del
+// que cuelga la alerta y, con ella, quien asume un vencido. Solo alcanza a los provisionales; el vencimiento
+// de un lote confirmado no se re-escribe desde una pantalla.
+export async function completarVencimientoFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const { error } = await requireCatalogManager();
+  if (error) return { error: error.message, success: null, warning: null };
+
+  const parsed = completarVencimientoSchema.safeParse({
+    lotId: String(formData.get("lotId") ?? ""),
+    vence: String(formData.get("vence") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos invalidos.", success: null, warning: null };
+
+  const listo = await vencimientosLectura.completarVencimiento(parsed.data.lotId, parsed.data.vence);
+  if (!listo) return { error: "Ese lote ya no estaba provisional.", success: null, warning: null };
+  // Sin revalidate: el lote deja la lista y el formulario se desmonta; el cliente avisa y refresca.
+  return { error: null, success: "Vencimiento registrado: ese lote ya entra en la alerta.", warning: null };
 }
