@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -53,6 +56,25 @@ export function BisConditionsReadonly({ data }: { data: Data }) {
           );
         })}
       </CardContent>
+      {/* ═══ LA PUERTA PARA CORREGIRLAS (Santiago, 2026-09-28) ═══
+          VA AQUI porque es donde el profesional se da cuenta: está leyendo lo que quedó registrado y ve que una
+          condición no es la que fue (el caso real: el paciente fue al baño DESPUÉS de guardar). Ponerla en otro
+          sitio obligaría a ir a buscarla justo cuando surge la necesidad, que es el mismo argumento por el que la
+          corrección de encuesta tiene dos entradas.
+          Y NO ES UN BOTON PRIMARIO: corregir rehace una emisión sellada, así que se ofrece en tono tenue y con
+          una frase que dice la consecuencia, no un CTA que empuje. */}
+      <CardContent className="flex flex-col gap-2 border-t border-border pt-4">
+        <p className="text-xs text-muted-foreground">
+          ¿Alguna condición no es la que fue? Corregirla genera una versión nueva del diagnóstico; la actual queda
+          registrada como reemplazada.
+        </p>
+        <Button asChild variant="outline" size="sm" className="w-fit">
+          <Link href={`/ani-bis-e/${data.evaluationId}/corregir-condiciones`}>
+            Corregir las condiciones de la toma
+          </Link>
+        </Button>
+      </CardContent>
     </Card>
   );
 }
+

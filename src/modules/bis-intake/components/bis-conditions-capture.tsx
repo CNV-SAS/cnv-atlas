@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 
 import { preservarScroll } from "@/components/shared/preservar-scroll";
 
-import { saveBisConditionsAction } from "../actions";
+import { corregirCondicionesBisAction, saveBisConditionsAction } from "../actions";
 import { computeContraindicated } from "../services/contraindication";
 import type {
   BisCondition,
@@ -53,14 +53,33 @@ export function BisConditionsCapture({
   catalog,
   intake,
   patientIsFemale,
+  modoCorreccion = false,
 }: {
   evaluationId: string;
   catalog: BisConditionCatalog;
   intake: BisIntakeRecord | null;
   patientIsFemale: boolean;
+  /**
+   * ═══ MODO CORRECCION (Santiago, 2026-09-28) ═══
+   *
+   * EL CASO REAL, de una integrante: el paciente va al baño DESPUES de que ella guardo las condiciones. Con el
+   * diagnostico generado quedaban de solo lectura y no habia como arreglarlo.
+   *
+   * Con esto, el MISMO formulario sirve para corregirlas: pide un motivo y, al guardar, REHACE la evaluacion
+   * (version nueva, la vieja reemplazada y legible) en vez de escribir en sitio. Escribir en sitio dejaria un
+   * diagnostico afirmando sobre una toma cuyas condiciones ya no son las que uso.
+   *
+   * SE PARAMETRIZA ESTE FORMULARIO EN VEZ DE ESCRIBIR OTRO, y es lo que decide el diseño: aqui viven reglas
+   * clinicas (que advertencias hay que reconocer, que condiciones son obligatorias segun el sexo, que una
+   * contraindicacion bloquea el import). Un segundo formulario naceria identico y se separaria del primero en el
+   * siguiente cambio, y entonces una condicion pasaria al corregir y no al capturar.
+   */
+  modoCorreccion?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // Solo se usa en modo correccion; vive aqui porque el formulario es el que envia.
+  const [motivo, setMotivo] = useState("");
   const [answers, setAnswers] = useState(() => initState(catalog, intake));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(intake != null);
@@ -150,6 +169,34 @@ export function BisConditionsCapture({
     // esta donde el profesional la dejo. El detector ahora tambien busca las llamadas a `*Action`.
     preservarScroll();
     startTransition(async () => {
+      // ── EN MODO CORRECCION VA POR OTRA PUERTA, y es toda la diferencia: rehace la evaluacion en vez de
+      //    escribir en sitio. El motivo es obligatorio y se valida antes de molestar al servidor.
+      if (modoCorreccion) {
+        if (motivo.trim().length < 5) {
+          setFieldErrors({ motivo: "Escribe el motivo de la corrección (al menos cinco letras)." });
+          toast.error("Falta el motivo de la corrección.");
+          return;
+        }
+        // EL GUARD, JUNTO A LA LLAMADA: invocar una server action navega, y la pagina salta al inicio.
+        preservarScroll();
+        const res = await corregirCondicionesBisAction({
+          evaluationId,
+          answers: buildPayload(),
+          motivo: motivo.trim(),
+        });
+        if (!res.ok) {
+          setFieldErrors(res.error.fields ?? {});
+          toast.error(res.error.message);
+          return;
+        }
+        toast.success("Condiciones corregidas. Se generó una versión nueva del diagnóstico.");
+        // A LA VERSION NUEVA, no a la vieja: la vieja queda reemplazada, y dejar al profesional ahi seria
+        // dejarlo mirando el diagnostico que acaba de sustituir.
+        router.push(`/ani-bis-e/${res.value.newEvaluationId}`);
+        return;
+      }
+
+      preservarScroll();
       const res = await saveBisConditionsAction({
         evaluationId,
         answers: buildPayload(),
@@ -368,13 +415,48 @@ export function BisConditionsCapture({
                 .join(" · ")}
             </span>
           ) : null}
+          {/* ═══ EL MOTIVO, SOLO AL CORREGIR ═══
+              Va JUNTO AL BOTON y no arriba del formulario, porque es lo ultimo que se escribe: el profesional
+              primero arregla la condicion y despues explica por que. Y es obligatorio por lo mismo que en la
+              correccion de encuesta: se rehace una emision sellada, y sin motivo el registro no explica por que
+              hay dos versiones. */}
+          {modoCorreccion ? (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="motivo-condiciones" className="text-xs font-medium text-foreground">
+                Por qué se corrige
+              </label>
+              <Input
+                id="motivo-condiciones"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Por ejemplo: el paciente fue al baño después de que guardé las condiciones"
+                maxLength={500}
+                className="max-w-xl"
+              />
+              {fieldErrors.motivo ? (
+                <span className="text-xs text-destructive">{fieldErrors.motivo}</span>
+              ) : null}
+              <span className="text-xs text-muted-foreground">
+                Al guardar se genera una versión nueva del diagnóstico con la condición corregida. La versión
+                actual no se borra: queda registrada como reemplazada.
+              </span>
+            </div>
+          ) : null}
           <Button
             type="button"
             onClick={onSubmit}
             disabled={pending || missingAck || missingRequired}
             className="w-fit"
           >
-            {pending ? "Guardando..." : saved ? "Actualizar condiciones" : "Guardar condiciones"}
+            {pending
+              ? modoCorreccion
+                ? "Corrigiendo..."
+                : "Guardando..."
+              : modoCorreccion
+                ? "Corregir y rehacer el diagnóstico"
+                : saved
+                  ? "Actualizar condiciones"
+                  : "Guardar condiciones"}
           </Button>
           {/* Guardadas y sin contraindicacion: el import ya quedo habilitado, pero vive en la OTRA
               subpestaña. Sin este puente el profesional guarda y no sabe adonde ir (Gildardo 2026-08-17, a). */}

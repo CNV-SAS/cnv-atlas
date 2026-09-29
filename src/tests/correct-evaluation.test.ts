@@ -333,6 +333,89 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     expect(notAssigned.error.message).toContain("asignado");
   });
 
+
+  // ═══ LAS CONDICIONES DE LA TOMA, CORREGIDAS (Santiago, 2026-09-28) ═══
+  //
+  // EL CASO REAL, de una integrante: el paciente va al baño DESPUES de que ella ya guardo las condiciones. Hoy,
+  // con el diagnostico generado, quedan de SOLO LECTURA y no habia forma de corregirlas.
+  //
+  // LO QUE ESTE CANDADO VIGILA es que vayan por la CORRECCION y no por una edicion en sitio: esas condiciones
+  // ALIMENTARON el diagnostico (la fuerza prensil entra en el fenotipo de sarcopenia), asi que editarlas donde
+  // estaban dejaria un diagnostico afirmando sobre una toma cuyas condiciones ya no son las que uso.
+  //
+  // Y vigila lo que NO cambia: la VERSION del catalogo de condiciones se conserva, porque se corrige lo que se
+  // respondio, no el instrumento con que se pregunto.
+  it("las condiciones corregidas viajan a la evaluación nueva, y la vieja las conserva", async () => {
+    const oldId = await makeEvaluationWithDiagnosis("COND");
+
+    const [intakeViejo] = await db
+      .select({
+        versionId: schema.evaluationBisIntake.bisConditionVersionId,
+        contraindicated: schema.evaluationBisIntake.contraindicated,
+        grip: schema.evaluationBisIntake.gripStrengthKg,
+        answers: schema.evaluationBisIntake.conditionAnswers,
+      })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, oldId));
+    expect(intakeViejo).toBeDefined();
+
+    // Se corrige la fuerza prensil, que es el dato de estas condiciones con consecuencia clinica directa.
+    const res = await correctEvaluation(
+      {
+        ...baseInput(oldId),
+        reason: "el paciente fue al baño después de guardar las condiciones",
+        correctedConditions: {
+          answers: intakeViejo.answers,
+          contraindicated: false,
+          gripStrengthKg: "28.5",
+        },
+      },
+      actor(),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    const [intakeNuevo] = await db
+      .select({
+        versionId: schema.evaluationBisIntake.bisConditionVersionId,
+        grip: schema.evaluationBisIntake.gripStrengthKg,
+      })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, res.value.newEvaluationId));
+
+    expect(Number(intakeNuevo.grip)).toBeCloseTo(28.5, 2);
+    // LA VERSION DEL CATALOGO NO CAMBIA: se corrige la respuesta, no el instrumento.
+    expect(intakeNuevo.versionId).toBe(intakeViejo.versionId);
+
+    // Y LA VIEJA QUEDA INTACTA. Es lo que hace que la correccion sea auditable: las dos versiones existen y se
+    // puede ver que cambio entre ellas.
+    const [intakeViejoDespues] = await db
+      .select({ grip: schema.evaluationBisIntake.gripStrengthKg })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, oldId));
+    expect(intakeViejoDespues.grip).toBe(intakeViejo.grip);
+  });
+
+  it("sin condiciones corregidas se copian tal cual, como antes", async () => {
+    // La conducta anterior no cambia: quien corrija solo una respuesta de encuesta no tiene que mandar las
+    // condiciones, y las de la evaluacion nueva son las mismas.
+    const oldId = await makeEvaluationWithDiagnosis("COPIA");
+    const [antes] = await db
+      .select({ grip: schema.evaluationBisIntake.gripStrengthKg })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, oldId));
+
+    const res = await correctEvaluation(baseInput(oldId), actor());
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    const [despues] = await db
+      .select({ grip: schema.evaluationBisIntake.gripStrengthKg })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, res.value.newEvaluationId));
+    expect(despues.grip).toBe(antes.grip);
+  });
+
   it("gate: sin cambios reales (mismo valor) se rechaza, no genera version identica", async () => {
     const oldId = await makeEvaluationWithDiagnosis("NOOP");
     // La respuesta actual es "original"; corregir a "original" es no-op.

@@ -21,10 +21,20 @@ import { writeMedidasDelProfesional } from "./data/medidas-profesional-writer";
 import { CORREGIBLES, RANGO_CORREGIBLE } from "./services/medidas-corregibles";
 import { writeBisConditionsIntake } from "./data/bis-intake-writer";
 import { canCaptureBisConditions } from "./policies/can-capture-bis-conditions";
+import { correctEvaluation } from "@/modules/corrections/services/correct-evaluation";
 import { saveBisConditionsSchema, validateBisConditionsCapture } from "./validations";
 
 // Resultado de la captura para la UI: si quedo contraindicada (bloquea el import), que
 // advertencias se reconocieron, y si habia una medicion previa pese a la contraindicacion.
+// LAS CONDICIONES CORREGIDAS. El motivo es OBLIGATORIO por la misma razon que en la correccion de encuesta: se
+// rehace una emision sellada, y sin motivo el registro no explica por que existen dos versiones.
+// SE EXTIENDE EL SCHEMA DE LA CAPTURA, no se escribe uno paralelo: asi la FORMA de las respuestas es
+// literalmente la misma en los dos caminos. Un schema propio, aunque naciera identico, se separaria del otro en
+// el primer cambio y una respuesta podria pasar al corregir y no al capturar.
+const corregirCondicionesSchema = saveBisConditionsSchema.extend({
+  motivo: z.string().trim().min(5, "Escribe el motivo de la corrección (al menos cinco letras)."),
+});
+
 export type SaveBisConditionsResult = {
   contraindicated: boolean;
   warnings: string[];
@@ -270,4 +280,76 @@ export async function saveMedidasProfesionalAction(
     if (e instanceof BisCorrectionError) return { error: e.message, success: null, warning: null };
     throw e;
   }
+}
+
+// ═══ CORREGIR LAS CONDICIONES DE LA TOMA, DESPUES DEL DIAGNOSTICO (Santiago, 2026-09-28) ═══
+//
+// EL CASO REAL, de una integrante: el paciente va al baño DESPUES de que ella ya guardo las condiciones, asi que
+// "fue al baño antes" queda mal. Con el diagnostico generado las condiciones quedan de solo lectura, y hasta hoy
+// no habia forma de arreglarlo.
+//
+// ── POR QUE NO ES UNA EDICION Y VA POR LA CORRECCION ──
+//
+// Porque esas condiciones ALIMENTARON el diagnostico: las advertencias de calidad matizan la lectura
+// bioelectrica y la contraindicacion decide si la medicion entra. Editarlas donde estaban dejaria un diagnostico
+// afirmando sobre una toma cuyas condiciones ya no son las que uso, que es justo lo que la maquinaria de
+// correccion existe para evitar: crea una VERSION NUEVA, recalcula el diagnostico, y la vieja queda reemplazada
+// y legible. El propio comentario de esa maquinaria lo anticipaba: "antropometria/condiciones reusan el
+// mecanismo con su propia UI luego".
+//
+// LA VALIDACION ES LA MISMA que en la captura (mismo catalogo activo, mismas advertencias, misma regla de las
+// condiciones femeninas segun el sexo del servidor). No se reimplementa: si se escribiera otra, una condicion
+// podria pasar al corregir y no al capturar.
+//
+// Y LA FUERZA PRENSIL NO VIAJA: salio de este formulario el 2026-09-07 y vive en Antropometria. El servicio la
+// conserva de la evaluacion vieja.
+export async function corregirCondicionesBisAction(
+  rawInput: unknown,
+): Promise<Result<{ newEvaluationId: string }>> {
+  const user = await requireUser();
+  // MISMA POLICY QUE CAPTURAR: quien puede responder las condiciones puede corregirlas. La autoridad FINA (que
+  // sea el profesional asignado y la evaluacion vigente) la impone el servicio de correccion, como en la
+  // correccion de encuesta.
+  if (!canCaptureBisConditions(user)) return err(appError("forbidden", "No autorizado."));
+
+  const parsed = corregirCondicionesSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return err(appError("validation", "Datos inválidos.", zodFields(parsed.error)));
+  }
+  const input = parsed.data;
+
+  const [catalog, sex] = await Promise.all([
+    getActiveBisConditionCatalog(),
+    getEvaluationPatientSex(input.evaluationId),
+  ]);
+  if (!catalog) return err(appError("internal", "No hay un catalogo de condiciones BIS activo."));
+
+  const validated = validateBisConditionsCapture(
+    catalog,
+    { evaluationId: input.evaluationId, answers: input.answers },
+    new Date().toISOString(),
+    sex === "F",
+  );
+  if (!validated.ok) return validated;
+
+  const ip = await getClientIp();
+  const res = await correctEvaluation(
+    {
+      evaluationId: input.evaluationId,
+      // NO se corrige ninguna respuesta de encuesta: lo que cambia son las condiciones.
+      correctedAnswers: [],
+      correctedConditions: {
+        answers: validated.value.answers,
+        contraindicated: validated.value.contraindicated,
+      },
+      reason: input.motivo,
+      triggerType: "correccion_profesional",
+      confirmed: true,
+    },
+    { actorId: user.id, actorEmail: user.email, ip: ip === "unknown" ? null : ip },
+  );
+  if (!res.ok) return res;
+
+  revalidatePath("/ani-bis-e/[id]", "page");
+  return ok({ newEvaluationId: res.value.newEvaluationId });
 }
