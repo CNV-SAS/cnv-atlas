@@ -195,3 +195,44 @@ preferible no ofrecer el domicilio a un destino antes que ofrecerlo y perder din
   emitir el documento fiscal necesita la configuración de producción, que está en el checklist de arranque.
 - **Desbloquear la venta bajo Distribución.** El mecanismo del recaudo ya existe, así que ahora es una
   decisión tuya, no una falta de construcción.
+
+---
+
+# Añadido el 29 (tarde), tras las respuestas de contabilidad
+
+**Migraciones: 193 en el repo.** Pendientes en la nube desde la 0186 (siete).
+
+## Parte 12 · El faltante se cobra a la indemnización, no al PVP
+
+1. Haz un conteo con faltante de un producto con PVP conocido (MULTICELL, 107.100).
+2. **Lo que tiene que decir tu pantalla de faltantes:** "valor de venta 107.100" y, cuando el caso quede
+   injustificado, **un cargo de 72.000**, no de 107.100.
+3. **Y tiene que explicar la cuenta:** "sale del valor sin IVA (90.000) menos tu descuento comercial del 20%:
+   no se te cobra el IVA, porque no hubo venta, ni el margen que habrías ganado."
+4. **Como admin**, en Revisión de inventario el caso dice las dos cifras: el valor de venta y lo que se le
+   cobraría.
+5. **EL CONTROL DE DINERO:** liquida a ese Integrante. El descuento tiene que ser **72.000**, y el IVA y la
+   retención siguen calculados sobre la comisión completa.
+6. **Un caso viejo ya liquidado no cambia.** Si tienes alguno, verifica que conserva su cifra: reescribirla
+   dejaría una liquidación girada que ya no cuadra.
+
+## Parte 13 · El flete se teclea por envío
+
+1. Marca "Enviar a domicilio". Ahora **no hay una tarifa fija**: hay un campo **"Cuánto cobra el
+   domiciliario"**, precargado con el costo sugerido de esa ciudad si lo tiene.
+2. Escribe 10.000. La cuenta que sale debajo tiene que decir: **10.000 del domiciliario · 10.300 de base ·
+   1.957 de IVA = 12.257**.
+3. **Y tiene que explicar el margen**: la diferencia es lo que se lleva la pasarela por cobrar el envío. Sin
+   esa frase parece un recargo inventado.
+4. Cambia el costo a 14.000 y verifica que la cuenta se rehace sola.
+5. **El control que importa:** cobra, y mira que el monto total sea el producto **más 12.257**, no más 10.000.
+
+## Parte 14 · El consolidado para pagarle al domiciliario
+
+1. Como **admin**, en **/comercial** tiene que salir **"Envíos a domicilio, para pagarle al domiciliario"**,
+   con dos cortes: el **cerrado** (el que toca pagar) y el **en curso**.
+2. Cada envío con su día, destino, si ya se entregó, lo que cobra el domiciliario y lo que se le cobró al
+   paciente.
+3. **El total que importa es el del domiciliario**, no el cobrado: es la cifra del soporte.
+4. **Y dice de quién es el documento:** lo emite Alegra (documento soporte o factura). Atlas pone el detalle,
+   no el papel.
