@@ -100,12 +100,23 @@ export function LoDeshechoSection({ datos }: { datos: LoDeshecho }) {
           <span className="text-sm font-medium text-foreground">Qué vuelve</span>
           <p className="max-w-prose text-xs text-muted-foreground">
             Unidades devueltas por producto. Un producto que vuelve mucho dice algo, y es información para la
-            dirección científica antes que para la comercial.
+            dirección científica antes que para la comercial.{" "}
+            {/* LOS DE PRUEBA SE MUESTRAN MARCADOS Y NO SE ESCONDEN (Santiago, 2026-09-30): filtrarlos dejaba
+                "5 devoluciones" arriba y una sola línea aquí, y dos cifras del mismo hecho que no cuadran se
+                leen como un defecto. Este bloque desglosa lo que la tarjeta ya contó, no cuenta otra cosa. */}
+            {datos.productosDevueltos.some((p) => p.esDePrueba) ? (
+              <>
+                Las líneas marcadas son de{" "}
+                <strong className="text-foreground">productos de prueba</strong>: se muestran para que la
+                cuenta cuadre con la de arriba, no porque sean operación.
+              </>
+            ) : null}
           </p>
           <ul className="flex flex-col gap-1">
             {datos.productosDevueltos.map((p) => (
               <li key={p.producto} className="text-sm text-muted-foreground">
-                <span className="text-foreground">{p.producto}</span>:{" "}
+                <span className="text-foreground">{p.producto}</span>
+                {p.esDePrueba ? <span className="text-xs"> (de prueba)</span> : null}:{" "}
                 <span className="tabular-nums">{p.unidades}</span>{" "}
                 {p.unidades === 1 ? "unidad" : "unidades"} en {p.veces}{" "}
                 {p.veces === 1 ? "devolución" : "devoluciones"}

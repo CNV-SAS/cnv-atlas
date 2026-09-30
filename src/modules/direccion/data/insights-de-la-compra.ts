@@ -66,6 +66,20 @@ export type ConversionDeProducto = {
   recomendadoSinPrescribir: number;
   /** En cuantas consultas se prescribio, lo hubiera recomendado el modelo o no. */
   prescritoEn: number;
+  /**
+   * De las prescritas, en cuantas el modelo NO lo habia propuesto.
+   *
+   * SE CALCULA PARA DECIRLO, no para una cifra nueva (Santiago, 2026-09-30). CURCUMIN salia "propuesto en
+   * 12, de esas sin prescribir 6, prescrito en 11" y la resta no daba: 12 menos 6 son 6, no 11. Las
+   * columnas estaban bien (prescribir algo que el modelo no propuso es legitimo, y hay consultas con
+   * prescripcion que no tienen informe), pero puestas una al lado de la otra INVITAN A RESTAR, y el lector
+   * concluye que hay un defecto donde no lo hay. Decir de donde salen los 5 que sobran es lo unico que lo
+   * corta.
+   *
+   * No puede ser negativo: lo recomendado-y-prescrito es un subconjunto de lo prescrito, y los dos ejes
+   * llevan exactamente el mismo filtro de consulta.
+   */
+  prescritoSinProponer: number;
   /** En cuantas de esas se compro (aunque fuera en otra venta posterior). */
   compradoEn: number;
   /** Cuantas veces se compro SIN estar prescrito en la consulta a la que se ato la venta. */
@@ -318,6 +332,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       producto: p.producto,
       recomendadoEn: 0,
       recomendadoSinPrescribir: 0,
+      prescritoSinProponer: 0,
       prescritoEn: Number(p.prescrito_en),
       compradoEn: Number(p.comprado_en),
       compradoFueraDelPlan: Number(p.fuera),
@@ -328,6 +343,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       producto,
       recomendadoEn: 0,
       recomendadoSinPrescribir: 0,
+      prescritoSinProponer: 0,
       prescritoEn: 0,
       compradoEn: 0,
       compradoFueraDelPlan: 0,
@@ -335,6 +351,12 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
     fila.recomendadoEn = veces;
     fila.recomendadoSinPrescribir = sinPrescribir.get(producto) ?? 0;
     filas.set(producto, fila);
+  }
+  // DE DONDE SALE LO QUE SOBRA AL RESTAR: lo prescrito menos lo que el modelo habia propuesto Y se
+  // prescribio. Es el numero que la tabla no decia y que hacia parecer que CURCUMIN no cuadraba.
+  for (const fila of filas.values()) {
+    const propuestoYPrescrito = fila.recomendadoEn - fila.recomendadoSinPrescribir;
+    fila.prescritoSinProponer = Math.max(0, fila.prescritoEn - propuestoYPrescrito);
   }
 
   return {

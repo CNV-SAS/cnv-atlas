@@ -95,6 +95,42 @@ export default async function DireccionPage() {
         ))}
       </div>
 
+      {/* ═══ CUÁLES SON ESOS PRODUCTOS Y ESAS UBICACIONES (Santiago, 2026-09-30) ═══
+
+          La tarjeta decía "6 productos en 9 ubicaciones" y la pregunta inmediata era cuáles. Un agregado que
+          no se puede abrir obliga a creérselo, y creérselo es justo lo que no queremos de una cifra. El
+          desglose sale de las MISMAS filas que el total, así que no pueden discrepar. */}
+      {d.inventoryByProduct.length > 0 ? (
+        <details className="rounded-xl border border-border bg-card px-4 py-3">
+          <summary className="cursor-pointer text-sm text-foreground">
+            Qué hay en el inventario, y dónde
+          </summary>
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Por producto</span>
+              {d.inventoryByProduct.map((p) => (
+                <span key={p.nombre} className="text-sm text-foreground">
+                  {p.nombre} <span className="tabular-nums text-muted-foreground">{p.unidades}</span>
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Por ubicación</span>
+              {d.inventoryByLocation.map((l) => (
+                <span key={l.nombre} className="text-sm text-foreground">
+                  {l.nombre} <span className="tabular-nums text-muted-foreground">{l.unidades}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+          <p className="mt-3 max-w-prose text-xs text-muted-foreground">
+            Solo lo que tiene saldo: una fila en cero existe porque alguna vez hubo unidades ahí, y listarla
+            diría que hay producto en una bodega donde no hay ninguno. Sin los productos de prueba, igual que
+            la tarjeta.
+          </p>
+        </details>
+      ) : null}
+
       {/* VA DEBAJO DE LAS CIFRAS DE DINERO, no arriba: el dinero es lo que Dirección viene a ver todos los
           días, y esto es análisis. Poner el análisis primero le quitaría el sitio a lo operativo. */}
       <InsightsDeLaCompraSection datos={insights} />

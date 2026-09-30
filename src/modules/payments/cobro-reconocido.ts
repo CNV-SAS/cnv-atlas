@@ -59,5 +59,9 @@ export function brutoReconocido(e: {
 //
 // Es lo que ya paso con "45 referencias": dos cifras del mismo hecho en dos pantallas. El filtro vive aqui
 // para que no haya un tercer sitio que lo olvide.
-export const EMBED_PRODUCTO_NO_DE_PRUEBA = "nutraceuticals!inner(is_test)";
+// TRAE TAMBIEN EL NOMBRE desde el 2026-09-30, y por eso no se escribio un embed aparte: el desglose de
+// Direccion ("cuales son esos 6 productos") necesita el nombre, y dos embeds de la misma tabla en la misma
+// consulta chocan. Antes de esto el lector tenia su propia copia del embed, y una copia es como se llega a
+// que una pantalla excluya lo de prueba y la otra no. A Inicio le sobra el nombre y no le cuesta nada.
+export const EMBED_PRODUCTO_NO_DE_PRUEBA = "nutraceuticals!inner(name, is_test)";
 export const COLUMNA_PRODUCTO_DE_PRUEBA = "nutraceuticals.is_test";

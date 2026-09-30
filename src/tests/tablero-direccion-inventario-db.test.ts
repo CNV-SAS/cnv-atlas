@@ -59,4 +59,30 @@ describe.skipIf(!HAS_DB)("inventario del tablero de Direccion (BD real)", () => 
     expect(real.inventoryProducts).toBe(antes.inventoryProducts + 1);
     await db.execute(dsql`update nutraceuticals set is_test = true where id = ${prod}`);
   });
+
+  // ═══ EL DESGLOSE TIENE QUE CUADRAR CON SU PROPIA CIFRA (Santiago, 2026-09-30) ═══
+  //
+  // "6 productos en 9 ubicaciones" y la pregunta inmediata era cuales. Ahora se puede abrir, y al abrirlo
+  // aparece el riesgo nuevo: que el desglose y el total discrepen. Aqui no pueden, porque salen de las
+  // mismas filas, y esto es lo que lo mantiene asi.
+  //
+  // Y ADEMAS PRUEBA EL EMBED, que es de la familia que tsc no ve: `inventory_locations!inner(name)` es un
+  // segundo embed sobre la misma consulta, y una relacion ambigua solo revienta contra PostgREST de verdad.
+  it("el desglose cuadra con el total, y sus dos ejes con sus conteos", async () => {
+    const { getDireccionDashboard } = await import("@/modules/direccion/data/dashboard-reader");
+    const d = await getDireccionDashboard();
+
+    const porProducto = d.inventoryByProduct.reduce((n, p) => n + p.unidades, 0);
+    const porUbicacion = d.inventoryByLocation.reduce((n, l) => n + l.unidades, 0);
+    // El total incluye filas en cero y el desglose no, asi que la igualdad se exige contra la suma de lo
+    // que tiene saldo, que es lo que el desglose promete mostrar.
+    expect(porProducto).toBe(porUbicacion);
+    expect(porProducto).toBeLessThanOrEqual(d.inventoryUnits);
+    expect(d.inventoryByProduct.length).toBe(d.inventoryProducts);
+    expect(d.inventoryByLocation.length).toBe(d.inventoryLocations);
+    // Nombres de verdad: si el embed dejara de traerlos, todas las lineas dirian "(sin nombre)" y la
+    // pantalla seguiria pareciendo correcta.
+    for (const p of d.inventoryByProduct) expect(p.nombre).not.toBe("(sin nombre)");
+    for (const l of d.inventoryByLocation) expect(l.nombre).not.toBe("(sin nombre)");
+  });
 });
