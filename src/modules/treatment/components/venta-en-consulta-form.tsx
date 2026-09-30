@@ -25,8 +25,8 @@ export type ProductoVendible = {
   enCentral: number;
 };
 
-const checkoutInicial: PaymentFormState = { error: null, success: null, checkoutUrl: null, duplicateWarning: null };
-const efectivoInicial: CashSaleFormState = { error: null, success: null, duplicateWarning: null, pendingLinkWarning: null };
+const checkoutInicial: PaymentFormState = { error: null, success: null, checkoutUrl: null, duplicateWarning: null, outOfPlanWarning: null };
+const efectivoInicial: CashSaleFormState = { error: null, success: null, duplicateWarning: null, pendingLinkWarning: null, outOfPlanWarning: null };
 
 // ═══ COBRAR EN CONSULTA (Bloque 3, sesion 2) ═══
 //

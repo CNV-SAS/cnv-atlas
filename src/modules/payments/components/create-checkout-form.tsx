@@ -19,6 +19,7 @@ const initial: PaymentFormState = {
   success: null,
   checkoutUrl: null,
   duplicateWarning: null,
+  outOfPlanWarning: null,
 };
 
 // Mismo estilo que los <select> nativos del resto de formularios (alineado al Input).
@@ -199,6 +200,29 @@ export function CreateCheckoutForm({
           <p className="w-full text-sm text-attention">{MENSAJE_MINIMO_WOMPI}</p>
         ) : null}
 
+        {/* ═══ SE VENDE ALGO FUERA DEL PLAN DE ESA CONSULTA (2026-09-30) ═══
+            NO es un rechazo: la venta queda ATADA a la consulta y contada como compra fuera del plan, que es
+            lo correcto si viene del seguimiento. Marcarla "sin consulta" para poder cobrarla destruiría el
+            dato: ya no se sabría de qué plan se apartó.
+        
+            LA `key` LO SEPARA del botón de enviar (hazard 1 de CLAUDE.md): comparten formulario, y sin keys
+            distintas React reutiliza el nodo y el clic puede ejecutar la acción por defecto del otro. */}
+        {state.outOfPlanWarning ? (
+          <div className="flex w-full flex-col gap-2 rounded-lg bg-attention-bg p-3 text-sm">
+            <p className="text-attention">{state.outOfPlanWarning}</p>
+            <Button
+              key="confirmar-fuera-del-plan"
+              type="submit"
+              name="fueraDelPlanConfirmado"
+              value="true"
+              variant="outline"
+              disabled={pending}
+              className="self-start"
+            >
+              Registrarlo así
+            </Button>
+          </div>
+        ) : null}
         {state.duplicateWarning ? (
           <div className="flex w-full flex-col gap-2 rounded-lg bg-attention-bg p-3 text-sm">
             <p className="text-attention">{state.duplicateWarning}</p>

@@ -15,7 +15,7 @@ import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamie
 import type { CashSaleFormState } from "../validations";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 
-const initial: CashSaleFormState = { error: null, success: null, duplicateWarning: null, pendingLinkWarning: null };
+const initial: CashSaleFormState = { error: null, success: null, duplicateWarning: null, pendingLinkWarning: null, outOfPlanWarning: null };
 
 const selectClass =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
@@ -228,6 +228,29 @@ export function RegisterCashSaleForm({
           {pending ? "Registrando..." : "Registrar la venta"}
         </Button>
 
+        {/* ═══ SE VENDE ALGO FUERA DEL PLAN DE ESA CONSULTA (2026-09-30) ═══
+            NO es un rechazo: la venta queda ATADA a la consulta y contada como compra fuera del plan, que es
+            lo correcto si viene del seguimiento. Marcarla "sin consulta" para poder cobrarla destruiría el
+            dato: ya no se sabría de qué plan se apartó.
+        
+            LA `key` LO SEPARA del botón de enviar (hazard 1 de CLAUDE.md): comparten formulario, y sin keys
+            distintas React reutiliza el nodo y el clic puede ejecutar la acción por defecto del otro. */}
+        {state.outOfPlanWarning ? (
+          <div className="flex w-full flex-col gap-2 rounded-lg bg-attention-bg p-3 text-sm">
+            <p className="text-attention">{state.outOfPlanWarning}</p>
+            <Button
+              key="confirmar-fuera-del-plan"
+              type="submit"
+              name="fueraDelPlanConfirmado"
+              value="true"
+              variant="outline"
+              disabled={pending}
+              className="self-start"
+            >
+              Registrarlo así
+            </Button>
+          </div>
+        ) : null}
         {state.pendingLinkWarning ? (
           <div className="flex w-full flex-col gap-2 rounded-lg bg-attention-bg p-3 text-sm">
             <p className="text-attention">{state.pendingLinkWarning}</p>

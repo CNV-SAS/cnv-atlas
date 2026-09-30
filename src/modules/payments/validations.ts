@@ -48,6 +48,11 @@ export const createCheckoutSchema = z.object({
    * es lo que pasaba hasta hoy.
    */
   ventaSueltaMotivo: z.string().trim().max(200).optional(),
+  /**
+   * El profesional CONFIRMO que vende algo que esa consulta no prescribio (2026-09-30). La venta queda atada
+   * y contada aparte: que estuviera fuera del plan se DERIVA de sus lineas, no se guarda en una columna.
+   */
+  fueraDelPlanConfirmado: z.coerce.boolean().optional(),
   domicilio: z
     .object({
       ciudad: z.string().trim().min(1, "Elige la ciudad de destino.").max(120),
@@ -115,6 +120,9 @@ export type PaymentFormState = {
   checkoutUrl: string | null;
   // Aviso de checkout duplicado vivo: NO se creó, el profesional confirma con "Generar de todos modos".
   duplicateWarning: string | null;
+  // Se vende algo que esa consulta NO prescribió: NO se creó, el profesional confirma. La venta queda atada
+  // y contada aparte, que es lo que permite medir "compran fuera del plan" (2026-09-30).
+  outOfPlanWarning: string | null;
 };
 
 // Estado del formulario de venta en efectivo (useActionState). Al exito confirma con el monto sellado.
@@ -127,6 +135,8 @@ export type CashSaleFormState = {
   // El paciente tiene un link de pago PENDIENTE con alguno de estos productos: NO se registro. El profesional
   // confirma con "Anular el link y cobrar en efectivo" (decision (b) de Santiago, 2026-09-14).
   pendingLinkWarning: string | null;
+  // Igual que en el checkout: se vende algo que esa consulta no prescribió y el profesional confirma.
+  outOfPlanWarning: string | null;
 };
 
 // Estado de los botones que actuan sobre UNA venta (anular el link, entregar, resolver una revision). Tiene

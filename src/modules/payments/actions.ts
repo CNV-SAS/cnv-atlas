@@ -23,6 +23,7 @@ import { registrarRetracto, RetractoError } from "./data/retracto-writer";
 import { MODALIDAD_LABEL } from "./modalidad";
 import { cambiarModalidad, ModalidadError } from "./data/modalidad-writer";
 import { canViewRevenue } from "./policies/can-view-revenue";
+import { productosFueraDelPlan } from "./data/tratamientos-del-paciente";
 import {
   CuentaNoEmitibleError,
   emitirCuenta,
@@ -120,6 +121,25 @@ export async function createCheckoutAction(
   }
 }
 
+/**
+ * EL AVISO DE QUE SE VENDE ALGO FUERA DEL PLAN DE ESA CONSULTA (2026-09-30).
+ *
+ * Va en la accion y no en el servicio por la MISMA razon que el aviso de duplicado, que ya vive aqui: es un
+ * aviso con confirmacion, no un rechazo, y el servicio no puede devolver "medio si". El servicio conserva su
+ * guard como RED: si llega una peticion sin confirmar, la rechaza igual.
+ *
+ * Devuelve el texto del aviso, o null si no hay nada que avisar.
+ */
+async function avisoDeFueraDelPlan(formData: FormData, lineas: { nutraceuticalId: string }[]): Promise<string | null> {
+  const treatmentId = String(formData.get("treatmentId") ?? "");
+  if (!treatmentId) return null;
+  if (String(formData.get("fueraDelPlanConfirmado") ?? "") === "true") return null;
+  const fuera = await productosFueraDelPlan(treatmentId, lineas.map((l) => l.nutraceuticalId));
+  if (fuera.length === 0) return null;
+  const lista = fuera.join(", ");
+  return `${lista} ${fuera.length === 1 ? "no estaba prescrito" : "no estaban prescritos"} en la consulta que elegiste. Puedes registrarlo igual: la venta queda atada a esa consulta y contada como compra fuera del plan, que es lo correcto si viene de su seguimiento.`;
+}
+
 // ----- Adaptador de formulario (useActionState) para la UI de B6.4 -----
 
 export async function createCheckoutFormAction(
@@ -150,21 +170,28 @@ export async function createCheckoutFormAction(
         error: null,
         success: null,
         checkoutUrl: null,
+        outOfPlanWarning: null,
         duplicateWarning: `Este paciente ya tiene un cobro pendiente de ${dup.product}, generado ${cuando} y aún sin pagar. Si es a propósito, genera otro; si no, comparte el que ya existe.`,
       };
     }
+  }
+
+  const fueraDelPlan = await avisoDeFueraDelPlan(formData, lineas);
+  if (fueraDelPlan) {
+    return { error: null, success: null, checkoutUrl: null, duplicateWarning: null, outOfPlanWarning: fueraDelPlan };
   }
 
   const result = await createCheckoutAction({
     patientId,
     items: lineas,
     treatmentId,
+    fueraDelPlanConfirmado: String(formData.get("fueraDelPlanConfirmado") ?? "") === "true",
     ventaSueltaMotivo: String(formData.get("ventaSueltaMotivo") ?? "").trim() || undefined,
     desdeLaBodega: String(formData.get("desdeLaBodega") ?? "") === "true",
     domicilio: leerDomicilio(formData),
   });
   if (!result.ok) {
-    return { error: result.error.message, success: null, checkoutUrl: null, duplicateWarning: null };
+    return { error: result.error.message, success: null, checkoutUrl: null, duplicateWarning: null, outOfPlanWarning: null };
   }
   // Desde Tratamiento, la seccion de la venta muestra el QR del link recien creado.
   if (evaluationId) revalidatePath(`/ani-bis-e/${evaluationId}`);
@@ -173,6 +200,7 @@ export async function createCheckoutFormAction(
     success: "Checkout creado. Comparte el link con el paciente.",
     checkoutUrl: result.value.checkoutUrl,
     duplicateWarning: null,
+    outOfPlanWarning: null,
   };
 }
 
@@ -207,7 +235,7 @@ export async function registerCashSaleFormAction(
   _prev: CashSaleFormState,
   formData: FormData,
 ): Promise<CashSaleFormState> {
-  const vacio = { error: null, success: null, duplicateWarning: null, pendingLinkWarning: null };
+  const vacio = { error: null, success: null, duplicateWarning: null, pendingLinkWarning: null, outOfPlanWarning: null };
   const { user, error: authzError } = await requireCheckoutCreator();
   if (authzError) return { ...vacio, error: authzError.message };
 
@@ -216,8 +244,12 @@ export async function registerCashSaleFormAction(
   const confirmDuplicate = String(formData.get("confirmDuplicate") ?? "") === "true";
   const anularLinks = String(formData.get("anularLinks") ?? "") === "true";
 
+  const fueraDelPlan = await avisoDeFueraDelPlan(formData, lineas);
+  if (fueraDelPlan) return { ...vacio, outOfPlanWarning: fueraDelPlan };
+
   const parsed = registerCashSaleSchema.safeParse({
     patientId,
+    fueraDelPlanConfirmado: String(formData.get("fueraDelPlanConfirmado") ?? "") === "true",
     idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
     items: lineas,
     treatmentId: String(formData.get("treatmentId") ?? "") || undefined,

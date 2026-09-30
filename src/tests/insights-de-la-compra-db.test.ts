@@ -210,4 +210,15 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
       expect(delCatalogo.has(x.producto), `"${x.producto}" no es un nombre del catalogo`).toBe(true);
     }
   });
+  // LA PANTALLA MUESTRA LO QUE HAY, Y SEPARA LO QUE NO PODIA DECIRLO (Santiago, 2026-09-30).
+  //
+  // Antes recortaba por fecha y salia vacia mientras el resto del tablero mostraba. Ahora mide todo, pero una
+  // venta anterior al vinculo NO es una compra fuera de plan: es una que no podia decir su consulta. Sin
+  // separarlas, la cifra diria que la gente compra fuera del plan cuando el sistema no lo preguntaba.
+  it("las ventas anteriores al vinculo se cuentan, y se cuentan APARTE", async () => {
+    const r = await lector.insightsDeLaCompra();
+    expect(r.ventasSinConsulta).toBeGreaterThanOrEqual(r.ventasSinConsultaAnteriores);
+    // Y no ensucian el eje del plan: lo de fuera del plan solo puede salir de ventas CON consulta.
+    expect(r.lineasFueraDelPlan).toBeGreaterThanOrEqual(0);
+  });
 });

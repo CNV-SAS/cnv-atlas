@@ -106,19 +106,25 @@ async function resolveSale(
     }
     const prescritos = new Set(t.prescritos);
     if (input.items.some((it) => !prescritos.has(it.nutraceuticalId))) {
-      // ═══ EL MENSAJE DICE LA SALIDA (smoke del 2026-09-29) ═══
+      // ═══ SE AVISA Y SE CONFIRMA, NO SE BLOQUEA (decisión de Santiago, 2026-09-30) ═══
       //
-      // Decía solo la regla, y Santiago lo leyó como un bloqueo sin salida: se quedó sin poder registrar una
-      // venta de un producto que ninguna consulta prescribió. La salida EXISTE y es la correcta para ese
-      // caso, pero el mensaje no la nombraba. Un mensaje que no dice qué hacer es un bloqueo, aunque no lo
-      // sea.
+      // La regla venía del Bloque 3 y era correcta EN SU CONTEXTO: la venta que nace en Tratamiento solo
+      // ofrece lo prescrito, así que ahí un producto de fuera no es un caso legítimo. Al volver obligatorio
+      // el tratamiento en /pagos, esa regla pasó a aplicarse donde el caso SÍ es legítimo: el paciente vuelve
+      // y compra algo que viene de su seguimiento y no del plan de esa consulta.
       //
-      // LA REGLA NO SE TOCA AQUÍ: si conviene que avise en vez de bloquear cuando la venta nace en /pagos es
-      // una decisión de Santiago, y está reportada aparte (LA_REGLA_DE_LO_PRESCRITO).
-      throw new CheckoutError(
-        "Ese producto no está prescrito en la consulta que elegiste. Si la compra no sale de ese plan, marca " +
-          '"No sale de ninguna consulta" y escribe por qué: la venta se registra igual.',
-      );
+      // Y FORZARLO A "SIN CONSULTA" DESTRUÍA EL DATO: "compran fuera de lo prescrito" solo se puede medir si
+      // la compra CONSERVA su consulta. Marcándola suelta ya no se sabe de qué plan se apartó.
+      //
+      // ESTO ES LA RED, NO EL AVISO. El aviso con su botón vive en la acción, como el de duplicado, porque un
+      // aviso con confirmación no se puede devolver desde aquí: el servicio solo puede decir sí o no. Aquí se
+      // rechaza lo que llegue SIN confirmar, que es lo único que una petición armada a mano puede saltarse.
+      if (!input.fueraDelPlanConfirmado) {
+        throw new CheckoutError(
+          "Ese producto no está prescrito en la consulta que elegiste. Confirma que quieres registrarlo así, " +
+            'o marca "No sale de ninguna consulta" y escribe por qué.',
+        );
+      }
     }
   }
 

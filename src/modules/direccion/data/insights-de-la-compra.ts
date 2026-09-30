@@ -31,7 +31,17 @@ import { resolveRecommendation } from "@/modules/treatment/nutraceuticals-recomm
 // Y SOLO MIDE DESDE EL 2026-09-29: antes de ese dia una venta de /pagos nacia sin consulta, asi que no hay
 // forma de saber de que plan salio. Atarlas hacia atras seria inventar.
 
-/** El dia en que la venta empezo a decir de que consulta sale. Antes no hay nada que medir. */
+/**
+ * El dia en que la venta empezo a decir de que consulta sale.
+ *
+ * YA NO RECORTA LO QUE SE MUESTRA (Santiago, 2026-09-30): la pantalla decia "todavia no hay ventas desde el
+ * 29" y no mostraba nada, mientras las demas cifras del tablero si muestran lo que hay. Esconder los datos
+ * para no mentir es otra forma de no informar.
+ *
+ * Asi que se mide TODO y se DICE cuanto es anterior al vinculo: una venta de antes del 29 no podia decir su
+ * consulta, y contarla como "compra sin consulta" a secas haria creer que la gente compra fuera de plan
+ * cuando lo que pasa es que el sistema no lo preguntaba. La cifra se muestra, y su asterisco tambien.
+ */
 export const DESDE_QUE_HAY_VINCULO = "2026-09-29";
 
 export type ConversionDeProducto = {
@@ -50,6 +60,12 @@ export type InsightsDeLaCompra = {
   ventasConConsulta: number;
   /** Ventas pagadas SIN consulta, con su motivo agrupado. */
   ventasSinConsulta: number;
+  /**
+   * De las que no traen consulta, cuantas son ANTERIORES al dia en que se empezo a preguntar. No es lo mismo
+   * que una compra sin consulta deliberada: esas no podian decirlo, y sin separarlas la cifra haria creer que
+   * la gente compra fuera de plan cuando el sistema no lo preguntaba.
+   */
+  ventasSinConsultaAnteriores: number;
   motivosDeVentaSuelta: { motivo: string; veces: number }[];
   /** Lineas compradas que SI estaban prescritas en su consulta, y las que no. */
   lineasDentroDelPlan: number;
@@ -70,14 +86,20 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
            count(*) filter (where t.treatment_id is null)::int as sin
       from transactions t
      where t.status = 'paid'
-       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date`);
+`);
+
+  const [anteriores] = await db.execute<{ n: number }>(sql`
+    select count(*)::int as n
+      from transactions t
+     where t.status = 'paid' and t.treatment_id is null
+       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date < ${desde}::date`);
 
   const motivos = await db.execute<{ motivo: string; veces: number }>(sql`
     select coalesce(nullif(btrim(t.sin_tratamiento_motivo), ''), '(sin motivo escrito)') as motivo,
            count(*)::int as veces
       from transactions t
      where t.status = 'paid' and t.treatment_id is null
-       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date
+
      group by 1 order by 2 desc limit 20`);
 
   // ── 2. LAS LINEAS: DENTRO O FUERA DE LO PRESCRITO EN ESA CONSULTA ──
@@ -92,7 +114,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       left join treatment_nutraceuticals tn
              on tn.treatment_id = t.treatment_id and tn.nutraceutical_id = ti.nutraceutical_id
      where t.status = 'paid' and t.treatment_id is not null
-       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date`);
+`);
 
   // ── 3. CUANTO TARDA EN COMPRAR DESDE LA CONSULTA ──
   //
@@ -106,7 +128,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       from transactions t
       join treatments tr on tr.id = t.treatment_id
      where t.status = 'paid' and t.treatment_id is not null
-       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date`);
+`);
 
   // ── 4. POR PRODUCTO: PRESCRITO, COMPRADO, Y COMPRADO FUERA DEL PLAN ──
   const porProducto = await db.execute<{
@@ -119,14 +141,14 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       select tn.nutraceutical_id, tn.treatment_id
         from treatment_nutraceuticals tn
         join treatments tr on tr.id = tn.treatment_id
-       where (coalesce(tr.approved_at, tr.created_at) at time zone 'America/Bogota')::date >= ${desde}::date
+
     ),
     compras as (
       select ti.nutraceutical_id, t.treatment_id
         from transaction_items ti
         join transactions t on t.id = ti.transaction_id
        where t.status = 'paid' and t.treatment_id is not null
-         and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date
+  
     )
     select n.name as producto,
            count(distinct p.treatment_id)::int as prescrito_en,
@@ -162,7 +184,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       join diagnoses d on d.evaluation_id = e.id
       join treatments tr on tr.diagnosis_id = d.id
      where r.snapshot->>'nutraceuticos' is not null
-       and (coalesce(tr.approved_at, tr.created_at) at time zone 'America/Bogota')::date >= ${desde}::date`);
+`);
 
   const catalogo = await db.execute<{ id: string; name: string }>(sql`
     select id, name from nutraceuticals where coalesce(is_test, false) = false`);
@@ -199,6 +221,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
     desde,
     ventasConConsulta: Number(conteo?.con ?? 0),
     ventasSinConsulta: Number(conteo?.sin ?? 0),
+    ventasSinConsultaAnteriores: Number(anteriores?.n ?? 0),
     motivosDeVentaSuelta: motivos.map((m) => ({ motivo: m.motivo, veces: Number(m.veces) })),
     lineasDentroDelPlan: Number(lineas?.dentro ?? 0),
     lineasFueraDelPlan: Number(lineas?.fuera ?? 0),
