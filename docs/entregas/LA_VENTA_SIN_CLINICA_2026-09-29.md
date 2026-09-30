@@ -92,3 +92,49 @@ La diferencia no es de formulario: es de quién dice el dato y bajo qué instrum
 **No inferir el consumo de lo comprado.** Sería un dato derivado que se vería igual que un dato medido, y el
 día que alguien saque una conclusión científica de ahí, no sabrá que la base era una suposición. Si no se sabe
 qué tomó, el sistema debe decir que no se sabe.
+
+---
+
+# CONSTRUIDO (tarde del 29) · y los insights que Santiago pregunta
+
+## Lo que se hizo
+
+**El origen de la compra es obligatorio en /pagos**, con la forma que la verificación impuso:
+
+- **Ninguno preseleccionado**, y cada opción muestra **su fecha** y lo que prescribió. Lo que hay que evitar no
+  es que la venta quede suelta: es que se elija cualquiera para poder cobrar.
+- **Los borradores se ofrecen marcados** ("consulta en curso"). Exigir solo aprobados dejaba sin opción al
+  paciente cuya consulta está abierta, y entonces se elegiría "suelta" por no tener alternativa.
+- **Una consulta de más de seis meses avisa.** No bloquea: puede ser correcto (sigue el mismo plan) o una
+  mentira, y eso lo decide quien atendió, que para decidirlo necesita ver la fecha.
+- **Lo obligatorio no es el tratamiento: es decir por qué no hay uno**, con motivo, sellado en la venta.
+
+## Los insights: qué se puede sacar ya y qué no
+
+### Ya se puede, con lo guardado
+
+| Pregunta | De dónde sale |
+| --- | --- |
+| Cuántos pacientes compran lo que el modelo recomendó | `treatment_nutraceuticals` (lo prescrito) contra las líneas de la venta atada a ese tratamiento |
+| Cuántos compran **fuera** del modelo | Las líneas de la venta que **no** están entre lo prescrito de su tratamiento |
+| Qué producto se prescribe mucho y se compra poco | Lo mismo, agrupado por producto: es la tasa de conversión de cada prescripción |
+| Cuánto tarda en comprar desde la consulta | La fecha de la venta menos la del tratamiento |
+| Qué profesional convierte más | Agrupando por `professional_id` |
+| Y quién compra **sin consulta**, y por qué | `sin_tratamiento_motivo`, desde hoy |
+
+**Sí, todo eso ya está en la base.** Solo faltaría organizarlo, como dices: es una pantalla de lectura, no
+datos nuevos. **Con una condición:** solo vale para las ventas **desde hoy**. Las anteriores nacieron sin
+tratamiento y no hay forma de saber de qué consulta salieron; atarlas después sería inventar.
+
+### Todavía no se puede, y no es cosa de organizar
+
+| Pregunta | Qué falta |
+| --- | --- |
+| **¿Le sirvió?** | Falta saber **qué tomó**. `nutraceutical_usage` sigue con 0 filas y `registerUsageAction` sin pantalla |
+| ¿Cuánto tomó y por cuánto tiempo | Lo mismo |
+| ¿Abandonó el producto y por qué | Lo mismo |
+
+**Comprar no es tomar**, y esa es la frontera entre un insight comercial y uno científico. Lo de arriba
+responde *"¿el modelo vende?"*. Lo de abajo responde *"¿el modelo funciona?"*, y para eso hace falta el
+registro de consumo en el seguimiento, con la advertencia de Regla 0 que ya está escrita: preguntárselo al
+**profesional** no toca la encuesta; al **paciente**, sí, y eso va a Gildardo.
