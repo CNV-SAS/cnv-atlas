@@ -609,3 +609,70 @@ con alcances distintos.
 La tarjeta decía "6 productos en 9 ubicaciones" sin decir cuáles. Debajo de las cifras hay ahora un
 desplegable **"Qué hay en el inventario, y dónde"**, con las unidades por producto y por ubicación. Sale de
 las **mismas filas** que la tarjeta, así que no pueden discrepar, y solo lista lo que tiene saldo.
+
+---
+
+# R13 · Lo que salió del repaso de las partes 1 y 2
+
+**Cinco arreglos. Vuelve a cargar antes de seguir.**
+
+## 1. "Tu mes" se contradecía a sí mismo
+
+Registrar la venta retroactiva de 30.000 no movía **Ventas** y sí subía **Tu comisión** 5.042, en la misma
+pantalla. La comisión se anclaba a la fecha de **su fila** (hoy) y las ventas a la fecha de **la venta**
+(enero). Ahora las dos miran la fecha de la venta.
+
+**Lo que tienes que ver ahora:** una venta retroactiva con fecha de un mes anterior **no mueve ninguna de las
+dos** tarjetas de "Tu mes", y sí mueve el **ingreso bruto** de Dirección, que es de todo el histórico. Si
+quieres verla en "Tu mes", la fecha tiene que ser de este mes.
+
+*(Ojo con lo que registraste: la lista dice `2/1/2026`, o sea 2 de enero, aunque la factura se llame
+"30 SEPTIEMBRE". Si querías el 30 de septiembre, revisa el campo de la fecha.)*
+
+## 2. La venta que no pudo descontar ya llega a la bandeja
+
+La LUVIA quedó "no alcanzó el saldo", que es lo previsto. Lo que no estaba previsto: la bandeja de **ventas por
+revisar** miraba los últimos 30 días por la fecha **de la venta**, y una retroactiva nace con fecha vieja, así
+que entraba ya vencida y no aparecía nunca. Ahora la ventana mira **cuándo se registró**.
+
+**Compruébalo:** esa venta de LUVIA tiene que aparecer en ventas por revisar. Es la que dice que la vitrina
+está contando una unidad que salió hace meses.
+
+## 3. La venta retroactiva ya pide de qué consulta sale
+
+Con la misma salida de "no sale de ninguna consulta" y su motivo. En una venta de hace meses lo normal es la
+salida, y está bien: lo que no puede pasar es que quede suelta sin que nadie lo diga.
+
+**Compruébalo:** intenta registrar una sin elegir ni marcar la salida. Tiene que rechazarla con el mismo
+mensaje que /pagos.
+
+## 4. La devolución parcial ya no pide conciliar nada
+
+Decía *"el débito difiere del valor de la venta en 11.900 menos... la nota crédito va solo por el valor de la
+venta"*, mientras el mensaje de la devolución decía *"emitir la nota crédito por 11.900"*. **Sobre el importe
+de un documento fiscal, y quien siguiera el panel la habría emitido por el doble.** Ese aviso es de un
+contracargo (donde se disputa la venta entera); en una devolución parcial el débito menor **es** la definición.
+
+## 5. "Por qué" pasó a ser "La nota de cada caso"
+
+Las líneas *"Devolución de 1 de 2 unidades de la línea"* las escribe el sistema: **el formulario de devolución
+no pide motivo.** Ahora se marcan como automáticas y la pantalla lo dice. Si quieres saber **por qué** vuelve
+un producto, hay que pedirlo al registrar la devolución: es una decisión tuya, no la tomo yo.
+
+## Y para responder las dos del inventario, con la base
+
+```sql
+-- De dónde salieron las 90 de ADAPTO-STRESS, que NO estaban en la carga inicial
+SELECT m.created_at::date AS dia, l.name AS ubicacion, m.type, m.delta, m.reason
+  FROM nutraceutical_stock_movements m
+  JOIN nutraceuticals n ON n.id = m.nutraceutical_id
+  JOIN inventory_locations l ON l.id = m.location_id
+ WHERE n.name = 'ADAPTO-STRESS' ORDER BY m.created_at;
+
+-- Y por qué LUVIA sigue en 84 habiendo vendido una
+SELECT m.created_at::date AS dia, l.name AS ubicacion, m.type, m.delta, m.reason
+  FROM nutraceutical_stock_movements m
+  JOIN nutraceuticals n ON n.id = m.nutraceutical_id
+  JOIN inventory_locations l ON l.id = m.location_id
+ WHERE n.name = 'LUVIA' ORDER BY m.created_at;
+```
