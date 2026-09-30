@@ -27,6 +27,7 @@ const LECTORES_DE_CIFRAS = new Map<string, string>([
   ["src/modules/direccion/data/dashboard-reader.ts", "el bruto, el ingreso de CNV y las comisiones de Direccion"],
   ["src/modules/dashboard/data/tablero-reader.ts", "la comision y las ventas del mes en Inicio"],
   ["src/modules/direccion/data/insights-de-la-compra.ts", "lo prescrito contra lo comprado"],
+  ["src/modules/direccion/data/lo-deshecho.ts", "cuanto de lo vendido se deshizo, y su tasa"],
 ]);
 
 /**
