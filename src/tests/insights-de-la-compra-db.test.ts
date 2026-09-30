@@ -303,6 +303,10 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
       const conCorte = await lector.insightsDeLaCompra();
       expect(conCorte.desdeElArranque).toBe(corte);
       expect(conCorte.ventasSinConsulta).toBeLessThan(sinCorte.ventasSinConsulta);
+      // LO QUE SALIO SE PUEDE DECIR, y por eso se cuenta: el dia del arranque la pantalla se vacia y un cero
+      // mudo es indistinguible de una pantalla rota. Un cero que dice cuantas compras dejaron de contar, no.
+      expect(conCorte.ventasAnterioresAlArranque).toBeGreaterThan(0);
+      expect(sinCorte.ventasAnterioresAlArranque).toBe(0);
       // Y LAS ANTERIORES AL VINCULO DESAPARECEN DEL TODO, no se quedan contadas aparte: antes del arranque
       // no hay nada que separar, porque no hay nada que contar.
       expect(conCorte.ventasSinConsultaAnteriores).toBe(0);
