@@ -88,13 +88,27 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
         />
       </div>
 
+      {/* ═══ UNA SOLA TABLA CON EL EMBUDO ENTERO (Santiago, 2026-09-30) ═══
+
+          Eran DOS bloques y se leían como contradictorios: arriba "MULTI-CELL BASE, prescrito en 24" y abajo
+          "MULTI-CELL BASE, 60 consultas". Son consultas distintas y hechos distintos, pero nadie tiene por qué
+          deducirlo: puestos aparte parecen dos cifras del mismo hecho. En una fila se ve el recorrido entero,
+          y la relación entre las columnas se DICE en vez de dejarla suponer.
+
+          Y el eje del modelo sigue sin ser un reproche al profesional: el modelo propone y él dispone. Lo que
+          la cifra dice es DÓNDE se aparta, que es información para la dirección científica. */}
       {datos.porProducto.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground">Por producto</span>
+          <span className="text-sm font-medium text-foreground">Producto por producto, de punta a punta</span>
           <p className="max-w-prose text-xs text-muted-foreground">
-            Prescrito en cuántas consultas, comprado en cuántas de esas, y cuántas veces se compró{" "}
-            <strong className="text-foreground">sin estar en el plan</strong> de la consulta a la que se ató la
-            venta. Lo último no es un error: puede venir del seguimiento o el paciente pedirlo.{" "}
+            Cada cifra cuenta <strong className="text-foreground">consultas</strong> (una consulta es un
+            tratamiento), salvo la última, que cuenta líneas de compra.{" "}
+            <strong className="text-foreground">
+              Lo que el modelo recomienda y lo que el profesional prescribe no son la misma lista:
+            </strong>{" "}
+            puede prescribir algo que el modelo no propuso, que es su criterio clínico y cuenta igual, y hay
+            consultas con prescripción que no tienen informe. Por eso &quot;prescrito en&quot; no sale de
+            &quot;el modelo lo propuso en&quot;: se cruzan, no se contienen.{" "}
             {/* SE DICE QUE UNA DEVOLUCIÓN NO RESTA AQUÍ, y por qué: la pregunta es si la prescripción se
                 siguió; que después la devolviera es otro hecho. Descontarla escondería los dos. El dinero de
                 lo devuelto sí sale del bruto, arriba. */}
@@ -102,19 +116,25 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
             pregunta es si siguió la prescripción, y la devolución es otro hecho (su dinero sí sale del bruto).
           </p>
           <div className="-mx-1 overflow-x-auto">
-            <table className="w-full min-w-[34rem] text-sm">
+            <table className="w-full min-w-[46rem] text-sm">
               <thead>
                 <tr className={theadTr}>
                   <th className={th}>Producto</th>
+                  <th className={thNum}>El modelo lo propuso en</th>
+                  <th className={thNum}>De esas, sin prescribir</th>
                   <th className={thNum}>Prescrito en</th>
                   <th className={thNum}>Comprado en</th>
-                  <th className={thNum}>Fuera del plan</th>
+                  <th className={thNum}>Comprado fuera del plan</th>
                 </tr>
               </thead>
               <tbody>
                 {datos.porProducto.map((p) => (
                   <tr key={p.producto} className="border-b border-border/60">
                     <td className="px-3 py-2 text-foreground">{p.producto}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-foreground">{p.recomendadoEn}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                      {p.recomendadoSinPrescribir}
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums text-foreground">{p.prescritoEn}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-foreground">
                       {p.compradoEn}
@@ -132,29 +152,12 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
               </tbody>
             </table>
           </div>
-        </div>
-      ) : null}
-
-      {/* EL EJE DEL MODELO, SEPARADO DEL DE LA PRESCRIPCIÓN. No es un reproche al profesional: apartarse del
-          modelo es su criterio clínico, y el modelo propone. Lo que la cifra dice es DÓNDE se aparta, que es
-          información para la dirección científica, no una nota de desempeño. */}
-      {datos.recomendadoSinPrescribir.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground">
-            Lo que el modelo recomendó y no se prescribió
-          </span>
           <p className="max-w-prose text-xs text-muted-foreground">
-            El modelo propone y el profesional dispone, así que esto no es un error: es dónde el criterio
-            clínico se aparta del modelo. Información para la dirección científica.
+            Cómo se lee una fila: el modelo lo propuso en tantas consultas, en tantas de esas nadie lo
+            prescribió, se prescribió en tantas (propuestas o no), en tantas de esas se compró, y tantas veces
+            se compró sin estar en el plan de la consulta a la que se ató la venta. Lo último no es un error:
+            puede venir del seguimiento o el paciente pedirlo.
           </p>
-          <ul className="flex flex-col gap-1">
-            {datos.recomendadoSinPrescribir.map((r) => (
-              <li key={r.producto} className="text-sm text-muted-foreground">
-                <span className="text-foreground">{r.producto}</span>: {r.veces}{" "}
-                {r.veces === 1 ? "consulta" : "consultas"}
-              </li>
-            ))}
-          </ul>
         </div>
       ) : null}
 

@@ -222,9 +222,36 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
     // motor sin resolver. Un nombre sin resolver seria el sintoma del alias roto.
     const nombres = await db.execute(dsql`select name from nutraceuticals`);
     const delCatalogo = new Set(nombres.map((n: any) => n.name));
-    for (const x of r.recomendadoSinPrescribir) {
+    const conRecomendacion = r.porProducto.filter((p: any) => p.recomendadoEn > 0);
+    expect(conRecomendacion.length, "con informes sembrados, nada resolvio contra el catalogo").toBeGreaterThan(
+      0,
+    );
+    for (const x of conRecomendacion) {
       expect(delCatalogo.has(x.producto), `"${x.producto}" no es un nombre del catalogo`).toBe(true);
     }
+  });
+
+  // ═══ EL EMBUDO VIVE EN UNA SOLA FILA, Y SUS COLUMNAS SE CRUZAN (Santiago, 2026-09-30) ═══
+  //
+  // Eran dos tablas y parecian contradecirse ("prescrito en 24" arriba, "60 consultas" abajo). Al juntarlas,
+  // lo que hay que proteger es la relacion: lo SIN PRESCRIBIR sale de lo RECOMENDADO, asi que nunca puede
+  // pasarlo. Y `prescritoEn` NO esta contenido en `recomendadoEn`: prescribir algo que el modelo no propuso
+  // es legitimo, y una asercion que exigiera lo contrario haria fallar el test por un dato correcto.
+  it("las columnas del embudo guardan su relacion, y la tabla es la union de los dos ejes", async () => {
+    await prescribir(nutraA);
+    const r = await lector.insightsDeLaCompra();
+    expect(r.porProducto.length).toBeGreaterThan(0);
+    for (const p of r.porProducto) {
+      expect(p.recomendadoSinPrescribir, `${p.producto}: sin prescribir pasa a lo recomendado`).toBeLessThanOrEqual(
+        p.recomendadoEn,
+      );
+      expect(p.compradoEn, `${p.producto}: comprado pasa a prescrito`).toBeLessThanOrEqual(p.prescritoEn);
+    }
+    // LA UNION SE COMPRUEBA: un producto que solo tiene recomendaciones tiene que APARECER. Si la tabla
+    // recorriera solo el SQL de prescripciones, el hallazgo mas interesante del eje del modelo (lo que se
+    // propone siempre y nadie prescribe) desapareceria de la pantalla sin fallar nada.
+    const soloRecomendado = r.porProducto.find((p: any) => p.recomendadoEn > 0 && p.prescritoEn === 0);
+    if (soloRecomendado) expect(soloRecomendado.recomendadoSinPrescribir).toBe(soloRecomendado.recomendadoEn);
   });
   // LA PANTALLA MUESTRA LO QUE HAY, Y SEPARA LO QUE NO PODIA DECIRLO (Santiago, 2026-09-30).
   //
