@@ -12,6 +12,7 @@ import { listarUsuariosInternosConMarcas } from "@/modules/avisos/data/avisos-re
 import { ResolverPropuestas } from "@/modules/patients/components/propuestas-de-prueba";
 import { propuestasDePruebaPendientes } from "@/modules/patients/data/de-prueba-writer";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
+import { leyendaDeProfesionalDePrueba } from "@/modules/professionals/de-prueba";
 import { requireUser } from "@/modules/auth/session";
 
 export const metadata = { title: "Administración - Atlas" };
@@ -39,7 +40,7 @@ export default async function AdminPage() {
   // comisiones apuntan al integrante (no por profile_id).
   const { data: profRows } = await supabase
     .from("professional_profiles")
-    .select("id, profile_id, profession, license");
+    .select("id, profile_id, profession, license, is_test");
   const byProfile = new Map((profRows ?? []).map((p) => [p.profile_id, p]));
   const internos = await listarUsuariosInternosConMarcas();
   const propuestasDePrueba = await propuestasDePruebaPendientes();
@@ -72,6 +73,15 @@ export default async function AdminPage() {
               </span>
               {/* Su operación: inventario, ventas y comisión. Solo para quien es integrante, porque es lo que
                   ahí se mira; un usuario interno sin perfil profesional no tiene nada que mostrar. */}
+              {/* TERCERA CAPA DE LA REGLA (ver `professionals/de-prueba.ts`): VISIBLE Y MARCADO. La
+                  cifra no lo cuenta y la lista sí lo muestra; esconderlo sería la forma de que alguien lo
+                  confunda con uno real. Y la leyenda dice también qué NO cambia, porque es lo que evita
+                  que alguien suponga que sus facturas o su inventario son de mentira. */}
+              {prof?.is_test ? (
+                <span className="text-xs text-muted-foreground">
+                  {leyendaDeProfesionalDePrueba(true)}
+                </span>
+              ) : null}
               {prof ? (
                 <Link
                   href={`/admin/integrantes/${prof.id}`}

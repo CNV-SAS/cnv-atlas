@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
 import type { ClaseDeshecha } from "@/modules/payments/lo-deshecho";
+import { SQL_SIN_PROFESIONAL_DE_PRUEBA } from "@/modules/professionals/de-prueba";
 
 // ═══ CUANTO DE LO VENDIDO SE DESHIZO, DE QUE CLASE Y POR QUE ═══
 //
@@ -46,9 +47,15 @@ export type LoDeshecho = {
 export async function loDeshecho(): Promise<LoDeshecho> {
   const arranque = await fechaDeArranque();
   // El corte va sobre la VENTA (alias `t`), tambien cuando se cuentan reversas: ver la nota de arriba.
-  const corte = arranque
-    ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date`
-    : sql``;
+  //
+  // Y ARRASTRA EL FILTRO DEL PROFESIONAL DE DEMOSTRACION (0199) EN LA MISMA VARIABLE, a proposito: si
+  // fueran dos fragmentos sueltos, la consulta que se escriba mañana pondria uno y olvidaria el otro. Aqui
+  // el olvido posible es el de la variable entera, que es mucho mas visible.
+  const corte = sql`${
+    arranque
+      ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date`
+      : sql``
+  } and ${sql.raw(SQL_SIN_PROFESIONAL_DE_PRUEBA)}`;
 
   const [pagadas] = await db.execute<{ n: number }>(sql`
     select count(*)::int as n from transactions t where t.status = 'paid'${corte}`);

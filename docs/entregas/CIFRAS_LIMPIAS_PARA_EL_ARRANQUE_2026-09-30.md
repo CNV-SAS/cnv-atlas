@@ -7,12 +7,30 @@
 | Pieza | Estado |
 | --- | --- |
 | 1. La fecha de arranque | **Hecha** (migración 0198). Falta correrla el día real: `docs/entregas/sql/FECHA_DE_ARRANQUE_2026-09-30.sql` |
-| 2. `professional_profiles.is_test` con su barrido | Pendiente |
+| 2. `professional_profiles.is_test` con su barrido | **Hecha** (migración 0199). Falta marcarlo: `docs/entregas/sql/PROFESIONAL_DE_DEMOSTRACION_2026-09-30.sql` |
 
-**El estado de la pieza 1 no se afirma, se comprueba:** `pnpm vitest run src/tests/fecha-de-arranque.test.ts`
-(que el corte llegue a todos los lectores) y el caso "con fecha de arranque, lo anterior no cuenta en ningún
-eje" de `src/tests/insights-de-la-compra-db.test.ts` (que sirva). Una afirmación "HECHO" envejece; un puntero
-a un test que pasa, no.
+**El estado no se afirma, se comprueba.** Una afirmación "HECHO" envejece; un puntero a un test que pasa, no.
+
+- Pieza 1: `src/tests/fecha-de-arranque.test.ts` (que el corte llegue a todos los lectores) y el caso "con
+  fecha de arranque, lo anterior no cuenta en ningún eje" de `src/tests/insights-de-la-compra-db.test.ts`
+  (que sirva).
+- Pieza 2: `src/tests/profesional-de-prueba-barrido.test.ts` (que el filtro esté escrito en los tres
+  lectores, y que el inventario y la facturación sigan sin él) y el caso "una venta de un profesional
+  marcado como de demostración deja de contar" de `src/tests/lo-deshecho-db.test.ts` (que sirva).
+
+### Dos cosas de la pieza 2 que cambiaron respecto a esta propuesta
+
+- **La facturación NO mira al profesional, y aquí me corrijo.** Arriba decía que "conviene que valga lo
+  mismo" que con el paciente. Al mirarlo de cerca no conviene: un profesional de demostración que le venda a
+  un paciente **real** tiene que emitir su factura igual, porque la venta ocurrió y la ley no pregunta quién
+  la registró. El caso malo no es una factura de más, es una venta real sin factura. El gate por paciente y
+  ambiente ya cubre el caso verdadero: Demo demuestra con pacientes de prueba.
+- **El inventario tampoco se filtra.** Las unidades que tiene Demo son reales y están en su bodega; sacarlas
+  daría un número que no cuadra con ningún conteo físico. Es la misma línea que ya trazó la pieza 1, y es
+  distinta del caso de un **producto** de prueba, cuyas unidades sí son ficticias.
+
+Así que los lectores con filtro son tres, no cinco: el tablero de Dirección (bruto, ingreso CNV, comisiones y
+lo devuelto), los insights (por sus ventas **y** por sus consultas) y lo que se deshizo.
 
 ---
 

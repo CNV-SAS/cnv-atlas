@@ -89,6 +89,14 @@ export const professionalProfiles = pgTable("professional_profiles", {
     .unique()
     .references(() => profiles.id, { onDelete: "cascade" }),
   license: text("license"), // registro profesional
+  /**
+   * Profesional de DEMOSTRACION (0199). No cuenta en las cifras de resumen de la organizacion.
+   *
+   * NO toca su inventario (sus unidades son reales y estan en su bodega) ni la facturacion (esa la decide
+   * el paciente: una venta real a un paciente real se factura la registre quien la registre). La regla
+   * completa y su barrido viven en `modules/professionals/de-prueba.ts`.
+   */
+  isTest: boolean("is_test").notNull().default(false),
   // Antes texto libre 'specialty'. Ahora lista cerrada (T2 A1): gobierna la subpestana por
   // profesion en Tratamiento y el abordaje por profesion del diagnostico (efrProf). NOT NULL (mig 0036,
   // gate Hito 2): todo profesional tiene profesion; se captura al invitar. profession=null bloqueaba
