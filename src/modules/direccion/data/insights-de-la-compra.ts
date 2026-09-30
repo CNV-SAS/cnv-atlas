@@ -56,8 +56,17 @@ export type ConversionDeProducto = {
 
 export type InsightsDeLaCompra = {
   desde: string;
-  /** Ventas pagadas con consulta atada, desde `desde`. */
+  /** Ventas pagadas con su consulta atada. */
   ventasConConsulta: number;
+  /**
+   * Ventas SIN consulta que SI podian decirla (posteriores al vinculo). Son las unicas comparables con las
+   * atadas: el denominador de "cuantas traen su consulta" son estas mas las atadas, NO todas las ventas.
+   *
+   * MEZCLARLAS CON LAS ANTERIORES fue el defecto que Santiago vio: "0 de 18", donde las 18 incluian ventas de
+   * antes de que el sistema preguntara. Numerador y denominador median ventanas distintas, y el propio texto
+   * de la pantalla decia que esas 18 no podian decirlo.
+   */
+  ventasSinConsultaComparables: number;
   /** Ventas pagadas SIN consulta, con su motivo agrupado. */
   ventasSinConsulta: number;
   /**
@@ -88,6 +97,13 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
      where t.status = 'paid'
 `);
 
+  // LAS QUE SI PODIAN DECIRLO Y NO LO DIJERON: son las comparables. Las anteriores se cuentan aparte.
+  const [comparables] = await db.execute<{ n: number }>(sql`
+    select count(*)::int as n
+      from transactions t
+     where t.status = 'paid' and t.treatment_id is null
+       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date`);
+
   const [anteriores] = await db.execute<{ n: number }>(sql`
     select count(*)::int as n
       from transactions t
@@ -99,7 +115,9 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
            count(*)::int as veces
       from transactions t
      where t.status = 'paid' and t.treatment_id is null
-
+       -- SOLO LAS POSTERIORES AL VINCULO: las de antes no tienen motivo porque nadie se lo pidio, y sacarlas
+       -- como "(sin motivo escrito)" haria creer que alguien omitio algo. No omitio nada: no existia el campo.
+       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date
      group by 1 order by 2 desc limit 20`);
 
   // ── 2. LAS LINEAS: DENTRO O FUERA DE LO PRESCRITO EN ESA CONSULTA ──
@@ -221,6 +239,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
     desde,
     ventasConConsulta: Number(conteo?.con ?? 0),
     ventasSinConsulta: Number(conteo?.sin ?? 0),
+    ventasSinConsultaComparables: Number(comparables?.n ?? 0),
     ventasSinConsultaAnteriores: Number(anteriores?.n ?? 0),
     motivosDeVentaSuelta: motivos.map((m) => ({ motivo: m.motivo, veces: Number(m.veces) })),
     lineasDentroDelPlan: Number(lineas?.dentro ?? 0),
