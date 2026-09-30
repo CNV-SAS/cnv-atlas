@@ -22,8 +22,7 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
       <section className="flex flex-col gap-3">
         <TituloSeccion>Qué se prescribe y qué se compra</TituloSeccion>
         <p className="max-w-prose text-sm text-muted-foreground">
-          Todavía no hay ventas desde el {datos.desde}, que es el día en que la venta empezó a decir de qué
-          consulta sale. Con los primeros cobros reales estas cifras empiezan a significar algo.
+          Todavía no hay ninguna venta pagada. Con los primeros cobros estas cifras empiezan a significar algo.
         </p>
       </section>
     );
@@ -39,10 +38,13 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
           todavía qué consumió el paciente, así que ninguna de estas cifras dice si le sirvió. Para eso hace
           falta el registro de consumo en el seguimiento.
         </p>
-        <p className="text-xs text-muted-foreground">
-          Y solo cuenta desde el {datos.desde}: antes una venta de /pagos nacía sin consulta y no hay con qué
-          cruzarla.
-        </p>
+        {datos.ventasSinConsultaAnteriores > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Y {datos.ventasSinConsultaAnteriores} de las compras sin consulta son anteriores al {datos.desde}:
+            esas <strong className="text-foreground">no podían decirlo</strong>, porque el sistema no lo
+            preguntaba. No son compras fuera de plan, son compras de antes.
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

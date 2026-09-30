@@ -458,7 +458,13 @@ describe("la venta que nace en TRATAMIENTO (Bloque 3, sesion 2)", () => {
       prescritos: ["n1"],
     });
   });
-  const venta = (extra: Partial<{ patientId: string; items: { nutraceuticalId: string; quantity: number }[] }> = {}) =>
+  const venta = (
+    extra: Partial<{
+      patientId: string;
+      items: { nutraceuticalId: string; quantity: number }[];
+      fueraDelPlanConfirmado: boolean;
+    }> = {},
+  ) =>
     createCheckout(
       { patientId: "p1", treatmentId: "t1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ...extra },
       user(["professional"]),
@@ -477,9 +483,21 @@ describe("la venta que nace en TRATAMIENTO (Bloque 3, sesion 2)", () => {
   // EL MENSAJE DICE LA SALIDA, y eso se asserta (smoke del 2026-09-29): sin nombrarla, Santiago lo leyó
   // como un bloqueo y se quedó sin poder registrar. Un mensaje que no dice qué hacer es un bloqueo aunque
   // no lo sea, y eso no lo atrapa ningún test que solo mire que "rechaza".
-  it("y el mensaje nombra la salida que existe", async () => {
+  it("y el mensaje nombra las dos salidas que existen", async () => {
+    const p = venta({ items: [{ nutraceuticalId: "n2", quantity: 1 }] });
+    await expect(p).rejects.toThrow(/Confirma/);
     await expect(venta({ items: [{ nutraceuticalId: "n2", quantity: 1 }] })).rejects.toThrow(
       /No sale de ninguna consulta/,
+    );
+  });
+
+  // SE AVISA Y SE CONFIRMA, NO SE BLOQUEA (decision de Santiago, 2026-09-30). Con la confirmacion la venta
+  // se crea Y QUEDA ATADA a la consulta: es lo que permite contarla como compra fuera del plan. Si se
+  // crease suelta, el dato se perderia, que es justo lo que esta decision evita.
+  it("CONFIRMADO: se vende, y la venta conserva su consulta", async () => {
+    await venta({ items: [{ nutraceuticalId: "n2", quantity: 1 }], fueraDelPlanConfirmado: true });
+    expect(writer.createTransactionWithItems).toHaveBeenCalledWith(
+      expect.objectContaining({ treatmentId: "t1" }),
     );
   });
 

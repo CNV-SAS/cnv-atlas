@@ -162,3 +162,40 @@ export async function esTratamientoAtable(patientId: string, treatmentId: string
        and e.superseded_at is null`);
   return f?.ok === true;
 }
+
+/**
+ * Los productos de una venta que NO estaban prescritos en la consulta a la que se la quiere atar.
+ *
+ * ── POR QUE LA VENTA NO SE BLOQUEA, DESDE EL 2026-09-30 ──
+ *
+ * La regla venia del Bloque 3 y era correcta EN SU CONTEXTO: la venta que nace en Tratamiento solo puede
+ * ofrecer lo prescrito, asi que ahi un producto de fuera no es un caso legitimo. Pero al volver obligatorio el
+ * tratamiento en /pagos, esa regla paso a aplicarse donde el caso SI es legitimo: el paciente vuelve y compra
+ * algo que no estaba en el plan de esa consulta pero viene de su seguimiento.
+ *
+ * Y FORZARLO A "SIN CONSULTA" DESTRUIA EL DATO: "compran fuera de lo prescrito" solo se puede medir si la
+ * compra CONSERVA su consulta. Marcandola suelta ya no se sabe de que plan se aparto.
+ *
+ * Asi que se AVISA y el profesional confirma, y la venta queda atada y contada aparte. Que estuvo fuera del
+ * plan NO se guarda en una columna: se DERIVA de comparar sus lineas con lo prescrito, que es la misma cuenta
+ * que hace el tablero. Una columna seria una segunda fuente del mismo hecho.
+ */
+export async function productosFueraDelPlan(
+  treatmentId: string,
+  nutraceuticalIds: string[],
+): Promise<string[]> {
+  const ids = nutraceuticalIds.filter((id) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+  );
+  if (ids.length === 0) return [];
+  const filas = await db.execute<{ name: string }>(sql`
+    select n.name
+      from nutraceuticals n
+     where n.id = any(${sql.raw(`array['${ids.join("','")}']::uuid[]`)})
+       and not exists (
+         select 1 from treatment_nutraceuticals tn
+          where tn.treatment_id = ${treatmentId} and tn.nutraceutical_id = n.id
+       )
+     order by n.name`);
+  return filas.map((f) => f.name);
+}
