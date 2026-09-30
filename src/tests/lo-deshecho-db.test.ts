@@ -131,6 +131,24 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
     expect(prod, "ninguna devolución llegó a la tabla de productos").toBeTruthy();
   });
 
+  // ═══ LAS DOS CIFRAS DEL MISMO HECHO TIENEN QUE CUADRAR (Santiago, 2026-09-30) ═══
+  //
+  // La pantalla decia "5 devoluciones" arriba y una sola linea en "que vuelve", sin explicar las otras
+  // cuatro: eran de un producto de prueba y el desglose los filtraba. Dos cifras del mismo hecho que no
+  // cuadran se leen como un defecto, y con razon, porque la que esta mal es una de las dos.
+  it("el desglose por producto cuadra con el conteo de devoluciones", async () => {
+    const v = await ventaPagada(3);
+    await devolucion({ venta: v.id, linea: v.lineaId, unidades: 2, monto: 50000, nota: "cuadre" });
+    const r = await lector.loDeshecho();
+    const devoluciones =
+      r.porClase.find((c: any) => c.clase === "devolucion")?.veces ?? 0;
+    const desglose = r.productosDevueltos.reduce((n: number, p: any) => n + p.veces, 0);
+    // El desglose corta en 10 productos, asi que solo se exige la igualdad cuando cabe entero. Con menos de
+    // diez filas, una diferencia es un filtro de mas escondido en una de las dos consultas.
+    if (r.productosDevueltos.length < 10) expect(desglose).toBe(devoluciones);
+    else expect(desglose).toBeLessThanOrEqual(devoluciones);
+  });
+
   // ═══ EL CASO QUE MAS IMPORTA ═══
   //
   // Un link anulado NO es una venta deshecha. Si entrara arriba, la tasa de reversion diria que se deshace

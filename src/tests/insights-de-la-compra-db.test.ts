@@ -246,6 +246,16 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
         p.recomendadoEn,
       );
       expect(p.compradoEn, `${p.producto}: comprado pasa a prescrito`).toBeLessThanOrEqual(p.prescritoEn);
+      // LO QUE EXPLICA LA RESTA QUE NO CUADRA: lo prescrito menos lo propuesto-y-prescrito. Nunca negativo
+      // (lo recomendado-y-prescrito es subconjunto de lo prescrito) y nunca mayor que lo prescrito.
+      expect(p.prescritoSinProponer, `${p.producto}: el resto no puede ser negativo`).toBeGreaterThanOrEqual(0);
+      expect(p.prescritoSinProponer, `${p.producto}: el resto pasa a lo prescrito`).toBeLessThanOrEqual(
+        p.prescritoEn,
+      );
+      expect(
+        p.prescritoEn - p.prescritoSinProponer,
+        `${p.producto}: lo propuesto y prescrito no cuadra con el resto`,
+      ).toBe(Math.min(p.prescritoEn, p.recomendadoEn - p.recomendadoSinPrescribir));
     }
     // LA UNION SE COMPRUEBA: un producto que solo tiene recomendaciones tiene que APARECER. Si la tabla
     // recorriera solo el SQL de prescripciones, el hallazgo mas interesante del eje del modelo (lo que se

@@ -26,6 +26,16 @@ export type DireccionDashboard = {
   inventoryProducts: number; // productos distintos con saldo
   inventoryLocations: number; // ubicaciones con saldo
   /**
+   * CUALES son esos productos y esas ubicaciones (Santiago, 2026-09-30).
+   *
+   * La tarjeta decia "6 productos en 9 ubicaciones" y la pregunta inmediata era cuales. Un agregado que no
+   * se puede abrir obliga a creerselo, y creerselo es justo lo que no queremos de una cifra: media hora de
+   * smoke se fue en averiguar que otra estaba bien. El desglose se lee de las MISMAS filas que la cifra, no
+   * de otra consulta, asi que no pueden discrepar.
+   */
+  inventoryByProduct: { nombre: string; unidades: number }[];
+  inventoryByLocation: { nombre: string; unidades: number }[];
+  /**
    * Desde cuando cuentan las cifras de dinero, o null si se cuenta todo. La pantalla lo DICE: una cifra sin
    * su ventana se lee como "todo el historico", y el dia del arranque eso seria falso.
    */
@@ -34,6 +44,28 @@ export type DireccionDashboard = {
 
 function sum(rows: { v: string | number | null }[]): number {
   return rows.reduce((acc, r) => acc + (Number(r.v) || 0), 0);
+}
+
+/**
+ * Agrupa las filas de saldo por un nombre y suma sus unidades, dejando fuera lo que esta en cero.
+ *
+ * SIN SALDO NO ES UNA LINEA: una fila en cero existe porque alguna vez hubo unidades ahi, y listarla diria
+ * que hay un producto en una bodega donde no hay ninguno. Es la misma razon por la que la cifra de arriba
+ * cuenta solo los que tienen saldo.
+ */
+function agrupar<T extends { stock_quantity: number | string | null }>(
+  filas: T[],
+  nombre: (f: T) => string,
+): { nombre: string; unidades: number }[] {
+  const mapa = new Map<string, number>();
+  for (const f of filas) {
+    const u = Number(f.stock_quantity) || 0;
+    if (u <= 0) continue;
+    mapa.set(nombre(f), (mapa.get(nombre(f)) ?? 0) + u);
+  }
+  return [...mapa.entries()]
+    .map(([nombre, unidades]) => ({ nombre, unidades }))
+    .sort((a, b) => b.unidades - a.unidades || a.nombre.localeCompare(b.nombre));
 }
 
 export async function getDireccionDashboard(): Promise<DireccionDashboard> {
@@ -97,7 +129,12 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
     // saldo que no se puede borrar (movimientos inmutables), y sumaban 18 unidades a la vitrina real.
     supabase
       .from("nutraceutical_inventory")
-      .select(`stock_quantity, nutraceutical_id, location_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}`)
+      // LOS NOMBRES VIENEN CON LA MISMA FILA que la cifra: un desglose leido por otra consulta puede
+      // discrepar del total el dia que una de las dos cambie de filtro.
+      //
+      // EL EMBED SIGUE SIENDO EL COMPARTIDO: se le añadio el nombre alli en vez de escribir una copia aqui,
+      // porque una copia es como se llega a que una pantalla excluya lo de prueba y la otra no.
+      .select(`stock_quantity, nutraceutical_id, location_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}, inventory_locations!inner(name)`)
       .eq(COLUMNA_PRODUCTO_DE_PRUEBA, false),
   ]);
 
@@ -137,6 +174,14 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
     // cuando el catalogo tiene 11 y hay saldo de 5. Ahora son productos y ubicaciones, que es lo que se pregunta.
     inventoryProducts: new Set(inventoryRows.filter((r) => Number(r.stock_quantity) > 0).map((r) => r.nutraceutical_id)).size,
     inventoryLocations: new Set(inventoryRows.filter((r) => Number(r.stock_quantity) > 0).map((r) => r.location_id)).size,
+    inventoryByProduct: agrupar(
+      inventoryRows,
+      (r) => uno(r.nutraceuticals as { name: string } | null)?.name ?? "(sin nombre)",
+    ),
+    inventoryByLocation: agrupar(
+      inventoryRows,
+      (r) => uno(r.inventory_locations as { name: string } | null)?.name ?? "(sin nombre)",
+    ),
     desdeElArranque: arranque,
   };
 }

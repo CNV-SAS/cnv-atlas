@@ -171,7 +171,19 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                       {p.recomendadoSinPrescribir}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-foreground">{p.prescritoEn}</td>
+                    {/* DE DÓNDE SALE LO QUE SOBRA AL RESTAR (Santiago, 2026-09-30). "Propuesto en 12, de
+                        esas sin prescribir 6, prescrito en 11" invita a restar: 12 menos 6 son 6, no 11.
+                        Las columnas están bien, pero puestas una al lado de la otra el lector concluye que
+                        hay un defecto. Decir aquí mismo los 5 que sobran es lo único que lo corta, y va en
+                        la misma celda porque es ahí donde se hace la resta. */}
+                    <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                      {p.prescritoEn}
+                      {p.prescritoSinProponer > 0 ? (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({p.prescritoSinProponer} sin proponerlo)
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums text-foreground">
                       {p.compradoEn}
                       {p.prescritoEn > 0 ? (
@@ -192,7 +204,12 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
             Cómo se lee una fila: el modelo lo propuso en tantas consultas, en tantas de esas nadie lo
             prescribió, se prescribió en tantas (propuestas o no), en tantas de esas se compró, y tantas veces
             se compró sin estar en el plan de la consulta a la que se ató la venta. Lo último no es un error:
-            puede venir del seguimiento o el paciente pedirlo.
+            puede venir del seguimiento o el paciente pedirlo.{" "}
+            <strong className="text-foreground">La resta no cuadra, y no tiene por qué:</strong> si el modelo
+            lo propuso en 12 y en 6 de esas nadie lo prescribió, quedan 6 propuestas y prescritas, pero
+            &quot;prescrito en&quot; puede decir 11 porque hay consultas donde se prescribió sin que el modelo
+            lo propusiera, y consultas con prescripción que no tienen informe. Ese resto va entre paréntesis
+            en la misma celda.
           </p>
         </div>
       ) : null}

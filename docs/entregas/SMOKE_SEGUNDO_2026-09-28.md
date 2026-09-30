@@ -461,6 +461,13 @@ contienen.**
    lista**. Si esa frase no está, la tabla vuelve a leerse como contradictoria.
 4. Y que los rótulos digan **en qué** se cuenta ("consultas"). "Prescrito en 41" no decía 41 de qué.
 
+**La resta no cuadra, y no tiene por qué.** CURCUMIN sale "propuesto en 12, de esas sin prescribir 6,
+prescrito en 11": 12 menos 6 son 6, no 11. No es un defecto de la cuenta. Quedan 6 propuestas y prescritas, y
+las otras 5 son consultas donde **se prescribió sin que el modelo lo propusiera**, o consultas con
+prescripción que no tienen informe. Lo confirman dos filas más: SARCO-PROTECT (1 menos 1 son 0, y sale
+prescrito en 1) y LUVIA (propuesto en 0, prescrito en 1). **Ahora ese resto va entre paréntesis en la misma
+celda** ("11 (5 sin proponerlo)"), que es donde se hace la resta.
+
 ---
 
 # R10 · Lo que se deshizo
@@ -485,6 +492,11 @@ Sección nueva en **/direccion**, debajo de los insights.
 **El control que importa:** anula un link a mano y comprueba que **la cifra de "ventas deshechas" no se
 mueve**, y que sube la línea de "anulados a mano". Si entrara arriba, la tasa de reversión diría que se
 deshace mucho más de lo que se deshace.
+
+**Y el segundo control, que era un defecto mío:** las devoluciones de arriba y las líneas de "qué vuelve"
+tienen que **sumar lo mismo**. Salían 5 arriba y una sola línea abajo porque las otras cuatro eran de un
+producto de prueba y el desglose los filtraba. Ahora se muestran **marcados** en vez de esconderlos: dos
+cifras del mismo hecho que no cuadran se leen como un defecto, y con razón.
 
 ---
 
@@ -549,3 +561,51 @@ No es obligatorio (hay un test contra la base que ya lo comprueba), pero si quie
    seguir mostrando a Demo, ahora con su rótulo.
 4. Desmárcalo con `UPDATE professional_profiles SET is_test = false WHERE is_test;` y las cifras vuelven
    exactas. Si no vuelven exactas, avísame: eso sí sería un defecto.
+
+---
+
+# R12 · Dos cosas que preguntaste sobre las cifras
+
+## Las tres tarjetas de arriba de los insights están en guion, y eso es correcto hoy
+
+*"Compras con su consulta"*, *"dentro del plan"* y *"tarda en comprar"* salen vacías porque **ninguna venta
+trae todavía su consulta**: el vínculo se construyó el 29 y las 18 de antes no podían decirla.
+
+**Dejan de estar vacías en la Parte 14 / R8**, en cuanto registres **una** venta eligiendo una consulta. Con
+esa sola venta:
+
+- "Compras con su consulta" pasa a `1 de N`.
+- "Dentro del plan" deja el guion y cuenta las líneas de esa compra.
+- "Tarda en comprar" muestra los días entre la consulta y el cobro (si vendes el mismo día, **0 días**, que
+  es un valor correcto, no un vacío).
+
+**Así que ese bloque no se puede verificar antes de la Parte 14.** Si después de registrarla siguen en guion,
+eso sí es un defecto y quiero saberlo.
+
+## "18 pagos" en Dirección y 17 pagados en el historial de Demo
+
+**No está contando el anulado, y no puede:** el bruto pide `status = 'paid'`, y un link anulado queda en
+`failed`. Además deja fuera el efectivo no recibido ("Anulada por CNV", que sí es una venta `paid`) y las
+ventas con disputa perdida.
+
+**La diferencia es de alcance, no de estado:** /direccion cuenta **toda la organización** y el historial de
+/pagos te muestra lo que ves tú. 17 de Demo más 1 de otro profesional (o una venta sin profesional, que las
+registra admin) son 18. Para salir de dudas en diez segundos:
+
+```sql
+SELECT coalesce(p.email, '(sin profesional)') AS profesional, count(*)::int AS pagos
+  FROM transactions t
+  LEFT JOIN professional_profiles pp ON pp.id = t.professional_id
+  LEFT JOIN profiles p ON p.id = pp.profile_id
+ WHERE t.status = 'paid' AND t.cash_not_received_at IS NULL
+ GROUP BY 1 ORDER BY 2 DESC;
+```
+
+**Si la suma no da 18, avísame.** Si da 18, el número está bien y lo que engañaba era comparar dos pantallas
+con alcances distintos.
+
+## Y ya puedes ver qué hay en el inventario
+
+La tarjeta decía "6 productos en 9 ubicaciones" sin decir cuáles. Debajo de las cifras hay ahora un
+desplegable **"Qué hay en el inventario, y dónde"**, con las unidades por producto y por ubicación. Sale de
+las **mismas filas** que la tarjeta, así que no pueden discrepar, y solo lista lo que tiene saldo.

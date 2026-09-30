@@ -34,8 +34,18 @@ export type LoDeshecho = {
   porClase: { clase: ClaseDeshecha; estado: string; veces: number; monto: number }[];
   /** Las notas escritas al abrir cada caso, agrupadas. */
   motivos: { clase: ClaseDeshecha; motivo: string; veces: number }[];
-  /** Que producto vuelve mas, en unidades. Es el dato que le sirve a la direccion cientifica. */
-  productosDevueltos: { producto: string; unidades: number; veces: number }[];
+  /**
+   * Que producto vuelve mas, en unidades. Es el dato que le sirve a la direccion cientifica.
+   *
+   * INCLUYE LOS PRODUCTOS DE PRUEBA, MARCADOS, y eso es una correccion (Santiago, 2026-09-30): filtrarlos
+   * dejaba la pantalla diciendo "5 devoluciones" arriba y una sola linea aqui, sin explicar las otras
+   * cuatro. Dos cifras del mismo hecho que no cuadran se leen como un defecto, y con razon.
+   *
+   * La regla general (una CIFRA no cuenta lo de prueba) no cambia: la que manda aqui es la de la lista,
+   * que los MUESTRA MARCADOS porque esconderlos es como alguien los confunde con reales. Esto es un
+   * desglose de las devoluciones que la tarjeta ya conto, no una cifra nueva.
+   */
+  productosDevueltos: { producto: string; unidades: number; veces: number; esDePrueba: boolean }[];
   /**
    * Los links, que NO son ventas deshechas y por eso van aparte con su nombre propio.
    * Ver `lo-deshecho.ts` para por que son cuatro situaciones y no una.
@@ -82,14 +92,20 @@ export async function loDeshecho(): Promise<LoDeshecho> {
      order by 3 desc
      limit 20`);
 
-  const productosDevueltos = await db.execute<{ producto: string; unidades: number; veces: number }>(sql`
-    select n.name as producto, sum(r.returned_quantity)::int as unidades, count(*)::int as veces
+  const productosDevueltos = await db.execute<{
+    producto: string;
+    unidades: number;
+    veces: number;
+    es_de_prueba: boolean;
+  }>(sql`
+    select n.name as producto, sum(r.returned_quantity)::int as unidades, count(*)::int as veces,
+           coalesce(n.is_test, false) as es_de_prueba
       from sale_reversals r
       join transaction_items ti on ti.id = r.transaction_item_id
       join nutraceuticals n on n.id = ti.nutraceutical_id
       join transactions t on t.id = r.transaction_id
-     where r.kind = 'devolucion' and coalesce(n.is_test, false) = false${corte}
-     group by 1
+     where r.kind = 'devolucion'${corte}
+     group by 1, 4
      order by 2 desc
      limit 10`);
 
@@ -128,6 +144,7 @@ export async function loDeshecho(): Promise<LoDeshecho> {
       producto: p.producto,
       unidades: Number(p.unidades),
       veces: Number(p.veces),
+      esDePrueba: Boolean(p.es_de_prueba),
     })),
     links: {
       aMano: Number(links?.a_mano ?? 0),
