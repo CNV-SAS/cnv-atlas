@@ -103,6 +103,12 @@ export const transactions = pgTable(
     distribucionStatementId: uuid("distribucion_statement_id"),
     /** Quien REGISTRO la venta. No siempre es el profesional de la comision: admin puede cobrar por otro. */
     createdBy: uuid("created_by"),
+    /**
+     * Por que la compra NO sale de ninguna consulta (0197). Lo obligatorio no es el tratamiento (una compra
+     * de mostrador es legitima): es DECIR por que no hay uno. Sin el motivo, una venta suelta y una mal atada
+     * se ven iguales, y nadie las distingue despues.
+     */
+    sinTratamientoMotivo: text("sin_tratamiento_motivo"),
     // reservado | pendiente | descontado | sin_saldo | fallido | liberado. NULL = anterior al Bloque 3.
     stockState: text("stock_state"),
     stockLastError: text("stock_last_error"),

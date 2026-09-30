@@ -41,6 +41,13 @@ export const createCheckoutSchema = z.object({
    * servidor (costo mas margen, mas IVA) y lo sella: si viajara calculado, cualquiera podria cobrarse el
    * flete que quisiera.
    */
+  /**
+   * POR QUE la compra no sale de ninguna consulta (2026-09-29). Obligatorio cuando no se elige tratamiento:
+   * una compra suelta es un hecho legitimo (el que compra sin haber pasado por consulta), y negarlo
+   * obligaria a inventar un vinculo. Lo que no puede pasar es que quede suelta SIN QUE NADIE LO DIGA, que
+   * es lo que pasaba hasta hoy.
+   */
+  ventaSueltaMotivo: z.string().trim().max(200).optional(),
   domicilio: z
     .object({
       ciudad: z.string().trim().min(1, "Elige la ciudad de destino.").max(120),

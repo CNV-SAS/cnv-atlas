@@ -7,6 +7,7 @@ import { listNutraceuticals } from "@/modules/nutraceuticals/data/nutraceuticals
 
 import type { CheckoutView } from "../data/checkout-reader";
 import { configuracionDeFlete, daneDe, departamentoDe, ofertaVigente } from "../data/domicilio-reader";
+import { esTratamientoAtable } from "../data/tratamientos-del-paciente";
 import { fleteDelEnvio } from "../domicilio";
 import * as repo from "../data/payments-repository";
 import {
@@ -141,6 +142,20 @@ async function resolveSale(
   amount = Math.round(amount * 100) / 100;
   if (amount <= 0) throw new CheckoutError("El monto de la venta debe ser mayor a cero.");
 
+  // ═══ LA CONSULTA DE LA QUE SALE LA COMPRA (2026-09-29) ═══
+  //
+  // EL SERVIDOR LO VUELVE A COMPROBAR, y no por desconfianza del formulario: el desplegable se arma al
+  // abrir la pantalla, y entre eso y el cobro alguien puede haber CORREGIDO esa evaluación. Atar la compra
+  // a un tratamiento ya sustituido sería colgarla de algo que el sistema considera superado, y eso no lo
+  // ve nadie después.
+  if (input.treatmentId) {
+    if (!(await esTratamientoAtable(input.patientId, input.treatmentId))) {
+      throw new CheckoutError(
+        "Esa consulta ya no es de este paciente o fue reemplazada por una corrección. Vuelve a elegirla.",
+      );
+    }
+  }
+
   // ═══ EL DOMICILIO SE RESUELVE EN EL SERVIDOR (0190) ═══
   //
   // LA TARIFA NO VIAJA DESDE EL NAVEGADOR: se lee de la configuracion aqui y se sella en la venta. Si
@@ -189,6 +204,19 @@ async function resolveSale(
 
 // Crea el checkout: sella los precios desde el catalogo, crea la transaccion pending con sus items y
 // devuelve el link 24h que el profesional comparte con el paciente. El pago lo sella el webhook.
+/**
+ * O LA COMPRA SALE DE UNA CONSULTA, O SE DICE POR QUE NO (2026-09-29).
+ *
+ * VA DESPUES de los errores que impiden la venta (el mínimo de Wompi, las existencias) y no antes: esos
+ * dicen que la venta NO SE PUEDE HACER, y este dice que falta un dato. Adelantarlo tapaba el mensaje útil
+ * con uno de formulario, que es peor: el profesional arreglaba el dato y volvía a chocar con el de verdad.
+ */
+function exigirOrigenDeLaCompra(input: CreateCheckoutInput): void {
+  if (!input.treatmentId && !input.ventaSueltaMotivo) {
+    throw new CheckoutError("Elige de qué consulta sale esta compra, o di por qué no sale de ninguna.");
+  }
+}
+
 export async function createCheckout(
   input: CreateCheckoutInput,
   user: CurrentUser,
@@ -197,6 +225,7 @@ export async function createCheckout(
   // EL MINIMO DE WOMPI, ANTES DE CREAR NADA: un link por menos de $1.500 falla en la pagina de Wompi con el
   // paciente delante, y deja una reserva viva 24 horas. Solo el checkout: el efectivo no tiene minimo.
   if (amount < WOMPI_MONTO_MINIMO) throw new CheckoutError(MENSAJE_MINIMO_WOMPI);
+  exigirOrigenDeLaCompra(input);
   let id: string;
   try {
     ({ id } = await createTransactionWithItems({
@@ -212,6 +241,7 @@ export async function createCheckout(
       // queda pendiente de despacho; el aviso a admin sale de esa ubicacion, sin columna nueva.
       desdeLaBodega: input.desdeLaBodega === true,
       domicilio,
+      sinTratamientoMotivo: input.ventaSueltaMotivo ?? null,
       // QUIEN LA REGISTRA (0193), que puede no ser el profesional de la comision.
       actorId: user.id,
     }));
@@ -243,6 +273,7 @@ export async function registerCashSale(
   opciones: { anularLinksQueComparten?: boolean; canal?: "efectivo" | "transferencia" } = {},
 ): Promise<CashSaleCreated> {
   const { professionalId, lines, amount, domicilio } = await resolveSale(input, user);
+  exigirOrigenDeLaCompra(input);
   const { id, linksAnulados } = await createPaidCashTransaction({
     organizationId: user.organizationId,
     patientId: input.patientId,
@@ -254,6 +285,7 @@ export async function registerCashSale(
     treatmentId: input.treatmentId ?? null,
     desdeLaBodega: input.desdeLaBodega === true,
     domicilio,
+    sinTratamientoMotivo: input.ventaSueltaMotivo ?? null,
     anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
     actorId: user.id,
     canal: opciones.canal ?? "efectivo",

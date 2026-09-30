@@ -14,8 +14,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { BloqueRetracto, type RetractoDeLaVenta } from "@/modules/payments/components/bloque-retracto";
+import type { TratamientoParaElegir } from "@/modules/payments/components/bloque-tratamiento";
 import { retractosDeLasVentas } from "@/modules/payments/data/retracto-writer";
 import { ciudadesConCobertura, configuracionDeFlete } from "@/modules/payments/data/domicilio-reader";
+import { tratamientosDeVariosPacientes } from "@/modules/payments/data/tratamientos-del-paciente";
 import { formatDateTime } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
 import { AccionDeVentaButton } from "@/modules/payments/components/accion-de-venta-button";
@@ -246,6 +248,9 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   let ciudadesDeDomicilio: { city: string; department: string; costoSugerido: number | null }[] = [];
   let costoSugeridoPorDefecto: number | null = null;
   let margenDeFlete = 0.03;
+  // LAS CONSULTAS DE CADA PACIENTE, en UNA consulta a la base: el formulario tiene que poder ofrecerlas al
+  // cambiar de paciente sin ir al servidor, y una por paciente serian decenas contra un pool de seis.
+  let tratamientosPorPaciente: Record<string, TratamientoParaElegir[]> = {};
   if (canCreate) {
     const [pts, catalog, ciudades, tarifa] = await Promise.all([
       listSelectablePatients(),
@@ -260,6 +265,8 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
     }));
     costoSugeridoPorDefecto = tarifa.costoPorDefecto;
     margenDeFlete = tarifa.margen;
+    const porPaciente = await tratamientosDeVariosPacientes(pts.map((x) => x.id));
+    tratamientosPorPaciente = Object.fromEntries(porPaciente);
     patients = pts;
     // ═══ LA DISPONIBILIDAD TAMBIEN GATEA LA VENTA, NO SOLO LA ENTREGA (2026-09-11) ═══
     //
@@ -306,6 +313,7 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
               ciudadesDeDomicilio={ciudadesDeDomicilio}
               costoSugeridoPorDefecto={costoSugeridoPorDefecto}
               margenDeFlete={margenDeFlete}
+              tratamientosPorPaciente={tratamientosPorPaciente}
             />
           </CardContent>
         </Card>
@@ -329,6 +337,7 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
               ciudadesDeDomicilio={ciudadesDeDomicilio}
               costoSugeridoPorDefecto={costoSugeridoPorDefecto}
               margenDeFlete={margenDeFlete}
+              tratamientosPorPaciente={tratamientosPorPaciente}
             />
           </CardContent>
         </Card>

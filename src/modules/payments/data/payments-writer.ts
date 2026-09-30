@@ -267,6 +267,8 @@ export type NewTransaction = {
   desdeLaBodega?: boolean;
   /** Quien teclea la venta. Se sella aparte del profesional de la comision (0193). */
   actorId?: string | null;
+  /** Por que la compra no sale de ninguna consulta (0197). Se ignora si hay tratamiento. */
+  sinTratamientoMotivo?: string | null;
   /**
    * ENVIO A DOMICILIO (0190). Su presencia decide tres cosas a la vez, y por eso viaja junta:
    *
@@ -344,6 +346,9 @@ export async function createTransactionWithItems(
         // QUIEN LA REGISTRO, que no siempre es el profesional de la comision (0193): un administrador puede
         // cobrar por el paciente de otro, y si la venta sale mal hay que saber a quien preguntarle.
         createdBy: input.actorId ?? null,
+        // POR QUE NO SALE DE UNA CONSULTA (0197). Un CHECK impide que venga junto a un tratamiento: las dos a
+        // la vez serian un texto que contradice al vinculo.
+        sinTratamientoMotivo: input.treatmentId ? null : (input.sinTratamientoMotivo ?? null),
         // Toda venta nace con su entrega pendiente (sesion 2): es lo que hace que ninguna quede sin camino
         // para entregarse.
         fulfillmentState: "pendiente",
@@ -565,6 +570,9 @@ export async function createPaidCashTransaction(
         // QUIEN LA REGISTRO, que no siempre es el profesional de la comision (0193): un administrador puede
         // cobrar por el paciente de otro, y si la venta sale mal hay que saber a quien preguntarle.
         createdBy: input.actorId ?? null,
+        // POR QUE NO SALE DE UNA CONSULTA (0197). Un CHECK impide que venga junto a un tratamiento: las dos a
+        // la vez serian un texto que contradice al vinculo.
+        sinTratamientoMotivo: input.treatmentId ? null : (input.sinTratamientoMotivo ?? null),
         stockState: "pendiente",
         fulfillmentState: "pendiente",
       })

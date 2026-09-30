@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 
 import { registerCashSaleFormAction } from "../actions";
 import { BloqueDomicilio, type CiudadParaElegir } from "./bloque-domicilio";
+import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
 import type { CashSaleFormState } from "../validations";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 
@@ -31,12 +32,15 @@ export function RegisterCashSaleForm({
   ciudadesDeDomicilio = [],
   costoSugeridoPorDefecto = null,
   margenDeFlete = 0.03,
+  tratamientosPorPaciente = {},
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
   ciudadesDeDomicilio?: CiudadParaElegir[];
   costoSugeridoPorDefecto?: number | null;
   margenDeFlete?: number;
+  /** Las consultas de cada paciente, para poder atar la compra a la suya sin ir al servidor. */
+  tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
   const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
@@ -185,6 +189,15 @@ export function RegisterCashSaleForm({
             <option value="transferencia">Transferencia</option>
           </select>
         </div>
+
+        {/* LA `key` POR PACIENTE re-monta el bloque al cambiar de paciente: sin ella, la consulta elegida
+            para uno se quedaría seleccionada para el siguiente, que es como se le cuelga una compra a la
+            consulta de otra persona. */}
+        <BloqueTratamiento
+          key={patientId}
+          patientId={patientId}
+          tratamientos={tratamientosPorPaciente[patientId] ?? []}
+        />
 
         <BloqueDomicilio
           ciudades={ciudadesDeDomicilio}

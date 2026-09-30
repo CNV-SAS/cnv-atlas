@@ -1380,6 +1380,13 @@
       "when": 1791953846103,
       "tag": "0196_endurecer_la_vista_y_las_funciones",
       "breakpoints": true
+    },
+    {
+      "idx": 197,
+      "version": "7",
+      "when": 1791953906103,
+      "tag": "0197_por_que_la_compra_no_sale_de_una_consulta",
+      "breakpoints": true
     }
   ]
 }
