@@ -32,6 +32,11 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
   let profId: string;
   let profileId: string;
   let patientId: string;
+  // LA UBICACION Y EL SALDO SE PREPARAN, NO SE SUPONEN. El caso del motivo pasaba en verde por su rama de
+  // escape sin comprobar nada: la venta no llevaba ubicacion, asi que no habia salida de inventario y no
+  // habia nada que devolver. Se descubrio quitando la rama, que es la unica forma de saber si un test que
+  // pasa esta probando algo.
+  let locationId = "";
   const nutra = "77777777-7777-7777-7777-777777777702"; // MULTICELL, dedicado a pruebas
   const ventas: string[] = [];
   const reversas: string[] = [];
@@ -40,14 +45,24 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
   async function ventaPagada(cantidad = 2): Promise<{ id: string; lineaId: string }> {
     const [t] = await db.execute(dsql`
       insert into transactions (organization_id, patient_id, professional_id, status, amount, currency,
-                                payment_method, wompi_env, idempotency_key, operated_at)
+                                payment_method, wompi_env, idempotency_key, operated_at, location_id,
+                                stock_state)
       values (${orgId}, ${patientId}, ${profId}, 'paid', '100000', 'COP', 'efectivo', 'test',
-              ${`test-deshecho-${Date.now()}-${Math.random().toString(36).slice(2)}`}, now())
+              ${`test-deshecho-${Date.now()}-${Math.random().toString(36).slice(2)}`}, now(),
+              ${locationId}, 'pendiente')
       returning id`);
     ventas.push(t.id);
     const [li] = await db.execute(dsql`
       insert into transaction_items (transaction_id, nutraceutical_id, quantity, unit_price)
       values (${t.id}, ${nutra}, ${cantidad}, '50000') returning id`);
+    // EL REPARTO SE SELLA POR EL CAMINO REAL. Sin el, una devolucion no puede revertir su parte
+    // proporcional y para en voz alta (0143), asi que un fixture que lo salte no puede probar la devolucion.
+    // Y se usa la funcion de la app, no un UPDATE a mano: sellar a mano seria un segundo constructor del
+    // mismo dato, y el test dejaria de comprobar lo que la app escribe.
+    const { sellarContabilidadDeLaVenta } = await import("@/modules/payments/data/payments-writer");
+    await db.transaction(async (tx: any) => {
+      await sellarContabilidadDeLaVenta(tx, { id: t.id, amount: "100000", professionalId: profId });
+    });
     return { id: t.id, lineaId: li.id };
   }
 
@@ -93,12 +108,36 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
       insert into patients (organization_id, document_type, document_number)
       values (${orgId}, 'CC', ${`DESH-${Date.now()}`}) returning id`);
     patientId = pac.id;
+
+    // ── LA VITRINA DEL PROFESIONAL, CON SALDO DEL PRODUCTO DE PRUEBA ──
+    //
+    // Los movimientos son APPEND-ONLY por trigger (registro de custodia), asi que no se pueden limpiar: el
+    // lote se REUSA entre corridas y se le repone saldo cada vez, que es lo que hace el fixture estable.
+    const [loc] = await db.execute(dsql`
+      select id from inventory_locations
+       where professional_id = ${profId} and is_active and sellable limit 1`);
+    locationId = loc?.id ?? "";
+    const [lote] = await db.execute(dsql`
+      select id from lots where nutraceutical_id = ${nutra} order by created_at limit 1`);
+    if (locationId && lote) {
+      await db.execute(dsql`
+        insert into nutraceutical_stock_movements (professional_id, nutraceutical_id, location_id, lot_id,
+                                                   delta, type, reason)
+        values (${profId}, ${nutra}, ${locationId}, ${lote.id}, 20, 'recepcion',
+                'Fixture de lo-deshecho: saldo para poder vender y devolver')`);
+    }
   });
 
   afterEach(async () => {
     await db.execute(dsql`set session_replication_role = replica`);
     for (const id of reversas) await db.execute(dsql`delete from sale_reversals where id = ${id}`);
     for (const id of ventas) {
+      // LAS FILAS DE INGRESO SE BORRAN A MANO: con `session_replication_role = replica` los triggers estan
+      // apagados, y eso incluye los de las llaves foraneas, asi que el borrado en cascada NO corre. Sin esto
+      // quedarian filas de comision e ingreso apuntando a una venta que ya no existe.
+      await db.execute(dsql`delete from professional_revenue where transaction_id = ${id}`);
+      await db.execute(dsql`delete from cnv_revenue where transaction_id = ${id}`);
+      await db.execute(dsql`delete from sale_reversals where transaction_id = ${id}`);
       await db.execute(dsql`delete from transaction_items where transaction_id = ${id}`);
       await db.execute(dsql`delete from transactions where id = ${id}`);
     }
@@ -129,6 +168,45 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
     // devoluciones de uno solo, y la pregunta de la direccion cientifica es que vuelve, no cuantas veces.
     const prod = despues.productosDevueltos.find((p: any) => p.unidades > 0);
     expect(prod, "ninguna devolución llegó a la tabla de productos").toBeTruthy();
+  });
+
+  // ═══ EL MOTIVO QUE ESCRIBE LA PERSONA LLEGA A LA PANTALLA (Santiago, 2026-09-30) ═══
+  //
+  // LO QUE PASO: el bloque "Por qué" mostraba "Devolución de 1 de 2 unidades de la línea", una frase del
+  // codigo, y yo concluí que el formulario no pedia motivo. SI LO PIDE. Se guardaba en el movimiento de
+  // inventario y la reversa se quedaba con la frase, asi que el texto de Santiago no aparecia en ninguna
+  // pantalla. Es la misma forma que la nota credito: el dato esta y la pantalla dice otra cosa.
+  //
+  // Se prueba CONTRA EL CAMINO REAL (el writer de la devolucion fisica), no insertando la reversa a mano:
+  // insertandola a mano se probaria que el agregado lee la columna, que es justo lo que no fallaba. Lo que
+  // fallaba era que nadie escribiera el motivo EN esa columna.
+  it("el motivo escrito al devolver es el que sale en la pantalla", async () => {
+    const { registrarDevolucionFisica } = await import("@/modules/payments/data/devolucion-fisica-writer");
+    const MOTIVO = `SMOKE motivo propio ${Date.now()}`;
+    const v = await ventaPagada(2);
+    // El descuento de inventario tiene que haber ocurrido para poder devolver: la devolucion saca la unidad
+    // de donde la venta la puso.
+    const { descontarVenta } = await import("@/modules/payments/data/inventario-de-venta");
+    await descontarVenta(v.id);
+    // SIN RAMA DE ESCAPE: si la devolución no se puede registrar, el caso FALLA. La primera versión la
+    // tragaba con un try/catch y pasaba en verde sin comprobar nada, que es peor que no tener el caso.
+    await registrarDevolucionFisica({
+      transactionItemId: v.lineaId,
+      cantidad: 1,
+      motivo: MOTIVO,
+      actorId: profileId,
+      actorEmail: "smoke@cnv",
+      ip: null,
+    });
+    const r = await lector.loDeshecho();
+    const fila = r.motivos.find((m: any) => m.motivo === MOTIVO);
+    expect(fila, "el motivo escrito no llegó al agregado").toBeTruthy();
+    expect(fila.loEscribioElSistema, "un motivo escrito por una persona no es una nota automática").toBe(false);
+    // Y la frase del codigo ya no se cuela como si fuera un motivo.
+    for (const m of r.motivos) {
+      if (m.loEscribioElSistema) continue;
+      expect(m.motivo).not.toMatch(/^Devolución de \d+ de \d+ unidades de la línea\.$/);
+    }
   });
 
   // ═══ LAS DOS CIFRAS DEL MISMO HECHO TIENEN QUE CUADRAR (Santiago, 2026-09-30) ═══

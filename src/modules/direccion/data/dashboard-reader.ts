@@ -47,11 +47,19 @@ function sum(rows: { v: string | number | null }[]): number {
 }
 
 /**
- * Agrupa las filas de saldo por un nombre y suma sus unidades, dejando fuera lo que esta en cero.
+ * Agrupa las filas de saldo por un nombre y suma sus unidades, dejando fuera lo que esta en CERO.
  *
  * SIN SALDO NO ES UNA LINEA: una fila en cero existe porque alguna vez hubo unidades ahi, y listarla diria
- * que hay un producto en una bodega donde no hay ninguno. Es la misma razon por la que la cifra de arriba
- * cuenta solo los que tienen saldo.
+ * que hay un producto en una bodega donde no hay ninguno.
+ *
+ * ── PERO UN SALDO NEGATIVO SI ES UNA LINEA, y esto lo encontro su propio candado (2026-09-30) ──
+ *
+ * La primera version dejaba fuera todo lo que no fuera positivo, y el desglose sumaba MAS que el total
+ * (7.197 contra 7.187): la cifra de arriba si cuenta las filas negativas. O sea que la tarjeta y su propio
+ * desglose podian discrepar, que es exactamente lo que el desglose venia a evitar.
+ *
+ * Un saldo negativo no se esconde: significa que se descontaron unidades que la vitrina no tenia, y es algo
+ * que hay que arreglar en los datos. Esconderlo lo volveria indetectable y ademas descuadraria la cuenta.
  */
 function agrupar<T extends { stock_quantity: number | string | null }>(
   filas: T[],
@@ -60,7 +68,7 @@ function agrupar<T extends { stock_quantity: number | string | null }>(
   const mapa = new Map<string, number>();
   for (const f of filas) {
     const u = Number(f.stock_quantity) || 0;
-    if (u <= 0) continue;
+    if (u === 0) continue;
     mapa.set(nombre(f), (mapa.get(nombre(f)) ?? 0) + u);
   }
   return [...mapa.entries()]

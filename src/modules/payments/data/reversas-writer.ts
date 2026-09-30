@@ -239,7 +239,7 @@ export type ReversionDeDevolucion = {
  */
 export async function revertirDineroDeLaDevolucion(
   tx: Tx,
-  input: { transactionItemId: string; cantidadDevuelta: number; actorId: string },
+  input: { transactionItemId: string; cantidadDevuelta: number; actorId: string; motivo: string },
 ): Promise<ReversionDeDevolucion> {
   const [linea] = await tx.execute<{
     transaction_id: string;
@@ -294,7 +294,16 @@ export async function revertirDineroDeLaDevolucion(
               where i.transaction_id = ${linea.transaction_id}),
             ${input.actorId}, now(), ${input.actorId}, ${input.transactionItemId},
             ${input.cantidadDevuelta}, ${alPaciente}::numeric,
-            ${`Devolución de ${input.cantidadDevuelta} de ${vendidas} unidades de la línea.`})
+            -- ═══ LA NOTA ES EL MOTIVO QUE ESCRIBIO LA PERSONA (Santiago, 2026-09-30) ═══
+            --
+            -- Antes componia aqui una frase con las unidades, y el motivo REAL (que el formulario exige, con
+            -- cinco letras minimo) solo llegaba al movimiento de inventario y al log de auditoria. Asi que el
+            -- agregado de Direccion mostraba "Devolución de 1 de 2 unidades de la línea" en el sitio donde
+            -- prometia decir POR QUE, y el texto de Santiago no aparecia en ninguna pantalla.
+            --
+            -- Y LO QUE LA FRASE DECIA NO SE PIERDE: las unidades viven en returned_quantity, que es de
+            -- donde el panel ya las saca. Guardarlas otra vez en prosa era la segunda copia del mismo dato.
+            ${input.motivo})
     returning id`);
 
   // LAS FILAS NEGATIVAS, con la MISMA forma que el contracargo perdido, pero por la parte devuelta. La tasa

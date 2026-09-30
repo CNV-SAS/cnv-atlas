@@ -74,12 +74,19 @@ describe.skipIf(!HAS_DB)("inventario del tablero de Direccion (BD real)", () => 
 
     const porProducto = d.inventoryByProduct.reduce((n, p) => n + p.unidades, 0);
     const porUbicacion = d.inventoryByLocation.reduce((n, l) => n + l.unidades, 0);
-    // El total incluye filas en cero y el desglose no, asi que la igualdad se exige contra la suma de lo
-    // que tiene saldo, que es lo que el desglose promete mostrar.
+    // ═══ LA IGUALDAD ES EXACTA, y este caso ya la gano una vez ═══
+    //
+    // La primera version pedia solo "menor o igual" porque supuse que el desglose dejaba fuera filas que el
+    // total contaba. Al correrlo dio 7.197 contra 7.187: el desglose sumaba MAS, porque dejaba fuera las
+    // filas NEGATIVAS y el total si las cuenta. O sea que la tarjeta y su propio desglose podian discrepar,
+    // que es justo lo que el desglose venia a evitar. Ahora incluye todo lo que no es cero y la suma cuadra
+    // al peso, que es lo unico que hace imposible la discrepancia.
     expect(porProducto).toBe(porUbicacion);
-    expect(porProducto).toBeLessThanOrEqual(d.inventoryUnits);
-    expect(d.inventoryByProduct.length).toBe(d.inventoryProducts);
-    expect(d.inventoryByLocation.length).toBe(d.inventoryLocations);
+    expect(porProducto).toBe(d.inventoryUnits);
+    // Los CONTEOS de la tarjeta miran solo saldo positivo, asi que el desglose puede tener alguna linea mas
+    // (una con saldo negativo). Menos, nunca.
+    expect(d.inventoryByProduct.length).toBeGreaterThanOrEqual(d.inventoryProducts);
+    expect(d.inventoryByLocation.length).toBeGreaterThanOrEqual(d.inventoryLocations);
     // Nombres de verdad: si el embed dejara de traerlos, todas las lineas dirian "(sin nombre)" y la
     // pantalla seguiria pareciendo correcta.
     for (const p of d.inventoryByProduct) expect(p.nombre).not.toBe("(sin nombre)");
