@@ -277,6 +277,52 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
     expect(despues.ventasSinConsultaComparables - antes.ventasSinConsultaComparables).toBe(0);
   });
 
+  // ═══ Y LA FECHA DE ARRANQUE SACA LO ANTERIOR DE TODOS LOS EJES A LA VEZ (0198) ═══
+  //
+  // El candado estatico comprueba que el lector LLAME a la fecha; este comprueba que SIRVA, que es otra
+  // cosa. Y lo que mas importa no es que la venta vieja desaparezca: es que desaparezca de los DOS lados
+  // del cociente. Si el corte llegara solo a las ventas, el numerador seria de la operacion real y el
+  // denominador seguiria arrastrando las consultas de prueba, y la conversion saldria hundida por un
+  // motivo que no existe. Es el defecto del "0 de 18" otra vez, con otra ropa.
+  it("con fecha de arranque, lo anterior no cuenta en ningun eje", async () => {
+    const [previa] = await db.execute(dsql`select fecha_de_arranque::text as f from commercial_config limit 1`);
+    try {
+      await db.execute(dsql`update commercial_config set fecha_de_arranque = null`);
+      await ventaAntigua(); // del 2026-09-01
+      const sinCorte = await lector.insightsDeLaCompra();
+      expect(sinCorte.desdeElArranque).toBeNull();
+
+      // ── EL CORTE SALE DE LA CONSTANTE DEL MODULO, NO DE UNA FECHA TECLEADA ──
+      //
+      // Una fecha absoluta en un test envejece y un dia falla por OTRA razon (ya paso con la cantidad del
+      // candado de devolucion fisica). Usar el dia del vinculo cumple las dos condiciones que este caso
+      // necesita, y las seguira cumpliendo: deja fuera la venta vieja, y es anterior a hoy, asi que lo que
+      // crean los demas casos sigue contando.
+      const corte = lector.DESDE_QUE_HAY_VINCULO;
+      await db.execute(dsql`update commercial_config set fecha_de_arranque = ${corte}::date`);
+      const conCorte = await lector.insightsDeLaCompra();
+      expect(conCorte.desdeElArranque).toBe(corte);
+      expect(conCorte.ventasSinConsulta).toBeLessThan(sinCorte.ventasSinConsulta);
+      // Y LAS ANTERIORES AL VINCULO DESAPARECEN DEL TODO, no se quedan contadas aparte: antes del arranque
+      // no hay nada que separar, porque no hay nada que contar.
+      expect(conCorte.ventasSinConsultaAnteriores).toBe(0);
+      // EL OTRO LADO DEL COCIENTE TAMBIEN SE RECORTA: con el corte, ninguna consulta anterior puede seguir
+      // sumando prescripciones ni recomendaciones.
+      const prescritasConCorte = conCorte.porProducto.reduce((n: number, p: any) => n + p.prescritoEn, 0);
+      const prescritasSinCorte = sinCorte.porProducto.reduce((n: number, p: any) => n + p.prescritoEn, 0);
+      expect(prescritasConCorte).toBeLessThanOrEqual(prescritasSinCorte);
+      const recomendadasConCorte = conCorte.porProducto.reduce((n: number, p: any) => n + p.recomendadoEn, 0);
+      const recomendadasSinCorte = sinCorte.porProducto.reduce((n: number, p: any) => n + p.recomendadoEn, 0);
+      expect(recomendadasConCorte).toBeLessThan(recomendadasSinCorte);
+    } finally {
+      // LA CONFIGURACION SE DEVUELVE PASE LO QUE PASE: es una fila compartida, y un test que la deje puesta
+      // dejaria TODAS las cifras de la base local recortadas por una fecha que nadie fijo.
+      await db.execute(
+        dsql`update commercial_config set fecha_de_arranque = ${previa?.f ?? null}::date`,
+      );
+    }
+  });
+
   // Y SU MOTIVO TAMPOCO SE LISTA: no tiene, porque nadie se lo pidio. Sacarla como "(sin motivo escrito)"
   // haria creer que alguien omitio algo, y no omitio nada: no existia el campo.
   it("y su falta de motivo no se lista como si alguien lo hubiera omitido", async () => {

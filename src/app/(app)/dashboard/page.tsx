@@ -139,7 +139,15 @@ export default async function DashboardPage() {
         <TituloSeccion>Tu mes</TituloSeccion>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
-            { icono: Wallet, rotulo: "Tu comisión", valor: pesos(t.comisionDelMes), nota: null },
+            {
+              icono: Wallet,
+              rotulo: "Tu comisión",
+              valor: pesos(t.comisionDelMes),
+              // SOLO EN EL MES DEL ARRANQUE: ese mes la cifra no es del mes entero, y quien la lea va a
+              // ver un mes flojo que nunca existió. Los meses siguientes vuelven a ser el mes completo y
+              // la nota desaparece sola, porque un aviso permanente es ruido que nadie lee.
+              nota: t.desdeElArranque ? `Desde el ${t.desdeElArranque}, no el mes entero` : null,
+            },
             {
               icono: Receipt,
               rotulo: "Ventas",
@@ -147,7 +155,9 @@ export default async function DashboardPage() {
               // LAS CIFRAS DICEN QUE DEJAN FUERA (smoke del 2026-09-29). Los dos descuentos son correctos,
               // pero sin decirlos el número parece moverse solo, y un número que se mueve solo es
               // indistinguible de un defecto: costó media hora de smoke averiguar que estaba bien.
-              nota: "Sin lo devuelto ni lo que está en revisión",
+              nota: t.desdeElArranque
+                ? `Sin lo devuelto ni lo que está en revisión · desde el ${t.desdeElArranque}`
+                : "Sin lo devuelto ni lo que está en revisión",
             },
             {
               icono: Package,

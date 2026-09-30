@@ -10,6 +10,7 @@ import {
   ESTADO_DISPUTA_PERDIDA,
   FILTRO_FUERA_DE_REVISION,
 } from "@/modules/payments/cobro-reconocido";
+import { desdeElArranque, elMasTardio, fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
 import { pendienteDelPaciente } from "@/modules/patients/pendientes";
 
 // ═══ LO QUE EL TABLERO NECESITA SABER, Y NADA MAS ═══
@@ -55,6 +56,11 @@ export type Tablero = {
   ventasDelMes: number;
   /** Unidades en inventario de nutraceuticos. */
   unidadesEnInventario: number;
+  /**
+   * Null salvo en el mes del arranque: entonces las dos cifras del mes NO son del mes entero, sino desde
+   * ese dia, y la pantalla tiene que decirlo o el profesional leera un mes flojo que nunca existio.
+   */
+  desdeElArranque: string | null;
 };
 
 function inicioDelMes(): string {
@@ -64,7 +70,16 @@ function inicioDelMes(): string {
 
 export async function getTablero(): Promise<Tablero> {
   const supabase = await createSupabaseServerClient();
-  const desde = inicioDelMes();
+  // ── EL MES EN CURSO, PERO NUNCA ANTES DEL ARRANQUE (0198) ──
+  //
+  // El mes empieza el dia 1; si el arranque cae a mitad de mes, lo que hay que contar empieza en el
+  // arranque. Sin esto, la primera tarjeta del mes del arranque sumaria las pruebas de los dias
+  // anteriores, que es justo lo que la fecha viene a evitar. Los meses siguientes no lo notan.
+  const arranque = await fechaDeArranque();
+  const desde = elMasTardio(inicioDelMes(), desdeElArranque(arranque));
+  // Solo se avisa cuando el corte MUERDE: en los meses siguientes la cifra vuelve a ser del mes entero y
+  // un aviso permanente seria ruido que nadie lee.
+  const recortaElMes = desde !== inicioDelMes() ? arranque : null;
 
   const [pacientes, citas, comision, ventas, perdidas, devueltas, inventario] = await Promise.all([
     // LOS PENDIENTES SALEN DE LA MISMA REGLA QUE LA COLUMNA (`pendienteDelPaciente`), no de un conteo
@@ -196,5 +211,6 @@ export async function getTablero(): Promise<Tablero> {
       devoluciones: (devueltas.data ?? []).map((r) => r.debited_amount),
     }),
     unidadesEnInventario: suma(inventario.data, "stock_quantity"),
+    desdeElArranque: recortaElMes,
   };
 }

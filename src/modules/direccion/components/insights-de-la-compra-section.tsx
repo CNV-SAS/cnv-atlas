@@ -44,6 +44,15 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
           todavía qué consumió el paciente, así que ninguna de estas cifras dice si le sirvió. Para eso hace
           falta el registro de consumo en el seguimiento.
         </p>
+        {datos.desdeElArranque ? (
+          <p className="text-xs text-muted-foreground">
+            Cuenta desde el <strong className="text-foreground">{datos.desdeElArranque}</strong>, que es el
+            día del arranque: las consultas y las compras anteriores son de las pruebas, y mezclarlas haría
+            que estas cifras midieran otra cosa. El corte alcanza a los tres ejes a la vez (lo que el modelo
+            propuso, lo prescrito y lo comprado), porque recortar solo uno los pondría a medir ventanas
+            distintas.
+          </p>
+        ) : null}
         {datos.ventasSinConsultaAnteriores > 0 ? (
           <p className="text-xs text-muted-foreground">
             Y {datos.ventasSinConsultaAnteriores} de las compras sin consulta son anteriores al {datos.desde}:

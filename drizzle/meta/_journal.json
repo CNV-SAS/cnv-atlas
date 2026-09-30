@@ -1387,6 +1387,13 @@
       "when": 1791953906103,
       "tag": "0197_por_que_la_compra_no_sale_de_una_consulta",
       "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1791953966103,
+      "tag": "0198_la_fecha_de_arranque",
+      "breakpoints": true
     }
   ]
 }

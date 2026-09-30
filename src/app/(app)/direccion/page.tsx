@@ -26,20 +26,36 @@ export default async function DireccionPage() {
 
   const [d, insights] = await Promise.all([getDireccionDashboard(), insightsDeLaCompra()]);
 
+  // EL ALCANCE SE DICE EN CADA TARJETA DE DINERO, no en una nota al pie: el dia del arranque estas cifras
+  // caen de golpe (sale todo lo de las pruebas) y una caida sin explicacion al lado se lee como un defecto.
+  const notaDeArranque = d.desdeElArranque ? `desde el ${d.desdeElArranque}` : null;
+
   const cards: { label: string; value: string; hint?: string }[] = [
     // LAS CIFRAS DICEN QUE DEJAN FUERA (smoke del 2026-09-29): sin decirlo, el número parece moverse solo,
     // y un número que se mueve solo es indistinguible de un defecto.
     {
       label: "Ingreso bruto facturado",
       value: cop.format(d.grossPaid),
-      hint: `${d.paidCount} pagos · sin lo devuelto ni lo que está en revisión`,
+      hint: `${d.paidCount} pagos · sin lo devuelto ni lo que está en revisión${notaDeArranque ? ` · ${notaDeArranque}` : ""}`,
     },
-    { label: "Ingreso CNV", value: cop.format(d.cnvRevenue) },
-    { label: "Comisiones a profesionales", value: cop.format(d.professionalCommissions) },
+    { label: "Ingreso CNV", value: cop.format(d.cnvRevenue), hint: notaDeArranque ?? undefined },
+    {
+      label: "Comisiones a profesionales",
+      value: cop.format(d.professionalCommissions),
+      // SE DICE QUE ESTO NO ES LO QUE SE DEBE, porque la liquidación sí paga lo anterior al arranque y las
+      // dos cifras van a discrepar a propósito. Sin esta línea, la diferencia parece un error de una de las
+      // dos pantallas.
+      hint: d.desdeElArranque
+        ? `desde el ${d.desdeElArranque} · lo anterior se sigue liquidando, no se pierde`
+        : undefined,
+    },
     {
       label: "Inventario",
       value: `${d.inventoryUnits} unidades`,
-      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} ubicaci${d.inventoryLocations === 1 ? "ón" : "ones"} · sin los productos de prueba`,
+      // EL INVENTARIO NO LLEVA CORTE Y HAY QUE DECIRLO: un saldo no es un flujo. Las unidades que hay están
+      // hoy en la bodega, las haya puesto ahí quien las haya puesto. Recortarlo por fecha daría un número
+      // que no es el de ninguna bodega.
+      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} ubicaci${d.inventoryLocations === 1 ? "ón" : "ones"} · sin los productos de prueba${d.desdeElArranque ? " · es el saldo de hoy, no lleva corte de fecha" : ""}`,
     },
   ];
 
