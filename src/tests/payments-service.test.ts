@@ -470,8 +470,17 @@ describe("la venta que nace en TRATAMIENTO (Bloque 3, sesion 2)", () => {
   });
 
   it("un producto NO prescrito no se cuela en la venta de la consulta", async () => {
-    await expect(venta({ items: [{ nutraceuticalId: "n2", quantity: 1 }] })).rejects.toThrow(/prescritos/);
+    await expect(venta({ items: [{ nutraceuticalId: "n2", quantity: 1 }] })).rejects.toThrow(/no está prescrito/);
     expect(writer.createTransactionWithItems).not.toHaveBeenCalled();
+  });
+
+  // EL MENSAJE DICE LA SALIDA, y eso se asserta (smoke del 2026-09-29): sin nombrarla, Santiago lo leyó
+  // como un bloqueo y se quedó sin poder registrar. Un mensaje que no dice qué hacer es un bloqueo aunque
+  // no lo sea, y eso no lo atrapa ningún test que solo mire que "rechaza".
+  it("y el mensaje nombra la salida que existe", async () => {
+    await expect(venta({ items: [{ nutraceuticalId: "n2", quantity: 1 }] })).rejects.toThrow(
+      /No sale de ninguna consulta/,
+    );
   });
 
   it("el tratamiento de OTRO paciente se rechaza", async () => {

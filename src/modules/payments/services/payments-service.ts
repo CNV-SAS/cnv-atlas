@@ -106,7 +106,19 @@ async function resolveSale(
     }
     const prescritos = new Set(t.prescritos);
     if (input.items.some((it) => !prescritos.has(it.nutraceuticalId))) {
-      throw new CheckoutError("Solo se venden aquí los nutracéuticos prescritos en este tratamiento.");
+      // ═══ EL MENSAJE DICE LA SALIDA (smoke del 2026-09-29) ═══
+      //
+      // Decía solo la regla, y Santiago lo leyó como un bloqueo sin salida: se quedó sin poder registrar una
+      // venta de un producto que ninguna consulta prescribió. La salida EXISTE y es la correcta para ese
+      // caso, pero el mensaje no la nombraba. Un mensaje que no dice qué hacer es un bloqueo, aunque no lo
+      // sea.
+      //
+      // LA REGLA NO SE TOCA AQUÍ: si conviene que avise en vez de bloquear cuando la venta nace en /pagos es
+      // una decisión de Santiago, y está reportada aparte (LA_REGLA_DE_LO_PRESCRITO).
+      throw new CheckoutError(
+        "Ese producto no está prescrito en la consulta que elegiste. Si la compra no sale de ese plan, marca " +
+          '"No sale de ninguna consulta" y escribe por qué: la venta se registra igual.',
+      );
     }
   }
 

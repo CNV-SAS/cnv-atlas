@@ -3,6 +3,8 @@ import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
 import { getDireccionDashboard } from "@/modules/direccion/data/dashboard-reader";
+import { InsightsDeLaCompraSection } from "@/modules/direccion/components/insights-de-la-compra-section";
+import { insightsDeLaCompra } from "@/modules/direccion/data/insights-de-la-compra";
 import { canViewDireccion } from "@/modules/direccion/policies/can-view-direccion";
 import { requireUser } from "@/modules/auth/session";
 
@@ -22,7 +24,7 @@ export default async function DireccionPage() {
     redirect("/no-autorizado");
   }
 
-  const d = await getDireccionDashboard();
+  const [d, insights] = await Promise.all([getDireccionDashboard(), insightsDeLaCompra()]);
 
   const cards: { label: string; value: string; hint?: string }[] = [
     // LAS CIFRAS DICEN QUE DEJAN FUERA (smoke del 2026-09-29): sin decirlo, el número parece moverse solo,
@@ -58,6 +60,10 @@ export default async function DireccionPage() {
           <TarjetaMetrica key={c.label} rotulo={c.label} valor={c.value} detalle={c.hint} />
         ))}
       </div>
+
+      {/* VA DEBAJO DE LAS CIFRAS DE DINERO, no arriba: el dinero es lo que Dirección viene a ver todos los
+          días, y esto es análisis. Poner el análisis primero le quitaría el sitio a lo operativo. */}
+      <InsightsDeLaCompraSection datos={insights} />
     </div>
   );
 }

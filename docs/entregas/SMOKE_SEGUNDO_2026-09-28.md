@@ -366,3 +366,42 @@ la cuenta contra la que se registra el pago.
 **La venta desde Tratamiento no estaba afectada.** También arma su envío a mano, pero no tiene campos: su
 formulario son botones y los datos vienen del tratamiento. Igual quedó con candado, porque el día que alguien
 le agregue un campo nacería roto.
+
+---
+
+# R7 · El mensaje de lo prescrito, y la pantalla de insights
+
+## Lo que cambió del bloqueo
+
+**La regla no se tocó** (es una decisión tuya, reportada en `LA_REGLA_DE_LO_PRESCRITO_2026-09-30.md`). Lo que
+cambió es el mensaje, que no decía la salida:
+
+> *"Ese producto no está prescrito en la consulta que elegiste. Si la compra no sale de ese plan, marca «No
+> sale de ninguna consulta» y escribe por qué: la venta se registra igual."*
+
+1. Intenta vender **PRUEBA SMOKE BLOQUE 3** eligiendo una consulta. **Tiene que salir ese mensaje**, no el de
+   antes.
+2. Marca **"No sale de ninguna consulta"**, escribe el motivo y registra. **Tiene que pasar.**
+3. **El costo de hacerlo, que conviene que sepas:** esa venta sale de las cifras del plan. Aparece contada
+   como compra sin consulta, con su motivo, que es la verdad de lo que quedó registrado.
+
+## Parte 15 · La pantalla de insights
+
+Está en **/direccion**, debajo de las cifras de dinero.
+
+1. Lo primero que tiene que verse es **el aviso**: que esto mide si el modelo **vende**, no si **funciona**,
+   porque comprar no es tomar. Si ese aviso no está arriba, avísame: es la mitad del valor de la pantalla.
+2. **Y su ventana:** solo cuenta desde el 29 de septiembre. Antes una venta de /pagos nacía sin consulta.
+3. **Con pocas ventas va a estar casi vacía, y eso es correcto.** Si no hay ninguna desde el 29, lo dice en
+   una línea en vez de mostrar ceros.
+4. Las tres cifras de arriba: compras con su consulta, líneas dentro de lo prescrito, y cuánto tarda en
+   comprar (**mediana**, no promedio: con pocas filas un caso de ocho meses movería el promedio y diría que
+   nadie compra).
+5. **La tabla por producto:** prescrito en cuántas consultas, comprado en cuántas, y cuántas veces se compró
+   fuera del plan.
+6. **Y el bloque del modelo:** lo que recomendó y no se prescribió, con la frase de que eso **no es un
+   error**. El modelo propone.
+
+**El control que importa:** registra una venta **sin consulta** y verifica que **no** aparece contada como
+"fuera del plan". Son dos hechos distintos, y mezclarlos diría que la gente se aparta de lo prescrito cuando
+lo que pasa es que compró sin consulta.
