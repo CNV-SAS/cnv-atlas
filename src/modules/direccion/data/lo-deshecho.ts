@@ -32,8 +32,16 @@ export type LoDeshecho = {
   /** Ventas pagadas del periodo: el denominador sin el cual ningun conteo significa nada. */
   ventasPagadas: number;
   porClase: { clase: ClaseDeshecha; estado: string; veces: number; monto: number }[];
-  /** Las notas escritas al abrir cada caso, agrupadas. */
-  motivos: { clase: ClaseDeshecha; motivo: string; veces: number }[];
+  /**
+   * Las notas de cada caso, agrupadas.
+   *
+   * OJO CON QUE ESTO NO ES UN MOTIVO EN UNA DEVOLUCION (Santiago, 2026-09-30): en un contracargo la nota la
+   * ESCRIBE quien abre el caso, pero en una devolucion la compone el sistema ("Devolución de 1 de 2 unidades
+   * de la línea"), porque el formulario NO PIDE motivo. Titular ese bloque "Por qué" prometia una respuesta
+   * que el dato no tiene, y el lector se queda pensando que le falta algo. Se distingue en la pantalla, y la
+   * de pedir el motivo de verdad es una decision de producto que no he tomado yo.
+   */
+  motivos: { clase: ClaseDeshecha; motivo: string; veces: number; loEscribioElSistema: boolean }[];
   /**
    * Que producto vuelve mas, en unidades. Es el dato que le sirve a la direccion cientifica.
    *
@@ -139,6 +147,8 @@ export async function loDeshecho(): Promise<LoDeshecho> {
       clase: m.kind as ClaseDeshecha,
       motivo: m.motivo,
       veces: Number(m.veces),
+      // La nota de una devolucion la compone el writer; la de un contracargo la escribe una persona.
+      loEscribioElSistema: m.kind === "devolucion",
     })),
     productosDevueltos: productosDevueltos.map((p) => ({
       producto: p.producto,

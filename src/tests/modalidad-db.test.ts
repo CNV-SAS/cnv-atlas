@@ -198,6 +198,8 @@ describe.skipIf(!HAS_DB)("el sellado de una venta obedece la modalidad (BD real)
       fecha: "2026-06-11",
       numeroDeFactura: `ZZ-MODALIDAD-${modalidad}-${Date.now()}`,
       medioDePago: "efectivo",
+      treatmentId: null,
+      ventaSueltaMotivo: "fixture de modalidad",
       lineas: [{ nutraceuticalId, cantidad: 1, precioUnitario: 90000 }],
       actorId,
       actorEmail: "direccion@cnv",

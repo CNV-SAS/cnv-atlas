@@ -126,13 +126,27 @@ export function LoDeshechoSection({ datos }: { datos: LoDeshecho }) {
         </div>
       ) : null}
 
+      {/* ═══ "POR QUÉ" PROMETÍA ALGO QUE EL DATO NO TIENE (Santiago, 2026-09-30) ═══
+
+          En un contracargo la nota la escribe quien abre el caso. En una devolución la compone el sistema
+          ("Devolución de 1 de 2 unidades de la línea"), porque el formulario NO PIDE motivo. Titular el
+          bloque "Por qué" hacía que esa línea pareciera una respuesta incompleta, cuando la pregunta nunca
+          se hizo. Se dice cuál es cuál, que es lo honesto mientras el motivo no se capture. */}
       {datos.motivos.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground">Por qué</span>
+          <span className="text-sm font-medium text-foreground">La nota de cada caso</span>
+          {datos.motivos.some((m) => m.loEscribioElSistema) ? (
+            <p className="max-w-prose text-xs text-muted-foreground">
+              Las líneas de devolución las <strong className="text-foreground">escribe el sistema</strong> con
+              las unidades: hoy el formulario de devolución no pide un motivo, así que aquí no hay un porqué
+              que mostrar. Si hace falta saber por qué vuelve un producto, hay que pedirlo al registrarla.
+            </p>
+          ) : null}
           <ul className="flex flex-col gap-1">
             {datos.motivos.map((m) => (
               <li key={`${m.clase}-${m.motivo}`} className="text-sm text-muted-foreground">
-                <span className="text-foreground">{NOMBRE_DE_CLASE[m.clase] ?? m.clase}</span>: {m.motivo} ·{" "}
+                <span className="text-foreground">{NOMBRE_DE_CLASE[m.clase] ?? m.clase}</span>: {m.motivo}
+                {m.loEscribioElSistema ? <span className="text-xs"> (nota automática)</span> : null} ·{" "}
                 <span className="tabular-nums">{m.veces}</span>
               </li>
             ))}

@@ -10,6 +10,7 @@ import { enteroDeTexto, pesosDeTexto } from "@/core/pesos";
 import { Label } from "@/components/ui/label";
 
 import { registrarVentaRetroactivaAction, type DevolucionState } from "../actions";
+import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
 
 // ═══ REGISTRAR UNA VENTA QUE YA OCURRIO (Bloque R) ═══
 //
@@ -34,11 +35,14 @@ export function VentaRetroactivaForm({
   profesionales,
   pacientes,
   productos,
+  tratamientosPorPaciente,
 }: {
   organizationId: string;
   profesionales: OpcionSimple[];
   pacientes: OpcionDePaciente[];
   productos: OpcionSimple[];
+  /** Las consultas de cada paciente, para poder atar la venta. Ver la nota del bloque de abajo. */
+  tratamientosPorPaciente: Record<string, TratamientoParaElegir[]>;
 }) {
   const [state, action, pending] = useActionState(registrarVentaRetroactivaAction, inicial);
   useFormToastAndRefresh(state);
@@ -53,6 +57,12 @@ export function VentaRetroactivaForm({
   const [profesionalId, setProfesionalId] = useState(profesionales[0]?.id ?? "");
   const suyos = pacientes.filter((x) => x.profesionales.includes(profesionalId));
   const pacientesVisibles = suyos.length > 0 ? suyos : pacientes;
+  // EL PACIENTE PASA A SER ESTADO porque sus consultas dependen de el: sin esto, el bloque de tratamiento
+  // mostraria las de otro. Se reinicia al cambiar de profesional, que es cuando cambia la lista visible.
+  const [pacienteId, setPacienteId] = useState("");
+  const pacienteElegido = pacientesVisibles.some((x) => x.id === pacienteId)
+    ? pacienteId
+    : (pacientesVisibles[0]?.id ?? "");
 
   const [tocadas, setTocadas] = useState<{ cantidad?: boolean; precioUnitario?: boolean }[]>([{}]);
   const tocar = (i: number, campo: "cantidad" | "precioUnitario") =>
@@ -136,7 +146,14 @@ export function VentaRetroactivaForm({
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="vr-paciente">A quién</Label>
-          <select id="vr-paciente" name="patientId" className={selectClass} disabled={pending}>
+          <select
+            id="vr-paciente"
+            name="patientId"
+            className={selectClass}
+            disabled={pending}
+            value={pacienteElegido}
+            onChange={(e) => setPacienteId(e.target.value)}
+          >
             {pacientesVisibles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre}
@@ -149,6 +166,27 @@ export function VentaRetroactivaForm({
               registras.
             </span>
           ) : null}
+        </div>
+        {/* ═══ DE QUÉ CONSULTA SALE, TAMBIÉN AQUÍ (Santiago, 2026-09-30) ═══
+
+            /pagos lo exige desde el 29 y esta pantalla no, así que quedaba un camino por donde una venta
+            entra sin el vínculo que acabamos de construir. Y no es un camino menor: es el que reconstruye la
+            historia comercial entera, o sea el que más ventas va a meter.
+
+            SE REUSA EL MISMO BLOQUE de /pagos, no una copia: la regla (ninguno preseleccionado, cada opción
+            con su fecha, salida explícita con motivo) tiene que ser la misma, y dos redacciones se separan.
+            La `key` lo re-arma al cambiar de paciente, porque sus opciones son otras. */}
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <Label>De qué consulta sale</Label>
+          <BloqueTratamiento
+            key={pacienteElegido}
+            patientId={pacienteElegido}
+            tratamientos={tratamientosPorPaciente[pacienteElegido] ?? []}
+          />
+          <span className="text-xs text-muted-foreground">
+            En una venta de hace meses lo normal es que no se pueda decir: entonces se marca la salida y se
+            escribe por qué. Lo que no puede pasar es que quede suelta sin que nadie lo diga.
+          </span>
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="vr-fecha">Cuándo ocurrió</Label>

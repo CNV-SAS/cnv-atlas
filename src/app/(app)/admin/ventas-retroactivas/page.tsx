@@ -6,6 +6,7 @@ import { VentaRetroactivaForm } from "@/modules/payments/components/venta-retroa
 import { VentasRetroactivasRegistradas } from "@/modules/payments/components/ventas-retroactivas-registradas";
 import { listarVentasRetroactivas } from "@/modules/payments/data/venta-retroactiva-writer";
 import { leerContextoDeVentaRetroactiva } from "@/modules/payments/data/venta-retroactiva-reader";
+import { tratamientosDeVariosPacientes } from "@/modules/payments/data/tratamientos-del-paciente";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
 
 export const metadata = { title: "Ventas que ya ocurrieron - Atlas" };
@@ -25,6 +26,11 @@ export default async function VentasRetroactivasPage() {
   ]);
   if (!contexto) redirect("/no-autorizado");
 
+  // LAS CONSULTAS DE TODOS LOS PACIENTES DE UNA VEZ: el paciente se elige en el formulario, asi que el bloque
+  // de tratamiento no puede pedirlas despues sin volverse cliente-servidor. Es la misma lectura que /pagos.
+  const porPaciente = await tratamientosDeVariosPacientes(contexto.pacientes.map((p) => p.id));
+  const tratamientosPorPaciente = Object.fromEntries(porPaciente);
+
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <TituloPantalla
@@ -36,6 +42,7 @@ export default async function VentasRetroactivasPage() {
         profesionales={contexto.profesionales}
         pacientes={contexto.pacientes}
         productos={contexto.productos}
+        tratamientosPorPaciente={tratamientosPorPaciente}
       />
       <VentasRetroactivasRegistradas ventas={registradas} />
     </div>

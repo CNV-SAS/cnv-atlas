@@ -109,7 +109,23 @@ export async function getTablero(): Promise<Tablero> {
       .gte("proxima_cita", new Date().toISOString().slice(0, 10))
       .order("proxima_cita", { ascending: true })
       .limit(4),
-    supabase.from("professional_revenue").select("commission_amount").gte("created_at", desde),
+    // ═══ LA COMISION DEL MES SE ANCLA A LA FECHA DE LA VENTA, NO A LA DE SU FILA (Santiago, 2026-09-30) ═══
+    //
+    // LAS DOS TARJETAS DE ESTA MISMA PANTALLA SE CONTRADECIAN. Una venta retroactiva escribe su
+    // `transactions.created_at` en la fecha real (es el unico camino de la app que lo hace), pero su fila de
+    // comision nace HOY. Asi que al registrar una venta de enero: "Ventas" no se movia (correcto, no es de
+    // este mes) y "Tu comisión" subia 5.042. El mismo mes, la misma venta, dos respuestas.
+    //
+    // Y es la clase de contradiccion que ya nos costo un diagnostico equivocado: no es que una este mal, es
+    // que LEEN FUENTES DISTINTAS. Se une la fuente, y la que manda es la de la venta.
+    //
+    // POR QUE LA DE LA VENTA Y NO LA DE LA FILA: es la convencion que este mismo archivo ya aplica a las
+    // devoluciones ("se acota por la FECHA DE LA VENTA, porque lo que se corrige es lo que ese mes
+    // facturo"). Tener dos criterios para el mismo mes es como se llega aqui otra vez.
+    supabase
+      .from("professional_revenue")
+      .select("commission_amount, transactions!inner(created_at)")
+      .gte("transactions.created_at", desde),
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
     supabase.from("transactions").select("id, amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde),
     // LO QUE VOLVIO NO SE FACTURO, y esta tarjeta no lo restaba (smoke del 2026-09-29): la venta devuelta de
