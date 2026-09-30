@@ -101,6 +101,14 @@ export type InsightsDeLaCompra = {
   porProducto: ConversionDeProducto[];
   /** Desde cuando cuenta la operacion real, o null si todavia no se fijo el arranque. */
   desdeElArranque: string | null;
+  /**
+   * Cuantas compras pagadas quedaron FUERA por ser anteriores al arranque.
+   *
+   * EXISTE PARA QUE EL DIA DEL ARRANQUE NO PAREZCA UN DEFECTO. Ese dia la pantalla se vacia de golpe, y
+   * despues de dos dias mirando un "0 de 18" que SI era un defecto, un cero sin explicacion se va a leer
+   * como otro. Un cero que dice "y hay 47 compras anteriores que dejaron de contar" se lee como lo que es.
+   */
+  ventasAnterioresAlArranque: number;
 };
 
 export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
@@ -120,6 +128,16 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
   const corteConsulta = arranque
     ? sql` and (tr.created_at at time zone 'America/Bogota')::date >= ${arranque}::date`
     : sql``;
+
+  // LO QUE EL CORTE DEJO FUERA, para poder DECIRLO. Sin esta cifra, el dia del arranque la pantalla se
+  // queda muda con un cero, y un cero mudo es indistinguible de una pantalla rota.
+  const [fuera] = arranque
+    ? await db.execute<{ n: number }>(sql`
+        select count(*)::int as n
+          from transactions t
+         where t.status = 'paid'
+           and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date < ${arranque}::date`)
+    : [{ n: 0 }];
 
   // ── 1. CUANTAS VENTAS TRAEN SU CONSULTA, Y LOS MOTIVOS DE LAS QUE NO ──
   const [conteo] = await db.execute<{ con: number; sin: number }>(sql`
@@ -304,6 +322,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
   return {
     desde,
     desdeElArranque: arranque,
+    ventasAnterioresAlArranque: Number(fuera?.n ?? 0),
     ventasConConsulta: Number(conteo?.con ?? 0),
     ventasSinConsulta: Number(conteo?.sin ?? 0),
     ventasSinConsultaComparables: Number(comparables?.n ?? 0),

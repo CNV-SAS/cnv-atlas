@@ -65,6 +65,18 @@ export default async function DireccionPage() {
         {/* Cae "vista consolidada de finanzas e inventario" (son las tarjetas de abajo) y queda que son
             AGREGADOS SIN DATOS PERSONALES, que es una garantia de gobernanza y no se ve en las cifras. */}
         <TituloPantalla titulo="Dirección" descripcion="Agregados, sin datos personales." />
+        {/* EL DÍA DEL ARRANQUE ESTAS CIFRAS CAEN DE GOLPE, y esa vez es correcto. Se dice arriba y no en
+            letra chica porque una caída sin explicación se lee como un defecto, y ya nos pasó esta semana
+            con el "0 de 18". La línea también dice qué NO cambia, que es lo que evita la pregunta
+            siguiente: nadie perdió una comisión ni desapareció una venta. */}
+        {d.desdeElArranque ? (
+          <p className="max-w-prose text-sm text-muted-foreground">
+            Las cifras de dinero cuentan desde el{" "}
+            <strong className="text-foreground">{d.desdeElArranque}</strong>, el día del arranque: lo anterior
+            es de las pruebas y dejó de sumar aquí. No se borró nada, y lo que se le debe a alguien se sigue
+            liquidando entero.
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

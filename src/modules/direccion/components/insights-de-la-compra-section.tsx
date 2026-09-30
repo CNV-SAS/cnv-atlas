@@ -23,13 +23,36 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
   const totalLineas = datos.lineasDentroDelPlan + datos.lineasFueraDelPlan;
   const pct = (parte: number, total: number) => (total > 0 ? Math.round((parte / total) * 100) : null);
 
+  // ═══ VACÍA POR EL ARRANQUE NO ES LO MISMO QUE VACÍA PORQUE NO HAY NADA ═══
+  //
+  // El día que se fije la fecha, esta pantalla se vacía de golpe y ESA VEZ ES CORRECTO. Pero después de dos
+  // días mirando un "0 de 18" que sí era un defecto, un cero sin explicación se va a leer como otro defecto.
+  // Así que el vacío dice con todas las letras por qué está vacío y cuántas compras dejaron de contar: un
+  // cero que se explica a sí mismo es lo único que distingue "está bien" de "se rompió".
   if (totalVentas === 0) {
     return (
       <section className="flex flex-col gap-3">
         <TituloSeccion>Qué se prescribe y qué se compra</TituloSeccion>
-        <p className="max-w-prose text-sm text-muted-foreground">
-          Todavía no hay ninguna venta pagada. Con los primeros cobros estas cifras empiezan a significar algo.
-        </p>
+        {datos.desdeElArranque ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-attention bg-attention-bg p-3">
+            <p className="max-w-prose text-sm text-foreground">
+              <strong>Esto no es un error: está contando desde el {datos.desdeElArranque}</strong>, que es el
+              día del arranque, y todavía no hay ninguna compra de esa fecha en adelante.
+            </p>
+            {datos.ventasAnterioresAlArranque > 0 ? (
+              <p className="max-w-prose text-xs text-muted-foreground">
+                Quedaron fuera {datos.ventasAnterioresAlArranque} compras anteriores, que son las de las
+                pruebas. No se borraron: siguen en el historial y en las liquidaciones. Con el primer cobro
+                real estas cifras vuelven a llenarse.
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="max-w-prose text-sm text-muted-foreground">
+            Todavía no hay ninguna venta pagada. Con los primeros cobros estas cifras empiezan a significar
+            algo.
+          </p>
+        )}
       </section>
     );
   }
@@ -47,10 +70,14 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
         {datos.desdeElArranque ? (
           <p className="text-xs text-muted-foreground">
             Cuenta desde el <strong className="text-foreground">{datos.desdeElArranque}</strong>, que es el
-            día del arranque: las consultas y las compras anteriores son de las pruebas, y mezclarlas haría
-            que estas cifras midieran otra cosa. El corte alcanza a los tres ejes a la vez (lo que el modelo
-            propuso, lo prescrito y lo comprado), porque recortar solo uno los pondría a medir ventanas
-            distintas.
+            día del arranque
+            {datos.ventasAnterioresAlArranque > 0
+              ? `, así que ${datos.ventasAnterioresAlArranque} compras anteriores dejaron de contar aquí`
+              : ""}
+            : las consultas y las compras de antes son de las pruebas, y mezclarlas haría que estas cifras
+            midieran otra cosa. No se borraron, siguen en el historial. El corte alcanza a los tres ejes a la
+            vez (lo que el modelo propuso, lo prescrito y lo comprado), porque recortar solo uno los pondría a
+            medir ventanas distintas.
           </p>
         ) : null}
         {datos.ventasSinConsultaAnteriores > 0 ? (
