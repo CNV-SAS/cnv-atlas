@@ -44,11 +44,27 @@ import { resolveRecommendation } from "@/modules/treatment/nutraceuticals-recomm
  */
 export const DESDE_QUE_HAY_VINCULO = "2026-09-29";
 
+/**
+ * UNA SOLA FILA POR PRODUCTO, CON EL EMBUDO ENTERO (Santiago, 2026-09-30).
+ *
+ * Antes eran DOS tablas y Santiago se perdio leyendolas: arriba "MULTI-CELL BASE, prescrito en 24" y abajo
+ * "MULTI-CELL BASE, 60 consultas". Son hechos distintos de consultas distintas, pero en dos bloques separados
+ * se leen como dos cifras del mismo hecho, y entonces una parece contradecir a la otra.
+ *
+ * OJO CON LA RELACION, PORQUE NO ES LA OBVIA: `prescritoEn` NO sale de `recomendadoEn`. El profesional puede
+ * prescribir algo que el modelo no propuso (es su criterio clinico, y cuenta igual), y hay consultas con
+ * prescripcion que ni siquiera tienen informe. Las dos columnas se CRUZAN, no se contienen, y por eso la
+ * pantalla lo dice en vez de dejar que el lector lo suponga.
+ */
 export type ConversionDeProducto = {
   producto: string;
-  /** En cuantos tratamientos se prescribio. */
+  /** En cuantas consultas el MODELO lo propuso (sale del informe sellado). */
+  recomendadoEn: number;
+  /** De esas, en cuantas el profesional NO lo prescribio. */
+  recomendadoSinPrescribir: number;
+  /** En cuantas consultas se prescribio, lo hubiera recomendado el modelo o no. */
   prescritoEn: number;
-  /** En cuantos de esos se compro (aunque fuera en otra venta posterior). */
+  /** En cuantas de esas se compro (aunque fuera en otra venta posterior). */
   compradoEn: number;
   /** Cuantas veces se compro SIN estar prescrito en la consulta a la que se ato la venta. */
   compradoFueraDelPlan: number;
@@ -82,8 +98,6 @@ export type InsightsDeLaCompra = {
   /** Dias entre la consulta y la compra: la mediana dice mas que el promedio con pocos datos. */
   diasHastaLaCompra: { mediana: number | null; maximo: number | null };
   porProducto: ConversionDeProducto[];
-  /** Tratamientos donde el profesional NO prescribio algo que el modelo recomendaba. */
-  recomendadoSinPrescribir: { producto: string; veces: number }[];
 };
 
 export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
@@ -189,7 +203,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
     having count(distinct p.treatment_id) > 0 or count(c.treatment_id) > 0
      order by 2 desc, 1`);
 
-  // ── 5. LO QUE EL MODELO RECOMENDO Y NO SE PRESCRIBIO ──
+  // ── 5. LO QUE EL MODELO RECOMENDO, Y EN CUANTAS DE ESAS NO SE PRESCRIBIO ──
   //
   // ESTE EJE VA POR NOMBRE Y NO POR ID, y no es un atajo: el modelo emite NOMBRES en el snapshot del informe,
   // con hasta dos grafias para el mismo producto (Q31). Se resuelve con el MISMO modulo puro que ya usa la
@@ -222,7 +236,12 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
     commercialAvailability: "en_consultorio",
   }));
 
+  // SE CUENTAN CONSULTAS, NO FILAS: un tratamiento con dos informes recomendando lo mismo es UNA consulta
+  // donde el modelo lo propuso. Sin el par (tratamiento, producto) la cifra contaria el informe repetido y
+  // diria mas recomendaciones de las que hubo, que es justo lo que el rotulo promete no hacer.
+  const recomendadoEn = new Map<string, number>();
   const sinPrescribir = new Map<string, number>();
+  const yaContado = new Set<string>();
   for (const rec of recomendaciones) {
     const resueltos = resolveRecommendation(rec.nutra, itemsDelCatalogo);
     const prescritos = prescritosDe.get(rec.treatment_id) ?? new Set<string>();
@@ -230,9 +249,43 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       // Un recomendado que NO existe en el catalogo no cuenta como "no prescrito": no se pudo prescribir. Es
       // otro hallazgo (falta el producto) y ya tiene su aviso en la pantalla de Tratamiento.
       if (r.status !== "en_catalogo") continue;
+      const par = `${rec.treatment_id}|${r.product.id}`;
+      if (yaContado.has(par)) continue;
+      yaContado.add(par);
+      recomendadoEn.set(r.product.name, (recomendadoEn.get(r.product.name) ?? 0) + 1);
       if (prescritos.has(r.product.id)) continue;
       sinPrescribir.set(r.product.name, (sinPrescribir.get(r.product.name) ?? 0) + 1);
     }
+  }
+
+  // ── LA UNION, Y POR QUE NO BASTA RECORRER UNA SOLA LISTA ──
+  //
+  // El SQL de arriba solo devuelve productos con prescripcion o compra; el mapa de recomendaciones puede
+  // traer uno que el modelo propone siempre y que nadie prescribio nunca. Ese es precisamente el hallazgo
+  // mas interesante del eje del modelo, asi que la tabla es la UNION de los dos, no uno de ellos.
+  const filas = new Map<string, ConversionDeProducto>();
+  for (const p of porProducto) {
+    filas.set(p.producto, {
+      producto: p.producto,
+      recomendadoEn: 0,
+      recomendadoSinPrescribir: 0,
+      prescritoEn: Number(p.prescrito_en),
+      compradoEn: Number(p.comprado_en),
+      compradoFueraDelPlan: Number(p.fuera),
+    });
+  }
+  for (const [producto, veces] of recomendadoEn) {
+    const fila = filas.get(producto) ?? {
+      producto,
+      recomendadoEn: 0,
+      recomendadoSinPrescribir: 0,
+      prescritoEn: 0,
+      compradoEn: 0,
+      compradoFueraDelPlan: 0,
+    };
+    fila.recomendadoEn = veces;
+    fila.recomendadoSinPrescribir = sinPrescribir.get(producto) ?? 0;
+    filas.set(producto, fila);
   }
 
   return {
@@ -248,15 +301,13 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       mediana: dias?.mediana == null ? null : Number(dias.mediana),
       maximo: dias?.maximo == null ? null : Number(dias.maximo),
     },
-    porProducto: porProducto.map((p) => ({
-      producto: p.producto,
-      prescritoEn: Number(p.prescrito_en),
-      compradoEn: Number(p.comprado_en),
-      compradoFueraDelPlan: Number(p.fuera),
-    })),
-    recomendadoSinPrescribir: [...sinPrescribir.entries()]
-      .map(([producto, veces]) => ({ producto, veces }))
-      .sort((a, b) => b.veces - a.veces),
+    // El orden sigue el embudo: primero lo que mas propone el modelo, y a igualdad lo mas prescrito.
+    porProducto: [...filas.values()].sort(
+      (a, b) =>
+        b.recomendadoEn - a.recomendadoEn ||
+        b.prescritoEn - a.prescritoEn ||
+        a.producto.localeCompare(b.producto),
+    ),
   };
 }
 
