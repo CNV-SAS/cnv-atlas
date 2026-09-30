@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 
 import { getDireccionDashboard } from "@/modules/direccion/data/dashboard-reader";
 import { InsightsDeLaCompraSection } from "@/modules/direccion/components/insights-de-la-compra-section";
+import { LoDeshechoSection } from "@/modules/direccion/components/lo-deshecho-section";
 import { insightsDeLaCompra } from "@/modules/direccion/data/insights-de-la-compra";
+import { loDeshecho } from "@/modules/direccion/data/lo-deshecho";
 import { canViewDireccion } from "@/modules/direccion/policies/can-view-direccion";
 import { requireUser } from "@/modules/auth/session";
 
@@ -24,7 +26,11 @@ export default async function DireccionPage() {
     redirect("/no-autorizado");
   }
 
-  const [d, insights] = await Promise.all([getDireccionDashboard(), insightsDeLaCompra()]);
+  const [d, insights, deshecho] = await Promise.all([
+    getDireccionDashboard(),
+    insightsDeLaCompra(),
+    loDeshecho(),
+  ]);
 
   // EL ALCANCE SE DICE EN CADA TARJETA DE DINERO, no en una nota al pie: el dia del arranque estas cifras
   // caen de golpe (sale todo lo de las pruebas) y una caida sin explicacion al lado se lee como un defecto.
@@ -92,6 +98,11 @@ export default async function DireccionPage() {
       {/* VA DEBAJO DE LAS CIFRAS DE DINERO, no arriba: el dinero es lo que Dirección viene a ver todos los
           días, y esto es análisis. Poner el análisis primero le quitaría el sitio a lo operativo. */}
       <InsightsDeLaCompraSection datos={insights} />
+
+      {/* DEBAJO DE LOS INSIGHTS Y NO ANTES: es la contracara de esa sección, y solo se entiende habiendo
+          leído la otra. Su advertencia ("esto no se resta de lo de arriba") nombra justo lo que queda
+          encima. */}
+      <LoDeshechoSection datos={deshecho} />
     </div>
   );
 }
