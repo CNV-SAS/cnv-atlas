@@ -438,3 +438,76 @@ Medía solo desde el 29 y no mostraba nada. **Ahora mide todo**, como el resto d
    antes.**
 4. Con los datos de los smokes vas a ver cifras raras, y está bien: eso es lo que hay. Para empezar limpio
    está la propuesta de `CIFRAS_LIMPIAS_PARA_EL_ARRANQUE_2026-09-30.md`.
+
+---
+
+# R9 · Las dos tablas que parecían contradecirse, ahora una sola
+
+## Lo que cambió, y por qué te perdiste leyéndolas
+
+Arriba decía *"MULTI-CELL BASE, prescrito en 24"* y abajo *"MULTI-CELL BASE, 60 consultas"*. Son consultas
+distintas y hechos distintos, pero en dos bloques separados se leen como dos cifras del mismo hecho.
+
+**Y ojo con una cosa, porque induce al error:** 24 y 60 **no suman** las consultas donde el modelo lo
+propuso. El profesional puede prescribir algo que el modelo **no** propuso (es su criterio clínico y cuenta
+igual), y hay consultas con prescripción que ni siquiera tienen informe. **Las dos columnas se cruzan, no se
+contienen.**
+
+1. En **/direccion**, la sección "Qué se prescribe y qué se compra".
+2. Ahora hay **una sola tabla**, "Producto por producto, de punta a punta", con el recorrido entero en una
+   fila: *el modelo lo propuso en · de esas, sin prescribir · prescrito en · comprado en · comprado fuera del
+   plan*.
+3. **El control que importa:** que el texto de arriba diga que prescribir y recomendar **no son la misma
+   lista**. Si esa frase no está, la tabla vuelve a leerse como contradictoria.
+4. Y que los rótulos digan **en qué** se cuenta ("consultas"). "Prescrito en 41" no decía 41 de qué.
+
+---
+
+# R10 · Lo que se deshizo
+
+Sección nueva en **/direccion**, debajo de los insights.
+
+1. **Lo primero tiene que ser la advertencia, arriba y visible:** *"Esto no se resta de lo de arriba"*. Allí
+   una compra devuelta sigue contando como compra; aquí la pregunta es cuánto volvió. Si esa advertencia no
+   está donde se lee, alguien va a restar una cifra de la otra.
+2. **Las cuatro piezas:** cuántas ventas se deshicieron sobre cuántas pagadas (con su porcentaje), el dinero
+   que volvió, la tabla por clase y estado, el porqué (las notas), y qué producto vuelve más **en unidades**.
+3. **Los links van aparte, y es la decisión que más importa de la pantalla.** Un link anulado antes de
+   cobrarse **no es una venta deshecha**: nadie compró. Tienen su propio bloque con cuatro líneas:
+   - **Anulados a mano** (alguien cambió de opinión): es lo que hiciste con LUVIA.
+   - **Reemplazados por un cobro en otro medio**: la venta **sí** ocurrió, en efectivo, y el link sobraba.
+   - **Pagos que no se completaron**: la pasarela los rechazó. Nadie los anuló.
+   - **Abiertos, sin usar**: siguen vivos.
+4. **Una cosa que verifiqué y conviene que sepas:** *no hay nada que venza un link*. Un link pendiente se
+   queda pendiente para siempre si nadie lo paga ni lo anula. Por eso no se distingue "lo anuló el sistema":
+   ese caso no ocurre. Si esa cuenta de "abiertos, sin usar" crece mucho, es algo que decidir, no un defecto.
+
+**El control que importa:** anula un link a mano y comprueba que **la cifra de "ventas deshechas" no se
+mueve**, y que sube la línea de "anulados a mano". Si entrara arriba, la tasa de reversión diría que se
+deshace mucho más de lo que se deshace.
+
+---
+
+# R11 · Empezar con las cifras limpias (para el día del arranque, no para hoy)
+
+**Esto no se prueba en el smoke: se corre el día de las llaves reales.** Va aquí para que sepas qué va a
+pasar y no lo leas como un defecto.
+
+## Las dos piezas
+
+1. **La fecha de arranque** (`docs/entregas/sql/FECHA_DE_ARRANQUE_2026-09-30.sql`). Desde ese día, las cifras
+   de resumen cuentan solo la operación real.
+2. **Profesional Demo marcado** (`docs/entregas/sql/PROFESIONAL_DE_DEMOSTRACION_2026-09-30.sql`). La fecha
+   limpia el pasado; esto limpia el futuro, porque Demo sigue operando después.
+
+## Lo que vas a ver ese día, y es correcto
+
+- **Los insights se vacían** y el **tablero de Dirección cae**. Las dos pantallas lo dicen con esas palabras:
+  que están contando desde la fecha de arranque, y cuántas compras anteriores dejaron de contar.
+- **El inventario NO cae**, a propósito: un saldo no es un flujo. Las unidades están hoy en la bodega.
+- **Las comisiones de Dirección y la liquidación van a discrepar**, también a propósito: lo anterior al
+  arranque **se sigue liquidando**, porque es plata que hay que pagar. La tarjeta lo dice.
+- **Nada se borra.** Se deshace poniendo la fecha en NULL y las cifras vuelven.
+
+**Lo que sí conviene probar hoy, en un minuto:** en **/admin**, que la lista de usuarios sigue mostrando a
+todos. La marca no esconde a nadie, solo lo rotula.
