@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
+import { SQL_SIN_PROFESIONAL_DE_PRUEBA } from "@/modules/professionals/de-prueba";
 import { resolveRecommendation } from "@/modules/treatment/nutraceuticals-recommendation";
 
 // ═══ QUE SE PRESCRIBE, QUE SE COMPRA, Y QUE SE COMPRA FUERA DEL PLAN (2026-09-29) ═══
@@ -121,13 +122,29 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
   // recomendaciones. Recortar solo las ventas dejaria el numerador en la operacion real y el denominador
   // arrastrando 87 prescripciones de prueba, y la conversion saldria hundida por un motivo que no existe.
   // Es el mismo defecto del "0 de 18" que Santiago vio, con otra ropa.
+  //
+  // Y EL PROFESIONAL DE DEMOSTRACION SALE POR LOS DOS EJES TAMBIEN (0199), por la misma razon: si sus
+  // ventas salieran y sus consultas no, sus prescripciones quedarian en el denominador sin ninguna compra
+  // que pudiera cumplirlas, y la conversion de todos los productos bajaria por una cuenta de demostracion.
+  //
+  // La consulta se atribuye por SU PACIENTE y no por quien la creo: `treatments.created_by` es un perfil y
+  // puede ser el de un administrador que corrigio algo, mientras que la asignacion del paciente es la que
+  // dice de quien es la operacion.
   const arranque = await fechaDeArranque();
+  const sinDemoEnLaVenta = sql` and ${sql.raw(SQL_SIN_PROFESIONAL_DE_PRUEBA)}`;
+  // Se escribe desde `tr` y no desde un alias de diagnostico porque las dos consultas que lo usan tienen
+  // el tratamiento y solo una tiene el diagnostico a mano.
+  const sinDemoEnLaConsulta = sql` and not exists (
+    select 1 from diagnoses dx
+      join evaluations ev on ev.id = dx.evaluation_id
+      join professional_profiles pp on pp.id = ev.professional_id
+     where dx.id = tr.diagnosis_id and pp.is_test)`;
   const corteVenta = arranque
-    ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date`
-    : sql``;
+    ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date${sinDemoEnLaVenta}`
+    : sinDemoEnLaVenta;
   const corteConsulta = arranque
-    ? sql` and (tr.created_at at time zone 'America/Bogota')::date >= ${arranque}::date`
-    : sql``;
+    ? sql` and (tr.created_at at time zone 'America/Bogota')::date >= ${arranque}::date${sinDemoEnLaConsulta}`
+    : sinDemoEnLaConsulta;
 
   // LO QUE EL CORTE DEJO FUERA, para poder DECIRLO. Sin esta cifra, el dia del arranque la pantalla se
   // queda muda con un cero, y un cero mudo es indistinguible de una pantalla rota.
@@ -136,7 +153,8 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
         select count(*)::int as n
           from transactions t
          where t.status = 'paid'
-           and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date < ${arranque}::date`)
+           and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date < ${arranque}::date
+           ${sinDemoEnLaVenta}`)
     : [{ n: 0 }];
 
   // ── 1. CUANTAS VENTAS TRAEN SU CONSULTA, Y LOS MOTIVOS DE LAS QUE NO ──

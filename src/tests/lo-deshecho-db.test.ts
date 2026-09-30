@@ -170,4 +170,23 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
     const despues = await lector.loDeshecho();
     expect(despues.ventasPagadas - antes.ventasPagadas).toBe(1);
   });
+
+  // ═══ Y EL PROFESIONAL DE DEMOSTRACION NO CUENTA (0199) ═══
+  //
+  // ESTE CASO ES DE COMPORTAMIENTO Y NO DE TEXTO, y hace falta que sea asi: el barrido estatico comprueba
+  // que el filtro este ESCRITO, y esta semana ya tuvimos un candado que buscaba un nombre y no atrapo el
+  // defecto que tenia delante. Que el filtro sirva es otra pregunta, y solo la base la responde.
+  it("una venta de un profesional marcado como de demostración deja de contar", async () => {
+    await ventaPagada();
+    const contando = await lector.loDeshecho();
+    try {
+      await db.execute(dsql`update professional_profiles set is_test = true where id = ${profId}`);
+      const sinDemo = await lector.loDeshecho();
+      expect(sinDemo.ventasPagadas).toBeLessThan(contando.ventasPagadas);
+    } finally {
+      // SE DEVUELVE PASE LO QUE PASE: es un profesional REAL de la base local, y dejarlo marcado apagaria
+      // sus cifras en todas las pantallas.
+      await db.execute(dsql`update professional_profiles set is_test = false where id = ${profId}`);
+    }
+  });
 });
