@@ -405,3 +405,36 @@ Está en **/direccion**, debajo de las cifras de dinero.
 **El control que importa:** registra una venta **sin consulta** y verifica que **no** aparece contada como
 "fuera del plan". Son dos hechos distintos, y mezclarlos diría que la gente se aparta de lo prescrito cuando
 lo que pasa es que compró sin consulta.
+
+---
+
+# R8 · Vender fuera del plan, y la pantalla que ya muestra
+
+## Lo que cambió
+
+**Ya no bloquea: avisa y confirmas.** La venta queda **atada a la consulta** y contada como compra fuera del
+plan, que es lo correcto si viene del seguimiento.
+
+1. En **/pagos**, elige una consulta y agrega **PRUEBA SMOKE BLOQUE 3** (que ninguna prescribió).
+2. Tiene que salir el aviso en ámbar: *"…no estaba prescrito en la consulta que elegiste. Puedes registrarlo
+   igual: la venta queda atada a esa consulta y contada como compra fuera del plan…"*
+3. Pulsa **"Registrarlo así"**. **Tiene que registrarse.**
+4. **Pruébalo por las dos pantallas**, el link de pago y la venta ya cobrada.
+5. **El control que importa:** en **/direccion**, esa venta tiene que aparecer como **línea fuera del plan**,
+   NO como compra sin consulta. Son dos hechos distintos y es justo lo que se estaba perdiendo.
+
+**Y en Tratamiento no cambia nada, a propósito:** esa pantalla solo ofrece lo prescrito. Si quieres venderle
+algo más, lo prescribes primero con "¿Quieres prescribir un nutracéutico que el modelo no recomendó?" y
+entonces ya está prescrito. Ofrecer ahí el catálogo entero crearía una segunda vía para lo mismo.
+
+## La pantalla de insights ya no sale vacía
+
+Medía solo desde el 29 y no mostraba nada. **Ahora mide todo**, como el resto del tablero.
+
+1. En **/direccion**, debajo de las cifras de dinero.
+2. **Lo primero sigue siendo el aviso**: esto mide si el modelo **vende**, no si **funciona**.
+3. **Y ahora dice el asterisco que importa:** cuántas de las compras sin consulta son **anteriores al 29**.
+   Esas no podían decirlo, porque el sistema no lo preguntaba. **No son compras fuera de plan, son compras de
+   antes.**
+4. Con los datos de los smokes vas a ver cifras raras, y está bien: eso es lo que hay. Para empezar limpio
+   está la propuesta de `CIFRAS_LIMPIAS_PARA_EL_ARRANQUE_2026-09-30.md`.
