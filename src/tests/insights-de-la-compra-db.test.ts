@@ -67,6 +67,22 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
     return t.id;
   }
 
+  /** Una venta pagada ANTERIOR al vinculo: no podia decir su consulta porque el sistema no lo preguntaba. */
+  async function ventaAntigua(): Promise<string> {
+    const [t] = await db.execute(dsql`
+      insert into transactions (organization_id, patient_id, professional_id, status, amount, currency,
+                                payment_method, wompi_env, idempotency_key, operated_at)
+      values (${orgId}, ${patientId}, ${profId}, 'paid', '100000', 'COP', 'efectivo', 'test',
+              ${`test-insights-old-${Date.now()}-${Math.random().toString(36).slice(2)}`},
+              '2026-09-01T15:00:00Z'::timestamptz)
+      returning id`);
+    ventas.push(t.id);
+    await db.execute(dsql`
+      insert into transaction_items (transaction_id, nutraceutical_id, quantity, unit_price)
+      values (${t.id}, ${nutraB}, 1, '100000')`);
+    return t.id;
+  }
+
   async function prescribir(nutra: string) {
     const [r] = await db.execute(dsql`
       insert into treatment_nutraceuticals (treatment_id, nutraceutical_id)
@@ -220,5 +236,28 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
     expect(r.ventasSinConsulta).toBeGreaterThanOrEqual(r.ventasSinConsultaAnteriores);
     // Y no ensucian el eje del plan: lo de fuera del plan solo puede salir de ventas CON consulta.
     expect(r.lineasFueraDelPlan).toBeGreaterThanOrEqual(0);
+  });
+  // ═══ EL DENOMINADOR SON LAS QUE PODIAN DECIRLO (Santiago, 2026-09-30) ═══
+  //
+  // La pantalla decia "0 de 18" con las 18 anteriores al vinculo dentro, mientras el numerador solo podia
+  // salir de las posteriores. Numerador y denominador median ventanas distintas, y el propio texto de la
+  // pantalla decia que esas 18 no podian decirlo: se contradecia a si misma.
+  it("una venta anterior al vinculo NO entra en el denominador de las comparables", async () => {
+    const antes = await lector.insightsDeLaCompra();
+    await ventaAntigua();
+    const despues = await lector.insightsDeLaCompra();
+    expect(despues.ventasSinConsultaAnteriores - antes.ventasSinConsultaAnteriores).toBe(1);
+    expect(despues.ventasSinConsultaComparables - antes.ventasSinConsultaComparables).toBe(0);
+  });
+
+  // Y SU MOTIVO TAMPOCO SE LISTA: no tiene, porque nadie se lo pidio. Sacarla como "(sin motivo escrito)"
+  // haria creer que alguien omitio algo, y no omitio nada: no existia el campo.
+  it("y su falta de motivo no se lista como si alguien lo hubiera omitido", async () => {
+    const antes = await lector.insightsDeLaCompra();
+    const sinMotivoAntes = antes.motivosDeVentaSuelta.find((m: any) => m.motivo === "(sin motivo escrito)");
+    await ventaAntigua();
+    const despues = await lector.insightsDeLaCompra();
+    const sinMotivoDespues = despues.motivosDeVentaSuelta.find((m: any) => m.motivo === "(sin motivo escrito)");
+    expect(sinMotivoDespues?.veces ?? 0).toBe(sinMotivoAntes?.veces ?? 0);
   });
 });

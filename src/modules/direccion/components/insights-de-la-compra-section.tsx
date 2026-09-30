@@ -13,6 +13,12 @@ import type { InsightsDeLaCompra } from "../data/insights-de-la-compra";
 // Y LA VENTANA SE DICE TAMBIÉN: antes del 29 de septiembre una venta de /pagos nacía sin consulta, así que no
 // hay con qué cruzarla. Una cifra sin su ventana invita a leerla como "todo el histórico".
 export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra }) {
+  // ── EL DENOMINADOR SON LAS QUE PODIAN DECIRLO, no todas (Santiago, 2026-09-30) ──
+  //
+  // Salia "0 de 18" con las 18 anteriores al vinculo dentro, mientras el numerador solo podia salir de las
+  // posteriores: numerador y denominador median ventanas distintas. Y el propio texto de abajo decia que
+  // esas 18 no podian decirlo, asi que la pantalla se contradecia a si misma.
+  const comparables = datos.ventasConConsulta + datos.ventasSinConsultaComparables;
   const totalVentas = datos.ventasConConsulta + datos.ventasSinConsulta;
   const totalLineas = datos.lineasDentroDelPlan + datos.lineasFueraDelPlan;
   const pct = (parte: number, total: number) => (total > 0 ? Math.round((parte / total) * 100) : null);
@@ -50,16 +56,22 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Tarjeta
           rotulo="Compras con su consulta"
-          valor={`${datos.ventasConConsulta} de ${totalVentas}`}
-          nota={pct(datos.ventasConConsulta, totalVentas) != null ? `${pct(datos.ventasConConsulta, totalVentas)}%` : null}
+          valor={comparables > 0 ? `${datos.ventasConConsulta} de ${comparables}` : "-"}
+          nota={
+            comparables > 0
+              ? `${pct(datos.ventasConConsulta, comparables)}% · solo cuentan las que podían decirlo`
+              : "todavía ninguna compra pudo decir su consulta"
+          }
         />
         <Tarjeta
-          rotulo="Líneas dentro de lo prescrito"
-          valor={`${datos.lineasDentroDelPlan} de ${totalLineas}`}
+          rotulo="De lo comprado con consulta, dentro del plan"
+          valor={totalLineas > 0 ? `${datos.lineasDentroDelPlan} de ${totalLineas}` : "-"}
           nota={
-            datos.lineasFueraDelPlan > 0
-              ? `${datos.lineasFueraDelPlan} fuera del plan de esa consulta`
-              : "ninguna fuera del plan"
+            totalLineas === 0
+              ? "ninguna compra trae su consulta todavía"
+              : datos.lineasFueraDelPlan > 0
+                ? `${datos.lineasFueraDelPlan} fuera del plan de esa consulta`
+                : "ninguna fuera del plan"
           }
         />
         <Tarjeta
@@ -67,9 +79,10 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
           valor={datos.diasHastaLaCompra.mediana == null ? "-" : `${datos.diasHastaLaCompra.mediana} días`}
           // LA MEDIANA, y el máximo aparte: con pocas filas un caso de ocho meses mueve el promedio y hace
           // creer que nadie compra cuando la mayoría compró el mismo día.
+          // UN GUION SIN EXPLICACION SE LEE COMO UN FALLO: se dice por qué no hay cifra.
           nota={
             datos.diasHastaLaCompra.maximo == null
-              ? null
+              ? "no hay compras atadas a una consulta todavía"
               : `mediana · el más tardío, ${datos.diasHastaLaCompra.maximo} días`
           }
         />
@@ -81,7 +94,12 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
           <p className="max-w-prose text-xs text-muted-foreground">
             Prescrito en cuántas consultas, comprado en cuántas de esas, y cuántas veces se compró{" "}
             <strong className="text-foreground">sin estar en el plan</strong> de la consulta a la que se ató la
-            venta. Lo último no es un error: puede venir del seguimiento o el paciente pedirlo.
+            venta. Lo último no es un error: puede venir del seguimiento o el paciente pedirlo.{" "}
+            {/* SE DICE QUE UNA DEVOLUCIÓN NO RESTA AQUÍ, y por qué: la pregunta es si la prescripción se
+                siguió; que después la devolviera es otro hecho. Descontarla escondería los dos. El dinero de
+                lo devuelto sí sale del bruto, arriba. */}
+            <strong className="text-foreground">Una compra devuelta sigue contando como compra:</strong> la
+            pregunta es si siguió la prescripción, y la devolución es otro hecho (su dinero sí sale del bruto).
           </p>
           <div className="-mx-1 overflow-x-auto">
             <table className="w-full min-w-[34rem] text-sm">

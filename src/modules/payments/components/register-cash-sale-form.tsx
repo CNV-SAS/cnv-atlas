@@ -96,8 +96,33 @@ export function RegisterCashSaleForm({
   // agregue en el futuro nacerá roto. Por eso el arreglo no es añadir tres `fd.set`: es partir DEL
   // FORMULARIO y añadir encima lo que no es un campo (la clave de idempotencia y las confirmaciones).
   const formRef = useRef<HTMLFormElement | null>(null);
-  const submit = (opciones: { confirmDuplicate?: boolean; anularLinks?: boolean } = {}) => {
-    const fd = formRef.current ? new FormData(formRef.current) : new FormData();
+  //
+  // ── Y EL BOTON QUE ENVIA TIENE QUE VIAJAR CON EL (bloqueo del 2026-09-30) ──
+  //
+  // `new FormData(form)` NO incluye el `name`/`value` del boton que disparo el envio: eso solo lo hace el
+  // envio nativo, o `new FormData(form, submitter)`. Es el hazard 5 de CLAUDE.md, y lo introduje YO ayer en
+  // este mismo archivo: arreglé el FormData armado a mano y al día siguiente le puse un botón de confirmar
+  // que lleva su dato en el `name`.
+  //
+  // EL SINTOMA FUE EL PEOR POSIBLE: pulsar "Registrarlo así" no hacía NADA. El servidor no recibía la
+  // confirmación, volvía a calcular el mismo aviso y lo devolvía, así que la pantalla mostraba lo mismo que
+  // ya mostraba. Ni error ni venta: un silencio que parece que el botón no funciona.
+  //
+  // Los otros dos botones de este formulario (anular el link, confirmar duplicado) no se veían afectados
+  // porque llevan su dato por `onClick`, no por `name`. Por eso el defecto era de uno solo.
+  const submit = (
+    opciones: { confirmDuplicate?: boolean; anularLinks?: boolean } = {},
+    submitter?: HTMLElement | null,
+  ) => {
+    const form = formRef.current;
+    // `new FormData(form, submitter)` LANZA si el botón no pertenece a ese formulario, así que se comprueba.
+    const esDeEsteForm =
+      submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement
+        ? submitter.form === form
+        : false;
+    const fd = form
+      ? new FormData(form, esDeEsteForm ? (submitter as HTMLButtonElement) : undefined)
+      : new FormData();
     // Los controlados se re-afirman: su valor vive en el estado de React, no en el DOM.
     fd.set("patientId", patientId);
     fd.set("lineas", JSON.stringify(lineas));
@@ -108,7 +133,7 @@ export function RegisterCashSaleForm({
   };
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    submit();
+    submit({}, (e.nativeEvent as SubmitEvent).submitter);
   };
 
   // Preview del total (precio del catalogo x cantidad), para ver el monto antes de cobrar.

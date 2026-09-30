@@ -102,3 +102,42 @@ describe("el FormData de un formulario con campos sale del formulario", () => {
     }
   });
 });
+
+// ═══ Y EL BOTON QUE ENVIA TIENE QUE VIAJAR CON EL FORMULARIO ═══
+//
+// EL BLOQUEO DEL 2026-09-30, y es la segunda cara del mismo defecto: `new FormData(form)` NO incluye el
+// `name`/`value` del boton que disparo el envio. Eso solo lo hace el envio nativo, o `new FormData(form,
+// submitter)`.
+//
+// El sintoma fue el peor posible: pulsar "Registrarlo así" NO HACIA NADA. El servidor no recibia la
+// confirmacion, volvia a calcular el mismo aviso y lo devolvia, asi que la pantalla mostraba lo mismo que ya
+// mostraba. Ni error ni venta.
+//
+// YA HABIA UN CANDADO PARA ESTO (`enviar-sin-reset-submitter`), y no sirvio: cubre el HELPER, y este
+// formulario arma su envio a mano. Es la misma leccion de toda la semana, por tercera vez: UN CANDADO POR
+// CASO NO PROTEGE UNA REGLA. Por eso este barre.
+describe("el boton que envia viaja con el formulario", () => {
+  it("ningun componente que arme el FormData olvida el submitter teniendo botones con name", () => {
+    const culpables: string[] = [];
+
+    for (const raiz of RAICES) {
+      for (const f of archivos(raiz)) {
+        const src = sinComentarios(readFileSync(f, "utf8"));
+        // Solo los que arman el FormData ELLOS MISMOS desde el formulario: `enviarSinReset` ya pasa el boton
+        // y tiene su propio candado.
+        const armaDesdeElForm = /new\s+FormData\s*\(\s*[^)\s]/.test(src);
+        if (!armaDesdeElForm) continue;
+        // Y que tengan un boton de ENVIO que lleve su dato en el `name`: si ninguno lo lleva, no hay nada que
+        // perder.
+        const botonConNombre = /type="submit"[\s\S]{0,200}?\sname="/.test(src);
+        if (!botonConNombre) continue;
+        if (!/submitter/.test(src)) culpables.push(f);
+      }
+    }
+
+    expect(
+      culpables,
+      "arman el FormData desde el formulario y tienen botones de envio con `name`, pero no pasan el submitter: ese dato NO VIAJA y el boton parece no hacer nada. Usa `new FormData(form, submitter)`.",
+    ).toEqual([]);
+  });
+});
