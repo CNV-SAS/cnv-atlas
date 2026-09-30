@@ -326,3 +326,43 @@ ventas que tú.
   entra en el bruto ni en el ingreso. Lo que ves en /comercial ("$0 en 1 comisión, con 1 reversión
   descontadas") es la cuenta correcta y ahora se lee bien: una comisión y su reversión, neto cero. Puedes
   ignorarla.
+
+---
+
+# R6 · El bloqueo de la venta, y lo que destapó
+
+**Migraciones: 198 en el repo.** Al día contigo.
+
+## Qué pasaba, y por qué solo en una pantalla
+
+**"Registrar una venta ya cobrada"** armaba su envío con un `FormData` **vacío** y tres campos puestos a mano,
+así que **nada de lo que llenabas en pantalla viajaba**. El del **link de pago** sí recoge el formulario, y por
+eso ahí funcionaba: el defecto era de una sola de las dos.
+
+**Tres campos se perdían y solo uno se quejaba:**
+
+| Campo | Desde | Cómo fallaba |
+| --- | --- | --- |
+| La consulta | hoy | **Se quejaba.** Es el que te bloqueó |
+| Los del domicilio | hoy | **En silencio**: llenabas el envío y la venta se creaba sin él |
+| **El canal (efectivo / transferencia)** | **el 25** | **En silencio**: toda venta se registraba como **efectivo** aunque eligieras transferencia |
+
+El tercero llevaba cuatro días y tiene consecuencia contable: el medio viaja a la factura electrónica y decide
+la cuenta contra la que se registra el pago.
+
+## Qué verificar ahora
+
+1. **En "Registrar una venta ya cobrada"**: elige la consulta y registra. **Tiene que pasar.**
+2. **Marca "No sale de ninguna consulta"**, escribe el motivo y registra. También tiene que pasar.
+3. **EL CONTROL QUE IMPORTA, y es el que llevaba cuatro días roto:** registra una venta con **Transferencia**.
+   En la lista de ventas tiene que decir **transferencia**, no efectivo. Si dice efectivo, avísame.
+4. **Y el domicilio por esta pantalla:** marca el envío, pon ciudad, costo y dirección, y cobra. La venta
+   tiene que quedar **con su flete** y saliendo de la bodega de CNV. Antes se perdía sin avisar.
+5. **La parte 13 hay que repetirla por las dos pantallas**, no solo por el link de pago: ahí es donde el
+   defecto se escondía.
+
+## Y donde NO hay que buscarlo
+
+**La venta desde Tratamiento no estaba afectada.** También arma su envío a mano, pero no tiene campos: su
+formulario son botones y los datos vienen del tratamiento. Igual quedó con candado, porque el día que alguien
+le agregue un campo nacería roto.
