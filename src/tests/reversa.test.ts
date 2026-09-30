@@ -53,6 +53,26 @@ describe("el debito del banco contra el valor de la venta", () => {
     expect(d.aviso, "no es un error, es algo que conciliar").not.toContain("Error");
   });
 
+  // ═══ Y EN UNA DEVOLUCION NO HAY NADA QUE CONCILIAR (smoke del 2026-09-30) ═══
+  //
+  // Devolver 1 de 2 unidades sacaba "el débito difiere del valor de la venta... la nota crédito va solo por
+  // el valor de la venta", que CONTRADECIA al mensaje de la propia devolución ("emitir la nota crédito por
+  // 11.900") sobre el importe de un documento fiscal. Que el débito sea menor que la venta no es una
+  // diferencia por conciliar: es la definición de devolución parcial.
+  it("una devolución parcial no saca el aviso de conciliación", () => {
+    const d = diferenciaDelDebito(r({ tipo: "devolucion", montoDebitado: "11900", montoDeLaVenta: "23800" }));
+    expect(d.hayDiferencia).toBe(false);
+    expect(d.aviso).toBeNull();
+  });
+
+  // Y EL CONTRACARGO SIGUE AVISANDO con el mismo importe: si esta linea pasara con la de arriba mal escrita,
+  // el arreglo habria apagado el aviso para todos.
+  it("pero un contracargo con el mismo importe sí avisa", () => {
+    const d = diferenciaDelDebito(r({ tipo: "contracargo", montoDebitado: "11900", montoDeLaVenta: "23800" }));
+    expect(d.hayDiferencia).toBe(true);
+    expect(d.aviso).toContain("se concilia con contabilidad");
+  });
+
   it("si coinciden, no dice nada", () => {
     expect(diferenciaDelDebito(r({ montoDebitado: "90000" }))).toMatchObject({ hayDiferencia: false, diferencia: 0 });
   });

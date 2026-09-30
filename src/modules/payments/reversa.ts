@@ -49,11 +49,24 @@ const aNumero = (v: string | null): number | null => {
  * NO es un error: es un aviso de que hay algo que conciliar. Y la nota credito se emite SOLO por el valor de la
  * venta; esos cargos son gasto de CNV, no menor ingreso.
  */
-export function diferenciaDelDebito(r: Pick<Reversa, "montoDeLaVenta" | "montoDebitado">): {
+export function diferenciaDelDebito(r: Pick<Reversa, "montoDeLaVenta" | "montoDebitado" | "tipo">): {
   hayDiferencia: boolean;
   diferencia: number | null;
   aviso: string | null;
 } {
+  // ═══ EN UNA DEVOLUCION NO HAY NADA QUE CONCILIAR, Y DECIRLO ERA PEOR QUE CALLARSE ═══
+  //
+  // LO QUE PASO (smoke del 2026-09-30): devolver 1 de 2 unidades de 11.900 sacaba el aviso "el débito difiere
+  // del valor de la venta en 11.900 COP menos... la nota crédito va solo por el valor de la venta". Las dos
+  // mitades estaban mal, y la segunda es la grave: contradecia al mensaje de la propia devolucion ("hay que
+  // emitir la nota crédito por 11.900") sobre el importe de un DOCUMENTO FISCAL.
+  //
+  // La razon es que esta regla se escribio para un CONTRACARGO, donde se disputa la venta ENTERA y la
+  // franquicia ademas cobra su cuota. Una devolucion parcial revierte solo su parte: que el debito sea menor
+  // que la venta no es una diferencia por conciliar, es la definicion de "parcial". Comparar contra la venta
+  // entera hacia que el aviso saliera SIEMPRE, y un aviso que sale siempre deja de avisar.
+  if (r.tipo === "devolucion") return { hayDiferencia: false, diferencia: null, aviso: null };
+
   const venta = aNumero(r.montoDeLaVenta);
   const debitado = aNumero(r.montoDebitado);
   if (venta === null || debitado === null) return { hayDiferencia: false, diferencia: null, aviso: null };
