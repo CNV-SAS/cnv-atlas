@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { createCheckoutFormAction } from "../actions";
 import { BloqueDomicilio, type CiudadParaElegir } from "./bloque-domicilio";
+import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import type { PaymentFormState } from "../validations";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
@@ -35,12 +36,15 @@ export function CreateCheckoutForm({
   ciudadesDeDomicilio = [],
   costoSugeridoPorDefecto = null,
   margenDeFlete = 0.03,
+  tratamientosPorPaciente = {},
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
   ciudadesDeDomicilio?: CiudadParaElegir[];
   costoSugeridoPorDefecto?: number | null;
   margenDeFlete?: number;
+  /** Las consultas de cada paciente, para poder atar la compra a la suya sin ir al servidor. */
+  tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
 }) {
   const [state, action, pending] = useActionState(createCheckoutFormAction, initial);
   // Inputs CONTROLADOS a proposito: React 19 resetea el form tras cada submit (lo del prop `action`), y
@@ -171,6 +175,15 @@ export function CreateCheckoutForm({
             )}
           </div>
         </div>
+
+        {/* LA `key` POR PACIENTE re-monta el bloque al cambiar de paciente: sin ella, la consulta elegida
+            para uno se quedaría seleccionada para el siguiente, que es como se le cuelga una compra a la
+            consulta de otra persona. */}
+        <BloqueTratamiento
+          key={patientId}
+          patientId={patientId}
+          tratamientos={tratamientosPorPaciente[patientId] ?? []}
+        />
 
         <BloqueDomicilio
           ciudades={ciudadesDeDomicilio}

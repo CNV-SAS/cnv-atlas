@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// UNA VENTA DE /pagos SIN CONSULTA SE REGISTRA IGUAL, PERO DICIENDO POR QUE (2026-09-29). El servicio lo
+// exige: sin el motivo, una compra de mostrador y una mal atada se ven iguales. Estos casos prueban precio,
+// existencias y minimo, no el vinculo clinico, asi que declaran el motivo que les corresponde.
+const MOTIVO_SUELTA = "compra de mostrador";
+
 // Mocks de las dependencias del servicio. Asi se prueba la LOGICA de orquestacion
 // (sellado de precios, idempotencia, mapeo de estados) sin tocar BD, Supabase, ni
 // los modulos server-only (writer, repo, alegra, nutraceuticos). El alias "@" lo
@@ -45,6 +50,11 @@ vi.mock("../modules/payments/data/inventario-de-venta", () => ({
   liberarReservasDeVenta: vi.fn(),
 }));
 vi.mock("../modules/payments/services/inventario-venta-service", () => ({ descontarInventarioDeVenta: vi.fn() }));
+// El guard del tratamiento consulta la base; en un test de unidad se mockea y se da por atable. Que NO lo sea
+// se prueba contra la BD real, que es el unico sitio donde una evaluacion reemplazada existe de verdad.
+vi.mock("../modules/payments/data/tratamientos-del-paciente", () => ({
+  esTratamientoAtable: vi.fn().mockResolvedValue(true),
+}));
 vi.mock("@/modules/avisos/services/avisos-service", () => ({ avisarAlIntegranteDeRevision: vi.fn() }));
 
 import * as nutraRepo from "@/modules/nutraceuticals/data/nutraceuticals-repository";
@@ -100,7 +110,11 @@ describe("createCheckout: sella el precio en el servidor", () => {
     vi.mocked(writer.createTransactionWithItems).mockResolvedValue({ id: "tx-1" });
 
     const res = await createCheckout(
-      { patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 2 }, { nutraceuticalId: "n2", quantity: 1 }] },
+      {
+        patientId: "p1",
+        items: [{ nutraceuticalId: "n1", quantity: 2 }, { nutraceuticalId: "n2", quantity: 1 }],
+        ventaSueltaMotivo: MOTIVO_SUELTA,
+      },
       user(["professional"]),
     );
 
@@ -128,7 +142,7 @@ describe("createCheckout: sella el precio en el servidor", () => {
     ] as never);
 
     await expect(
-      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"])),
+      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"])),
     ).rejects.toBeInstanceOf(CheckoutError);
     expect(writer.createTransactionWithItems).not.toHaveBeenCalled();
   });
@@ -141,7 +155,7 @@ describe("createCheckout: sella el precio en el servidor", () => {
     ] as never);
     vi.mocked(writer.createTransactionWithItems).mockResolvedValue({ id: "tx-2" });
 
-    await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["admin"]));
+    await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["admin"]));
 
     expect(writer.createTransactionWithItems).toHaveBeenCalledWith(
       expect.objectContaining({ professionalId: "prof-asignado" }),
@@ -160,7 +174,7 @@ describe("registerCashSale: misma resolucion de venta, transaccion ya pagada", (
     vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-1", linksAnulados: [] });
 
     const res = await registerCashSale(
-      { patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 2 }] },
+      { patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 2 }], ventaSueltaMotivo: MOTIVO_SUELTA },
       user(["professional"]),
       "idem-123",
     );
@@ -190,7 +204,7 @@ describe("registerCashSale: misma resolucion de venta, transaccion ya pagada", (
     ] as never);
 
     await expect(
-      registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"]), "idem-1"),
+      registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"]), "idem-1"),
     ).rejects.toBeInstanceOf(CheckoutError);
     expect(writer.createPaidCashTransaction).not.toHaveBeenCalled();
   });
@@ -315,7 +329,7 @@ describe("el inventario en la venta", () => {
       new inventario.InventarioDeVentaError("Solo hay 1 unidad de \"A\" disponible, y la venta pide 2."),
     );
     const promesa = createCheckout(
-      { patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 2 }] },
+      { patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 2 }], ventaSueltaMotivo: MOTIVO_SUELTA },
       user(["professional"]),
     );
     await expect(promesa).rejects.toBeInstanceOf(CheckoutError);
@@ -328,7 +342,7 @@ describe("el inventario en la venta", () => {
       { id: "n1", name: "A", unit_price: "50000", commercial_availability: "en_consultorio" },
     ] as never);
     vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-9", linksAnulados: [] });
-    await registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"]), "idem-9");
+    await registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"]), "idem-9");
 
     expect(descuento.descontarInventarioDeVenta).toHaveBeenCalledWith("cash-9");
     expect(vi.mocked(descuento.descontarInventarioDeVenta).mock.invocationCallOrder[0]).toBeGreaterThan(
@@ -358,7 +372,7 @@ describe("un producto no disponible no se puede vender", () => {
       { id: "n1", name: "LUVIA", unit_price: "90000", commercial_availability: "no_disponible" },
     ] as never);
     await expect(
-      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"])),
+      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"])),
     ).rejects.toThrow(/no está disponible/);
   });
 
@@ -369,7 +383,7 @@ describe("un producto no disponible no se puede vender", () => {
       { id: "n1", name: "A", unit_price: "50000", commercial_availability: "solo_tienda" },
     ] as never);
     await expect(
-      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"])),
+      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"])),
     ).rejects.toThrow(/en la tienda/);
   });
 });
@@ -408,7 +422,7 @@ describe("el minimo de Wompi ($1.500)", () => {
       { id: "n1", name: "PRUEBA", unit_price: "1190", commercial_availability: "en_consultorio" },
     ] as never);
     await expect(
-      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"])),
+      createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"])),
     ).rejects.toThrow(/menos de \$1\.500. Cóbralo en efectivo/);
     expect(writer.createTransactionWithItems).not.toHaveBeenCalled();
   });
@@ -421,9 +435,9 @@ describe("el minimo de Wompi ($1.500)", () => {
     ] as never);
     vi.mocked(writer.createTransactionWithItems).mockResolvedValue({ id: "tx-min" });
     vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-min", linksAnulados: [] });
-    await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"]));
+    await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"]));
     expect(writer.createTransactionWithItems).toHaveBeenCalled();
-    await registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n2", quantity: 1 }] }, user(["professional"]), "idem-min");
+    await registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n2", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"]), "idem-min");
     expect(writer.createPaidCashTransaction).toHaveBeenCalled();
   });
 });
@@ -480,7 +494,7 @@ describe("la venta que nace en TRATAMIENTO (Bloque 3, sesion 2)", () => {
   });
 
   it("CONTROL: sin tratamiento (/pagos) no se consulta ninguno", async () => {
-    await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n2", quantity: 1 }] }, user(["professional"]));
+    await createCheckout({ patientId: "p1", items: [{ nutraceuticalId: "n2", quantity: 1 }], ventaSueltaMotivo: MOTIVO_SUELTA }, user(["professional"]));
     expect(repo.getTratamientoParaVenta).not.toHaveBeenCalled();
     expect(writer.createTransactionWithItems).toHaveBeenCalledWith(expect.objectContaining({ treatmentId: null }));
   });

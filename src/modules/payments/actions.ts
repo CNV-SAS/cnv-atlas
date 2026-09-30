@@ -159,6 +159,7 @@ export async function createCheckoutFormAction(
     patientId,
     items: lineas,
     treatmentId,
+    ventaSueltaMotivo: String(formData.get("ventaSueltaMotivo") ?? "").trim() || undefined,
     desdeLaBodega: String(formData.get("desdeLaBodega") ?? "") === "true",
     domicilio: leerDomicilio(formData),
   });
@@ -220,6 +221,7 @@ export async function registerCashSaleFormAction(
     idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
     items: lineas,
     treatmentId: String(formData.get("treatmentId") ?? "") || undefined,
+    ventaSueltaMotivo: String(formData.get("ventaSueltaMotivo") ?? "").trim() || undefined,
     desdeLaBodega: String(formData.get("desdeLaBodega") ?? "") === "true",
     domicilio: leerDomicilio(formData),
   });
