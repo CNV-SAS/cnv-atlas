@@ -46,6 +46,9 @@ export type NuevaVentaRetroactiva = {
   /** El consecutivo de la factura que YA existe en Alegra. Sin el, registrarla no sirve para nada. */
   numeroDeFactura: string;
   medioDePago: CanalDePago;
+  /** De que consulta sale, o null con su motivo. Se exige uno de los dos, como en /pagos. */
+  treatmentId: string | null;
+  ventaSueltaMotivo: string | null;
   lineas: LineaRetroactiva[];
   actorId: string;
   actorEmail: string;
@@ -78,6 +81,13 @@ export async function registrarVentaRetroactiva(
   }
   if (input.lineas.length === 0) {
     throw new VentaRetroactivaError("La venta necesita al menos un producto.");
+  }
+  // DE QUE CONSULTA SALE, O POR QUE DE NINGUNA. La misma exigencia de /pagos, y no una parecida: si aqui se
+  // relajara, la reconstruccion de la historia (que es la que mas ventas mete) entraria entera sin vinculo.
+  if (!input.treatmentId && !input.ventaSueltaMotivo) {
+    throw new VentaRetroactivaError(
+      "Elige de qué consulta sale esta compra, o di por qué no sale de ninguna.",
+    );
   }
   for (const l of input.lineas) {
     if (!Number.isInteger(l.cantidad) || l.cantidad <= 0) {
@@ -127,6 +137,8 @@ export async function registrarVentaRetroactiva(
         wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
         locationId,
         deliveryMode: "en_consulta",
+        treatmentId: input.treatmentId,
+        sinTratamientoMotivo: input.ventaSueltaMotivo,
         operatedAt: cuando,
         stockState: "pendiente",
         // SU ENTREGA YA OCURRIO: el paciente se llevo el producto hace meses. Dejarla "pendiente" la pondria

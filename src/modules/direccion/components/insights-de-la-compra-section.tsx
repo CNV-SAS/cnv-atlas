@@ -93,9 +93,11 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
         <Tarjeta
           rotulo="Compras con su consulta"
           valor={comparables > 0 ? `${datos.ventasConConsulta} de ${comparables}` : "-"}
+          // LA CIFRA QUE PREGUNTÓ SANTIAGO, dicha y no deducida: cuántas van sin consulta. Estaba solo por
+          // complemento ("1 de 1", luego cero), y una cifra que hay que deducir no está en la pantalla.
           nota={
             comparables > 0
-              ? `${pct(datos.ventasConConsulta, comparables)}% · solo cuentan las que podían decirlo`
+              ? `${pct(datos.ventasConConsulta, comparables)}% · ${datos.ventasSinConsultaComparables} sin consulta de las que podían decirlo`
               : "todavía ninguna compra pudo decir su consulta"
           }
         />

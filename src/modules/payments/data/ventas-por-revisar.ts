@@ -89,7 +89,14 @@ export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
      where t.status = 'paid'
        and (
          (t.review_reason is not null and t.review_resolution is null)
-         or (t.stock_state in ('sin_saldo', 'fallido') and t.created_at > now() - interval '30 days')
+         -- LA VENTANA MIRA CUANDO SE REGISTRO, NO CUANDO OCURRIO (Santiago, 2026-09-30).
+         --
+         -- Una venta RETROACTIVA escribe su created_at en la fecha real, asi que una registrada hoy con
+         -- fecha de enero nacia ya fuera de los 30 dias y NO LLEGABA NUNCA a esta bandeja. Y es justo la que
+         -- mas hace falta ver: si no alcanzo el saldo, la vitrina esta contando unidades que salieron hace
+         -- meses. Paso en el smoke con una LUVIA: quedo "no alcanzo el saldo" y nadie tenia donde trabajarla.
+         or (t.stock_state in ('sin_saldo', 'fallido')
+             and coalesce(t.registered_retroactively_at, t.created_at) > now() - interval '30 days')
        )
      order by (t.review_reason is not null and t.review_resolution is null) desc, t.created_at desc
      limit 100`);

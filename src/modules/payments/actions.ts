@@ -870,6 +870,9 @@ export async function registrarVentaRetroactivaAction(
       fecha: String(form.get("fecha") ?? ""),
       numeroDeFactura: String(form.get("numeroDeFactura") ?? ""),
       medioDePago: medioDePagoDeLaForma(form.get("medioDePago")),
+      // DE QUE CONSULTA SALE, con la misma salida que /pagos: el servicio exige uno de los dos.
+      treatmentId: String(form.get("treatmentId") ?? "").trim() || null,
+      ventaSueltaMotivo: String(form.get("ventaSueltaMotivo") ?? "").trim() || null,
       lineas,
       actorId: user.id,
       actorEmail: user.email,
