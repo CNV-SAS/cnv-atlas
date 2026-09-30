@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
 import { resolveRecommendation } from "@/modules/treatment/nutraceuticals-recommendation";
 
 // ═══ QUE SE PRESCRIBE, QUE SE COMPRA, Y QUE SE COMPRA FUERA DEL PLAN (2026-09-29) ═══
@@ -98,31 +99,47 @@ export type InsightsDeLaCompra = {
   /** Dias entre la consulta y la compra: la mediana dice mas que el promedio con pocos datos. */
   diasHastaLaCompra: { mediana: number | null; maximo: number | null };
   porProducto: ConversionDeProducto[];
+  /** Desde cuando cuenta la operacion real, o null si todavia no se fijo el arranque. */
+  desdeElArranque: string | null;
 };
 
 export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
   const desde = DESDE_QUE_HAY_VINCULO;
+
+  // ═══ EL ARRANQUE RECORTA LOS TRES EJES A LA VEZ (0198) ═══
+  //
+  // Esta pantalla ya tiene una ventana propia (el dia en que la venta empezo a decir su consulta), y ahora
+  // tiene otra encima. LA REGLA ES QUE EL CORTE SE APLIQUE A TODO LO QUE SE COMPARA: ventas, consultas y
+  // recomendaciones. Recortar solo las ventas dejaria el numerador en la operacion real y el denominador
+  // arrastrando 87 prescripciones de prueba, y la conversion saldria hundida por un motivo que no existe.
+  // Es el mismo defecto del "0 de 18" que Santiago vio, con otra ropa.
+  const arranque = await fechaDeArranque();
+  const corteVenta = arranque
+    ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date`
+    : sql``;
+  const corteConsulta = arranque
+    ? sql` and (tr.created_at at time zone 'America/Bogota')::date >= ${arranque}::date`
+    : sql``;
 
   // ── 1. CUANTAS VENTAS TRAEN SU CONSULTA, Y LOS MOTIVOS DE LAS QUE NO ──
   const [conteo] = await db.execute<{ con: number; sin: number }>(sql`
     select count(*) filter (where t.treatment_id is not null)::int as con,
            count(*) filter (where t.treatment_id is null)::int as sin
       from transactions t
-     where t.status = 'paid'
-`);
+     where t.status = 'paid'${corteVenta}`);
 
   // LAS QUE SI PODIAN DECIRLO Y NO LO DIJERON: son las comparables. Las anteriores se cuentan aparte.
   const [comparables] = await db.execute<{ n: number }>(sql`
     select count(*)::int as n
       from transactions t
      where t.status = 'paid' and t.treatment_id is null
-       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date`);
+       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date${corteVenta}`);
 
   const [anteriores] = await db.execute<{ n: number }>(sql`
     select count(*)::int as n
       from transactions t
      where t.status = 'paid' and t.treatment_id is null
-       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date < ${desde}::date`);
+       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date < ${desde}::date${corteVenta}`);
 
   const motivos = await db.execute<{ motivo: string; veces: number }>(sql`
     select coalesce(nullif(btrim(t.sin_tratamiento_motivo), ''), '(sin motivo escrito)') as motivo,
@@ -131,7 +148,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
      where t.status = 'paid' and t.treatment_id is null
        -- SOLO LAS POSTERIORES AL VINCULO: las de antes no tienen motivo porque nadie se lo pidio, y sacarlas
        -- como "(sin motivo escrito)" haria creer que alguien omitio algo. No omitio nada: no existia el campo.
-       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date
+       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desde}::date${corteVenta}
      group by 1 order by 2 desc limit 20`);
 
   // ── 2. LAS LINEAS: DENTRO O FUERA DE LO PRESCRITO EN ESA CONSULTA ──
@@ -145,8 +162,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       join transactions t on t.id = ti.transaction_id
       left join treatment_nutraceuticals tn
              on tn.treatment_id = t.treatment_id and tn.nutraceutical_id = ti.nutraceutical_id
-     where t.status = 'paid' and t.treatment_id is not null
-`);
+     where t.status = 'paid' and t.treatment_id is not null${corteVenta}`);
 
   // ── 3. CUANTO TARDA EN COMPRAR DESDE LA CONSULTA ──
   //
@@ -159,8 +175,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
            max(coalesce(t.operated_at, t.created_at)::date - coalesce(tr.approved_at, tr.created_at)::date)::int as maximo
       from transactions t
       join treatments tr on tr.id = t.treatment_id
-     where t.status = 'paid' and t.treatment_id is not null
-`);
+     where t.status = 'paid' and t.treatment_id is not null${corteVenta}`);
 
   // ── 4. POR PRODUCTO: PRESCRITO, COMPRADO, Y COMPRADO FUERA DEL PLAN ──
   const porProducto = await db.execute<{
@@ -173,14 +188,13 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       select tn.nutraceutical_id, tn.treatment_id
         from treatment_nutraceuticals tn
         join treatments tr on tr.id = tn.treatment_id
-
+       where true${corteConsulta}
     ),
     compras as (
       select ti.nutraceutical_id, t.treatment_id
         from transaction_items ti
         join transactions t on t.id = ti.transaction_id
-       where t.status = 'paid' and t.treatment_id is not null
-  
+       where t.status = 'paid' and t.treatment_id is not null${corteVenta}
     )
     select n.name as producto,
            count(distinct p.treatment_id)::int as prescrito_en,
@@ -215,8 +229,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
       join evaluations e on e.id = r.evaluation_id
       join diagnoses d on d.evaluation_id = e.id
       join treatments tr on tr.diagnosis_id = d.id
-     where r.snapshot->>'nutraceuticos' is not null
-`);
+     where r.snapshot->>'nutraceuticos' is not null${corteConsulta}`);
 
   const catalogo = await db.execute<{ id: string; name: string }>(sql`
     select id, name from nutraceuticals where coalesce(is_test, false) = false`);
@@ -290,6 +303,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
 
   return {
     desde,
+    desdeElArranque: arranque,
     ventasConConsulta: Number(conteo?.con ?? 0),
     ventasSinConsulta: Number(conteo?.sin ?? 0),
     ventasSinConsultaComparables: Number(comparables?.n ?? 0),

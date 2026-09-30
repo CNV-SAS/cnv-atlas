@@ -50,6 +50,16 @@ export const commercialConfig = pgTable("commercial_config", {
    * porque la comision de la pasarela cambia y el margen que la compensa tambien.
    */
   fleteMargen: numeric("flete_margen").notNull().default("0.03"),
+  /**
+   * DESDE CUANDO LAS CIFRAS DE RESUMEN CUENTAN LA OPERACION REAL (0198).
+   *
+   * Se pone el dia de las llaves reales. Antes de eso, las tarjetas arrastran los smokes, Profesional Demo
+   * y las pruebas: no son cifras equivocadas, son cifras de otra cosa. NULL = se cuenta todo (lo de hoy).
+   *
+   * NO recorta lo que se le DEBE a nadie: una comision anterior sigue siendo plata por pagar y la
+   * liquidacion la sigue viendo. Recorta la cifra de resumen, que responde otra pregunta.
+   */
+  fechaDeArranque: date("fecha_de_arranque"),
   updatedBy: uuid("updated_by").references(() => profiles.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

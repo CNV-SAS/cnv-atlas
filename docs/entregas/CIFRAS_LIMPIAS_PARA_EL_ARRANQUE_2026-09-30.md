@@ -1,6 +1,18 @@
 # Empezar con las cifras limpias: propuesta
 
-**Para Santiago, 2026-09-30. Dimensionado, no construido.**
+**Para Santiago, 2026-09-30. Aprobada, y la pieza 1 ya está construida.**
+
+## Estado
+
+| Pieza | Estado |
+| --- | --- |
+| 1. La fecha de arranque | **Hecha** (migración 0198). Falta correrla el día real: `docs/entregas/sql/FECHA_DE_ARRANQUE_2026-09-30.sql` |
+| 2. `professional_profiles.is_test` con su barrido | Pendiente |
+
+**El estado de la pieza 1 no se afirma, se comprueba:** `pnpm vitest run src/tests/fecha-de-arranque.test.ts`
+(que el corte llegue a todos los lectores) y el caso "con fecha de arranque, lo anterior no cuenta en ningún
+eje" de `src/tests/insights-de-la-compra-db.test.ts` (que sirva). Una afirmación "HECHO" envejece; un puntero
+a un test que pasa, no.
 
 ---
 
@@ -38,7 +50,7 @@ distintos (los de arriba). **Excluir es el camino, y es el que la arquitectura y
 
 ## Lo que propongo: dos piezas, y la primera sola no alcanza
 
-### 1. Una fecha de arranque, y las cifras cuentan desde ahí
+### 1. Una fecha de arranque, y las cifras cuentan desde ahí (construida)
 
 Un valor en configuración (`fecha_de_arranque`) y **todo lo anterior queda fuera de las cifras**. En una línea
 limpia **todo el pasado a la vez**: las ventas de los smokes, las de María Camila, las de Demo y las mías.
@@ -49,6 +61,17 @@ limpia **todo el pasado a la vez**: las ventas de los smokes, las de María Cami
 
 **Pero no alcanza sola**, y esta es la razón: **Profesional Demo va a seguir generando datos DESPUÉS del
 arranque**, porque para eso existe. Una fecha limpia el pasado y no el futuro.
+
+**Dos cosas que aparecieron al construirla y que no estaban en la propuesta:**
+
+- **El corte no puede tocar lo que se le DEBE a alguien.** Una comisión anterior al arranque sigue siendo
+  plata que hay que pagarle al Integrante, y la liquidación la tiene que seguir viendo entera. Así que la
+  tarjeta de comisiones de Dirección y la liquidación **van a discrepar a propósito**, y la tarjeta lo dice
+  ("lo anterior se sigue liquidando, no se pierde"). Sin esa línea, la diferencia se leería como un error de
+  una de las dos pantallas.
+- **El inventario no lleva corte.** Un saldo no es un flujo: las unidades están hoy en la bodega, las haya
+  puesto ahí quien sea. Recortarlo por fecha daría un número que no es el de ninguna bodega. También se dice
+  en la tarjeta.
 
 ### 2. Marcar al profesional, y que las cifras lo excluyan
 
