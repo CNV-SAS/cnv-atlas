@@ -1366,6 +1366,20 @@
       "when": 1791953726103,
       "tag": "0194_el_profesional_ve_las_reversas_de_sus_ventas",
       "breakpoints": true
+    },
+    {
+      "idx": 195,
+      "version": "7",
+      "when": 1791953786103,
+      "tag": "0195_rls_en_las_tres_tablas_que_faltaban",
+      "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1791953846103,
+      "tag": "0196_endurecer_la_vista_y_las_funciones",
+      "breakpoints": true
     }
   ]
 }
