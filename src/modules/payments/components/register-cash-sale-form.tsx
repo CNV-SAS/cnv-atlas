@@ -79,8 +79,26 @@ export function RegisterCashSaleForm({
   // se usa en el aviso y en la confirmacion, asi confirmar crea UNA sola venta.
   // "Anular el link y cobrar" viaja igual que el duplicado: como campo del FormData armado aqui, no como
   // name/value del boton (que `new FormData(form)` no incluye; hazard 5 de CLAUDE.md).
+  // ═══ EL FormData SALE DEL FORMULARIO, NO SE ARMA A MANO (smoke del 2026-09-29) ═══
+  //
+  // ESTO SE ARMABA CON `new FormData()` VACIO y tres `fd.set`, asi que NADA de lo que estaba en el JSX
+  // viajaba. Tres campos se perdian, y solo uno se quejaba:
+  //
+  //   · `treatmentId` (hoy): la venta se rechazaba con "elige de qué consulta sale esta compra" DESPUES de
+  //     haberla elegido. Ese fue el que bloqueó el smoke, y el único que avisó.
+  //   · Los campos del DOMICILIO (hoy): se llenaban y la venta se creaba sin envío. En silencio.
+  //   · Y `canal` (desde que existe la transferencia): TODA venta se registraba como EFECTIVO aunque se
+  //     eligiera transferencia. En silencio, y con consecuencia contable: el medio viaja a la factura
+  //     electrónica y decide la cuenta contra la que se registra el pago.
+  //
+  // Es la misma familia del hazard 5 de CLAUDE.md (el `name` del botón no viaja en `new FormData(form)`),
+  // llevada al extremo: un FormData armado a mano no lleva NADA del formulario, y cada campo que alguien
+  // agregue en el futuro nacerá roto. Por eso el arreglo no es añadir tres `fd.set`: es partir DEL
+  // FORMULARIO y añadir encima lo que no es un campo (la clave de idempotencia y las confirmaciones).
+  const formRef = useRef<HTMLFormElement | null>(null);
   const submit = (opciones: { confirmDuplicate?: boolean; anularLinks?: boolean } = {}) => {
-    const fd = new FormData();
+    const fd = formRef.current ? new FormData(formRef.current) : new FormData();
+    // Los controlados se re-afirman: su valor vive en el estado de React, no en el DOM.
     fd.set("patientId", patientId);
     fd.set("lineas", JSON.stringify(lineas));
     fd.set("idempotencyKey", keyRef.current);
@@ -119,7 +137,7 @@ export function RegisterCashSaleForm({
 
   return (
     <div className="flex flex-col gap-3">
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
+      <form ref={formRef} onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <Label htmlFor="cash-patientId" className="text-xs">
             Paciente
