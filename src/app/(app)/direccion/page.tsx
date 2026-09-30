@@ -124,10 +124,20 @@ export default async function DireccionPage() {
             </div>
           </div>
           <p className="mt-3 max-w-prose text-xs text-muted-foreground">
-            Solo lo que tiene saldo: una fila en cero existe porque alguna vez hubo unidades ahí, y listarla
-            diría que hay producto en una bodega donde no hay ninguno. Sin los productos de prueba, igual que
-            la tarjeta.
+            Solo lo que tiene saldo distinto de cero: una fila en cero existe porque alguna vez hubo unidades
+            ahí, y listarla diría que hay producto en una bodega donde no hay ninguno. Sin los productos de
+            prueba, igual que la tarjeta, y suma exactamente lo mismo que ella.
           </p>
+          {/* UN SALDO NEGATIVO NO SE ESCONDE: significa que se descontaron unidades que la vitrina no tenía,
+              y es algo que hay que arreglar en los datos. Esconderlo lo volvería indetectable, y además
+              descuadraría el desglose con su propia tarjeta (ya pasó: 7.197 contra 7.187). */}
+          {d.inventoryByProduct.some((p) => p.unidades < 0) ||
+          d.inventoryByLocation.some((l) => l.unidades < 0) ? (
+            <p className="max-w-prose text-xs text-attention">
+              Alguna línea sale en negativo. Eso no es un error de la cifra: significa que se descontaron
+              unidades que esa bodega no tenía registradas, y hay que cuadrarlo en los datos.
+            </p>
+          ) : null}
         </details>
       ) : null}
 

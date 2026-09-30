@@ -126,20 +126,22 @@ export function LoDeshechoSection({ datos }: { datos: LoDeshecho }) {
         </div>
       ) : null}
 
-      {/* ═══ "POR QUÉ" PROMETÍA ALGO QUE EL DATO NO TIENE (Santiago, 2026-09-30) ═══
+      {/* ═══ AQUÍ VA EL MOTIVO QUE ESCRIBIÓ LA PERSONA (Santiago, 2026-09-30) ═══
 
-          En un contracargo la nota la escribe quien abre el caso. En una devolución la compone el sistema
-          ("Devolución de 1 de 2 unidades de la línea"), porque el formulario NO PIDE motivo. Titular el
-          bloque "Por qué" hacía que esa línea pareciera una respuesta incompleta, cuando la pregunta nunca
-          se hizo. Se dice cuál es cuál, que es lo honesto mientras el motivo no se capture. */}
+          Este bloque mostraba "Devolución de 1 de 2 unidades de la línea", una frase del código, en el sitio
+          donde promete decir por qué. El formulario SÍ pide el motivo (cinco letras mínimo): se guardaba en
+          el movimiento de inventario y la reversa se quedaba con la frase. El dato estaba y la pantalla decía
+          otra cosa, igual que la nota crédito del mismo día.
+
+          Lo que sigue marcado son las que la migración 0200 no pudo recuperar: se dicen como automáticas en
+          vez de hacerlas pasar por un motivo. */}
       {datos.motivos.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground">La nota de cada caso</span>
+          <span className="text-sm font-medium text-foreground">Por qué</span>
           {datos.motivos.some((m) => m.loEscribioElSistema) ? (
             <p className="max-w-prose text-xs text-muted-foreground">
-              Las líneas de devolución las <strong className="text-foreground">escribe el sistema</strong> con
-              las unidades: hoy el formulario de devolución no pide un motivo, así que aquí no hay un porqué
-              que mostrar. Si hace falta saber por qué vuelve un producto, hay que pedirlo al registrarla.
+              Las marcadas como automáticas son de antes de que el motivo se guardara con la reversa: su texto
+              lo compuso el sistema, no una persona. Las demás son lo que se escribió al registrarla.
             </p>
           ) : null}
           <ul className="flex flex-col gap-1">

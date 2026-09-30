@@ -33,13 +33,15 @@ export type LoDeshecho = {
   ventasPagadas: number;
   porClase: { clase: ClaseDeshecha; estado: string; veces: number; monto: number }[];
   /**
-   * Las notas de cada caso, agrupadas.
+   * POR QUE se deshizo cada una, con el texto que escribio la persona.
    *
-   * OJO CON QUE ESTO NO ES UN MOTIVO EN UNA DEVOLUCION (Santiago, 2026-09-30): en un contracargo la nota la
-   * ESCRIBE quien abre el caso, pero en una devolucion la compone el sistema ("Devolución de 1 de 2 unidades
-   * de la línea"), porque el formulario NO PIDE motivo. Titular ese bloque "Por qué" prometia una respuesta
-   * que el dato no tiene, y el lector se queda pensando que le falta algo. Se distingue en la pantalla, y la
-   * de pedir el motivo de verdad es una decision de producto que no he tomado yo.
+   * ME EQUIVOQUE AL LEER ESTO (Santiago, 2026-09-30): dije que el formulario de devolucion no pedia motivo y
+   * SI LO PIDE, con cinco letras minimo. El motivo se guardaba en el MOVIMIENTO de inventario y la reversa se
+   * quedaba con una frase compuesta por el codigo, asi que este bloque mostraba la frase en el sitio donde
+   * prometia decir por que. El dato estaba y la pantalla decia otra cosa, igual que la nota credito.
+   *
+   * `loEscribioElSistema` queda para las que la 0200 no pudo recuperar (un movimiento sin razon): son las
+   * unicas que siguen con la frase automatica, y se marcan en vez de hacerlas pasar por un motivo.
    */
   motivos: { clase: ClaseDeshecha; motivo: string; veces: number; loEscribioElSistema: boolean }[];
   /**
@@ -147,8 +149,10 @@ export async function loDeshecho(): Promise<LoDeshecho> {
       clase: m.kind as ClaseDeshecha,
       motivo: m.motivo,
       veces: Number(m.veces),
-      // La nota de una devolucion la compone el writer; la de un contracargo la escribe una persona.
-      loEscribioElSistema: m.kind === "devolucion",
+      // SE MIRA EL TEXTO Y NO LA CLASE, y es la diferencia que importa: desde la 0200 la nota de una
+      // devolucion ES el motivo de la persona. Solo siguen siendo automaticas las que no se pudieron
+      // recuperar, y esas se reconocen por la frase que componia el codigo.
+      loEscribioElSistema: /^Devolución de \d+ de \d+ unidades de la línea\.$/.test(m.motivo),
     })),
     productosDevueltos: productosDevueltos.map((p) => ({
       producto: p.producto,

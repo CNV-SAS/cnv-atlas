@@ -100,6 +100,9 @@ export async function registrarDevolucionFisica(input: {
       transactionItemId: input.transactionItemId,
       cantidadDevuelta: input.cantidad,
       actorId: input.actorId,
+      // EL MISMO MOTIVO QUE EL MOVIMIENTO: el dato se captura una vez y viaja a los dos sitios. Si cada uno
+      // guardara el suyo, se separarian, y ya vimos que pasa cuando dos filas dicen del mismo hecho.
+      motivo: input.motivo,
     });
 
     await recordAudit(tx, {
