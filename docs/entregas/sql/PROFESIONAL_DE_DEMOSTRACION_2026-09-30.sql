@@ -1,6 +1,14 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 -- MARCAR A PROFESIONAL DEMO COMO DE DEMOSTRACION  ·  requiere la migracion 0199
 --
+-- ⚠ NO CORRER ANTES DEL SMOKE. La migracion 0199 solo añade la columna, y nace en false: hoy no hay nadie
+-- marcado. Si se marca a Demo antes del recorrido, sus ventas dejan de contar en el bruto y en las
+-- comisiones, y el smoke de numeros no puede verificar nada: todo da cero y no se distingue el filtro de un
+-- defecto. EL ORDEN ES: smoke primero, fecha de arranque despues, esta marca al final.
+--
+-- SI YA SE CORRIO Y HAY QUE VOLVER AL RECORRIDO, se desmarca con la linea del final y se vuelve a marcar
+-- cuando se termine. No hay nada que reconstruir: la marca no transforma datos, solo decide que se cuenta.
+--
 -- QUE HACE: lo suyo deja de contar en las cifras de resumen de la organizacion (el bruto, el ingreso de
 -- CNV, las comisiones, lo que se deshizo y los insights). La lista de usuarios lo sigue mostrando, marcado.
 --

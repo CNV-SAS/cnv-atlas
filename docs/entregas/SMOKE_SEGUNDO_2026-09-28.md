@@ -493,6 +493,33 @@ deshace mucho más de lo que se deshace.
 **Esto no se prueba en el smoke: se corre el día de las llaves reales.** Va aquí para que sepas qué va a
 pasar y no lo leas como un defecto.
 
+## Antes de nada: hoy no hay nadie marcado, y no lo marques todavía
+
+La migración 0199 **solo añade la columna**, que nace en `false`. **Profesional Demo no está marcado**, ni en
+local ni en la nube, así que tu recorrido cuenta normal y las cifras de dinero se pueden verificar como
+siempre. La marca la pone una persona corriendo el script, y **eso va al final**.
+
+**Por qué importa:** si marcas a Demo antes del recorrido, sus ventas dejan de contar en el bruto y en las
+comisiones. Todo daría cero y no podrías distinguir el filtro de un defecto.
+
+**El orden es: smoke completo → fecha de arranque → marca de Demo.**
+
+Si quieres comprobarlo antes de empezar (10 segundos):
+
+```sql
+SELECT p.email, pp.is_test
+  FROM professional_profiles pp JOIN profiles p ON p.id = pp.profile_id
+ ORDER BY p.email;
+```
+
+Si alguno sale en `true`, desmárcalo antes del recorrido y vuelve a marcarlo al final:
+
+```sql
+UPDATE professional_profiles SET is_test = false WHERE is_test;
+```
+
+**No hay nada que reconstruir al desmarcar:** la marca no transforma datos, solo decide qué se cuenta.
+
 ## Las dos piezas
 
 1. **La fecha de arranque** (`docs/entregas/sql/FECHA_DE_ARRANQUE_2026-09-30.sql`). Desde ese día, las cifras
@@ -511,3 +538,14 @@ pasar y no lo leas como un defecto.
 
 **Lo que sí conviene probar hoy, en un minuto:** en **/admin**, que la lista de usuarios sigue mostrando a
 todos. La marca no esconde a nadie, solo lo rotula.
+
+## Y si quieres comprobar que el filtro sirve, hazlo al final y en dos minutos
+
+No es obligatorio (hay un test contra la base que ya lo comprueba), pero si quieres verlo con tus ojos:
+
+1. Apunta el **ingreso bruto** y las **comisiones** de /direccion.
+2. Corre el script de la marca.
+3. Recarga /direccion: **las dos tienen que bajar**, el **inventario no**, y la lista de /admin tiene que
+   seguir mostrando a Demo, ahora con su rótulo.
+4. Desmárcalo con `UPDATE professional_profiles SET is_test = false WHERE is_test;` y las cifras vuelven
+   exactas. Si no vuelven exactas, avísame: eso sí sería un defecto.
