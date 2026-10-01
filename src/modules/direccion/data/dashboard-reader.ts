@@ -142,7 +142,7 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
       //
       // EL EMBED SIGUE SIENDO EL COMPARTIDO: se le añadio el nombre alli en vez de escribir una copia aqui,
       // porque una copia es como se llega a que una pantalla excluya lo de prueba y la otra no.
-      .select(`stock_quantity, nutraceutical_id, location_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}, inventory_locations!inner(name)`)
+      .select(`stock_quantity, nutraceutical_id, location_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}, inventory_locations!inner(name, professional_id)`)
       .eq(COLUMNA_PRODUCTO_DE_PRUEBA, false),
   ]);
 
@@ -164,7 +164,20 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   const devueltasRows = (devueltas.data ?? []).filter((r) => noEsDePrueba(deLaVenta(r)));
   // EL INVENTARIO NO SE FILTRA POR PROFESIONAL, a proposito: las unidades de Demo son reales y estan en su
   // bodega. Sacarlas daria un numero que no cuadra con ningun conteo fisico. Ver `professionals/de-prueba`.
-  const inventoryRows = inventory.data ?? [];
+  // ═══ Y EL INVENTARIO TAMPOCO CUENTA LO DEL PROFESIONAL DE DEMOSTRACION (Santiago, 2026-10-01) ═══
+  //
+  // ME CORRIJO: decidi que la marca no tocara el inventario, con el argumento de que las unidades son
+  // fisicas y una vitrina que no cuadra con un conteo real miente mas. Santiago lo decidio al reves, y su
+  // razon pesa mas en esta pantalla: quien entra a /direccion o a /admin con esos roles no sabe que esas
+  // unidades son de una cuenta de demostracion, y una cifra que confunde a quien decide es peor que una
+  // cifra incompleta.
+  //
+  // LO QUE LA HACE HONESTA ES QUE LO DIGA, y la tarjeta lo dice: el alcance declarado es lo que separa una
+  // cifra acotada de una cifra equivocada. Quien necesite el conteo fisico lo tiene en el desglose del
+  // integrante, que si los muestra.
+  const inventoryRows = (inventory.data ?? []).filter((r) =>
+    noEsDePrueba(uno(r.inventory_locations as { professional_id: string | null } | null)?.professional_id),
+  );
 
   return {
     paidCount: paidRows.length,

@@ -43,3 +43,38 @@ SELECT i.professional_id, i.nutraceutical_id, i.location_id, i.lot_id, -i.stock_
    AND coalesce(n.is_test, false) = true;
 
 -- 3. COMPROBAR: el paso 1 tiene que devolver cero filas.
+
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+-- SEGUNDA PARTE: LOS 88 DE ADAPTO-STRESS QUE NUNCA EXISTIERON
+--
+-- Son unidades que Santiago cargo para probar, de un producto REAL del catalogo (no es producto de prueba,
+-- asi que marcarlo seria falso: ADAPTO-STRESS existe, solo que nunca se ha prescrito).
+--
+-- POR QUE UNA BAJA Y NO UNA VENTA. Registrar que un paciente compro 88 inflaria las ventas y las comisiones
+-- en unos diez millones y dejaria en el historial una venta que no ocurrio. La baja dice la verdad: entraron
+-- por error y salen con su motivo.
+--
+-- Y LOS 2 QUE YA SE VENDIERON SE QUEDAN: esa venta ocurrio de verdad, tiene su factura y su comision. No se
+-- toca.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+-- 1. VER el saldo de ADAPTO-STRESS, por lote y ubicacion.
+SELECT n.name AS producto, l.code AS lote, loc.name AS ubicacion, i.stock_quantity AS saldo
+  FROM nutraceutical_inventory i
+  JOIN nutraceuticals n ON n.id = i.nutraceutical_id
+  JOIN lots l ON l.id = i.lot_id
+  JOIN inventory_locations loc ON loc.id = i.location_id
+ WHERE n.name = 'ADAPTO-STRESS' AND i.stock_quantity <> 0
+ ORDER BY loc.name, l.code;
+
+-- 2. LA BAJA de todo su saldo, donde sea que este.
+INSERT INTO nutraceutical_stock_movements
+  (professional_id, nutraceutical_id, location_id, lot_id, delta, type, reason, created_by)
+SELECT i.professional_id, i.nutraceutical_id, i.location_id, i.lot_id, -i.stock_quantity, 'baja',
+       'Baja de unidades cargadas por error durante las pruebas: nunca existieron fisicamente (2026-10-01)',
+       (SELECT id FROM profiles WHERE email = 'hola@cnvsystem.com')
+  FROM nutraceutical_inventory i
+  JOIN nutraceuticals n ON n.id = i.nutraceutical_id
+ WHERE n.name = 'ADAPTO-STRESS' AND i.stock_quantity > 0;
+
+-- 3. COMPROBAR: el paso 1 tiene que devolver cero filas.

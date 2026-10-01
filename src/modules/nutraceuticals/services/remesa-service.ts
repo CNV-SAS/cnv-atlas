@@ -153,6 +153,10 @@ export async function getRemesableProducts(): Promise<RemesableProduct[]> {
     .from("nutraceuticals")
     .select("id, name")
     .eq("commercial_availability", "en_consultorio")
+    // FUERA LO DE PRUEBA (Santiago, 2026-10-01): aparecia en el desplegable de enviar remesa, asi que admin
+    // podia mandarle a un integrante unidades de un producto que no existe. Es una superficie de OPERACION,
+    // no la lista del catalogo: ahi si se muestran, marcados, porque es donde se trabaja con ellos.
+    .eq("is_test", false)
     .order("name");
   if (error) throw new Error(`remesa-service: productos: ${error.message}`);
   return (data ?? []).map((p) => ({ id: p.id, name: p.name }));

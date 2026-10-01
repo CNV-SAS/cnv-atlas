@@ -61,7 +61,7 @@ export default async function DireccionPage() {
       // EL INVENTARIO NO LLEVA CORTE Y HAY QUE DECIRLO: un saldo no es un flujo. Las unidades que hay están
       // hoy en la bodega, las haya puesto ahí quien las haya puesto. Recortarlo por fecha daría un número
       // que no es el de ninguna bodega.
-      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} ubicaci${d.inventoryLocations === 1 ? "ón" : "ones"} · sin los productos de prueba${d.desdeElArranque ? " · es el saldo de hoy, no lleva corte de fecha" : ""}`,
+      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} ubicaci${d.inventoryLocations === 1 ? "ón" : "ones"} · sin los productos de prueba ni las vitrinas de demostración${d.desdeElArranque ? " · es el saldo de hoy, no lleva corte de fecha" : ""}`,
     },
   ];
 
