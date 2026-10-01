@@ -491,3 +491,78 @@ export async function reintentarFacturasPendientes(): Promise<{ intentadas: numb
   }
   return { intentadas: pendientes.length };
 }
+
+// ═══ CONFIRMAR A MANO QUE UNA TRANSFERENCIA ENTRO (Santiago, 2026-10-01) ═══
+//
+// EL CRITERIO, y es suyo: "la única forma de verificar una transferencia es que alguien se meta a ver la
+// cuenta bancaria y compruebe el pago". De ahí sale la regla: LA AUTOMATIZACION NO AFIRMA EL PAGO, LO AFIRMA
+// QUIEN LO VIO.
+//
+// El efectivo lo tiene el Integrante en la mano y Wompi lo confirma la pasarela, así que esos dos se
+// registran solos. Una transferencia no, y por eso su cuenta NO se mapea para la cola: la factura sale (se le
+// debe a la DIAN pase lo que pase) y el pago espera a una persona. Mientras espera, la venta aparece en el
+// panel de facturas y en el correo de pendientes con la causa dicha, así que nadie se olvida de ella.
+//
+// AL CONFIRMARLA DESAPARECE SOLA DEL AVISO: la condición que la ponía ahí es "factura emitida sin
+// `alegra_payment_id`", y esto escribe el id. No hace falta un estado nuevo que alguien tenga que recordar.
+
+export class ConfirmacionDeTransferenciaError extends Error {}
+
+/**
+ * Registra en Alegra el pago de una venta por transferencia, dejando escrito quién lo comprobó.
+ *
+ * Las comprobaciones no son defensa de formulario: cada una evita un apunte contable falso.
+ */
+export async function confirmarPagoDeTransferencia(
+  transactionId: string,
+  actor: { id: string; email: string },
+): Promise<{ paymentId: string }> {
+  const venta = await fr.getVentaParaConfirmarTransferencia(transactionId);
+  if (!venta) throw new ConfirmacionDeTransferenciaError("Esa venta no existe.");
+  if (venta.canal !== "transferencia") {
+    throw new ConfirmacionDeTransferenciaError(
+      "Esta venta no es por transferencia. El efectivo y la pasarela registran su pago solos.",
+    );
+  }
+  if (venta.estadoDeFactura !== "emitida") {
+    throw new ConfirmacionDeTransferenciaError(
+      "La factura todavía no está emitida. No se puede registrar el pago de una factura que no existe.",
+    );
+  }
+  // YA PAGADA: no se registra dos veces. Alegra lo rechazaría, pero el mensaje de aquí dice qué pasó.
+  if (venta.pagoDeAlegra) {
+    throw new ConfirmacionDeTransferenciaError("El pago de esta factura ya está registrado en Alegra.");
+  }
+
+  const mapa = await fr.getMapaDeAlegra();
+  if (!mapa) throw new ConfirmacionDeTransferenciaError("Falta la configuración de Alegra.");
+  const cuenta = cuentaDelPago("transferencia", mapa);
+  if (!cuenta) {
+    // SE DICE QUE FALTA CONFIGURACION Y NO SE APUNTA A OTRA CUENTA. Mandarlo a la del efectivo diría que la
+    // plata está en el bolsillo de alguien, cuando ya llegó al banco.
+    throw new ConfirmacionDeTransferenciaError(
+      "Falta configurar en Alegra la cuenta a la que llegan las transferencias " +
+        "(alegra_config.bank_account_transferencia_id). Sin ella el pago se apuntaría a la cuenta equivocada.",
+    );
+  }
+
+  const factura = await getAlegraInvoice(venta.facturaDeAlegra!);
+  const clientId = await resolverContacto(venta.patientId!, mapa.env);
+  const pago = await registrarPagoSiFalta(
+    clientId,
+    factura,
+    Math.round(Number(venta.amount)),
+    cuenta,
+    hoy(),
+  );
+  if (!pago.paymentId) {
+    throw new ConfirmacionDeTransferenciaError(
+      pago.error ?? "Alegra no registró el pago. Vuelve a intentarlo.",
+    );
+  }
+
+  // QUIEN LO AFIRMO Y CUANDO, en la misma escritura que el id del pago: si fueran dos pasos, un fallo entre
+  // ellos dejaria un pago registrado sin responsable, que es justo lo que estas columnas vienen a evitar.
+  await fr.marcarTransferenciaVerificada(transactionId, pago.paymentId, actor.id);
+  return { paymentId: pago.paymentId };
+}

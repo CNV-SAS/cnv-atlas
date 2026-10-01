@@ -1408,6 +1408,13 @@
       "when": 1791954086103,
       "tag": "0200_el_motivo_de_la_devolucion_en_su_reversa",
       "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1791954146103,
+      "tag": "0201_quien_verifico_el_extracto",
+      "breakpoints": true
     }
   ]
 }
