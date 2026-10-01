@@ -40,7 +40,7 @@ const pesos = (n: number) =>
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const t = await getTablero();
+  const t = await getTablero(user.id);
 
   return (
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
@@ -135,6 +135,12 @@ export default async function DashboardPage() {
 
           Y SON LAS DEL PROFESIONAL, no el agregado de la organizacion: "cuanto facturo CNV" no es su
           pregunta, y meterla aqui le pondria delante un numero sobre el que no puede hacer nada. */}
+      {/* Y SOLO SI QUIEN MIRA VENDE (Santiago, 2026-10-01). A un admin sin perfil de integrante estas tres
+          cifras le mostraban el mes de la ORGANIZACION, porque su RLS le deja ver todas las ventas y la
+          tarjeta confiaba en la RLS para decir "lo tuyo". Con el alcance escrito ya seria cero, pero un cero
+          aqui se lee como "no vendi" en vez de "esto no es tuyo": mejor no mostrar la seccion. Lo de la
+          organizacion esta en /direccion, con su rotulo. */}
+      {t.esIntegrante ? (
       <section className="flex flex-col gap-3 pt-2">
         <TituloSeccion>Tu mes</TituloSeccion>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -182,6 +188,7 @@ export default async function DashboardPage() {
           ))}
         </div>
       </section>
+      ) : null}
 
       {/* QUE HAY DETRAS DE CADA ENTRADA DEL MENU (punto 1c). Va al FINAL: es material de la primera
           semana, no del uso diario, y arriba le quitaria sitio a lo que si cambia todos los dias. */}

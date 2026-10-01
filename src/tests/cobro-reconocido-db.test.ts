@@ -27,7 +27,17 @@ describe("los dos tableros usan el filtro (el defecto era una omision en cada le
     "%s",
     (archivo) => {
       const src = readFileSync(archivo, "utf8");
-      expect(src).toMatch(/\.eq\("status", "paid"\)\.or\(FILTRO_FUERA_DE_REVISION\)\.is\(COLUMNA_EFECTIVO_NO_RECIBIDO, null\)/);
+      // ── SE EXIGEN LOS DOS FILTROS, NO EL ORDEN DE LA CADENA (2026-10-01) ──
+      //
+      // La version anterior pedia los tres eslabones PEGADOS y en ese orden exacto, y eso no es la regla: la
+      // regla es que la consulta de ventas pagadas aplique las dos exclusiones. Al acotar el tablero personal
+      // a su propio profesional hubo que meter un `.eq` entremedio, y este caso fallo con el codigo CORRECTO.
+      // Un candado que se rompe al reordenar una cadena protege la escritura, no el hecho.
+      const i = src.indexOf('.eq("status", "paid")');
+      expect(i, "ya no hay una consulta de ventas pagadas").toBeGreaterThan(-1);
+      const consulta = src.slice(i, i + 400);
+      expect(consulta).toContain("FILTRO_FUERA_DE_REVISION");
+      expect(consulta).toContain("COLUMNA_EFECTIVO_NO_RECIBIDO");
     },
   );
 });

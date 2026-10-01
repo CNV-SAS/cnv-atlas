@@ -62,14 +62,38 @@ export type Tablero = {
    * ese dia, y la pantalla tiene que decirlo o el profesional leera un mes flojo que nunca existio.
    */
   desdeElArranque: string | null;
+  /**
+   * Si quien mira TIENE perfil profesional. Sin el, las tres cifras de "Tu mes" serian ceros que no
+   * significan nada, y un cero sin significado se lee como "no vendi" en vez de "esto no es tuyo".
+   */
+  esIntegrante: boolean;
 };
 
 // EL CORTE DEL MES VIVE EN EL MODULO NEUTRO (ver `arranque.ts`): es aritmetica de fechas y tiene que
 // poder probarse con un reloj fijo, que es la unica forma de atrapar un error de zona horaria.
 const inicioDelMes = () => inicioDelMesEnBogota(new Date());
 
-export async function getTablero(): Promise<Tablero> {
+export async function getTablero(userId: string): Promise<Tablero> {
   const supabase = await createSupabaseServerClient();
+
+  // ═══ "TU MES" TIENE QUE SER SUYO, Y LA RLS NO ALCANZA A DECIRLO (Santiago, 2026-10-01) ═══
+  //
+  // ESTE ARCHIVO DECIA, Y ERA MIO: "no se filtra por profesional: se pregunta con su sesion y la RLS decide
+  // que ve. Un filtro escrito aqui seria una segunda copia de la regla de alcance". El razonamiento vale
+  // para un INTEGRANTE y se rompe para un ADMIN: su RLS le deja ver TODAS las ventas, asi que su tarjeta
+  // "Tu mes" le mostraba el mes de la organizacion entera, incluida la cuenta de demostracion.
+  //
+  // El sintoma que lo destapo: /direccion decia 0 pagos y su Inicio decia 11.900 de las MISMAS ventas. Una
+  // cifra no estaba mal: estaban contestando preguntas distintas, y solo una lo decia en su rotulo.
+  //
+  // ASI QUE EL ALCANCE SE ESCRIBE. No es duplicar la RLS: la RLS dice QUE PUEDE VER, y esta tarjeta promete
+  // algo mas estrecho, LO SUYO. Cuando las dos cosas no coinciden, la que manda es la promesa del rotulo.
+  const { data: suPerfil } = await supabase
+    .from("professional_profiles")
+    .select("id")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  const miProfesional = suPerfil?.id ?? null;
   // ── EL MES EN CURSO, PERO NUNCA ANTES DEL ARRANQUE (0198) ──
   //
   // El mes empieza el dia 1; si el arranque cae a mitad de mes, lo que hay que contar empieza en el
@@ -125,12 +149,17 @@ export async function getTablero(): Promise<Tablero> {
     // POR QUE LA DE LA VENTA Y NO LA DE LA FILA: es la convencion que este mismo archivo ya aplica a las
     // devoluciones ("se acota por la FECHA DE LA VENTA, porque lo que se corrige es lo que ese mes
     // facturo"). Tener dos criterios para el mismo mes es como se llega aqui otra vez.
-    supabase
-      .from("professional_revenue")
-      .select("commission_amount, transactions!inner(created_at, patient_id)")
-      .gte("transactions.created_at", desde),
+    miProfesional
+      ? supabase
+          .from("professional_revenue")
+          .select("commission_amount, transactions!inner(created_at, patient_id)")
+          .eq("professional_id", miProfesional)
+          .gte("transactions.created_at", desde)
+      : Promise.resolve({ data: [] as { commission_amount: string; transactions: unknown }[] }),
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
-    supabase.from("transactions").select("id, amount, patient_id").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde),
+    miProfesional
+      ? supabase.from("transactions").select("id, amount, patient_id").eq("status", "paid").eq("professional_id", miProfesional).or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde)
+      : Promise.resolve({ data: [] as { id: string; amount: string; patient_id: string | null }[] }),
     // LO QUE VOLVIO NO SE FACTURO, y esta tarjeta no lo restaba (smoke del 2026-09-29): la venta devuelta de
     // LUVIA seguia en el bruto, 90.000 de mas. La cuenta la hace ahora el mismo modulo neutro que Direccion.
     supabase.from("sale_reversals").select("transaction_id").eq("state", ESTADO_DISPUTA_PERDIDA),
@@ -146,10 +175,16 @@ export async function getTablero(): Promise<Tablero> {
     // SIN PRODUCTOS DE PRUEBA, igual que Direccion (smoke del 2026-09-29): esta tarjeta decia 1.903 y la de
     // Direccion 1.820 sobre el mismo hecho, y las 83 de diferencia eran saldo de los productos de prueba,
     // que no se puede borrar porque los movimientos son inmutables.
-    supabase
-      .from("nutraceutical_inventory")
-      .select(`stock_quantity, ${EMBED_PRODUCTO_NO_DE_PRUEBA}`)
-      .eq(COLUMNA_PRODUCTO_DE_PRUEBA, false),
+    // Y LAS UNIDADES TAMBIEN SON LAS SUYAS: la tarjeta dice "unidades en inventario" en SU pantalla, asi que
+    // es su vitrina. A un admin le mostraba el saldo de la organizacion entera, que es la cifra de /direccion
+    // con otro rotulo.
+    miProfesional
+      ? supabase
+          .from("nutraceutical_inventory")
+          .select(`stock_quantity, ${EMBED_PRODUCTO_NO_DE_PRUEBA}`)
+          .eq("professional_id", miProfesional)
+          .eq(COLUMNA_PRODUCTO_DE_PRUEBA, false)
+      : Promise.resolve({ data: [] as { stock_quantity: number }[] }),
   ]);
 
   type FilaEval = {
@@ -249,5 +284,6 @@ export async function getTablero(): Promise<Tablero> {
     }),
     unidadesEnInventario: suma(inventario.data, "stock_quantity"),
     desdeElArranque: recortaElMes,
+    esIntegrante: miProfesional != null,
   };
 }

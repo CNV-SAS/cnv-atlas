@@ -96,3 +96,41 @@ describe("las dos pantallas usan la misma cuenta", () => {
     expect(DIRECCION).toContain("EMBED_PRODUCTO_NO_DE_PRUEBA");
   });
 });
+
+// ═══ Y CADA PANTALLA TIENE QUE DECIR DE QUIEN ES SU CIFRA (Santiago, 2026-10-01) ═══
+//
+// EL DEFECTO QUE ESTE ARCHIVO NO ATRAPO, y es la leccion: comprobaba que las dos pantallas usaran la MISMA
+// CUENTA, y las dos la usaban. Lo que no comprobaba es que contaran SOBRE EL MISMO UNIVERSO, y ahi estaba el
+// problema: /direccion decia "0 pagos" y el Inicio del mismo admin decia 11.900 de las MISMAS ventas.
+//
+// LA CAUSA ERA UN COMENTARIO MIO que parecia buen diseno: "no se filtra por profesional, la RLS decide que
+// ve". Vale para un INTEGRANTE y se rompe para un ADMIN, cuya RLS le deja ver TODAS las ventas: su tarjeta
+// "Tu mes" le mostraba el mes de la organizacion entera.
+//
+// LA REGLA QUE QUEDA: la RLS dice QUE PUEDE VER alguien; el rotulo de una cifra promete algo mas estrecho
+// ("lo tuyo", "este mes"). Cuando no coinciden, manda la promesa del rotulo, y el alcance SE ESCRIBE.
+describe("cada tarjeta cuenta sobre el universo que su rotulo promete", () => {
+  // Se lee aqui: el `INICIO` del describe de arriba vive en su propio alcance.
+  const INICIO = sinComentarios(readFileSync("src/modules/dashboard/data/tablero-reader.ts", "utf8"));
+  it("el tablero personal acota al profesional de quien mira, no a lo que su RLS alcanza", () => {
+    // El alcance escrito: sin esto la tarjeta vuelve a depender de la RLS y un admin ve el mes de todos.
+    expect(INICIO).toContain("miProfesional");
+    expect(INICIO).toContain('.eq("profile_id", userId)');
+    // ── SE CUENTAN LOS FILTROS, NO LAS MENCIONES ──
+    //
+    // La primera version contaba cuantas veces aparecia `miProfesional` y NO atrapo el defecto: cada consulta
+    // lo nombra dos veces (la condicion del ternario y el filtro), asi que quitar UN filtro dejaba mentions
+    // de sobra. Hay que contar el filtro mismo, que es lo que acota.
+    const filtros = INICIO.split('"professional_id", miProfesional').length - 1;
+    expect(
+      filtros,
+      "alguna de las tres cifras de Tu mes (ventas, comision, inventario) dejo de acotarse a quien mira",
+    ).toBe(3);
+  });
+
+  it("y si quien mira no vende, lo dice en vez de mostrar ceros", () => {
+    // UN CERO SIN SIGNIFICADO SE LEE COMO "no vendi" en vez de "esto no es tuyo". La pantalla oculta la
+    // seccion; sin esta bandera volveria a mostrar tres ceros a un administrador.
+    expect(INICIO).toContain("esIntegrante");
+  });
+});
