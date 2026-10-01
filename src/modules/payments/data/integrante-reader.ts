@@ -180,7 +180,7 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
       from patient_professional_relationships r
       join patients p on p.id = r.patient_id
      where r.professional_id = ${professionalId}::uuid and r.status = 'active'
-       and coalesce(p.is_test, false) = false and p.deleted_at is null`);
+       and coalesce(p.cuenta_como_de_prueba, false) = false and p.deleted_at is null`);
 
   // LA LISTA TRAE A TODOS, marcados y sin marcar, porque es donde se decide. Con su documento, que es lo
   // que permite reconocerlo cuando dos personas se llaman igual.

@@ -118,7 +118,9 @@ export async function getTablero(userId: string): Promise<Tablero> {
       // FUERA LOS DE PRUEBA: esto es una CIFRA (ver `patients/de-prueba.ts`, capa 1). Un profesional que se
       // creo a si mismo como paciente para probar veia su tablero diciendo un paciente mas, y lo mismo sus
       // pendientes. La LISTA si los muestra, marcados, porque ahi es donde se trabaja con ellos.
-      .eq("is_test", false),
+      // LA DERIVADA, no la decision (0202): un paciente de un profesional de prueba cuenta como de prueba
+      // sin que nadie lo marque. Filtrar por `is_test` dejaria fuera la derivacion.
+      .eq("cuenta_como_de_prueba", false),
     // LA PROXIMA CITA VIVE EN EL TRATAMIENTO y es EN VIVO (no sellada): es la vigente, no la del dia de
     // la consulta. Se piden cuatro y se muestran tres: asi la pantalla sabe si hay mas sin otra consulta.
     supabase
@@ -254,7 +256,7 @@ export async function getTablero(userId: string): Promise<Tablero> {
 
   // LOS PACIENTES DE PRUEBA, por id: igual que en Direccion, y con el mismo cuidado con el nulo (una venta
   // puede no tener paciente, y un embed interno la dejaria fuera en silencio).
-  const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("is_test", true);
+  const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("cuenta_como_de_prueba", true);
   const marcados = new Set((pacientesDePrueba ?? []).map((p) => p.id));
   const noEsPacienteDePrueba = (id: string | null | undefined) => id == null || !marcados.has(id);
   const delPaciente = (fila: { transactions?: unknown }): string | null =>

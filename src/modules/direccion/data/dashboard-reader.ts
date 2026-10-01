@@ -109,7 +109,7 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   // septiembre y solo gateaba la FACTURACION y los conteos de pacientes. Sus VENTAS contaban igual que las
   // de un paciente real, asi que marcar un paciente sacaba su diagnostico de las cifras y dejaba su dinero
   // dentro. Marcar solo excluye donde alguien escribio que excluya.
-  const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("is_test", true);
+  const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("cuenta_como_de_prueba", true);
   const pacienteDePrueba = new Set((pacientesDePrueba ?? []).map((p) => p.id));
   const noEsPacienteDePrueba = (id: string | null | undefined) => id == null || !pacienteDePrueba.has(id);
   /** Una venta cuenta si NI su profesional NI su paciente estan marcados. */

@@ -168,7 +168,9 @@ export async function getDatosDelContacto(patientId: string): Promise<DatosDelCo
       patientId: patients.id,
       documento: patients.documentNumber,
       tipoDocumento: patients.documentType,
-      esDePrueba: patients.isTest,
+      // LA DERIVADA (0202), no la decision: un paciente de una cuenta de demostracion no genera documento
+      // fiscal real aunque nadie lo haya marcado a mano. Es la capa 2 de la regla (fuera de lo que SALE).
+      esDePrueba: patients.cuentaComoDePrueba,
       nombres: patientProfiles.firstName,
       apellidos: patientProfiles.lastName,
       correo: patientContacts.email,

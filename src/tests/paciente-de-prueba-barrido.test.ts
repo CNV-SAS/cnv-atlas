@@ -47,14 +47,14 @@ describe("la regla de que significa 'de prueba'", () => {
 describe("las cifras no cuentan a los pacientes de prueba", () => {
   it("el conteo del tablero del profesional los excluye", () => {
     const src = leer("src/modules/dashboard/data/tablero-reader.ts");
-    expect(src).toContain('.eq("is_test", false)');
+    expect(src).toContain('.eq("cuenta_como_de_prueba", false)');
   });
 
   it("los pacientes asignados de un integrante, en la pantalla de admin, los excluyen", () => {
     const src = leer("src/modules/payments/data/integrante-reader.ts");
     // El join hace falta: la tabla de relacion no sabe si el paciente es de prueba.
     expect(src).toContain("join patients p on p.id = r.patient_id");
-    expect(src).toContain("coalesce(p.is_test, false) = false");
+    expect(src).toContain("coalesce(p.cuenta_como_de_prueba, false) = false");
   });
 
   // ═══ Y SUS VENTAS TAMPOCO CUENTAN (Santiago, 2026-10-01) ═══
@@ -84,7 +84,7 @@ describe("las cifras no cuentan a los pacientes de prueba", () => {
     const i = deshecho.indexOf("const corte = sql");
     expect(i, "cambio como se arma el corte y este caso dejo de mirar nada").toBeGreaterThan(-1);
     expect(deshecho.slice(i, deshecho.indexOf(";", i))).toContain("sinPacienteDePrueba");
-    expect(leer("src/modules/direccion/data/insights-de-la-compra.ts")).toContain("pa.is_test");
+    expect(leer("src/modules/direccion/data/insights-de-la-compra.ts")).toContain("pa.cuenta_como_de_prueba");
     // Y el mes del propio profesional: quien se registra a si mismo para probar veia su mes inflado con sus
     // pruebas, en la pantalla que usa para saber como le fue.
     expect(leer("src/modules/dashboard/data/tablero-reader.ts")).toContain("noEsPacienteDePrueba");
@@ -92,21 +92,21 @@ describe("las cifras no cuentan a los pacientes de prueba", () => {
 
   it("la facturacion ya lo respetaba, y sigue", () => {
     const src = leer("src/modules/payments/data/facturacion-repository.ts");
-    expect(src).toContain("isTest");
+    expect(src).toContain("cuentaComoDePrueba");
   });
 });
 
 describe("la lista del profesional SI los muestra, marcados", () => {
   it("el lector trae la marca y la propuesta", () => {
     const src = leer("src/modules/patients/data/patients-list-reader.ts");
-    expect(src).toContain("is_test, test_proposed_at");
+    expect(src).toContain("cuenta_como_de_prueba, test_proposed_at");
     expect(src).toContain("esDePrueba:");
     expect(src).toContain("propuestoDePrueba:");
   });
 
   it("y NO los filtra, que es lo que la haria inutil para probar", () => {
     const src = leer("src/modules/patients/data/patients-list-reader.ts");
-    expect(src).not.toContain('.eq("is_test", false)');
+    expect(src).not.toContain('.eq("cuenta_como_de_prueba", false)');
   });
 });
 

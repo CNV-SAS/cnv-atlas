@@ -1642,13 +1642,13 @@ isOneToOne: true
                   ]
                 },"patients": {
                   Row: {
-                    "alegra_contact_id": string | null,"alegra_env": string | null,"created_at": string,"deleted_at": string | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"id": string,"is_test": boolean,"organization_id": string,"status": Database["public"]['Enums']["patient_status"],"test_marked_at": string | null,"test_marked_by": string | null,"test_proposed_at": string | null,"test_proposed_by": string | null,"test_proposed_reason": string | null
+                    "alegra_contact_id": string | null,"alegra_env": string | null,"created_at": string,"cuenta_como_de_prueba": boolean,"deleted_at": string | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"es_real_confirmado": boolean,"id": string,"is_test": boolean,"organization_id": string,"status": Database["public"]['Enums']["patient_status"],"test_marked_at": string | null,"test_marked_by": string | null,"test_proposed_at": string | null,"test_proposed_by": string | null,"test_proposed_reason": string | null
                   }
                   Insert: {
-                    "alegra_contact_id"?: string | null,"alegra_env"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"id"?: string,"is_test"?: boolean,"organization_id": string,"status"?: Database["public"]['Enums']["patient_status"],"test_marked_at"?: string | null,"test_marked_by"?: string | null,"test_proposed_at"?: string | null,"test_proposed_by"?: string | null,"test_proposed_reason"?: string | null
+                    "alegra_contact_id"?: string | null,"alegra_env"?: string | null,"created_at"?: string,"cuenta_como_de_prueba"?: boolean,"deleted_at"?: string | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"es_real_confirmado"?: boolean,"id"?: string,"is_test"?: boolean,"organization_id": string,"status"?: Database["public"]['Enums']["patient_status"],"test_marked_at"?: string | null,"test_marked_by"?: string | null,"test_proposed_at"?: string | null,"test_proposed_by"?: string | null,"test_proposed_reason"?: string | null
                   }
                   Update: {
-                    "alegra_contact_id"?: string | null,"alegra_env"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"document_number"?: string,"document_type"?: Database["public"]['Enums']["document_type"],"id"?: string,"is_test"?: boolean,"organization_id"?: string,"status"?: Database["public"]['Enums']["patient_status"],"test_marked_at"?: string | null,"test_marked_by"?: string | null,"test_proposed_at"?: string | null,"test_proposed_by"?: string | null,"test_proposed_reason"?: string | null
+                    "alegra_contact_id"?: string | null,"alegra_env"?: string | null,"created_at"?: string,"cuenta_como_de_prueba"?: boolean,"deleted_at"?: string | null,"document_number"?: string,"document_type"?: Database["public"]['Enums']["document_type"],"es_real_confirmado"?: boolean,"id"?: string,"is_test"?: boolean,"organization_id"?: string,"status"?: Database["public"]['Enums']["patient_status"],"test_marked_at"?: string | null,"test_marked_by"?: string | null,"test_proposed_at"?: string | null,"test_proposed_by"?: string | null,"test_proposed_reason"?: string | null
                   }
                   Relationships: [
                     {
@@ -2765,6 +2765,9 @@ isOneToOne: false
                            },
 "patient_professional_anexo3_current":
 { Args: { "p_patient_id": string }; Returns: boolean
+                           },
+"recomputar_marca_de_prueba":
+{ Args: { "p_patient": string }; Returns: undefined
                            }
           }
           Enums: {
