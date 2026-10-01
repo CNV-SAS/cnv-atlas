@@ -20,7 +20,16 @@ import { plazoDeRevision } from "@/modules/payments/plazo-de-revision";
 //   · AGRUPADO POR CAUSA: doce fallos del mismo motivo se arreglan una vez, y son una linea.
 //   · SIN NADA NUEVO, NADA VENCIDO Y LO DEMAS EN GESTION, NO LLEGA CORREO.
 
-export type TipoDePendiente = "revision" | "sin_documento" | "nota_credito" | "reversa" | "por_despachar";
+export type TipoDePendiente =
+  | "revision"
+  | "sin_documento"
+  | "nota_credito"
+  | "reversa"
+  | "por_despachar"
+  // LA VENTA QUE NO PUDO DESCONTAR INVENTARIO (Santiago, 2026-10-01). Estaba SOLO en Sentry (un aviso para
+  // desarrolladores) y en la bandeja de ventas por revisar, donde hay que ir a mirar. Nadie en CNV se
+  // enteraba de que una vitrina cuenta unidades que ya salieron, y eso se arregla contando, no mirando.
+  | "sin_saldo";
 export type Franja = "am" | "pm";
 
 export type Pendiente = {
@@ -61,6 +70,7 @@ const TITULO: Record<TipoDePendiente, string> = {
   reversa: "Contracargos y anulaciones (el banco devolvió el dinero)",
   // Va a ADMIN y no al profesional: el no puede despachar desde una bodega que no es suya.
   por_despachar: "Ventas pagadas cuyo producto sale de la bodega y falta despachar",
+  sin_saldo: "Ventas cobradas que no pudieron descontar inventario (la vitrina cuenta de más)",
 };
 
 function diaEnColombia(fecha: Date): string {

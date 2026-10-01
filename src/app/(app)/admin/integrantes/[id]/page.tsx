@@ -1,4 +1,4 @@
-import { Boxes, TriangleAlert, Users, Wallet } from "lucide-react";
+import { Boxes, Receipt, TriangleAlert, Users, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { Panel } from "@/components/shared/panel";
@@ -99,6 +99,24 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
               ? `En su vitrina ahora · sin ${unidadesDePrueba} de productos de prueba`
               : "En su vitrina ahora"
           }
+        />
+        <TarjetaMetrica
+          rotulo="Lo que ha vendido"
+          valor={pesos(integrante.vendido.total)}
+          icono={Receipt}
+          detalle={
+            integrante.vendido.ventas === 0
+              ? "Sin ventas registradas"
+              : `${integrante.vendido.ventas} ventas en total · sin lo devuelto`
+          }
+        />
+        {/* EL MARGEN CAUSADO ES EL TOTAL HISTORICO de su comision, y hasta hoy solo se veia el PENDIENTE en
+            las tarjetas: "cuanta comision ha generado" obligaba a bajar al panel del margen. */}
+        <TarjetaMetrica
+          rotulo="Margen generado"
+          valor={pesos(integrante.comision.causada)}
+          icono={Wallet}
+          detalle="En toda su historia, neto de reversiones"
         />
         <TarjetaMetrica rotulo="Pacientes asignados" valor={integrante.pacientes} icono={Users} />
         <TarjetaMetrica

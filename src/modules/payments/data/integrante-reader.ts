@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { brutoReconocido } from "@/modules/payments/cobro-reconocido";
 
 // ═══ VER LA OPERACION DE UN INTEGRANTE DESDE ADMIN (Santiago, 2026-09-25) ═══
 //
@@ -47,6 +48,16 @@ export type DetalleDelIntegrante = {
     productos: string | null;
   }[];
   comision: { causada: number; liquidada: number; pendiente: number };
+  /**
+   * LO QUE HA VENDIDO EN TODA SU HISTORIA, no en el mes (Santiago, 2026-10-01).
+   *
+   * La pantalla mostraba el pendiente y las ultimas 30 ventas, pero no el total: "cuanto ha vendido" y
+   * "cuanta comision ha generado" eran preguntas que no se podian responder sin contar a mano.
+   *
+   * NO LLEVA EL CORTE DEL ARRANQUE, y es deliberado: es un total historico, de la misma familia que lo que
+   * se le debe. Recortarlo por una fecha responderia otra pregunta.
+   */
+  vendido: { total: number; ventas: number };
   faltantesAbiertos: { producto: string; unidades: number; estado: string; reportado: string }[];
   pacientes: number;
 };
@@ -109,6 +120,27 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
       from professional_revenue
      where professional_id = ${professionalId}::uuid`);
 
+  // ── LO QUE HA VENDIDO EN TODA SU HISTORIA ──
+  //
+  // LA CUENTA LA HACE EL MODULO NEUTRO (`brutoReconocido`), el mismo que usan Inicio y Direccion: es lo
+  // unico que impide que tres pantallas digan cifras distintas del mismo hecho. Lo que cambia aqui es el
+  // ALCANCE (un profesional, toda su historia), no la aritmetica.
+  const pagadasDelProfesional = await db.execute<{ id: string; amount: string }>(sql`
+    select t.id, t.amount::text as amount
+      from transactions t
+     where t.professional_id = ${professionalId}::uuid
+       and t.status = 'paid'
+       and t.cash_not_received_at is null
+       and (t.review_reason is null or t.review_resolution is not null)`);
+  const perdidasDelProfesional = await db.execute<{ transaction_id: string }>(sql`
+    select r.transaction_id from sale_reversals r
+      join transactions t on t.id = r.transaction_id
+     where t.professional_id = ${professionalId}::uuid and r.state = 'perdida'`);
+  const devueltasDelProfesional = await db.execute<{ debited_amount: string | null }>(sql`
+    select r.debited_amount::text as debited_amount from sale_reversals r
+      join transactions t on t.id = r.transaction_id
+     where t.professional_id = ${professionalId}::uuid and r.state = 'devuelta'`);
+
   // ABIERTOS = los que todavia esperan algo de alguien. Un justificado o un injustificado ya confirmado
   // estan cerrados (el segundo con su cargo), y mostrarlos aqui haria ruido sobre lo que hay que atender.
   const faltantes = await db.execute<{
@@ -161,6 +193,14 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
       causada: Number(comisiones[0]?.causada ?? 0),
       liquidada: Number(comisiones[0]?.liquidada ?? 0),
       pendiente: Number(comisiones[0]?.pendiente ?? 0),
+    },
+    vendido: {
+      total: brutoReconocido({
+        pagadas: pagadasDelProfesional,
+        disputasPerdidas: perdidasDelProfesional.map((r) => r.transaction_id),
+        devoluciones: devueltasDelProfesional.map((r) => r.debited_amount),
+      }),
+      ventas: pagadasDelProfesional.length,
     },
     faltantesAbiertos: faltantes.map((f) => ({
       producto: f.producto,

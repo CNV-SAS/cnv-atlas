@@ -42,8 +42,8 @@ const LECTORES_DE_CIFRAS = new Map<string, string>([
  */
 const SIN_CORTE = new Map<string, string>([
   ["src/modules/payments/data/liquidacion-writer.ts", "liquida lo que se debe, y lo anterior al arranque se debe igual"],
+  ["src/modules/professionals/data/perfil-reader.ts", "su margen y su total vendido son historicos, no del periodo"],
   ["src/modules/payments/data/integrante-reader.ts", "su cuenta por cobrar es dinero real, no una cifra de resumen"],
-  ["src/modules/professionals/data/perfil-reader.ts", "su comision pendiente es lo que se le debe"],
   ["src/modules/professionals/data/tax-status-reader.ts", "su estado tributario se calcula sobre lo devengado de verdad"],
   ["src/modules/payments/data/payments-writer.ts", "escribe la fila de ingreso de la venta que crea"],
   ["src/modules/payments/data/retracto-writer.ts", "escribe la reversion del ingreso al retractarse"],
@@ -93,7 +93,10 @@ describe("la fecha de arranque llega a todas las cifras de resumen", () => {
       const src = sinComentarios(readFileSync(f, "utf8"));
       if (!/brutoReconocido/.test(src)) continue;
       if (f.endsWith("cobro-reconocido.ts")) continue; // es quien lo define
-      if (LECTORES_DE_CIFRAS.has(f)) continue;
+      // UN TOTAL HISTORICO TAMBIEN USA LA CUENTA COMPARTIDA, y no debe cortarse: "cuanto ha vendido en
+      // toda su historia" es de la familia de lo que se le debe. Vale declararse en SIN_CORTE con su razon;
+      // lo que no vale es el silencio.
+      if (LECTORES_DE_CIFRAS.has(f) || SIN_CORTE.has(f)) continue;
       culpables.push(f);
     }
     expect(
