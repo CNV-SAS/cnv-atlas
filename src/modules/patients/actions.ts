@@ -9,6 +9,7 @@ import { reportServerError } from "@/lib/observability/report-error";
 import { buscarPorDocumento } from "./data/buscar-por-documento";
 import {
   desmarcarPacienteDePrueba,
+  marcarPacienteDePruebaDirecto,
   MarcaDePruebaError,
   proponerPacienteDePrueba,
   resolverPropuestaDePrueba,
@@ -286,5 +287,41 @@ export async function desmarcarPacienteDePruebaAction(
     if (e instanceof MarcaDePruebaError) return { error: e.message, success: null, warning: null };
     reportServerError("paciente.desmarcar-de-prueba", e);
     return { error: "No se pudo desmarcarlo.", success: null, warning: null };
+  }
+}
+
+/**
+ * MARCAR DIRECTAMENTE, sin propuesta previa (Santiago, 2026-10-01).
+ *
+ * El camino de proponer y confirmar sirve cuando alguien reconoce al paciente. No sirve para limpiar los
+ * pacientes de una cuenta de demostracion, donde el profesional no va a proponer nada. Sigue siendo decision
+ * de admin, con su motivo y su registro: lo que se salta es la propuesta, no la huella.
+ */
+export async function marcarPacienteDePruebaAction(
+  _prev: MarcaDePruebaState,
+  form: FormData,
+): Promise<MarcaDePruebaState> {
+  const user = await requireUser();
+  if (!canAccessAdmin(user)) {
+    return { error: "Solo un administrador puede marcarlo.", success: null, warning: null };
+  }
+  try {
+    await marcarPacienteDePruebaDirecto({
+      patientId: String(form.get("patientId") ?? ""),
+      motivo: String(form.get("motivo") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+    return {
+      error: null,
+      warning: null,
+      success:
+        "Marcado como de prueba. Sus ventas, su diagnóstico y su data salen de las cifras y no se factura; sigue visible en la lista.",
+    };
+  } catch (e) {
+    if (e instanceof MarcaDePruebaError) return { error: e.message, success: null, warning: null };
+    reportServerError("paciente.marcar-de-prueba-directo", e);
+    return { error: "No se pudo marcarlo.", success: null, warning: null };
   }
 }

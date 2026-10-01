@@ -188,3 +188,56 @@ export async function propuestasDePruebaPendientes(): Promise<PropuestaDePrueba[
     propuestoPor: f.propuesto_por,
   }));
 }
+
+/**
+ * MARCA UN PACIENTE DE PRUEBA DIRECTAMENTE, sin esperar una propuesta (Santiago, 2026-10-01).
+ *
+ * POR QUE HACIA FALTA: el unico camino era "el profesional propone, admin confirma", y eso sirve para el
+ * paciente que YA existe en la lista de alguien que lo reconoce. No sirve para lo que Santiago necesita:
+ * limpiar de golpe los pacientes de una cuenta de demostracion, donde el profesional no va a proponer nada
+ * porque no va a volver a entrar.
+ *
+ * SIGUE SIENDO DECISION DE ADMIN y queda auditada igual. Lo que se salta es la propuesta, no el registro.
+ *
+ * Y EL MOTIVO ES OBLIGATORIO. Marcar un paciente lo saca de TODAS las cifras (desde hoy, tambien de su
+ * dinero), asi que seis meses despues alguien va a preguntar por que esa venta no cuenta. Sin motivo, la
+ * respuesta seria "porque alguien lo marco".
+ */
+export async function marcarPacienteDePruebaDirecto(input: {
+  patientId: string;
+  motivo: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+}): Promise<void> {
+  const motivo = input.motivo.trim();
+  if (motivo.length < 5) {
+    throw new MarcaDePruebaError("Escribe por qué es de prueba (al menos cinco letras).");
+  }
+  await db.transaction(async (tx) => {
+    const filas = await tx.execute<{ is_test: boolean }>(sql`
+      select is_test from patients where id = ${input.patientId}::uuid and deleted_at is null`);
+    if (!filas[0]) throw new MarcaDePruebaError("Ese paciente no existe.");
+    if (filas[0].is_test) throw new MarcaDePruebaError("Ese paciente ya está marcado como de prueba.");
+
+    // EL MOTIVO SE GUARDA EN LA COLUMNA DE LA PROPUESTA, y no es un atajo: el CHECK de la 0181 exige que las
+    // tres de la propuesta vayan juntas, y es el unico sitio donde vive un motivo de esta marca. Quien lo
+    // escribio es admin, y eso queda en `test_proposed_by` y en el log.
+    await tx.execute(sql`
+      update patients
+         set is_test = true, test_marked_at = now(), test_marked_by = ${input.actorId}::uuid,
+             test_proposed_at = now(), test_proposed_by = ${input.actorId}::uuid,
+             test_proposed_reason = ${motivo}
+       where id = ${input.patientId}::uuid`);
+
+    await recordAudit(tx, {
+      event: "paciente.marcado_de_prueba",
+      entityType: "patient",
+      entityId: input.patientId,
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      ip: input.ip,
+      payload: { motivo, directo: true },
+    });
+  });
+}
