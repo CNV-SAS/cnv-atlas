@@ -241,3 +241,47 @@ export async function marcarPacienteDePruebaDirecto(input: {
     });
   });
 }
+
+/**
+ * LA SALIDA DE LA DERIVACION: este paciente SI es real aunque su profesional sea de prueba (0202).
+ *
+ * NO ES LO MISMO QUE DESMARCAR. Desmarcar quita una decision que alguien tomo; esto contradice una
+ * DEDUCCION. Un paciente derivado no tiene marca propia que quitar, asi que sin esto su unica salida habria
+ * sido desmarcar al profesional, que arrastraria a los otros quince.
+ *
+ * El trigger de la 0202 recalcula solo: basta escribir la columna.
+ */
+export async function confirmarPacienteReal(input: {
+  patientId: string;
+  confirmar: boolean;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const filas = await tx.execute<{ is_test: boolean }>(sql`
+      select is_test from patients where id = ${input.patientId}::uuid and deleted_at is null`);
+    if (!filas[0]) throw new MarcaDePruebaError("Ese paciente no existe.");
+    // EL CHECK DE LA BASE LO IMPEDIRIA IGUAL, pero el mensaje de aqui dice QUE hacer: un paciente marcado a
+    // mano se desmarca, no se confirma como real. Dos caminos para lo mismo serian dos verdades posibles.
+    if (input.confirmar && filas[0].is_test) {
+      throw new MarcaDePruebaError(
+        "Ese paciente está marcado de prueba a mano. Quita esa marca en vez de confirmarlo como real.",
+      );
+    }
+
+    await tx.execute(sql`
+      update patients set es_real_confirmado = ${input.confirmar}
+       where id = ${input.patientId}::uuid`);
+
+    await recordAudit(tx, {
+      event: input.confirmar ? "paciente.confirmado_real" : "paciente.confirmacion_real_retirada",
+      entityType: "patient",
+      entityId: input.patientId,
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      ip: input.ip,
+      payload: {},
+    });
+  });
+}

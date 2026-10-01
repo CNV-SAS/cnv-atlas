@@ -30,6 +30,11 @@ export type ResumenParaLiquidar = {
   reversiones: number;
   /** Lo ya pagado en el año calendario de la fecha de corte: decide la tarifa de retencion. */
   acumuladoPrevio: number;
+  /**
+   * Si es una cuenta de DEMOSTRACION. Se muestra marcada y SIN boton de liquidar: ocultarla esconderia que
+   * hay comisiones colgando, y mostrarla igual invitaria a girar plata de una venta que no existio.
+   */
+  esDePrueba: boolean;
   perfil: PerfilTributario;
 };
 
@@ -45,6 +50,7 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
     tax_person_type: string | null;
     tax_is_vat_responsible: boolean | null;
     tax_must_invoice: boolean | null;
+    es_de_prueba: boolean;
   }>(sql`
     select pp.id as professional_id,
            coalesce(p.full_name, p.email, '(sin nombre)') as nombre,
@@ -59,7 +65,12 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
            coalesce((select sum(s.base_amount) from commission_settlements s
                       where s.professional_id = pp.id and s.paid_at is not null
                         and extract(year from s.period_to) = extract(year from ${hasta}::date)), 0)::text as acumulado,
-           pp.tax_person_type, pp.tax_is_vat_responsible, pp.tax_must_invoice
+           pp.tax_person_type, pp.tax_is_vat_responsible, pp.tax_must_invoice,
+           -- SE TRAE LA MARCA EN VEZ DE FILTRARLA (Santiago, 2026-10-01). Esta es la pantalla donde alguien
+           -- GIRA DE VERDAD, asi que las dos salidas faciles estan mal: ocultar la cuenta de demostracion
+           -- esconde que hay 51.042 colgando en el sistema, y mostrarla igual que las demas invita a
+           -- girarlos. Se muestra MARCADA y sin boton: se ve que existe y no se puede pagar.
+           coalesce(pp.is_test, false) as es_de_prueba
       from professional_profiles pp
       join profiles p on p.id = pp.profile_id
       left join professional_revenue r on r.professional_id = pp.id
@@ -75,6 +86,7 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
     filas: Number(f.filas),
     reversiones: Number(f.reversiones),
     acumuladoPrevio: Number(f.acumulado),
+    esDePrueba: Boolean(f.es_de_prueba),
     perfil: {
       tipoDePersona:
         f.tax_person_type === "natural" || f.tax_person_type === "juridica" ? f.tax_person_type : null,

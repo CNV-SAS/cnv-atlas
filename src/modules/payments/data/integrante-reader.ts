@@ -23,6 +23,12 @@ export type DetalleDelIntegrante = {
   nombre: string;
   correo: string;
   profesion: string;
+  /**
+   * Si es una cuenta de DEMOSTRACION. La pantalla lo dice arriba, y hace falta: sus cifras de abajo son
+   * reales para el (lo que vendio, lo que se le debe) y NO cuentan en las de la organizacion. Sin decirlo,
+   * ver 3.542.000 aqui y 0 en /direccion se lee como un defecto.
+   */
+  esDePrueba: boolean;
   inventario: {
     producto: string;
     lote: string;
@@ -71,14 +77,25 @@ export type DetalleDelIntegrante = {
     id: string;
     nombre: string;
     documento: string;
+    /** Lo que las cifras excluyen: marcado a mano O derivado de su profesional. */
     esDePrueba: boolean;
+    /** Si la decision la tomo una persona. Un derivado no se "desmarca": se confirma como real. */
+    marcadoAMano: boolean;
+    /** Si alguien dijo que SI es real aunque su profesional sea de prueba. */
+    confirmadoReal: boolean;
     motivo: string | null;
   }[];
 };
 
 export async function leerIntegrante(professionalId: string): Promise<DetalleDelIntegrante | null> {
-  const quienes = await db.execute<{ nombre: string; correo: string; profesion: string }>(sql`
-    select p.full_name as nombre, p.email as correo, pp.profession::text as profesion
+  const quienes = await db.execute<{
+    nombre: string;
+    correo: string;
+    profesion: string;
+    es_de_prueba: boolean;
+  }>(sql`
+    select p.full_name as nombre, p.email as correo, pp.profession::text as profesion,
+           coalesce(pp.is_test, false) as es_de_prueba
       from professional_profiles pp
       join profiles p on p.id = pp.profile_id
      where pp.id = ${professionalId}::uuid`);
@@ -172,15 +189,26 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
      order by f.reported_at desc
      limit 20`);
 
-  // FUERA LOS DE PRUEBA, y por eso hace falta el join: la relacion no sabe si el paciente es de prueba. Es una
-  // CIFRA (ver `patients/de-prueba.ts`, capa 1), y sin el join un integrante que creo tres pacientes para
-  // probar figuraba con tres pacientes de mas justo en la pantalla que existe para verificar.
+  // ═══ AQUI SE CUENTAN TODOS LOS SUYOS, Y ESTO CAMBIO (Santiago, 2026-10-01) ═══
+  //
+  // Antes excluia los de prueba, con esta razon: "un integrante que creo tres pacientes para probar figuraba
+  // con tres pacientes de mas justo en la pantalla que existe para verificar". Valia para un integrante REAL
+  // con tres pruebas, y se rompio con una cuenta de demostracion: la pantalla decia "Pacientes asignados: 0"
+  // al lado de "Lo que ha vendido: 3.542.000 en 22 ventas". Si no tiene pacientes, ¿a quien le vendio?
+  //
+  // ESTA PANTALLA ES EL HISTORIAL DE UNA PERSONA, no una cifra de la organizacion. Su alcance es "lo suyo",
+  // y lo suyo incluye sus pruebas; las que no las cuentan son las cifras de /direccion, que es otra
+  // pregunta. Asi que se cuentan todos y el pie dice cuantos no cuentan en las cifras, que es lo que el
+  // lector necesita saber sin tener que deducirlo de un cero.
+  //
+  // LA REGLA DE FONDO es la misma que arreglo el tablero de admin: el rotulo manda, y aqui el rotulo dice
+  // "pacientes asignados", no "pacientes que cuentan".
   const pacientes = await db.execute<{ n: number }>(sql`
     select count(*)::int as n
       from patient_professional_relationships r
       join patients p on p.id = r.patient_id
      where r.professional_id = ${professionalId}::uuid and r.status = 'active'
-       and coalesce(p.cuenta_como_de_prueba, false) = false and p.deleted_at is null`);
+       and p.deleted_at is null`);
 
   // LA LISTA TRAE A TODOS, marcados y sin marcar, porque es donde se decide. Con su documento, que es lo
   // que permite reconocerlo cuando dos personas se llaman igual.
@@ -188,24 +216,34 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
     id: string;
     nombre: string | null;
     documento: string;
-    is_test: boolean;
+    cuenta_como_de_prueba: boolean;
+    marcado_a_mano: boolean;
+    confirmado_real: boolean;
     motivo: string | null;
   }>(sql`
     select p.id,
            nullif(btrim(coalesce(pp.first_name, '') || ' ' || coalesce(pp.last_name, '')), '') as nombre,
-           p.document_number as documento, coalesce(p.is_test, false) as is_test,
+           p.document_number as documento,
+           -- LAS TRES, Y LA DISTINCION ES EL PUNTO (Santiago, 2026-10-01): cuenta_como_de_prueba es lo que
+           -- las cifras excluyen, is_test es si alguien lo DECIDIO a mano, y es_real_confirmado es la
+           -- salida. Con solo la primera no se puede ofrecer el boton correcto: a un derivado hay que
+           -- ofrecerle "es real", no "marcar de prueba".
+           coalesce(p.cuenta_como_de_prueba, false) as cuenta_como_de_prueba,
+           coalesce(p.is_test, false) as marcado_a_mano,
+           coalesce(p.es_real_confirmado, false) as confirmado_real,
            p.test_proposed_reason as motivo
       from patient_professional_relationships r
       join patients p on p.id = r.patient_id
       left join patient_profiles pp on pp.patient_id = p.id
      where r.professional_id = ${professionalId}::uuid and r.status = 'active' and p.deleted_at is null
-     order by p.is_test, nombre nulls last
+     order by p.cuenta_como_de_prueba, nombre nulls last
      limit 200`);
 
   return {
     nombre: quien.nombre,
     correo: quien.correo,
     profesion: quien.profesion,
+    esDePrueba: Boolean(quien.es_de_prueba),
     inventario: inventario.map((f) => ({
       producto: f.producto,
       lote: f.lote,
@@ -247,7 +285,9 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
       id: f.id,
       nombre: f.nombre ?? "(sin nombre)",
       documento: f.documento,
-      esDePrueba: Boolean(f.is_test),
+      esDePrueba: Boolean(f.cuenta_como_de_prueba),
+      marcadoAMano: Boolean(f.marcado_a_mano),
+      confirmadoReal: Boolean(f.confirmado_real),
       motivo: f.motivo,
     })),
   };
