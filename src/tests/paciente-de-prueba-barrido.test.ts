@@ -50,11 +50,31 @@ describe("las cifras no cuentan a los pacientes de prueba", () => {
     expect(src).toContain('.eq("cuenta_como_de_prueba", false)');
   });
 
-  it("los pacientes asignados de un integrante, en la pantalla de admin, los excluyen", () => {
+  // ═══ Y AQUI LA REGLA CAMBIO DE SIGNO, CON SU RAZON (Santiago, 2026-10-01) ═══
+  //
+  // Este caso exigia que la pantalla del integrante EXCLUYERA sus pacientes de prueba, y la razon original
+  // era buena: "un integrante que creo tres pacientes para probar figuraba con tres pacientes de mas justo
+  // en la pantalla que existe para verificar". Valia para un integrante REAL con tres pruebas.
+  //
+  // SE ROMPIO CON UNA CUENTA DE DEMOSTRACION: la pantalla decia "Pacientes asignados: 0" al lado de "Lo que
+  // ha vendido: 3.542.000 en 22 ventas". Si no tiene pacientes, ¿a quien le vendio? La pantalla se
+  // contradecia a si misma, que es el defecto que mas nos ha costado este mes.
+  //
+  // LO QUE DECIDE ES EL ROTULO, igual que en el tablero de admin: esta pantalla es el HISTORIAL DE UNA
+  // PERSONA y dice "pacientes asignados", no "pacientes que cuentan". Asi que cuenta a todos los suyos y el
+  // pie dice cuantos no cuentan en las cifras. La capa 1 (las cifras de la ORGANIZACION no cuentan lo de
+  // prueba) sigue protegida por los casos de arriba, que son los que miran /direccion y los insights.
+  it("la pantalla del integrante cuenta TODOS los suyos, y dice cuantos no cuentan", () => {
     const src = leer("src/modules/payments/data/integrante-reader.ts");
-    // El join hace falta: la tabla de relacion no sabe si el paciente es de prueba.
     expect(src).toContain("join patients p on p.id = r.patient_id");
-    expect(src).toContain("coalesce(p.cuenta_como_de_prueba, false) = false");
+    // El filtro ya NO esta en el conteo, a proposito.
+    expect(src).not.toContain("coalesce(p.cuenta_como_de_prueba, false) = false");
+    // Y la lista si trae la marca, que es de donde sale el pie de la tarjeta y el rotulo de cada fila.
+    expect(src).toContain("cuenta_como_de_prueba");
+    const pantalla = leer("src/app/(app)/admin/integrantes/[id]/page.tsx");
+    expect(pantalla, "la tarjeta dejo de decir cuantos no cuentan").toContain("pacientesDePrueba");
+    // Y EL AVISO QUE EXPLICA LAS CIFRAS: sin el, ver 3.542.000 aqui y 0 en /direccion se lee como defecto.
+    expect(pantalla).toContain("Es una cuenta de demostración");
   });
 
   // ═══ Y SUS VENTAS TAMPOCO CUENTAN (Santiago, 2026-10-01) ═══

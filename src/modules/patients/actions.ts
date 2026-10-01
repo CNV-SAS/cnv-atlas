@@ -9,6 +9,7 @@ import { reportServerError } from "@/lib/observability/report-error";
 import { buscarPorDocumento } from "./data/buscar-por-documento";
 import {
   desmarcarPacienteDePrueba,
+  confirmarPacienteReal,
   marcarPacienteDePruebaDirecto,
   MarcaDePruebaError,
   proponerPacienteDePrueba,
@@ -323,5 +324,46 @@ export async function marcarPacienteDePruebaAction(
     if (e instanceof MarcaDePruebaError) return { error: e.message, success: null, warning: null };
     reportServerError("paciente.marcar-de-prueba-directo", e);
     return { error: "No se pudo marcarlo.", success: null, warning: null };
+  }
+}
+
+/**
+ * "ESTE SI ES REAL, aunque su profesional sea de prueba" (Santiago, 2026-10-01).
+ *
+ * LA SALIDA DE LA DERIVACION, Y SIN ESTA ACCION NO EXISTIA: la columna estaba en la base desde la 0202 y
+ * ninguna pantalla podia escribirla, asi que la excepcion era teorica. Un mecanismo sin superficie que lo
+ * alcance hace creer que una regla se puede aplicar cuando no.
+ *
+ * Y ES EL BOTON CORRECTO PARA UN DERIVADO: a un paciente derivado no se le puede "quitar la marca", porque
+ * nadie se la puso; lo que se puede es decir que es real a pesar de su profesional.
+ */
+export async function confirmarPacienteRealAction(
+  _prev: MarcaDePruebaState,
+  form: FormData,
+): Promise<MarcaDePruebaState> {
+  const user = await requireUser();
+  if (!canAccessAdmin(user)) {
+    return { error: "Solo un administrador puede confirmarlo.", success: null, warning: null };
+  }
+  try {
+    await confirmarPacienteReal({
+      patientId: String(form.get("patientId") ?? ""),
+      confirmar: String(form.get("confirmar") ?? "") === "true",
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+    return {
+      error: null,
+      warning: null,
+      success:
+        String(form.get("confirmar") ?? "") === "true"
+          ? "Confirmado como real. Vuelve a contar en las cifras aunque su profesional sea de prueba."
+          : "Quitada la confirmación. Vuelve a seguir la marca de su profesional.",
+    };
+  } catch (e) {
+    if (e instanceof MarcaDePruebaError) return { error: e.message, success: null, warning: null };
+    reportServerError("paciente.confirmar-real", e);
+    return { error: "No se pudo confirmarlo.", success: null, warning: null };
   }
 }

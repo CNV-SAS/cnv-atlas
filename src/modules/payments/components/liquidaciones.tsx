@@ -24,6 +24,8 @@ export type PendienteDeLiquidar = {
   professionalId: string;
   nombre: string;
   base: number;
+  /** Cuenta de demostracion: se muestra marcada y sin boton de liquidar. */
+  esDePrueba: boolean;
   filas: number;
   /** Filas NEGATIVAS pendientes (devoluciones y disputas perdidas). No son comisiones. */
   reversiones: number;
@@ -53,7 +55,17 @@ function FilaPendiente({ item, hasta }: { item: PendienteDeLiquidar; hasta: stri
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-medium text-foreground">{item.nombre}</span>
+        <span className="font-medium text-foreground">
+          {item.nombre}
+          {/* MARCADA Y SIN BOTON (Santiago, 2026-10-01). Las dos salidas faciles estan mal: ocultarla esconde
+              que hay comisiones colgando en el sistema, y mostrarla igual que las demas invita a girar plata
+              de una venta que no existio. Esta es la pantalla donde alguien gira DE VERDAD. */}
+          {item.esDePrueba ? (
+            <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+              Cuenta de demostración
+            </span>
+          ) : null}
+        </span>
         <span className="tabular-nums text-foreground">
           {pesos(item.base)}{" "}
           <span className="text-muted-foreground">
@@ -66,7 +78,12 @@ function FilaPendiente({ item, hasta }: { item: PendienteDeLiquidar; hasta: stri
           </span>
         </span>
       </div>
-      {bloqueado ? (
+      {item.esDePrueba ? (
+        <p className="text-muted-foreground">
+          No se liquida: es una cuenta de demostración y estas comisiones salen de ventas que no ocurrieron.
+          Aparecen aquí para que se vea que existen, no para pagarlas.
+        </p>
+      ) : bloqueado ? (
         // NO SE LIQUIDA A MEDIAS: sin los datos tributarios la cuenta saldría mal, y girar de menos o de más
         // se arregla con plata de por medio. Se dice qué falta y dónde se completa.
         <p className="text-destructive">

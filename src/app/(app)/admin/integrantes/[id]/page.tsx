@@ -75,6 +75,7 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
   const unidades = integrante.inventario
     .filter((f) => !f.esDePrueba)
     .reduce((suma, f) => suma + f.cantidad, 0);
+  const pacientesDePrueba = integrante.listaDePacientes.filter((p) => p.esDePrueba).length;
   const unidadesDePrueba = integrante.inventario
     .filter((f) => f.esDePrueba)
     .reduce((suma, f) => suma + f.cantidad, 0);
@@ -98,6 +99,19 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           enciende: solo la que pide trabajo. */}
       {/* TRES COLUMNAS Y NO CUATRO: con cinco tarjetas, cuatro columnas deja una sola en la segunda fila y
           aprieta las cinco. En tres quedan 3 + 2 y cada una tiene ancho para su cifra. */}
+      {/* ═══ LO QUE EXPLICA LAS CIFRAS DE ABAJO (Santiago, 2026-10-01) ═══
+
+          Su historial dice 3.542.000 y /direccion dice 0 de las mismas ventas. Las dos son ciertas y miden
+          cosas distintas; sin esta linea, verlas juntas se lee como un defecto. Es la misma regla que ya
+          arreglo el tablero de admin: el rotulo manda, y cuando dos rotulos se cruzan hay que decirlo. */}
+      {integrante.esDePrueba ? (
+        <p className="max-w-prose rounded-lg border border-attention bg-attention-bg p-3 text-sm text-foreground">
+          <strong>Es una cuenta de demostración.</strong> Lo que sigue es su historial completo y es cierto,
+          pero nada de esto cuenta en las cifras de la organización ni se factura: por eso /dirección puede
+          decir cero sobre estas mismas ventas. Sus pacientes también quedan fuera, sin que nadie los marque.
+        </p>
+      ) : null}
+
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <TarjetaMetrica
           rotulo="Unidades en custodia"
@@ -127,7 +141,18 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           icono={Wallet}
           detalle="En toda su historia, neto de reversiones"
         />
-        <TarjetaMetrica rotulo="Pacientes asignados" valor={integrante.pacientes} icono={Users} />
+        {/* EL PIE DICE CUANTOS NO CUENTAN, en vez de dejar que la cifra lo esconda. Antes esta tarjeta
+            excluia los de prueba y decia "0" al lado de 22 ventas: la pantalla se contradecia. */}
+        <TarjetaMetrica
+          rotulo="Pacientes asignados"
+          valor={integrante.pacientes}
+          icono={Users}
+          detalle={
+            pacientesDePrueba > 0
+              ? `${pacientesDePrueba} no cuentan en las cifras (de prueba)`
+              : undefined
+          }
+        />
         <TarjetaMetrica
           rotulo="Margen pendiente"
           valor={pesos(integrante.comision.pendiente)}
