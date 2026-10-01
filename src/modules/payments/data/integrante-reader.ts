@@ -60,6 +60,20 @@ export type DetalleDelIntegrante = {
   vendido: { total: number; ventas: number };
   faltantesAbiertos: { producto: string; unidades: number; estado: string; reportado: string }[];
   pacientes: number;
+  /**
+   * SUS PACIENTES, CON SU MARCA (Santiago, 2026-10-01).
+   *
+   * La CIFRA de arriba no cuenta los de prueba y esta LISTA si los muestra: es la capa 3 de la regla, y aqui
+   * hace falta mas que en ningun sitio, porque esta es la pantalla desde la que admin los marca. Sin la
+   * lista, marcar los quince de una cuenta de demostracion obligaba a un UPDATE a mano.
+   */
+  listaDePacientes: {
+    id: string;
+    nombre: string;
+    documento: string;
+    esDePrueba: boolean;
+    motivo: string | null;
+  }[];
 };
 
 export async function leerIntegrante(professionalId: string): Promise<DetalleDelIntegrante | null> {
@@ -168,6 +182,26 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
      where r.professional_id = ${professionalId}::uuid and r.status = 'active'
        and coalesce(p.is_test, false) = false and p.deleted_at is null`);
 
+  // LA LISTA TRAE A TODOS, marcados y sin marcar, porque es donde se decide. Con su documento, que es lo
+  // que permite reconocerlo cuando dos personas se llaman igual.
+  const listaDePacientes = await db.execute<{
+    id: string;
+    nombre: string | null;
+    documento: string;
+    is_test: boolean;
+    motivo: string | null;
+  }>(sql`
+    select p.id,
+           nullif(btrim(coalesce(pp.first_name, '') || ' ' || coalesce(pp.last_name, '')), '') as nombre,
+           p.document_number as documento, coalesce(p.is_test, false) as is_test,
+           p.test_proposed_reason as motivo
+      from patient_professional_relationships r
+      join patients p on p.id = r.patient_id
+      left join patient_profiles pp on pp.patient_id = p.id
+     where r.professional_id = ${professionalId}::uuid and r.status = 'active' and p.deleted_at is null
+     order by p.is_test, nombre nulls last
+     limit 200`);
+
   return {
     nombre: quien.nombre,
     correo: quien.correo,
@@ -209,5 +243,12 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
       reportado: f.reportado,
     })),
     pacientes: Number(pacientes[0]?.n ?? 0),
+    listaDePacientes: listaDePacientes.map((f) => ({
+      id: f.id,
+      nombre: f.nombre ?? "(sin nombre)",
+      documento: f.documento,
+      esDePrueba: Boolean(f.is_test),
+      motivo: f.motivo,
+    })),
   };
 }

@@ -2,6 +2,7 @@ import { Boxes, Receipt, TriangleAlert, Users, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { Panel } from "@/components/shared/panel";
+import { PacientesDelIntegrante } from "@/modules/patients/components/pacientes-del-integrante";
 import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
@@ -154,6 +155,14 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           proximoCorte={modalidad.proximoCorte}
           puedeCambiar
         />
+      </Panel>
+
+      {/* ═══ SUS PACIENTES, PARA PODER MARCAR LOS DE PRUEBA (Santiago, 2026-10-01) ═══
+
+          Va ANTES del inventario y de las ventas a proposito: marcar un paciente cambia lo que esas dos
+          secciones cuentan, asi que leerlo primero explica las cifras de abajo. */}
+      <Panel titulo="Sus pacientes">
+        <PacientesDelIntegrante pacientes={integrante.listaDePacientes} />
       </Panel>
 
       {/* ═══ INVENTARIO ═══ Por lote y ubicación, no agregado por producto: cuando una cifra no cuadra, lo que
