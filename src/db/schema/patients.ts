@@ -45,6 +45,19 @@ export const patients = pgTable(
     // No se deduce de con que profesional esta: las cuentas demo atienden a gente real y un paciente se
     // reasigna. Es una propiedad declarada.
     isTest: boolean("is_test").notNull().default(false),
+    /**
+     * SALIDA EXPLICITA EN EL OTRO SENTIDO (0202): este paciente SI es real aunque su profesional sea de
+     * prueba. Es lo que mantiene reversible la derivacion sin desmarcar de a uno.
+     */
+    esRealConfirmado: boolean("es_real_confirmado").notNull().default(false),
+    /**
+     * LA QUE FILTRAN LAS CIFRAS (0202). DERIVADA por trigger, nunca por la aplicacion: marcado explicito, o
+     * todos sus profesionales activos de prueba. Un paciente atendido por alguien real es real.
+     *
+     *  sigue siendo la DECISION de una persona; esta es su consecuencia. Filtrar por  deja
+     * fuera la derivacion, y es justo el error que el candado del barrido vigila.
+     */
+    cuentaComoDePrueba: boolean("cuenta_como_de_prueba").notNull().default(false),
     createdAt: createdAt(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },

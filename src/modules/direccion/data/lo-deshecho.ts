@@ -69,7 +69,7 @@ export async function loDeshecho(): Promise<LoDeshecho> {
   // Y FUERA EL PACIENTE DE PRUEBA: el filtro estaba a medias (ver dashboard-reader). Marcar un paciente
   // sacaba su diagnostico de las cifras y dejaba su dinero dentro.
   const sinPacienteDePrueba = sql` and not exists (
-    select 1 from patients pa where pa.id = t.patient_id and pa.is_test)`;
+    select 1 from patients pa where pa.id = t.patient_id and pa.cuenta_como_de_prueba)`;
   // El corte va sobre la VENTA (alias `t`), tambien cuando se cuentan reversas: ver la nota de arriba.
   //
   // Y ARRASTRA EL FILTRO DEL PROFESIONAL DE DEMOSTRACION (0199) EN LA MISMA VARIABLE, a proposito: si

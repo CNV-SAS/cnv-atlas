@@ -37,7 +37,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // embed mas en la consulta que ya se hacia, no una consulta nueva por paciente.
       // `created_at` DEL PACIENTE (no de su evaluacion): es la columna "Fecha de creacion", y la tiene
       // tambien quien no tiene ninguna evaluacion, que es justo cuando mas informa.
-      "id, created_at, document_type, document_number, status, is_test, test_proposed_at, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
+      "id, created_at, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -137,8 +137,11 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
         !canCreateEvaluation(vigentes).ok,
       ),
       // LA LISTA SI LOS MUESTRA (capa de TRABAJO), marcados. El conteo del tablero no los cuenta.
-      esDePrueba: row.is_test === true,
-      propuestoDePrueba: row.is_test !== true && row.test_proposed_at != null,
+      // LA DERIVADA (0202): si sus cifras lo excluyen, su ficha tiene que decirlo. Mostrar la marca solo
+      // cuando alguien la escribio a mano dejaria al profesional viendo un paciente sin rotulo que las
+      // cifras ya no cuentan, y esa contradiccion entre pantalla y cifra es la que mas cuesta diagnosticar.
+      esDePrueba: row.cuenta_como_de_prueba === true,
+      propuestoDePrueba: row.cuenta_como_de_prueba !== true && row.test_proposed_at != null,
     } satisfies PatientListItem;
   });
 
