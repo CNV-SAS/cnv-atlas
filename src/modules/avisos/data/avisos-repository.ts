@@ -112,6 +112,36 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
          and coalesce(loc.professional_id, '00000000-0000-0000-0000-000000000000'::uuid) is distinct from t.professional_id
          and t.cancelled_at is null
          and t.review_reason is null
+      union all
+      -- LA VENTA QUE NO PUDO DESCONTAR INVENTARIO (Santiago, 2026-10-01).
+      --
+      -- Estaba SOLO en Sentry (un aviso para desarrolladores) y en la bandeja de ventas por revisar, donde
+      -- hay que ir a mirar. Nadie en CNV se enteraba de que una vitrina cuenta unidades que ya salieron, y
+      -- un dato que hay que ir a buscar es un dato que nadie revisa. Aqui entra al correo de las 7 y las 5.
+      --
+      -- LA FECHA ES LA DEL REGISTRO y no la de la venta, por lo mismo que la bandeja: una retroactiva nace
+      -- con fecha vieja, y ordenada por la fecha de la venta se iria al fondo del aviso el dia que se
+      -- registro, que es justo el dia que hay que atenderla.
+      select 'sin_saldo', t.id,
+             coalesce(t.registered_retroactively_at, t.operated_at, t.created_at), t.amount,
+             'Cobrada pero el saldo no alcanzo para descontarla: la vitrina cuenta unidades que ya salieron',
+             null::int, null::text
+        from transactions t
+       where t.status = 'paid'
+         and t.stock_state = 'sin_saldo'
+         -- ACOTADA A 30 DIAS, igual que la bandeja de ventas por revisar, y por una razon que las otras
+         -- ramas no tienen: un "sin saldo" NO SE PUEDE RESOLVER (no hay estado que lo cierre; se arregla
+         -- cuadrando el inventario). Sin tope seria una linea eterna en el correo, y un aviso que no se
+         -- puede quitar deja de ser un aviso: se vuelve ruido que se aprende a ignorar.
+         and coalesce(t.registered_retroactively_at, t.operated_at, t.created_at) > now() - interval '30 days'
+         -- Y SIN PRODUCTOS DE PRUEBA: un hueco de saldo en un producto que no existe no es un problema de
+         -- operacion, y mandarlo por correo entrena a la gente a ignorar el correo. Es la misma regla que ya
+         -- aplican las cifras de inventario.
+         and exists (
+           select 1 from transaction_items ti
+             join nutraceuticals n on n.id = ti.nutraceutical_id
+            where ti.transaction_id = t.id and coalesce(n.is_test, false) = false
+         )
     )
     select p.tipo, p.transaction_id, p.desde::text as desde, p.amount::text as monto,
            p.dias_habiles, p.subclave,

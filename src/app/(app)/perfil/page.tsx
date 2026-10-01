@@ -1,4 +1,4 @@
-import { FileText, UserCheck, Wallet } from "lucide-react";
+import { FileText, Receipt, UserCheck, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { Panel } from "@/components/shared/panel";
@@ -101,7 +101,7 @@ export default async function PerfilPage() {
           perfil.documento.dv ? `-${perfil.documento.dv}` : ""
         }`.trim()
       : null;
-  const { completitud, margen } = perfil;
+  const { completitud, margen, vendido } = perfil;
 
   return (
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
@@ -149,6 +149,23 @@ export default async function PerfilPage() {
             margen.pendiente !== 0
               ? `${pesos(margen.pendiente)} pendiente de liquidar`
               : "Todo liquidado"
+          }
+        />
+        {/* ═══ LO QUE HA VENDIDO EN TOTAL (Santiago, 2026-10-01) ═══
+
+            La pantalla decía el margen y nada más, así que "cuánto he vendido" era una pregunta sin
+            respuesta. Va al lado porque son la misma historia: lo que vendió y lo que le queda de eso.
+
+            Y DICE QUÉ DEJA FUERA, como todas las cifras de dinero del sistema: un número que se mueve sin
+            explicación es indistinguible de un defecto. */}
+        <TarjetaMetrica
+          rotulo="Lo que has vendido"
+          valor={pesos(vendido.total)}
+          icono={Receipt}
+          detalle={
+            vendido.ventas === 0
+              ? "Todavía no tienes ventas registradas"
+              : `${vendido.ventas} ${vendido.ventas === 1 ? "venta" : "ventas"} en total · sin lo devuelto ni lo que está en revisión`
           }
         />
       </section>

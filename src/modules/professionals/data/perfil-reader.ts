@@ -1,6 +1,13 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  brutoReconocido,
+  COLUMNA_EFECTIVO_NO_RECIBIDO,
+  ESTADO_DEVUELTA,
+  ESTADO_DISPUTA_PERDIDA,
+  FILTRO_FUERA_DE_REVISION,
+} from "@/modules/payments/cobro-reconocido";
 
 import { completitudDelPerfil, type Completitud } from "../completitud";
 
@@ -27,6 +34,15 @@ export type PerfilDelIntegrante = {
   /** Firmas de documentos del integrante (hoy solo el Anexo 3 existe como tipo). */
   documentosFirmados: { tipo: string; version: string; firmadoEn: string }[];
   margen: { causado: number; liquidado: number; pendiente: number };
+  /**
+   * LO QUE HA VENDIDO EN TODA SU HISTORIA (Santiago, 2026-10-01).
+   *
+   * La pantalla decia el margen y nada mas, asi que "cuanto he vendido" era una pregunta sin respuesta. Va
+   * al lado del margen porque son la misma historia: lo que vendio y lo que le queda de eso.
+   *
+   * NO LLEVA EL CORTE DEL ARRANQUE: es un total historico, de la familia de lo que se le debe.
+   */
+  vendido: { total: number; ventas: number };
   completitud: Completitud;
 };
 
@@ -67,6 +83,31 @@ export async function getPerfilDelIntegrante(
     .eq("professional_id", professionalId);
   if (eR) throw new Error(`perfil-reader: revenue: ${eR.message}`);
 
+  // ── LO QUE HA VENDIDO, BAJO SU PROPIA RLS ──
+  //
+  // TRES CONSULTAS Y LA CUENTA LA HACE EL MODULO NEUTRO, igual que en Inicio, en Direccion y en la pantalla
+  // de admin: el alcance cambia (el suyo, toda su historia), la aritmetica no. Escribir aqui una suma propia
+  // es como se llega a que dos pantallas digan cifras distintas del mismo hecho, y ya nos paso dos veces.
+  const [{ data: pagadas }, { data: perdidas }, { data: devueltas }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id, amount")
+      .eq("professional_id", professionalId)
+      .eq("status", "paid")
+      .or(FILTRO_FUERA_DE_REVISION)
+      .is(COLUMNA_EFECTIVO_NO_RECIBIDO, null),
+    supabase
+      .from("sale_reversals")
+      .select("transaction_id, transactions!inner(professional_id)")
+      .eq("state", ESTADO_DISPUTA_PERDIDA)
+      .eq("transactions.professional_id", professionalId),
+    supabase
+      .from("sale_reversals")
+      .select("debited_amount, transactions!inner(professional_id)")
+      .eq("state", ESTADO_DEVUELTA)
+      .eq("transactions.professional_id", professionalId),
+  ]);
+
   let causado = 0;
   let liquidado = 0;
   for (const r of revenue ?? []) {
@@ -89,6 +130,14 @@ export async function getPerfilDelIntegrante(
       firmadoEn: f.signed_at,
     })),
     margen: { causado, liquidado, pendiente: causado - liquidado },
+    vendido: {
+      total: brutoReconocido({
+        pagadas: pagadas ?? [],
+        disputasPerdidas: (perdidas ?? []).map((r) => r.transaction_id),
+        devoluciones: (devueltas ?? []).map((r) => r.debited_amount),
+      }),
+      ventas: (pagadas ?? []).length,
+    },
     completitud: completitudDelPerfil({
       personType: prof.tax_person_type,
       idNumber: prof.tax_id_number,
