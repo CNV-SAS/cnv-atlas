@@ -60,6 +60,7 @@ export function DeclararRemesaForm({
           {products.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
+              {p.esDePrueba ? " (de prueba, no cuenta en nada)" : ""}
             </option>
           ))}
         </select>

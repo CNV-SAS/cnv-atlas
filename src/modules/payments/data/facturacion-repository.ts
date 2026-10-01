@@ -369,6 +369,8 @@ export async function listarVentasSinDocumento(
     fecha: string;
     /** Si la factura esta completa pero el pago no. Es el hueco que el panel no mostraba. */
     pagoPendiente: boolean;
+    /** Si el medio fue transferencia: es el unico que se confirma a mano (0201). */
+    esTransferencia: boolean;
   }[]
 > {
   const filas = await db.execute<{
@@ -380,9 +382,10 @@ export async function listarVentasSinDocumento(
     alegra_last_error: string | null;
     created_at: string;
     alegra_payment_id: string | null;
+    payment_method: string;
   }>(sql`
     select id, amount, alegra_invoice_state, alegra_invoice_number,
-           alegra_attempts, alegra_last_error, created_at, alegra_payment_id
+           alegra_attempts, alegra_last_error, created_at, alegra_payment_id, payment_method
       from transactions
      where status = 'paid'
        and ${LE_FALTA_ALGO}
@@ -399,6 +402,9 @@ export async function listarVentasSinDocumento(
     motivo: f.alegra_last_error,
     fecha: String(f.created_at),
     pagoPendiente: f.alegra_invoice_state === "emitida" && !f.alegra_payment_id,
+    // SOLO LA TRANSFERENCIA SE CONFIRMA A MANO: el efectivo y Wompi registran su pago solos, asi que un
+    // boton ahi seria ofrecer afirmar algo que ya esta afirmado.
+    esTransferencia: f.payment_method === "transferencia",
   }));
 }
 
@@ -467,4 +473,70 @@ export async function contarVentasSinDocumentoPorDia(dias = 30): Promise<{ dia: 
      group by 1
      order by 1 desc`);
   return filas.map((f) => ({ dia: String(f.dia), total: Number(f.total) }));
+}
+
+// ═══ LA CONFIRMACION MANUAL DE UNA TRANSFERENCIA (0201) ═══
+
+export type VentaParaConfirmar = {
+  id: string;
+  amount: string;
+  canal: string;
+  patientId: string | null;
+  estadoDeFactura: string | null;
+  facturaDeAlegra: string | null;
+  pagoDeAlegra: string | null;
+  verificadaEn: string | null;
+};
+
+export async function getVentaParaConfirmarTransferencia(
+  transactionId: string,
+): Promise<VentaParaConfirmar | null> {
+  const [f] = await db.execute<{
+    id: string;
+    amount: string;
+    payment_method: string;
+    patient_id: string | null;
+    alegra_invoice_state: string | null;
+    alegra_invoice_id: string | null;
+    alegra_payment_id: string | null;
+    transferencia_verificada_at: string | null;
+  }>(sql`
+    select id, amount::text as amount, payment_method, patient_id, alegra_invoice_state,
+           alegra_invoice_id, alegra_payment_id, transferencia_verificada_at::text
+      from transactions where id = ${transactionId} and status = 'paid'`);
+  if (!f) return null;
+  return {
+    id: f.id,
+    amount: f.amount,
+    canal: f.payment_method,
+    patientId: f.patient_id,
+    estadoDeFactura: f.alegra_invoice_state,
+    facturaDeAlegra: f.alegra_invoice_id,
+    pagoDeAlegra: f.alegra_payment_id,
+    verificadaEn: f.transferencia_verificada_at,
+  };
+}
+
+/**
+ * Escribe el id del pago y QUIEN lo comprobo, en una sola sentencia.
+ *
+ * Y LA CONDICION IMPIDE EL DOBLE APUNTE: si otra persona lo confirmo entremedio, `alegra_payment_id` ya no
+ * es nulo y este update no toca nada. Es la misma defensa que usa el reclamo de la cola, y hace falta porque
+ * dos administradores mirando el mismo extracto es el caso normal, no el raro.
+ */
+export async function marcarTransferenciaVerificada(
+  transactionId: string,
+  paymentId: string,
+  actorId: string,
+): Promise<boolean> {
+  const filas = await db.execute<{ id: string }>(sql`
+    update transactions
+       set alegra_payment_id = ${paymentId},
+           transferencia_verificada_at = now(),
+           transferencia_verificada_by = ${actorId}::uuid,
+           alegra_last_error = null,
+           updated_at = now()
+     where id = ${transactionId} and alegra_payment_id is null
+    returning id`);
+  return filas.length > 0;
 }

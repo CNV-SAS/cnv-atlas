@@ -151,15 +151,15 @@ export async function getRemesableProducts(): Promise<RemesableProduct[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("nutraceuticals")
-    .select("id, name")
+    .select("id, name, is_test")
     .eq("commercial_availability", "en_consultorio")
-    // FUERA LO DE PRUEBA (Santiago, 2026-10-01): aparecia en el desplegable de enviar remesa, asi que admin
-    // podia mandarle a un integrante unidades de un producto que no existe. Es una superficie de OPERACION,
-    // no la lista del catalogo: ahi si se muestran, marcados, porque es donde se trabaja con ellos.
-    .eq("is_test", false)
+    // LO DE PRUEBA SE MUESTRA, MARCADO Y AL FINAL (Santiago, 2026-10-01). Lo habia quitado, y era pasarse:
+    // sin el no se puede recargar la vitrina para la siguiente prueba dentro de produccion. Lo que habia que
+    // evitar es mandarlo por error, y eso lo resuelve el rotulo, no la ausencia.
+    .order("is_test")
     .order("name");
   if (error) throw new Error(`remesa-service: productos: ${error.message}`);
-  return (data ?? []).map((p) => ({ id: p.id, name: p.name }));
+  return (data ?? []).map((p) => ({ id: p.id, name: p.name, esDePrueba: Boolean(p.is_test) }));
 }
 
 // Confirmar una remesa (el integrante). Inserta una recepción (+ cantidad REAL) ligada a la remesa. La

@@ -120,6 +120,17 @@ export const transactions = pgTable(
     deliveredBy: uuid("delivered_by").references(() => profiles.id, { onDelete: "restrict" }),
     // Un link ANULADO queda `failed` como uno rechazado, y estas columnas son lo que los distingue: un pago
     // aprobado que llega sobre un link anulado es casi seguro un cobro doble.
+    /**
+     * QUIEN COMPROBO EN EL EXTRACTO QUE LA TRANSFERENCIA ENTRO, Y CUANDO (0201).
+     *
+     * La automatizacion no afirma este pago: lo afirma quien lo vio. El efectivo y Wompi se registran solos
+     * porque alguien los tiene en la mano o la pasarela los confirma; una transferencia solo la confirma el
+     * extracto bancario.
+     */
+    transferenciaVerificadaAt: timestamp("transferencia_verificada_at", { withTimezone: true }),
+    transferenciaVerificadaBy: uuid("transferencia_verificada_by").references(() => profiles.id, {
+      onDelete: "restrict",
+    }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelledBy: uuid("cancelled_by").references(() => profiles.id, { onDelete: "restrict" }),
     // pago_sobre_link_anulado. Mientras no tenga resolucion, la venta no se descuenta ni se factura.

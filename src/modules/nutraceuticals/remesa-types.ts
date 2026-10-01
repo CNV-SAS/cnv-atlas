@@ -39,4 +39,13 @@ export type UnbackedReception = {
 
 // Para el formulario de declaración: a quién (solo los que pueden sostener consignación) y qué producto.
 export type EligibleProfessional = { professionalId: string; name: string };
-export type RemesableProduct = { id: string; name: string };
+/**
+ * Un producto que CNV puede enviarle a un integrante.
+ *
+ * LLEVA LA MARCA DE PRUEBA (Santiago, 2026-10-01). Lo quite del desplegable y me paso de largo: lo que habia
+ * que evitar era MANDARLO POR ERROR, no impedir mandarlo. Sin el no se puede recargar la vitrina para la
+ * siguiente prueba, y el entorno de pruebas que no tenemos vive dentro del que si tenemos.
+ *
+ * Asi que se muestra, MARCADO y AL FINAL de la lista: visible donde se trabaja, imposible de confundir.
+ */
+export type RemesableProduct = { id: string; name: string; esDePrueba: boolean };

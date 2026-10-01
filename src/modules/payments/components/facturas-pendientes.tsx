@@ -14,6 +14,7 @@ import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast
 import { EnGestionForm, type EnGestionVigente } from "@/modules/avisos/components/en-gestion-form";
 
 import { reintentarFacturasAction } from "../actions";
+import { ConfirmarTransferenciaForm } from "./confirmar-transferencia-form";
 
 // ═══ VENTAS COBRADAS SIN DOCUMENTO FISCAL ═══
 //
@@ -40,6 +41,7 @@ export type VentaSinDocumento = {
   motivo: string | null;
   fecha: string;
   pagoPendiente: boolean;
+  esTransferencia: boolean;
 };
 
 const ROTULO: Record<string, string> = {
@@ -142,6 +144,15 @@ export function FacturasPendientes({
                 {v.motivo && (
                   <p className="mt-1 break-words font-mono text-xs text-muted-foreground">{v.motivo}</p>
                 )}
+                {/* ═══ LA TRANSFERENCIA LA CONFIRMA UNA PERSONA (Santiago, 2026-10-01) ═══
+
+                    Y SOLO APARECE DONDE TIENE SENTIDO: factura emitida, pago sin registrar, y el medio es
+                    transferencia. En efectivo o en pasarela el pago ya se registro solo, asi que el boton
+                    seria ofrecer afirmar algo que ya esta afirmado. Reintentar NO sirve para esto: la cola
+                    deliberadamente no apunta este pago. */}
+                {v.pagoPendiente && v.esTransferencia && puedeReintentar ? (
+                  <ConfirmarTransferenciaForm transactionId={v.id} />
+                ) : null}
                 <div className="mt-2">
                   <EnGestionForm tipo="sin_documento" transactionId={v.id} vigente={enGestion[`sin_documento:${v.id}`] ?? null} />
                 </div>

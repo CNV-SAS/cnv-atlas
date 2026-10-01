@@ -54,7 +54,11 @@ import {
 } from "./data/liquidacion-writer";
 import { descontarInventarioDeVenta } from "./services/inventario-venta-service";
 import { ReversaError } from "./data/reversas-writer";
-import { reintentarFacturasPendientes } from "./services/facturacion-service";
+import {
+  confirmarPagoDeTransferencia,
+  ConfirmacionDeTransferenciaError,
+  reintentarFacturasPendientes,
+} from "./services/facturacion-service";
 import { reintentarDescuentosPendientes } from "./services/inventario-venta-service";
 import {
   anularLink,
@@ -1185,5 +1189,45 @@ export async function registrarRetractoFormAction(
     if (e instanceof RetractoError) return { error: e.message, success: null, warning: null };
     reportServerError("registrarRetractoFormAction", e);
     return { error: "No se pudo registrar el retracto.", success: null, warning: null };
+  }
+}
+
+// ═══ "VERIFIQUE EL EXTRACTO, EL PAGO ENTRO" (Santiago, 2026-10-01) ═══
+//
+// LA REGLA: la automatizacion no afirma el pago de una transferencia, lo afirma quien lo vio. Ver
+// `confirmarPagoDeTransferencia`.
+//
+// EL PERMISO ES `canViewRevenue` (admin y direccion) y NO el del profesional, a proposito: quien confirma
+// tiene que poder ver el extracto bancario de CNV, y el Integrante no lo ve. Dejarselo seria pedirle que
+// afirme algo que no puede comprobar.
+export async function confirmarTransferenciaAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canViewRevenue(user)) {
+    return {
+      error: "Solo administración o dirección confirman una transferencia: hay que ver el extracto bancario.",
+      success: null,
+      warning: null,
+    };
+  }
+  const transactionId = String(form.get("transactionId") ?? "");
+  if (!transactionId) return { error: "Falta la venta.", success: null, warning: null };
+  try {
+    await confirmarPagoDeTransferencia(transactionId, { id: user.id, email: user.email });
+    return {
+      error: null,
+      success:
+        "Pago registrado en Alegra con tu nombre como quien lo comprobó. La factura deja de figurar por cobrar.",
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof ConfirmacionDeTransferenciaError) {
+      return { error: e.message, success: null, warning: null };
+    }
+    reportServerError("confirmarTransferenciaAction", e);
+    return { error: "No se pudo registrar el pago. Vuelve a intentarlo.", success: null, warning: null };
   }
 }
