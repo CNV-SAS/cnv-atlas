@@ -78,8 +78,14 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
     .filter((f) => f.esDePrueba)
     .reduce((suma, f) => suma + f.cantidad, 0);
 
+  // ═══ EL ANCHO (Santiago, 2026-10-01) ═══
+  //
+  // `max-w-3xl` venia de cuando esta pantalla eran tres tarjetas y dos listas cortas. Con cinco tarjetas y
+  // cuatro paneles se veia apeñuscada, y la cifra de dinero no cabia en su tarjeta. Sube a 5xl: suficiente
+  // para que respiren, y todavia acotado para que los parrafos no queden en lineas larguisimas, que es para
+  // lo que existe el tope.
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
+    <div className="flex max-w-5xl flex-col gap-8">
       <TituloPantalla
         titulo={integrante.nombre}
         descripcion={`${profesion} · ${integrante.correo}. Lo que hay en su vitrina, lo que ha vendido y lo que se le debe. Esta pantalla solo muestra: para corregir algo, usa el camino que corresponda.`}
@@ -89,7 +95,9 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           fondo sobre el gris del layout, que es el mismo defecto que ya habia aparecido en la pantalla de
           responder la encuesta. La tarjeta trae su superficie, y con ella la regla de cuando una cifra se
           enciende: solo la que pide trabajo. */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* TRES COLUMNAS Y NO CUATRO: con cinco tarjetas, cuatro columnas deja una sola en la segunda fila y
+          aprieta las cinco. En tres quedan 3 + 2 y cada una tiene ancho para su cifra. */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <TarjetaMetrica
           rotulo="Unidades en custodia"
           valor={unidades}

@@ -76,7 +76,10 @@ export function TarjetaMetrica({
         </span>
         <span
           className={[
-            "text-3xl font-bold leading-tight tabular-nums",
+            // `break-words` ES UNA RED, NO UN ESTILO (Santiago, 2026-10-01): "$3.530.100" no tiene
+            // espacios, asi que en una tarjeta angosta se SALIA del borde y tocaba el gris del layout. Con
+            // esto parte antes de desbordar, que es feo pero no roto, y solo actua cuando de verdad no cabe.
+            "text-3xl font-bold leading-tight tabular-nums break-words",
             encendida ? "text-attention" : "text-foreground",
           ].join(" ")}
         >
