@@ -10,6 +10,7 @@ import {
   ESTADO_DISPUTA_PERDIDA,
   FILTRO_FUERA_DE_REVISION,
 } from "@/modules/payments/cobro-reconocido";
+import { hoyEnColombia, inicioDelMesEnBogota } from "@/modules/payments/arranque";
 import { desdeElArranque, elMasTardio, fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
 import { pendienteDelPaciente } from "@/modules/patients/pendientes";
 
@@ -63,10 +64,9 @@ export type Tablero = {
   desdeElArranque: string | null;
 };
 
-function inicioDelMes(): string {
-  const hoy = new Date();
-  return new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString();
-}
+// EL CORTE DEL MES VIVE EN EL MODULO NEUTRO (ver `arranque.ts`): es aritmetica de fechas y tiene que
+// poder probarse con un reloj fijo, que es la unica forma de atrapar un error de zona horaria.
+const inicioDelMes = () => inicioDelMesEnBogota(new Date());
 
 export async function getTablero(): Promise<Tablero> {
   const supabase = await createSupabaseServerClient();
@@ -106,7 +106,10 @@ export async function getTablero(): Promise<Tablero> {
         "id, proxima_cita, diagnoses!inner(evaluation_id, evaluations!inner(patients!inner(patient_profiles!inner(first_name, last_name))))",
       )
       .not("proxima_cita", "is", null)
-      .gte("proxima_cita", new Date().toISOString().slice(0, 10))
+      // LA FECHA DE HOY EN COLOMBIA, no en UTC: despues de las 7 de la tarde `toISOString()` ya devuelve el
+      // dia siguiente, y las citas de HOY desaparecian de "tus proximas consultas" justo al final de la
+      // jornada. Es el mismo defecto que el corte del mes, encontrado el mismo dia.
+      .gte("proxima_cita", hoyEnColombia())
       .order("proxima_cita", { ascending: true })
       .limit(4),
     // ═══ LA COMISION DEL MES SE ANCLA A LA FECHA DE LA VENTA, NO A LA DE SU FILA (Santiago, 2026-09-30) ═══

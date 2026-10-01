@@ -22,7 +22,21 @@ export type DetalleDelIntegrante = {
   nombre: string;
   correo: string;
   profesion: string;
-  inventario: { producto: string; lote: string; ubicacion: string; vendible: boolean; cantidad: number }[];
+  inventario: {
+    producto: string;
+    lote: string;
+    ubicacion: string;
+    vendible: boolean;
+    cantidad: number;
+    /**
+     * SIRVE PARA QUE LA CIFRA NO LO CUENTE Y LA LISTA SI LO MUESTRE (Santiago, 2026-09-30).
+     *
+     * "Unidades en custodia: 112" contaba los productos de prueba mientras la tarjeta de su propio Inicio
+     * decia 88, porque esa si los excluye. Dos cifras del mismo hecho, y la de /admin es justo la que se
+     * mira cuando algo no cuadra. Capa 1 y capa 3 de la regla de `patients/de-prueba.ts`.
+     */
+    esDePrueba: boolean;
+  }[];
   ventas: {
     id: string;
     fecha: string;
@@ -55,9 +69,10 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
     ubicacion: string;
     vendible: boolean;
     cantidad: number;
+    es_de_prueba: boolean;
   }>(sql`
     select n.name as producto, l.code as lote, loc.name as ubicacion, loc.sellable as vendible,
-           i.stock_quantity as cantidad
+           i.stock_quantity as cantidad, coalesce(n.is_test, false) as es_de_prueba
       from nutraceutical_inventory i
       join nutraceuticals n on n.id = i.nutraceutical_id
       join lots l on l.id = i.lot_id
@@ -131,6 +146,7 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
       ubicacion: f.ubicacion,
       vendible: f.vendible,
       cantidad: Number(f.cantidad),
+      esDePrueba: Boolean(f.es_de_prueba),
     })),
     ventas: ventas.map((f) => ({
       id: f.id,

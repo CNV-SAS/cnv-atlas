@@ -201,6 +201,8 @@ export async function listarVentasRetroactivas(limite = 100): Promise<
     total: string;
     paciente: string | null;
     estadoDelInventario: string | null;
+    /** Que se vendio y cuanto. Sin esto la lista no decia QUE venta era (Santiago, 2026-09-30). */
+    productos: string | null;
   }[]
 > {
   const filas = await db.execute<{
@@ -210,17 +212,27 @@ export async function listarVentasRetroactivas(limite = 100): Promise<
     total: string;
     paciente: string | null;
     stock_state: string | null;
+    productos: string | null;
   }>(sql`
     select t.id, t.created_at::text as fecha, t.alegra_invoice_number as factura, t.amount::text as total,
            -- EL NOMBRE VIVE EN patient_profiles (la PII demografica), no en patients, que guarda el
            -- documento y la organizacion. Leerlo de patients fue un error mio que ningun test vio porque
            -- los candados probaban el ESCRITOR y nadie llamaba a este lector.
            nullif(trim(coalesce(pp.first_name, '') || ' ' || coalesce(pp.last_name, '')), '') as paciente,
-           t.stock_state
+           t.stock_state,
+           -- QUE SE VENDIO: dos lineas con 8.000 y la misma fecha son indistinguibles sin esto, y es justo
+           -- la lista donde se decide si una venta hay que borrarla.
+           (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
+              from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
+             where ti.transaction_id = t.id) as productos
       from transactions t
       left join patient_profiles pp on pp.patient_id = t.patient_id
      where t.registered_retroactively_at is not null
-     order by t.created_at desc
+     -- ORDENADA POR CUANDO SE REGISTRO, no por cuando ocurrio (2026-09-30). Esta lista se llama "las que ya
+     -- se registraron" y existe para ver lo que acabas de hacer; ordenarla por la fecha de LA VENTA mandaba
+     -- una venta de enero registrada hoy al fondo, y con el tope de 100 podia no aparecer. Es el mismo
+     -- defecto que la bandeja de ventas por revisar, que nacia vencida por mirar la fecha equivocada.
+     order by t.registered_retroactively_at desc
      limit ${limite}`);
   return filas.map((f) => ({
     id: f.id,
@@ -229,6 +241,7 @@ export async function listarVentasRetroactivas(limite = 100): Promise<
     total: f.total,
     paciente: f.paciente,
     estadoDelInventario: f.stock_state,
+    productos: f.productos,
   }));
 }
 
