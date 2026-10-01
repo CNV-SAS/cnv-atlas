@@ -39,8 +39,25 @@ UPDATE professional_profiles pp
    AND p.email = 'demo@cnvsystem.com';
 
 -- 3. COMPROBAR cuanto deja de contar.
-SELECT count(*)::int AS ventas_que_salen_de_las_cifras,
-       coalesce(sum(t.amount), 0) AS dinero_que_sale
+--
+-- OJO CON COMPARAR ESTA CIFRA CON LA DE LA PANTALLA (Santiago, 2026-10-01): la primera version sumaba
+-- `t.amount` a secas y daba 3.589.600, mientras "Lo que has vendido" decia 3.530.100. Los 59.500 de
+-- diferencia eran las devoluciones: la pantalla las resta y este SELECT no. Dos cifras del mismo hecho que
+-- no cuadran se leen como un defecto, asi que ahora dice LAS DOS, cada una con su nombre.
+SELECT count(*)::int AS ventas_que_salen,
+       coalesce(sum(t.amount), 0) AS facturado_bruto,
+       coalesce((SELECT sum(r.debited_amount)
+                   FROM sale_reversals r
+                   JOIN transactions t2 ON t2.id = r.transaction_id
+                   JOIN professional_profiles pp2 ON pp2.id = t2.professional_id
+                  WHERE pp2.is_test AND r.state = 'devuelta'), 0) AS menos_lo_devuelto,
+       coalesce(sum(t.amount), 0)
+         - coalesce((SELECT sum(r.debited_amount)
+                       FROM sale_reversals r
+                       JOIN transactions t2 ON t2.id = r.transaction_id
+                       JOIN professional_profiles pp2 ON pp2.id = t2.professional_id
+                      WHERE pp2.is_test AND r.state = 'devuelta'), 0)
+         AS igual_a_lo_que_dice_la_pantalla
   FROM transactions t
   JOIN professional_profiles pp ON pp.id = t.professional_id
  WHERE t.status = 'paid' AND pp.is_test;

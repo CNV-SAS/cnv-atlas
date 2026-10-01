@@ -53,18 +53,20 @@ describe("las cifras de la organizacion no cuentan al profesional de demostracio
 });
 
 describe("las dos cosas que la marca NO hace, y son decisiones", () => {
-  // UN SALDO NO ES UN FLUJO. Las unidades que Demo tiene son reales y estan en su bodega; sacarlas daria un
-  // numero que no cuadra con ningun conteo fisico. Es la misma linea que trazo la fecha de arranque.
-  //
-  // ESTE CASO PARECE AL REVES (comprueba que algo NO se filtre) y por eso lleva su razon pegada: sin ella,
-  // el que venga detras lo va a "arreglar" añadiendo el filtro que falta.
-  it("el inventario NO se filtra por profesional: sus unidades son reales", () => {
+  // EL CONTEO FISICO NO SE PIERDE: el desglose del integrante SI muestra sus unidades, marcadas. Lo que se
+  // acota es la cifra de la organizacion, que es la que lee quien decide.
+  it("el inventario SI se filtra por profesional, y esto cambio de decision", () => {
     const src = leer("src/modules/direccion/data/dashboard-reader.ts");
-    // Se mira la LINEA que arma las filas de inventario, no el resto del archivo: lo demas si filtra, y a
-    // proposito.
-    const linea = src.split("\n").find((l) => l.includes("const inventoryRows"));
+    // SE MIRA LA SENTENCIA COMPLETA, no una linea: el filtro ocupa varias, y buscar en una sola dejaba el
+    // caso afirmando sobre un texto cortado. Fallo contra el arreglo correcto, que es como se descubrio.
+    const i = src.indexOf("const inventoryRows");
+    const linea = i < 0 ? null : src.slice(i, src.indexOf(";", i));
     expect(linea, "cambio el nombre de las filas de inventario y este caso dejo de mirar nada").toBeTruthy();
-    expect(linea).not.toContain("noEsDePrueba");
+    // CAMBIO DE DECISION (Santiago, 2026-10-01): yo habia decidido que la marca no tocara el inventario,
+    // porque las unidades son fisicas. Santiago lo decidio al reves y su razon pesa mas AQUI: quien entra a
+    // /direccion no sabe que esas unidades son de una cuenta de demostracion, y una cifra que confunde a
+    // quien decide es peor que una cifra incompleta. Lo que la hace honesta es que la tarjeta lo diga.
+    expect(linea).toContain("noEsDePrueba");
   });
 
   // LA FACTURA LA DECIDE EL PACIENTE, y tiene que seguir siendo asi: un profesional de prueba que le venda
