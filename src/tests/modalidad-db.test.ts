@@ -88,7 +88,20 @@ describe.skipIf(!HAS_DB)("el cambio de modalidad (BD real)", () => {
     expect(estado.pendiente).not.toBeNull();
     expect(estado.pendiente?.modalidad).toBe("distribucion");
     expect(estado.pendiente?.rigeDesde).toBe(rigeDesde);
-    expect(rigeDesde > new Date().toISOString().slice(0, 10)).toBe(true);
+    // ── "HOY" ES HOY EN COLOMBIA, NO EN UTC (2026-09-30) ──
+    //
+    // La asercion usaba `new Date().toISOString().slice(0, 10)`, que es la fecha UTC. Corriendo a las 8 de la
+    // noche de Bogota ya era el dia siguiente en UTC, asi que "el cambio rige en el futuro" salia FALSO con
+    // el codigo correcto: el test fallaba por la HORA a la que se corrio. Es el mismo defecto que ese mismo
+    // dia encontramos en el corte del mes del tablero, y la misma leccion que `facturacion.ts` ya tenia
+    // escrita ("era UTC: una venta despues de las 7 de la noche salia con la fecha del dia siguiente").
+    const hoyEnColombia = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Bogota",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    expect(rigeDesde > hoyEnColombia).toBe(true);
   }, 30_000);
 
   it("y queda el acto en el audit, con desde/hacia y la fecha en que empieza", async () => {
@@ -176,7 +189,16 @@ describe.skipIf(!HAS_DB)("el sellado de una venta obedece la modalidad (BD real)
     professionalId = prof.id;
     actorId = prof.profile_id;
     organizationId = prof.organization_id;
-    const [pac] = await db.execute<{ id: string }>(dsql`select id from patients limit 1`);
+    // ═══ EL PACIENTE SE CREA, NO SE PIDE PRESTADO (2026-09-30) ═══
+    //
+    // Decia `select id from patients limit 1`, y eso lo hacia depender de que NADIE borrara ese paciente
+    // mientras este archivo corria. En la suite completa otros tests crean y borran pacientes en paralelo, y
+    // este fallaba de forma intermitente con "Key (patient_id)=... is not present in table patients": un
+    // error que no tiene nada que ver con lo que el caso mide, y que invita a buscar el defecto donde no
+    // esta. Es la misma leccion del fixture de insights: la cadena se crea, no se busca.
+    const [pac] = await db.execute<{ id: string }>(dsql`
+      insert into patients (organization_id, document_type, document_number)
+      values (${organizationId}, 'CC', ${`MOD-${Date.now()}`}) returning id`);
     patientId = pac.id;
     const [n] = await db.execute<{ id: string }>(dsql`
       select id from nutraceuticals where coalesce(is_test, false) = false order by name limit 1`);

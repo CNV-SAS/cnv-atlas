@@ -66,7 +66,17 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
 
   const profesion =
     PROFESSION_LABELS[integrante.profesion as keyof typeof PROFESSION_LABELS] ?? integrante.profesion;
-  const unidades = integrante.inventario.reduce((suma, f) => suma + f.cantidad, 0);
+  // LA CIFRA NO CUENTA LOS PRODUCTOS DE PRUEBA, LA LISTA SI LOS MUESTRA (Santiago, 2026-09-30).
+  //
+  // Decia 112 mientras la tarjeta del propio Inicio de Demo decia 88, porque esa si los excluye. Dos cifras
+  // del mismo hecho, y esta es justo la pantalla que se mira cuando algo no cuadra. Es la regla de
+  // `patients/de-prueba.ts`: capa 1 fuera de las cifras, capa 3 visible y marcado donde se trabaja.
+  const unidades = integrante.inventario
+    .filter((f) => !f.esDePrueba)
+    .reduce((suma, f) => suma + f.cantidad, 0);
+  const unidadesDePrueba = integrante.inventario
+    .filter((f) => f.esDePrueba)
+    .reduce((suma, f) => suma + f.cantidad, 0);
 
   return (
     <div className="flex max-w-3xl flex-col gap-8">
@@ -80,7 +90,16 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           responder la encuesta. La tarjeta trae su superficie, y con ella la regla de cuando una cifra se
           enciende: solo la que pide trabajo. */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <TarjetaMetrica rotulo="Unidades en custodia" valor={unidades} icono={Boxes} detalle="En su vitrina ahora" />
+        <TarjetaMetrica
+          rotulo="Unidades en custodia"
+          valor={unidades}
+          icono={Boxes}
+          detalle={
+            unidadesDePrueba > 0
+              ? `En su vitrina ahora · sin ${unidadesDePrueba} de productos de prueba`
+              : "En su vitrina ahora"
+          }
+        />
         <TarjetaMetrica rotulo="Pacientes asignados" valor={integrante.pacientes} icono={Users} />
         <TarjetaMetrica
           rotulo="Margen pendiente"
@@ -127,6 +146,8 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
                   {f.producto} <span className="text-muted-foreground">· lote {f.lote}</span>
                   <span className="text-muted-foreground"> · {f.ubicacion}</span>
                   {!f.vendible ? <span className="text-amber-700"> · no vendible</span> : null}
+                  {/* MARCADO, NO ESCONDIDO: esconderlo es como alguien lo confunde con producto real. */}
+                  {f.esDePrueba ? <span className="text-muted-foreground"> · de prueba</span> : null}
                 </span>
                 <span className="tabular-nums">{f.cantidad}</span>
               </li>

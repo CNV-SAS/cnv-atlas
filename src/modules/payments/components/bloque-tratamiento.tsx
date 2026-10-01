@@ -76,7 +76,20 @@ export function BloqueTratamiento({
         <select
           id={`tratamiento-${patientId}`}
           name="treatmentId"
-          required
+          // ═══ OBLIGATORIO SOLO SI NO SE ELIGIÓ LA SALIDA (Santiago, 2026-09-30) ═══
+          //
+          // CON `required` A SECAS, LA SALIDA NO SE PODÍA USAR. Al marcar "No sale de ninguna consulta" el
+          // desplegable vuelve a vacío, y un `select required` vacío lo bloquea el NAVEGADOR: "Selecciona un
+          // elemento de la lista". Así que la única forma de enviar era elegir una consulta, que es
+          // exactamente lo que la salida venía a evitar, y el profesional acababa atando la compra a la
+          // última consulta para poder cobrar. El dato malo se ve igual que el bueno.
+          //
+          // ES DE LA FAMILIA QUE SOLO SE VE EN UN NAVEGADOR (hazard 6 de CLAUDE.md): tsc, lint y los tests
+          // pasan, porque la validación la hace el navegador y no el código.
+          required={!suelta}
+          // Y NO SE PONE `disabled` CUANDO SOBRA: un campo deshabilitado no viaja en el FormData (hazard 4),
+          // y aquí el servidor tiene que recibir el campo vacío para saber que la compra va suelta.
+          aria-disabled={suelta}
           value={elegido === "__suelta__" ? "" : elegido}
           onChange={(e) => setElegido(e.target.value)}
           className="flex h-9 w-full max-w-xl rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"

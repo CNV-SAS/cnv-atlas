@@ -17,6 +17,7 @@ export type VentaRetroactivaListada = {
   factura: string;
   total: string;
   paciente: string | null;
+  productos: string | null;
   estadoDelInventario: string | null;
 };
 
@@ -42,7 +43,12 @@ function Fila({ venta }: { venta: VentaRetroactivaListada }) {
         </span>
         <span className="tabular-nums text-foreground">${Number(venta.total).toLocaleString("es-CO")}</span>
       </div>
-      <span className="text-muted-foreground">{venta.paciente ?? "(sin paciente)"}</span>
+      {/* QUE SE VENDIO, no solo cuanto: dos lineas con el mismo total y la misma fecha son indistinguibles
+          sin esto, y es la lista donde se decide si una venta hay que borrarla. */}
+      <span className="text-muted-foreground">
+        {venta.paciente ?? "(sin paciente)"}
+        {venta.productos ? ` · ${venta.productos}` : ""}
+      </span>
       <span className={inventario.alerta ? "text-destructive" : "text-muted-foreground"}>
         {inventario.texto}
       </span>

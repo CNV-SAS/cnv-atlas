@@ -201,7 +201,11 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
 
   it("el consolidado suma lo que hay que pagarle al domiciliario", async () => {
     const reader = await import("@/modules/payments/data/despachos-reader");
-    const hoy = new Date().toISOString().slice(0, 10);
+    // HOY EN COLOMBIA, no en UTC: a las 8 de la noche de Bogota la fecha UTC ya es el dia siguiente, asi
+    // que el corte que se consultaba era el SIGUIENTE y no contenia las ventas que el propio caso acababa de
+    // crear. Fallaba por la hora a la que se corriera; la pantalla de /comercial ya lo hacia bien.
+    const { hoyEnColombia } = await import("@/modules/payments/arranque");
+    const hoy = hoyEnColombia();
     const antes = await reader.consolidadoDeDespachos(hoy);
     await venta({ domicilio: true, flete: 12_257, costo: 10_000 });
     await venta({ domicilio: true, flete: 14_000, costo: 11_000 });

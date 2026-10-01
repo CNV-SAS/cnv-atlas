@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { desdeElArranque, elMasTardio } from "@/modules/payments/arranque";
+import { desdeElArranque, elMasTardio, hoyEnColombia, inicioDelMesEnBogota } from "@/modules/payments/arranque";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
@@ -175,5 +175,50 @@ describe("la tarjeta del mes empieza en el mas tardio de los dos comienzos", () 
     expect(elMasTardio("2026-10-01T06:00:00.000Z", "2026-10-01T00:00:00-05:00")).toBe(
       "2026-10-01T06:00:00.000Z",
     );
+  });
+});
+
+describe("el mes empieza en Colombia, no en UTC", () => {
+  // ═══ EL DEFECTO QUE SANTIAGO INTUYO ANTES QUE YO (2026-09-30) ═══
+  //
+  // El 30 de septiembre a las 7 p. m. de Bogota, su tablero decia "Tu comisión $0" y "Ventas $0". La ventana
+  // se armaba con `getUTCMonth()`, y a esa hora en UTC ya era octubre: el mes saltaba CINCO HORAS ANTES.
+  //
+  // Y pasa TODOS los meses, entre las 7 p. m. y la medianoche del ultimo dia, que es exactamente cuando
+  // alguien mira como le fue el mes. Un test con reloj fijo es lo unico que lo atrapa: en una corrida de la
+  // mañana el codigo viejo tambien pasaba.
+  it("a las 7 de la tarde del ultimo dia del mes, el mes sigue siendo el mismo", () => {
+    // 2026-10-01T00:00:00Z == 2026-09-30 19:00 en Bogota.
+    expect(inicioDelMesEnBogota(new Date("2026-10-01T00:00:00.000Z"))).toBe("2026-09-01T00:00:00-05:00");
+  });
+
+  it("y a la medianoche de Bogota ya es el mes siguiente", () => {
+    // 2026-10-01T05:00:00Z == 2026-10-01 00:00 en Bogota.
+    expect(inicioDelMesEnBogota(new Date("2026-10-01T05:00:00.000Z"))).toBe("2026-10-01T00:00:00-05:00");
+  });
+
+  it("y a mitad de mes devuelve su dia uno", () => {
+    expect(inicioDelMesEnBogota(new Date("2026-09-15T18:00:00.000Z"))).toBe("2026-09-01T00:00:00-05:00");
+  });
+
+  // Y EL CORTE DEL MES SE COMBINA CON EL DEL ARRANQUE sin perder la zona: las dos cadenas llevan su offset,
+  // asi que `elMasTardio` las compara como instantes y no como texto.
+  it("convive con el arranque sin volver a la comparacion de textos", () => {
+    expect(elMasTardio(inicioDelMesEnBogota(new Date("2026-10-15T18:00:00.000Z")), "2026-10-20T00:00:00-05:00")).toBe(
+      "2026-10-20T00:00:00-05:00",
+    );
+  });
+});
+
+describe("y el dia de hoy tambien es el de Colombia", () => {
+  // EL CASO DE AL LADO, encontrado el mismo dia: las "proximas consultas" del tablero comparaban contra la
+  // fecha UTC, asi que despues de las 7 de la tarde las citas de HOY desaparecian de la lista justo al final
+  // de la jornada, que es cuando se mira.
+  it("a las 7 de la tarde del 30, hoy sigue siendo el 30", () => {
+    expect(hoyEnColombia(new Date("2026-10-01T00:00:00.000Z"))).toBe("2026-09-30");
+  });
+
+  it("y a la medianoche de Bogota ya es el 1", () => {
+    expect(hoyEnColombia(new Date("2026-10-01T05:00:00.000Z"))).toBe("2026-10-01");
   });
 });
