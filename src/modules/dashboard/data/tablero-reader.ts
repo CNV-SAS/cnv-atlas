@@ -127,10 +127,10 @@ export async function getTablero(): Promise<Tablero> {
     // facturo"). Tener dos criterios para el mismo mes es como se llega aqui otra vez.
     supabase
       .from("professional_revenue")
-      .select("commission_amount, transactions!inner(created_at)")
+      .select("commission_amount, transactions!inner(created_at, patient_id)")
       .gte("transactions.created_at", desde),
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
-    supabase.from("transactions").select("id, amount").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde),
+    supabase.from("transactions").select("id, amount, patient_id").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde),
     // LO QUE VOLVIO NO SE FACTURO, y esta tarjeta no lo restaba (smoke del 2026-09-29): la venta devuelta de
     // LUVIA seguia en el bruto, 90.000 de mas. La cuenta la hace ahora el mismo modulo neutro que Direccion.
     supabase.from("sale_reversals").select("transaction_id").eq("state", ESTADO_DISPUTA_PERDIDA),
@@ -140,7 +140,7 @@ export async function getTablero(): Promise<Tablero> {
     // que se corrige es lo que ese mes facturo.
     supabase
       .from("sale_reversals")
-      .select("debited_amount, transactions!inner(created_at)")
+      .select("debited_amount, transactions!inner(created_at, patient_id)")
       .eq("state", ESTADO_DEVUELTA)
       .gte("transactions.created_at", desde),
     // SIN PRODUCTOS DE PRUEBA, igual que Direccion (smoke del 2026-09-29): esta tarjeta decia 1.903 y la de
@@ -217,17 +217,35 @@ export async function getTablero(): Promise<Tablero> {
     })
     .filter((c) => c.evaluationId !== "");
 
+  // LOS PACIENTES DE PRUEBA, por id: igual que en Direccion, y con el mismo cuidado con el nulo (una venta
+  // puede no tener paciente, y un embed interno la dejaria fuera en silencio).
+  const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("is_test", true);
+  const marcados = new Set((pacientesDePrueba ?? []).map((p) => p.id));
+  const noEsPacienteDePrueba = (id: string | null | undefined) => id == null || !marcados.has(id);
+  const delPaciente = (fila: { transactions?: unknown }): string | null =>
+    uno(fila.transactions as { patient_id: string | null } | null)?.patient_id ?? null;
+
   const suma = (filas: { [k: string]: unknown }[] | null, campo: string): number =>
     (filas ?? []).reduce((n, f) => n + Number(f[campo] ?? 0), 0);
 
   return {
     pacientesConPendiente: conPendiente,
     proximasConsultas,
-    comisionDelMes: suma(comision.data, "commission_amount"),
+    // ── Y SUS CIFRAS TAMPOCO CUENTAN AL PACIENTE DE PRUEBA (Santiago, 2026-10-01) ──
+    //
+    // El conteo de pacientes ya los excluia desde septiembre y sus VENTAS no: marcar un paciente sacaba su
+    // diagnostico de las cifras y dejaba su dinero dentro. Un profesional que se registra a si mismo para
+    // probar veia su propio mes inflado con sus pruebas, en la pantalla que usa para saber como le fue.
+    comisionDelMes: suma(
+      (comision.data ?? []).filter((r) => noEsPacienteDePrueba(delPaciente(r))),
+      "commission_amount",
+    ),
     ventasDelMes: brutoReconocido({
-      pagadas: ventas.data ?? [],
+      pagadas: (ventas.data ?? []).filter((r) => noEsPacienteDePrueba(r.patient_id)),
       disputasPerdidas: (perdidas.data ?? []).map((r) => r.transaction_id),
-      devoluciones: (devueltas.data ?? []).map((r) => r.debited_amount),
+      devoluciones: (devueltas.data ?? [])
+        .filter((r) => noEsPacienteDePrueba(delPaciente(r)))
+        .map((r) => r.debited_amount),
     }),
     unidadesEnInventario: suma(inventario.data, "stock_quantity"),
     desdeElArranque: recortaElMes,

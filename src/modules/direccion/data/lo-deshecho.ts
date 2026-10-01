@@ -66,6 +66,10 @@ export type LoDeshecho = {
 
 export async function loDeshecho(): Promise<LoDeshecho> {
   const arranque = await fechaDeArranque();
+  // Y FUERA EL PACIENTE DE PRUEBA: el filtro estaba a medias (ver dashboard-reader). Marcar un paciente
+  // sacaba su diagnostico de las cifras y dejaba su dinero dentro.
+  const sinPacienteDePrueba = sql` and not exists (
+    select 1 from patients pa where pa.id = t.patient_id and pa.is_test)`;
   // El corte va sobre la VENTA (alias `t`), tambien cuando se cuentan reversas: ver la nota de arriba.
   //
   // Y ARRASTRA EL FILTRO DEL PROFESIONAL DE DEMOSTRACION (0199) EN LA MISMA VARIABLE, a proposito: si
@@ -75,7 +79,7 @@ export async function loDeshecho(): Promise<LoDeshecho> {
     arranque
       ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date`
       : sql``
-  } and ${sql.raw(SQL_SIN_PROFESIONAL_DE_PRUEBA)}`;
+  } and ${sql.raw(SQL_SIN_PROFESIONAL_DE_PRUEBA)}${sinPacienteDePrueba}`;
 
   const [pagadas] = await db.execute<{ n: number }>(sql`
     select count(*)::int as n from transactions t where t.status = 'paid'${corte}`);

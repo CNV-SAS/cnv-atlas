@@ -145,14 +145,22 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
   // puede ser el de un administrador que corrigio algo, mientras que la asignacion del paciente es la que
   // dice de quien es la operacion.
   const arranque = await fechaDeArranque();
-  const sinDemoEnLaVenta = sql` and ${sql.raw(SQL_SIN_PROFESIONAL_DE_PRUEBA)}`;
+  // El paciente de prueba sale por los dos ejes, igual que el profesional: su compra no cuenta y su
+  // consulta tampoco, porque si no sus prescripciones quedarian en el denominador sin compra posible.
+  const sinDemoEnLaVenta = sql` and ${sql.raw(SQL_SIN_PROFESIONAL_DE_PRUEBA)}
+    and not exists (select 1 from patients pa where pa.id = t.patient_id and pa.is_test)`;
   // Se escribe desde `tr` y no desde un alias de diagnostico porque las dos consultas que lo usan tienen
   // el tratamiento y solo una tiene el diagnostico a mano.
   const sinDemoEnLaConsulta = sql` and not exists (
     select 1 from diagnoses dx
       join evaluations ev on ev.id = dx.evaluation_id
       join professional_profiles pp on pp.id = ev.professional_id
-     where dx.id = tr.diagnosis_id and pp.is_test)`;
+     where dx.id = tr.diagnosis_id and pp.is_test)
+    and not exists (
+      select 1 from diagnoses dx2
+        join evaluations ev2 on ev2.id = dx2.evaluation_id
+        join patients pa2 on pa2.id = ev2.patient_id
+       where dx2.id = tr.diagnosis_id and pa2.is_test)`;
   const corteVenta = arranque
     ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date${sinDemoEnLaVenta}`
     : sinDemoEnLaVenta;

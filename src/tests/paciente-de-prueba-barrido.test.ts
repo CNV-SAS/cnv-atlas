@@ -57,6 +57,39 @@ describe("las cifras no cuentan a los pacientes de prueba", () => {
     expect(src).toContain("coalesce(p.is_test, false) = false");
   });
 
+  // ═══ Y SUS VENTAS TAMPOCO CUENTAN (Santiago, 2026-10-01) ═══
+  //
+  // EL FILTRO ESTABA A MEDIAS Y NADIE LO VIO, porque este candado solo miraba los CONTEOS de pacientes.
+  // La marca sacaba su diagnostico de las cifras y dejaba su DINERO dentro: el bruto, el ingreso de
+  // CNV, las comisiones, lo que se deshizo y los insights contaban sus ventas igual que las de un paciente
+  // real. Es el mismo defecto del inventario y de la RLS: marcar solo excluye donde alguien escribio que
+  // excluya, y un barrido que no cubre una capa deja esa capa sin nadie.
+  //
+  // Lo descubrio la pregunta de Santiago sobre una venta de prueba de Maria Camila a un paciente suyo.
+  it("las cifras de dinero excluyen las ventas de un paciente marcado", () => {
+    const direccion = leer("src/modules/direccion/data/dashboard-reader.ts");
+    // Las CUATRO a la vez: un bruto filtrado sobre comisiones sin filtrar hace que la resta entre ellas deje
+    // de significar nada.
+    expect(direccion).toContain("noEsPacienteDePrueba");
+    expect(direccion).toContain("esOperacion");
+    for (const cifra of ["pagadas", "cnvRows", "commissionRows", "devueltasRows"]) {
+      expect(direccion, `la cifra ${cifra} no aplica el filtro del paciente`).toContain(cifra);
+    }
+    // ── SE EXIGE QUE EL FRAGMENTO SE USE, no que exista ──
+    //
+    // La primera version buscaba el nombre y NO atrapo el defecto: quitar su uso del corte deja la
+    // declaracion en el archivo, asi que el nombre seguia apareciendo y el caso pasaba en verde. Es el mismo
+    // error que ya cometi con el candado de la fecha de arranque. Aqui se mira la composicion del corte.
+    const deshecho = leer("src/modules/direccion/data/lo-deshecho.ts");
+    const i = deshecho.indexOf("const corte = sql");
+    expect(i, "cambio como se arma el corte y este caso dejo de mirar nada").toBeGreaterThan(-1);
+    expect(deshecho.slice(i, deshecho.indexOf(";", i))).toContain("sinPacienteDePrueba");
+    expect(leer("src/modules/direccion/data/insights-de-la-compra.ts")).toContain("pa.is_test");
+    // Y el mes del propio profesional: quien se registra a si mismo para probar veia su mes inflado con sus
+    // pruebas, en la pantalla que usa para saber como le fue.
+    expect(leer("src/modules/dashboard/data/tablero-reader.ts")).toContain("noEsPacienteDePrueba");
+  });
+
   it("la facturacion ya lo respetaba, y sigue", () => {
     const src = leer("src/modules/payments/data/facturacion-repository.ts");
     expect(src).toContain("isTest");
