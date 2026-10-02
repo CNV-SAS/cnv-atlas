@@ -691,13 +691,39 @@ export default async function ResultadosEvaluacionPage({
   // Atlas los tiene en la tabla de indices del Diagnostico. Se anaden SOLO aqui para no duplicarlos alli.
 
   // Bloque 12: las remisiones de ESTA consulta (ancladas al tratamiento, no al paciente).
-  const hcRemisiones = protocol?.treatmentId ? await listReferralsForTreatment(protocol.treatmentId) : [];
-  // LAS VENTAS DE ESTA CONSULTA, para el cierre. Va junto a las remisiones porque es lo mismo: un hecho del
-  // tratamiento que el cierre necesita. Desde el rediseño del 2026-09-26 la VENTA ES EL "SI" de los
-  // nutraceuticos, asi que sin esto el cierre pediria una decision que ya se tomo vendiendo.
-  const ventasDeLaConsulta = protocol?.treatmentId
-    ? await listVentasDeTratamiento(protocol.treatmentId)
-    : [];
+  // LAS DOS JUNTAS Y NO UNA DESPUES DE LA OTRA (2026-10-02): dependen del MISMO `treatmentId` y de nada mas,
+  // asi que encadenarlas sumaba dos viajes donde cabe uno. Cada refresco tras una accion vuelve a correr esta
+  // pagina entera, de modo que una cascada evitable se paga en cada clic, no una vez.
+  //
+  // DOS Y NO MAS, a proposito: el pool tiene SEIS conexiones y en /pagos ya se pago el precio de pedirlo todo
+  // a la vez (lecturas que se reportaban como caidas sin haber llegado a correr). Esto no mueve ese limite.
+  //
+  // La segunda, para el cierre: desde el rediseño del 2026-09-26 la VENTA ES EL "SI" de los nutraceuticos, asi
+  // que sin ella el cierre pediria una decision que ya se tomo vendiendo.
+  const [hcRemisiones, ventasDeLaConsulta] = protocol?.treatmentId
+    ? await Promise.all([
+        listReferralsForTreatment(protocol.treatmentId),
+        listVentasDeTratamiento(protocol.treatmentId),
+      ])
+    : [[], []];
+
+  // ═══ SI SE REGISTRO "no los adquiere" Y DESPUES COMPRO, LA PANTALLA LO DICE (Santiago, 2026-10-02) ═══
+  //
+  // No es una contradiccion que haya que resolver borrando una de las dos: son DOS HECHOS EN DOS MOMENTOS y
+  // los dos son verdad. Borrar la nota al vender perderia justo el dato que la nota existe para capturar (que
+  // el modelo recomendo algo y en ese momento no se lo llevo); dejarla sola haria que la pantalla contradijera
+  // a la venta. Se quedan las dos y se dice cual es la mas nueva.
+  //
+  // SE CALCULA AQUI porque es la pagina quien tiene las ventas de la consulta; el bloque solo las muestra.
+  const registroDelNo =
+    protocol?.nutraceuticalDecision?.decision === "no" ? (protocol.nutraceuticalDecision.at ?? null) : null;
+  const ventaPosteriorAlNo = registroDelNo
+    ? (ventasDeLaConsulta
+        .filter((v) => v.status === "paid" && v.created_at > registroDelNo)
+        .map((v) => v.created_at)
+        .sort()
+        .at(-1) ?? null)
+    : null;
 
   // Bloques 10 y 11: salen del protocolo SELLADO (protocol_suggested), no se recalculan. El sodio no
   // viaja: lo fija el motor de prescripcion que aun no se porta.
@@ -984,6 +1010,7 @@ export default async function ResultadosEvaluacionPage({
                     evaluationId={id}
                     protocol={protocol}
                     canPrescribe={canPrescribeNutraceuticals}
+                    ventaPosteriorAlNo={ventaPosteriorAlNo}
                   />
                 ) : null}
                 {/* ═══ LA PREGUNTA DE TRES OPCIONES SE RETIRO (Santiago, 2026-09-26) ═══

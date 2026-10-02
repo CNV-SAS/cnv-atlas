@@ -90,7 +90,14 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
       "src/modules/treatment/components/treatment-panel.tsx",
       "src/modules/nutraceuticals/components/mi-conteo-form.tsx",
     ];
-    return dirs.filter((f) => readFileSync(f, "utf8").includes('name="note"'));
+    // SE BUSCA EL HECHO, NO EL MARCADO (2026-10-02). Esto miraba solo `name="note"`, y cuando el bloque de
+    // "no los adquiere" tuvo que dejar de ser un `<form>` (vivia anidado dentro del de la prescripcion, ver
+    // `formularios-no-anidados.test.ts`) sus campos pasaron a armarse a mano: el caso se puso rojo contra el
+    // arreglo correcto. Lo que define una superficie de nota es que ESCRIBA una, por cualquiera de las dos vias.
+    return dirs.filter((f) => {
+      const src = readFileSync(f, "utf8");
+      return src.includes('name="note"') || /set\(\s*["']note["']/.test(src);
+    });
   };
 
   it("las superficies de nota siguen siendo DOS", () => {
@@ -133,7 +140,8 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
     // Lo escrito no se perdió, se muestra en solo lectura en la cuarta subpestaña.
     const nutra = readFileSync("src/modules/treatment/components/no-los-adquiere-form.tsx", "utf8");
     const conteo = readFileSync("src/modules/nutraceuticals/components/mi-conteo-form.tsx", "utf8");
-    expect(nutra).toContain('name="note"');
+    // El del nutraceutico arma sus campos a mano (no puede abrir un `<form>` propio: vive dentro de otro).
+    expect(nutra).toMatch(/set\(\s*["']note["']/);
     expect(conteo).toContain('name="note"');
   });
 
