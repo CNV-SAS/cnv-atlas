@@ -26,6 +26,10 @@ export {
 // Contrato de columnas del Biody (headers exactos) para que el pipeline reconstruya la
 // fila cruda desde el almacenamiento normalizado de B8 (build-engine-input).
 export { BIODY_COLUMNS, ENGINE_REQUIRED } from "./analysis";
+// El error que LANZA el motor cuando un insumo falta o esta fuera de rango fisiologico. Se exporta para que
+// la glue lo pueda DISTINGUIR de un fallo inesperado: sin esto, un dato rechazado (que es una respuesta
+// legitima del motor) subia como excepcion y tumbaba la peticion con un 500. Ver `run-pipeline`.
+export { ClinicalInputError } from "./analysis";
 // Peso meta y su default (Lorentz), hecho VISIBLE (nota 3 de Gildardo): un peso meta no fijado cambia
 // la prescripcion en silencio. Ver peso-meta.ts.
 export { pesoIdealLorentz, pesoMetaDefault, type PesoMetaDefault } from "./peso-meta";

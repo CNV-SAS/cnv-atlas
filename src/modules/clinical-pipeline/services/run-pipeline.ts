@@ -2,7 +2,7 @@ import "server-only";
 
 import * as Sentry from "@sentry/nextjs";
 
-import { computeProtocolo, runEngine, type ProtocoloSnapshot } from "@/clinical-engine";
+import { ClinicalInputError, computeProtocolo, runEngine, type ProtocoloSnapshot } from "@/clinical-engine";
 import { resolveRutasContent } from "@/clinical-engine/rutas-content";
 import { appError, err, ok, type Result } from "@/core/errors";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
@@ -10,6 +10,7 @@ import {
   circunferenciasParaDiagnosticar,
   condicionesParaDiagnosticar,
   insumosDelMotorParaDiagnosticar,
+  mensajeDelInsumoClinico,
 } from "@/modules/bis-intake/services/import-gate";
 
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
@@ -109,7 +110,28 @@ export async function runClinicalPipeline(
     new Date(),
   );
 
-  const output = runEngine(engineInput);
+  // ═══ UN DATO MALO NO TUMBA LA PANTALLA (Sentry, 2026-10-02) ═══
+  //
+  // `runEngine` LANZA `ClinicalInputError` cuando un insumo esta fuera de rango fisiologico, y esta llamada
+  // estaba fuera de todo `try`: la excepcion salia de la accion, la peticion moria con un 500, el render de
+  // los Server Components se caia y la pantalla quedaba rota hasta navegar. En Sentry, 19 eventos del mismo
+  // caso (`C=16.22`, rango 0,3-8): alguien lo intento diecinueve veces porque no veia ninguna explicacion.
+  //
+  // EL FRENO ES CORRECTO Y NO SE TOCA: ese valor no es fisiologico y no debe entrar al motor (y el rango es de
+  // Gildardo, congelado). Lo que estaba mal es que un dato rechazado se tratara como un fallo del sistema.
+  //
+  // SE TRADUCE, NO SE REPITE LA REGLA: las puertas de arriba miran lo que FALTA y no los rangos. Agregar una
+  // cuarta puerta que los repita seria la misma regla en dos sitios, capaz de divergir del motor. El motor
+  // sigue siendo el unico que decide; aqui solo se convierte su grito en una frase con salida.
+  let output: ReturnType<typeof runEngine>;
+  try {
+    output = runEngine(engineInput);
+  } catch (e) {
+    if (e instanceof ClinicalInputError) {
+      return err(appError("validation", mensajeDelInsumoClinico(e, inputs.importada)));
+    }
+    throw e; // inesperado: que suba
+  }
 
   // Protocolo sugerido (T2 A3): PURO, se computa aqui (fuera de la transaccion) y se SELLA en
   // writePipeline. Un fallo del protocolo NO degrada el diagnostico: se sella protocol_suggested =

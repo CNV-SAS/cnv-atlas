@@ -19,6 +19,43 @@
 
 ---
 
+---
+
+## PENDIENTE (2026-10-02) · Refrescar solo lo que cambió, no la página entera
+
+**Decisión de Santiago, para DESPUÉS del arranque.** No es un defecto: es el costo de cómo están hechas las
+acciones, y se eligió a sabiendas.
+
+**El síntoma:** tras cada acción sale el toast de éxito y hay que esperar ~2 segundos a que aparezca el
+resultado. Pasa en casi toda la app, y más en `/ani-bis-e/[id]`.
+
+**La causa, verificada (2026-10-02):** las acciones **no** revalidan (se les quitó `revalidatePath` porque
+arrastraba la página al inicio y desmontaba el formulario antes de que se viera el aviso). En su lugar, el
+cliente dispara el toast y después llama a `router.refresh()`, que **vuelve a renderizar la página entera en el
+servidor**. En la consulta eso son unas **30 lecturas**, con un `Promise.all` grande y varias en cascada, contra
+un pool de **6 conexiones**. Dos segundos cuadra con eso.
+
+**Lo que NO es:** no es el `Link` que rehacía las lecturas en `/perfil`, y no es un `revalidatePath` duplicado.
+Las dos hipótesis se descartaron mirando el código.
+
+**Lo que ya se hizo, y es el límite de lo barato:** las lecturas de la consulta que dependen del mismo
+`treatmentId` pasaron a ir juntas en vez de encadenadas (2026-10-02). Más paralelismo del que cabe en seis
+conexiones es contraproducente: en `/pagos` ya se pagó ese precio (lecturas reportadas como caídas sin haber
+llegado a correr), y por eso existe `enTandas`.
+
+**El camino elegido: refrescar solo lo que cambió.** Partir la pantalla en piezas que se refresquen por su
+cuenta, de modo que registrar una decisión no vuelva a leer el diagnóstico, la historia clínica, las ventas y
+las remisiones.
+
+**La alternativa que se DESCARTÓ, con su razón (Santiago, 2026-10-02): actualización optimista.** Pintar el
+resultado antes de que vuelva el servidor es más barato, pero **miente mientras carga**, y en una pantalla
+clínica eso tiene su propio costo: un profesional que ve un dato y actúa sobre él antes de que esté confirmado.
+
+**Por qué importa aunque no bloquee:** dos segundos por acción, en una pantalla que alguien usa ocho horas, es
+de las cosas que cansan y que llevan a evitar el sistema.
+
+---
+
 ## PENDIENTE (2026-09-28) · El Dedicated Pooler de Supabase Pro
 
 **Diferido por decision de Santiago**, para no tocar la cadena de conexion el mismo dia del arranque.
