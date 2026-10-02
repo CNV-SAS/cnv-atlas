@@ -37,10 +37,14 @@ export function NutraceuticalsSection({
   evaluationId,
   protocol,
   canPrescribe,
+  ventaPosteriorAlNo,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   canPrescribe: boolean; // el actor es nutricionista
+  /** La venta pagada mas reciente POSTERIOR al "no los adquiere", si la hay. La calcula la pagina, que es
+   *  quien tiene las ventas de la consulta. */
+  ventaPosteriorAlNo?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(saveNutraceuticalsAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -182,6 +186,8 @@ export function NutraceuticalsSection({
                   ? (protocol.nutraceuticalDecision.note ?? "")
                   : null
               }
+              registradoEn={protocol.nutraceuticalDecision?.at ?? null}
+              ventaPosteriorEn={ventaPosteriorAlNo ?? null}
             />
           ) : null}
 

@@ -61,9 +61,12 @@ describe("el 'no' del paciente", () => {
   const boton = leer("src/modules/treatment/components/no-los-adquiere-form.tsx");
 
   it("se guarda sin migracion: decision 'no' con razon 'otra' y el motivo en la nota", () => {
-    expect(boton).toContain('value="no"');
-    expect(boton).toContain('value="otra"');
-    expect(boton).toContain('name="note"');
+    // SE MIRA LO QUE SE ENVIA, NO EL MARCADO (2026-10-02). Antes eran tres `<input type="hidden">`; al tener
+    // que dejar de ser un `<form>` (vivia anidado dentro del de la prescripcion) los campos se arman a mano.
+    // El HECHO que este caso vigila no cambio: los tres valores que hacen que no haga falta una migracion.
+    expect(boton).toMatch(/set\(\s*["']decision["']\s*,\s*["']no["']\s*\)/);
+    expect(boton).toMatch(/set\(\s*["']reason["']\s*,\s*["']otra["']\s*\)/);
+    expect(boton).toMatch(/set\(\s*["']note["']/);
   });
 
   it("y el schema lo acepta asi", () => {
