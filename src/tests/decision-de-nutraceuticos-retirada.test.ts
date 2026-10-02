@@ -82,3 +82,33 @@ describe("el 'no' del paciente", () => {
     expect(boton).toContain("yaRegistrado != null");
   });
 });
+
+// ═══ Y NINGUN GUARD PUEDE SEGUIR EXIGIENDO LA RESPUESTA RETIRADA (bloqueo del 2026-10-01) ═══
+//
+// LO QUE PASO: al quitar la pregunta quedo en el servicio de cobro un `t.decision !== "si"` que respondia
+// "Registra primero que el paciente adquiere los nutracéuticos". Como el formulario de si / no / pendiente ya
+// no existe, NADIE PUEDE PONER "si": el guard pedia una respuesta imposible y bloqueaba toda venta atada a
+// una consulta creada despues del 26 de septiembre. Santiago no pudo cobrar nada.
+//
+// Y NO SE REPONE DE OTRA FORMA, porque seria circular: al retirar la pregunta se decidio que el "si" SE
+// DERIVA DE LA VENTA. Exigirlo antes de vender es pedir la consecuencia como condicion de la causa.
+//
+// ES LA MISMA FAMILIA QUE LA VALVULA DE LO PRESCRITO: un guard correcto en su contexto que, al cambiar el
+// contexto, se vuelve un bloqueo sin salida. Y la unica forma de atraparlo es un caso que mire si el guard
+// volvio, porque tsc lo compila y los tests de servicio no pasan por ahi.
+describe("venta-en-consulta-sin-guard-retirado", () => {
+  it("el cobro no exige que alguien haya respondido que SI los adquiere", () => {
+    const servicio = sinComentarios(leer("src/modules/payments/services/payments-service.ts"));
+    expect(servicio, "volvio el guard que pide una respuesta que ya nadie puede dar").not.toContain(
+      'decision !== "si"',
+    );
+    expect(servicio).not.toContain("adquiere los nutracéuticos");
+  });
+
+  it("y un 'no los adquiere por ahora' tampoco bloquea la venta", () => {
+    // La compra es un hecho POSTERIOR que contradice esa foto, y es el dato mas nuevo. Bloquearla para
+    // proteger la foto seria perder lo que de verdad paso.
+    const servicio = sinComentarios(leer("src/modules/payments/services/payments-service.ts"));
+    expect(servicio).not.toMatch(/decision === "no"[\s\S]{0,200}CheckoutError/);
+  });
+});

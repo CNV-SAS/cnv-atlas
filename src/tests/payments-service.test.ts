@@ -505,14 +505,26 @@ describe("la venta que nace en TRATAMIENTO (Bloque 3, sesion 2)", () => {
     await expect(venta({ patientId: "p2" })).rejects.toThrow(/Tratamiento no encontrado/);
   });
 
-  it("sin el si del paciente no se vende", async () => {
-    vi.mocked(repo.getTratamientoParaVenta).mockResolvedValue({
-      patientId: "p1",
-      professionalId: "prof-1",
-      decision: "pendiente",
-      prescritos: ["n1"],
-    });
-    await expect(venta()).rejects.toThrow(/adquiere/);
+  // ═══ ESTE CASO CAMBIO DE SIGNO, Y ES EL BLOQUEO DEL 2026-10-01 ═══
+  //
+  // Exigia que sin un "si" explicito no se vendiera. La pregunta de si / no / pendiente SE RETIRO el 26 de
+  // septiembre, asi que nadie puede poner "si": el guard pedia una respuesta imposible y bloqueaba toda
+  // venta atada a una consulta nueva. Y no se repone de otra forma porque seria circular: al retirar la
+  // pregunta se decidio que el "si" SE DERIVA DE LA VENTA.
+  //
+  // Asi que ahora se comprueba lo contrario, y con los DOS estados que quedan vivos: una consulta sin
+  // decision (lo normal desde el 26) y una con el "no los adquiere por ahora", que fue una foto de ese dia y
+  // no puede bloquear un hecho posterior.
+  it("se vende aunque nadie haya respondido, porque esa pregunta ya no existe", async () => {
+    for (const decision of [null, "pendiente", "no"]) {
+      vi.mocked(repo.getTratamientoParaVenta).mockResolvedValue({
+        patientId: "p1",
+        professionalId: "prof-1",
+        decision,
+        prescritos: ["n1"],
+      } as never);
+      await expect(venta(), `decision=${decision} bloqueo la venta`).resolves.toBeDefined();
+    }
   });
 
   it("otro profesional no vende en la evaluacion ajena", async () => {

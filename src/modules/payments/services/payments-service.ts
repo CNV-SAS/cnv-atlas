@@ -95,15 +95,29 @@ async function resolveSale(
   // se puede invocar con cualquiera. Tres reglas, las mismas que tenia la entrega (`recordDespacho`):
   //   · el tratamiento es de ESTE paciente y el usuario lo ve (RLS);
   //   · lo vende el profesional de la evaluacion (o un admin);
-  //   · el paciente dijo que SI los adquiere, y lo vendido esta PRESCRITO. Lo no prescrito se vende en
-  //     `/pagos`, no se cuela en la venta de la consulta.
+  //   · y lo vendido esta PRESCRITO (hoy se avisa y se confirma, ver mas abajo).
+  //
+  // ═══ Y AQUI VIVIA UN TERCER GUARD QUE SE RETIRO (bloqueo de Santiago, 2026-10-01) ═══
+  //
+  // Exigia `t.decision === "si"` y respondia "Registra primero que el paciente adquiere los nutracéuticos".
+  // ESA PREGUNTA SE QUITO EL 26 DE SEPTIEMBRE: el formulario de si / no / pendiente ya no existe, asi que
+  // NADIE PUEDE PONER "si". El guard pedia una respuesta que no se puede dar, y bloqueaba toda venta atada a
+  // una consulta creada despues de ese dia. Santiago no podia cobrar nada.
+  //
+  // Y NO SE REPONE DE OTRA FORMA, porque seria circular: al retirar la pregunta se decidio que el "si" SE
+  // DERIVA DE LA PROPIA VENTA (si compro, lo adquirio). Exigirlo antes de vender es pedir la consecuencia
+  // como condicion de la causa.
+  //
+  // UN "no los adquiere por ahora" TAMPOCO BLOQUEA: fue una foto de ese dia, y la compra es un hecho
+  // posterior que la contradice. La venta es el dato mas nuevo; dejarla fuera para proteger la foto seria
+  // perder lo que de verdad paso. Las dos cosas quedan registradas, que es lo informativo.
+  //
+  // ES LA MISMA FAMILIA DE LA VALVULA DE LO PRESCRITO: un guard correcto en su contexto que, al cambiar el
+  // contexto, se vuelve un bloqueo sin salida. Candado: `venta-en-consulta-sin-guard-retirado`.
   if (input.treatmentId) {
     const t = await repo.getTratamientoParaVenta(input.treatmentId);
     if (!t || t.patientId !== input.patientId) throw new CheckoutError("Tratamiento no encontrado para este paciente.");
     if (propio && t.professionalId !== propio) throw new CheckoutError("No estás asignado a este paciente.");
-    if (t.decision !== "si") {
-      throw new CheckoutError("Registra primero que el paciente adquiere los nutracéuticos.");
-    }
     const prescritos = new Set(t.prescritos);
     if (input.items.some((it) => !prescritos.has(it.nutraceuticalId))) {
       // ═══ SE AVISA Y SE CONFIRMA, NO SE BLOQUEA (decisión de Santiago, 2026-09-30) ═══
