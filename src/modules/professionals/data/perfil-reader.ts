@@ -3,6 +3,8 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   brutoReconocido,
+  COLUMNA_PRODUCTO_DE_PRUEBA,
+  EMBED_LINEA_DE_PRUEBA,
   COLUMNA_EFECTIVO_NO_RECIBIDO,
   ESTADO_DEVUELTA,
   ESTADO_DISPUTA_PERDIDA,
@@ -77,9 +79,31 @@ export async function getPerfilDelIntegrante(
     .order("signed_at", { ascending: false });
   if (eF) throw new Error(`perfil-reader: firmas: ${eF.message}`);
 
+  // ── UNA REGLA SOLA PARA EL DINERO (Santiago, 2026-10-01) ──
+  //
+  // Su tablero decia 0 ventas del mes y su perfil 3.661.000 historico: la misma venta salia de una cifra y se
+  // quedaba en la otra. El dinero que nunca se facturo NO ES DINERO, aqui tampoco.
+  //
+  // Se traen las ventas marcadas UNA vez y se filtran las dos cosas en memoria, igual que en los tableros: un
+  // embed interno dejaria fuera en silencio las filas sin paciente.
+  const { data: ventasMarcadas } = await supabase
+    .from("transaction_items")
+    .select(EMBED_LINEA_DE_PRUEBA)
+    .eq(COLUMNA_PRODUCTO_DE_PRUEBA, true);
+  const ventaDePrueba = new Set(
+    ((ventasMarcadas ?? []) as unknown as { transaction_id: string }[]).map((r) => r.transaction_id),
+  );
+  const { data: pacientesMarcados } = await supabase
+    .from("patients")
+    .select("id")
+    .eq("cuenta_como_de_prueba", true);
+  const pacienteMarcado = new Set((pacientesMarcados ?? []).map((p) => p.id));
+  const esVentaReal = (ventaId: string | null | undefined, pacienteId: string | null | undefined) =>
+    !(ventaId != null && ventaDePrueba.has(ventaId)) && !(pacienteId != null && pacienteMarcado.has(pacienteId));
+
   const { data: revenue, error: eR } = await supabase
     .from("professional_revenue")
-    .select("commission_amount, settlement_id")
+    .select("commission_amount, settlement_id, transaction_id, transactions!inner(patient_id)")
     .eq("professional_id", professionalId);
   if (eR) throw new Error(`perfil-reader: revenue: ${eR.message}`);
 
@@ -91,7 +115,7 @@ export async function getPerfilDelIntegrante(
   const [{ data: pagadas }, { data: perdidas }, { data: devueltas }] = await Promise.all([
     supabase
       .from("transactions")
-      .select("id, amount")
+      .select("id, amount, patient_id")
       .eq("professional_id", professionalId)
       .eq("status", "paid")
       .or(FILTRO_FUERA_DE_REVISION)
@@ -110,7 +134,11 @@ export async function getPerfilDelIntegrante(
 
   let causado = 0;
   let liquidado = 0;
+  const uno = <T,>(e: T | T[] | null | undefined): T | undefined =>
+    Array.isArray(e) ? e[0] : (e ?? undefined);
   for (const r of revenue ?? []) {
+    const pac = uno(r.transactions as { patient_id: string | null } | null)?.patient_id ?? null;
+    if (!esVentaReal(r.transaction_id, pac)) continue;
     const monto = Number(r.commission_amount);
     causado += monto;
     if (r.settlement_id != null) liquidado += monto;
@@ -132,11 +160,11 @@ export async function getPerfilDelIntegrante(
     margen: { causado, liquidado, pendiente: causado - liquidado },
     vendido: {
       total: brutoReconocido({
-        pagadas: pagadas ?? [],
+        pagadas: (pagadas ?? []).filter((t) => esVentaReal(t.id, t.patient_id)),
         disputasPerdidas: (perdidas ?? []).map((r) => r.transaction_id),
         devoluciones: (devueltas ?? []).map((r) => r.debited_amount),
       }),
-      ventas: (pagadas ?? []).length,
+      ventas: (pagadas ?? []).filter((t) => esVentaReal(t.id, t.patient_id)).length,
     },
     completitud: completitudDelPerfil({
       personType: prof.tax_person_type,

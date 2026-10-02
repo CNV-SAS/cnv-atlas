@@ -156,6 +156,26 @@ describe("una venta de producto de prueba no cuenta en el dinero", () => {
     }
   });
 
+  // ═══ Y LAS CUATRO PANTALLAS DEL DINERO, no dos (Santiago, 2026-10-01) ═══
+  //
+  // SU TABLERO DECIA 0 VENTAS DEL MES Y SU HISTORIAL 3.661.000: la misma venta salia de una cifra y se
+  // quedaba en la otra, porque el filtro llego a los tableros y no a los dos lectores del HISTORIAL. Dos
+  // reglas para el mismo hecho, otra vez, y por la misma causa: el barrido no cubrio todas las capas.
+  //
+  // LA REGLA QUE QUEDA: el dinero que nunca se facturo NO ES DINERO, en ninguna pantalla.
+  it("el historial del integrante y su propio perfil aplican la misma regla que los tableros", () => {
+    const integrante = sinComentarios(readFileSync("src/modules/payments/data/integrante-reader.ts", "utf8"));
+    const perfil = sinComentarios(readFileSync("src/modules/professionals/data/perfil-reader.ts", "utf8"));
+    for (const [nombre, src] of [["integrante", integrante], ["perfil", perfil]] as const) {
+      expect(src, nombre + ": su dinero no excluye el producto de prueba").toMatch(/is_test|EMBED_LINEA_DE_PRUEBA/);
+      expect(src, nombre + ": su dinero no excluye el paciente marcado").toContain("cuenta_como_de_prueba");
+    }
+    // Y LA COMISION CON LA MISMA REGLA QUE LAS VENTAS: sin esto, el margen y las ventas de la MISMA tarjeta
+    // contaban universos distintos, que es como empezo todo esto.
+    expect(integrante).toContain("from professional_revenue r");
+    expect(perfil).toContain("esVentaReal");
+  });
+
   it("y el guard impide mezclarlas en la misma venta, que es lo que hace valida la exclusion entera", () => {
     // SIN EL GUARD, excluir la venta entera descontaria tambien la linea REAL. Las dos piezas se sostienen
     // la una a la otra: si alguien quita el guard, este filtro empieza a perder dinero de verdad.

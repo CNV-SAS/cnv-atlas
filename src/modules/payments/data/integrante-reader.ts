@@ -145,24 +145,51 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
   // CAUSADA, LIQUIDADA Y PENDIENTE de una sola consulta: las tres salen de las mismas filas y separarlas
   // abriria la puerta a que no sumen. Las reversiones son filas negativas, asi que restan solas.
   const comisiones = await db.execute<{ causada: string; liquidada: string; pendiente: string }>(sql`
-    select coalesce(sum(commission_amount), 0)::text as causada,
-           coalesce(sum(commission_amount) filter (where settlement_id is not null), 0)::text as liquidada,
-           coalesce(sum(commission_amount) filter (where settlement_id is null), 0)::text as pendiente
-      from professional_revenue
-     where professional_id = ${professionalId}::uuid`);
+    select coalesce(sum(r.commission_amount), 0)::text as causada,
+           coalesce(sum(r.commission_amount) filter (where r.settlement_id is not null), 0)::text as liquidada,
+           coalesce(sum(r.commission_amount) filter (where r.settlement_id is null), 0)::text as pendiente
+      from professional_revenue r
+     where r.professional_id = ${professionalId}::uuid
+       -- LA MISMA REGLA QUE LAS VENTAS: una comision de una venta que nunca se facturo no es un margen
+       -- generado. Sin esto, el margen y las ventas de esta misma tarjeta contaban universos distintos.
+       and not exists (
+         select 1 from transactions t
+           left join patients pa on pa.id = t.patient_id
+          where t.id = r.transaction_id
+            and (coalesce(pa.cuenta_como_de_prueba, false)
+                 or exists (select 1 from transaction_items ti2
+                              join nutraceuticals n2 on n2.id = ti2.nutraceutical_id
+                             where ti2.transaction_id = t.id and coalesce(n2.is_test, false))))`);
 
   // ── LO QUE HA VENDIDO EN TODA SU HISTORIA ──
   //
   // LA CUENTA LA HACE EL MODULO NEUTRO (`brutoReconocido`), el mismo que usan Inicio y Direccion: es lo
   // unico que impide que tres pantallas digan cifras distintas del mismo hecho. Lo que cambia aqui es el
   // ALCANCE (un profesional, toda su historia), no la aritmetica.
+  // ═══ UNA REGLA SOLA PARA EL DINERO (Santiago, 2026-10-01) ═══
+  //
+  // SU TABLERO DECIA 0 VENTAS ESTE MES Y SU HISTORIAL 3.661.000 CON 23. La misma venta salia del mes y se
+  // quedaba en el total: dos reglas para el mismo hecho, que es el defecto que mas veces hemos visto.
+  //
+  // LA REGLA QUE QUEDA: el dinero que nunca se facturo NO ES DINERO, aqui tampoco. Una venta con un producto
+  // de prueba o a un paciente de prueba no se facturo (el gate del ambiente lo impide), asi que contarla
+  // como "lo que ha vendido" es afirmar un ingreso que no existio.
+  //
+  // LO QUE SI SE QUEDA es su propia marca de profesional: esta pantalla es SU registro, y vaciarsela por ser
+  // una cuenta de demostracion le quitaria justo lo que tiene que poder demostrar. Esa diferencia con
+  // /direccion es la que explica el aviso de arriba de la pantalla.
   const pagadasDelProfesional = await db.execute<{ id: string; amount: string }>(sql`
     select t.id, t.amount::text as amount
       from transactions t
      where t.professional_id = ${professionalId}::uuid
        and t.status = 'paid'
        and t.cash_not_received_at is null
-       and (t.review_reason is null or t.review_resolution is not null)`);
+       and (t.review_reason is null or t.review_resolution is not null)
+       and not exists (
+         select 1 from patients pa where pa.id = t.patient_id and pa.cuenta_como_de_prueba)
+       and not exists (
+         select 1 from transaction_items ti2 join nutraceuticals n2 on n2.id = ti2.nutraceutical_id
+          where ti2.transaction_id = t.id and coalesce(n2.is_test, false))`);
   const perdidasDelProfesional = await db.execute<{ transaction_id: string }>(sql`
     select r.transaction_id from sale_reversals r
       join transactions t on t.id = r.transaction_id
