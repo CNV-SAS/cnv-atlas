@@ -53,11 +53,17 @@ abajo dice QUÉ falta; esto dice EN QUÉ ORDEN se hace.
 | 4 | **Separar entorno de pruebas y entorno real** | Sin documento propio todavía |
 | 5 | **Después: arquitectura para borrar data de prueba, y el módulo de inventario profundo con lo de Gildardo** | `BACKLOG.md` |
 
-**EL PASO 4 CAMBIA UNA DECISIÓN ANTERIOR, y queda dicho aquí para que no se lean las dos como vigentes.** La
-tabla de arriba (2026-09-26) dice *"No se separa. Lo que protege es por VENTA (`wompi_env`, `alegra_env`), no
-por proyecto"*. Eso sigue siendo verdad como **descripción de lo que hay hoy**, y era la decisión correcta para
-arrancar sin frenar la operación. Lo que cambia es que **la separación vuelve al plan**, después de producción
-real y antes de lo de fondo. La protección por venta no se quita: es lo que sostiene el paso 3.
+**EL PASO 4 SUPERA LA DECISIÓN DEL 2026-09-26, y la razón es lo importante** (Santiago la confirma el
+2026-10-02). La tabla de arriba dice *"No se separa. Lo que protege es por VENTA (`wompi_env`, `alegra_env`),
+no por proyecto"*. **La protección por venta fue suficiente para no emitir documentos falsos, y NO para no
+mezclar cifras.** Son dos problemas distintos, y solo se vio al chocar con el segundo: una semana entera se fue
+en separar data de prueba de data real **dentro de la misma base** (las migraciones 0199 a 0203 marcando
+profesional, paciente y venta de prueba, más el barrido de cada pantalla que contaba dinero o unidades), y eso
+es exactamente lo que un entorno aparte resuelve de raíz.
+
+Así que la decisión del 26 **queda superada, no matizada**: separar vuelve al plan, después de producción real.
+Lo que no se quita es la protección por venta: sigue siendo lo que sostiene el paso 3, y seguirá haciendo falta
+el día que haya dos entornos, porque una venta de prueba en el entorno real seguirá siendo posible.
 
 **Y el paso 5 explica por qué el saldo de la bodega central se arregló solo en la cifra (2026-10-02).** Hoy la
 recepción de una remesa suma al Integrante y nada resta de la bodega, así que el total de inventario de
