@@ -110,6 +110,38 @@ export function insumosDelMotorParaDiagnosticar(
   };
 }
 
+// ═══ Y EL GRITO DEL MOTOR SE TRADUCE, EN VEZ DE TUMBAR LA PANTALLA (Sentry, 2026-10-02) ═══
+//
+// LO QUE PASO: una medicion con `C=16.22` (el rango fisiologico es 0,3 a 8 nF) hizo que el motor LANZARA
+// `ClinicalInputError` desde dentro de `runEngine`, fuera de todo `try`. La accion no devolvio su mensaje: la
+// peticion murio con un 500, el render de los Server Components se cayo, y la pantalla quedo rota hasta que el
+// profesional navego a otro sitio. 19 eventos en Sentry: alguien lo intento diecinueve veces, porque lo unico
+// que veia era que no pasaba nada.
+//
+// LAS PUERTAS DE ARRIBA YA MIRAN LO QUE FALTA, pero NO los rangos, y por ahi se colo. Se podria agregar una
+// cuarta puerta que repita los rangos, y seria el error de siempre: la misma regla escrita dos veces, capaz de
+// divergir del motor. Asi que no se repite la regla, SE TRADUCE SU GRITO: el motor sigue siendo el unico que
+// decide, y esto convierte su excepcion en una frase que dice que hacer.
+//
+// POR QUE EL DETALLE TECNICO SE CONSERVA: "C=16.22 (rango 0.3-8)" es lo que el profesional le reenvia a CNV
+// para que alguien mire el equipo. Quitarlo por hacerlo amable dejaria el aviso sin nada accionable.
+export function mensajeDelInsumoClinico(e: { code?: string; message: string }, importada = false): string {
+  const detalle = e.message;
+  if (e.code === "INSUMOS_FUERA_DE_RANGO") {
+    return importada
+      ? `La medición trae un valor que no es posible en una persona: ${detalle} Casi siempre es un dato mal exportado del equipo, no una medición rara. Esta consulta se importó del HTML, así que no se puede volver a exportar: si el paciente tiene el archivo del Biody de esa toma, se monta la medición con él. No se puede corregir a mano: es un resultado del equipo.`
+      : `La medición trae un valor que no es posible en una persona: ${detalle} Casi siempre es un dato mal exportado del equipo, no una medición rara. Vuelve a exportar el archivo desde Biody Manager y re-impórtalo; si el valor sigue igual, repite la toma. No se puede corregir a mano: es un resultado del equipo.`;
+  }
+  if (e.code === "INSUMOS_MOTOR_AUSENTES") {
+    return `${detalle} Vuelve a exportar desde Biody Manager y re-importa el XLSX: son resultados del equipo y no se pueden escribir a mano.`;
+  }
+  if (e.code === "SEXO_AUSENTE" || e.code === "SEXO_DESCONOCIDO") {
+    return `${detalle} Revísalo en los datos del paciente antes de generar el diagnóstico.`;
+  }
+  // Un codigo que no conocemos: se dice lo que dijo el motor y se pide avisar, en vez de inventar una salida.
+  return `${detalle} Avísale a CNV con este mensaje: la medición no se puede usar para generar el diagnóstico.`;
+}
+
 // ═══ Y EL DIAGNOSTICO LAS EXIGE TAMBIEN (2026-09-22) ═══
 // Mismo criterio que el boton, para la medicion que no paso por el (el paciente importado del HTML). La
 // encuesta completa ya la exige el propio pipeline, con su mensaje por dominio.
