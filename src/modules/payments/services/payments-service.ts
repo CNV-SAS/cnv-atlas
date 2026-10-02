@@ -144,6 +144,35 @@ async function resolveSale(
 
   const catalog = await listNutraceuticals();
   const byId = new Map(catalog.map((n) => [n.id, n]));
+
+  // ═══ UNA VENTA ES DE PRUEBA O ES REAL, NUNCA LAS DOS (Santiago, 2026-10-01) ═══
+  //
+  // LO QUE PASO: vendio ADAPTO-STRESS (real, 107.100) y PRUEBA SMOKE BLOQUE 3 (de prueba, 11.900) en la
+  // MISMA venta. Las ventas del mes salieron 119.000 y la comisión 20.000, o sea la base de los dos juntos:
+  // el producto de prueba infló las dos cifras. El filtro de productos de prueba llegaba al INVENTARIO y no
+  // al dinero.
+  //
+  // ── POR QUÉ SE IMPIDE MEZCLAR EN VEZ DE CONTAR SOLO LA LÍNEA REAL ──
+  //
+  // Contar por línea suena más fino y es mucho más caro: el bruto se suma de `transactions.amount` (el total
+  // de la venta) en las TRES pantallas que comparten esa cuenta, y pasarlo a sumar líneas cambiaría el
+  // contador compartido y el reparto ya sellado. Mucho trabajo, y riesgo justo en el sitio donde menos
+  // conviene, para un caso que NO DEBERÍA EXISTIR: nadie le cobra de verdad a un paciente un producto que no
+  // existe.
+  //
+  // Con la venta homogénea, excluirla entera es exactamente lo mismo que excluir sus líneas, y las cifras
+  // siguen saliendo de donde salían.
+  const deLaPrueba = input.items.filter((it) => byId.get(it.nutraceuticalId)?.is_test === true);
+  if (deLaPrueba.length > 0 && deLaPrueba.length < input.items.length) {
+    const nombres = deLaPrueba
+      .map((it) => byId.get(it.nutraceuticalId)?.name ?? "(producto)")
+      .join(", ");
+    throw new CheckoutError(
+      `No se puede cobrar en la misma venta un producto de prueba (${nombres}) junto con productos reales: ` +
+        "la venta contaría entera en las cifras, o no contaría nada. Regístralas por separado.",
+    );
+  }
+
   const lines: NewOrderLine[] = [];
   let amount = 0;
   for (const it of input.items) {

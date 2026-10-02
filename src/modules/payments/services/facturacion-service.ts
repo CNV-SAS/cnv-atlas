@@ -529,6 +529,14 @@ export async function confirmarPagoDeTransferencia(
       "La factura todavía no está emitida. No se puede registrar el pago de una factura que no existe.",
     );
   }
+  // Y SIN SU ID NO HAY A QUE APUNTARLE EL PAGO (Santiago, 2026-10-01). El estado puede decir "emitida" y el
+  // id faltar (una emision a medias, o una venta retroactiva cuya factura la hizo otro). Sin esta linea se
+  // llamaba a Alegra con un id vacio y el fallo llegaba por un camino que no explica nada.
+  if (!venta.facturaDeAlegra) {
+    throw new ConfirmacionDeTransferenciaError(
+      "Esa factura no tiene identificador en Alegra, así que no hay dónde registrar el pago. Revísala en el panel de facturas.",
+    );
+  }
   // YA PAGADA: no se registra dos veces. Alegra lo rechazaría, pero el mensaje de aquí dice qué pasó.
   if (venta.pagoDeAlegra) {
     throw new ConfirmacionDeTransferenciaError("El pago de esta factura ya está registrado en Alegra.");
@@ -546,7 +554,7 @@ export async function confirmarPagoDeTransferencia(
     );
   }
 
-  const factura = await getAlegraInvoice(venta.facturaDeAlegra!);
+  const factura = await getAlegraInvoice(venta.facturaDeAlegra);
   const clientId = await resolverContacto(venta.patientId!, mapa.env);
   const pago = await registrarPagoSiFalta(
     clientId,
@@ -563,6 +571,18 @@ export async function confirmarPagoDeTransferencia(
 
   // QUIEN LO AFIRMO Y CUANDO, en la misma escritura que el id del pago: si fueran dos pasos, un fallo entre
   // ellos dejaria un pago registrado sin responsable, que es justo lo que estas columnas vienen a evitar.
-  await fr.marcarTransferenciaVerificada(transactionId, pago.paymentId, actor.id);
+  //
+  // ── Y SE MIRA SI ESCRIBIO, QUE ES UN DEFECTO MIO (Santiago, 2026-10-01) ──
+  //
+  // La escritura exige que el pago siga en nulo, para impedir el doble apunte, y yo IGNORABA su resultado:
+  // si otra persona lo confirmo entremedio, la condicion no escribia nada y el mensaje decia "pago
+  // registrado con tu nombre" igual. Un toast de exito sobre una escritura que no ocurrio es peor que un
+  // error, porque nadie vuelve a mirar.
+  const escrito = await fr.marcarTransferenciaVerificada(transactionId, pago.paymentId, actor.id);
+  if (!escrito) {
+    throw new ConfirmacionDeTransferenciaError(
+      "Alguien registró el pago de esta factura mientras confirmabas. No se registró dos veces: vuelve a cargar la pantalla.",
+    );
+  }
   return { paymentId: pago.paymentId };
 }

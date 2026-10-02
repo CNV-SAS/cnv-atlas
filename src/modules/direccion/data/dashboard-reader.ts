@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { desdeElArranque, fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
 import {
   brutoReconocido,
+  EMBED_LINEA_DE_PRUEBA,
   COLUMNA_EFECTIVO_NO_RECIBIDO,
   COLUMNA_PRODUCTO_DE_PRUEBA,
   EMBED_PRODUCTO_NO_DE_PRUEBA,
@@ -112,9 +113,26 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("cuenta_como_de_prueba", true);
   const pacienteDePrueba = new Set((pacientesDePrueba ?? []).map((p) => p.id));
   const noEsPacienteDePrueba = (id: string | null | undefined) => id == null || !pacienteDePrueba.has(id);
-  /** Una venta cuenta si NI su profesional NI su paciente estan marcados. */
-  const esOperacion = (profesional: string | null | undefined, paciente: string | null | undefined) =>
-    noEsDePrueba(profesional) && noEsPacienteDePrueba(paciente);
+  // ── Y FUERA LAS VENTAS DE PRODUCTO DE PRUEBA (Santiago, 2026-10-01) ──
+  //
+  // EL FILTRO LLEGABA AL INVENTARIO Y NO AL DINERO: una venta de un producto que no existe sumaba su precio
+  // al bruto y su base a la comision (119.000 y 20.000 en el smoke, cuando lo real eran 107.100 y 18.000).
+  // Y la venta es HOMOGENEA por el guard del servicio, asi que excluirla entera equivale a excluir sus
+  // lineas sin tocar el contador compartido.
+  const { data: lineasDePrueba } = await supabase
+    .from("transaction_items")
+    .select(EMBED_LINEA_DE_PRUEBA)
+    .eq(COLUMNA_PRODUCTO_DE_PRUEBA, true);
+  const ventaDePrueba = new Set(
+    ((lineasDePrueba ?? []) as unknown as { transaction_id: string }[]).map((r) => r.transaction_id),
+  );
+
+  /** Una venta cuenta si NI su profesional NI su paciente NI su producto estan marcados. */
+  const esOperacion = (
+    profesional: string | null | undefined,
+    paciente: string | null | undefined,
+    ventaId?: string | null,
+  ) => noEsDePrueba(profesional) && noEsPacienteDePrueba(paciente) && !(ventaId != null && ventaDePrueba.has(ventaId));
   const desdeElCorte = <T extends { gte: (c: string, v: string) => T }>(q: T, columna: string): T =>
     desde == null ? q : q.gte(columna, desde);
 
@@ -124,7 +142,7 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
       supabase.from("transactions").select("id, amount, professional_id, patient_id").eq("status", "paid").or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null),
       "created_at",
     ),
-    desdeElCorte(supabase.from("cnv_revenue").select("amount, transactions!inner(professional_id, patient_id)"), "created_at"),
+    desdeElCorte(supabase.from("cnv_revenue").select("amount, transaction_id, transactions!inner(professional_id, patient_id)"), "created_at"),
     // LAS DISPUTAS PERDIDAS SALEN DEL BRUTO (smoke del 3b, 2026-09-17). El ingreso de CNV y la comision ya bajaban
     // solas, porque se suman de filas de ingreso y la reversa agrega las negativas; el bruto no, porque suma las
     // VENTAS. Una venta cuyo contracargo se perdio es plata que CNV devolvio: contarla en el bruto diria que se
@@ -141,11 +159,11 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
     desdeElCorte(
       supabase
         .from("sale_reversals")
-        .select("debited_amount, transactions!inner(created_at, professional_id, patient_id)")
+        .select("debited_amount, transaction_id, transactions!inner(created_at, professional_id, patient_id)")
         .eq("state", ESTADO_DEVUELTA),
       "transactions.created_at",
     ),
-    desdeElCorte(supabase.from("professional_revenue").select("commission_amount, professional_id, transactions!inner(patient_id)"), "created_at"),
+    desdeElCorte(supabase.from("professional_revenue").select("commission_amount, professional_id, transaction_id, transactions!inner(patient_id)"), "created_at"),
     // SIN PRODUCTOS DE PRUEBA (smoke del Bloque 3, 2026-09-14): los "PRUEBA SMOKE BLOQUE 3" de cada smoke dejan
     // saldo que no se puede borrar (movimientos inmutables), y sumaban 18 unidades a la vitrina real.
     supabase
@@ -170,15 +188,17 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   const delPaciente = (fila: { transactions?: unknown }): string | null =>
     uno(fila.transactions as { patient_id: string | null } | null)?.patient_id ?? null;
 
-  const pagadas = (paid.data ?? []).filter((r) => esOperacion(r.professional_id, r.patient_id));
+  const pagadas = (paid.data ?? []).filter((r) => esOperacion(r.professional_id, r.patient_id, r.id));
   const paidRows = pagadas.filter(
     (r) => !new Set((perdidas.data ?? []).map((x) => x.transaction_id)).has(r.id),
   );
-  const cnvRows = (cnv.data ?? []).filter((r) => esOperacion(deLaVenta(r), delPaciente(r)));
+  const cnvRows = (cnv.data ?? []).filter((r) => esOperacion(deLaVenta(r), delPaciente(r), r.transaction_id));
   const commissionRows = (commissions.data ?? []).filter((r) =>
-    esOperacion(r.professional_id, delPaciente(r)),
+    esOperacion(r.professional_id, delPaciente(r), r.transaction_id),
   );
-  const devueltasRows = (devueltas.data ?? []).filter((r) => esOperacion(deLaVenta(r), delPaciente(r)));
+  const devueltasRows = (devueltas.data ?? []).filter((r) =>
+    esOperacion(deLaVenta(r), delPaciente(r), r.transaction_id),
+  );
   // EL INVENTARIO NO SE FILTRA POR PROFESIONAL, a proposito: las unidades de Demo son reales y estan en su
   // bodega. Sacarlas daria un numero que no cuadra con ningun conteo fisico. Ver `professionals/de-prueba`.
   // ═══ Y EL INVENTARIO TAMPOCO CUENTA LO DEL PROFESIONAL DE DEMOSTRACION (Santiago, 2026-10-01) ═══

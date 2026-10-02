@@ -134,3 +134,32 @@ describe("cada tarjeta cuenta sobre el universo que su rotulo promete", () => {
     expect(INICIO).toContain("esIntegrante");
   });
 });
+
+// ═══ Y EL PRODUCTO DE PRUEBA NO INFLA EL DINERO (Santiago, 2026-10-01) ═══
+//
+// EL HUECO: el filtro de productos de prueba llegaba al INVENTARIO y no a las ventas ni a la comision. En el
+// smoke, una venta con ADAPTO-STRESS (real, 107.100) y PRUEBA SMOKE BLOQUE 3 (de prueba, 11.900) dio 119.000
+// de ventas y 20.000 de comision; lo real eran 107.100 y 18.000.
+//
+// LA DECISION: una venta es de prueba O real, NUNCA LAS DOS (guard en el servicio), y una venta de prueba no
+// cuenta en el dinero. Contar por linea seria mas fino y mucho mas caro: el bruto se suma del IMPORTE DE LA
+// VENTA en las tres pantallas que comparten la cuenta, y pasarlo a sumar lineas cambiaria el contador
+// compartido y el reparto ya sellado, para un caso que no deberia existir.
+describe("una venta de producto de prueba no cuenta en el dinero", () => {
+  const INICIO2 = sinComentarios(readFileSync("src/modules/dashboard/data/tablero-reader.ts", "utf8"));
+  const DIRECCION2 = sinComentarios(readFileSync("src/modules/direccion/data/dashboard-reader.ts", "utf8"));
+
+  it("las dos pantallas excluyen la venta, con el select compartido", () => {
+    for (const [nombre, src] of [["Inicio", INICIO2], ["Direccion", DIRECCION2]] as const) {
+      expect(src, nombre + " no lee las lineas de prueba").toContain("EMBED_LINEA_DE_PRUEBA");
+      expect(src, nombre + " no excluye la venta de prueba").toContain("ventaDePrueba");
+    }
+  });
+
+  it("y el guard impide mezclarlas en la misma venta, que es lo que hace valida la exclusion entera", () => {
+    // SIN EL GUARD, excluir la venta entera descontaria tambien la linea REAL. Las dos piezas se sostienen
+    // la una a la otra: si alguien quita el guard, este filtro empieza a perder dinero de verdad.
+    const servicio = sinComentarios(readFileSync("src/modules/payments/services/payments-service.ts", "utf8"));
+    expect(servicio).toContain("junto con productos reales");
+  });
+});

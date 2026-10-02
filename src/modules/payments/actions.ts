@@ -313,12 +313,17 @@ export async function registerCashSaleFormAction(
       }
     }
 
+    // EL MEDIO SE LEE UNA VEZ Y SE USA EN LOS DOS SITIOS (Santiago, 2026-10-01). El dato se guardaba bien y
+    // el MENSAJE decia siempre "en efectivo": eligio transferencia y le dijeron efectivo. Es cosmetico, pero
+    // un aviso que nombra el medio equivocado invita a "corregir" un dato que estaba bien, y eso cuesta mas
+    // que no decir nada. Con una sola variable no pueden volver a discrepar.
+    const canal = String(formData.get("canal") ?? "") === "transferencia" ? "transferencia" : "efectivo";
     const { amount, linksAnulados } = await registerCashSale(sale, user, idempotencyKey, {
       anularLinksQueComparten: anularLinks,
       // COMO LLEGO LA PLATA (2026-09-25). Las dos nacen pagadas y ninguna pasa por la pasarela, pero no son
       // lo mismo para la DIAN ni para la cuenta del pago: registrar una transferencia como efectivo diria
       // que el dinero sigue en el bolsillo del Integrante cuando ya esta en una cuenta.
-      canal: String(formData.get("canal") ?? "") === "transferencia" ? "transferencia" : "efectivo",
+      canal,
     });
     revalidatePath("/pagos");
     const evaluationId = String(formData.get("evaluationId") ?? "");
@@ -326,7 +331,7 @@ export async function registerCashSaleFormAction(
     return {
       ...vacio,
       success:
-        `Venta en efectivo registrada por ${amount.toLocaleString("es-CO")} COP.` +
+        `Venta registrada por ${amount.toLocaleString("es-CO")} COP, cobrada ${canal === "transferencia" ? "por transferencia" : "en efectivo"}.` +
         (linksAnulados > 0 ? ` Se anuló ${linksAnulados === 1 ? "el link de pago pendiente" : `${linksAnulados} links de pago pendientes`}.` : ""),
     };
   } catch (e) {
