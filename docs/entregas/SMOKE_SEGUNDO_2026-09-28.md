@@ -676,3 +676,87 @@ SELECT m.created_at::date AS dia, l.name AS ubicacion, m.type, m.delta, m.reason
   JOIN inventory_locations l ON l.id = m.location_id
  WHERE n.name = 'LUVIA' ORDER BY m.created_at;
 ```
+
+---
+
+# R14 · Descartar un pendiente que no tiene salida, y las dos preguntas del inventario
+
+**Migración 0205. Aplícala y vuelve a cargar `/pagos`.**
+
+## 1. El descarte, que es lo que pediste
+
+De los seis pendientes que manda el correo de las 7 y las 5, **dos no se pueden cerrar con ninguna acción en
+Atlas**:
+
+- **Cobrada sin saldo.** Se arregla contando la vitrina, fuera de Atlas. La venta se queda con ese estado para
+  siempre.
+- **Pagada y sin entregar.** El producto salía de la bodega. Si ya se entregó por fuera, nadie va a marcar un
+  despacho que no ocurrió aquí.
+
+Y "en gestión hasta" no servía: solo **posponía**, y su lista de tipos ni siquiera incluía estos dos.
+
+Ahora hay un panel nuevo en `/pagos`, **Pendientes sin salida**, con un botón **Descartar** que pide el motivo.
+Lo escribe quien ve el ingreso (administración y dirección; soporte ve el panel y no descarta), queda firmado
+con su nombre y en el registro de auditoría, y el pendiente deja de aparecer en el correo y en la franja de
+arriba.
+
+**Lo que NO hace, a propósito:** no esconde la venta. La fila sigue en el panel, apagada, diciendo quién la
+descartó, cuándo y por qué, con un botón para **reactivarla**.
+
+## 2. Y caduca si el hecho cambia
+
+Esto es lo que lo hace seguro, y es lo que añadí sobre lo que pediste. **Un descarte es un juicio sobre el
+hecho tal como estaba**, no un permiso permanente sobre esa venta. Si la venta cambia después (se le agrega una
+línea, cambia el importe, el descuento se reintenta y vuelve a fallar por otra razón, cambia de ubicación o
+entra en revisión), **el descarte caduca y el pendiente vuelve**, con el aviso de que se había descartado y de
+que el hecho cambió. Quien lo mire puede volver a descartarlo con un motivo nuevo; el anterior queda en el
+historial.
+
+Sin esta pieza, descartar una vez apagaría el aviso de esa venta **para siempre**, y el fallo sería silencioso.
+
+**Compruébalo así:** descarta la venta de LUVIA que dice "no alcanzó el saldo". Tiene que desaparecer del
+correo y del aviso de arriba, y seguir visible en el panel con tu motivo. Después tócale algo (reintenta el
+descuento) y tiene que volver, marcada como "se había descartado, pero la venta cambió después".
+
+## 3. Tu pregunta: ¿puedes mandar ADAPTO-STRESS sin saldo en central?
+
+**Sí. La remesa no mira el saldo de central y no lo descuenta.** Una remesa **declara** un envío; el saldo del
+Integrante sube cuando **él confirma** la recepción. Está escrito así desde la migración 0052, a propósito. Así
+que no te va a bloquear.
+
+**Pero encontré algo que sí es un hueco, y es una decisión tuya, no mía:** cuando el Integrante confirma la
+recepción, **nada descuenta de central**. Se escribe el movimiento que le suma a él y no se escribe el que le
+resta a la bodega. Por eso el total de inventario de `/direccion` **crece con cada recepción**, y es
+exactamente por lo que viste ADAPTO pasar de 1.810 a 1.900 al recibir 90 unidades: las 90 se sumaron sin
+restarse de ningún lado.
+
+Las dos salidas posibles:
+
+- **(a) Que la recepción descuente central.** La remesa pasa a ser un traslado de verdad: lo que sale de la
+  bodega deja de estar en la bodega, el total no crece y central puede quedar en negativo si se manda más de lo
+  que hay (que es información, no un error).
+- **(b) Que el número de central sea informativo.** Entonces hay que quitarlo del total de `/direccion`, porque
+  hoy ese total suma dos cosas distintas y se lee como una.
+
+**No la tomo yo:** cambia una cifra que ya estás mirando y toca el saldo de la bodega. Dime cuál y la
+construyo.
+
+## 4. Tu otra pregunta: qué se perdió al cargar el inventario por SQL
+
+Lo verifiqué contra el script (`scripts/carga-inventario-inicial.sql`, sección 4) y la respuesta es doble:
+
+**(a) ¿Quedó registrada la remesa, o solo el saldo?** Solo las **recepciones**. El script escribe un movimiento
+`recepcion` por Integrante y producto, con su lote y su razón ("Carga inicial: primera tanda del laboratorio,
+entregada al Integrante antes del corte de arranque"), y otro para el resto que quedó en central, calculado
+como recibido-del-laboratorio menos entregado. **No hay ninguna remesa declarada** contra la que cotejar.
+
+**(b) ¿Hay constancia de que cada uno recibió lo que recibió?** Hay **rastro de custodia** (qué producto, qué
+lote, cuántas unidades, con fecha y motivo), y no hay **firma**: nadie confirmó nada, el movimiento se escribió
+por ellos. El propio sistema ya lo dice de esas filas: una recepción sin remesa de respaldo es una **"recepción
+no respaldada"**, y aparece así en el panel de CNV. El comentario del script lo deja escrito: *"`remesa_id` va
+nulo a propósito... y está bien: es verdad"*.
+
+**Así que el camino normal habría dado una cosa más, y solo una: la firma del Integrante.** Si quieres tenerla
+para esas siete cargas, se puede reconstruir (declarar las remesas con fecha de entonces y pedirles que
+confirmen) **sin mover ningún saldo**, porque una remesa no mueve inventario. Es trabajo operativo suyo, no
+código: dime si lo quieres y preparo las declaraciones.

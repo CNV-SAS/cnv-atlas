@@ -32,6 +32,24 @@ export type TipoDePendiente =
   | "sin_saldo";
 export type Franja = "am" | "pm";
 
+// ═══ LOS DOS QUE NO TIENEN SALIDA (0205) ═══
+//
+// Los otros cuatro se cierran haciendo algo en Atlas (resolver la revision, emitir la factura, registrar la nota
+// credito). Estos dos NO: "sin saldo" se arregla contando la vitrina, fuera de Atlas, y la venta se queda con ese
+// estado para siempre; "pagada sin despachar" se entrego por fuera y nadie va a marcar un despacho que no
+// ocurrio aqui. Por eso son los unicos que se pueden DESCARTAR con motivo, y el descarte caduca si el hecho
+// cambia. La lista vive en este modulo neutro porque la usan la pantalla, la accion y el lector.
+export const TIPOS_SIN_SALIDA = ["sin_saldo", "por_despachar"] as const;
+export type TipoSinSalida = (typeof TIPOS_SIN_SALIDA)[number];
+
+/** Lo que se descarto y si el hecho cambio despues (entonces el descarte ya no lo cubre). */
+export type DescarteDelPendiente = {
+  motivo: string;
+  por: string | null;
+  en: string;
+  caducado: boolean;
+};
+
 export type Pendiente = {
   tipo: TipoDePendiente;
   /** Distingue dos momentos del mismo pendiente (el estado de la reversa). Ver `clave`. */
@@ -52,6 +70,11 @@ export type Pendiente = {
   enGestionHasta: string | null; // AAAA-MM-DD
   enGestionNota: string | null;
   enGestionPor: string | null;
+  /**
+   * El descarte vigente, solo para los tipos sin salida. El correo NO lo mira: el lector ya excluye los
+   * descartados no caducados, asi que si aqui llega uno, es porque el panel lo pidio para mostrarlo.
+   */
+  descarte?: DescarteDelPendiente | null;
 };
 
 /**

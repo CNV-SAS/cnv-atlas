@@ -1703,6 +1703,37 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"pending_discards": {
+                  Row: {
+                    "created_at": string,"created_by": string,"fact_fingerprint": string,"id": string,"kind": string,"reason": string,"revoked_at": string | null,"revoked_by": string | null,"transaction_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"fact_fingerprint": string,"id"?: string,"kind": string,"reason": string,"revoked_at"?: string | null,"revoked_by"?: string | null,"transaction_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"fact_fingerprint"?: string,"id"?: string,"kind"?: string,"reason"?: string,"revoked_at"?: string | null,"revoked_by"?: string | null,"transaction_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pending_discards_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pending_discards_revoked_by_fkey"
+      columns: ["revoked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pending_discards_transaction_id_fkey"
+      columns: ["transaction_id"]
+isOneToOne: false
+      referencedRelation: "transactions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"pending_followups": {
                   Row: {
                     "created_at": string,"created_by": string,"id": string,"kind": string,"note": string,"transaction_id": string,"until_date": string
@@ -2753,6 +2784,9 @@ isOneToOne: false
                            },
 "has_role":
 { Args: { "p_role": Database["public"]['Enums']["app_role"] }; Returns: boolean
+                           },
+"huella_del_pendiente":
+{ Args: { "p_kind": string,"p_tx": string }; Returns: string
                            },
 "is_own_professional_profile":
 { Args: { "p_professional_id": string }; Returns: boolean

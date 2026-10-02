@@ -1,4 +1,5 @@
-import { boolean, date, index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, date, index, integer, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk } from "./_columns";
 import { profiles } from "./organizations";
@@ -40,6 +41,39 @@ export const pendingFollowups = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("pending_followups_vigente_idx").on(t.kind, t.transactionId, t.createdAt.desc())],
+);
+
+/**
+ * DESCARTAR UN PENDIENTE QUE NO TIENE SALIDA (0205). Dos de los seis tipos no se pueden cerrar con ningun acto
+ * en Atlas ("sin saldo" se arregla contando la vitrina; "pagada sin despachar" se entrego por fuera), y "en
+ * gestion hasta" solo pospone. El descarte los calla en el correo CON MOTIVO Y RESPONSABLE, y CADUCA: guarda la
+ * huella del hecho y deja de aplicar si el hecho cambia. La huella la calcula `huella_del_pendiente` en la base,
+ * nunca este lado: calculada en dos sitios, divergiria y el descarte no aplicaria o no caducaria nunca.
+ */
+export const pendingDiscards = pgTable(
+  "pending_discards",
+  {
+    id: pk(),
+    kind: text("kind").notNull(), // sin_saldo | por_despachar
+    transactionId: uuid("transaction_id")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    factFingerprint: text("fact_fingerprint").notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "restrict" }),
+    createdAt: createdAt(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => profiles.id, { onDelete: "restrict" }),
+  },
+  // UNO VIGENTE por (tipo, venta). PARCIAL a proposito: los revocados se acumulan y son el historial, asi que
+  // sin la condicion este indice prohibiria descartar dos veces la misma venta en toda su vida.
+  (t) => [
+    uniqueIndex("pending_discards_uno_vigente")
+      .on(t.kind, t.transactionId)
+      .where(sql`revoked_at is null`),
+  ],
 );
 
 /** Cada envio del resumen: lo NUEVO se mide contra el anterior, y un dia y una franja se envian una vez. */
