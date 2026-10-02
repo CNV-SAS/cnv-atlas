@@ -81,7 +81,12 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
       // señal de que un campo hacia dos trabajos. El resumen es del modelo y no se edita
       // (`resumen-diagnostico.tsx`); lo que el profesional escribe son las OBSERVACIONES, que ya existian
       // y viven en `treatment_notes`.
-      "src/modules/treatment/components/nutra-decision-section.tsx",
+      // ERA `nutra-decision-section.tsx` HASTA EL 2026-10-02, y ese cambio importa: ese componente era la
+      // pantalla de la pregunta retirada el 2026-09-26, y llevaba meses SIN RENDERIZARSE EN NINGUN SITIO.
+      // O sea que este caso vigilaba una superficie que ya no existia para nadie. Se borro el componente
+      // (traia de vuelta el guard de la respuesta que nadie puede dar, dos veces) y la superficie viva de
+      // esa nota es el boton de "no los adquiere por ahora", que es donde el profesional la escribe hoy.
+      "src/modules/treatment/components/no-los-adquiere-form.tsx",
       "src/modules/treatment/components/treatment-panel.tsx",
       "src/modules/nutraceuticals/components/mi-conteo-form.tsx",
     ];
@@ -126,7 +131,7 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
     //
     // EL CRITERIO DEL DIAGNÓSTICO YA NO ESTÁ AQUÍ (2026-09-08): dejó de ser una superficie de escritura.
     // Lo escrito no se perdió, se muestra en solo lectura en la cuarta subpestaña.
-    const nutra = readFileSync("src/modules/treatment/components/nutra-decision-section.tsx", "utf8");
+    const nutra = readFileSync("src/modules/treatment/components/no-los-adquiere-form.tsx", "utf8");
     const conteo = readFileSync("src/modules/nutraceuticals/components/mi-conteo-form.tsx", "utf8");
     expect(nutra).toContain('name="note"');
     expect(conteo).toContain('name="note"');
