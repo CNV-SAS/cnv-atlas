@@ -69,7 +69,17 @@ atlas-exportacion-*.json
 
 # Exports del Biody Manager que Santiago deja para diagnosticar: traen nombre, correo y medidas de
 # pacientes (aunque sean de prueba). Se miran en local y NUNCA se versionan.
-docs/entregas/exports/*.xlsx
+#
+# LA REGLA ES POR EL ARCHIVO, NO POR LA CARPETA (2026-10-02). Decia solo `docs/entregas/exports/`, y el
+# dia que llego un caso de una Integrante el archivo se dejo en `docs/entregas/dudas/`: quedaba fuera de
+# la regla y a un `git add -A` de publicarse. Una regla atada a una carpeta deja de valer en cuanto
+# alguien crea la siguiente, y aqui lo que se protege es dato de salud de una persona real.
+docs/entregas/**/*.xlsx
+docs/entregas/**/*.xls
+docs/entregas/**/*.csv
+# Y las capturas de pantalla de un caso: una tabla de composicion corporal es dato clinico aunque sea
+# una imagen. Las de cotejo visual ya estan arriba; esto cubre el resto de entregas.
+docs/entregas/dudas/**
 
 # Prototipos HTML que entrega Gildardo. NO van al repositorio, por dos razones:
 #   · son prototipos (el v10 pesa 1,46 MB) y Santiago ya planea depurar los que hay;
