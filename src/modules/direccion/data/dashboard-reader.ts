@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { desdeElArranque, fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
 import {
   brutoReconocido,
-  EMBED_LINEA_DE_PRUEBA,
+  COLUMNA_VENTA_DE_PRUEBA,
   COLUMNA_EFECTIVO_NO_RECIBIDO,
   COLUMNA_PRODUCTO_DE_PRUEBA,
   EMBED_PRODUCTO_NO_DE_PRUEBA,
@@ -104,35 +104,19 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   const dePrueba = new Set((filasDePrueba ?? []).map((p) => p.id));
   const noEsDePrueba = (id: string | null | undefined) => id == null || !dePrueba.has(id);
 
-  // ── Y FUERA EL PACIENTE DE PRUEBA (Santiago, 2026-10-01) ──
+  // ── Y LAS VENTAS QUE NO CUENTAN SALEN DE UNA SOLA COLUMNA (0203) ──
   //
-  // EL FILTRO ESTABA A MEDIAS, y es el mismo defecto del inventario: `patients.is_test` existia desde
-  // septiembre y solo gateaba la FACTURACION y los conteos de pacientes. Sus VENTAS contaban igual que las
-  // de un paciente real, asi que marcar un paciente sacaba su diagnostico de las cifras y dejaba su dinero
-  // dentro. Marcar solo excluye donde alguien escribio que excluya.
-  const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("cuenta_como_de_prueba", true);
-  const pacienteDePrueba = new Set((pacientesDePrueba ?? []).map((p) => p.id));
-  const noEsPacienteDePrueba = (id: string | null | undefined) => id == null || !pacienteDePrueba.has(id);
-  // ── Y FUERA LAS VENTAS DE PRODUCTO DE PRUEBA (Santiago, 2026-10-01) ──
-  //
-  // EL FILTRO LLEGABA AL INVENTARIO Y NO AL DINERO: una venta de un producto que no existe sumaba su precio
-  // al bruto y su base a la comision (119.000 y 20.000 en el smoke, cuando lo real eran 107.100 y 18.000).
-  // Y la venta es HOMOGENEA por el guard del servicio, asi que excluirla entera equivale a excluir sus
-  // lineas sin tocar el contador compartido.
-  const { data: lineasDePrueba } = await supabase
-    .from("transaction_items")
-    .select(EMBED_LINEA_DE_PRUEBA)
-    .eq(COLUMNA_PRODUCTO_DE_PRUEBA, true);
-  const ventaDePrueba = new Set(
-    ((lineasDePrueba ?? []) as unknown as { transaction_id: string }[]).map((r) => r.transaction_id),
-  );
+  // Aqui vivian tres filtros (profesional, paciente y producto), cada uno con su consulta. La regla ahora
+  // vive en la base y esto solo la lee: es lo que impide que esta pantalla y otra vuelvan a discrepar.
+  const { data: ventasMarcadas } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq(COLUMNA_VENTA_DE_PRUEBA, true);
+  const ventaDePrueba = new Set((ventasMarcadas ?? []).map((t) => t.id));
 
-  /** Una venta cuenta si NI su profesional NI su paciente NI su producto estan marcados. */
-  const esOperacion = (
-    profesional: string | null | undefined,
-    paciente: string | null | undefined,
-    ventaId?: string | null,
-  ) => noEsDePrueba(profesional) && noEsPacienteDePrueba(paciente) && !(ventaId != null && ventaDePrueba.has(ventaId));
+  /** Una venta cuenta si la base no la marco como de prueba. */
+  const esOperacion = (ventaId: string | null | undefined) =>
+    !(ventaId != null && ventaDePrueba.has(ventaId));
   const desdeElCorte = <T extends { gte: (c: string, v: string) => T }>(q: T, columna: string): T =>
     desde == null ? q : q.gte(columna, desde);
 
@@ -183,22 +167,14 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   // Es la misma razon por la que el corte de fecha va a todas a la vez.
   const uno = <T,>(e: T | T[] | null | undefined): T | undefined =>
     Array.isArray(e) ? e[0] : (e ?? undefined);
-  const deLaVenta = (fila: { transactions?: unknown }): string | null =>
-    uno(fila.transactions as { professional_id: string | null } | null)?.professional_id ?? null;
-  const delPaciente = (fila: { transactions?: unknown }): string | null =>
-    uno(fila.transactions as { patient_id: string | null } | null)?.patient_id ?? null;
 
-  const pagadas = (paid.data ?? []).filter((r) => esOperacion(r.professional_id, r.patient_id, r.id));
+  const pagadas = (paid.data ?? []).filter((r) => esOperacion(r.id));
   const paidRows = pagadas.filter(
     (r) => !new Set((perdidas.data ?? []).map((x) => x.transaction_id)).has(r.id),
   );
-  const cnvRows = (cnv.data ?? []).filter((r) => esOperacion(deLaVenta(r), delPaciente(r), r.transaction_id));
-  const commissionRows = (commissions.data ?? []).filter((r) =>
-    esOperacion(r.professional_id, delPaciente(r), r.transaction_id),
-  );
-  const devueltasRows = (devueltas.data ?? []).filter((r) =>
-    esOperacion(deLaVenta(r), delPaciente(r), r.transaction_id),
-  );
+  const cnvRows = (cnv.data ?? []).filter((r) => esOperacion(r.transaction_id));
+  const commissionRows = (commissions.data ?? []).filter((r) => esOperacion(r.transaction_id));
+  const devueltasRows = (devueltas.data ?? []).filter((r) => esOperacion(r.transaction_id));
   // EL INVENTARIO NO SE FILTRA POR PROFESIONAL, a proposito: las unidades de Demo son reales y estan en su
   // bodega. Sacarlas daria un numero que no cuadra con ningun conteo fisico. Ver `professionals/de-prueba`.
   // ═══ Y EL INVENTARIO TAMPOCO CUENTA LO DEL PROFESIONAL DE DEMOSTRACION (Santiago, 2026-10-01) ═══

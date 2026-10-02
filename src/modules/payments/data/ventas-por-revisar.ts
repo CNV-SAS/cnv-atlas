@@ -36,7 +36,7 @@ export type VentaPorRevisar = {
   efectivo: "si" | "sin_efectivo" | "no_coinciden";
 };
 
-export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
+export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<VentaPorRevisar[]> {
   const filas = await db.execute<{
     id: string;
     amount: string;
@@ -87,6 +87,18 @@ export async function listarVentasPorRevisar(): Promise<VentaPorRevisar[]> {
       from transactions t
       left join profiles p on p.id = t.review_professional_version_by
      where t.status = 'paid'
+       -- ═══ EL MATIZ DE ESTA BANDEJA, Y NO ES EL MISMO QUE EN LAS DEMAS (Santiago, 2026-10-02) ═══
+       --
+       -- Las otras tres ocultan lo de prueba con la columna de la venta. Esta NO puede usarla para el caso
+       -- de SIN SALDO: si el producto era REAL, el descuento de inventario tambien fue real y la vitrina
+       -- esta descuadrada DE VERDAD, aunque el paciente o el profesional sean de prueba. Esconderlo
+       -- esconderia un problema fisico.
+       --
+       -- Asi que mira el PRODUCTO: una venta cuyas lineas son todas de producto de prueba no movio nada.
+       and (${incluirDePrueba} or not exists (
+         select 1 from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
+          where ti.transaction_id = t.id and coalesce(n.is_test, false)
+       ))
        and (
          (t.review_reason is not null and t.review_resolution is null)
          -- LA VENTANA MIRA CUANDO SE REGISTRO, NO CUANDO OCURRIO (Santiago, 2026-09-30).

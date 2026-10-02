@@ -360,6 +360,7 @@ export async function listarVentasSinDocumento(
   // CONSULTABLE POR DIA (paso 6 del 3.4): solo las ventas de ese dia CIVIL de Colombia, "AAAA-MM-DD". Sin dia,
   // todas. Es el reporte que contabilidad quiere en cero al cierre de cada dia.
   dia: string | null = null,
+  incluirDePrueba = false,
 ): Promise<
   {
     id: string;
@@ -392,6 +393,9 @@ export async function listarVentasSinDocumento(
      where status = 'paid'
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
+       -- NADA DE PRUEBA EN LA BANDEJA (0203): una factura que nunca se va a emitir, porque la venta es de
+       -- prueba, no es un pendiente de nadie. Una bandeja que mezcla las dos cosas se deja de leer.
+       and (${incluirDePrueba} or not cuenta_como_de_prueba)
        and (${dia}::date is null or (created_at at time zone 'America/Bogota')::date = ${dia}::date)
      order by created_at desc
      limit ${limite}`);

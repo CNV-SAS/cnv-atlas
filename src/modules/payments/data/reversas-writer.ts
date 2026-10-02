@@ -139,7 +139,7 @@ export type ReversaEnPantalla = Reversa & {
 };
 
 /** Las reversas que todavia piden algo, y las resueltas recientes, para el panel. */
-export async function listarReversas(limite = 50): Promise<ReversaEnPantalla[]> {
+export async function listarReversas(limite = 50, incluirDePrueba = false): Promise<ReversaEnPantalla[]> {
   const filas = await db.execute<{
     id: string;
     transaction_id: string;
@@ -177,11 +177,14 @@ export async function listarReversas(limite = 50): Promise<ReversaEnPantalla[]> 
       join transactions t on t.id = r.transaction_id
       left join profiles pa on pa.id = r.opened_by
       left join profiles pr on pr.id = r.resolved_by
-     where r.state = 'abierta'
+     -- NADA DE PRUEBA, salvo que se pida verlo (0203). Una reversa de una venta inventada no es un
+     -- pendiente de nadie, y en la bandeja donde se emiten notas credito el ruido cuesta mas que en otras.
+     where (${incluirDePrueba} or not t.cuenta_como_de_prueba)
+       and (r.state = 'abierta'
         -- LAS DOS QUE PIDEN NOTA CREDITO, no solo la perdida: una devolucion tambien corrige una factura ya
         -- emitida. Sin esto desaparecia del panel a los 30 dias con su nota credito sin emitir.
         or (r.state in ('perdida', 'devuelta') and r.credit_note_manual_number is null)
-        or r.resolved_at > now() - interval '30 days'
+        or r.resolved_at > now() - interval '30 days')
      order by r.opened_at desc
      limit ${limite}`);
   return filas.map((f) => ({

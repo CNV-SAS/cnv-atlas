@@ -3,7 +3,7 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   brutoReconocido,
-  EMBED_LINEA_DE_PRUEBA,
+  COLUMNA_VENTA_DE_PRUEBA,
   COLUMNA_EFECTIVO_NO_RECIBIDO,
   COLUMNA_PRODUCTO_DE_PRUEBA,
   EMBED_PRODUCTO_NO_DE_PRUEBA,
@@ -257,23 +257,14 @@ export async function getTablero(userId: string): Promise<Tablero> {
     })
     .filter((c) => c.evaluationId !== "");
 
-  // LOS PACIENTES DE PRUEBA, por id: igual que en Direccion, y con el mismo cuidado con el nulo (una venta
-  // puede no tener paciente, y un embed interno la dejaria fuera en silencio).
-  const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("cuenta_como_de_prueba", true);
-  // Y LAS VENTAS DE PRODUCTO DE PRUEBA, por lo mismo que en Direccion: el filtro llegaba al inventario y no
-  // al dinero, asi que su mes salia inflado con lo que vendio para probar.
-  const { data: lineasDePrueba } = await supabase
-    .from("transaction_items")
-    .select(EMBED_LINEA_DE_PRUEBA)
-    .eq(COLUMNA_PRODUCTO_DE_PRUEBA, true);
-  const ventaDePrueba = new Set(
-    ((lineasDePrueba ?? []) as unknown as { transaction_id: string }[]).map((r) => r.transaction_id),
-  );
-  const marcados = new Set((pacientesDePrueba ?? []).map((p) => p.id));
-  const noEsPacienteDePrueba = (id: string | null | undefined) => id == null || !marcados.has(id);
+  // Y LAS VENTAS QUE NO CUENTAN, de la MISMA columna que Direccion (0203): la regla vive en la base, asi que
+  // las dos pantallas no pueden volver a discrepar sobre la misma venta.
+  const { data: ventasMarcadas } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq(COLUMNA_VENTA_DE_PRUEBA, true);
+  const ventaDePrueba = new Set((ventasMarcadas ?? []).map((t) => t.id));
   const noEsVentaDePrueba = (id: string | null | undefined) => id == null || !ventaDePrueba.has(id);
-  const delPaciente = (fila: { transactions?: unknown }): string | null =>
-    uno(fila.transactions as { patient_id: string | null } | null)?.patient_id ?? null;
 
   const suma = (filas: { [k: string]: unknown }[] | null, campo: string): number =>
     (filas ?? []).reduce((n, f) => n + Number(f[campo] ?? 0), 0);
@@ -287,18 +278,14 @@ export async function getTablero(userId: string): Promise<Tablero> {
     // diagnostico de las cifras y dejaba su dinero dentro. Un profesional que se registra a si mismo para
     // probar veia su propio mes inflado con sus pruebas, en la pantalla que usa para saber como le fue.
     comisionDelMes: suma(
-      (comision.data ?? []).filter(
-        (r) => noEsPacienteDePrueba(delPaciente(r)) && noEsVentaDePrueba(r.transaction_id),
-      ),
+      (comision.data ?? []).filter((r) => noEsVentaDePrueba(r.transaction_id)),
       "commission_amount",
     ),
     ventasDelMes: brutoReconocido({
-      pagadas: (ventas.data ?? []).filter(
-        (r) => noEsPacienteDePrueba(r.patient_id) && noEsVentaDePrueba(r.id),
-      ),
+      pagadas: (ventas.data ?? []).filter((r) => noEsVentaDePrueba(r.id)),
       disputasPerdidas: (perdidas.data ?? []).map((r) => r.transaction_id),
       devoluciones: (devueltas.data ?? [])
-        .filter((r) => noEsPacienteDePrueba(delPaciente(r)) && noEsVentaDePrueba(r.transaction_id))
+        .filter((r) => noEsVentaDePrueba(r.transaction_id))
         .map((r) => r.debited_amount),
     }),
     unidadesEnInventario: suma(inventario.data, "stock_quantity"),
