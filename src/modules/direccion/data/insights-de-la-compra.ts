@@ -148,7 +148,10 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
   // El paciente de prueba sale por los dos ejes, igual que el profesional: su compra no cuenta y su
   // consulta tampoco, porque si no sus prescripciones quedarian en el denominador sin compra posible.
   const sinDemoEnLaVenta = sql` and ${sql.raw(SQL_SIN_PROFESIONAL_DE_PRUEBA)}
-    and not exists (select 1 from patients pa where pa.id = t.patient_id and pa.cuenta_como_de_prueba)`;
+    and not exists (select 1 from patients pa where pa.id = t.patient_id and pa.cuenta_como_de_prueba)
+    and not exists (
+      select 1 from transaction_items ti2 join nutraceuticals n2 on n2.id = ti2.nutraceutical_id
+       where ti2.transaction_id = t.id and coalesce(n2.is_test, false))`;
   // Se escribe desde `tr` y no desde un alias de diagnostico porque las dos consultas que lo usan tienen
   // el tratamiento y solo una tiene el diagnostico a mano.
   const sinDemoEnLaConsulta = sql` and not exists (

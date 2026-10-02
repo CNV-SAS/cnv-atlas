@@ -65,3 +65,21 @@ export function brutoReconocido(e: {
 // que una pantalla excluya lo de prueba y la otra no. A Inicio le sobra el nombre y no le cuesta nada.
 export const EMBED_PRODUCTO_NO_DE_PRUEBA = "nutraceuticals!inner(name, is_test)";
 export const COLUMNA_PRODUCTO_DE_PRUEBA = "nutraceuticals.is_test";
+
+/**
+ * LAS VENTAS QUE NO CUENTAN PORQUE LLEVAN UN PRODUCTO DE PRUEBA (Santiago, 2026-10-01).
+ *
+ * EL HUECO QUE CIERRA: el filtro de productos de prueba llegaba al INVENTARIO y no al DINERO. Una venta con
+ * un producto que no existe sumaba su precio al bruto y su base a la comision.
+ *
+ * Y UNA VENTA ES HOMOGENEA por el guard del servicio (de prueba o real, nunca las dos), asi que "lleva un
+ * producto de prueba" es lo mismo que "es una venta de prueba", y excluirla entera equivale a excluir sus
+ * lineas sin tocar el contador compartido.
+ *
+ * Se consulta UNA vez y se filtra en memoria, igual que con el profesional y el paciente: una venta puede no
+ * tener lineas todavia, y un embed interno la dejaria fuera en silencio.
+ */
+// SE COMPARTE EL SELECT, NO UNA FUNCION QUE HABLE CON LA BASE: este modulo es NEUTRO (lo usan los lectores y
+// su test), y meterle un cliente de Supabase lo acoplaria al servidor. Es el mismo patron que las dos
+// constantes de arriba: la REGLA se comparte, la consulta la hace cada lector con su propio cliente.
+export const EMBED_LINEA_DE_PRUEBA = `transaction_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}`;

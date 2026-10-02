@@ -3,6 +3,7 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   brutoReconocido,
+  EMBED_LINEA_DE_PRUEBA,
   COLUMNA_EFECTIVO_NO_RECIBIDO,
   COLUMNA_PRODUCTO_DE_PRUEBA,
   EMBED_PRODUCTO_NO_DE_PRUEBA,
@@ -154,10 +155,12 @@ export async function getTablero(userId: string): Promise<Tablero> {
     miProfesional
       ? supabase
           .from("professional_revenue")
-          .select("commission_amount, transactions!inner(created_at, patient_id)")
+          .select("commission_amount, transaction_id, transactions!inner(created_at, patient_id)")
           .eq("professional_id", miProfesional)
           .gte("transactions.created_at", desde)
-      : Promise.resolve({ data: [] as { commission_amount: string; transactions: unknown }[] }),
+      : Promise.resolve({
+          data: [] as { commission_amount: string; transaction_id: string; transactions: unknown }[],
+        }),
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
     miProfesional
       ? supabase.from("transactions").select("id, amount, patient_id").eq("status", "paid").eq("professional_id", miProfesional).or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde)
@@ -171,7 +174,7 @@ export async function getTablero(userId: string): Promise<Tablero> {
     // que se corrige es lo que ese mes facturo.
     supabase
       .from("sale_reversals")
-      .select("debited_amount, transactions!inner(created_at, patient_id)")
+      .select("debited_amount, transaction_id, transactions!inner(created_at, patient_id)")
       .eq("state", ESTADO_DEVUELTA)
       .gte("transactions.created_at", desde),
     // SIN PRODUCTOS DE PRUEBA, igual que Direccion (smoke del 2026-09-29): esta tarjeta decia 1.903 y la de
@@ -257,8 +260,18 @@ export async function getTablero(userId: string): Promise<Tablero> {
   // LOS PACIENTES DE PRUEBA, por id: igual que en Direccion, y con el mismo cuidado con el nulo (una venta
   // puede no tener paciente, y un embed interno la dejaria fuera en silencio).
   const { data: pacientesDePrueba } = await supabase.from("patients").select("id").eq("cuenta_como_de_prueba", true);
+  // Y LAS VENTAS DE PRODUCTO DE PRUEBA, por lo mismo que en Direccion: el filtro llegaba al inventario y no
+  // al dinero, asi que su mes salia inflado con lo que vendio para probar.
+  const { data: lineasDePrueba } = await supabase
+    .from("transaction_items")
+    .select(EMBED_LINEA_DE_PRUEBA)
+    .eq(COLUMNA_PRODUCTO_DE_PRUEBA, true);
+  const ventaDePrueba = new Set(
+    ((lineasDePrueba ?? []) as unknown as { transaction_id: string }[]).map((r) => r.transaction_id),
+  );
   const marcados = new Set((pacientesDePrueba ?? []).map((p) => p.id));
   const noEsPacienteDePrueba = (id: string | null | undefined) => id == null || !marcados.has(id);
+  const noEsVentaDePrueba = (id: string | null | undefined) => id == null || !ventaDePrueba.has(id);
   const delPaciente = (fila: { transactions?: unknown }): string | null =>
     uno(fila.transactions as { patient_id: string | null } | null)?.patient_id ?? null;
 
@@ -274,14 +287,18 @@ export async function getTablero(userId: string): Promise<Tablero> {
     // diagnostico de las cifras y dejaba su dinero dentro. Un profesional que se registra a si mismo para
     // probar veia su propio mes inflado con sus pruebas, en la pantalla que usa para saber como le fue.
     comisionDelMes: suma(
-      (comision.data ?? []).filter((r) => noEsPacienteDePrueba(delPaciente(r))),
+      (comision.data ?? []).filter(
+        (r) => noEsPacienteDePrueba(delPaciente(r)) && noEsVentaDePrueba(r.transaction_id),
+      ),
       "commission_amount",
     ),
     ventasDelMes: brutoReconocido({
-      pagadas: (ventas.data ?? []).filter((r) => noEsPacienteDePrueba(r.patient_id)),
+      pagadas: (ventas.data ?? []).filter(
+        (r) => noEsPacienteDePrueba(r.patient_id) && noEsVentaDePrueba(r.id),
+      ),
       disputasPerdidas: (perdidas.data ?? []).map((r) => r.transaction_id),
       devoluciones: (devueltas.data ?? [])
-        .filter((r) => noEsPacienteDePrueba(delPaciente(r)))
+        .filter((r) => noEsPacienteDePrueba(delPaciente(r)) && noEsVentaDePrueba(r.transaction_id))
         .map((r) => r.debited_amount),
     }),
     unidadesEnInventario: suma(inventario.data, "stock_quantity"),
