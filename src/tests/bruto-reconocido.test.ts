@@ -156,26 +156,31 @@ describe("una venta de producto de prueba no cuenta en el dinero", () => {
     }
   });
 
-  // ═══ Y LAS CUATRO PANTALLAS DEL DINERO, no dos (Santiago, 2026-10-01) ═══
+  // ═══ EL CANDADO CAMBIA DE FORMA, Y ESTA ES LA LECCION DE LAS SEIS (Santiago, 2026-10-01) ═══
   //
-  // SU TABLERO DECIA 0 VENTAS DEL MES Y SU HISTORIAL 3.661.000: la misma venta salia de una cifra y se
-  // quedaba en la otra, porque el filtro llego a los tableros y no a los dos lectores del HISTORIAL. Dos
-  // reglas para el mismo hecho, otra vez, y por la misma causa: el barrido no cubrio todas las capas.
+  // Las seis veces el defecto fue el mismo: dos pantallas de la misma cifra, el filtro en una y no en la
+  // otra. Y los candados comprobaban QUE CADA PANTALLA CUMPLIERA LA REGLA, por separado. Eso no atrapo
+  // ninguna, y la sexta explica por que: las dos CUMPLIAN la regla y daban distinto, porque cada una armaba
+  // su propio UNIVERSO (una pedia los pacientes marcados bajo la RLS del profesional y no los veia todos).
   //
-  // LA REGLA QUE QUEDA: el dinero que nunca se facturo NO ES DINERO, en ninguna pantalla.
-  it("el historial del integrante y su propio perfil aplican la misma regla que los tableros", () => {
+  // Una regla cumplida dos veces no garantiza el mismo resultado. UN LECTOR SOLO, SI. Asi que esto ya no
+  // comprueba la regla: comprueba que no haya dos sitios donde pueda divergir.
+  it("el historico de un profesional lo calcula UN solo lector, no dos que coincidan", () => {
     const integrante = sinComentarios(readFileSync("src/modules/payments/data/integrante-reader.ts", "utf8"));
     const perfil = sinComentarios(readFileSync("src/modules/professionals/data/perfil-reader.ts", "utf8"));
     for (const [nombre, src] of [["integrante", integrante], ["perfil", perfil]] as const) {
-      expect(src, nombre + ": su dinero no excluye el producto de prueba").toMatch(/is_test|EMBED_LINEA_DE_PRUEBA/);
-      expect(src, nombre + ": su dinero no excluye el paciente marcado").toContain("cuenta_como_de_prueba");
+      // SE EXIGE LA LLAMADA, no el nombre: con el nombre, el import suelto bastaba y el caso pasaba en
+      // verde con el lector desconectado. Es la tercera vez que me pasa con un candado, asi que ya se busca.
+      expect(src, nombre + " dejo de LLAMAR al lector compartido del historico").toMatch(
+        /await historicoDelProfesional\s*\(/,
+      );
+      // Y NINGUNA VUELVE A CALCULARLO: si una suma por su cuenta, pueden volver a discrepar.
+      expect(src, nombre + " volvio a sumar el dinero por su cuenta").not.toContain("brutoReconocido(");
+      expect(src, nombre + " volvio a sumar la comision por su cuenta").not.toContain(
+        "sum(r.commission_amount)",
+      );
     }
-    // Y LA COMISION CON LA MISMA REGLA QUE LAS VENTAS: sin esto, el margen y las ventas de la MISMA tarjeta
-    // contaban universos distintos, que es como empezo todo esto.
-    expect(integrante).toContain("from professional_revenue r");
-    expect(perfil).toContain("esVentaReal");
   });
-
   it("y el guard impide mezclarlas en la misma venta, que es lo que hace valida la exclusion entera", () => {
     // SIN EL GUARD, excluir la venta entera descontaria tambien la linea REAL. Las dos piezas se sostienen
     // la una a la otra: si alguien quita el guard, este filtro empieza a perder dinero de verdad.
