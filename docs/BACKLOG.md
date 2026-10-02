@@ -21,6 +21,54 @@
 
 ---
 
+---
+
+## PENDIENTE (2026-10-02) · Los nueve rangos de cordura del motor no tienen fuente · DECIDE SANTIAGO
+
+**Lo verificado, sin rodeos:** los nueve rangos de `SANITY` (`src/clinical-engine/edge/biody-import.ts`) **se
+eligieron a ojo**. No salen del archivo de Gildardo (los busqué uno por uno en `ATLAS_v9.html`: ninguno
+aparece), no hay documento que los cite, y el commit que los introdujo (`9c565019`, 2026-07-06) trae la ciencia
+de Gildardo **byte a byte** pero los archivos del BORDE, este incluido, los escribimos nosotros.
+
+**Por qué importa:** el 2026-10-02 uno de ellos frenó una medición real (capacitancia 16,22 nF, rango 0,3-8) y
+esa paciente quedó sin diagnóstico. El freno puede ser correcto; lo que no puede es que nadie sepa de dónde
+salió el número. De ahí la regla que quedó en `CLAUDE.md`.
+
+### La lista completa, ordenada por riesgo de frenar a una persona real
+
+| Insumo | Rango | Unidad | Riesgo de frenar a alguien real |
+| --- | --- | --- | --- |
+| **FFMI** | 8 - 40 | kg/m² | **ALTO por abajo.** Un FFMI femenino típico es 14-17; un paciente con caquexia o sarcopenia severa puede bajar de 8. Es justo la población que Atlas existe para medir |
+| **talla** | 120 - 230 | cm | **ALTO por abajo.** Deja fuera a una persona con talla baja o acondroplasia. Atrapa bien la talla en metros (1,75 cae por debajo) |
+| **C** | 0,3 - 8 | nF | **El que ya disparó.** Es el caso de 2026-10-02, pendiente de Gildardo |
+| **Ri** | 400 - 4000 | Ω | Medio. Un valor real alto en un paciente muy deshidratado podría acercarse al techo |
+| **Re** | 200 - 1200 | Ω | Bajo |
+| **R∞** | 150 - 1000 | Ω | Bajo |
+| **peso** | 25 - 350 | kg | Bajo. Y OJO: **no atrapa libras** (75 kg = 165 lb, que cae dentro) |
+| **FM** | 1 - 200 | kg | Bajo |
+| **FFM** | 20 - 200 | kg | Bajo |
+
+### Lo que propongo, y por qué NO lo apliqué todavía
+
+**Aplicar la regla: ensanchar los que no tienen fuente hasta que solo atrapen lo imposible.** En concreto, bajar
+el piso de FFMI y el de talla, que son los dos que pueden frenar a un paciente real sin que nada esté mal.
+
+**Y NO tocar el de C ahora**, a propósito: ensancharlo desbloquearía a la paciente de hoy y **se adelantaría a la
+respuesta de Gildardo**, que es justo lo que no queremos. Si él dice que 16,22 es posible, el rango cambia con su
+fuente escrita al lado; si dice que no, se queda y la toma se repite.
+
+**No lo apliqué porque cambiar un umbral que hoy decide sobre mediciones reales, en mitad del smoke y sin que
+Santiago lo haya pedido, es exactamente lo que la regla nueva prohíbe hacer a la ligera.** Dilo y lo hago, con
+cada valor nuevo justificado en su línea.
+
+### Y una cosa que conviene mirar aparte
+
+`peso` no atrapa un export en libras, y `talla` sí atrapa uno en metros. Si alguna vez llega un equipo
+configurado en imperial, el peso entra mal **y el sistema no se entera**: ningún rango lo ve. Eso no se arregla
+ensanchando, se arregla mirando la coherencia entre peso, talla e IMC, y es otro trabajo.
+
+---
+
 ## PENDIENTE (2026-10-02) · Refrescar solo lo que cambió, no la página entera
 
 **Decisión de Santiago, para DESPUÉS del arranque.** No es un defecto: es el costo de cómo están hechas las
