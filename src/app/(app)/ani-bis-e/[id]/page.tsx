@@ -996,19 +996,26 @@ export default async function ResultadosEvaluacionPage({
                     paciente. Lo que si se perdio a proposito es lo comercial agregado (costo, lo piensa, ya toma
                     otros), confirmado por Santiago: era un formulario en cada consulta para un dato que nadie
                     consultaba. */}
-                {/* La VENTA Y SU ENTREGA solo si la respuesta fue que si (Bloque 3, sesion 2: reemplaza a la
-                    seccion de despacho). Un aviso, no un formulario deshabilitado: un bloque en gris invita a
-                    buscar como habilitarlo; una frase dice que falta. */}
+                {/* ═══ LA VENTA SE OFRECE SIEMPRE QUE HAYA ALGO PRESCRITO (bloqueo del 2026-10-02) ═══
+
+                    AQUI VIVIA EL MISMO GUARD QUE SE QUITO AYER DEL SERVICIO DE COBRO, en la otra punta del
+                    mismo camino: la seccion solo se montaba si `nutraceuticalDecision?.decision === "si"`, y
+                    como la pregunta de tres opciones se retiro el 2026-09-26, NADIE PUEDE PONER "si". Asi que
+                    la venta no aparecia nunca y la frase mandaba a registrar "arriba" algo que ya no existe
+                    arriba. Bloqueaba a cualquier Integrante que prescribiera, con cualquier producto.
+
+                    ES EL SEPTIMO DEFECTO CON ESTA FORMA, y la leccion es sobre el ARREGLO, no sobre el fallo:
+                    ayer se quito el guard del sitio donde habia dado la cara y no se barrio la regla. Un guard
+                    que pide una respuesta que ya nadie puede dar no es "un guard en un archivo": es una regla
+                    muerta que puede estar en varias puertas del mismo pasillo.
+
+                    Y SE OFRECE AUNQUE SE HAYA REGISTRADO "no los adquiere por ahora", a proposito: el servicio
+                    ya permite esa venta (la compra es un hecho POSTERIOR que contradice esa foto, y es el dato
+                    mas nuevo). Si la pantalla la escondiera, diria lo contrario de lo que el servidor hace, y
+                    esa contradiccion entre dos partes que leen fuentes distintas es la que mas nos ha costado
+                    este mes. */}
                 {protocol && actorProfession.isProfessional && protocol.nutraceuticals.length > 0 ? (
-                  protocol.nutraceuticalDecision?.decision === "si" ? (
-                    <VentaEnConsultaSection evaluationId={id} protocol={protocol} />
-                  ) : (
-                    <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-                      {protocol.nutraceuticalDecision
-                        ? "La venta se habilita cuando el paciente los adquiere. Si cambia de decisión, actualízala arriba."
-                        : "Registra arriba si el paciente los adquiere; la venta se habilita entonces."}
-                    </p>
-                  )
+                  <VentaEnConsultaSection evaluationId={id} protocol={protocol} />
                 ) : null}
                 <SeccionRuta n={3} titulo="Remisiones" />
                 <RemisionesSection rutas={rutas} register={referralRegister} />
