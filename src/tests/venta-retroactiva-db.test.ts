@@ -44,7 +44,17 @@ describe.skipIf(!HAS_DB)("la venta retroactiva (BD real)", () => {
     professionalId = prof.id;
     actorId = prof.profile_id;
     organizationId = prof.organization_id;
-    const [pac] = await db.execute<{ id: string }>(dsql`select id from patients limit 1`);
+    // ── UN PACIENTE CON PERFIL, porque el caso comprueba su NOMBRE (2026-10-01) ──
+    //
+    // Decia `select id from patients limit 1`, y el primero resulto ser uno SIN `patient_profiles` (el nombre
+    // vive ahi, no en `patients`). El caso fallaba con "el listado no trae el nombre del paciente" contra un
+    // lector correcto: la culpa era del fixture, no del codigo. Es la misma fragilidad que ya corregi en
+    // `modalidad-db`: un fixture que pide "el primero que haya" depende de lo que otros tests dejen.
+    const [pac] = await db.execute<{ id: string }>(dsql`
+      select p.id from patients p
+        join patient_profiles pp on pp.patient_id = p.id
+       where p.deleted_at is null and btrim(coalesce(pp.first_name, '')) <> ''
+       limit 1`);
     patientId = pac.id;
     const [n] = await db.execute<{ id: string }>(dsql`
       select id from nutraceuticals where coalesce(is_test, false) = false order by name limit 1`);

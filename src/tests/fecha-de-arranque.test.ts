@@ -42,8 +42,13 @@ const LECTORES_DE_CIFRAS = new Map<string, string>([
  */
 const SIN_CORTE = new Map<string, string>([
   ["src/modules/payments/data/liquidacion-writer.ts", "liquida lo que se debe, y lo anterior al arranque se debe igual"],
-  ["src/modules/professionals/data/perfil-reader.ts", "su margen y su total vendido son historicos, no del periodo"],
-  ["src/modules/payments/data/integrante-reader.ts", "su cuenta por cobrar es dinero real, no una cifra de resumen"],
+  // LAS DOS PANTALLAS DEL HISTORICO YA NO LEEN INGRESO: lo calcula el lector compartido, que es el que se
+  // declara aqui. Sus exenciones se retiraron al retirarse sus consultas, que es lo que el ultimo caso de
+  // este archivo comprueba.
+  [
+    "src/modules/payments/data/historico-del-profesional.ts",
+    "es el historico de una persona: un total de toda su vida, de la familia de lo que se le debe",
+  ],
   ["src/modules/professionals/data/tax-status-reader.ts", "su estado tributario se calcula sobre lo devengado de verdad"],
   ["src/modules/payments/data/payments-writer.ts", "escribe la fila de ingreso de la venta que crea"],
   ["src/modules/payments/data/retracto-writer.ts", "escribe la reversion del ingreso al retractarse"],
