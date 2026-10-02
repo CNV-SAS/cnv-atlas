@@ -59,14 +59,25 @@ describe("las dos cosas que la marca NO hace, y son decisiones", () => {
     const src = leer("src/modules/direccion/data/dashboard-reader.ts");
     // SE MIRA LA SENTENCIA COMPLETA, no una linea: el filtro ocupa varias, y buscar en una sola dejaba el
     // caso afirmando sobre un texto cortado. Fallo contra el arreglo correcto, que es como se descubrio.
-    const i = src.indexOf("const inventoryRows");
-    const linea = i < 0 ? null : src.slice(i, src.indexOf(";", i));
-    expect(linea, "cambio el nombre de las filas de inventario y este caso dejo de mirar nada").toBeTruthy();
+    // ── SE MIRA LA SENTENCIA QUE ARMA EL UNIVERSO, no la que lo acota despues ──
+    //
+    // Este caso ya fallo dos veces por mirar el sitio equivocado: primero por mirar UNA LINEA de un filtro
+    // que ocupa varias, y despues (2026-10-02) por anclarse al NOMBRE `inventoryRows`, que dejo de ser el
+    // universo cuando el total paso a contar solo las vitrinas. Las dos veces fallo contra codigo CORRECTO.
+    // Lo que no se mueve es el hecho: el universo del inventario se filtra con `noEsDePrueba`.
+    const i = src.indexOf("const todoElSaldo");
+    const universo = i < 0 ? null : src.slice(i, src.indexOf(";", i));
+    expect(universo, "cambio como se arma el universo del inventario y este caso dejo de mirar nada").toBeTruthy();
     // CAMBIO DE DECISION (Santiago, 2026-10-01): yo habia decidido que la marca no tocara el inventario,
     // porque las unidades son fisicas. Santiago lo decidio al reves y su razon pesa mas AQUI: quien entra a
     // /direccion no sabe que esas unidades son de una cuenta de demostracion, y una cifra que confunde a
     // quien decide es peor que una cifra incompleta. Lo que la hace honesta es que la tarjeta lo diga.
-    expect(linea).toContain("noEsDePrueba");
+    expect(universo).toContain("noEsDePrueba");
+    // Y EL TOTAL SALE DE AHI, acotado a las vitrinas (2026-10-02): si alguien lo recalculara desde la
+    // consulta cruda, volveria a contar la bodega y volveria a crecer al recibir una remesa.
+    const j = src.indexOf("const inventoryRows");
+    const total = j < 0 ? null : src.slice(j, src.indexOf(";", j));
+    expect(total, "el total del inventario dejo de derivarse del universo ya filtrado").toContain("todoElSaldo");
   });
 
   // LA FACTURA LA DECIDE EL PACIENTE, y tiene que seguir siendo asi: un profesional de prueba que le venda

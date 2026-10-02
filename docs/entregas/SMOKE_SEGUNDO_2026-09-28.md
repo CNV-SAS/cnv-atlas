@@ -760,3 +760,39 @@ nulo a propósito... y está bien: es verdad"*.
 para esas siete cargas, se puede reconstruir (declarar las remesas con fecha de entonces y pedirles que
 confirmen) **sin mover ningún saldo**, porque una remesa no mueve inventario. Es trabajo operativo suyo, no
 código: dime si lo quieres y preparo las declaraciones.
+
+---
+
+# R15 · El total de inventario ya no cuenta la bodega
+
+**Tu salida (b), hecha: se arregla la cifra, no los movimientos.** La mecánica de la remesa se queda como
+está hasta que se rehaga el módulo de bodega con lo de Gildardo.
+
+**La tarjeta de `/direccion` ahora se llama "En las vitrinas"** y cuenta solo eso. El alcance va en el nombre
+de la cifra, no en letra chica: es lo que ya aprendimos con "Tu mes".
+
+**Y encontré una segunda cosa que inflaba el mismo total, que no habías pedido: la cuarentena.** El producto
+que vuelve de un paciente y espera verificación (hoy, 233 unidades) tampoco está en ninguna vitrina, no se
+puede vender, y ya tiene su propio panel en `/pagos`. Contarlo en el total era el mismo defecto por otra
+puerta, así que entra en la misma regla.
+
+**Las dos se muestran aparte**, dentro de "Qué hay en el inventario, y dónde", bajo el rótulo *"Fuera de las
+vitrinas (no suma en la cifra de arriba)"*, con su nombre, sus unidades y la razón escrita: que es
+informativo, que la bodega no baja al despachar una remesa, y que se corrige cuando se construya el módulo.
+
+**Lo que tienes que ver:** el total baja (sale la bodega y sale la cuarentena) y **deja de crecer cuando un
+Integrante confirma una recepción**, que era el síntoma. Las unidades no desaparecen de la pantalla: están
+abajo, nombradas.
+
+**El candado:** `una unidad en la bodega central no sube el total, y si aparece aparte`, en
+`src/tests/tablero-direccion-inventario-db.test.ts`. Comprueba la relación, no una cifra, porque una cifra
+concreta envejece y el día que falla lo hace por otra razón.
+
+*(De paso se arregló el fixture del caso vecino: elegía "la primera ubicación activa", que resultó ser la
+bodega central, y al cambiar el total empezó a fallar por un motivo que no era el suyo.)*
+
+## Y el ADAPTO-STRESS del smoke: confirmado, puedes arrancar
+
+Que esté en el portafolio pero no exista físicamente es la elección correcta para no ensuciar la trazabilidad
+de los cuatro que sí se fabricaron. Y **la remesa no mira el saldo de la bodega central ni lo descuenta**, así
+que mandarla no te va a bloquear por no tener saldo ahí. Adelante.

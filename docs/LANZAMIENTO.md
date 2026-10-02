@@ -40,6 +40,35 @@ Integrante, el orden de la mañana, y lo que NO se hace.
 
 ---
 
+## ➜ EL ORDEN QUE SANTIAGO FIJA PARA LO QUE FALTA (2026-10-02)
+
+**Esta es la secuencia vigente.** Manda sobre cualquier prioridad que se infiera de los gates de abajo: lo de
+abajo dice QUÉ falta; esto dice EN QUÉ ORDEN se hace.
+
+| # | Paso | Dónde vive el detalle |
+| --- | --- | --- |
+| 1 | **Terminar las pruebas y corregir lo que salga** | `docs/entregas/SMOKE_SEGUNDO_2026-09-28.md` (partes y arreglos R1-R14) |
+| 2 | **Marcar toda la data de smoke y barrer, para empezar en cero** | `docs/entregas/CIFRAS_LIMPIAS_PARA_EL_ARRANQUE_2026-09-30.md` y las migraciones 0199 a 0203 (profesional, paciente y venta de prueba) |
+| 3 | **Producción real: Alegra, Wompi y acceso a los Integrantes** | `docs/entregas/ARRANQUE_OPERACION_REAL_2026-09-26.md` (las tres cosas de `alegra_config`, `alegra_items` y la regla de facturación) |
+| 4 | **Separar entorno de pruebas y entorno real** | Sin documento propio todavía |
+| 5 | **Después: arquitectura para borrar data de prueba, y el módulo de inventario profundo con lo de Gildardo** | `BACKLOG.md` |
+
+**EL PASO 4 CAMBIA UNA DECISIÓN ANTERIOR, y queda dicho aquí para que no se lean las dos como vigentes.** La
+tabla de arriba (2026-09-26) dice *"No se separa. Lo que protege es por VENTA (`wompi_env`, `alegra_env`), no
+por proyecto"*. Eso sigue siendo verdad como **descripción de lo que hay hoy**, y era la decisión correcta para
+arrancar sin frenar la operación. Lo que cambia es que **la separación vuelve al plan**, después de producción
+real y antes de lo de fondo. La protección por venta no se quita: es lo que sostiene el paso 3.
+
+**Y el paso 5 explica por qué el saldo de la bodega central se arregló solo en la cifra (2026-10-02).** Hoy la
+recepción de una remesa suma al Integrante y nada resta de la bodega, así que el total de inventario de
+`/direccion` crecía al recibir. Santiago decidió **no tocar los movimientos**, porque el módulo de bodega se va
+a rehacer con lo que Gildardo construyó y cambiar la mecánica dos veces es peor que esperar. Lo que sí se hizo
+ahora: el total cuenta **lo que está en las vitrinas**, y la bodega y la cuarentena se muestran aparte, con su
+nombre y dichas como informativas. El candado está en
+`src/tests/tablero-direccion-inventario-db.test.ts` ("una unidad en la bodega central no sube el total").
+
+---
+
 ## ⚠ LA REGLA SE ROMPIÓ: estamos en el Hito 3 con gates abiertos (2026-09-09)
 
 **La junta se saltó el Hito 2 y hoy hay PII clínica real en producción.** Esto no es un cambio de plan que

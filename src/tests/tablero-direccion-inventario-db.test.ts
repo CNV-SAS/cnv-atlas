@@ -34,8 +34,19 @@ describe.skipIf(!HAS_DB)("inventario del tablero de Direccion (BD real)", () => 
     const { getDireccionDashboard } = await import("@/modules/direccion/data/dashboard-reader");
     const antes = await getDireccionDashboard();
 
+    // UNA VITRINA DE UN PROFESIONAL QUE CUENTA, elegida a proposito y no con un `limit 1` a secas.
+    //
+    // La version anterior tomaba la primera ubicacion activa, que resulto ser LA BODEGA CENTRAL. Mientras el
+    // total sumaba todo, daba igual; al dejar el total en "lo que esta en las vitrinas" (2026-10-02) el caso
+    // empezo a fallar por un motivo que no era el suyo: sus 7 unidades, bien excluidas, parecian un defecto
+    // del filtro de productos de prueba. Un fixture que toma la primera fila que encuentra falla el dia que
+    // esa fila significa otra cosa.
     const [loc] = await db.execute<{ id: string; professional_id: string | null }>(
-      dsql`select id, professional_id from inventory_locations where is_active order by created_at limit 1`,
+      dsql`select l.id, l.professional_id
+             from inventory_locations l
+             join professional_profiles pp on pp.id = l.professional_id
+            where l.kind = 'integrante' and l.is_active and coalesce(pp.is_test, false) = false
+            order by l.created_at limit 1`,
     );
     const [org] = await db.execute<{ id: string }>(dsql`select id from organizations limit 1`);
     const prod = randomUUID();
@@ -91,5 +102,77 @@ describe.skipIf(!HAS_DB)("inventario del tablero de Direccion (BD real)", () => 
     // pantalla seguiria pareciendo correcta.
     for (const p of d.inventoryByProduct) expect(p.nombre).not.toBe("(sin nombre)");
     for (const l of d.inventoryByLocation) expect(l.nombre).not.toBe("(sin nombre)");
+  });
+
+  // ═══ EL TOTAL CUENTA VITRINAS, NO LA BODEGA (Santiago, 2026-10-02) ═══
+  //
+  // EL DEFECTO QUE CIERRA: el total sumaba vitrinas + bodega central + cuarentena, y la mecanica de la remesa
+  // hace que la recepcion del Integrante SUME sin que nada reste de la bodega. Asi que la cifra CRECIA cada
+  // vez que alguien recibia: 90 unidades mandadas subian el total de 1.810 a 1.900, contando dos veces las
+  // mismas. Es una cifra que Direccion va a mirar en la operacion real.
+  //
+  // POR QUE EL CANDADO ES ESTE Y NO UNA CIFRA: una asercion sobre un numero concreto envejece y el dia que
+  // falla lo hace por otra razon (ya nos paso). Lo que no envejece es la relacion: saldo en la BODEGA no
+  // mueve el total, y si aparece en lo que se muestra aparte.
+  it("una unidad en la bodega central no sube el total, y si aparece aparte", async () => {
+    const { db } = await import("@/db");
+    const { getDireccionDashboard } = await import("@/modules/direccion/data/dashboard-reader");
+
+    const [central] = await db.execute<{ id: string; name: string }>(
+      dsql`select id, name from inventory_locations where kind = 'central' and is_active limit 1`,
+    );
+    if (!central) return; // sin bodega central no hay nada que comprobar
+    const [org] = await db.execute<{ id: string }>(dsql`select id from organizations limit 1`);
+    const antes = await getDireccionDashboard();
+
+    const prod = randomUUID();
+    await db.execute(dsql`
+      insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership, commercial_availability)
+      values (${prod}, ${org.id}, ${`BODEGA PRUEBA ${prod.slice(0, 8)}`}, 11900, false, 'propio', 'no_disponible')`);
+    const [lote] = await db.execute<{ id: string }>(dsql`
+      insert into lots (nutraceutical_id, code, expires_on) values (${prod}, 'BOD-1', '2027-01-01') returning id`);
+    // `professional_id` NULO: la bodega central no tiene dueno (migracion 0121).
+    await db.execute(dsql`
+      insert into nutraceutical_stock_movements (professional_id, nutraceutical_id, location_id, lot_id, delta, type, reason)
+      values (null, ${prod}, ${central.id}, ${lote.id}, 40, 'recepcion', 'Fixture de la bodega central')`);
+
+    const despues = await getDireccionDashboard();
+    expect(
+      despues.inventoryUnits,
+      "40 unidades en la BODEGA subieron el total de las vitrinas: la cifra vuelve a crecer al recibir",
+    ).toBe(antes.inventoryUnits);
+    expect(despues.inventoryByProduct.some((p) => p.nombre.startsWith("BODEGA PRUEBA"))).toBe(false);
+
+    // Y NO SE ESCONDE: tiene que estar en lo que se muestra aparte, con el nombre de la bodega.
+    const fuera = despues.inventoryFueraDeVitrinas.find((l) => l.nombre === central.name);
+    expect(fuera, "la bodega central dejo de mostrarse: salio del total y de la pantalla").toBeTruthy();
+    expect(Number(fuera?.unidades)).toBe(
+      Number(antes.inventoryFueraDeVitrinas.find((l) => l.nombre === central.name)?.unidades ?? 0) + 40,
+    );
+
+    // ── CONTROL: las MISMAS unidades en una VITRINA si suben el total ──
+    //
+    // Sin este control, un total roto en cero pasaria el caso de arriba sin que nadie lo note. La vitrina se
+    // elige de un profesional NO de prueba a proposito: el tablero excluye las vitrinas de demostracion, asi
+    // que con una de esas el control no probaria nada y parecia que el total no reacciona.
+    const [vitrina] = await db.execute<{ id: string; professional_id: string }>(
+      dsql`select l.id, l.professional_id
+             from inventory_locations l
+             join professional_profiles pp on pp.id = l.professional_id
+            where l.kind = 'integrante' and l.is_active and coalesce(pp.is_test, false) = false
+            order by l.created_at limit 1`,
+    );
+    if (vitrina) {
+      await db.execute(dsql`
+        insert into nutraceutical_stock_movements (professional_id, nutraceutical_id, location_id, lot_id, delta, type, reason)
+        values (${vitrina.professional_id}, ${prod}, ${vitrina.id}, ${lote.id}, 5, 'recepcion', 'Fixture de la vitrina')`);
+      const conVitrina = await getDireccionDashboard();
+      expect(conVitrina.inventoryUnits, "el total no conto 5 unidades puestas en una vitrina real").toBe(
+        antes.inventoryUnits + 5,
+      );
+    }
+
+    // Se deja marcado como de prueba para que no ensucie ninguna cifra despues.
+    await db.execute(dsql`update nutraceuticals set is_test = true where id = ${prod}`);
   });
 });

@@ -23,9 +23,10 @@ export type DireccionDashboard = {
   grossPaid: number; // suma de transactions.amount con status paid
   cnvRevenue: number; // suma de cnv_revenue.amount
   professionalCommissions: number; // suma de professional_revenue.commission_amount
-  inventoryUnits: number; // suma de stock_quantity, sin productos de prueba
-  inventoryProducts: number; // productos distintos con saldo
-  inventoryLocations: number; // ubicaciones con saldo
+  /** Unidades EN VITRINAS, sin productos de prueba. La bodega y la cuarentena van en `inventoryFueraDeVitrinas`. */
+  inventoryUnits: number;
+  inventoryProducts: number; // productos distintos con saldo en vitrinas
+  inventoryLocations: number; // vitrinas con saldo
   /**
    * CUALES son esos productos y esas ubicaciones (Santiago, 2026-09-30).
    *
@@ -36,6 +37,11 @@ export type DireccionDashboard = {
    */
   inventoryByProduct: { nombre: string; unidades: number }[];
   inventoryByLocation: { nombre: string; unidades: number }[];
+  /**
+   * LO QUE NO ESTA EN NINGUNA VITRINA: la bodega central y la cuarentena de devoluciones. Fuera del total a
+   * proposito (ver el comentario largo abajo) y mostrado con su nombre, dicho como informativo.
+   */
+  inventoryFueraDeVitrinas: { nombre: string; unidades: number }[];
   /**
    * Desde cuando cuentan las cifras de dinero, o null si se cuenta todo. La pantalla lo DICE: una cifra sin
    * su ventana se lee como "todo el historico", y el dia del arranque eso seria falso.
@@ -157,7 +163,9 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
       //
       // EL EMBED SIGUE SIENDO EL COMPARTIDO: se le añadio el nombre alli en vez de escribir una copia aqui,
       // porque una copia es como se llega a que una pantalla excluya lo de prueba y la otra no.
-      .select(`stock_quantity, nutraceutical_id, location_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}, inventory_locations!inner(name, professional_id)`)
+      // EL `kind` DE LA UBICACION VIENE EN LA MISMA FILA, por lo mismo que el nombre: separar vitrinas de
+      // bodega con una segunda consulta es como se llega a que el total y el desglose dejen de cuadrar.
+      .select(`stock_quantity, nutraceutical_id, location_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}, inventory_locations!inner(name, professional_id, kind)`)
       .eq(COLUMNA_PRODUCTO_DE_PRUEBA, false),
   ]);
 
@@ -188,8 +196,36 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   // LO QUE LA HACE HONESTA ES QUE LO DIGA, y la tarjeta lo dice: el alcance declarado es lo que separa una
   // cifra acotada de una cifra equivocada. Quien necesite el conteo fisico lo tiene en el desglose del
   // integrante, que si los muestra.
-  const inventoryRows = (inventory.data ?? []).filter((r) =>
+  const todoElSaldo = (inventory.data ?? []).filter((r) =>
     noEsDePrueba(uno(r.inventory_locations as { professional_id: string | null } | null)?.professional_id),
+  );
+  const ubicacionDe = (r: (typeof todoElSaldo)[number]) =>
+    uno(r.inventory_locations as { name: string; kind: string | null } | null);
+
+  // ═══ EL TOTAL CUENTA LAS VITRINAS; LA BODEGA Y LA CUARENTENA VAN APARTE (Santiago, 2026-10-02) ═══
+  //
+  // POR QUE, y es una cifra que miente hoy: este total sumaba las vitrinas MAS la bodega central MAS la
+  // cuarentena de devoluciones. Y la mecanica de la remesa es que la recepcion del Integrante SUMA sin que
+  // nada reste de central (migracion 0052: la remesa declara un envio, el saldo sube al confirmarse). Asi que
+  // el total CRECIA cada vez que alguien recibia: Santiago vio ADAPTO pasar de 1.810 a 1.900 al mandar 90
+  // unidades que ya estaban contadas.
+  //
+  // SE ARREGLA LA CIFRA, NO LOS MOVIMIENTOS, por decision suya (2026-10-02): el modulo de bodega se va a
+  // rehacer con lo que Gildardo construyo, y cambiar la mecanica dos veces es peor que esperar. Mientras
+  // tanto el total promete algo que sabe cumplir ("lo que esta en las vitrinas") y lo demas se muestra con su
+  // nombre, dicho como informativo.
+  //
+  // Y LA CUARENTENA ENTRA EN LA MISMA REGLA, aunque no se pidio: es producto que volvio del paciente y espera
+  // verificacion. No esta en ninguna vitrina, no se puede vender, y tiene su propio panel en /pagos. Contarlo
+  // en el total era el mismo defecto por otra puerta.
+  //
+  // LA REGLA NO SE REPITE EN NINGUN OTRO SITIO: el otro lector con cifra de inventario (el Inicio del
+  // profesional) ya acota por `professional_id`, asi que solo puede ver vitrinas. No hay un segundo lugar
+  // donde esto pueda divergir, que es lo que estas dos semanas ensenaron a comprobar.
+  const inventoryRows = todoElSaldo.filter((r) => ubicacionDe(r)?.kind === "integrante");
+  const fueraDeVitrinas = agrupar(
+    todoElSaldo.filter((r) => ubicacionDe(r)?.kind !== "integrante"),
+    (r) => ubicacionDe(r)?.name ?? "(sin nombre)",
   );
 
   return {
@@ -216,6 +252,8 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
       inventoryRows,
       (r) => uno(r.inventory_locations as { name: string } | null)?.name ?? "(sin nombre)",
     ),
+    /** La bodega central y la cuarentena: NO suman al total, y se muestran con su nombre. */
+    inventoryFueraDeVitrinas: fueraDeVitrinas,
     desdeElArranque: arranque,
   };
 }

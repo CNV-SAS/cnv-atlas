@@ -56,12 +56,15 @@ export default async function DireccionPage() {
         : undefined,
     },
     {
-      label: "Inventario",
+      // EL RÓTULO DICE QUÉ CUENTA (Santiago, 2026-10-02). Decía "Inventario" y sumaba las vitrinas más la
+      // bodega central más la cuarentena, así que crecía cada vez que un Integrante recibía una remesa. El
+      // alcance se escribe en el nombre de la cifra, no en letra chica: es lo que ya aprendimos con "Tu mes".
+      label: "En las vitrinas",
       value: `${d.inventoryUnits} unidades`,
       // EL INVENTARIO NO LLEVA CORTE Y HAY QUE DECIRLO: un saldo no es un flujo. Las unidades que hay están
       // hoy en la bodega, las haya puesto ahí quien las haya puesto. Recortarlo por fecha daría un número
       // que no es el de ninguna bodega.
-      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} ubicaci${d.inventoryLocations === 1 ? "ón" : "ones"} · sin los productos de prueba ni las vitrinas de demostración${d.desdeElArranque ? " · es el saldo de hoy, no lleva corte de fecha" : ""}`,
+      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} vitrina${d.inventoryLocations === 1 ? "" : "s"} · sin los productos de prueba ni las vitrinas de demostración${d.desdeElArranque ? " · es el saldo de hoy, no lleva corte de fecha" : ""}`,
     },
   ];
 
@@ -115,7 +118,7 @@ export default async function DireccionPage() {
               ))}
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Por ubicación</span>
+              <span className="text-xs text-muted-foreground">Por vitrina</span>
               {d.inventoryByLocation.map((l) => (
                 <span key={l.nombre} className="text-sm text-foreground">
                   {l.nombre} <span className="tabular-nums text-muted-foreground">{l.unidades}</span>
@@ -123,6 +126,33 @@ export default async function DireccionPage() {
               ))}
             </div>
           </div>
+
+          {/* ═══ LO QUE NO ESTÁ EN NINGUNA VITRINA (Santiago, 2026-10-02) ═══
+
+              Va DENTRO del desglose y FUERA de la cifra, y las dos cosas a propósito. Fuera, porque sumarlo
+              hacía que el total creciera cada vez que un Integrante recibía una remesa: la recepción le suma
+              a él y nada resta de la bodega, así que las mismas unidades se contaban dos veces. Y dentro del
+              desglose, porque el producto existe y esconderlo sería el error contrario.
+
+              SE DICE QUE ES INFORMATIVO, con su razón. Una cifra que no se puede usar y no avisa de ello es
+              peor que no tenerla. */}
+          {d.inventoryFueraDeVitrinas.length > 0 ? (
+            <div className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
+              <span className="text-xs text-muted-foreground">
+                Fuera de las vitrinas (no suma en la cifra de arriba)
+              </span>
+              {d.inventoryFueraDeVitrinas.map((l) => (
+                <span key={l.nombre} className="text-sm text-foreground">
+                  {l.nombre} <span className="tabular-nums text-muted-foreground">{l.unidades}</span>
+                </span>
+              ))}
+              <p className="mt-1 max-w-prose text-xs text-muted-foreground">
+                Es informativo. Hoy el saldo de la bodega central no baja cuando se despacha una remesa: sube
+                el del Integrante cuando la confirma, y la bodega se queda igual. Sumarlo aquí contaría las
+                mismas unidades dos veces. Se corrige cuando se construya el módulo de bodega.
+              </p>
+            </div>
+          ) : null}
           <p className="mt-3 max-w-prose text-xs text-muted-foreground">
             Solo lo que tiene saldo distinto de cero: una fila en cero existe porque alguna vez hubo unidades
             ahí, y listarla diría que hay producto en una bodega donde no hay ninguno. Sin los productos de
