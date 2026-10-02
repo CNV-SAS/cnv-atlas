@@ -86,28 +86,34 @@ describe("las cifras no cuentan a los pacientes de prueba", () => {
   // excluya, y un barrido que no cubre una capa deja esa capa sin nadie.
   //
   // Lo descubrio la pregunta de Santiago sobre una venta de prueba de Maria Camila a un paciente suyo.
-  it("las cifras de dinero excluyen las ventas de un paciente marcado", () => {
-    const direccion = leer("src/modules/direccion/data/dashboard-reader.ts");
-    // Las CUATRO a la vez: un bruto filtrado sobre comisiones sin filtrar hace que la resta entre ellas deje
-    // de significar nada.
-    expect(direccion).toContain("noEsPacienteDePrueba");
-    expect(direccion).toContain("esOperacion");
-    for (const cifra of ["pagadas", "cnvRows", "commissionRows", "devueltasRows"]) {
-      expect(direccion, `la cifra ${cifra} no aplica el filtro del paciente`).toContain(cifra);
+  // ═══ Y CON LA 0203 ESTE CASO CAMBIO DE FORMA, que es la lección de las seis ═══
+  //
+  // Antes exigía que CADA pantalla aplicara el filtro del paciente. Eso no atrapó ninguno de los seis
+  // defectos, y la sexta explicó por qué: las dos pantallas CUMPLÍAN la regla y daban distinto, porque cada
+  // una armaba su propio universo (una pedía los pacientes marcados bajo la RLS del profesional).
+  //
+  // Ahora la pregunta tiene UNA respuesta guardada, mantenida por trigger con las tres marcas, y lo que se
+  // vigila es que los lectores LA LEAN en vez de reconstruirla. El comportamiento lo prueba el candado
+  // contra la base de esa columna.
+  it("los lectores del dinero leen la columna, en vez de reconstruir la regla", () => {
+    for (const f of [
+      "src/modules/direccion/data/dashboard-reader.ts",
+      "src/modules/dashboard/data/tablero-reader.ts",
+    ]) {
+      expect(leer(f), `${f} no lee la columna de la venta`).toContain("COLUMNA_VENTA_DE_PRUEBA");
     }
-    // ── SE EXIGE QUE EL FRAGMENTO SE USE, no que exista ──
-    //
-    // La primera version buscaba el nombre y NO atrapo el defecto: quitar su uso del corte deja la
-    // declaracion en el archivo, asi que el nombre seguia apareciendo y el caso pasaba en verde. Es el mismo
-    // error que ya cometi con el candado de la fecha de arranque. Aqui se mira la composicion del corte.
-    const deshecho = leer("src/modules/direccion/data/lo-deshecho.ts");
-    const i = deshecho.indexOf("const corte = sql");
-    expect(i, "cambio como se arma el corte y este caso dejo de mirar nada").toBeGreaterThan(-1);
-    expect(deshecho.slice(i, deshecho.indexOf(";", i))).toContain("sinPacienteDePrueba");
-    expect(leer("src/modules/direccion/data/insights-de-la-compra.ts")).toContain("pa.cuenta_como_de_prueba");
-    // Y el mes del propio profesional: quien se registra a si mismo para probar veia su mes inflado con sus
-    // pruebas, en la pantalla que usa para saber como le fue.
-    expect(leer("src/modules/dashboard/data/tablero-reader.ts")).toContain("noEsPacienteDePrueba");
+    // Los dos lectores en SQL, con la misma columna.
+    for (const f of [
+      "src/modules/direccion/data/lo-deshecho.ts",
+      "src/modules/direccion/data/insights-de-la-compra.ts",
+    ]) {
+      expect(leer(f), `${f} no lee la columna de la venta`).toContain("not t.cuenta_como_de_prueba");
+    }
+    // Y EL HISTÓRICO PREGUNTA OTRA COSA, a propósito: mira paciente y producto, NO la marca del profesional,
+    // porque es SU pantalla. Hay una sola copia de cada pregunta; lo que no puede haber es la misma dos veces.
+    expect(leer("src/modules/payments/data/historico-del-profesional.ts")).toContain(
+      "cuenta_como_de_prueba",
+    );
   });
 
   it("la facturacion ya lo respetaba, y sigue", () => {

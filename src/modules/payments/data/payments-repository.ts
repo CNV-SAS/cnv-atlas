@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { COLUMNA_VENTA_DE_PRUEBA } from "@/modules/payments/cobro-reconocido";
 
 import { CHECKOUT_TTL_MS } from "./checkout-reader";
 import type { TransactionWithItems } from "../types";
@@ -12,9 +13,18 @@ function fail(context: string, message: string | undefined): never {
   throw new Error(`payments-repository: ${context}: ${message ?? "error desconocido"}`);
 }
 
-export async function listTransactions(): Promise<TransactionWithItems[]> {
+/**
+ * ═══ LO DE PRUEBA NO SE MUESTRA, PERO SE PUEDE VER (Santiago, 2026-10-02) ═══
+ *
+ * SU RAZON: su cuenta de admin es real, y ver pendientes de data inventada mezcla los dos mundos justo donde
+ * hay que decidir. Y mi reserva era que esconder algo ABIERTO lo vuelve invisible.
+ *
+ * El interruptor resuelve las dos: por defecto no se muestra, la pantalla DICE cuantas deja fuera, y se
+ * pueden ver con un clic. Nada queda invisible y la bandeja no mezcla.
+ */
+export async function listTransactions(incluirDePrueba = false): Promise<TransactionWithItems[]> {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  const base = supabase
     .from("transactions")
     // EL PERFIL DEL PROFESIONAL viene para poder decir QUIEN REGISTRO la venta (0193): `created_by` es la
     // persona que tecleó y `professional_id` la que se lleva la comisión, y no siempre son la misma.
@@ -22,6 +32,7 @@ export async function listTransactions(): Promise<TransactionWithItems[]> {
     // tiene siete, y por eso ninguna consulta lo embebe).
     .select("*, professional_profiles(profile_id), transaction_items(*, nutraceuticals(name))")
     .order("created_at", { ascending: false });
+  const { data, error } = await (incluirDePrueba ? base : base.eq(COLUMNA_VENTA_DE_PRUEBA, false));
   if (error) fail("listTransactions", error.message);
   // El embed (items + nombre del nutraceutico) lo garantiza la forma del query;
   // se castea a la vista de dominio que consume la UI.
@@ -241,4 +252,21 @@ export async function listVentasDeTratamiento(treatmentId: string): Promise<Vent
     .order("created_at", { ascending: false });
   if (error) fail("listVentasDeTratamiento", error.message);
   return (data ?? []) as unknown as VentaDeTratamiento[];
+}
+
+/**
+ * CUANTAS VENTAS DE PRUEBA SE ESTAN OCULTANDO.
+ *
+ * Existe para que la pantalla pueda DECIRLO. Mi reserva al filtrar era que esconder algo abierto lo vuelve
+ * invisible; el numero mas el interruptor la resuelven: nada queda invisible y la bandeja no mezcla.
+ *
+ * Y es una cifra de pantalla, no un filtro: por eso no pasa por el interruptor.
+ */
+export async function contarVentasDePrueba(): Promise<number> {
+  const supabase = await createSupabaseServerClient();
+  const { count } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq(COLUMNA_VENTA_DE_PRUEBA, true);
+  return count ?? 0;
 }

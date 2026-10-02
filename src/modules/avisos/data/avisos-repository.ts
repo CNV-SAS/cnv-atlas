@@ -143,6 +143,14 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
             where ti.transaction_id = t.id and coalesce(n.is_test, false) = false
          )
     )
+    -- ═══ Y NADA DE PRUEBA LLEGA AL CORREO NI AL AVISO (Santiago, 2026-10-02) ═══
+    --
+    -- Admin veia "7 pendientes de ventas necesitan accion (4 vencidos)" y los siete eran data inventada. Un
+    -- aviso operativo que mezcla las dos cosas se deja de leer, y entonces el dia que haya uno de verdad
+    -- nadie lo va a ver: es peor que no tener aviso.
+    --
+    -- SE FILTRA AL FINAL Y NO EN CADA RAMA, a proposito: son seis ramas y añadir la condicion a cada una es
+    -- justo la forma en que se olvida en la septima. Aqui pasa por un solo sitio.
     select p.tipo, p.transaction_id, p.desde::text as desde, p.amount::text as monto,
            p.dias_habiles, p.subclave,
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
@@ -151,6 +159,7 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
            p.causa,
            g.until_date::text as en_gestion_hasta, g.note as en_gestion_nota, g.por as en_gestion_por
       from pendientes p
+      join transactions tx on tx.id = p.transaction_id and not tx.cuenta_como_de_prueba
       left join lateral (
         select f.until_date, f.note, pr.full_name as por
           from pending_followups f join profiles pr on pr.id = f.created_by

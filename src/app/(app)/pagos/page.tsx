@@ -11,6 +11,8 @@ import { ultimaCorrida } from "@/modules/payments/data/conciliacion-repository";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+
 import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { BloqueRetracto, type RetractoDeLaVenta } from "@/modules/payments/components/bloque-retracto";
@@ -31,6 +33,7 @@ import { RegisterCashSaleForm } from "@/modules/payments/components/register-cas
 import {
   getProfessionalProfileIdByUser,
   listSelectablePatients,
+  contarVentasDePrueba,
   listTransactions,
 } from "@/modules/payments/data/payments-repository";
 import {
@@ -164,11 +167,22 @@ function itemsLabel(tx: TransactionWithItems): string {
 // transacciones (la RLS filtra: el profesional ve las suyas, admin/direccion todas).
 const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export default async function PagosPage({ searchParams }: { searchParams: Promise<{ dia?: string }> }) {
+export default async function PagosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dia?: string; prueba?: string }>;
+}) {
   const user = await requireUser();
   // El dia del reporte de ventas sin documento. Un valor que no es fecha se ignora: se muestran todas.
   const sp = await searchParams;
   const dia = sp.dia && DIA_RE.test(sp.dia) ? sp.dia : null;
+  // ── EL INTERRUPTOR DE LO DE PRUEBA (Santiago, 2026-10-02) ──
+  //
+  // Por defecto NO se muestra: su cuenta de admin es real y ver pendientes de data inventada mezcla los dos
+  // mundos justo donde hay que decidir. Y se puede ver con un clic, porque esconder algo ABIERTO lo volveria
+  // invisible, que era mi reserva. El numero de abajo dice cuantas quedan fuera.
+  const verDePrueba = sp.prueba === "1";
+  const ventasDePrueba = await contarVentasDePrueba();
   const canCreate = canCreateCheckout(user);
   const canView = canViewRevenue(user);
   // SOPORTE ATIENDE LOS PENDIENTES (Bloque A): con la marca de avisos le llegan por correo, y un correo que lleva
@@ -181,7 +195,7 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   // una sola: Vercel la corto con un 504 y no quedo ni error ni rastro de cual fue. Ahora la que no llegue se
   // reporta con su nombre y la pantalla sigue con lo demas, avisando de lo que falto.
   const [transacciones, perfil] = await Promise.all([
-    conLimite("pagos.transacciones", listTransactions, [] as TransactionWithItems[]),
+    conLimite("pagos.transacciones", () => listTransactions(verDePrueba), [] as TransactionWithItems[]),
     conLimite("pagos.perfil-propio", () => getProfessionalProfileIdByUser(user.id), null as string | null),
   ]);
   const transactions = transacciones.dato;
@@ -199,12 +213,12 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
   // habia que dejar de pedirlas todas a la vez.
   const paneles = verPaneles
     ? await enTandas([
-        () => conLimite("pagos.ventas-sin-documento", () => listarVentasSinDocumento(50, dia), []),
-        () => conLimite("pagos.ventas-por-revisar", listarVentasPorRevisar, []),
+        () => conLimite("pagos.ventas-sin-documento", () => listarVentasSinDocumento(50, dia, verDePrueba), []),
+        () => conLimite("pagos.ventas-por-revisar", () => listarVentasPorRevisar(verDePrueba), []),
         () => conLimite("pagos.efectivos-no-recibidos", listarEfectivosNoRecibidos, []),
         () => conLimite("pagos.dias-con-ventas-sin-cerrar", contarVentasSinDocumentoPorDia, []),
         () => conLimite("pagos.pendientes-de-accion", listarPendientesDeAccion, []),
-        () => conLimite("pagos.reversas", listarReversas, []),
+        () => conLimite("pagos.reversas", () => listarReversas(50, verDePrueba), []),
         // La devolucion fisica (3b sesion 2): lo que volvio del paciente y espera verificacion.
         () => conLimite("pagos.devueltas", leerDevolucionesPendientes, { items: [], destinos: [] }),
       ])
@@ -290,6 +304,34 @@ export default async function PagosPage({ searchParams }: { searchParams: Promis
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
       {/* SIN SUBTITULO: enumeraba las dos secciones que la pantalla ya muestra. */}
       <TituloPantalla titulo="Pagos" />
+
+      {/* ═══ LO DE PRUEBA, FUERA PERO ALCANZABLE (Santiago, 2026-10-02) ═══
+
+          Su razon: su cuenta de admin es real, y ver pendientes de data inventada mezcla los dos mundos
+          justo donde hay que decidir. Mi reserva: esconder algo ABIERTO lo vuelve invisible.
+
+          Las dos se resuelven diciendo el numero y dejando verlo. Lo que no podia quedar es una bandeja que
+          mezcla, ni un pendiente que desaparece sin que nadie sepa que existio. */}
+      {verPaneles && ventasDePrueba > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {verDePrueba ? (
+            <>
+              Se están mostrando las {ventasDePrueba} ventas de prueba junto con las reales.{" "}
+              <Link href="/pagos" className="underline underline-offset-4">
+                Ocultarlas
+              </Link>
+            </>
+          ) : (
+            <>
+              {ventasDePrueba} {ventasDePrueba === 1 ? "venta de prueba está oculta" : "ventas de prueba están ocultas"}{" "}
+              en estos paneles (profesional, paciente o producto de prueba).{" "}
+              <Link href="/pagos?prueba=1" className="underline underline-offset-4">
+                Verlas
+              </Link>
+            </>
+          )}
+        </p>
+      ) : null}
 
       {algoNoCargo ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">

@@ -82,4 +82,17 @@ export const COLUMNA_PRODUCTO_DE_PRUEBA = "nutraceuticals.is_test";
 // SE COMPARTE EL SELECT, NO UNA FUNCION QUE HABLE CON LA BASE: este modulo es NEUTRO (lo usan los lectores y
 // su test), y meterle un cliente de Supabase lo acoplaria al servidor. Es el mismo patron que las dos
 // constantes de arriba: la REGLA se comparte, la consulta la hace cada lector con su propio cliente.
-export const EMBED_LINEA_DE_PRUEBA = `transaction_id, ${EMBED_PRODUCTO_NO_DE_PRUEBA}`;
+/**
+ * ═══ LA UNICA RESPUESTA A "¿ESTA VENTA CUENTA?" (0203) ═══
+ *
+ * POR QUE EXISTE: seis veces en dos semanas, dos pantallas de la misma cifra con el filtro en una y no en la
+ * otra. Y la sexta enseño que ni compartir la regla alcanza: los dos lectores aplicaban el MISMO filtro y
+ * daban distinto porque cada uno armaba su propio universo (uno pedia los pacientes marcados bajo la RLS del
+ * profesional y no los veia todos).
+ *
+ * Asi que la pregunta tiene UNA respuesta, guardada por trigger, y todos leen la misma columna. La regla
+ * (profesional, paciente o producto de prueba) vive en la migracion, no repartida en nueve consultas.
+ *
+ * En SQL se escribe negando la columna directamente; esta constante es para los filtros de PostgREST.
+ */
+export const COLUMNA_VENTA_DE_PRUEBA = "cuenta_como_de_prueba";

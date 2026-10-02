@@ -149,10 +149,18 @@ describe("una venta de producto de prueba no cuenta en el dinero", () => {
   const INICIO2 = sinComentarios(readFileSync("src/modules/dashboard/data/tablero-reader.ts", "utf8"));
   const DIRECCION2 = sinComentarios(readFileSync("src/modules/direccion/data/dashboard-reader.ts", "utf8"));
 
-  it("las dos pantallas excluyen la venta, con el select compartido", () => {
+  it("las dos pantallas leen LA COLUMNA, no reconstruyen la regla", () => {
+    // SEIS DEFECTOS DESPUES (0203): la regla ya no se escribe en cada lector, se guarda. Lo que se vigila
+    // aqui es que nadie vuelva a reconstruirla: un lector que arme sus propias condiciones por paciente,
+    // profesional o producto puede volver a discrepar con el de al lado.
     for (const [nombre, src] of [["Inicio", INICIO2], ["Direccion", DIRECCION2]] as const) {
-      expect(src, nombre + " no lee las lineas de prueba").toContain("EMBED_LINEA_DE_PRUEBA");
-      expect(src, nombre + " no excluye la venta de prueba").toContain("ventaDePrueba");
+      expect(src, nombre + " no lee la columna de la venta").toContain("COLUMNA_VENTA_DE_PRUEBA");
+      expect(src, nombre + " volvio a reconstruir la regla del paciente").not.toContain(
+        "cuenta_como_de_prueba\", true",
+      );
+      expect(src, nombre + " volvio a reconstruir la regla del producto").not.toContain(
+        "COLUMNA_PRODUCTO_DE_PRUEBA, true",
+      );
     }
   });
 

@@ -48,7 +48,25 @@ export type HistoricoDelProfesional = {
   comision: { causada: number; liquidada: number; pendiente: number };
 };
 
-/** El filtro del dinero, escrito UNA vez. `t` es la venta. */
+/**
+ * ═══ AQUI LA PREGUNTA ES OTRA, Y POR ESO NO USA LA COLUMNA DE LA 0203 ═══
+ *
+ * SON DOS PREGUNTAS DISTINTAS, y confundirlas es lo que haria daño:
+ *
+ *   1 · "¿Esta venta cuenta como operacion de CNV?" La responde la columna derivada de la venta, que mira
+ *       las TRES marcas (profesional, paciente, producto). Es la de /direccion y los tableros.
+ *
+ *   2 · "¿Esta venta fue una venta de verdad?" La responde esto, y mira SOLO el paciente y el producto,
+ *       porque son los dos que impiden facturar: dinero que nunca se facturo no es dinero. NO mira la marca
+ *       del profesional, porque esta es SU pantalla y vaciarsela por ser una cuenta de demostracion le
+ *       quitaria justo lo que tiene que poder demostrar.
+ *
+ * Esa diferencia es la que explica que su historial diga 214.200 y /direccion diga 0 sobre las mismas
+ * ventas, y es la que el aviso de su pantalla dice en palabras.
+ *
+ * HAY UNA SOLA COPIA DE CADA PREGUNTA: la 1 en la base, la 2 aqui. Lo que no puede haber es la misma
+ * pregunta escrita dos veces, que es lo que produjo los seis defectos.
+ */
 const SOLO_DINERO_REAL = sql`
   not exists (select 1 from patients pa where pa.id = t.patient_id and pa.cuenta_como_de_prueba)
   and not exists (

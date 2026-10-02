@@ -427,7 +427,13 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     const sinSaldo = await efectivo(p, 1, false);
     await descontarVenta(sinSaldo.id);
 
-    const lista = await listarVentasPorRevisar();
+    // ── SE PIDE VER LO DE PRUEBA, Y POR UNA RAZON (0203) ──
+    //
+    // El producto de este fixture nace `is_test` a proposito (para no ensuciar las cifras reales), y desde
+    // la 0203 la bandeja oculta por defecto las ventas cuyo producto es de prueba. Lo que este caso mide es
+    // la LOGICA de la bandeja, no el filtro, asi que pide verlo explicitamente. El filtro tiene su propio
+    // caso al final.
+    const lista = await listarVentasPorRevisar(true);
     expect(lista.find((v) => v.id === porDecidir)?.motivo).toBe("pago_sobre_link_anulado");
     expect(lista.find((v) => v.id === sinSaldo.id)?.motivo).toBe("sin_saldo");
     expect(lista.find((v) => v.id === sinSaldo.id)?.detalle).toMatch(/faltaron 1/);
@@ -584,7 +590,13 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     const coinciden = await cobroDobleConEfectivo();
     const noCoinciden = await cobroDobleConEfectivo(1, 2);
     const aMano = await enRevision();
-    const lista = await listarVentasPorRevisar();
+    // ── SE PIDE VER LO DE PRUEBA, Y POR UNA RAZON (0203) ──
+    //
+    // El producto de este fixture nace `is_test` a proposito (para no ensuciar las cifras reales), y desde
+    // la 0203 la bandeja oculta por defecto las ventas cuyo producto es de prueba. Lo que este caso mide es
+    // la LOGICA de la bandeja, no el filtro, asi que pide verlo explicitamente. El filtro tiene su propio
+    // caso al final.
+    const lista = await listarVentasPorRevisar(true);
     expect(lista.find((v) => v.id === coinciden.link)?.efectivo).toBe("si");
     expect(lista.find((v) => v.id === noCoinciden.link)?.efectivo).toBe("no_coinciden");
     expect(lista.find((v) => v.id === aMano)?.efectivo).toBe("sin_efectivo");
