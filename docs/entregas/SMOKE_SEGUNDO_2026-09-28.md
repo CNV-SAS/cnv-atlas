@@ -796,3 +796,52 @@ bodega central, y al cambiar el total empezó a fallar por un motivo que no era 
 Que esté en el portafolio pero no exista físicamente es la elección correcta para no ensuciar la trazabilidad
 de los cuatro que sí se fabricaron. Y **la remesa no mira el saldo de la bodega central ni lo descuenta**, así
 que mandarla no te va a bloquear por no tener saldo ahí. Adelante.
+
+---
+
+# R16 · El 114 verificado contra el reparto real
+
+**No es un empate de la consulta: es la aritmética de tu propio reparto.** Katherine recibió 24 de cada uno de
+los cuatro y los otros seis recibieron 15 de cada uno. `24 + 6 × 15 = 114`, y da igual para los cuatro
+**porque el reparto fue idéntico para los cuatro**. Lo que lo demuestra es LUVIA: su reparto SÍ fue distinto
+(Katherine 0 porque su consultorio es la proveedora, Camilo 10) y da **70**, no 114. Si la consulta estuviera
+empatando o duplicando algo, LUVIA también saldría pareja.
+
+| Producto | Recibido del laboratorio | En vitrinas | En central |
+| --- | --- | --- | --- |
+| MULTI-CELL BASE | 500 | **114** | 386 |
+| OMEGA COMPLEX | 500 | **114** | 386 |
+| CURCUMIN BIOACTIV | 426 | **114** | 312 |
+| D3-K2 OSTEO | 300 | **114** | 186 |
+| LUVIA | 84 | **70** | 14 |
+| | | **526** | **1.284** |
+
+Y el cierre: **526 + 1.284 = 1.810**, que es exactamente el total que la tarjeta decía antes. O sea que no
+desapareció ninguna unidad: se repartió entre la cifra y el bloque de abajo. Las 1.284 de central son además
+la misma cifra que ya estaba escrita en `scripts/carga-inventario-inicial.sql`.
+
+**Confírmalo en la nube con esto**, que es lo mismo que lee la pantalla pero abierto por producto y por tipo de
+ubicación:
+
+```sql
+SELECT n.name AS producto, l.kind AS tipo_ubicacion, SUM(i.stock_quantity)::int AS unidades
+  FROM nutraceutical_inventory i
+  JOIN nutraceuticals n ON n.id = i.nutraceutical_id
+  JOIN inventory_locations l ON l.id = i.location_id
+ WHERE COALESCE(n.is_test, false) = false
+ GROUP BY 1, 2 ORDER BY 1, 2;
+```
+
+Lo que tiene que salir: `integrante` con los 114 y el 70, `central` con los 386/386/312/186/14, y `cuarentena`
+con lo que haya vuelto de un paciente. Si LUVIA en vitrinas sale en 69 y no en 70, es correcto: la unidad que
+María Camila vendió y volvió está en cuarentena, no en su vitrina.
+
+## Y las 10 de ADAPTO-STRESS
+
+Están en la vitrina de **Profesional Prueba**, que es una cuenta marcada de prueba, así que el tablero de
+`/direccion` **no las cuenta** (excluye las vitrinas de demostración desde el 2026-10-01). Por eso puedes
+usarlas para el smoke sin ensuciar la cifra.
+
+**Lo único que hay que cuidar: no mandarle ADAPTO-STRESS a un Integrante real.** El producto está marcado como
+real (está en el portafolio) y no existe físicamente, así que en la vitrina de un Integrante real **sí sumaría**
+al total, y sería una unidad que ningún conteo físico va a encontrar.
