@@ -80,13 +80,22 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
   //
   // LO QUE SE PIDE es exactamente lo que esta pantalla muestra: lo que tiene saldo, mas los
   // `en_consultorio` (que salen con 0 para poder recibir).
+  // ── Y EL PRODUCTO DE PRUEBA NO SE OFRECE SI NO TIENE SALDO (Santiago, 2026-10-02) ──
+  //
+  // Salia en la vitrina de integrantes REALES, en cero y marcado. Un producto que nadie puede vender y del
+  // que no hay nada solo ocupa sitio en la pantalla donde se cuenta el inventario.
+  //
+  // PERO SI TIENE SALDO SE MUESTRA, y esa mitad importa igual: esconder unidades que estan en su vitrina
+  // haria que la pantalla contradijera el conteo fisico, y es la pantalla que existe PARA contar. Asi que
+  // la regla es "con saldo siempre; sin saldo solo los reales".
   const idsConSaldo = [...stockByNutra.keys()];
   const catalogo = supabase
     .from("nutraceuticals")
     .select("id, name, indication, commercial_availability, is_test");
+  const ofrecibles = "and(commercial_availability.eq.en_consultorio,is_test.eq.false)";
   const { data: cat, error: cErr } = await (idsConSaldo.length
-    ? catalogo.or(`commercial_availability.eq.en_consultorio,id.in.(${idsConSaldo.join(",")})`)
-    : catalogo.eq("commercial_availability", "en_consultorio")
+    ? catalogo.or(`${ofrecibles},id.in.(${idsConSaldo.join(",")})`)
+    : catalogo.eq("commercial_availability", "en_consultorio").eq("is_test", false)
   ).order("name");
   if (cErr) throw new Error(`inventory-service: catalogo: ${cErr.message}`);
 

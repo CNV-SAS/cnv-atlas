@@ -1429,6 +1429,13 @@
       "when": 1791954266103,
       "tag": "0203_una_venta_sabe_si_es_de_prueba",
       "breakpoints": true
+    },
+    {
+      "idx": 204,
+      "version": "7",
+      "when": 1791954326103,
+      "tag": "0204_cada_integrante_nace_con_su_vitrina",
+      "breakpoints": true
     }
   ]
 }
