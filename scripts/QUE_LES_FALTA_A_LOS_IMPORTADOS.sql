@@ -117,3 +117,48 @@ select e.id as evaluacion,
   left join evaluation_bis_intake bi on bi.evaluation_id = e.id
  where e.patient_id = '146dca04-2b9c-4542-8cbd-e69a766da57b'
  order by e.created_at;
+
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+-- (C) QUE SE GENERO Y QUE NO, en el caso de Camila (2026-10-02)
+--
+-- La parte (B) dijo que a esa consulta NO LE FALTA NADA y que el diagnostico YA EXISTE. Entonces lo que
+-- ella llama "no genera bien" es algo DESPUES del diagnostico, o es otra consulta del mismo paciente.
+-- Esta parte mira las dos posibilidades a la vez: una fila por evaluacion, con lo que hay colgando.
+--
+-- LO QUE SE BUSCA, en orden de sospecha:
+--   1. OTRA EVALUACION del mismo paciente, sin diagnostico. Un paciente importado del HTML suele traer
+--      varias consultas, y la que ella mira puede no ser la que se consulto.
+--   2. El RESUMEN DE IA vacio (`ai_summary` nulo). El diagnostico existe, las cifras estan, y el parrafo
+--      que lo explica no: la pantalla se ve "a medias" sin que falte ningun dato.
+--   3. El diagnostico SIN CONFIRMAR (`confirmed_at` nulo): sin firma no hay tratamiento ni reporte, y
+--      desde la pantalla parece que no termino de generar.
+--   4. Y lo de mas abajo: tratamiento, aprobacion y reporte.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+select e.id as evaluacion,
+       e.created_at::date as fecha,
+       e.import_batch_id is not null as importada,
+       d.id is not null as tiene_diagnostico,
+       d.diagnosis_name,
+       d.ai_summary is null or length(trim(coalesce(d.ai_summary, ''))) = 0 as resumen_de_ia_vacio,
+       d.confirmed_at is not null as diagnostico_confirmado,
+       d.engine_version,
+       d.rules_version,
+       -- OJO: el tratamiento cuelga del DIAGNOSTICO (diagnosis_id), no de la evaluacion.
+       exists (select 1 from treatments t where t.diagnosis_id = d.id) as tiene_tratamiento,
+       exists (select 1 from treatments t where t.diagnosis_id = d.id and t.approved_at is not null) as tratamiento_aprobado,
+       exists (select 1 from reports r where r.evaluation_id = e.id) as tiene_reporte
+  from evaluations e
+  left join diagnoses d on d.evaluation_id = e.id
+ where e.patient_id = '146dca04-2b9c-4542-8cbd-e69a766da57b'
+ order by e.created_at;
+
+-- ── Y LA MISMA PREGUNTA SOBRE TODOS LOS IMPORTADOS, para saber si es de ella o de todos ──
+select count(*)::int as evaluaciones_importadas_con_diagnostico,
+       count(*) filter (where d.ai_summary is null or length(trim(coalesce(d.ai_summary, ''))) = 0)::int as sin_resumen_de_ia,
+       count(*) filter (where d.confirmed_at is null)::int as sin_confirmar,
+       count(distinct d.engine_version)::int as versiones_de_motor_distintas,
+       string_agg(distinct d.engine_version, ', ') as cuales
+  from evaluations e
+  join diagnoses d on d.evaluation_id = e.id
+ where e.import_batch_id is not null;
