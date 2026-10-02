@@ -48,8 +48,10 @@ import { listarEfectivosNoRecibidos, listarVentasPorRevisar } from "@/modules/pa
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
+import { PendientesSinSalida } from "@/modules/avisos/components/pendientes-sin-salida";
 import { listarPendientesDeAccion } from "@/modules/avisos/data/avisos-repository";
 import { canAtenderPendientesVentas } from "@/modules/avisos/policies/can-atender-pendientes";
+import { TIPOS_SIN_SALIDA } from "@/modules/avisos/resumen";
 import type { TransactionStatus, TransactionWithItems } from "@/modules/payments/types";
 
 export const metadata = { title: "Pagos - Atlas" };
@@ -217,7 +219,11 @@ export default async function PagosPage({
         () => conLimite("pagos.ventas-por-revisar", () => listarVentasPorRevisar(verDePrueba), []),
         () => conLimite("pagos.efectivos-no-recibidos", listarEfectivosNoRecibidos, []),
         () => conLimite("pagos.dias-con-ventas-sin-cerrar", contarVentasSinDocumentoPorDia, []),
-        () => conLimite("pagos.pendientes-de-accion", listarPendientesDeAccion, []),
+        // CON LOS DESCARTADOS, y de esta MISMA consulta (0205): el panel de "pendientes sin salida" tiene que
+        // mostrarlos (quien, cuando, por que) en vez de esconderlos, y pedirlos aparte seria una segunda
+        // consulta capaz de contar un universo distinto del que cuenta el correo. Para el mapa de "en gestion",
+        // que es el otro consumidor de esta lista, traer los descartados no cambia nada.
+        () => conLimite("pagos.pendientes-de-accion", () => listarPendientesDeAccion({ incluirDescartados: true }), []),
         () => conLimite("pagos.reversas", () => listarReversas(50, verDePrueba), []),
         // La devolucion fisica (3b sesion 2): lo que volvio del paciente y espera verificacion.
         () => conLimite("pagos.devueltas", leerDevolucionesPendientes, { items: [], destinos: [] }),
@@ -231,6 +237,10 @@ export default async function PagosPage({
   const efectivosNoRecibidos = paneles[2]?.dato ?? [];
   const sinDocumentoPorDia = paneles[3]?.dato ?? [];
   const pendientes = paneles[4]?.dato ?? [];
+  // LOS DOS QUE NO SE CIERRAN CON NINGUNA ACCION EN ATLAS (0205). Se acotan aqui, de la lista que ya vino.
+  const pendientesSinSalida = pendientes.filter((p) =>
+    TIPOS_SIN_SALIDA.includes(p.tipo as (typeof TIPOS_SIN_SALIDA)[number]),
+  );
   const reversas = paneles[5]?.dato ?? [];
   const devueltas = paneles[6]?.dato.items ?? [];
   const destinos = paneles[6]?.dato.destinos ?? [];
@@ -403,6 +413,16 @@ export default async function PagosPage({
           ahora={new Date(nowMs)}
           puedeResolver={canView}
           enGestion={enGestion}
+        />
+      )}
+      {/* LOS DOS PENDIENTES SIN SALIDA (0205). Van junto a las ventas por revisar porque son de la misma
+          familia (lo que pide una persona), pero en su propio panel porque lo que se puede hacer con ellos es
+          distinto: no se resuelven, se descartan con un motivo. */}
+      {verPaneles && (
+        <PendientesSinSalida
+          pendientes={pendientesSinSalida}
+          puedeDescartar={canView}
+          ahora={new Date(nowMs)}
         />
       )}
       {canView ? <CotejoConWompi ultima={cotejo?.dato ?? null} /> : null}

@@ -3,9 +3,10 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { recordAudit } from "@/modules/audit/log";
 import { FACTURABLE, LE_FALTA_ALGO } from "@/modules/payments/data/facturacion-repository";
 
-import type { Franja, Pendiente, TipoDePendiente } from "../resumen";
+import { TIPOS_SIN_SALIDA, type Franja, type Pendiente, type TipoDePendiente, type TipoSinSalida } from "../resumen";
 
 // ═══ LO QUE LOS AVISOS LEEN Y ESCRIBEN (Bloque A) ═══
 //
@@ -17,8 +18,19 @@ export type TipoDeMarca = "pendientes_ventas" | "escalamiento_ventas";
 /**
  * TODO LO QUE PIDE ACCION HUMANA, con su "en gestion" vigente. Tres tipos, y cada uno con la MISMA condicion que
  * usa su panel: si aqui se escribiera otra, el correo y la pantalla dirian cosas distintas.
+ *
+ * ── EL DESCARTE Y POR QUE SE RESUELVE AQUI (0205) ──
+ *
+ * Los dos pendientes sin salida (`sin_saldo`, `por_despachar`) se pueden DESCARTAR con motivo. El descarte sale
+ * de ESTA consulta y no de un filtro en la pantalla, por la leccion de los seis defectos: un segundo sitio donde
+ * aplicar la misma regla es un segundo sitio donde puede divergir, y el correo y el panel volverian a decir
+ * cosas distintas sobre la misma venta.
+ *
+ * `incluirDescartados` NO duplica la regla: es la MISMA consulta, que trae tambien el descarte para que el panel
+ * lo muestre (quien, cuando, por que) en vez de esconder la fila. El correo y la franja llaman sin la opcion.
  */
-export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
+export async function listarPendientesDeAccion(opciones?: { incluirDescartados?: boolean }): Promise<Pendiente[]> {
+  const incluirDescartados = opciones?.incluirDescartados === true;
   const filas = await db.execute<{
     tipo: TipoDePendiente;
     transaction_id: string;
@@ -31,6 +43,10 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
     en_gestion_por: string | null;
     dias_habiles: number | null;
     subclave: string | null;
+    descarte_motivo: string | null;
+    descarte_por: string | null;
+    descarte_en: string | null;
+    descarte_caducado: boolean | null;
   }>(sql`
     with pendientes as (
       -- Pagos en revision abiertos (panel "Ventas por revisar").
@@ -157,7 +173,9 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
               from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
              where ti.transaction_id = p.transaction_id) as productos,
            p.causa,
-           g.until_date::text as en_gestion_hasta, g.note as en_gestion_nota, g.por as en_gestion_por
+           g.until_date::text as en_gestion_hasta, g.note as en_gestion_nota, g.por as en_gestion_por,
+           d.reason as descarte_motivo, d.por as descarte_por, d.created_at::text as descarte_en,
+           d.caducado as descarte_caducado
       from pendientes p
       join transactions tx on tx.id = p.transaction_id and not tx.cuenta_como_de_prueba
       left join lateral (
@@ -166,6 +184,18 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
          where f.kind = p.tipo and f.transaction_id = p.transaction_id
          order by f.created_at desc limit 1
       ) g on true
+      -- EL DESCARTE VIGENTE, con su caducidad resuelta en la base: la huella guardada contra la de AHORA, las
+      -- dos salidas de la MISMA funcion. Comparadas en dos sitios distintos, divergirian.
+      left join lateral (
+        select dd.reason, dd.created_at, pr.full_name as por,
+               dd.fact_fingerprint is distinct from public.huella_del_pendiente(dd.kind, dd.transaction_id)
+                 as caducado
+          from pending_discards dd join profiles pr on pr.id = dd.created_by
+         where dd.kind = p.tipo and dd.transaction_id = p.transaction_id and dd.revoked_at is null
+      ) d on true
+     -- UN DESCARTE VIGENTE Y NO CADUCADO saca el pendiente del correo y de la franja. Caducado NO lo saca: el
+     -- hecho cambio despues del juicio, asi que el juicio ya no lo cubre y vuelve a pedir accion.
+     where ${incluirDescartados} or d.reason is null or d.caducado
      order by p.desde`);
   return filas.map((f) => ({
     tipo: f.tipo,
@@ -179,7 +209,90 @@ export async function listarPendientesDeAccion(): Promise<Pendiente[]> {
     enGestionHasta: f.en_gestion_hasta,
     enGestionNota: f.en_gestion_nota,
     enGestionPor: f.en_gestion_por,
+    descarte:
+      f.descarte_motivo == null
+        ? null
+        : {
+            motivo: f.descarte_motivo,
+            por: f.descarte_por,
+            en: String(f.descarte_en),
+            caducado: Boolean(f.descarte_caducado),
+          },
   }));
+}
+
+/**
+ * LOS PENDIENTES QUE NO TIENEN SALIDA, para su panel. Sale del MISMO lector del correo (con los descartados
+ * incluidos, para mostrarlos en vez de esconderlos) y luego se acota a los dos tipos: si este panel tuviera su
+ * propia consulta, podria contar un universo distinto del que cuenta el correo.
+ */
+export async function listarPendientesSinSalida(): Promise<Pendiente[]> {
+  const todos = await listarPendientesDeAccion({ incluirDescartados: true });
+  return todos.filter((p) => TIPOS_SIN_SALIDA.includes(p.tipo as TipoSinSalida));
+}
+
+/** Guarda el descarte con la huella del hecho TAL COMO ESTA AHORA, calculada por la base. */
+export async function descartarPendiente(e: {
+  tipo: TipoSinSalida;
+  transactionId: string;
+  motivo: string;
+  actorId: string;
+  actorEmail: string | null;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    // PRIMERO SE REVOCA EL ANTERIOR, si hay. El caso real es el descarte CADUCADO: el hecho cambio, el pendiente
+    // volvio, y quien lo mira lo descarta otra vez con un motivo nuevo. Sin esto, el indice de "uno vigente" lo
+    // rechazaria y el boton de la pantalla seria un callejon sin salida: justo la forma de defecto que este
+    // mecanismo existe para quitar.
+    await tx.execute(sql`
+      update pending_discards
+         set revoked_at = now(), revoked_by = ${e.actorId}::uuid
+       where kind = ${e.tipo} and transaction_id = ${e.transactionId}::uuid and revoked_at is null`);
+
+    // LA HUELLA LA PONE LA BASE, en el mismo insert: traerla a TypeScript y volverla a mandar abriria la ventana
+    // en la que el hecho cambia entre la lectura y la escritura, y el descarte quedaria firmado sobre un hecho
+    // que ya no existe.
+    const filas = await tx.execute<{ id: string }>(sql`
+      insert into pending_discards (kind, transaction_id, reason, fact_fingerprint, created_by)
+      select ${e.tipo}, ${e.transactionId}::uuid, ${e.motivo},
+             public.huella_del_pendiente(${e.tipo}, ${e.transactionId}::uuid), ${e.actorId}::uuid
+       where exists (select 1 from transactions t where t.id = ${e.transactionId}::uuid)
+      returning id`);
+    if (filas.length === 0) throw new Error("avisos: la venta del descarte no existe.");
+    await recordAudit(tx, {
+      event: "pendiente.descartado",
+      actorId: e.actorId,
+      actorEmail: e.actorEmail,
+      entityType: "transaction",
+      entityId: e.transactionId,
+      payload: { tipo: e.tipo, motivo: e.motivo },
+    });
+  });
+}
+
+/** Reactiva: no borra el descarte, lo revoca. Queda constancia de que se descarto y de que alguien lo deshizo. */
+export async function reactivarPendiente(e: {
+  tipo: TipoSinSalida;
+  transactionId: string;
+  actorId: string;
+  actorEmail: string | null;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const filas = await tx.execute<{ id: string }>(sql`
+      update pending_discards
+         set revoked_at = now(), revoked_by = ${e.actorId}::uuid
+       where kind = ${e.tipo} and transaction_id = ${e.transactionId}::uuid and revoked_at is null
+      returning id`);
+    if (filas.length === 0) throw new Error("avisos: ese pendiente no estaba descartado.");
+    await recordAudit(tx, {
+      event: "pendiente.descarte_reactivado",
+      actorId: e.actorId,
+      actorEmail: e.actorEmail,
+      entityType: "transaction",
+      entityId: e.transactionId,
+      payload: { tipo: e.tipo },
+    });
+  });
 }
 
 /**
