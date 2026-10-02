@@ -37,6 +37,7 @@ const DB_TESTS = [
   "src/tests/lo-deshecho-db.test.ts",
   "src/tests/paciente-derivado-de-prueba-db.test.ts",
   "src/tests/una-venta-sabe-si-es-de-prueba-db.test.ts",
+  "src/tests/integrante-nace-con-vitrina-db.test.ts",
   "src/tests/ventas-sin-documento-por-dia-db.test.ts",
   "src/tests/avisos-db.test.ts",
   "src/tests/auth-flows.test.ts",
