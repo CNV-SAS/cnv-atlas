@@ -59,7 +59,7 @@ vez de decidirlo.
 
 ---
 
-## Las tres preguntas
+## Las cuatro preguntas
 
 1. **¿Cuál es el rango fisiológico de la capacitancia de membrana en tu modelo, y de dónde sale** (artículo,
    cohorte, el manual del equipo)?
@@ -67,6 +67,9 @@ vez de decidirlo.
    IRC y PABU sí dependen del sexo; de este no sabemos.
 3. **Y si 16,22 es un valor posible**: ¿qué significa clínicamente, y hay que decir algo en el informe cuando
    aparece?
+4. **Y qué hacemos con esta paciente.** Si el valor sirve, ¿se desbloquea su medición **tal cual** y se genera
+   su diagnóstico con ella, o hay que **repetir la toma igual** antes de emitir nada? Son dos cosas distintas:
+   en la primera su consulta se destraba sola en cuanto nos digas; en la segunda hay que llamarla y citarla.
 
 **Mientras tanto no se toca nada.** La medición sigue frenada y esa consulta sin diagnóstico: preferimos eso a
 emitir un resultado que diga que la paciente está mejor de lo que está.
@@ -99,7 +102,7 @@ vacía a propósito.
 | --- | --- | --- | --- |
 | **FFMI** · índice de masa libre de grasa | 8 – 40 kg/m² | | **Frenaría a un paciente real.** Un FFMI por debajo de 8 es posible en caquexia o sarcopenia severa, que es justo la población que el modelo existe para medir. Hoy esa persona se quedaría sin diagnóstico |
 | **Talla** | 120 – 230 cm | | **Frenaría a un paciente real.** Deja fuera a una persona con talla baja o acondroplasia. El piso sirve para atrapar la talla escrita en metros (1,75), pero paga ese precio |
-| **C** · capacitancia de membrana | 0,3 – 8 nF | | **Ya frenó a una paciente real** (es la Parte 1) |
+| **C** · capacitancia de membrana | 0,3 – 8 nF | | **Ya frenó a una paciente real:** su medición dio 16,22 nF, por encima del techo de 8, y está sin diagnóstico. Es el caso de la Parte 1; si lo respondes allá, esta fila queda contestada |
 | **Ri** · resistencia intracelular | 400 – 4000 Ω | | Dudoso: un paciente muy deshidratado podría acercarse al techo. No sabemos si 4000 es alcanzable |
 | **Re** · resistencia extracelular | 200 – 1200 Ω | | Solo atraparía un export corrupto |
 | **R∞** · resistencia infinita | 150 – 1000 Ω | | Solo atraparía un export corrupto |
