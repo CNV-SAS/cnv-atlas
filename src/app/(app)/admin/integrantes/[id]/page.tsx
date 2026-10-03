@@ -223,7 +223,21 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
             {integrante.ventas.map((v) => (
               <li key={v.id} className="flex flex-col gap-1 border-b pb-2">
                 <span className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span>{fecha(v.fecha)}</span>
+                  <span>
+                    {fecha(v.fecha)}
+                    {/* ═══ MARCADAS, NO ESCONDIDAS (Santiago, 2026-10-03) ═══
+
+                        En /pagos estas ventas se ocultan (con su interruptor y su contador), porque esa lista
+                        es el registro de lo que se cobró. Aquí NO: esta pantalla es el historial de una
+                        persona, y una venta que desaparece sin dejar rastro es peor que una marcada. Lo que
+                        las excluye son sus cifras de arriba, que ya lo dicen. Misma regla que su lista de
+                        pacientes y que la de productos en el inventario. */}
+                    {v.esDePrueba ? (
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        De prueba · no cuenta en las cifras
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="tabular-nums">{pesos(v.total)}</span>
                 </span>
                 <span className="text-muted-foreground">

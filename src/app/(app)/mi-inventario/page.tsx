@@ -113,6 +113,31 @@ export default async function MiInventarioPage() {
                     ) : null}
                   </span>
                   {l.indication ? <span className="text-xs text-muted-foreground">{l.indication}</span> : null}
+                  {/* ═══ EL PRECIO, AQUI (Santiago, 2026-10-03) ═══
+
+                      Los Integrantes entran a su inventario a mirar el PVP y no estaba: había que irse a
+                      /pagos o al tratamiento. Es el primer sitio donde se busca, y con razón: el precio es un
+                      atributo del producto que tienen en la mano. Se dice que es con IVA porque es como se
+                      cobra, y porque un precio sin esa aclaración invita a sumarle el IVA otra vez. */}
+                  {l.pvp != null ? (
+                    <span className="text-xs text-muted-foreground">
+                      PVP <span className="font-medium text-foreground">{l.pvp.toLocaleString("es-CO")} COP</span>{" "}
+                      (IVA incluido)
+                    </span>
+                  ) : null}
+                  {/* ═══ Y LOS LOTES CON SU VENCIMIENTO ═══
+
+                      El saldo ya se guarda POR LOTE y la pantalla lo sumaba en un solo número. Quien saca la
+                      caja del estante necesita saber CUÁL sale primero, que es justo lo que decide el
+                      descuento (FEFO). Van en ese orden: el primero de la lista es el que sale primero. */}
+                  {l.lotes.length > 0 ? (
+                    <span className="text-xs text-muted-foreground">
+                      {l.lotes.length === 1 ? "Lote: " : "Lotes (sale primero el de arriba): "}
+                      {l.lotes
+                        .map((x) => `${x.codigo} · ${x.cantidad} u.${x.vence ? ` · vence ${x.vence}` : ""}`)
+                        .join("  |  ")}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="font-normal">
