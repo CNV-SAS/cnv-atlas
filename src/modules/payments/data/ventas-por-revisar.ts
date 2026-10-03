@@ -34,6 +34,8 @@ export type VentaPorRevisar = {
   versionEn: string | null;
   /** Si se puede marcar "el efectivo no se recibio" (0142). */
   efectivo: "si" | "sin_efectivo" | "no_coinciden";
+  /** La venta esta marcada de prueba (paciente, profesional o producto) pero su descuadre es fisico y real. */
+  deUnaVentaDePrueba: boolean;
 };
 
 export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<VentaPorRevisar[]> {
@@ -49,6 +51,7 @@ export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<V
     version_por: string | null;
     version_en: string | null;
     efectivo: VentaPorRevisar["efectivo"];
+    de_prueba: boolean;
   }>(sql`
     select t.id, t.amount::text as amount, t.created_at::text as created_at,
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
@@ -83,7 +86,8 @@ export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<V
                 where x.q is distinct from y.q)
                then 'si'
              else 'no_coinciden'
-           end as efectivo
+           end as efectivo,
+           t.cuenta_como_de_prueba as de_prueba
       from transactions t
       left join profiles p on p.id = t.review_professional_version_by
      where t.status = 'paid'
@@ -124,6 +128,7 @@ export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<V
     versionPor: f.version_por,
     versionEn: f.version_en,
     efectivo: f.efectivo,
+    deUnaVentaDePrueba: Boolean(f.de_prueba),
   }));
 }
 

@@ -177,7 +177,24 @@ export async function listarPendientesDeAccion(opciones?: { incluirDescartados?:
            d.reason as descarte_motivo, d.por as descarte_por, d.created_at::text as descarte_en,
            d.caducado as descarte_caducado
       from pendientes p
-      join transactions tx on tx.id = p.transaction_id and not tx.cuenta_como_de_prueba
+      -- ═══ EL FILTRO DE PRUEBA NO ES EL MISMO PARA TODOS LOS TIPOS (Santiago, smoke del 2026-10-03) ═══
+      --
+      -- EL DEFECTO: este filtro, puesto "al final y no en cada rama para que no se olvide en la septima",
+      -- PISABA la regla que la rama de sin_saldo ya tenia. Esa rama mira el PRODUCTO (si es real, la unidad
+      -- salio de verdad y la vitrina esta descuadrada DE VERDAD, aunque el paciente sea de prueba), y este
+      -- and not tx.cuenta_como_de_prueba la sacaba igual por el paciente.
+      --
+      -- LO QUE PRODUJO, y es peor que esconder de mas: la bandeja de "ventas por revisar" SI mostraba esa
+      -- LUVIA (su filtro mira el producto) y el panel de "Pendientes sin salida" NO, porque sale de aqui. Asi
+      -- que la fila se veia en un panel y no se podia descartar en el otro: el remedio que existe para ella
+      -- quedaba fuera de su alcance.
+      --
+      -- Asi que el filtro general sigue, y sin_saldo queda EXCEPTUADA con su razon escrita. Las otras cinco
+      -- ramas hablan de DINERO o de DOCUMENTOS (facturas, notas credito, despachos), y ahi una venta de
+      -- prueba no pide nada; sin_saldo habla de UNIDADES FISICAS, que no entienden de marcas.
+      join transactions tx
+        on tx.id = p.transaction_id
+       and (not tx.cuenta_como_de_prueba or p.tipo = 'sin_saldo')
       left join lateral (
         select f.until_date, f.note, pr.full_name as por
           from pending_followups f join profiles pr on pr.id = f.created_by

@@ -136,6 +136,21 @@ export function VentasPorRevisar({
                 <span className="text-xs text-muted-foreground">{v.productos}</span>
               </div>
               <p className="max-w-prose text-xs text-muted-foreground">{EXPLICACION[v.motivo]}</p>
+              {/* ═══ POR QUE UNA VENTA DE PRUEBA APARECE EN ESTA BANDEJA (Santiago, 2026-10-03) ═══
+
+                  La lista principal de /pagos la esconde (mira la VENTA) y esta la muestra (mira el
+                  PRODUCTO). Las dos reglas son correctas y por separado se defienden solas, pero juntas se
+                  leen como una contradicción: el mismo hecho se ve en un panel y no en el otro.
+
+                  No se resuelve cambiando un filtro, se resuelve DICIÉNDOLO. El descuadre es físico: una
+                  unidad real salió de una vitrina real, y eso no lo cambia que el paciente sea de prueba. */}
+              {v.deUnaVentaDePrueba ? (
+                <p className="max-w-prose text-xs text-muted-foreground">
+                  Esta venta está marcada como de prueba, y su dinero no cuenta en ninguna cifra. Aparece aquí
+                  igual porque el producto es real: la unidad salió de verdad de la vitrina, y ese descuadre
+                  hay que cuadrarlo o descartarlo abajo, en <strong>Pendientes sin salida</strong>.
+                </p>
+              ) : null}
               {v.detalle && <p className="break-words font-mono text-xs text-muted-foreground">{v.detalle}</p>}
               {v.motivo === "pago_sobre_link_anulado" && (
                 <div className="flex flex-col gap-2">
