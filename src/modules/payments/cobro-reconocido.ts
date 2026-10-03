@@ -96,3 +96,25 @@ export const COLUMNA_PRODUCTO_DE_PRUEBA = "nutraceuticals.is_test";
  * En SQL se escribe negando la columna directamente; esta constante es para los filtros de PostgREST.
  */
 export const COLUMNA_VENTA_DE_PRUEBA = "cuenta_como_de_prueba";
+
+// ═══ EL PIE DE "LO QUE HA VENDIDO", EN UN SOLO SITIO (Santiago, 2026-10-03) ═══
+//
+// EL DEFECTO: el importe restaba lo devuelto y el CONTEO no, asi que "321.300 · 6 ventas en total" se leia
+// como si esas seis hubieran dejado ese dinero, cuando tres se devolvieron enteras. La cifra y su conteo
+// contaban universos distintos en el mismo renglon.
+//
+// LAS DEVUELTAS NO SE RESTAN DEL CONTEO, SE DICEN APARTE: una venta devuelta OCURRIO, y borrarla esconderia
+// actividad real del Integrante (atendio, cobro, y despues volvio). Lo que faltaba no era otro numero, era el
+// segundo numero.
+//
+// Y VIVE AQUI, no en cada pantalla: las dos que lo muestran (su perfil y la vista de admin) escribian la misma
+// frase por separado, que es como se llega a que una diga una cosa y la otra, otra.
+export function pieDeLoVendido(v: { ventas: number; revertidas: number }, conRevision = false): string {
+  if (v.ventas === 0) return "Sin ventas registradas";
+  const cuantas = `${v.ventas} ${v.ventas === 1 ? "venta" : "ventas"} en total`;
+  const vueltas =
+    v.revertidas > 0
+      ? ` · ${v.revertidas} ${v.revertidas === 1 ? "se devolvió" : "se devolvieron"}`
+      : "";
+  return `${cuantas}${vueltas} · sin lo devuelto${conRevision ? " ni lo que está en revisión" : ""}`;
+}

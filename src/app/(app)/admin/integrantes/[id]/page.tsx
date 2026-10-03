@@ -1,4 +1,5 @@
 import { Boxes, Receipt, TriangleAlert, Users, Wallet } from "lucide-react";
+import { pieDeLoVendido } from "@/modules/payments/cobro-reconocido";
 import { redirect } from "next/navigation";
 
 import { Panel } from "@/components/shared/panel";
@@ -127,11 +128,7 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           rotulo="Lo que ha vendido"
           valor={pesos(integrante.vendido.total)}
           icono={Receipt}
-          detalle={
-            integrante.vendido.ventas === 0
-              ? "Sin ventas registradas"
-              : `${integrante.vendido.ventas} ventas en total · sin lo devuelto`
-          }
+          detalle={pieDeLoVendido(integrante.vendido)}
         />
         {/* EL MARGEN CAUSADO ES EL TOTAL HISTORICO de su comision, y hasta hoy solo se veia el PENDIENTE en
             las tarjetas: "cuanta comision ha generado" obligaba a bajar al panel del margen. */}

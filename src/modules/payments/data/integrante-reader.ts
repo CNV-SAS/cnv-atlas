@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { historicoDelProfesional } from "./historico-del-profesional";
+import { historicoDelProfesional, type HistoricoDelProfesional } from "./historico-del-profesional";
 
 // ═══ VER LA OPERACION DE UN INTEGRANTE DESDE ADMIN (Santiago, 2026-09-25) ═══
 //
@@ -63,7 +63,9 @@ export type DetalleDelIntegrante = {
    * NO LLEVA EL CORTE DEL ARRANQUE, y es deliberado: es un total historico, de la misma familia que lo que
    * se le debe. Recortarlo por una fecha responderia otra pregunta.
    */
-  vendido: { total: number; ventas: number };
+  // La forma la fija el lector compartido (): repetirla aqui es como se llega a que
+  // una pantalla muestre un campo que la otra no.
+  vendido: HistoricoDelProfesional["vendido"];
   faltantesAbiertos: { producto: string; unidades: number; estado: string; reportado: string }[];
   pacientes: number;
   /**

@@ -44,7 +44,8 @@ import { brutoReconocido } from "@/modules/payments/cobro-reconocido";
 // diferencia con /direccion la explica el aviso de su pantalla.
 
 export type HistoricoDelProfesional = {
-  vendido: { total: number; ventas: number };
+  /** `ventas` son las que OCURRIERON; `revertidas`, cuantas de ellas volvieron. `total` ya resta lo devuelto. */
+  vendido: { total: number; ventas: number; revertidas: number };
   comision: { causada: number; liquidada: number; pendiente: number };
 };
 
@@ -89,8 +90,8 @@ export async function historicoDelProfesional(professionalId: string): Promise<H
      where t.professional_id = ${professionalId}::uuid and r.state = 'perdida'
        and ${SOLO_DINERO_REAL}`);
 
-  const devueltas = await db.execute<{ debited_amount: string | null }>(sql`
-    select r.debited_amount::text as debited_amount from sale_reversals r
+  const devueltas = await db.execute<{ transaction_id: string; debited_amount: string | null }>(sql`
+    select r.transaction_id, r.debited_amount::text as debited_amount from sale_reversals r
       join transactions t on t.id = r.transaction_id
      where t.professional_id = ${professionalId}::uuid and r.state = 'devuelta'
        and ${SOLO_DINERO_REAL}`);
@@ -115,6 +116,17 @@ export async function historicoDelProfesional(professionalId: string): Promise<H
         devoluciones: devueltas.map((r) => r.debited_amount),
       }),
       ventas: pagadas.length,
+      // ═══ Y CUANTAS DE ESAS VOLVIERON (Santiago, 2026-10-03) ═══
+      //
+      // EL IMPORTE RESTABA LO DEVUELTO Y EL CONTEO NO, asi que "321.300 · 6 ventas en total" se leia como si
+      // esas seis hubieran dejado ese dinero, cuando tres se devolvieron enteras. La cifra y su conteo
+      // contaban universos distintos en el mismo renglon.
+      //
+      // NO SE RESTA DEL CONTEO, SE DICE APARTE, y la diferencia importa: una venta devuelta OCURRIO, y
+      // borrarla de la cuenta esconderia actividad real del Integrante (atendio, cobro, y despues volvio).
+      // Lo que faltaba no era otro numero, era el segundo numero.
+      revertidas: new Set([...perdidas.map((r) => r.transaction_id), ...devueltas.map((r) => r.transaction_id)])
+        .size,
     },
     comision: {
       causada: Number(comisiones?.causada ?? 0),
