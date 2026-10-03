@@ -110,8 +110,25 @@ export function RegisterCashSaleForm({
   //
   // Los otros dos botones de este formulario (anular el link, confirmar duplicado) no se veían afectados
   // porque llevan su dato por `onClick`, no por `name`. Por eso el defecto era de uno solo.
+  // ═══ LAS CONFIRMACIONES SE ACUMULAN (bloqueo de Santiago, 2026-10-02) ═══
+  //
+  // EL BUCLE: confirmar "Registrarlo así" mandaba `fueraDelPlanConfirmado` en el `name`/`value` del BOTON, asi
+  // que solo viajaba en el envio de ESE boton. Al pulsar despues "Anular el link" (que envia por `onClick`, sin
+  // submitter), esa confirmacion ya no iba, el servidor volvia a calcular el aviso de fuera del plan, y se
+  // volvia al principio. Indefinidamente, con los dos avisos correctos.
+  //
+  // UNA CONFIRMACION DADA NO SE RETIRA SOLA: se recuerda aqui y se re-manda en cada envio siguiente. Es lo que
+  // garantiza que no haya bucle aunque manana se agregue un cuarto aviso; juntar los avisos en el servidor
+  // mejora lo que se VE, pero no impide que un camino pierda una confirmacion.
+  // SE GUARDAN CON LA CLAVE DE LA VENTA A LA QUE PERTENECEN. Al concretarse una venta, `keyRef` cambia, y con
+  // eso las confirmaciones CADUCAN solas: la siguiente venta vuelve a pedirlas. Arrastrarlas saltaria los
+  // avisos de la venta siguiente sin que nadie los haya visto, que es peor que el bucle que esto arregla.
+  // (Atarlas a la clave, y no borrarlas en el efecto del exito, es ademas lo que evita modificar desde un
+  // efecto un valor que el efecto lee.)
+  const confirmado = useRef({ key: "", fueraDelPlan: false, anularLinks: false, duplicado: false });
+
   const submit = (
-    opciones: { confirmDuplicate?: boolean; anularLinks?: boolean } = {},
+    opciones: { confirmDuplicate?: boolean; anularLinks?: boolean; fueraDelPlan?: boolean } = {},
     submitter?: HTMLElement | null,
   ) => {
     const form = formRef.current;
@@ -127,8 +144,24 @@ export function RegisterCashSaleForm({
     fd.set("patientId", patientId);
     fd.set("lineas", JSON.stringify(lineas));
     fd.set("idempotencyKey", keyRef.current);
-    if (opciones.confirmDuplicate) fd.set("confirmDuplicate", "true");
-    if (opciones.anularLinks) fd.set("anularLinks", "true");
+    // Lo que se confirma AHORA (por opcion, o por el `name`/`value` del boton que envio) se suma a lo ya
+    // confirmado. Objeto NUEVO, no mutacion de campos: el lint de inmutabilidad lo exige y ademas deja la
+    // acumulacion en una sola expresion, que es mas facil de leer que tres `if`.
+    // Si la clave cambio, la venta anterior se concreto: lo confirmado entonces no vale para esta.
+    const ya =
+      confirmado.current.key === keyRef.current
+        ? confirmado.current
+        : { key: keyRef.current, fueraDelPlan: false, anularLinks: false, duplicado: false };
+    confirmado.current = {
+      key: keyRef.current,
+      fueraDelPlan: ya.fueraDelPlan || opciones.fueraDelPlan === true || fd.get("fueraDelPlanConfirmado") === "true",
+      anularLinks: ya.anularLinks || opciones.anularLinks === true,
+      duplicado: ya.duplicado || opciones.confirmDuplicate === true,
+    };
+    // ...y TODO lo confirmado hasta ahora viaja en este envio, venga de donde venga.
+    if (confirmado.current.duplicado) fd.set("confirmDuplicate", "true");
+    if (confirmado.current.anularLinks) fd.set("anularLinks", "true");
+    if (confirmado.current.fueraDelPlan) fd.set("fueraDelPlanConfirmado", "true");
     ejecutarAccion(action, fd);
   };
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -302,6 +335,43 @@ export function RegisterCashSaleForm({
               className="self-start"
             >
               Registrar de todos modos
+            </Button>
+          </div>
+        ) : null}
+
+        {/* ═══ Y SI HAY VARIOS AVISOS, UN SOLO BOTON LOS CONFIRMA TODOS (Santiago, 2026-10-02) ═══
+
+            Cada aviso conserva su botón, porque cada uno explica una cosa distinta y a veces solo sale uno.
+            Pero cuando salen dos o tres, confirmarlos de uno en uno obliga a tres viajes al servidor para una
+            venta que el profesional ya decidió hacer, con el paciente delante. Este botón los confirma de una.
+
+            VA AL FINAL Y DICE LO QUE HACE: no es un "aceptar todo" genérico, nombra las acciones que ejecuta. */}
+        {[state.outOfPlanWarning, state.pendingLinkWarning, state.duplicateWarning].filter(Boolean).length > 1 ? (
+          <div className="flex w-full flex-col gap-2 rounded-lg border border-attention/30 p-3 text-sm">
+            <p className="text-muted-foreground">
+              Hay {[state.outOfPlanWarning, state.pendingLinkWarning, state.duplicateWarning].filter(Boolean).length}{" "}
+              cosas que confirmar para esta venta. Puedes confirmarlas de una:
+            </p>
+            <Button
+              key="confirmar-todo"
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                submit({
+                  fueraDelPlan: state.outOfPlanWarning != null,
+                  anularLinks: state.pendingLinkWarning != null,
+                  confirmDuplicate: state.duplicateWarning != null,
+                })
+              }
+              className="self-start"
+            >
+              {[
+                state.outOfPlanWarning ? "Registrarlo así" : null,
+                state.pendingLinkWarning ? "anular el link" : null,
+                state.duplicateWarning ? "registrar de todos modos" : null,
+              ]
+                .filter(Boolean)
+                .join(" y ")}
             </Button>
           </div>
         ) : null}
