@@ -52,6 +52,12 @@ export type DetalleDelIntegrante = {
     medio: string;
     inventario: string | null;
     productos: string | null;
+    /**
+     * LA LISTA LAS MUESTRA MARCADAS, no las esconde (Santiago, 2026-10-03). Es la misma regla que la lista de
+     * pacientes y la de productos: esta pantalla es el REGISTRO de esa persona, y una venta que desaparece
+     * sin dejar rastro es peor que una marcada. Lo que las excluye son sus CIFRAS, que ya lo dicen arriba.
+     */
+    esDePrueba: boolean;
   }[];
   comision: { causada: number; liquidada: number; pendiente: number };
   /**
@@ -132,9 +138,11 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
     medio: string;
     inventario: string | null;
     productos: string | null;
+    de_prueba: boolean;
   }>(sql`
     select t.id, t.created_at::text as fecha, t.amount::text as total, t.status::text as estado,
            t.payment_method::text as medio, t.stock_state as inventario,
+           t.cuenta_como_de_prueba as de_prueba,
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
               from transaction_items ti
               join nutraceuticals n on n.id = ti.nutraceutical_id
@@ -241,6 +249,7 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
       medio: f.medio,
       inventario: f.inventario,
       productos: f.productos,
+      esDePrueba: Boolean(f.de_prueba),
     })),
     comision: historico.comision,
     vendido: historico.vendido,

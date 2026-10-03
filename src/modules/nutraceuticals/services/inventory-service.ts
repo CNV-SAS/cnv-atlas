@@ -26,6 +26,20 @@ export type InventoryLine = {
    * 2026-09-29: 1.903 contra 1.820).
    */
   esDePrueba: boolean;
+  /**
+   * ═══ EL PVP Y LOS LOTES, EN LA PANTALLA DONDE SE BUSCAN (Santiago, 2026-10-03) ═══
+   *
+   * Los Integrantes entran a su inventario a mirar el precio, y no estaba: habia que irse a /pagos o al
+   * tratamiento. "Es valido que su primer instinto vaya a ser verlo en inventario", y lo es: el precio es un
+   * atributo del producto que tienen en la mano.
+   *
+   * Y LOS LOTES CON SU VENCIMIENTO, por lo mismo y por algo mas: el saldo ya se guarda POR LOTE (una fila
+   * por lote desde la 0121) y la pantalla lo sumaba en un solo numero. Quien tiene que sacar la caja del
+   * estante necesita saber CUAL sale primero, que es justo lo que decide el descuento (FEFO). Mostrar solo
+   * el total obliga a adivinarlo.
+   */
+  pvp: number | null;
+  lotes: { codigo: string; vence: string | null; cantidad: number }[];
 };
 
 export type MovementRow = {
@@ -63,11 +77,30 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
   const profId = await ownProfessionalId(supabase, userId);
   if (!profId) return null;
 
+  // EL LOTE VIENE EN LA MISMA FILA QUE EL SALDO, no en una segunda consulta: el saldo ya vive POR LOTE y
+  // pedirlo aparte abriria la puerta a que el total y su desglose no sumen, que es el defecto que ya pagamos
+  // en el tablero de Direccion.
   const { data: inv, error: iErr } = await supabase
     .from("nutraceutical_inventory")
-    .select("nutraceutical_id, stock_quantity")
+    .select("nutraceutical_id, stock_quantity, lots(code, expires_on)")
     .eq("professional_id", profId);
   if (iErr) throw new Error(`inventory-service: saldos: ${iErr.message}`);
+
+  // Los lotes de cada producto, sin los que estan en cero: un lote agotado existe porque alguna vez hubo
+  // unidades, y listarlo diria que hay producto de ese lote cuando no queda ninguno.
+  const lotesPorNutra = new Map<string, { codigo: string; vence: string | null; cantidad: number }[]>();
+  for (const f of inv ?? []) {
+    const cantidad = Number(f.stock_quantity) || 0;
+    if (cantidad === 0) continue;
+    const lote = (Array.isArray(f.lots) ? f.lots[0] : f.lots) as { code?: string; expires_on?: string } | null;
+    const lista = lotesPorNutra.get(f.nutraceutical_id) ?? [];
+    lista.push({ codigo: lote?.code ?? "sin lote", vence: lote?.expires_on ?? null, cantidad });
+    lotesPorNutra.set(f.nutraceutical_id, lista);
+  }
+  // Ordenados por vencimiento: el primero es el que sale primero (FEFO), que es lo que se va a buscar aqui.
+  for (const lista of lotesPorNutra.values()) {
+    lista.sort((a, b) => (a.vence ?? "9999").localeCompare(b.vence ?? "9999"));
+  }
   // UNA FILA POR LOTE desde la 0121: se suman. Un mapa directo dejaba solo el ultimo lote.
   const stockByNutra = saldoPorProducto(inv ?? []);
 
@@ -91,7 +124,7 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
   const idsConSaldo = [...stockByNutra.keys()];
   const catalogo = supabase
     .from("nutraceuticals")
-    .select("id, name, indication, commercial_availability, is_test");
+    .select("id, name, indication, commercial_availability, is_test, unit_price");
   const ofrecibles = "and(commercial_availability.eq.en_consultorio,is_test.eq.false)";
   const { data: cat, error: cErr } = await (idsConSaldo.length
     ? catalogo.or(`${ofrecibles},id.in.(${idsConSaldo.join(",")})`)
@@ -107,6 +140,8 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
       commercialAvailability: c.commercial_availability,
       stock: stockByNutra.get(c.id) ?? 0,
       esDePrueba: c.is_test === true,
+      pvp: c.unit_price == null ? null : Number(c.unit_price),
+      lotes: lotesPorNutra.get(c.id) ?? [],
     }))
     .filter((l) => l.stock !== 0 || l.commercialAvailability === "en_consultorio");
 }

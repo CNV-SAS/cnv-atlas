@@ -1,0 +1,10 @@
+{
+  "//": "Para correr scripts de LECTURA que importan modulos de la aplicacion con `pnpm tsx --tsconfig tsconfig.scripts.json`. Lo unico que agrega es un stub de `server-only`: ese paquete no existe en node_modules (Next lo resuelve en su build), asi que fuera de Next cualquier import de un modulo `server-only` falla. El stub NO relaja la regla: solo permite que un script de consola llame al MISMO lector que usa la pantalla, en vez de reescribir su consulta y que las dos divergan.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "server-only": ["./scripts/_sin-server-only.ts"]
+    }
+  }
+}
