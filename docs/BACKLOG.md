@@ -58,8 +58,12 @@ respuesta de Gildardo**, que es justo lo que no queremos. Si él dice que 16,22 
 fuente escrita al lado; si dice que no, se queda y la toma se repite.
 
 **No lo apliqué porque cambiar un umbral que hoy decide sobre mediciones reales, en mitad del smoke y sin que
-Santiago lo haya pedido, es exactamente lo que la regla nueva prohíbe hacer a la ligera.** Dilo y lo hago, con
-cada valor nuevo justificado en su línea.
+Santiago lo haya pedido, es exactamente lo que la regla nueva prohíbe hacer a la ligera.**
+
+**Y la decisión del 2026-10-02 es NO ensanchar nada todavía: primero responde Gildardo.** Los nueve van en la
+**Parte 2** de `docs/entregas/GILDARDO_RANGO_DE_CAPACITANCIA_2026-10-02.md`, en una tabla con una columna vacía
+para el suyo, separada del caso de la paciente a propósito: mezclados, contestaría uno solo. Cuando responda,
+cada valor nuevo entra con su fuente escrita en la línea.
 
 ### Y una cosa que conviene mirar aparte
 

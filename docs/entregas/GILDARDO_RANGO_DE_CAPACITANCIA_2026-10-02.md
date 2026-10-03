@@ -1,5 +1,13 @@
 # Gildardo: una capacitancia de 16,22 nF
 
+**Dos partes, y la segunda puede esperar.** La **Parte 1** es el caso de una paciente que hoy está sin
+diagnóstico: es lo urgente y tiene respuesta corta. La **Parte 2** es una tabla para confirmar o corregir los
+otros límites, cuando puedas. No hace falta contestar las dos a la vez.
+
+---
+
+# Parte 1 · La paciente que está sin diagnóstico
+
 **Una pregunta de ciencia, corta.** Una paciente tiene una medición con **capacitancia de membrana
 C = 16,22 nF**. Atlas la frenó y no generó su diagnóstico.
 
@@ -73,3 +81,35 @@ tu archivo, que no fija ningún límite para C: la usa directamente en las tres 
 
 Lo decimos porque cambia lo que te estamos pidiendo. **No es "revisa tu rango": es "danos el tuyo",** y
 sustituimos el nuestro por el que digas, con su fuente escrita al lado.
+
+---
+---
+
+# Parte 2 · Los otros ocho rangos, para cuando puedas
+
+**Esto NO es urgente y no bloquea a nadie hoy.** Es la lista completa de los límites que Atlas usa para
+rechazar una medición antes de dejarla entrar al modelo. **Los pusimos nosotros al portar el motor**, por la
+misma razón que el de la capacitancia: que un archivo mal exportado no produjera un diagnóstico plausible pero
+falso.
+
+**Lo que te pedimos: confirmarlos o corregirlos**, con la fuente de cada uno. La columna de la derecha está
+vacía a propósito.
+
+| Insumo | Rango de Atlas hoy | **El tuyo** | Qué pasa si alguien lo cruza |
+| --- | --- | --- | --- |
+| **FFMI** · índice de masa libre de grasa | 8 – 40 kg/m² | | **Frenaría a un paciente real.** Un FFMI por debajo de 8 es posible en caquexia o sarcopenia severa, que es justo la población que el modelo existe para medir. Hoy esa persona se quedaría sin diagnóstico |
+| **Talla** | 120 – 230 cm | | **Frenaría a un paciente real.** Deja fuera a una persona con talla baja o acondroplasia. El piso sirve para atrapar la talla escrita en metros (1,75), pero paga ese precio |
+| **C** · capacitancia de membrana | 0,3 – 8 nF | | **Ya frenó a una paciente real** (es la Parte 1) |
+| **Ri** · resistencia intracelular | 400 – 4000 Ω | | Dudoso: un paciente muy deshidratado podría acercarse al techo. No sabemos si 4000 es alcanzable |
+| **Re** · resistencia extracelular | 200 – 1200 Ω | | Solo atraparía un export corrupto |
+| **R∞** · resistencia infinita | 150 – 1000 Ω | | Solo atraparía un export corrupto |
+| **Peso** | 25 – 350 kg | | Solo atraparía un export corrupto. **Y uno que no atrapa: las libras.** 75 kg y 165 lb caen los dos dentro, así que un equipo configurado en imperial pasaría sin que nada avise |
+| **FM** · masa grasa | 1 – 200 kg | | Solo atraparía un export corrupto |
+| **FFM** · masa libre de grasa | 20 – 200 kg | | Solo atraparía un export corrupto |
+
+**Los tres primeros son los que importan.** Los otros son tan anchos que solo atrapan basura, y si los dejas
+como están no pasa nada. Pero FFMI y talla pueden dejar a un paciente real sin diagnóstico, y todavía no ha
+pasado solo porque no ha llegado ese paciente.
+
+**Si prefieres no fijar un número para alguno, dilo también**: lo ponemos tan ancho que solo atrape lo
+imposible (una unidad cambiada, un cero de más) y dejamos escrito que no hay corte clínico para ese insumo.
