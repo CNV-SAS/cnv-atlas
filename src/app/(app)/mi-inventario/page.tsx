@@ -95,7 +95,16 @@ export default async function MiInventarioPage() {
           <p className="text-sm text-muted-foreground">Aun no tienes productos en custodia.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {lines.map((l) => (
+            {/* LOS DE CERO VAN DESPUES Y SE DICE DONDE EMPIEZAN (Santiago, 2026-10-03): con el PVP en cada
+                fila, una lista alfabética con ceros intercalados se lee como "tengo de todo". */}
+            {lines.map((l, i) => (
+              <div key={`envoltura-${l.nutraceuticalId}`} className="flex flex-col gap-2">
+                {l.stock === 0 && i > 0 && lines[i - 1].stock !== 0 ? (
+                  <p className="pt-2 text-xs text-muted-foreground">
+                    De aquí para abajo no tienes unidades. Se listan con su precio para poder consultarlo y
+                    para poder recibirlos.
+                  </p>
+                ) : null}
               <div
                 key={l.nutraceuticalId}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3"
@@ -145,6 +154,7 @@ export default async function MiInventarioPage() {
                   </Badge>
                   <span className="text-lg font-black text-foreground">{l.stock}</span>
                 </div>
+              </div>
               </div>
             ))}
           </div>
