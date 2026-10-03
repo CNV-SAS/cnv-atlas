@@ -166,23 +166,31 @@ export async function createCheckoutFormAction(
   //
   // No hizo falta construir nada:  ya recibia un arreglo y ya devolvia el
   // producto que colisiona por su nombre. Lo unico que mandaba un solo id era esta funcion.
+  // ═══ LOS DOS AVISOS SE DEVUELVEN JUNTOS, igual que en la venta en efectivo (2026-10-02) ═══
+  //
+  // Aqui habia el MISMO bucle que Santiago encontro al cobrar en efectivo, y que nadie habia pisado todavia:
+  // cada guard cortaba por su cuenta, asi que al confirmar el segundo se perdia la confirmacion del primero y
+  // se volvia al principio. Lo encontro el candado del otro caso al barrer este archivo entero, que es
+  // justamente para lo que se escribio asi: la regla vive en los dos sitios.
+  let duplicado: string | null = null;
   if (!confirmDuplicate && patientId && lineas.length > 0) {
     const dup = await findLivePendingDuplicate(patientId, lineas.map((l) => l.nutraceuticalId));
     if (dup) {
       const cuando = dup.hoursAgo <= 0 ? "hace menos de una hora" : `hace ${dup.hoursAgo} h`;
-      return {
-        error: null,
-        success: null,
-        checkoutUrl: null,
-        outOfPlanWarning: null,
-        duplicateWarning: `Este paciente ya tiene un cobro pendiente de ${dup.product}, generado ${cuando} y aún sin pagar. Si es a propósito, genera otro; si no, comparte el que ya existe.`,
-      };
+      duplicado = `Este paciente ya tiene un cobro pendiente de ${dup.product}, generado ${cuando} y aún sin pagar. Si es a propósito, genera otro; si no, comparte el que ya existe.`;
     }
   }
 
   const fueraDelPlan = await avisoDeFueraDelPlan(formData, lineas);
-  if (fueraDelPlan) {
-    return { error: null, success: null, checkoutUrl: null, duplicateWarning: null, outOfPlanWarning: fueraDelPlan };
+
+  if (fueraDelPlan || duplicado) {
+    return {
+      error: null,
+      success: null,
+      checkoutUrl: null,
+      outOfPlanWarning: fueraDelPlan,
+      duplicateWarning: duplicado,
+    };
   }
 
   const result = await createCheckoutAction({
@@ -248,8 +256,16 @@ export async function registerCashSaleFormAction(
   const confirmDuplicate = String(formData.get("confirmDuplicate") ?? "") === "true";
   const anularLinks = String(formData.get("anularLinks") ?? "") === "true";
 
+  // ═══ LOS AVISOS SE JUNTAN, NO SE DAN DE UNO EN UNO (bloqueo de Santiago, 2026-10-02) ═══
+  //
+  // EL BUCLE: este aviso salia primero y cortaba; al confirmarlo ("Registrarlo así") pasaba y salia el del
+  // link pendiente; al confirmar ESE, la confirmacion del primero ya no viajaba y volvia el primero. Vuelta a
+  // empezar, indefinidamente, con los dos avisos CORRECTOS. Nunca llegaban juntos, asi que nunca se podian
+  // satisfacer los dos a la vez.
+  //
+  // Se calcula aqui el primero y mas abajo los otros dos, y se devuelven TODOS los que apliquen en la misma
+  // respuesta. Asi el profesional ve de una lo que falta confirmar, en vez de descubrirlo de a uno.
   const fueraDelPlan = await avisoDeFueraDelPlan(formData, lineas);
-  if (fueraDelPlan) return { ...vacio, outOfPlanWarning: fueraDelPlan };
 
   const parsed = registerCashSaleSchema.safeParse({
     patientId,
@@ -271,14 +287,14 @@ export async function registerCashSaleFormAction(
     // en efectivo), y sin anularlo pasan dos cosas malas. El link retiene las unidades que esta venta
     // necesita, y la venta queda `sin_saldo` sin serlo; y si la pagina de Wompi sigue abierta, el paciente
     // puede pagar otra vez. No hay "cobrar sin anular": con el mismo producto, las dos cosas son el mismo cobro.
+    let pendingLink: string | null = null;
     if (!anularLinks) {
       const links = await linksPendientesQueBloquean(sale);
       if (links.length > 0) {
         const detalle = links
           .map((l) => `${l.productos} por ${Number(l.amount).toLocaleString("es-CO")} COP, generado ${haceCuanto(l.createdAt)}`)
           .join("; ");
-        return {
-          ...vacio,
+        pendingLink =
           // ═══ LA RAZON DEPENDE DE SI EL LINK SIGUE VIVO (Santiago, 2026-09-24) ═══
           //
           // El aviso decia siempre "para que no quede cobrado dos veces", y se lo mostro sobre un link de
@@ -287,12 +303,11 @@ export async function registerCashSaleFormAction(
           // disponible ya descuenta solo las reservas VIVAS (`expires_at > now()`), verificado en
           // `lotesDisponibles`. La accion sigue valiendo, pero por otra cosa: cierra un link que si no se
           // queda pendiente para siempre. Un aviso que da una razon falsa enseña a no creerle a los avisos.
-          pendingLinkWarning: `Este paciente tiene ${links.length === 1 ? "un link de pago sin pagar" : `${links.length} links de pago sin pagar`} con el mismo producto (${detalle}). ${
+          `Este paciente tiene ${links.length === 1 ? "un link de pago sin pagar" : `${links.length} links de pago sin pagar`} con el mismo producto (${detalle}). ${
             links.every((l) => vencido(l.createdAt))
               ? "Ya venció y no se puede pagar; al cobrar en efectivo, Atlas lo cierra para que deje de aparecer como pendiente."
               : "Si cobras en efectivo, Atlas lo anula, para que no quede cobrado dos veces."
-          }`,
-        };
+          }`;
       }
     }
 
@@ -302,15 +317,27 @@ export async function registerCashSaleFormAction(
     // el checkout: si ya se registro una venta con MULTI-CELL y la nueva lleva MULTI-CELL y OMEGA, lo que se
     // duplica es el primero. En efectivo importa mas, porque el cobro ya ocurrio: revertirlo es una nota
     // credito, no un clic.
+    let duplicado: string | null = null;
     if (!confirmDuplicate && lineas.length > 0) {
       const dup = await findRecentCashSaleDuplicate(patientId, lineas.map((l) => l.nutraceuticalId));
       if (dup) {
         const cuando = dup.minutesAgo <= 0 ? "hace menos de un minuto" : `hace ${dup.minutesAgo} min`;
-        return {
-          ...vacio,
-          duplicateWarning: `Ya registraste una venta en efectivo de ${dup.product} a este paciente ${cuando}. Si es otra venta, confirma; si fue un doble registro, no la repitas (un cobro en efectivo duplicado se revierte con nota crédito).`,
-        };
+        duplicado = `Ya registraste una venta en efectivo de ${dup.product} a este paciente ${cuando}. Si es otra venta, confirma; si fue un doble registro, no la repitas (un cobro en efectivo duplicado se revierte con nota crédito).`;
       }
+    }
+
+    // ═══ Y AQUI SE DEVUELVEN LOS TRES JUNTOS, que es lo que rompe el bucle ═══
+    //
+    // Ninguno de los tres registra la venta: los tres piden una confirmacion. Devolverlos de a uno obligaba a
+    // descubrirlos en vueltas sucesivas, y cada vuelta perdia la confirmacion de la anterior. Juntos, el
+    // profesional ve de una todo lo que tiene que confirmar y lo confirma en un solo acto.
+    if (fueraDelPlan || pendingLink || duplicado) {
+      return {
+        ...vacio,
+        outOfPlanWarning: fueraDelPlan,
+        pendingLinkWarning: pendingLink,
+        duplicateWarning: duplicado,
+      };
     }
 
     // EL MEDIO SE LEE UNA VEZ Y SE USA EN LOS DOS SITIOS (Santiago, 2026-10-01). El dato se guardaba bien y
