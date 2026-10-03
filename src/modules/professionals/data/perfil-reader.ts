@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { historicoDelProfesional } from "@/modules/payments/data/historico-del-profesional";
+import { historicoDelProfesional, type HistoricoDelProfesional } from "@/modules/payments/data/historico-del-profesional";
 
 import { completitudDelPerfil, type Completitud } from "../completitud";
 
@@ -36,7 +36,9 @@ export type PerfilDelIntegrante = {
    *
    * NO LLEVA EL CORTE DEL ARRANQUE: es un total historico, de la familia de lo que se le debe.
    */
-  vendido: { total: number; ventas: number };
+  // La forma la fija el lector compartido (): repetirla aqui es como se llega a que
+  // una pantalla muestre un campo que la otra no.
+  vendido: HistoricoDelProfesional["vendido"];
   completitud: Completitud;
 };
 

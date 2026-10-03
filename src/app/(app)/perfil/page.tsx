@@ -1,4 +1,5 @@
 import { FileText, Receipt, UserCheck, Wallet } from "lucide-react";
+import { pieDeLoVendido } from "@/modules/payments/cobro-reconocido";
 import { redirect } from "next/navigation";
 
 import { Panel } from "@/components/shared/panel";
@@ -163,9 +164,7 @@ export default async function PerfilPage() {
           valor={pesos(vendido.total)}
           icono={Receipt}
           detalle={
-            vendido.ventas === 0
-              ? "Todavía no tienes ventas registradas"
-              : `${vendido.ventas} ${vendido.ventas === 1 ? "venta" : "ventas"} en total · sin lo devuelto ni lo que está en revisión`
+            vendido.ventas === 0 ? "Todavía no tienes ventas registradas" : pieDeLoVendido(vendido, true)
           }
         />
       </section>

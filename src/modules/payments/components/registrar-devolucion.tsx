@@ -29,6 +29,18 @@ export function RegistrarDevolucion({ lineas }: { lineas: LineaDevolvible[] }) {
   useFormToastAndRefresh(state);
   const [abierto, setAbierto] = useState(false);
 
+  // AL REGISTRAR, EL PANEL SE CIERRA (Santiago, 2026-10-03). La devolucion se guardaba y el panel seguia
+  // abierto, con los campos puestos, hasta recargar: parece que no paso nada, e invita a registrarla otra vez.
+  // Es el mismo arreglo que ya llevan "en gestion" y el descarte, y por la misma razon.
+  //
+  // SE AJUSTA DURANTE EL RENDER, no en un efecto: la regla de lint de set-state-in-effect, y ademas el efecto
+  // del refresco corre despues y volveria a montar el panel abierto antes de cerrarlo.
+  const [estadoVisto, setEstadoVisto] = useState(state);
+  if (state !== estadoVisto) {
+    setEstadoVisto(state);
+    if (state.success) setAbierto(false);
+  }
+
   if (!abierto) {
     return (
       <Button
