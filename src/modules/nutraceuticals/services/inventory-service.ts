@@ -143,7 +143,18 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
       pvp: c.unit_price == null ? null : Number(c.unit_price),
       lotes: lotesPorNutra.get(c.id) ?? [],
     }))
-    .filter((l) => l.stock !== 0 || l.commercialAvailability === "en_consultorio");
+    .filter((l) => l.stock !== 0 || l.commercialAvailability === "en_consultorio")
+    // ═══ LO QUE TIENE, PRIMERO (Santiago, 2026-10-03) ═══
+    //
+    // Los de saldo CERO siguen en la lista a proposito, y no es lo mismo que en /direccion: alli listar un
+    // cero diria que hay producto en una bodega donde no hay ninguno, y aqui es el catalogo de lo que ESTE
+    // Integrante puede llegar a tener, con su precio. Desde que la fila lleva el PVP se volvio ademas la
+    // forma natural de consultarlo.
+    //
+    // PERO EL ORDEN IMPORTABA: alfabetico, ADAPTO-STRESS con 14 quedaba arriba por casualidad y los cinco
+    // ceros debajo con su precio, de modo que la pantalla se leia como "tengo de todo". Primero lo que tiene
+    // en la mano; despues lo que podria pedir.
+    .sort((a, b) => (b.stock !== 0 ? 1 : 0) - (a.stock !== 0 ? 1 : 0) || a.name.localeCompare(b.name));
 }
 
 // El historial de movimientos del profesional. Es tambien su EVIDENCIA ante un faltante, asi que se
