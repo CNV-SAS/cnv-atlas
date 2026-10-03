@@ -128,9 +128,25 @@ export function insumosDelMotorParaDiagnosticar(
 export function mensajeDelInsumoClinico(e: { code?: string; message: string }, importada = false): string {
   const detalle = e.message;
   if (e.code === "INSUMOS_FUERA_DE_RANGO") {
+    // ═══ EL SEGUNDO PASO NO ES "REPITE LA TOMA" (Santiago, 2026-10-02) ═══
+    //
+    // Decia "si el valor sigue igual, repite la toma", y eso manda a gastar una cita del paciente para
+    // confirmar algo que puede no ser suyo: los rangos de Atlas se eligieron a ojo (ver el BACKLOG) y el
+    // primero que disparo esta en consulta con Gildardo. Si el valor sobrevive a un export limpio, lo que
+    // hay que saber es si el limite esta bien, y eso no lo contesta repitiendo la medicion.
+    //
+    // Y EL PRIMER PASO SI SE QUEDA: re-exportar distingue las dos causas sin costarle nada a nadie. Un dato
+    // que cambia al re-exportar era del export; uno que no cambia es del equipo o del limite.
+    //
+    // POR ESO NO HACE FALTA DISTINGUIR ESTE CASO DE LOS DEMAS: la frase es verdad en los dos.
+    const comun = `La medición trae un valor fuera del rango que Atlas admite: ${detalle} Lo más común es un dato mal exportado del equipo.`;
+    // "FUERA DEL RANGO QUE ATLAS ADMITE", no "imposible en una persona": decir que es imposible afirma una
+    // certeza que no tenemos, porque el rango es nuestro y todavia sin fuente.
+    const cierre =
+      "Si el valor sigue igual, no repitas la toma todavía: avísale a CNV con este mensaje, porque puede ser el límite y no la medición. No se puede corregir a mano: es un resultado del equipo.";
     return importada
-      ? `La medición trae un valor que no es posible en una persona: ${detalle} Casi siempre es un dato mal exportado del equipo, no una medición rara. Esta consulta se importó del HTML, así que no se puede volver a exportar: si el paciente tiene el archivo del Biody de esa toma, se monta la medición con él. No se puede corregir a mano: es un resultado del equipo.`
-      : `La medición trae un valor que no es posible en una persona: ${detalle} Casi siempre es un dato mal exportado del equipo, no una medición rara. Vuelve a exportar el archivo desde Biody Manager y re-impórtalo; si el valor sigue igual, repite la toma. No se puede corregir a mano: es un resultado del equipo.`;
+      ? `${comun} Esta consulta se importó del HTML, así que no se puede volver a exportar: si el paciente tiene el archivo del Biody de esa toma, se monta la medición con él. ${cierre}`
+      : `${comun} Vuelve a exportar el archivo desde Biody Manager y re-impórtalo. ${cierre}`;
   }
   if (e.code === "INSUMOS_MOTOR_AUSENTES") {
     return `${detalle} Vuelve a exportar desde Biody Manager y re-importa el XLSX: son resultados del equipo y no se pueden escribir a mano.`;

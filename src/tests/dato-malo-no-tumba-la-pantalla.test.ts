@@ -61,7 +61,21 @@ describe("el rechazo llega como una frase con salida, no como un 500", () => {
     expect(m).toContain("C=16.22");
     // Y LA SALIDA, que es lo que faltaba y por lo que lo intentaron 19 veces.
     expect(m).toContain("Biody Manager");
-    expect(m).toContain("repite la toma");
+    // ═══ Y EL SEGUNDO PASO NO MANDA A REPETIR LA TOMA (Santiago, 2026-10-02) ═══
+    //
+    // Repetir la medicion cuesta una CITA del paciente, y confirmaria algo que puede no ser suyo: los rangos
+    // de Atlas se eligieron a ojo y el primero que disparo esta en consulta con Gildardo. Si el valor
+    // sobrevive a un export limpio, lo que falta saber es si el limite esta bien.
+    expect(m, "volvio a mandar a repetir la toma antes de preguntar por el limite").not.toMatch(
+      /repite la toma(?! todavía)/,
+    );
+    expect(m).toContain("avísale a CNV");
+    expect(m).toContain("puede ser el límite y no la medición");
+    // Y NO AFIRMA UNA CERTEZA QUE NO TENEMOS: el rango es nuestro y todavia sin fuente, asi que el valor esta
+    // fuera de lo que ATLAS admite, no fuera de lo posible en una persona.
+    expect(m, "afirma como imposible un valor que solo esta fuera de un rango nuestro").not.toContain(
+      "no es posible en una persona",
+    );
     // Y lo que NO se puede hacer, dicho, para que nadie lo busque: es un resultado del equipo.
     expect(m.toLowerCase()).toContain("no se puede corregir a mano");
   });
