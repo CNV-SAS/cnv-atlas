@@ -50,6 +50,7 @@ import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
 import { PendientesSinSalida } from "@/modules/avisos/components/pendientes-sin-salida";
 import { listarPendientesDeAccion } from "@/modules/avisos/data/avisos-repository";
+import { elQueMiraEsProfesionalDePrueba } from "@/modules/payments/data/payments-repository";
 import { canAtenderPendientesVentas } from "@/modules/avisos/policies/can-atender-pendientes";
 import { TIPOS_SIN_SALIDA } from "@/modules/avisos/resumen";
 import type { TransactionStatus, TransactionWithItems } from "@/modules/payments/types";
@@ -185,6 +186,8 @@ export default async function PagosPage({
   // invisible, que era mi reserva. El numero de abajo dice cuantas quedan fuera.
   const verDePrueba = sp.prueba === "1";
   const ventasDePrueba = await contarVentasDePrueba();
+  // Quien mira: decide si se le ofrecen los productos de prueba para cobrar (ver el filtro mas abajo).
+  const miraUnProfesionalDePrueba = await elQueMiraEsProfesionalDePrueba(user.id);
   const canCreate = canCreateCheckout(user);
   const canView = canViewRevenue(user);
   // SOPORTE ATIENDE LOS PENDIENTES (Bloque A): con la marca de avisos le llegan por correo, y un correo que lleva
@@ -305,8 +308,19 @@ export default async function PagosPage({
     //
     // `solo_tienda` TAMBIEN QUEDA FUERA, y es la otra mitad del arreglo: ese producto lo compra el
     // paciente en la tienda, asi que cobrarlo aqui seria cobrarle dos veces por el mismo producto.
+    // ═══ Y LOS DE PRUEBA SOLO A UNA CUENTA DE PRUEBA (Santiago, 2026-10-04) ═══
+    //
+    // Aqui se encontro: "PRUEBA SMOKE BLOQUE 3" se ofrecia para checkout y venta en efectivo a cualquiera, y
+    // un Integrante real podia venderle a un paciente un producto que NO EXISTE. La regla y su razon completa
+    // viven en `catalogo-prescribible`, que es el mismo modulo que usa el desplegable de la consulta: una sola
+    // definicion para las dos pantallas que ofrecen producto.
     nutraceuticals = catalog
-      .filter((n) => n.unit_price != null && n.commercial_availability === "en_consultorio")
+      .filter(
+        (n) =>
+          n.unit_price != null &&
+          n.commercial_availability === "en_consultorio" &&
+          (miraUnProfesionalDePrueba || n.is_test !== true),
+      )
       .map((n) => ({ id: n.id, name: n.name, unitPrice: Number(n.unit_price) }));
   }
 

@@ -52,6 +52,26 @@ export async function getProfessionalProfileIdByUser(userId: string): Promise<st
   return data?.id ?? null;
 }
 
+/**
+ * ¿La cuenta que mira esta marcada como profesional DE PRUEBA?
+ *
+ * Decide si se le ofrecen los productos de prueba para prescribir o cobrar (2026-10-04). Un usuario sin perfil
+ * profesional (admin puro) responde false: el valor seguro es el que no ofrece nada que no exista.
+ *
+ * VIVE AQUI Y NO EN CADA PANTALLA porque lo preguntan dos (la consulta y /pagos), y la misma pregunta escrita
+ * dos veces es como se llega a que una ofrezca el producto y la otra no.
+ */
+export async function elQueMiraEsProfesionalDePrueba(userId: string): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("professional_profiles")
+    .select("is_test")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  if (error) fail("elQueMiraEsProfesionalDePrueba", error.message);
+  return data?.is_test === true;
+}
+
 // professional_profiles.id del profesional asignado a un paciente (via ppr). RLS:
 // ppr_select deja a admin/soporte leerlo. Sirve para sellar la comision cuando el
 // checkout lo crea un admin (no un profesional).

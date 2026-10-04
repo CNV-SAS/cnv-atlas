@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { getDeclaracionesDelPaciente } from "@/modules/evaluations/data/declaraciones-paciente-reader";
 
-import { FILTRO_CATALOGO_PRESCRIBIBLE } from "../catalogo-prescribible";
+import { filtroCatalogoPrescribible } from "../catalogo-prescribible";
 
 // TreatmentProtocol (anotacion del reader) vive en el modulo neutro; ver el reexport abajo.
 import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
@@ -78,6 +78,9 @@ function patientIdFrom(evaluations: unknown): string {
 
 export async function getTreatmentProtocol(
   evaluationId: string,
+  // QUIEN MIRA decide si se le ofrecen los productos de prueba (2026-10-04). Por DEFECTO no: los lectores de
+  // informes y de HC no pintan el desplegable, y el valor seguro es el que no ofrece nada que no exista.
+  opciones?: { ofrecerDePrueba?: boolean },
 ): Promise<TreatmentProtocol | null> {
   const supabase = await createSupabaseServerClient();
 
@@ -137,7 +140,7 @@ export async function getTreatmentProtocol(
       // disponibles: un producto real "aun no disponible" se sigue mostrando, porque el profesional debe
       // saber que el modelo lo contempla. Uno ya prescrito que se oculte se lee "Producto retirado del
       // catalogo", que es lo que es.
-      .or(FILTRO_CATALOGO_PRESCRIBIBLE)
+      .or(filtroCatalogoPrescribible(opciones?.ofrecerDePrueba === true))
       .order("name", { ascending: true }),
     supabase
       .from("ai_menu_suggestions")
