@@ -23,6 +23,100 @@
 
 ---
 
+---
+
+---
+
+## PENDIENTE (2026-10-04) · Simplificar el domicilio: que el paciente le pague al domiciliario · DECIDE SANTIAGO
+
+**Su propuesta:** en vez del módulo con tarifa y lista de ciudades, un texto que diga que el envío lo asume el
+paciente, que suele costar entre 10 y 15 mil, uno por pedido, y que lo paga al recibir.
+
+**Verificado contra lo construido (2026-10-04).** El módulo de hoy hace cinco cosas; la propuesta conserva
+unas y elimina otras:
+
+| Lo que hace hoy | Con la propuesta |
+| --- | --- |
+| Cobra el flete dentro de la venta | **Desaparece.** El dinero no pasa por CNV |
+| La venta sale de la bodega y entra en "falta despachar" | **Se queda.** No depende del flete |
+| El ingreso de CNV cuenta la BASE del flete (el IVA no es ingreso) | **Desaparece, y eso simplifica**: no hay flete que separar |
+| Arranca el reloj del retracto, y el reintegro incluye el envío | **Hay que decidirlo** (ver abajo) |
+| Al retractarse, revierte el flete del ingreso | **Desaparece** |
+| La lista de ciudades evita ofrecer donde se pierde dinero | **Deja de hacer falta para el precio**: lo cotiza el domiciliario. Puede seguir sirviendo para decir **dónde se entrega** |
+
+**Mi lectura: la propuesta es más simple y más barata, y resuelve de raíz lo que el módulo intenta controlar.**
+Si el dinero del flete nunca entra a CNV, no hay nada que conciliar, ni comisión de pasarela sobre él, ni
+descalce de caja. Y el aviso de despacho, que es lo que de verdad protege al paciente, no se toca.
+
+### La única pregunta abierta, y es legal, no contable
+
+**El derecho de retracto (Ley 1480 art. 47) obliga a devolver "las sumas pagadas" en una venta a distancia.**
+Si el paciente le pagó el envío al domiciliario y no a CNV, hay que saber si CNV igual tiene que reintegrarle
+ese flete que nunca recibió. Hoy el módulo lo reintegra porque lo cobró; con la propuesta, CNV reintegraría un
+dinero que nunca entró, o no lo reintegraría y habría que poder sustentarlo.
+
+**Esa es la pregunta que vale la pena llevar**, y es para jurídica antes que para contabilidad.
+
+### Qué hacer con lo construido
+
+**No borrarlo: dejarlo apagado**, que es lo que ya hace solo. Sin `commercial_config.flete_tarifa` y sin filas
+en `delivery_cities`, **el bloque de envío no aparece**. O sea que la propuesta se adopta **no configurando
+nada**, y el módulo queda disponible el día que se quiera cobrar el flete por CNV. No hace falta ni una línea
+de código para probar la propuesta.
+
+**Lo que sí hay que construir si se adopta:** el texto que le dice al profesional que se lo comunique al
+paciente (precio aproximado, uno por pedido, lo paga al recibir). Es pequeño y va donde está el interruptor de
+despacho desde la bodega.
+
+### Nota sobre "las tres fugas"
+
+Se mencionaron tres fugas señaladas por contabilidad (gasto sin soporte, comisión de pasarela sobre el flete y
+descalce de caja). **No las encontré escritas en el repositorio**, así que no las evalúo de memoria: al
+llevarle la pregunta al contable conviene citárselas textualmente, y verificar contra ellas la tabla de
+arriba.
+
+---
+
+## PENDIENTE (2026-10-04) · El REGISTRO de ventas bajo Distribución · BLOQUEA EL ARRANQUE DE KATHERINE
+
+**Verificado contra el código el 2026-10-04, antes de correr el segundo smoke.**
+
+**Lo que SÍ está construido:** el mecanismo de la modalidad (asignarla, su vigencia, el corte, el historial y
+el audit), el sellado de cada venta con la modalidad que regía, y **todo el lado contable**: el bloque de
+`/comercial` con las cuentas quincenales que CNV le factura al Integrante, el detalle abierto por renglón, la
+objeción con su resolución, y el registro del pago. Eso es la parte 10 del segundo smoke.
+
+**Lo que NO está: registrar la venta.** `exigirRecaudoDeCnv` bloquea los dos caminos de cobro (link de pago y
+venta en efectivo) para un Integrante en Distribución, y el mensaje lo dice. El bloqueo es correcto y no se
+quita: bajo Distribución el paciente le paga **a él**, así que cobrar por CNV mandaría la plata al bolsillo
+equivocado, y una venta en efectivo significaría que custodia dinero de CNV, que es falso.
+
+**Por qué esto bloquea el arranque:** Santiago quiere que **Katherine arranque en Distribución**. Con lo que
+hay hoy, Katherine **no tiene forma de registrar sus ventas en Atlas**: ni el link, ni el efectivo. Y sin
+ventas registradas, la cuenta quincenal que CNV le factura **sale vacía**, porque se construye de las ventas.
+
+**O sea que el lado contable está listo y no tiene de dónde leer.**
+
+### Lo que falta, en concreto
+
+1. **Una superficie para registrar una venta bajo Distribución**, que no cobre: el Integrante ya cobró y
+   facturó por su cuenta. Atlas necesita saber **qué salió de su vitrina y a qué precio base**, para
+   descontar inventario y para armar la cuenta quincenal.
+2. **El cupo de crédito**, que ya tiene columna (`organizations`) y su regla (al agotarse suspende despachos),
+   pero no se alimenta sin ventas.
+
+### Las dos salidas, y la decisión es de Santiago
+
+- **(a) Construir el registro antes de que Katherine arranque.** Es lo correcto y es un bloque, no un parche.
+- **(b) Arrancarla en Comisión y pasarla a Distribución cuando exista.** Con "aplicar de inmediato"
+  (2026-10-04) el cambio entra el día que esté listo, sin esperar al corte, siempre que no haya vendido ese
+  período.
+
+**No lo decido yo.** Lo que sí digo es que **(b) no es una derrota**: el margen es el mismo en las dos
+modalidades, así que lo que cambia para ella es quién factura, no cuánto gana.
+
+---
+
 ## PENDIENTE (2026-10-02) · Los nueve rangos de cordura del motor no tienen fuente · DECIDE SANTIAGO
 
 **Lo verificado, sin rodeos:** los nueve rangos de `SANITY` (`src/clinical-engine/edge/biody-import.ts`) **se
@@ -94,6 +188,17 @@ Las dos hipótesis se descartaron mirando el código.
 `treatmentId` pasaron a ir juntas en vez de encadenadas (2026-10-02). Más paralelismo del que cabe en seis
 conexiones es contraproducente: en `/pagos` ya se pagó ese precio (lecturas reportadas como caídas sin haber
 llegado a correr), y por eso existe `enTandas`.
+
+**Y hay un salto de scroll que es el MISMO problema, diagnosticado el 2026-10-04:** al guardar la
+prescripción la pantalla salta arriba. La causa no es el guard de scroll (que está y funciona): es que la
+sección se monta con una `key` derivada de la firma de la prescripción, así que al guardar
+**la clave cambia y React desmonta y vuelve a montar la sección entera**. El documento encoge por un instante,
+el navegador recorta la posición, y la sección vuelve más alta. El guard no puede deshacer eso: el scroll no
+lo provocó un evento de scroll, lo provocó el documento al encogerse.
+
+**Y la clave no se puede quitar sin más:** existe porque la lista de nutracéuticos vive en un estado de React
+inicializado desde las props, y sin el remonte se quedaría con lo de antes. Se arregla con el refresco parcial,
+que es lo que elimina el re-render de la página entera. Por eso va aquí y no como arreglo suelto.
 
 **El camino elegido: refrescar solo lo que cambió.** Partir la pantalla en piezas que se refresquen por su
 cuenta, de modo que registrar una decisión no vuelva a leer el diagnóstico, la historia clínica, las ventas y
