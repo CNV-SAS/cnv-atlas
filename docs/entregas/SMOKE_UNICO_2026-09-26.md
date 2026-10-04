@@ -166,6 +166,19 @@ reales.
 
 ---
 
+> ### Antes de correr las partes 8, 9 y 10 (verificado contra el código el 2026-10-04)
+>
+> Coteje estas tres partes contra el código antes de que las corrieras, porque el documento se escribió el
+> 26 de septiembre y desde entonces se retiraron cosas. **Resultado: todo sigue en pie menos el paso 9.5,
+> que ya está tachado abajo.** Los demás los encontré implementados tal como los describe el texto: las tres
+> cards de modalidad nombran "el Integrante", el guard de Distribución llega a los tres puntos de cobro con
+> su propio mensaje, la hoja del Biody se busca por sus columnas y no por su nombre, y el bloque aparte de
+> LUVIA y el aviso de la bodega están donde dice.
+>
+> **Y uno que conviene correr con atención: el 9.3** (el botón "El paciente no los adquiere por ahora"). Se
+> reconstruyó el 2026-10-02 porque abría un `<form>` dentro de otro y por eso no registraba nada. Es la
+> clase de defecto que solo se ve en un navegador, así que ese paso es el que de verdad lo prueba.
+
 ## Parte 8 · La modalidad de consignación
 
 1. En **/admin/integrantes/[id]** hay **"Modalidad de consignación"** con las dos cards del modelo comercial y
@@ -202,9 +215,23 @@ reales.
    consulta**: el pendiente de nutracéuticos **ya no está**. La venta es el "sí".
    Y al revés: en una consulta sin venta y sin el botón, el pendiente **sí está**, y su texto nombra las dos
    salidas.
-5. **Lo clínico, en la línea del producto.** En cada nutracéutico prescrito hay **"No lo recomiendo por razón
-   clínica"**. Úsalo y comprueba que la contraindicación queda **con el nombre del producto**, no como
-   "General" (antes quedaba general, aunque el motivo fuera de un producto concreto).
+5. ~~**Lo clínico, en la línea del producto.**~~ **ESTE PASO YA NO APLICA: no lo busques** (corregido el
+   2026-10-04, al verificar el documento contra el código antes de correrlo).
+
+   El botón **"No lo recomiendo por razón clínica"** se **retiró el 2026-09-28**, a pedido tuyo y con una
+   razón que sigue en pie: no tiene sentido que el profesional **agregue** un producto y en la misma línea
+   diga que no lo recomienda. Si no lo recomienda, no lo agrega.
+
+   **Lo que hay que saber, y es lo único que importa de este paso:** ese botón era **el único sitio que
+   escribía `patient_contraindications`**, así que hoy ese registro **no tiene ninguna superficie que lo
+   llene**. La tabla estaba vacía, así que no se perdió nada registrado; lo que se perdió es la capacidad, y
+   su sitio propio ya está previsto (`observacion_clinica`, una contraindicación del paciente independiente
+   de prescribir). Eso es lo que hay que construir cuando se retome, **no volver a poner el botón en la
+   línea del producto**.
+
+   **Lo que SÍ sigue y conviene mirar de paso:** el aviso de contraindicaciones del paciente se muestra
+   **arriba** del bloque de nutracéuticos, en tono crítico, y trae las de **todas** sus consultas. Si alguna
+   vez hubo una registrada, tiene que verse ahí.
 6. **Los dos bloques.** El desplegable de nutracéuticos ya **no trae LUVIA**, y hay un bloque aparte:
    **"¿Quieres prescribir un producto diferente para el tratamiento del paciente?"** con la ficha de LUVIA
    (presentación, INVIMA, fabricante, y el alérgeno aparte en ámbar). El alérgeno **se muestra**, no se cruza
