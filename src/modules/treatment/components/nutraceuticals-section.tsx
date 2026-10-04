@@ -80,10 +80,6 @@ export function NutraceuticalsSection({
     if (!item) return;
     setNutras((prev) => [...prev, { nutraceuticalId: id, name: item.name, dosage: "", durationDays: "" }]);
   };
-  const addNutra = () => {
-    addProduct(pickId);
-    setPickId("");
-  };
   // CAMBIOS SIN GUARDAR. Es el tercero de los tres estados que antes se confundian: agregar un producto
   // solo cambia estado LOCAL, y todo lo de abajo (la pregunta de si lo adquiere, la entrega) lee del
   // SERVIDOR. Sin este aviso, el profesional agregaba, no guardaba, y el resto de la seccion se
@@ -207,7 +203,13 @@ export function NutraceuticalsSection({
           <div className="flex gap-2">
             <select
               value={pickId}
-              onChange={(e) => setPickId(e.target.value)}
+              // SE AGREGA AL ELEGIR (Santiago, 2026-10-04). `addProduct` recibe el id del evento y no `pickId`:
+              // el estado todavia no se actualizo cuando este handler corre, y leerlo agregaria el anterior.
+              onChange={(e) => {
+                const id = e.target.value;
+                setPickId("");
+                if (id) addProduct(id);
+              }}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
             >
               <option value="">Selecciona un nutracéutico</option>
@@ -236,9 +238,17 @@ export function NutraceuticalsSection({
                 Y por eso el arreglo tampoco es otro aviso: esta seccion ya tiene tres (sin guardar,
                 contraindicaciones, disponibilidad) y uno mas compite con los otros. Que se encienda el
                 boton dice que le toca a el, sin texto nuevo. */}
-            <Button type="button" variant={pickId ? "default" : "outline"} onClick={addNutra}>
-              Agregar
-            </Button>
+            {/* ═══ EL BOTON "AGREGAR" SE QUITA: SE AGREGA AL ELEGIR (Santiago, 2026-10-04) ═══
+
+                EL COMENTARIO DE ARRIBA SE QUEDA PORQUE SU OBSERVACION ERA BUENA, y ahora se resuelve mejor:
+                Santiago elegía en el desplegable y se saltaba el paso de "Agregar", sin que nada lo avisara.
+                Se encendió el botón para decir que le tocaba a él.
+
+                PERO SI ELEGIR NO ES UNA DECISION, EL SEGUNDO PASO TAMPOCO LA VUELVE UNA: lo que convierte la
+                intención en decisión es GUARDAR, que ya existe y ya avisa cuando hay cambios sin guardar. El
+                paso intermedio solo añadía una forma de equivocarse. Y para deshacer está "Quitar", al lado.
+
+                El botón se va del todo: dejarlo oculto sería dos caminos para lo mismo, y uno sin probar. */}
           </div>
           {/* LAS DOS DECLARACIONES, JUNTAS, EN EL MOMENTO DE ELEGIR (§7.7 del modelo comercial, texto del
               asesor legal del 2026-09-11). No compara nada y no bloquea nada: pone lo que declaró el
@@ -441,6 +451,28 @@ export function NutraceuticalsSection({
           </div>
         </fieldset>
       </form>
+
+      {/* ═══ MIENTRAS LLEGA EL BLOQUE DE COBRO, SE DICE QUE VIENE (Santiago, 2026-10-04) ═══
+
+          EL PROBLEMA NO ERA LA ESPERA, ERA EL SILENCIO. Textual suyo: "a veces por la espera sin decir nada
+          los profesionales dicen que no aparece nada o creen que la app no hace nada". Guardar la prescripción
+          tarda unos segundos en traer el bloque de venta, porque la página entera se vuelve a renderizar.
+
+          EL ARREGLO DE FONDO ES EL REFRESCO PARCIAL (ver BACKLOG), y no es de hoy. Esto es lo barato que se
+          puede hacer sin tocarlo: ocupar el sitio donde va a salir y decir qué está pasando.
+
+          POR QUÉ DESAPARECE SOLO, sin lógica que lo apague: al llegar los datos, la página re-renderiza con una
+          `key` nueva para esta sección (la firma de la prescripción cambió), así que el componente se MONTA de
+          cero y este estado se va con él. El mismo remonte que causa el salto de scroll es el que lo limpia.
+
+          Y SOLO SI HAY ALGO PRESCRITO: sin productos no va a aparecer ningún bloque de cobro, y anunciarlo
+          sería prometer algo que no llega. */}
+      {state.success != null && nutras.length > 0 ? (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" aria-hidden />
+          Prescripción guardada. Preparando el cobro de lo prescrito...
+        </div>
+      ) : null}
     </section>
   );
 }
