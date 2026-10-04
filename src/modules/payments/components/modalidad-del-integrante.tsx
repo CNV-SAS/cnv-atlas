@@ -47,18 +47,19 @@ const CARDS: Record<Modalidad, { encabezado: string; explicacion: string; aFavor
     ],
     enContra: [
       "Si el Integrante también le cobra al paciente por consulta u otros productos, el paciente hace dos pagos a dos destinatarios.",
-      "No define el precio de venta al público.",
+      // EL EFECTIVO QUE RECIBE NO ES SUYO (Santiago, 2026-10-04): faltaba decirlo, y es de lo poco que esta
+      // modalidad le pide. Un Integrante que no sabe que lo custodia puede creer que compensa con su comisión.
+      "Si cobra en efectivo, ese dinero es de CNV: lo custodia y lo transfiere completo, sin descontar su comisión (la comisión se liquida aparte).",
       "CNV le practica retención en la fuente al Integrante sobre su comisión (10 % u 11 % según su situación).",
       "Si el Integrante es responsable de IVA, su comisión lleva IVA del 19 % y debe declararlo; si está obligado a facturar, debe emitirle factura a CNV por cada liquidación.",
     ],
   },
   distribucion: {
-    encabezado: "El Integrante cobra y factura al paciente, y CNV le factura a él.",
+    encabezado: "El Integrante cobra y factura al paciente, y CNV le factura al Integrante.",
     explicacion:
       "El paciente le paga al Integrante, y él le factura con su propia facturación, en un solo documento junto con sus demás servicios. Cada quincena CNV le factura los productos vendidos al precio base menos su descuento comercial, más IVA.",
     aFavor: [
       "El paciente hace un solo pago por todo.",
-      "El Integrante define el precio final de venta.",
       "Mayor control sobre su relación comercial con el paciente.",
       "Al Integrante no se le practica retención sobre su margen, porque su ganancia es un descuento comercial y no un pago de CNV a él.",
       "El IVA que CNV le factura es descontable para el Integrante, así que no es un costo.",

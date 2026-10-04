@@ -242,6 +242,13 @@ export default async function PerfilPage() {
                 La asigna un administrador de CNV. Las dos te dejan el mismo margen del 20 %: lo que cambia es
                 la operación, el riesgo y la carga administrativa. Si quieres cambiarla, escríbele a un
                 administrador.
+                {/* EL PVP ES EL MISMO EN LAS DOS (Santiago, 2026-10-04). Estaba listado como una ventaja de
+                    Distribución ("define el precio final") y como una desventaja de Comisión ("no define el
+                    precio"), y las dos líneas eran falsas en la práctica: CNV mantiene un PVP único para que
+                    el paciente pague lo mismo en toda la red. Se dice una vez, aquí, en vez de dos veces y
+                    al revés. */}{" "}
+                El precio al público es el mismo en las dos: lo fija CNV para toda la red, y es el que se le
+                cobra al paciente.
               </p>
               <ModalidadDelIntegrante
                 professionalId={professionalId}

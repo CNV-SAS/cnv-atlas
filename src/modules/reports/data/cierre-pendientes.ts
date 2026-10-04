@@ -79,18 +79,22 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
   // sostiene la historia clinica (sin emision, el documento sale con las cifras de hoy). Cerrar una
   // consulta sin haber entregado nada es lo que de verdad merece aparecer en la lista.
   //
-  // IMPOSIBLE: sin protocol_suggested no hay plan que entregar. Fuera de la lista.
-  if (e.protocoloComputado && !e.protocoloEmitido) {
-    out.push({
-      id: "protocolo",
-      titulo: "El plan no se le entregó al paciente",
-      // NI GATE NI REPROCHE: se puede cerrar una consulta sin entregar el plan a proposito (el paciente
-      // se lo piensa, se le envia despues). La lista informa, que es el tono de todo este bloque.
-      detalle: "No consta que se haya impreso ni enviado. La historia clínica lo dirá así.",
-      etapa: "tratamiento",
-      bloqueadoPor: null,
-    });
-  }
+  // ═══ Y ESTE PENDIENTE SE RETIRA (Santiago, smoke del 2026-10-04) ═══
+  //
+  // SU RAZON, y es buena: muchos profesionales entregan su PROPIO plan de alimentacion, con su plantilla.
+  // Que Atlas no conste la entrega del suyo no significa que el paciente se fuera sin plan, asi que listarlo
+  // era afirmar un hueco que la mayoria de las veces no existe.
+  //
+  // Y UNA LISTA DE PENDIENTES VIVE DE QUE TODO LO QUE TRAE SEA CIERTO: una linea que sale casi siempre y casi
+  // siempre no es nada entrena a cerrar la consulta sin leerla, y entonces el dia que aparezca una de verdad
+  // (la venta sin despachar, la nota credito) se va a cerrar igual. El costo de un pendiente falso no es el
+  // ruido, es que desarma a los demas.
+  //
+  // LO QUE NO SE PIERDE: la historia clinica SIGUE diciendo si el plan se emitio o no (sale de
+  // `protocoloEmitido`, que no se toca). El dato esta; lo que se quita es tratarlo como algo pendiente.
+  //
+  // SI ALGUNA VEZ SE QUIERE DE VUELTA, tendria que distinguir al profesional que usa el plan de Atlas del que
+  // usa el suyo, y eso hoy no se sabe: no hay dato que lo diga. Por eso no se deja "apagado tras una bandera".
 
   // YA NO HAY APROBACION (2026-09-18): el reporte es una hoja mas, que se imprime o se envia. Antes esto
   // distinguia "sin aprobar" de "aprobado y sin enviar", y ese par ya no existe. Lo que sigue siendo cierto es

@@ -136,6 +136,34 @@ export function GenerateDiagnosisPanel({
     return () => window.clearTimeout(t);
   }, [state.done]);
 
+  // ═══ Y SE REINTENTA SOLO, EN VEZ DE ESPERAR A QUE ALGUIEN PULSE (Santiago, smoke del 2026-10-04) ═══
+  //
+  // EL CASO EXACTO QUE REPORTO: genera, se va a otra pestaña, vuelve, y el panel sigue en "Cargando los
+  // resultados...". Tenia que recargar a mano.
+  //
+  // POR QUE PASA JUSTO AHI: un `router.refresh()` disparado con la pestaña en segundo plano se puede perder,
+  // y nadie lo reintenta. El boton existia para eso, pero esperar a que el profesional entienda que hay un
+  // boton es pedirle que diagnostique nuestro fallo.
+  //
+  // DOS DISPAROS, Y NINGUNO ES UN BUCLE: uno al VOLVER a la pestaña (que es el caso de Santiago; lo dispara
+  // un acto suyo, no un temporizador), y uno solo a mitad de la espera, antes de ofrecer el boton. Si los dos
+  // fallan, el boton sigue ahi como ultima red.
+  //
+  // Y NO VUELVE A GENERAR NADA: `router.refresh()` solo vuelve a pedir la pagina. El diagnostico ya esta
+  // escrito, que es lo que significa `state.done`.
+  useEffect(() => {
+    if (!state.done) return;
+    const reintentar = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    document.addEventListener("visibilitychange", reintentar);
+    const t = window.setTimeout(reintentar, Math.round(ESPERA_RESULTADOS_MS / 2));
+    return () => {
+      document.removeEventListener("visibilitychange", reintentar);
+      window.clearTimeout(t);
+    };
+  }, [state.done, router]);
+
   if (!ready) {
     // LO QUE FALTA, Y DONDE VIVE. Cada paso se nombra CON SU PESTAÑA, y la etiqueta sale del mapa de
     // etapas, no escrita aqui: este texto mandaba a "la pestaña Evaluación" y esa pestaña dejo de existir
