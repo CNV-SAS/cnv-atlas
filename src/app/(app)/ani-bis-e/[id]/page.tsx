@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { elQueMiraEsProfesionalDePrueba } from "@/modules/payments/data/payments-repository";
 import { notFound, redirect } from "next/navigation";
 import { Banda } from "@/components/shared/banda";
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
@@ -269,6 +270,7 @@ export default async function ResultadosEvaluacionPage({
 
   // Si esta evaluacion fue reemplazada por una correccion, un banner lo avisa (C2-b): no debe leerse
   // como vigente. Se resuelve para ambas ramas (con y sin diagnostico).
+  const miraUnProfesionalDePrueba = await elQueMiraEsProfesionalDePrueba(user.id);
   const supersession = await getSupersessionStatus(id);
 
   const results = await getEvaluationResults(id);
@@ -434,7 +436,9 @@ export default async function ResultadosEvaluacionPage({
     proximoControl,
     serie,
   ] = await Promise.all([
-    getTreatmentProtocol(id),
+    // EL DESPLEGABLE DEPENDE DE QUIEN MIRA (2026-10-04): a una cuenta real no se le ofrecen productos de
+    // prueba, porque no existen y venderlos seria cobrarle a un paciente por nada.
+    getTreatmentProtocol(id, { ofrecerDePrueba: miraUnProfesionalDePrueba }),
     getFollowupComparison(id),
     getCompositionForEvaluation(id),
     getDiagnosisCriterion(id),
