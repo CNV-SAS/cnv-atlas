@@ -1,5 +1,7 @@
 "use server";
 
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ubicacionDelProfesional } from "@/modules/nutraceuticals/services/ubicacion-y-lote";
 import { revalidatePath } from "next/cache";
 
 import { appError, err, ok, type AppError, type Result } from "@/core/errors";
@@ -432,8 +434,20 @@ export async function entregarVentaFormAction(
     const venta = await getVentaVisible(parsed.data.transactionId);
     if (!venta) return { ...vacio, error: "No encontramos esa venta." };
     const propio = await getProfessionalProfileIdByUser(user.id);
-    if (!canDeliverSale(user, venta, propio)) {
-      return { ...vacio, error: "Solo el profesional de la venta registra su entrega." };
+    // ═══ LA DEFENSA DEL SERVIDOR, que es la que de verdad cierra el hueco (2026-10-04) ═══
+    //
+    // Esconder el boton no basta: el profesional pudo tener la pantalla abierta de antes, o llegar por otra
+    // via. La ubicacion se lee aqui y la policy decide; si la venta sale de la bodega, su entrega la registra
+    // CNV, porque el producto no estuvo nunca en sus manos.
+    const miUbicacion = propio ? await ubicacionDelProfesional(await createSupabaseServerClient(), propio) : null;
+    if (!canDeliverSale(user, venta, propio, miUbicacion)) {
+      return {
+        ...vacio,
+        error:
+          venta.location_id != null && miUbicacion != null && venta.location_id !== miUbicacion
+            ? "Esta venta sale de la bodega de CNV: su entrega la registra quien la despacha, no tú."
+            : "Solo el profesional de la venta registra su entrega.",
+      };
     }
     await entregarVenta(venta.id, user);
     return { ...vacio, success: "Entrega registrada." };
@@ -527,7 +541,9 @@ export async function registrarVersionFormAction(
     const venta = await getVentaVisible(parsed.data.transactionId);
     if (!venta) return { ...vacio, error: "No encontramos esa venta." };
     const propio = await getProfessionalProfileIdByUser(user.id);
-    if (!canDeliverSale(user, venta, propio) && !canViewRevenue(user)) {
+    // UBICACION EN null A PROPOSITO: esto es la VERSION del Integrante sobre una venta en revision, no su
+    // entrega. Que la venta salga de la bodega no le quita el derecho a contar que paso en su consulta.
+    if (!canDeliverSale(user, venta, propio, null) && !canViewRevenue(user)) {
       return { ...vacio, error: "Solo el profesional de la venta o Dirección registran la versión." };
     }
     await registrarVersionDeVenta(venta.id, parsed.data.version, user);

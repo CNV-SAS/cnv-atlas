@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ubicacionDelProfesional } from "@/modules/nutraceuticals/services/ubicacion-y-lote";
 import { conLimite, enTandas } from "@/lib/observability/con-limite";
 import { CotejoConWompi } from "@/modules/payments/components/cotejo-con-wompi";
 import { DevueltasPendientes } from "@/modules/payments/components/devueltas-pendientes";
@@ -208,6 +210,11 @@ export default async function PagosPage({
   // por venta, y el pool tiene seis conexiones: es justo el problema que ya se pago una vez en esta pantalla.
   const retractos = await retractosDeLasVentas(transactions.map((t) => t.id));
   const perfilPropio = perfil.dato;
+  // SU VITRINA, para que la policy sepa que ventas salieron de otra parte: una que sale de la bodega la
+  // despacha CNV, no el profesional.
+  const miUbicacion = perfilPropio
+    ? await ubicacionDelProfesional(await createSupabaseServerClient(), perfilPropio)
+    : null;
   // Solo para quien ve el ingreso: el panel muestra lo que se cobro y no tiene documento, que es
   // informacion contable. Un profesional no tiene nada que hacer con ella y si tendria con la lista de sus
   // transacciones, que se muestra igual.
@@ -502,7 +509,7 @@ export default async function PagosPage({
                       ) : null}
                       <EntregaDeLaVenta
                         tx={tx}
-                        puedeEntregar={canDeliverSale(user, tx, perfilPropio)}
+                        puedeEntregar={canDeliverSale(user, tx, perfilPropio, miUbicacion)}
                         retracto={retractos.get(tx.id)}
                       />
                       {/* LA DEVOLUCION SE REGISTRA DESDE LA VENTA (2026-09-24), que es donde está el hecho:

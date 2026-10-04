@@ -274,8 +274,32 @@ export function VentaEnConsultaForm({
           incluido).
         </p>
       ) : null}
+      {/* ═══ EL AVISO DICE QUÉ PRODUCTO Y DE DÓNDE (Santiago, smoke del 2026-10-04) ═══
+
+          DECÍA "Pides más unidades de las que tienes disponibles", y con tres productos marcados no se sabía
+          cuál sobraba ni por qué. Con el interruptor de bodega encendido se leía como un defecto: la pantalla
+          mostraba 14 de ADAPTO en su vitrina y bloqueaba igual.
+
+          Y NO ERA UN DEFECTO: con el interruptor, TODA la venta sale de la bodega, y ahí ADAPTO tiene 0. La
+          regla ("toda la venta sale del mismo sitio") es correcta y es la que impide sellar una mentira en
+          `location_id`. Lo que faltaba era que el aviso lo dijera, y que dijera la salida. */}
       {excede ? (
-        <p className="text-sm text-clinical-warning">Pides más unidades de las que tienes disponibles.</p>
+        <p className="text-sm text-clinical-warning">
+          {(() => {
+            const faltan = lineas
+              .map((l) => productos.find((p) => p.id === l.nutraceuticalId))
+              .filter((p): p is NonNullable<typeof p> => p != null)
+              .filter((p) => {
+                const pedido = Number(lineas.find((l) => l.nutraceuticalId === p.id)?.quantity ?? 0);
+                return pedido > disponibleEfectivo(p);
+              })
+              .map((p) => p.name);
+            const lista = faltan.join(", ");
+            return desdeLaBodega
+              ? `No hay unidades suficientes en la bodega de CNV de: ${lista}. Con el despacho encendido, TODA la venta sale de la bodega, también lo que sí tienes en tu vitrina. Si quieres entregarle hoy lo tuyo, apaga el interruptor y cóbralo aparte.`
+              : `No tienes unidades suficientes de: ${lista}. Si hay en la bodega de CNV, enciende el despacho y se cobra para que CNV lo lleve; si no, pide una remesa.`;
+          })()}
+        </p>
       ) : null}
       {lineas.length > 0 && total > 0 && total < WOMPI_MONTO_MINIMO ? (
         <p className="text-sm text-attention">{MENSAJE_MINIMO_WOMPI}</p>

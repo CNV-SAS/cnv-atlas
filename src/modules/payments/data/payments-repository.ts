@@ -178,6 +178,9 @@ export type VentaVisible = {
   professional_id: string | null;
   patient_id: string | null;
   treatment_id: string | null;
+  /** DE DONDE SALE EL PRODUCTO, sellado al cobrar. Lo necesita : una venta que sale de la
+   *  bodega no la entrega el profesional, la despacha CNV. */
+  location_id: string | null;
 };
 
 /**
@@ -189,7 +192,7 @@ export async function getVentaVisible(transactionId: string): Promise<VentaVisib
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("transactions")
-    .select("id, status, payment_method, professional_id, patient_id, treatment_id")
+    .select("id, status, payment_method, professional_id, patient_id, treatment_id, location_id")
     .eq("id", transactionId)
     .maybeSingle();
   if (error) fail("getVentaVisible", error.message);
