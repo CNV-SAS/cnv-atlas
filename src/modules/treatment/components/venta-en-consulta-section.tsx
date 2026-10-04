@@ -200,7 +200,7 @@ export async function VentaEnConsultaSection({
                   qr={qrs.get(v.id) ?? null}
                   url={`${appUrl}/checkout/${v.id}`}
                   horasRestantes={Math.floor((new Date(v.created_at).getTime() + CHECKOUT_TTL_MS - ahoraMs) / 3_600_000)}
-                  puedeEntregar={canDeliverSale(user, v, perfilPropio)}
+                  puedeEntregar={canDeliverSale(user, v, perfilPropio, ubicacionPropia)}
                 />
               </li>
             ))}
