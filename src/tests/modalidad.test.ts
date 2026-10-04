@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   avisoDelCambioDeModalidad,
+  inicioDelCorteEnCurso,
   inicioDelSiguienteCorte,
   modalidadEnLaFecha,
 } from "@/modules/payments/modalidad";
@@ -82,5 +83,35 @@ describe("la modalidad que regia en una fecha", () => {
     const alReves = [...vigencias].reverse();
     expect(modalidadEnLaFecha(alReves, "2026-09-29")).toBe("comision");
     expect(modalidadEnLaFecha(alReves, "2026-10-02")).toBe("distribucion");
+  });
+});
+
+// ═══ EL CORTE EN CURSO, QUE ES LO QUE DECIDE SI UN CAMBIO PUEDE REGIR HOY (Santiago, 2026-10-04) ═══
+//
+// La regla del modelo (un cambio entra en el corte siguiente) protege las ventas que YA ocurrieron en el
+// periodo. Si no hay ninguna, no hay nada que partir y esperar un mes es tramite. Es el caso del Integrante
+// que ARRANCA en Distribucion y nunca vendio bajo Comision.
+describe("inicioDelCorteEnCurso", () => {
+  it("mensual: siempre el dia 1 del mismo mes", () => {
+    expect(inicioDelCorteEnCurso("2026-10-04", "comision")).toBe("2026-10-01");
+    expect(inicioDelCorteEnCurso("2026-10-01", "comision")).toBe("2026-10-01");
+    expect(inicioDelCorteEnCurso("2026-10-31", "comision")).toBe("2026-10-01");
+  });
+
+  it("quincenal: el 1 o el 16 del mismo mes", () => {
+    expect(inicioDelCorteEnCurso("2026-10-04", "distribucion")).toBe("2026-10-01");
+    expect(inicioDelCorteEnCurso("2026-10-15", "distribucion")).toBe("2026-10-01");
+    expect(inicioDelCorteEnCurso("2026-10-16", "distribucion")).toBe("2026-10-16");
+    expect(inicioDelCorteEnCurso("2026-10-31", "distribucion")).toBe("2026-10-16");
+  });
+
+  it("y nunca cae despues de hoy, que es lo que lo haria inutil", () => {
+    // CONTROL: si devolviera una fecha futura, el conteo de ventas del periodo saldria siempre en cero y
+    // "aplicar de inmediato" se ofreceria a todo el mundo, incluida gente con ventas.
+    for (const dia of ["2026-01-01", "2026-02-28", "2026-07-15", "2026-07-16", "2026-12-31"]) {
+      for (const m of ["comision", "distribucion"] as const) {
+        expect(inicioDelCorteEnCurso(dia, m) <= dia).toBe(true);
+      }
+    }
   });
 });

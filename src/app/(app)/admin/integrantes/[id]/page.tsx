@@ -182,6 +182,8 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           rigeDesde={modalidad.rigeDesde}
           pendiente={modalidad.pendiente}
           proximoCorte={modalidad.proximoCorte}
+          puedeAplicarDeInmediato={modalidad.puedeAplicarDeInmediato}
+          ventasEnElCorte={modalidad.ventasEnElCorte}
           puedeCambiar
         />
       </Panel>

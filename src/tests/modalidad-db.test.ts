@@ -116,17 +116,37 @@ describe.skipIf(!HAS_DB)("el cambio de modalidad (BD real)", () => {
     expect(evento.payload.rigeDesde).toBeTruthy();
   }, 30_000);
 
-  it("pedirlo dos veces REEMPLAZA la decisión futura, no acumula dos", async () => {
-    // Sin esto habria dos filas futuras y la del dia de corte podria ser cualquiera de las dos.
+  // ═══ PEDIR EL MISMO CAMBIO DOS VECES LO DICE (Santiago, smoke del 2026-10-04) ═══
+  //
+  // Antes repetia "registrada, y rige desde el X", que se lee como que la primera no quedo, e invita a
+  // pulsarlo una tercera vez buscando que "funcione".
+  it("pedir el MISMO cambio otra vez avisa que ya está en curso, en vez de repetir el mensaje", async () => {
+    const { cambiarModalidad, ModalidadError } = await import("@/modules/payments/data/modalidad-writer");
+    await expect(
+      cambiarModalidad({
+        professionalId,
+        hacia: "distribucion",
+        actorId,
+        actorEmail: "direccion@cnv",
+        requisitosVerificados: true,
+        nota: "Segunda vez",
+        ip: null,
+      }),
+    ).rejects.toBeInstanceOf(ModalidadError);
+  }, 30_000);
+
+  it("y pedir OTRA modalidad REEMPLAZA la decisión futura, no acumula dos", async () => {
+    // Cambiar de opinion antes de que empiece SI se permite. Sin el reemplazo habria dos filas futuras y la
+    // del dia de corte podria ser cualquiera de las dos.
     const { cambiarModalidad } = await import("@/modules/payments/data/modalidad-writer");
     const { db } = await import("@/db");
     await cambiarModalidad({
       professionalId,
-      hacia: "distribucion",
+      hacia: "comision",
       actorId,
       actorEmail: "direccion@cnv",
-      requisitosVerificados: true,
-      nota: "Segunda vez",
+      requisitosVerificados: false,
+      nota: "Me arrepentí",
       ip: null,
     });
     const [conteo] = await db.execute<{ n: number }>(dsql`
@@ -134,6 +154,18 @@ describe.skipIf(!HAS_DB)("el cambio de modalidad (BD real)", () => {
        where professional_id = ${professionalId}::uuid
          and valid_from > (now() at time zone 'America/Bogota')::date`);
     expect(Number(conteo.n)).toBe(1);
+
+    // SE DEJA COMO ESTABA: los casos de este archivo comparten el mismo profesional y corren en orden, asi
+    // que uno que cambia el estado y no lo devuelve rompe al siguiente por una razon que no es la suya.
+    await cambiarModalidad({
+      professionalId,
+      hacia: "distribucion",
+      actorId,
+      actorEmail: "direccion@cnv",
+      requisitosVerificados: true,
+      nota: "Se restituye el estado del caso anterior",
+      ip: null,
+    });
   }, 30_000);
 
   it("UNA SOLA VIGENTE, y lo garantiza la base", async () => {

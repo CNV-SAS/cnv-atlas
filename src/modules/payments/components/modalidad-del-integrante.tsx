@@ -119,6 +119,8 @@ export function ModalidadDelIntegrante({
   rigeDesde,
   pendiente,
   proximoCorte,
+  puedeAplicarDeInmediato,
+  ventasEnElCorte,
   puedeCambiar,
 }: {
   professionalId: string;
@@ -127,6 +129,9 @@ export function ModalidadDelIntegrante({
   pendiente: { modalidad: Modalidad; rigeDesde: string } | null;
   /** Desde cuando regiria un cambio pedido hoy. Se dice ANTES de pulsar. */
   proximoCorte: string;
+  /** Si el cambio puede regir hoy: lo decide el servidor contando sus ventas del periodo. */
+  puedeAplicarDeInmediato: boolean;
+  ventasEnElCorte: number;
   puedeCambiar: boolean;
 }) {
   const [state, action, pending] = useActionState(cambiarModalidadFormAction, initial);
@@ -210,9 +215,44 @@ export function ModalidadDelIntegrante({
             <Input id="nota-modalidad" name="nota" placeholder="Por qué se cambia" className="h-9" />
           </div>
 
-          <Button type="submit" disabled={pending} className="self-start">
-            {pending ? "Registrando..." : `Pasar a ${MODALIDAD_LABEL[hacia]} desde el ${proximoCorte}`}
-          </Button>
+          {/* ═══ Y SI NO TIENE VENTAS EN EL PERÍODO, SE PUEDE APLICAR HOY (Santiago, 2026-10-04) ═══
+
+              La regla de esperar al corte siguiente protege las ventas que YA ocurrieron: liquidarlas con dos
+              regímenes sería incoherente. Si no hay ninguna, no hay nada que proteger, y esperar un mes es
+              trámite. Es el caso del Integrante que ARRANCA en Distribución, que nunca vendió bajo Comisión.
+
+              EL BOTÓN SOLO APARECE SI SE PUEDE, y el servidor lo vuelve a comprobar: entre que esta pantalla
+              se pintó y que llega la petición pudo entrar una venta. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button key="cambiar-en-el-corte" type="submit" disabled={pending} className="self-start">
+              {pending ? "Registrando..." : `Pasar a ${MODALIDAD_LABEL[hacia]} desde el ${proximoCorte}`}
+            </Button>
+            {puedeAplicarDeInmediato ? (
+              <Button
+                key="cambiar-de-inmediato"
+                type="submit"
+                name="deInmediato"
+                value="true"
+                variant="outline"
+                disabled={pending}
+                className="self-start"
+              >
+                Aplicarlo hoy mismo
+              </Button>
+            ) : null}
+          </div>
+          {puedeAplicarDeInmediato ? (
+            <p className="text-xs text-muted-foreground">
+              Se puede aplicar hoy porque no tiene ventas en el período en curso: no hay nada que liquidar bajo
+              la modalidad anterior.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No se puede aplicar hoy: ya tiene {ventasEnElCorte}{" "}
+              {ventasEnElCorte === 1 ? "venta" : "ventas"} en el período en curso, y se liquidarían con dos
+              regímenes distintos.
+            </p>
+          )}
 
           {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
           {state.success ? <p className="text-sm text-primary">{state.success}</p> : null}

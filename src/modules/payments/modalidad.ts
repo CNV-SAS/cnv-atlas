@@ -97,3 +97,25 @@ export function modalidadEnLaFecha(
   }
   return elegida?.modality ?? MODALIDAD_POR_DEFECTO;
 }
+
+/**
+ * EL INICIO DEL CORTE EN CURSO, con la misma cadencia.
+ *
+ * ═══ PARA QUE SIRVE: DECIDIR SI UN CAMBIO PUEDE REGIR HOY (Santiago, 2026-10-04) ═══
+ *
+ * La regla del modelo es que un cambio empieza en el corte siguiente, para no partir un período en dos
+ * regímenes. Pero esa regla protege algo concreto: las ventas que YA ocurrieron en el período. Si no hay
+ * ninguna, no hay nada que partir, y esperar un mes es puro trámite.
+ *
+ * Es el caso de un Integrante que ARRANCA en Distribución (Katherine): nunca vendió bajo Comisión, y hacerle
+ * esperar al 1 del mes que viene lo obligaría a operar unas semanas en un régimen que no es el suyo.
+ *
+ * QUIEN DECIDE SI SE PUEDE ES EL SERVIDOR, contando sus ventas desde esta fecha. La pantalla solo ofrece.
+ */
+export function inicioDelCorteEnCurso(hoy: string, modalidadActual: Modalidad): string {
+  const [anio, mes, dia] = hoy.split("-").map(Number);
+  if (!anio || !mes || !dia) throw new Error(`inicioDelCorteEnCurso: fecha invalida "${hoy}"`);
+  // Quincenal: el corte en curso empieza el 1 o el 16 del MISMO mes. Mensual: siempre el 1.
+  if (CORTE_DE_LA_MODALIDAD[modalidadActual] === "quincenal" && dia >= 16) return ymd(anio, mes, 16);
+  return ymd(anio, mes, 1);
+}
