@@ -43,20 +43,24 @@ describe("pendientes del cierre", () => {
     expect(p?.bloqueadoPor).toBeNull();
   });
 
-  // EL PENDIENTE DEL PROTOCOLO YA NO SE BLOQUEA POR NADA (2026-09-09). Era "el tratamiento no se aprobó",
-  // y con el diagnostico sin confirmar quedaba bloqueado hasta confirmarlo. Ahora es "el plan no se le
-  // entregó al paciente", y entregar no depende de confirmar nada: se imprime o se envia. El caso de
-  // BLOQUEADO lo cubre el pendiente del diagnostico, que sigue arriba con su propio caso.
-  it("el pendiente del protocolo es accionable en cuanto hay plan que entregar", () => {
-    const p = con({ protocoloEmitido: false }).find((x) => x.id === "protocolo");
-    expect(p?.titulo).toBe("El plan no se le entregó al paciente");
-    expect(p?.etapa).toBe("tratamiento");
-    expect(p?.bloqueadoPor).toBeNull();
+  // ═══ EL PENDIENTE DEL PLAN SE RETIRO (Santiago, smoke del 2026-10-04) ═══
+  //
+  // SU RAZON: muchos profesionales entregan su PROPIO plan, con su plantilla. Que Atlas no conste la entrega
+  // del suyo no significa que el paciente se fuera sin plan, asi que listarlo era afirmar un hueco que la
+  // mayoria de las veces no existe.
+  //
+  // Y UNA LISTA DE PENDIENTES VIVE DE QUE TODO LO QUE TRAE SEA CIERTO: una linea que sale casi siempre y casi
+  // siempre no es nada entrena a cerrar sin leerla, y entonces el dia que aparezca una de verdad (la venta sin
+  // despachar, la nota credito) se cierra igual. El costo de un pendiente falso no es el ruido: es que desarma
+  // a los demas.
+  it("no aparece nunca, ni con el plan sin emitir", () => {
+    expect(ids({ protocoloEmitido: false })).not.toContain("protocolo");
+    expect(ids({ protocoloEmitido: true })).not.toContain("protocolo");
   });
 
-  it("y desaparece cuando ya se entrego", () => {
-    // CONTROL: sin esto, un pendiente que se listara SIEMPRE tambien pasaria verde arriba.
-    expect(ids({ protocoloEmitido: true })).not.toContain("protocolo");
+  it("y los demas pendientes siguen saliendo: el control de que no se borro la lista entera", () => {
+    // Sin esto, vaciar  tambien pasaria el caso de arriba.
+    expect(ids({ protocoloEmitido: false, proximaCita: null }).length).toBeGreaterThan(0);
   });
 
   it("NO ACCIONABLE NUNCA: un protocolo que jamás se computó NO aparece", () => {

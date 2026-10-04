@@ -169,6 +169,13 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
       {/* ═══ LA MODALIDAD ═══ Va en esta pantalla y no en una propia: es un dato DE ESTE INTEGRANTE, y aqui es
           donde se mira todo lo suyo. Una pantalla aparte para un solo dato obligaria a saber que existe. */}
       <Panel titulo="Modalidad de consignación">
+        {/* EL PVP ES EL MISMO EN LAS DOS (Santiago, 2026-10-04). Estaba como ventaja de Distribución y como
+            desventaja de Comisión, y las dos líneas eran falsas: CNV mantiene un precio único para que el
+            paciente pague lo mismo en toda la red. Se dice una vez y no dos veces al revés. */}
+        <p className="mb-3 max-w-prose text-sm text-muted-foreground">
+          Las dos dejan el mismo margen del 20 % y el mismo precio al público: lo fija CNV para toda la red. Lo
+          que cambia es quién le cobra al paciente, quién factura y quién asume el riesgo.
+        </p>
         <ModalidadDelIntegrante
           professionalId={id}
           modalidad={modalidad.modalidad}
