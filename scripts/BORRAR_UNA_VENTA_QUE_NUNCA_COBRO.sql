@@ -1,44 +1,46 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
--- BORRAR UN LINK DE PAGO QUE NUNCA COBRO  ·  decision de Santiago, 2026-10-04
+-- BORRAR UNA VENTA QUE NUNCA COBRO  ·  guion reutilizable
 --
--- EL CASO: una Integrante armo un checkout para una paciente REAL mientras Atlas apunta al sandbox, y
--- despues le cobro por transferencia. El link quedo anulado a mano y /direccion lo cuenta: "Anulados a mano:
--- 1 · alguien cambio de opinion o se equivoco al armarlo".
+-- Sustituye a `BORRAR_EL_LINK_DE_ENTRENAMIENTO_2026-10-04.sql`, que llevaba el id escrito en cuatro sitios.
+-- Aqui va en UNO solo, abajo, y todo lo demas sale de el.
 --
--- POR QUE SE BORRA Y NO SE MARCA, que era mi propuesta y aqui NO sirve: marcar al paciente como de prueba
--- seria MENTIR SOBRE UNA PACIENTE REAL para limpiar una cifra, y esa marca la leen el diagnostico, la
--- facturacion y la investigacion. El remedio seria peor que el problema.
+-- ── CUANDO SE PUEDE USAR, Y CUANDO NO ──
 --
--- Y POR QUE ESTE SI SE PUEDE BORRAR, que es la otra mitad: no cobro nada, no facturo nada, y NO MOVIO
--- INVENTARIO. No hay rastro de custodia que quede suelto. Una venta que si movio unidades NO se borra, y en
--- este caso ni siquiera depende de que lo recordemos: `nutraceutical_stock_movements.transaction_item_id` es
--- ON DELETE RESTRICT, asi que la base RECHAZA el borrado si hubo un movimiento. El guard es la base, no el
--- cuidado de quien corre esto.
+-- SE PUEDE cuando la venta no cobro, no facturo y NO MOVIO INVENTARIO: no hay rastro de custodia que quede
+-- suelto. Es el caso de un link armado por error.
 --
--- LAS CINCO CONDICIONES SE COMPRUEBAN ABAJO Y ABORTAN. Si alguna no se cumple, no se borra nada y el
--- mensaje dice cual.
+-- NO SE PUEDE con una venta que si movio unidades, aunque haya sido de prueba. Y no depende de que lo
+-- recordemos: `nutraceutical_stock_movements.transaction_item_id` es ON DELETE RESTRICT, asi que la base
+-- RECHAZA el borrado. El guard es el esquema, no el cuidado de quien corre esto.
 --
--- LO QUE SE VA EN CASCADA: sus lineas (`transaction_items`) y las reservas de inventario de esas lineas. Lo
--- demas (comision, ingreso de CNV, reversas) no existe para una venta que nunca se pago, y el bloque de
--- verificacion lo confirma antes de tocar nada.
+-- EL CASO TIPICO QUE NO PASA: una venta con `stock_state = 'sin_saldo'`. Ese estado significa "se desconto lo
+-- que habia y faltaron unidades", o sea que SI hubo movimiento. Esas se cierran descartando su pendiente en
+-- "Pendientes sin salida", no borrandolas.
+--
+-- LAS CINCO CONDICIONES SE COMPRUEBAN Y ABORTAN nombrando la que falle. Si aborta, no se borro nada.
 --
 -- NO DEJA RASTRO EN clinical_audit_log, a proposito y con su limite: es una fila que nunca represento un
--- hecho clinico ni un cobro. Esto NO es el patron para borrar una venta real.
+-- hecho clinico ni un cobro. NO es el patron para borrar una venta real.
 --
 -- COMO SE CORRE (nunca en el editor SQL de Supabase, que no sostiene la transaccion):
---   En PowerShell, con $env:DATABASE_URL de la nube:
---     node scripts/aplicar-migracion.mjs scripts/BORRAR_EL_LINK_DE_ENTRENAMIENTO_2026-10-04.sql
---   ... leer los NOTICE, y si dice lo esperado, lo mismo con --commit al final.
+--   1. Cambia el id en la linea que dice CAMBIA AQUI.
+--   2. En PowerShell, con $env:DATABASE_URL de la nube:
+--        node scripts/aplicar-migracion.mjs scripts/BORRAR_UNA_VENTA_QUE_NUNCA_COBRO.sql
+--   3. Lee los NOTICE. Si dice lo esperado, lo mismo con --commit al final.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
 declare
+  -- ─────────────────────────────── CAMBIA AQUI ───────────────────────────────
   v_id uuid := 'bd992993-c9e6-4053-810f-2c22b04e123a';
+  -- ───────────────────────────────────────────────────────────────────────────
   v record;
   v_movimientos int;
   v_comisiones int;
   v_ingresos int;
   v_reversas int;
+  v_lineas int;
+  v_reservas int;
 begin
   select t.status, t.cancelled_at, t.cancelled_by_sale_id, t.alegra_invoice_number, t.stock_state, t.amount
     into v
@@ -68,14 +70,14 @@ begin
       v.alegra_invoice_number;
   end if;
 
-  -- (4) NO MOVIO INVENTARIO. Se comprueba por los movimientos REALES, no por `stock_state`: el estado es un
-  --     resumen y los movimientos son el hecho.
+  -- (4) NO MOVIO INVENTARIO. Por los movimientos REALES, no por `stock_state`: el estado es un resumen y los
+  --     movimientos son el hecho.
   select count(*) into v_movimientos
     from nutraceutical_stock_movements m
     join transaction_items ti on ti.id = m.transaction_item_id
    where ti.transaction_id = v_id;
   if v_movimientos > 0 then
-    raise exception 'ABORTA: tiene % movimiento(s) de inventario. Esa venta saco unidades de verdad y su rastro de custodia no se borra.',
+    raise exception 'ABORTA: tiene % movimiento(s) de inventario. Esa venta saco unidades de verdad y su rastro de custodia no se borra. Si sobra en una bandeja, descartala en "Pendientes sin salida".',
       v_movimientos;
   end if;
 
@@ -89,26 +91,21 @@ begin
   end if;
 
   raise notice 'LAS CINCO CONDICIONES SE CUMPLEN. Venta % por % COP, anulada el %.', v_id, v.amount, v.cancelled_at;
-  raise notice 'Se borrara la venta, sus lineas y las reservas de esas lineas. Nada mas.';
-end $$;
 
--- Las reservas no cuelgan de la venta sino de sus LINEAS, y su cascade es desde la linea. Se borran
--- explicitamente para que el conteo de abajo las nombre.
-delete from inventory_reservations r
- using transaction_items ti
- where ti.id = r.transaction_item_id
-   and ti.transaction_id = 'bd992993-c9e6-4053-810f-2c22b04e123a';
+  -- Las reservas cuelgan de las LINEAS, no de la venta: se borran primero para poder contarlas.
+  delete from inventory_reservations r
+   using transaction_items ti
+   where ti.id = r.transaction_item_id and ti.transaction_id = v_id;
+  get diagnostics v_reservas = row_count;
 
-delete from transaction_items where transaction_id = 'bd992993-c9e6-4053-810f-2c22b04e123a';
+  delete from transaction_items where transaction_id = v_id;
+  get diagnostics v_lineas = row_count;
 
-delete from transactions where id = 'bd992993-c9e6-4053-810f-2c22b04e123a';
+  delete from transactions where id = v_id;
 
-do $$
-declare v_quedan int;
-begin
-  select count(*) into v_quedan from transactions where id = 'bd992993-c9e6-4053-810f-2c22b04e123a';
-  if v_quedan > 0 then
+  if exists (select 1 from transactions where id = v_id) then
     raise exception 'ABORTA: la venta sigue ahi despues del delete.';
   end if;
-  raise notice 'LISTO: la venta ya no esta. En /direccion, "Anulados a mano" tiene que bajar a 0.';
+
+  raise notice 'LISTO: borrada la venta, % linea(s) y % reserva(s). Nada mas.', v_lineas, v_reservas;
 end $$;
