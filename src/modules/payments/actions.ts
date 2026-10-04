@@ -1065,13 +1065,20 @@ export async function cambiarModalidadFormAction(
       actorId: user.id,
       actorEmail: user.email,
       requisitosVerificados: form.get("requisitos") === "on",
+      // DE INMEDIATO lo pide la pantalla, pero lo PERMITE el servidor: vuelve a contar las ventas del periodo.
+      deInmediato: form.get("deInmediato") === "true",
       nota: nota === "" ? null : nota,
       ip: null,
     });
     revalidatePath(`/admin/integrantes/${professionalId}`);
     return {
       error: null,
-      success: `Modalidad ${MODALIDAD_LABEL[hacia]} registrada, y rige desde el ${rigeDesde}. Lo que se venda hasta ese día se liquida bajo la modalidad anterior, para no partir el período en dos regímenes.`,
+      // EL MENSAJE DISTINGUE LOS DOS CASOS: decir "rige desde hoy" y seguir con "lo que se venda hasta ese dia
+      // se liquida bajo la anterior" seria una contradiccion en la misma frase.
+      success:
+        form.get("deInmediato") === "true"
+          ? `Modalidad ${MODALIDAD_LABEL[hacia]} registrada y vigente desde hoy (${rigeDesde}). Se pudo aplicar de inmediato porque no tenía ventas en el período en curso.`
+          : `Modalidad ${MODALIDAD_LABEL[hacia]} registrada, y rige desde el ${rigeDesde}. Lo que se venda hasta ese día se liquida bajo la modalidad anterior, para no partir el período en dos regímenes.`,
       warning: null,
     };
   } catch (e) {

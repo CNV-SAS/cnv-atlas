@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { recordAudit } from "@/modules/audit/log";
 
 import {
+  inicioDelCorteEnCurso,
   inicioDelSiguienteCorte,
   MODALIDAD_LABEL,
   MODALIDAD_POR_DEFECTO,
@@ -37,6 +38,14 @@ export type ModalidadVigente = {
    * cruza la medianoche de Bogota, y entonces la pantalla prometeria una fecha y el escritor usaria otra.
    */
   proximoCorte: string;
+  /**
+   * Si el cambio PUEDE regir hoy mismo: solo cuando no hay ninguna venta en el corte en curso. Lo responde el
+   * servidor contando, no la pantalla: la regla protege las ventas que ya ocurrieron, y si no hay ninguna no
+   * hay periodo que partir. Es el caso de un Integrante que ARRANCA en Distribucion.
+   */
+  puedeAplicarDeInmediato: boolean;
+  /** Cuantas ventas tiene en el corte en curso. Se dice en la pantalla: explica por que no se ofrece. */
+  ventasEnElCorte: number;
   historial: { modalidad: Modalidad; desde: string; hasta: string | null; decidioEn: string }[];
 };
 
@@ -75,9 +84,28 @@ export async function leerModalidad(professionalId: string): Promise<ModalidadVi
   const actual = filas.find((f) => f.valid_from <= hoy && (f.valid_to == null || f.valid_to >= hoy));
   const futura = filas.find((f) => f.valid_from > hoy);
 
+  // ═══ ¿TIENE VENTAS EN EL CORTE EN CURSO? (Santiago, 2026-10-04) ═══
+  //
+  // Es lo unico que decide si el cambio puede regir HOY. La regla de esperar al siguiente corte existe para no
+  // partir un periodo en dos regimenes; si no hubo ninguna venta, no hay nada que partir.
+  //
+  // SE CUENTAN LAS PAGADAS Y NO TODAS: un link que nadie pago no liquida nada, asi que no parte ningun
+  // periodo. Y se cuenta por la fecha de la VENTA (`operated_at`, con `created_at` de respaldo), que es la
+  // misma con la que se liquida.
+  const desdeElCorte = inicioDelCorteEnCurso(hoy, modalidad);
+  const [cuenta] = await db.execute<{ n: number }>(sql`
+    select count(*)::int as n
+      from transactions t
+     where t.professional_id = ${professionalId}::uuid
+       and t.status = 'paid'
+       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desdeElCorte}::date`);
+  const ventasEnElCorte = Number(cuenta?.n ?? 0);
+
   return {
     modalidad,
     proximoCorte: inicioDelSiguienteCorte(hoy, modalidad),
+    puedeAplicarDeInmediato: ventasEnElCorte === 0,
+    ventasEnElCorte,
     rigeDesde: actual?.valid_from ?? null,
     pendiente: futura ? { modalidad: futura.modality as Modalidad, rigeDesde: futura.valid_from } : null,
     historial: filas.map((f) => ({
@@ -101,12 +129,24 @@ export async function cambiarModalidad(input: {
   actorId: string;
   actorEmail: string;
   requisitosVerificados: boolean;
+  /** Que rija HOY en vez de en el corte siguiente. Solo vale si no tiene ventas en el periodo (se verifica). */
+  deInmediato?: boolean;
   nota: string | null;
   ip: string | null;
 }): Promise<{ rigeDesde: string }> {
   const estado = await leerModalidad(input.professionalId);
   if (estado.modalidad === input.hacia && estado.pendiente == null) {
     throw new ModalidadError(`Ya está en modalidad ${MODALIDAD_LABEL[input.hacia]}.`);
+  }
+  // ═══ PEDIR EL MISMO CAMBIO DOS VECES LO DICE, en vez de repetir el mismo aviso (Santiago, 2026-10-04) ═══
+  //
+  // Repetir "registrada, y rige desde el X" se lee como que la primera no quedo. Y no es inofensivo: invita a
+  // pulsarlo una tercera vez buscando que "funcione". Pedir OTRA modalidad si se permite: es cambiar de
+  // opinion antes de que empiece, y reemplaza la decision pendiente (abajo).
+  if (estado.pendiente != null && estado.pendiente.modalidad === input.hacia) {
+    throw new ModalidadError(
+      `Ese cambio ya está en curso: ${MODALIDAD_LABEL[input.hacia]} empieza el ${estado.pendiente.rigeDesde}. Si quieres deshacerlo, pide el cambio de vuelta a ${MODALIDAD_LABEL[estado.modalidad]}.`,
+    );
   }
   // LOS REQUISITOS DE DISTRIBUCION (modelo §2) NO los puede comprobar Atlas: dos de ellos (facturador
   // electronico habilitado ante la DIAN, estar al dia con CNV) viven fuera. Asi que no se simula la
@@ -118,7 +158,21 @@ export async function cambiarModalidad(input: {
   }
 
   const hoy = await hoyEnBogota();
-  const rigeDesde = inicioDelSiguienteCorte(hoy, estado.modalidad);
+  // ═══ DE INMEDIATO, SOLO SI NO HAY NADA QUE PARTIR (Santiago, 2026-10-04) ═══
+  //
+  // La regla del modelo (el cambio entra en el corte siguiente) protege las ventas que YA ocurrieron en el
+  // periodo: liquidarlas con dos regimenes distintos seria incoherente. Si no hay ninguna, no hay nada que
+  // proteger, y esperar un mes es tramite. Es el caso del Integrante que ARRANCA en Distribucion.
+  //
+  // LA CONDICION LA VERIFICA EL SERVIDOR, contando otra vez. La pantalla ya la miro para decidir si ofrecer
+  // el boton, pero entre que la pinto y que llega esta peticion pudo entrar una venta, y entonces el cambio
+  // partiria el periodo igual. Es la misma razon por la que `rigeDesde` no viene del cliente.
+  if (input.deInmediato && estado.ventasEnElCorte > 0) {
+    throw new ModalidadError(
+      `No se puede aplicar de inmediato: ya tiene ${estado.ventasEnElCorte} venta${estado.ventasEnElCorte === 1 ? "" : "s"} en el período en curso, y se liquidarían con dos regímenes distintos. El cambio entra el ${estado.proximoCorte}.`,
+    );
+  }
+  const rigeDesde = input.deInmediato ? hoy : inicioDelSiguienteCorte(hoy, estado.modalidad);
 
   await db.transaction(async (tx) => {
     // ── EL ORDEN DE ESTOS DOS PASOS IMPORTA, y al reves revienta (lo atrapo su candado) ──

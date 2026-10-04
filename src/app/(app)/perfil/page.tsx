@@ -256,6 +256,8 @@ export default async function PerfilPage() {
                 rigeDesde={modalidad.rigeDesde}
                 pendiente={modalidad.pendiente}
                 proximoCorte={modalidad.proximoCorte}
+                puedeAplicarDeInmediato={modalidad.puedeAplicarDeInmediato}
+                ventasEnElCorte={modalidad.ventasEnElCorte}
                 puedeCambiar={false}
               />
             </div>
