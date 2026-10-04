@@ -1,4 +1,5 @@
 import { Boxes, Receipt, TriangleAlert, Users, Wallet } from "lucide-react";
+import { MarcaDePruebaForm } from "@/modules/professionals/components/marca-de-prueba-form";
 import { pieDeLoVendido } from "@/modules/payments/cobro-reconocido";
 import { redirect } from "next/navigation";
 
@@ -112,6 +113,13 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           decir cero sobre estas mismas ventas. Sus pacientes también quedan fuera, sin que nadie los marque.
         </p>
       ) : null}
+
+      {/* ═══ MARCARLO DE PRUEBA, Y REVERTIRLO (Santiago, 2026-10-04) ═══
+
+          La columna existe desde la 0199 y solo se escribía por SQL. Con pacientes ya había botón, y la
+          asimetría se notaba justo cuando más se usa: durante un smoke, alternando una cuenta entre real y de
+          prueba. Va aquí, junto al aviso que explica lo que la marca significa. */}
+      <MarcaDePruebaForm professionalId={id} esDePrueba={integrante.esDePrueba} />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <TarjetaMetrica

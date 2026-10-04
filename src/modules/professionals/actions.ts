@@ -1,5 +1,9 @@
 "use server";
 
+import { reportServerError } from "@/lib/observability/report-error";
+import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
+
+import { MarcaDeProfesionalError, marcarProfesionalDePrueba } from "./data/marca-de-prueba-writer";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
@@ -236,4 +240,51 @@ export async function saveMisDatosAction(
   await saveMisDatos(professionalId, parsed.data);
   revalidatePath("/perfil");
   return { error: null, success: true };
+}
+
+// ═══ MARCAR UN PROFESIONAL COMO DE PRUEBA, Y REVERTIRLO (Santiago, 2026-10-04) ═══
+//
+// La columna existe desde la 0199 y hasta hoy solo se escribia por SQL. Con pacientes si habia boton, y la
+// asimetria se notaba justo cuando mas se usa: durante un smoke, alternando una cuenta entre real y de prueba.
+//
+// SOLO ADMIN, igual que con los pacientes y por la misma razon: marcar SACA DE LAS CIFRAS, asi que quien se
+// beneficia de la exclusion no puede autorizarla. `canAccessAdmin` y no `canViewRevenue`: direccion LEE las
+// cifras, no decide quien entra en ellas.
+export type MarcaFormState = { error: string | null; success: string | null; warning: string | null };
+
+export async function marcarProfesionalDePruebaFormAction(
+  _prev: MarcaFormState,
+  form: FormData,
+): Promise<MarcaFormState> {
+  const user = await requireUser();
+  if (!canAccessAdmin(user)) return { error: "Solo un administrador marca una cuenta de prueba.", success: null, warning: null };
+  const professionalId = String(form.get("professionalId") ?? "").trim();
+  const esDePrueba = String(form.get("esDePrueba") ?? "") === "true";
+  const motivo = String(form.get("motivo") ?? "").trim();
+  if (!professionalId) return { error: "Profesional inválido.", success: null, warning: null };
+  try {
+    await marcarProfesionalDePrueba({
+      professionalId,
+      esDePrueba,
+      motivo: motivo === "" ? null : motivo,
+      actorId: user.id,
+      actorEmail: user.email,
+    });
+    // SIN `revalidatePath`: el refresco lo hace la pantalla DESPUES del toast (`useFormToastAndRefresh`).
+    // Los dos ciclos montarian segmentos dos veces, o sea que la pagina saltaria al inicio dos veces, y el
+    // formulario podria desmontarse antes de que el aviso se vea. Lo atrapo `refresco-una-sola-vez`.
+    // Los dos ciclos montarian segmentos dos veces, o sea que la pagina saltaria al inicio dos veces, y el
+    // formulario podria desmontarse antes de que el aviso se vea. Lo atrapo .
+    return {
+      error: null,
+      success: esDePrueba
+        ? "Marcado como cuenta de prueba. Sus ventas y sus pacientes dejan de contar en las cifras."
+        : "Ya no es cuenta de prueba. Sus ventas y sus pacientes vuelven a contar en las cifras.",
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof MarcaDeProfesionalError) return { error: e.message, success: null, warning: null };
+    reportServerError("profesionales.marca-de-prueba", e);
+    return { error: "No se pudo cambiar la marca.", success: null, warning: null };
+  }
 }
