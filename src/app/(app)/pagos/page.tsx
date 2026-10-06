@@ -20,7 +20,6 @@ import { requireUser } from "@/modules/auth/session";
 import { BloqueRetracto, type RetractoDeLaVenta } from "@/modules/payments/components/bloque-retracto";
 import type { TratamientoParaElegir } from "@/modules/payments/components/bloque-tratamiento";
 import { retractosDeLasVentas } from "@/modules/payments/data/retracto-writer";
-import { ciudadesConCobertura, configuracionDeFlete } from "@/modules/payments/data/domicilio-reader";
 import { tratamientosDeVariosPacientes } from "@/modules/payments/data/tratamientos-del-paciente";
 import { formatDateTime } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
@@ -146,6 +145,25 @@ function EntregaDeLaVenta({
             titulo="Cuéntale a CNV qué pasó en la consulta"
           />
         ) : null}
+      </div>
+    );
+  }
+  // ═══ UNA VENTA A DOMICILIO NO ESTA "SIN ENTREGAR": ESTA PENDIENTE DE COORDINAR (2026-10-05) ═══
+  //
+  // LO PIDE LA DECISION CONTABLE, que deja la venta "pendiente de coordinar envío" para que admin o soporte
+  // la despachen. Y el rótulo genérico decía algo que llevaba al error: "Pagado, sin entregar" invita al
+  // profesional a entregarlo, y el producto de un domicilio NO está en su vitrina, sale de la bodega de CNV.
+  //
+  // SE DICE TAMBIEN QUIEN LO HACE. Un aviso que no nombra al responsable deja a cada uno esperando al otro,
+  // que es como un envío se queda dos semanas quieto sin que nadie lo note.
+  if (tx.delivery_mode === "domicilio") {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-clinical-warning">
+          Pagado · pendiente de coordinar el envío. Lo despacha CNV desde su bodega, no sale de tu vitrina.
+        </span>
+        {puedeEntregar ? <AccionDeVentaButton transactionId={tx.id} tipo="entregar" /> : null}
+        {retracto ? <BloqueRetracto retracto={retracto} /> : null}
       </div>
     );
   }
@@ -277,28 +295,11 @@ export default async function PagosPage({
 
   let patients: CheckoutPatient[] = [];
   let nutraceuticals: CheckoutNutraceutical[] = [];
-  // EL DOMICILIO SOLO SE OFRECE SI ESTA CONFIGURADO. Sin tarifa o sin ciudades, el bloque ni se pinta: el
-  // modelo §5.5 prefiere no ofrecer el envío a un destino antes que ofrecerlo y perder dinero en cada uno.
-  let ciudadesDeDomicilio: { city: string; department: string; costoSugerido: number | null }[] = [];
-  let costoSugeridoPorDefecto: number | null = null;
-  let margenDeFlete = 0.03;
   // LAS CONSULTAS DE CADA PACIENTE, en UNA consulta a la base: el formulario tiene que poder ofrecerlas al
   // cambiar de paciente sin ir al servidor, y una por paciente serian decenas contra un pool de seis.
   let tratamientosPorPaciente: Record<string, TratamientoParaElegir[]> = {};
   if (canCreate) {
-    const [pts, catalog, ciudades, tarifa] = await Promise.all([
-      listSelectablePatients(),
-      nutraService.listCatalog(),
-      ciudadesConCobertura(),
-      configuracionDeFlete(),
-    ]);
-    ciudadesDeDomicilio = ciudades.map((c) => ({
-      city: c.city,
-      department: c.department,
-      costoSugerido: c.costoSugerido,
-    }));
-    costoSugeridoPorDefecto = tarifa.costoPorDefecto;
-    margenDeFlete = tarifa.margen;
+    const [pts, catalog] = await Promise.all([listSelectablePatients(), nutraService.listCatalog()]);
     const porPaciente = await tratamientosDeVariosPacientes(pts.map((x) => x.id));
     tratamientosPorPaciente = Object.fromEntries(porPaciente);
     patients = pts;
@@ -383,9 +384,6 @@ export default async function PagosPage({
             <CreateCheckoutForm
               patients={patients}
               nutraceuticals={nutraceuticals}
-              ciudadesDeDomicilio={ciudadesDeDomicilio}
-              costoSugeridoPorDefecto={costoSugeridoPorDefecto}
-              margenDeFlete={margenDeFlete}
               tratamientosPorPaciente={tratamientosPorPaciente}
             />
           </CardContent>
@@ -407,9 +405,6 @@ export default async function PagosPage({
             <RegisterCashSaleForm
               patients={patients}
               nutraceuticals={nutraceuticals}
-              ciudadesDeDomicilio={ciudadesDeDomicilio}
-              costoSugeridoPorDefecto={costoSugeridoPorDefecto}
-              margenDeFlete={margenDeFlete}
               tratamientosPorPaciente={tratamientosPorPaciente}
             />
           </CardContent>

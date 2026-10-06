@@ -185,34 +185,56 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
     expect(mapa.has(conEnvio)).toBe(true);
     expect(mapa.has(enConsulta)).toBe(false);
   });
-  // ═══ EL COSTO DEL DOMICILIARIO Y SU CONSOLIDADO (0192) ═══
+  // ═══ LOS CHECK DEL FLETE SIGUEN EN LA BASE, Y SE SIGUEN PROBANDO (0192) ═══
+  //
+  // El flete salio de CNV el 2026-10-05 y ninguna venta nueva escribe esas columnas, asi que estos dos CHECK
+  // ya no pueden dispararse por el camino normal. SE QUEDAN PROBADOS porque siguen siendo la ultima defensa
+  // de los datos historicos: si alguien escribiera un flete a mano (un arreglo de datos, un script), la base
+  // tiene que seguir rechazando una cifra incoherente. Un CHECK sin candado es un CHECK que alguien suelta
+  // en la migracion siguiente creyendo que ya no hace nada.
 
-  // LO COBRADO NUNCA PUEDE SER MENOR QUE EL COSTO: si lo fuera, CNV estaria pagando por despachar, que es
-  // justo el caso que el margen existe para impedir.
-  it("no se puede cobrar un flete menor que lo que cuesta el envio", async () => {
+  // LO COBRADO NUNCA PUEDE SER MENOR QUE EL COSTO: si lo fuera, CNV estaria pagando por despachar.
+  it("la base sigue rechazando un flete menor que lo que cuesta el envio", async () => {
     await expect(venta({ domicilio: true, flete: 9_000, costo: 10_000 })).rejects.toThrow();
     ventas.pop();
   });
 
-  it("un costo en una venta en consulta tampoco se guarda", async () => {
+  it("y un costo en una venta en consulta tampoco se guarda", async () => {
     await expect(venta({ domicilio: false, costo: 10_000 })).rejects.toThrow();
     ventas.pop();
   });
 
-  it("el consolidado suma lo que hay que pagarle al domiciliario", async () => {
+  // ═══ LA COLA DE ENVIOS POR COORDINAR (2026-10-05) ═══
+  //
+  // REEMPLAZA AL CANDADO DEL CONSOLIDADO, que sumaba lo que habia que pagarle al domiciliario. Esa cuenta no
+  // existe: CNV no paga el envio. Lo que hay que guardar ahora es que el envio NO SE PIERDA, porque alguien
+  // tiene que llamar al paciente y despacharlo a mano.
+  it("un envio pagado y sin entregar aparece en la cola", async () => {
     const reader = await import("@/modules/payments/data/despachos-reader");
-    // HOY EN COLOMBIA, no en UTC: a las 8 de la noche de Bogota la fecha UTC ya es el dia siguiente, asi
-    // que el corte que se consultaba era el SIGUIENTE y no contenia las ventas que el propio caso acababa de
-    // crear. Fallaba por la hora a la que se corriera; la pantalla de /comercial ya lo hacia bien.
-    const { hoyEnColombia } = await import("@/modules/payments/arranque");
-    const hoy = hoyEnColombia();
-    const antes = await reader.consolidadoDeDespachos(hoy);
-    await venta({ domicilio: true, flete: 12_257, costo: 10_000 });
-    await venta({ domicilio: true, flete: 14_000, costo: 11_000 });
-    const despues = await reader.consolidadoDeDespachos(hoy);
-    expect(despues.totalCosto - antes.totalCosto).toBe(21_000);
-    expect(despues.totalFlete - antes.totalFlete).toBe(26_257);
-    // LA DIFERENCIA NO ES MARGEN: es lo que se lleva la pasarela por cobrar el flete.
-    expect(despues.diferencia - antes.diferencia).toBe(5_257);
+    const antes = (await reader.enviosPorCoordinar()).length;
+    const id = await venta({ domicilio: true });
+    const cola = await reader.enviosPorCoordinar();
+    expect(cola.length).toBe(antes + 1);
+    expect(cola.some((e) => e.transactionId === id)).toBe(true);
+  });
+
+  // LO QUE EL CANDADO DE VERDAD PERSIGUE: que entregarlo lo SAQUE de la cola. Un envio que se queda ahi
+  // despues de despachado hace que la lista deje de servir, y entonces nadie la mira.
+  it("y entregarlo lo saca de la cola y lo pasa a los despachados", async () => {
+    const reader = await import("@/modules/payments/data/despachos-reader");
+    const id = await venta({ domicilio: true, entregadaHace: 1 });
+    const cola = await reader.enviosPorCoordinar();
+    expect(cola.some((e) => e.transactionId === id)).toBe(false);
+    const hechos = await reader.enviosDespachados();
+    expect(hechos.some((e) => e.transactionId === id)).toBe(true);
+  });
+
+  // UNA VENTA EN CONSULTA NO ES UN ENVIO. Si entrara, la cola mandaria a despachar producto que el paciente
+  // ya se llevo en la mano.
+  it("una venta en consulta no entra en la cola de envios", async () => {
+    const reader = await import("@/modules/payments/data/despachos-reader");
+    const id = await venta({ domicilio: false });
+    const cola = await reader.enviosPorCoordinar();
+    expect(cola.some((e) => e.transactionId === id)).toBe(false);
   });
 });

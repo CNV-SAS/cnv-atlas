@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { createCheckoutFormAction } from "../actions";
-import { BloqueDomicilio, type CiudadParaElegir } from "./bloque-domicilio";
+import { BloqueDomicilio } from "./bloque-domicilio";
 import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import type { PaymentFormState } from "../validations";
@@ -26,7 +26,9 @@ const initial: PaymentFormState = {
 const selectClass =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
 
-export type CheckoutPatient = { id: string; label: string };
+// VIAJA SI TIENE CELULAR, NO CUAL (2026-10-05): el bloque de domicilio lo necesita para pedirlo solo cuando
+// falta, y el numero no tiene por que estar en el HTML de la pantalla (ver `listSelectablePatients`).
+export type CheckoutPatient = { id: string; label: string; tieneCelular: boolean };
 export type CheckoutNutraceutical = { id: string; name: string; unitPrice: number };
 
 // Crea un checkout de una linea (paciente + nutraceutico + cantidad). Al exito
@@ -34,16 +36,10 @@ export type CheckoutNutraceutical = { id: string; name: string; unitPrice: numbe
 export function CreateCheckoutForm({
   patients,
   nutraceuticals,
-  ciudadesDeDomicilio = [],
-  costoSugeridoPorDefecto = null,
-  margenDeFlete = 0.03,
   tratamientosPorPaciente = {},
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
-  ciudadesDeDomicilio?: CiudadParaElegir[];
-  costoSugeridoPorDefecto?: number | null;
-  margenDeFlete?: number;
   /** Las consultas de cada paciente, para poder atar la compra a la suya sin ir al servidor. */
   tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
 }) {
@@ -52,6 +48,9 @@ export function CreateCheckoutForm({
   // el flujo de confirmacion del duplicado es de dos pasos (avisar -> "Generar de todos modos"). Sin
   // control, el segundo submit mandaria los valores por defecto, no los que el profesional eligio.
   const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
+  // El celular del paciente ELEGIDO, para el bloque de domicilio. Sale de la lista que ya viajo y no de una
+  // consulta aparte: cambiar de paciente no deberia ir al servidor por un dato que ya esta aqui.
+  const tieneCelular = patients.find((p) => p.id === patientId)?.tieneCelular === true;
   // ═══ VARIAS LINEAS, QUE ES EL CASO MAS COMUN EN UNA CONSULTA (2026-09-12) ═══
   //
   // Hasta hoy este formulario tenia UN selector y UN campo de cantidad, asi que anadir un segundo producto
@@ -186,12 +185,10 @@ export function CreateCheckoutForm({
           tratamientos={tratamientosPorPaciente[patientId] ?? []}
         />
 
-        <BloqueDomicilio
-          ciudades={ciudadesDeDomicilio}
-          costoSugeridoPorDefecto={costoSugeridoPorDefecto}
-          margen={margenDeFlete}
-          total={total}
-        />
+        {/* LA MISMA `key` POR PACIENTE que el bloque de arriba, y por el mismo motivo: el campo del celular
+            se precarga con el del paciente elegido. Sin re-montar, el numero del anterior se quedaría en el
+            campo y se despacharía un envío al teléfono de otra persona. */}
+        <BloqueDomicilio key={patientId} tieneCelularRegistrado={tieneCelular} />
 
         <Button type="submit" disabled={pending || (total > 0 && total < WOMPI_MONTO_MINIMO)}>
           {pending ? "Creando..." : "Crear checkout"}

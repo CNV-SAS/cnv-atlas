@@ -1443,6 +1443,13 @@
       "when": 1791954386103,
       "tag": "0205_descartar_un_pendiente_sin_salida",
       "breakpoints": true
+    },
+    {
+      "idx": 206,
+      "version": "7",
+      "when": 1791954446103,
+      "tag": "0206_el_flete_sale_de_cnv",
+      "breakpoints": true
     }
   ]
 }

@@ -4,75 +4,37 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
 
-import { MARGEN_DE_FLETE_POR_DEFECTO, ofertaDeDomicilio, type CiudadHabilitada, type OfertaDeDomicilio } from "../domicilio";
-
-// ═══ LO QUE EL DOMICILIO NECESITA SABER ANTES DE COBRAR (0190) ═══
+// ═══ LO QUE EL DOMICILIO NECESITA SABER (0190, PODADO EL 2026-10-05) ═══
 //
-// La tarifa y la cobertura viven en Atlas y no en los documentos contractuales (§5.4), asi que se leen aqui y
-// la decision la toma el modulo puro, que tiene candado.
+// LO QUE SE FUE, con la decision contable que saco el flete de CNV:
+//
+//   · `configuracionDeFlete` leia `commercial_config.flete_tarifa` y `flete_margen`. Ya no hay tarifa que
+//     precargar ni margen que compensar, porque CNV no cobra el envio.
+//   · `ciudadesConCobertura` y `ofertaVigente` resolvian un PORTON (a que destinos se ofrece). El porton
+//     existia para no perder dinero en un envio; sin flete, CNV no pone dinero en ninguno.
+//
+// LO QUE SE QUEDA, y por una razon que no es el flete: el CODIGO DANE del municipio de destino. Lo pide el
+// analisis de ICA, que es un impuesto sobre la venta del PRODUCTO y no sobre el envio, asi que no se fue con
+// el flete. Ahora `delivery_cities` se usa como DIRECTORIO (traduce una ciudad a su codigo) y no como lista
+// de permitidos: la ciudad que no este devuelve null en vez de bloquear la venta.
 
-/**
- * El costo SUGERIDO por defecto y el MARGEN vigentes.
- *
- * El costo es solo una precarga del formulario: lo que manda es lo que el profesional teclea, porque es
- * quien contrata el envio. El margen SI gobierna la cuenta, y por eso vive en configuracion y no en el
- * codigo: existe para compensar la comision que la pasarela cobra tambien sobre el flete, y esa comision
- * cambia.
- */
-export async function configuracionDeFlete(): Promise<{ costoPorDefecto: number | null; margen: number }> {
-  const [f] = await db.execute<{ tarifa: string | null; margen: string | null }>(
-    sql`select flete_tarifa as tarifa, flete_margen as margen from commercial_config limit 1`,
-  );
-  return {
-    costoPorDefecto: f?.tarifa == null ? null : Number(f.tarifa),
-    margen: f?.margen == null ? MARGEN_DE_FLETE_POR_DEFECTO : Number(f.margen),
-  };
-}
-
-export async function ciudadesConCobertura(): Promise<CiudadHabilitada[]> {
-  const filas = await db.execute<{
-    city: string;
-    department: string;
-    dane_code: string | null;
-    costo_sugerido: string | null;
-  }>(sql`
-    select city, department, dane_code, costo_sugerido from delivery_cities where is_active order by city`);
-  return filas.map((f) => ({
-    city: f.city,
-    department: f.department,
-    daneCode: f.dane_code,
-    costoSugerido: f.costo_sugerido == null ? null : Number(f.costo_sugerido),
-  }));
-}
-
-/** ¿Se ofrece domicilio, y a este destino? Lo resuelve el modulo puro con lo que hay configurado. */
-export async function ofertaVigente(destino?: {
-  ciudad?: string | null;
-  departamento?: string | null;
-}): Promise<OfertaDeDomicilio> {
-  const [config, ciudades] = await Promise.all([configuracionDeFlete(), ciudadesConCobertura()]);
-  return ofertaDeDomicilio({
-    ciudades,
-    ciudad: destino?.ciudad,
-    departamento: destino?.departamento,
-    costoPorDefecto: config.costoPorDefecto,
-  });
-}
-
-/** El codigo DANE de una ciudad habilitada, para sellarlo en la venta (el analisis de ICA lo necesita). */
+/** El codigo DANE de una ciudad, si esta en el directorio. null = no esta, y la venta sigue igual. */
 export async function daneDe(ciudad: string, departamento?: string | null): Promise<string | null> {
+  const nombre = ciudad.trim();
+  if (nombre === "") return null;
   const [f] = await db.execute<{ dane_code: string | null }>(sql`
     select dane_code from delivery_cities
-     where lower(city) = lower(${ciudad.trim()})
+     where lower(city) = lower(${nombre})
        and (${departamento ?? null}::text is null or lower(department) = lower(${(departamento ?? "").trim()}))
-       and is_active
      limit 1`);
   return f?.dane_code ?? null;
 }
 
-/** El departamento de una ciudad habilitada, cuando la pantalla no lo manda. */
+/** El departamento de una ciudad del directorio, cuando la pantalla no lo manda. */
 export async function departamentoDe(ciudad: string): Promise<string | null> {
+  const nombre = ciudad.trim();
+  if (nombre === "") return null;
   const [f] = await db.execute<{ department: string }>(sql`
-    select department from delivery_cities where lower(city) = lower(${ciudad.trim()}) and is_active limit 1`);
+    select department from delivery_cities where lower(city) = lower(${nombre}) limit 1`);
   return f?.department ?? null;
 }

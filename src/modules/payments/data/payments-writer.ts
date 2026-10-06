@@ -192,15 +192,16 @@ export async function sellarContabilidadDeLaVenta(
         .where(eq(transactionItems.id, tramo.lineaId));
     }
   }
-  // ── EL FLETE ES INGRESO DE CNV, Y NO SE REPARTE (0190, modelo §5.3) ──
+  // ── EL FLETE YA NO ENTRA EN LA CONTABILIDAD DE LA VENTA (2026-10-05) ──
   //
-  // Textual: "El Integrante no gana ni pierde en el envio: solo lo traslada". Asi que su base NO pasa por
-  // `repartir`: pasarla le daria al Integrante su porcentaje de un flete que el no presta, y se lo quitaria
-  // a CNV, que es quien contrata la transportadora y le paga.
+  // AQUI SE LE SUMABA AL INGRESO DE CNV la base del flete, porque el paciente le pagaba el envio a CNV en el
+  // mismo cobro y ese dinero tenia que cuadrar. Decision contable del 2026-10-05: el flete queda fuera de
+  // CNV y el paciente se lo paga al mensajero, asi que no hay ingreso que contar.
   //
-  // Y NO PUEDE QUEDARSE FUERA, que es lo que pasaria si no se sumara aqui: el paciente paga el flete, el
-  // dinero entra, y el ingreso de CNV no lo contaria. Una venta cuya plata no cuadra con su contabilidad es
-  // exactamente lo que este sellado existe para impedir.
+  // LA LECTURA SE QUEDA, y no por inercia: `shipping_fee` sigue teniendo valor en las ventas ANTERIORES a
+  // esa fecha, y esta funcion vuelve a correr sobre una venta vieja cada vez que se recalcula su
+  // contabilidad (una reversa, una correccion). Si se borrara la suma, esas ventas perderian un ingreso que
+  // de verdad entro. En toda venta nueva la columna es null y esto no hace nada.
   const [envio] = await tx.execute<{ fee: string | null }>(
     sql`select shipping_fee as fee from transactions where id = ${t.id}`,
   );
@@ -270,22 +271,22 @@ export type NewTransaction = {
   /** Por que la compra no sale de ninguna consulta (0197). Se ignora si hay tratamiento. */
   sinTratamientoMotivo?: string | null;
   /**
-   * ENVIO A DOMICILIO (0190). Su presencia decide tres cosas a la vez, y por eso viaja junta:
+   * ENVIO A DOMICILIO (0190, sin flete desde el 2026-10-05). Su presencia decide dos cosas a la vez, y por
+   * eso viaja junta:
    *
-   *   ·  pasa a domicilio, que es lo que activa el derecho de retracto (§5.7);
-   *   · la venta sale de la BODEGA CENTRAL, no de la vitrina (§5.1: "cuando la venta se despacha a
-   *     domicilio, el descuento se hace contra la bodega central"), asi que  se fuerza;
-   *   · y el flete queda SELLADO en la venta, no leido de la configuracion despues.
+   *   · el modo de entrega pasa a domicilio, que es lo que activa el derecho de retracto (§5.7);
+   *   · y la venta sale de la BODEGA CENTRAL, no de la vitrina (§5.1: "cuando la venta se despacha a
+   *     domicilio, el descuento se hace contra la bodega central").
+   *
+   * LA TERCERA QUE DECIDIA, el flete sellado, SE FUE: el paciente le paga el envio al mensajero.
    */
   domicilio?: {
     direccion: string;
     ciudad: string;
     departamento: string | null;
     daneCode: string | null;
-    /** Lo que paga el paciente por el envio, con IVA dentro (igual que el PVP). */
-    flete: number;
-    /** Lo que se le paga al domiciliario: soporta su pago quincenal consolidado. */
-    costo: number;
+    /** Con quien se coordina la entrega. No pisa `patients.phone`. */
+    celular: string | null;
   } | null;
 };
 
@@ -340,8 +341,9 @@ export async function createTransactionWithItems(
         shippingCity: input.domicilio?.ciudad ?? null,
         shippingDepartment: input.domicilio?.departamento ?? null,
         shippingDaneCode: input.domicilio?.daneCode ?? null,
-        shippingFee: input.domicilio ? String(input.domicilio.flete) : null,
-        shippingCost: input.domicilio ? String(input.domicilio.costo) : null,
+        // NI shippingFee NI shippingCost: el flete salio de CNV el 2026-10-05 (ver la 0206). Las columnas
+        // siguen ahi por las ventas anteriores, y en las nuevas quedan null.
+        shippingPhone: input.domicilio?.celular ?? null,
         operatedAt: new Date(),
         // QUIEN LA REGISTRO, que no siempre es el profesional de la comision (0193): un administrador puede
         // cobrar por el paciente de otro, y si la venta sale mal hay que saber a quien preguntarle.
@@ -564,8 +566,9 @@ export async function createPaidCashTransaction(
         shippingCity: input.domicilio?.ciudad ?? null,
         shippingDepartment: input.domicilio?.departamento ?? null,
         shippingDaneCode: input.domicilio?.daneCode ?? null,
-        shippingFee: input.domicilio ? String(input.domicilio.flete) : null,
-        shippingCost: input.domicilio ? String(input.domicilio.costo) : null,
+        // NI shippingFee NI shippingCost: el flete salio de CNV el 2026-10-05 (ver la 0206). Las columnas
+        // siguen ahi por las ventas anteriores, y en las nuevas quedan null.
+        shippingPhone: input.domicilio?.celular ?? null,
         operatedAt: new Date(),
         // QUIEN LA REGISTRO, que no siempre es el profesional de la comision (0193): un administrador puede
         // cobrar por el paciente de otro, y si la venta sale mal hay que saber a quien preguntarle.

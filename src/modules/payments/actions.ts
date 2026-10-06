@@ -221,22 +221,19 @@ export async function createCheckoutFormAction(
 /**
  * EL DOMICILIO DEL FORMULARIO, o undefined si no se pidió envío.
  *
- * LA TARIFA NO SE LEE DE AQUI: viaja solo el destino y la dirección. El flete lo pone el servidor desde la
- * configuración y lo sella en la venta; si viajara por el formulario, cualquiera podría cobrarse el flete
- * que quisiera.
+ * NO VIAJA NINGUNA CIFRA, y desde el 2026-10-05 tampoco existe: el flete salió de CNV, así que no hay costo
+ * que teclear ni tarifa que sellar. Lo que viaja es a dónde va, a qué dirección y a qué teléfono se coordina.
  */
 function leerDomicilio(
   formData: FormData,
-): { ciudad: string; departamento?: string; direccion: string; costo?: number } | undefined {
+): { ciudad: string; departamento?: string; direccion: string; celular?: string } | undefined {
   if (String(formData.get("aDomicilio") ?? "") !== "true") return undefined;
-  // El costo se lee como pesos colombianos (el ultimo grupo de tres son miles), igual que el resto de las
-  // cifras que se teclean en /pagos.
-  const costo = enteroDeTexto(String(formData.get("costoDelDomiciliario") ?? ""));
+  const celular = String(formData.get("celularEntrega") ?? "").trim();
   return {
     ciudad: String(formData.get("ciudadDestino") ?? ""),
     departamento: String(formData.get("departamentoDestino") ?? "") || undefined,
     direccion: String(formData.get("direccionEntrega") ?? ""),
-    costo: costo != null && costo > 0 ? costo : undefined,
+    celular: celular === "" ? undefined : celular,
   };
 }
 

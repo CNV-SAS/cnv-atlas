@@ -109,6 +109,66 @@ Atlas debe registrar esta condición en el perfil del Integrante, porque determi
 
 ## 4. Flujo de la modalidad Distribución
 
+> ### Cinco puntos ratificados por el asesor legal (2026-10-05)
+>
+> **1 · Es consignación, y la propiedad pasa EN LA VENTA, no en el despacho.** Textual del asesor: *"en el
+> instante de la venta, bajo la modalidad Distribución, la propiedad pasa de CNV al Integrante y de este al
+> paciente en un mismo acto"*. Lo que lo zanja sin discusión es lo que ya se hace: **lo que no se vende no
+> se factura y se devuelve**. Si la propiedad pasara al despacho, CNV tendría que facturar las unidades al
+> despacharlas y el Integrante devolverlas con nota crédito; nada de eso ocurre, y un contrato se califica
+> por lo que las partes hacen.
+>
+> **Consecuencia para Atlas, y simplifica:** la diferencia entre Comisión y Distribución es **solo quién
+> factura al paciente**. El inventario sigue en el balance de CNV hasta la venta en las dos, y el faltante
+> se trata igual (pérdida de cosa ajena en custodia). El Integrante **nunca tiene el producto como propio
+> en el tiempo**.
+>
+> **2 · No hay crédito sobre el inventario, pero sí sobre lo ya vendido.** CNV no le prestó mercancía ni le
+> vendió a plazo: el producto fue suyo hasta que se vendió. Lo que sí es crédito comercial es el desfase
+> entre que el Integrante cobra al paciente y paga la factura quincenal. *"No es simplemente el plazo de un
+> corte: un corte es el momento en que se liquida, pero el plazo de pago posterior sí es financiación."*
+>
+> Y una advertencia que conviene no perder: bajo Distribución CNV pasa de tener **dinero propio en
+> custodia** (como en Comisión) a tener una **cuenta por cobrar**, y eso es un debilitamiento jurídico
+> (apropiarse de dinero ajeno en custodia tiene connotación penal; no pagar una factura se cobra por vía
+> civil, lenta y costosa). No es razón para no hacerlo, sí para que los plazos sean cortos y la mora tenga
+> consecuencias reales.
+>
+> **3 · El cupo mide el SALDO PENDIENTE DE PAGO, no el inventario en su poder.** Textual: *"son dos números
+> distintos y hoy es fácil confundirlos. Un Integrante puede tener mucho inventario y cero deuda (no ha
+> vendido), o poco inventario y deuda alta (vendió todo y no ha pagado). El segundo es el que importa."* Y
+> la consecuencia de alcanzarlo **no es cobrar más rápido, es dejar de despacharle**.
+>
+> **Verificado contra el código el 2026-10-05: así está.** `puedeDespacharse` topa `saldoPendiente` contra
+> el cupo, `estadoDeCredito` lo suma de las cuentas emitidas y **no pagadas**, y la mora se deduce de los
+> plazos en vez de una columna. No hay nada que cambiar aquí.
+>
+> **4 · El PVP se SUGIERE, no se impone.** Imponer el precio de reventa desde que la propiedad pasó al
+> Integrante es fijación de precios, conducta restrictiva de la competencia. Y **condicionar la relación
+> comercial al cumplimiento del PVP es imponerlo por vía indirecta**: si la consecuencia de vender a otro
+> precio es perder el acceso al producto, no hay libertad real de fijarlo.
+>
+> Lo que sí se puede, y es suficiente: **mostrarlo como "precio sugerido por CNV"** en Atlas y en el reporte
+> del paciente. *"Es presión de mercado, no cláusula: un Integrante que cobre notablemente más queda
+> expuesto frente a su propio paciente, que ya vio el precio sugerido."* Lo que no se escribe es una
+> cláusula que haga del precio una condición de permanencia o de suministro.
+>
+> **Verificado contra el código el 2026-10-05: nada impone el PVP hoy.** Las tarjetas de modalidad no lo
+> mencionan y el precio solo aparece en pantallas del profesional. Lo que **no está construido** es la otra
+> mitad: el reporte del paciente **no muestra ningún precio**, así que la "presión de mercado" que el asesor
+> recomienda todavía no existe. Queda en `BACKLOG.md`.
+>
+> **5 · Al terminar el contrato hace falta un corte EXTRAORDINARIO.** Las ventas hechas después del último
+> corte y antes de la terminación no alcanzan a entrar en ninguna factura quincenal. Lo correcto es un corte
+> a la fecha de terminación, cuya factura se incorpora a la liquidación final (Cláusula 15 del Contrato
+> Marco). El inventario sin vender **se devuelve** con acta, sin factura y sin nota crédito, porque nunca se
+> vendió; el no devuelto se entiende vendido y se factura.
+>
+> **Verificado contra el código el 2026-10-05:** emitir el corte en curso el día de la terminación ya
+> recoge esas ventas, así que el corte extraordinario es **alcanzable a mano**. Lo que falta es que algo lo
+> PIDA: no hay flujo de offboarding que lo dispare, y el `corte_hasta` que queda guardado dice el fin de la
+> quincena y no la fecha de terminación. Queda en `BACKLOG.md`.
+
 **Registro.** El Integrante registra cada venta en Atlas al momento de la transacción, con producto, cantidad, paciente y precio. El registro es condición de la facturación y es el soporte de la operación.
 
 **Facturación al paciente.** La hace el Integrante, con su propia numeración y responsabilidad tributaria. CNV no interviene ni recauda del paciente.
@@ -146,6 +206,40 @@ Atlas debe registrar qué Integrantes son agentes retenedores para anticipar el 
 ---
 
 ## 5. Envío a domicilio
+
+> ### ⚠ EL FLETE SALIÓ DE CNV (decisión contable, 2026-10-05). Esto corrige 5.3, 5.4 y 5.5.
+>
+> **Lo que queda sin efecto:** la tarifa plana configurable, el flete como línea con IVA en la factura (al
+> paciente bajo Comisión y al Integrante bajo Distribución), y la lista de ciudades habilitadas como
+> condición para ofrecer el envío. **Nada de eso se construye, y lo que ya estaba construido se retiró**
+> (migración 0206).
+>
+> **La regla nueva, textual de contabilidad:** *"El paciente le paga el envío directamente al servicio de
+> mensajería, nunca a CNV ni al Integrante. Atlas no cobra flete, no lo factura y no registra ningún gasto
+> de domicilio."*
+>
+> **Y la parte innegociable:** *"el dinero del flete nunca entra a cuentas de CNV ni de un Integrante. Sin
+> excepciones, ni por hacerle el favor a un paciente. Si entra una vez, aparece un ingreso sin factura y un
+> gasto sin soporte, y se rompe la consistencia de todo el modelo."*
+>
+> **Por qué, con sus razones:** CNV opera en varias zonas del país y una tabla de tarifas por zona se vuelve
+> inmanejable al expandirse; los domicilios son casos contados, no el canal principal; y montar la
+> maquinaria contable del flete (facturación con IVA, documento soporte, retención, conciliación quincenal)
+> para una operación excepcional es desproporcionado. Si el domicilio se vuelve un canal relevante, se
+> revisa.
+>
+> **Lo que Atlas sí construye, que es poco, y ya está:** el aviso al paciente al marcar la entrega como
+> domicilio (`TEXTO_AVISO_DOMICILIO`, literal), capturar el celular si no lo tiene de la encuesta, y dejar
+> la venta pendiente de coordinar el envío para que admin o soporte la marquen entregada.
+>
+> **Lo que NO cambia:** 5.1 (las dos bodegas y el descuento contra la central), 5.2 (CNV despacha siempre),
+> 5.6 (CNV asume el riesgo de transporte) y 5.7 (el retracto). Y sigue en pie el **registro del municipio de
+> destino** para el análisis de ICA, que es un impuesto sobre la venta del producto y no sobre el envío: por
+> eso `delivery_cities` sobrevive, pero como **directorio** de códigos DANE y no como lista de permitidos.
+>
+> **Queda una pregunta abierta, en `BACKLOG.md`:** el texto publicado del retracto promete reintegrar *"la
+> totalidad de lo pagado, incluido el valor del envío"*, y ese dinero ya no llega a CNV. El texto **no se
+> tocó**: es texto legal publicado al paciente.
 
 ### 5.1. El concepto de dos bodegas
 

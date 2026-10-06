@@ -85,9 +85,21 @@ export const transactions = pgTable(
     shippingCity: text("shipping_city"),
     shippingDepartment: text("shipping_department"),
     shippingDaneCode: text("shipping_dane_code"),
-    /** El flete sellado al cobrar, con IVA dentro (igual que el precio unitario). Si la tarifa sube, esta no. */
+    /**
+     * Con quien se coordina ESTE envio (0206). No pisa `patients.phone`: el numero de la ficha lo fija la
+     * encuesta, y una pantalla de cobro no es el sitio desde donde se corrige la ficha de una persona.
+     */
+    shippingPhone: text("shipping_phone"),
+    /**
+     * HISTORICO, NO SE ESCRIBE MAS (2026-10-05, ver la 0206). El flete que el paciente le pagaba a CNV,
+     * cuando CNV cobraba el envio. Desde esa fecha el paciente se lo paga al mensajero y estas dos quedan
+     * null en toda venta nueva.
+     *
+     * NO SE BORRARON a proposito: una venta anterior todavia puede retractarse, y en ella CNV si recibio el
+     * flete y si lo tiene que devolver. El dato no se podria reconstruir.
+     */
     shippingFee: numeric("shipping_fee"),
-    /** Lo que se le paga al domiciliario por ESTE envio. Es lo que soporta su pago quincenal consolidado. */
+    /** HISTORICO, no se escribe mas (2026-10-05): lo que CNV le pagaba al domiciliario. Ver `shippingFee`. */
     shippingCost: numeric("shipping_cost"),
     // ── EL RETRACTO (Ley 1480/2011, art. 47) ──
     // La FECHA LIMITE no se guarda: se deduce de la fecha de entrega mas cinco dias habiles. Lo que si se guarda
