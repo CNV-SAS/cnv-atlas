@@ -128,11 +128,17 @@ describe("validateBisMeasurement", () => {
     expect(res.ok).toBe(false);
   });
 
-  it("rechaza si no hay exactamente una fila de medicion", () => {
+  // ── AQUI ESTABA "rechaza si no hay exactamente una fila de medicion", y SE INVIRTIO (2026-10-06) ──
+  //
+  // Afirmaba que un archivo de dos filas se rechazaba. Era correcto cuando el validador solo entendia una
+  // medicion por archivo, y era justo lo que le hacia perder el tiempo al Integrante: el export de "paciente
+  // + mediciones" trae UNA FILA POR MEDICION, asi que varias filas es lo NORMAL.
+  //
+  // El caso contrario vive abajo, en "un archivo con varias mediciones". No se borra sin dejar dicho que la
+  // regla se dio vuelta a proposito: un candado que desaparece se lee como una regla que se dejo de cuidar.
+  it("un archivo de dos filas del MISMO paciente ya no se rechaza", () => {
     const res = validateBisMeasurement(sheet(validCells(), 2));
-    expect(res.ok).toBe(false);
-    if (res.ok) return;
-    expect(res.error.message).toContain("unica fila");
+    expect(res.ok, res.ok ? "" : res.error.message).toBe(true);
   });
 
   it("rechaza un archivo con muy pocas columnas de variables", () => {
@@ -219,5 +225,148 @@ describe("validateBisMeasurement", () => {
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.error.fields?.["Waist Size cm"]).toContain("rango");
+  });
+});
+
+// ═══ VARIAS MEDICIONES EN UN ARCHIVO (2026-10-06) ═══
+//
+// El export de "paciente + mediciones" del Biody Manager trae UNA FILA POR MEDICION. Antes el validador
+// rechazaba el archivo entero y el Integrante tenia que borrar filas a mano. Ahora toma la mas reciente.
+//
+// LO QUE ESTE BLOQUE GUARDA NO ES LA COMODIDAD, ES EL PORTON: que un archivo con DOS PACIENTES se rechace.
+// Sin el, "la medicion mas reciente" puede ser la de otra persona, y de esa medicion sale un diagnostico.
+
+/** Una hoja con varias filas, cada una con sus propios valores de fecha y paciente. */
+function hojaDeVarias(filas: { fecha: string; paciente?: string; peso?: number }[]): ParsedSheet {
+  const base = validCells();
+  const headers = base.map((c) => c[0]);
+  const dataRows = filas.map((f, k) => ({
+    rowNumber: k + 2,
+    cells: base.map(([header, value]) => {
+      if (header === MEASUREMENT_DATE_HEADER) return { header, value: f.fecha as CellValue };
+      if (header.trim() === "Paciente") return { header, value: (f.paciente ?? "PACIENTE SINTETICO") as CellValue };
+      if (f.peso != null && header === BIODY_COLUMNS.peso.header) return { header, value: f.peso as CellValue };
+      return { header, value };
+    }),
+  }));
+  return { sheetName: "Measures", headers, dataRows };
+}
+
+describe("un archivo con varias mediciones", () => {
+  it("ya no se rechaza por traer mas de una fila", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([{ fecha: "01-03-2026 10:00" }, { fecha: "12-04-2026 19:18" }]),
+    );
+    expect(r.ok, r.ok ? "" : r.error.message).toBe(true);
+  });
+
+  // LA MAS RECIENTE, y se comprueba por el VALOR que trae esa fila, no solo por la fecha: asi el caso falla
+  // si alguien ordenara bien y leyera la fila equivocada.
+  it("toma la mas reciente, y lee SUS valores", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([
+        { fecha: "01-03-2026 10:00", peso: 60 },
+        { fecha: "12-04-2026 19:18", peso: 72 },
+        { fecha: "15-01-2026 08:00", peso: 55 },
+      ]),
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.measurementDate.toISOString().slice(0, 10)).toBe("2026-04-12");
+    expect(r.value.values.find((v) => v.variableName === "Peso kg")?.value).toBe(72);
+  });
+
+  it("dice cuantas traia y cuales fechas, para poder decirlo en pantalla", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([{ fecha: "01-03-2026 10:00" }, { fecha: "12-04-2026 19:18" }]),
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.filasEnElArchivo).toBe(2);
+    // De la mas reciente a la mas vieja: es el orden en que la pantalla las ofrece.
+    expect(r.value.fechasDisponibles).toEqual(["2026-04-12", "2026-03-01"]);
+  });
+
+  // ── EL CASO RETROACTIVO: la mas reciente NO siempre es la que corresponde ──
+  //
+  // En una evaluacion de una consulta vieja (los pacientes importados del HTML), la medicion que va es la de
+  // ESA fecha. Sin poder elegir, ese import queda con la medicion equivocada y re-importar el mismo archivo
+  // volveria a tomar la misma fila.
+  it("se puede pedir otra medicion por su fecha", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([
+        { fecha: "01-03-2026 10:00", peso: 60 },
+        { fecha: "12-04-2026 19:18", peso: 72 },
+      ]),
+      "2026-03-01",
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.measurementDate.toISOString().slice(0, 10)).toBe("2026-03-01");
+    expect(r.value.values.find((v) => v.variableName === "Peso kg")?.value).toBe(60);
+  });
+
+  it("y pedir una fecha que no esta se rechaza diciendo cuales hay", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([{ fecha: "01-03-2026 10:00" }, { fecha: "12-04-2026 19:18" }]),
+      "2026-07-09",
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.error.message).toMatch(/2026-04-12/);
+    expect(r.error.message).toMatch(/2026-03-01/);
+  });
+});
+
+describe("EL PORTON: un archivo con mediciones de VARIOS pacientes se rechaza", () => {
+  // ES LA COMPROBACION CUYO FALLO SERIA CLINICO Y NO DE CARGA: la medicion de un paciente entrando en la
+  // evaluacion de otro, en silencio, y un diagnostico emitido sobre ella.
+  it("no importa ninguna cuando hay dos personas en el archivo", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([
+        { fecha: "01-03-2026 10:00", paciente: "PACIENTE UNO" },
+        { fecha: "12-04-2026 19:18", paciente: "PACIENTE DOS" },
+      ]),
+    );
+    expect(r.ok, "un archivo de dos pacientes NO puede importarse").toBe(false);
+  });
+
+  it("y el mensaje dice cuantas personas son, sin nombrar a ninguna", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([
+        { fecha: "01-03-2026 10:00", paciente: "PACIENTE UNO" },
+        { fecha: "12-04-2026 19:18", paciente: "PACIENTE DOS" },
+      ]),
+    );
+    if (r.ok) throw new Error("tenia que rechazarlo");
+    expect(r.error.message).toMatch(/2 pacientes distintos/);
+    // NUNCA PII EN EL MENSAJE: el detalle de un rechazo va a `bis_import_logs`, que no lleva PII.
+    expect(r.error.message).not.toMatch(/PACIENTE UNO|PACIENTE DOS/);
+  });
+
+  // NI SIQUIERA PEDIR UNA FECHA SALTA EL PORTON: elegir no vuelve seguro un archivo de dos personas, porque
+  // la fecha no dice de quien es la fila.
+  it("pedir una fecha concreta no lo salta", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([
+        { fecha: "01-03-2026 10:00", paciente: "PACIENTE UNO" },
+        { fecha: "12-04-2026 19:18", paciente: "PACIENTE DOS" },
+      ]),
+      "2026-03-01",
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  // EL MISMO PACIENTE ESCRITO DISTINTO NO ES DOS PERSONAS: mayusculas y espacios sobrantes son del export,
+  // no del dato. Si contaran como personas distintas, el porton rechazaria archivos buenos, que es el otro
+  // modo de hacer dano (el Integrante pierde la medicion sin entender por que).
+  it("el mismo nombre con otras mayusculas o espacios no cuenta como dos", () => {
+    const r = validateBisMeasurement(
+      hojaDeVarias([
+        { fecha: "01-03-2026 10:00", paciente: "Paciente Sintetico" },
+        { fecha: "12-04-2026 19:18", paciente: "  PACIENTE SINTETICO  " },
+      ]),
+    );
+    expect(r.ok, r.ok ? "" : r.error.message).toBe(true);
   });
 });

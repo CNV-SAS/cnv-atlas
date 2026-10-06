@@ -30,12 +30,25 @@ export type ImportBisInput = {
   // Sexo del paciente (opcional): habilita las referencias poblacionales de composicion (MCA_ref/
   // hidSG_ref/MCA_dif, §9). Sin el, esas referencias no se derivan (ISCM null, badges no evaluables).
   patientSex?: "M" | "F" | null;
+  /**
+   * Cual medicion del archivo importar (AAAA-MM-DD). Ausente = la MAS RECIENTE.
+   *
+   * Viaja desde la pantalla cuando el archivo trae varias y el profesional elige otra: en una evaluacion
+   * retroactiva la que corresponde es la de la fecha de ESA consulta, no la ultima.
+   */
+  fechaElegida?: string;
 };
 
 export type ImportBisOutput = {
   measurementId: string;
   valueCount: number;
   derivedCount: number;
+  /** La fecha de la medicion que se importo (AAAA-MM-DD). */
+  fechaImportada: string;
+  /** Cuantas mediciones traia el archivo. 1 = el caso normal, y entonces no hay nada que decir. */
+  filasEnElArchivo: number;
+  /** Las fechas de todas las del archivo, de la mas reciente a la mas vieja. */
+  fechasDisponibles: string[];
 };
 
 // Deriva la composicion faltante a partir de lo MEDIDO. La derivacion es un EXTRA: la medicion ya es
@@ -81,7 +94,7 @@ export async function importBisMeasurement(
   }
 
   // 2. Validacion de datos (rangos, fecha, una sola fila). Fallo -> validation_failed.
-  const validated = validateBisMeasurement(parsed.value);
+  const validated = validateBisMeasurement(parsed.value, input.fechaElegida);
   if (!validated.ok) {
     await logBisImportFailure({
       evaluationId: input.evaluationId,
@@ -111,7 +124,14 @@ export async function importBisMeasurement(
       actorEmail: input.actorEmail,
       ip: input.ip,
     });
-    return ok(written);
+    return ok({
+      ...written,
+      // LA FECHA QUE SE TOMO VIAJA A LA PANTALLA, y el conteo con ella: la fecha de la medicion es un dato del
+      // registro clinico, asi que cuando el archivo traia varias hay que poder ver cual entro.
+      fechaImportada: validated.value.measurementDate.toISOString().slice(0, 10),
+      filasEnElArchivo: validated.value.filasEnElArchivo,
+      fechasDisponibles: validated.value.fechasDisponibles,
+    });
   } catch (e) {
     if (e instanceof BisAlreadyImportedError) {
       return err(

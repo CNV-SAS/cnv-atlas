@@ -42,4 +42,17 @@ export type BisRawValue = { variableName: string; value: number };
 export type ExtractedMeasurement = {
   measurementDate: Date;
   values: BisRawValue[];
+  /**
+   * CUANTAS MEDICIONES TRAIA EL ARCHIVO, y cual se tomo (2026-10-06).
+   *
+   * Existe porque el export de "paciente + mediciones" del Biody Manager trae UNA FILA POR MEDICION, y antes
+   * se rechazaba el archivo entero pidiendole al Integrante que borrara filas a mano. Ahora se toma la mas
+   * reciente, Y SE DICE: la fecha de la medicion es un dato del registro clinico, no un detalle de la carga,
+   * asi que no puede quedarse en un aviso que se va.
+   *
+   * `filasEnElArchivo` vale 1 en el caso normal, y entonces no hay nada que contar.
+   */
+  filasEnElArchivo: number;
+  /** Las fechas de TODAS las mediciones del archivo (AAAA-MM-DD), de la mas reciente a la mas vieja. */
+  fechasDisponibles: string[];
 };

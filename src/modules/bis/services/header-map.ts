@@ -33,6 +33,19 @@ export function normalizeHeader(raw: string): string {
 // PII dura: identifica a la persona. Exclusion explicita por encabezado normalizado.
 const PII_HEADERS = new Set<string>(["Paciente", "Fecha de nacimiento"]);
 
+/**
+ * El encabezado que identifica a la PERSONA en el export.
+ *
+ * SE EXPORTA, Y NO CONTRADICE LA EXCLUSION DE PII (2026-10-06). Sigue clasificado como `pii`, sigue sin
+ * persistirse y sigue sin salir del servidor. Se exporta su NOMBRE porque el validador tiene que poder
+ * CONTAR cuantas personas distintas trae un archivo de varias mediciones: si trae dos, "la medicion mas
+ * reciente" podria ser la de otra persona, y de ahi sale un diagnostico.
+ *
+ * LO QUE SE HACE CON ESA COLUMNA ES COMPARAR Y CONTAR, en memoria. Ni su valor ni el conteo nombran a nadie:
+ * el mensaje de rechazo dice "trae mediciones de 2 pacientes distintos", nunca quienes.
+ */
+export const PATIENT_NAME_HEADER = "Paciente";
+
 // Metadata no clinica: ids tecnicos, categoricos, sellos de la app. Se ignora. Los
 // categoricos (Genero, Cup Size, Deportista profesional, Flag) ademas no caben en el
 // modelo numerico de bis_raw_values; el sexo y la edad ya vienen del perfil/encuesta.

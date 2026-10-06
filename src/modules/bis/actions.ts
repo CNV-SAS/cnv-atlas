@@ -27,6 +27,16 @@ export type ImportBisState = {
   fields: Record<string, string> | null;
   imported: boolean;
   valueCount: number | null;
+  /** La fecha de la medicion que entro (AAAA-MM-DD). null en un fallo. */
+  fechaImportada?: string | null;
+  /**
+   * Las otras mediciones del archivo, cuando traia varias. VACIO cuando traia una sola.
+   *
+   * La pantalla la usa para ofrecer cambiar de medicion: se tomo la mas reciente, y en una consulta
+   * RETROACTIVA la que corresponde es la de la fecha de esa consulta. Sin esta lista, cambiarla obligaria a
+   * editar el archivo a mano, que es justo lo que este cambio vino a quitar.
+   */
+  fechasDisponibles?: string[];
 };
 
 // Tope de tamano y MIME aceptados (SECURITY.md: allowlist + tope). El export real
@@ -110,6 +120,8 @@ export async function importBisAction(
     actorEmail: user.email,
     ip: ip === "unknown" ? null : ip,
     patientSex,
+    // CUAL MEDICION, cuando el archivo trae varias. Vacio = la mas reciente, que es el camino normal.
+    fechaElegida: ((form.get("fechaDeLaMedicion") as string | null) ?? "").trim() || undefined,
   });
 
   if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
@@ -118,13 +130,26 @@ export async function importBisAction(
   // Tambien la vista de la evaluacion: al importar desde la pestana Evaluacion, la composicion
   // (que lee de bis_raw_values) debe aparecer sin recargar a mano.
   revalidatePath("/ani-bis-e/[id]", "page");
+  // ═══ SE DICE CUAL MEDICION ENTRO, CUANDO EL ARCHIVO TRAIA VARIAS (2026-10-06) ═══
+  //
+  // La fecha de la medicion es un dato del REGISTRO CLINICO, no un detalle de la carga: decide la cronologia
+  // del seguimiento. Con un archivo de varias filas, el profesional tiene que poder ver cual se importo sin
+  // ir a buscarla, porque la que el queria puede no ser la ultima (una consulta retroactiva).
+  const { filasEnElArchivo, fechaImportada, fechasDisponibles } = result.value;
+  const varias = filasEnElArchivo > 1;
   return {
     error: null,
-    success: `Medicion BIS importada (${result.value.valueCount} variables).`,
+    success: varias
+      ? `Medición BIS importada ( variables). El archivo traía  mediciones y se importó la del , la más reciente.`
+      : `Medición BIS importada ( variables).`,
     warning: null,
     fields: null,
     imported: true,
     valueCount: result.value.valueCount,
+    fechaImportada,
+    // LAS OTRAS FECHAS VIAJAN para que la pantalla pueda ofrecer cambiar de medicion sin volver a subir el
+    // archivo a ciegas. Vacio cuando solo habia una: entonces no hay nada que elegir.
+    fechasDisponibles: varias ? fechasDisponibles : [],
   };
 }
 

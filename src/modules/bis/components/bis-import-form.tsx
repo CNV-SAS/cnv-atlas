@@ -55,8 +55,22 @@ export function BisImportForm({
   // Toast de exito/error (el detalle por variable se sigue mostrando inline).
   useFormToast(state);
 
+  /** Cual medicion importar cuando el archivo trae varias. Vacio = la mas reciente. */
+  const [otraFecha, setOtraFecha] = useState("");
+
+  // ═══ EL ARCHIVO TRAIA VARIAS MEDICIONES: EL FORMULARIO NO SE DESMONTA (2026-10-06) ═══
+  //
+  // Se importo la mas reciente, y en una consulta RETROACTIVA la que corresponde es la de la fecha de esa
+  // consulta. Si el bloque se cerrara, cambiarla obligaria a volver a empezar con el archivo editado a mano,
+  // que es justo lo que este cambio vino a quitar.
+  //
+  // Y EL ARCHIVO SIGUE EN EL CAMPO: `enviarSinReset` no lo limpia, asi que re-enviar con otra fecha no le
+  // pide al profesional volver a buscarlo. El writer reemplaza la medicion anterior en la misma transaccion,
+  // y solo se puede mientras no haya diagnostico, que es el porton que de verdad protege.
+  const variasMediciones = (state.fechasDisponibles?.length ?? 0) > 1;
+
   // Ya importado (en la carga de la pagina o tras un envio exitoso): no se reimporta.
-  const done = (evaluation.alreadyImported || state.imported) && !modoReemplazo;
+  const done = (evaluation.alreadyImported || state.imported) && !modoReemplazo && !variasMediciones;
 
   return (
     <Card>
@@ -93,6 +107,44 @@ export function BisImportForm({
         ) : (
           <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
             <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
+            {/* CUAL MEDICION ENTRO, Y COMO CAMBIARLA. Sale solo cuando el archivo traía varias: en el caso
+                normal no hay nada que decir ni que elegir. */}
+            {variasMediciones ? (
+              <div className="flex flex-col gap-2 rounded-md border border-attention bg-attention-bg px-3 py-2">
+                <p className="text-sm text-foreground">
+                  El archivo traía{" "}
+                  <span className="font-semibold">{state.fechasDisponibles!.length} mediciones</span> y se
+                  importó la del{" "}
+                  <span className="font-semibold">{state.fechaImportada}</span>, la más reciente.
+                </p>
+                {/* SI LA CONSULTA ES DE OTRA FECHA, la más reciente no es la que corresponde. Se dice el caso
+                    en vez de dejar un selector sin explicación. */}
+                <p className="text-xs text-muted-foreground">
+                  Si esta consulta es de otra fecha, elige la medición que corresponde y vuelve a importar. El
+                  archivo que elegiste sigue puesto, y la medición anterior se reemplaza.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label htmlFor={`fecha-${evaluation.evaluationId}`} className="text-xs font-medium">
+                    Medición
+                  </label>
+                  <select
+                    id={`fecha-${evaluation.evaluationId}`}
+                    name="fechaDeLaMedicion"
+                    value={otraFecha}
+                    onChange={(e) => setOtraFecha(e.target.value)}
+                    disabled={pending}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  >
+                    <option value="">La más reciente ({state.fechaImportada})</option>
+                    {state.fechasDisponibles!.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : null}
             {modoReemplazo ? (
               /* QUE REEMPLAZA, DICHO ANTES DE ELEGIR EL ARCHIVO. Sin esto el profesional puede creer que
                  se suma una segunda medicion, que es justo lo que el writer impide: la anterior se borra
@@ -146,14 +198,24 @@ export function BisImportForm({
               </div>
             ) : null}
 
-            <Button type="submit" disabled={pending} className="w-fit">
+            {/* `key` DISTINTA según el estado del bloque (hazard 1 de CLAUDE.md): cuando el aviso de varias
+                mediciones aparece, este botón pasa de importar a importar la elegida, y React reutilizaría el
+                mismo nodo del DOM. Con la clave, el viejo se desmonta y el nuevo se monta. */}
+            <Button
+              key={variasMediciones ? "reimportar-otra-medicion" : "importar-medicion"}
+              type="submit"
+              disabled={pending}
+              className="w-fit"
+            >
               {pending
                 ? modoReemplazo
                   ? "Reemplazando..."
                   : "Importando..."
-                : modoReemplazo
-                  ? "Reemplazar la medición"
-                  : "Importar medición BIS"}
+                : variasMediciones
+                  ? "Importar la medición elegida"
+                  : modoReemplazo
+                    ? "Reemplazar la medición"
+                    : "Importar medición BIS"}
             </Button>
           </form>
         )}
