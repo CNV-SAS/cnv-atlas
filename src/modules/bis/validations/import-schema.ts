@@ -6,8 +6,15 @@ import {
   MEASURED_HIPS_HEADER,
   MEASURED_WAIST_HEADER,
   normalizeHeader,
+  PATIENT_NAME_HEADER,
 } from "../services/header-map";
-import type { BisRawValue, ExtractedMeasurement, ParsedSheet } from "../types";
+import type {
+  BisRawValue,
+  ExtractedMeasurement,
+  HeaderClassification,
+  ParsedRow,
+  ParsedSheet,
+} from "../types";
 
 // Datos cuya AUSENCIA bloquea el import (sub-bloque B). Dos razones DISTINTAS:
 //  - Motor (ENGINE_REQUIRED): sin ellos no hay diagnostico valido; su falta NO es display, corromperia
@@ -88,16 +95,18 @@ export function parseBiodyDate(raw: string): Date | null {
 // fielmente todos los valores numericos de columnas-variable; omite PII y metadata; y
 // rechaza el import completo (sin persistir nada parcial) si algun valor cae fuera de
 // rango, recogiendo el detalle por variable en AppError.fields.
-export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeasurement> {
-  if (sheet.dataRows.length !== 1) {
-    return err(
-      appError(
-        "validation",
-        `Se esperaba una unica fila de medicion; el archivo trae ${sheet.dataRows.length}.`,
-      ),
-    );
-  }
-
+export function validateBisMeasurement(
+  sheet: ParsedSheet,
+  /**
+   * Cual medicion importar (AAAA-MM-DD), cuando el archivo trae varias. Ausente = la MAS RECIENTE.
+   *
+   * POR QUE HACE FALTA PODER ELEGIR, y no basta con la mas reciente (2026-10-06): en una evaluacion
+   * RETROACTIVA la medicion que corresponde es la de la fecha de ESA consulta, no la ultima. Es el caso de
+   * los pacientes importados del HTML, que ya ocurrio. Con solo el automatico, ese import queda con la
+   * medicion equivocada y re-importar el mismo archivo volveria a elegir la misma fila.
+   */
+  fechaElegida?: string,
+): Result<ExtractedMeasurement> {
   const classes = classifyHeaders(sheet.headers);
 
   const dateIndex = classes.findIndex((c) => c.role === "measurement_date");
@@ -119,7 +128,14 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
     );
   }
 
-  const row = sheet.dataRows[0];
+  // ═══ VARIAS FILAS SON VARIAS MEDICIONES, NO UN ARCHIVO MALO (2026-10-06) ═══
+  //
+  // Antes de aqui habia un `dataRows.length !== 1` que rechazaba el archivo entero ("se esperaba una unica
+  // fila de medicion; el archivo trae 3"), y el Integrante tenia que abrirlo y borrar filas a mano. El export
+  // de "paciente + mediciones" del Biody Manager trae UNA FILA POR MEDICION: varias filas es lo normal.
+  const elegida = elegirLaMedicion(sheet, classes, dateIndex, fechaElegida);
+  if (!elegida.ok) return elegida;
+  const { row, filasEnElArchivo, fechasDisponibles } = elegida.value;
 
   const dateValue = row.cells[dateIndex]?.value;
   const measurementDate = typeof dateValue === "string" ? parseBiodyDate(dateValue) : null;
@@ -214,5 +230,85 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
     return err(appError("validation", "El archivo no contiene ningun valor numerico de variable."));
   }
 
-  return ok({ measurementDate, values });
+  return ok({ measurementDate, values, filasEnElArchivo, fechasDisponibles });
+}
+
+/**
+ * ELIGE CUAL MEDICION DEL ARCHIVO SE IMPORTA, y rechaza antes si el archivo trae varias personas.
+ *
+ * ── LO IMPORTANTE ES EL ORDEN: PRIMERO CONTAR PERSONAS, DESPUES ELEGIR FILA ────────────────────────
+ *
+ * El export trae una columna `Paciente`. Si alguien exporta VARIOS pacientes a la vez, el archivo trae filas
+ * de personas distintas, y "la mas reciente" podria ser la de OTRA PERSONA. Eso meteria la medicion de un
+ * paciente en la evaluacion de otro, EN SILENCIO, y de esa medicion sale un diagnostico.
+ *
+ * Por eso con mas de una persona no se elige nada: se rechaza y se le pide exportar solo el paciente que va a
+ * importar. Es la unica comprobacion de este archivo cuyo fallo seria clinico y no de carga.
+ *
+ * NO SE NOMBRA A NADIE EN EL MENSAJE: se dice cuantas personas trae, nunca quienes. El detalle de un rechazo
+ * va a `bis_import_logs`, que no lleva PII, y el valor de esa columna no sale de esta funcion.
+ */
+function elegirLaMedicion(
+  sheet: ParsedSheet,
+  classes: HeaderClassification[],
+  dateIndex: number,
+  fechaElegida?: string,
+): Result<{ row: ParsedRow; filasEnElArchivo: number; fechasDisponibles: string[] }> {
+  const filasEnElArchivo = sheet.dataRows.length;
+
+  // ── EL PORTON: UNA SOLA PERSONA POR ARCHIVO ──
+  const pacienteIndex = classes.findIndex((c) => c.normalized === PATIENT_NAME_HEADER);
+  if (pacienteIndex !== -1 && filasEnElArchivo > 1) {
+    const personas = new Set(
+      sheet.dataRows
+        .map((r) => String(r.cells[pacienteIndex]?.value ?? "").trim().toLocaleLowerCase("es"))
+        .filter((v) => v !== ""),
+    );
+    if (personas.size > 1) {
+      return err(
+        appError(
+          "validation",
+          `Este archivo trae mediciones de ${personas.size} pacientes distintos, y no se puede saber cuál es de este paciente. Vuelve al Biody Manager y exporta solo el paciente que vas a importar.`,
+        ),
+      );
+    }
+  }
+
+  // ── LAS FECHAS, DE LA MAS RECIENTE A LA MAS VIEJA ──
+  //
+  // Una fila con fecha ilegible no se descarta aqui en silencio: se queda fuera del ORDEN (no se puede
+  // ordenar lo que no se entiende) y si acaba siendo la elegida, la validacion de fecha de abajo la rechaza
+  // con su mensaje, que es el que explica el problema.
+  const conFecha = sheet.dataRows
+    .map((r) => {
+      const valor = r.cells[dateIndex]?.value;
+      const fecha = typeof valor === "string" ? parseBiodyDate(valor) : null;
+      return { row: r, fecha };
+    })
+    .filter((x): x is { row: ParsedRow; fecha: Date } => x.fecha != null)
+    .sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  const fechasDisponibles = conFecha.map((x) => ymd(x.fecha));
+
+  // Ninguna fecha legible: se devuelve la primera fila para que la validacion de fecha explique por que no
+  // sirve. Devolver un error generico aqui taparia el mensaje bueno.
+  if (conFecha.length === 0) {
+    return ok({ row: sheet.dataRows[0], filasEnElArchivo, fechasDisponibles });
+  }
+
+  // ── LA QUE PIDIERON, O LA MAS RECIENTE ──
+  if (fechaElegida) {
+    const pedida = conFecha.find((x) => ymd(x.fecha) === fechaElegida);
+    if (!pedida) {
+      return err(
+        appError(
+          "validation",
+          `El archivo no trae ninguna medición del ${fechaElegida}. Las que trae son: ${fechasDisponibles.join(", ")}.`,
+        ),
+      );
+    }
+    return ok({ row: pedida.row, filasEnElArchivo, fechasDisponibles });
+  }
+  return ok({ row: conFecha[0].row, filasEnElArchivo, fechasDisponibles });
 }
