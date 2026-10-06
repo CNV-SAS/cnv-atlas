@@ -37,8 +37,6 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
 
   async function venta(o: {
     domicilio?: boolean;
-    flete?: number | null;
-    costo?: number | null;
     entregadaHace?: number;
   } = {}): Promise<string> {
     const entregada =
@@ -46,15 +44,13 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
     const [t] = await db.execute(dsql`
       insert into transactions (organization_id, patient_id, professional_id, status, amount, currency,
                                 payment_method, wompi_env, idempotency_key, operated_at,
-                                delivery_mode, shipping_address, shipping_city, shipping_fee, shipping_cost,
+                                delivery_mode, shipping_address, shipping_city,
                                 fulfillment_state, delivered_at)
       values (${orgId}, ${patientId}, ${profId}, 'paid', '119000', 'COP', 'efectivo', 'test',
               ${`test-domicilio-${Date.now()}-${Math.random().toString(36).slice(2)}`}, now(),
               ${o.domicilio ? "domicilio" : "en_consulta"},
               ${o.domicilio ? "Calle 1 # 2-3" : null},
               ${o.domicilio ? "Medellín" : null},
-              ${o.flete == null ? null : String(o.flete)},
-              ${o.costo == null ? null : String(o.costo)},
               ${entregada ? "entregado" : "pendiente"},
               ${entregada}::timestamptz)
       returning id`);
@@ -96,20 +92,15 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
     ).rejects.toThrow();
   });
 
-  it("un flete en una venta en consulta tampoco: seria un cobro sin causa", async () => {
-    await expect(venta({ domicilio: false, flete: 12_000 })).rejects.toThrow();
-    ventas.pop();
-  });
-
   it("una venta a domicilio entregada tiene su plazo de retracto", async () => {
-    const id = await venta({ domicilio: true, flete: 11_900, entregadaHace: 1 });
+    const id = await venta({ domicilio: true, entregadaHace: 1 });
     const e = await writer.estadoDeRetracto(id);
     expect(e.aplica).toBe(true);
     expect(e.limite).not.toBeNull();
     expect(e.vencido).toBe(false);
-    // El reintegro es TODO lo pagado, con el envio dentro.
+    // EL REINTEGRO ES EL MONTO DE LA VENTA, sin partes: el envio se lo pago al mensajero y CNV no lo devuelve
+    // (asesor legal, 2026-10-06).
     expect(e.reintegro).toBe(119_000);
-    expect(e.flete).toBe(11_900);
   });
 
   it("una venta en consulta no lo tiene", async () => {
@@ -118,8 +109,8 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
     expect(e.aplica).toBe(false);
   });
 
-  it("registrarlo con el sello intacto lo acepta y revierte el flete", async () => {
-    const id = await venta({ domicilio: true, flete: 11_900, entregadaHace: 1 });
+  it("registrarlo con el sello intacto lo acepta, y el ingreso de CNV no se toca aqui", async () => {
+    const id = await venta({ domicilio: true, entregadaHace: 1 });
     // El ingreso original, para poder medir la reversion por diferencia.
     await db.execute(dsql`insert into cnv_revenue (transaction_id, amount) values (${id}, '100000')`);
     const r = await writer.registrarRetracto({
@@ -134,12 +125,14 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
     expect(r.reintegro).toBe(119_000);
     const [suma] = await db.execute(dsql`
       select coalesce(sum(amount), 0)::numeric as total from cnv_revenue where transaction_id = ${id}`);
-    // 100.000 menos la BASE del flete (11.900 traen 10.000 de base y 1.900 de IVA; el IVA no es ingreso).
-    expect(Number(suma.total)).toBe(90_000);
+    // EL INGRESO QUEDA INTACTO, y eso es lo que cambio el 2026-10-06. Antes se le restaba la base del flete,
+    // porque CNV lo habia cobrado; ya no lo cobra, asi que no hay nada que revertir aqui. El PRODUCTO si se
+    // revierte, por el camino de la devolucion fisica, que devuelve su parte del reparto linea por linea.
+    expect(Number(suma.total)).toBe(100_000);
   });
 
-  it("con el sello roto NO procede, y el flete NO se revierte", async () => {
-    const id = await venta({ domicilio: true, flete: 11_900, entregadaHace: 1 });
+  it("con el sello roto NO procede, y el ingreso tampoco se toca", async () => {
+    const id = await venta({ domicilio: true, entregadaHace: 1 });
     await db.execute(dsql`insert into cnv_revenue (transaction_id, amount) values (${id}, '100000')`);
     const r = await writer.registrarRetracto({
       transactionId: id,
@@ -158,14 +151,14 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
   // UN RETRACTO NEGADO TAMBIEN QUEDA REGISTRADO: es una decision con consecuencias, y su razon tiene que
   // constar. Por eso no se puede volver a registrar: la primera decision es la que se tomo.
   it("no se registra dos veces", async () => {
-    const id = await venta({ domicilio: true, flete: 11_900, entregadaHace: 1 });
+    const id = await venta({ domicilio: true, entregadaHace: 1 });
     const args = { transactionId: id, selloIntacto: true, nota: null, actorId, actorEmail: null, ip: null };
     await writer.registrarRetracto(args);
     await expect(writer.registrarRetracto(args)).rejects.toThrow(/ya se registró/i);
   });
 
   it("fuera del plazo no procede aunque vuelva sellado", async () => {
-    const id = await venta({ domicilio: true, flete: 11_900, entregadaHace: 30 });
+    const id = await venta({ domicilio: true, entregadaHace: 30 });
     const r = await writer.registrarRetracto({
       transactionId: id,
       selloIntacto: true,
@@ -179,30 +172,23 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
   });
 
   it("el lector en lote solo devuelve las de domicilio", async () => {
-    const conEnvio = await venta({ domicilio: true, flete: 11_900, entregadaHace: 1 });
+    const conEnvio = await venta({ domicilio: true, entregadaHace: 1 });
     const enConsulta = await venta({ domicilio: false });
     const mapa = await writer.retractosDeLasVentas([conEnvio, enConsulta]);
     expect(mapa.has(conEnvio)).toBe(true);
     expect(mapa.has(enConsulta)).toBe(false);
   });
-  // ═══ LOS CHECK DEL FLETE SIGUEN EN LA BASE, Y SE SIGUEN PROBANDO (0192) ═══
+  // ── AQUI VIVIAN LOS DOS CHECK DEL FLETE (0192), Y SE FUERON CON LAS COLUMNAS (0207) ───────────────
   //
-  // El flete salio de CNV el 2026-10-05 y ninguna venta nueva escribe esas columnas, asi que estos dos CHECK
-  // ya no pueden dispararse por el camino normal. SE QUEDAN PROBADOS porque siguen siendo la ultima defensa
-  // de los datos historicos: si alguien escribiera un flete a mano (un arreglo de datos, un script), la base
-  // tiene que seguir rechazando una cifra incoherente. Un CHECK sin candado es un CHECK que alguien suelta
-  // en la migracion siguiente creyendo que ya no hace nada.
-
-  // LO COBRADO NUNCA PUEDE SER MENOR QUE EL COSTO: si lo fuera, CNV estaria pagando por despachar.
-  it("la base sigue rechazando un flete menor que lo que cuesta el envio", async () => {
-    await expect(venta({ domicilio: true, flete: 9_000, costo: 10_000 })).rejects.toThrow();
-    ventas.pop();
-  });
-
-  it("y un costo en una venta en consulta tampoco se guarda", async () => {
-    await expect(venta({ domicilio: false, costo: 10_000 })).rejects.toThrow();
-    ventas.pop();
-  });
+  // Probaban que un flete no pudiera ser menor que lo que cuesta el envio (CNV pagando por despachar) y que
+  // no pudiera haber un costo en una venta en consulta (un cobro sin causa).
+  //
+  // EL 2026-10-05 LOS DEJE PROBADOS con el argumento de que seguian siendo la ultima defensa de los datos
+  // historicos. La consulta a la nube del 2026-10-06 dio CERO ventas con flete, asi que las columnas se
+  // borraron y los CHECK se fueron con ellas: no hay dato que defender ni cifra que pueda quedar incoherente.
+  //
+  // EL CHECK QUE SI SE QUEDA es `transactions_domicilio_completo`, y esta probado arriba: un domicilio sigue
+  // necesitando direccion y ciudad, porque sin ellas no se puede despachar.
 
   // ═══ LA COLA DE ENVIOS POR COORDINAR (2026-10-05) ═══
   //

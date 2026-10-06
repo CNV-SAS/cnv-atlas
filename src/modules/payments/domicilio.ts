@@ -193,15 +193,25 @@ export const TEXTO_DE_RETRACTO =
   "que lo recibió.";
 
 /**
- * Lo que se le reintegra al paciente que se retracta.
+ * Lo que se le reintegra al paciente que se retracta: todo lo que le pago A CNV.
  *
- * El articulo exige devolver "todas las sumas pagadas SIN DESCUENTOS NI RETENCIONES POR CONCEPTO ALGUNO".
+ * El articulo exige devolver "todas las sumas pagadas SIN DESCUENTOS NI RETENCIONES POR CONCEPTO ALGUNO", y
+ * lo que el paciente le pago a CNV es el producto.
  *
- * EL PARAMETRO `flete` SE QUEDA, Y VALE 0 EN TODA VENTA NUEVA (2026-10-05): el paciente le paga el envio al
- * mensajero, asi que ninguna venta posterior a esa fecha sella un flete. Se conserva porque las ventas
- * ANTERIORES si lo tienen sellado, y una de ellas todavia puede retractarse: en esas, CNV si cobro el envio
- * y si lo debe. Borrar el parametro haria que esas devolvieran de menos.
+ * ── EL PARAMETRO `flete` SE FUE, Y EL 2026-10-05 LO HABIA CONSERVADO (corregido el 2026-10-06) ─────
+ *
+ * Lo deje puesto con este argumento: las ventas ANTERIORES al cambio si tienen flete sellado, una podria
+ * retractarse, y borrarlo haria que devolviera de menos.
+ *
+ * EL ARGUMENTO DEPENDIA DE UN HECHO QUE NO VERIFIQUE. Santiago lo pidio y corrio la consulta contra la nube:
+ * CERO ventas con flete, y ningun domicilio registrado. No habia ninguna venta a la que protegiera.
+ *
+ * Y el asesor legal ratifico el fondo el 2026-10-06: CNV no reintegra el flete, porque el envio lo presta y
+ * lo cobra un tercero. Asi que la funcion devuelve lo que pago a CNV, y queda de una sola linea.
+ *
+ * LA FUNCION SE QUEDA aunque sea una identidad: es el sitio donde esta escrito QUE es el reintegro, y el dia
+ * que vuelva a tener partes (un recargo, un descuento) ya tiene donde ponerlas. Su candado afirma la regla.
  */
-export function reintegroPorRetracto(e: { montoDelProducto: number; flete: number }): number {
-  return e.montoDelProducto + e.flete;
+export function reintegroPorRetracto(e: { montoDelProducto: number }): number {
+  return e.montoDelProducto;
 }

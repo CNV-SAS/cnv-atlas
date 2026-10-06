@@ -2,7 +2,6 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 
-import { baseFromTotal } from "@/core/iva";
 import { db } from "@/db";
 import { recordAudit } from "@/modules/audit/log";
 
@@ -12,13 +11,18 @@ import { modalidadEnLaFecha, MODALIDAD_POR_DEFECTO, type Modalidad } from "../mo
 // ═══ EL DERECHO DE RETRACTO (0190, Ley 1480 de 2011 art. 47) ═══
 //
 // EL ACTO ES CHICO Y LA CONSECUENCIA NO: registrar que el paciente se retracto, con la EVIDENCIA (si el
-// producto volvio sellado) y con el reintegro COMPLETO, que incluye el flete.
+// producto volvio sellado) y con el reintegro de lo que le pago a CNV.
 //
-// POR QUE EL FLETE VA APARTE DEL DINERO DEL PRODUCTO: el producto vuelve linea por linea, por el camino que
-// ya existe (la devolucion fisica, que revierte su parte proporcional del reparto sellado). El flete no es
-// una linea, asi que su reversion no cabe ahi. Y no puede quedarse sin revertir: el articulo exige devolver
-// "todas las sumas pagadas SIN DESCUENTOS NI RETENCIONES POR CONCEPTO ALGUNO", y el modelo remata que CNV
-// asume el envio de ida y no lo recupera.
+// ── EL FLETE SALIO DE AQUI (2026-10-06) ──────────────────────────────────────────────────────────
+//
+// Este archivo calculaba el flete de la venta, lo sumaba al reintegro y lo revertia del ingreso de CNV con
+// una fila negativa. Nada de eso existe: desde el 2026-10-05 el paciente le paga el envio al mensajero, y la
+// consulta a la nube del 2026-10-06 confirmo que NINGUNA venta llego a cobrar flete (cero filas, ni reales
+// ni de prueba), asi que las columnas se borraron en la 0207.
+//
+// Y EL ASESOR LEGAL LO RATIFICO el 2026-10-06: CNV no reintegra el flete, y la posicion es defendible
+// porque el envio lo presta y lo cobra un tercero. Asi que el reintegro es lo que el paciente le pago A CNV,
+// que es el producto.
 
 export class RetractoError extends Error {}
 
@@ -30,9 +34,8 @@ export type EstadoDeRetractoDeLaVenta = {
   limite: string | null;
   diasHabilesRestantes: number | null;
   vencido: boolean;
-  /** Lo que habria que reintegrarle si se retracta: el producto mas el flete. */
+  /** Lo que habria que reintegrarle si se retracta. Es el producto: el envio se lo pago al mensajero. */
   reintegro: number;
-  flete: number;
   ejercidoEl: string | null;
   selloIntacto: boolean | null;
 };
@@ -41,7 +44,6 @@ type FilaVenta = {
   id: string;
   delivery_mode: string | null;
   amount: string;
-  shipping_fee: string | null;
   professional_id: string | null;
   entregada: string | null;
   hoy: string;
@@ -52,7 +54,7 @@ type FilaVenta = {
 
 async function leerVenta(ex: { execute: typeof db.execute }, transactionId: string): Promise<FilaVenta> {
   const [t] = await ex.execute<FilaVenta>(sql`
-    select t.id, t.delivery_mode, t.amount::text as amount, t.shipping_fee::text as shipping_fee,
+    select t.id, t.delivery_mode, t.amount::text as amount,
            t.professional_id,
            (t.delivered_at at time zone 'America/Bogota')::date::text as entregada,
            (now() at time zone 'America/Bogota')::date::text as hoy,
@@ -91,14 +93,11 @@ export async function estadoDeRetracto(transactionId: string): Promise<EstadoDeR
     entregadaEl: t.entregada,
     hoy: t.hoy,
   });
-  const flete = t.shipping_fee == null ? 0 : Number(t.shipping_fee);
   return {
     transactionId,
     ...estado,
-    // EL REINTEGRO SE CALCULA SOBRE EL TOTAL PAGADO, que ya incluye el flete, asi que se descuenta para no
-    // sumarlo dos veces y se vuelve a sumar por el modulo puro, que es quien dice que va incluido.
-    reintegro: reintegroPorRetracto({ montoDelProducto: Number(t.amount) - flete, flete }),
-    flete,
+    // EL MONTO DE LA VENTA ES EL REINTEGRO, sin restarle ni sumarle nada: ya no hay flete dentro de el.
+    reintegro: reintegroPorRetracto({ montoDelProducto: Number(t.amount) }),
     ejercidoEl: t.ejercido,
     selloIntacto: t.sello,
   };
@@ -133,10 +132,7 @@ export async function registrarRetracto(input: {
       hoy: t.hoy,
     });
     const veredicto = procedeElRetracto({ estado, selloIntacto: input.selloIntacto });
-    const flete = t.shipping_fee == null ? 0 : Number(t.shipping_fee);
-    const reintegro = veredicto.procede
-      ? reintegroPorRetracto({ montoDelProducto: Number(t.amount) - flete, flete })
-      : 0;
+      const reintegro = veredicto.procede ? reintegroPorRetracto({ montoDelProducto: Number(t.amount) }) : 0;
 
     await tx.execute(sql`
       update transactions
@@ -145,15 +141,9 @@ export async function registrarRetracto(input: {
              retracto_nota = ${input.nota}
        where id = ${input.transactionId}`);
 
-    // EL FLETE SE REVIERTE SOLO SI EL RETRACTO PROCEDE, y solo una vez. Es ingreso de CNV que deja de serlo:
-    // la fila negativa tiene la misma forma que las del contracargo y la devolucion.
-    if (veredicto.procede && flete > 0) {
-      await tx.execute(sql`
-        insert into cnv_revenue (transaction_id, amount, reversal_of)
-        select ${input.transactionId}, ${-baseFromTotal(flete)}::numeric, id
-          from cnv_revenue where transaction_id = ${input.transactionId} and reversal_of is null
-         limit 1`);
-    }
+    // AQUI SE REVERTIA EL FLETE del ingreso de CNV con una fila negativa, y se fue con el flete: CNV no lo
+    // cobra, asi que no hay ingreso que revertir. El PRODUCTO si se revierte, por el camino que ya existe (la
+    // devolucion fisica, que devuelve su parte proporcional del reparto sellado linea por linea).
 
     await recordAudit(tx, {
       event: veredicto.procede ? "venta.retracto_aceptado" : "venta.retracto_negado",
@@ -166,7 +156,6 @@ export async function registrarRetracto(input: {
         sello_intacto: input.selloIntacto,
         motivo: veredicto.motivo,
         reintegro,
-        flete,
         limite: estado.limite,
         nota: input.nota,
       },
@@ -201,7 +190,7 @@ export async function retractosDeLasVentas(
   if (ids.length === 0) return salida;
 
   const filas = await db.execute<FilaVenta>(sql`
-    select t.id, t.delivery_mode, t.amount::text as amount, t.shipping_fee::text as shipping_fee,
+    select t.id, t.delivery_mode, t.amount::text as amount,
            t.professional_id,
            (t.delivered_at at time zone 'America/Bogota')::date::text as entregada,
            (now() at time zone 'America/Bogota')::date::text as hoy,
@@ -243,12 +232,10 @@ export async function retractosDeLasVentas(
       entregadaEl: t.entregada,
       hoy: t.hoy,
     });
-    const flete = t.shipping_fee == null ? 0 : Number(t.shipping_fee);
-    salida.set(t.id, {
+      salida.set(t.id, {
       transactionId: t.id,
       ...estado,
-      reintegro: reintegroPorRetracto({ montoDelProducto: Number(t.amount) - flete, flete }),
-      flete,
+      reintegro: reintegroPorRetracto({ montoDelProducto: Number(t.amount) }),
       ejercidoEl: t.ejercido,
       selloIntacto: t.sello,
     });

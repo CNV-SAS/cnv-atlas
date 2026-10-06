@@ -192,22 +192,17 @@ export async function sellarContabilidadDeLaVenta(
         .where(eq(transactionItems.id, tramo.lineaId));
     }
   }
-  // ── EL FLETE YA NO ENTRA EN LA CONTABILIDAD DE LA VENTA (2026-10-05) ──
+  // ── EL FLETE YA NO ENTRA EN LA CONTABILIDAD DE LA VENTA (2026-10-05, completado el 2026-10-06) ──
   //
   // AQUI SE LE SUMABA AL INGRESO DE CNV la base del flete, porque el paciente le pagaba el envio a CNV en el
   // mismo cobro y ese dinero tenia que cuadrar. Decision contable del 2026-10-05: el flete queda fuera de
   // CNV y el paciente se lo paga al mensajero, asi que no hay ingreso que contar.
   //
-  // LA LECTURA SE QUEDA, y no por inercia: `shipping_fee` sigue teniendo valor en las ventas ANTERIORES a
-  // esa fecha, y esta funcion vuelve a correr sobre una venta vieja cada vez que se recalcula su
-  // contabilidad (una reversa, una correccion). Si se borrara la suma, esas ventas perderian un ingreso que
-  // de verdad entro. En toda venta nueva la columna es null y esto no hace nada.
-  const [envio] = await tx.execute<{ fee: string | null }>(
-    sql`select shipping_fee as fee from transactions where id = ${t.id}`,
-  );
-  if (envio?.fee != null && Number(envio.fee) > 0) {
-    cnv += baseFromTotal(Number(envio.fee));
-  }
+  // EL 2026-10-05 DEJE LA LECTURA VIVA, con el argumento de que una venta ANTERIOR si tenia flete y esta
+  // funcion vuelve a correr sobre ella cada vez que se recalcula su contabilidad (una reversa, una
+  // correccion). La consulta a la nube del 2026-10-06 dio CERO ventas con flete, asi que la columna se borro
+  // (0207) y esta lectura habria reventado el sellado de TODA venta nueva. La atrapo el candado del barrido,
+  // no un test de esta funcion: por eso ese barrido busca el nombre de la columna en el arbol entero.
 
   comision = Math.round(comision * 100) / 100;
   cnv = Math.round(cnv * 100) / 100;

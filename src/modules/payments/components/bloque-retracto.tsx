@@ -20,7 +20,6 @@ export type RetractoDeLaVenta = {
   diasHabilesRestantes: number | null;
   vencido: boolean;
   reintegro: number;
-  flete: number;
   ejercidoEl: string | null;
   selloIntacto: boolean | null;
 };
@@ -28,8 +27,12 @@ export type RetractoDeLaVenta = {
 // ═══ EL DERECHO DE RETRACTO DE UNA VENTA A DISTANCIA (0190) ═══
 //
 // SE VE AUNQUE NO SE VAYA A USAR, y ese es el punto: un derecho que el sistema no nombra es un derecho que
-// nadie ejerce. Sale la fecha limite, lo que habria que reintegrar (incluido el envio) y la condicion del
-// sello, que es lo que decide.
+// nadie ejerce. Sale la fecha limite, lo que habria que reintegrar y la condicion del sello, que es la que
+// decide.
+//
+// EL ENVIO YA NO SE NOMBRA AQUI (2026-10-06): decia ", incluido el envio de X" cuando la venta traia flete.
+// CNV no cobra el envio, asi que no lo reintegra, y el asesor legal ratifico que la posicion es defendible
+// porque lo presta y lo cobra un tercero.
 //
 // LOS DOS BOTONES LLEVAN `key` DISTINTA (hazard 1 de CLAUDE.md): comparten formulario, y su valor viaja en el
 // `name` del boton, que `enviarSinReset` si manda porque pasa el submitter.
@@ -71,8 +74,7 @@ export function BloqueRetracto({ retracto }: { retracto: RetractoDeLaVenta }) {
           ? ` (${retracto.diasHabilesRestantes} ${retracto.diasHabilesRestantes === 1 ? "día hábil" : "días hábiles"})`
           : ""}
         . Si el producto vuelve sellado, se le reintegran{" "}
-        <strong className="text-foreground">{pesos(retracto.reintegro)}</strong>
-        {retracto.flete > 0 ? `, incluido el envío de ${pesos(retracto.flete)}` : ""}.
+        <strong className="text-foreground">{pesos(retracto.reintegro)}</strong>.
       </span>
 
       {abierto ? (
