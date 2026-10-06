@@ -96,10 +96,21 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
     ({ db } = await import("@/db"));
     lector = await import("@/modules/direccion/data/lo-deshecho");
 
+    // ═══ EL PROFESIONAL CON MENOS VENTAS, NO EL PRIMERO (2026-10-06) ═══
+    //
+    // Decia `order by pp.created_at limit 1`, y eso cae siempre en "Profesional Demo", que en la base local
+    // acumula 16.299 ventas. El caso de abajo lo MARCA de prueba, y eso dispara el trigger de la 0203, que
+    // reescribe `cuenta_como_de_prueba` en TODAS sus transacciones: mas de treinta segundos, justo encima del
+    // `testTimeout`. El candado quedo rojo intermitente, y empeora cada vez que Demo acumula ventas.
+    //
+    // NO ERA UN DEFECTO DEL CODIGO SINO DE LA ELECCION DEL FIXTURE, y es la MISMA leccion que ya estaba
+    // escrita a una linea de aqui para el paciente y la venta ("tomar los primeros que haya ata el caso a
+    // datos que cambian"): se aplico a dos de los tres y no al profesional.
     const [prof] = await db.execute(dsql`
       select pp.id, pp.profile_id, p.organization_id
         from professional_profiles pp join profiles p on p.id = pp.profile_id
-       order by pp.created_at limit 1`);
+       order by (select count(*) from transactions t where t.professional_id = pp.id), pp.created_at
+       limit 1`);
     profId = prof.id;
     profileId = prof.profile_id;
     orgId = prof.organization_id;

@@ -55,6 +55,27 @@ no es un campo nuevo que alguien llene, es derivar el que ya se sella.
 > los embeds de `transactions` antes (`grep "transactions("`) por el hazard de los embeds ambiguos de
 > PostgREST, y correr la suite de base real, no solo `tsc`.
 
+### La condición de Santiago: ir y volver entre modalidades varias veces
+
+**Verificado el 2026-10-06, y sí: la columna derivada lo soporta.** Su intuición era la correcta, "se sella
+por la fecha de la venta y eso debería bastar". Las dos piezas que lo sostienen:
+
+1. **`modalidadEnLaFecha` elige por fecha**, no por "la actual": toma la vigencia que empezó más tarde entre
+   las que ya habían empezado y no habían terminado. Un Integrante que vaya de Comisión a Distribución y
+   vuelva tiene tres filas, y cada venta cae en la que cubría su día.
+2. **Y la base garantiza que solo haya UNA vigencia abierta** a la vez (`prof_modalidad_una_vigente`, índice
+   único parcial de la 0178), así que no puede haber dos regímenes compitiendo por el mismo día.
+
+**LA TRAMPA, Y ES LA RAZÓN DE ESCRIBIR ESTO AQUÍ:** el trigger tiene que derivar de
+**`transaction_items.modality`**, que es el valor SELLADO en la venta. Si alguien lo colgara de
+`professional_modalities` (que parece el sitio natural, porque es donde vive la modalidad), entonces **cada
+cambio de modalidad reescribiría la historia**: las ventas viejas pasarían a contar bajo el régimen nuevo, la
+cuenta quincenal de un corte ya emitido cambiaría de contenido, y nadie lo notaría hasta cuadrar cifras.
+
+Es exactamente el fallo que la 0178 ya evitó al sellar por fecha, y el que esta columna podría reintroducir.
+**El candado tiene que probarlo: cambiar la modalidad del Integrante y comprobar que las ventas anteriores no
+se movieron.**
+
 **Candado:** contra base real. Que la columna de la venta coincida con la modalidad de sus líneas, y que un
 cambio de modalidad del Integrante **no** reescriba las ventas viejas.
 
@@ -115,15 +136,38 @@ cobró al paciente, y que el PVP de CNV es **sugerido**. Imponerlo sería fijaci
 
 ---
 
-## Sub-tarea 5 · El cupo, que ya funciona
+## Sub-tarea 5 · El cupo: casi nada que construir, pero hay un hueco
 
-**Cero trabajo.** Verificado el 2026-10-05: `puedeDespacharse` topa el **saldo pendiente de pago** contra el
-cupo, `estadoDeCredito` lo suma de las cuentas emitidas y **no pagadas**, y la mora se deduce de los plazos en
-vez de una columna que habría que mantener al día.
+**Lo que ya funciona, verificado el 2026-10-05:** `puedeDespacharse` topa el **saldo pendiente de pago** contra
+el cupo (no el inventario, que es lo que pidió el asesor), y la mora se deduce de los plazos en vez de una
+columna que habría que mantener al día.
 
-**Lo único que le faltaba era de dónde leer**, y son justo las ventas de la sub-tarea 4. Así que esta
-sub-tarea es **comprobar**, no construir: registrar ventas, emitir la cuenta, y ver que el saldo sube y que al
-alcanzar el cupo se suspenden los despachos.
+### El hueco, encontrado el 2026-10-06 al mirar de dónde sale el saldo
+
+**`estadoDeCredito` suma solo las ventas que YA ESTÁN EN UNA CUENTA EMITIDA y sin pagar.** Su consulta une
+`transaction_items → transactions → distribucion_statements` y filtra `s.paid_at is null`. O sea que una venta
+registrada **antes de que se emita la cuenta del corte no cuenta en el saldo**.
+
+**Lo que eso significa en la práctica:** entre el corte y la emisión (dos días hábiles, modelo §4), y durante
+toda la quincena en curso, el Integrante puede vender sin que el cupo lo vea. Con un cupo de 5 millones y una
+quincena de 3, podría llegar a tener 8 millones sin pagar y seguir recibiendo despachos, porque 3 todavía no
+están facturados.
+
+**Y el asesor legal pidió lo contrario, textual:** *"el cupo cubre el saldo ya vendido y no pagado"*. **Vendido**,
+no **facturado**. Son dos momentos distintos y hoy el código usa el segundo.
+
+**Qué hay que hacer:** sumar también las ventas selladas como Distribución que todavía no están en ninguna
+cuenta (`distribucion_statement_id is null`). Es la misma consulta que ya existe para armar el corte
+(`lineasDelCorte`), así que la aritmética no se duplica.
+
+**Por qué no lo arreglé ya:** hoy no hay ninguna venta bajo Distribución, así que el hueco no tiene por dónde
+manifestarse, y toca la cifra que decide si se le despacha a una persona. Va dentro de este bloque, con su
+candado: registrar una venta sin facturar y comprobar que el saldo **sí** sube.
+
+### Y el resto es comprobar
+
+Registrar ventas, emitir la cuenta, y ver que el saldo sube y que al alcanzar el cupo se suspenden los
+despachos con su motivo.
 
 ---
 
