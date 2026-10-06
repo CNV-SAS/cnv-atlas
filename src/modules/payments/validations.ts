@@ -34,14 +34,6 @@ export const createCheckoutSchema = z.object({
    */
   desdeLaBodega: z.coerce.boolean().optional(),
   /**
-   * ENVIO A DOMICILIO (0190). Las tres partes van juntas o no va ninguna: un domicilio sin direccion no se
-   * puede despachar, y por eso la base tambien lo prohibe con un CHECK.
-   *
-   * LO QUE VIAJA ES EL COSTO DEL DOMICILIARIO, NO LA CIFRA COBRADA. El flete al paciente lo calcula el
-   * servidor (costo mas margen, mas IVA) y lo sella: si viajara calculado, cualquiera podria cobrarse el
-   * flete que quisiera.
-   */
-  /**
    * POR QUE la compra no sale de ninguna consulta (2026-09-29). Obligatorio cuando no se elige tratamiento:
    * una compra suelta es un hecho legitimo (el que compra sin haber pasado por consulta), y negarlo
    * obligaria a inventar un vinculo. Lo que no puede pasar es que quede suelta SIN QUE NADIE LO DIGA, que
@@ -53,13 +45,24 @@ export const createCheckoutSchema = z.object({
    * y contada aparte: que estuviera fuera del plan se DERIVA de sus lineas, no se guarda en una columna.
    */
   fueraDelPlanConfirmado: z.coerce.boolean().optional(),
+  /**
+   * ENVIO A DOMICILIO (0190, sin flete desde el 2026-10-05). Ciudad y direccion van juntas o no va ninguna:
+   * un domicilio sin direccion no se puede despachar, y la base tambien lo prohibe con un CHECK.
+   *
+   * NO VIAJA NINGUNA CIFRA, porque ya no hay ninguna: el paciente le paga el envio al mensajero, asi que
+   * Atlas no cobra flete ni lo sella. Lo que el servidor si necesita es el CELULAR para coordinar la entrega.
+   *
+   * LA CIUDAD ES TEXTO LIBRE a proposito: era un desplegable de ciudades habilitadas, y ese porton existia
+   * para no perder dinero en un envio sin tarifa. Sin flete no hay destino que le cueste a CNV, y un
+   * desplegable incompleto solo le niega el envio a quien vive donde nadie alcanzo a cargar.
+   */
   domicilio: z
     .object({
-      ciudad: z.string().trim().min(1, "Elige la ciudad de destino.").max(120),
+      ciudad: z.string().trim().min(1, "Escribe la ciudad de destino.").max(120),
       departamento: z.string().trim().max(120).optional(),
       direccion: z.string().trim().min(5, "Escribe la dirección completa de entrega.").max(300),
-      /** Lo que cobra el domiciliario. Ausente = se usa el sugerido del servidor. */
-      costo: z.coerce.number().int().positive().optional(),
+      /** Para coordinar la entrega. Ausente = se usa el que el paciente tenga registrado. */
+      celular: z.string().trim().min(7, "Escribe un celular para coordinar la entrega.").max(40).optional(),
     })
     .optional(),
 });

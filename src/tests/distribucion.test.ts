@@ -5,7 +5,6 @@ import {
   DESCUENTO_DISTRIBUCION,
   armarCuentaQuincenal,
   corteDe,
-  fleteFacturado,
   plazosDelCorte,
   precioDeFacturacion,
   precioDeFacturacionSellado,
@@ -47,20 +46,15 @@ describe("el precio de facturacion", () => {
   });
 });
 
-describe("el flete", () => {
-  // §5.3: "El Integrante no gana ni pierde en el envio: solo lo traslada". Asi que NO lleva descuento: su
-  // base es la del flete entero, no el 80%.
-  it("no lleva descuento", () => {
-    expect(fleteFacturado(11_900).base).toBe(10_000);
-  });
-
-  // §5.4, articulo 447 del Estatuto Tributario: la base gravable incluye acarreos, aunque se facturen aparte.
-  // Y LA TARIFA ES LO QUE SE COBRA, con IVA dentro, igual que el PVP: se DESCOMPONE, no se recarga. Dos
-  // convenciones distintas es como se termina cobrando un flete y facturando otro.
-  it("si lleva IVA del 19%, y la tarifa ya lo trae dentro", () => {
-    expect(fleteFacturado(11_900)).toEqual({ base: 10_000, iva: 1_900, total: 11_900 });
-  });
-});
+// ── AQUI VIVIA "el flete" (2026-09-29), Y SE RETIRO EL 2026-10-05 ──────────────────────────────────
+//
+// Probaba `fleteFacturado`: que el flete de la cuenta quincenal no llevara descuento (§5.3: "el Integrante no
+// gana ni pierde en el envio") y que su IVA viniera dentro de la tarifa (§5.4, articulo 447).
+//
+// LA DECISION CONTABLE DEL 2026-10-05 saco el flete de CNV, asi que no hay flete que facturarle al
+// Integrante y la funcion no existe. NO SE DEJA UN CASO EN CERO: probar que un flete de 0 da 0 no guarda
+// nada. Lo que guarda la regla es el barrido de `domicilio.test.ts`, que comprueba que ningun sitio del
+// arbol vuelva a calcular un flete, este incluido.
 
 describe("el corte", () => {
   // §4: "Dias 15 y ultimo de cada mes". El dia 15 CIERRA la primera quincena, no abre la segunda.
@@ -113,24 +107,25 @@ describe("la cuenta quincenal", () => {
     descuentoSellado,
   });
 
-  it("suma productos descontados y fletes sin descontar", () => {
+  // LA BASE ES SOLO LOS PRODUCTOS DESCONTADOS. Antes sumaba tambien los fletes del periodo (§5.3); el flete
+  // salio de CNV el 2026-10-05, asi que la cuenta es la de los productos y nada mas. El caso lo dice
+  // explicito (`base === baseProductos`): si alguien le volviera a sumar un concepto, esto se pone rojo.
+  it("suma los productos descontados, y nada mas", () => {
     const c = armarCuentaQuincenal({
       corte,
       lineas: [linea(2, 200_000, 40_000)],
-      fletes: [11_900],
       esAgenteRetenedor: false,
       uvt: UVT_2026,
     });
     expect(c.baseProductos).toBe(160_000); // 80.000 x 2
-    expect(c.baseFletes).toBe(10_000);
-    expect(c.base).toBe(170_000);
-    expect(c.iva).toBe(30_400 + 1_900);
+    expect(c.base).toBe(c.baseProductos);
+    expect(c.iva).toBe(30_400);
     expect(c.total).toBe(c.base + c.iva);
   });
 
   // §4, textual: "Si no hubo ventas, no se emite factura".
   it("sin ventas no hay nada que facturar", () => {
-    const c = armarCuentaQuincenal({ corte, lineas: [], fletes: [], esAgenteRetenedor: false, uvt: UVT_2026 });
+    const c = armarCuentaQuincenal({ corte, lineas: [], esAgenteRetenedor: false, uvt: UVT_2026 });
     expect(c.ventas).toBe(0);
     expect(c.total).toBe(0);
   });
@@ -140,7 +135,6 @@ describe("la cuenta quincenal", () => {
     const c = armarCuentaQuincenal({
       corte,
       lineas: [linea(20, 2_000_000, 400_000)],
-      fletes: [],
       esAgenteRetenedor: true,
       uvt: UVT_2026,
     });
@@ -153,7 +147,6 @@ describe("la cuenta quincenal", () => {
     const c = armarCuentaQuincenal({
       corte,
       lineas: [linea(1, 100_000, 20_000)],
-      fletes: [],
       esAgenteRetenedor: true,
       uvt: UVT_2026,
     });
@@ -165,7 +158,6 @@ describe("la cuenta quincenal", () => {
     const c = armarCuentaQuincenal({
       corte,
       lineas: [linea(20, 2_000_000, 400_000)],
-      fletes: [],
       esAgenteRetenedor: false,
       uvt: UVT_2026,
     });
@@ -177,7 +169,6 @@ describe("la cuenta quincenal", () => {
     const c = armarCuentaQuincenal({
       corte,
       lineas: [linea(20, 2_000_000, 400_000)],
-      fletes: [50_000],
       esAgenteRetenedor: true,
       uvt: UVT_2026,
     });

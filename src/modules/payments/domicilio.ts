@@ -2,101 +2,51 @@ import { addBusinessDays, businessDaysUntil } from "@/core/dates/colombia-busine
 
 import type { Modalidad } from "./modalidad";
 
-// ═══ EL ENVIO A DOMICILIO Y EL DERECHO DE RETRACTO (2026-09-29) ═══
+// ═══ EL ENVIO A DOMICILIO Y EL DERECHO DE RETRACTO ═══
 //
-// MODULO PURO. Dos cosas que no se pueden inventar en una pantalla: si se puede ofrecer domicilio a un
-// destino, y hasta cuando el paciente puede retractarse.
+// MODULO PURO: hasta cuando el paciente puede retractarse, y el aviso que se le da cuando la entrega es a
+// domicilio. El plazo sale de la LEY 1480 DE 2011; el aviso, de la decision contable del 2026-10-05.
 //
-// TODO SALE DEL MODELO COMERCIAL §5 Y DE LA LEY 1480 DE 2011. Cada regla lleva su cita.
+// ── EL FLETE SE RETIRO DE AQUI, Y NO ES UN RECORTE: ES LA DECISION (contabilidad, 2026-10-05) ──────
+//
+// Textual: "el flete queda completamente fuera de CNV. El paciente le paga el envio directamente al
+// servicio de mensajeria, nunca a CNV ni al Integrante. Atlas no cobra flete, no lo factura y no registra
+// ningun gasto de domicilio."
+//
+// POR QUE, con sus razones: CNV opera en varias zonas del pais y una tabla de tarifas por zona se vuelve
+// inmanejable al expandirse; los domicilios son casos contados, no el canal principal; y montar la
+// maquineria contable del flete (facturacion con IVA, documento soporte, retencion, conciliacion) para una
+// operacion excepcional es desproporcionado.
+//
+// LA REGLA INNEGOCIABLE, textual: "el dinero del flete nunca entra a cuentas de CNV ni de un Integrante. Sin
+// excepciones, ni por hacerle el favor a un paciente. Si entra una vez, aparece un ingreso sin factura y un
+// gasto sin soporte, y se rompe la consistencia de todo el modelo."
+//
+// LO QUE VIVIA AQUI Y SE FUE: `fleteDelEnvio` (costo + margen + IVA), `MARGEN_DE_FLETE_POR_DEFECTO`, y
+// `ofertaDeDomicilio` con su lista de ciudades habilitadas. La lista era un porton que existia por una sola
+// razon ("es preferible NO ofrecer el domicilio a un destino que ofrecerlo y perder dinero en cada envio") y
+// esa razon desaparecio con el flete: CNV ya no pone plata en ningun envio, asi que no hay destino que le
+// cueste dinero. Se retira en vez de dejarse apagada: una lista que ya no decide nada solo le niega el
+// envio a un paciente de una ciudad que nadie alcanzo a teclear.
 
 /** Cinco dias habiles desde la entrega (Ley 1480 de 2011, articulo 47). */
 export const DIAS_DE_RETRACTO = 5;
 
-export type CiudadHabilitada = {
-  city: string;
-  department: string;
-  daneCode: string | null;
-  /** Lo que suele cobrar el domiciliario ahi. Se precarga; manda lo que el profesional teclee. */
-  costoSugerido: number | null;
-};
-
-export type OfertaDeDomicilio =
-  | { ofrece: true; costoSugerido: number | null }
-  | { ofrece: false; motivo: string };
-
 /**
- * ¿Se le puede ofrecer domicilio a este destino?
+ * EL AVISO QUE SE LE DA AL PACIENTE cuando la entrega es a domicilio. LITERAL de contabilidad (2026-10-05).
  *
- * EL CRITERIO ES DEL MODELO §5.5, textual: "es preferible NO ofrecer el domicilio a un destino que ofrecerlo
- * y perder dinero en cada envio". Por eso la ausencia de datos NIEGA en vez de permitir.
+ * VA COMO CONSTANTE Y NO ESCRITO EN LA PANTALLA, por la misma razon que `TEXTO_DE_RETRACTO`: su redaccion
+ * hace trabajo juridico. Deja claro que el servicio lo presta UN TERCERO y que CNV solo coordina, y es eso
+ * lo que protege en caso de reclamo por una entrega. Una copia suavizada en otra pantalla se lleva por
+ * delante justo esa proteccion.
  *
- * LO QUE DECIDE ES LA COBERTURA, NO EL PRECIO (decision de Santiago, 2026-09-29): el costo lo teclea el
- * profesional por envio, porque varia por zona. Una ciudad sin costo sugerido SI se ofrece; lo unico que
- * pasa es que el campo llega vacio.
- *
- * `ciudad` vacia = todavia no eligio destino; entonces solo se comprueba que el servicio exista.
+ * LA HORQUILLA DE 10.000 A 20.000 ES ORIENTATIVA Y ASI ESTA DICHA ("generalmente", "el valor exacto" se
+ * confirma al coordinar): no es una tarifa de CNV, porque CNV no cobra el envio.
  */
-export function ofertaDeDomicilio(e: {
-  ciudades: CiudadHabilitada[];
-  ciudad?: string | null;
-  departamento?: string | null;
-  /** Costo sugerido por defecto, cuando la ciudad no trae uno propio. */
-  costoPorDefecto?: number | null;
-}): OfertaDeDomicilio {
-  if (e.ciudades.length === 0) {
-    return { ofrece: false, motivo: "El envío a domicilio no está habilitado: no hay ciudades con cobertura." };
-  }
-  const igual = (a: string, b: string) => a.trim().toLocaleLowerCase("es") === b.trim().toLocaleLowerCase("es");
-  if (e.ciudad) {
-    const destino = e.ciudades.find(
-      (c) => igual(c.city, e.ciudad as string) && (!e.departamento || igual(c.department, e.departamento)),
-    );
-    if (!destino) {
-      return {
-        ofrece: false,
-        // SE DICE QUE SE PUEDE COTIZAR, no solo que no se puede: §5.5 admite "o la ofrece con cotizacion caso
-        // a caso", y un "no" seco manda al paciente a otro lado cuando el envio si era posible.
-        motivo: `Todavía no hay cobertura de domicilio en ${e.ciudad}. Escríbele a CNV si necesitas una cotización para ese destino.`,
-      };
-    }
-    return { ofrece: true, costoSugerido: destino.costoSugerido ?? e.costoPorDefecto ?? null };
-  }
-  return { ofrece: true, costoSugerido: e.costoPorDefecto ?? null };
-}
-
-/** Margen por defecto sobre el costo del domiciliario. El vigente vive en `commercial_config`. */
-export const MARGEN_DE_FLETE_POR_DEFECTO = 0.03;
-
-export type FleteDelEnvio = {
-  /** Lo que se le paga al domiciliario. */
-  costo: number;
-  /** La base gravada: el costo mas el margen. */
-  base: number;
-  iva: number;
-  /** Lo que paga el paciente por el envio. */
-  total: number;
-};
-
-/**
- * EL FLETE DE UN ENVIO, a partir de lo que cobra el domiciliario.
- *
- * POR QUE NO ES UNA TARIFA FIJA (decision de Santiago, 2026-09-29): 14.000 es fijo en Medellin, pero hay
- * Integrantes en Pereira, Cali y otras zonas, y ahi varia. Una tarifa unica no aplica y una por ciudad seria
- * adivinar. Asi que el profesional teclea el costo y esto calcula el resto.
- *
- * EL MARGEN NO ES GANANCIA: la pasarela cobra su comision TAMBIEN sobre el flete, asi que cobrar el costo
- * exacto significa pagar 10.000 al domiciliario y recibir menos de 10.000 por el. El margen lo compensa y el
- * envio queda neutro, que es lo que el modelo quiere ("el Integrante no gana ni pierde en el envio").
- *
- * EL IVA VA SOBRE LA BASE CON EL MARGEN, no sobre el costo pelado: la base gravable es lo que se cobra
- * (articulo 447 del Estatuto Tributario, que ademas mete el acarreo en la base del producto principal).
- */
-export function fleteDelEnvio(e: { costo: number; margen?: number }): FleteDelEnvio {
-  const costo = Math.round(e.costo);
-  const base = Math.round(costo * (1 + (e.margen ?? MARGEN_DE_FLETE_POR_DEFECTO)));
-  const iva = Math.round(base * 0.19);
-  return { costo, base, iva, total: base + iva };
-}
+export const TEXTO_AVISO_DOMICILIO =
+  "Envío a domicilio. El envío lo realiza un servicio de mensajería independiente y se paga directamente a " +
+  "esa persona, aparte del valor del producto. El costo depende de la zona, generalmente entre 10.000 y " +
+  "20.000 pesos. Nos comunicaremos contigo para coordinar la entrega y confirmarte el valor exacto.";
 
 export type EstadoDelRetracto = {
   /** Si esta venta tiene derecho de retracto en absoluto. */
@@ -209,7 +159,10 @@ export function procedeElRetracto(e: {
         "El producto llegó con el sello roto o el envase abierto: por tratarse de un bien de uso personal, el retracto no procede (artículo 47, numeral 7).",
     };
   }
-  return { procede: true, motivo: "Procede: producto sellado y dentro del plazo. Se reintegra todo lo pagado, incluido el envío." };
+  // LA FRASE YA NO PROMETE EL ENVIO (2026-10-05): desde que el flete salio de CNV, lo que el paciente le
+  // pago a CNV es el producto, y el envio se lo pago al mensajero. Prometer aqui un reintegro del envio
+  // seria ofrecer plata que CNV nunca recibio, y lo diria la pantalla de quien tiene que cumplirlo.
+  return { procede: true, motivo: "Procede: producto sellado y dentro del plazo. Se reintegra todo lo que el paciente le pagó a CNV." };
 }
 
 /**
@@ -217,6 +170,18 @@ export function procedeElRetracto(e: {
  *
  * VA COMO CONSTANTE Y NO ESCRITO EN CADA PANTALLA porque es texto legal: dos copias se separan, y una version
  * suavizada del derecho de retracto es una infraccion, no un matiz de redaccion.
+ *
+ * ── ATENCION: UNA FRASE DE AQUI QUEDO PENDIENTE DE RATIFICAR (2026-10-05) ──────────────────────────
+ *
+ * Dice "se te reintegrara la totalidad de lo pagado, INCLUIDO EL VALOR DEL ENVIO". Esa frase se escribio
+ * cuando CNV cobraba el flete. Desde la decision contable del 2026-10-05 el paciente le paga el envio al
+ * mensajero, asi que CNV no recibe ese dinero y no lo puede reintegrar.
+ *
+ * NO SE TOCA POR CUENTA PROPIA, y esa es la razon de esta nota: es texto legal publicado al paciente, y
+ * recortarle un derecho sin que lo ratifique quien lo redacto es exactamente lo que el parrafo de arriba
+ * prohibe. La decision contable trajo el aviso nuevo (`TEXTO_AVISO_DOMICILIO`) pero no toco este. La
+ * pregunta esta planteada en `BACKLOG.md`; mientras no se responda, la frase se queda como esta: promete de
+ * mas en contra de CNV, que es el lado seguro de equivocarse.
  */
 export const TEXTO_DE_RETRACTO =
   "Derecho de retracto. Si tu compra fue entregada a domicilio, puedes retractarte dentro de los cinco (5) " +
@@ -228,10 +193,14 @@ export const TEXTO_DE_RETRACTO =
   "que lo recibió.";
 
 /**
- * Lo que se le reintegra al paciente que se retracta: TODO, incluido el flete.
+ * Lo que se le reintegra al paciente que se retracta.
  *
- * El articulo exige devolver "todas las sumas pagadas SIN DESCUENTOS NI RETENCIONES POR CONCEPTO ALGUNO", y el
- * modelo lo remata: "CNV asume el costo del envio de ida y no lo recupera".
+ * El articulo exige devolver "todas las sumas pagadas SIN DESCUENTOS NI RETENCIONES POR CONCEPTO ALGUNO".
+ *
+ * EL PARAMETRO `flete` SE QUEDA, Y VALE 0 EN TODA VENTA NUEVA (2026-10-05): el paciente le paga el envio al
+ * mensajero, asi que ninguna venta posterior a esa fecha sella un flete. Se conserva porque las ventas
+ * ANTERIORES si lo tienen sellado, y una de ellas todavia puede retractarse: en esas, CNV si cobro el envio
+ * y si lo debe. Borrar el parametro haria que esas devolvieran de menos.
  */
 export function reintegroPorRetracto(e: { montoDelProducto: number; flete: number }): number {
   return e.montoDelProducto + e.flete;

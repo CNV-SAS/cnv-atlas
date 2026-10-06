@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { registerCashSaleFormAction } from "../actions";
-import { BloqueDomicilio, type CiudadParaElegir } from "./bloque-domicilio";
+import { BloqueDomicilio } from "./bloque-domicilio";
 import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
 import type { CashSaleFormState } from "../validations";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
@@ -29,21 +29,18 @@ const selectClass =
 export function RegisterCashSaleForm({
   patients,
   nutraceuticals,
-  ciudadesDeDomicilio = [],
-  costoSugeridoPorDefecto = null,
-  margenDeFlete = 0.03,
   tratamientosPorPaciente = {},
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
-  ciudadesDeDomicilio?: CiudadParaElegir[];
-  costoSugeridoPorDefecto?: number | null;
-  margenDeFlete?: number;
   /** Las consultas de cada paciente, para poder atar la compra a la suya sin ir al servidor. */
   tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
   const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
+  // El celular del paciente ELEGIDO, para el bloque de domicilio. Sale de la lista que ya viajo y no de una
+  // consulta aparte: cambiar de paciente no deberia ir al servidor por un dato que ya esta aqui.
+  const tieneCelular = patients.find((p) => p.id === patientId)?.tieneCelular === true;
   // VARIAS LINEAS, como el checkout (2026-09-12). Tenia el mismo estrangulamiento: un selector y un campo
   // de cantidad, mientras la tabla, el writer, el servicio y el esquema admitian cincuenta. Y en efectivo
   // pesa mas: la venta nace PAGADA, asi que dos registros son dos cobros y revertir uno es una nota
@@ -275,12 +272,10 @@ export function RegisterCashSaleForm({
           tratamientos={tratamientosPorPaciente[patientId] ?? []}
         />
 
-        <BloqueDomicilio
-          ciudades={ciudadesDeDomicilio}
-          costoSugeridoPorDefecto={costoSugeridoPorDefecto}
-          margen={margenDeFlete}
-          total={total}
-        />
+        {/* LA MISMA `key` POR PACIENTE que el bloque de arriba, y por el mismo motivo: el campo del celular
+            se precarga con el del paciente elegido. Sin re-montar, el numero del anterior se quedaria en el
+            campo y se despacharia un envio al telefono de otra persona. */}
+        <BloqueDomicilio key={patientId} tieneCelularRegistrado={tieneCelular} />
 
         <Button type="submit" disabled={pending}>
           {pending ? "Registrando..." : "Registrar la venta"}

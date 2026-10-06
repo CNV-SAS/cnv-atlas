@@ -103,10 +103,6 @@ export async function cuentaDelCorte(
   return armarCuentaQuincenal({
     corte,
     lineas,
-    // EL FLETE TODAVIA NO ENTRA, y se dice aqui en vez de dejarlo en silencio: el domicilio bajo Distribucion
-    // suma su flete a esta cuenta (§5.3), y nada escribe todavia un flete en Atlas. Cuando exista, entra por
-    // esta lista y la aritmetica ya lo contempla (tiene candado).
-    fletes: [],
     esAgenteRetenedor: await esAgenteRetenedor(db, professionalId),
     uvt: UVT_2026,
   });
@@ -183,7 +179,6 @@ export async function emitirCuenta(input: {
     const cuenta = armarCuentaQuincenal({
       corte,
       lineas,
-      fletes: [],
       esAgenteRetenedor: await esAgenteRetenedor(tx, input.professionalId),
       uvt: UVT_2026,
     });

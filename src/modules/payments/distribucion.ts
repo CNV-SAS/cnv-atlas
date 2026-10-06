@@ -57,23 +57,16 @@ export function precioDeFacturacion(pvpConIva: number, descuento = DESCUENTO_DIS
   return { base, baseDescontada, iva, total: baseDescontada + iva };
 }
 
-/**
- * El flete de un envio a domicilio, tal como entra en la cuenta del Integrante.
- *
- * NO LLEVA DESCUENTO: el Integrante no gana ni pierde en el envio, solo lo traslada (§5.3). Y SI LLEVA IVA,
- * por el articulo 447 del Estatuto Tributario: la base gravable incluye acarreos y demas erogaciones
- * complementarias, aunque se facturen por separado, y como el producto va al 19% el flete sigue esa suerte
- * (§5.4).
- *
- * LA TARIFA ES LO QUE SE COBRA, CON IVA DENTRO, igual que `unit_price` es el PVP con IVA. Es la cifra que se
- * le muestra al paciente en el checkout, y tener dos convenciones (una tarifa sin IVA aqui y con IVA alla)
- * es como se termina cobrando un flete y facturando otro. Asi que aqui se DESCOMPONE, no se recarga.
- */
-export function fleteFacturado(tarifa: number): { base: number; iva: number; total: number } {
-  const total = alPeso(tarifa);
-  const base = baseFromTotal(total);
-  return { base, iva: total - base, total };
-}
+// ── EL FLETE SALIO DE ESTA CUENTA (2026-10-05) ──────────────────────────────────────────────────────
+//
+// AQUI VIVIA `fleteFacturado`, y la cuenta quincenal sumaba los fletes de los envios del periodo, porque el
+// modelo §5.3 los ponia en la factura del Integrante. La decision contable del 2026-10-05 saco el flete de
+// CNV: el paciente le paga el envio al mensajero, asi que no hay flete que facturarle a nadie.
+//
+// SE RETIRA EN VEZ DE DEJARSE EN CERO, y es la diferencia que importa: una funcion viva que nadie llama
+// invita a volver a llamarla, y la cuenta quincenal es el documento con el que CNV le cobra a una persona.
+// Nunca llego a sumar un flete real (la lista entraba vacia desde los dos sitios que la armaban), asi que
+// no hay cuenta vieja que necesite reproducir esta aritmetica.
 
 export type Corte = {
   /** Primer dia del periodo (AAAA-MM-DD). */
@@ -187,9 +180,7 @@ export type CuentaQuincenal = {
   corte: Corte;
   /** Suma de las bases descontadas de los productos. */
   baseProductos: number;
-  /** Suma de los fletes, sin IVA. */
-  baseFletes: number;
-  /** Base gravada total: productos descontados mas fletes. */
+  /** Base gravada total. Son solo los productos: el flete salio de CNV el 2026-10-05. */
   base: number;
   iva: number;
   total: number;
@@ -212,8 +203,6 @@ export type CuentaQuincenal = {
 export function armarCuentaQuincenal(e: {
   corte: Corte;
   lineas: LineaDeLaCuenta[];
-  /** Tarifas de flete del periodo, una por envio a domicilio (§5.3: se suman a la cuenta). */
-  fletes: number[];
   esAgenteRetenedor: boolean;
   uvt: number;
 }): CuentaQuincenal {
@@ -224,12 +213,9 @@ export function armarCuentaQuincenal(e: {
   // una factura cuyo total no es la suma de sus renglones es una factura que nadie puede objetar.
   const baseProductos = detalle.reduce((s, l) => s + l.baseDescontada, 0);
   const ivaProductos = detalle.reduce((s, l) => s + l.iva, 0);
-  const fletes = e.fletes.map(fleteFacturado);
-  const baseFletes = fletes.reduce((s, f) => s + f.base, 0);
-  const ivaFletes = fletes.reduce((s, f) => s + f.iva, 0);
 
-  const base = baseProductos + baseFletes;
-  const iva = ivaProductos + ivaFletes;
+  const base = baseProductos;
+  const iva = ivaProductos;
   const total = base + iva;
 
   // LA RETENCION VA SOBRE LA BASE, NUNCA SOBRE EL IVA. Es el mismo error clasico que ya esta evitado en la
@@ -240,7 +226,6 @@ export function armarCuentaQuincenal(e: {
   return {
     corte: e.corte,
     baseProductos,
-    baseFletes,
     base,
     iva,
     total,

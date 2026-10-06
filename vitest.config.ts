@@ -42,6 +42,31 @@ const DB_TESTS = [
   "src/tests/marca-de-profesional-db.test.ts",
   "src/tests/ventas-sin-documento-por-dia-db.test.ts",
   "src/tests/avisos-db.test.ts",
+  // ── LOS DIECISEIS QUE FALTABAN (2026-10-05) ──────────────────────────────────────────────────────
+  //
+  // La verificacion que esta escrita arriba (`grep -rl DATABASE_URL src/tests` contenido aqui) estaba
+  // ROTA: dieciseis archivos tocaban la base y corrian en el proyecto paralelo. Salio al correr la suite
+  // entera despues del retiro del flete: `liquidacion-comision-db` fallo en grupo y paso sola, que es la
+  // firma exacta de la contencion que esta lista existe para evitar, no la de un defecto del codigo.
+  //
+  // POR QUE IMPORTA MAS DE LO QUE PARECE: un rojo intermitente que pasa al reintentar entrena a no creerle
+  // a la suite, y el dia que uno de estos falle de verdad se va a leer como "otra vez el flaky".
+  "src/tests/adjuntos-del-integrante-db.test.ts",
+  "src/tests/aplicar-migracion-banderas.test.ts",
+  "src/tests/cliente-de-la-base.test.ts",
+  "src/tests/consentimiento-origen-html-db.test.ts",
+  "src/tests/devolucion-fisica-db.test.ts",
+  "src/tests/emitir-prescripcion-writer.test.ts",
+  "src/tests/encuesta-registrada-por-profesional-db.test.ts",
+  "src/tests/guardar-protocolo-transaccional.test.ts",
+  "src/tests/importacion-html-importar-db.test.ts",
+  "src/tests/integrante-reader-db.test.ts",
+  "src/tests/liquidacion-comision-db.test.ts",
+  "src/tests/modalidad-db.test.ts",
+  "src/tests/paciente-de-prueba-db.test.ts",
+  "src/tests/perfil-completitud-db.test.ts",
+  "src/tests/venta-desde-la-bodega-db.test.ts",
+  "src/tests/venta-retroactiva-db.test.ts",
   "src/tests/auth-flows.test.ts",
   "src/tests/base-survey-link.test.ts",
   "src/tests/clinical-access.test.ts",

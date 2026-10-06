@@ -156,7 +156,13 @@ que yo te prepare unas ventas de prueba o que decidamos desbloquear la venta en 
    facturar y el corte se puede emitir otra vez. Con **"Sostener"**, la cuenta queda como estaba.
 7. Registra el pago. **Intenta registrarlo dos veces:** no deja.
 
-## Parte 11 · El envío a domicilio
+## ~~Parte 11 · El envío a domicilio~~ · ❌ NO LA CORRAS (retirada el 2026-10-05)
+
+> **El flete salió de CNV** (decisión contable del 2026-10-05). Ya no hay tarifa, ni lista de ciudades, ni
+> total con el envío sumado, ni flete en el ingreso de CNV, ni reintegro del envío al retractarse. Esta parte
+> entera prueba un módulo que no existe: si la corres, los siete pasos fallan y ninguno es un defecto.
+>
+> **La reemplaza la Parte 17**, al final del documento.
 
 **Necesita configuración tuya antes de poder probarse**, y eso es a propósito:
 
@@ -216,7 +222,11 @@ preferible no ofrecer el domicilio a un destino antes que ofrecerlo y perder din
 6. **Un caso viejo ya liquidado no cambia.** Si tienes alguno, verifica que conserva su cifra: reescribirla
    dejaría una liquidación girada que ya no cuadra.
 
-## Parte 13 · El flete se teclea por envío
+## ~~Parte 13 · El flete se teclea por envío~~ · ❌ NO LA CORRAS (retirada el 2026-10-05)
+
+> El campo "Cuánto cobra el domiciliario" y su cuenta (costo + margen + IVA) se retiraron: el paciente le
+> paga el envío al mensajero. **La reemplaza la Parte 17.**
+
 
 1. Marca "Enviar a domicilio". Ahora **no hay una tarifa fija**: hay un campo **"Cuánto cobra el
    domiciliario"**, precargado con el costo sugerido de esa ciudad si lo tiene.
@@ -227,7 +237,11 @@ preferible no ofrecer el domicilio a un destino antes que ofrecerlo y perder din
 4. Cambia el costo a 14.000 y verifica que la cuenta se rehace sola.
 5. **El control que importa:** cobra, y mira que el monto total sea el producto **más 12.257**, no más 10.000.
 
-## Parte 14 · El consolidado para pagarle al domiciliario
+## ~~Parte 14 · El consolidado para pagarle al domiciliario~~ · ❌ NO LA CORRAS (retirada el 2026-10-05)
+
+> CNV no le paga al domiciliario, así que no hay consolidado ni soporte que emitir. El sitio de /comercial
+> sigue existiendo, pero ahora es la **cola de envíos por coordinar**, sin cifras. **Está en la Parte 17.**
+
 
 1. Como **admin**, en **/comercial** tiene que salir **"Envíos a domicilio, para pagarle al domiciliario"**,
    con dos cortes: el **cerrado** (el que toca pagar) y el **en curso**.
@@ -845,3 +859,117 @@ usarlas para el smoke sin ensuciar la cifra.
 **Lo único que hay que cuidar: no mandarle ADAPTO-STRESS a un Integrante real.** El producto está marcado como
 real (está en el portafolio) y no existe físicamente, así que en la vitrina de un Integrante real **sí sumaría**
 al total, y sería una unidad que ningún conteo físico va a encontrar.
+
+---
+
+# BARRIDO DEL 2026-10-05 · lee esto ANTES de correr el segundo smoke
+
+**Por qué existe este barrido.** En el primer documento la parte 9.5 quedó vieja y Santiago la corrió: pedía
+comprobar algo que ya se había cambiado, así que falló sin que nada estuviera mal. Es la clase de rato perdido
+que convierte un documento de smoke en algo en lo que no se confía. Entre el 29 de septiembre y hoy cambiaron
+cinco cosas que tocan partes de este documento, y aquí está, parte por parte, qué sigue sirviendo.
+
+## Lo que NO hay que correr
+
+| Parte | Por qué |
+| --- | --- |
+| **11 · El envío a domicilio** | El flete salió de CNV. La reemplaza la **Parte 17** |
+| **13 · El flete se teclea por envío** | Lo mismo: no hay campo de costo ni cuenta del flete |
+| **14 · El consolidado del domiciliario** | CNV no le paga al domiciliario; no hay consolidado |
+
+## Lo que sigue igual y se corre tal cual está escrito
+
+Partes **1 a 10** y **12**, y los arreglos **R1 a R16**. Nada de lo de estos días las toca.
+
+**Con un matiz en la Parte 10 (Distribución):** su paso del bloqueo de la venta sigue siendo correcto (bajo
+Distribución los dos caminos de cobro están cerrados a propósito), pero **el registro de la venta sigue sin
+construirse**, así que la cuenta quincenal sale vacía si no hay ventas selladas de antes. Eso es lo esperado,
+no un defecto. La decisión de construirlo está en `BACKLOG.md`.
+
+## Una corrección al final de este documento
+
+Donde dice *"Profesional Prueba, que es una cuenta marcada de prueba"*: **no lo está.** Santiago la alterna
+entre real y de prueba a propósito, y el 2026-10-05 estaba como **real**. Dos consecuencias:
+
+- `/direccion` **sí cuenta** sus 10 unidades de ADAPTO-STRESS mientras la cuenta esté como real;
+- y desde el 2026-10-04 **el producto de prueba solo se le ofrece a un profesional marcado de prueba**, así
+  que con la cuenta en real **ADAPTO-STRESS no aparece** ni en /pagos ni en Tratamiento. Eso es correcto.
+
+**Para usarla en el smoke sin ensuciar cifras, márcala de prueba primero** (Parte 16, abajo), y acuérdate de
+revertirla al terminar.
+
+---
+
+## Parte 16 · Admin marca una cuenta de prueba, y la revierte
+
+**Construido el 2026-10-04.** Antes esta columna solo se escribía por SQL, y la asimetría se notaba justo
+cuando más se usa: durante un smoke, alternando una cuenta entre real y de prueba.
+
+1. Como **admin**, entra a **/admin/integrantes/[id]** de Profesional Prueba. Abajo sale **"Marcar como
+   cuenta de prueba"**.
+2. Púlsalo. Pide **un motivo**, y sin él no deja marcar: sacar una cuenta de las cifras sin razón escrita es
+   justo lo que después nadie puede auditar.
+3. Márcala. **Los tres controles, y ninguno es el botón:**
+   - en **/direccion**, el inventario en vitrinas **baja 10 unidades** (las de ADAPTO-STRESS);
+   - sus **ventas** dejan de contar en el bruto;
+   - y en **/pagos** y en Tratamiento, **ADAPTO-STRESS ya aparece** para cobrar y prescribir.
+4. **Su inventario no se toca**, y la pantalla lo dice: las unidades que tenga siguen en su vitrina, porque
+   son reales. Compruébalo en **/mi-inventario** de esa cuenta.
+5. **Revierte** con "Ya no es cuenta de prueba". Las tres cifras del paso 3 vuelven.
+
+**Lo que esto arrastra solo, y es lo que de verdad hay que creer:** marcar al profesional marca **sus ventas y
+sus pacientes** por los disparadores de la base, sin tocar nada a mano. El candado
+`marca-de-profesional-db.test.ts` prueba esa cadena, no el botón.
+
+---
+
+## Parte 17 · El envío a domicilio, sin flete (reemplaza las partes 11, 13 y 14)
+
+**Construido el 2026-10-05.** La decisión contable es textual: *"el flete queda completamente fuera de CNV. El
+paciente le paga el envío directamente al servicio de mensajería, nunca a CNV ni al Integrante. Atlas no cobra
+flete, no lo factura y no registra ningún gasto de domicilio."*
+
+**No necesita configuración previa.** Antes hacía falta una tarifa y al menos una ciudad cargada; ahora el
+bloque sale siempre, porque no hay destino que le cueste dinero a CNV.
+
+1. En **/pagos**, en cualquiera de los dos caminos (link de pago y venta en efectivo), marca **"Enviar a
+   domicilio"**.
+2. **Lo primero que tiene que salir es el aviso para el paciente**, en un bloque ámbar que dice **"Dile esto
+   al paciente"**, con el texto completo: que el envío lo hace un servicio de mensajería independiente, que se
+   le paga directamente a esa persona, aparte del producto, que suele costar entre 10.000 y 20.000, y que lo
+   van a llamar para coordinar.
+3. **Lo que NO puede aparecer, y es el control de este paso:** ningún campo de costo del domiciliario, ninguna
+   cuenta de flete (base + IVA), y ningún "total con envío". Si ves cualquiera de los tres, el retiro quedó a
+   medias.
+4. **La ciudad es un campo libre**, no una lista. Escribe una ciudad cualquiera (incluso una que no esté
+   cargada): tiene que dejarte. Antes un destino fuera de la lista bloqueaba la venta.
+5. **El celular.** Con un paciente que **ya lo tenga de la encuesta**, el campo dice que lo dejes vacío para
+   usar ese. Con uno que **no lo tenga**, el campo es **obligatorio** y lo dice.
+   - **El control que importa:** con un paciente sin celular, intenta cobrar dejándolo vacío. Tiene que
+     rechazarlo diciendo que el envío se coordina por teléfono. Un envío sin teléfono es un producto pagado
+     que nadie sabe a quién entregarle.
+6. **Cobra.** Dos controles:
+   - el monto es **solo el producto**. Si trae algo sumado, el flete volvió;
+   - la venta sale de la **bodega de CNV**, no de tu vitrina, y la pantalla lo dice.
+7. **En /pagos, la venta dice "Pagado · pendiente de coordinar el envío"**, y aclara que lo despacha CNV desde
+   su bodega. **No puede decir "Pagado, sin entregar"**: ese rótulo invita a entregar un producto que no está
+   en la vitrina del profesional.
+8. **Como profesional, no te deja marcarla entregada.** Como **admin**, sí. Es la misma regla de la venta
+   desde bodega.
+9. **En /comercial, como admin**, sale **"Envíos a domicilio"** con la cola **"Por coordinar"**: día, destino,
+   dirección, celular y estado, **el más viejo arriba**. Sin columnas de plata.
+   - un envío sin celular registrado (los de antes del 2026-10-05) sale marcado **"sin celular registrado"**,
+     que es el dato que impide coordinarlo.
+10. **Marca la entrega como admin:** el envío **sale de la cola** y pasa a "Ya despachados". Un envío que se
+    queda en la cola después de despachado hace que la lista deje de servir, y entonces nadie la mira.
+11. **El retracto sigue intacto**, y es lo único del módulo viejo que no cambió: registra la entrega y bajo
+    ella tiene que salir **"Puede retractarse hasta el (fecha)"**, cinco días hábiles.
+    - **"Volvió sellado"** lo acepta; **"Volvió abierto"** NO procede y dice por qué (bien de uso personal,
+      numeral 7).
+    - **Lo que cambió es una frase:** al aceptarlo ya no dice que se reintegra el envío, porque CNV no lo
+      cobró. Dice que se reintegra lo que el paciente le pagó **a CNV**.
+
+> **Y una pregunta abierta que no bloquea el smoke:** el texto legal publicado del retracto sigue prometiendo
+> reintegrar *"incluido el valor del envío"*. **No se tocó a propósito**: es texto legal publicado al
+> paciente. La pregunta está planteada en `BACKLOG.md` para jurídica. Si la ves en pantalla, no es un defecto
+> que haya que reportar.

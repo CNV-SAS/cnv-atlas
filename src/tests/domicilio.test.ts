@@ -1,107 +1,59 @@
+import { readdirSync, readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
   DIAS_DE_RETRACTO,
-  MARGEN_DE_FLETE_POR_DEFECTO,
-  fleteDelEnvio,
+  TEXTO_AVISO_DOMICILIO,
   TEXTO_DE_RETRACTO,
   estadoDelRetracto,
-  ofertaDeDomicilio,
   procedeElRetracto,
   reintegroPorRetracto,
 } from "@/modules/payments/domicilio";
 
-// CANDADO DEL DOMICILIO Y EL RETRACTO (2026-09-29). Cada caso cita la regla que lo fija: modelo comercial §5
-// y Ley 1480 de 2011, articulo 47.
-
-const CIUDADES = [
-  { city: "Medellín", department: "Antioquia", daneCode: "05001", costoSugerido: 14_000 },
-  { city: "Bogotá", department: "Cundinamarca", daneCode: "11001", costoSugerido: null },
-];
-
-describe("la oferta de domicilio", () => {
-  // §5.5: "es preferible NO ofrecer el domicilio a un destino que ofrecerlo y perder dinero en cada envio".
-  // Por eso la ausencia de COBERTURA niega.
-  it("sin ciudades no se ofrece", () => {
-    expect(ofertaDeDomicilio({ ciudades: [] }).ofrece).toBe(false);
-  });
-
-  // LO QUE DECIDE ES LA COBERTURA, NO EL PRECIO (2026-09-29): el costo lo teclea el profesional por envio.
-  // Una ciudad sin costo sugerido SI se ofrece; el campo llega vacio y el lo escribe.
-  it("una ciudad sin costo sugerido igual se ofrece", () => {
-    const r = ofertaDeDomicilio({ ciudades: CIUDADES, ciudad: "Bogotá" });
-    expect(r).toEqual({ ofrece: true, costoSugerido: null });
-  });
-
-  it("y si la ciudad tiene costo, lo devuelve para precargarlo", () => {
-    const r = ofertaDeDomicilio({ ciudades: CIUDADES, ciudad: "Medellín" });
-    expect(r).toEqual({ ofrece: true, costoSugerido: 14_000 });
-  });
-
-  it("sin costo de la ciudad cae al sugerido por defecto", () => {
-    const r = ofertaDeDomicilio({ ciudades: CIUDADES, ciudad: "Bogotá", costoPorDefecto: 16_000 });
-    expect(r).toEqual({ ofrece: true, costoSugerido: 16_000 });
-  });
-
-  it("no le importan las mayusculas ni los espacios", () => {
-    expect(ofertaDeDomicilio({ ciudades: CIUDADES, ciudad: "  medellín " }).ofrece).toBe(true);
-  });
-
-  // UN "NO" SECO MANDA AL PACIENTE A OTRO LADO cuando el envio si era posible: §5.5 admite la cotizacion
-  // caso a caso, y el mensaje tiene que decirlo.
-  it("un destino sin cobertura se niega diciendo que se puede cotizar", () => {
-    const r = ofertaDeDomicilio({ ciudades: CIUDADES, ciudad: "Leticia" });
-    expect(r.ofrece).toBe(false);
-    if (!r.ofrece) expect(r.motivo).toMatch(/cotizaci/i);
-  });
-});
-
-// ═══ EL FLETE POR ENVIO (2026-09-29) ═══
-//
-// DECISION DE SANTIAGO: 14.000 es fijo en Medellin pero varia en Pereira o Cali. Una tarifa unica no aplica
-// y una por ciudad seria adivinar, asi que el profesional teclea el costo y Atlas calcula el resto.
-describe("el flete de un envio", () => {
-  // EL EJEMPLO DE CONTABILIDAD: "si el domiciliario cobra 10.000, la base del flete es ~10.300 y el PVP del
-  // flete ~12.300".
-  it("reproduce el ejemplo de contabilidad", () => {
-    expect(fleteDelEnvio({ costo: 10_000, margen: 0.03 })).toEqual({
-      costo: 10_000,
-      base: 10_300,
-      iva: 1_957,
-      total: 12_257,
-    });
-  });
-
-  // EL MARGEN NO ES GANANCIA: compensa la comision que la pasarela cobra TAMBIEN sobre el flete. Sin el, se
-  // le pagan 10.000 al domiciliario y se reciben menos de 10.000 por ese envio.
-  it("lo cobrado siempre cubre lo que se le paga al domiciliario", () => {
-    for (const costo of [8_000, 10_000, 14_000, 25_000]) {
-      expect(fleteDelEnvio({ costo, margen: 0.03 }).total).toBeGreaterThan(costo);
+// Los helpers del barrido van locales, como en el resto de los candados que recorren el arbol
+// (`fecha-de-arranque`, `ids-con-guid`): no hay un modulo compartido y crearlo aqui seria el octavo sitio.
+function archivosDeCodigo(dir = "src"): string[] {
+  const out: string[] = [];
+  const recorrer = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = `${d}/${e.name}`;
+      if (e.isDirectory()) recorrer(p);
+      else if (/\.tsx?$/.test(e.name)) out.push(p);
     }
-  });
+  };
+  recorrer(dir);
+  return out;
+}
 
-  // EL MARGEN VIVE EN CONFIGURACION, no en el codigo: la comision de la pasarela cambia.
-  it("el margen es configurable, y en cero el flete es el costo mas IVA", () => {
-    expect(fleteDelEnvio({ costo: 10_000, margen: 0 })).toEqual({
-      costo: 10_000,
-      base: 10_000,
-      iva: 1_900,
-      total: 11_900,
-    });
-  });
+function sinComentarios(src: string): string {
+  return src
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
 
-  it("el 3% es el defecto cuando no se pasa margen", () => {
-    expect(fleteDelEnvio({ costo: 10_000 }).base).toBe(10_300);
-    expect(MARGEN_DE_FLETE_POR_DEFECTO).toBe(0.03);
-  });
+// ═══ CANDADO DEL DOMICILIO Y EL RETRACTO ═══
+//
+// Dos mitades, y la segunda es nueva:
+//
+//   1. EL RETRACTO, que lo fija la Ley 1480 de 2011 (articulo 47) y no cambio. Cada caso cita su regla.
+//   2. QUE EL FLETE NO HAYA VUELTO, por ningun sitio. Es un BARRIDO del arbol, no una prueba de una
+//      funcion.
+//
+// ── POR QUE LA SEGUNDA MITAD ES UN BARRIDO Y NO UN CASO ─────────────────────────────────────────────
+//
+// La decision contable del 2026-10-05 saco el flete de CNV, y su regla es innegociable y textual: "el dinero
+// del flete nunca entra a cuentas de CNV ni de un Integrante. Sin excepciones, ni por hacerle el favor a un
+// paciente. Si entra una vez, aparece un ingreso sin factura y un gasto sin soporte, y se rompe la
+// consistencia de todo el modelo."
+//
+// Una regla asi no se guarda probando que UNA funcion ya no existe: se guarda comprobando que NINGUN sitio
+// la volvio a escribir. El flete vivia repartido en siete archivos (el modulo puro, el lector, el bloque de
+// pantalla, el servicio, el escritor, la cuenta de distribucion y el consolidado de despachos), y lo que
+// este candado tiene que atrapar es a cualquiera de los siete volviendo a cobrarlo, o a un octavo nuevo.
+// Es la misma leccion de los rotulos clinicos: una regla tambien vive en varios sitios.
 
-  // EL IVA VA SOBRE LA BASE CON EL MARGEN, no sobre el costo pelado: la base gravable es lo que se cobra.
-  it("el IVA se calcula sobre la base, no sobre el costo", () => {
-    const f = fleteDelEnvio({ costo: 10_000, margen: 0.03 });
-    expect(f.iva).toBe(Math.round(f.base * 0.19));
-    expect(f.base + f.iva).toBe(f.total);
-  });
-});
 describe("el derecho de retracto", () => {
   it("son cinco dias habiles", () => {
     expect(DIAS_DE_RETRACTO).toBe(5);
@@ -198,13 +150,27 @@ describe("si procede el retracto", () => {
     });
     expect(procedeElRetracto({ estado: tarde, selloIntacto: true }).procede).toBe(false);
   });
+
+  // EL MOTIVO YA NO PROMETE EL ENVIO (2026-10-05): lo que el paciente le pago a CNV es el producto, y el
+  // envio se lo pago al mensajero. Prometer aqui el reintegro del envio seria ofrecer plata que CNV no
+  // recibio, en la pantalla de quien tendria que entregarla.
+  it("y el motivo del si NO ofrece devolver el envio", () => {
+    const r = procedeElRetracto({ estado: dentro, selloIntacto: true });
+    expect(r.motivo).not.toMatch(/env[ií]o/i);
+    expect(r.motivo).toMatch(/le pag[oó] a CNV/i);
+  });
 });
 
 describe("el reintegro", () => {
-  // El articulo exige devolver "todas las sumas pagadas sin descuentos ni retenciones por concepto alguno",
-  // y el modelo lo remata: CNV asume el envio de ida y no lo recupera.
-  it("incluye el flete", () => {
+  // EL PARAMETRO SIGUE AHI PARA LAS VENTAS VIEJAS, y este caso es el que lo justifica: en una venta anterior
+  // al 2026-10-05 CNV SI cobro el flete, asi que SI lo debe devolver. Quitarlo las haria devolver de menos.
+  it("en una venta vieja con flete cobrado, lo devuelve", () => {
     expect(reintegroPorRetracto({ montoDelProducto: 107_100, flete: 12_000 })).toBe(119_100);
+  });
+
+  // Y EN UNA VENTA NUEVA EL FLETE ES 0, porque no se cobro: el reintegro es el producto y nada mas.
+  it("en una venta nueva devuelve solo el producto", () => {
+    expect(reintegroPorRetracto({ montoDelProducto: 107_100, flete: 0 })).toBe(107_100);
   });
 });
 
@@ -214,10 +180,102 @@ describe("el texto publicado", () => {
   it("dice las tres cosas que no puede dejar de decir", () => {
     expect(TEXTO_DE_RETRACTO).toMatch(/cinco \(5\) días hábiles/);
     expect(TEXTO_DE_RETRACTO).toMatch(/sello original intacto/);
+    // ESTA LINEA ES UN RECORDATORIO A PROPOSITO, no una afirmacion de que este bien (2026-10-05). El texto
+    // promete reintegrar "incluido el valor del envío", y desde que el flete salio de CNV ese dinero no
+    // llega a CNV. NO SE TOCO porque es texto legal publicado al paciente y recortarle un derecho sin que
+    // lo ratifique quien lo redacto es justo lo que la constante existe para impedir.
+    //
+    // ASI QUE SI ESTE CASO SE PONE ROJO, la pregunta no es "como lo arreglo": es si ya respondieron la
+    // consulta que esta planteada en BACKLOG.md. Si la respondieron, se cambian el texto Y este caso, con la
+    // respuesta citada al lado.
     expect(TEXTO_DE_RETRACTO).toMatch(/incluido el valor del envío/);
   });
 
   it("nombra la norma", () => {
     expect(TEXTO_DE_RETRACTO).toMatch(/artículo 47 de la Ley 1480 de 2011/);
+  });
+});
+
+describe("el aviso del envio al paciente", () => {
+  // LITERAL DE CONTABILIDAD (2026-10-05). Su redaccion hace trabajo juridico: deja claro que el servicio lo
+  // presta UN TERCERO y que CNV solo coordina, y es eso lo que protege en un reclamo por una entrega. Las
+  // tres piezas que no puede perder:
+  it("dice que el envio lo presta un tercero y se le paga a el", () => {
+    expect(TEXTO_AVISO_DOMICILIO).toMatch(/servicio de mensajería independiente/);
+    expect(TEXTO_AVISO_DOMICILIO).toMatch(/se paga directamente a esa persona/);
+  });
+
+  it("dice que el costo es aparte del producto y aproximado", () => {
+    expect(TEXTO_AVISO_DOMICILIO).toMatch(/aparte del valor del producto/);
+    expect(TEXTO_AVISO_DOMICILIO).toMatch(/generalmente entre 10\.000 y 20\.000/);
+  });
+
+  it("y promete coordinar, que es lo unico que CNV hace en el envio", () => {
+    expect(TEXTO_AVISO_DOMICILIO).toMatch(/coordinar la entrega/);
+  });
+
+  // UNA COPIA EN LA PANTALLA SE SEPARA DEL ORIGINAL, que es la razon de que sea constante. El bloque tiene
+  // que IMPORTARLA, no reescribirla.
+  it("la pantalla lo importa en vez de reescribirlo", () => {
+    const bloque = readFileSync("src/modules/payments/components/bloque-domicilio.tsx", "utf8");
+    expect(bloque).toContain("TEXTO_AVISO_DOMICILIO");
+    expect(sinComentarios(bloque)).not.toMatch(/mensajería independiente/);
+  });
+});
+
+// ═══ EL BARRIDO: QUE EL FLETE NO HAYA VUELTO POR NINGUN SITIO ═══
+describe("ningun sitio de la aplicacion cobra un flete", () => {
+  // SE EXCLUYEN EL ESQUEMA Y LOS TIPOS GENERADOS, y no es una grieta en el barrido: esos dos archivos
+  // DESCRIBEN la base, no la usan. Las columnas del flete siguen existiendo (la 0206 las deja rotuladas como
+  // historicas, porque una venta anterior al cambio si cobro flete y puede retractarse), asi que tienen que
+  // seguir declaradas o Drizzle no podria leerlas. Lo que el barrido persigue es que alguien las USE.
+  const FUENTES = archivosDeCodigo("src").filter(
+    (f) => !f.includes("src/tests") && !f.startsWith("src/db/schema/") && !f.includes("database.generated"),
+  );
+
+  // LAS FUNCIONES QUE LO CALCULABAN NO EXISTEN, y no deben volver a existir en ninguna parte. Se buscan por
+  // NOMBRE en todo el arbol: una copia en otro archivo calcularia lo mismo sin que este candado la viera si
+  // solo se comprobara el modulo original.
+  it.each(["fleteDelEnvio", "fleteFacturado", "MARGEN_DE_FLETE_POR_DEFECTO", "ofertaDeDomicilio"])(
+    "no existe %s en ninguna parte",
+    (nombre) => {
+      const culpables = FUENTES.filter((f) => sinComentarios(readFileSync(f, "utf8")).includes(nombre));
+      expect(culpables, `${nombre} volvio: el flete salio de CNV el 2026-10-05`).toEqual([]);
+    },
+  );
+
+  // LA CONFIGURACION DEL FLETE NO SE LEE. Las columnas siguen en la base (rotuladas como historicas en la
+  // 0206) justo para que una consulta nueva no las resucite sin que nadie lo note.
+  it.each(["flete_tarifa", "flete_margen", "costo_sugerido"])("ninguna consulta lee %s", (columna) => {
+    const culpables = FUENTES.filter((f) => sinComentarios(readFileSync(f, "utf8")).includes(columna));
+    expect(culpables, `${columna} es historica desde la 0206: nada la lee`).toEqual([]);
+  });
+
+  // NADIE ESCRIBE UN FLETE NUEVO. La LECTURA de `shipping_fee` si sigue viva, y a proposito: la contabilidad
+  // de una venta ANTERIOR al cambio se recalcula cada vez que se revierte o se corrige, y ahi ese ingreso de
+  // verdad entro. Lo que no puede volver es la ESCRITURA, que es lo que esto mira.
+  it("nadie vuelve a sellar un flete en una venta", () => {
+    const culpables = FUENTES.filter((f) => {
+      const src = sinComentarios(readFileSync(f, "utf8"));
+      // `=[^=]` y no `=` a secas: `shipping_fee == null` es una LECTURA, y el retracto de una venta vieja
+      // tiene que poder hacerla. Lo que se persigue es la asignacion.
+      return (
+        /shippingFee\s*:/.test(src) ||
+        /shippingCost\s*:/.test(src) ||
+        /shipping_fee\s*=[^=]/.test(src) ||
+        /shipping_cost\s*=[^=]/.test(src)
+      );
+    });
+    expect(culpables, "una venta nueva no puede sellar flete: el paciente le paga al mensajero").toEqual([]);
+  });
+
+  // Y EL MONTO DE LA VENTA NO LO INCLUYE. Era la linea del servicio que sumaba el flete al cobro; si vuelve,
+  // el paciente le paga a CNV un envio que CNV no presta.
+  it("el monto que se le cobra al paciente no suma ningun envio", () => {
+    const servicio = sinComentarios(
+      readFileSync("src/modules/payments/services/payments-service.ts", "utf8"),
+    );
+    expect(servicio).not.toMatch(/amount\s*\+\s*flete/);
+    expect(servicio).not.toMatch(/flete\.total/);
   });
 });

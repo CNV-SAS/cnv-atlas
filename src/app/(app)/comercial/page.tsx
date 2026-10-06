@@ -6,10 +6,7 @@ import { ConsolidadoDeDespachosSection } from "@/modules/payments/components/con
 import { CuentasDistribucion } from "@/modules/payments/components/cuentas-distribucion";
 import { Liquidaciones } from "@/modules/payments/components/liquidaciones";
 import { MisCuentasDistribucion } from "@/modules/payments/components/mis-cuentas-distribucion";
-import {
-  consolidadoDeDespachos,
-  consolidadoDelCorteAnterior,
-} from "@/modules/payments/data/despachos-reader";
+import { enviosDespachados, enviosPorCoordinar } from "@/modules/payments/data/despachos-reader";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 import {
   hoyEnBogota,
@@ -56,10 +53,10 @@ export default async function ComercialPage() {
     misCuentas(user.id),
   ]);
 
-  // EL CONSOLIDADO DE DESPACHOS, solo para quien ve el ingreso: es el papel que soporta el pago al
-  // domiciliario, y sin ese soporte el gasto no es deducible (contabilidad, 2026-09-29).
-  const [despachosCerrado, despachosCorriente] = puedeLiquidar
-    ? await Promise.all([consolidadoDelCorteAnterior(hasta), consolidadoDeDespachos(hasta)])
+  // LOS ENVIOS A DOMICILIO, solo para quien ve el ingreso. YA NO ES UNA CUENTA (2026-10-05): el flete salio
+  // de CNV, asi que no hay pago al domiciliario que soportar. Es la cola de lo que hay que coordinar.
+  const [envios, enviosHechos] = puedeLiquidar
+    ? await Promise.all([enviosPorCoordinar(), enviosDespachados()])
     : [null, null];
   // El DETALLE de cada cuenta propia va completo a la pantalla: sin verlo no se puede objetar "de forma
   // sustentada", que es lo que el modelo exige para que la objecion valga.
@@ -118,8 +115,8 @@ export default async function ComercialPage() {
         </div>
       ) : null}
 
-      {despachosCerrado && despachosCorriente ? (
-        <ConsolidadoDeDespachosSection anterior={despachosCerrado} corriente={despachosCorriente} />
+      {envios && enviosHechos ? (
+        <ConsolidadoDeDespachosSection porCoordinar={envios} despachados={enviosHechos} />
       ) : null}
 
       {misCuentasDeDistribucion.length > 0 ? (

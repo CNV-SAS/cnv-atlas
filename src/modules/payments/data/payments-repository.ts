@@ -86,23 +86,56 @@ export async function getProfessionalIdForPatient(patientId: string): Promise<st
   return data?.[0]?.professional_id ?? null;
 }
 
-export type SelectablePatient = { id: string; label: string };
+export type SelectablePatient = { id: string; label: string; tieneCelular: boolean };
 
 // Pacientes seleccionables para el form de checkout. RLS patients_select filtra
 // (el profesional ve los suyos, admin/soporte todos). Lectura minima y temporal
 // hasta que aterrice el modulo de pacientes (bloque posterior); solo expone el id
 // y una etiqueta por documento para identificarlos en el selector.
+//
+// ═══ Y SI YA TIENE CELULAR, PERO NO CUAL (2026-10-05) ═══
+//
+// El envio a domicilio se coordina por telefono, asi que el bloque de domicilio tiene que saber si el
+// paciente ya lo tiene de la encuesta: con uno registrado el campo es opcional, y sin el es obligatorio.
+// Pedirlo siempre obliga a teclear un dato que el sistema ya tiene, y asi es como entran dos celulares
+// distintos para la misma persona.
+//
+// VIAJA UN BOOLEANO Y NO EL NUMERO, a proposito. Esta lista la consume un componente de CLIENTE y trae
+// TODOS los pacientes que el usuario puede ver; para un administrador, eso serian los celulares de todos los
+// pacientes de CNV metidos en el HTML de la pantalla cada vez que abre /pagos. El numero no hace falta ahi:
+// el que lo necesita es el servidor al sellar la venta, y ahi lo lee de `patient_contacts`.
+//
+// EL EMBED ES INEQUIVOCO: `patient_contacts` tiene UN solo FK a `patients` (CLAUDE.md, el hazard de los
+// embeds ambiguos).
 export async function listSelectablePatients(): Promise<SelectablePatient[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, document_type, document_number")
+    .select("id, document_type, document_number, patient_contacts(phone)")
     .order("document_number", { ascending: true });
   if (error) fail("listSelectablePatients", error.message);
-  return (data ?? []).map((p) => ({
-    id: p.id,
-    label: `${p.document_type} ${p.document_number}`,
-  }));
+  return (data ?? []).map((p) => {
+    // PostgREST devuelve el 1:1 como objeto o como arreglo de uno segun la version; se tolera lo que llegue.
+    const contacto = Array.isArray(p.patient_contacts) ? p.patient_contacts[0] : p.patient_contacts;
+    return {
+      id: p.id,
+      label: `${p.document_type} ${p.document_number}`,
+      tieneCelular: (contacto?.phone ?? "").trim() !== "",
+    };
+  });
+}
+
+/** El celular registrado de un paciente, para coordinar un envio. null = no tiene. */
+export async function celularDelPaciente(patientId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("patient_contacts")
+    .select("phone")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+  if (error) fail("celularDelPaciente", error.message);
+  const phone = (data?.phone ?? "").trim();
+  return phone === "" ? null : phone;
 }
 
 // Busca un checkout DUPLICADO VIVO para avisar antes de crear otro: mismo paciente + el mismo producto,

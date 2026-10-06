@@ -27,7 +27,200 @@
 
 ---
 
-## PENDIENTE (2026-10-04) · Simplificar el domicilio: que el paciente le pague al domiciliario · DECIDE SANTIAGO
+## HECHO (2026-10-05) · El domicilio simplificado: el flete salió de CNV
+
+**Decidido por contabilidad, relevado y aprobado por Santiago el 2026-10-05, y construido ese mismo día.**
+La fuente de verdad de la regla es `MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` §5, que lleva el recuadro con la
+decisión textual; la migración es la **0206**; el candado es `src/tests/domicilio.test.ts`, que **barre el
+árbol** para que ningún sitio vuelva a cobrar un flete.
+
+**Lo que se retiró:** `fleteDelEnvio`, `fleteFacturado`, `MARGEN_DE_FLETE_POR_DEFECTO`, `ofertaDeDomicilio`,
+la lectura de `commercial_config.flete_tarifa`/`flete_margen`, el flete sumado al monto de la venta, el flete
+en la cuenta quincenal de Distribución, y el consolidado quincenal de pago al domiciliario (que se reescribió
+como **cola de envíos por coordinar**, sin cifras).
+
+**Lo que se construyó:** el aviso literal al paciente (`TEXTO_AVISO_DOMICILIO`), la captura del celular solo
+cuando el paciente no lo tiene de la encuesta, y el rótulo "pendiente de coordinar el envío" en `/pagos` en
+vez del genérico "Pagado, sin entregar", que invitaba al profesional a entregar un producto que no está en su
+vitrina.
+
+**Lo que NO se borró, a propósito:** las columnas `shipping_fee` y `shipping_cost`. Una venta anterior al
+cambio **sí cobró flete y sí puede retractarse**, y en ella CNV lo debe devolver. La 0206 las deja rotuladas
+como históricas y el candado persigue la ESCRITURA, no la lectura.
+
+> **Y una corrección a lo que yo había recomendado aquí (queda escrita a propósito).** Mi propuesta era
+> *"no borrarlo: dejarlo apagado"*, con el argumento de que sin tarifa y sin ciudades el bloque no aparece, y
+> que así se podía probar la propuesta sin tocar código. **Era peor.** Un módulo apagado por configuración se
+> vuelve a encender cambiando una fila, y lo que la decisión contable prohíbe no es cobrar el flete por
+> descuido: es que ese dinero entre *"sin excepciones, ni por hacerle el favor a un paciente"*. Una regla así
+> no se guarda con una fila vacía, se guarda retirando el código y poniéndole un candado. Es el mismo
+> patrón que ya costó antes: una bandera apagada deja creer que la regla se aplicó.
+
+### Lo único que quedó abierto, y es legal
+
+Ver la entrada siguiente: el texto publicado del retracto.
+
+---
+
+## PENDIENTE (2026-10-05) · El xlsx de Biody con varias filas · DECIDE SANTIAGO, Y ESTOY DE ACUERDO CON SU OPCIÓN
+
+**El caso:** el export de "paciente + mediciones" del Biody Manager trae **una fila por medición**. Hoy el
+import lo rechaza con *"Se esperaba una única fila de medición; el archivo trae 3"*, así que el Integrante
+tiene que abrir el archivo y borrar filas a mano.
+
+**Su propuesta, y la prefiere a preguntar cuál fila:** tomar automáticamente la **más reciente** y decirlo en
+un texto que mencione que el archivo traía N filas.
+
+**Estoy de acuerdo**, y el sitio es uno solo: `validateBisMeasurement` (`modules/bis/validations/import-schema.ts`),
+que es donde está el `dataRows.length !== 1`. Pero con **tres condiciones**, y la primera no es opcional.
+
+### 1 · Rechazar el archivo si trae mediciones de MÁS DE UN PACIENTE · esto es lo importante
+
+El export **trae una columna `Paciente`** (hoy se excluye como PII y no se persiste, correcto). Si alguien
+exporta varios pacientes a la vez, el archivo trae filas de **personas distintas**, y "la más reciente" podría
+ser la de otra persona. Eso metería **la medición de un paciente en la evaluación de otro**, en silencio, y de
+ahí sale un diagnóstico.
+
+**Así que antes de elegir fila hay que contar pacientes distintos**, y si hay más de uno, rechazar diciendo
+que exporte solo el paciente que va a importar. El conteo se hace en memoria y **no se persiste ni se nombra a
+nadie** en el mensaje (el detalle del error va a `bis_import_logs`, que nunca lleva PII).
+
+### 2 · Decir qué fecha se tomó, visible, no en un toast que se va
+
+La **fecha de la medición** es un dato del registro clínico, no un detalle de la carga. Tiene que quedar a la
+vista: *"el archivo traía 3 mediciones; se importó la del 12-09-2026, la más reciente"*.
+
+### 3 · Y una salida, porque "la más reciente" no siempre es la que se quiere
+
+**El caso que lo destapa ya pasó:** los pacientes importados del HTML. Si se registra una evaluación
+**retroactiva**, la medición que corresponde es la **de la fecha de esa consulta**, no la última. Con el
+automático a secas, ese import queda con la medición equivocada.
+
+**La buena noticia es que es recuperable:** el re-import solo se bloquea cuando ya hay **diagnóstico**
+(`BisAlreadyImportedError`), así que antes de generarlo se puede volver a importar. Pero re-importar el
+**mismo archivo** volvería a elegir la misma fila. Así que hace falta, solo cuando el archivo trae varias, un
+selector pequeño con las fechas y la más reciente ya elegida. Es un clic cuando sirve y ninguno cuando no.
+
+**Tamaño:** chico. Un cambio en el validador, el conteo de pacientes, el texto, y el selector. El candado va
+sobre el validador (`bis-import-schema.test.ts` ya existe) con un fixture de varias filas y otro de dos
+pacientes. **Hay un archivo de ejemplo en `/dudas`** que Santiago dejó.
+
+---
+
+## PENDIENTE (2026-10-05) · El conteo físico está siempre abierto y confunde · DECIDE SANTIAGO
+
+**El caso que reporta:** la sección "Conteo físico" de `/mi-inventario` está **siempre activa**, así que la
+gente cree que tiene que contar cada vez que recibe algo.
+
+**Lo primero, porque cambia la pregunta: el modelo NO fija una cadencia.** Lo verifiqué. El
+`MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` solo dice que *"el conteo físico y la conciliación se mantienen en
+ambas modalidades"* y que el faltante se detecta ahí. El **"semanal"** sale de nuestra propia planeación de
+T3b-3 (`BACKLOG.md`) y de un comentario en `count-writer.ts`, **no de un contrato ni del contable**. O sea que
+la cadencia es nuestra, y elegirla no obliga a consultar a nadie: solo a actualizar nuestro doc.
+
+### Mi recomendación: por período, y que admin pueda abrirlo aparte. Las dos, no una
+
+**La ventana por período resuelve el problema real**, que no es que falte un interruptor: es que una sección
+siempre abierta **no dice cuándo toca**. Un bloque que dice *"el conteo de este mes se abre el 25 y tienes
+hasta el 30"* contesta la pregunta que la gente se está haciendo, y el resto del mes la sección queda cerrada
+con esa frase en vez de con un formulario.
+
+**Y el interruptor de admin hace falta igual**, por un caso que el calendario no cubre: cuando hay **sospecha
+de una diferencia** y hay que contar ya, sin esperar al 25. Es también la salida para quien se pasó la
+ventana.
+
+**Lo que NO recomiendo: solo el interruptor de admin.** Deja a los Integrantes esperando que alguien les abra
+la puerta, y el día que nadie la abra no hay conteo y nadie lo nota. La obligación tiene que tener fecha
+propia.
+
+### Lo que hay que decidir, y es corto
+
+1. **Cada cuánto.** Mensual con ventana de 5 días (su propuesta) me parece bien y es el cambio más grande
+   frente al "semanal" que tenemos escrito. **Lo que esto afecta:** el conteo es *"el único control que
+   detecta ventas no registradas"* (modelo §6), así que mensual detecta más tarde que semanal. Con Comisión
+   importa menos (CNV recauda); bajo **Distribución importa más**, porque una venta no registrada es producto
+   de CNV que salió sin factura.
+2. **Qué pasa si no cuenta en su ventana.** Hoy no pasa nada, porque no hay ventana. Lo mínimo es que quede
+   registrado; cobrar algo por no contar es otra decisión.
+
+**Tamaño:** chico-medio. Una tabla de ventanas (o un cálculo del calendario), el bloque que dice cuándo toca,
+el interruptor de admin con su audit, y el candado de que **fuera de la ventana no se pueda registrar un
+conteo** (que es lo que de verdad hay que guardar: si se puede igual, la ventana es decorativa).
+
+---
+
+## PENDIENTE (2026-10-05) · El texto del retracto promete reintegrar un envío que CNV ya no recibe · PREGUNTA A JURÍDICA
+
+**Qué dice hoy, textual, en `TEXTO_DE_RETRACTO`:** *"se te reintegrará la totalidad de lo pagado, **incluido el
+valor del envío**"*.
+
+**Por qué quedó descalzado:** esa frase se escribió cuando CNV cobraba el flete. Desde el 2026-10-05 el
+paciente le paga el envío al mensajero, así que CNV no recibe ese dinero y no lo puede devolver.
+
+**La pregunta, corta, para llevar:** si el paciente le paga el envío directamente al mensajero y después se
+retracta, ¿CNV tiene que reintegrarle un flete que nunca recibió? Y si no, ¿cómo se redacta sin recortarle un
+derecho? El artículo 47 obliga a devolver *"todas las sumas pagadas sin descuentos ni retenciones por
+concepto alguno"*, y la lectura razonable es que las sumas pagadas **a CNV** son el producto; pero eso hay que
+sustentarlo, no asumirlo.
+
+**Lo que ya respondió contabilidad y ayuda:** la redacción del aviso nuevo *"deja claro que el servicio lo
+presta un tercero y que CNV solo coordina, lo cual protege en caso de reclamo por una entrega"*. Ese mismo
+argumento es el que sostendría no reintegrar el flete.
+
+**Qué se hizo mientras tanto, y por qué:** **el texto NO se tocó.** Es texto legal publicado al paciente, y
+recortarle un derecho sin que lo ratifique quien lo redactó es exactamente lo que esa constante existe para
+impedir. Tal como está, promete de más **en contra de CNV**, que es el lado seguro de equivocarse. Lo que sí
+se corrigió es la frase operativa de `procedeElRetracto`, que es nuestra y le decía al profesional que se
+reintegra el envío.
+
+**El candado lo vigila:** `domicilio.test.ts` afirma que la frase sigue ahí, con una nota que dice que si ese
+caso se pone rojo la pregunta no es "cómo lo arreglo" sino "ya respondieron esto".
+
+---
+
+## PENDIENTE (2026-10-05) · El PVP no se le muestra al paciente, y el asesor legal lo recomienda
+
+**De dónde sale:** respuesta del asesor legal del 2026-10-05 sobre el PVP bajo Distribución. Imponer el precio
+de reventa es fijación de precios; lo que sí se puede es **mostrarlo como "precio sugerido por CNV"** en Atlas
+y en el reporte del paciente. Textual: *"es presión de mercado, no cláusula: un Integrante que cobre
+notablemente más queda expuesto frente a su propio paciente, que ya vio el precio sugerido. Es el mecanismo
+más efectivo y es completamente legal."*
+
+**Verificado contra el código (2026-10-05):** **nada impone el PVP**, así que por ese lado no hay nada que
+arreglar. Las tarjetas de modalidad no lo mencionan, y el precio solo aparece en pantallas del profesional
+(`/pagos`, Tratamiento, `/mi-inventario`).
+
+**Lo que falta es la otra mitad: el reporte del paciente no muestra ningún precio.** O sea que el mecanismo
+que el asesor llama "el más efectivo" **no existe todavía**. Construirlo es añadir el precio sugerido al plan
+imprimible o al reporte, rotulado como sugerido.
+
+**Por qué no lo construí ya:** añadir contenido al documento que recibe el paciente no es un ajuste de copy, y
+el reporte es la superficie donde la Regla 0 pesa más. Va con la decisión de Santiago.
+
+---
+
+## PENDIENTE (2026-10-05) · Al terminar un contrato nadie pide el corte extraordinario
+
+**De dónde sale:** respuesta del asesor legal del 2026-10-05. Las ventas hechas **después del último corte y
+antes de la terminación** no entran en ninguna factura quincenal. Lo correcto es un corte a la fecha de
+terminación, cuya factura va a la liquidación final (Cláusula 15 del Contrato Marco).
+
+**Verificado contra el código (2026-10-05), y la noticia es medio buena:** emitir el corte **en curso** el día
+de la terminación ya recoge esas ventas, porque `lineasDelCorte` filtra por fecha entre el inicio del corte y
+su fin, y no hay ventas posteriores a hoy. Así que el corte extraordinario **es alcanzable a mano, hoy mismo**.
+
+**Lo que falta son dos cosas chicas:**
+
+1. **Que algo lo PIDA.** No hay flujo de offboarding de un Integrante que lo dispare, así que depende de que
+   alguien se acuerde. Es la familia de "una pieza terminada a la que le falta el último cable".
+2. **El `corte_hasta` que queda guardado dice el fin de la quincena, no la fecha de terminación.** La factura
+   es correcta en su contenido, pero su período afirma cubrir días en los que ya no había contrato.
+
+**Tamaño:** pequeño, y va pegado al offboarding del Integrante, no suelto.
+
+---
+
+## El contexto que originó la entrada de arriba (2026-10-04), que se conserva por su tabla
 
 **Su propuesta:** en vez del módulo con tarifa y lista de ciudades, un texto que diga que el envío lo asume el
 paciente, que suele costar entre 10 y 15 mil, uno por pedido, y que lo paga al recibir.
@@ -105,15 +298,45 @@ ventas registradas, la cuenta quincenal que CNV le factura **sale vacía**, porq
 2. **El cupo de crédito**, que ya tiene columna (`organizations`) y su regla (al agotarse suspende despachos),
    pero no se alimenta sin ventas.
 
+### REESTIMADO EL 2026-10-05, con la respuesta del asesor legal
+
+**Lo que la respuesta legal cambia:** es **consignación**, y la propiedad pasa **en la venta**, no en el
+despacho. O sea que el movimiento de inventario de una venta bajo Distribución es **idéntico** al de
+Comisión: sale de su vitrina, contra inventario de CNV, en el momento de la venta. Eso elimina lo que yo
+había estimado como la parte difícil (un régimen de propiedad distinto, con su facturación al despachar y sus
+notas crédito al devolver). **No existe nada de eso.**
+
+**Así que el registro es la venta en efectivo MENOS el dinero.** `createPaidCashTransaction` ya hace el 80 %:
+ubicación, líneas, sellado de base y descuento por línea, idempotencia, anulación de links que comparten
+producto, descuento de inventario. Lo que hay que quitar y lo que hay que vigilar:
+
+| Pieza | Qué hay que hacer | Tamaño |
+| --- | --- | --- |
+| El canal de pago | `payment_method='efectivo'` significa *"custodia dinero de CNV"* y alimenta la liquidación. Una venta de Distribución **no puede usarlo**. Hace falta un valor nuevo en el enum `payment_method` (o un marcador equivalente) | Migración + barrido de 18 archivos / 57 referencias, casi todas mecánicas porque `medio-de-pago.ts` centraliza la traducción a DIAN y Alegra |
+| **La factura de Alegra** | **Es el riesgo de verdad.** La cola de facturación recoge por `status = 'paid'` (`facturacion-repository`), así que una venta de Distribución entraría y **CNV le facturaría al paciente** un producto que ya facturó el Integrante. Ese es un documento fiscal falso, no un bug de pantalla | Pequeño en código, **pero exige candado contra BD real**: es exactamente la clase de cosa que tsc no ve |
+| Las cifras | La liquidación de Comisión, `brutoReconocido` y el histórico del profesional tienen que tratarla bien: no es comisión y no es efectivo custodiado | Barrido, con los candados que ya existen |
+| El porton | `exigirRecaudoDeCnv` sigue bloqueando los dos caminos de **cobro** y deja pasar el de **registro** | Una línea |
+| **El cupo de crédito** | **NADA.** Verificado: ya mide el saldo pendiente de pago, que es justo lo que el asesor pidió | Cero |
+
+**Mi estimación revisada: más chico que "vender desde la bodega", y la mitad del trabajo es el barrido de las
+cifras y el candado de la facturación, no la pantalla.** Sigue siendo un bloque con su smoke, porque estrena
+un canal de venta nuevo; lo que ya no es es un régimen de propiedad nuevo.
+
 ### Las dos salidas, y la decisión es de Santiago
 
-- **(a) Construir el registro antes de que Katherine arranque.** Es lo correcto y es un bloque, no un parche.
+- **(a) Construir el registro antes de que Katherine arranque.** Más barato de lo estimado el 2026-10-04,
+  pero **se estrenaría con dinero real de una Integrante y sin smoke previo**, porque el arranque está encima.
 - **(b) Arrancarla en Comisión y pasarla a Distribución cuando exista.** Con "aplicar de inmediato"
   (2026-10-04) el cambio entra el día que esté listo, sin esperar al corte, siempre que no haya vendido ese
   período.
 
-**No lo decido yo.** Lo que sí digo es que **(b) no es una derrota**: el margen es el mismo en las dos
-modalidades, así que lo que cambia para ella es quién factura, no cuánto gana.
+**Mi recomendación sigue siendo (b)**, y la respuesta legal la refuerza en vez de debilitarla: si la única
+diferencia entre las dos modalidades es **quién factura al paciente**, entonces lo que ella pierde arrancando
+en Comisión es exactamente eso y nada más. **El margen es el mismo 20 % en las dos.** Lo que gana es arrancar
+ya, y que Distribución se estrene probada.
+
+**Lo que (b) sí le cuesta, dicho completo:** factura CNV en vez de ella, así que si también le cobra consulta,
+el paciente hace dos pagos. Nada de eso es irreversible.
 
 ---
 

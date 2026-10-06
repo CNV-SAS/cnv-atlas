@@ -1,104 +1,101 @@
-import { theadTr, th, thNum } from "@/components/shared/tabla";
+import { theadTr, th } from "@/components/shared/tabla";
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
 
-import type { ConsolidadoDeDespachos } from "../data/despachos-reader";
+import type { EnvioPorCoordinar } from "../data/despachos-reader";
 
-const pesos = (n: number) => `$${n.toLocaleString("es-CO")}`;
-
-// ═══ EL CONSOLIDADO QUE SOPORTA EL PAGO AL DOMICILIARIO (2026-09-29) ═══
+// ═══ LOS ENVIOS A DOMICILIO: LA COLA DE LO QUE HAY QUE COORDINAR (2026-09-29, REESCRITO EL 2026-10-05) ═══
 //
-// LO PIDIO CONTABILIDAD, y su razon es de plata: el pago al domiciliario no es deducible sin soporte. Sin el,
-// CNV registra el ingreso del flete y no puede restar lo que pagó, así que tributa sobre un ingreso que no
-// ganó. El documento lo emite Alegra; esto es lo que va dentro.
+// ANTES ERA UNA CUENTA: el consolidado quincenal de lo que CNV le pagaba al domiciliario, con lo cobrado al
+// paciente al lado y la diferencia que se llevaba la pasarela. Lo pidio contabilidad porque ese pago no es
+// deducible sin soporte.
 //
-// SE MUESTRAN LOS DOS CORTES, y el anterior primero: el que se paga es el que ya cerró. El corriente está
-// abierto y su total todavía sube.
-function Corte({ c, titulo, nota }: { c: ConsolidadoDeDespachos; titulo: string; nota: string }) {
-  if (c.despachos.length === 0) return null;
+// LA DECISION DEL 2026-10-05 DISOLVIO LA CUENTA ENTERA: el flete queda fuera de CNV, el paciente le paga al
+// mensajero, y Atlas no cobra el envio ni registra el gasto. No hay pago que soportar ni diferencia que
+// explicar, asi que las columnas de plata no se ocultaron: ya no existen.
+//
+// LO QUE QUEDA ES UNA LISTA DE TRABAJO, que es lo que la misma decision pide: la venta queda pendiente de
+// coordinar el envio, y admin o soporte la marcan entregada cuando se despacho de verdad. Por eso la tabla
+// tiene CELULAR y DIRECCION (lo que hace falta para llamar y despachar) en vez de totales.
+function Tabla({ envios, conFecha }: { envios: EnvioPorCoordinar[]; conFecha: boolean }) {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-foreground">
-        {titulo} · del {c.corte.desde} al {c.corte.hasta}
-      </span>
-      <p className="max-w-prose text-xs text-muted-foreground">{nota}</p>
-      <div className="-mx-1 overflow-x-auto">
-        <table className="w-full min-w-[40rem] text-xs">
-          <thead>
-            <tr className={theadTr}>
-              <th className={th}>Día</th>
-              <th className={th}>Destino</th>
-              <th className={th}>Entregado</th>
-              <th className={thNum}>Domiciliario</th>
-              <th className={thNum}>Cobrado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {c.despachos.map((d) => (
-              <tr key={d.transactionId} className="border-b border-border/60">
-                <td className="px-3 py-2 text-muted-foreground">{d.dia}</td>
-                <td className="px-3 py-2 text-foreground">
-                  {d.ciudad ?? "-"}
-                  {d.departamento ? ` (${d.departamento})` : ""}
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">{d.entregadoEl ?? "sin entregar"}</td>
-                <td className="px-3 py-2 text-right font-medium tabular-nums text-foreground">
-                  {pesos(d.costo)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{pesos(d.flete)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td className="px-3 py-2 text-foreground" colSpan={3}>
-                {c.despachos.length} {c.despachos.length === 1 ? "envío" : "envíos"}
+    <div className="-mx-1 overflow-x-auto">
+      <table className="w-full min-w-[44rem] text-xs">
+        <thead>
+          <tr className={theadTr}>
+            <th className={th}>Día de la venta</th>
+            <th className={th}>Destino</th>
+            <th className={th}>Dirección</th>
+            <th className={th}>Celular</th>
+            <th className={th}>{conFecha ? "Despachado" : "Estado"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {envios.map((e) => (
+            <tr key={e.transactionId} className="border-b border-border/60">
+              <td className="px-3 py-2 text-muted-foreground">{e.dia}</td>
+              <td className="px-3 py-2 text-foreground">
+                {e.ciudad ?? "-"}
+                {e.departamento ? ` (${e.departamento})` : ""}
               </td>
-              <td className="px-3 py-2 text-right font-bold tabular-nums text-foreground">
-                {pesos(c.totalCosto)}
+              <td className="px-3 py-2 text-muted-foreground">{e.direccion ?? "-"}</td>
+              {/* SIN CELULAR SE DICE QUE FALTA, no se deja un guion: es el dato que impide coordinar, y es lo
+                  que pasa con los envios anteriores al 2026-10-05, que no lo pedian. */}
+              <td className="px-3 py-2 text-muted-foreground">
+                {e.celular ?? <span className="text-attention">sin celular registrado</span>}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{pesos(c.totalFlete)}</td>
+              <td className="px-3 py-2 text-muted-foreground">
+                {conFecha ? (e.entregadoEl ?? "-") : <span className="text-attention">por coordinar</span>}
+              </td>
             </tr>
-          </tfoot>
-        </table>
-      </div>
-      {/* LA DIFERENCIA SE NOMBRA Y SE EXPLICA: no es margen de CNV, es lo que se lleva la pasarela por cobrar
-          el flete. Sin decirlo, alguien la va a leer como una ganancia del envío y no lo es. */}
-      <span className="text-xs text-muted-foreground">
-        Al domiciliario se le pagan <strong className="text-foreground">{pesos(c.totalCosto)}</strong>. La
-        diferencia con lo cobrado ({pesos(c.diferencia)}) se la lleva la pasarela por cobrar el envío: no es
-        margen.
-      </span>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 export function ConsolidadoDeDespachosSection({
-  anterior,
-  corriente,
+  porCoordinar,
+  despachados,
 }: {
-  anterior: ConsolidadoDeDespachos;
-  corriente: ConsolidadoDeDespachos;
+  porCoordinar: EnvioPorCoordinar[];
+  despachados: EnvioPorCoordinar[];
 }) {
-  if (anterior.despachos.length === 0 && corriente.despachos.length === 0) return null;
+  if (porCoordinar.length === 0 && despachados.length === 0) return null;
   return (
     <div className="flex flex-col gap-4">
-      <TituloSeccion>Envíos a domicilio, para pagarle al domiciliario</TituloSeccion>
+      <TituloSeccion>Envíos a domicilio</TituloSeccion>
       <p className="max-w-prose text-sm text-muted-foreground">
-        Este es el detalle que soporta el pago quincenal.{" "}
-        <strong className="text-foreground">El documento lo emite Alegra</strong> (documento soporte si el
-        domiciliario es persona natural no obligada a facturar, o su factura si es una empresa): sin ese papel,
-        el gasto no es deducible y CNV termina tributando sobre un ingreso que no ganó.
+        El envío lo realiza un servicio de mensajería independiente y el paciente se lo paga directamente a esa
+        persona.{" "}
+        <strong className="text-foreground">CNV no cobra el envío, no lo factura y no registra ese gasto.</strong>{" "}
+        Lo que hay que hacer con cada uno es llamar al paciente, coordinar la entrega y marcar la venta como
+        entregada cuando salga.
       </p>
-      <Corte
-        c={anterior}
-        titulo="Corte cerrado"
-        nota="Es el que toca pagar: el período ya cerró y su total no cambia."
-      />
-      <Corte
-        c={corriente}
-        titulo="Corte en curso"
-        nota="Todavía abierto: su total sube con cada envío que se cobre hasta el cierre."
-      />
+
+      {porCoordinar.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-foreground">
+            Por coordinar · {porCoordinar.length} {porCoordinar.length === 1 ? "envío" : "envíos"}
+          </span>
+          {/* EL MAS VIEJO ARRIBA, y se dice: quien lleva mas tiempo esperando es a quien hay que llamar
+              primero. */}
+          <p className="max-w-prose text-xs text-muted-foreground">
+            El primero de la lista es el que lleva más tiempo esperando. Se marca como entregado desde
+            /pagos, en la venta.
+          </p>
+          <Tabla envios={porCoordinar} conFecha={false} />
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">No hay envíos pendientes de coordinar.</p>
+      )}
+
+      {despachados.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-foreground">Ya despachados</span>
+          <Tabla envios={despachados} conFecha />
+        </div>
+      ) : null}
     </div>
   );
 }
