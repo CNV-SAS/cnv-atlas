@@ -1450,6 +1450,13 @@
       "when": 1791954446103,
       "tag": "0206_el_flete_sale_de_cnv",
       "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1791954506103,
+      "tag": "0207_se_borran_las_columnas_del_flete",
+      "breakpoints": true
     }
   ]
 }

@@ -39,17 +39,8 @@ export const commercialConfig = pgTable("commercial_config", {
    * sella el valor con el que se genero.
    */
   diasAlertaVencimiento: integer("dias_alerta_vencimiento").notNull().default(60),
-  /**
-   * Costo SUGERIDO por defecto del domiciliario (no la tarifa al paciente, que se calcula por envio). Se
-   * precarga cuando la ciudad de destino no tiene uno propio.
-   */
-  fleteTarifa: numeric("flete_tarifa"),
-  /**
-   * Margen sobre el costo del domiciliario, antes del IVA. Existe porque la pasarela cobra su comision
-   * TAMBIEN sobre el flete: sin el, cada envio pierde esa diferencia. En configuracion y no en el codigo,
-   * porque la comision de la pasarela cambia y el margen que la compensa tambien.
-   */
-  fleteMargen: numeric("flete_margen").notNull().default("0.03"),
+  // AQUI VIVIAN `fleteTarifa` y `fleteMargen`, y se BORRARON en la 0207: el flete salio de CNV el 2026-10-05
+  // y ninguna venta llego a cobrarlo, asi que no habia valor que conservar.
   /**
    * DESDE CUANDO LAS CIFRAS DE RESUMEN CUENTAN LA OPERACION REAL (0198).
    *
@@ -318,8 +309,9 @@ export const deliveryCities = pgTable("delivery_cities", {
   department: text("department").notNull(),
   /** Codigo DANE del municipio: es lo que identifica jurisdiccion para el analisis de ICA territorial. */
   daneCode: text("dane_code"),
-  /** Lo que suele cobrar el domiciliario ahi. Se precarga y se puede cambiar: manda lo que se teclea. */
-  costoSugerido: numeric("costo_sugerido"),
+  // `costoSugerido` se borro en la 0207 con el resto del flete. LA TABLA SE QUEDA porque cambio de oficio: es
+  // el DIRECTORIO que traduce una ciudad a su codigo DANE para el analisis de ICA, no una lista de destinos
+  // permitidos (ver la 0206).
   isActive: boolean("is_active").notNull().default(true),
   createdAt: createdAt(),
 });

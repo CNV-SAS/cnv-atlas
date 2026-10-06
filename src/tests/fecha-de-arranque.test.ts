@@ -51,7 +51,10 @@ const SIN_CORTE = new Map<string, string>([
   ],
   ["src/modules/professionals/data/tax-status-reader.ts", "su estado tributario se calcula sobre lo devengado de verdad"],
   ["src/modules/payments/data/payments-writer.ts", "escribe la fila de ingreso de la venta que crea"],
-  ["src/modules/payments/data/retracto-writer.ts", "escribe la reversion del ingreso al retractarse"],
+  // `retracto-writer.ts` SALIO DE ESTA LISTA el 2026-10-06: escribia la reversion del ingreso del FLETE, y
+  // con el flete fuera de CNV ya no toca ninguna fila de ingreso. La reversion del PRODUCTO la hace la
+  // devolucion fisica, que si esta aqui. Lo atrapo este mismo candado, que comprueba que cada exencion
+  // declarada siga siendo cierta: una exencion que sobra tapa el dia que ese archivo vuelva a tocar dinero.
   ["src/modules/payments/data/reversas-writer.ts", "escribe la reversion del ingreso de una reversa"],
   ["src/modules/payments/data/venta-retroactiva-writer.ts", "escribe la fila de ingreso de una venta anterior"],
   ["src/modules/payments/types.ts", "solo declara tipos"],

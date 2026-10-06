@@ -90,17 +90,8 @@ export const transactions = pgTable(
      * encuesta, y una pantalla de cobro no es el sitio desde donde se corrige la ficha de una persona.
      */
     shippingPhone: text("shipping_phone"),
-    /**
-     * HISTORICO, NO SE ESCRIBE MAS (2026-10-05, ver la 0206). El flete que el paciente le pagaba a CNV,
-     * cuando CNV cobraba el envio. Desde esa fecha el paciente se lo paga al mensajero y estas dos quedan
-     * null en toda venta nueva.
-     *
-     * NO SE BORRARON a proposito: una venta anterior todavia puede retractarse, y en ella CNV si recibio el
-     * flete y si lo tiene que devolver. El dato no se podria reconstruir.
-     */
-    shippingFee: numeric("shipping_fee"),
-    /** HISTORICO, no se escribe mas (2026-10-05): lo que CNV le pagaba al domiciliario. Ver `shippingFee`. */
-    shippingCost: numeric("shipping_cost"),
+    // AQUI VIVIAN `shippingFee` y `shippingCost`, y se BORRARON en la 0207: la consulta a la nube del
+    // 2026-10-06 confirmo que ninguna venta llego a cobrar flete, asi que no protegian ningun dato.
     // ── EL RETRACTO (Ley 1480/2011, art. 47) ──
     // La FECHA LIMITE no se guarda: se deduce de la fecha de entrega mas cinco dias habiles. Lo que si se guarda
     // es el ejercicio, y sobre todo si el producto volvio SELLADO: el sello es la evidencia que acredita la

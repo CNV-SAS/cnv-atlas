@@ -162,15 +162,23 @@ describe("si procede el retracto", () => {
 });
 
 describe("el reintegro", () => {
-  // EL PARAMETRO SIGUE AHI PARA LAS VENTAS VIEJAS, y este caso es el que lo justifica: en una venta anterior
-  // al 2026-10-05 CNV SI cobro el flete, asi que SI lo debe devolver. Quitarlo las haria devolver de menos.
-  it("en una venta vieja con flete cobrado, lo devuelve", () => {
-    expect(reintegroPorRetracto({ montoDelProducto: 107_100, flete: 12_000 })).toBe(119_100);
+  // ES LO QUE EL PACIENTE LE PAGO A CNV, que es el producto. El envio se lo pago al mensajero, asi que CNV no
+  // lo recibio y no lo devuelve: el asesor legal lo ratifico el 2026-10-06 y la posicion es defendible porque
+  // el servicio lo presta y lo cobra un tercero.
+  //
+  // EL 2026-10-05 ESTA FUNCION LLEVABA UN PARAMETRO `flete` que yo conserve "para las ventas viejas". No
+  // habia ninguna: la consulta a la nube dio CERO ventas con flete. El parametro se fue en la 0207.
+  it("devuelve lo que el paciente le pago a CNV", () => {
+    expect(reintegroPorRetracto({ montoDelProducto: 107_100 })).toBe(107_100);
   });
 
-  // Y EN UNA VENTA NUEVA EL FLETE ES 0, porque no se cobro: el reintegro es el producto y nada mas.
-  it("en una venta nueva devuelve solo el producto", () => {
-    expect(reintegroPorRetracto({ montoDelProducto: 107_100, flete: 0 })).toBe(107_100);
+  // NI DESCUENTOS NI RETENCIONES: el articulo 47 lo dice con esas palabras, asi que el reintegro es el monto
+  // completo y no una fraccion. Un caso trivial a proposito, porque la tentacion de restarle algo (una
+  // comision de pasarela, un costo administrativo) es justo lo que el articulo prohibe.
+  it("sin descontarle nada", () => {
+    for (const monto of [50_000, 107_100, 1_234_567]) {
+      expect(reintegroPorRetracto({ montoDelProducto: monto })).toBe(monto);
+    }
   });
 });
 
@@ -251,23 +259,18 @@ describe("ningun sitio de la aplicacion cobra un flete", () => {
     expect(culpables, `${columna} es historica desde la 0206: nada la lee`).toEqual([]);
   });
 
-  // NADIE ESCRIBE UN FLETE NUEVO. La LECTURA de `shipping_fee` si sigue viva, y a proposito: la contabilidad
-  // de una venta ANTERIOR al cambio se recalcula cada vez que se revierte o se corrige, y ahi ese ingreso de
-  // verdad entro. Lo que no puede volver es la ESCRITURA, que es lo que esto mira.
-  it("nadie vuelve a sellar un flete en una venta", () => {
-    const culpables = FUENTES.filter((f) => {
-      const src = sinComentarios(readFileSync(f, "utf8"));
-      // `=[^=]` y no `=` a secas: `shipping_fee == null` es una LECTURA, y el retracto de una venta vieja
-      // tiene que poder hacerla. Lo que se persigue es la asignacion.
-      return (
-        /shippingFee\s*:/.test(src) ||
-        /shippingCost\s*:/.test(src) ||
-        /shipping_fee\s*=[^=]/.test(src) ||
-        /shipping_cost\s*=[^=]/.test(src)
-      );
-    });
-    expect(culpables, "una venta nueva no puede sellar flete: el paciente le paga al mensajero").toEqual([]);
-  });
+  // LAS COLUMNAS DEL FLETE NO EXISTEN (0207), asi que ya no hay que distinguir leerlas de escribirlas: NADIE
+  // las puede nombrar. Es un candado mas fuerte que el del 2026-10-05, y lo es porque el hecho cambio: ese
+  // dia las columnas se conservaron por si una venta vieja tenia flete, y al dia siguiente la consulta a la
+  // nube dio cero. Una consulta que las nombre falla contra la base, pero falla EN RUNTIME; esto lo atrapa
+  // antes.
+  it.each(["shipping_fee", "shipping_cost", "shippingFee", "shippingCost"])(
+    "nadie nombra %s, que ya no existe en la base",
+    (nombre) => {
+      const culpables = FUENTES.filter((f) => sinComentarios(readFileSync(f, "utf8")).includes(nombre));
+      expect(culpables, `${nombre} se borro en la 0207: una consulta que lo nombre revienta`).toEqual([]);
+    },
+  );
 
   // Y EL MONTO DE LA VENTA NO LO INCLUYE. Era la linea del servicio que sumaba el flete al cobro; si vuelve,
   // el paciente le paga a CNV un envio que CNV no presta.
