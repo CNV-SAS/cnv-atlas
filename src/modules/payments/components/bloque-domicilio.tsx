@@ -55,8 +55,21 @@ export function BloqueDomicilio({ tieneCelularRegistrado }: { tieneCelularRegist
         <div className="flex flex-col gap-3">
           {/* EL AVISO PARA EL PACIENTE, DESTACADO: no es una nota al pie, es lo que hay que decirle antes de
               cobrar. Si se entera despues, el envio se vuelve un reclamo. */}
-          <div className="flex flex-col gap-1 rounded-md border border-attention/40 bg-attention-bg px-3 py-2">
-            <span className="text-xs font-semibold text-attention">Dile esto al paciente</span>
+          {/* ═══ MAS LLAMATIVO, Y CON LA ORDEN POR DELANTE (Santiago, 2026-10-06) ═══
+
+              Decía "Dile esto al paciente" en letra pequeña, del mismo tamaño que el texto. El encabezado
+              ahora dice QUÉ hay que hacerle saber, en una línea que se lee sin detenerse, y el texto literal
+              queda debajo para leérselo tal cual.
+
+              POR QUÉ IMPORTA MÁS QUE UN DETALLE DE ESTILO: el asesor legal lo puso como la condición de la
+              que depende todo lo demás, textual: "el argumento depende enteramente de que el paciente sepa,
+              ANTES de comprar, que el envío es aparte y de un tercero. Si se entera después, la defensa se
+              cae." Este bloque sale antes de cobrar, que es donde tiene que estar; lo único que faltaba era
+              que no se pudiera pasar por alto. */}
+          <div className="flex flex-col gap-1.5 rounded-md border-2 border-attention bg-attention-bg px-3 py-2.5">
+            <span className="text-sm font-bold text-attention">
+              Hazle saber al paciente que el envío se lo paga a un tercero
+            </span>
             <p className="text-xs text-foreground">{TEXTO_AVISO_DOMICILIO}</p>
           </div>
 

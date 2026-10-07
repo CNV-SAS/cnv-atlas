@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { BIODY_COLUMNS, ENGINE_REQUIRED } from "@/clinical-engine";
@@ -368,5 +370,44 @@ describe("EL PORTON: un archivo con mediciones de VARIOS pacientes se rechaza", 
       ]),
     );
     expect(r.ok, r.ok ? "" : r.error.message).toBe(true);
+  });
+});
+
+// ═══ LOS MENSAJES DEL IMPORT NO PUEDEN SALIR CON HUECOS (2026-10-06) ═══
+//
+// EL DEFECTO QUE ESTO ATRAPA, y lo escribo porque fue mio: el toast salio asi en la pantalla de Santiago,
+//
+//   "Medición BIS importada ( variables). El archivo traía  mediciones y se importó la del , la más reciente."
+//
+// Las tres cifras habian DESAPARECIDO del codigo fuente. No fue un error de logica: edite ese archivo con un
+// reemplazo de `perl`, y perl interpola `$` en la cadena de reemplazo, asi que se comio los `${...}` de las
+// plantillas y dejo las frases con huecos. Compila, pasa el lint, y solo se ve en pantalla.
+//
+// POR QUE UN CANDADO Y NO SOLO LA LECCION: la leccion ("un control que edita codigo necesita respaldo
+// verificado") ya estaba escrita y la volvi a pisar. Un candado no depende de que yo me acuerde.
+//
+// LO QUE MIRA: que cada plantilla de mensaje de este archivo que prometa una cifra la INTERPOLE de verdad.
+describe("los mensajes del import llevan sus cifras", () => {
+  const ACCIONES = readFileSync("src/modules/bis/actions.ts", "utf8");
+
+  it("ninguna plantilla de mensaje quedo con un hueco donde iba una cifra", () => {
+    // SE MIRA DENTRO DE LAS PLANTILLAS, no la linea entera: una linea indentada tiene espacios de sobra y
+    // haria saltar el candado con cualquier cosa. Se extraen los literales entre acentos graves que hablan de
+    // la medicion, que son los mensajes que le llegan al profesional.
+    const plantillas = [...ACCIONES.matchAll(/`([^`]*Medici[oó]n[^`]*)`/g)].map((m) => m[1]);
+    expect(plantillas.length, "desaparecieron los mensajes del import").toBeGreaterThan(0);
+
+    // Las marcas de un `${...}` perdido: un parentesis que abre y sigue un espacio, una preposicion suelta
+    // antes de una coma o un punto, o dos espacios seguidos dentro de la frase.
+    const conHueco = plantillas.filter((p) => /\( | del [,.]| de [,.]| {2}/.test(p));
+    expect(conHueco, "un mensaje quedo con un hueco donde iba una cifra (un ${...} perdido)").toEqual([]);
+  });
+
+  // Y LA OTRA MITAD: que la cifra que el mensaje nombra este de verdad interpolada. Un mensaje que dice
+  // "variables" sin un `${` al lado es un mensaje que va a salir sin el numero.
+  it("el mensaje que nombra las variables las interpola", () => {
+    const linea = ACCIONES.split("\n").find((l) => /variables\)/.test(l));
+    expect(linea, "desaparecio el mensaje que cuenta las variables").toBeTruthy();
+    expect(linea, "nombra las variables pero no interpola ninguna cifra").toMatch(/\$\{/);
   });
 });

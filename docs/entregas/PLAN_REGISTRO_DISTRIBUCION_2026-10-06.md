@@ -136,7 +136,23 @@ cobró al paciente, y que el PVP de CNV es **sugerido**. Imponerlo sería fijaci
 
 ---
 
-## Sub-tarea 5 · El cupo: casi nada que construir, pero hay un hueco
+## Sub-tarea 5 · El cupo: avisa, no bloquea, y mide lo vendido
+
+> **DECISIÓN DE SANTIAGO (2026-10-06), y se desvía del modelo:** el cupo es **3.000.000** y es un **aviso para
+> admin**, no un freno. La desviación y lo que se pierde con ella quedan escritos en
+> `MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` §4, junto al párrafo que contradice.
+>
+> **Lo que eso cambia en el código:**
+>
+> 1. `puedeDespacharse` deja de negar por cupo. **La mora sigue negando**, que es otra regla y no se tocó.
+> 2. El cupo pasa a ser un **aviso** en la pantalla de admin, con la cifra y con cuánto falta para el tope.
+> 3. Y el **3.000.000 no se escribe en el código**: el modelo lo prohíbe explícitamente (*"nada de valores
+>    fijos en el código... cupos de crédito"*). Va como valor de la columna, con un **defecto en
+>    `commercial_config`** para quien no tenga uno propio.
+>
+> **Y el candado cambia de pregunta:** ya no es "al alcanzar el cupo no se despacha", es "al alcanzar el cupo
+> sale el aviso **y el despacho sigue siendo posible**". Escrito así, porque un candado que todavía afirmara el
+> bloqueo quedaría rojo y alguien lo "arreglaría" devolviendo el freno.
 
 **Lo que ya funciona, verificado el 2026-10-05:** `puedeDespacharse` topa el **saldo pendiente de pago** contra
 el cupo (no el inventario, que es lo que pidió el asesor), y la mora se deduce de los plazos en vez de una

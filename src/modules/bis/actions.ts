@@ -139,9 +139,12 @@ export async function importBisAction(
   const varias = filasEnElArchivo > 1;
   return {
     error: null,
+    // EL TOAST ES CORTO Y NO REPITE LAS CIFRAS (Santiago, 2026-10-06): el detalle de cuantas traia y cual
+    // entro vive en el bloque de la pantalla, que se queda. Un toast se va en segundos, asi que decir ahi la
+    // fecha de la medicion es decirla donde no se puede volver a leer.
     success: varias
-      ? `Medición BIS importada ( variables). El archivo traía  mediciones y se importó la del , la más reciente.`
-      : `Medición BIS importada ( variables).`,
+      ? `Medición BIS importada. Se cargó la más reciente; puedes cambiarla en el selector.`
+      : `Medición BIS importada (${result.value.valueCount} variables).`,
     warning: null,
     fields: null,
     imported: true,

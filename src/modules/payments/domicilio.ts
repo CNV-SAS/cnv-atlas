@@ -171,26 +171,38 @@ export function procedeElRetracto(e: {
  * VA COMO CONSTANTE Y NO ESCRITO EN CADA PANTALLA porque es texto legal: dos copias se separan, y una version
  * suavizada del derecho de retracto es una infraccion, no un matiz de redaccion.
  *
- * ── ATENCION: UNA FRASE DE AQUI QUEDO PENDIENTE DE RATIFICAR (2026-10-05) ──────────────────────────
+ * ── REEMPLAZADO EL 2026-10-06, CON EL TEXTO QUE MANDO EL ASESOR LEGAL, LITERAL ─────────────────────
  *
- * Dice "se te reintegrara la totalidad de lo pagado, INCLUIDO EL VALOR DEL ENVIO". Esa frase se escribio
- * cuando CNV cobraba el flete. Desde la decision contable del 2026-10-05 el paciente le paga el envio al
- * mensajero, asi que CNV no recibe ese dinero y no lo puede reintegrar.
+ * EL PROBLEMA QUE RESOLVIO, y lo detecto el asesor antes que nosotros: el texto anterior prometia reintegrar
+ * "la totalidad de lo pagado, INCLUIDO EL VALOR DEL ENVIO", mientras el aviso de envio nuevo dice que el
+ * envio se le paga a un tercero y no entra a CNV. Textual del asesor: "un paciente que lea ambos puede
+ * exigir el reintegro del flete con el primer texto en la mano, y tendria razon: CNV se lo prometio por
+ * escrito. UNA PROMESA ESCRITA VINCULA AUNQUE LA LEY NO LA EXIGIERA."
  *
- * NO SE TOCA POR CUENTA PROPIA, y esa es la razon de esta nota: es texto legal publicado al paciente, y
- * recortarle un derecho sin que lo ratifique quien lo redacto es exactamente lo que el parrafo de arriba
- * prohibe. La decision contable trajo el aviso nuevo (`TEXTO_AVISO_DOMICILIO`) pero no toco este. La
- * pregunta esta planteada en `BACKLOG.md`; mientras no se responda, la frase se queda como esta: promete de
- * mas en contra de CNV, que es el lado seguro de equivocarse.
+ * Y RATIFICO EL FONDO al conocer el diseño: retiro su objecion anterior, porque el paciente contrata el
+ * transporte con un tercero y lo sabe desde antes de comprar, asi que son DOS OPERACIONES con DOS
+ * PROVEEDORES y el retracto de la compraventa no arrastra un transporte que CNV no celebro ni cobro. Su
+ * advertencia: "si CNV hubiera fijado la tarifa y cobrado el flete, mi respuesta anterior se mantendria".
+ *
+ * COMO ESTA REDACTADO, y es la parte fina: DESCRIBE EL HECHO, NO EXCLUYE EL DERECHO. No dice "el envio no es
+ * reintegrable", que suena a limitacion impuesta; dice de quien es el servicio. Textual: "la frase sobre la
+ * mensajeria es descriptiva, no limitativa".
+ *
+ * ── DOS COSAS QUE NO SE TOCAN DE ESTE TEXTO ────────────────────────────────────────────────────────
+ *
+ * 1. VA LITERAL. Lo mando el asesor y se pone tal cual; ni una palabra nuestra.
+ * 2. Y VA EN USTED, contra la regla de tuteo de CLAUDE.md. La excepcion es deliberada: es el texto de un
+ *    tercero que responde por el, y "mejorarle" la persona gramatical a una pieza legal es reescribirla.
  */
 export const TEXTO_DE_RETRACTO =
-  "Derecho de retracto. Si tu compra fue entregada a domicilio, puedes retractarte dentro de los cinco (5) " +
-  "días hábiles siguientes a la entrega, conforme al artículo 47 de la Ley 1480 de 2011, siempre que el " +
-  "producto se encuentre sin abrir y con su sello original intacto. En ese caso se te reintegrará la " +
-  "totalidad de lo pagado, incluido el valor del envío. Los productos con el sello roto o el envase abierto " +
-  "se encuentran exceptuados del retracto por tratarse de bienes de uso personal, conforme al numeral 7 del " +
-  "mismo artículo. La devolución del producto corre por cuenta del consumidor, en las mismas condiciones en " +
-  "que lo recibió.";
+  "Derecho de retracto. Si su compra fue entregada a domicilio, usted puede retractarse dentro de los cinco " +
+  "(5) días hábiles siguientes a la entrega, conforme al artículo 47 de la Ley 1480 de 2011, siempre que el " +
+  "producto se encuentre sin abrir y con su sello original intacto. En ese caso se le reintegrará la " +
+  "totalidad de lo que pagó por el producto, sin descuentos ni retenciones de ningún tipo. El servicio de " +
+  "mensajería es prestado y cobrado por un tercero independiente, con quien usted contrata directamente, y " +
+  "no hace parte del valor pagado a CNV. La devolución del producto corre por cuenta del consumidor, en las " +
+  "mismas condiciones en que lo recibió. Los productos con el sello roto o el envase abierto se encuentran " +
+  "exceptuados del retracto por tratarse de bienes de uso personal, conforme al numeral 7 del mismo artículo.";
 
 /**
  * Lo que se le reintegra al paciente que se retracta: todo lo que le pago A CNV.

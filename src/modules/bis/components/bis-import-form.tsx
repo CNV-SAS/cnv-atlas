@@ -111,11 +111,21 @@ export function BisImportForm({
                 normal no hay nada que decir ni que elegir. */}
             {variasMediciones ? (
               <div className="flex flex-col gap-2 rounded-md border border-attention bg-attention-bg px-3 py-2">
+                {/* ═══ "LA MÁS RECIENTE" SOLO CUANDO DE VERDAD LO ES (Santiago, 2026-10-06) ═══
+
+                    Lo decía siempre, así que tras elegir la más antigua la pantalla afirmaba que esa era la
+                    última. Es la clase de frase que hace dudar de si el selector funcionó: el dato era
+                    correcto y el rótulo lo contradecía.
+
+                    SE DERIVA, no se guarda: la más reciente es la primera de la lista, que ya viene ordenada.
+                    Una bandera aparte sería un segundo sitio donde decir lo mismo. */}
                 <p className="text-sm text-foreground">
                   El archivo traía{" "}
                   <span className="font-semibold">{state.fechasDisponibles!.length} mediciones</span> y se
-                  importó la del{" "}
-                  <span className="font-semibold">{state.fechaImportada}</span>, la más reciente.
+                  importó la del <span className="font-semibold">{state.fechaImportada}</span>
+                  {state.fechaImportada === state.fechasDisponibles![0]
+                    ? ", la más reciente."
+                    : " (la más reciente es la del " + state.fechasDisponibles![0] + ")."}
                 </p>
                 {/* SI LA CONSULTA ES DE OTRA FECHA, la más reciente no es la que corresponde. Se dice el caso
                     en vez de dejar un selector sin explicación. */}
@@ -135,7 +145,10 @@ export function BisImportForm({
                     disabled={pending}
                     className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
-                    <option value="">La más reciente ({state.fechaImportada})</option>
+                    {/* LA MÁS RECIENTE ES LA PRIMERA DE LA LISTA, no la importada: tras elegir otra, decir
+                        aquí la importada haría que la opción "la más reciente" nombrara una fecha que no lo
+                        es. */}
+                    <option value="">La más reciente ({state.fechasDisponibles![0]})</option>
                     {state.fechasDisponibles!.map((f) => (
                       <option key={f} value={f}>
                         {f}

@@ -188,19 +188,39 @@ describe("el texto publicado", () => {
   it("dice las tres cosas que no puede dejar de decir", () => {
     expect(TEXTO_DE_RETRACTO).toMatch(/cinco \(5\) días hábiles/);
     expect(TEXTO_DE_RETRACTO).toMatch(/sello original intacto/);
-    // ESTA LINEA ES UN RECORDATORIO A PROPOSITO, no una afirmacion de que este bien (2026-10-05). El texto
-    // promete reintegrar "incluido el valor del envío", y desde que el flete salio de CNV ese dinero no
-    // llega a CNV. NO SE TOCO porque es texto legal publicado al paciente y recortarle un derecho sin que
-    // lo ratifique quien lo redacto es justo lo que la constante existe para impedir.
-    //
-    // ASI QUE SI ESTE CASO SE PONE ROJO, la pregunta no es "como lo arreglo": es si ya respondieron la
-    // consulta que esta planteada en BACKLOG.md. Si la respondieron, se cambian el texto Y este caso, con la
-    // respuesta citada al lado.
-    expect(TEXTO_DE_RETRACTO).toMatch(/incluido el valor del envío/);
+    expect(TEXTO_DE_RETRACTO).toMatch(/sin descuentos ni retenciones/);
   });
 
-  it("nombra la norma", () => {
+  it("nombra la norma, y la excepcion con su numeral", () => {
     expect(TEXTO_DE_RETRACTO).toMatch(/artículo 47 de la Ley 1480 de 2011/);
+    expect(TEXTO_DE_RETRACTO).toMatch(/numeral 7/);
+  });
+
+  // ═══ LA FRASE DEL ENVIO, QUE ES LA QUE EL ASESOR LEGAL REDACTO (2026-10-06) ═══
+  //
+  // ANTES PROMETIA LO CONTRARIO: "incluido el valor del envío". El asesor lo detecto como el problema mas
+  // urgente, por encima de la pregunta que le hicimos: "un paciente que lea ambos textos puede exigir el
+  // reintegro del flete con el primero en la mano, y tendria razon. UNA PROMESA ESCRITA VINCULA AUNQUE LA LEY
+  // NO LA EXIGIERA."
+  it("ya no promete reintegrar el envio", () => {
+    expect(TEXTO_DE_RETRACTO).not.toMatch(/incluido el valor del env[ií]o/i);
+  });
+
+  // Y LO QUE DICE EN SU LUGAR, que es lo fino de su redaccion: DESCRIBE EL HECHO, no excluye el derecho.
+  // Textual suyo: "la frase sobre la mensajeria es descriptiva, no limitativa. Dice de quien es el servicio,
+  // no niega un derecho." Por eso el candado exige las dos piezas descriptivas y PROHIBE la limitativa.
+  it("dice de quien es el servicio de mensajeria, en vez de negar un derecho", () => {
+    expect(TEXTO_DE_RETRACTO).toMatch(/tercero independiente/);
+    expect(TEXTO_DE_RETRACTO).toMatch(/no hace parte del valor pagado a CNV/);
+    expect(TEXTO_DE_RETRACTO).not.toMatch(/no (es|será) reintegrab/i);
+    expect(TEXTO_DE_RETRACTO).not.toMatch(/no se (reintegra|devuelve) el env[ií]o/i);
+  });
+
+  // VA EN USTED, contra la regla de tuteo del proyecto, y es deliberado: es el texto de un tercero que
+  // responde por el. Se afirma aqui para que nadie lo "corrija" al pasar barriendo tratamientos.
+  it("conserva el usted del asesor, que es una excepcion a proposito", () => {
+    expect(TEXTO_DE_RETRACTO).toMatch(/usted puede retractarse/);
+    expect(TEXTO_DE_RETRACTO).not.toMatch(/puedes retractarte/);
   });
 });
 
