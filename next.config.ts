@@ -128,8 +128,48 @@ const nextConfig: NextConfig = {
     : {}),
 };
 
-// La subida de sourcemaps (org, project, SENTRY_AUTH_TOKEN) se configura en el
-// bloque de deploy. Por ahora solo se silencia el plugin en el build.
+// ═══ LOS SOURCEMAPS SE SUBEN A SENTRY (2026-10-07) ═══
+//
+// ── POR QUE DEJO DE SER APLAZABLE ──────────────────────────────────────────────────────────────────
+//
+// Aqui decia "la subida de sourcemaps se configura en el bloque de deploy. Por ahora solo se silencia el
+// plugin", y ese "por ahora" duro hasta que hizo falta leer un error real. El stack que llego de produccion
+// el 7 de octubre ("Rendered more hooks than during the previous render") sale asi:
+//
+//   app:///_next/static/chunks/09bm4s38m-e-z.js:20:117514  in iN
+//   app:///_next/static/chunks/09bm4s38m-e-z.js:20:124981  in Object.oo [as useMemo]
+//
+// O sea: NINGUN error de produccion se puede diagnosticar. Se sabe que el fallo esta en un `useMemo` y nada
+// mas; que componente es, no. Con sourcemaps, ese mismo evento nombra el archivo y la linea.
+//
+// ── LA SUBIDA ES CONDICIONAL, Y ESO ES LO QUE LA HACE SEGURA ───────────────────────────────────────
+//
+// Solo se activa cuando estan las TRES variables. Sin ellas el build se comporta EXACTAMENTE como hoy, asi
+// que un build local o de un colaborador sin el token no cambia ni falla. El plugin, si le faltan datos,
+// avisa y sigue; pero depender de eso seria dejar el build quejandose en cada `pnpm build`.
+//
+// LAS TRES VARIABLES (ver DEPLOY.md):
+//   · SENTRY_ORG      el slug de la organizacion (NO el id numerico del DSN)
+//   · SENTRY_PROJECT  el slug del proyecto (idem)
+//   · SENTRY_AUTH_TOKEN  secret, NUNCA con prefijo NEXT_PUBLIC_ (regla critica de DEPLOY.md)
+//
+// `widenClientFileUpload` incluye los chunks del App Router, que es justo donde caen los componentes de
+// cliente: sin eso, el stack de un error de React se queda igual de ilegible.
+const subirSourcemaps = Boolean(
+  process.env.SENTRY_ORG && process.env.SENTRY_PROJECT && process.env.SENTRY_AUTH_TOKEN,
+);
+
 export default withSentryConfig(nextConfig, {
   silent: true,
+  ...(subirSourcemaps
+    ? {
+        org: process.env.SENTRY_ORG,
+        project: process.env.SENTRY_PROJECT,
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        widenClientFileUpload: true,
+        // LOS SOURCEMAPS NO SE SIRVEN AL PUBLICO: se suben a Sentry y se borran del bundle. Dejarlos
+        // servidos publicaria el codigo fuente de la aplicacion clinica en un archivo que cualquiera baja.
+        sourcemaps: { deleteSourcemapsAfterUpload: true },
+      }
+    : {}),
 });

@@ -145,12 +145,26 @@ function revisarEncuesta(c: Consulta, preguntas: PreguntaDeAtlas[]) {
     // revision sin aparecer, se guardaba tal cual y solo se supo por Sentry, en produccion, con el patron
     // alimentario. Ahora se normaliza primero con la misma funcion que usa el escritor y se juzga eso: si la
     // traduccion existe, calza; si no existe, sale en la lista de lo que no calza, que es donde debe salir.
+    // ═══ Y SE LE PASA LA CONSULTA, QUE FALTABA (2026-10-07) ═══
+    //
+    // El comentario de arriba dice "se juzga lo que se va a guardar", y para la opcion "Otra" NO era cierto:
+    // sin la consulta, `valorParaAtlas` no puede fusionar el texto libre (vive en `<clave>_otro`), asi que la
+    // revision juzgaba "Otros" pelado mientras el escritor guardaba "Otros: CREATINA".
+    //
+    // NO CAUSABA PERDIDA DE DATOS (el escritor si la recibe), pero es exactamente la divergencia que ese
+    // comentario existe para impedir, y es la que haria que un lote pasara la revision sin que nadie viera lo
+    // que de verdad iba a quedar guardado.
     if (p.tipo === "opcion") {
-      const valor = valorParaAtlas(p.clave, v);
+      const valor = valorParaAtlas(p.clave, v, c);
       if (valor != null) juzgar(p, valor);
     }
     if (p.tipo === "opcion_multiple" && Array.isArray(v)) {
-      for (const el of v) if (typeof el === "string") juzgar(p, el);
+      // LA MULTIPLE TAMBIEN PASA POR LA MISMA TRADUCCION, elemento por elemento: antes se juzgaba el texto
+      // crudo del HTML, asi que un "Otros" con texto se veia pelado aqui.
+      for (const el of v) {
+        if (typeof el !== "string") continue;
+        juzgar(p, valorParaAtlas(p.clave, el, c) ?? el);
+      }
     }
   }
   return { noCalzan, deVersionAnterior, sinResponder };
