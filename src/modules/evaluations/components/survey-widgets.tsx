@@ -88,12 +88,16 @@ export function PillsSingle({
   options: SurveyOptionView[];
   defaultValue?: string;
 }) {
-  // Prefill (edicion/reanudacion): un "Otra: xxx" se descompone en el token base + su texto.
-  const split = splitOther(defaultValue);
-  const [value, setValue] = useState(split?.base ?? defaultValue);
-  const [otherText, setOtherText] = useState(split?.text ?? "");
-
+  // LA OPCION "OTRA" DEL CATALOGO, primero: el prefill la necesita para casar la flexion guardada.
   const otherOption = options.find((o) => isOtherOption(o.text))?.text ?? null;
+
+  // Prefill (edicion/reanudacion): un "Otra: xxx" se descompone en el token base + su texto, con la flexion
+  // casada contra el catalogo (ver `conLaFlexionDelCatalogo`: un "Otro" importado marca la opcion "Otra").
+  const split = splitOther(conLaFlexionDelCatalogo(defaultValue, otherOption));
+  const [value, setValue] = useState(
+    split?.base ?? conLaFlexionDelCatalogo(defaultValue, otherOption),
+  );
+  const [otherText, setOtherText] = useState(split?.text ?? "");
   const showOtherInput = otherOption != null && value === otherOption;
   // Valor emitido: "Otra" con texto -> "Otra: <texto>"; el resto tal cual.
   const emitted =
@@ -179,6 +183,45 @@ function splitOther(stored: string): { base: string; text: string } | null {
   return m ? { base: m[1], text: m[2] } : null;
 }
 
+/**
+ * ═══ LA FLEXION GUARDADA SE CASA CON LA DEL CATALOGO (Santiago, 2026-10-07) ═══
+ *
+ * ── EL DEFECTO, Y PERDIA DATOS ───────────────────────────────────────────────────────────────────────
+ *
+ * El HTML escribe esa opcion "Otros" (plural) y el catalogo de Atlas la tiene como "Otra" (singular). La
+ * importacion copia el valor tal cual, asi que 56 evaluaciones quedaron con un valor que NO es ninguna opcion
+ * de Atlas. En el modo EDICION eso hacia tres cosas, y la tercera es la grave:
+ *
+ *   1. la pildora salia SIN MARCAR, porque se casa por texto exacto;
+ *   2. el campo de texto libre no aparecia, aunque el texto estuviera guardado;
+ *   3. y al GUARDAR, el valor emitido era la flexion pelada ("Otros"), SIN el texto: se perdia lo que el
+ *      paciente habia escrito ("Otros: CREATINA" -> "Otros").
+ *
+ * Hay 244 respuestas con texto en esa situacion, y la integrante estuvo editando esas preguntas.
+ *
+ * ── POR QUE SE ARREGLA AQUI Y NO EN LOS DATOS ───────────────────────────────────────────────────────
+ *
+ * Se podria normalizar lo guardado con un UPDATE. Pero el descalce vuelve a aparecer con el proximo lote
+ * importado, porque el HTML seguira escribiendo su flexion, y entonces habria que recordar correr el UPDATE
+ * otra vez. Casando en la COMPARACION, el dato viejo funciona y el nuevo tambien.
+ *
+ * Y LA NORMALIZACION SI OCURRE, pero como efecto: al guardar desde la pantalla, el valor sale con la flexion
+ * del CATALOGO. O sea que cada edicion limpia su propia respuesta, sin un barrido que haya que acordarse.
+ *
+ * ── Y POR QUE NO TOCA LA COMPLETITUD ────────────────────────────────────────────────────────────────
+ *
+ * `survey-completeness` ya es agnostico a la flexion (su regex cubre las cuatro). Las 14 respuestas que
+ * cuentan como "falta 1 pregunta" son las que tienen la opcion PELADA, sin texto, y eso es correcto por
+ * diseno: "si eligio otra es porque tiene algo que decir". No es el mismo defecto.
+ */
+function conLaFlexionDelCatalogo(valor: string, opcionDelCatalogo: string | null): string {
+  if (opcionDelCatalogo == null) return valor;
+  const s = valor.trim();
+  const partido = splitOther(s);
+  if (partido) return `${opcionDelCatalogo}: ${partido.text}`;
+  return isOtherOption(s) ? opcionDelCatalogo : valor;
+}
+
 // Pills de seleccion MULTIPLE. Un hidden input por valor elegido; el server action agrupa
 // los repetidos con getAll y los serializa a JSON.
 export function PillsMulti({
@@ -190,15 +233,21 @@ export function PillsMulti({
   options: SurveyOptionView[];
   defaultValue?: string[];
 }) {
-  // Prefill (edicion): un elemento "Otra: xxx" se descompone en el token base + su texto.
+  // LA OPCION "OTRA" DEL CATALOGO SE RESUELVE PRIMERO, porque el prefill la necesita para casar la flexion
+  // que venga guardada (ver `conLaFlexionDelCatalogo`). Sale de las props, asi que no hay hook de por medio.
+  const otherOption = options.find((o) => isOtherOption(o.text))?.text ?? null;
+
+  // Prefill (edicion): un elemento "Otra: xxx" se descompone en el token base + su texto, y la flexion se
+  // casa con la del catalogo: un "Otros" importado tiene que marcar la pildora "Otra".
   const [selected, setSelected] = useState<string[]>(() =>
-    defaultValue.map((v) => splitOther(v)?.base ?? v),
+    defaultValue.map((v) => {
+      const casado = conLaFlexionDelCatalogo(v, otherOption);
+      return splitOther(casado)?.base ?? casado;
+    }),
   );
   const [otherText, setOtherText] = useState<string>(
     () => defaultValue.map((v) => splitOther(v)?.text).find(Boolean) ?? "",
   );
-
-  const otherOption = options.find((o) => isOtherOption(o.text))?.text ?? null;
 
   const toggle = (t: string) =>
     setSelected((s) => {
@@ -484,9 +533,12 @@ export function SurveyAnswerReadonly({
     // Texto plano: solo lo elegido, con el texto libre de "Otra" pegado, unido por comas. Misma
     // descomposicion (splitOther) que los chips, para que el dato se lea identico en las dos formas.
     if (variant === "plain") {
+      // LA MISMA FLEXION QUE LAS OTRAS DOS VISTAS: esta variante se usa en la HC y en el reporte, y si dijera
+      // "Otros" donde la encuesta dice "Otra", el mismo dato se leeria distinto en dos documentos.
+      const otraDelCatalogoPlano = options.find((o) => isOtherOption(o)) ?? null;
       const labels = selected.map((v) => {
-        const s = splitOther(v);
-        return s && s.text ? `${s.base}: ${s.text}` : s ? s.base : v;
+        const s = splitOther(conLaFlexionDelCatalogo(v, otraDelCatalogoPlano));
+        return s && s.text ? `${s.base}: ${s.text}` : s ? s.base : conLaFlexionDelCatalogo(v, otraDelCatalogoPlano);
       });
       return (
         <span className={`${cuerpo} font-semibold ${tinta}`}>{labels.join(", ")}</span>
@@ -496,9 +548,19 @@ export function SurveyAnswerReadonly({
     // texto "penicilina". El catalogo trae "Otra" (no "Otra: penicilina"), asi que sin descomponer la
     // opcion sale apagada y el texto libre del paciente (alergia, antecedente) se PIERDE en la lectura
     // del profesional. Es informacion clinica: no puede desaparecer en pantalla.
+    // ═══ LA FLEXION SE CASA TAMBIEN AQUI, Y ESO ES LO QUE JUNTA LAS DOS VISTAS (2026-10-07) ═══
+    //
+    // Sin esto, un "Otros" importado NO casaba con la opcion "Otra" del catalogo y caia en `extraChips`
+    // (abajo), que lo anexa para no descartarlo en silencio. Resultado: salian DOS chips de lo mismo, "Otra"
+    // apagado y "Otros" encendido, y el profesional veia tres opciones marcadas donde el formulario de
+    // edicion le mostraba dos. Ninguna de las dos vistas mentia; discrepaban porque casaban distinto.
+    //
+    // `extraChips` SE QUEDA: sigue haciendo falta para una respuesta de otra version de la encuesta, que es
+    // para lo que se escribio. Lo que cambia es que una diferencia de flexion ya no llega hasta ahi.
+    const otraDelCatalogo = options.find((o) => isOtherOption(o)) ?? null;
     const parts = selected.map((v) => {
-      const s = splitOther(v);
-      return s ? { base: s.base, text: s.text } : { base: v, text: "" };
+      const s = splitOther(conLaFlexionDelCatalogo(v, otraDelCatalogo));
+      return s ? { base: s.base, text: s.text } : { base: conLaFlexionDelCatalogo(v, otraDelCatalogo), text: "" };
     });
     // Catalogo si existe; si no, las bases elegidas. Anexa cualquier base elegida que NO este en el
     // catalogo (p. ej. respuesta de una version de encuesta distinta) para no descartarla en silencio.

@@ -1485,6 +1485,13 @@
       "when": 1791954746103,
       "tag": "0211_el_canal_de_una_venta_de_distribucion",
       "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1791954806103,
+      "tag": "0212_retirar_una_consulta_que_no_ocurrio",
+      "breakpoints": true
     }
   ]
 }

@@ -30,6 +30,8 @@ type EvaluationEmbed = {
   status: string;
   created_at: string;
   superseded_at: string | null;
+  retirada_at: string | null;
+  retirada_motivo: string | null;
   reason_for_visit: string | null;
   bis_measurements: { measurement_date: string | null }[] | null;
 };
@@ -62,7 +64,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, test_proposed_reason, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, reason_for_visit, bis_measurements(measurement_date))",
+      "id, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, test_proposed_reason, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, retirada_at, retirada_motivo, reason_for_visit, bis_measurements(measurement_date))",
     )
     .eq("id", patientId)
     .is("deleted_at", null)
@@ -86,6 +88,8 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
       createdAt: e.created_at,
       measurementDate: latestMeasDate(e.bis_measurements),
       superseded: e.superseded_at != null,
+      noOcurrio: e.retirada_at != null,
+      motivoDelRetiro: e.retirada_motivo ?? null,
       reasonForVisit: parseReasonForVisit(e.reason_for_visit),
     }))
     // Mas reciente primero, por fecha de MEDICION (cronologia clinica), no por created_at: una

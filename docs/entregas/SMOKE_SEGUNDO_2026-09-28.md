@@ -1079,3 +1079,52 @@ a propósito, porque el paciente le paga a él).
     cuenta todavía**. Ya tiene que pesar. Antes solo contaba lo facturado, así que el aviso llegaba una
     quincena tarde.
 13. **La mora sí sigue suspendiendo.** Esa es otra regla y no se tocó.
+
+---
+
+## Parte 20 · Tres arreglos de casos reales (7 de octubre)
+
+### 20.1 · La opción "Otra" de una encuesta importada
+
+**El defecto perdía datos.** El HTML escribe esa opción "Otros" (plural) y el catálogo de Atlas la tiene como
+"Otra" (singular). 56 evaluaciones quedaron con un valor que no era ninguna opción de Atlas, y **al guardar
+desde el modo edición el texto del paciente se borraba** ("Otros: CREATINA" quedaba en "Otros"). Hay 244
+respuestas con texto.
+
+1. Abre un paciente importado, pestaña **Encuesta**, pregunta **35** (suplementos).
+2. **En modo lectura:** las opciones marcadas tienen que ser las que el paciente eligió, con el texto libre
+   pegado a "Otra". **No puede salir un chip "Otros" aparte**: eso era el síntoma.
+3. **Entra a editar** la misma pregunta. **Ahora la píldora "Otra" sale marcada y su campo de texto trae lo
+   que el paciente escribió.** Antes salía apagada y el campo vacío.
+4. **El control que importa:** guarda sin cambiar nada y vuelve a entrar. **El texto sigue ahí.** Antes se
+   perdía en ese guardado.
+5. La misma comprobación en la **43** (alergias), que es la otra pregunta afectada.
+6. Y en **medicamentos (40)**, donde el catálogo de Atlas dice "Otros": tiene que seguir funcionando igual.
+   *(El descalce no va siempre en la misma dirección, y un arreglo que solo pasara a singular rompería ésta.)*
+
+### 20.2 · La encuesta del paciente no se cae por un hipo de red
+
+**Antes:** un fallo pasajero de la base hacía que el autoguardado devolviera un 500, y el paciente veía *"An
+unexpected response was received from the server"*, que no le dice nada.
+
+7. No se puede provocar a mano con facilidad. Lo que sí se puede comprobar es que **el camino feliz sigue
+   igual**: responde una encuesta de principio a fin y envíala. Tiene que llegar a la pantalla de gracias.
+8. **Y lo que hay que vigilar en Sentry de aquí en adelante:** si vuelve a fallar, el evento ya no será un 500
+   genérico sino `encuesta.guardar-avance` o `encuesta.enviar`, **con la causa dentro**. Eso es lo que faltaba
+   para poder diagnosticarlo.
+
+### 20.3 · Retirar una consulta que no ocurrió
+
+**El caso:** una paciente agendó el 21, no vino, y se atendió el 25. La del 21 quedaba en su historia clínica
+como una consulta que nunca pasó.
+
+9. En **/pacientes/[id]**, en una consulta **sin diagnóstico**, sale **"Esta consulta no ocurrió"**.
+10. Púlsalo: pide **el motivo** (obligatorio) y avisa que **no se borra nada**.
+11. Retírala. La consulta **se pliega** en el historial y deja de contar como trabajo pendiente, y la fila
+    dice con qué motivo se retiró.
+12. **Comprueba que no borró nada:** entra a su encuesta y a su consentimiento. Siguen completos.
+13. **Deshazlo.** Vuelve a contar. *(Es reversible a propósito, al revés que cerrar un cascarón: retirar es un
+    juicio sobre si la consulta ocurrió, y un juicio se revisa.)*
+14. **El control que de verdad protege:** intenta retirar una consulta **CON diagnóstico**. Tiene que negarse,
+    diciendo que eso esconderia una salida clínica y que para eso está la corrección. *(Lo impide el servicio
+    y además un trigger, así que ni un arreglo por SQL lo logra.)*

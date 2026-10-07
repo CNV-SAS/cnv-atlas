@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { evaluations, patientConsents, patientProfiles } from "@/db/schema";
+import { diagnoses, evaluations, patientConsents, patientProfiles } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 import { checkConsentBranchConsistency } from "../services/consent-branch-check";
@@ -279,5 +279,113 @@ export async function reopenEvaluation(input: CloseEvaluationInput): Promise<{ r
       ip: input.ip,
     });
     return { reopened: true };
+  });
+}
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────────
+// RETIRAR UNA CONSULTA QUE NO OCURRIO (0212, Santiago 2026-10-07)
+//
+// EL CASO: la paciente agendo el 21, no pudo venir, y se atendio el 25. En Atlas quedaron dos evaluaciones, y
+// la del 21 figura en su historia clinica como una consulta que nunca paso. Va a pasar seguido.
+//
+// NO ES NINGUNA DE LAS DOS QUE YA HABIA: `abandoned` exige un shell SIN respuestas (y esta tiene 63), y
+// `superseded_at` exige un reemplazo (aqui no hay consulta nueva que reemplace a nada).
+//
+// Y NO BORRA NADA: el consentimiento firmado y la encuesta respondida son actos reales de una persona. Lo que
+// cambia es que la evaluacion deja de contar como consulta.
+// ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+export class RetiroDeEvaluacionError extends Error {}
+
+export type RetirarEvaluacionInput = {
+  evaluationId: string;
+  motivo: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+export async function retirarEvaluacion(
+  input: RetirarEvaluacionInput,
+): Promise<{ retirada: boolean }> {
+  const motivo = input.motivo.trim();
+  // EL MOTIVO SE EXIGE AQUI ADEMAS DEL CHECK: asi el profesional recibe una frase que explica, en vez del
+  // error de una restriccion de la base.
+  if (motivo.length < 5) {
+    throw new RetiroDeEvaluacionError(
+      "Escribe por qué se retira esta consulta: queda en la historia clínica y alguien va a necesitar saberlo.",
+    );
+  }
+
+  return db.transaction(async (tx) => {
+    // EL DIAGNOSTICO SE COMPRUEBA ANTES para poder explicarlo; el trigger de la 0212 lo impide igual si
+    // alguien llega por otro camino. Las dos capas, porque es la regla cuyo incumplimiento esconde un dato
+    // clinico.
+    const [conDiagnostico] = await tx
+      .select({ id: diagnoses.id })
+      .from(diagnoses)
+      .where(eq(diagnoses.evaluationId, input.evaluationId))
+      .limit(1);
+    if (conDiagnostico) {
+      throw new RetiroDeEvaluacionError(
+        "Esta consulta tiene un diagnóstico emitido, así que no se puede retirar: eso esconderia una salida clínica. Si el diagnóstico está mal, corrige la evaluación.",
+      );
+    }
+
+    const updated = await tx
+      .update(evaluations)
+      .set({ retiradaAt: sql`now()`, retiradaMotivo: motivo, retiradaPor: input.actorId })
+      .where(and(eq(evaluations.id, input.evaluationId), isNull(evaluations.retiradaAt)))
+      .returning({ id: evaluations.id });
+    // IDEMPOTENTE POR EL `isNull`: retirar dos veces no reescribe el motivo ni la firma de la primera.
+    if (updated.length === 0) return { retirada: false };
+
+    await recordAudit(tx, {
+      event: "evaluation.retirada",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "evaluation",
+      entityId: input.evaluationId,
+      payload: { motivo },
+      ip: input.ip,
+    });
+    return { retirada: true };
+  });
+}
+
+/**
+ * DESHACER EL RETIRO. Es reversible a proposito, y es la diferencia con `abandoned`.
+ *
+ * POR QUE: retirar es un JUICIO sobre si una consulta ocurrio (lo dijo la integrante, no el sistema), y un
+ * juicio se puede revisar: se confundio de paciente, o aparecio la evidencia de que si vino. Un retiro
+ * irreversible obligaria a rehacer la encuesta y el consentimiento de alguien que ya los hizo.
+ */
+export async function deshacerRetiroDeEvaluacion(input: {
+  evaluationId: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+}): Promise<{ restaurada: boolean }> {
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(evaluations)
+      .set({ retiradaAt: null, retiradaMotivo: null, retiradaPor: null })
+      .where(and(eq(evaluations.id, input.evaluationId), isNotNull(evaluations.retiradaAt)))
+      .returning({ id: evaluations.id });
+    if (updated.length === 0) return { restaurada: false };
+
+    // EL EVENTO ES PROPIO y no "retirada con un campo distinto": la traza tiene que poder decir que una
+    // consulta volvio, y cuando. Si los dos actos compartieran evento, habria que leer el payload para
+    // saber en que direccion fue.
+    await recordAudit(tx, {
+      event: "evaluation.retiro_deshecho",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "evaluation",
+      entityId: input.evaluationId,
+      payload: {},
+      ip: input.ip,
+    });
+    return { restaurada: true };
   });
 }
