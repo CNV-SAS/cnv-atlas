@@ -1464,6 +1464,20 @@
       "when": 1791954566103,
       "tag": "0208_cuando_toca_el_conteo",
       "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1791954626103,
+      "tag": "0209_rls_de_las_aperturas_de_conteo",
+      "breakpoints": true
+    },
+    {
+      "idx": 210,
+      "version": "7",
+      "when": 1791954686103,
+      "tag": "0210_una_venta_sabe_su_modalidad",
+      "breakpoints": true
     }
   ]
 }

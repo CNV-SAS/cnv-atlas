@@ -58,6 +58,37 @@ export async function esVentaRetroactiva(transactionId: string): Promise<boolean
 export const FACTURABLE = sql`(transactions.review_reason is null or transactions.review_resolution in ('segunda_compra', 'efectivo_no_recibido'))`;
 
 /**
+ * ═══ CNV NO LE FACTURA AL PACIENTE UNA VENTA DE DISTRIBUCION (0210) ═══
+ *
+ * ES EL RIESGO CENTRAL DEL BLOQUE DE DISTRIBUCION, y por eso vive aqui y no en cada consulta.
+ *
+ * ── QUE PASARIA SIN ESTO, y es facil que pase ──
+ *
+ * Bajo Distribucion el paciente le paga AL INTEGRANTE y EL le factura con su propia numeracion. Una venta
+ * registrada bajo esa modalidad nace `paid`, porque ESTA pagada. Y toda la cola de facturacion recoge por
+ * `status = 'paid'`. O sea que entraria SOLA, sin que nadie escriba nada mal, y CNV le emitiria al paciente una
+ * factura por un producto que YA FACTURO LA INTEGRANTE: dos documentos fiscales por una sola venta, uno falso.
+ *
+ * NO ES UN BUG DE PANTALLA. Una factura electronica emitida solo se deshace con nota credito, y el paciente
+ * queda con dos documentos por lo mismo.
+ *
+ * ── POR QUE AQUI, Y NO UN `and` EN CADA CONSULTA ──
+ *
+ * Son SEIS sitios (la lista, el reclamo del boton, el barrido de reintentos, los dos conteos y la lectura de
+ * una venta). La misma regla escrita seis veces es como se desincronizan, y la que se olvide es justamente la
+ * que emite. Va junto a `FACTURABLE` por el mismo argumento que ya esta escrito arriba para ella.
+ *
+ * ── Y POR QUE LEE LA COLUMNA DERIVADA Y NO LAS LINEAS ──
+ *
+ * `modalidad_de_la_venta` la mantiene el trigger de la 0210 desde la modalidad SELLADA en la linea. Unirse a
+ * `transaction_items` aqui obligaria a decidir, en seis sitios, que hacer con una venta de lineas mezcladas.
+ *
+ * Su candado corre contra BASE REAL y comprueba las seis vias por separado: esto es exactamente la clase de
+ * cosa que tsc no ve.
+ */
+export const LA_FACTURA_ES_DE_CNV = sql`(transactions.modalidad_de_la_venta <> 'distribucion')`;
+
+/**
  * El mapa del ambiente que se esta usando.
  *
  * QUE AMBIENTE: el que diga `ALEGRA_BASE_URL`. Se resuelve por la URL y no por una variable aparte porque
@@ -337,6 +368,7 @@ export async function reclamarParaFacturar(txId: string): Promise<boolean> {
        -- facturadas con el pago fallido no se podian reclamar: el boton no las tocaba nunca.
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
+       and ${LA_FACTURA_ES_DE_CNV}
        and (alegra_last_attempt_at is null or alegra_last_attempt_at < now() - interval '2 minutes')
     returning id`);
   return filas.length > 0;
@@ -393,6 +425,7 @@ export async function listarVentasSinDocumento(
      where status = 'paid'
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
+       and ${LA_FACTURA_ES_DE_CNV}
        -- NADA DE PRUEBA EN LA BANDEJA (0203): una factura que nunca se va a emitir, porque la venta es de
        -- prueba, no es un pendiente de nadie. Una bandeja que mezcla las dos cosas se deja de leer.
        and (${incluirDePrueba} or not cuenta_como_de_prueba)
@@ -440,6 +473,7 @@ export async function listarFacturasPendientes(
        -- entra solo, sin que haya que acordarse de esta linea.
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
+       and ${LA_FACTURA_ES_DE_CNV}
        and alegra_attempts < ${maxIntentos}
      order by created_at asc
      limit ${limite}`);
@@ -460,7 +494,8 @@ export async function contarVentasSinDocumento(): Promise<{ total: number; agota
       from transactions
      where status = 'paid'
        and ${LE_FALTA_ALGO}
-       and ${FACTURABLE}`);
+       and ${FACTURABLE}
+       and ${LA_FACTURA_ES_DE_CNV}`);
   return { total: Number(r?.total ?? 0), agotadas: Number(r?.agotadas ?? 0) };
 }
 
@@ -475,6 +510,7 @@ export async function contarVentasSinDocumentoPorDia(dias = 30): Promise<{ dia: 
      where status = 'paid'
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
+       and ${LA_FACTURA_ES_DE_CNV}
        and (created_at at time zone 'America/Bogota')::date > (now() at time zone 'America/Bogota')::date - ${dias}::int
      group by 1
      order by 1 desc`);
@@ -509,7 +545,13 @@ export async function getVentaParaConfirmarTransferencia(
   }>(sql`
     select id, amount::text as amount, payment_method, patient_id, alegra_invoice_state,
            alegra_invoice_id, alegra_payment_id, transferencia_verificada_at::text
-      from transactions where id = ${transactionId} and status = 'paid'`);
+      from transactions
+     where id = ${transactionId}
+       and status = 'paid'
+       -- LA SEXTA VIA, y es la que mas facil se olvida porque no parece una cola: confirmar a mano una
+       -- transferencia TERMINA EN UNA FACTURA. Sin esta linea, una venta de Distribucion confirmada por aqui
+       -- se facturaria al paciente aunque las otras cinco la excluyan.
+       and ${LA_FACTURA_ES_DE_CNV}`);
   if (!f) return null;
   return {
     id: f.id,

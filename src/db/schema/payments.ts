@@ -75,6 +75,22 @@ export const transactions = pgTable(
     // ── LA VENTA MUEVE INVENTARIO (Bloque 3, 0139) ──────────────────────────────────────────────────
     // Nulo en todas: una venta anterior al Bloque 3 no mueve inventario y no se le descuenta hacia atras.
     treatmentId: uuid("treatment_id"),
+    /**
+     * LA MODALIDAD BAJO LA QUE SE VENDIO (0210). DERIVADA por trigger desde `transaction_items.modality`,
+     * que es el valor SELLADO en la venta: la aplicacion NUNCA la escribe.
+     *
+     * POR QUE EXISTE SI YA ESTA EN LA LINEA: todo lo que necesita filtrar por modalidad mira VENTAS (la cola
+     * de facturacion de Alegra, los insights, el tablero, la bandeja de /pagos), y con la modalidad solo en
+     * las lineas cada lector tendria que unirse y agregar. Cinco consultas con la misma regla escrita cinco
+     * veces es como se desincronizan, y es lo que la 0203 ya redujo a una columna para la marca de prueba.
+     *
+     * Y UN CAMBIO DE MODALIDAD DEL INTEGRANTE NO REESCRIBE LAS VENTAS ANTERIORES: el trigger cuelga de la
+     * linea, no de `professional_modalities`. Colgarlo de ahi haria que cada cambio reescribiera la historia.
+     *
+     * (Su hermana `cuenta_como_de_prueba` no esta declarada aqui, y es un hueco anterior: se lee por SQL
+     * crudo y por los tipos generados. Esta si se declara, porque encontrarla importa mas que la simetria.)
+     */
+    modalidadDeLaVenta: text("modalidad_de_la_venta").notNull().default("comision"),
     // De donde sale el producto, sellado al crear la venta.
     locationId: uuid("location_id"),
     deliveryMode: text("delivery_mode"), // en_consulta | domicilio
