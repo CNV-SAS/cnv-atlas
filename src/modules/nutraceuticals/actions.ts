@@ -11,7 +11,12 @@ import { canManageCatalog } from "./policies/can-manage-catalog";
 import { canRegisterUsage } from "./policies/can-register-usage";
 import { canCerrarDevolucion } from "./policies/can-cerrar-devolucion";
 import { canDeclararRemesa } from "./policies/can-declarar-remesa";
-import { canClassifyFaltante, canConfirmFaltante, canResolveSobrante } from "./policies/can-review-faltante";
+import {
+  canClassifyFaltante,
+  canConfirmFaltante,
+  canResolveSobrante,
+  canSeeFaltanteQueue,
+} from "./policies/can-review-faltante";
 import * as faltanteService from "./services/faltante-service";
 import * as inventoryService from "./services/inventory-service";
 import * as service from "./services/nutraceuticals-service";
@@ -286,11 +291,22 @@ export async function recordCountFormAction(
     return { error: parsed.error.issues[0]?.message ?? "Datos del conteo invalidos.", success: null, warning: null };
   }
 
-  const res = await inventoryService.recordOwnCount(
-    user.id,
-    parsed.data.lines.map((l) => ({ nutraceuticalId: l.nutraceuticalId, lote: l.lote ?? null, physicalQty: l.physicalQty })),
-    parsed.data.note ?? null,
-  );
+  // FUERA DE LA VENTANA SE RECHAZA, y el mensaje dice CUANDO le toca (0208). El error viene del escritor,
+  // que es quien conoce la regla; aqui solo se traduce a `Result` en vez de dejarlo subir como excepcion.
+  let res;
+  try {
+    res = await inventoryService.recordOwnCount(
+      user.id,
+      parsed.data.lines.map((l) => ({ nutraceuticalId: l.nutraceuticalId, lote: l.lote ?? null, physicalQty: l.physicalQty })),
+      parsed.data.note ?? null,
+    );
+  } catch (e) {
+    const { ConteoFueraDeVentanaError } = await import("./data/count-writer");
+    if (e instanceof ConteoFueraDeVentanaError) {
+      return { error: e.message, success: null, warning: null };
+    }
+    throw e;
+  }
   if (!res) return { error: "No tienes un perfil profesional.", success: null, warning: null };
 
   revalidatePath("/mi-inventario");
@@ -541,6 +557,51 @@ export async function cerrarDevolucionFormAction(
       res.movidas === 0
         ? "Cerrada sin recibir nada: las unidades siguen en el saldo del Integrante."
         : `Recibidas ${res.movidas}: salieron de su vitrina y entraron a la bodega central.`,
+    warning: null,
+  };
+}
+
+// ── ADMIN LE ABRE EL CONTEO A UN INTEGRANTE, fuera del calendario (0208) ────────────────────────────
+//
+// EL MOTIVO ES OBLIGATORIO Y SE LE MUESTRA. Abrirle un conteo es pedirle trabajo y puede terminar en un caso
+// de faltante con consecuencia economica: una peticion sin explicacion se lee como una acusacion.
+export type AperturaDeConteoState = { error: string | null; success: string | null; warning: string | null };
+
+export async function abrirElConteoFormAction(
+  _prev: AperturaDeConteoState,
+  formData: FormData,
+): Promise<AperturaDeConteoState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  // LA MISMA POLICY QUE VE LA COLA DE FALTANTES (admin o direccion): quien mira las diferencias de conteo es
+  // quien puede pedir que se cuente. Una policy nueva para esto seria una segunda respuesta a la misma
+  // pregunta, y la segunda es la que se queda desactualizada.
+  if (!canSeeFaltanteQueue(user)) {
+    return { error: "Solo CNV puede pedirle un conteo a un Integrante.", success: null, warning: null };
+  }
+
+  const professionalId = String(formData.get("professionalId") ?? "").trim();
+  const hasta = String(formData.get("hasta") ?? "").trim();
+  const motivo = String(formData.get("motivo") ?? "").trim();
+  if (!professionalId || !hasta) {
+    return { error: "Falta el Integrante o la fecha.", success: null, warning: null };
+  }
+
+  const { abrirElConteo, AperturaDeConteoError } = await import("./data/count-writer");
+  try {
+    await abrirElConteo({ professionalId, hasta, motivo, actorId: user.id, actorEmail: user.email });
+  } catch (e) {
+    if (e instanceof AperturaDeConteoError) return { error: e.message, success: null, warning: null };
+    throw e;
+  }
+
+  // SIN `revalidatePath`, y no es un olvido: la pantalla refresca por `useFormToastAndRefresh`, y los dos
+  // ciclos juntos montan los segmentos dos veces (la pagina salta al inicio dos veces y el formulario puede
+  // desmontarse antes de que se vea el toast). Lo atrapo el candado `refresco-una-sola-vez`, por segunda vez
+  // y por el mismo motivo que el 2026-10-04 con la marca de profesional.
+  return {
+    error: null,
+    success: `Le pediste el conteo. Puede registrarlo hasta el ${hasta}, y verá la razón que escribiste.`,
     warning: null,
   };
 }

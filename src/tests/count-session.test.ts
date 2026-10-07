@@ -1,5 +1,5 @@
 import { and, eq, ne, sql as dsql } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Sesion de conteo (T3b-3 ST2). Verifica contra la BD real, ejecutando el writer:
 //  - un faltante (fisico < saldo) abre UN caso por producto, ligado a la sesion, en reportado con su
@@ -77,7 +77,38 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
     nutraId = inv.nid;
   });
 
+  // ═══ LA VENTANA DEL CONTEO SE ABRE PARA ESTE CANDADO (0208, 2026-10-06) ═══
+  //
+  // Desde la 0208 el conteo solo se registra dentro de su ventana, asi que este archivo, que mide la
+  // DETECCION DE FALTANTES y no la ventana, empezo a fallar los dias en que la ventana esta cerrada.
+  //
+  // SE ABRE POR EL MECANISMO REAL (`abrirElConteo`) Y NO MOVIENDO LA CONFIGURACION, a proposito: la
+  // configuracion es una fila UNICA y compartida, y moverla cambiaria la ventana de todos los Integrantes de
+  // la base mientras corre la suite. La peticion de admin es por Integrante y es justo para esto.
+  beforeEach(async () => {
+    const [hasta] = await db.execute(dsql`select ((now() at time zone 'America/Bogota')::date + 1)::text as dia`);
+    const { abrirElConteo } = await import("@/modules/nutraceuticals/data/count-writer");
+    await abrirElConteo({
+      professionalId: profId,
+      hasta: hasta.dia,
+      motivo: "candado de deteccion de faltantes",
+      actorId,
+      actorEmail: null,
+    });
+  });
+
   afterAll(async () => {
+    // LAS APERTURAS DE ESTE CANDADO SE BORRAN: dejarlas abiertas le dejaria el conteo abierto a un
+    // profesional real de la base local.
+    await db.execute(dsql`set session_replication_role = replica`);
+    const abiertas = await db.execute(dsql`
+      select id from nutraceutical_count_openings
+       where professional_id = ${profId} and motivo = 'candado de deteccion de faltantes'`);
+    for (const a of abiertas) {
+      await db.execute(dsql`delete from clinical_audit_log where entity_id = ${a.id}`);
+      await db.execute(dsql`delete from nutraceutical_count_openings where id = ${a.id}::uuid`);
+    }
+    await db.execute(dsql`set session_replication_role = default`);
     if (!sessions.length) return;
     await db.execute(dsql`set session_replication_role = replica`);
     for (const s of sessions) {

@@ -40,6 +40,7 @@ const DB_TESTS = [
   "src/tests/integrante-nace-con-vitrina-db.test.ts",
   "src/tests/descartar-un-pendiente-db.test.ts",
   "src/tests/marca-de-profesional-db.test.ts",
+  "src/tests/ventana-de-conteo-db.test.ts",
   "src/tests/ventas-sin-documento-por-dia-db.test.ts",
   "src/tests/avisos-db.test.ts",
   // ── LOS DIECISEIS QUE FALTABAN (2026-10-05) ──────────────────────────────────────────────────────

@@ -1457,6 +1457,13 @@
       "when": 1791954506103,
       "tag": "0207_se_borran_las_columnas_del_flete",
       "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1791954566103,
+      "tag": "0208_cuando_toca_el_conteo",
+      "breakpoints": true
     }
   ]
 }

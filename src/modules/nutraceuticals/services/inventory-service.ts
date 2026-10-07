@@ -6,7 +6,13 @@ import {
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import { recordCount, type CountLineInput, type CountResult } from "../data/count-writer";
+import {
+  estadoDeLaVentanaDeConteo,
+  recordCount,
+  type CountLineInput,
+  type CountResult,
+} from "../data/count-writer";
+import type { EstadoDelConteo } from "../ventana-de-conteo";
 import { saldoPorProducto } from "../saldo-por-producto";
 
 // Servicio del inventario en CONSIGNACION del profesional (T3b-1, "Mi inventario"). Lecturas del saldo
@@ -277,4 +283,23 @@ export async function recordOwnCount(
   const profId = await ownProfessionalId(supabase, userId);
   if (!profId) return null;
   return recordCount({ professionalId: profId, actorId: userId, note, lines, now: new Date() });
+}
+
+/**
+ * EL ESTADO DE LA VENTANA DE CONTEO del usuario que mira (0208).
+ *
+ * Resuelve su perfil profesional igual que `recordOwnCount`, para que la pantalla y el escritor miren
+ * EXACTAMENTE lo mismo: si la pantalla calculara la ventana por su cuenta, podria ofrecer el formulario
+ * cuando el escritor va a rechazarlo, que es la contradiccion mas molesta posible (una pantalla que invita a
+ * hacer algo y un servidor que lo niega).
+ *
+ * SIN PERFIL PROFESIONAL se devuelve cerrado: quien no custodia inventario no tiene nada que contar.
+ */
+export async function ventanaDeConteoDelUsuario(userId: string): Promise<EstadoDelConteo> {
+  const supabase = await createSupabaseServerClient();
+  const profId = await ownProfessionalId(supabase, userId);
+  if (!profId) {
+    return { abierto: false, porQue: "fuera_de_ventana", proxima: { desde: "-", hasta: "-" } };
+  }
+  return estadoDeLaVentanaDeConteo(profId);
 }

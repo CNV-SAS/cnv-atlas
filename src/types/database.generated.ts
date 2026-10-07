@@ -428,13 +428,13 @@ isOneToOne: false
                   ]
                 },"commercial_config": {
                   Row: {
-                    "dias_alerta_vencimiento": number,"fecha_de_arranque": string | null,"id": string,"margen_aviso_default": number,"updated_at": string,"updated_by": string | null
+                    "conteo_dia_de_apertura": number,"conteo_dias_de_ventana": number,"dias_alerta_vencimiento": number,"fecha_de_arranque": string | null,"id": string,"margen_aviso_default": number,"updated_at": string,"updated_by": string | null
                   }
                   Insert: {
-                    "dias_alerta_vencimiento"?: number,"fecha_de_arranque"?: string | null,"id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
+                    "conteo_dia_de_apertura"?: number,"conteo_dias_de_ventana"?: number,"dias_alerta_vencimiento"?: number,"fecha_de_arranque"?: string | null,"id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "dias_alerta_vencimiento"?: number,"fecha_de_arranque"?: string | null,"id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
+                    "conteo_dia_de_apertura"?: number,"conteo_dias_de_ventana"?: number,"dias_alerta_vencimiento"?: number,"fecha_de_arranque"?: string | null,"id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -1172,6 +1172,31 @@ isOneToOne: false
       columns: ["session_id"]
 isOneToOne: false
       referencedRelation: "nutraceutical_count_sessions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"nutraceutical_count_openings": {
+                  Row: {
+                    "created_at": string,"id": string,"motivo": string,"opened_by": string,"professional_id": string,"valid_until": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"motivo": string,"opened_by": string,"professional_id": string,"valid_until": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"motivo"?: string,"opened_by"?: string,"professional_id"?: string,"valid_until"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "nutraceutical_count_openings_opened_by_fkey"
+      columns: ["opened_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "nutraceutical_count_openings_professional_id_fkey"
+      columns: ["professional_id"]
+isOneToOne: false
+      referencedRelation: "professional_profiles"
       referencedColumns: ["id"]
     }
                   ]

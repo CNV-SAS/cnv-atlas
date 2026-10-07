@@ -1,5 +1,5 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { boolean, index, integer, numeric, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, numeric, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk, updatedAt } from "./_columns";
 import {
@@ -293,4 +293,31 @@ export const nutraceuticalReturns = pgTable(
     movementInId: uuid("movement_in_id"),
   },
   (t) => [index("nutra_returns_prof_idx").on(t.professionalId, t.declaredAt)],
+);
+
+/**
+ * APERTURAS DEL CONTEO CONCEDIDAS POR ADMIN (0208), fuera de la ventana del calendario.
+ *
+ * ES UNA TABLA Y NO UNA COLUMNA en el perfil, y la razon es que hay que poder responder "quien le abrio el
+ * conteo, cuando y por que". Con una columna, cada apertura borraria la anterior y no quedaria rastro de
+ * ninguna. Abrirle un conteo a alguien es pedirle trabajo y puede terminar en un caso de faltante con
+ * consecuencia economica: tiene que poder auditarse.
+ */
+export const nutraceuticalCountOpenings = pgTable(
+  "nutraceutical_count_openings",
+  {
+    id: pk(),
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+    /** Hasta cuando vale. Sin fecha de fin el conteo quedaria abierto para siempre, que es de donde venimos. */
+    validUntil: date("valid_until").notNull(),
+    /** Por que. Se le MUESTRA al Integrante: si le abren el conteo, tiene derecho a saber por que. */
+    motivo: text("motivo").notNull(),
+    openedBy: uuid("opened_by")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "restrict" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("nutra_count_openings_prof_idx").on(t.professionalId, t.validUntil)],
 );

@@ -39,6 +39,18 @@ export const commercialConfig = pgTable("commercial_config", {
    * sella el valor con el que se genero.
    */
   diasAlertaVencimiento: integer("dias_alerta_vencimiento").notNull().default(60),
+  /**
+   * LA VENTANA DEL CONTEO FISICO (0208). Mensual por defecto: abre el dia 1 y dura 5 dias.
+   *
+   * AQUI Y NO EN EL CODIGO por el principio 2 del modelo ("nada de valores fijos en el codigo"), y porque
+   * Santiago lo pidio explicito: "si cambia la decision del negocio, se cambia desde el panel y no desde el
+   * codigo".
+   *
+   * LA CADENCIA ES NUESTRA, no del modelo: el modelo solo dice que el conteo se mantiene en ambas
+   * modalidades. El "semanal" que estaba escrito salia de nuestra propia planeacion de T3b-3.
+   */
+  conteoDiaDeApertura: integer("conteo_dia_de_apertura").notNull().default(1),
+  conteoDiasDeVentana: integer("conteo_dias_de_ventana").notNull().default(5),
   // AQUI VIVIAN `fleteTarifa` y `fleteMargen`, y se BORRARON en la 0207: el flete salio de CNV el 2026-10-05
   // y ninguna venta llego a cobrarlo, asi que no habia valor que conservar.
   /**
