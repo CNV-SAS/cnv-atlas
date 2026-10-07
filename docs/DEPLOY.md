@@ -225,6 +225,37 @@ Crear en Bitwarden (plan Free) una colección para las credenciales de Biody Man
 - **Pipeline:** push a `main` → Vercel build → tests en CI (`tsc`, `lint`, `vitest`, golden si tocó el motor) → deploy. PRs generan Preview deploys.
 - **Commits:** con el porqué (ver `CLAUDE.md`).
 
+### Desplegar con una encuesta abierta: el desfase de despliegue (pendiente de decisión de Santiago)
+
+**El hallazgo (2026-10-07).** Los logs de Vercel traían este warning al lado de un 500 que se le fue a una
+paciente respondiendo la encuesta en su celular:
+
+```
+Failed to find Server Action <id>. This request might be from an older or newer deployment.
+```
+
+Es el navegador con la página de un despliegue **viejo** pidiendo una Server Action que el nuevo ya no tiene.
+**Y es más común de lo que parece:** una encuesta larga en un celular puede estar abierta una hora, y se
+despliega varias veces al día. Hoy es **el único error que le llega a un paciente**.
+
+**Lo que ya se hizo (código, commit del 2026-10-07):** la página de error ofrece **Recargar**, que es lo que
+de verdad lo resuelve. Antes solo ofrecía `reset()`, que vuelve a rendir la página vieja y falla igual.
+
+**Lo que falta, y es decisión de operación, no de código: Skew Protection de Vercel.** Ataca la causa (enruta
+la petición al despliegue del que salió la página, así la acción sí existe). Hacen falta las dos mitades:
+
+1. **El interruptor en Vercel:** proyecto → Settings → Advanced → *Skew Protection*, con su ventana de
+   retención (fuera de esa ventana el desfase vuelve a fallar; conviene una holgada, por la encuesta larga).
+2. **Y en `next.config.ts`:** `deploymentId: process.env.VERCEL_DEPLOYMENT_ID`. **Verificado en Next 16.2.9:
+   NO se activa solo.** `define-env.js` apaga `NEXT_DEPLOYMENT_ID` cuando `config.deploymentId` está vacío, y
+   el SDK no lee `VERCEL_SKEW_PROTECTION_ENABLED` en esta versión.
+
+**Por qué no se puso ya, y es la razón de que esto sea una entrada y no un commit:** las dos mitades tienen
+que ir juntas. Poner el `deploymentId` **sin** el interruptor hace que los recursos pidan un despliegue
+concreto que Vercel puede ya no estar sirviendo, y eso **empeora** lo que hoy solo pasa con las acciones. Las
+URLs de los chunks ya traen `?dpl=...` (se ve en los eventos de Sentry), así que puede estar a medias: **hay
+que mirar el interruptor antes de tocar el config.**
+
 ## Datos de desarrollo local (seed)
 Contra la BD local (`DATABASE_URL` en `.env.local`). **Hay TRES scripts de seed, y el principal NO llama a los otros dos** (ver el detalle abajo). Para un entorno funcional se necesitan el 1 y el **1bis** (obligatorio: sin él no se puede importar una medición); el 2 es demo.
 
