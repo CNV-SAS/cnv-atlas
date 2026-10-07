@@ -40,6 +40,10 @@ export async function listEvaluationsForBisImport(): Promise<BisImportEvaluation
       "id, type, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), bis_measurements(id)",
     )
     .eq("status", "in_progress")
+    // LA QUE NO OCURRIO SALE DE LA COLA (0212), y este es el caso REAL que lo motivo: la evaluacion del 21
+    // estaba `in_progress`, asi que retirarla la ocultaba en la ficha del paciente y la dejaba aqui, en la
+    // lista de las que esperan que se les monte el BIS.
+    .is("retirada_at", null)
     .order("created_at", { ascending: false });
   if (error) {
     throw new Error(`bis-evaluations-reader: listEvaluationsForBisImport: ${error.message}`);

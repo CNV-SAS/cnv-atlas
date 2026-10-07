@@ -113,7 +113,8 @@ export async function getTablero(userId: string): Promise<Tablero> {
     supabase
       .from("patients")
       .select(
-        "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, status, import_batch_id, bis_measurements(id), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
+        // `retirada_at` (0212): una consulta que no ocurrio no es un pendiente de nadie.
+        "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, retirada_at, status, import_batch_id, bis_measurements(id), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
       )
       .is("deleted_at", null)
       // FUERA LOS DE PRUEBA: esto es una CIFRA (ver `patients/de-prueba.ts`, capa 1). Un profesional que se
@@ -195,6 +196,7 @@ export async function getTablero(userId: string): Promise<Tablero> {
   type FilaEval = {
     id: string;
     superseded_at: string | null;
+    retirada_at: string | null;
     status: string;
     import_batch_id: string | null;
     bis_measurements: { id: string }[] | null;
@@ -216,7 +218,9 @@ export async function getTablero(userId: string): Promise<Tablero> {
       (p.patient_consents as { consent_type: string; revoked_at: string | null }[] | null) ?? [];
     const vigentes = consents.filter((c) => c.revoked_at === null).map((c) => c.consent_type);
     const sinAutorizacion = NECESARIAS.some((n) => !vigentes.includes(n));
-    const evals = ((p.evaluations as FilaEval[] | null) ?? []).filter((e) => e.superseded_at == null);
+    const evals = ((p.evaluations as FilaEval[] | null) ?? []).filter(
+      (e) => e.superseded_at == null && e.retirada_at == null,
+    );
     const r = pendienteDelPaciente(
       evals.map((e) => ({
         evaluationId: e.id,

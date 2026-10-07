@@ -20,6 +20,9 @@ export async function getPendingResumeToken(evaluationId: string): Promise<strin
     .eq("id", evaluationId)
     .eq("status", "awaiting_survey")
     .is("superseded_at", null)
+    // Ni la retirada (0212): un enlace que lleva al paciente a responder una consulta que ya se declaro que
+    // no ocurrio es peor que no tener enlace.
+    .is("retirada_at", null)
     .maybeSingle();
   if (error) throw new Error(`pending-resume-reader: ${error.message}`);
   return (data?.resume_token as string | null) ?? null;

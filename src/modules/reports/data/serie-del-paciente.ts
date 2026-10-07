@@ -75,6 +75,10 @@ export async function getSerieDelPaciente(evaluationId: string): Promise<PuntoDe
     .from("bis_raw_values")
     .select("value, variable_name, bis_measurements!inner(measurement_date, evaluations!inner(patient_id))")
     .eq("bis_measurements.evaluations.patient_id", patientId)
+    // FUERA LA CONSULTA QUE NO OCURRIO (0212). Es alcanzable: el trigger solo impide retirar una que ya
+    // tenga diagnostico, asi que una medida y retirada pondria un punto en la trayectoria del paciente, que
+    // es justo lo que el profesional lee para decidir si mejora.
+    .is("bis_measurements.evaluations.retirada_at", null)
     .in("variable_name", [columnas.peso, columnas.grasa, columnas.magra]);
   if (error) return [];
 

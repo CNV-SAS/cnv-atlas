@@ -35,6 +35,14 @@ export type EvaluacionPendiente = {
   importada?: boolean;
   /** Las condiciones de la toma BIS, que el diagnostico exige desde el 2026-09-22. */
   tieneCondicionesBis?: boolean;
+  /**
+   * LA CONSULTA NO OCURRIO (`evaluations.retirada_at`, 0212). No genera pendiente ninguno: pedir "Montar
+   * BIS" de una consulta que nadie atendio es mandar a hacer trabajo sobre algo que no paso.
+   *
+   * VA AQUI Y NO EN CADA LECTOR porque la regla la comparten el listado de pacientes y el tablero, y una
+   * regla escrita dos veces se corrige una sola (`una-regla-tambien-vive-en-varios-sitios`).
+   */
+  noOcurrio?: boolean;
 };
 
 export type AccionPendiente = {
@@ -81,6 +89,10 @@ const SIN_EVALUACIONES: AccionPendiente = {
  * segundo se abandono a proposito. El abandonado no genera pendiente ninguno.
  */
 export function accionDeEvaluacion(e: EvaluacionPendiente): AccionPendiente | null {
+  // LA QUE NO OCURRIO VA PRIMERO, por lo mismo que en `claseDeEvaluacion`: puede estar en CUALQUIER estado
+  // (la del caso real estaba `in_progress` con 63 respuestas), asi que si se preguntara despues seguiria
+  // pidiendo "Montar BIS" de una consulta que no paso.
+  if (e.noOcurrio) return null;
   if (e.status === "abandoned") return null;
   if (e.status === "completed") return null;
   if (e.status === "awaiting_survey") {

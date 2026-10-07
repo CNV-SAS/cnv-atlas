@@ -40,6 +40,9 @@ export async function listEvaluationsForDiagnosis(): Promise<DiagnosisCandidate[
       "id, type, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), bis_measurements!inner(id), diagnoses(id)",
     )
     .eq("status", "in_progress")
+    // LA QUE NO OCURRIO NO ES CANDIDATA (0212). Y es alcanzable: el trigger solo prohibe retirar una que YA
+    // tenga diagnostico, asi que una consulta medida y retirada seguiria invitando a diagnosticarla aqui.
+    .is("retirada_at", null)
     .order("created_at", { ascending: false });
   if (error) {
     throw new Error(`pipeline-evaluations-reader: listEvaluationsForDiagnosis: ${error.message}`);

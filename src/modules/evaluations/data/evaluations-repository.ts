@@ -45,6 +45,8 @@ export async function listPendingIdentityChecks(): Promise<PendingIdentityEvalua
       "id, type, created_at, patient_id, identity_conflict, declared_first_name, declared_last_name, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, birth_date))",
     )
     .eq("status", "draft")
+    // La que no ocurrio sale de la cola (0212): no hay identidad que confirmar de una consulta que no paso.
+    .is("retirada_at", null)
     .order("created_at", { ascending: false });
   if (error) {
     throw new Error(`evaluations-repository: listPendingIdentityChecks: ${error.message}`);
@@ -129,6 +131,9 @@ export async function listAwaitingSurveyEvaluations(): Promise<AwaitingSurveyEva
       "id, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
     )
     .eq("status", "awaiting_survey")
+    // La que no ocurrio sale de la cola (0212): ya se decidio que no fue una consulta, asi que perseguir su
+    // encuesta es trabajo sobre algo que no paso.
+    .is("retirada_at", null)
     .order("created_at", { ascending: true });
   if (error) {
     throw new Error(`evaluations-repository: listAwaitingSurveyEvaluations: ${error.message}`);
@@ -230,10 +235,12 @@ export async function getResumeTokenDeMiEvaluacion(evaluationId: string): Promis
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluations")
-    .select("resume_token, status")
+    .select("resume_token, status, retirada_at")
     .eq("id", evaluationId)
     .maybeSingle();
   if (error) throw new Error(`evaluations-repository: getResumeTokenDeMiEvaluacion: ${error.message}`);
-  if (!data || data.status !== "awaiting_survey") return null;
+  // Ni la retirada (0212): si ya se dijo que esa consulta no ocurrio, no hay nada que registrar con el
+  // paciente al lado. Deshacer el retiro devuelve el camino.
+  if (!data || data.status !== "awaiting_survey" || data.retirada_at != null) return null;
   return data.resume_token;
 }

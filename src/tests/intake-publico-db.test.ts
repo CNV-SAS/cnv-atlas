@@ -140,6 +140,54 @@ describe.skipIf(!HAS_DB)("intake público por el enlace de consultorio (BD real)
     expect(todas, "dos juegos de respuestas del mismo paciente").toHaveLength(1);
   });
 
+  // ═══ Y SI ESA PENDIENTE SE RETIRO, NO SE REUSA: SE ESTRENA OTRA (0212, 2026-10-07) ═══
+  //
+  // ES EL CASO INVERSO DEL DE ARRIBA, y por eso va pegado: el reuso es correcto salvo cuando alguien ya
+  // dijo que esa consulta NO OCURRIO. Sin el filtro, el paciente que vuelve a entrar RESUCITA la consulta
+  // retirada y mete sus respuestas nuevas dentro, deshaciendo el retiro sin que nadie lo decida.
+  //
+  // Era el unico sitio de todo el barrido donde el retiro se podia perder solo, y lo encontro el candado
+  // del barrido (`la-consulta-retirada-no-reaparece`), no una pantalla.
+  it("pero si la pendiente se retiró, estrena otra en vez de resucitarla", async () => {
+    const { db } = await import("@/db");
+    const schema = await import("@/db/schema");
+    const { signSurveyIntake } = await import("@/modules/evaluations/services/survey-intake");
+    const { retirarEvaluacion } = await import("@/modules/evaluations/data/evaluations-writer");
+    const { a } = await dosProfesionales();
+    const link = enlaceBase(a);
+    const doc = `${SELLO}-RETIRADA`;
+
+    const primera = await signSurveyIntake(entrada(link, doc));
+    expect(primera.ok, "la primera firma tiene que pasar").toBe(true);
+    if (!primera.ok) return;
+    creados.push(primera.value.patientId);
+
+    await retirarEvaluacion({
+      evaluationId: primera.value.evaluationId,
+      motivo: "agendó y no vino",
+      actorId: a.profileId,
+      actorEmail: "candado@ejemplo.com",
+      ip: null,
+    });
+
+    const segunda = await signSurveyIntake(entrada(link, doc));
+    expect(segunda.ok).toBe(true);
+    if (!segunda.ok) return;
+
+    expect(
+      segunda.value.evaluationId,
+      "reusó la consulta retirada: el paciente la resucitó sin que nadie lo decidiera",
+    ).not.toBe(primera.value.evaluationId);
+
+    // Y LA RETIRADA SIGUE RETIRADA, que es la otra mitad: no basta con crear otra si la primera se
+    // reabrio por el camino.
+    const [vieja] = await db
+      .select({ retiradaAt: schema.evaluations.retiradaAt })
+      .from(schema.evaluations)
+      .where(eq(schema.evaluations.id, primera.value.evaluationId));
+    expect(vieja?.retiradaAt, "el retiro de la primera se perdió").not.toBeNull();
+  });
+
   it("y la cédula de un paciente AJENO se para, sin dejar la relación creada", async () => {
     const { db } = await import("@/db");
     const schema = await import("@/db/schema");
