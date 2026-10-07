@@ -190,6 +190,35 @@ Aritméticamente equivale a multiplicar el PVP con IVA por 0,80. Esa es la fórm
 
 **Cupo de crédito.** Tope de saldo pendiente por Integrante. Al alcanzarlo, el sistema suspende el despacho de nuevo inventario hasta que se ponga al día.
 
+> ### ⚠ DECISIÓN DE SANTIAGO (2026-10-06): el cupo AVISA, no bloquea. Esto se desvía del párrafo de arriba.
+>
+> **Lo que decidió:** el cupo es **3.000.000** y es un **aviso para admin**, no un freno. Admin ve que ese
+> Integrante debe X y **decide él** si le manda más producto.
+>
+> **Se anota aquí porque contradice dos fuentes, y callarlo sería peor que desviarse:**
+>
+> - **El párrafo de arriba de este mismo documento**, que dice que el sistema *suspende* el despacho.
+> - **Y el asesor legal (2026-10-05)**, textual: *"la consecuencia natural de alcanzarlo no es cobrar más
+>   rápido, sino dejar de entregarle más producto: si no ha pagado lo que ya vendió, darle más inventario
+>   aumenta la exposición sin ninguna garantía adicional."*
+>
+> **El argumento a favor de la decisión**, que es real: con un solo Integrante en Distribución y despachos que
+> los hace admin a mano, un bloqueo automático frena una operación que ya tiene a una persona mirándola. El
+> aviso le da el dato a quien ya está tomando la decisión.
+>
+> **Lo que se pierde, dicho para que la revisión sea informada:** un aviso depende de que alguien lo lea. El
+> día que haya varios Integrantes y los despachos se hagan por lista, el aviso se vuelve una línea más en una
+> pantalla y la exposición crece sin que nada la pare. **Conviene revisar esta decisión cuando entre el
+> segundo Integrante en Distribución.**
+>
+> **Lo que NO cambia:** la **mora** sigue suspendiendo despachos (párrafo siguiente). Esa es otra regla, con
+> otro disparador (tres días calendario pasado el plazo de pago), y la decisión no la tocó.
+>
+> **Y sí cambia lo que el cupo MIDE**, que es la otra mitad de la decisión: tiene que contar lo **vendido y no
+> pagado**, no solo lo ya facturado. Hoy cuenta solo las ventas que están en una cuenta emitida, así que una
+> quincena entera de ventas no aparece en la cifra. Es lo que pidió el asesor (*"el cupo cubre el saldo ya
+> vendido y no pagado"*) y es lo que hace útil el aviso: sin eso, avisaría tarde.
+
 **Mora.** Pasados tres días calendario del plazo: suspensión de despachos e intereses a la tasa máxima legal mercantil. Pasados diez días: CNV puede revertir a modalidad Comisión o terminar la consignación, sin que ello termine el Contrato Marco.
 
 ### 4.1. Retenciones que practica el Integrante a CNV
