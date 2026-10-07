@@ -321,7 +321,7 @@ describe.skipIf(!HAS_DB)("el bloqueo de venta bajo Distribucion (BD real)", () =
     await expect(exigirRecaudoDeCnv(professionalId)).resolves.toBeUndefined();
   }, 30_000);
 
-  it("en Distribución bloquea, y el motivo NOMBRA por qué y qué falta", async () => {
+  it("en Distribución bloquea, y el motivo NOMBRA por qué y adónde ir", async () => {
     const { db } = await import("@/db");
     const { exigirRecaudoDeCnv, ModalidadError } = await import("@/modules/payments/data/modalidad-writer");
     await db.execute(dsql`delete from professional_modalities where professional_id = ${professionalId}::uuid`);
@@ -334,11 +334,23 @@ describe.skipIf(!HAS_DB)("el bloqueo de venta bajo Distribucion (BD real)", () =
       await exigirRecaudoDeCnv(professionalId);
     } catch (e) {
       const mensaje = (e as Error).message;
-      // No basta con negarse: tiene que decir POR QUE (el paciente le paga a él) y QUE FALTA (el registro de
-      // ventas bajo Distribución). Un "no se pudo" manda a buscar un fallo técnico donde hay una regla.
+      // No basta con negarse: tiene que decir POR QUE (el paciente le paga a él). Un "no se pudo" manda a
+      // buscar un fallo técnico donde hay una regla.
       expect(mensaje).toContain("Distribución");
       expect(mensaje).toContain("le paga a él");
-      expect(mensaje).toContain("todavía no está en Atlas");
+
+      // ═══ ESTE CASO CAMBIÓ EL 2026-10-06, Y EL CAMBIO ES LA NOTICIA ═══
+      //
+      // Exigía la frase "todavía no está en Atlas", que era correcta mientras el registro de ventas bajo
+      // Distribución no existía. Ya existe (0210 y 0211), así que esa frase pasó a ser FALSA: dejaba al
+      // profesional creyendo que no hay nada que hacer cuando lo que hay es otro camino.
+      //
+      // AHORA SE EXIGE LO CONTRARIO: que el mensaje MANDE a registrarla, y que NO vuelva a decir que falta.
+      // Un bloqueo que no dice adónde ir es el que termina en una llamada a soporte.
+      expect(mensaje, "el mensaje sigue diciendo que el registro no existe, y ya existe").not.toContain(
+        "todavía no está en Atlas",
+      );
+      expect(mensaje).toMatch(/[Rr]egístrala/);
     }
   }, 30_000);
 
