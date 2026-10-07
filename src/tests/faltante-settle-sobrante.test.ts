@@ -1,5 +1,5 @@
 import { and, eq, ne, sql as dsql } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // T3b-3 ST5 (BD real):
 //  - SETTLE: al cerrar un faltante (estado terminal), un trigger inserta una conciliacion -cantidad y el
@@ -77,8 +77,38 @@ describe.skipIf(!HAS_DB)("faltante ST5: settle al cerrar y resolucion de sobrant
     nutraId = inv.nid;
   });
 
+  // ═══ LA VENTANA DEL CONTEO SE ABRE PARA ESTE CANDADO (0208, 2026-10-06) ═══
+  //
+  // Desde la 0208 el conteo solo se registra dentro de su ventana, y este archivo mide el SOBRANTE y su
+  // resolucion, no la ventana: los dias en que la ventana esta cerrada quedaba rojo por una razon que no es la
+  // suya.
+  //
+  // SE ABRE POR EL MECANISMO REAL (`abrirElConteo`) Y NO MOVIENDO LA CONFIGURACION: la configuracion es una
+  // fila UNICA y compartida, y moverla cambiaria la ventana de todos los Integrantes mientras corre la suite.
+  // La peticion de admin es por Integrante y existe justo para esto.
+  beforeEach(async () => {
+    const [hasta] = await db.execute(dsql`select ((now() at time zone 'America/Bogota')::date + 1)::text as dia`);
+    const { abrirElConteo } = await import("@/modules/nutraceuticals/data/count-writer");
+    await abrirElConteo({
+      professionalId: profId,
+      hasta: hasta.dia,
+      motivo: "candado de sobrantes",
+      actorId,
+      actorEmail: null,
+    });
+  });
+
   afterAll(async () => {
     await db.execute(dsql`set session_replication_role = replica`);
+    // LAS APERTURAS DE ESTE CANDADO SE BORRAN: dejarlas abiertas le dejaria el conteo abierto a un profesional
+    // real de la base local.
+    const abiertas = await db.execute(dsql`
+      select id from nutraceutical_count_openings
+       where professional_id = ${profId} and motivo = 'candado de sobrantes'`);
+    for (const a of abiertas) {
+      await db.execute(dsql`delete from clinical_audit_log where entity_id = ${a.id}`);
+      await db.execute(dsql`delete from nutraceutical_count_openings where id = ${a.id}::uuid`);
+    }
     // borra los movimientos de prueba (settle + resolucion de sobrante) de este producto, luego recomputa el saldo.
     await db.execute(dsql`delete from nutraceutical_stock_movements where professional_id = ${profId} and nutraceutical_id = ${nutraId} and (reason like 'Conciliacion por faltante%' or count_line_id is not null)`);
     for (const c of cases) {
