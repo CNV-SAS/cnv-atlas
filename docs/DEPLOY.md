@@ -71,6 +71,12 @@ UPSTASH_REDIS_REST_TOKEN=
 
 # ===== Observabilidad =====
 NEXT_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
+# LAS TRES SUBEN LOS SOURCEMAPS, y van juntas o no va ninguna (next.config.ts lo comprueba): sin ellas el
+# build se comporta igual que antes, pero NINGUN error de produccion se puede leer. El stack llega como
+# "09bm4s38m-e-z.js:20:117514 in iN", que no dice ni el archivo ni el componente.
+# Son los SLUGS, no los ids numericos que trae el DSN.
+SENTRY_ORG=
+SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
 
 # ===== App =====
