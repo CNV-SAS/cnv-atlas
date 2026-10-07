@@ -1040,22 +1040,46 @@ export async function enviarEncuestaDelPacienteAction(
   const fail = (error: string): SurveyFormState => ({ error, fields: null, done: false });
   const resumeToken = str(form, "resumeToken");
   if (!resumeToken) return fail("Falta la encuesta.");
-  const user = await profesionalDeLaEncuesta(resumeToken);
-  if (!user) return fail("No autorizado.");
-  const survey = await getActiveSurvey();
-  if (!survey) return fail("La encuesta no esta disponible en este momento.");
-  const ip = await getClientIp();
-  const res = await submitSurveyAnswers({
-    resumeToken,
-    surveyVersionId: survey.surveyVersionId,
-    answers: readAnswersFromForm(form, survey.questions),
-    ipAddress: ip === "unknown" ? null : ip,
-    characterization: readCharacterizationFromForm(form),
-    // AQUI SE SELLA QUIEN LA CERRO. Es lo unico que distingue esta ruta de la del paciente.
-    capturedBy: user.id,
-  });
-  if (!res.ok) return fail(res.error.message);
-  redirect(`/ani-bis-e/${res.value.evaluationId}`);
+  // ═══ Y ESTA RUTA NO HABIA HEREDADO LA RED DE LA OTRA (2026-10-07) ═══
+  //
+  // Al blindar el camino del PACIENTE contra un hipo de la base, esta quedo igual que estaba: es la hermana
+  // ("Responder con el paciente", el profesional la cierra con el paciente al lado) y comparte el mismo
+  // `submitSurveyAnswers`, asi que hereda el mismo 502 intermitente de Supabase y el mismo 500 en pantalla.
+  //
+  // Y AQUI ES PEOR, no igual: el profesional esta en consulta, con la persona delante y 64 respuestas en el
+  // formulario. Un 500 ahi es "An unexpected response was received from the server" sobre una encuesta que
+  // no se sabe si quedo guardada.
+  //
+  // Es el patron que ya nos costo varias veces: arreglar un camino y dejar al segundo constructor del mismo
+  // insumo con el defecto. El candado `el-redirect-no-es-un-error` cubre la forma; esto cubre el sitio.
+  try {
+    const user = await profesionalDeLaEncuesta(resumeToken);
+    if (!user) return fail("No autorizado.");
+    const survey = await getActiveSurvey();
+    if (!survey) return fail("La encuesta no esta disponible en este momento.");
+    const ip = await getClientIp();
+    const res = await submitSurveyAnswers({
+      resumeToken,
+      surveyVersionId: survey.surveyVersionId,
+      answers: readAnswersFromForm(form, survey.questions),
+      ipAddress: ip === "unknown" ? null : ip,
+      characterization: readCharacterizationFromForm(form),
+      // AQUI SE SELLA QUIEN LA CERRO. Es lo unico que distingue esta ruta de la del paciente.
+      capturedBy: user.id,
+    });
+    if (!res.ok) return fail(res.error.message);
+    redirect(`/ani-bis-e/${res.value.evaluationId}`);
+  } catch (e) {
+    // EL REDIRECT A LOS RESULTADOS VIAJA COMO EXCEPCION: sin esta linea, cerrar la encuesta bien se veria
+    // como un fallo y el profesional volveria a pulsar sobre una encuesta ya entregada.
+    if (esRedirectDeNext(e)) throw e;
+    reportServerError("encuesta.enviar-con-el-paciente", e);
+    // SIN "no se perdio nada": no se sabe. Lo que si se sabe es que la pantalla no avanzo, asi que lo que se
+    // dice es que se puede volver a pulsar y donde mirar si ya habia pasado.
+    return fail(
+      "No pudimos cerrar la encuesta en este momento. Las respuestas siguen en pantalla: vuelve a pulsar Enviar en unos segundos. Si ya había quedado guardada, la verás en el historial del paciente.",
+    );
+  }
 }
 
 // ── RETIRAR UNA CONSULTA QUE NO OCURRIO, Y DESHACERLO (0212, Santiago 2026-10-07) ───────────────────
@@ -1063,9 +1087,15 @@ export async function enviarEncuestaDelPacienteAction(
 // EL CASO: la paciente agendo el 21, no vino, y se atendio el 25. La del 21 figura en su historia como una
 // consulta que nunca paso. Va a pasar seguido.
 //
-// LA MISMA POLICY QUE CERRAR UN CASCARON (`canAbandonEvaluation`, el profesional dueno): decidir que una
-// consulta no ocurrio es del mismo orden que decidir que se abandona, y la RLS al leer la evaluacion impone
-// el alcance fino (que sea SU paciente). Una policy nueva seria una segunda respuesta a la misma pregunta.
+// POLICY PROPIA (`canRetirarConsulta`: el profesional dueno Y ADMIN), y este comentario decia lo contrario
+// hasta el 7 de octubre ("la misma policy que cerrar un cascaron... una policy nueva seria una segunda
+// respuesta a la misma pregunta"). Se reescribe porque el argumento resulto falso en la practica, no por
+// orden: con `canAbandonEvaluation` el unico que veia el boton era el profesional dueno, y quien estaba
+// depurando el lote importado era ADMIN. Santiago no lo encontro. El unico que podia limpiar era quien no
+// lo estaba haciendo.
+//
+// Y NO ENSANCHA LA OTRA, que sigue siendo del dueno: su razon (la RLS del update de abandono) sigue en pie, y
+// el retiro escribe por Drizzle, asi que ese argumento no le aplica.
 export type RetiroState = { error: string | null; success: string | null; warning: string | null };
 
 export async function retirarEvaluacionFormAction(

@@ -159,8 +159,27 @@ const subirSourcemaps = Boolean(
   process.env.SENTRY_ORG && process.env.SENTRY_PROJECT && process.env.SENTRY_AUTH_TOKEN,
 );
 
+// ═══ Y EL BUILD DICE SI LOS VA A SUBIR (2026-10-07) ═══
+//
+// Santiago puso las tres variables, redesplego, y el evento siguio saliendo minificado. No habia forma de
+// saber si el plugin no corrio, si el build se reuso de cache, o si la subida fallo: `silent: true` se
+// comia TODA la salida del plugin, incluidos sus errores.
+//
+// ASI QUE AHORA EL LOG DE VERCEL LO DICE EN UNA LINEA, y es lo primero que hay que mirar. Sin esto, "no
+// aparecio" no distingue entre tres causas distintas, que es la peor forma de depurar.
+//
+// NO IMPRIME EL TOKEN: solo si esta presente.
+console.log(
+  `[sentry] subida de sourcemaps: ${subirSourcemaps ? "SI" : "NO"}` +
+    ` (org=${process.env.SENTRY_ORG ? "ok" : "FALTA"},` +
+    ` project=${process.env.SENTRY_PROJECT ? "ok" : "FALTA"},` +
+    ` token=${process.env.SENTRY_AUTH_TOKEN ? "ok" : "FALTA"})`,
+);
+
 export default withSentryConfig(nextConfig, {
-  silent: true,
+  // CALLADO SOLO CUANDO NO HAY NADA QUE SUBIR. Si va a subir, su salida (y sus errores) tienen que verse en
+  // el log del build: es el unico sitio donde se puede comprobar que la subida ocurrio de verdad.
+  silent: !subirSourcemaps,
   ...(subirSourcemaps
     ? {
         org: process.env.SENTRY_ORG,

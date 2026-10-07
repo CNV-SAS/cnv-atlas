@@ -4,6 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { ETAPA_IDS, ETAPAS, type TabId } from "../etapas";
 import { EtapaActiva } from "./etapa-activa";
+import { PanelConRed } from "./panel-con-red";
 import { useState, type ReactNode } from "react";
 
 // Shell de pestañas de una evaluacion. Adopta las etapas reales de la ruta ANI-BIS-E como tabs internas
@@ -173,7 +174,12 @@ export function EvaluationTabs({
           {/* QUE ESTA ETAPA ESTE MONTADA YA NO SIGNIFICA QUE SE VEA (2026-09-10). Desde que una etapa
               visitada no se desmonta, hay que decirlo explicito: lo que dispara un acto clinico al ENTRAR
               tiene que colgar de esto y no del montaje. Ver `etapa-activa.tsx`. */}
-          <EtapaActiva activa={id === active}>{content[id]}</EtapaActiva>
+          {/* CON RED, Y POR PANEL (2026-10-07). Un fallo de render de UNA etapa llegaba al `error.tsx` de la
+              raiz y reemplazaba la consulta entera; y de paso el evento de Sentry salia sin el component
+              stack, porque el `error.tsx` de Next no recibe el `errorInfo`. Ver `panel-con-red.tsx`. */}
+          <PanelConRed etapa={id}>
+            <EtapaActiva activa={id === active}>{content[id]}</EtapaActiva>
+          </PanelConRed>
         </div>
       ))}
     </div>
