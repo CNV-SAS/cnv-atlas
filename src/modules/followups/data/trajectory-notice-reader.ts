@@ -69,6 +69,9 @@ export async function getTrajectoryNotice(evaluationId: string): Promise<Traject
     .select("id, bis_measurements(measurement_date), reports(snapshot)")
     .eq("patient_id", current.patient_id)
     .is("superseded_at", null)
+    // NI LA QUE NO OCURRIO (0212), por la misma razon que en `comparison-reader`: este aviso explica POR QUE
+    // no hay banda, y una retirada como previa daria una explicacion falsa.
+    .is("retirada_at", null)
     .neq("id", evaluationId);
   if (pErr) throw new Error(`trajectory-notice-reader: candidates: ${pErr.message}`);
 

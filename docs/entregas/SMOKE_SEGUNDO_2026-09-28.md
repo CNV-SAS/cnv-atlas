@@ -1122,9 +1122,15 @@ como una consulta que nunca pasó.
 10. Púlsalo: pide **el motivo** (obligatorio) y avisa que **no se borra nada**.
 11. Retírala. La consulta **se pliega** en el historial y deja de contar como trabajo pendiente, y la fila
     dice con qué motivo se retiró.
-12. **Comprueba que no borró nada:** entra a su encuesta y a su consentimiento. Siguen completos.
-13. **Deshazlo.** Vuelve a contar. *(Es reversible a propósito, al revés que cerrar un cascarón: retirar es un
+12. **Y ahora el paso que faltaba, que es el que Santiago cazó el 7 de octubre.** Vuelve a **/pacientes** y
+    busca a esa paciente: en sus **tres evaluaciones más recientes** ya **NO** puede salir la retirada, su
+    conteo de consultas bajó en una, y su columna de pendientes dejó de pedir trabajo de esa consulta.
+    *(Hasta el 7 de octubre el retiro llegaba a la ficha y a ninguna otra pantalla: "lo único que se hace es
+    ocultarla". El barrido alcanzó trece lecturas; las que se pueden ver a ojo son esta, el listado de
+    **Montar BIS** y la cola de **Diagnóstico**, donde tampoco debe aparecer.)*
+13. **Comprueba que no borró nada:** entra a su encuesta y a su consentimiento. Siguen completos.
+14. **Deshazlo.** Vuelve a contar. *(Es reversible a propósito, al revés que cerrar un cascarón: retirar es un
     juicio sobre si la consulta ocurrió, y un juicio se revisa.)*
-14. **El control que de verdad protege:** intenta retirar una consulta **CON diagnóstico**. Tiene que negarse,
+15. **El control que de verdad protege:** intenta retirar una consulta **CON diagnóstico**. Tiene que negarse,
     diciendo que eso esconderia una salida clínica y que para eso está la corrección. *(Lo impide el servicio
     y además un trigger, así que ni un arreglo por SQL lo logra.)*

@@ -51,6 +51,14 @@ function Fila({
             reemplazada
           </PillEstado>
         ) : null}
+        {/* NO OCURRIO (0212): al desplegar las plegadas hay que poder ver de un golpe POR QUE esta ahi.
+            Sin el chip, una consulta retirada se ve igual que una terminada y el retiro se lee como "la
+            escondio" en vez de "dijo que no paso". */}
+        {e.noOcurrio ? (
+          <PillEstado tono="neutro" className="ml-2 font-normal">
+            no ocurrió
+          </PillEstado>
+        ) : null}
       </td>
       {/* Motivo de consulta (caracterizacion del encuentro, multi); "-" si no se dio. */}
       <td className={tdApagado}>{e.reasonForVisit.length ? e.reasonForVisit.join(", ") : "-"}</td>

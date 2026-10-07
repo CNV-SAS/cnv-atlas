@@ -95,6 +95,10 @@ export async function getFollowupComparison(
     .select("id, created_at, bis_measurements(measurement_date)")
     .eq("patient_id", current.patient_id)
     .is("superseded_at", null)
+    // NI LA QUE NO OCURRIO (0212), y de todo el barrido este es el caso mas grave: la "previa" se escoge por
+    // fecha de MEDICION, no por reporte, asi que una consulta retirada con su BIS montado podria quedar
+    // elegida como el punto de partida contra el que se mide el progreso del paciente.
+    .is("retirada_at", null)
     .neq("id", evaluationId);
   if (pErr) throw new Error(`comparison-reader: candidate evaluations: ${pErr.message}`);
 

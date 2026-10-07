@@ -373,6 +373,10 @@ async function pendienteDe(tx: Tx, patientId: string, professionalId: string) {
         eq(evaluations.professionalId, professionalId),
         eq(evaluations.status, "awaiting_survey"),
         isNull(evaluations.supersededAt),
+        // NI LA RETIRADA (0212): reusar un cascaron del que ya se dijo que no ocurrio meteria las respuestas
+        // nuevas del paciente dentro de una consulta retirada, y la resucitaria sin que nadie lo decida.
+        // Aqui se crea una nueva, que es lo correcto; deshacer el retiro es un acto aparte.
+        isNull(evaluations.retiradaAt),
       ),
     )
     .orderBy(desc(evaluations.createdAt))
@@ -612,7 +616,16 @@ async function findAwaitingByToken(tx: Tx, resumeToken: string): Promise<{ id: s
   const [ev] = await tx
     .select({ id: evaluations.id, patientId: evaluations.patientId })
     .from(evaluations)
-    .where(and(eq(evaluations.resumeToken, resumeToken), eq(evaluations.status, "awaiting_survey")))
+    .where(
+      and(
+        eq(evaluations.resumeToken, resumeToken),
+        eq(evaluations.status, "awaiting_survey"),
+        // NI LA RETIRADA (0212): el enlace del paciente deja de abrir una consulta de la que ya se dijo que
+        // no ocurrio. Es reversible (deshacer el retiro devuelve el enlace), y lo contrario no: recoger una
+        // encuesta dentro de una consulta retirada deja respuestas que nadie va a mirar.
+        isNull(evaluations.retiradaAt),
+      ),
+    )
     .limit(1);
   if (!ev) throw new ResumeTokenError();
   return ev;

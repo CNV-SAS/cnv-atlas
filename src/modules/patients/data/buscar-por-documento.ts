@@ -111,6 +111,9 @@ export async function buscarPorDocumento(input: {
     .eq("patient_id", paciente!.id)
     .eq("status", "awaiting_survey")
     .is("superseded_at", null)
+    // Ni la retirada (0212): ofrecer "continuar" una consulta que ya se declaro que no ocurrio manda al
+    // profesional a seguir un camino cerrado.
+    .is("retirada_at", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

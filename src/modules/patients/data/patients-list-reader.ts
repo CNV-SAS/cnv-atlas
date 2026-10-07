@@ -37,7 +37,8 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // embed mas en la consulta que ya se hacia, no una consulta nueva por paciente.
       // `created_at` DEL PACIENTE (no de su evaluacion): es la columna "Fecha de creacion", y la tiene
       // tambien quien no tiene ninguna evaluacion, que es justo cuando mas informa.
-      "id, created_at, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
+      // `retirada_at` (0212): la consulta que NO OCURRIO no cuenta en ninguna de las cifras de esta fila.
+      "id, created_at, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, retirada_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -56,6 +57,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
             id: string;
             type: string;
             superseded_at: string | null;
+            retirada_at: string | null;
             status: string;
             created_at: string;
             import_batch_id: string | null;
@@ -67,9 +69,13 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
         | null) ?? [];
     // Las que CUENTAN: vigentes y que sean una evaluacion hecha. La misma condicion sirve para el
     // conteo y para la ultima fecha; separarlas dejaria "3 consultas · Ultima: <de una reemplazada>".
-    const reales = evals.filter(
-      (e) => e.superseded_at == null && !NON_COUNTING_EVALUATION_STATUSES.has(e.status),
-    );
+    // ── Y LA QUE NO OCURRIO TAMPOCO CUENTA (0212, Santiago 2026-10-07) ──────────────────────────────
+    //
+    // Retirarla ocultaba la fila en la FICHA del paciente y la dejaba intacta aqui: su conteo de consultas,
+    // su "ultima evaluacion" y sus tres mas recientes seguian contandola. Dos pantallas diciendo cosas
+    // distintas de la misma consulta, que es el defecto que mas nos ha costado.
+    const enPie = evals.filter((e) => e.superseded_at == null && e.retirada_at == null);
+    const reales = enPie.filter((e) => !NON_COUNTING_EVALUATION_STATUSES.has(e.status));
     // FECHA DE MEDICION, no la de creacion del registro: es la cronologia clinica, la misma que usa la
     // ficha del paciente. Si no se midio, cae a created_at para no perder la fila del listado.
     const fechas = reales
@@ -98,9 +104,9 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       lastEvaluationDate: fechas.length ? fechas[fechas.length - 1] : null,
       sinAutorizacionVigente: !canCreateEvaluation(vigentes).ok,
       // QUE LE FALTA, dicho como accion. La regla vive en un modulo puro (`pendientes.ts`) para que se
-      // pueda probar corriendola; aqui solo se le pasan los hechos. Se mira sobre las evaluaciones
-      // VIGENTES (no supersedidas), no sobre `reales`: una que espera la encuesta no cuenta como consulta
-      // hecha pero SI es algo pendiente, que es justo lo que esta columna busca.
+      // pueda probar corriendola; aqui solo se le pasan los hechos. Se mira sobre `enPie` (ni supersedidas
+      // ni retiradas), no sobre `reales`: una que espera la encuesta no cuenta como consulta hecha pero SI
+      // es algo pendiente, que es justo lo que esta columna busca.
       // LAS TRES ULTIMAS, con su rotulo. La NUMERACION del seguimiento sale del orden entre las
       // evaluaciones REALES del paciente (el primer seguimiento es el 1, no el numero de fila), asi que se
       // calcula aqui, que es donde estan todas juntas. La vista solo pinta.
@@ -123,8 +129,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
         return conRotulo.slice(-3).reverse();
       })(),
       pendiente: pendienteDelPaciente(
-        evals
-          .filter((e) => e.superseded_at == null)
+        enPie
           .map((e) => ({
             evaluationId: e.id,
             status: e.status,
