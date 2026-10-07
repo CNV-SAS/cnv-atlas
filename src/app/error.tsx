@@ -17,9 +17,29 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  // La pagina quedo de un despliegue anterior: llama una Server Action que ya no existe en el servidor
-  // (se redesplego con la pagina abierta). NO es un error del sistema; se resuelve recargando. El
-  // mensaje de este error es de cliente (no lo redacta Next en produccion), asi que se puede detectar.
+  // ═══ LA PAGINA QUEDO DE UN DESPLIEGUE ANTERIOR ═══
+  //
+  // Llama una Server Action que el servidor nuevo ya no tiene (se redesplego con la pagina abierta). No es un
+  // fallo del sistema: se resuelve recargando.
+  //
+  // ── Y AQUI HABIA UNA AFIRMACION FALSA, VERIFICADA EL 2026-10-07 ────────────────────────────────────
+  //
+  // Este comentario decia: "el mensaje de este error es de cliente (no lo redacta Next en produccion), asi
+  // que se puede detectar". NO ES CIERTO para este caso, y se comprobo en el codigo de Next 16:
+  //
+  //   1. El servidor lanza un Error PELADO (`Failed to find Server Action...`) dentro del handler de la
+  //      accion, asi que en produccion Next responde 500 y NO manda el mensaje en el cuerpo.
+  //   2. El cliente solo usa el texto del servidor si la respuesta es `content-type: text/plain`
+  //      (`server-action-reducer.js`: `res.status >= 400 && contentType === 'text/plain'`). Si no, lanza el
+  //      generico "An unexpected response was received from the server."
+  //
+  // O SEA QUE EN PRODUCCION ESTA DETECCION NO SE CUMPLE NUNCA, y la rama que se escribio justo para este caso
+  // era codigo muerto. Lo encontro un warning en los logs de Vercel ("Failed to find Server Action... older or
+  // newer deployment") al lado del 500 que se le fue a una paciente respondiendo la encuesta en su celular.
+  //
+  // SE CONSERVA porque en desarrollo y en los caminos donde Next SI manda `text/plain` sigue acertando, y
+  // cuando acierta el mensaje es mejor. Lo que cambia es que ya no se confia en ella: la rama generica de
+  // abajo ofrece RECARGAR, que es lo que de verdad resuelve este caso.
   const isStaleDeployment =
     /server action/i.test(error.message) &&
     /not\s*found|older or newer deployment/i.test(error.message);
@@ -64,11 +84,28 @@ export default function Error({
           <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
             Algo salio mal
           </h1>
+          {/* ═══ RECARGAR VA PRIMERO, Y NO ES PREFERENCIA (2026-10-07) ═══
+
+              `reset()` vuelve a rendir ESTA MISMA pagina, que es la del despliegue viejo. Si el error fue un
+              desfase de despliegue (la causa confirmada del 500 que se le fue a una paciente en la encuesta),
+              reintentar pide otra vez la accion que ya no existe y FALLA IGUAL. El paciente se queda pulsando
+              un boton que no puede funcionar.
+
+              Recargar trae el despliegue nuevo y lo resuelve. Y en un fallo pasajero tambien sirve, asi que es
+              la salida correcta en los dos casos, no solo en uno.
+
+              EL TEXTO NO AFIRMA LA CAUSA, porque en produccion no se puede distinguir (ver arriba): dice que
+              recargar suele resolverlo, que es verdad, y no "Atlas se actualizo", que seria adivinar. */}
           <p className="max-w-prose text-muted-foreground">
-            Ya registramos el problema. Intenta de nuevo en un momento; si persiste,
-            contacta a soporte.
+            Ya registramos el problema. Recarga la página para seguir: casi siempre lo resuelve. Lo que ya
+            habías guardado está a salvo.
           </p>
-          <Button onClick={reset}>Reintentar</Button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button onClick={() => window.location.reload()}>Recargar la página</Button>
+            <Button variant="ghost" onClick={reset}>
+              Reintentar sin recargar
+            </Button>
+          </div>
         </div>
       )}
     </div>
