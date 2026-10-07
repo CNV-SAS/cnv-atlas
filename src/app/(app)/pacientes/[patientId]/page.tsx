@@ -12,6 +12,7 @@ import { EditarContacto } from "@/modules/patients/components/editar-contacto";
 import { FollowupLinkEmitter } from "@/modules/evaluations/components/followup-link-emitter";
 import {
   canAbandonEvaluation,
+  canRetirarConsulta,
   canEmitFollowupLink,
 } from "@/modules/evaluations/policies/can-manage-evaluations";
 import { PanelAutorizaciones } from "@/modules/consent/components/panel-autorizaciones";
@@ -58,6 +59,10 @@ export default async function HistoriaPacientePage({
 
   // Solo el profesional dueno puede cerrar un shell firmado sin responder (la RLS ya acota que sea suyo).
   const puedeCerrar = canAbandonEvaluation(user);
+  // RETIRAR NO ES CERRAR: la puede retirar el profesional dueño Y admin, porque depurar un lote importado es
+  // trabajo de admin (ver `canRetirarConsulta`). Con una sola bandera, Santiago abria la ficha y no veia el
+  // boton: la de cerrar es solo del profesional.
+  const puedeRetirar = canRetirarConsulta(user);
   const puedeEditarContacto = canEditPatientContact(user);
   // Emitir link de seguimiento: sitio FIJO en el perfil (antes vivia en la tarjeta de confirmar identidad,
   // que desaparece al confirmar; Santiago 2026-08-20 §5a). El action re-resuelve el profesional asignado.
@@ -152,7 +157,11 @@ export default async function HistoriaPacientePage({
         {/* LAS ABIERTAS SIEMPRE A LA VISTA Y LO DEMAS PLEGADO (observacion L, 2026-09-20). La tabla
             vivia aqui entera; se movio a su componente porque el interruptor necesita estado, y la
             clasificacion (que es historia y que es trabajo pendiente) vive aparte y es pura. */}
-        <HistorialEvaluaciones evaluaciones={paciente.evaluations} puedeCerrar={puedeCerrar} />
+        <HistorialEvaluaciones
+          evaluaciones={paciente.evaluations}
+          puedeCerrar={puedeCerrar}
+          puedeRetirar={puedeRetirar}
+        />
       </Panel>
 
       <ConsentimientosOrigenHtml
