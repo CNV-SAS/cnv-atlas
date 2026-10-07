@@ -43,3 +43,26 @@ export function canAbandonEvaluation(user: CurrentUser): boolean {
 export function canRegistrarEncuestaDelPaciente(user: CurrentUser): boolean {
   return hasAnyRole(user, ["professional"]);
 }
+
+// ═══ RETIRAR UNA CONSULTA QUE NO OCURRIO (0212, Santiago 2026-10-07) ═══
+//
+// EL PROFESIONAL DUEÑO Y ADMIN, y la diferencia con `canAbandonEvaluation` (que es solo el profesional) tiene
+// dos razones concretas:
+//
+//   1. POR QUIEN HACE EL TRABAJO. Retirar consultas importadas que no ocurrieron es DEPURACION de un lote: la
+//      hace Santiago revisando con la Integrante, no la Integrante una por una. Con la policy en
+//      "solo profesional", el unico que puede limpiar es quien no lo esta haciendo. Lo descubrio el, que abrio
+//      la ficha y no vio el boton.
+//   2. Y POR QUE AQUI SI SE PUEDE. El argumento de `canAbandonEvaluation` es la RLS ("el update de evaluations
+//      hoy solo cubre al profesional dueno"), y es correcto para ese camino. El retiro escribe por Drizzle
+//      (service role), asi que no choca con esa RLS. No se amplia la otra policy: su razon sigue en pie.
+//
+// EL ALCANCE FINO LO SIGUE IMPONIENDO LA RLS AL LEER: el action resuelve la evaluacion con el cliente con
+// sesion antes de escribir, asi que un profesional solo alcanza las de sus pacientes. Admin ve todas, que es
+// justamente lo que hace falta para depurar un lote.
+//
+// SOPORTE NO: retirar una consulta cambia lo que dice una historia clinica, y soporte acompaña sin decidir
+// sobre el registro clinico.
+export function canRetirarConsulta(user: CurrentUser): boolean {
+  return hasAnyRole(user, ["professional", "admin"]);
+}

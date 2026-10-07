@@ -28,7 +28,15 @@ import type { PatientEvaluationItem } from "../types";
 
 const TIPO_LABEL: Record<string, string> = { inicial: "Inicial", seguimiento: "Seguimiento" };
 
-function Fila({ e, puedeCerrar }: { e: PatientEvaluationItem; puedeCerrar: boolean }) {
+function Fila({
+  e,
+  puedeCerrar,
+  puedeRetirar,
+}: {
+  e: PatientEvaluationItem;
+  puedeCerrar: boolean;
+  puedeRetirar: boolean;
+}) {
   return (
     <tr key={e.evaluationId} className={tr}>
       {/* LA NEGRITA VA EN LA FECHA, y es la unica de la tabla: es por donde se recorre. Fecha de
@@ -78,8 +86,9 @@ function Fila({ e, puedeCerrar }: { e: PatientEvaluationItem; puedeCerrar: boole
              estado: la del caso real estaba `in_progress` con 63 respuestas. Si el retiro viviera solo en
              una rama, justo ese caso se quedaría sin salida.
 
-             Y SOLO PARA SU PROFESIONAL (`puedeCerrar`, la misma policy que cerrar un cascarón): decidir que
-             una consulta no ocurrió es un acto sobre la historia clínica de su paciente. */
+             Y LA PUEDE RETIRAR EL PROFESIONAL DUEÑO Y ADMIN (`puedeRetirar`, que NO es `puedeCerrar`):
+             depurar un lote importado es trabajo de admin, y con la bandera de cerrar el único que veía el
+             botón era quien no estaba haciendo la limpieza. */
           <div className="flex flex-col items-end gap-1">
             <Link
               href={`/ani-bis-e/${e.evaluationId}`}
@@ -87,7 +96,7 @@ function Fila({ e, puedeCerrar }: { e: PatientEvaluationItem; puedeCerrar: boole
             >
               Ver resultados
             </Link>
-            {puedeCerrar ? (
+            {puedeRetirar ? (
               <RetirarConsultaForm
                 evaluationId={e.evaluationId}
                 retirada={e.noOcurrio}
@@ -106,9 +115,12 @@ function Fila({ e, puedeCerrar }: { e: PatientEvaluationItem; puedeCerrar: boole
 export function HistorialEvaluaciones({
   evaluaciones,
   puedeCerrar,
+  puedeRetirar,
 }: {
   evaluaciones: PatientEvaluationItem[];
   puedeCerrar: boolean;
+  /** Retirar NO es cerrar: lo puede el profesional dueño Y admin (ver `canRetirarConsulta`). */
+  puedeRetirar: boolean;
 }) {
   const [verTodas, setVerTodas] = useState(false);
   const { visibles: aLaVista, plegadas } = repartirEvaluaciones(evaluaciones);
@@ -143,7 +155,7 @@ export function HistorialEvaluaciones({
             </thead>
             <tbody>
               {visibles.map((e) => (
-                <Fila key={e.evaluationId} e={e} puedeCerrar={puedeCerrar} />
+                <Fila key={e.evaluationId} e={e} puedeCerrar={puedeCerrar} puedeRetirar={puedeRetirar} />
               ))}
             </tbody>
           </table>

@@ -64,6 +64,7 @@ import {
   canConfirmIdentity,
   canEmitFollowupLink,
   canManageBaseSurveyLink,
+  canRetirarConsulta,
 } from "./policies/can-manage-evaluations";
 import { getOrCreateBaseSurveyLink } from "./services/base-survey-link";
 import { enviarCodigoDeFirma } from "./services/enviar-codigo-firma";
@@ -1072,7 +1073,7 @@ export async function retirarEvaluacionFormAction(
   form: FormData,
 ): Promise<RetiroState> {
   const user = await requireUser();
-  if (!canAbandonEvaluation(user)) {
+  if (!canRetirarConsulta(user)) {
     return { error: "No autorizado para retirar una consulta.", success: null, warning: null };
   }
   const evaluationId = str(form, "evaluationId");
@@ -1112,7 +1113,7 @@ export async function deshacerRetiroFormAction(
   form: FormData,
 ): Promise<RetiroState> {
   const user = await requireUser();
-  if (!canAbandonEvaluation(user)) {
+  if (!canRetirarConsulta(user)) {
     return { error: "No autorizado.", success: null, warning: null };
   }
   const evaluationId = str(form, "evaluationId");
