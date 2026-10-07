@@ -202,6 +202,20 @@ export async function declareRemesaFormAction(
   });
   if (!res.ok) return { error: res.message ?? "No se pudo declarar la remesa.", success: null, warning: null };
   revalidatePath("/faltantes");
+  // ═══ EL AVISO DEL CUPO SALE COMO AVISO, NO COMO ERROR (Santiago, 2026-10-06) ═══
+  //
+  // La remesa SE DECLARA igual: el cupo avisa, no bloquea. Pero admin tiene que ver que ese Integrante ya debe
+  // más de su tope, porque es él quien decide si le manda más producto.
+  //
+  // VA EN `warning` Y NO PEGADO AL `success`: el éxito dice que la remesa quedó, y el aviso es otra cosa.
+  // Juntarlos en una frase haría que lo importante se leyera como un detalle de la confirmación.
+  if (res.avisoDeCupo) {
+    return {
+      error: null,
+      success: null,
+      warning: `Remesa declarada, y ojo con el saldo: ${res.avisoDeCupo}`,
+    };
+  }
   return { error: null, success: "Remesa declarada. El integrante la verá en Mi inventario para confirmarla.", warning: null };
 }
 

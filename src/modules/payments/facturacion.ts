@@ -1,6 +1,8 @@
 import { HttpError } from "@/core/http/http-error";
 import { baseFromTotal, ivaFromTotal } from "@/core/iva";
 
+import type { CanalDePago } from "./medio-de-pago";
+
 // ═══ LO QUE VIAJA A LA FACTURA, Y LO QUE IMPIDE QUE VIAJE MAL ═══
 //
 // Modulo PURO y NEUTRO (ni `server-only` ni `"use client"`): decide la forma del documento y no habla con
@@ -200,9 +202,21 @@ export function armarFactura(lineas: LineaDeVenta[], mapa: MapaDeAlegra): Armado
  *
  * Devuelve null para lo que de verdad queda POR COBRAR, que hoy es solo la quincenal al Integrante bajo
  * modalidad Distribucion. Un null aqui significa "no se registra pago", no "no se sabe".
+ *
+ * ── DOS CANALES DISTINTOS QUE LOS DOS DAN null, y conviene no confundirlos (0211) ──────────────────
+ *
+ *   · `quincenal_integrante` es el canal de la FACTURA QUE CNV LE EMITE AL INTEGRANTE: esa si queda por
+ *     cobrar, y el null dice "todavia no hay pago que registrar".
+ *   · `cobrado_por_el_integrante` es el canal de la VENTA AL PACIENTE bajo Distribucion: ahi no hay nada por
+ *     cobrar ni nada que registrar, porque CNV no la factura. Nunca deberia llegar aqui (la 0210 saco esas
+ *     ventas de las seis vias de la cola), y si llegara, null es la respuesta segura: no apunta plata a
+ *     ninguna cuenta.
+ *
+ * EL TIPO SE ARMA SOBRE `CanalDePago` en vez de repetir sus valores: la lista estaba escrita a mano aqui, asi
+ * que un canal nuevo en el enum no obligaba a pasar por este archivo y el compilador no decia nada.
  */
 export function cuentaDelPago(
-  canal: "wompi" | "efectivo" | "transferencia" | "quincenal_integrante",
+  canal: CanalDePago | "quincenal_integrante",
   mapa: MapaDeAlegra,
 ): number | null {
   if (canal === "efectivo") return Number(mapa.bankAccountEfectivoId);

@@ -33,7 +33,7 @@ export type MedioDian = "tarjeta_credito" | "tarjeta_debito" | "transferencia_de
  * La transferencia existia en la practica desde antes de Atlas y solo se podia anotar como efectivo. No es
  * un matiz: el medio viaja a la factura electronica (la DIAN los separa) y decide la cuenta del pago.
  */
-export type CanalDePago = "wompi" | "efectivo" | "transferencia";
+export type CanalDePago = "wompi" | "efectivo" | "transferencia" | "cobrado_por_el_integrante";
 
 /**
  * De Wompi a DIAN. Es la tabla de contabilidad del 2026-09-13, literal.
@@ -49,6 +49,15 @@ export function medioDianDelPago(pago: {
   tipo: string | null;
   tipoTarjeta: string | null;
 }): MedioDian | null {
+  // ── UNA VENTA DE DISTRIBUCION NO TIENE MEDIO DE PAGO PARA LA DIAN, y el `null` es la respuesta CORRECTA ──
+  //
+  // No es "todavia no se verifico su codigo", que es lo que significa un null en el resto de este archivo: es
+  // que CNV NO EMITE esa factura. El documento al paciente lo emite el Integrante con su propia numeracion, y
+  // lo que CNV le factura a EL es la cuenta quincenal, que no pasa por aqui.
+  //
+  // VA EXPLICITO Y NO POR EL `default` DE ABAJO: caer al default diria "instrumento de Wompi desconocido", y
+  // el dia que alguien revise por que una factura salio sin medio, la respuesta tiene que estar escrita.
+  if (pago.canal === "cobrado_por_el_integrante") return null;
   if (pago.canal === "efectivo") return "efectivo";
   // La regla de contabilidad, literal: si la plata sale de una cuenta o deposito, es transferencia debito.
   if (pago.canal === "transferencia") return "transferencia_debito";

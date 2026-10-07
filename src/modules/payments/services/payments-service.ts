@@ -7,6 +7,7 @@ import { listNutraceuticals } from "@/modules/nutraceuticals/data/nutraceuticals
 
 import type { CheckoutView } from "../data/checkout-reader";
 import { daneDe, departamentoDe } from "../data/domicilio-reader";
+import { esDeDistribucion } from "../data/modalidad-writer";
 import { esTratamientoAtable } from "../data/tratamientos-del-paciente";
 import * as repo from "../data/payments-repository";
 import {
@@ -311,7 +312,20 @@ export async function createCheckout(
   return { transactionId: id, checkoutUrl: buildCheckoutUrl(id) };
 }
 
-export type CashSaleCreated = { transactionId: string; amount: number; linksAnulados: number };
+export type CashSaleCreated = {
+  transactionId: string;
+  amount: number;
+  linksAnulados: number;
+  /**
+   * EL CANAL CON EL QUE SE REGISTRO DE VERDAD, que puede NO ser el que pidio el formulario: bajo Distribucion
+   * el servicio lo deriva de la modalidad. Viaja de vuelta para que el mensaje al profesional salga de la
+   * MISMA fuente que el dato guardado.
+   *
+   * SIN ESTO el aviso decia "cobrada en efectivo" sobre una venta que no cobro nada. Es la familia de defecto
+   * que ya costo dos veces aqui: dos partes de la pantalla leyendo fuentes distintas del mismo hecho.
+   */
+  canal: "efectivo" | "transferencia" | "cobrado_por_el_integrante";
+};
 
 // Venta en EFECTIVO: el integrante recauda dinero de CNV en el momento. Misma resolucion de venta y mismo
 // sellado contable que el checkout (CNV vende, integrante recauda; comision + ingreso sobre la base sin
@@ -326,10 +340,36 @@ export async function registerCashSale(
   input: CreateCheckoutInput,
   user: CurrentUser,
   idempotencyKey: string,
-  opciones: { anularLinksQueComparten?: boolean; canal?: "efectivo" | "transferencia" } = {},
+  opciones: {
+    anularLinksQueComparten?: boolean;
+    canal?: "efectivo" | "transferencia" | "cobrado_por_el_integrante";
+  } = {},
 ): Promise<CashSaleCreated> {
   const { professionalId, lines, amount, domicilio } = await resolveSale(input, user);
   exigirOrigenDeLaCompra(input);
+
+  // ═══ EL CANAL LO DECIDE LA MODALIDAD, NO EL FORMULARIO (0211) ═══
+  //
+  // Un Integrante en DISTRIBUCION no puede recaudar dinero de CNV: el paciente le paga a EL. Asi que si el
+  // formulario dice "efectivo" y su modalidad es Distribucion, lo que de verdad ocurrio es un REGISTRO, no un
+  // cobro, y el canal tiene que decirlo.
+  //
+  // ── POR QUE SE DERIVA Y NO SE PREGUNTA ──
+  //
+  // Primero lo escribi como una funcion aparte (`registrarVentaDeDistribucion`) que la pantalla llamaria. Eso
+  // le deja a cada superficie la decision de cual de las dos cosas esta afirmando, y hay DOS superficies (el
+  // bloque de venta en consulta y /pagos). La modalidad ya esta guardada y con vigencia: preguntarsela al
+  // formulario es ofrecer una respuesta que puede contradecir el dato.
+  //
+  // Y NO ES UNA PUERTA TRASERA: el porton sigue ahi y se INVIERTE segun el canal
+  // (`exigirDistribucion` / `exigirRecaudoDeCnv`, ver `createPaidCashTransaction`). Lo que se quita es la
+  // posibilidad de que una pantalla elija el canal equivocado.
+  const canalPedido = opciones.canal ?? "efectivo";
+  const canal: NonNullable<typeof opciones.canal> =
+    professionalId != null && (await esDeDistribucion(professionalId))
+      ? "cobrado_por_el_integrante"
+      : canalPedido;
+
   const { id, linksAnulados } = await createPaidCashTransaction({
     organizationId: user.organizationId,
     patientId: input.patientId,
@@ -344,7 +384,7 @@ export async function registerCashSale(
     sinTratamientoMotivo: input.ventaSueltaMotivo ?? null,
     anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
     actorId: user.id,
-    canal: opciones.canal ?? "efectivo",
+    canal,
   });
   // La venta en efectivo NACE pagada, asi que no hay webhook que dispare la factura: se emite aqui. No
   // revienta la venta si falla (el servicio escribe el desenlace y la deja en la cola): el dinero ya lo
@@ -352,13 +392,24 @@ export async function registerCashSale(
   // PRIMERO EL INVENTARIO, DESPUES LA FACTURA, y ninguno de los dos puede tumbar la venta: los dos escriben
   // su desenlace en la venta y quedan en su cola. El pago ya esta sellado en la transaccion de arriba.
   await descontarInventarioDeVenta(id);
-  await facturarVentaSellada(
-    { id, amount: String(amount), patientId: input.patientId },
-    // EL CANAL REAL, no "efectivo" fijo: decide el medio en la factura electronica y la cuenta del pago.
-    opciones.canal ?? "efectivo",
-  );
-  return { transactionId: id, amount, linksAnulados: linksAnulados.length };
+  // ═══ BAJO DISTRIBUCION CNV NO FACTURA, Y POR ESO NO SE LLAMA (0211) ═══
+  //
+  // El documento al paciente lo emite EL INTEGRANTE con su propia numeracion; lo que CNV le factura a EL es la
+  // cuenta quincenal. Llamar aqui seria emitir un segundo documento fiscal por la misma venta.
+  //
+  // LA COLA YA LA EXCLUYE (la 0210 la saco de las seis vias), asi que esto es la SEGUNDA defensa y no la
+  // unica: la cola protege del barrido automatico y de los botones; esta linea protege del camino directo.
+  // Las dos hacen falta porque fallan por motivos distintos.
+  if (canal !== "cobrado_por_el_integrante") {
+    await facturarVentaSellada(
+      { id, amount: String(amount), patientId: input.patientId },
+      // EL CANAL REAL, no "efectivo" fijo: decide el medio en la factura electronica y la cuenta del pago.
+      canal,
+    );
+  }
+  return { transactionId: id, amount, linksAnulados: linksAnulados.length, canal };
 }
+
 
 /**
  * Los links pendientes del paciente que comparten producto con una venta en efectivo. Si hay alguno, la venta

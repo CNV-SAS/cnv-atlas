@@ -344,7 +344,7 @@ export async function registerCashSaleFormAction(
     // un aviso que nombra el medio equivocado invita a "corregir" un dato que estaba bien, y eso cuesta mas
     // que no decir nada. Con una sola variable no pueden volver a discrepar.
     const canal = String(formData.get("canal") ?? "") === "transferencia" ? "transferencia" : "efectivo";
-    const { amount, linksAnulados } = await registerCashSale(sale, user, idempotencyKey, {
+    const { amount, linksAnulados, canal: canalReal } = await registerCashSale(sale, user, idempotencyKey, {
       anularLinksQueComparten: anularLinks,
       // COMO LLEGO LA PLATA (2026-09-25). Las dos nacen pagadas y ninguna pasa por la pasarela, pero no son
       // lo mismo para la DIAN ni para la cuenta del pago: registrar una transferencia como efectivo diria
@@ -354,10 +354,22 @@ export async function registerCashSaleFormAction(
     revalidatePath("/pagos");
     const evaluationId = String(formData.get("evaluationId") ?? "");
     if (evaluationId) revalidatePath(`/ani-bis-e/${evaluationId}`);
+    // ═══ EL MENSAJE SALE DEL CANAL QUE SE USO DE VERDAD, no del que pidió el formulario (0211) ═══
+    //
+    // Bajo Distribución el servicio DERIVA el canal de la modalidad, así que el del formulario puede no ser el
+    // que se guardó. Leyendo el del formulario, el aviso decía "cobrada en efectivo" sobre una venta que no
+    // cobró nada: dos partes de la pantalla leyendo fuentes distintas del mismo hecho, que es el defecto que
+    // ya costó dos veces aquí.
+    const comoSeRegistro =
+      canalReal === "cobrado_por_el_integrante"
+        ? "Venta registrada por " +
+          amount.toLocaleString("es-CO") +
+          " COP. No se cobró nada por CNV: el paciente te pagó a ti, y esta venta entra en tu cuenta quincenal."
+        : `Venta registrada por ${amount.toLocaleString("es-CO")} COP, cobrada ${canalReal === "transferencia" ? "por transferencia" : "en efectivo"}.`;
     return {
       ...vacio,
       success:
-        `Venta registrada por ${amount.toLocaleString("es-CO")} COP, cobrada ${canal === "transferencia" ? "por transferencia" : "en efectivo"}.` +
+        comoSeRegistro +
         (linksAnulados > 0 ? ` Se anuló ${linksAnulados === 1 ? "el link de pago pendiente" : `${linksAnulados} links de pago pendientes`}.` : ""),
     };
   } catch (e) {

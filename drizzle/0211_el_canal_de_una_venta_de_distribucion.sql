@@ -1,0 +1,38 @@
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+-- EL CANAL DE UNA VENTA DE DISTRIBUCION: CNV NO LA RECAUDO
+--
+-- Sub-tarea 3 de `docs/entregas/PLAN_REGISTRO_DISTRIBUCION_2026-10-06.md`.
+--
+-- ═══ POR QUE NO SIRVE 'efectivo', Y NO ES UN DETALLE DE NOMBRE ═══
+--
+-- `payment_method` responde "COMO LLEGO LA PLATA A CNV", y sus tres valores lo dicen: la pasarela, billetes
+-- que el Integrante custodia, o una consignacion a una cuenta de CNV.
+--
+-- BAJO DISTRIBUCION NO LLEGO A CNV. El paciente le pago AL INTEGRANTE, que ya se quedo con su descuento
+-- comercial, y lo que CNV le cobra a el es la factura quincenal. Poner 'efectivo' ahi afirma algo FALSO: que
+-- el Integrante custodia dinero de CNV. Y el codigo lo tiene escrito en dos sitios, textual: "el efectivo es
+-- dinero de CNV que el integrante custodia; eso lo refleja payment_method='efectivo' (la liquidacion suma lo
+-- custodiado)".
+--
+-- ── LA ALTERNATIVA QUE SE DESCARTO, y por que ──
+--
+-- Se podia dejar 'efectivo' y que cada lector añadiera `and modalidad_de_la_venta <> 'distribucion'`. Eso es
+-- guardar un hecho falso y compensarlo en cada consulta: la misma regla repartida que la 0203 y la 0210
+-- vinieron a quitar, y la que se olvide muestra "Efectivo" a un profesional que nunca recibio dinero de CNV.
+--
+-- UN VALOR PROPIO HACE LA PREGUNTA IMPOSIBLE DE CONTESTAR MAL: quien lea el canal ve que CNV no recaudo.
+--
+-- ── Y POR QUE UN SOLO VALOR Y NO TRES ──
+--
+-- El paciente pudo pagarle al Integrante en efectivo, por transferencia o con datafono. ESO ES ASUNTO DE EL,
+-- no de Atlas: el no custodia dinero de CNV en ninguno de los tres casos, y Atlas no emite ese documento.
+-- Guardar el instrumento seria capturar un dato que nadie va a usar y que nadie puede verificar.
+--
+-- ── LO QUE ESTE VALOR NO CAMBIA ──
+--
+-- NO necesita codigo de medio de pago de la DIAN ni de Alegra, porque esa venta NO SE FACTURA por CNV (la
+-- 0210 la saco de las seis vias de la cola). `medioDianDelPago` devuelve null para el, explicitamente.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+-- SIN `IF NOT EXISTS` NO ES REPETIBLE, y estas migraciones se corren en ensayo antes de aplicarse.
+ALTER TYPE "payment_method" ADD VALUE IF NOT EXISTS 'cobrado_por_el_integrante';

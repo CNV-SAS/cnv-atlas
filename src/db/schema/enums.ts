@@ -136,7 +136,16 @@ export const transactionStatus = pgEnum("transaction_status", [
 // antes de Atlas y solo se podia anotar como efectivo, y eso no es un matiz de etiqueta: el medio viaja a la
 // factura electronica (la DIAN separa efectivo de transferencia debito) y decide la cuenta del pago.
 // Un pago mixto = dos transacciones, una por medio.
-export const paymentMethod = pgEnum("payment_method", ["wompi", "efectivo", "transferencia"]);
+export const paymentMethod = pgEnum("payment_method", [
+  "wompi",
+  "efectivo",
+  "transferencia",
+  // CNV NO RECAUDO ESTA VENTA (0211). Es Distribucion: el paciente le pago AL INTEGRANTE, que ya se quedo con
+  // su descuento, y lo que CNV le cobra a el es la factura quincenal. UN SOLO valor y no tres instrumentos: el
+  // paciente pudo pagarle en efectivo, por transferencia o con datafono, y eso es asunto de el. Lo que importa
+  // es que NO custodia dinero de CNV, que es justo lo que "efectivo" afirmaria.
+  "cobrado_por_el_integrante",
+]);
 
 // ESTADO DE LA FACTURA EN ALEGRA (0129). La distincion que importa es BORRADOR contra EMITIDA: un
 // borrador NO tiene consecutivo, y sin consecutivo no es un documento fiscal, aunque exista en Alegra y

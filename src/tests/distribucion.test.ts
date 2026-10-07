@@ -177,22 +177,40 @@ describe("la cuenta quincenal", () => {
   });
 });
 
-describe("el cupo de credito", () => {
-  // §4: al alcanzar el tope, el sistema SUSPENDE EL DESPACHO de nuevo inventario.
-  it("al alcanzar el cupo se suspenden los despachos, con el motivo", () => {
+describe("el cupo de credito: AVISA, no bloquea", () => {
+  // ═══ ESTE BLOQUE SE INVIRTIO EL 2026-10-06, Y LA RAZON VA AQUI ═══
+  //
+  // Afirmaba lo que dice el modelo §4 ("al alcanzarlo el sistema SUSPENDE el despacho") y lo que respalda el
+  // asesor legal. Santiago decidio lo contrario, y su razon textual es la que manda:
+  //
+  //   "Todavia no sabemos que cantidad es razonable para bloquear a alguien. Hoy podemos decir 3 millones,
+  //    pero mañana puede haber gente que los haga muy rapido, y bloquear por eso no seria buena opcion."
+  //
+  // O sea que no se descarta el bloqueo: NO HAY BASE PARA FIJAR EL UMBRAL. La desviacion esta anotada en
+  // MODELO_COMERCIAL §4 junto al parrafo que contradice, con cuando se revisa.
+  //
+  // EL CASO SE ESCRIBE AFIRMANDO LAS DOS COSAS (que avisa Y que deja despachar) a proposito: si solo dijera
+  // "puede === true", alguien que devolviera el bloqueo lo veria rojo y pensaria que el aviso sobra.
+  it("al pasar el cupo avisa, y el despacho sigue siendo posible", () => {
     const r = puedeDespacharse({ saldoPendiente: 500_000, cupo: 500_000, enMoraDesde: null });
-    expect(r.puede).toBe(false);
-    expect(r.motivo).toContain("cupo");
+    expect(r.puede, "el cupo volvio a bloquear: es un aviso, no un freno").toBe(true);
+    expect(r.motivo).toBeNull();
+    expect(r.avisoDeCupo).toContain("cupo");
+    // Y EL AVISO TRAE LAS DOS CIFRAS, porque admin decide con ellas: cuanto debe y cual es el tope.
+    expect(r.avisoDeCupo).toContain("500.000");
   });
 
-  it("por debajo del cupo se despacha", () => {
-    expect(puedeDespacharse({ saldoPendiente: 499_999, cupo: 500_000, enMoraDesde: null }).puede).toBe(true);
+  it("por debajo del cupo no avisa nada", () => {
+    const r = puedeDespacharse({ saldoPendiente: 499_999, cupo: 500_000, enMoraDesde: null });
+    expect(r.puede).toBe(true);
+    expect(r.avisoDeCupo).toBeNull();
   });
 
-  // SIN CUPO CONFIGURADO NO SE SUSPENDE: nulo significa "no se ha fijado", no "cero". Tratarlo como cero
-  // bloquearia a todos los Integrantes el dia del despliegue, que es peor que no tener el control.
-  it("un cupo sin fijar no bloquea a nadie", () => {
-    expect(puedeDespacharse({ saldoPendiente: 9_000_000, cupo: null, enMoraDesde: null }).puede).toBe(true);
+  // SIN CUPO CONFIGURADO NO HAY AVISO: nulo significa "no se ha fijado", no "cero".
+  it("un cupo sin fijar no avisa ni bloquea", () => {
+    const r = puedeDespacharse({ saldoPendiente: 9_000_000, cupo: null, enMoraDesde: null });
+    expect(r.puede).toBe(true);
+    expect(r.avisoDeCupo).toBeNull();
   });
 
   it("la mora suspende aunque haya cupo de sobra", () => {

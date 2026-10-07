@@ -251,7 +251,42 @@ export async function exigirRecaudoDeCnv(professionalId: string | null): Promise
   if (!professionalId) return;
   const { modalidad } = await leerModalidad(professionalId);
   if (modalidad === "comision") return;
+  // EL MENSAJE CAMBIO EL 2026-10-06: decia que el registro "todavia no esta en Atlas", y dejo de ser verdad.
+  // Ahora hay donde registrarla, asi que lo que corresponde es mandar ahi en vez de dejar sin salida.
   throw new ModalidadError(
-    "Este integrante está en modalidad Distribución: el paciente le paga a él y él le factura, así que esta venta no se puede cobrar por CNV. El registro de ventas bajo Distribución (su facturación al paciente y la factura quincenal de CNV) todavía no está en Atlas.",
+    "Este integrante está en modalidad Distribución: el paciente le paga a él y él le factura, así que esta venta no se puede cobrar por CNV. Regístrala como venta de Distribución: Atlas descuenta el inventario y la suma a la cuenta quincenal, sin cobrar nada.",
   );
+}
+
+/**
+ * EL PORTON AL REVES: esta venta SOLO se registra si el Integrante esta en Distribucion.
+ *
+ * ── POR QUE EXISTE, Y POR QUE NO ES UN `if` QUE SE SALTA EL DE ARRIBA ──────────────────────────────
+ *
+ * El registro de Distribucion no cobra nada: descuenta inventario y suma a la cuenta quincenal. Si se pudiera
+ * usar con un Integrante en COMISION, se registraria una venta cuyo dinero CNV tenia que recaudar y nadie
+ * recaudo: el producto sale de la vitrina, el paciente se va, y no hay ni link, ni efectivo, ni factura. Un
+ * agujero de dinero real que nadie nota hasta cuadrar cifras.
+ *
+ * ASI QUE EL PORTON NO SE SALTA, SE INVIERTE. Los dos caminos siguen cerrados para la modalidad que no les
+ * corresponde, y cual se aplica lo decide el CANAL de la venta, no una bandera que una pantalla pueda pasar
+ * mal. Una bandera de "saltar la verificacion" es lo que convierte un porton en una sugerencia.
+ */
+export async function exigirDistribucion(professionalId: string | null): Promise<void> {
+  if (!professionalId) {
+    throw new ModalidadError(
+      "Una venta de Distribución tiene que tener un Integrante: es él quien le cobra y le factura al paciente.",
+    );
+  }
+  const { modalidad } = await leerModalidad(professionalId);
+  if (modalidad === "distribucion") return;
+  throw new ModalidadError(
+    "Este integrante está en modalidad Comisión: el paciente le paga a CNV, así que esta venta se cobra con un enlace de pago o como venta en efectivo, no se registra.",
+  );
+}
+
+/** Si este Integrante opera hoy bajo Distribucion. Lo usa el servicio para derivar el canal de la venta. */
+export async function esDeDistribucion(professionalId: string): Promise<boolean> {
+  const { modalidad } = await leerModalidad(professionalId);
+  return modalidad === "distribucion";
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import { wompiEnvDeLaLlave } from "../ambiente";
 import { MODALIDAD_POR_DEFECTO, modalidadEnLaFecha, type Modalidad } from "../modalidad";
-import { exigirRecaudoDeCnv } from "./modalidad-writer";
+import { exigirDistribucion, exigirRecaudoDeCnv } from "./modalidad-writer";
 import { RepartoInvalidoError, repartir } from "../reparto";
 import { InventarioDeVentaError, reservarVenta, ubicacionDeLaVenta } from "./inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
@@ -298,8 +298,16 @@ export type NewCashTransaction = NewTransaction & {
    * COMO LLEGO LA PLATA (2026-09-25): billetes o transferencia a una cuenta. Las dos se registran aqui porque
    * las dos NACEN PAGADAS y ninguna pasa por la pasarela. No es una etiqueta: el medio viaja a la factura
    * electronica (la DIAN los separa) y decide la cuenta contra la que se registra el pago.
+   *
+   * Y DESDE EL 2026-10-06, 'cobrado_por_el_integrante': el REGISTRO de una venta de Distribucion, que no cobra
+   * nada porque el paciente ya le pago AL INTEGRANTE. Nace pagada igual que las otras dos, y por eso entra por
+   * aqui en vez de tener su propio camino; lo que cambia es que no hay dinero de CNV que custodiar ni factura
+   * que emitirle al paciente.
+   *
+   * EL CANAL ELIGE EL PORTON (ver arriba de `createPaidCashTransaction`), asi que NO lo pone el navegador: lo
+   * pone el servicio. Si viajara desde el formulario, cualquiera podria registrar una venta sin cobrarla.
    */
-  canal?: "efectivo" | "transferencia";
+  canal?: "efectivo" | "transferencia" | "cobrado_por_el_integrante";
 };
 
 // Crea la transaccion (pending), sus items y SUS RESERVAS en una sola transaccion de BD.
@@ -520,9 +528,24 @@ export async function sealPaidTransaction(
 export async function createPaidCashTransaction(
   input: NewCashTransaction,
 ): Promise<{ id: string; linksAnulados: string[] }> {
-  // Ver `exigirRecaudoDeCnv`: "efectivo" aqui significa que custodia dinero DE CNV, y bajo Distribucion el
-  // efectivo es suyo.
-  await exigirRecaudoDeCnv(input.professionalId ?? null);
+  // ═══ EL PORTON LO DECIDE EL CANAL, Y SIEMPRE HAY UNO (0211) ═══
+  //
+  // Este mismo camino sirve para dos cosas distintas, y cada una solo vale en SU modalidad:
+  //
+  //   · 'efectivo' y 'transferencia' significan que el Integrante custodia dinero DE CNV. Bajo Distribucion ese
+  //     dinero es suyo, asi que se bloquea (`exigirRecaudoDeCnv`).
+  //   · 'cobrado_por_el_integrante' es el REGISTRO de una venta de Distribucion: no cobra nada. Usarlo con un
+  //     Integrante en Comision registraria una venta cuyo dinero CNV tenia que recaudar y nadie recaudo: el
+  //     producto sale de la vitrina y no hay ni link, ni efectivo, ni factura (`exigirDistribucion`).
+  //
+  // NO ES UNA BANDERA QUE SALTE LA VERIFICACION: es el canal el que elige CUAL se aplica, y nunca ninguna. Una
+  // bandera de "no verifiques" es lo que convierte un porton en una sugerencia, y el canal no lo pone el
+  // navegador: lo pone el servicio.
+  if (input.canal === "cobrado_por_el_integrante") {
+    await exigirDistribucion(input.professionalId ?? null);
+  } else {
+    await exigirRecaudoDeCnv(input.professionalId ?? null);
+  }
   return db.transaction(async (tx) => {
     // PRIMERO SE ANULAN LOS LINKS: sus reservas se liberan en esta misma transaccion, y el descuento de esta
     // venta (que corre despues) ya encuentra esas unidades disponibles.
