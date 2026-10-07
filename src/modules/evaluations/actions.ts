@@ -869,8 +869,25 @@ export async function generateBaseSurveyQrAction(): Promise<BaseSurveyQrState> {
 // pre-diagnostico y el audit los hace el writer; aqui solo se resuelve el actor y se traducen los motivos.
 export type SurveyEditState = { error: string | null; success: boolean };
 
+// ═══ ADMIN NO EDITA RESPUESTAS CLINICAS, Y ES DELIBERADO (2026-10-07) ═══
+//
+// Santiago lo intento como admin para reponer tres textos de la pregunta 35 y le salio "No estás asignado a
+// este paciente.". El guard es CORRECTO; lo que estaba mal era el mensaje, que no dice de quien es el acto y
+// deja creer que es un defecto de permisos.
+//
+// ── DONDE ESTA LA LINEA, QUE NO ES LA MISMA QUE LA DEL RETIRO ──
+//
+// Retirar una consulta SI lo puede admin (`canRetirarConsulta`), y no es una incoherencia: retirar es un
+// juicio sobre si el encuentro OCURRIO, un hecho del registro. Editar la encuesta es escribir CONTENIDO
+// CLINICO en la historia de un paciente, y el audit sella quien lo escribio. Que admin lo hiciera atribuiria
+// una afirmacion clinica ("toma NEURESSENS") a alguien que no estuvo en la consulta y que no tiene relacion
+// clinica con esa persona.
+//
+// ASI QUE NO SE ENSANCHA. Si alguien vuelve aqui a "arreglarlo" con una policy nueva, esto es el porque de la
+// ausencia: la corrige quien atendio.
 const SURVEY_EDIT_ERROR: Record<string, string> = {
-  not_assigned: "No estás asignado a este paciente.",
+  not_assigned:
+    "Solo el profesional que atiende a este paciente puede editar sus respuestas: quedan firmadas a su nombre en la historia clínica. Si hay algo que corregir, pídeselo a quien lo atendió.",
   already_diagnosed:
     "Esta evaluación ya tiene un diagnóstico. Para cambiar una respuesta ahora, usa Corregir la evaluación.",
   not_editable: "Esta evaluación no se puede editar (revisa su estado).",
