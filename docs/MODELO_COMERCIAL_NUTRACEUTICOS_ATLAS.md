@@ -202,9 +202,22 @@ Aritméticamente equivale a multiplicar el PVP con IVA por 0,80. Esa es la fórm
 >   rápido, sino dejar de entregarle más producto: si no ha pagado lo que ya vendió, darle más inventario
 >   aumenta la exposición sin ninguna garantía adicional."*
 >
-> **El argumento a favor de la decisión**, que es real: con un solo Integrante en Distribución y despachos que
-> los hace admin a mano, un bloqueo automático frena una operación que ya tiene a una persona mirándola. El
-> aviso le da el dato a quien ya está tomando la decisión.
+> **La razón de fondo, textual de Santiago (2026-10-06), y es la que decide:** *"todavía no sabemos qué
+> cantidad es razonable para bloquear a alguien. Hoy podemos decir 3 millones, pero mañana puede haber gente
+> que los haga muy rápido, y bloquear por eso no sería buena opción."*
+>
+> **O sea que no se descarta el bloqueo: no hay base para fijar el umbral todavía.** La cifra es provisional, y
+> un freno automático con un umbral inventado frenaría a quien vende bien, que es exactamente el Integrante al
+> que no hay que frenar. El aviso da el dato sin tomar esa decisión por nadie.
+>
+> **Cuándo se revisa, concreto:** cuando haya **dos o tres quincenas reales de Katherine**. Su cifra propia
+> dice cuál es el tope razonable, y entonces el umbral deja de ser una suposición. (Y sigue en pie la otra
+> señal: cuando entre el segundo Integrante en Distribución, porque ahí el aviso empieza a competir por
+> atención.)
+>
+> **El argumento operativo también es real:** con un solo Integrante en Distribución y despachos que hace admin
+> a mano, un bloqueo automático frena una operación que ya tiene a una persona mirándola. El aviso le da el
+> dato a quien ya está tomando la decisión.
 >
 > **Lo que se pierde, dicho para que la revisión sea informada:** un aviso depende de que alguien lo lea. El
 > día que haya varios Integrantes y los despachos se hagan por lista, el aviso se vuelve una línea más en una

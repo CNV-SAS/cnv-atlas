@@ -973,3 +973,54 @@ bloque sale siempre, porque no hay destino que le cueste dinero a CNV.
 > reintegrar *"incluido el valor del envío"*. **No se tocó a propósito**: es texto legal publicado al
 > paciente. La pregunta está planteada en `BACKLOG.md` para jurídica. Si la ves en pantalla, no es un defecto
 > que haya que reportar.
+
+---
+
+## Parte 18 · El conteo físico ya tiene fecha propia
+
+**Construido el 2026-10-06, migración 0208.** Antes la sección de conteo de `/mi-inventario` estaba **siempre
+activa**, y los Integrantes entendían que tocaba contar cada vez que recibían algo.
+
+**Y el arreglo no fue un interruptor:** una sección siempre abierta **no dice cuándo toca**. Ahora dice la
+fecha, y fuera de la ventana el panel sigue ahí con esa frase en vez de un formulario.
+
+**La cadencia es nuestra, no del modelo.** El modelo solo dice que el conteo se mantiene en ambas modalidades;
+el "semanal" que estaba escrito salía de nuestra propia planeación. Pasó a **mensual**, y el día de apertura y
+el largo de la ventana viven en configuración (el modelo prohíbe valores fijos en el código).
+
+### Dentro de la ventana
+
+1. Por defecto la ventana abre el **día 1** y dura **5 días**. Si hoy cae dentro, en `/mi-inventario` el panel
+   de conteo dice **"El conteo de este período está abierto hasta el (fecha)"** y sale el formulario.
+2. Cuenta y registra. Lo de siempre: si cuentas menos, se abre el caso de faltante.
+3. **El control que importa:** vuelve a intentar un segundo conteo. **Tiene que rechazarlo**, diciendo que ya
+   contaste y con la fecha. Si dejara contar dos veces, la ventana no significaría nada.
+
+### Fuera de la ventana
+
+4. Si hoy no cae dentro (con la ventana por defecto, cualquier día después del 5), el panel **no ofrece el
+   formulario** y dice **"El conteo se abre el (fecha) y tienes hasta el (fecha)"**, más una línea que dice que
+   si necesitas contar antes le escribas a CNV.
+5. **Y el control que no se ve en pantalla:** el rechazo está en el **servidor**, no solo en la pantalla. No
+   se puede probar desde el navegador, y por eso tiene candado contra base real
+   (`ventana-de-conteo-db.test.ts`): una pantalla que no ofrece el formulario **no impide un envío**.
+
+### Y admin le puede pedir un conteo ya
+
+6. Como **admin**, en **/admin/integrantes/[id]** sale **"Pedirle un conteo"**.
+7. Púlsalo: pide **hasta cuándo** puede contar (por defecto cinco días) y **por qué**. Sin el motivo no deja,
+   y el formulario avisa antes de escribirlo: **esa razón se la muestra a él**.
+8. Con la petición puesta, el Integrante **ve el conteo abierto aunque su ventana del mes esté cerrada**, y el
+   panel dice **"CNV te pidió un conteo: (la razón)"**.
+9. **El caso fino, y vale probarlo:** pídele un conteo a alguien que **ya contó este mes**. Tiene que
+   abrírsele de nuevo. La petición existe justamente porque el conteo que hizo no explicó la diferencia, así
+   que ese conteo no puede cerrarle la puerta. *(Lo escribí al revés la primera vez y el candado lo atrapó.)*
+10. Queda en el audit (`conteo.apertura_concedida`): pedirle un conteo a alguien puede terminar en un cargo
+    por faltante, así que lleva firma.
+
+### Para cambiar la ventana sin tocar código
+
+11. La ventana se mueve desde `commercial_config` (`conteo_dia_de_apertura`, `conteo_dias_de_ventana`). Es la
+    decisión de Santiago: *"si cambia la decisión del negocio, se cambia desde el panel y no desde el código."*
+    **Todavía no hay pantalla para esos dos valores**: hoy se cambian por SQL. Si quieres la pantalla, es una
+    pieza chica y va en `BACKLOG.md`.

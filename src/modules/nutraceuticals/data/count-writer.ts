@@ -3,7 +3,9 @@ import "server-only";
 import { and, eq, gt, isNull, sql as dsql, sum } from "drizzle-orm";
 
 import { addBusinessDays } from "@/core/dates/colombia-business-days";
+import { recordAudit } from "@/modules/audit/log";
 import { DESCUENTO_DISTRIBUCION, precioDeFacturacion } from "@/modules/payments/distribucion";
+import { estadoDelConteo, fraseDelConteo, type EstadoDelConteo } from "../ventana-de-conteo";
 import { db } from "@/db";
 import {
   nutraceuticalCountLines,
@@ -21,7 +23,8 @@ import {
 
 // Escritura del conteo fisico (T3b-3 ST2). TRANSACCIONAL (Drizzle owner, atomico): la sesion, sus lineas y
 // los casos de faltante que abre son todo o nada. El conteo se registra SIEMPRE (evidencia de la obligacion
-// semanal), cuadre o no, y puede ser PARCIAL (solo las lineas que trae el input). Por cada linea con faltante
+// del periodo; la cadencia es MENSUAL con ventana configurable desde la 0208, no semanal), cuadre o no, y
+// puede ser PARCIAL (solo las lineas que trae el input). Por cada linea con faltante
 // (fisico < saldo) abre un caso INDEPENDIENTE (uno por producto, su propio plazo), con el precio SELLADO al
 // momento del conteo, ligado a la sesion. El sobrante (fisico > saldo) se registra en la linea, no ajusta el
 // saldo en silencio (su resolucion es aparte). El saldo del sistema NO se toca aqui: baja al cerrar el caso.
@@ -35,6 +38,70 @@ export type CountResult = {
   cuadraron: number;
 };
 
+export class ConteoFueraDeVentanaError extends Error {}
+
+/**
+ * EL ESTADO DE LA VENTANA DE UN INTEGRANTE, leido de la configuracion y de sus propios datos.
+ *
+ * LA DECISION LA TOMA EL MODULO PURO (`ventana-de-conteo.ts`), que tiene candado. Aqui solo se leen los tres
+ * insumos: la ventana configurada, su ultimo conteo, y la apertura manual vigente si hay alguna.
+ */
+export async function estadoDeLaVentanaDeConteo(
+  professionalId: string,
+): Promise<EstadoDelConteo> {
+  const [cfg] = await db.execute<{ dia: number; dias: number; hoy: string }>(dsql`
+    select coalesce(c.conteo_dia_de_apertura, 1) as dia,
+           coalesce(c.conteo_dias_de_ventana, 5) as dias,
+           (now() at time zone 'America/Bogota')::date::text as hoy
+      from (select 1) z left join commercial_config c on true limit 1`);
+
+  const [ultimo] = await db.execute<{ dia: string | null }>(dsql`
+    select (created_at at time zone 'America/Bogota')::date::text as dia
+      from nutraceutical_count_sessions
+     where professional_id = ${professionalId}
+     order by created_at desc limit 1`);
+
+  // ── LA APERTURA VIGENTE, Y SI YA LA RESPONDIO ──────────────────────────────────────────────────────
+  //
+  // LA VIGENTE ES LA QUE LLEGA MAS LEJOS, no la mas reciente: si admin concedio dos, la que manda es la que
+  // todavia vale. Tomar la ultima creada cerraria el conteo antes de lo concedido.
+  //
+  // Y "YA RESPONDIDA" SE RESUELVE AQUI, COMPARANDO INSTANTES, no fechas. El caso real es el del MISMO DIA
+  // ("contaste esta mañana, no cuadra, cuenta otra vez"), y a resolucion de dia los dos conteos caen en la
+  // misma fecha y la peticion se perderia. Lo atrapo el candado de base cuando estaba escrito con fechas.
+  const [apertura] = await db.execute<{
+    valid_until: string;
+    motivo: string;
+    ya_respondida: boolean;
+  }>(dsql`
+    select o.valid_until::text as valid_until,
+           o.motivo,
+           exists (
+             select 1 from nutraceutical_count_sessions s
+              where s.professional_id = o.professional_id
+                and s.created_at >= o.created_at
+           ) as ya_respondida
+      from nutraceutical_count_openings o
+     where o.professional_id = ${professionalId}
+       and o.valid_until >= (now() at time zone 'America/Bogota')::date
+     -- LAS SIN RESPONDER PRIMERO, Y ESO ES LA CORRECCION (2026-10-06). Ordenaba solo por valid_until desc, y
+     -- con DOS aperturas vigentes que vencen el mismo dia el empate se rompia al azar: podia elegir una VIEJA
+     -- y ya respondida, y concluir que el conteo estaba cerrado aunque hubiera otra recien concedida
+     -- esperando respuesta. La regla correcta es "hay alguna sin responder", no "como esta LA vigente".
+     order by ya_respondida asc, o.valid_until desc
+     limit 1`);
+
+  return estadoDelConteo({
+    hoy: cfg.hoy,
+    diaDeApertura: Number(cfg.dia),
+    diasDeVentana: Number(cfg.dias),
+    ultimoConteo: ultimo?.dia ?? null,
+    aperturaManual: apertura
+      ? { yaRespondida: apertura.ya_respondida === true, hasta: apertura.valid_until, motivo: apertura.motivo }
+      : null,
+  });
+}
+
 export async function recordCount(input: {
   professionalId: string;
   actorId: string;
@@ -42,6 +109,19 @@ export async function recordCount(input: {
   lines: CountLineInput[];
   now: Date;
 }): Promise<CountResult> {
+  // ═══ LA VENTANA SE VERIFICA AQUI, NO SOLO EN LA PANTALLA (0208) ═══
+  //
+  // Es lo unico que de verdad hay que guardar de esta pieza: si fuera de la ventana se pudiera registrar
+  // igual, la ventana seria decorativa y volveriamos a la seccion siempre encendida, solo que con un texto
+  // nuevo. Una pantalla que no ofrece el formulario no impide un envio.
+  //
+  // Y EL MENSAJE DICE CUANDO LE TOCA, no solo que no puede: "no disponible" sin fecha deja al Integrante sin
+  // nada que hacer con la informacion, que es el problema con el que empezo todo esto.
+  const ventana = await estadoDeLaVentanaDeConteo(input.professionalId);
+  if (!ventana.abierto) {
+    throw new ConteoFueraDeVentanaError(fraseDelConteo(ventana));
+  }
+
   return db.transaction(async (tx) => {
     const [session] = await tx
       .insert(nutraceuticalCountSessions)
@@ -268,5 +348,57 @@ export async function resolveSobrante(input: {
       createdBy: input.actorId,
     });
     return { ok: true };
+  });
+}
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────────
+// ABRIRLE EL CONTEO A UN INTEGRANTE, FUERA DEL CALENDARIO (0208)
+//
+// PARA QUE: el caso que la ventana mensual no cubre. Hay sospecha de una diferencia y hay que contar YA, sin
+// esperar al dia 1. Y es tambien la salida de quien se paso su ventana.
+//
+// EL MOTIVO ES OBLIGATORIO Y SE LE MUESTRA AL INTEGRANTE. No es formalidad: abrirle un conteo es pedirle
+// trabajo, y el resultado puede ser un caso de faltante con consecuencia economica. Una peticion sin
+// explicacion se lee como una acusacion.
+// ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+export class AperturaDeConteoError extends Error {}
+
+export async function abrirElConteo(input: {
+  professionalId: string;
+  /** Hasta cuando vale (AAAA-MM-DD). */
+  hasta: string;
+  motivo: string;
+  actorId: string;
+  actorEmail: string | null;
+}): Promise<void> {
+  const motivo = input.motivo.trim();
+  if (motivo.length < 5) {
+    throw new AperturaDeConteoError("Escribe por qué le pides el conteo: el Integrante va a ver esa razón.");
+  }
+
+  const [hoy] = await db.execute<{ dia: string }>(
+    dsql`select (now() at time zone 'America/Bogota')::date::text as dia`,
+  );
+  // UNA APERTURA QUE YA VENCIO NO ABRE NADA, y rechazarla es mejor que crearla: una fila que no hace nada deja
+  // a admin creyendo que le pidio el conteo y al Integrante sin verlo.
+  if (input.hasta < hoy.dia) {
+    throw new AperturaDeConteoError("Esa fecha ya pasó. Elige hasta cuándo quieres que pueda contar.");
+  }
+
+  await db.transaction(async (tx) => {
+    const [fila] = await tx.execute<{ id: string }>(dsql`
+      insert into nutraceutical_count_openings (professional_id, valid_until, motivo, opened_by)
+      values (${input.professionalId}, ${input.hasta}::date, ${motivo}, ${input.actorId})
+      returning id`);
+
+    await recordAudit(tx, {
+      event: "conteo.apertura_concedida",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "nutraceutical_count_openings",
+      entityId: fila.id,
+      payload: { professionalId: input.professionalId, hasta: input.hasta, motivo },
+    });
   });
 }

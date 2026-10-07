@@ -1,4 +1,5 @@
 import { Boxes, Receipt, TriangleAlert, Users, Wallet } from "lucide-react";
+import { PedirConteoForm } from "@/modules/nutraceuticals/components/pedir-conteo-form";
 import { MarcaDePruebaForm } from "@/modules/professionals/components/marca-de-prueba-form";
 import { pieDeLoVendido } from "@/modules/payments/cobro-reconocido";
 import { redirect } from "next/navigation";
@@ -120,6 +121,13 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           asimetría se notaba justo cuando más se usa: durante un smoke, alternando una cuenta entre real y de
           prueba. Va aquí, junto al aviso que explica lo que la marca significa. */}
       <MarcaDePruebaForm professionalId={id} esDePrueba={integrante.esDePrueba} />
+
+      {/* ═══ PEDIRLE UN CONTEO FUERA DEL CALENDARIO (0208) ═══
+
+          El conteo se abre por ventana mensual (configurable), y esto es la salida para lo que el calendario
+          no cubre: hay sospecha de una diferencia y hay que contar ya. Va aquí, en la ficha del Integrante,
+          porque es una petición a UNA persona y aquí es donde se está mirando a esa persona. */}
+      <PedirConteoForm professionalId={id} nombre={integrante.nombre} />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <TarjetaMetrica

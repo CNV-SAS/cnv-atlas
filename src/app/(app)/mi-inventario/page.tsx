@@ -12,8 +12,13 @@ import { MisDevolucionesSection } from "@/modules/nutraceuticals/components/mis-
 import { MisFaltantesSection } from "@/modules/nutraceuticals/components/mis-faltantes-section";
 import { MisVencimientosSection } from "@/modules/nutraceuticals/components/mis-vencimientos-section";
 import { canLoadOwnStock } from "@/modules/nutraceuticals/policies/can-load-own-stock";
-import { getOwnInventory, getOwnMovements } from "@/modules/nutraceuticals/services/inventory-service";
+import {
+  getOwnInventory,
+  getOwnMovements,
+  ventanaDeConteoDelUsuario,
+} from "@/modules/nutraceuticals/services/inventory-service";
 import { getPendingRemesasForOwn } from "@/modules/nutraceuticals/services/remesa-service";
+import { fraseDelConteo } from "@/modules/nutraceuticals/ventana-de-conteo";
 
 export const metadata = { title: "Mi inventario - Atlas" };
 
@@ -41,10 +46,11 @@ export default async function MiInventarioPage() {
   const user = await requireUser();
   if (!canLoadOwnStock(user)) redirect("/no-autorizado");
 
-  const [inventory, movements, pendingRemesas] = await Promise.all([
+  const [inventory, movements, pendingRemesas, ventanaDelConteo] = await Promise.all([
     getOwnInventory(user.id),
     getOwnMovements(user.id),
     getPendingRemesasForOwn(user.id),
+    ventanaDeConteoDelUsuario(user.id),
   ]);
   const lines = inventory ?? [];
 
@@ -71,6 +77,11 @@ export default async function MiInventarioPage() {
           CONFIRMA, arriba. Tener las dos cosas dejaba una puerta por la que podia entrar inventario que CNV
           nunca declaro, y ademas le pedia al integrante un trabajo de digitacion que no es suyo. */}
 
+      {/* ═══ EL CONTEO SOLO SE ABRE CUANDO TOCA (0208) ═══
+
+          ESTABA SIEMPRE ACTIVO, y la gente entendía que había que contar cada vez que recibía algo. El
+          arreglo no es un interruptor: es que una sección siempre abierta NO DICE CUÁNDO TOCA. Ahora, fuera
+          de la ventana, el panel sigue ahí y dice la fecha, en vez de ofrecer un formulario que confunde. */}
       <Panel titulo="Conteo físico">
         <Card>
           <CardHeader>
@@ -80,8 +91,24 @@ export default async function MiInventarioPage() {
               justificar. No se muestra el saldo del sistema a proposito: cuenta lo que hay.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {lines.length ? (
+          <CardContent className="flex flex-col gap-3">
+            {/* LA FRASE LA COMPONE EL MÓDULO PURO (`fraseDelConteo`), no esta pantalla: la misma frase la
+                necesita el servidor al rechazar un conteo fuera de plazo, y dos copias se separan. */}
+            <p
+              className={
+                ventanaDelConteo.abierto
+                  ? "text-sm font-medium text-foreground"
+                  : "rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground"
+              }
+            >
+              {fraseDelConteo(ventanaDelConteo)}
+            </p>
+
+            {!ventanaDelConteo.abierto ? (
+              <p className="max-w-prose text-xs text-muted-foreground">
+                Si necesitas contar antes, escríbele a CNV y te abren el conteo.
+              </p>
+            ) : lines.length ? (
               <MiConteoForm products={lines.map((l) => ({ id: l.nutraceuticalId, name: l.name }))} />
             ) : (
               <p className="text-sm text-muted-foreground">Aun no tienes productos en custodia para contar.</p>
