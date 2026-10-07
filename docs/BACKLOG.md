@@ -270,7 +270,23 @@ arriba.
 
 ---
 
-## PENDIENTE (2026-10-04) · El REGISTRO de ventas bajo Distribución · BLOQUEA EL ARRANQUE DE KATHERINE
+## HECHO (2026-10-06) · El REGISTRO de ventas bajo Distribución
+
+**Construido entero el 2026-10-06** (migraciones 0210 y 0211), con la (a) que decidio Santiago: el registro
+antes del arranque, porque ponerla en Comision significaria que facture CNV cuando el acuerdo dice que factura
+ella. El plan y sus cinco sub-tareas estan en `docs/entregas/PLAN_REGISTRO_DISTRIBUCION_2026-10-06.md`; el
+smoke es la parte 19 de `SMOKE_SEGUNDO_2026-09-28.md`.
+
+**El estado lo dicen sus candados**, no esta linea: `registro-de-distribucion-db`,
+`distribucion-no-se-factura-db`, `modalidad-de-la-venta-db` y `distribucion-db`.
+
+**Lo que queda fuera, a proposito:** la emision de la cuenta quincenal en Alegra (necesita la configuracion de
+produccion), el PVP sugerido en el reporte del paciente, y el corte extraordinario al terminar un contrato.
+Las tres tienen su entrada propia.
+
+---
+
+## El contexto que origino la entrada de arriba (2026-10-04)
 
 **Verificado contra el código el 2026-10-04, antes de correr el segundo smoke.**
 

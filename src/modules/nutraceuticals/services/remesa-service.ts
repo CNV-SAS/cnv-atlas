@@ -74,17 +74,29 @@ export async function declareRemesa(input: {
   nutraceuticalId: string;
   quantity: number; // declarada
   lote: string | null;
-}): Promise<{ ok: boolean; message?: string }> {
+}): Promise<{ ok: boolean; message?: string; avisoDeCupo?: string | null }> {
   if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
     return { ok: false, message: "La cantidad declarada debe ser un entero mayor que cero." };
   }
-  // ═══ EL CUPO DE CREDITO SUSPENDE EL DESPACHO (modelo §4, migracion 0188) ═══
+  // ═══ LA MORA SUSPENDE EL DESPACHO; EL CUPO SOLO AVISA (Santiago, 2026-10-06) ═══
   //
-  // Textual: "Cupo de credito. Tope de saldo pendiente por Integrante. Al alcanzarlo, EL SISTEMA SUSPENDE EL
-  // DESPACHO de nuevo inventario hasta que se ponga al dia". Y la mora lo suspende igual.
+  // ── LO QUE CAMBIO Y POR QUE ──
   //
-  // VA AQUI Y NO EN LA PANTALLA porque la remesa es EL despacho: es el unico punto por el que entra
-  // inventario nuevo a una vitrina. Un aviso en la pantalla se puede saltar; esto no.
+  // Antes el CUPO tambien suspendia, como dice el modelo §4 ("al alcanzarlo, el sistema SUSPENDE el despacho")
+  // y como respalda el asesor legal. Santiago decidio que avise, con esta razon textual: "todavia no sabemos
+  // que cantidad es razonable para bloquear a alguien. Hoy podemos decir 3 millones, pero mañana puede haber
+  // gente que los haga muy rapido, y bloquear por eso no seria buena opcion".
+  //
+  // O SEA QUE NO SE DESCARTA EL BLOQUEO: no hay base para fijar el umbral todavia. La desviacion esta anotada
+  // en MODELO_COMERCIAL §4 junto al parrafo que contradice, con cuando se revisa (dos o tres quincenas reales).
+  //
+  // ── LA MORA SI SIGUE SUSPENDIENDO, y es otra regla ──
+  //
+  // Su disparador no es un umbral que haya que adivinar: son tres dias calendario pasado el plazo de pago. O
+  // pago o no pago. La decision no la toco.
+  //
+  // VA AQUI Y NO EN LA PANTALLA porque la remesa es EL despacho: es el unico punto por el que entra inventario
+  // nuevo a una vitrina. Un aviso en la pantalla se puede saltar; esto no.
   //
   // SOLO ALCANZA A DISTRIBUCION: en Comision el Integrante no le debe nada a CNV (el paciente le paga a CNV),
   // asi que no hay saldo que topar y suspenderle el despacho seria inventarle una deuda.
@@ -92,6 +104,9 @@ export async function declareRemesa(input: {
   if (credito && !credito.puede) {
     return { ok: false, message: credito.motivo ?? "Tiene los despachos suspendidos." };
   }
+  // EL AVISO DEL CUPO VIAJA CON EL RESULTADO, no corta: admin lo lee y decide si le despacha. Si se devolviera
+  // como `ok: false` volveria a ser un freno con otro nombre.
+  const avisoDeCupo = credito?.avisoDeCupo ?? null;
 
   const supabase = await createSupabaseServerClient();
   // Desde la migracion 0121 todo movimiento va contra una ubicacion y un lote. La remesa se declara sobre
@@ -118,7 +133,7 @@ export async function declareRemesa(input: {
     created_by: input.actorId,
   });
   if (error) return { ok: false, message: "No se pudo declarar la remesa." };
-  return { ok: true };
+  return { ok: true, avisoDeCupo };
 }
 
 // A quién se le puede declarar una remesa: los que pueden SOSTENER consignación. Por el invariante del

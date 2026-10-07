@@ -308,11 +308,14 @@ export async function registrarPagoDeCuenta(input: {
 }
 
 export type EstadoDeCredito = {
+  /** Lo VENDIDO y no pagado, que incluye lo que todavia no se ha facturado (corregido el 2026-10-06). */
   saldoPendiente: number;
   cupo: number | null;
   enMoraDesde: string | null;
   puede: boolean;
   motivo: string | null;
+  /** El aviso para admin cuando paso el cupo. El cupo AVISA, no bloquea (Santiago, 2026-10-06). */
+  avisoDeCupo: string | null;
 };
 
 /**
@@ -330,15 +333,47 @@ export async function estadoDeCredito(professionalId: string, hoy: string): Prom
     select credit_limit as cupo from professional_profiles where id = ${professionalId}`);
   const cupo = f?.cupo == null ? null : Number(f.cupo);
 
+  // ═══ LO VENDIDO Y NO PAGADO, NO SOLO LO FACTURADO (corregido el 2026-10-06) ═══
+  //
+  // ── EL HUECO QUE TENIA, y lo encontre al mirar de donde salia la cifra ──
+  //
+  // Esta suma solo contaba las ventas que YA ESTABAN EN UNA CUENTA EMITIDA y sin pagar (el `join` con
+  // `distribucion_statements`). O sea que una venta registrada antes de emitir la cuenta del corte NO CONTABA.
+  //
+  // Con un cupo de 3 millones y una quincena de 3, el Integrante podia tener 6 sin pagar y el aviso no decia
+  // nada, porque la mitad todavia no estaba facturada. El aviso llegaba tarde, que es lo que lo volveria
+  // inutil.
+  //
+  // ── Y EL ASESOR LEGAL PIDIO LO CONTRARIO, textual ──
+  //
+  // "El cupo cubre el saldo ya VENDIDO y no pagado." Vendido, no facturado. Son dos momentos distintos y el
+  // codigo usaba el segundo.
+  //
+  // ── LAS DOS MITADES, y por que van en una sola consulta ──
+  //
+  //   · lo FACTURADO y sin pagar: las lineas de cuentas emitidas, no pagadas y no reemplazadas;
+  //   · y lo VENDIDO sin facturar todavia: las lineas selladas como distribucion sin cuenta
+  //     (`distribucion_statement_id is null`), que es el mismo criterio con el que `lineasDelCorte` arma el
+  //     corte. Si fueran dos consultas sumadas en TypeScript, una venta podria entrar en las dos durante la
+  //     emision y contarse doble.
+  //
+  // LA ARITMETICA ES LA MISMA del modulo puro, renglon por renglon (base descontada al peso, IVA al peso sobre
+  // ella), y su candado la compara.
   const [suma] = await db.execute<{ total: string | null }>(sql`
     select sum(round(ti.base_amount - ti.commission_amount)
              + round(round(ti.base_amount - ti.commission_amount) * 0.19)) as total
       from transaction_items ti
       join transactions t on t.id = ti.transaction_id
-      join distribucion_statements s on s.id = t.distribucion_statement_id
-     where s.professional_id = ${professionalId}
-       and s.paid_at is null
-       and s.replaced_by_id is null`);
+      left join distribucion_statements s on s.id = t.distribucion_statement_id
+     where ti.modality = 'distribucion'
+       and ti.sealed_at is not null
+       and t.professional_id = ${professionalId}
+       and (
+         -- FACTURADO Y SIN PAGAR
+         (s.id is not null and s.paid_at is null and s.replaced_by_id is null)
+         -- O VENDIDO Y TODAVIA SIN FACTURAR
+         or t.distribucion_statement_id is null
+       )`);
   const saldoPendiente = suma?.total == null ? 0 : Number(suma.total);
 
   // LA MORA SE DEDUCE DE LOS PLAZOS, no de una columna: una columna "en mora" habria que mantenerla al dia
@@ -356,7 +391,7 @@ export async function estadoDeCredito(professionalId: string, hoy: string): Prom
   }
 
   const r = puedeDespacharse({ saldoPendiente, cupo, enMoraDesde });
-  return { saldoPendiente, cupo, enMoraDesde, puede: r.puede, motivo: r.motivo };
+  return { saldoPendiente, cupo, enMoraDesde, puede: r.puede, motivo: r.motivo, avisoDeCupo: r.avisoDeCupo };
 }
 
 /** Lo que una cuenta emitida vale hoy, derivado de sus lineas. Para las dos pantallas. */

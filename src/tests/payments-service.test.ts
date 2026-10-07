@@ -52,6 +52,16 @@ vi.mock("../modules/payments/data/inventario-de-venta", () => ({
 vi.mock("../modules/payments/services/inventario-venta-service", () => ({ descontarInventarioDeVenta: vi.fn() }));
 // El guard del tratamiento consulta la base; en un test de unidad se mockea y se da por atable. Que NO lo sea
 // se prueba contra la BD real, que es el unico sitio donde una evaluacion reemplazada existe de verdad.
+// LA MODALIDAD SE MOCKEA DESDE QUE EL SERVICIO DERIVA EL CANAL DE ELLA (0211): `registerCashSale` pregunta si
+// el Integrante esta en Distribucion para decidir si la venta se COBRA o solo se REGISTRA. Por defecto
+// Comision, que es lo que estos casos prueban; el caso de Distribucion lo cubre su propio candado contra base
+// real, porque ahi lo que importa es la cadena completa y no esta funcion sola.
+vi.mock("../modules/payments/data/modalidad-writer", () => ({
+  esDeDistribucion: vi.fn(async () => false),
+  exigirRecaudoDeCnv: vi.fn(),
+  exigirDistribucion: vi.fn(),
+  ModalidadError: class ModalidadError extends Error {},
+}));
 vi.mock("../modules/payments/data/tratamientos-del-paciente", () => ({
   esTratamientoAtable: vi.fn().mockResolvedValue(true),
 }));
@@ -192,7 +202,10 @@ describe("registerCashSale: misma resolucion de venta, transaccion ya pagada", (
         items: [{ nutraceuticalId: "n1", quantity: 2, unitPrice: 50000 }],
       }),
     );
-    expect(res).toEqual({ transactionId: "cash-1", amount: 100000, linksAnulados: 0 });
+    // EL CANAL VUELVE EN LA RESPUESTA desde el 2026-10-06, y no es un dato de mas: el servicio puede CAMBIARLO
+    // (bajo Distribucion deriva 'cobrado_por_el_integrante'), y el mensaje al profesional tiene que salir del
+    // que se uso de verdad. Sin eso, el aviso decia "cobrada en efectivo" sobre una venta que no cobro nada.
+    expect(res).toEqual({ transactionId: "cash-1", amount: 100000, linksAnulados: 0, canal: "efectivo" });
     // El checkout de Wompi NO se toca: es otro camino.
     expect(writer.createTransactionWithItems).not.toHaveBeenCalled();
   });

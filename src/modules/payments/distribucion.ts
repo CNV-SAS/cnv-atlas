@@ -239,30 +239,52 @@ export function armarCuentaQuincenal(e: {
 /**
  * ¿Se le puede despachar mas inventario?
  *
- * Modelo §4: "Cupo de credito. Tope de saldo pendiente por Integrante. Al alcanzarlo, el sistema SUSPENDE EL
- * DESPACHO de nuevo inventario hasta que se ponga al dia". Y la mora lo suspende tambien, pasados tres dias
- * calendario del plazo.
+ * ═══ EL CUPO AVISA, NO BLOQUEA (decision de Santiago, 2026-10-06) ═══
  *
- * SIN CUPO CONFIGURADO NO SE SUSPENDE. Un cupo nulo significa "no se ha fijado", no "cero": tratarlo como
- * cero bloquearia a todos los Integrantes el dia que se despliegue, que es peor que no tener el control.
+ * EL MODELO §4 DICE LO CONTRARIO, textual: "al alcanzarlo, el sistema SUSPENDE EL DESPACHO de nuevo inventario
+ * hasta que se ponga al dia". Y el asesor legal lo respalda. La desviacion es deliberada y esta anotada en
+ * `MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` §4, junto al parrafo que contradice.
+ *
+ * SU RAZON, textual: "todavia no sabemos que cantidad es razonable para bloquear a alguien. Hoy podemos decir
+ * 3 millones, pero mañana puede haber gente que los haga muy rapido, y bloquear por eso no seria buena
+ * opcion". O sea que no se descarta el bloqueo: NO HAY BASE PARA FIJAR EL UMBRAL. Un freno automatico con un
+ * umbral inventado frenaria a quien vende bien, que es justo el Integrante al que no hay que frenar.
+ *
+ * SE REVISA cuando haya dos o tres quincenas reales de Katherine: su cifra propia dice cual es el tope.
+ *
+ * ── LO QUE SI SIGUE BLOQUEANDO: LA MORA ──
+ *
+ * Es otra regla, con otro disparador (tres dias calendario pasado el plazo de pago), y la decision no la toco.
+ * Ahi no hay umbral que adivinar: o pago o no pago.
+ *
+ * SIN CUPO CONFIGURADO NO HAY AVISO. Un cupo nulo significa "no se ha fijado", no "cero".
  */
 export function puedeDespacharse(e: {
   saldoPendiente: number;
   cupo: number | null;
   /** La factura mas vieja sin pagar, si esta en mora (dia en que empezo la mora). null = no hay mora. */
   enMoraDesde: string | null;
-}): { puede: boolean; motivo: string | null } {
+}): {
+  puede: boolean;
+  motivo: string | null;
+  /**
+   * EL AVISO PARA ADMIN cuando paso el cupo. Separado de `motivo` a proposito: `motivo` explica por que NO se
+   * puede, y esto explica algo que admin tiene que SABER aunque si se pueda. Mezclarlos haria que la pantalla
+   * tuviera que adivinar si lo que lee es un freno o un dato.
+   */
+  avisoDeCupo: string | null;
+} {
+  const avisoDeCupo =
+    e.cupo != null && e.saldoPendiente >= e.cupo
+      ? `Ya te debe ${e.saldoPendiente.toLocaleString("es-CO")}, por encima de su cupo de ${e.cupo.toLocaleString("es-CO")}. Decide tú si le despachas más producto.`
+      : null;
+
   if (e.enMoraDesde) {
     return {
       puede: false,
       motivo: `Tiene una factura en mora desde el ${e.enMoraDesde}. Los despachos se reanudan cuando se ponga al día.`,
+      avisoDeCupo,
     };
   }
-  if (e.cupo != null && e.saldoPendiente >= e.cupo) {
-    return {
-      puede: false,
-      motivo: `Alcanzó su cupo de crédito (${e.saldoPendiente.toLocaleString("es-CO")} de ${e.cupo.toLocaleString("es-CO")}). Los despachos se reanudan cuando pague.`,
-    };
-  }
-  return { puede: true, motivo: null };
+  return { puede: true, motivo: null, avisoDeCupo };
 }

@@ -30,11 +30,17 @@ export function RegisterCashSaleForm({
   patients,
   nutraceuticals,
   tratamientosPorPaciente = {},
+  esDeDistribucion = false,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
   /** Las consultas de cada paciente, para poder atar la compra a la suya sin ir al servidor. */
   tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
+  /**
+   * Si QUIEN MIRA opera bajo Distribucion. Cambia lo que el formulario dice y pide, no lo que hace: la
+   * decision real la toma el servidor derivandola de la modalidad guardada.
+   */
+  esDeDistribucion?: boolean;
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
   const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
@@ -252,16 +258,38 @@ export function RegisterCashSaleForm({
           </Button>
         </div>
 
-        {/* COMO LLEGO LA PLATA (2026-09-25). Antes solo habia efectivo, y una transferencia se anotaba como
-            efectivo: eso pone en la factura un medio que la DIAN distingue y apunta el dinero a la cuenta
-            "Efectivo en poder de Integrantes", que dice que sigue por recoger cuando ya esta en un banco. */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="canal-del-pago">Cómo pagó</Label>
-          <select id="canal-del-pago" name="canal" defaultValue="efectivo" className={selectClass} disabled={pending}>
-            <option value="efectivo">Efectivo</option>
-            <option value="transferencia">Transferencia</option>
-          </select>
-        </div>
+        {/* ═══ BAJO DISTRIBUCIÓN NO SE PREGUNTA CÓMO PAGÓ (0211) ═══
+
+            El paciente le pagó AL INTEGRANTE, así que no hay medio de pago de CNV que registrar: en efectivo,
+            por transferencia o con datáfono, el dinero es suyo y es asunto suyo.
+
+            PREGUNTARLO SERÍA OFRECER UNA RESPUESTA QUE NO SE USA: el servidor deriva el canal de la modalidad
+            y lo que el formulario dijera se descartaría. Un campo cuyo valor se ignora enseña a desconfiar de
+            los otros.
+
+            Y EN SU LUGAR SE DICE QUÉ VA A PASAR, antes de registrar, que es lo que el profesional necesita
+            saber: que no se cobra nada y que esto entra en su cuenta quincenal. */}
+        {esDeDistribucion ? (
+          <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-2">
+            <span className="text-sm font-medium text-foreground">Esto registra la venta, no la cobra</span>
+            <p className="text-xs text-muted-foreground">
+              Estás en modalidad Distribución: el paciente te paga a ti y tú le facturas. Atlas descuenta el
+              producto de tu vitrina y lo suma a la cuenta quincenal que CNV te factura. No se genera ningún
+              cobro ni factura de CNV al paciente.
+            </p>
+          </div>
+        ) : (
+          /* COMO LLEGO LA PLATA (2026-09-25). Antes solo habia efectivo, y una transferencia se anotaba como
+             efectivo: eso pone en la factura un medio que la DIAN distingue y apunta el dinero a la cuenta
+             "Efectivo en poder de Integrantes", que dice que sigue por recoger cuando ya esta en un banco. */
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="canal-del-pago">Cómo pagó</Label>
+            <select id="canal-del-pago" name="canal" defaultValue="efectivo" className={selectClass} disabled={pending}>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+            </select>
+          </div>
+        )}
 
         {/* LA `key` POR PACIENTE re-monta el bloque al cambiar de paciente: sin ella, la consulta elegida
             para uno se quedaría seleccionada para el siguiente, que es como se le cuelga una compra a la

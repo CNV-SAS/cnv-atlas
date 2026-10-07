@@ -1024,3 +1024,58 @@ el largo de la ventana viven en configuración (el modelo prohíbe valores fijos
     decisión de Santiago: *"si cambia la decisión del negocio, se cambia desde el panel y no desde el código."*
     **Todavía no hay pantalla para esos dos valores**: hoy se cambian por SQL. Si quieres la pantalla, es una
     pieza chica y va en `BACKLOG.md`.
+
+---
+
+## Parte 19 · Registrar una venta bajo Distribución (el bloque completo)
+
+**Construido el 2026-10-06, migraciones 0210 y 0211.** Es lo que desbloquea el arranque de Katherine: antes, un
+Integrante en Distribución **no tenía forma de registrar sus ventas** (los dos caminos de cobro están cerrados
+a propósito, porque el paciente le paga a él).
+
+**Para probarlo hace falta un Integrante en Distribución.** Usa Profesional Prueba y cámbiale la modalidad; con
+"aplicarlo hoy mismo" entra de una si no tiene ventas en el período.
+
+### Lo que cambia en la pantalla
+
+1. En **/pagos**, con ese Integrante, el bloque de venta en efectivo **ya no pregunta "Cómo pagó"**. En su
+   lugar sale un recuadro que dice **"Esto registra la venta, no la cobra"**, y explica que Atlas descuenta el
+   producto de su vitrina y lo suma a la cuenta quincenal.
+   - **Por qué no se pregunta:** el paciente le pagó a él, en efectivo o como fuera, y eso es asunto suyo.
+     Preguntarlo sería ofrecer una respuesta que el servidor descarta.
+2. Registra una venta. **El aviso de éxito dice que no se cobró nada**, no "cobrada en efectivo".
+
+### Los cuatro controles que importan
+
+3. **La venta queda con su canal propio.** En la lista de `/pagos` el medio dice **"La cobraste tú"**, no
+   "Efectivo". Si dijera Efectivo estaría afirmando que custodia dinero de CNV.
+4. **El inventario SÍ baja:** el producto salió de su vitrina. Compruébalo en `/mi-inventario`.
+5. **NO aparece en la bandeja de ventas sin documento**, ni en `/comercial` ni en los contadores. Esto es **el
+   control de verdad del bloque**: si apareciera y alguien la facturara, CNV le emitiría al paciente una
+   factura por un producto que **ya facturó la Integrante**. Dos documentos fiscales por una venta, uno falso,
+   y solo se deshace con nota crédito.
+6. **Y no le crea comisión por pagar.** Su margen es un descuento que ya se quedó; una fila de comisión le
+   prometería un giro que nadie le debe y la metería en la liquidación mensual, que en Distribución no aplica.
+
+### La cuenta quincenal ya tiene de dónde leer
+
+7. En **/comercial**, como admin, emite la cuenta de su corte. **Ahora sale con las ventas dentro** (antes
+   salía vacía, porque no había nada registrado). Verifica que el detalle las muestre con su base y su
+   descuento, y que el total sea la suma de los renglones.
+
+### Y los dos portones, en las dos direcciones
+
+8. **Con el Integrante en Distribución**, intenta generarle un **link de pago**: tiene que rechazarlo, y el
+   mensaje ahora manda a registrar la venta en vez de decir que no existe el camino.
+9. **Devuélvelo a Comisión** e intenta registrar: ahora el que se cierra es el registro. *Es la mitad que se
+   olvida: sin ese portón, el registro serviría para sacar producto de la vitrina de cualquiera sin cobrarlo.*
+
+### El cupo: avisa, no bloquea
+
+10. Ponle el cupo con `scripts/PONER_EL_CUPO_DE_CREDITO_2026-10-06.sql` (3.000.000, provisional).
+11. Registra ventas hasta pasar el cupo y **declárale una remesa**. Tiene que **declararse igual**, con un
+    aviso que dice cuánto debe y que lo decides tú. **Si lo bloquea, el cambio quedó a medias.**
+12. **El saldo cuenta lo VENDIDO, no solo lo facturado:** registra una venta y mira el saldo **sin emitir la
+    cuenta todavía**. Ya tiene que pesar. Antes solo contaba lo facturado, así que el aviso llegaba una
+    quincena tarde.
+13. **La mora sí sigue suspendiendo.** Esa es otra regla y no se tocó.

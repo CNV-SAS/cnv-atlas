@@ -152,6 +152,38 @@ describe.skipIf(!HAS_DB)("la cuenta quincenal de Distribucion (BD real)", () => 
     expect(estado.saldoPendiente).toBe(esperado);
   });
 
+  // ═══ EL HUECO QUE TENIA EL SALDO, Y ES LO QUE HACE UTIL EL AVISO (2026-10-06) ═══
+  //
+  // La suma solo contaba las ventas que YA ESTABAN EN UNA CUENTA EMITIDA. O sea que una venta registrada antes
+  // de emitir el corte NO PESABA: con un cupo de 3 millones y una quincena de 3, el Integrante podia tener 6
+  // sin pagar y el aviso no decia nada.
+  //
+  // Y EL ASESOR LEGAL PIDIO LO CONTRARIO, textual: "el cupo cubre el saldo ya VENDIDO y no pagado". Vendido, no
+  // facturado: son dos momentos distintos y el codigo usaba el segundo.
+  it("una venta SIN FACTURAR todavia ya pesa en el saldo", async () => {
+    const antes = await writer.estadoDeCredito(profId, HOY);
+    await venta(100_000, 20_000);
+    const despues = await writer.estadoDeCredito(profId, HOY);
+    const unaLinea = puro.precioDeFacturacionSellado(100_000, 20_000).total;
+    expect(
+      despues.saldoPendiente - antes.saldoPendiente,
+      "una venta registrada y sin facturar no pesaba: el aviso del cupo llegaria tarde",
+    ).toBe(unaLinea);
+  });
+
+  // Y NO SE CUENTA DOS VECES AL EMITIR, que es el riesgo de sumar las dos mitades: la misma venta pasa de "sin
+  // facturar" a "facturada y sin pagar", y si las dos ramas la tomaran, el saldo se duplicaria en ese momento.
+  it("y al emitir la cuenta NO se cuenta dos veces", async () => {
+    const antes = await writer.estadoDeCredito(profId, HOY);
+    await venta(100_000, 20_000);
+    const sinFacturar = await writer.estadoDeCredito(profId, HOY);
+    await emitir();
+    const facturada = await writer.estadoDeCredito(profId, HOY);
+    expect(facturada.saldoPendiente - antes.saldoPendiente).toBe(
+      sinFacturar.saldoPendiente - antes.saldoPendiente,
+    );
+  });
+
   it("una cuenta pagada deja de pesar en el saldo", async () => {
     await venta(100_000, 20_000);
     const r = await emitir();

@@ -144,3 +144,40 @@ describe("el webhook guarda el tipo de tarjeta", () => {
     expect(extra.last_four).toBeUndefined();
   });
 });
+
+// ═══ UNA VENTA DE DISTRIBUCION NO TIENE MEDIO DE PAGO PARA LA DIAN (0211) ═══
+//
+// EL CANAL `cobrado_por_el_integrante` existe porque `payment_method` responde "COMO LLEGO LA PLATA A CNV", y
+// bajo Distribucion NO LLEGO: el paciente le pago AL INTEGRANTE. Guardar 'efectivo' ahi afirmaria que el
+// Integrante custodia dinero de CNV, que es falso y esta escrito al contrario en dos sitios del codigo.
+describe("el canal de una venta de Distribucion", () => {
+  const pago = { canal: "cobrado_por_el_integrante" as const, tipo: null, tipoTarjeta: null };
+
+  // EL null ES LA RESPUESTA CORRECTA, no un "falta verificar el codigo", que es lo que un null significa en el
+  // resto de este archivo: CNV NO EMITE esa factura (la 0210 la saco de las seis vias de la cola).
+  it("no tiene medio DIAN, y por eso no tiene codigo de Alegra", () => {
+    expect(medioDianDelPago(pago)).toBeNull();
+    expect(codigoAlegraDelPago(pago)).toBeNull();
+  });
+
+  // NO HEREDA EL MEDIO DEL EFECTIVO. Es el error que el valor propio existe para impedir: si cayera en
+  // 'efectivo', una venta que CNV no cobro saldria con el medio de una que si.
+  it("no se confunde con el efectivo", () => {
+    expect(medioDianDelPago(pago)).not.toBe("efectivo");
+    expect(medioDianDelPago({ canal: "efectivo", tipo: null, tipoTarjeta: null })).toBe("efectivo");
+  });
+
+  // Y NO APUNTA PLATA A NINGUNA CUENTA PUENTE: no hay pago que registrar, porque no entro a CNV.
+  it("no apunta a ninguna cuenta de Alegra", async () => {
+    const { cuentaDelPago } = await import("@/modules/payments/facturacion");
+    const mapa = {
+      bankAccountEfectivoId: "1",
+      bankAccountPasarelaId: "2",
+      bankAccountTransferenciaId: "3",
+    } as Parameters<typeof cuentaDelPago>[1];
+    expect(cuentaDelPago("cobrado_por_el_integrante", mapa)).toBeNull();
+    // Y LOS OTROS SIGUEN APUNTANDO: si el cambio se hubiera llevado los tres, esto lo dice.
+    expect(cuentaDelPago("efectivo", mapa)).toBe(1);
+    expect(cuentaDelPago("wompi", mapa)).toBe(2);
+  });
+});

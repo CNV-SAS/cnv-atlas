@@ -19,6 +19,7 @@ import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantal
 import { requireUser } from "@/modules/auth/session";
 import { BloqueRetracto, type RetractoDeLaVenta } from "@/modules/payments/components/bloque-retracto";
 import type { TratamientoParaElegir } from "@/modules/payments/components/bloque-tratamiento";
+import { esDeDistribucion } from "@/modules/payments/data/modalidad-writer";
 import { retractosDeLasVentas } from "@/modules/payments/data/retracto-writer";
 import { tratamientosDeVariosPacientes } from "@/modules/payments/data/tratamientos-del-paciente";
 import { formatDateTime } from "@/lib/format/date";
@@ -95,7 +96,15 @@ function TxStatusBadge({ tx }: { tx: TransactionWithItems }) {
 
 // Medio de pago: distingue una venta en efectivo de una de la pasarela (se ven iguales en la lista, y
 // con la liquidacion viniendo, distinguirlas importa).
-const METODO_LABEL: Record<string, string> = { wompi: "Pasarela", efectivo: "Efectivo" };
+const METODO_LABEL: Record<string, string> = {
+  wompi: "Pasarela",
+  efectivo: "Efectivo",
+  transferencia: "Transferencia",
+  // ES LO QUE EL PROFESIONAL NECESITA LEER (0211): bajo Distribución el paciente le pagó A ÉL, así que no
+  // custodia dinero de CNV ni va a recibir comisión por esta venta. Decir "Efectivo" aquí afirmaría lo
+  // contrario, y es la razón por la que ese canal tiene un valor propio en vez de reusar el del efectivo.
+  cobrado_por_el_integrante: "La cobraste tú",
+};
 
 // LA ENTREGA DE LA VENTA (Bloque 3, sesion 2). Una venta pagada muestra si el paciente ya se llevo el producto
 // y, a quien puede entregarla, el boton. Aqui entrega el paciente que vuelve SOLO A COMPRAR, sin consulta: sin
@@ -293,6 +302,16 @@ export default async function PagosPage({
   const hoursLeftOf = (createdAt: string) =>
     Math.floor((new Date(createdAt).getTime() + 24 * 60 * 60 * 1000 - nowMs) / (60 * 60 * 1000));
 
+  // ═══ SI QUIEN MIRA OPERA BAJO DISTRIBUCIÓN (0211) ═══
+  //
+  // Cambia lo que el formulario DICE y PIDE: no se pregunta cómo pagó (el paciente le pagó a él) y se avisa que
+  // esto registra la venta sin cobrarla. La decisión real la toma el servidor derivándola de la modalidad
+  // guardada, así que esto es presentación, no autorización.
+  //
+  // UN ADMIN QUE COBRA POR EL PACIENTE DE OTRO NO ES DE DISTRIBUCIÓN por tener a alguien que sí lo es: aquí se
+  // pregunta por el perfil de QUIEN MIRA, y con `perfilPropio` nulo (admin sin perfil) queda en falso.
+  const miModalidadEsDistribucion = perfilPropio ? await esDeDistribucion(perfilPropio) : false;
+
   let patients: CheckoutPatient[] = [];
   let nutraceuticals: CheckoutNutraceutical[] = [];
   // LAS CONSULTAS DE CADA PACIENTE, en UNA consulta a la base: el formulario tiene que poder ofrecerlas al
@@ -406,6 +425,7 @@ export default async function PagosPage({
               patients={patients}
               nutraceuticals={nutraceuticals}
               tratamientosPorPaciente={tratamientosPorPaciente}
+              esDeDistribucion={miModalidadEsDistribucion}
             />
           </CardContent>
         </Card>
