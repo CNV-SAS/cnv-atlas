@@ -23,6 +23,17 @@ export type EvaluacionClasificable = {
   status: string;
   /** Reemplazada por una correccion. Su contenido sigue, pero el vigente es otro. */
   superseded: boolean;
+  /**
+   * LA CONSULTA NO OCURRIO (0212): el paciente agendo y no vino, y su encuesta y su consentimiento quedaron
+   * firmados ese dia. Se pliega, porque no es trabajo pendiente ni historia clinica de una atencion.
+   *
+   * ── OJO CON LA PALABRA, QUE TIENE DOS SENTIDOS EN ESTE ARCHIVO ──
+   *
+   * La CLASE se llama "retirada" desde el 2026-09-20 y significa "se pliega": la gana un cascaron cerrado.
+   * Esto es otra cosa: un HECHO persistido (`evaluations.retirada_at`) que dice que la consulta no paso.
+   * Coinciden en lo que la pantalla hace con ellas (plegarlas), no en lo que son.
+   */
+  noOcurrio?: boolean;
   /** Para saber cual es la ULTIMA completada. La cronologia clinica es la de la medicion. */
   measurementDate?: string | null;
   createdAt?: string;
@@ -36,6 +47,9 @@ export type EvaluacionClasificable = {
  * retirada cuando ALGUIEN lo cierra, que es un acto, no el paso del tiempo.
  */
 export function claseDeEvaluacion(e: EvaluacionClasificable): ClaseDeEvaluacion {
+  // LA QUE NO OCURRIO VA PRIMERO: puede estar en cualquier estado (la del 21 estaba `in_progress`), asi que
+  // si se preguntara despues, una abierta que no paso seguiria contando como trabajo pendiente.
+  if (e.noOcurrio) return "retirada";
   if (e.status === "abandoned") return "retirada";
   // Una reemplazada terminó su recorrido: lo vigente es la versión que la sucede.
   if (e.superseded) return "terminada";

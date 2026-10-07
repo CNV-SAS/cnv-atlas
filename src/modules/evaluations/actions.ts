@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+
+import { reportServerError } from "@/lib/observability/report-error";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { after } from "next/server";
@@ -470,25 +472,63 @@ export async function saveProgressAction(
 ): Promise<SaveProgressState> {
   const resumeToken = str(form, "resumeToken");
   if (!resumeToken) return { saved: false, error: "Falta el enlace de la encuesta." };
-  const survey = await getActiveSurvey();
-  if (!survey) return { saved: false, error: "La encuesta no esta disponible en este momento." };
-  const ip = await getClientIp();
-  const answers = readAnswersFromForm(form, survey.questions);
-  const res = await saveProgress({
-    resumeToken,
-    surveyVersionId: survey.surveyVersionId,
-    answers,
-    ipAddress: ip === "unknown" ? null : ip,
-    characterization: readCharacterizationFromForm(form),
-  });
-  if (!res.ok) {
-    // REVOCO MIENTRAS RESPONDIA: no se le pinta una caja roja encima de un formulario que ya no sirve. Se
-    // le lleva a la pagina que reconoce lo que hizo, explica que pasa con lo que ya escribio y da la
-    // salida. Es su derecho ejercido, no un fallo.
-    if (res.error.message === CONSENT_REVOKED_DURING_SURVEY) redirect(`/encuesta/reanudar/${resumeToken}`);
-    return { saved: false, error: res.error.message };
+  try {
+    const survey = await getActiveSurvey();
+    if (!survey) return { saved: false, error: "La encuesta no esta disponible en este momento." };
+    const ip = await getClientIp();
+    const answers = readAnswersFromForm(form, survey.questions);
+    const res = await saveProgress({
+      resumeToken,
+      surveyVersionId: survey.surveyVersionId,
+      answers,
+      ipAddress: ip === "unknown" ? null : ip,
+      characterization: readCharacterizationFromForm(form),
+    });
+    if (!res.ok) {
+      // REVOCO MIENTRAS RESPONDIA: no se le pinta una caja roja encima de un formulario que ya no sirve. Se
+      // le lleva a la pagina que reconoce lo que hizo, explica que pasa con lo que ya escribio y da la
+      // salida. Es su derecho ejercido, no un fallo.
+      if (res.error.message === CONSENT_REVOKED_DURING_SURVEY) redirect(`/encuesta/reanudar/${resumeToken}`);
+      return { saved: false, error: res.error.message };
+    }
+    return { saved: true, error: null };
+  } catch (e) {
+    // ═══ UN FALLO PASAJERO NO PUEDE VOLVERSE UN 500 (Sentry, 7 de octubre) ═══
+    //
+    // ── QUE PASABA ──
+    //
+    // `saveProgress` captura el token invalido y RELANZA todo lo demas, asi que un hipo de la base (ya hay
+    // 502 intermitentes documentados de la API de Supabase) subia sin capturar y la accion devolvia un 500.
+    // En el navegador, React lo traduce a "An unexpected response was received from the server": un mensaje
+    // que no le dice nada al paciente y que no se puede distinguir de un fallo grave.
+    //
+    // ── POR QUE AQUI SE PUEDE ABSORBER, Y EN EL ENVIO FINAL NO ──
+    //
+    // Esto es el GUARDADO DE AVANCE, que corre solo al pulsar cada pildora. Sus respuestas NO se pierden:
+    // siguen en el formulario del navegador, y el proximo clic lo reintenta. Asi que lo correcto es decirlo
+    // sin alarmar y seguir. El envio final es otra cosa: ahi un fallo silencioso haria creer al paciente que
+    // ya entrego, y por eso su mensaje es distinto (ver `submitSurveyAnswersAction`).
+    //
+    // EL `redirect` DE NEXT VIAJA COMO EXCEPCION, asi que se re-lanza: si no, la revocacion a media sesion
+    // dejaria de llevar al paciente a su pagina y se veria como un error de guardado.
+    if (esRedirectDeNext(e)) throw e;
+    reportServerError("encuesta.guardar-avance", e);
+    return {
+      saved: false,
+      error: "No pudimos guardar tu avance en este momento. Tus respuestas siguen aquí; sigue respondiendo e intentamos de nuevo.",
+    };
   }
-  return { saved: true, error: null };
+}
+
+/**
+ * ¿Esta excepcion es el `redirect` de Next y no un fallo?
+ *
+ * Next implementa `redirect()` LANZANDO una excepcion con un `digest` propio. Un `catch` que la absorbiera
+ * convertiria una navegacion deliberada en un mensaje de error, y es el defecto clasico de envolver una
+ * server action en try/catch.
+ */
+function esRedirectDeNext(e: unknown): boolean {
+  return typeof e === "object" && e !== null && "digest" in e && String((e as { digest: unknown }).digest).startsWith("NEXT_REDIRECT");
 }
 
 // ── FASE 2: COMPLETAR ───────────────────────────────────────────────────────────────────────────────
@@ -499,23 +539,38 @@ export async function submitSurveyAnswersAction(
   const fail = (error: string): SurveyFormState => ({ error, fields: null, done: false });
   const resumeToken = str(form, "resumeToken");
   if (!resumeToken) return fail("Falta el enlace de la encuesta.");
-  const survey = await getActiveSurvey();
-  if (!survey) return fail("La encuesta no esta disponible en este momento.");
-  const ip = await getClientIp();
-  const answers = readAnswersFromForm(form, survey.questions);
-  const res = await submitSurveyAnswers({
-    resumeToken,
-    surveyVersionId: survey.surveyVersionId,
-    answers,
-    ipAddress: ip === "unknown" ? null : ip,
-    characterization: readCharacterizationFromForm(form),
-  });
-  if (!res.ok) {
-    // Mismo trato que en el guardado: la pagina de reanudacion ya dice lo que hay que decir.
-    if (res.error.message === CONSENT_REVOKED_DURING_SURVEY) redirect(`/encuesta/reanudar/${resumeToken}`);
-    return fail(res.error.message);
+  try {
+    const survey = await getActiveSurvey();
+    if (!survey) return fail("La encuesta no esta disponible en este momento.");
+    const ip = await getClientIp();
+    const answers = readAnswersFromForm(form, survey.questions);
+    const res = await submitSurveyAnswers({
+      resumeToken,
+      surveyVersionId: survey.surveyVersionId,
+      answers,
+      ipAddress: ip === "unknown" ? null : ip,
+      characterization: readCharacterizationFromForm(form),
+    });
+    if (!res.ok) {
+      // Mismo trato que en el guardado: la pagina de reanudacion ya dice lo que hay que decir.
+      if (res.error.message === CONSENT_REVOKED_DURING_SURVEY) redirect(`/encuesta/reanudar/${resumeToken}`);
+      return fail(res.error.message);
+    }
+    redirect("/encuesta/gracias");
+  } catch (e) {
+    // EL REDIRECT DE NEXT VIAJA COMO EXCEPCION, y aqui hay DOS (el de gracias y el de reanudar): sin esta
+    // linea, completar la encuesta se veria como un fallo justo cuando salio bien.
+    if (esRedirectDeNext(e)) throw e;
+    // ═══ Y AQUI EL MENSAJE ES DISTINTO AL DEL AVANCE, A PROPOSITO ═══
+    //
+    // Este es el ENVIO FINAL. Decirle "tus respuestas siguen aquí" seria tranquilizarlo sobre algo que no
+    // paso: si esto fallo, la encuesta NO quedo entregada. Tiene que saber que hay que volver a pulsar, o se
+    // va creyendo que termino y el profesional se queda esperando una encuesta que nunca llego.
+    reportServerError("encuesta.enviar", e);
+    return fail(
+      "No pudimos enviar tu encuesta en este momento. No se perdió nada de lo que respondiste: vuelve a pulsar Enviar en unos segundos.",
+    );
   }
-  redirect("/encuesta/gracias");
 }
 
 // Envia el codigo de verificacion (OTP) del consentimiento por correo (B7, firma electronica).
@@ -1000,4 +1055,86 @@ export async function enviarEncuestaDelPacienteAction(
   });
   if (!res.ok) return fail(res.error.message);
   redirect(`/ani-bis-e/${res.value.evaluationId}`);
+}
+
+// ── RETIRAR UNA CONSULTA QUE NO OCURRIO, Y DESHACERLO (0212, Santiago 2026-10-07) ───────────────────
+//
+// EL CASO: la paciente agendo el 21, no vino, y se atendio el 25. La del 21 figura en su historia como una
+// consulta que nunca paso. Va a pasar seguido.
+//
+// LA MISMA POLICY QUE CERRAR UN CASCARON (`canAbandonEvaluation`, el profesional dueno): decidir que una
+// consulta no ocurrio es del mismo orden que decidir que se abandona, y la RLS al leer la evaluacion impone
+// el alcance fino (que sea SU paciente). Una policy nueva seria una segunda respuesta a la misma pregunta.
+export type RetiroState = { error: string | null; success: string | null; warning: string | null };
+
+export async function retirarEvaluacionFormAction(
+  _prev: RetiroState,
+  form: FormData,
+): Promise<RetiroState> {
+  const user = await requireUser();
+  if (!canAbandonEvaluation(user)) {
+    return { error: "No autorizado para retirar una consulta.", success: null, warning: null };
+  }
+  const evaluationId = str(form, "evaluationId");
+  if (!evaluationId) return { error: "Evaluación inválida.", success: null, warning: null };
+  const ownership = await getEvaluationOwnership(evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };
+
+  const { retirarEvaluacion, RetiroDeEvaluacionError } = await import("./data/evaluations-writer");
+  try {
+    const ip = await getClientIp();
+    const r = await retirarEvaluacion({
+      evaluationId,
+      motivo: str(form, "motivo"),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: ip === "unknown" ? null : ip,
+    });
+    if (!r.retirada) {
+      return { error: null, success: null, warning: "Esta consulta ya estaba retirada." };
+    }
+  } catch (e) {
+    if (e instanceof RetiroDeEvaluacionError) return { error: e.message, success: null, warning: null };
+    reportServerError("evaluacion.retirar", e);
+    return { error: "No se pudo retirar la consulta.", success: null, warning: null };
+  }
+  return {
+    error: null,
+    success: "Consulta retirada. Su encuesta y su consentimiento se conservan, y puedes deshacerlo.",
+    warning: null,
+  };
+}
+
+// ES REVERSIBLE, y es la diferencia con cerrar o abandonar: retirar es un JUICIO sobre si una consulta
+// ocurrio, y un juicio se revisa (se confundio de paciente, o aparecio la evidencia de que si vino).
+export async function deshacerRetiroFormAction(
+  _prev: RetiroState,
+  form: FormData,
+): Promise<RetiroState> {
+  const user = await requireUser();
+  if (!canAbandonEvaluation(user)) {
+    return { error: "No autorizado.", success: null, warning: null };
+  }
+  const evaluationId = str(form, "evaluationId");
+  if (!evaluationId) return { error: "Evaluación inválida.", success: null, warning: null };
+  const ownership = await getEvaluationOwnership(evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };
+
+  const { deshacerRetiroDeEvaluacion } = await import("./data/evaluations-writer");
+  try {
+    const ip = await getClientIp();
+    const r = await deshacerRetiroDeEvaluacion({
+      evaluationId,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: ip === "unknown" ? null : ip,
+    });
+    if (!r.restaurada) {
+      return { error: null, success: null, warning: "Esta consulta no estaba retirada." };
+    }
+  } catch (e) {
+    reportServerError("evaluacion.deshacer-retiro", e);
+    return { error: "No se pudo deshacer el retiro.", success: null, warning: null };
+  }
+  return { error: null, success: "La consulta vuelve a contar.", warning: null };
 }

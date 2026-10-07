@@ -7,6 +7,8 @@ import { PillEstado } from "@/components/shared/pill-estado";
 import { tabla, td, tdApagado, tdFuerte, tdNum, th, theadTr, thNum, tr } from "@/components/shared/tabla";
 import { AbandonEvaluation } from "@/modules/evaluations/components/abandon-evaluation";
 
+import { RetirarConsultaForm } from "@/modules/evaluations/components/retirar-consulta-form";
+
 import { repartirEvaluaciones } from "../clasificar-evaluaciones";
 import { ChipEstadoEvaluacion } from "./chip-estado-evaluacion";
 import { fechaCorta } from "../format";
@@ -70,12 +72,31 @@ function Fila({ e, puedeCerrar }: { e: PatientEvaluationItem; puedeCerrar: boole
         ) : e.status === "abandoned" ? (
           <span className="text-xs text-muted-foreground">Cerrada</span>
         ) : (
-          <Link
-            href={`/ani-bis-e/${e.evaluationId}`}
-            className="font-semibold text-primary underline-offset-4 hover:underline"
-          >
-            Ver resultados
-          </Link>
+          /* ═══ VER LOS RESULTADOS, Y LA SALIDA PARA LA CONSULTA QUE NO OCURRIO (0212) ═══
+
+             Van JUNTAS y no en estados distintos, porque una consulta que no pasó puede estar en cualquier
+             estado: la del caso real estaba `in_progress` con 63 respuestas. Si el retiro viviera solo en
+             una rama, justo ese caso se quedaría sin salida.
+
+             Y SOLO PARA SU PROFESIONAL (`puedeCerrar`, la misma policy que cerrar un cascarón): decidir que
+             una consulta no ocurrió es un acto sobre la historia clínica de su paciente. */
+          <div className="flex flex-col items-end gap-1">
+            <Link
+              href={`/ani-bis-e/${e.evaluationId}`}
+              className="font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              Ver resultados
+            </Link>
+            {puedeCerrar ? (
+              <RetirarConsultaForm
+                evaluationId={e.evaluationId}
+                retirada={e.noOcurrio}
+                motivo={e.motivoDelRetiro}
+              />
+            ) : e.noOcurrio ? (
+              <span className="text-xs text-muted-foreground">No ocurrió</span>
+            ) : null}
+          </div>
         )}
       </td>
     </tr>

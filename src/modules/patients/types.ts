@@ -124,6 +124,13 @@ export type PatientEvaluationItem = {
   measurementDate: string | null; // fecha de MEDICION (cronologia clinica); null si aun no se midio
   superseded: boolean; // reemplazada por una correccion: se marca, no se oculta (la historia la conserva)
   reasonForVisit: string[]; // motivo de consulta (caracterizacion del encuentro, multi); [] si no se dio
+  /**
+   * LA CONSULTA NO OCURRIO (0212): el paciente agendo y no vino. Se pliega en la historia y no cuenta como
+   * trabajo pendiente, pero NO se borra: su encuesta y su consentimiento son actos reales.
+   */
+  noOcurrio: boolean;
+  /** Con que motivo se retiro, para poder leerlo sin ir al audit. */
+  motivoDelRetiro: string | null;
 };
 
 // Detalle del paciente para su historia (/pacientes/[id]): identidad, contacto y la

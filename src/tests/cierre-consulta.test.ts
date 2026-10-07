@@ -132,6 +132,27 @@ describe("pendientes del cierre", () => {
 });
 
 const WRITER = readFileSync("src/modules/evaluations/data/evaluations-writer.ts", "utf8");
+
+/**
+ * EL CUERPO DE UNA FUNCION DEL WRITER, no "de ahi al final del archivo".
+ *
+ * ── POR QUE, Y ES UNA CORRECCION DEL 2026-10-07 ──
+ *
+ * Estos casos cortaban con `WRITER.slice(indexOf("export async function reopenEvaluation"))`, o sea desde esa
+ * funcion HASTA EL FINAL. Funcionaba porque era la ultima del archivo. Al agregar `retirarEvaluacion` debajo
+ * (que si menciona `diagnoses`, a proposito: es su porton), el candado se puso rojo acusando a
+ * `reopenEvaluation` de tocar un sello que no toca.
+ *
+ * ERA UN CANDADO ANCLADO A LA POSICION, no al hecho: cualquiera que agregue algo al final del archivo lo
+ * rompe, y el mensaje señala al sitio equivocado. Ahora corta en la SIGUIENTE declaracion exportada.
+ */
+function cuerpoDe(nombre: string): string {
+  const i = WRITER.indexOf(`export async function ${nombre}`);
+  if (i < 0) throw new Error(`cierre-consulta: no existe ${nombre} en el writer`);
+  const resto = WRITER.slice(i + 1);
+  const j = resto.indexOf("\nexport ");
+  return j < 0 ? WRITER.slice(i) : WRITER.slice(i, i + 1 + j);
+}
 const UI = readFileSync("src/modules/reports/components/cierre-consulta.tsx", "utf8");
 
 describe("el acto de cerrar", () => {
@@ -144,13 +165,13 @@ describe("el acto de cerrar", () => {
 
   it("es REVERSIBLE: cerrar no puede ser una puerta que se traba", () => {
     // in_progress es lo que habilita importar un BIS, correr el pipeline y editar la encuesta.
-    const fn = WRITER.slice(WRITER.indexOf("export async function reopenEvaluation"));
+    const fn = cuerpoDe("reopenEvaluation");
     expect(fn).toContain('status: "in_progress"');
     expect(fn).toContain('event: "evaluation.reopened"');
   });
 
   it("reabrir NO deshace ningún sello clínico", () => {
-    const fn = WRITER.slice(WRITER.indexOf("export async function reopenEvaluation"));
+    const fn = cuerpoDe("reopenEvaluation");
     for (const sello of ["diagnos", "protocol", "report"]) {
       expect(fn.toLowerCase(), `reopenEvaluation no debe tocar ${sello}`).not.toContain(sello);
     }

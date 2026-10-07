@@ -92,6 +92,19 @@ export const evaluations = pgTable(
     // ponerse sin una fila de correccion que nombre esta evaluacion como old_evaluation_id.
     // diagnoses/treatments/reports NO tienen equivalente: heredan vigencia por el FK a la evaluacion.
     supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    /**
+     * CONSULTA RETIRADA: no ocurrio (0212). El paciente agendo y no vino, y su encuesta y su consentimiento
+     * quedaron firmados ese dia. Los tres campos van juntos o no va ninguno (CHECK), el motivo es
+     * obligatorio, y un TRIGGER impide retirar una evaluacion CON DIAGNOSTICO: eso esconderia una salida
+     * clinica, y para eso existe la correccion.
+     *
+     * NO ES `abandoned` (shell firmado SIN responder) ni `superseded_at` (correccion CON reemplazo). Y SI es
+     * reversible, a diferencia de las dos: retirar es un juicio sobre si una consulta ocurrio, y un juicio se
+     * puede revisar.
+     */
+    retiradaAt: timestamp("retirada_at", { withTimezone: true }),
+    retiradaMotivo: text("retirada_motivo"),
+    retiradaPor: uuid("retirada_por").references(() => profiles.id, { onDelete: "restrict" }),
     // CONSTANCIA de consentimiento (dictamen legal 2026-08-20 §4): "un puntero, no una copia". La VERSION del
     // consentimiento vigente bajo la que se realizo esta evaluacion. Con esto + created_at (marca de tiempo) +
     // patient_id se reconstruye bajo que autorizaciones se capturo el dato (las de patient_consents vigentes en
