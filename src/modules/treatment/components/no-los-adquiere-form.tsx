@@ -99,9 +99,23 @@ export function NoLosAdquiereForm({
 
   if (!abierto) {
     return (
-      <Button type="button" variant="outline" onClick={() => setAbierto(true)} className="self-start">
-        El paciente no los adquiere por ahora
-      </Button>
+      /* ═══ SE RESALTA, PORQUE ERA UNA SALIDA QUE NO SE VEÍA (Santiago, smoke del 2026-10-07) ═══
+
+         *"Sería bueno resaltar más el botón 'el paciente no los adquiere por ahora', para que sepan que también
+         es una opción."* Iba como un `outline` suelto al final, indistinguible del marco, y es una de las DOS
+         formas válidas de cerrar la prescripción: o se prescribe algo, o se registra que no lo adquiere.
+
+         Y NO SE VUELVE PRIMARIO: competir con "Guardar" invitaría a pulsarlo por salir del paso, y esto registra
+         una decisión clínica del paciente. Lo que necesita es NOMBRARSE como la alternativa que es, con la línea
+         que lo dice al lado, no más peso visual que el camino principal. */
+      <div className="flex flex-col gap-1.5 self-start rounded-md border border-dashed border-border bg-muted/30 p-3">
+        <span className="text-xs text-muted-foreground">
+          Si el paciente no va a llevarse nada, esta es la otra forma de cerrar la prescripción:
+        </span>
+        <Button type="button" variant="outline" onClick={() => setAbierto(true)} className="self-start">
+          El paciente no los adquiere por ahora
+        </Button>
+      </div>
     );
   }
 

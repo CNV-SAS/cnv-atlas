@@ -20,7 +20,17 @@ export type TransactionWithItems = Transaction & {
    * `professional_id` la que cobra, y cuando un administrador vende por el paciente de otro no coinciden.
    * Sin esto las dos ventas se ven iguales, y si una sale mal no se sabe a quién preguntarle.
    */
-  professional_profiles: { profile_id: string } | null;
+  professional_profiles:
+    | {
+        profile_id: string;
+        /**
+         * EL NOMBRE DE QUIEN SE LLEVA LA COMISIÓN (Santiago, smoke del 2026-10-07): *"como admin debería ver
+         * datos del paciente y datos del profesional"*. Admin ve TODAS las ventas, así que sin esto no sabe de
+         * quién es ninguna. Viaja con el hint `profiles!profile_id` (ver el lector).
+         */
+        profiles: { full_name: string | null } | { full_name: string | null }[] | null;
+      }
+    | null;
   /**
    * EL PACIENTE DE LA VENTA (Santiago, smoke del 2026-10-07). Nueve líneas de 107.100 del mismo producto no se
    * distinguían entre sí: *"uno se confunde fácil"*. Puede ser `null` en una venta sin paciente atado.

@@ -35,6 +35,7 @@ import { RegisterCashSaleForm } from "@/modules/payments/components/register-cas
 import {
   consultasDeLasVentas,
   getProfessionalProfileIdByUser,
+  reversionesDeLasVentas,
   listSelectablePatients,
   contarVentasDePrueba,
   listTransactions,
@@ -46,6 +47,7 @@ import {
 import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
 import { VentasPorRevisar } from "@/modules/payments/components/ventas-por-revisar";
 import { bloqueadaPorRevision } from "@/modules/payments/revision";
+import { NOMBRE_DE_CLASE, NOMBRE_DE_ESTADO } from "@/modules/payments/lo-deshecho";
 import { VersionDelIntegranteForm } from "@/modules/payments/components/version-del-integrante-form";
 import { listarEfectivosNoRecibidos, listarVentasPorRevisar } from "@/modules/payments/data/ventas-por-revisar";
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
@@ -242,6 +244,8 @@ export default async function PagosPage({
   const consultaDeLaVenta = await consultasDeLasVentas(
     transactions.map((t) => t.treatment_id).filter((x): x is string => x != null),
   );
+  // CUALES SE DESHICIERON: el pie dice cuantas y las filas no decian cuales. En lote, por lo mismo.
+  const reversiones = await reversionesDeLasVentas(transactions.map((t) => t.id));
   const perfilPropio = perfil.dato;
   // SU VITRINA, para que la policy sepa que ventas salieron de otra parte: una que sale de la bodega la
   // despacha CNV, no el profesional.
@@ -555,6 +559,37 @@ export default async function PagosPage({
                           </span>
                         </span>
                       ) : null}
+                      {/* ── Y DE QUÉ PROFESIONAL ES, para quien ve las de todos (Santiago, 2026-10-07) ──
+                          Solo se pinta si hay nombre. Un profesional que mira sus propias ventas no necesita
+                          leer su nombre en las nueve filas; quien lo necesita es admin, que ve las de todos. */}
+                      {(() => {
+                        const pf = Array.isArray(tx.professional_profiles?.profiles)
+                          ? tx.professional_profiles?.profiles[0]
+                          : tx.professional_profiles?.profiles;
+                        const nombre = pf?.full_name?.trim();
+                        return canView && nombre ? (
+                          <span className="text-xs text-muted-foreground">Vendió {nombre}</span>
+                        ) : null;
+                      })()}
+                      {/* ── Y SI SE DESHIZO, LA FILA LO DICE (Santiago, 2026-10-07) ──
+
+                          El pie decía "8 ventas en total · 3 se devolvieron" y las ocho filas decían "Pagado":
+                          *"parecía que todos seguían pagados, entonces el profesional se preguntaría por qué
+                          tiene tan poquito."* El resumen sabía cuántas y las filas no decían cuáles.
+
+                          Una devolución NO cambia el `status` (la venta ocurrió), así que esto no sale del estado
+                          de la fila sino de `sale_reversals`. */}
+                      {(() => {
+                        const rev = reversiones.get(tx.id);
+                        if (!rev) return null;
+                        const clase = NOMBRE_DE_CLASE[rev.clase as keyof typeof NOMBRE_DE_CLASE] ?? rev.clase;
+                        const estado = NOMBRE_DE_ESTADO[rev.estado] ?? rev.estado;
+                        return (
+                          <span className="text-xs font-medium text-attention">
+                            {clase} {estado}: su dinero no cuenta en lo vendido.
+                          </span>
+                        );
+                      })()}
                       <span className="text-xs text-muted-foreground">
                         {tx.treatment_id && consultaDeLaVenta.get(tx.treatment_id) ? (
                           <Link

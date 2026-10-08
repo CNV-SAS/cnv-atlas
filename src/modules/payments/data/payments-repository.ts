@@ -41,8 +41,11 @@ export async function listTransactions(incluirDePrueba = false): Promise<Transac
     // `treatment_id -> treatments -> diagnoses -> evaluation_id`, que es un embed ANIDADO, y es justo donde
     // PostgREST se vuelve ambiguo sin que tsc lo vea (CLAUDE.md). Se resuelve aparte y plano, en
     // `consultasDeLasVentas`, con la misma disciplina que `getTratamientoParaVenta`.
+    // EL NOMBRE DEL PROFESIONAL va con el HINT `profiles!profile_id`, y no es opcional: `professional_profiles`
+    // tiene DOS relaciones a `profiles` (`profile_id` y `rut_verified_by`), así que sin el hint PostgREST no sabe
+    // por cuál resolver y falla en runtime. Es el caso exacto que rompió tres embeds el 2026-08-12.
     .select(
-      "*, professional_profiles(profile_id), patients(document_type, document_number, patient_profiles(first_name, last_name)), transaction_items(*, nutraceuticals(name))",
+      "*, professional_profiles(profile_id, profiles!profile_id(full_name)), patients(document_type, document_number, patient_profiles(first_name, last_name)), transaction_items(*, nutraceuticals(name))",
     )
     .order("created_at", { ascending: false });
   const { data, error } = await (incluirDePrueba ? base : base.eq(COLUMNA_VENTA_DE_PRUEBA, false));
@@ -82,6 +85,42 @@ export async function consultasDeLasVentas(treatmentIds: string[]): Promise<Map<
   for (const fila of t.data ?? []) {
     const ev = fila.diagnosis_id ? evaluacionPorDiagnostico.get(fila.diagnosis_id) : undefined;
     if (ev) salida.set(fila.id, ev);
+  }
+  return salida;
+}
+
+/**
+ * CUALES DE ESTAS VENTAS SE DESHICIERON, Y COMO (Santiago, smoke del 2026-10-07).
+ *
+ * ── EL CASO ──
+ *
+ * El pie dice "8 ventas en total · 3 se devolvieron", pero en la LISTA las ocho decían "Pagado". Textual suyo:
+ * *"parecía que todos seguían pagados, entonces el profesional se preguntaría por qué tiene tan poquito."*
+ *
+ * O SEA QUE EL RESUMEN SABÍA ALGO QUE LAS FILAS NO DECÍAN: cuántas, pero no cuáles. Y la consecuencia cae sobre
+ * el Integrante, que ve menos dinero del que suman sus ventas y no tiene con qué explicárselo.
+ *
+ * Una devolución NO cambia `transactions.status` (la venta ocurrió), así que la fila no podía saberlo sola: el
+ * hecho vive en `sale_reversals`. Se lee en lote, por lo mismo que `retractosDeLasVentas`: una consulta por fila
+ * en esta pantalla es el problema que ya se pagó una vez con un 504.
+ */
+export async function reversionesDeLasVentas(
+  transactionIds: string[],
+): Promise<Map<string, { clase: string; estado: string }>> {
+  const salida = new Map<string, { clase: string; estado: string }>();
+  const ids = [...new Set(transactionIds.filter(Boolean))];
+  if (ids.length === 0) return salida;
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("sale_reversals")
+    .select("transaction_id, kind, state, created_at")
+    .in("transaction_id", ids)
+    .order("created_at", { ascending: true });
+  if (error) fail("reversionesDeLasVentas", error.message);
+  // LA ÚLTIMA MANDA: un contracargo puede abrirse y después ganarse, y lo que la fila tiene que decir es en qué
+  // quedó. Se recorre en orden ascendente, así que la última sobreescribe.
+  for (const r of data ?? []) {
+    salida.set(r.transaction_id as string, { clase: String(r.kind), estado: String(r.state) });
   }
   return salida;
 }
