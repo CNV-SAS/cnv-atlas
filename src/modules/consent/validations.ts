@@ -46,6 +46,40 @@ export type LegalRepRelationship = (typeof LEGAL_REP_RELATIONSHIPS)[number];
 export const ADULT_MIN_AGE = 18;
 export const ASSENT_MIN_AGE = 14; // 14-17: el menor otorga asentimiento
 
+/**
+ * EL PRIMER AÑO QUE SE ADMITE COMO FECHA DE NACIMIENTO.
+ *
+ * ── POR QUE 1900, Y POR QUE NO ALGO MAS FINO (CLAUDE.md, Santiago 2026-10-02) ─────────────────────
+ *
+ * No hay fuente para un corte fino, y la regla del proyecto dice que entonces el cinturon se pone tan ancho
+ * que solo atrape lo IMPOSIBLE, nunca lo improbable. La persona mas longeva verificada de la historia murio a
+ * los 122 años (Jeanne Calment, 1875-1997), asi que 1900 deja un margen de mas de veinte años sobre el record
+ * humano: lo que cae debajo no es un paciente longevo, es un dato roto.
+ *
+ * LO QUE ESTO NO ATRAPA, dicho para que nadie crea que si: un 1960 tecleado como 1990 pasa, y no hay cinturon
+ * que lo pare. Eso se encuentra mirando el dato, no validandolo.
+ */
+export const PRIMER_ANIO_DE_NACIMIENTO_POSIBLE = 1900;
+
+/**
+ * Si una fecha `YYYY-MM-DD` puede ser la de nacimiento de alguien vivo.
+ *
+ * Existe porque el barrido del 2026-10-08 encontro tres fechas imposibles (una de 1795 y dos en el año 41.980
+ * y 51.977) y DOS de ellas ya tenian diagnostico emitido. La edad entra al motor: con 231 años, `capRef` la
+ * acepta, cae a la ultima decada de la tabla y produce una clasificacion PLAUSIBLE. No falla, que es lo que la
+ * hacia invisible.
+ */
+export function esFechaDeNacimientoPosible(birthDate: string, now: Date = new Date()): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDate);
+  if (!m) return false;
+  const anio = Number(m[1]);
+  if (anio < PRIMER_ANIO_DE_NACIMIENTO_POSIBLE) return false;
+  // FUTURA NO ES LA DE NADIE. Se compara por cadena para no arrastrar la zona horaria del proceso: las dos
+  // estan en `YYYY-MM-DD`, y en ese formato el orden alfabetico ES el cronologico.
+  const hoy = now.toISOString().slice(0, 10);
+  return birthDate <= hoy;
+}
+
 // Edad en años cumplidos a partir de una fecha de nacimiento YYYY-MM-DD. UTC para no
 // depender de la zona horaria del proceso. Devuelve null si la fecha es invalida.
 export function computeAgeYears(birthDate: string, now: Date): number | null {
