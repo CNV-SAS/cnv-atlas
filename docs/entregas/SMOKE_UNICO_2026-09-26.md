@@ -247,6 +247,17 @@ reales.
 **Qué se prueba:** que un profesional con la vitrina en cero pueda **cobrar** y que CNV despache, y sobre todo
 que esa venta **no se pueda olvidar**.
 
+> **Antes de empezar, dos cosas que cambiaron el 7 de octubre y se ven aquí mismo** (las pidió Santiago al
+> revisar las cifras):
+>
+> - **Cada línea del historial de /pagos dice ahora de quién es:** el nombre del paciente con su documento, y
+>   **"Sale de una consulta"** como enlace cuando la venta la tiene atada (o **"Sin consulta atada"** cuando no,
+>   que es un caso normal: viene del seguimiento o el paciente la pidió). Antes nueve líneas de 107.100 del
+>   mismo producto eran indistinguibles.
+> - **La tarjeta "Ingreso bruto facturado" de /direccion ahora cierra su propia resta:** dice cuántos pagos
+>   hubo **y cuántos se devolvieron**, porque el conteo cuenta las pagadas y el importe descuenta el dinero de
+>   las devueltas. Es lo que hizo dudar de la cifra en el recorrido anterior.
+
 **Por qué esto último es el punto:** vender desde la bodega convierte un bloqueo visible ("no puedo vender") en
 un olvido invisible ("cobré y nadie llevó nada"). Lo que lo hace seguro es el aviso, así que **el paso 5 es el
 que importa.**

@@ -1065,8 +1065,17 @@ a propósito, porque el paciente le paga a él).
 
 ### Y los dos portones, en las dos direcciones
 
-8. **Con el Integrante en Distribución**, intenta generarle un **link de pago**: tiene que rechazarlo, y el
-   mensaje ahora manda a registrar la venta en vez de decir que no existe el camino.
+8. **Con el Integrante en Distribución, el link de pago YA NO SE OFRECE** (cambio del 2026-10-07, lo pidió
+   Santiago en el smoke: *"es mejor simplemente esconder el checkout"*). Hay que comprobarlo en **los dos
+   sitios**, porque el segundo es el que la integrante usa de verdad:
+   - En **/pagos**: donde iba "Crear checkout" sale **"Aquí no va un link de pago"**, con la razón y sin
+     formulario. Y el bloque de abajo se llama **"Registrar una venta de Distribución"**, no "ya cobrada".
+   - En la **consulta** (pestaña Tratamiento, venta de nutracéuticos): **no hay botón "Cobrar con QR"**. El que
+     queda dice **"Registrar la entrega"**, no "Cobrar en efectivo".
+   - **Y ninguna de las dos puede decir que el dinero es de CNV.** Si en algún sitio lees "ese dinero es de CNV
+     y lo custodias hasta consignar" estando en Distribución, avísame: es la pantalla contradiciéndose con su
+     propio aviso.
+   - *El portón del servidor sigue ahí: lo que se quitó es la puerta que llevaba a él, no el candado.*
 9. **Devuélvelo a Comisión** e intenta registrar: ahora el que se cierra es el registro. *Es la mitad que se
    olvida: sin ese portón, el registro serviría para sacar producto de la vitrina de cualquiera sin cobrarlo.*
 

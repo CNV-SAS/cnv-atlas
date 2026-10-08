@@ -21,4 +21,13 @@ export type TransactionWithItems = Transaction & {
    * Sin esto las dos ventas se ven iguales, y si una sale mal no se sabe a quién preguntarle.
    */
   professional_profiles: { profile_id: string } | null;
+  /**
+   * EL PACIENTE DE LA VENTA (Santiago, smoke del 2026-10-07). Nueve líneas de 107.100 del mismo producto no se
+   * distinguían entre sí: *"uno se confunde fácil"*. Puede ser `null` en una venta sin paciente atado.
+   */
+  patients: {
+    document_type: string;
+    document_number: string;
+    patient_profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
+  } | null;
 };

@@ -30,13 +30,60 @@ export async function listTransactions(incluirDePrueba = false): Promise<Transac
     // persona que tecleó y `professional_id` la que se lleva la comisión, y no siempre son la misma.
     // El embed es inequívoco: `transactions` tiene UN solo FK a `professional_profiles` (a `profiles`
     // tiene siete, y por eso ninguna consulta lo embebe).
-    .select("*, professional_profiles(profile_id), transaction_items(*, nutraceuticals(name))")
+    // ── Y DE QUIÉN ES LA VENTA (Santiago, smoke del 2026-10-07) ────────────────────────────────────
+    //
+    // *"Me doy cuenta que aquí falta decir a cuál paciente se le entregó y si hace parte de una evaluación (y
+    // cuál) o no, ya que uno se confunde fácil."* Con nueve líneas de 107.100 del mismo producto, el historial
+    // no permitía distinguir una venta de otra.
+    //
+    // EL EMBED DE `patients` ES INEQUÍVOCO: `transactions` tiene UN solo FK a `patients` (verificado), así que
+    // no entra en el hazard del embed ambiguo de PostgREST. La CONSULTA no se embebe aquí: cuelga de
+    // `treatment_id -> treatments -> diagnoses -> evaluation_id`, que es un embed ANIDADO, y es justo donde
+    // PostgREST se vuelve ambiguo sin que tsc lo vea (CLAUDE.md). Se resuelve aparte y plano, en
+    // `consultasDeLasVentas`, con la misma disciplina que `getTratamientoParaVenta`.
+    .select(
+      "*, professional_profiles(profile_id), patients(document_type, document_number, patient_profiles(first_name, last_name)), transaction_items(*, nutraceuticals(name))",
+    )
     .order("created_at", { ascending: false });
   const { data, error } = await (incluirDePrueba ? base : base.eq(COLUMNA_VENTA_DE_PRUEBA, false));
   if (error) fail("listTransactions", error.message);
   // El embed (items + nombre del nutraceutico) lo garantiza la forma del query;
   // se castea a la vista de dominio que consume la UI.
   return (data ?? []) as unknown as TransactionWithItems[];
+}
+
+/**
+ * DE QUÉ CONSULTA SALE CADA VENTA, para un lote de ventas: `treatmentId -> evaluationId`.
+ *
+ * ── POR QUÉ NO ES UN EMBED, que sería más corto ──
+ *
+ * El camino es `transactions.treatment_id -> treatments.diagnosis_id -> diagnoses.evaluation_id`, o sea un embed
+ * ANIDADO de dos saltos, y es exactamente donde PostgREST se vuelve ambiguo sin que tsc lo vea (CLAUDE.md, el
+ * caso de los tres embeds que rompió un FK nuevo). `getTratamientoParaVenta` ya tomó esta misma decisión para
+ * una sola venta, por la misma razón; esto es su versión en lote.
+ *
+ * DOS CONSULTAS PLANAS Y NO UNA POR FILA: el historial trae decenas de ventas, y una cadena por fila serían
+ * decenas de ida y vuelta. Con `in()` son dos, pase lo que pase.
+ *
+ * Bajo RLS: una consulta que el usuario no puede ver simplemente no vuelve, y su venta se queda sin enlace.
+ */
+export async function consultasDeLasVentas(treatmentIds: string[]): Promise<Map<string, string>> {
+  const unicos = [...new Set(treatmentIds.filter(Boolean))];
+  if (unicos.length === 0) return new Map();
+  const supabase = await createSupabaseServerClient();
+  const t = await supabase.from("treatments").select("id, diagnosis_id").in("id", unicos);
+  if (t.error) fail("consultasDeLasVentas.treatments", t.error.message);
+  const diagnosisIds = [...new Set((t.data ?? []).map((r) => r.diagnosis_id).filter((x): x is string => x != null))];
+  if (diagnosisIds.length === 0) return new Map();
+  const d = await supabase.from("diagnoses").select("id, evaluation_id").in("id", diagnosisIds);
+  if (d.error) fail("consultasDeLasVentas.diagnoses", d.error.message);
+  const evaluacionPorDiagnostico = new Map((d.data ?? []).map((r) => [r.id, r.evaluation_id as string]));
+  const salida = new Map<string, string>();
+  for (const fila of t.data ?? []) {
+    const ev = fila.diagnosis_id ? evaluacionPorDiagnostico.get(fila.diagnosis_id) : undefined;
+    if (ev) salida.set(fila.id, ev);
+  }
+  return salida;
 }
 
 // professional_profiles.id del usuario actual (si es profesional). RLS:

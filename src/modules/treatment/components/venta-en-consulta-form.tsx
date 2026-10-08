@@ -43,11 +43,18 @@ export function VentaEnConsultaForm({
   treatmentId,
   patientId,
   productos,
+  esDeDistribucion = false,
 }: {
   evaluationId: string;
   treatmentId: string;
   patientId: string;
   productos: ProductoVendible[];
+  /**
+   * El integrante en modalidad Distribución (0210/0211). NO se ofrece el QR, y el registro no habla de cobrar:
+   * el paciente le paga a él, así que un link de pago de CNV siempre lo rechazaría el servidor
+   * (`exigirRecaudoDeCnv`) y el rechazo llegaría en mitad de la consulta. Ver `venta-en-consulta-section`.
+   */
+  esDeDistribucion?: boolean;
 }) {
   const [checkout, accionCheckout, generando] = useActionState(createCheckoutFormAction, checkoutInicial);
   const [efectivo, accionEfectivo, registrando] = useActionState(registerCashSaleFormAction, efectivoInicial);
@@ -307,9 +314,12 @@ export function VentaEnConsultaForm({
 
       {confirmandoEfectivo ? (
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-3">
+          {/* BAJO DISTRIBUCIÓN EL DINERO NO ES DE CNV, así que la confirmación no puede decir que lo custodia:
+              sería pedirle que confirme algo falso justo antes de registrar. */}
           <span className="text-sm text-foreground">
-            ¿Recibiste {total.toLocaleString("es-CO")} COP en efectivo? Ese dinero es de CNV y lo custodias hasta
-            consignar.
+            {esDeDistribucion
+              ? `¿Registras la entrega de ${total.toLocaleString("es-CO")} COP? El paciente te paga a ti; esto suma a tu cuenta quincenal con CNV.`
+              : `¿Recibiste ${total.toLocaleString("es-CO")} COP en efectivo? Ese dinero es de CNV y lo custodias hasta consignar.`}
           </span>
           <Button key="efectivo-si" type="button" size="sm" disabled={pending || !listo} onClick={() => cobrarEnEfectivo()}>
             {registrando ? "Registrando..." : "Sí, lo recibí"}
@@ -327,22 +337,31 @@ export function VentaEnConsultaForm({
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          <Button
-            key="qr"
-            type="button"
-            disabled={pending || !listo || excede || total < WOMPI_MONTO_MINIMO}
-            onClick={() => cobrarConQr()}
-          >
-            {generando ? "Generando..." : "Cobrar con QR"}
-          </Button>
+          {/* ═══ EL QR NO SE OFRECE BAJO DISTRIBUCIÓN (Santiago, 2026-10-07) ═══
+
+              Un botón que el servidor siempre va a rechazar no es una validación: es trabajo perdido y, aquí,
+              un rechazo con el paciente delante. El gate del servidor se queda; lo que se quita es la puerta.
+
+              Y SE QUEDA EL DE REGISTRAR, que es el camino válido, con su propio nombre: "Cobrar en efectivo"
+              diría que entra dinero de CNV, y bajo Distribución no entra ninguno. */}
+          {esDeDistribucion ? null : (
+            <Button
+              key="qr"
+              type="button"
+              disabled={pending || !listo || excede || total < WOMPI_MONTO_MINIMO}
+              onClick={() => cobrarConQr()}
+            >
+              {generando ? "Generando..." : "Cobrar con QR"}
+            </Button>
+          )}
           <Button
             key="efectivo"
             type="button"
-            variant="outline"
+            variant={esDeDistribucion ? "default" : "outline"}
             disabled={pending || !listo || excede}
             onClick={() => setConfirmandoEfectivo(true)}
           >
-            Cobrar en efectivo
+            {esDeDistribucion ? "Registrar la entrega" : "Cobrar en efectivo"}
           </Button>
         </div>
       )}

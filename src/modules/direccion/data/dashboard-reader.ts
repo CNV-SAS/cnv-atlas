@@ -20,6 +20,12 @@ import {
 
 export type DireccionDashboard = {
   paidCount: number;
+  /**
+   * Cuantas de esas `paidCount` se devolvieron. Va junto al conteo para que el importe se pueda rehacer:
+   * `paidCount` cuenta las pagadas y `grossPaid` descuenta el dinero de las devueltas, asi que sin este
+   * numero la tarjeta dice "7 pagos" al lado de una cifra que vale 4 y no hay forma de atar las dos.
+   */
+  devueltasCount: number;
   grossPaid: number; // suma de transactions.amount con status paid
   cnvRevenue: number; // suma de cnv_revenue.amount
   professionalCommissions: number; // suma de professional_revenue.commission_amount
@@ -230,6 +236,19 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
 
   return {
     paidCount: paidRows.length,
+    // ═══ CUANTAS SE DESHICIERON, AL LADO DEL CONTEO (Santiago, smoke del 2026-10-07) ═══
+    //
+    // LO QUE PASO: la tarjeta decia "$428.400 · 7 pagos", y 428.400 son exactamente CUATRO ventas de 107.100.
+    // Santiago se paro ahi, con razon: *"¿entonces si cuadran las cuentas? Me parece que deberian haber mas
+    // ventas"*. Y cuadraban: 7 pagadas (749.700) menos el dinero de 3 devueltas (321.300) = 428.400.
+    //
+    // O SEA QUE EL CONTEO CUENTA 7 Y EL DINERO CUENTA 4, las dos cosas bien, en la misma linea. "Sin lo
+    // devuelto" explica el IMPORTE y no explica la DIFERENCIA con el conteo que tiene al lado, asi que el
+    // lector no puede rehacer la cuenta y lo unico que le queda es dudar de la cifra.
+    //
+    // EL DATO YA ESTABA EN LA PANTALLA (el panel "Lo que se deshizo" dice "3 de 7" y los 321.300), varias
+    // pantallas mas abajo. Una cifra que solo se puede verificar bajando a otro panel no esta explicada.
+    devueltasCount: devueltasRows.length,
     // LA CUENTA LA HACE EL MODULO NEUTRO, que es el mismo que usa Inicio: es lo unico que impide que las dos
     // pantallas vuelvan a decir cifras distintas del mismo hecho.
     grossPaid: brutoReconocido({

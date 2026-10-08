@@ -33,6 +33,7 @@ import {
 } from "@/modules/payments/components/create-checkout-form";
 import { RegisterCashSaleForm } from "@/modules/payments/components/register-cash-sale-form";
 import {
+  consultasDeLasVentas,
   getProfessionalProfileIdByUser,
   listSelectablePatients,
   contarVentasDePrueba,
@@ -236,6 +237,11 @@ export default async function PagosPage({
   // EL RETRACTO DE LAS VENTAS A DOMICILIO, EN UNA SOLA CONSULTA. Preguntar una por fila seria una consulta
   // por venta, y el pool tiene seis conexiones: es justo el problema que ya se pago una vez en esta pantalla.
   const retractos = await retractosDeLasVentas(transactions.map((t) => t.id));
+  // DE QUÉ CONSULTA SALE CADA VENTA, por lo mismo y en lote: una cadena por fila serían decenas de ida y
+  // vuelta en una pantalla que ya se colgó una vez por el número de consultas.
+  const consultaDeLaVenta = await consultasDeLasVentas(
+    transactions.map((t) => t.treatment_id).filter((x): x is string => x != null),
+  );
   const perfilPropio = perfil.dato;
   // SU VITRINA, para que la policy sepa que ventas salieron de otra parte: una que sale de la bodega la
   // despacha CNV, no el profesional.
@@ -391,22 +397,48 @@ export default async function PagosPage({
         </p>
       ) : null}
 
+      {/* ═══ BAJO DISTRIBUCIÓN NO SE OFRECE EL LINK, EN VEZ DE OFRECERLO Y RECHAZARLO (Santiago, 2026-10-07) ═══
+
+          LO QUE PASABA: el integrante en Distribución llenaba el checkout entero y al enviarlo le salía un
+          toast explicándole por qué no se podía. Textual suyo: *"no me parece que el toast sea el apropiado de
+          cara al integrante. Entonces pienso que es mejor simplemente esconder el checkout."*
+
+          Y TIENE RAZÓN: un formulario que siempre va a rechazar no es una validación, es trabajo perdido. El
+          gate del servidor (`exigirRecaudoDeCnv`) SE QUEDA, porque es el que de verdad impide el cobro; lo que
+          cambia es que ya no se llega a él por la puerta de siempre.
+
+          PERO NO SE BORRA SIN DECIR NADA: una tarjeta que desaparece se lee como algo que se rompió, y el
+          integrante que sabe que el link existe se queda buscándolo. Así que en su lugar queda una línea que
+          dice por qué no está y qué usar, que es el bloque de abajo. */}
       {canCreate ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Crear checkout</CardTitle>
-            <CardDescription>
-              Genera un link de pago (vale 24 horas) para que el paciente pague en Wompi.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CreateCheckoutForm
-              patients={patients}
-              nutraceuticals={nutraceuticals}
-              tratamientosPorPaciente={tratamientosPorPaciente}
-            />
-          </CardContent>
-        </Card>
+        miModalidadEsDistribucion ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Aquí no va un link de pago</CardTitle>
+              <CardDescription>
+                Estás en modalidad Distribución: el paciente te paga a ti y tú le facturas, así que CNV no le
+                cobra nada y no hay link que generar. Registra la venta en el bloque de abajo: Atlas descuenta
+                el producto de tu vitrina y lo suma a tu cuenta quincenal.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Crear checkout</CardTitle>
+              <CardDescription>
+                Genera un link de pago (vale 24 horas) para que el paciente pague en Wompi.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CreateCheckoutForm
+                patients={patients}
+                nutraceuticals={nutraceuticals}
+                tratamientosPorPaciente={tratamientosPorPaciente}
+              />
+            </CardContent>
+          </Card>
+        )
       ) : null}
 
       {canCreate ? (
@@ -414,10 +446,19 @@ export default async function PagosPage({
           <CardHeader>
             {/* EL ROTULO DECIA SOLO "EFECTIVO" y el bloque ya ofrece TRANSFERENCIA (smoke del 2026-09-29).
                 Un titulo que nombra un medio y ofrece dos hace dudar de si la transferencia se registra bien. */}
-            <CardTitle className="text-lg">Registrar una venta ya cobrada</CardTitle>
+            {/* ── Y EL ROTULO CAMBIA CON LA MODALIDAD, porque decía algo FALSO (2026-10-07) ──
+
+                "Ese dinero es de CNV y lo custodias hasta consignar" es exactamente lo contrario de lo que pasa
+                bajo Distribución, donde el dinero es del integrante. Y lo decía JUSTO ENCIMA del aviso del
+                formulario que dice "el paciente te paga a ti": dos partes de la misma pantalla afirmando cosas
+                opuestas sobre la misma venta, que es el defecto que más nos ha costado este mes. */}
+            <CardTitle className="text-lg">
+              {miModalidadEsDistribucion ? "Registrar una venta de Distribución" : "Registrar una venta ya cobrada"}
+            </CardTitle>
             <CardDescription>
-              En efectivo o por transferencia, ya pagada. El precio y el producto son de CNV; si la cobraste
-              en efectivo, ese dinero es de CNV y lo custodias hasta consignar.
+              {miModalidadEsDistribucion
+                ? "El paciente ya te pagó a ti. Esto no cobra nada: descuenta el producto de tu vitrina y lo suma a la cuenta quincenal que CNV te factura."
+                : "En efectivo o por transferencia, ya pagada. El precio y el producto son de CNV; si la cobraste en efectivo, ese dinero es de CNV y lo custodias hasta consignar."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -487,6 +528,45 @@ export default async function PagosPage({
                         {Number(tx.amount).toLocaleString("es-CO")} {tx.currency}
                       </CardTitle>
                       <CardDescription>{itemsLabel(tx)}</CardDescription>
+                      {/* ═══ DE QUIÉN ES LA VENTA, Y DE QUÉ CONSULTA SALE (Santiago, smoke del 2026-10-07) ═══
+
+                          *"Aquí falta decir a cuál paciente se le entregó y si hace parte de una evaluación (y
+                          cuál) o no, ya que uno se confunde fácil."* Nueve líneas de 107.100 del mismo producto
+                          eran indistinguibles entre sí.
+
+                          EL NOMBRE Y EL DOCUMENTO: el nombre identifica y el documento desempata homónimos, que
+                          es el criterio de identidad del resto de Atlas.
+
+                          Y LA CONSULTA VA COMO ENLACE cuando la venta la tiene atada, porque la pregunta que
+                          sigue a "¿de qué consulta salió?" es siempre "llévame a ella". Cuando NO la tiene se
+                          dice, en vez de dejar el hueco: una venta suelta es un hecho normal (viene del
+                          seguimiento, o el paciente la pidió) y callarlo se lee como un dato que falta. */}
+                      {tx.patients ? (
+                        <span className="text-xs text-foreground">
+                          {(() => {
+                            const p = Array.isArray(tx.patients.patient_profiles)
+                              ? tx.patients.patient_profiles[0]
+                              : tx.patients.patient_profiles;
+                            const nombre = `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim();
+                            return nombre || "Paciente";
+                          })()}
+                          <span className="text-muted-foreground">
+                            {` · ${tx.patients.document_type} ${tx.patients.document_number}`}
+                          </span>
+                        </span>
+                      ) : null}
+                      <span className="text-xs text-muted-foreground">
+                        {tx.treatment_id && consultaDeLaVenta.get(tx.treatment_id) ? (
+                          <Link
+                            href={`/ani-bis-e/${consultaDeLaVenta.get(tx.treatment_id)}`}
+                            className="text-primary underline-offset-4 hover:underline"
+                          >
+                            Sale de una consulta
+                          </Link>
+                        ) : (
+                          "Sin consulta atada"
+                        )}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {/* Con la hora (smoke del 2026-09-14): aqui nunca la hubo, era solo la fecha. */}
                         {formatDateTime(tx.created_at)}

@@ -67,10 +67,21 @@ describe.skipIf(!HAS_DB)("una venta sabe si es de prueba (BD real)", () => {
 
   beforeAll(async () => {
     ({ db } = await import("@/db"));
+    // ═══ EL QUE MENOS VENTAS TIENE, NO EL MAS ANTIGUO (2026-10-07) ═══
+    //
+    // ESTE TEST MARCA AL PROFESIONAL, y la 0203 recalcula por trigger TODAS sus ventas. Cogia el mas antiguo
+    // (`order by pp.created_at`), que en la base local es el Demo con ~16.000 transacciones: marcarlo dispara el
+    // trigger sobre las 16.000 y el caso se pasa de los 30 s.
+    //
+    // ES LA TERCERA VEZ QUE APARECE LA MISMA FORMA. Ya se arreglo en `marca-de-profesional-db` y en el candado
+    // del profesional, con esta misma consulta, y este se quedo atras: un hazard documentado sigue vivo donde
+    // nadie lo aplico. Aqui no se noto antes porque estaba en el limite (85 s el archivo) y la base crecio
+    // hasta pasarlo, que es la peor forma de descubrirlo: una roja que parece intermitente y no lo es.
     const [prof] = await db.execute(dsql`
       select pp.id, coalesce(pp.is_test, false) as is_test, p.organization_id
         from professional_profiles pp join profiles p on p.id = pp.profile_id
-       order by pp.created_at limit 1`);
+       order by (select count(*) from transactions t where t.professional_id = pp.id), pp.created_at
+       limit 1`);
     profId = prof.id;
     orgId = prof.organization_id;
     marcaOriginalDelProfesional = prof.is_test;

@@ -16,6 +16,7 @@ import {
 } from "@/modules/payments/data/payments-repository";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { disponibleEnCentral } from "@/modules/payments/data/inventario-de-venta";
+import { esDeDistribucion } from "@/modules/payments/data/modalidad-writer";
 import { disponibleParaVender } from "@/modules/payments/services/payments-service";
 import { bloqueadaPorRevision } from "@/modules/payments/revision";
 import { qrDelLink } from "@/modules/payments/services/qr-del-link";
@@ -131,6 +132,16 @@ export async function VentaEnConsultaSection({
   const ubicacionPropia = perfilPropio
     ? await ubicacionDelProfesional(await createSupabaseServerClient(), perfilPropio)
     : null;
+  // ═══ BAJO DISTRIBUCIÓN NO SE OFRECE EL QR (Santiago, smoke del 2026-10-07) ═══
+  //
+  // Él lo cazó en /pagos, pero ESTA es la superficie que de verdad usa el integrante: cobra aquí, con el
+  // paciente delante. Ofrecer "Cobrar con QR" y rechazarlo después es peor aquí que en /pagos, porque el
+  // rechazo llega en mitad de una consulta.
+  //
+  // SE PREGUNTA POR EL MISMO PERFIL QUE USA EL SERVIDOR (`perfilPropio`, el del usuario en sesión), que es el
+  // que `resolveSale` resuelve para aplicar `exigirRecaudoDeCnv`. Preguntar por el profesional de la evaluación
+  // sería una segunda definición de "de quién es esta venta", y las dos podrían discrepar.
+  const miModalidadEsDistribucion = perfilPropio ? await esDeDistribucion(perfilPropio) : false;
   const precio = new Map(catalogo.map((c) => [c.id, c.unit_price == null ? null : Number(c.unit_price)]));
   const productos = ids.map((id) => ({
     id,
@@ -158,8 +169,9 @@ export async function VentaEnConsultaSection({
       <div className="flex flex-col gap-1">
         <h3 className="text-base font-semibold text-foreground">Venta y entrega de nutracéuticos</h3>
         <p className="max-w-prose text-sm text-muted-foreground">
-          Marca lo que el paciente se lleva de lo prescrito y cobra. Cuando el pago esté recibido, registra la
-          entrega. El inventario se descuenta solo al pagarse.
+          {miModalidadEsDistribucion
+            ? "Marca lo que el paciente se lleva de lo prescrito y regístralo. Estás en modalidad Distribución: el paciente te paga a ti y tú le facturas, así que CNV no cobra nada. Atlas descuenta el producto de tu vitrina y lo suma a la cuenta quincenal que CNV te factura."
+            : "Marca lo que el paciente se lleva de lo prescrito y cobra. Cuando el pago esté recibido, registra la entrega. El inventario se descuenta solo al pagarse."}
         </p>
       </div>
 
@@ -168,6 +180,7 @@ export async function VentaEnConsultaSection({
         treatmentId={protocol.treatmentId}
         patientId={protocol.patientId}
         productos={productos}
+        esDeDistribucion={miModalidadEsDistribucion}
       />
 
       {ventas.length > 0 ? (
