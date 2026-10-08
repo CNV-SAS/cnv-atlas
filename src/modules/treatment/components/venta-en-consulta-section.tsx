@@ -202,11 +202,24 @@ export async function VentaEnConsultaSection({
                 {/* SALE DE LA BODEGA: se dice en la venta ya creada y no solo al cobrar. Es lo que evita que el
                     profesional la dé por entregada: el producto no estuvo nunca en sus manos, y si esta linea no
                     lo dijera, en la lista se veria igual que una que sí entregó. */}
+                {/* ── Y YA DESPACHADA DEJA DE DECIR QUE FALTA (Santiago, smoke del 2026-10-07) ──
+
+                    La línea decía "falta despacharla" SIEMPRE, así que una venta ya despachada mostraba
+                    "Sale de la bodega de CNV: falta despacharla." justo encima de "Entregado el 7/10 10:00 p.m.".
+                    Dos frases opuestas en la misma tarjeta, y la de arriba en color de atención.
+
+                    EL HECHO QUE LA LÍNEA EXISTE PARA DECIR SE CONSERVA (que el producto no salió de su vitrina,
+                    así que él no lo entregó): lo que cambia es el tiempo del verbo y el color. */}
                 {v.location_id != null && ubicacionPropia != null && v.location_id !== ubicacionPropia ? (
-                  <span className="text-xs text-attention">
-                    Sale de la bodega de CNV: falta despacharla.
-                    {v.fulfillment_state === "entregado" ? null : " Un administrador ya tiene el aviso."}
-                  </span>
+                  v.fulfillment_state === "entregado" ? (
+                    <span className="text-xs text-muted-foreground">
+                      Salió de la bodega de CNV: ya la despacharon.
+                    </span>
+                  ) : (
+                    <span className="text-xs text-attention">
+                      Sale de la bodega de CNV: falta despacharla. Un administrador ya tiene el aviso.
+                    </span>
+                  )
                 ) : null}
                 <EstadoDeLaVenta
                   venta={v}

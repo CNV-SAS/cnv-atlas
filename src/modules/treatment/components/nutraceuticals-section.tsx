@@ -57,6 +57,8 @@ export function NutraceuticalsSection({
     })),
   );
   const [pickId, setPickId] = useState("");
+  /** Se intentó guardar sin prescribir nada y sin registrar la decisión del paciente. Ver el `onSubmit`. */
+  const [faltaCerrar, setFaltaCerrar] = useState(false);
 
   const recommended = resolveRecommendation(protocol.recommendedNutraceuticals, protocol.catalog);
   // LAS DOS LISTAS SALEN DE LA PROPIEDAD DEL PRODUCTO, no de una lista de nombres a mano: un producto de
@@ -160,7 +162,33 @@ export function NutraceuticalsSection({
           cualquiera que atienda al paciente debe tener. */}
       <ContraindicacionesAviso protocol={protocol} />
 
-      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
+      {/* ═══ GUARDAR SIN NADA PRESCRITO Y SIN DECIDIR AVISA, NO SE APAGA (Santiago, smoke del 2026-10-07) ═══
+
+          LO QUE PASABA: *"deja guardar prescripción sin siquiera haber agregado un nutracéutico ni haber dado al
+          botón 'el paciente no los adquiere por ahora'"*. Guardaba una prescripción vacía sin decir nada, así que
+          la consulta quedaba sin prescripción Y sin la decisión del paciente: ninguno de los dos hechos
+          registrado, y nada en pantalla que lo dijera.
+
+          Y LA FORMA LA ELIGIÓ ÉL, contra mi primer impulso de apagar el botón: *"o mejor mantenerlo activo y que
+          salga un toast o mensaje... esto me parece mejor."* Tiene razón, y la razón vale para más casos que
+          este: un botón apagado no dice por qué está apagado, y el profesional se queda buscando el motivo en la
+          pantalla. Uno que se pulsa y responde sí lo dice.
+
+          CUÁNDO NO AVISA: si la decisión "no los adquiere" ya está registrada, una prescripción vacía es
+          coherente y guardarla es correcto. El aviso solo sale cuando faltan LAS DOS cosas. */}
+      <form
+        onSubmit={(e) => {
+          const yaDecidido = protocol.nutraceuticalDecision?.decision === "no";
+          if (nutras.length === 0 && !yaDecidido) {
+            e.preventDefault();
+            setFaltaCerrar(true);
+            return;
+          }
+          setFaltaCerrar(false);
+          enviarSinReset(formAction)(e);
+        }}
+        className="flex flex-col gap-3"
+      >
         <input type="hidden" name="evaluationId" value={evaluationId} />
         {/* Firma de concurrencia: la prescripcion que el cliente cargó. Si otro profesional la cambió, el
             servidor lo detecta bajo lock y rechaza sin pisar. */}
@@ -449,6 +477,16 @@ export function NutraceuticalsSection({
               </span>
             ) : null}
           </div>
+          {/* EL AVISO VA JUNTO AL BOTÓN que lo provocó, y nombra LAS DOS salidas: decir solo "falta algo" deja al
+              profesional buscando qué. */}
+          {faltaCerrar ? (
+            <p className="max-w-prose text-sm text-clinical-warning">
+              No hay nada que guardar todavía. Esta consulta se cierra de una de dos formas:{" "}
+              <strong>agrega al menos un nutracéutico</strong> a la prescripción, o registra que{" "}
+              <strong>el paciente no los adquiere por ahora</strong> con el botón de abajo. Las dos quedan en su
+              historia clínica; dejarlo en blanco no registra ninguna.
+            </p>
+          ) : null}
         </fieldset>
       </form>
 
@@ -600,9 +638,20 @@ function RecommendedList({
           ),
         )}
       </ul>
-      <p className="text-xs text-muted-foreground">
-        &ldquo;En consultorio&rdquo;: se lo puedes entregar en la consulta. &ldquo;Solo en tienda&rdquo;: el
-        paciente lo compra en la tienda de CNV.
+      {/* ── ESTO ES EL CANAL DEL PRODUCTO, NO TUS UNIDADES (Santiago, smoke del 2026-10-07) ──
+
+          *"Profesional Prueba solo tiene ADAPTO-STRESS, pero aun así el listado de nutracéuticos dice 'en
+          consultorio'."* El rótulo era correcto (es la disponibilidad comercial del producto) y la leyenda lo
+          hacía sonar a otra cosa: decía "se lo puedes entregar en la consulta", que es falso con la vitrina en
+          cero. La frase prometía algo sobre SU inventario y solo sabía algo sobre el catálogo.
+
+          Y no se le añade el saldo aquí a propósito: el bloque de venta ya lo dice con las cifras exactas y de
+          dónde salen. Dos sitios diciendo el stock es como se llega a que uno quede viejo. */}
+      <p className="max-w-prose text-xs text-muted-foreground">
+        Esto es por dónde se consigue el producto, no cuántas unidades tienes.{" "}
+        <strong>&ldquo;En consultorio&rdquo;</strong>: se entrega en la consulta.{" "}
+        <strong>&ldquo;Solo en tienda&rdquo;</strong>: el paciente lo compra en la tienda de CNV. Tus unidades se
+        ven al cobrar, en el bloque de venta.
       </p>
     </div>
   );

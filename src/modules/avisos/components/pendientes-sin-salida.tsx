@@ -74,7 +74,16 @@ export function PendientesSinSalida({
                     {Number(p.monto).toLocaleString("es-CO")} COP · {p.productos || "Sin líneas"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Del {formatDate(p.desde)}
+                    {/* ── CON LA HORA, COMO EL RESTO DE /pagos (Santiago, smoke del 2026-10-07) ──
+
+                        Era el único bloque de la pantalla que daba solo la fecha, y es justo donde hace falta:
+                        con varias ventas del mismo día y del mismo producto, "Del 7/10/2026" no distingue
+                        ninguna. Todo lo demás de /pagos ya va con hora y minutos de Bogotá ("Entregado el
+                        7/10/2026, 10:00 p. m."), así que esto era una inconsistencia, no una decisión.
+
+                        `p.desde` ya viaja como timestamp completo desde el lector; lo único que lo recortaba
+                        era el formateador que se usaba aquí. */}
+                    Del {formatDateTime(p.desde)}
                     {!descartado && hoy > limite ? ` · su plazo venció el ${formatDate(`${limite}T12:00:00`)}` : ""}
                   </p>
                   {descartado ? null : <p className="mt-2 text-xs text-muted-foreground">{EXPLICACION[tipo]}</p>}

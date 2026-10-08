@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
+
+const raiz = process.cwd();
 
 // ═══ DE QUIÉN ES CADA VENTA, Y EL EMBED QUE LO TRAE (Santiago, smoke del 2026-10-07) ═══
 //
@@ -58,6 +63,27 @@ describe.skipIf(!HAS_DB)("el historial puede decir de quién es la venta (BD rea
         `tabla, no solo en el nuevo.`,
     ).toHaveLength(1);
     expect(cols[0]).toBe("patient_id");
+  });
+
+  // ── Y EL NOMBRE DEL PROFESIONAL, QUE SI ENTRA EN EL HAZARD (Santiago, 2026-10-07) ────────────────
+  //
+  // Admin ve TODAS las ventas y no sabia de quien era ninguna. Traer el nombre obliga a embeber
+  // `professional_profiles -> profiles`, y AHI SI HAY MAS DE UNA RELACION (`profile_id` y `rut_verified_by`):
+  // es el caso EXACTO que rompio tres embeds el 2026-08-12. Sin el hint, PostgREST falla en runtime.
+  it("professional_profiles tiene VARIAS relaciones a profiles, asi que el embed va con hint", async () => {
+    const cols = await relaciones("professional_profiles", "profiles");
+    expect(
+      cols.length,
+      "si quedara UNA sola relacion, el hint sobraria; mientras haya varias es obligatorio.",
+    ).toBeGreaterThan(1);
+    expect(cols).toContain("profile_id");
+
+    const lector = readFileSync(join(raiz, "src/modules/payments/data/payments-repository.ts"), "utf8");
+    expect(
+      lector,
+      "el embed del nombre del profesional perdio el hint `profiles!profile_id`: con dos relaciones a profiles, " +
+        "PostgREST no sabe por cual resolver y /pagos revienta en runtime sin que tsc diga nada.",
+    ).toContain("profiles!profile_id(full_name)");
   });
 
   it("y el camino a la consulta sigue siendo de dos saltos, que es por lo que NO se embebe", async () => {

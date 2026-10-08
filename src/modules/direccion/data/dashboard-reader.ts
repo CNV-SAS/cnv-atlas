@@ -49,6 +49,17 @@ export type DireccionDashboard = {
    */
   inventoryFueraDeVitrinas: { nombre: string; unidades: number }[];
   /**
+   * Y QUE PRODUCTOS HAY FUERA DE LAS VITRINAS (Santiago, smoke del 2026-10-07).
+   *
+   * EL CASO: la pantalla de venta dice "disponibles: 386 en la bodega de CNV" y /direccion mostraba la bodega
+   * como un solo numero (1.283) y el desglose por producto SOLO de las vitrinas (MULTI-CELL BASE 114). Santiago
+   * preguntó si el 386 era falso, y no había forma de comprobarlo desde aquí: las dos pantallas decían
+   * "MULTI-CELL BASE" sobre universos distintos y ninguna decía cuál.
+   *
+   * Un agregado que no se puede abrir obliga a creérselo, y aquí llevó a la conclusión contraria a la verdad.
+   */
+  inventoryFueraPorProducto: { nombre: string; unidades: number }[];
+  /**
    * Desde cuando cuentan las cifras de dinero, o null si se cuenta todo. La pantalla lo DICE: una cifra sin
    * su ventana se lee como "todo el historico", y el dia del arranque eso seria falso.
    */
@@ -273,6 +284,12 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
     ),
     /** La bodega central y la cuarentena: NO suman al total, y se muestran con su nombre. */
     inventoryFueraDeVitrinas: fueraDeVitrinas,
+    // POR PRODUCTO, de las MISMAS filas: es lo que permite cotejar el "disponibles: N en la bodega de CNV" que
+    // ve quien vende. Sin esto las dos pantallas hablaban del mismo producto sobre universos distintos.
+    inventoryFueraPorProducto: agrupar(
+      todoElSaldo.filter((r) => ubicacionDe(r)?.kind !== "integrante"),
+      (r) => uno(r.nutraceuticals as { name: string } | null)?.name ?? "(sin nombre)",
+    ),
     desdeElArranque: arranque,
   };
 }

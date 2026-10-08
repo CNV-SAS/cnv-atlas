@@ -7,6 +7,7 @@ import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createCheckoutFormAction, registerCashSaleFormAction } from "@/modules/payments/actions";
+import { TEXTO_AVISO_DOMICILIO } from "@/modules/payments/domicilio";
 import type { CashSaleFormState, PaymentFormState } from "@/modules/payments/validations";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "@/modules/payments/wompi-minimo";
 
@@ -262,10 +263,26 @@ export function VentaEnConsultaForm({
             </span>
           </label>
           {desdeLaBodega ? (
-            <p className="text-xs text-attention">
-              El paciente <strong>no se lleva el producto hoy</strong>: la venta sale de la bodega de CNV y queda
-              pendiente de despacho. Le va a llegar el aviso a un administrador para que lo despache.
-            </p>
+            <>
+              <p className="text-xs text-attention">
+                El paciente <strong>no se lleva el producto hoy</strong>: la venta sale de la bodega de CNV y
+                queda pendiente de despacho. Le va a llegar el aviso a un administrador para que lo despache.
+              </p>
+              {/* ═══ Y SI NO SE LO LLEVA HOY, HAY QUE ENVIÁRSELO (Santiago, smoke del 2026-10-07) ═══
+
+                  *"Al ser despachado de la bodega es una entrega a domicilio. Entonces toda entrega así debe
+                  aparecer el mismo aviso del domicilio."* Tiene razón, y es el aviso que venía de legal: el
+                  envío lo paga a un tercero, aparte del producto. Decirlo DESPUÉS de cobrar es decírselo tarde.
+
+                  EL TEXTO SALE DEL MÓDULO (`TEXTO_AVISO_DOMICILIO`), el mismo que el bloque de /pagos: una
+                  segunda copia de un texto legal es una copia que se queda vieja cuando legal lo cambie. */}
+              <div className="mt-1 rounded-md border border-attention/50 bg-attention-bg p-2.5">
+                <p className="text-xs font-semibold text-attention">
+                  Hazle saber al paciente que el envío se lo paga a un tercero
+                </p>
+                <p className="mt-1 text-xs text-foreground">{TEXTO_AVISO_DOMICILIO}</p>
+              </div>
+            </>
           ) : null}
           {/* UNA VENTA SALE DE UN SOLO SITIO. Se dice aqui y no se descubre al fallar. */}
           <p className="text-xs text-muted-foreground">

@@ -119,7 +119,13 @@ export default async function DireccionPage() {
           </summary>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Por producto</span>
+              {/* ── EL ALCANCE VA EN EL RÓTULO (Santiago, smoke del 2026-10-07) ──
+
+                  Decía solo "Por producto", debajo de una tarjeta que dice "En las vitrinas", y se leyó como el
+                  inventario COMPLETO. De ahí salieron dos conclusiones equivocadas en una sola sesión: que el
+                  "disponibles: 386 en la bodega" de la pantalla de venta era falso, y que una venta desde la
+                  bodega no había movido inventario. Las dos vienen de una palabra que faltaba. */}
+              <span className="text-xs text-muted-foreground">Por producto, en las vitrinas</span>
               {d.inventoryByProduct.map((p) => (
                 <span key={p.nombre} className="text-sm text-foreground">
                   {p.nombre} <span className="tabular-nums text-muted-foreground">{p.unidades}</span>
@@ -155,10 +161,28 @@ export default async function DireccionPage() {
                   {l.nombre} <span className="tabular-nums text-muted-foreground">{l.unidades}</span>
                 </span>
               ))}
-              <p className="mt-1 max-w-prose text-xs text-muted-foreground">
-                Es informativo. Hoy el saldo de la bodega central no baja cuando se despacha una remesa: sube
-                el del Integrante cuando la confirma, y la bodega se queda igual. Sumarlo aquí contaría las
-                mismas unidades dos veces. Se corrige cuando se construya el módulo de bodega.
+              {/* Y SUS PRODUCTOS, para poder cotejar el "disponibles: N en la bodega de CNV" de la pantalla de
+                  venta. Sin el desglose había que creerse la cifra, y creérsela fue justo lo que falló. */}
+              {d.inventoryFueraPorProducto.length > 0 ? (
+                <div className="mt-2 flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">Por producto, fuera de las vitrinas</span>
+                  {d.inventoryFueraPorProducto.map((p) => (
+                    <span key={p.nombre} className="text-sm text-foreground">
+                      {p.nombre} <span className="tabular-nums text-muted-foreground">{p.unidades}</span>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {/* ── LA NOTA DISTINGUÍA MAL, Y ESO CONFUNDIÓ (Santiago, 2026-10-07) ──
+
+                  Decía "el saldo de la bodega central no baja", a secas. Eso es verdad de una REMESA y FALSO de
+                  una VENTA desde la bodega, que sí descuenta (el saldo es un caché del trigger de movimientos,
+                  migración 0040). Leída como regla general, llevó a concluir que una venta despachada no había
+                  movido nada. Una nota que explica un caso y se lee como todos es peor que ninguna. */}
+              <p className="mt-2 max-w-prose text-xs text-muted-foreground">
+                Es informativo y no suma arriba, porque contaría dos veces: una <strong>remesa</strong> le suma
+                al Integrante cuando la confirma y no le resta a la bodega (se corrige con el módulo de bodega).
+                Una <strong>venta desde la bodega</strong> sí le resta aquí, al pagarse.
               </p>
             </div>
           ) : null}
