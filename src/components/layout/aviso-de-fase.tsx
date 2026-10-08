@@ -36,10 +36,24 @@ export function AvisoDeFase({ fase }: { fase: FaseDeOperacion }) {
           conocer el sistema.
         </>
       ) : (
+        /* ═══ REDACTADO DE NUEVO (Santiago, smoke segundo 2026-10-08) ═══
+
+           SU VERSION: *"Estamos realizando algunos ajustes. Si algo falla, actualiza la página antes de
+           repetirlo; si sigue fallando, escríbele a un administrador."* Y sus dos razones son buenas: "Operación
+           real: lo que registres aquí cuenta" le habla al que CONSTRUYE el sistema, no al que lo usa, y el aviso
+           sale en toda la app, no solo en pagos.
+
+           LO QUE NO SE PUEDE PERDER ES EL PORQUE. Su versión dice qué hacer y no dice qué pasa si no se hace, y
+           esa frase es la que evita el daño: un profesional cuya venta parece fallar VUELVE A INTENTARLA, y un
+           cobro repetido se duplica (por eso existe el aviso de cobro duplicado en el checkout). Un aviso que
+           pide no repetir sin decir qué se duplica se obedece hasta el día que haya prisa.
+
+           ASI QUE VA SU REDACCION CON LA RAZON PEGADA, y la razón se dice en términos del usuario (un cobro
+           duplicado al paciente) y no del sistema. */
         <>
-          <strong className="font-semibold">Operación real:</strong> lo que registres aquí cuenta. Si algo
-          falla, actualiza la página antes de repetirlo; si sigue fallando, escríbele a un administrador, porque
-          repetir un cobro o una venta puede duplicarla.
+          <strong className="font-semibold">Estamos haciendo ajustes.</strong> Si algo falla, actualiza la
+          página antes de repetirlo: repetir puede duplicarle el cobro al paciente. Si sigue fallando,
+          escríbele a un administrador.
         </>
       )}
     </div>
