@@ -45,6 +45,7 @@ import {
   listarVentasSinDocumento,
 } from "@/modules/payments/data/facturacion-repository";
 import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
+import { RegistrarDestinoForm } from "@/modules/payments/components/registrar-destino-form";
 import { VentasPorRevisar } from "@/modules/payments/components/ventas-por-revisar";
 import { bloqueadaPorRevision } from "@/modules/payments/revision";
 import { NOMBRE_DE_CLASE, NOMBRE_DE_ESTADO } from "@/modules/payments/lo-deshecho";
@@ -199,6 +200,23 @@ function EntregaDeLaVenta({
             <span className="text-attention">sin celular</span>
           )}
         </span>
+        {/* ═══ Y LA DIRECCIÓN SE ESCRIBE AQUÍ MISMO (Santiago, smoke del 2026-10-08) ═══
+
+            SU RECLAMO, Y TIENE RAZÓN: *"no debería bloquear si el profesional no puso ahí la dirección, ya que
+            admin la pudo haber pedido por interno."*
+
+            EL PORTÓN NO ESTABA MAL, LE FALTABA LA SALIDA DONDE SE USA. Lo que legal pidió es que no se cierre
+            una entrega sin que quede registrado a dónde fue, y eso se cumple igual si quien coordina la escribe
+            en el momento en que confirma el envío. Lo que NO se sostiene es negarse y mandarlo a otra pantalla
+            (el formulario solo existía en /comercial), que es la fricción que él sintió.
+
+            Es la misma lección de ayer, una capa más abajo: la superficie existía, pero no donde dispara el
+            guard. Ahora el aviso sale junto al botón de entregar, y es un paso, no un viaje. */}
+        {puedeEntregar && tx.shipping_address == null ? (
+          <div className="w-full">
+            <RegistrarDestinoForm transactionId={tx.id} faltaCelular={tx.shipping_phone == null} />
+          </div>
+        ) : null}
         {puedeEntregar ? <AccionDeVentaButton transactionId={tx.id} tipo="entregar" /> : null}
         {retracto ? <BloqueRetracto retracto={retracto} /> : null}
       </div>

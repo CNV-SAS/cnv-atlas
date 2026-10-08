@@ -3,7 +3,7 @@ import { wompiEnvDeLaLlave } from "../ambiente";
 import { MODALIDAD_POR_DEFECTO, modalidadEnLaFecha, type Modalidad } from "../modalidad";
 import { exigirDistribucion, exigirRecaudoDeCnv } from "./modalidad-writer";
 import { RepartoInvalidoError, repartir } from "../reparto";
-import { InventarioDeVentaError, reservarVenta, ubicacionDeLaVenta } from "./inventario-de-venta";
+import { exigirSaldoEnLaUbicacion, InventarioDeVentaError, reservarVenta, ubicacionDeLaVenta } from "./inventario-de-venta";
 import * as Sentry from "@sentry/nextjs";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
@@ -575,7 +575,16 @@ export async function createPaidCashTransaction(
         if ((await anularCheckout(id, input.actorId ?? null, tx)) === "anulado") linksAnulados.push(id);
       }
     }
-    const locationId = await ubicacionDeLaVenta(tx, input.professionalId, input.desdeLaBodega === true || input.domicilio != null);
+    const saleDeLaBodega = input.desdeLaBodega === true || input.domicilio != null;
+    const locationId = await ubicacionDeLaVenta(tx, input.professionalId, saleDeLaBodega);
+    // ═══ SI SALE DE LA BODEGA, LA BODEGA TIENE QUE TENERLO (Santiago, 2026-10-08) ═══
+    //
+    // Y solo si sale de la bodega: una venta de la VITRINA sigue tolerando el faltante, porque ahi el producto
+    // ya paso de mano a mano y lo que estaba mal era el numero de Atlas. En un envio no ha pasado nada y no hay
+    // nada que despachar. Ver `exigirSaldoEnLaUbicacion`, donde esta la distincion entera.
+    if (saleDeLaBodega && locationId) {
+      await exigirSaldoEnLaUbicacion(tx, locationId, input.items);
+    }
     const inserted = await tx
       .insert(transactions)
       .values({

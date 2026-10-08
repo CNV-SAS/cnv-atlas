@@ -341,6 +341,57 @@ export async function disponibleDondeVende(
  *
  * Devuelve {} si no hay bodega central activa: entonces no hay nada que decir y la pantalla no afirma nada.
  */
+/**
+ * EXIGE QUE LA UBICACION TENGA LAS UNIDADES, ANTES DE COBRAR. Lanza `InventarioDeVentaError` si no alcanzan.
+ *
+ * ═══ POR QUE UNA VENTA EN EFECTIVO TOLERA UN FALTANTE Y ESTA NO (Santiago, 2026-10-08) ═══
+ *
+ * `descontarVenta` tolera quedarse corto a proposito, y su razon es buena: *"el paciente ya pago y el producto
+ * ya se entrego, asi que Atlas estaba por debajo de la vitrina; inventar un saldo negativo por la diferencia no
+ * lo acercaria a la realidad"*. La venta queda `sin_saldo` y se arregla contando.
+ *
+ * ESA RAZON VALE PARA LA VITRINA Y SE INVIERTE EN LA BODEGA. En la vitrina el producto YA PASO de mano a mano:
+ * el hecho fisico ocurrio y lo que estaba mal era el numero de Atlas. En un ENVIO no ha pasado nada: CNV todavia
+ * tiene que sacar el producto de la bodega, y si la bodega no lo tiene, **no hay nada que despachar**. No es una
+ * advertencia, es un imposible, y el paciente se queda pagando algo que nunca va a llegar.
+ *
+ * EL CASO REAL: vendio 2 ADAPTO-STRESS a domicilio teniendo 12 en su vitrina. Salio bien (la bodega tiene 0) y
+ * quedo como un pendiente irresoluble: dos avisos y un paciente con un envio que nadie puede armar.
+ *
+ * Y CIERRA UNA ASIMETRIA ENTRE LOS DOS CAMINOS: el link de pago YA lo rechazaba (`reservarVenta` reserva al
+ * crearlo y revienta si no alcanza), la venta en efectivo no. La misma venta imposible se negaba por una via y
+ * se aceptaba por la otra.
+ */
+export async function exigirSaldoEnLaUbicacion(
+  tx: Tx,
+  locationId: string,
+  items: { nutraceuticalId: string; quantity: number }[],
+): Promise<void> {
+  // SE AGRUPA POR PRODUCTO: dos lineas del mismo nutraceutico piden la SUMA, y comprobarlas por separado
+  // dejaria pasar una venta de 2 + 2 con 3 unidades en la bodega.
+  const pedido = new Map<string, number>();
+  for (const i of items) pedido.set(i.nutraceuticalId, (pedido.get(i.nutraceuticalId) ?? 0) + i.quantity);
+  for (const [nutraceuticalId, cantidad] of pedido) {
+    const lotes = await lotesDisponibles(tx, locationId, nutraceuticalId, null);
+    const hay = lotes.reduce((s, l) => s + Math.max(0, l.disponible), 0);
+    if (hay >= cantidad) continue;
+    const [n] = await tx.execute<{ name: string }>(sql`
+      select name from nutraceuticals where id = ${nutraceuticalId}`);
+    const nombre = n?.name ?? "ese producto";
+    // EL MENSAJE NOMBRA LA SALIDA MAS PROBABLE, que es el caso real que lo destapo: Santiago tenia 12 unidades
+    // EN SU VITRINA y las mandaba a domicilio. Con producto en la mano, lo correcto es entregarlo ahi y no
+    // pedirle a CNV que despache lo que no tiene. Un error que solo dice "no se puede" deja al profesional
+    // buscando por que, con el paciente delante.
+    const salida =
+      " Si tienes unidades en tu vitrina, entrégaselas en la consulta en vez de mandarlas a domicilio; si no, pide una remesa antes de cobrar.";
+    throw new InventarioDeVentaError(
+      hay === 0
+        ? `La bodega de CNV no tiene unidades de "${nombre}", así que no habría nada que despachar.${salida}`
+        : `La bodega de CNV solo tiene ${hay} unidad${hay === 1 ? "" : "es"} de "${nombre}" y el envío pide ${cantidad}.${salida}`,
+    );
+  }
+}
+
 export async function disponibleEnCentral(nutraceuticalIds: string[]): Promise<Record<string, number>> {
   if (nutraceuticalIds.length === 0) return {};
   const [central] = await db.execute<{ id: string }>(sql`
