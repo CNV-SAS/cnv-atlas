@@ -13,6 +13,7 @@ import { YuxtaposicionAlergenos } from "@/modules/nutraceuticals/components/yuxt
 import { saveNutraceuticalsAction, type TreatmentActionState } from "../actions";
 // prescriptionSignature vive en el modulo NEUTRO (no aqui): la llama tambien page.tsx (servidor), y una
 // funcion exportada por un "use client" no puede invocarse desde el servidor (tumba la pagina, RSC boundary).
+import { LEYENDA_DISPONIBILIDAD, nombreDeDisponibilidad } from "@/modules/nutraceuticals/disponibilidad";
 import { prescriptionSignature } from "../data/protocol-signature";
 import type { TreatmentProtocol } from "../data/treatment-view-types";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
@@ -20,11 +21,6 @@ import { resolveRecommendation } from "../nutraceuticals-recommendation";
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
 // Etiqueta de disponibilidad comercial (dato del producto): que significa para el paciente.
-const AVAILABILITY_LABEL: Record<string, string> = {
-  en_consultorio: "En consultorio",
-  solo_tienda: "Solo en tienda",
-  no_disponible: "No disponible",
-};
 
 type NutraLine = { nutraceuticalId: string; name: string; dosage: string; durationDays: string };
 
@@ -598,7 +594,7 @@ function RecommendedList({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-foreground">{r.product.name}</span>
                   <Badge variant="outline" className="text-[10px] font-normal">
-                    {AVAILABILITY_LABEL[r.product.commercialAvailability] ?? r.product.commercialAvailability}
+                    {nombreDeDisponibilidad(r.product.commercialAvailability)}
                   </Badge>
                 </div>
                 {/* Posologia y composicion (cotejo 2026-08-24): el v8 las muestra en esta tarjeta
@@ -647,12 +643,17 @@ function RecommendedList({
 
           Y no se le añade el saldo aquí a propósito: el bloque de venta ya lo dice con las cifras exactas y de
           dónde salen. Dos sitios diciendo el stock es como se llega a que uno quede viejo. */}
-      <p className="max-w-prose text-xs text-muted-foreground">
-        Esto es por dónde se consigue el producto, no cuántas unidades tienes.{" "}
-        <strong>&ldquo;En consultorio&rdquo;</strong>: se entrega en la consulta.{" "}
-        <strong>&ldquo;Solo en tienda&rdquo;</strong>: el paciente lo compra en la tienda de CNV. Tus unidades se
-        ven al cobrar, en el bloque de venta.
-      </p>
+      {/* ── Y ME CORRIJO OTRA VEZ, QUE ES LO QUE IMPORTA AQUÍ (Santiago insistió, 2026-10-08) ──
+
+          Yo arreglé la leyenda y DEFENDÍ el rótulo: "En consultorio" es la disponibilidad comercial, dije, no
+          el inventario. El rótulo seguía diciendo que el producto está en un sitio donde no está, y dos líneas
+          más abajo el bloque de venta decía "No tienes unidades en tu vitrina". Es el mismo defecto que acababa
+          de arreglar en /direccion, en otra pantalla, y lo defendí en vez de verlo.
+
+          AHORA EL RÓTULO DICE EL CANAL ("Se entrega en consulta"), que es lo que el campo sabe, y la leyenda
+          sale del mismo módulo que el rótulo: una frase que explica un nombre tiene que cambiar con el nombre, y
+          en archivos distintos no cambian juntas. */}
+      <p className="max-w-prose text-xs text-muted-foreground">{LEYENDA_DISPONIBILIDAD}</p>
     </div>
   );
 }

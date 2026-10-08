@@ -12,6 +12,7 @@ import type { Nutraceutical } from "../types";
 import type { NutraceuticalFormState } from "../validations";
 import { PriceIvaField } from "./price-iva-field";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
+import { DISPONIBILIDAD_LABEL } from "../disponibilidad";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -47,9 +48,12 @@ export function EditNutraceuticalForm({ nutraceutical: n }: { nutraceutical: Nut
             defaultValue={n.commercial_availability ?? "no_disponible"}
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           >
-            <option value="en_consultorio">En consultorio</option>
-            <option value="solo_tienda">Solo en tienda</option>
-            <option value="no_disponible">No disponible</option>
+            {/* LOS NOMBRES SALEN DEL MÓDULO (2026-10-08): si el selector de admin dijera "En consultorio" y la
+                pantalla del profesional "Se entrega en consulta", nadie sabría que son el mismo valor. El VALOR
+                guardado no cambia (`en_consultorio` es dato), solo su nombre. */}
+            <option value="en_consultorio">{DISPONIBILIDAD_LABEL.en_consultorio}</option>
+            <option value="solo_tienda">{DISPONIBILIDAD_LABEL.solo_tienda}</option>
+            <option value="no_disponible">{DISPONIBILIDAD_LABEL.no_disponible}</option>
           </select>
         </div>
         <PriceIvaField
