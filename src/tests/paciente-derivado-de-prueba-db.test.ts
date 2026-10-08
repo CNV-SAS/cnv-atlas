@@ -66,9 +66,14 @@ describe.skipIf(!HAS_DB)("la derivacion de la marca de prueba (BD real)", () => 
     // `profiles.id` no tiene default: espeja a `auth.users`, asi que un perfil no se puede inventar desde
     // aqui (lo intente y la base lo rechazo). Se toman dos, se recuerda su marca original y se devuelve al
     // final: un test que deja la base cambiada apagaria las cifras locales de alguien.
+    // LOS QUE MENOS VENTAS TIENEN, no los mas antiguos: marcar a un profesional dispara el trigger de la 0203
+    // sobre TODAS sus ventas, y el mas antiguo de la base local es el Demo con ~16.000. Es la cuarta copia de
+    // esta consulta y la ultima que quedaba sin el orden bueno; el candado `fixture-no-coge-al-demo` lo vigila.
     const profs = await db.execute(dsql`
       select id, coalesce(is_test, false) as is_test
-        from professional_profiles order by created_at limit 2`);
+        from professional_profiles pp
+       order by (select count(*) from transactions t where t.professional_id = pp.id), created_at
+       limit 2`);
     if (profs.length < 2) throw new Error("hacen falta dos professional_profiles para este candado");
     profDePrueba = profs[0].id;
     profReal = profs[1].id;

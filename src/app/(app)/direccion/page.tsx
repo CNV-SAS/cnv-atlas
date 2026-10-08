@@ -42,7 +42,16 @@ export default async function DireccionPage() {
     {
       label: "Ingreso bruto facturado",
       value: cop.format(d.grossPaid),
-      hint: `${d.paidCount} pagos · sin lo devuelto ni lo que está en revisión${notaDeArranque ? ` · ${notaDeArranque}` : ""}`,
+      // ── Y CUÁNTAS SE DESHICIERON, PARA QUE LA CUENTA SE PUEDA REHACER (Santiago, 2026-10-07) ──
+      //
+      // Decía "7 pagos" al lado de $428.400, que son exactamente CUATRO ventas de 107.100. Las dos cifras
+      // estaban bien (7 pagadas menos el dinero de 3 devueltas), pero juntas se leían como un descuadre, y
+      // Santiago paró el smoke a preguntar si cuadraban. Ahora la propia línea cierra la resta.
+      hint: `${d.paidCount} pago${d.paidCount === 1 ? "" : "s"}${
+        d.devueltasCount > 0
+          ? `, ${d.devueltasCount} devuelto${d.devueltasCount === 1 ? "" : "s"} (su dinero no suma aquí)`
+          : ""
+      } · sin lo devuelto ni lo que está en revisión${notaDeArranque ? ` · ${notaDeArranque}` : ""}`,
     },
     { label: "Ingreso CNV", value: cop.format(d.cnvRevenue), hint: notaDeArranque ?? undefined },
     {
