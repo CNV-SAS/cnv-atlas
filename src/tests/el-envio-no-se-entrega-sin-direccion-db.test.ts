@@ -136,6 +136,65 @@ describe.skipIf(!HAS_DB)("el envio no se entrega sin direccion (BD real)", () =>
     expect(await writer.registrarEntrega(id, { id: actorId, email: null })).toBe("sin_direccion");
   });
 
+  // ═══ Y NO SE PUEDE COBRAR UN ENVIO QUE LA BODEGA NO PUEDE ARMAR (Santiago, 2026-10-08) ═══
+  //
+  // EL CASO: vendio 2 ADAPTO-STRESS a domicilio teniendo 12 EN SU VITRINA. Salio bien, porque un domicilio sale
+  // de la BODEGA, y ahi ADAPTO-STRESS tiene 0. Quedo una venta pagada que nadie puede despachar.
+  //
+  // LA DISTINCION QUE LO HACE CORRECTO, y es la razon de que esto no contradiga la tolerancia que ya existia:
+  // una venta de la VITRINA tolera el faltante a proposito, porque el producto YA PASO de mano a mano y lo que
+  // estaba mal era el numero de Atlas. En un ENVIO no ha pasado nada: CNV todavia tiene que sacarlo de la
+  // bodega, y si no esta, no hay nada que despachar. No es una advertencia, es un imposible.
+  //
+  // Y CIERRA UNA ASIMETRIA: el link de pago ya lo rechazaba (`reservarVenta` revienta al crearlo), la venta en
+  // efectivo no. La misma venta imposible se negaba por una via y se aceptaba por la otra.
+  it("la bodega sin unidades no deja cobrar el envio, y lo dice", async () => {
+    const { exigirSaldoEnLaUbicacion, InventarioDeVentaError } = await import(
+      "@/modules/payments/data/inventario-de-venta"
+    );
+    const [central] = await db.execute<{ id: string }>(dsql`
+      select id from inventory_locations where kind = 'central' and is_active limit 1`);
+    // UN PRODUCTO SIN NINGUN SALDO EN CENTRAL: es el caso real de ADAPTO-STRESS.
+    const [sinSaldo] = await db.execute<{ id: string }>(dsql`
+      select n.id from nutraceuticals n
+       where not exists (select 1 from nutraceutical_inventory i
+                          where i.nutraceutical_id = n.id and i.location_id = ${central.id}
+                            and i.stock_quantity > 0)
+       limit 1`);
+    if (!sinSaldo) return; // en esta base todo tiene saldo en central: nada que comprobar.
+
+    await expect(
+      db.transaction(async (tx) =>
+        exigirSaldoEnLaUbicacion(tx, central.id, [{ nutraceuticalId: sinSaldo.id, quantity: 1 }]),
+      ),
+    ).rejects.toThrow(InventarioDeVentaError);
+  });
+
+  it("y suma las lineas del MISMO producto, que es como se colaria una venta de 2+2 con 3", async () => {
+    // Comprobar cada linea por separado dejaria pasar justo la venta que no se puede armar. El agrupado es la
+    // mitad que se rompe sin que se note, porque con una sola linea el candado pasaria igual.
+    const { exigirSaldoEnLaUbicacion } = await import("@/modules/payments/data/inventario-de-venta");
+    const [central] = await db.execute<{ id: string }>(dsql`
+      select id from inventory_locations where kind = 'central' and is_active limit 1`);
+    const [conPoco] = await db.execute<{ id: string; saldo: number }>(dsql`
+      select i.nutraceutical_id as id, sum(i.stock_quantity)::int as saldo
+        from nutraceutical_inventory i
+       where i.location_id = ${central.id}
+       group by 1 having sum(i.stock_quantity) > 0
+       order by 2 limit 1`);
+    if (!conPoco) return;
+    const mitad = Math.ceil(Number(conPoco.saldo) / 2) + 1;
+    await expect(
+      db.transaction(async (tx) =>
+        exigirSaldoEnLaUbicacion(tx, central.id, [
+          { nutraceuticalId: conPoco.id, quantity: mitad },
+          { nutraceuticalId: conPoco.id, quantity: mitad },
+        ]),
+      ),
+      "dos lineas del mismo producto se comprobaron por separado: la suma excede el saldo y paso",
+    ).rejects.toThrow();
+  });
+
   it("y el destino de una venta YA ENTREGADA no se reescribe", async () => {
     // Su destino es parte de lo que paso. Corregirlo despues seria reescribir el hecho, no completarlo.
     const id = await ventaSinDireccion();
