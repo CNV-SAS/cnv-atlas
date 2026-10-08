@@ -65,7 +65,7 @@ select 'B · el saldo contra sus movimientos'                     as consulta,
 -- ── (C) Y EL ESTADO DE INVENTARIO DE LAS VENTAS DEL RECORRIDO ───────────────────────────────────
 --
 -- `stock_state` dice lo que Atlas cree que hizo con el inventario de cada venta. 'descontado' es el camino
--- feliz; 'sin_saldo' significa que descontó lo que había y faltó (se registra y se avisa); 'reservado' o
+-- feliz. 'sin_saldo' significa que descontó lo que había y faltó (se registra y se avisa). 'reservado' o
 -- 'pendiente' en una venta PAGADA es el caso que habria que mirar: cobrada y sin descontar.
 select 'C · estado de inventario de las ventas pagadas'          as consulta,
        (t.created_at at time zone 'America/Bogota')              as cuando,
