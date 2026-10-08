@@ -174,6 +174,31 @@ function EntregaDeLaVenta({
         <span className="text-xs text-clinical-warning">
           Pagado · pendiente de coordinar el envío. Lo despacha CNV desde su bodega, no sale de tu vitrina.
         </span>
+        {/* ═══ Y A DÓNDE VA, EN LA TARJETA (Santiago, smoke del 2026-10-08) ═══
+
+            Su pregunta: *"¿como admin dónde veo el celular y los datos de entrega?"*. Solo se veían en
+            /comercial, y el plan entero de legal descansa en esa llamada al paciente: si quien coordina tiene
+            que irse a otra pantalla a buscar el número, la llamada es más difícil de hacer de lo necesario.
+
+            Y FALTANDO SE DICE QUE FALTA, igual que en el panel de envíos: la dirección vacía es el caso NORMAL
+            (la pide quien coordina), así que un hueco en silencio se leería como un dato perdido. */}
+        <span className="w-full text-xs text-muted-foreground">
+          Envío a{" "}
+          {tx.shipping_address ? (
+            <span className="text-foreground">
+              {tx.shipping_address}
+              {tx.shipping_city ? `, ${tx.shipping_city}` : ""}
+            </span>
+          ) : (
+            <span className="text-attention">dirección por pedir</span>
+          )}
+          {" · "}
+          {tx.shipping_phone ? (
+            <span className="text-foreground">{tx.shipping_phone}</span>
+          ) : (
+            <span className="text-attention">sin celular</span>
+          )}
+        </span>
         {puedeEntregar ? <AccionDeVentaButton transactionId={tx.id} tipo="entregar" /> : null}
         {retracto ? <BloqueRetracto retracto={retracto} /> : null}
       </div>

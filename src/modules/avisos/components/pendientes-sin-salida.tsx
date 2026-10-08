@@ -16,17 +16,34 @@ import { DescarteDePendienteForm, ReactivarPendienteForm } from "./descarte-de-p
 //
 // Y NO SE ESCONDE VACIO, igual que las ventas por revisar: el cero es el dato.
 
-const ROTULO: Record<TipoSinSalida, string> = {
-  sin_saldo: "Cobrada sin saldo: la vitrina cuenta unidades que ya salieron",
-  por_despachar: "Pagada y sin entregar: el producto sale de la bodega",
-};
+// ═══ EL AVISO NOMBRA EL SITIO DONDE FALTÓ, NO SIEMPRE LA VITRINA (Santiago, smoke del 2026-10-08) ═══
+//
+// EL CASO: vendió 2 ADAPTO-STRESS a domicilio **teniendo 12 en su vitrina**, y salió "Cobrada sin saldo: la
+// vitrina cuenta unidades que ya salieron", con una explicación que mandaba a contar la vitrina. Textual suyo:
+// *"no entiendo esto"*. Y con razón: su vitrina estaba perfecta.
+//
+// QUÉ PASÓ DE VERDAD: un domicilio sale de la BODEGA, y ahí ADAPTO-STRESS tiene 0. El sistema actuó bien y
+// acusó el sitio equivocado.
+//
+// Y ESO CUESTA MÁS QUE NO AVISAR: quien lee el aviso va, cuenta la vitrina, la encuentra cuadrada, y aprende a
+// no creerle al aviso. El siguiente, el de verdad, tampoco se va a atender.
+function rotuloDe(tipo: TipoSinSalida, deLaBodega: boolean): string {
+  if (tipo === "por_despachar") return "Pagada y sin entregar: el producto sale de la bodega";
+  return deLaBodega
+    ? "Cobrada sin saldo: la bodega no tenía esas unidades"
+    : "Cobrada sin saldo: la vitrina cuenta unidades que ya salieron";
+}
 
-const EXPLICACION: Record<TipoSinSalida, string> = {
-  sin_saldo:
-    "Se cobró y el saldo de Atlas no alcanzó para descontarla. No se arregla aquí: se arregla contando la vitrina y registrando lo que falte. Descártala cuando ya hayas cuadrado el inventario, dejando escrito qué encontraste.",
-  por_despachar:
-    "El producto no estaba en la vitrina del Integrante: sale de la bodega y alguien de CNV tiene que despacharlo. Si ya se entregó por fuera de Atlas, descártala diciéndolo; si falta despacharla, despáchala.",
-};
+function explicacionDe(tipo: TipoSinSalida, deLaBodega: boolean): string {
+  if (tipo === "por_despachar") {
+    return "El producto no estaba en la vitrina del Integrante: sale de la bodega y alguien de CNV tiene que despacharlo. Si ya se entregó por fuera de Atlas, descártala diciéndolo; si falta despacharla, despáchala.";
+  }
+  return deLaBodega
+    ? // SE DICE QUE LA VITRINA NO ES EL PROBLEMA, explícitamente: es lo que el aviso anterior hacía creer, y
+      // quien lo lea ya viene con esa idea del aviso viejo.
+      "Esta venta sale de la BODEGA de CNV (es un envío), y la bodega no tenía esas unidades cuando se cobró. La vitrina del Integrante no tiene nada que ver y no hace falta contarla. Se arregla cuadrando el saldo de la bodega: entra lo que haya llegado y no se registró, y si de verdad no hay producto, resuélvelo con el paciente antes de despachar."
+    : "Se cobró y el saldo de Atlas no alcanzó para descontarla. No se arregla aquí: se arregla contando la vitrina y registrando lo que falte. Descártala cuando ya hayas cuadrado el inventario, dejando escrito qué encontraste.";
+}
 
 export function PendientesSinSalida({
   pendientes,
@@ -68,7 +85,7 @@ export function PendientesSinSalida({
                   className={`rounded-md border p-3 ${descartado ? "border-border bg-muted/30" : "border-attention/30 bg-attention-bg"}`}
                 >
                   <p className={`text-sm font-medium ${descartado ? "text-muted-foreground" : "text-attention"}`}>
-                    {ROTULO[tipo]}
+                    {rotuloDe(tipo, p.salioDeLaBodega === true)}
                   </p>
                   <p className="mt-1 text-sm text-foreground">
                     {Number(p.monto).toLocaleString("es-CO")} COP · {p.productos || "Sin líneas"}
@@ -86,7 +103,7 @@ export function PendientesSinSalida({
                     Del {formatDateTime(p.desde)}
                     {!descartado && hoy > limite ? ` · su plazo venció el ${formatDate(`${limite}T12:00:00`)}` : ""}
                   </p>
-                  {descartado ? null : <p className="mt-2 text-xs text-muted-foreground">{EXPLICACION[tipo]}</p>}
+                  {descartado ? null : <p className="mt-2 text-xs text-muted-foreground">{explicacionDe(tipo, p.salioDeLaBodega === true)}</p>}
 
                   {p.descarte ? (
                     <div className="mt-2 flex flex-col gap-1">

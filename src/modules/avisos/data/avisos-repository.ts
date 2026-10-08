@@ -37,6 +37,7 @@ export async function listarPendientesDeAccion(opciones?: { incluirDescartados?:
     desde: string;
     monto: string;
     productos: string | null;
+    salio_de: string | null;
     causa: string;
     en_gestion_hasta: string | null;
     en_gestion_nota: string | null;
@@ -140,7 +141,18 @@ export async function listarPendientesDeAccion(opciones?: { incluirDescartados?:
       -- registro, que es justo el dia que hay que atenderla.
       select 'sin_saldo', t.id,
              coalesce(t.registered_retroactively_at, t.operated_at, t.created_at), t.amount,
-             'Cobrada pero el saldo no alcanzo para descontarla: la vitrina cuenta unidades que ya salieron',
+             -- LA CAUSA TAMBIEN NOMBRA EL SITIO (2026-10-08). Esta frase es la que va al CORREO, y decia
+             -- "la vitrina cuenta unidades que ya salieron" incluso cuando el faltante era de la BODEGA (un
+             -- domicilio sale de ahi). El correo mandaba a contar una vitrina que estaba cuadrada.
+             --
+             -- SE ARREGLA AQUI Y NO SOLO EN LA PANTALLA porque las dos leen de este mismo sitio a proposito:
+             -- escribir otra frase en el panel es como el correo y la pantalla acaban diciendo cosas distintas
+             -- de la misma venta.
+             case when exists (select 1 from inventory_locations l
+                                where l.id = t.location_id and l.kind <> 'integrante')
+                  then 'Cobrada pero la bodega no tenia esas unidades: es un envio y sale de la bodega, no de la vitrina'
+                  else 'Cobrada pero el saldo no alcanzo para descontarla: la vitrina cuenta unidades que ya salieron'
+             end,
              null::int, null::text
         from transactions t
        where t.status = 'paid'
@@ -172,6 +184,23 @@ export async function listarPendientesDeAccion(opciones?: { incluirDescartados?:
            (select string_agg(n.name || ' x' || ti.quantity, ', ' order by n.name)
               from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
              where ti.transaction_id = p.transaction_id) as productos,
+           -- ═══ DE QUE UBICACION SALIO LA VENTA (Santiago, smoke del 2026-10-08) ═══
+           --
+           -- EL CASO: vendio 2 ADAPTO-STRESS a domicilio teniendo 12 EN SU VITRINA, y salio el aviso "Cobrada
+           -- sin saldo: la vitrina cuenta unidades que ya salieron". Textual suyo: "no entiendo esto". Y con
+           -- razon: su vitrina estaba bien. El faltante estaba en la BODEGA, que es de donde sale un domicilio
+           -- (ahi ADAPTO-STRESS tiene 0), pero el aviso acusaba a la vitrina y mandaba a contarla.
+           --
+           -- O SEA QUE EL SISTEMA ACTUO BIEN Y ACUSO EL SITIO EQUIVOCADO, que es el defecto del mes: un aviso
+           -- que manda a arreglar algo que no esta roto cuesta mas que no avisar, porque el que lo lee cuenta la
+           -- vitrina, la encuentra cuadrada, y deja de creerle al aviso.
+           --
+           -- VA EN EL SELECT FINAL Y NO EN CADA RAMA, igual que la columna de productos y por la razon que ya esta escrita
+           -- arriba: son seis ramas, y añadirlo a cada una es como se olvida en la septima.
+           (select coalesce(l.kind, '')
+              from transactions t2
+              left join inventory_locations l on l.id = t2.location_id
+             where t2.id = p.transaction_id) as salio_de,
            p.causa,
            g.until_date::text as en_gestion_hasta, g.note as en_gestion_nota, g.por as en_gestion_por,
            d.reason as descarte_motivo, d.por as descarte_por, d.created_at::text as descarte_en,
@@ -222,6 +251,7 @@ export async function listarPendientesDeAccion(opciones?: { incluirDescartados?:
     desde: String(f.desde),
     monto: String(f.monto),
     productos: f.productos ?? "",
+    salioDeLaBodega: f.salio_de != null && f.salio_de !== "" && f.salio_de !== "integrante",
     causa: f.causa,
     enGestionHasta: f.en_gestion_hasta,
     enGestionNota: f.en_gestion_nota,

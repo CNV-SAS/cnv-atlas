@@ -246,20 +246,23 @@ export function NutraceuticalsSection({
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
             >
               <option value="">Selecciona un nutracéutico</option>
-              {/* "SE VENDE en consultorio" y no "en consultorio" (2026-09-14): se leia como si el profesional
-                  tuviera el producto, y es la disponibilidad COMERCIAL del producto, igual para todos.
-                  El ESTADO va en la etiqueta de cada opcion (cotejo 2026-08-24): sin el, se puede
-                  prescribir un producto que no existe todavia y el paciente se va con una indicacion que
-                  no puede cumplir. Los no disponibles NO se ocultan (el profesional debe saber que el
-                  modelo los contempla), se marcan. */}
+              {/* ═══ LA QUINTA COPIA, Y LA ENCONTRO SANTIAGO (2026-10-08) ═══
+
+                  Lleve el mapa de rotulos a un modulo y dije que estaba en CUATRO sitios. Estaba en CINCO: esta
+                  lista no usaba el mapa, escribia sus propias frases a mano, asi que se quedo diciendo "se vende
+                  en consultorio" de un producto que el profesional no tiene. Textual suyo: *"faltó aplicar la
+                  mejora en ese listado"*.
+
+                  ES LA LECCION DEL BARRIDO, otra vez: contar las copias leyendo una busqueda de `AVAILABILITY_LABEL`
+                  dejo fuera la que no usaba esa constante. Lo que hay que barrer es la PREGUNTA ("¿que se le dice
+                  al profesional sobre la disponibilidad?"), no el nombre de una variable.
+
+                  EL ESTADO SE QUEDA EN LA ETIQUETA (cotejo 2026-08-24): sin el se puede prescribir algo que no
+                  existe y el paciente se va con una indicacion que no puede cumplir. Los no disponibles NO se
+                  ocultan, se marcan. */}
               {nutraceuticosDeCnv.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
-                  {c.commercialAvailability === "en_consultorio"
-                    ? " · se vende en consultorio"
-                    : c.commercialAvailability === "solo_tienda"
-                      ? " · solo en tienda"
-                      : " · aún no disponible"}
+                  {c.name} · {estadoParaPrescribir(c.commercialAvailability, dondeEsta?.[c.id]).texto.toLowerCase()}
                 </option>
               ))}
             </select>

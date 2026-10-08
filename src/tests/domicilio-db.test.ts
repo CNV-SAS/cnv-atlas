@@ -98,16 +98,18 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
   // SE DEJA ESCRITO POR QUE, porque un caso invertido sin explicacion se lee como un candado que alguien aflojo
   // para que dejara de molestar.
   it("un domicilio SI puede nacer sin direccion: la pide quien coordina", async () => {
-    const [t] = await db.execute<{ id: string }>(dsql`
+    // `db` esta tipado como `any` en este archivo (es anterior), asi que el tipo va en la desestructuracion.
+    const filas: { id: string }[] = await db.execute(dsql`
       insert into transactions (organization_id, patient_id, professional_id, status, amount, currency,
                                 payment_method, wompi_env, idempotency_key, delivery_mode, fulfillment_state)
       values (${orgId}, ${patientId}, ${profId}, 'paid', '119000', 'COP', 'efectivo', 'test',
               ${`test-sin-dir-${Date.now()}`}, 'domicilio', 'pendiente')
       returning id`);
+    const t = filas[0];
     ventas.push(t.id);
-    const [v] = await db.execute<{ shipping_address: string | null }>(dsql`
+    const vs: { shipping_address: string | null }[] = await db.execute(dsql`
       select shipping_address from transactions where id = ${t.id}`);
-    expect(v.shipping_address).toBeNull();
+    expect(vs[0].shipping_address).toBeNull();
   });
 
   it("una venta a domicilio entregada tiene su plazo de retracto", async () => {

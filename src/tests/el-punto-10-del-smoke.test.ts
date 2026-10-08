@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -15,6 +15,21 @@ import { describe, expect, it } from "vitest";
 
 const raiz = process.cwd();
 const leer = (rel: string) => readFileSync(join(raiz, rel), "utf8");
+
+/** Todos los `.tsx` de `src/app` y `src/modules`: lo que el profesional ve. */
+function archivosDePantalla(): string[] {
+  const salida: string[] = [];
+  const recorrer = (rel: string) => {
+    for (const e of readdirSync(join(raiz, rel), { withFileTypes: true })) {
+      const hijo = `${rel}/${e.name}`;
+      if (e.isDirectory()) recorrer(hijo);
+      else if (e.name.endsWith(".tsx")) salida.push(hijo);
+    }
+  };
+  recorrer("src/app");
+  recorrer("src/modules");
+  return salida;
+}
 
 const DIRECCION = "src/app/(app)/direccion/page.tsx";
 const SECCION_VENTA = "src/modules/treatment/components/venta-en-consulta-section.tsx";
@@ -147,6 +162,45 @@ describe("la prescripcion no se puede cerrar en blanco sin decirlo", () => {
 
     // Y SIN EL DATO DEL INVENTARIO NO SE INVENTA UNO: se dice el canal, que es lo que si se sabe.
     expect(estadoParaPrescribir("en_consultorio", undefined).texto).toBe("Se entrega en consulta");
+  });
+
+  // ── Y EL BARRIDO QUE SE ME ESCAPO, POR BARRER EL NOMBRE Y NO LA PREGUNTA (2026-10-08) ───────────
+  //
+  // Dije que el mapa estaba en CUATRO sitios y lo lleve a un modulo. Estaba en CINCO: el desplegable de
+  // "prescribir algo que el modelo no recomendo" escribia sus frases A MANO, sin usar la constante, asi que mi
+  // busqueda de `AVAILABILITY_LABEL` no lo encontro y se quedo diciendo "se vende en consultorio" de un producto
+  // que el profesional no tiene. Lo encontro Santiago.
+  //
+  // LA LECCION: lo que hay que barrer es la PREGUNTA ("¿que se le dice al profesional sobre la disponibilidad?"),
+  // no el nombre de una variable. Una copia escrita a mano no aparece buscando la constante que no usa.
+  it("ninguna pantalla escribe las frases de disponibilidad a mano", () => {
+    const sospechosas = [/se vende en consultorio/i, /solo en tienda/i, /a[úu]n no disponible/i];
+    // ── LA EXENCION, CON SU RAZON (el barrido se queda ancho, no se afloja) ──────────────────────────
+    //
+    // "Lo que prescribiste no se vende en consultorio" es CORRECTO y no es un chip: afirma un hecho del
+    // CATALOGO (ese producto no se vende en consulta, para nadie), no una promesa sobre el inventario de este
+    // profesional. El defecto era decir que algo ESTA donde no esta; esto dice que no se vende, que es verdad.
+    //
+    // VA COMO EXENCION Y NO ESTRECHANDO EL PATRON: con un patron mas estrecho, la proxima copia escrita a mano
+    // sin ese formato se colaria. Una exencion sin razon es un olvido con permiso; con razon es un documento.
+    const EXENTAS = ["<p>Lo que prescribiste no se vende en consultorio:</p>"];
+    const culpables: string[] = [];
+    for (const ruta of archivosDePantalla()) {
+      const src = leer(ruta);
+      for (const linea of src.split("\n")) {
+        // SOLO LO QUE SE RINDE: los comentarios CITAN estas frases para explicar por que se quitaron, y acusarlos
+        // es el falso positivo con el que ya tropece tres veces hoy.
+        const limpia = linea.trim();
+        if (limpia.startsWith("//") || limpia.startsWith("*") || limpia.startsWith("--")) continue;
+        if (EXENTAS.includes(limpia)) continue;
+        if (sospechosas.some((r) => r.test(limpia))) culpables.push(`${ruta}: ${limpia.slice(0, 70)}`);
+      }
+    }
+    expect(
+      culpables,
+      "estas lineas escriben a mano un rotulo de disponibilidad. Usa `estadoParaPrescribir` o " +
+        "`nombreDeDisponibilidad`: una copia a mano se queda diciendo lo viejo y no aparece al buscar la constante.",
+    ).toEqual([]);
   });
 
   it("y el chip sale de la MISMA fuente que el bloque de venta, no de una segunda consulta", () => {
