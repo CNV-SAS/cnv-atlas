@@ -35,7 +35,8 @@ select 'A · la evaluacion de Santiago'                                   as con
                 where pc.patient_id = e.patient_id
                   and pc.consent_type = 'representante_legal' and pc.revoked_at is null) as tiene_representante,
        (select count(*) from patient_consents pc where pc.patient_id = e.patient_id)     as consents_atlas,
-       (select string_agg(distinct pc.consent_type, ', ')
+       -- EL CAST HACE FALTA: consent_type es un ENUM y string_agg no lo acepta sin pasarlo a texto (lo cazo Santiago).
+       (select string_agg(distinct pc.consent_type::text, ', ')
           from patient_consents pc where pc.patient_id = e.patient_id and pc.revoked_at is null) as tipos_vigentes,
        exists (select 1 from patient_external_consents x where x.patient_id = e.patient_id) as tiene_consent_html
   from evaluations e

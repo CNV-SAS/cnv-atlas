@@ -1,3 +1,4 @@
+import { esFechaDeNacimientoPosible } from "@/modules/consent/validations";
 import { ENGINE_REQUIRED } from "@/clinical-engine";
 
 import type { ArchivoDeExportacion } from "../validations/archivo";
@@ -324,7 +325,21 @@ export function revisarLote(archivo: ArchivoDeExportacion, contexto: ContextoDeR
       nombre,
       fechaNacimiento,
       menorDeEdad: edadAlFirmar != null && edadAlFirmar >= 0 && edadAlFirmar < 18,
-      fechaNacimientoImposible: edadAlFirmar != null && edadAlFirmar < 0,
+      // ═══ TAMBIEN LAS DEL PASADO IMPOSIBLE (Santiago, smoke segundo 2026-10-08) ═══
+      //
+      // MIRABA SOLO `edadAlFirmar < 0`, o sea una fecha POSTERIOR a la consulta. Eso atrapa las dos del año
+      // 41.980 y 51.977 que salieron en el barrido, y **NO atrapo la de 1795**: 231 años es una edad positiva,
+      // asi que paso la revision sin una sola marca y ese paciente ya tiene un diagnostico emitido.
+      //
+      // Y EL DAÑO ES DEL LADO QUE NO SE VE: con una fecha futura el motor se queda sin referencia y lo dice;
+      // con 231 años `capRef` la acepta, cae a la ultima decada de la tabla y produce una clasificacion
+      // PLAUSIBLE. La que no falla es la peligrosa.
+      //
+      // El rango sale de `esFechaDeNacimientoPosible`, el mismo que ahora valida la entrada: dos criterios de
+      // "fecha imposible" en dos sitios es como se llega a que el import acepte lo que el formulario rechaza.
+      fechaNacimientoImposible:
+        (edadAlFirmar != null && edadAlFirmar < 0) ||
+        (fechaNacimiento != null && !esFechaDeNacimientoPosible(fechaNacimiento)),
       cruce: cruzar(documentoRecuperado, nombre, fechaNacimiento, contexto.pacientesAtlas),
       consultas: consultas.map((c, i) => {
         const encuesta = revisarEncuesta(c, contexto.preguntas);

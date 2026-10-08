@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { esFechaDeNacimientoPosible } from "@/modules/consent/validations";
 
 import {
   ASCENDENCIA_OPTIONS,
@@ -21,10 +22,33 @@ export const intakeIdentitySchema = z.object({
   documentNumber: z.string().trim().min(3).max(30),
   firstName: z.string().trim().min(1).max(120),
   lastName: z.string().trim().min(1).max(120),
-  // Fecha de nacimiento opcional en el esquema, pero el flujo exige +18 aparte.
+  // ═══ LA FECHA DE NACIMIENTO TIENE QUE SER POSIBLE (Santiago, smoke segundo 2026-10-08) ═══
+  //
+  // ── EL CASO, Y POR QUE NO ES COSMETICO ────────────────────────────────────────────────────────────
+  //
+  // Un barrido encontro TRES pacientes con fechas imposibles, y DOS YA TIENEN DIAGNOSTICO EMITIDO:
+  //   CC 43597117 · 1795-02-21 (231 años) · importado · 1 diagnostico
+  //   CC 43202057 · 41980-04-19          · NO importado · 1 diagnostico
+  //   CC 70696566 · 51977-02-08          · importado · sin diagnostico
+  //
+  // LA EDAD ENTRA AL MOTOR. Y lo que hace con 231 años es lo peor posible: `capRef` la acepta (es finita y
+  // positiva), cae a la ultima decada de la tabla y marca `fueraDeRango`. O sea que **produce una
+  // clasificacion plausible**, no un error. Nadie iba a notarlo.
+  //
+  // Y EL FLAG DEL MOTOR NO SIRVE PARA ATRAPARLO: `fueraDeRango` tambien es true para un paciente de 85 años
+  // legitimo si la tabla termina antes. Dice que la tabla no llega, no que el dato sea imposible. Asi que
+  // esto no se puede cazar en el motor: hay que no dejarlo entrar.
+  //
+  // ── EL RANGO VA ANCHO A PROPOSITO (CLAUDE.md) ─────────────────────────────────────────────────────
+  //
+  // No hay fuente para un corte fino, y la regla del proyecto es clara: sin fuente, un cinturon se pone tan
+  // ancho que solo atrape lo IMPOSIBLE, nunca lo improbable. Una fecha FUTURA no es la de nadie, y nadie vivo
+  // nacio antes de 1900 (la persona mas longeva verificada murio a los 122). Un error de tecleo de 1960 a 1990
+  // NO lo atrapa esto, y no puede: para eso no hay cinturon, hay que mirar el dato.
   birthDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
+    .refine((v) => esFechaDeNacimientoPosible(v), "Esa fecha de nacimiento no es posible: revisa el año.")
     .nullish()
     .transform((v) => v ?? null),
   // Sexo OBLIGATORIO y exactamente F/M (decision A): el motor lo exige estricto (normalizeSex falla en
