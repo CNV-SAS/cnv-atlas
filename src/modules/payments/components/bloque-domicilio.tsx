@@ -80,13 +80,30 @@ export function BloqueDomicilio({ tieneCelularRegistrado }: { tieneCelularRegist
             paciente no se lo lleva hoy. Se le cobra solo el producto; el envío lo paga él al mensajero.
           </p>
 
+          {/* ═══ LA DIRECCIÓN YA NO SE EXIGE AQUÍ (legal, 2026-10-08) ═══
+
+              *"La dirección la captura quien coordina el envío, no el profesional en consulta."* El argumento que
+              lo decide: con la decisión del flete, CNV tiene que llamar al paciente de todos modos para
+              confirmarle el valor exacto del envío, así que pedirle la dirección en esa llamada no agrega
+              fricción. Pedírsela aquí sí, y el profesional muchas veces no la tiene a mano.
+
+              SE QUEDAN LOS CAMPOS, OPCIONALES, y no se borran: cuando el profesional SÍ la tiene (el paciente
+              delante) anotarla le ahorra una llamada a CNV. Quitarlos sería perder eso sin ganar nada.
+
+              Y EL INVARIANTE NO SE PIERDE, SE MUDA: no se puede marcar ENTREGADA una venta a domicilio sin
+              dirección (CHECK de la 0213 y el rechazo de `registrarEntrega`). Antes la regla era "nace con
+              dirección", que con esta decisión es imposible de cumplir. */}
+          <p className="text-xs text-muted-foreground">
+            Si no tienes la dirección a mano, déjala vacía: CNV se la pide al paciente cuando lo llame para
+            confirmarle el valor del envío. Lo que sí hace falta es un celular para poder llamarlo.
+          </p>
+
           <div className="flex flex-wrap gap-3">
             <div className="flex flex-col gap-1">
               <Label htmlFor="ciudadDestino">Ciudad de destino</Label>
               <Input
                 id="ciudadDestino"
                 name="ciudadDestino"
-                required={aDomicilio}
                 maxLength={120}
                 placeholder="Ej. Medellín"
                 className="w-48"
@@ -109,7 +126,6 @@ export function BloqueDomicilio({ tieneCelularRegistrado }: { tieneCelularRegist
               <Input
                 id="direccionEntrega"
                 name="direccionEntrega"
-                required={aDomicilio}
                 maxLength={300}
                 placeholder="Calle, número, apartamento, barrio"
               />

@@ -258,6 +258,27 @@ que esa venta **no se pueda olvidar**.
 >   hubo **y cuántos se devolvieron**, porque el conteo cuenta las pagadas y el importe descuenta el dinero de
 >   las devueltas. Es lo que hizo dudar de la cifra en el recorrido anterior.
 
+### 10bis · La dirección del envío (nuevo el 2026-10-08, lo pidió legal)
+
+**Por qué está aquí, dicho por el asesor:** *"el smoke pasó con una venta que no tenía a dónde ir"*. El recorrido
+anterior marcó como **entregada** una venta desde la bodega para la que nunca existió una dirección. No lo
+encontró el guion: lo encontró una pregunta de Santiago. Así que ahora se verifica explícitamente.
+
+1. **Al vender desde la bodega**, además del aviso del envío, si el paciente **no tiene celular registrado** sale
+   un campo para pedirlo. *(La dirección NO se pide aquí: la pide quien coordina. El celular sí, porque sin él
+   CNV no puede llamar, y sin llamada no hay forma de conseguir la dirección después.)*
+2. Como **admin**, en **/comercial**, la venta aparece en **Envíos por coordinar** y su dirección dice
+   **"Falta por pedir: llámalo y regístrala"**, no un guion. *(Condición de legal: la diferencia entre "falta por
+   pedir" y "se nos olvidó" tiene que verse.)*
+3. **EL CONTROL QUE IMPORTA.** Intenta marcarla **entregada** sin dirección. **Tiene que negarse**, diciendo que
+   sin dirección nadie sabe a dónde fue el producto. *(Validación dura, no aviso. Lo impide el servicio y además
+   un CHECK de la base, así que ni un arreglo por SQL lo logra.)*
+4. Pulsa **Registrar la dirección**, llena ciudad y dirección, guarda. **Ahora sí** se puede marcar entregada.
+   *(Sin este paso el control anterior sería un defecto: un portón sin salida habría dejado toda venta desde la
+   bodega imposible de entregar.)*
+5. Y comprueba que esa venta **tiene plazo de retracto** (decisión de legal: aplica a toda venta que no se
+   entrega en el momento). Antes quedaba como "en consulta" y no se le calculaba.
+
 **Por qué esto último es el punto:** vender desde la bodega convierte un bloqueo visible ("no puedo vender") en
 un olvido invisible ("cobré y nadie llevó nada"). Lo que lo hace seguro es el aviso, así que **el paso 5 es el
 que importa.**

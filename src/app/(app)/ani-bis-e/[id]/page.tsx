@@ -129,6 +129,8 @@ import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repos
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { bloqueCls } from "@/components/shared/bloque";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
+import { disponibleEnCentral } from "@/modules/payments/data/inventario-de-venta";
+import { disponibleParaVender } from "@/modules/payments/services/payments-service";
 import { VentaEnConsultaSection } from "@/modules/treatment/components/venta-en-consulta-section";
 import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
@@ -729,6 +731,26 @@ export default async function ResultadosEvaluacionPage({
         .at(-1) ?? null)
     : null;
 
+  // ═══ DONDE ESTA CADA PRODUCTO RECOMENDADO, PARA EL CHIP DE LA PRESCRIPCION (Santiago, 2026-10-08) ═══
+  //
+  // SU RECLAMO, Y TENIA RAZON LAS DOS VECES: el chip decia "En consultorio" (y luego "Se entrega en consulta")
+  // sobre un producto que el profesional no tiene y que hay que pedir a la bodega. Dos lineas mas abajo, la
+  // misma pantalla dice "No tienes unidades en tu vitrina. Hay 384 en la bodega de CNV".
+  //
+  // *"En ese caso cambiaría el chip a disponible. ¿No es mejor?"* Si, y es lo que el lector pregunta: no "por
+  // donde se consigue este producto en general" sino "¿puedo dárselo hoy?".
+  //
+  // SE CALCULA AQUI, UNA VEZ, Y SE PASA. Mi objecion anterior era buena (dos sitios diciendo el stock es como
+  // se llega a que uno quede viejo) y esto la resuelve en vez de ignorarla: la MISMA fuente alimenta el chip y
+  // el bloque de venta, asi que no pueden discrepar. Lo que no se puede es que una pantalla hable de un sitio
+  // donde el producto no esta.
+  const idsRecomendados = [...new Set((protocol?.catalog ?? []).map((c) => c.id))];
+  const enMiVitrina = protocol ? await disponibleParaVender(user, idsRecomendados) : {};
+  const enLaBodega = protocol ? await disponibleEnCentral(idsRecomendados) : {};
+  const dondeEstaCadaProducto: Record<string, { propias: number; enCentral: number }> = Object.fromEntries(
+    idsRecomendados.map((id) => [id, { propias: enMiVitrina[id] ?? 0, enCentral: enLaBodega[id] ?? 0 }]),
+  );
+
   // Bloques 10 y 11: salen del protocolo SELLADO (protocol_suggested), no se recalculan. El sodio no
   // viaja: lo fija el motor de prescripcion que aun no se porta.
   const ps = protocol?.protocolSuggested ?? null;
@@ -1015,6 +1037,7 @@ export default async function ResultadosEvaluacionPage({
                     protocol={protocol}
                     canPrescribe={canPrescribeNutraceuticals}
                     ventaPosteriorAlNo={ventaPosteriorAlNo}
+                    dondeEsta={dondeEstaCadaProducto}
                   />
                 ) : null}
                 {/* ═══ LA PREGUNTA DE TRES OPCIONES SE RETIRO (Santiago, 2026-09-26) ═══

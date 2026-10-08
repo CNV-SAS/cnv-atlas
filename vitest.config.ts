@@ -46,6 +46,7 @@ const DB_TESTS = [
   "src/tests/registro-de-distribucion-db.test.ts",
   "src/tests/retirar-una-consulta-db.test.ts",
   "src/tests/de-quien-es-la-venta-db.test.ts",
+  "src/tests/el-envio-no-se-entrega-sin-direccion-db.test.ts",
   "src/tests/ventas-sin-documento-por-dia-db.test.ts",
   "src/tests/avisos-db.test.ts",
   // ── LOS DIECISEIS QUE FALTABAN (2026-10-05) ──────────────────────────────────────────────────────

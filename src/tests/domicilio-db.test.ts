@@ -82,14 +82,32 @@ describe.skipIf(!HAS_DB)("el domicilio y el retracto (BD real)", () => {
     await db.execute(dsql`set session_replication_role = default`);
   });
 
-  it("un domicilio sin direccion no se puede guardar", async () => {
-    await expect(
-      db.execute(dsql`
-        insert into transactions (organization_id, patient_id, professional_id, status, amount, currency,
-                                  payment_method, wompi_env, idempotency_key, delivery_mode)
-        values (${orgId}, ${patientId}, ${profId}, 'paid', '119000', 'COP', 'efectivo', 'test',
-                ${`test-sin-dir-${Date.now()}`}, 'domicilio')`),
-    ).rejects.toThrow();
+  // ═══ ESTE CASO SE INVIERTE, Y NO ES QUE ESTUVIERA MAL: LA REGLA CAMBIO (legal, 2026-10-08) ═══
+  //
+  // DECIA "un domicilio sin direccion no se puede guardar", que era el invariante de la 0190 y era correcto
+  // entonces: la direccion la tecleaba el profesional al cobrar, asi que una venta a domicilio nacia con ella.
+  //
+  // LEGAL LO CAMBIO, con su razon: *"la direccion la captura quien coordina el envio, no el profesional en
+  // consulta"*, porque CNV ya tiene que llamar al paciente para confirmarle el valor del envio. Con eso, exigir
+  // la direccion al nacer es imposible de cumplir.
+  //
+  // EL INVARIANTE NO DESAPARECIO, SE MUDO al momento en que es verdad: no se puede ENTREGAR sin direccion
+  // (0213). Asi que el caso no se borra, se invierte: se comprueba que NACER sin direccion ya se permite, y el
+  // porton de la entrega vive en su propio candado (`el-envio-no-se-entrega-sin-direccion-db`).
+  //
+  // SE DEJA ESCRITO POR QUE, porque un caso invertido sin explicacion se lee como un candado que alguien aflojo
+  // para que dejara de molestar.
+  it("un domicilio SI puede nacer sin direccion: la pide quien coordina", async () => {
+    const [t] = await db.execute<{ id: string }>(dsql`
+      insert into transactions (organization_id, patient_id, professional_id, status, amount, currency,
+                                payment_method, wompi_env, idempotency_key, delivery_mode, fulfillment_state)
+      values (${orgId}, ${patientId}, ${profId}, 'paid', '119000', 'COP', 'efectivo', 'test',
+              ${`test-sin-dir-${Date.now()}`}, 'domicilio', 'pendiente')
+      returning id`);
+    ventas.push(t.id);
+    const [v] = await db.execute<{ shipping_address: string | null }>(dsql`
+      select shipping_address from transactions where id = ${t.id}`);
+    expect(v.shipping_address).toBeNull();
   });
 
   it("una venta a domicilio entregada tiene su plazo de retracto", async () => {

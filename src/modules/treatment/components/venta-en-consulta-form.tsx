@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createCheckoutFormAction, registerCashSaleFormAction } from "@/modules/payments/actions";
 import { TEXTO_AVISO_DOMICILIO } from "@/modules/payments/domicilio";
 import type { CashSaleFormState, PaymentFormState } from "@/modules/payments/validations";
@@ -45,11 +46,19 @@ export function VentaEnConsultaForm({
   patientId,
   productos,
   esDeDistribucion = false,
+  tieneCelularRegistrado = true,
 }: {
   evaluationId: string;
   treatmentId: string;
   patientId: string;
   productos: ProductoVendible[];
+  /**
+   * SI el paciente tiene celular, no CUÁL: el número no viaja a esta pantalla (misma disciplina que
+   * `listSelectablePatients`). Solo decide si hay que pedirlo para poder coordinar el envío.
+   *
+   * POR DEFECTO `true`, que es el valor seguro: si no se pasa, no se le pide un dato que quizá ya existe.
+   */
+  tieneCelularRegistrado?: boolean;
   /**
    * El integrante en modalidad Distribución (0210/0211). NO se ofrece el QR, y el registro no habla de cobrar:
    * el paciente le paga a él, así que un link de pago de CNV siempre lo rechazaría el servidor
@@ -63,6 +72,8 @@ export function VentaEnConsultaForm({
   // el profesional lo decidiera, y la consecuencia (el paciente se va sin el producto) tiene que ser una
   // eleccion suya.
   const [desdeLaBodega, setDesdeLaBodega] = useState(false);
+  /** El celular que el profesional teclea cuando el paciente no tiene uno registrado (solo para el envio). */
+  const [celularEnvio, setCelularEnvio] = useState("");
   const pending = generando || registrando;
 
   // Lo marcado y su cantidad. Nada marcado al abrir: el paciente dijo que SI los adquiere, no cuales ni
@@ -142,7 +153,19 @@ export function VentaEnConsultaForm({
     fd.set("treatmentId", treatmentId);
     fd.set("evaluationId", evaluationId);
     fd.set("lineas", JSON.stringify(lineas));
-    if (desdeLaBodega) fd.set("desdeLaBodega", "true");
+    if (desdeLaBodega) {
+      fd.set("desdeLaBodega", "true");
+      // ── EL DESTINO VIAJA POR EL MISMO CAMINO QUE EL DE /pagos ──────────────────────────────────────
+      //
+      // `aDomicilio` es lo que hace que el servidor lea el bloque del envío (`leerDomicilio`), y una venta desde
+      // la bodega ES un envío (legal, 2026-10-08). Se manda SIN ciudad ni dirección a propósito: las pide quien
+      // coordina. Lo único que va es el celular, y solo cuando el paciente no tiene uno registrado.
+      //
+      // POR EL MISMO CAMINO Y NO POR UNO NUEVO: si esta pantalla sellara el destino aparte, el día que cambie la
+      // regla del envío habría que cambiarla en dos sitios, y uno se quedaría viejo.
+      fd.set("aDomicilio", "true");
+      if (!tieneCelularRegistrado && celularEnvio.trim() !== "") fd.set("celularEntrega", celularEnvio.trim());
+    }
     return fd;
   };
   const cobrarConQr = (confirmDuplicate = false) => {
@@ -282,6 +305,42 @@ export function VentaEnConsultaForm({
                 </p>
                 <p className="mt-1 text-xs text-foreground">{TEXTO_AVISO_DOMICILIO}</p>
               </div>
+              {/* ═══ EL CELULAR, Y SOLO EL CELULAR (legal + Santiago, 2026-10-08) ═══
+
+                  LA DIRECCIÓN NO SE PIDE AQUÍ: la pide CNV cuando llame al paciente para confirmarle el valor del
+                  envío, que es una llamada que ya tiene que hacer. Pedírsela en consulta añade campos a la
+                  pantalla más cargada del flujo y el profesional muchas veces no la tiene.
+
+                  PERO EL CELULAR SÍ, Y ES LO QUE DECIDE: todo ese plan descansa en que CNV LLAMA. Sin número no
+                  hay llamada, y entonces tampoco hay forma de conseguir la dirección después. Es lo único de los
+                  datos del envío que no se puede dejar para luego, porque es el que habilita conseguir el resto.
+
+                  SOLO SI NO TIENE UNO REGISTRADO. Con uno registrado, pedirle teclear un número que el sistema ya
+                  tiene es como entran dos celulares distintos de la misma persona. Y el número NO se precarga:
+                  no viaja a esta pantalla, solo si existe. */}
+              {tieneCelularRegistrado ? (
+                <p className="text-xs text-muted-foreground">
+                  CNV lo llama al celular que registró para pedirle la dirección y confirmarle el valor del envío.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor={`celular-envio-${treatmentId}`} className="text-xs">
+                    Celular del paciente, para coordinar el envío
+                  </Label>
+                  <Input
+                    id={`celular-envio-${treatmentId}`}
+                    inputMode="tel"
+                    maxLength={40}
+                    value={celularEnvio}
+                    onChange={(e) => setCelularEnvio(e.target.value)}
+                    placeholder="Ej. 300 123 4567"
+                    className="h-9 w-48"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    No tiene uno registrado, y sin él CNV no puede llamarlo para pedirle la dirección.
+                  </span>
+                </div>
+              )}
             </>
           ) : null}
           {/* UNA VENTA SALE DE UN SOLO SITIO. Se dice aqui y no se descubre al fallar. */}

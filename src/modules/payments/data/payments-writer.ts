@@ -276,8 +276,10 @@ export type NewTransaction = {
    * LA TERCERA QUE DECIDIA, el flete sellado, SE FUE: el paciente le paga el envio al mensajero.
    */
   domicilio?: {
-    direccion: string;
-    ciudad: string;
+    // DIRECCION Y CIUDAD PUEDEN LLEGAR NULAS (legal, 2026-10-08): la pide quien coordina el envio, y el porton
+    // esta en la ENTREGA (CHECK `transactions_domicilio_entregado_con_direccion`, 0213), no al crear la venta.
+    direccion: string | null;
+    ciudad: string | null;
     departamento: string | null;
     daneCode: string | null;
     /** Con quien se coordina la entrega. No pisa `patients.phone`. */
@@ -337,9 +339,22 @@ export async function createTransactionWithItems(
         wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
         treatmentId: input.treatmentId ?? null,
         locationId,
-        // EL DOMICILIO MANDA SOBRE EL MODO: si hay envio, la venta es a distancia y eso es lo que activa el
-        // retracto. Sin el, la venta es en consulta, que es lo que eran todas hasta la 0190.
-        deliveryMode: input.domicilio ? "domicilio" : "en_consulta",
+        // ═══ SE ENTREGA EN EL MOMENTO O NO: ESA ES LA PREGUNTA (legal, 2026-10-08) ═══
+        //
+        // DECIA `input.domicilio ? "domicilio" : "en_consulta"`, asi que una venta DESDE LA BODEGA quedaba como
+        // "en_consulta": literalmente lo contrario del hecho, porque la propia pantalla le dice al profesional
+        // que el paciente NO se lleva el producto hoy. Y la columna no es cosmetica: de ella cuelgan quien ve la
+        // venta en "Envios por coordinar" y si se le calcula el retracto. Asi que esa venta no la veia quien
+        // tenia que enviarla y no tenia retracto.
+        //
+        // EL CRITERIO ES DE LEGAL, y es mas ancho que "hay domicilio": *"el retracto aplica a toda venta que no
+        // se entrega en el momento"*. En terreno discutible el Estatuto del Consumidor se interpreta a favor del
+        // consumidor, y conceder el retracto donde quiza no era obligatorio cuesta poco; negarlo donde si lo era
+        // cuesta mucho.
+        //
+        // (Legal anoto que lo PRECISO seria separar "donde se entrega" de "hubo venta a distancia", y que el dato
+        // que falta para eso es si la consulta fue presencial o virtual. Queda dicho, no construido.)
+        deliveryMode: input.domicilio || input.desdeLaBodega ? "domicilio" : "en_consulta",
         shippingAddress: input.domicilio?.direccion ?? null,
         shippingCity: input.domicilio?.ciudad ?? null,
         shippingDepartment: input.domicilio?.departamento ?? null,
@@ -577,9 +592,10 @@ export async function createPaidCashTransaction(
         wompiEnv: wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY),
         treatmentId: input.treatmentId ?? null,
         locationId,
-        // EL DOMICILIO MANDA SOBRE EL MODO: si hay envio, la venta es a distancia y eso es lo que activa el
-        // retracto. Sin el, la venta es en consulta, que es lo que eran todas hasta la 0190.
-        deliveryMode: input.domicilio ? "domicilio" : "en_consulta",
+        // MISMO CRITERIO QUE EL OTRO CAMINO (legal, 2026-10-08): se entrega en el momento o no. Las DOS vias
+        // (link de pago y venta ya cobrada) tienen que decidirlo igual, o la misma venta tendria retracto segun
+        // como se cobro. Ver la explicacion larga en el camino del checkout.
+        deliveryMode: input.domicilio || input.desdeLaBodega ? "domicilio" : "en_consulta",
         shippingAddress: input.domicilio?.direccion ?? null,
         shippingCity: input.domicilio?.ciudad ?? null,
         shippingDepartment: input.domicilio?.departamento ?? null,
@@ -938,7 +954,23 @@ export async function detalleDeLinksPendientes(
   return filas.map((f) => ({ id: f.id, amount: String(f.amount), createdAt: String(f.created_at), productos: f.productos }));
 }
 
-export type ResultadoDeEntrega = "entregada" | "no_pagada" | "ya_entregada" | "en_revision" | "sin_estado";
+export type ResultadoDeEntrega =
+  | "entregada"
+  | "no_pagada"
+  | "ya_entregada"
+  | "en_revision"
+  | "sin_estado"
+  /**
+   * REQUIERE ENVIO Y NO TIENE DIRECCION (decision de legal, 2026-10-08).
+   *
+   * EL CASO REAL: en el smoke del punto 10, admin marco como ENTREGADA una venta que salio de la bodega y para
+   * la que nunca existio una direccion en ninguna parte. Textual de legal: *"el sistema permitio cerrar el ciclo
+   * de una entrega que nadie sabia a donde iba"*, y lo llamo lo mas grave del hallazgo.
+   *
+   * VALIDACION DURA Y NO AVISO, tambien por decision suya. Y es INDEPENDIENTE de arreglar `delivery_mode`: si
+   * este camino se queda abierto, manana alguien vuelve a cerrar una entrega inexistente.
+   */
+  | "sin_direccion";
 // (Una venta en efectivo marcada "no recibido" queda sin estado de entrega, asi que da "sin_estado".)
 
 // ═══ LA ENTREGA DE UNA VENTA (Bloque 3, sesion 2) ═══
@@ -963,16 +995,26 @@ export async function registrarEntrega(
       fulfillment_state: string | null;
       treatment_id: string | null;
       en_revision: boolean;
+      delivery_mode: string | null;
+      direccion: string | null;
     }>(sql`
       select status, fulfillment_state, treatment_id,
              (review_reason is not null and review_resolution is distinct from 'segunda_compra'
-                                         and review_resolution is distinct from 'efectivo_no_recibido') as en_revision
+                                         and review_resolution is distinct from 'efectivo_no_recibido') as en_revision,
+             delivery_mode,
+             nullif(btrim(coalesce(shipping_address, '')), '') as direccion
         from transactions where id = ${txId} for update`);
     if (!venta || venta.fulfillment_state == null) return "sin_estado";
     if (venta.fulfillment_state === "entregado") return "ya_entregada";
     if (venta.status !== "paid") return "no_pagada";
     // Un pago en revision puede ser un cobro doble: entregar ahora seria entregar dos veces el mismo producto.
     if (venta.en_revision) return "en_revision";
+    // ═══ EL PORTON DE LA DIRECCION (legal, 2026-10-08) ═══
+    //
+    // Una venta que REQUIERE ENVIO no se puede cerrar sin saber a donde. Va en el WRITER y no en la pantalla a
+    // proposito: la entrega se marca desde /pagos y desde la consulta, y una regla escrita en una pantalla deja
+    // la otra abierta. Aqui pasan las dos.
+    if (venta.delivery_mode === "domicilio" && venta.direccion == null) return "sin_direccion";
 
     const items = await tx.execute<{ nutraceutical_id: string; quantity: number }>(sql`
       select nutraceutical_id, quantity from transaction_items where transaction_id = ${txId} order by nutraceutical_id`);

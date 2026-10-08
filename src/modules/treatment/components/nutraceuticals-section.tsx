@@ -13,7 +13,7 @@ import { YuxtaposicionAlergenos } from "@/modules/nutraceuticals/components/yuxt
 import { saveNutraceuticalsAction, type TreatmentActionState } from "../actions";
 // prescriptionSignature vive en el modulo NEUTRO (no aqui): la llama tambien page.tsx (servidor), y una
 // funcion exportada por un "use client" no puede invocarse desde el servidor (tumba la pagina, RSC boundary).
-import { LEYENDA_DISPONIBILIDAD, nombreDeDisponibilidad } from "@/modules/nutraceuticals/disponibilidad";
+import { estadoParaPrescribir, LEYENDA_DISPONIBILIDAD } from "@/modules/nutraceuticals/disponibilidad";
 import { prescriptionSignature } from "../data/protocol-signature";
 import type { TreatmentProtocol } from "../data/treatment-view-types";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
@@ -34,10 +34,19 @@ export function NutraceuticalsSection({
   protocol,
   canPrescribe,
   ventaPosteriorAlNo,
+  dondeEsta,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   canPrescribe: boolean; // el actor es nutricionista
+  /**
+   * DONDE ESTA CADA PRODUCTO, por id: en su vitrina y en la bodega. Lo calcula la PAGINA, que es quien ya lo
+   * calcula para el bloque de venta, y por eso el chip y el bloque no pueden discrepar: es la misma fuente.
+   *
+   * Sin esto el chip solo podia hablar del catalogo, y decia que un producto se entrega en consulta mientras el
+   * bloque de abajo decia que no hay ninguno (Santiago, 2026-10-08).
+   */
+  dondeEsta?: Record<string, { propias: number; enCentral: number }>
   /** La venta pagada mas reciente POSTERIOR al "no los adquiere", si la hay. La calcula la pagina, que es
    *  quien tiene las ventas de la consulta. */
   ventaPosteriorAlNo?: string | null;
@@ -125,7 +134,7 @@ export function NutraceuticalsSection({
           La prescripción la edita el nutricionista. Se muestra aquí para que tengas presente qué se le está
           dando al paciente (puede interactuar con lo que prescribas).
         </p>
-        <RecommendedList recommended={recommended} readOnly />
+        <RecommendedList recommended={recommended} readOnly dondeEsta={dondeEsta} />
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium text-foreground">Prescrito por el nutricionista</p>
           {protocol.nutraceuticals.length ? (
@@ -191,7 +200,7 @@ export function NutraceuticalsSection({
         <input type="hidden" name="baseSignature" value={prescriptionSignature(protocol)} />
         <input type="hidden" name="nutraceuticals" value={nutrasPayload} />
         <fieldset className="flex flex-col gap-3">
-          <RecommendedList recommended={recommended} isAdded={isAdded} onAdd={addProduct} />
+          <RecommendedList recommended={recommended} isAdded={isAdded} onAdd={addProduct} dondeEsta={dondeEsta} />
 
           {/* ═══ EL "NO" VA AQUI, SOBRE LOS RECOMENDADOS (Santiago, 2026-09-26) ═══
               Un solo boton donde habia una pregunta de tres opciones. El "SI" no se pregunta: lo demuestra la
@@ -569,11 +578,13 @@ function RecommendedList({
   isAdded,
   onAdd,
   readOnly,
+  dondeEsta,
 }: {
   recommended: ReturnType<typeof resolveRecommendation>;
   isAdded?: (id: string) => boolean;
   onAdd?: (id: string) => void;
   readOnly?: boolean;
+  dondeEsta?: Record<string, { propias: number; enCentral: number }>;
 }) {
   if (!recommended.length) {
     return (
@@ -593,9 +604,27 @@ function RecommendedList({
               <div className="min-w-[10rem] flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-foreground">{r.product.name}</span>
-                  <Badge variant="outline" className="text-[10px] font-normal">
-                    {nombreDeDisponibilidad(r.product.commercialAvailability)}
-                  </Badge>
+                  {/* EL CHIP RESPONDE "¿PUEDO DÁRSELO HOY?" (Santiago, 2026-10-08), que es lo que se pregunta
+                      aquí. La regla vive en `estadoParaPrescribir`, con su orden (catálogo antes que saldo) y
+                      su razón; esto solo pinta. */}
+                  {(() => {
+                    const e = estadoParaPrescribir(r.product.commercialAvailability, dondeEsta?.[r.product.id]);
+                    return (
+                      <Badge
+                        variant="outline"
+                        className={
+                          "text-[10px] font-normal " +
+                          (e.tono === "bueno"
+                            ? "border-clinical-optimal text-clinical-optimal"
+                            : e.tono === "aviso"
+                              ? "border-attention text-attention"
+                              : "")
+                        }
+                      >
+                        {e.texto}
+                      </Badge>
+                    );
+                  })()}
                 </div>
                 {/* Posologia y composicion (cotejo 2026-08-24): el v8 las muestra en esta tarjeta
                     ("30 mL/dia · 1 vez al dia · linea liquida" y los ingredientes). Verificado que NO

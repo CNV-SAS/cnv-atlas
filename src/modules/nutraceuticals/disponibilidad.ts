@@ -48,6 +48,40 @@ export function nombreDeDisponibilidad(valor: string | null | undefined): string
   return DISPONIBILIDAD_LABEL[valor] ?? valor;
 }
 
+// ═══ Y EN LA PRESCRIPCIÓN, EL CHIP RESPONDE OTRA PREGUNTA (Santiago, 2026-10-08) ═══
+//
+// ── LA PREGUNTA QUE EL LECTOR HACE ────────────────────────────────────────────────────────────────
+//
+// *"Pareciera que multi-cell, que ahora dice 'se entrega en consulta', se pudiera entregar en consulta, es
+// decir, que hay inventario. En ese caso cambiaría el chip a disponible. ¿No es mejor?"*
+//
+// Sí, y es la lectura correcta: en la pantalla donde se PRESCRIBE, nadie pregunta por el canal de venta del
+// producto en abstracto. Pregunta **"¿puedo dárselo hoy?"**. Y la prueba de que el chip anterior no servía es
+// que SARCO-PROTECT ("No disponible") sí se leía bien: ese rótulo hablaba de existencias, y los otros no.
+//
+// ── LAS CUATRO RESPUESTAS, Y POR QUÉ EL CATÁLOGO MANDA PRIMERO ───────────────────────────────────
+//
+// El catálogo decide si el producto es vendible EN ABSOLUTO, y eso va antes del inventario: tener unidades de
+// algo que no se vende en consultorio no lo vuelve entregable. Así que primero se mira el canal y después el
+// saldo. El orden importa: al revés, un producto de "solo tienda" con saldo diría "tienes 5" y sería mentira.
+export type DondeEstaElProducto = { propias: number; enCentral: number };
+
+export function estadoParaPrescribir(
+  disponibilidad: string | null | undefined,
+  donde: DondeEstaElProducto | undefined,
+): { texto: string; tono: "bueno" | "aviso" | "apagado" } {
+  // (1) EL CATÁLOGO PRIMERO: lo que no se vende en consultorio no se entrega, haya o no unidades.
+  if (disponibilidad === "no_disponible") return { texto: "No disponible", tono: "apagado" };
+  if (disponibilidad === "solo_tienda") return { texto: "Solo en la tienda", tono: "apagado" };
+  // (2) SIN EL DATO DEL INVENTARIO NO SE INVENTA UNO: se dice el canal, que es lo que sí se sabe. Pasa en las
+  //     vistas de solo lectura que no reciben el mapa.
+  if (donde == null) return { texto: "Se entrega en consulta", tono: "apagado" };
+  // (3) Y DESPUÉS EL SALDO, que es lo que el profesional preguntaba.
+  if (donde.propias > 0) return { texto: `Tienes ${donde.propias}`, tono: "bueno" };
+  if (donde.enCentral > 0) return { texto: "Hay que pedirlo a la bodega", tono: "aviso" };
+  return { texto: "Sin existencias", tono: "apagado" };
+}
+
 /**
  * La leyenda que acompaña al listado, con lo que el rótulo NO dice.
  *
@@ -55,5 +89,5 @@ export function nombreDeDisponibilidad(valor: string | null | undefined): string
  * tiene que cambiar con el rótulo, y en sitios distintos no cambian juntas.
  */
 export const LEYENDA_DISPONIBILIDAD =
-  "Esto es por dónde se consigue el producto, no cuántas unidades tienes. " +
-  "Tus unidades se ven al cobrar, en el bloque de venta.";
+  "El rótulo dice si puedes entregarlo hoy: cuántas tienes en tu vitrina, si hay que pedirlo a la bodega de CNV, " +
+  "o si no hay en ninguna parte. “Solo en la tienda” y “No disponible” son del producto, no de tu inventario.";

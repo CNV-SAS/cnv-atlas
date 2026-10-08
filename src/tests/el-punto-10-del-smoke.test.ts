@@ -121,16 +121,41 @@ describe("la prescripcion no se puede cerrar en blanco sin decirlo", () => {
   // Asi que ahora el rotulo dice el CANAL, y los nombres viven en UN modulo (estaban en cuatro copias). El
   // candado sigue al mecanismo nuevo en vez de quedarse mirando el archivo viejo: si se quedara ahi, pasaria
   // verde sobre una pantalla que volviera a decir "En consultorio".
-  it("el rotulo de disponibilidad nombra el canal, no un sitio donde el producto no esta", () => {
-    const mod = leer("src/modules/nutraceuticals/disponibilidad.ts");
-    expect(mod).toContain('en_consultorio: "Se entrega en consulta"');
-    expect(
-      mod,
-      'volvio "En consultorio": nombra un sitio, y es justo donde el producto no esta',
-    ).not.toContain('en_consultorio: "En consultorio"');
-    expect(mod, "la leyenda dejo de decir que esto no son las unidades del profesional").toContain(
-      "no cuántas unidades tienes",
+  // ── Y ESTE CASO CAMBIO OTRA VEZ, PORQUE LA REGLA SE ENDURECIO (Santiago insistio, 2026-10-08) ────
+  //
+  // Primero el rotulo decia "En consultorio" (un sitio donde el producto no esta). Lo cambie al CANAL ("Se
+  // entrega en consulta") y Santiago insistio con algo mejor: *"en ese caso cambiaria el chip a disponible, ¿no
+  // es mejor?"*. Y la prueba de que tenia razon es que SARCO-PROTECT ("No disponible") SI se leia bien: ese
+  // rotulo hablaba de existencias y los otros no.
+  //
+  // ASI QUE EL CHIP YA NO NOMBRA EL CANAL: contesta "¿puedo darselo hoy?". El candado sigue a la regla nueva, y
+  // vigila las DOS mitades: que el chip hable del saldo, y que el catalogo siga mandando primero (un producto de
+  // "solo tienda" con saldo no se puede entregar, y decir "tienes 5" ahi seria una mentira nueva).
+  it("el chip de la prescripcion dice si se puede entregar hoy, no el canal", async () => {
+    const { estadoParaPrescribir } = await import("@/modules/nutraceuticals/disponibilidad");
+
+    expect(estadoParaPrescribir("en_consultorio", { propias: 5, enCentral: 10 }).texto).toBe("Tienes 5");
+    expect(estadoParaPrescribir("en_consultorio", { propias: 0, enCentral: 384 }).texto).toBe(
+      "Hay que pedirlo a la bodega",
     );
+    expect(estadoParaPrescribir("en_consultorio", { propias: 0, enCentral: 0 }).texto).toBe("Sin existencias");
+
+    // EL CATALOGO MANDA PRIMERO, y el orden es la mitad que puede romperse sin que se note: al reves, un
+    // producto de "solo tienda" con saldo diria "Tienes 5" y seria entregable sin serlo.
+    expect(estadoParaPrescribir("solo_tienda", { propias: 5, enCentral: 0 }).texto).toBe("Solo en la tienda");
+    expect(estadoParaPrescribir("no_disponible", { propias: 5, enCentral: 0 }).texto).toBe("No disponible");
+
+    // Y SIN EL DATO DEL INVENTARIO NO SE INVENTA UNO: se dice el canal, que es lo que si se sabe.
+    expect(estadoParaPrescribir("en_consultorio", undefined).texto).toBe("Se entrega en consulta");
+  });
+
+  it("y el chip sale de la MISMA fuente que el bloque de venta, no de una segunda consulta", () => {
+    // ERA MI OBJECION A ESTO, y era buena: dos sitios diciendo el stock es como se llega a que uno quede viejo.
+    // Se resuelve calculandolo UNA vez en la pagina y pasandolo a los dos, no ignorandola.
+    const pagina = leer("src/app/(app)/ani-bis-e/[id]/page.tsx");
+    expect(pagina).toContain("dondeEstaCadaProducto");
+    expect(pagina).toContain("disponibleParaVender");
+    expect(pagina).toContain("disponibleEnCentral");
   });
 
   it("y los nombres estan en UN sitio, no copiados en cada pantalla", () => {

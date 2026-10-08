@@ -2,6 +2,7 @@ import { theadTr, th } from "@/components/shared/tabla";
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
 
 import type { EnvioPorCoordinar } from "../data/despachos-reader";
+import { RegistrarDestinoForm } from "./registrar-destino-form";
 
 // ═══ LOS ENVIOS A DOMICILIO: LA COLA DE LO QUE HAY QUE COORDINAR (2026-09-29, REESCRITO EL 2026-10-05) ═══
 //
@@ -33,18 +34,42 @@ function Tabla({ envios, conFecha }: { envios: EnvioPorCoordinar[]; conFecha: bo
           {envios.map((e) => (
             <tr key={e.transactionId} className="border-b border-border/60">
               <td className="px-3 py-2 text-muted-foreground">{e.dia}</td>
+              {/* ═══ SIN DIRECCIÓN SE DICE QUE FALTA PEDIRLA, NO SE DEJA UN GUION (legal, 2026-10-08) ═══
+
+                  Condición textual suya: *"que la venta entre a Envíos por coordinar marcada visiblemente como
+                  sin dirección, no simplemente con los campos vacíos. La diferencia entre 'falta por pedir' y
+                  'se nos olvidó' tiene que verse."*
+
+                  Y DESDE HOY ES EL CASO NORMAL, no la excepción: la venta a domicilio nace sin dirección porque
+                  la pide quien coordina, que es quien lee esta tabla. Un guion aquí se leería como un dato
+                  perdido, cuando es el trabajo que esta pantalla existe para repartir. */}
               <td className="px-3 py-2 text-foreground">
-                {e.ciudad ?? "-"}
+                {e.ciudad ?? <span className="text-attention">por pedir</span>}
                 {e.departamento ? ` (${e.departamento})` : ""}
               </td>
-              <td className="px-3 py-2 text-muted-foreground">{e.direccion ?? "-"}</td>
+              <td className="px-3 py-2 text-muted-foreground">
+                {e.direccion ?? (
+                  <span className="font-medium text-attention">Falta por pedir: llámalo y regístrala</span>
+                )}
+              </td>
               {/* SIN CELULAR SE DICE QUE FALTA, no se deja un guion: es el dato que impide coordinar, y es lo
                   que pasa con los envios anteriores al 2026-10-05, que no lo pedian. */}
               <td className="px-3 py-2 text-muted-foreground">
                 {e.celular ?? <span className="text-attention">sin celular registrado</span>}
               </td>
               <td className="px-3 py-2 text-muted-foreground">
-                {conFecha ? (e.entregadoEl ?? "-") : <span className="text-attention">por coordinar</span>}
+                {conFecha ? (
+                  (e.entregadoEl ?? "-")
+                ) : e.direccion == null ? (
+                  /* ── Y AQUI SE PUEDE RESOLVER, no solo enterarse (legal, 2026-10-08) ──
+
+                     El botón va junto a la fila que lo necesita, porque es el mismo momento: se llama al
+                     paciente, se le confirma el valor del envío y se anota a dónde va. Sin esta salida, el
+                     portón de la entrega habría dejado la venta trabada para siempre. */
+                  <RegistrarDestinoForm transactionId={e.transactionId} faltaCelular={e.celular == null} />
+                ) : (
+                  <span className="text-attention">por coordinar</span>
+                )}
               </td>
             </tr>
           ))}
