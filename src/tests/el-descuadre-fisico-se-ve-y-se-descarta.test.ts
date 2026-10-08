@@ -47,7 +47,16 @@ describe("la bandeja y el panel de descartar deciden igual sobre un sin_saldo", 
     // entraria al correo cualquier venta de un producto de prueba.
     const i = PENDIENTES.indexOf("'sin_saldo', t.id");
     expect(i, "cambio la rama de sin_saldo: revisa este candado").toBeGreaterThan(0);
-    const rama = PENDIENTES.slice(i, i + 2000);
+    // ── EL CORTE VA HASTA EL FIN DE LA RAMA, NO A 2000 CARACTERES (2026-10-08) ──────────────────────
+    //
+    // Cortaba `i + 2000`, y al añadir un CASE a la rama (para que el aviso nombre la bodega en vez de la
+    // vitrina) la condicion del producto quedo FUERA de la ventana: el candado acuso un filtro que seguia ahi.
+    //
+    // Es el mismo defecto de corte del candado de `cierre-consulta`, que rebanaba "hasta el fin del archivo":
+    // una ventana por longitud envejece con el codigo y acaba acusando lo que no es. La rama termina donde
+    // empieza la siguiente (`union all`), que es un limite que no se mueve.
+    const siguiente = PENDIENTES.indexOf("union all", i);
+    const rama = PENDIENTES.slice(i, siguiente > i ? siguiente : undefined);
     expect(rama, "la rama de sin_saldo dejo de exigir que el producto sea real").toContain("is_test, false) = false");
   });
 });

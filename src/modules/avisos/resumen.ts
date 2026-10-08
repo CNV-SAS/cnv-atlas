@@ -65,6 +65,14 @@ export type Pendiente = {
   desde: string;
   monto: string;
   productos: string;
+  /**
+   * LA VENTA SALIO DE LA BODEGA (o de la cuarentena), no de la vitrina del Integrante.
+   *
+   * Existe para que el aviso no acuse el sitio equivocado: un domicilio sale de la BODEGA, asi que un faltante
+   * de saldo ahi no se arregla contando la vitrina. Santiago vio "la vitrina cuenta unidades que ya salieron"
+   * con 12 unidades en su vitrina y el faltante en la bodega (2026-10-08).
+   */
+  salioDeLaBodega?: boolean;
   /** Lo que agrupa: el motivo de la factura, "falta la version del Integrante", "falta la nota credito". */
   causa: string;
   enGestionHasta: string | null; // AAAA-MM-DD
