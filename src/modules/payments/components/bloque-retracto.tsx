@@ -36,7 +36,28 @@ export type RetractoDeLaVenta = {
 //
 // LOS DOS BOTONES LLEVAN `key` DISTINTA (hazard 1 de CLAUDE.md): comparten formulario, y su valor viaja en el
 // `name` del boton, que `enviarSinReset` si manda porque pasa el submitter.
-export function BloqueRetracto({ retracto }: { retracto: RetractoDeLaVenta }) {
+// ═══ EL PROFESIONAL LO VE, PERO NO LO EJECUTA (Santiago, smoke del 2026-10-08) ═══
+//
+// SU PREGUNTA: *"¿esto no debería aparecer solo a admin?"*. La respuesta es que no, y la razón es él mismo:
+// **el paciente le va a preguntar a su profesional**, no a CNV. Un derecho que quien atiende no conoce es un
+// derecho que nadie ejerce, y la fecha límite y la condición del sello son justo lo que tiene que poder decirle.
+//
+// PERO EJECUTARLO ES OTRA COSA: mueve dinero de CNV, así que lo decide CNV (`canViewRevenue`).
+//
+// ── Y LO QUE ESTABA MAL NO ERA EL GUARD, ERA SU EXPOSICIÓN ───────────────────────────────────────
+//
+// El guard ya estaba, y bien: `registrarRetractoFormAction` devuelve "sin permiso" a quien no sea admin o
+// dirección, así que **no había ningún hueco de dinero**. Lo que pasaba es que la pantalla le ofrecía al
+// profesional un botón que iba a rebotar, y un guard correcto mal expuesto se siente exactamente igual que un
+// defecto: pulsas, no pasa nada que entiendas, y dejas de confiar en la pantalla.
+export function BloqueRetracto({
+  retracto,
+  puedeRegistrar = false,
+}: {
+  retracto: RetractoDeLaVenta;
+  /** Quien puede REGISTRARLO (admin y dirección). El resto lo ve para poder explicárselo al paciente. */
+  puedeRegistrar?: boolean;
+}) {
   const [state, action, pending] = useActionState(registrarRetractoFormAction, initial);
   useFormToastAndRefresh(state);
   const [abierto, setAbierto] = useState(false);
@@ -88,10 +109,17 @@ export function BloqueRetracto({ retracto }: { retracto: RetractoDeLaVenta }) {
             Volvió abierto
           </Button>
         </form>
-      ) : (
+      ) : puedeRegistrar ? (
         <button type="button" onClick={() => setAbierto(true)} className="self-start underline">
           El paciente se retracta
         </button>
+      ) : (
+        /* ── QUIEN NO LO REGISTRA SABE A QUIEN DECIRLE, que es lo que el profesional necesita: con el paciente
+              al teléfono, "no puedes" lo deja sin nada que responder. Esto le dice qué hacer. */
+        <span className="text-xs text-muted-foreground">
+          Si el paciente se retracta, avísale a CNV: el reintegro lo registra quien maneja el dinero, con la
+          evidencia del sello.
+        </span>
       )}
     </div>
   );

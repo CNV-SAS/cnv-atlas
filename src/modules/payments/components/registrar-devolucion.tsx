@@ -56,6 +56,22 @@ export function RegistrarDevolucion({ lineas }: { lineas: LineaDevolvible[] }) {
 
   return (
     <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-2 rounded-md border border-border p-3">
+      {/* ═══ LA DIFERENCIA CON EL RETRACTO, DICHA DONDE SE DECIDE (Santiago, smoke del 2026-10-08) ═══
+
+          SU PREGUNTA: *"admin tiene retractarse y devolución (ambas cosas)"*, y no veía en qué se distinguen.
+          Estaba explicado en los comentarios del código y en ninguna pantalla, o sea en el único sitio donde la
+          persona que elige no lo va a leer.
+
+          Y ELEGIR MAL NO ES INOCENTE: el retracto es un DERECHO con plazo y con la condición del sello, y
+          registrar como devolución algo que era un retracto le quita al paciente el amparo del artículo 47.
+          Al revés, registrar un retracto fuera de plazo compromete plata que CNV no debe. */}
+      <p className="max-w-prose text-xs text-muted-foreground">
+        <strong className="text-foreground">Esto no es el retracto.</strong> El retracto es un derecho del
+        paciente dentro de los 5 días hábiles siguientes a la entrega, solo si el producto vuelve sellado, y no
+        necesita motivo: se registra con el botón de retracto y Atlas decide si procede. Esta devolución es
+        cualquier otro caso (vino después del plazo, llegó abierto, o se acordó por otra razón), y por eso pide
+        el motivo escrito.
+      </p>
       <span className="text-xs text-muted-foreground">
         Lo devuelto no vuelve al inventario vendible: queda en devueltas pendientes hasta que alguien lo
         revise y decida.

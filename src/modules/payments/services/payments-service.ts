@@ -374,22 +374,42 @@ export async function registerCashSale(
       ? "cobrado_por_el_integrante"
       : canalPedido;
 
-  const { id, linksAnulados } = await createPaidCashTransaction({
-    organizationId: user.organizationId,
-    patientId: input.patientId,
-    professionalId,
-    amount,
-    currency: "COP",
-    idempotencyKey,
-    items: lines,
-    treatmentId: input.treatmentId ?? null,
-    desdeLaBodega: input.desdeLaBodega === true,
-    domicilio,
-    sinTratamientoMotivo: input.ventaSueltaMotivo ?? null,
-    anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
-    actorId: user.id,
-    canal,
-  });
+  // ═══ EL MOTIVO TIENE QUE LLEGAR A LA PANTALLA (Santiago, smoke del 2026-10-08) ═══
+  //
+  // LO QUE PASABA: el porton de la bodega funcionaba y en /pagos salia *"No se pudo registrar la venta en
+  // efectivo."* y nada mas. El motivo (que producto falta y cuantas unidades hay) se perdia por el camino: la
+  // accion solo deja pasar `CheckoutError` y `ModalidadError`, y un `InventarioDeVentaError` caia al mensaje
+  // generico.
+  //
+  // Y ES LA TERCERA VEZ CON ESTA FORMA: el servidor sabe la razon y la pantalla muestra un error pelado. Un
+  // "no se pudo" sin razon es peor que el bloqueo, porque el profesional no sabe si es su culpa, un fallo de la
+  // app, o que de verdad no hay producto, y lo descubre con el paciente delante.
+  //
+  // SE TRADUCE AQUI, en el borde del servicio, igual que ya hace el camino del LINK (ver `createCheckout`): las
+  // dos vias traducen en el mismo sitio, asi que no puede volver a arreglarse una sola.
+  let creada: Awaited<ReturnType<typeof createPaidCashTransaction>>;
+  try {
+    creada = await createPaidCashTransaction({
+      organizationId: user.organizationId,
+      patientId: input.patientId,
+      professionalId,
+      amount,
+      currency: "COP",
+      idempotencyKey,
+      items: lines,
+      treatmentId: input.treatmentId ?? null,
+      desdeLaBodega: input.desdeLaBodega === true,
+      domicilio,
+      sinTratamientoMotivo: input.ventaSueltaMotivo ?? null,
+      anularLinksQueComparten: opciones.anularLinksQueComparten ?? false,
+      actorId: user.id,
+      canal,
+    });
+  } catch (e) {
+    if (e instanceof InventarioDeVentaError) throw new CheckoutError(e.message);
+    throw e;
+  }
+  const { id, linksAnulados } = creada;
   // La venta en efectivo NACE pagada, asi que no hay webhook que dispare la factura: se emite aqui. No
   // revienta la venta si falla (el servicio escribe el desenlace y la deja en la cola): el dinero ya lo
   // recibio el Integrante y negarle la venta por un problema de facturacion seria peor.
