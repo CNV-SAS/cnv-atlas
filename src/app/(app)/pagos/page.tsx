@@ -120,10 +120,14 @@ function EntregaDeLaVenta({
   tx,
   puedeEntregar,
   retracto,
+  // QUIEN PUEDE REGISTRAR EL RETRACTO (admin y direccion). El profesional lo VE para poder explicarselo al
+  // paciente, que es quien le va a preguntar, pero no lo ejecuta: mueve dinero de CNV.
+  puedeRegistrarRetracto,
 }: {
   tx: TransactionWithItems;
   puedeEntregar: boolean;
   retracto?: RetractoDeLaVenta;
+  puedeRegistrarRetracto: boolean;
 }) {
   if (tx.cash_not_received_at) {
     return (
@@ -138,7 +142,7 @@ function EntregaDeLaVenta({
     return (
       <div className="flex flex-col gap-1">
         <span className="text-xs text-muted-foreground">Entregado el {formatDateTime(tx.delivered_at)}</span>
-        {retracto ? <BloqueRetracto retracto={retracto} /> : null}
+        {retracto ? <BloqueRetracto retracto={retracto} puedeRegistrar={puedeRegistrarRetracto} /> : null}
       </div>
     );
   }
@@ -218,7 +222,7 @@ function EntregaDeLaVenta({
           </div>
         ) : null}
         {puedeEntregar ? <AccionDeVentaButton transactionId={tx.id} tipo="entregar" /> : null}
-        {retracto ? <BloqueRetracto retracto={retracto} /> : null}
+        {retracto ? <BloqueRetracto retracto={retracto} puedeRegistrar={puedeRegistrarRetracto} /> : null}
       </div>
     );
   }
@@ -229,7 +233,7 @@ function EntregaDeLaVenta({
         <span className="text-xs text-clinical-warning">· tu inventario en Atlas no alcanzaba; CNV lo revisa</span>
       ) : null}
       {puedeEntregar ? <AccionDeVentaButton transactionId={tx.id} tipo="entregar" /> : null}
-      {retracto ? <BloqueRetracto retracto={retracto} /> : null}
+      {retracto ? <BloqueRetracto retracto={retracto} puedeRegistrar={puedeRegistrarRetracto} /> : null}
     </div>
   );
 }
@@ -684,6 +688,7 @@ export default async function PagosPage({
                         tx={tx}
                         puedeEntregar={canDeliverSale(user, tx, perfilPropio, miUbicacion)}
                         retracto={retractos.get(tx.id)}
+                        puedeRegistrarRetracto={canView}
                       />
                       {/* LA DEVOLUCION SE REGISTRA DESDE LA VENTA (2026-09-24), que es donde está el hecho:
                           el paciente devuelve lo que compró, y la unidad que vuelve es la que salió con esa
