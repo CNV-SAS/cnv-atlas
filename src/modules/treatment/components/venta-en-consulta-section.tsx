@@ -10,6 +10,7 @@ import { VersionDelIntegranteForm } from "@/modules/payments/components/version-
 import { CheckoutLink } from "@/modules/payments/components/checkout-link";
 import { CHECKOUT_TTL_MS } from "@/modules/payments/data/checkout-reader";
 import {
+  celularDelPaciente,
   getProfessionalProfileIdByUser,
   listVentasDeTratamiento,
   type VentaDeTratamiento,
@@ -142,6 +143,13 @@ export async function VentaEnConsultaSection({
   // que `resolveSale` resuelve para aplicar `exigirRecaudoDeCnv`. Preguntar por el profesional de la evaluación
   // sería una segunda definición de "de quién es esta venta", y las dos podrían discrepar.
   const miModalidadEsDistribucion = perfilPropio ? await esDeDistribucion(perfilPropio) : false;
+  // ── SI EL PACIENTE TIENE CELULAR, no cuál (legal + Santiago, 2026-10-08) ──────────────────────────
+  //
+  // Hace falta para el envío de una venta desde la bodega: CNV lo llama para pedirle la dirección y confirmarle
+  // el valor, así que sin número no hay forma de conseguir el resto. Se convierte a BOOLEANO aquí: el número no
+  // baja al componente cliente, por lo mismo que en `listSelectablePatients` (para un admin, mandarlo pondría el
+  // celular del paciente en el HTML de la página).
+  const tieneCelularRegistrado = (await celularDelPaciente(protocol.patientId)) != null;
   const precio = new Map(catalogo.map((c) => [c.id, c.unit_price == null ? null : Number(c.unit_price)]));
   const productos = ids.map((id) => ({
     id,
@@ -181,6 +189,7 @@ export async function VentaEnConsultaSection({
         patientId={protocol.patientId}
         productos={productos}
         esDeDistribucion={miModalidadEsDistribucion}
+        tieneCelularRegistrado={tieneCelularRegistrado}
       />
 
       {ventas.length > 0 ? (

@@ -67,8 +67,10 @@ export type CheckoutCreated = { transactionId: string; checkoutUrl: string };
 
 // Resuelve una venta ANTES de cobrarla, comun al checkout (Wompi) y a la venta en efectivo: el profesional
 type ResueltoDomicilio = {
-  direccion: string;
-  ciudad: string;
+  // NULOS CUANDO LA PIDE QUIEN COORDINA (legal, 2026-10-08): la venta a domicilio nace sin direccion y el porton
+  // esta en la ENTREGA, no en el nacimiento. Ver `validations.ts` y la 0213.
+  direccion: string | null;
+  ciudad: string | null;
   departamento: string | null;
   daneCode: string | null;
   /** Para coordinar la entrega. Lo que el profesional teclee, o el del paciente. */
@@ -228,7 +230,8 @@ async function resolveSale(
   // rechazar una venta buena.
   let domicilio: ResueltoDomicilio = null;
   if (input.domicilio) {
-    const departamento = input.domicilio.departamento?.trim() || (await departamentoDe(input.domicilio.ciudad));
+    const ciudad = input.domicilio.ciudad?.trim() || null;
+    const departamento = input.domicilio.departamento?.trim() || (ciudad ? await departamentoDe(ciudad) : null);
 
     // ── EL CELULAR LO RESUELVE EL SERVIDOR, NO LA PANTALLA ────────────────────────────────────────
     //
@@ -246,12 +249,13 @@ async function resolveSale(
     }
 
     domicilio = {
-      direccion: input.domicilio.direccion,
-      ciudad: input.domicilio.ciudad,
+      direccion: input.domicilio.direccion?.trim() || null,
+      ciudad,
       departamento,
       // EL CODIGO DANE SE SIGUE SELLANDO, y no se fue con el flete: lo pide el analisis de ICA, que es un
-      // impuesto sobre la venta del PRODUCTO. `null` cuando la ciudad tecleada no esta en el directorio.
-      daneCode: await daneDe(input.domicilio.ciudad, departamento),
+      // impuesto sobre la venta del PRODUCTO. `null` cuando la ciudad tecleada no esta en el directorio, y
+      // tambien cuando todavia no hay ciudad: se sella al coordinar, con el resto del destino.
+      daneCode: ciudad ? await daneDe(ciudad, departamento) : null,
       celular,
     };
   }
@@ -697,6 +701,10 @@ const MOTIVO_SIN_ENTREGA: Record<string, string> = {
   ya_entregada: "Esta venta ya estaba entregada.",
   en_revision: "Este pago está en revisión por CNV (llegó sobre un link anulado). No lo entregues hasta que se resuelva.",
   sin_estado: "Esta venta es anterior a las entregas en Atlas y no se registra aquí.",
+  // EL MENSAJE DICE QUÉ HACER, no solo que no se puede: quien está aquí es quien coordina el envío, y lo que le
+  // falta es pedirle la dirección al paciente y registrarla. Sin eso, "no se puede" lo manda a buscar por qué.
+  sin_direccion:
+    "Esta venta se envía a domicilio y todavía no tiene dirección. Pídesela al paciente y regístrala antes de marcarla entregada: sin dirección, nadie sabe a dónde fue el producto.",
 };
 
 /**

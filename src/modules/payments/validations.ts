@@ -58,10 +58,36 @@ export const createCheckoutSchema = z.object({
    */
   domicilio: z
     .object({
-      ciudad: z.string().trim().min(1, "Escribe la ciudad de destino.").max(120),
+      // ── CIUDAD Y DIRECCION DEJAN DE SER OBLIGATORIAS (legal, 2026-10-08) ──────────────────────────
+      //
+      // La direccion la pide QUIEN COORDINA el envio, no el profesional en consulta: CNV ya tiene que llamar al
+      // paciente para confirmarle el valor del envio, asi que pedirsela en esa llamada no agrega friccion.
+      //
+      // EL INVARIANTE NO SE PIERDE, SE MUDA al momento en que es verdad: no se puede marcar ENTREGADA una venta
+      // a domicilio sin direccion (CHECK `transactions_domicilio_entregado_con_direccion` de la 0213, mas el
+      // rechazo con mensaje en `registrarEntrega`). Antes la regla era "nace con direccion", que con esta
+      // decision es imposible de cumplir.
+      //
+      // SE QUEDAN COMO OPCIONALES Y NO SE BORRAN: cuando el profesional SI la tiene (el paciente delante), poder
+      // anotarla le ahorra una llamada a CNV. Quitar el campo seria perder eso sin ganar nada.
+      ciudad: z.string().trim().max(120).optional(),
       departamento: z.string().trim().max(120).optional(),
-      direccion: z.string().trim().min(5, "Escribe la dirección completa de entrega.").max(300),
-      /** Para coordinar la entrega. Ausente = se usa el que el paciente tenga registrado. */
+      // VACIA SE ADMITE, pero una direccion ESCRITA A MEDIAS no: si alguien teclea tres letras, eso no es una
+      // direccion y aceptarla seria peor que no tenerla (pasaria el porton de la entrega con basura).
+      direccion: z
+        .string()
+        .trim()
+        .max(300)
+        .refine((v) => v === "" || v.length >= 5, "Escribe la dirección completa, o déjala vacía para que CNV la pida al coordinar.")
+        .optional(),
+      /**
+       * EL CELULAR ES LO UNICO QUE NO SE PUEDE DEJAR PARA DESPUES, y esa es la razon de que siga exigiendose
+       * cuando el paciente no tiene uno registrado: todo el plan de legal descansa en que CNV LLAMA al paciente
+       * para pedirle la direccion y confirmarle el valor del envio. Sin numero no hay llamada, y entonces no hay
+       * forma de conseguir la direccion despues.
+       *
+       * Ausente = se usa el que el paciente tenga registrado.
+       */
       celular: z.string().trim().min(7, "Escribe un celular para coordinar la entrega.").max(40).optional(),
     })
     .optional(),

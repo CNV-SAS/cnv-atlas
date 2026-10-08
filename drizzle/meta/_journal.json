@@ -1492,6 +1492,13 @@
       "when": 1791954806103,
       "tag": "0212_retirar_una_consulta_que_no_ocurrio",
       "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1791954866103,
+      "tag": "0213_el_domicilio_recibe_su_direccion_al_coordinar",
+      "breakpoints": true
     }
   ]
 }

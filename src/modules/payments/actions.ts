@@ -467,6 +467,55 @@ export async function entregarVentaFormAction(
   }
 }
 
+// ═══ REGISTRAR EL DESTINO DE UN ENVIO (legal, 2026-10-08) ═══
+//
+// LA SUPERFICIE QUE EL PORTON NECESITA. No se puede marcar entregada una venta a domicilio sin direccion, y la
+// direccion la pide quien coordina: sin esta accion, el porton dejaria toda venta desde la bodega imposible de
+// entregar para siempre (un guard sin superficie que lo alcance).
+//
+// QUIEN PUEDE: `canViewRevenue` (admin y direccion), que es quien ve /comercial y coordina los envios. NO el
+// profesional: el producto no sale de su vitrina y no es el quien habla con la mensajeria.
+const MOTIVO_SIN_DESTINO: Record<string, string> = {
+  no_existe: "No encontramos esa venta.",
+  no_es_envio: "Esta venta no se envía a domicilio: no tiene destino que registrar.",
+  ya_entregada: "Esta venta ya está entregada. Su destino es parte de lo que pasó y no se reescribe.",
+  direccion_vacia: "Escribe la ciudad y la dirección completa: es lo que falta para poder despacharla.",
+};
+
+export async function registrarDestinoFormAction(
+  _prev: AccionDeVentaState,
+  formData: FormData,
+): Promise<AccionDeVentaState> {
+  const vacio = { error: null, success: null, warning: null };
+  const user = await getCurrentUser();
+  if (!user) return { ...vacio, error: "Inicia sesión." };
+  if (!canViewRevenue(user)) return { ...vacio, error: "Solo quien coordina los envíos registra el destino." };
+  const transactionId = String(formData.get("transactionId") ?? "");
+  if (!transactionId) return { ...vacio, error: "Venta inválida." };
+
+  try {
+    const { registrarDestinoDelEnvio } = await import("./data/destino-del-envio-writer");
+    const r = await registrarDestinoDelEnvio(
+      transactionId,
+      {
+        ciudad: String(formData.get("ciudadDestino") ?? ""),
+        departamento: String(formData.get("departamentoDestino") ?? ""),
+        direccion: String(formData.get("direccionEntrega") ?? ""),
+        celular: String(formData.get("celularEntrega") ?? ""),
+      },
+      { id: user.id, email: user.email },
+    );
+    if (r !== "registrado") return { ...vacio, error: MOTIVO_SIN_DESTINO[r] ?? "No se pudo registrar el destino." };
+    // SIN `revalidatePath`: la pantalla ya refresca con `useFormToastAndRefresh`, y los dos ciclos montarian los
+    // segmentos dos veces (la pagina salta al inicio dos veces y el formulario puede desmontarse antes de que se
+    // vea el toast). Lo cazo el candado `refresco-una-sola-vez`, por cuarta vez en este proyecto.
+    return { ...vacio, success: "Destino registrado. Ya se puede despachar." };
+  } catch (e) {
+    reportServerError("venta.registrar-destino", e);
+    return { ...vacio, error: "No se pudo registrar el destino." };
+  }
+}
+
 // ----- Resolver una venta en revision (pago sobre link anulado) -----
 
 // MISMA POLICY QUE VER EL INGRESO Y REINTENTAR FACTURAS (`canViewRevenue`): admin y direccion. Quien decide
