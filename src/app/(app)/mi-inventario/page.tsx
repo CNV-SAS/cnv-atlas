@@ -17,16 +17,12 @@ import {
   getOwnMovements,
   ventanaDeConteoDelUsuario,
 } from "@/modules/nutraceuticals/services/inventory-service";
+import { nombreDeDisponibilidad } from "@/modules/nutraceuticals/disponibilidad";
 import { getPendingRemesasForOwn } from "@/modules/nutraceuticals/services/remesa-service";
 import { fraseDelConteo } from "@/modules/nutraceuticals/ventana-de-conteo";
 
 export const metadata = { title: "Mi inventario - Atlas" };
 
-const AVAILABILITY_LABEL: Record<string, string> = {
-  en_consultorio: "En consultorio",
-  solo_tienda: "Solo en tienda",
-  no_disponible: "No disponible",
-};
 const MOVEMENT_LABEL: Record<string, string> = {
   remesa: "Remesa de CNV",
   recepcion: "Recepción",
@@ -177,7 +173,7 @@ export default async function MiInventarioPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="font-normal">
-                    {AVAILABILITY_LABEL[l.commercialAvailability] ?? l.commercialAvailability}
+                    {nombreDeDisponibilidad(l.commercialAvailability)}
                   </Badge>
                   <span className="text-lg font-black text-foreground">{l.stock}</span>
                 </div>

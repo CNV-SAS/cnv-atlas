@@ -112,17 +112,41 @@ describe("la prescripcion no se puede cerrar en blanco sin decirlo", () => {
     expect(src).toContain('protocol.nutraceuticalDecision?.decision === "no"');
   });
 
-  it("el rotulo de disponibilidad dice que es el canal, no las unidades del profesional", () => {
-    // Decia "se lo puedes entregar en la consulta", que es FALSO con la vitrina en cero: prometia algo sobre su
-    // inventario y solo sabia algo del catalogo.
-    expect(src).toContain("no cuántas unidades tienes");
-    // SE MIRA LA FORMA JSX, no la frase a secas: el comentario de al lado CITA el texto viejo para explicar por
-    // que se cambio, y un `not.toContain` de la frase tropieza con su propia documentacion. Es la tercera vez
-    // hoy que me pasa, asi que queda escrito: lo que se prohibe es lo que se RINDE.
+  // ── ESTE CASO CAMBIO DE SITIO, Y POR ESO CAMBIA EL CANDADO (2026-10-08) ──────────────────────────
+  //
+  // Primero arregle solo la LEYENDA y defendi el rotulo ("En consultorio" es la disponibilidad comercial, no el
+  // inventario). Santiago insistio y tenia razon: el rotulo nombra un SITIO y el producto no esta en ese sitio.
+  // Dos lineas mas abajo, la misma pantalla dice "No tienes unidades en tu vitrina".
+  //
+  // Asi que ahora el rotulo dice el CANAL, y los nombres viven en UN modulo (estaban en cuatro copias). El
+  // candado sigue al mecanismo nuevo en vez de quedarse mirando el archivo viejo: si se quedara ahi, pasaria
+  // verde sobre una pantalla que volviera a decir "En consultorio".
+  it("el rotulo de disponibilidad nombra el canal, no un sitio donde el producto no esta", () => {
+    const mod = leer("src/modules/nutraceuticals/disponibilidad.ts");
+    expect(mod).toContain('en_consultorio: "Se entrega en consulta"');
     expect(
-      src,
-      "volvio el texto que promete entregar en consulta: es falso con la vitrina en cero",
-    ).not.toContain("&rdquo;: se lo puedes entregar en la consulta.");
+      mod,
+      'volvio "En consultorio": nombra un sitio, y es justo donde el producto no esta',
+    ).not.toContain('en_consultorio: "En consultorio"');
+    expect(mod, "la leyenda dejo de decir que esto no son las unidades del profesional").toContain(
+      "no cuántas unidades tienes",
+    );
+  });
+
+  it("y los nombres estan en UN sitio, no copiados en cada pantalla", () => {
+    // ESTABAN EN CUATRO (`/nutraceuticos`, `/mi-inventario`, el formulario de edicion y la seccion de
+    // tratamiento). Cuatro copias es como se llega a corregir una pantalla y dejar tres diciendo lo viejo.
+    for (const ruta of [
+      "src/app/(app)/nutraceuticos/page.tsx",
+      "src/app/(app)/mi-inventario/page.tsx",
+      "src/modules/treatment/components/nutraceuticals-section.tsx",
+      "src/modules/nutraceuticals/components/edit-nutraceutical-form.tsx",
+    ]) {
+      expect(leer(ruta), `${ruta} volvio a tener su propia copia del mapa de disponibilidad`).not.toContain(
+        "const AVAILABILITY_LABEL",
+      );
+    }
+    expect(src).toContain("LEYENDA_DISPONIBILIDAD");
   });
 
   it("y la salida de 'no los adquiere' se nombra como la alternativa que es", () => {

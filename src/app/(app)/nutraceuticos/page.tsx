@@ -7,6 +7,7 @@ import { requireUser } from "@/modules/auth/session";
 import { CreateNutraceuticalForm } from "@/modules/nutraceuticals/components/create-nutraceutical-form";
 import { EditNutraceuticalForm } from "@/modules/nutraceuticals/components/edit-nutraceutical-form";
 import { canManageCatalog } from "@/modules/nutraceuticals/policies/can-manage-catalog";
+import { nombreDeDisponibilidad } from "@/modules/nutraceuticals/disponibilidad";
 import { canViewNutraceuticals } from "@/modules/nutraceuticals/policies/can-view-nutraceuticals";
 import * as service from "@/modules/nutraceuticals/services/nutraceuticals-service";
 
@@ -15,11 +16,6 @@ export const metadata = { title: "Nutracéuticos - Atlas" };
 // El STOCK ya no vive aqui: es un saldo por profesional en consignacion (ver Mi inventario). Esta vista
 // es el CATALOGO comercial (admin/soporte): productos + su disponibilidad. La disponibilidad es dato del
 // producto (en_consultorio / solo_tienda / no_disponible), distinto del stock (cantidad).
-const AVAILABILITY_LABEL: Record<string, string> = {
-  en_consultorio: "En consultorio",
-  solo_tienda: "Solo en tienda",
-  no_disponible: "No disponible",
-};
 
 export default async function NutraceuticosPage() {
   const user = await requireUser();
@@ -61,7 +57,7 @@ export default async function NutraceuticosPage() {
                       ) : null}
                     </div>
                     <Badge variant="outline">
-                      {AVAILABILITY_LABEL[n.commercial_availability] ?? n.commercial_availability}
+                      {nombreDeDisponibilidad(n.commercial_availability)}
                     </Badge>
                   </div>
                 </CardHeader>
