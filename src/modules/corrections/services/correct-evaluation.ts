@@ -89,6 +89,28 @@ export type CorrectEvaluationResult = {
   // en disco, no se fija; se sella la version REAL y esto le dice a la UI si debe avisar.
   modelChanged: boolean;
 };
+/**
+ * Serializa con las CLAVES ORDENADAS, para poder comparar lo guardado con lo que llega.
+ *
+ * HACE FALTA porque lo guardado es `jsonb` y Postgres reordena las claves al almacenarlo: un `JSON.stringify`
+ * a secas diria que las condiciones cambiaron cada vez que el orden difiera, y el guard que impide regenerar una
+ * version identica se saltaria por la puerta de atras.
+ */
+function canonico(valor: unknown): string {
+  const ordenar = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(ordenar);
+    if (v !== null && typeof v === "object") {
+      return Object.fromEntries(
+        Object.entries(v as Record<string, unknown>)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([k, x]) => [k, ordenar(x)]),
+      );
+    }
+    return v;
+  };
+  return JSON.stringify(ordenar(valor));
+}
+
 
 export async function correctEvaluation(
   input: CorrectEvaluationInput,
@@ -226,9 +248,54 @@ export async function correctEvaluation(
   const realChanges = [...corrections.entries()].filter(
     ([qid, val]) => (answerByQuestion.get(qid)?.answerValue ?? "") !== val,
   );
-  if (realChanges.length === 0) {
+
+  // ═══ Y LAS CONDICIONES BIS TAMBIEN SON UN CAMBIO (Santiago, smoke segundo 2026-10-08) ═══
+  //
+  // ── EL DEFECTO: LA PARTE 6 DEL SMOKE ESTABA MUERTA ──────────────────────────────────────────────
+  //
+  // Corregir una condicion BIS devolvia SIEMPRE *"No cambiaste ninguna respuesta"*, asi que ese flujo entero
+  // no se podia usar. Y la razon no era el formulario: `corregirCondicionesBisAction` manda
+  // `correctedAnswers: []` a proposito (no se corrige ninguna respuesta de encuesta, se corrigen las
+  // CONDICIONES), y este guard contaba solo las respuestas. Nunca podia haber un cambio que contara.
+  //
+  // O SEA QUE EL GUARD MEDIA UNA COSA Y SE APLICABA A DOS CAMINOS. El de encuesta funcionaba; el de condiciones
+  // estaba cerrado desde que existe, y no lo cazo ningun test porque los de este servicio corrigen respuestas.
+  //
+  // ── POR QUE SE COMPARA Y NO SE DA POR CAMBIADO ──────────────────────────────────────────────────
+  //
+  // Lo facil seria "si vienen condiciones, cuenta como cambio". Pero el guard existe por una razon que sigue en
+  // pie: regenerar una version IDENTICA rehace la cascada, pierde el tratamiento e invalida la aprobacion sin
+  // que nada haya cambiado. Asi que se compara contra lo guardado, igual que con las respuestas.
+  //
+  // CANONICO Y NO `JSON.stringify` A SECAS: lo guardado es `jsonb`, y Postgres NO conserva el orden de las
+  // claves (las reordena). Comparar las cadenas tal cual diria "cambio" siempre que el orden difiera, que es
+  // justo el defecto que este guard viene a evitar, por la puerta de atras.
+  let condicionesCambian = false;
+  if (input.correctedConditions) {
+    const [intakeActual] = await db
+      .select({
+        answers: evaluationBisIntake.conditionAnswers,
+        contraindicated: evaluationBisIntake.contraindicated,
+      })
+      .from(evaluationBisIntake)
+      .where(eq(evaluationBisIntake.evaluationId, input.evaluationId))
+      .limit(1);
+    condicionesCambian =
+      intakeActual == null ||
+      intakeActual.contraindicated !== input.correctedConditions.contraindicated ||
+      canonico(intakeActual.answers) !== canonico(input.correctedConditions.answers);
+  }
+
+  if (realChanges.length === 0 && !condicionesCambian) {
+    // EL MENSAJE NOMBRA LO QUE EL PROFESIONAL ESTABA EDITANDO: decirle "ninguna respuesta" a quien venia de
+    // corregir condiciones lo manda a buscar el defecto en la pantalla equivocada, que es lo que paso.
     return err(
-      appError("validation", "No cambiaste ninguna respuesta; corrige o completa al menos una para continuar."),
+      appError(
+        "validation",
+        input.correctedConditions
+          ? "Las condiciones quedaron iguales a las que ya estaban: cambia al menos una para corregirlas."
+          : "No cambiaste ninguna respuesta; corrige o completa al menos una para continuar.",
+      ),
     );
   }
 

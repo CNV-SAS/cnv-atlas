@@ -427,6 +427,80 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     expect(res.error.message).toContain("No cambiaste ninguna respuesta");
   });
 
+  // ═══ CORREGIR SOLO LAS CONDICIONES, SIN TOCAR NINGUNA RESPUESTA (Santiago, smoke 2026-10-08) ═══
+  //
+  // ── POR QUE ESTE CASO FALTABA, Y ES LA LECCION ────────────────────────────────────────────────────
+  //
+  // El flujo de corregir condiciones BIS (parte 6 del smoke) estaba MUERTO desde que existe: devolvia siempre
+  // "No cambiaste ninguna respuesta", porque `corregirCondicionesBisAction` manda `correctedAnswers: []` a
+  // proposito y el guard contaba SOLO respuestas.
+  //
+  // Y NO LO CAZO NINGUN TEST, teniendo uno que se llama "las condiciones corregidas viajan a la evaluacion
+  // nueva". Ese test manda condiciones Y ADEMAS las respuestas de `baseInput`, asi que el guard pasaba por las
+  // respuestas y las condiciones solo se comprobaban DESPUES. Cubria el transporte y no la puerta.
+  //
+  // O SEA: un test que ejercita el caso "con todo a la vez" no prueba el caso real, que es "solo esto". La
+  // combinacion que el usuario usa de verdad era la unica sin cubrir.
+  it("solo condiciones, sin ninguna respuesta corregida: pasa (era el flujo que estaba muerto)", async () => {
+    const oldId = await makeEvaluationWithDiagnosis("SOLOCOND");
+    const [viejo] = await db
+      .select({ answers: schema.evaluationBisIntake.conditionAnswers })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, oldId));
+
+    const res = await correctEvaluation(
+      {
+        ...baseInput(oldId),
+        // VACIO, como lo manda la accion de condiciones: es lo que hacia imposible pasar el guard.
+        correctedAnswers: [],
+        reason: "la contraindicacion estaba mal marcada",
+        correctedConditions: {
+          answers: viejo.answers,
+          // SE INVIERTE la contraindicacion: es un cambio real y de consecuencia clinica directa.
+          contraindicated: true,
+        },
+      },
+      actor(),
+    );
+    expect(res.ok, res.ok ? "" : res.error.message).toBe(true);
+    if (!res.ok) return;
+    createdEvals.push(res.value.newEvaluationId);
+    const [nuevo] = await db
+      .select({ contraindicated: schema.evaluationBisIntake.contraindicated })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, res.value.newEvaluationId));
+    expect(nuevo.contraindicated).toBe(true);
+  });
+
+  it("y condiciones IDENTICAS se rechazan, con un mensaje que habla de condiciones", async () => {
+    // EL GUARD SIGUE EN PIE, que es la mitad que un arreglo apresurado se lleva: lo facil era dar por cambiado
+    // todo lo que trajera condiciones, y entonces regenerar una version identica (que rehace la cascada, pierde
+    // el tratamiento e invalida la aprobacion) volveria a ser posible.
+    const oldId = await makeEvaluationWithDiagnosis("CONDIGUAL");
+    const [viejo] = await db
+      .select({
+        answers: schema.evaluationBisIntake.conditionAnswers,
+        contraindicated: schema.evaluationBisIntake.contraindicated,
+      })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, oldId));
+
+    const res = await correctEvaluation(
+      {
+        ...baseInput(oldId),
+        correctedAnswers: [],
+        correctedConditions: { answers: viejo.answers, contraindicated: viejo.contraindicated },
+      },
+      actor(),
+    );
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    // Y NO el mensaje de las respuestas: decirle "ninguna respuesta" a quien venia de corregir condiciones lo
+    // manda a buscar el defecto en la pantalla equivocada, que es lo que le paso a Santiago.
+    expect(res.error.message).toContain("condiciones");
+    expect(res.error.message).not.toContain("ninguna respuesta");
+  });
+
   it("gate: no se corrige una ya reemplazada (segundo intento sobre la vieja)", async () => {
     const oldId = await makeEvaluationWithDiagnosis("TWICE");
     const first = await correctEvaluation(baseInput(oldId), actor());
