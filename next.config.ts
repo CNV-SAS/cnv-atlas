@@ -84,6 +84,32 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // ═══ SKEW PROTECTION: LA MITAD QUE VIVE EN EL CODIGO (2026-10-07) ═══
+  //
+  // EL CASO: a una paciente respondiendo la encuesta en su celular se le fue un 500, y el log de Vercel decia
+  // "Failed to find Server Action... This request might be from an older or newer deployment". Su navegador
+  // tenia la pagina de un despliegue viejo y pidio una accion que el nuevo ya no tiene. Una encuesta larga
+  // puede estar abierta una hora, y se despliega varias veces al dia.
+  //
+  // QUE HACE ESTO: cada peticion viaja con el id del despliegue del que salio la pagina, y Vercel la enruta a
+  // ESE despliegue, asi que la accion si existe. Ataca la causa, no el sintoma.
+  //
+  // ── HACEN FALTA LAS DOS MITADES, Y ESTA ES SOLO UNA ────────────────────────────────────────────────
+  //
+  // La otra es el interruptor del panel (Vercel -> Settings -> Advanced -> Skew Protection), que Santiago
+  // encendio el 2026-10-07 con Maximum Age de 12 horas. SIN el interruptor esto no se pone: las peticiones
+  // pedirian un despliegue concreto sin nadie que las enrute. Si algun dia se apaga alla, se quita aqui.
+  //
+  // NO SE ACTIVA SOLO en Next 16.2.9: `build/define-env.js` apaga `NEXT_DEPLOYMENT_ID` cuando
+  // `config.deploymentId` esta vacio, y esta version no lee `VERCEL_SKEW_PROTECTION_ENABLED`.
+  //
+  // FUERA DE VERCEL ES INERTE: la variable no existe en local, queda `undefined`, y Next lo trata como
+  // apagado. Asi que `pnpm dev` y `pnpm build` locales se comportan igual que antes.
+  //
+  // LO QUE NO CUBRE, dicho aqui para que nadie lo de por cerrado: pasadas las 12 horas de retencion el
+  // desfase vuelve a fallar. Por eso la pagina de error sigue ofreciendo RECARGAR (ver `src/app/error.tsx`):
+  // esto reduce muchisimo el caso, no lo elimina.
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

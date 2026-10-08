@@ -60,6 +60,26 @@ describe("la pagina de error le da al paciente la salida que funciona", () => {
     expect(generica).toContain("Recarga la página para seguir");
   });
 
+  // ── Y LA OTRA MITAD, LA QUE ATACA LA CAUSA (2026-10-07) ─────────────────────────────────────────
+  //
+  // Santiago encendio Skew Protection en Vercel (Maximum Age 12 h), asi que la mitad del codigo ya se puede
+  // poner. Las DOS tienen que estar: sin el interruptor, esto pide un despliegue concreto sin nadie que
+  // enrute; sin esto, el interruptor no recibe el id. Verificado en Next 16.2.9: `build/define-env.js` apaga
+  // `NEXT_DEPLOYMENT_ID` cuando `config.deploymentId` esta vacio, y esta version NO lee
+  // `VERCEL_SKEW_PROTECTION_ENABLED`, asi que no se activa solo.
+  it("el config manda el id del despliegue, que es lo que Vercel enruta", () => {
+    const cfg = readFileSync(join(raiz, "next.config.ts"), "utf8");
+    expect(cfg, "sin el deploymentId, el interruptor de Vercel no recibe nada que enrutar").toContain(
+      "deploymentId: process.env.VERCEL_DEPLOYMENT_ID",
+    );
+    // Y QUE QUEDE DICHO QUE DEPENDE DEL PANEL: si alguien apaga el interruptor alla y esto se queda aqui, el
+    // sintoma seria peor que el original y nadie sabria por que.
+    expect(cfg).toContain("Skew Protection");
+    // NI SE DA POR CERRADO: pasadas las 12 h el desfase vuelve, asi que la recarga de `error.tsx` sigue
+    // siendo necesaria. Esta frase es lo que impide que alguien quite esa salida creyendo que ya sobra.
+    expect(cfg).toContain("LO QUE NO CUBRE");
+  });
+
   it("y queda escrito que la deteccion por mensaje es codigo muerto en produccion", () => {
     // Sin esta nota, el siguiente que lea `isStaleDeployment` va a creer que ese caso ya esta cubierto, que es
     // justo lo que yo crei al escribirla.
