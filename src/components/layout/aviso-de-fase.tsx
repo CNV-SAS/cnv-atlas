@@ -36,24 +36,27 @@ export function AvisoDeFase({ fase }: { fase: FaseDeOperacion }) {
           conocer el sistema.
         </>
       ) : (
-        /* ═══ REDACTADO DE NUEVO (Santiago, smoke segundo 2026-10-08) ═══
+        /* ═══ REDACTADO DE NUEVO, Y LA SEGUNDA VEZ POR LA RAZON BUENA (Santiago, 2026-10-08) ═══
 
-           SU VERSION: *"Estamos realizando algunos ajustes. Si algo falla, actualiza la página antes de
-           repetirlo; si sigue fallando, escríbele a un administrador."* Y sus dos razones son buenas: "Operación
-           real: lo que registres aquí cuenta" le habla al que CONSTRUYE el sistema, no al que lo usa, y el aviso
-           sale en toda la app, no solo en pagos.
+           PRIMERA PASADA: cambie "Operación real: lo que registres aquí cuenta" por su redacción y le pegué la
+           razón del cobro duplicado, que era la frase que evitaba el daño.
 
-           LO QUE NO SE PUEDE PERDER ES EL PORQUE. Su versión dice qué hacer y no dice qué pasa si no se hace, y
-           esa frase es la que evita el daño: un profesional cuya venta parece fallar VUELVE A INTENTARLA, y un
-           cobro repetido se duplica (por eso existe el aviso de cobro duplicado en el checkout). Un aviso que
-           pide no repetir sin decir qué se duplica se obedece hasta el día que haya prisa.
+           Y ME CORRIGIO, con el argumento que yo no tenía: **ese texto es viejo**. Se escribió cuando las ventas
+           eran lo frágil, y las ventas son justamente lo que más se ha pulido desde entonces. Textual suyo: *"el
+           problema no es que se pueda duplicar un cobro, sino que algo se caiga, algo no funcione (ejemplo los
+           hooks). La idea es que refresquen y vuelvan a cargar."*
 
-           ASI QUE VA SU REDACCION CON LA RAZON PEGADA, y la razón se dice en términos del usuario (un cobro
-           duplicado al paciente) y no del sistema. */
+           ASI QUE EL DAÑO A EVITAR CAMBIO, y con él el aviso: ya no es un cobro repetido, es alguien atascado en
+           una pantalla que no cargó, sin saber que recargar lo resuelve. Un aviso que nombra el riesgo de hace
+           dos meses entrena a leerlo como decoración.
+
+           SE CONSERVA "ACTUALIZA ANTES DE REPETIR", que es lo útil y vale para todo: recargar antes de reintentar
+           sirve igual para un cobro y para una pantalla caída, y evita el duplicado sin tener que nombrarlo. Lo
+           que se va es el ancla a pagos, porque el aviso sale en toda la app. */
         <>
-          <strong className="font-semibold">Estamos haciendo ajustes.</strong> Si algo falla, actualiza la
-          página antes de repetirlo: repetir puede duplicarle el cobro al paciente. Si sigue fallando,
-          escríbele a un administrador.
+          <strong className="font-semibold">Estamos haciendo ajustes.</strong> Si algo no carga o se queda a
+          medias, actualiza la página antes de volver a intentarlo. Si sigue fallando, escríbele a un
+          administrador en vez de repetirlo.
         </>
       )}
     </div>
