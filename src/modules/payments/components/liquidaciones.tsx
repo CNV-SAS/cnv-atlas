@@ -23,7 +23,18 @@ const pesos = (n: number) => `$${n.toLocaleString("es-CO")}`;
 export type PendienteDeLiquidar = {
   professionalId: string;
   nombre: string;
+  /** Lo que SE PUEDE girar: comisiones de ventas reales. Excluye las de pacientes de prueba (2026-10-09). */
   base: number;
+  /**
+   * Y lo que NO se gira, aparte: comisiones de ventas a pacientes de prueba.
+   *
+   * VA SEPARADO Y NO FILTRADO, por el criterio de Santiago: *"alguien que entre a /comercial ve que hay
+   * pendiente por girarle X a un profesional que NO esta marcado de prueba, y se los gira pensando que son
+   * ventas reales. Eso NO puede pasar."* Y por la misma razon que la marca del profesional el 2026-10-01:
+   * esconderlo haria desaparecer comisiones ya selladas sin que nadie sepa que existieron.
+   */
+  baseDePrueba: number;
+  filasDePrueba: number;
   /** Cuenta de demostracion: se muestra marcada y sin boton de liquidar. */
   esDePrueba: boolean;
   filas: number;
@@ -78,6 +89,28 @@ function FilaPendiente({ item, hasta }: { item: PendienteDeLiquidar; hasta: stri
           </span>
         </span>
       </div>
+      {/* ═══ LO DE PRUEBA, APARTE Y ROTULADO (Santiago, 2026-10-09) ═══
+
+          SU CRITERIO, QUE ES EL QUE MANDA: *"hoy alguien que entre a /comercial ve que hay pendiente por
+          girarle X a un profesional que NO está marcado de prueba, y se los gira pensando que son ventas
+          reales, cuando esas ventas se las hizo a un paciente con el que estaba haciendo pruebas. Eso NO puede
+          pasar."*
+
+          ESTO ES DISTINTO DE LA CUENTA DE DEMOSTRACIÓN de arriba: ahí el marcado es el PROFESIONAL y no se le
+          liquida nada. Aquí el profesional es real y solo PARTE de sus comisiones salen de pacientes de prueba,
+          así que sí se le liquida, pero no esa parte.
+
+          Y NO SE FILTRA EN SILENCIO, por la misma razón que él dio el 2026-10-01 para el otro caso: hacer
+          desaparecer comisiones ya selladas esconde que existen. La cifra de arriba ya es la girable; esto dice
+          qué quedó fuera y por qué, para que el número de abajo no se lea como un error del de arriba. */}
+      {item.baseDePrueba > 0 ? (
+        <p className="text-muted-foreground">
+          Además hay <span className="tabular-nums text-foreground">{pesos(item.baseDePrueba)}</span> en{" "}
+          {item.filasDePrueba} {item.filasDePrueba === 1 ? "comisión" : "comisiones"} de{" "}
+          <strong className="text-foreground">ventas a pacientes de prueba</strong>, que no entran en la cifra de
+          arriba y no se giran: esas ventas no cuentan como ingreso de CNV, así que su comisión no se causa.
+        </p>
+      ) : null}
       {item.esDePrueba ? (
         <p className="text-muted-foreground">
           No se liquida: es una cuenta de demostración y estas comisiones salen de ventas que no ocurrieron.

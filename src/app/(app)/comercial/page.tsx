@@ -80,6 +80,8 @@ export default async function ComercialPage() {
     professionalId: p.professionalId,
     nombre: p.nombre,
     base: p.base,
+    baseDePrueba: p.baseDePrueba,
+    filasDePrueba: p.filasDePrueba,
     filas: p.filas,
     reversiones: p.reversiones,
     esDePrueba: p.esDePrueba,

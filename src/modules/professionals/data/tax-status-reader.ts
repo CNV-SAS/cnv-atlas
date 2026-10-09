@@ -33,10 +33,26 @@ export async function getTaxStatusView(professionalId: string): Promise<TaxStatu
     .maybeSingle();
   if (error) throw new Error(`tax-status-reader: getTaxStatusView: ${error.message}`);
 
+  // ═══ SIN LAS COMISIONES DE VENTAS DE PRUEBA (Santiago, 2026-10-09) ═══
+  //
+  // ESTE BANNER LE PIDE SUS DATOS TRIBUTARIOS PARA PODERLE PAGAR, así que la cifra tiene que ser la que se le
+  // va a pagar. Contaba TODAS sus comisiones, incluidas las de ventas a pacientes de prueba, y esas no se
+  // giran: la 0203 mantiene esas ventas fuera del ingreso de CNV, así que su comisión no se causa.
+  //
+  // El caso real: un profesional con TODOS sus pacientes de prueba veía "Tienes 252.000 COP en comisiones
+  // esperando tus datos". Le pedía documentos para un giro que nunca iba a ocurrir.
+  //
+  // AQUÍ SÍ SE FILTRA, y es la diferencia con /comercial, donde la parte de prueba se muestra aparte: esa
+  // pantalla existe para ver qué hay colgando en el sistema, y esta es una PROMESA a una persona. No se le
+  // promete lo que no se le va a girar, y para él esa cifra no informa de nada: no es su decisión.
+  //
+  // EL EMBED ES INEQUÍVOCO: `professional_revenue` tiene UN solo FK a `transactions`. Y la marca es la derivada
+  // de la venta (0203), que ya cuenta las tres marcas; leer la del paciente aquí sería una segunda definición.
   const { data: rev, error: rErr } = await supabase
     .from("professional_revenue")
-    .select("commission_amount")
-    .eq("professional_id", professionalId);
+    .select("commission_amount, transactions!inner(cuenta_como_de_prueba)")
+    .eq("professional_id", professionalId)
+    .eq("transactions.cuenta_como_de_prueba", false);
   if (rErr) throw new Error(`tax-status-reader: revenue: ${rErr.message}`);
   const pendingCommission = (rev ?? []).reduce((s, r) => s + Number(r.commission_amount), 0);
 
