@@ -97,7 +97,13 @@ function Fila({
              Y LA PUEDE RETIRAR EL PROFESIONAL DUEÑO Y ADMIN (`puedeRetirar`, que NO es `puedeCerrar`):
              depurar un lote importado es trabajo de admin, y con la bandera de cerrar el único que veía el
              botón era quien no estaba haciendo la limpieza. */
-          <div className="flex flex-col items-end gap-1">
+          /* ── EN LA MISMA LINEA QUE "VER RESULTADOS" (Santiago, 2026-10-09) ──
+
+              Iba en `flex-col`, así que el control del retiro ocupaba su propio renglón y forzaba TODAS las
+              filas al doble de alto por una acción que se usa una vez cada tanto. Ahora es un icono al lado
+              del enlace, y el bloque desplegado sigue cayendo debajo (`flex-wrap`), que es donde sí puede
+              ocupar espacio porque lo pidió alguien. */
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Link
               href={`/ani-bis-e/${e.evaluationId}`}
               className="font-semibold text-primary underline-offset-4 hover:underline"
