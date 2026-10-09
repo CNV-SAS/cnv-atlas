@@ -56,11 +56,25 @@ export const th = "px-3 py-2 text-[0.8125rem] font-bold uppercase tracking-wide 
 /** Encabezado de una columna numerica: mismo estilo, alineado con su columna. */
 export const thNum = `${th} text-right`;
 
+/**
+ * Encabezado de una columna de CHIPS, centrado (Santiago, 2026-10-09).
+ *
+ * POR QUE LOS CHIPS VAN CENTRADOS Y EL TEXTO NO: un chip es una pastilla de ancho variable ("En progreso" es
+ * el doble de larga que "Cerrada"), asi que alineada a la izquierda la columna se ve como un borde irregular
+ * y no cuadra con su encabezado. Centrada, la columna lee como una sola cosa.
+ *
+ * NO SE APLICA A COLUMNAS DE TEXTO: ahi el centrado es peor, porque el ojo recorre una columna por su borde
+ * izquierdo. Esto es para la columna que lleva un veredicto en pastilla, que se mira de un golpe y no se lee.
+ */
+export const thChip = `${th} text-center`;
+
 /** Fila de cuerpo. La linea va DEBAJO y la ultima no la lleva: una tabla no se cierra con un borde suelto. */
 export const tr = "border-b border-border/60 last:border-0";
 
 export const td = "px-3 py-2.5 align-top text-foreground";
 export const tdNum = `${td} text-right tabular-nums`;
+/** La celda de una columna de CHIPS: centrada, por lo que explica `thChip`. */
+export const tdChip = `${td} text-center`;
 
 /** La columna que el profesional viene a leer. UNA por tabla (ver arriba). */
 export const tdFuerte = `${td} font-semibold`;

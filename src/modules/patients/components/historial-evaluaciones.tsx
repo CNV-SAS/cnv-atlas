@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { PillEstado } from "@/components/shared/pill-estado";
-import { tabla, td, tdApagado, tdFuerte, tdNum, th, theadTr, thNum, tr } from "@/components/shared/tabla";
+import { tabla, td, tdApagado, tdChip, tdFuerte, tdNum, th, thChip, theadTr, thNum, tr } from "@/components/shared/tabla";
 import { AbandonEvaluation } from "@/modules/evaluations/components/abandon-evaluation";
 
 import { PanelRetirarConsulta, RetirarConsultaForm } from "@/modules/evaluations/components/retirar-consulta-form";
@@ -74,7 +74,7 @@ function Fila({
       </td>
       {/* Motivo de consulta (caracterizacion del encuentro, multi); "-" si no se dio. */}
       <td className={tdApagado}>{e.reasonForVisit.length ? e.reasonForVisit.join(", ") : "-"}</td>
-      <td className={td}>
+      <td className={tdChip}>
         <ChipEstadoEvaluacion status={e.status} />
       </td>
       <td className={tdNum}>
@@ -190,7 +190,7 @@ export function HistorialEvaluaciones({
                 <th className={th}>Fecha</th>
                 <th className={th}>Tipo</th>
                 <th className={th}>Motivo</th>
-                <th className={th}>Estado</th>
+                <th className={thChip}>Estado</th>
                 <th className={thNum}>Resultados</th>
               </tr>
             </thead>
