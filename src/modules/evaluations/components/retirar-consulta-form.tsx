@@ -33,18 +33,28 @@ export function RetirarConsultaForm({
   evaluationId,
   retirada,
   motivo,
+  abierto,
+  onAbrir,
 }: {
   evaluationId: string;
   retirada: boolean;
   /** El motivo con el que se retiró, para poder leerlo sin abrir el audit. */
   motivo?: string | null;
+  /**
+   * EL PANEL ABIERTO LO CONTROLA LA FILA, no este componente (capturas de Santiago, 2026-10-09).
+   *
+   * POR QUE SE LEVANTO EL ESTADO: el formulario vivía DENTRO de la celda de Resultados, que es la última y la
+   * más estrecha, así que al abrirse crecía hacia la izquierda y quedaba visualmente debajo de la columna
+   * Estado. Parecía pertenecer a otra columna, y empujaba la fila entera.
+   *
+   * Con el estado en la fila, la fila puede rendir el panel en un `<tr>` propio a todo el ancho, que es el
+   * patrón normal de una fila que se despliega. El icono se queda en su celda.
+   */
+  abierto: boolean;
+  onAbrir: () => void;
 }) {
-  const [state, action, pending] = useActionState(retirarEvaluacionFormAction, INICIAL);
   const [stateDeshacer, accionDeshacer, pendingDeshacer] = useActionState(deshacerRetiroFormAction, INICIAL);
-  useFormToastAndRefresh(state);
   useFormToastAndRefresh(stateDeshacer);
-  const [abierto, setAbierto] = useState(false);
-  const [razon, setRazon] = useState("");
 
   // YA RETIRADA: se dice con qué motivo y se ofrece deshacerlo. Sin el motivo a la vista habría que ir al
   // audit para saber por qué falta una consulta, y nadie va a ir.
@@ -97,7 +107,7 @@ export function RetirarConsultaForm({
             variant="ghost"
             size="icon"
             aria-label="Esta consulta no ocurrió"
-            onClick={() => setAbierto(true)}
+            onClick={onAbrir}
             className="size-7 text-muted-foreground hover:text-foreground"
           >
             <CalendarX className="size-4" aria-hidden />
@@ -107,6 +117,35 @@ export function RetirarConsultaForm({
       </Tooltip>
     );
   }
+
+  // ABIERTO: el icono se queda apagado y el PANEL lo rinde la fila, a todo el ancho. Ver `PanelRetirarConsulta`.
+  return (
+    <span className="text-xs text-muted-foreground">Retirando...</span>
+  );
+}
+
+// ═══ EL PANEL, EN SU PROPIA FILA (capturas de Santiago, 2026-10-09) ═══
+//
+// VA APARTE DEL BOTON porque va en otro sitio del DOM: el icono vive en la celda de Resultados y el panel en un
+// `<tr>` a todo el ancho, debajo. Mientras estuvieron juntos, el panel crecia dentro de la ultima columna (la
+// mas estrecha) y quedaba visualmente debajo de Estado, pareciendo de otra columna.
+//
+// NO COMPARTEN ESTADO Y NO HACE FALTA: el boton solo abre, y el panel solo escribe y cancela. Cada uno tiene lo
+// suyo, asi que separarlos no duplica nada.
+//
+// SIN `<form>` PROPIO (hazard 7 de CLAUDE.md): esto se monta dentro de una tabla que vive en pantallas con
+// formularios, y un `<form>` dentro de otro lo descarta el navegador. Campos sin `name`, controlados, y los
+// botones en `type="button"`.
+export function PanelRetirarConsulta({
+  evaluationId,
+  onCerrar,
+}: {
+  evaluationId: string;
+  onCerrar: () => void;
+}) {
+  const [state, action, pending] = useActionState(retirarEvaluacionFormAction, INICIAL);
+  useFormToastAndRefresh(state);
+  const [razon, setRazon] = useState("");
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3 text-left">
@@ -151,7 +190,7 @@ export function RetirarConsultaForm({
           size="sm"
           variant="ghost"
           disabled={pending}
-          onClick={() => setAbierto(false)}
+          onClick={onCerrar}
         >
           Cancelar
         </Button>

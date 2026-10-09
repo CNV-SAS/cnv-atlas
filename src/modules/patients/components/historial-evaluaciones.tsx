@@ -7,7 +7,7 @@ import { PillEstado } from "@/components/shared/pill-estado";
 import { tabla, td, tdApagado, tdFuerte, tdNum, th, theadTr, thNum, tr } from "@/components/shared/tabla";
 import { AbandonEvaluation } from "@/modules/evaluations/components/abandon-evaluation";
 
-import { RetirarConsultaForm } from "@/modules/evaluations/components/retirar-consulta-form";
+import { PanelRetirarConsulta, RetirarConsultaForm } from "@/modules/evaluations/components/retirar-consulta-form";
 
 import { repartirEvaluaciones } from "../clasificar-evaluaciones";
 import { ChipEstadoEvaluacion } from "./chip-estado-evaluacion";
@@ -37,7 +37,19 @@ function Fila({
   puedeCerrar: boolean;
   puedeRetirar: boolean;
 }) {
+  // ═══ EL PANEL DEL RETIRO VA EN SU PROPIA FILA (capturas de Santiago, 2026-10-09) ═══
+  //
+  // Vivía dentro de la celda de Resultados, que es la última y la más estrecha: al abrirse crecía hacia la
+  // izquierda, quedaba visualmente bajo la columna Estado y parecía pertenecer a ella. La captura
+  // `estructura-evaluaciones-abierta` lo muestra exactamente así.
+  //
+  // AHORA LA FILA RINDE DOS `<tr>`: el suyo y, debajo, uno a todo el ancho con el panel. Es el patrón normal
+  // de una fila que se despliega, y deja que el panel use el ancho de la tabla en vez de pelear con la
+  // columna más angosta. El estado vive aquí porque es la fila quien decide cuántos `<tr>` emite.
+  const [retiroAbierto, setRetiroAbierto] = useState(false);
+
   return (
+    <>
     <tr key={e.evaluationId} className={tr}>
       {/* LA NEGRITA VA EN LA FECHA, y es la unica de la tabla: es por donde se recorre. Fecha de
           MEDICION (cronologia clinica), no la de creacion del registro. */}
@@ -115,6 +127,8 @@ function Fila({
                 evaluationId={e.evaluationId}
                 retirada={e.noOcurrio}
                 motivo={e.motivoDelRetiro}
+                abierto={retiroAbierto}
+                onAbrir={() => setRetiroAbierto(true)}
               />
             ) : e.noOcurrio ? (
               <span className="text-xs text-muted-foreground">No ocurrió</span>
@@ -123,6 +137,19 @@ function Fila({
         )}
       </td>
     </tr>
+    {/* A TODO EL ANCHO, y sin borde arriba: el panel pertenece a la fila de encima, no es una fila nueva de
+        datos. `colSpan` cubre las cinco columnas para que no se alinee con ninguna. */}
+    {retiroAbierto && puedeRetirar && !e.noOcurrio ? (
+      <tr>
+        <td colSpan={5} className="px-3 pb-3">
+          <PanelRetirarConsulta
+            evaluationId={e.evaluationId}
+            onCerrar={() => setRetiroAbierto(false)}
+          />
+        </td>
+      </tr>
+    ) : null}
+    </>
   );
 }
 
