@@ -24,7 +24,16 @@ vi.mock("@/modules/evaluations/data/intake-writer", () => {
       this.name = "ConsentGateError";
     }
   }
-  return { signIntakeEvaluation: vi.fn(), ConsentGateError };
+  // EL MOCK TIENE QUE EXPORTAR TODO LO QUE EL SERVICIO IMPORTA, no solo lo que este test usa: el servicio hace
+  // `instanceof` sobre las dos clases de error, y una que falte revienta al CARGAR el modulo, no al usarla.
+  // Lo cazo la suite al añadir el portón del menor sin representante (2026-10-09).
+  class ConsentimientoDeMenorSinRepresentanteError extends Error {
+    constructor() {
+      super("menor sin representante");
+      this.name = "ConsentimientoDeMenorSinRepresentanteError";
+    }
+  }
+  return { signIntakeEvaluation: vi.fn(), ConsentGateError, ConsentimientoDeMenorSinRepresentanteError };
 });
 
 // Firma electronica (B7): el servicio verifica el codigo antes de crear nada. Se mockea el servicio

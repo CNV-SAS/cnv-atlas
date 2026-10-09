@@ -21,6 +21,7 @@ import {
   completeSurvey,
   closeAwaitingIfConsentRevoked,
   ConsentGateError,
+  ConsentimientoDeMenorSinRepresentanteError,
   getResumeTokenStatus,
   getSurveyProgress,
   ResumeTokenError,
@@ -313,6 +314,17 @@ export async function signSurveyIntake(
       return err(
         appError("forbidden", "No es posible crear la evaluación sin las autorizaciones necesarias vigentes."),
       );
+    }
+    // ── EL MENSAJE DEL MENOR SIN REPRESENTANTE VIAJA TAL CUAL (2026-10-09) ──────────────────────────
+    //
+    // Sin esta rama caeria en el generico de abajo ("no pudimos completar la firma, intenta de nuevo"), que es
+    // lo PEOR que se le puede decir aqui: invita a reintentar lo mismo, y lo mismo va a volver a fallar porque
+    // el problema no es pasajero, es que falta elegir la otra rama.
+    //
+    // Es la misma leccion de la lista blanca de `intakeIdentitySchema` de ayer: un guard nuevo con mensaje
+    // propio no llega a la pantalla si nadie lo conecta, y eso no falla en ninguna parte.
+    if (e instanceof ConsentimientoDeMenorSinRepresentanteError) {
+      return err(appError("validation", e.message));
     }
     // Cualquier otro fallo: NO se propaga en silencio (dejaba al paciente pulsando "Firmar" sin mensaje). Se
     // registra en Sentry y se devuelve un error visible para que la UI lo muestre en vez de volver al boton.

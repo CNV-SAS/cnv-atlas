@@ -79,7 +79,13 @@ function enlaceBase(pro: { professionalProfileId: string; organizationId: string
   };
 }
 
-function entrada(link: ReturnType<typeof enlaceBase>, documento: string) {
+function entrada(
+  link: ReturnType<typeof enlaceBase>,
+  documento: string,
+  // LA FECHA Y LA RAMA SE PUEDEN PISAR, para los casos de menor de edad (2026-10-09). Por defecto sigue siendo
+  // el mayor de siempre, asi que los casos anteriores no cambian.
+  ajustes?: { birthDate?: string; ageBranch?: "mayor" | "menor" },
+) {
   return {
     link,
     consent: {
@@ -89,7 +95,7 @@ function entrada(link: ReturnType<typeof enlaceBase>, documento: string) {
       investigacion: false,
       comunicaciones_continuidad: false,
       comunicaciones_comerciales: false,
-      ageBranch: "mayor" as const,
+      ageBranch: (ajustes?.ageBranch ?? "mayor") as "mayor" | "menor",
       mayoria_de_edad: true,
     },
     identity: {
@@ -97,7 +103,7 @@ function entrada(link: ReturnType<typeof enlaceBase>, documento: string) {
       documentNumber: documento,
       firstName: "Prueba",
       lastName: "Publica",
-      birthDate: "1990-05-05",
+      birthDate: ajustes?.birthDate ?? "1990-05-05",
       sex: "F",
       country: "Colombia",
       city: "Medellín",
@@ -138,6 +144,60 @@ describe.skipIf(!HAS_DB)("intake público por el enlace de consultorio (BD real)
       .from(schema.evaluations)
       .where(eq(schema.evaluations.patientId, primera.value.patientId));
     expect(todas, "dos juegos de respuestas del mismo paciente").toHaveLength(1);
+  });
+
+  // ═══ UN MENOR NO SE CONSIENTE SIN REPRESENTANTE (legal, 2026-10-09) ═══
+  //
+  // ── EL CASO ──────────────────────────────────────────────────────────────────────────────────────
+  //
+  // Seis evaluaciones de menores quedaron bloqueadas al confirmar identidad porque su consentimiento se habia
+  // guardado SIN representante: entraron por el QR, que no tiene rama de menor y no la pregunta.
+  //
+  // Y EL `consentSchema` YA EXIGIA los datos del representante cuando la rama declarada es "menor". Aun asi
+  // paso, porque el QR no usa ese schema. Textual de legal: *"este hueco existio porque el formulario permitio
+  // guardar un estado imposible, y mientras eso siga siendo posible va a volver a ocurrir POR OTRA VIA"*.
+  //
+  // POR ESO EL GUARD VA EN EL WRITER, que es el unico sitio por donde se escribe un consentimiento, y por eso
+  // estos casos entran por el SERVICIO publico: lo que hay que probar es que el camino REAL del paciente no
+  // puede guardar el estado imposible, no que una funcion interna lo rechace.
+  //
+  // Y SE DECIDE POR LA EDAD, NO POR LA RAMA DECLARADA: mirar la rama seria creerle al formulario justo en lo
+  // que el formulario se equivoco. La fecha es el hecho; la rama es lo que alguien dijo sobre el hecho.
+  it("con fecha de menor y rama de mayor, la firma se rechaza y dice qué hacer", async () => {
+    const { signSurveyIntake } = await import("@/modules/evaluations/services/survey-intake");
+    const { a } = await dosProfesionales();
+    const doc = `${SELLO}-MENOR`;
+    // 13 años hoy, y la rama declarada dice "mayor": exactamente lo que el QR producia.
+    const nacimiento = new Date();
+    nacimiento.setFullYear(nacimiento.getFullYear() - 13);
+
+    const res = await signSurveyIntake(
+      entrada(enlaceBase(a), doc, { birthDate: nacimiento.toISOString().slice(0, 10) }),
+    );
+    expect(res.ok, "se guardo un consentimiento de menor sin representante").toBe(false);
+    if (res.ok) return;
+    // EL MENSAJE DICE QUE HACER, no solo que no se puede: quien esta ahi es el familiar, sin nadie al lado, y
+    // la rama de menor esta a un clic. Un "no pudimos completar la firma" lo invitaria a reintentar lo mismo.
+    expect(res.error.message).toContain("menor de edad");
+
+    // Y NO QUEDA NADA ESCRITO. Un rechazo a medias seria peor que no rechazar: dejaria el paciente creado y
+    // sin consentimiento, que es otro estado imposible.
+    const { db } = await import("@/db");
+    const schema = await import("@/db/schema");
+    const quedo = await db
+      .select({ id: schema.patients.id })
+      .from(schema.patients)
+      .where(eq(schema.patients.documentNumber, doc));
+    expect(quedo, "el rechazo dejo el paciente creado sin consentimiento").toHaveLength(0);
+  });
+
+  it("y un mayor sigue pasando sin representante, que es el control de que no bloquea a todos", async () => {
+    // SIN ESTE CASO, un guard que rechazara SIEMPRE pasaria el anterior en verde.
+    const { signSurveyIntake } = await import("@/modules/evaluations/services/survey-intake");
+    const { a } = await dosProfesionales();
+    const res = await signSurveyIntake(entrada(enlaceBase(a), `${SELLO}-MAYOR`));
+    expect(res.ok, res.ok ? "" : res.error.message).toBe(true);
+    if (res.ok) creados.push(res.value.patientId);
   });
 
   // ═══ Y SI ESA PENDIENTE SE RETIRO, NO SE REUSA: SE ESTRENA OTRA (0212, 2026-10-07) ═══
