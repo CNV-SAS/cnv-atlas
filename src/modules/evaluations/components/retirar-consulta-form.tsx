@@ -1,11 +1,13 @@
 "use client";
 
+import { CalendarX } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { deshacerRetiroFormAction, retirarEvaluacionFormAction, type RetiroState } from "../actions";
 
@@ -72,15 +74,37 @@ export function RetirarConsultaForm({
 
   if (!abierto) {
     return (
-      <Button
-        key="abrir-retiro"
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => setAbierto(true)}
-      >
-        Esta consulta no ocurrió
-      </Button>
+      /* ═══ UN ICONO, NO UN RENGLON (Santiago, smoke del 2026-10-09) ═══
+
+         SU REPORTE: *"el texto aparece como en otro renglón y daña el diseño. Propongo poner un icono y al
+         hacer hover aparezca el texto, para que ellos entiendan que la pueden eliminar."*
+
+         Y TIENE RAZON EN LO DEL DISEÑO: una frase de cuatro palabras dentro de una celda de tabla forzaba la
+         fila al doble de alto, en TODAS las filas, para una accion que se usa una vez cada tanto.
+
+         EL ICONO ELEGIDO ES `CalendarX`, no un bote de basura: lo que esto registra es que la consulta NO
+         OCURRIO, no que se borre algo. Un icono de borrar prometería lo contrario de lo que el bloque dice al
+         abrirse ("no se borra nada: su encuesta y su consentimiento se conservan"), y la pantalla no puede
+         decir dos cosas opuestas del mismo botón.
+
+         Y LLEVA `aria-label` ADEMAS DEL TOOLTIP: un hover no existe para quien navega con teclado ni para un
+         lector de pantalla, así que un icono sin nombre accesible sería un botón sin nombre. */
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            key="abrir-retiro"
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Esta consulta no ocurrió"
+            onClick={() => setAbierto(true)}
+            className="size-7 text-muted-foreground hover:text-foreground"
+          >
+            <CalendarX className="size-4" aria-hidden />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Esta consulta no ocurrió</TooltipContent>
+      </Tooltip>
     );
   }
 

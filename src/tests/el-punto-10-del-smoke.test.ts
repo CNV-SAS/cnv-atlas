@@ -228,6 +228,19 @@ describe("la prescripcion no se puede cerrar en blanco sin decirlo", () => {
     expect(src).toContain("LEYENDA_DISPONIBILIDAD");
   });
 
+  it("el retiro va como icono, no como un renglon que estira la tabla", () => {
+    const form = leer("src/modules/evaluations/components/retirar-consulta-form.tsx");
+    // EL ICONO NO ES UN BOTE DE BASURA, y es deliberado: esto registra que la consulta NO OCURRIO, no que se
+    // borre algo, y el bloque que abre dice "no se borra nada". Un icono de borrar prometeria lo contrario.
+    expect(form).toContain("CalendarX");
+    expect(form, "un icono sin nombre accesible es un boton sin nombre para teclado y lector").toContain(
+      'aria-label="Esta consulta no ocurrió"',
+    );
+    // Y LA FILA NO SE ESTIRA: el control va en la misma linea que "Ver resultados".
+    const tabla = leer("src/modules/patients/components/historial-evaluaciones.tsx");
+    expect(tabla).toContain("flex flex-wrap items-center justify-end gap-2");
+  });
+
   it("y la salida de 'no los adquiere' se nombra como la alternativa que es", () => {
     const alt = leer("src/modules/treatment/components/no-los-adquiere-form.tsx");
     expect(alt).toContain("esta es la otra forma de cerrar la prescripción");
