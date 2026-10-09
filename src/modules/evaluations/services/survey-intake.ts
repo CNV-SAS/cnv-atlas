@@ -99,7 +99,19 @@ async function resolveSignedIntake(input: {
     // Y NO SE REENVIA EL MENSAJE DE ZOD TAL CUAL, que fue mi primer intento: sus textos por defecto estan
     // en ingles ("Invalid email", "Too small: expected string...") y esto lo lee un paciente. La lista
     // blanca es lo que impide que un campo nuevo filtre ingles a la pantalla sin que nadie lo note.
-    const CON_MENSAJE_PROPIO = new Set(["country", "city"]);
+    // ── Y `birthDate` ENTRA EN LA LISTA, QUE ES EL AGUJERO QUE ACABABA DE ABRIR (2026-10-09) ────────
+    //
+    // Al poner el cinturón de la fecha imposible le escribí un mensaje en español ("Esa fecha de nacimiento no
+    // es posible: revisa el año") y NO lo añadí aquí, así que el paciente recibía "Revisa los datos de
+    // identificación" sobre doce campos, sin saber que el problema era el año.
+    //
+    // ES EXACTAMENTE EL DEFECTO QUE ESTE COMENTARIO EXISTE PARA EVITAR, y lo cometí leyéndolo: la lista blanca
+    // está aquí porque un campo nuevo con mensaje propio no llega a la pantalla si nadie lo agrega, y eso no
+    // falla en ninguna parte. Agregué el campo trece y me olvidé de la lista.
+    //
+    // Y AQUI ES DONDE MAS IMPORTA: el paciente PUEDE arreglarlo (el campo está editable en el formulario), así
+    // que decirle cuál es el campo es la diferencia entre que lo corrija y que abandone.
+    const CON_MENSAJE_PROPIO = new Set(["country", "city", "birthDate"]);
     const propio = identity.error.issues.find((i) => CON_MENSAJE_PROPIO.has(String(i.path[0])));
     return err(
       appError(

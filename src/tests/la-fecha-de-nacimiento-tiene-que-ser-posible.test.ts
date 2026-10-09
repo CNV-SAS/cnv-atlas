@@ -84,6 +84,28 @@ describe("el cinturon de la entrada, ancho a proposito", () => {
   });
 });
 
+describe("el paciente puede arreglarlo, asi que el mensaje tiene que nombrar el campo", () => {
+  // ── EL AGUJERO QUE ABRI AL PONER EL CINTURON (2026-10-09) ────────────────────────────────────────
+  //
+  // Le escribi un mensaje en español al refine y NO lo añadi a la lista blanca de `survey-intake`, asi que el
+  // paciente recibia "Revisa los datos de identificación" sobre DOCE campos sin saber que el problema era el
+  // año. Es el defecto que el comentario de esa lista existe para evitar, y lo cometi leyendolo.
+  //
+  // Y AQUI ES DONDE MAS IMPORTA: la fecha es editable en el formulario, asi que decirle cual es el campo es la
+  // diferencia entre que lo corrija y que abandone a mitad de la encuesta.
+  it("birthDate esta en la lista blanca de mensajes propios", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("src/modules/evaluations/services/survey-intake.ts", "utf8");
+    const linea = src.split("\n").find((l) => l.includes("CON_MENSAJE_PROPIO = new Set"));
+    expect(linea, "no se encontro la lista blanca: cambio de nombre y este candado quedo ciego").toBeDefined();
+    expect(
+      linea,
+      'el mensaje de la fecha imposible no llega al paciente: recibe "Revisa los datos de identificación" ' +
+        "sobre doce campos y no sabe que es el año.",
+    ).toContain("birthDate");
+  });
+});
+
 describe("y los dos caminos de entrada usan el MISMO criterio", () => {
   it("el intake de la encuesta lo valida", async () => {
     const { readFileSync } = await import("node:fs");
