@@ -239,6 +239,12 @@ describe("la prescripcion no se puede cerrar en blanco sin decirlo", () => {
     // Y LA FILA NO SE ESTIRA: el control va en la misma linea que "Ver resultados".
     const tabla = leer("src/modules/patients/components/historial-evaluaciones.tsx");
     expect(tabla).toContain("flex flex-wrap items-center justify-end gap-2");
+    // Y EL PANEL VA EN SU PROPIA FILA A TODO EL ANCHO: dentro de la celda de Resultados (la mas estrecha)
+    // crecia hacia la izquierda y parecia pertenecer a la columna Estado. Lo mostro una captura suya.
+    expect(tabla, "el panel del retiro volvio a la celda: va a invadir la columna Estado").toContain(
+      "colSpan={5}",
+    );
+    expect(tabla).toContain("PanelRetirarConsulta");
   });
 
   it("y la salida de 'no los adquiere' se nombra como la alternativa que es", () => {
