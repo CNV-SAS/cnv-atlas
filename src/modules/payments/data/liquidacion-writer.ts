@@ -23,9 +23,19 @@ export class LiquidacionError extends Error {}
 export type ResumenParaLiquidar = {
   professionalId: string;
   nombre: string;
-  /** Lo causado sin liquidar hasta la fecha, ya neteado con las reversiones. */
+  /**
+   * Lo causado sin liquidar hasta la fecha, ya neteado con las reversiones, Y SIN LO DE PRUEBA (2026-10-09).
+   *
+   * Es la cifra que se gira, asi que no puede incluir comisiones de ventas que no son ingreso de CNV: el sello
+   * contable crea la comision en toda venta de modalidad comision, sin filtro de prueba, mientras la 0203
+   * mantiene esa venta fuera del ingreso. Sin esta separacion se giraba dinero real por una venta que no
+   * cuenta.
+   */
   base: number;
+  /** Y lo que NO se gira, aparte: comisiones de ventas a pacientes de prueba. Se muestra, no se esconde. */
+  baseDePrueba: number;
   filas: number;
+  filasDePrueba: number;
   /** Filas NEGATIVAS pendientes (devoluciones y disputas perdidas). No son comisiones. */
   reversiones: number;
   /** Lo ya pagado en el año calendario de la fecha de corte: decide la tarifa de retencion. */
@@ -44,7 +54,9 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
     professional_id: string;
     nombre: string;
     base: string;
+    base_de_prueba: string;
     filas: number;
+    filas_de_prueba: number;
     reversiones: number;
     acumulado: string;
     tax_person_type: string | null;
@@ -54,12 +66,49 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
   }>(sql`
     select pp.id as professional_id,
            coalesce(p.full_name, p.email, '(sin nombre)') as nombre,
-           coalesce(sum(r.commission_amount) filter (where r.settlement_id is null), 0)::text as base,
+           -- ═══ LA BASE SE PARTE EN DOS: LO REAL Y LO DE PRUEBA (Santiago, 2026-10-09) ═══
+           --
+           -- SU CRITERIO, QUE ES EL QUE MANDA: *"hoy alguien que entre a /comercial ve que hay pendiente por
+           -- girarle X a un profesional que NO esta marcado de prueba, y se los gira pensando que son ventas
+           -- reales, cuando esas ventas se las hizo a un paciente con el que estaba haciendo pruebas. Eso NO
+           -- puede pasar."*
+           --
+           -- EL SELLO CONTABLE CREA LA COMISION EN TODA VENTA de modalidad comision, sin filtro de prueba. Y la
+           -- 0203 mantiene esa venta FUERA del ingreso de CNV. Asi que hoy CNV no cuenta la venta como ingreso
+           -- y si debe su comision: se giraria dinero real por una venta que no es ingreso.
+           --
+           -- POR QUE SE SEPARA Y NO SE FILTRA, que era la salida facil: es la MISMA razon que Santiago dio el
+           -- 2026-10-01 para la marca del PROFESIONAL ("ocultar la cuenta de demostracion esconde que hay
+           -- 51.042 colgando en el sistema"). Filtrar aqui haria desaparecer 15 comisiones ya selladas sin que
+           -- nadie sepa que existieron. Se muestran, rotuladas, y el giro no las alcanza.
+           --
+           -- Y LA MARCA ES LA DERIVADA DE LA VENTA (0203), no la del paciente leida aparte: es una sola
+           -- respuesta guardada que ya cuenta las tres marcas (paciente, profesional y producto). Mirar
+           -- la marca del paciente leida aqui seria una segunda definicion capaz de discrepar de las cifras.
+           coalesce(sum(r.commission_amount) filter (
+             where r.settlement_id is null and coalesce(t.cuenta_como_de_prueba, false) = false
+           ), 0)::text as base,
+           coalesce(sum(r.commission_amount) filter (
+             where r.settlement_id is null and coalesce(t.cuenta_como_de_prueba, false) = true
+           ), 0)::text as base_de_prueba,
            -- SE CUENTAN LAS COMISIONES, NO LAS FILAS (smoke del 2026-09-29): una reversion es OTRA fila,
            -- negativa, apuntando a la original. Contandolas todas, una venta con su devolucion decia "2
            -- comisiones", y tres asi decian "$0 en 6 comisiones", que no significa nada.
-           count(r.id) filter (where r.settlement_id is null and r.reversal_of is null)::int as filas,
-           count(r.id) filter (where r.settlement_id is null and r.reversal_of is not null)::int as reversiones,
+           -- LA CUENTA VA CON LA CIFRA (leccion del "7 pagos / 428.400" del 2026-10-07): si la base excluye lo
+           -- de prueba y el conteo no, la linea dice "15 comisiones" al lado de un importe que vale 12, y eso
+           -- se lee como un descuadre aunque las dos cifras esten bien.
+           count(r.id) filter (
+             where r.settlement_id is null and r.reversal_of is null
+               and coalesce(t.cuenta_como_de_prueba, false) = false
+           )::int as filas,
+           count(r.id) filter (
+             where r.settlement_id is null and r.reversal_of is not null
+               and coalesce(t.cuenta_como_de_prueba, false) = false
+           )::int as reversiones,
+           count(r.id) filter (
+             where r.settlement_id is null and r.reversal_of is null
+               and coalesce(t.cuenta_como_de_prueba, false) = true
+           )::int as filas_de_prueba,
            -- EL ACUMULADO DEL AÑO son las liquidaciones ya PAGADAS de ese mismo año calendario: es lo que la
            -- DIAN cuenta para la tarifa, y se reinicia el 1 de enero.
            coalesce((select sum(s.base_amount) from commission_settlements s
@@ -75,6 +124,9 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
       join profiles p on p.id = pp.profile_id
       left join professional_revenue r on r.professional_id = pp.id
        and (r.created_at at time zone 'America/Bogota')::date <= ${hasta}::date
+      -- LA VENTA DE CADA COMISION, solo por su marca derivada. Es left join y no inner: una comision sin
+      -- venta (no deberia existir) no puede desaparecer de la cuenta en silencio, se cuenta como real.
+      left join transactions t on t.id = r.transaction_id
      group by pp.id, p.full_name, p.email, pp.tax_person_type, pp.tax_is_vat_responsible, pp.tax_must_invoice
     having count(r.id) filter (where r.settlement_id is null) > 0
      order by 2`);
@@ -83,6 +135,8 @@ export async function listarPendientesDeLiquidar(hasta: string): Promise<Resumen
     professionalId: f.professional_id,
     nombre: f.nombre,
     base: Number(f.base),
+    baseDePrueba: Number(f.base_de_prueba),
+    filasDePrueba: Number(f.filas_de_prueba),
     filas: Number(f.filas),
     reversiones: Number(f.reversiones),
     acumuladoPrevio: Number(f.acumulado),
