@@ -19,6 +19,7 @@ import {
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 import { consentUnchanged } from "@/modules/consent/consent-change";
+import { computeAgeYears, isMinorAge } from "@/modules/consent/validations";
 import type { ConsentType } from "@/modules/consent/validations";
 import { CONSENT_VERSION } from "@/modules/consent/versions";
 
@@ -40,6 +41,22 @@ export class ConsentGateError extends Error {
   constructor(public readonly missing: ConsentType[]) {
     super(`Faltan autorizaciones necesarias: ${missing.join(", ")}`);
     this.name = "ConsentGateError";
+  }
+}
+
+/**
+ * UN MENOR NO SE CONSIENTE SIN REPRESENTANTE (legal, 2026-10-09).
+ *
+ * EL MENSAJE ES DE CARA AL PACIENTE porque este camino lo recorre el (o su familiar) sin nadie al lado, y
+ * tiene que decir QUE HACER: la rama de menor existe y esta a un clic, pero si nadie la nombra el que esta
+ * ahi no sabe que se equivoco de rama.
+ */
+export class ConsentimientoDeMenorSinRepresentanteError extends Error {
+  constructor() {
+    super(
+      "La fecha de nacimiento indica que el paciente es menor de edad, así que el consentimiento lo tiene que otorgar su representante legal. Vuelve al paso anterior y elige la opción de menor de edad: ahí se piden sus datos.",
+    );
+    this.name = "ConsentimientoDeMenorSinRepresentanteError";
   }
 }
 
@@ -207,6 +224,33 @@ async function writePatientConsentsAndGate(
     // Y LA DECLARACION DEL PROFESIONAL VA CON SU VERSION, no como booleano: es una afirmacion suya con
     // consecuencias, y si mañana cambia su redaccion lo declarado antes tiene que seguir diciendo lo que
     // decia. El CHECK de la 0105 exige que canal y declaracion vayan juntos o no vayan.
+    // ═══ UN MENOR NO SE CONSIENTE SIN REPRESENTANTE. PORTON DURO (legal, 2026-10-09) ═══
+    //
+    // ── EL CASO QUE LO TRAE ────────────────────────────────────────────────────────────────────────
+    //
+    // Seis evaluaciones de menores quedaron bloqueadas al confirmar identidad, porque su consentimiento se
+    // habia guardado SIN representante: entraron por el QR, que no tiene rama de menor y no lo pregunta.
+    //
+    // ── POR QUE AQUI Y NO EN EL FORMULARIO, que es donde uno lo pondria ───────────────────────────
+    //
+    // Textual de legal: *"este hueco existio porque el formulario permitio guardar un estado imposible, y
+    // mientras eso siga siendo posible va a volver a ocurrir POR OTRA VIA"*. Y tiene razon medida: el
+    // `consentSchema` YA exige los datos del representante cuando la rama es "menor", y aun asi paso, porque
+    // el QR no usa ese schema. Arreglarlo en los formularios seria arreglarlo en los que existen hoy.
+    //
+    // ESTE ES EL UNICO SITIO POR DONDE SE ESCRIBE UN CONSENTIMIENTO, asi que un guard aqui lo cubre todo: el
+    // correo, el QR, el presencial y el que alguien escriba el mes que viene.
+    //
+    // ── Y SE DECIDE POR LA EDAD, NO POR LA RAMA DECLARADA ────────────────────────────────────────
+    //
+    // Mirar `ageBranch` seria creerle al formulario justo en lo que el formulario se equivoco. La fecha de
+    // nacimiento es el hecho; la rama es lo que alguien dijo sobre el hecho.
+    const edadAlFirmar = input.identity.birthDate ? computeAgeYears(input.identity.birthDate, new Date()) : null;
+    const traeRepresentante = input.consents.some((c) => c.legalRepresentative?.name);
+    if (edadAlFirmar != null && isMinorAge(edadAlFirmar) && !traeRepresentante) {
+      throw new ConsentimientoDeMenorSinRepresentanteError();
+    }
+
     await tx.insert(patientConsents).values(
       input.consents.map((c) => ({
         patientId,
