@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { registerCashSaleFormAction } from "../actions";
 import { BloqueDomicilio } from "./bloque-domicilio";
 import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
+import { SelectorDePaciente } from "./selector-de-paciente";
 import type { CashSaleFormState } from "../validations";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 
@@ -43,7 +44,9 @@ export function RegisterCashSaleForm({
   esDeDistribucion?: boolean;
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
-  const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
+  // VACIO A PROPOSITO (Santiago, 2026-10-10): un formulario de COBRO que llega con una persona ya elegida
+  // invita a registrarle una venta a quien encabeza la lista. Ver `SelectorDePaciente`.
+  const [patientId, setPatientId] = useState("");
   // El celular del paciente ELEGIDO, para el bloque de domicilio. Sale de la lista que ya viajo y no de una
   // consulta aparte: cambiar de paciente no deberia ir al servidor por un dato que ya esta aqui.
   const tieneCelular = patients.find((p) => p.id === patientId)?.tieneCelular === true;
@@ -199,24 +202,16 @@ export function RegisterCashSaleForm({
   return (
     <div className="flex flex-col gap-3">
       <form ref={formRef} onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="cash-patientId" className="text-xs">
-            Paciente
-          </Label>
-          <select
-            id="cash-patientId"
-            name="patientId"
-            required
-            value={patientId}
-            onChange={(e) => setPatientId(e.target.value)}
-            className={selectClass}
-          >
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+        {/* EL ID VIAJA EN UN CAMPO OCULTO y no en el buscador: el texto tecleado no es un paciente, y un campo
+            con `name` lo mandaria en el envio (hazard 4 y 5 de CLAUDE.md, la familia del FormData). */}
+        <input type="hidden" name="patientId" value={patientId} />
+        <div className="w-full">
+          <SelectorDePaciente
+            id="cash-paciente"
+            pacientes={patients}
+            valor={patientId}
+            onElegir={setPatientId}
+          />
         </div>
 
         <div className="flex w-full flex-col gap-2">
@@ -294,19 +289,34 @@ export function RegisterCashSaleForm({
         {/* LA `key` POR PACIENTE re-monta el bloque al cambiar de paciente: sin ella, la consulta elegida
             para uno se quedaría seleccionada para el siguiente, que es como se le cuelga una compra a la
             consulta de otra persona. */}
-        <BloqueTratamiento
-          key={patientId}
-          patientId={patientId}
-          tratamientos={tratamientosPorPaciente[patientId] ?? []}
-        />
+        {/* ═══ SIN PACIENTE NO HAY BLOQUES (Santiago, 2026-10-10) ═══
+
+            Antes el formulario llegaba con un paciente elegido, así que estos bloques existían desde el primer
+            render. Ahora empieza vacío, y montarlos sin paciente no tendría nada que decir: un "de qué consulta
+            sale esta compra" sin paciente no tiene consultas que ofrecer.
+
+            Y ES LO QUE SOSPECHO QUE CIERRA EL BLOQUE DUPLICADO que reportó (cuatro "de qué consulta sale esta
+            compra" apilados): con un paciente por defecto, el primer bloque se montaba antes de que nadie
+            eligiera. No lo afirmo, porque no reproduje el apilado leyendo el código; lo que sí es seguro es que
+            ahora no puede existir más de uno, porque solo hay un `patientId` y sin él no se monta ninguno. */}
+        {patientId ? (
+          <BloqueTratamiento
+            key={patientId}
+            patientId={patientId}
+            tratamientos={tratamientosPorPaciente[patientId] ?? []}
+          />
+        ) : null}
 
         {/* LA MISMA `key` POR PACIENTE que el bloque de arriba, y por el mismo motivo: el campo del celular
             se precarga con el del paciente elegido. Sin re-montar, el numero del anterior se quedaria en el
             campo y se despacharia un envio al telefono de otra persona. */}
-        <BloqueDomicilio key={patientId} tieneCelularRegistrado={tieneCelular} />
+        {patientId ? <BloqueDomicilio key={patientId} tieneCelularRegistrado={tieneCelular} /> : null}
 
-        <Button type="submit" disabled={pending}>
-          {pending ? "Registrando..." : "Registrar la venta"}
+        {/* SIN PACIENTE NO SE PUEDE REGISTRAR, y el boton lo dice en vez de rebotar: antes el `required` del
+            desplegable lo impedia, y al quitarlo habria quedado un envio sin paciente que solo fallaria en el
+            servidor. */}
+        <Button type="submit" disabled={pending || !patientId}>
+          {pending ? "Registrando..." : patientId ? "Registrar la venta" : "Elige un paciente"}
         </Button>
 
         {/* ═══ SE VENDE ALGO FUERA DEL PLAN DE ESA CONSULTA (2026-09-30) ═══
