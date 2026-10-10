@@ -81,89 +81,101 @@ export function TarjetaDeCobro({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {/* EL BUSCADOR, UNO SOLO Y FUERA DE LOS FORMULARIOS. El id viaja dentro de cada uno por su campo
-            oculto, que es lo único que el servidor necesita; el texto tecleado no viaja nunca (ver el
-            encabezado de `SelectorDePaciente`). */}
-        <SelectorDePaciente
-          id="cobro-paciente"
-          pacientes={patients}
-          valor={patientId}
-          onElegir={setPatientId}
-        />
-
-        {/* ═══ BAJO DISTRIBUCION NO SE PREGUNTA EL MEDIO (0211) ═══
-
-            El paciente le pagó AL INTEGRANTE: en efectivo, por transferencia o con datáfono, el dinero es
-            suyo y es asunto suyo. Y tampoco hay link, porque CNV no le cobra nada al paciente. Preguntarlo
-            sería ofrecer una respuesta que el servidor descarta, y un campo cuyo valor se ignora enseña a
-            desconfiar de los otros. */}
-        {esDeDistribucion ? null : (
-          <div className="flex flex-col gap-2">
-            <Label className="text-xs">Cómo paga</Label>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  // QUE PASA CON LA PLATA Y CON LA FACTURA, dicho en el propio botón. Son los tres destinos
-                  // contables reales, y hasta hoy no estaban escritos en ningún sitio de la pantalla: quien
-                  // cobra elegía el medio sin saber que eso decide la cuenta y el estado de la factura.
-                  {
-                    id: "efectivo" as const,
-                    rotulo: "Efectivo",
-                    nota: "Queda cobrada. El dinero es de CNV y lo custodias hasta consignar.",
-                  },
-                  {
-                    id: "transferencia" as const,
-                    rotulo: "Transferencia",
-                    nota: "Factura al banco principal, y queda sin cobrar hasta que se verifique.",
-                  },
-                  {
-                    id: "link" as const,
-                    rotulo: "Link de pago",
-                    nota: "El paciente paga en línea con Wompi desde su teléfono. Vale 24 horas.",
-                  },
-                ] as const
-              ).map((m) => {
-                const elegido = medio === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    aria-pressed={elegido}
-                    onClick={() => setMedio(m.id)}
-                    className={
-                      "flex max-w-[18rem] flex-1 flex-col gap-0.5 rounded-md border px-3 py-2 text-left transition-colors " +
-                      (elegido
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:bg-muted/50")
-                    }
-                  >
-                    <span
-                      className={
-                        "text-sm font-medium " + (elegido ? "text-primary" : "text-foreground")
-                      }
-                    >
-                      {m.rotulo}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{m.nota}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* UN SOLO FORMULARIO MONTADO, y con él un solo bloque de "de qué consulta sale esta compra". El
-            link de pago no existe bajo Distribución, así que ahí siempre es el de la venta ya cobrada. */}
-        {medio === "link" && !esDeDistribucion ? (
-          <CreateCheckoutForm {...comunes} />
+        {/* SIN PACIENTES NO SE OFRECE EL BUSCADOR. Los dos formularios ya lo dicen cada uno por su lado (y
+            esa guarda se queda, es su defensa), pero con el buscador arriba se veía primero un campo de
+            búsqueda que no puede encontrar a nadie y debajo la frase de que no hay a quién buscar: dos
+            partes de la pantalla diciendo cosas distintas sobre lo mismo. */}
+        {patients.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No tienes pacientes registrados, así que no hay a quién registrarle una venta.
+          </p>
         ) : (
-          <RegisterCashSaleForm
-            {...comunes}
-            esDeDistribucion={esDeDistribucion}
-            // Bajo Distribución el canal lo deriva el servidor de la modalidad; lo que se mande aquí se
-            // descarta, y "efectivo" es el valor que ya viajaba antes de que este selector existiera.
-            canal={medio === "transferencia" ? "transferencia" : "efectivo"}
-          />
+          <>
+            {/* EL BUSCADOR, UNO SOLO Y FUERA DE LOS FORMULARIOS. El id viaja dentro de cada uno por su campo
+                oculto, que es lo único que el servidor necesita; el texto tecleado no viaja nunca (ver el
+                encabezado de `SelectorDePaciente`). */}
+            <SelectorDePaciente
+              id="cobro-paciente"
+              pacientes={patients}
+              valor={patientId}
+              onElegir={setPatientId}
+            />
+
+            {/* ═══ BAJO DISTRIBUCION NO SE PREGUNTA EL MEDIO (0211) ═══
+
+                El paciente le pagó AL INTEGRANTE: en efectivo, por transferencia o con datáfono, el dinero es
+                suyo y es asunto suyo. Y tampoco hay link, porque CNV no le cobra nada al paciente. Preguntarlo
+                sería ofrecer una respuesta que el servidor descarta, y un campo cuyo valor se ignora enseña a
+                desconfiar de los otros. */}
+            {esDeDistribucion ? null : (
+              <div className="flex flex-col gap-2">
+                <Label className="text-xs">Cómo paga</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      // QUE PASA CON LA PLATA Y CON LA FACTURA, dicho en el propio botón. Son los tres destinos
+                      // contables reales, y hasta hoy no estaban escritos en ningún sitio de la pantalla: quien
+                      // cobra elegía el medio sin saber que eso decide la cuenta y el estado de la factura.
+                      {
+                        id: "efectivo" as const,
+                        rotulo: "Efectivo",
+                        nota: "Queda cobrada. El dinero es de CNV y lo custodias hasta consignar.",
+                      },
+                      {
+                        id: "transferencia" as const,
+                        rotulo: "Transferencia",
+                        nota: "Factura al banco principal, y queda sin cobrar hasta que se verifique.",
+                      },
+                      {
+                        id: "link" as const,
+                        rotulo: "Link de pago",
+                        nota: "El paciente paga en línea con Wompi desde su teléfono. Vale 24 horas.",
+                      },
+                    ] as const
+                  ).map((m) => {
+                    const elegido = medio === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        aria-pressed={elegido}
+                        onClick={() => setMedio(m.id)}
+                        className={
+                          "flex max-w-[18rem] flex-1 flex-col gap-0.5 rounded-md border px-3 py-2 text-left transition-colors " +
+                          (elegido
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:bg-muted/50")
+                        }
+                      >
+                        <span
+                          className={
+                            "text-sm font-medium " + (elegido ? "text-primary" : "text-foreground")
+                          }
+                        >
+                          {m.rotulo}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{m.nota}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* UN SOLO FORMULARIO MONTADO, y con él un solo bloque de "de qué consulta sale esta compra". El
+                link de pago no existe bajo Distribución, así que ahí siempre es el de la venta ya cobrada. */}
+            {medio === "link" && !esDeDistribucion ? (
+              <CreateCheckoutForm {...comunes} />
+            ) : (
+              <RegisterCashSaleForm
+                {...comunes}
+                esDeDistribucion={esDeDistribucion}
+                // Bajo Distribución el canal lo deriva el servidor de la modalidad; lo que se mande aquí se
+                // descarta, y "efectivo" es el valor que ya viajaba antes de que este selector existiera.
+                canal={medio === "transferencia" ? "transferencia" : "efectivo"}
+              />
+            )}
+          </>
         )}
       </CardContent>
     </Card>
