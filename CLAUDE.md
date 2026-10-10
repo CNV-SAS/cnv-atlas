@@ -224,7 +224,23 @@ NUNCA uses em-dash en ningún lugar: ni en código, ni en copy, ni en docs, ni e
 
   7. **Un `<form>` DENTRO de otro: el navegador DESCARTA el de adentro.** Es HTML inválido, y el parser tira la etiqueta interna al construir el DOM: sus campos pasan a viajar en el envío del formulario de AFUERA y su botón de envío ejecuta **la acción equivocada**. Caso real (2026-10-02): el bloque "El paciente no los adquiere por ahora" abría su propio `<form>` dentro del formulario de la prescripción; pulsar "Registrar" guardaba la prescripción, **no se registraba nada**, y la recarga de esa otra acción saltaba a otra pestaña. **Dos síntomas raros de un solo defecto, y ninguno apunta al anidamiento.** Y es peligroso en las dos direcciones: aunque el botón no envíe, un campo con `name` sigue colándose en el `FormData` de afuera. PRESERVAR: el bloque interno va **sin `<form>`** (`ejecutarAccion`, el camino que ya existe para los botones sin formulario), con los campos **sin `name`** y controlados, y sus botones en `type="button"`. Candado: `formularios-no-anidados.test.ts`, que busca el PAR entre los dos archivos.
 
-  **Lo que las SIETE tienen en común: son defectos que solo se ven en un navegador real.** Por eso, en superficies de formulario sensibles (el intake del paciente sobre todo), **el smoke humano en navegador NO es opcional**: es la única verificación que atrapa esta clase de bug. Si tocas uno de estos componentes, pruébalo en un navegador real antes de darlo por hecho.
+  8. **Un control que SALE del `<form>` deja de validarse, y su `required` queda de adorno.** El navegador
+     solo valida los controles ASOCIADOS a un formulario; uno que vive fuera (aunque esté dos líneas encima)
+     no se valida y su valor **no viaja** en el envío. Lo grave no es sacarlo, que a veces hay que hacerlo:
+     es que el `required` que ya estaba escrito **sigue ahí, verde y sin efecto**, y se lee como que la regla
+     se cumple. Caso real (2026-10-10): el bloque de "de qué consulta sale esta compra" subió de los dos
+     formularios de /pagos a la tarjeta que los contiene (para que hubiera UNO solo y no se re-montara al
+     cambiar de paciente); con él se fue su `required={!suelta}`, así que la salida "no sale de ninguna
+     consulta" se podía tomar **sin escribir el motivo** y la venta quedaba suelta sin que nadie lo dijera,
+     que es justo lo que ese bloque existe para evitar. PRESERVAR: al mover un control fuera de su
+     formulario, (a) su valor viaja en un `<input type="hidden">` DENTRO del formulario y el control queda
+     controlado y **sin `name`**; (b) se **borra** el obligatorio que ya no aplica, porque una bandera inerte
+     engaña más que su ausencia; y (c) la exigencia se rehace donde sí se cumple, en el `disabled` del botón
+     de envío, **diciéndolo en su rótulo** (un botón muerto sin explicación es peor que un error claro).
+     Candado: `la-salida-se-puede-elegir.test.ts`, que prohíbe el `required` inerte en el bloque y exige el
+     gate en los TRES formularios que lo usan.
+
+  **Lo que las OCHO tienen en común: son defectos que solo se ven en un navegador real.** Por eso, en superficies de formulario sensibles (el intake del paciente sobre todo), **el smoke humano en navegador NO es opcional**: es la única verificación que atrapa esta clase de bug. Si tocas uno de estos componentes, pruébalo en un navegador real antes de darlo por hecho.
 
 ### Supabase y Drizzle
 
