@@ -162,6 +162,18 @@ export const treatments = pgTable("treatments", {
   nutraceuticalDecisionReason: nutraceuticalDecisionReason("nutraceutical_decision_reason"),
   nutraceuticalDecisionNote: text("nutraceutical_decision_note"),
   nutraceuticalDecisionAt: timestamp("nutraceutical_decision_at", { withTimezone: true }),
+  /**
+   * EL CRITERIO CLINICO: el profesional evaluo y decidio NO prescribir nutraceuticos, con su razon (0214).
+   *
+   * ES OTRO HECHO que `nutraceuticalDecision`, que preguntaba si el PACIENTE adquiria. Esa pregunta ya la
+   * responden las VENTAS, y ademas su respuesta puede cambiar (puede comprarlos la semana siguiente). Lo que
+   * no deja rastro en ninguna otra parte es que el profesional decidiera no prescribir, y eso es lo que de
+   * verdad alimenta la investigacion: que el modelo recomiende algo y el profesional no lo prescriba ES el
+   * dato.
+   */
+  sinPrescripcionMotivo: text("sin_prescripcion_motivo"),
+  sinPrescripcionAt: timestamp("sin_prescripcion_at", { withTimezone: true }),
+  sinPrescripcionBy: uuid("sin_prescripcion_by").references(() => profiles.id, { onDelete: "restrict" }),
   nutraceuticalDecisionBy: uuid("nutraceutical_decision_by").references(() => profiles.id, {
     onDelete: "restrict",
   }),
