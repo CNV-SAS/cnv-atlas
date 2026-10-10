@@ -26,6 +26,11 @@ export type ImportacionResumen = {
   consultasOmitidas: { documento: string; fecha: string }[];
   /** Creados sin sexo (el HTML no lo trae reconocible): bloquean su diagnostico hasta completarlo. */
   pacientesSinSexo: number;
+  /**
+   * Consultas que entraron SIN NINGUNA respuesta de encuesta, porque el archivo no las trae (no se perdieron
+   * al importar: se coteja en el writer). Frenan su diagnostico hasta completar la encuesta con el paciente.
+   */
+  consultasSinRespuestas: number;
 };
 
 /**
