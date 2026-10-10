@@ -92,15 +92,15 @@ export function CreateCheckoutForm({
   if (patients.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No tienes pacientes registrados para crear un checkout.
+        No tienes pacientes registrados para crear un link de pago.
       </p>
     );
   }
   if (nutraceuticals.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No hay nutraceuticos con precio configurado. Asigna un precio en el catalogo
-        antes de crear un checkout.
+        No hay nutracéuticos con precio configurado. Asigna un precio en el catálogo
+        antes de crear un link de pago.
       </p>
     );
   }

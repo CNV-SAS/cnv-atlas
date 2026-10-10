@@ -100,10 +100,28 @@ export function VentaEnConsultaForm({
 
   // Clave de idempotencia del intento de EFECTIVO: un doble clic manda la misma; tras una venta, una nueva.
   const claveEfectivo = useRef(typeof crypto !== "undefined" ? crypto.randomUUID() : "");
-  const [confirmandoEfectivo, setConfirmandoEfectivo] = useState(false);
+  // ═══ CUAL MEDIO SE ESTA CONFIRMANDO, Y NO UN BOOLEANO (Santiago, 2026-10-10) ═══
+  //
+  // Textual suyo: *"en el flujo de venta de tratamiento no tenemos la opcion de transferencia."* Y no era
+  // un hueco cosmetico: toda venta cobrada aqui se registraba como EFECTIVO, asi que una transferencia
+  // quedaba diciendo que el integrante custodia dinero que ya esta en un banco, y el medio viaja a la
+  // factura electronica (la DIAN separa efectivo de transferencia debito). Es el mismo defecto que /pagos
+  // ya habia arreglado el 2026-09-25 (0173), vivo en la OTRA pantalla.
+  //
+  // El estado nombra el MEDIO y no es un booleano porque la pregunta de confirmacion es distinta para cada
+  // uno: una la custodia el integrante, la otra la verifica administracion contra el extracto. Con un
+  // booleano habria que adivinar cual se pregunto.
+  const [confirmando, setConfirmando] = useState<null | "efectivo" | "transferencia">(null);
   // Si el profesional ya confirmo anular el link y despues sale el aviso de duplicado, confirmar el duplicado
   // no puede olvidar la anulacion: la accion volveria a avisar del link y el profesional daria vueltas.
   const anularConfirmado = useRef(false);
+  // CON QUE MEDIO SE ENVIO, para los avisos que REINTENTAN (el link pendiente y el duplicado). Sus
+  // botones vuelven a llamar al cobro despues de que el servidor respondio, y si no recordaran el medio
+  // reintentarian como efectivo una transferencia: el dato se guardaria mal justo en el camino menos
+  // mirado, el del segundo intento. Lo LEE el manejador del clic, no el render: el ROTULO de esos botones
+  // sale de `confirmando` (que es estado y sigue puesto mientras el aviso esta a la vista), porque leer un
+  // ref al renderizar ni re-pinta ni lo permite el lint.
+  const canalUsado = useRef<"efectivo" | "transferencia">("efectivo");
 
   // AL COBRAR, LA SELECCION SE LIMPIA: dejar marcado lo que ya se cobro invita a cobrarlo otra vez. Se hace
   // al RENDERIZAR el estado nuevo (el patron de React para ajustar estado cuando cambia otro), no en el efecto:
@@ -118,7 +136,7 @@ export function VentaEnConsultaForm({
     setEfectivoVisto(efectivo);
     if (efectivo.success) {
       setCantidades({});
-      setConfirmandoEfectivo(false);
+      setConfirmando(null);
     }
   }
 
@@ -173,9 +191,17 @@ export function VentaEnConsultaForm({
     if (confirmDuplicate) fd.set("confirmDuplicate", "true");
     ejecutarAccion(accionCheckout, fd);
   };
-  const cobrarEnEfectivo = (opciones: { confirmDuplicate?: boolean; anularLinks?: boolean } = {}) => {
+  // Cobra una venta YA PAGADA (no pasa por la pasarela): efectivo o transferencia, el mismo camino.
+  const cobrarYaPagada = (
+    canal: "efectivo" | "transferencia",
+    opciones: { confirmDuplicate?: boolean; anularLinks?: boolean } = {},
+  ) => {
     const fd = base();
     fd.set("idempotencyKey", claveEfectivo.current);
+    // EL MEDIO VIAJA, que es lo que faltaba. El servidor ya lo entendia (la accion lee "canal" desde 0173)
+    // y bajo Distribucion lo DERIVA de la modalidad, asi que mandarlo no cambia ese caso.
+    fd.set("canal", canal);
+    canalUsado.current = canal;
     if (opciones.anularLinks) anularConfirmado.current = true;
     if (opciones.confirmDuplicate) fd.set("confirmDuplicate", "true");
     if (anularConfirmado.current) fd.set("anularLinks", "true");
@@ -388,25 +414,39 @@ export function VentaEnConsultaForm({
         <p className="text-sm text-attention">{MENSAJE_MINIMO_WOMPI}</p>
       ) : null}
 
-      {confirmandoEfectivo ? (
+      {confirmando ? (
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-3">
           {/* BAJO DISTRIBUCIÓN EL DINERO NO ES DE CNV, así que la confirmación no puede decir que lo custodia:
-              sería pedirle que confirme algo falso justo antes de registrar. */}
+              sería pedirle que confirme algo falso justo antes de registrar.
+
+              Y LA TRANSFERENCIA TAMPOCO SE CUSTODIA, que es por lo que no comparte la frase del efectivo: el
+              dinero ya salió de las manos de alguien y entró a una cuenta. Lo que sí hay que decir es qué
+              falta para que cuente como pagada, porque Atlas NO lo afirma solo: lo afirma quien ve el
+              extracto. Esa es la regla de la confirmación de transferencias, y aquí se anuncia ANTES de
+              registrar para que nadie espere que la venta quede pagada al instante. */}
           <span className="text-sm text-foreground">
             {esDeDistribucion
               ? `¿Registras la entrega de ${total.toLocaleString("es-CO")} COP? El paciente te paga a ti; esto suma a tu cuenta quincenal con CNV.`
-              : `¿Recibiste ${total.toLocaleString("es-CO")} COP en efectivo? Ese dinero es de CNV y lo custodias hasta consignar.`}
+              : confirmando === "transferencia"
+                ? `¿Te transfirió los ${total.toLocaleString("es-CO")} COP? Queda registrada como transferencia; administración confirma el pago contra el extracto antes de facturar.`
+                : `¿Recibiste ${total.toLocaleString("es-CO")} COP en efectivo? Ese dinero es de CNV y lo custodias hasta consignar.`}
           </span>
-          <Button key="efectivo-si" type="button" size="sm" disabled={pending || !listo} onClick={() => cobrarEnEfectivo()}>
-            {registrando ? "Registrando..." : "Sí, lo recibí"}
+          <Button
+            key="ya-pagada-si"
+            type="button"
+            size="sm"
+            disabled={pending || !listo}
+            onClick={() => cobrarYaPagada(confirmando)}
+          >
+            {registrando ? "Registrando..." : confirmando === "transferencia" ? "Sí, me transfirió" : "Sí, lo recibí"}
           </Button>
           <Button
-            key="efectivo-no"
+            key="ya-pagada-no"
             type="button"
             size="sm"
             variant="ghost"
             disabled={pending}
-            onClick={() => setConfirmandoEfectivo(false)}
+            onClick={() => setConfirmando(null)}
           >
             Cancelar
           </Button>
@@ -435,10 +475,31 @@ export function VentaEnConsultaForm({
             type="button"
             variant={esDeDistribucion ? "default" : "outline"}
             disabled={pending || !listo || excede}
-            onClick={() => setConfirmandoEfectivo(true)}
+            onClick={() => setConfirmando("efectivo")}
           >
             {esDeDistribucion ? "Registrar la entrega" : "Cobrar en efectivo"}
           </Button>
+          {/* ═══ LA TRANSFERENCIA, QUE AQUÍ NO EXISTÍA (Santiago, 2026-10-10) ═══
+
+              /pagos la ofrece desde el 2026-09-25 y esta pantalla no, así que una transferencia cobrada en
+              consulta se registraba como efectivo: la factura llevaba un medio que la DIAN distingue y el
+              dinero quedaba apuntado a la cuenta del efectivo en poder del integrante, diciendo que sigue
+              por recoger cuando ya está en un banco.
+
+              NO SE OFRECE BAJO DISTRIBUCIÓN, por lo mismo que no se pregunta el medio allá: el paciente le
+              paga al integrante y el servidor DERIVA el canal de la modalidad, así que la respuesta se
+              descartaría. Un campo cuyo valor se ignora enseña a desconfiar de los otros. */}
+          {esDeDistribucion ? null : (
+            <Button
+              key="transferencia"
+              type="button"
+              variant="outline"
+              disabled={pending || !listo || excede}
+              onClick={() => setConfirmando("transferencia")}
+            >
+              Cobrar por transferencia
+            </Button>
+          )}
         </div>
       )}
 
@@ -457,10 +518,12 @@ export function VentaEnConsultaForm({
             type="button"
             variant="outline"
             disabled={pending}
-            onClick={() => cobrarEnEfectivo({ anularLinks: true })}
+            onClick={() => cobrarYaPagada(canalUsado.current, { anularLinks: true })}
             className="self-start"
           >
-            Anular el link y cobrar en efectivo
+            {confirmando === "transferencia"
+              ? "Anular el link y cobrar por transferencia"
+              : "Anular el link y cobrar en efectivo"}
           </Button>
         </div>
       ) : null}
@@ -471,7 +534,7 @@ export function VentaEnConsultaForm({
             type="button"
             variant="outline"
             disabled={pending}
-            onClick={() => cobrarEnEfectivo({ confirmDuplicate: true })}
+            onClick={() => cobrarYaPagada(canalUsado.current, { confirmDuplicate: true })}
             className="self-start"
           >
             Registrar de todos modos

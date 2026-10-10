@@ -476,9 +476,20 @@ export default async function PagosPage({
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Crear checkout</CardTitle>
+              {/* ── "CHECKOUT" NO ES UNA PALABRA QUE SE ENTIENDA AQUI (Santiago, 2026-10-10) ──
+
+                  Textual suyo: *"en vez de checkout poner pasarela de pago (Wompi) o pago en linea (Wompi),
+                  porque la palabra checkout para los colombianos es dificil."* Tiene razon, y el costo de
+                  dejarla es concreto: quien no sabe que significa no sabe cual de los dos bloques le sirve, y
+                  el que esta al lado tampoco se llama por su medio de pago.
+
+                  SE QUEDA "LINK DE PAGO" y no "pasarela": pasarela nombra la TUBERIA (Wompi), que es asunto
+                  nuestro; lo que el profesional hace es generar un link y mandarlo. Wompi se nombra aparte,
+                  porque es lo que el paciente va a ver en su telefono. */}
+              <CardTitle className="text-lg">Cobrar con un link de pago</CardTitle>
               <CardDescription>
-                Genera un link de pago (vale 24 horas) para que el paciente pague en Wompi.
+                Genera un link (vale 24 horas) para que el paciente pague en línea con Wompi, desde su
+                teléfono: tarjeta, PSE o Nequi. La venta queda pendiente hasta que él pague.
               </CardDescription>
             </CardHeader>
             <CardContent>

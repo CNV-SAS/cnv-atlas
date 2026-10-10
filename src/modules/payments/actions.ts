@@ -98,7 +98,7 @@ async function requireCheckoutCreator() {
   const user = await getCurrentUser();
   if (!user) return { user: null, error: appError("unauthorized", "Inicia sesión.") };
   if (!canCreateCheckout(user)) {
-    return { user: null, error: appError("forbidden", "No tienes permiso para crear checkouts.") };
+    return { user: null, error: appError("forbidden", "No tienes permiso para crear links de pago.") };
   }
   return { user, error: null as null };
 }
@@ -110,7 +110,7 @@ export async function createCheckoutAction(
   if (authzError) return err(authzError);
 
   const parsed = createCheckoutSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Datos del checkout inválidos."));
+  if (!parsed.success) return err(appError("validation", "Los datos del pago en línea no son válidos."));
 
   try {
     const created = await createCheckout(parsed.data, user);
@@ -123,7 +123,7 @@ export async function createCheckoutAction(
     // fallo tecnico donde hay una regla del modelo. Ademas ensuciaba Sentry con un error que no es un error.
     if (e instanceof ModalidadError) return err(appError("validation", e.message));
     reportServerError("checkout.create", e);
-    return err(appError("internal", "No se pudo crear el checkout."));
+    return err(appError("internal", "No se pudo crear el link de pago."));
   }
 }
 
@@ -211,7 +211,7 @@ export async function createCheckoutFormAction(
   if (evaluationId) revalidatePath(`/ani-bis-e/${evaluationId}`);
   return {
     error: null,
-    success: "Checkout creado. Comparte el link con el paciente.",
+    success: "Link de pago creado. Compártelo con el paciente.",
     checkoutUrl: result.value.checkoutUrl,
     duplicateWarning: null,
     outOfPlanWarning: null,
