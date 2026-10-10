@@ -22,6 +22,8 @@ const completa: EstadoConsulta = {
   // "completa" pruebe que la venta sola cierra el pendiente.
   nutraceuticosDecision: null,
   hayVentaDeNutraceuticos: true,
+  // Y LA VIA NUEVA TAMPOCO (0214): asi el fixture prueba que la VENTA sola cierra el pendiente.
+  sinPrescripcion: false,
   proximaCita: "2026-11-22",
   remisionesSinRetorno: 0,
 };
@@ -109,6 +111,26 @@ describe("pendientes del cierre", () => {
     expect(p?.detalle).toContain("botón");
   });
 
+// ═══ LA VIA NUEVA CIERRA EL MISMO PENDIENTE (2026-10-10, migracion 0214) ═══
+  //
+  // El boton "el paciente no los adquiere por ahora" se retiro (medía si el PACIENTE adquiere, que es un hecho
+  // que la venta ya responde) y lo reemplaza "No prescribo nutraceuticos", el criterio del PROFESIONAL.
+  //
+  // SIN ESTO, una consulta cerrada por la via nueva seguiria listando el pendiente, y su detalle mandaria a
+  // pulsar un boton que ya no existe: la regla muerta en otra puerta, que en este archivo ya paso dos veces.
+  it("registrar que NO se prescriben nutraceuticos cierra el pendiente, sin venta", () => {
+    expect(ids({ hayVentaDeNutraceuticos: false, sinPrescripcion: true })).not.toContain("nutraceuticos");
+    // Control: sin ninguna de las tres vias, sigue pendiente.
+    expect(ids({ hayVentaDeNutraceuticos: false, sinPrescripcion: false })).toContain("nutraceuticos");
+  });
+
+  it("y el detalle manda al boton que SI existe", () => {
+    const p = con({ hayVentaDeNutraceuticos: false, sinPrescripcion: false }).find((x) => x.id === "nutraceuticos");
+    expect(p?.detalle).toContain("No prescribo nutracéuticos");
+    // El rotulo viejo no puede quedar: nombra un boton retirado.
+    expect(p?.detalle).not.toContain("debajo de los recomendados");
+  });
+
   it("NINGÚN texto de la lista regaña: sin 'falta', sin 'debes', sin 'no hiciste'", () => {
     // El profesional puede cerrar con pendientes a proposito; la lista es informacion, no reproche.
     const todos = pendientesDeLaConsulta({
@@ -118,6 +140,7 @@ describe("pendientes del cierre", () => {
       reporteEstado: "draft",
       nutraceuticosDecision: null,
       hayVentaDeNutraceuticos: false,
+      sinPrescripcion: false,
       proximaCita: null,
       remisionesSinRetorno: 1,
     });

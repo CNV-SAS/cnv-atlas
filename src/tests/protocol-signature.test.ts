@@ -38,6 +38,7 @@ const BASE: TreatmentProtocol = {
   patientId: "pat-1",
   contraindications: [],
   nutraceuticalDecision: null,
+  sinPrescripcion: null,
   menuSemanal: null,
   kcalSugerido: 2100,
   nutraceuticals: [

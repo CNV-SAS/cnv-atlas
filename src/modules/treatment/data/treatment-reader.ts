@@ -99,7 +99,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit",
+      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, sin_prescripcion_motivo, sin_prescripcion_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -290,6 +290,12 @@ export async function getTreatmentProtocol(
             note: treatment.nutraceutical_decision_note ?? null,
             at: treatment.nutraceutical_decision_at,
           }
+        : null,
+    // LOS DOS CAMPOS O NINGUNO, igual que arriba y por lo mismo: sin fecha no hay hecho que fechar. El
+    // CHECK de la 0214 ya lo impone en la base; aqui se respeta al leer para no inventar una fecha.
+    sinPrescripcion:
+      treatment.sin_prescripcion_motivo && treatment.sin_prescripcion_at
+        ? { motivo: treatment.sin_prescripcion_motivo, at: treatment.sin_prescripcion_at }
         : null,
     menuSemanal: normalizeMenuSemanal(treatment.menu_semanal),
     kcalSugerido,

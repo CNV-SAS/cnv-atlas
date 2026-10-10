@@ -19,6 +19,7 @@ import {
   guardarProtocolo,
   saveNutraceuticals,
   saveNutraDecision,
+  registrarSinPrescripcion,
 } from "./services/treatment-service";
 import {
   acknowledgeRestrictionsSchema,
@@ -29,6 +30,7 @@ import {
   guardarProtocoloSchema,
   saveNutraceuticalsSchema,
   saveNutraDecisionSchema,
+  registrarSinPrescripcionSchema,
 } from "./validations";
 
 // Actions del protocolo de tratamiento (B13). Thin (regla 2): autorizan por policy,
@@ -56,6 +58,43 @@ function parseJsonArray(raw: FormDataEntryValue | null): unknown {
 async function actor() {
   const ip = await getClientIp();
   return { ip: ip === "unknown" ? null : ip };
+}
+
+// ═══ "NO PRESCRIBO NUTRACEUTICOS" (0214) ═══
+//
+// SU PROPIA ACCION Y NO UN MODO DE `saveNutraceuticalsAction`: lo que registra es otro hecho (el criterio
+// clinico del profesional, no una lista de productos), lo escribe en otras columnas y lo audita con otro
+// evento. Colgarlo del guardado de la prescripcion habria obligado a que esa accion decidiera cual de las
+// dos cosas esta guardando a partir de que campos llegaron, que es como se llega a guardar la equivocada.
+export async function registrarSinPrescripcionAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  const parsed = registrarSinPrescripcionSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    motivo: (form.get("motivo") as string | null) ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "No se pudo registrar la decisión.");
+  }
+
+  const result = await registrarSinPrescripcion(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) return fail(result.error.message);
+  // NO se revalida: el componente refresca con useFormToastRefreshOnSuccess. Hacer las dos cosas es el
+  // defecto que el candado `refresco-una-sola-vez` vigila (revalidar trata la ruta como navegacion y
+  // arrastra la pagina al inicio).
+  return {
+    error: null,
+    success: "Quedó registrado que no prescribes nutracéuticos en esta consulta.",
+    warning: null,
+  };
 }
 
 // CP-N1: la decision sobre los nutraceuticos, su propia accion.

@@ -42,16 +42,30 @@ const MODULOS_DE_ACCIONES = [...FUENTES.keys()].filter(
 
 const NOMBRES = /export async function (\w*Action)\b/g;
 
-// ═══ LAS DOS QUE YA ESTABAN ASÍ (inventario, no perdón) ═══
+// ═══ LAS TRES SIN PANTALLA (inventario, no perdón) ═══
 //
-// Las encontró este candado al escribirse, el 2026-09-24, y son de bloques anteriores. Se dejan VISIBLES en
-// vez de taparlas, y el segundo caso exige que sigan siendo exactamente estas dos: si una se conecta, hay
-// que quitarla de aquí; si aparece una tercera, falla el caso de arriba.
+// Las dos primeras las encontró este candado al escribirse, el 2026-09-24, y son de bloques anteriores. Se
+// dejan VISIBLES en vez de taparlas, y el segundo caso exige que sigan siendo exactamente estas: si una se
+// conecta, hay que quitarla de aquí; si aparece una cuarta, falla el caso de arriba.
 //
 //   · registerUsageAction: registrar el uso de un nutracéutico. Ninguna pantalla lo ofrece.
 //   · acknowledgeRestrictionsAction: el reconocimiento de las restricciones del modelo (T2 A2), que es un
 //     ACTO CLÍNICO del profesional. El escritor existe y sella quién y cuándo; el botón, no.
-const CONOCIDAS = ["acknowledgeRestrictionsAction", "registerUsageAction"];
+//   · saveNutraDecisionAction: SUPERADA, no olvidada (2026-10-10, migración 0214). Su pantalla era "el
+//     paciente no los adquiere por ahora", y se retiró porque medía si el PACIENTE adquiere, que es un
+//     hecho que las VENTAS ya responden. La reemplaza `registrarSinPrescripcionAction`, que registra otra
+//     cosa: el criterio clínico de NO prescribir. La columna quedó CONGELADA (con su COMMENT) y la LECTURA
+//     sigue viva, porque hay consultas cerradas con ese registro.
+//
+//     NO SE BORRÓ TODAVÍA, y eso es una decisión pendiente de Santiago: su writer es el ÚNICO que inserta
+//     en `patient_contraindications`, así que borrar el camino dejaría esa tabla sin ningún escritor, y eso
+//     es alcance clínico. La razón completa vive en `scripts/check-cables.mjs`, que es el control que lo
+//     exige por escrito.
+const CONOCIDAS = [
+  "acknowledgeRestrictionsAction",
+  "registerUsageAction",
+  "saveNutraDecisionAction",
+].sort();
 
 function sinPuerta(): string[] {
   const huerfanas: string[] = [];
@@ -90,9 +104,9 @@ describe("las server actions tienen quién las llame", () => {
     expect(sinPuerta().filter((a) => !CONOCIDAS.includes(a))).toEqual([]);
   });
 
-  it("y las dos conocidas siguen siendo exactamente esas dos", () => {
+  it("y las conocidas siguen siendo exactamente esas", () => {
     // LA LISTA NO ES UN PERDÓN, ES UN INVENTARIO. Si una se conecta, este caso falla y se quita de aquí; si
-    // aparece una tercera, falla el caso de arriba. Lo que no puede pasar es que crezcan en silencio.
+    // aparece una más, falla el caso de arriba. Lo que no puede pasar es que crezcan en silencio.
     expect(sinPuerta()).toEqual(CONOCIDAS);
   });
 });

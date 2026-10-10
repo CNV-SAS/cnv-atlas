@@ -57,19 +57,41 @@ describe("el descarte por razon clinica, retirado el 2026-09-28", () => {
   });
 });
 
-describe("el 'no' del paciente", () => {
-  const boton = leer("src/modules/treatment/components/no-los-adquiere-form.tsx");
+// ═══ Y EL "NO" DEL PACIENTE TAMBIEN SE RETIRO (Santiago, 2026-10-10. Migracion 0214) ═══
+//
+// ESTE BLOQUE VIGILABA COMO SE ESCRIBIA, y ya no se escribe. El boton "el paciente no los adquiere por ahora"
+// se retiro por el argumento que Santiago trajo de la reunion con la integrante que mas vende: medía si el
+// PACIENTE adquiere, y eso Atlas YA LO SABE POR UN HECHO (Direccion cuenta "comprado en N consultas" desde
+// las ventas). Un campo que pregunta lo mismo y lo responde de memoria solo puede contradecir a la venta.
+//
+// Lo reemplaza "No prescribo nutraceuticos" (`SinPrescripcionForm`), que registra OTRA COSA: el criterio
+// clinico del profesional, que no deja rastro en ninguna parte. Su candado propio es
+// `no-prescribo-nutraceuticos.test.ts`.
+//
+// LO QUE ESTE BLOQUE VIGILA AHORA es lo que no puede volver: que la escritura no reaparezca, y que la
+// LECTURA del historico no se vaya con ella. Las dos mitades importan. Si volviera el boton, habria dos
+// sitios preguntando cosas parecidas sobre la misma consulta; si se fuera la lectura, una consulta cerrada
+// por esa via pareceria cerrada por nada.
+describe("el 'no' del paciente, retirado el 2026-10-10", () => {
+  const viejo = leer("src/modules/treatment/components/no-los-adquiere-form.tsx");
+  const seccion = leer("src/modules/treatment/components/nutraceuticals-section.tsx");
 
-  it("se guarda sin migracion: decision 'no' con razon 'otra' y el motivo en la nota", () => {
-    // SE MIRA LO QUE SE ENVIA, NO EL MARCADO (2026-10-02). Antes eran tres `<input type="hidden">`; al tener
-    // que dejar de ser un `<form>` (vivia anidado dentro del de la prescripcion) los campos se arman a mano.
-    // El HECHO que este caso vigila no cambio: los tres valores que hacen que no haga falta una migracion.
-    expect(boton).toMatch(/set\(\s*["']decision["']\s*,\s*["']no["']\s*\)/);
-    expect(boton).toMatch(/set\(\s*["']reason["']\s*,\s*["']otra["']\s*\)/);
-    expect(boton).toMatch(/set\(\s*["']note["']/);
+  it("el bloque viejo ya no escribe nada", () => {
+    // Sin accion, sin campos y sin boton: lo que queda es la nota de lo que se registro entonces.
+    expect(viejo).not.toContain("saveNutraDecisionAction");
+    expect(viejo).not.toMatch(/set\(\s*["']decision["']/);
+    expect(viejo).not.toContain("<Button");
   });
 
-  it("y el schema lo acepta asi", () => {
+  it("pero la lectura del historico sigue montada, y solo donde ese dato existe", () => {
+    expect(seccion).toContain("<NoLosAdquiereForm");
+    expect(seccion).toContain('protocol.nutraceuticalDecision?.decision === "no"');
+  });
+
+  it("y el schema viejo sigue siendo coherente, porque su accion no se ha borrado", () => {
+    // LA ACCION SIGUE VIVA SIN PANTALLA, declarada en `scripts/check-cables.mjs` con su razon: su writer es
+    // el UNICO que inserta en `patient_contraindications`, y borrarlo es alcance clinico (decision de
+    // Santiago). Mientras exista, su schema tiene que seguir aceptando lo que aceptaba.
     const r = saveNutraDecisionSchema.safeParse({
       evaluationId: "11111111-1111-1111-1111-111111111111",
       decision: "no",
@@ -78,11 +100,6 @@ describe("el 'no' del paciente", () => {
       contraindicationFor: null,
     });
     expect(r.success).toBe(true);
-  });
-
-  it("registrado una vez, no se vuelve a ofrecer el boton", () => {
-    // Ofrecerlo otra vez invita a escribir dos motivos para lo mismo, y el segundo pisaria al primero.
-    expect(boton).toContain("yaRegistrado != null");
   });
 });
 

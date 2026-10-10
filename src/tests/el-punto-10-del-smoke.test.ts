@@ -247,11 +247,23 @@ describe("la prescripcion no se puede cerrar en blanco sin decirlo", () => {
     expect(tabla).toContain("PanelRetirarConsulta");
   });
 
-  it("y la salida de 'no los adquiere' se nombra como la alternativa que es", () => {
-    const alt = leer("src/modules/treatment/components/no-los-adquiere-form.tsx");
-    expect(alt).toContain("esta es la otra forma de cerrar la prescripción");
-    // Y NO SE VUELVE PRIMARIO: competir con "Guardar" invitaria a pulsarlo por salir del paso, y esto registra
-    // una decision clinica del paciente.
+  it("y la segunda salida de la prescripcion se ve, al lado de Guardar", () => {
+    // SU PEDIDO ERA QUE SE VIERA: *"sería bueno resaltar más el botón... para que sepan que también es una
+    // opción"*. Iba como un `outline` suelto al final de la seccion, indistinguible del marco.
+    //
+    // EL HECHO QUE REGISTRA CAMBIO EL 2026-10-10 (migracion 0214): era "el paciente no los adquiere por
+    // ahora" y ahora es "No prescribo nutraceuticos", el criterio del PROFESIONAL. Lo que NO cambio es por
+    // que este caso existe: la segunda forma de cerrar la prescripcion tiene que estar donde el profesional
+    // cierra, y ahora esta literalmente al lado del boton de guardar.
+    const seccion = leer("src/modules/treatment/components/nutraceuticals-section.tsx");
+    const i = seccion.indexOf('{pending ? "Guardando..." : "Guardar prescripción"}');
+    expect(i, "desaparecio el boton de guardar la prescripcion").toBeGreaterThan(0);
+    expect(seccion.slice(i, i + 1200)).toContain("<SinPrescripcionForm");
+
+    const alt = leer("src/modules/treatment/components/sin-prescripcion-form.tsx");
+    expect(alt).toContain("No prescribo nutracéuticos");
+    // Y NO SE VUELVE PRIMARIO: competir con "Guardar" invitaria a pulsarlo por salir del paso, y esto
+    // registra una decision clinica.
     expect(alt).toContain('variant="outline"');
   });
 });
