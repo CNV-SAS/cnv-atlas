@@ -16,7 +16,7 @@ import {
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
 import { restriccionesDeLaEncuesta } from "@/modules/treatment/services/restricciones-de-la-encuesta";
-import { buildEngineInput } from "./build-engine-input";
+import { buildEngineInput, sexoParaDiagnosticar } from "./build-engine-input";
 import { formatIncompleteSurveyMessage } from "./survey-completeness";
 
 // Orquesta la propagacion: leer insumos -> armar EngineInput -> runEngine (stub) ->
@@ -93,6 +93,23 @@ export async function runClinicalPipeline(
   // 500 en una frase que dice que falta y por que no se puede escribir a mano.
   const insumos = insumosDelMotorParaDiagnosticar(Object.keys(inputs.bisRaw), inputs.importada);
   if (!insumos.allowed) return err(appError("validation", insumos.message));
+
+  // Y EL SEXO, que es la QUINTA puerta y la que faltaba (Sentry, 2026-10-10). `normalizeSex` LANZA, y esta
+  // llamada estaba fuera de todo try: la peticion moria con un 500 y el panel quedaba roto. Es el mismo
+  // hueco que tenian las condiciones, la cintura y los insumos, y se cierra igual: la regla se mira aqui,
+  // donde ningun camino puede saltarsela. Ver `sexoParaDiagnosticar`.
+  const sexo = sexoParaDiagnosticar(inputs.sex);
+  if (!sexo.allowed) {
+    return err(
+      appError(
+        "validation",
+        sexo.message,
+        // La bandera es la que decide si el panel OFRECE la salida, y solo la lleva el caso que la ficha
+        // puede arreglar. Un enlace que no resuelve nada es peor que ninguno.
+        sexo.enLaFicha ? { faltaElSexo: "1" } : undefined,
+      ),
+    );
+  }
 
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una versión del modelo activa."));

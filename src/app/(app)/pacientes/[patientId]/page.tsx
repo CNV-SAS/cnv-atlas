@@ -7,7 +7,9 @@ import { requireUser } from "@/modules/auth/session";
 import { ArchivarPaciente } from "@/modules/patients/components/archivar-paciente";
 import { HistorialEvaluaciones } from "@/modules/patients/components/historial-evaluaciones";
 import { canArchivePatient } from "@/modules/patients/policies/can-archive-patient";
+import { canCompletePatientSex } from "@/modules/patients/policies/can-complete-patient-sex";
 import { canEditPatientContact } from "@/modules/patients/policies/can-edit-patient-contact";
+import { CompletarSexo } from "@/modules/patients/components/completar-sexo";
 import { EditarContacto } from "@/modules/patients/components/editar-contacto";
 import { FollowupLinkEmitter } from "@/modules/evaluations/components/followup-link-emitter";
 import {
@@ -64,6 +66,10 @@ export default async function HistoriaPacientePage({
   // boton: la de cerrar es solo del profesional.
   const puedeRetirar = canRetirarConsulta(user);
   const puedeEditarContacto = canEditPatientContact(user);
+  // COMPLETAR EL SEXO: el permiso, y la condicion de que FALTE. El bloque solo existe cuando hay un hueco
+  // que tapar; con el dato puesto, la ficha no muestra nada (ver `completar-sexo.tsx`).
+  const leFaltaElSexo = (paciente.sex ?? "").trim() === "";
+  const puedeCompletarSexo = canCompletePatientSex(user) && leFaltaElSexo;
   // Emitir link de seguimiento: sitio FIJO en el perfil (antes vivia en la tarjeta de confirmar identidad,
   // que desaparece al confirmar; Santiago 2026-08-20 §5a). El action re-resuelve el profesional asignado.
   const puedeEmitirSeguimiento = canEmitFollowupLink(user);
@@ -116,6 +122,11 @@ export default async function HistoriaPacientePage({
         bajada="Historia clínica del paciente."
         datos={identidad}
       />
+
+      {/* FALTA EL SEXO: VA ARRIBA, PEGADO A LA BANDA QUE LO MUESTRA EN "-" (Sentry, 2026-10-10). Es lo
+          que impide diagnosticar a este paciente, asi que no puede estar mas abajo que el contacto ni
+          detras de un boton: quien llega aqui viene de que la pestaña Diagnostico no le dejo pasar. */}
+      {puedeCompletarSexo ? <CompletarSexo patientId={patientId} /> : null}
 
       {/* ARCHIVAR / DESARCHIVAR (Santiago, 2026-09-10). Va AQUI y no en la fila de la lista: es una
           decision sobre ESTE paciente y se toma con su ficha delante, no de pasada al recorrer un roster.

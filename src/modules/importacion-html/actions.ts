@@ -24,6 +24,8 @@ export type ImportacionResumen = {
   pacientesExistentes: number;
   consultasImportadas: number;
   consultasOmitidas: { documento: string; fecha: string }[];
+  /** Creados sin sexo (el HTML no lo trae reconocible): bloquean su diagnostico hasta completarlo. */
+  pacientesSinSexo: number;
 };
 
 /**

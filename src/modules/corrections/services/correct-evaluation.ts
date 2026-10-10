@@ -28,7 +28,11 @@ import {
   readPipelineInputs,
 } from "@/modules/clinical-pipeline/data/pipeline-reader";
 import { writePipeline } from "@/modules/clinical-pipeline/data/pipeline-writer";
-import { buildEngineInput, type SurveyFieldAnswer } from "@/modules/clinical-pipeline/services/build-engine-input";
+import {
+  buildEngineInput,
+  sexoParaDiagnosticar,
+  type SurveyFieldAnswer,
+} from "@/modules/clinical-pipeline/services/build-engine-input";
 import {
   computeSurveyGaps,
   formatIncompleteSurveyMessage,
@@ -328,6 +332,12 @@ export async function correctEvaluation(
 
   // --- Compute (PURO + lecturas, fuera de la tx). El modelo NO se fija: es el frozen en disco, se
   // sella la version REAL (PLAN (b)). ---
+  // LA MISMA PUERTA DEL SEXO QUE AL GENERAR (Sentry, 2026-10-10), y hay que repetirla porque este es otro
+  // camino al motor: regenerar tras una correccion no pasa por `runClinicalPipeline`. Sin esto, corregir
+  // una respuesta de un paciente sin sexo tumbaba la pantalla con el mismo 500, por el mismo sitio.
+  const sexo = sexoParaDiagnosticar(inputs.sex);
+  if (!sexo.allowed) return err(appError("validation", sexo.message));
+
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una versión del modelo activa."));
 

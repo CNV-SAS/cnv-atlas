@@ -24,7 +24,7 @@ const initialState: RunPipelineState = {
   success: null,
   warning: null,
   done: false,
-  completeHref: null,
+  salida: null,
 };
 
 // Boton de generar diagnostico DENTRO de la pestana Diagnostico (el caso individual), ademas del panel de
@@ -206,12 +206,15 @@ export function GenerateDiagnosisPanel({
         ) : null}
         {/* Encuesta incompleta: no queda bloqueado a ciegas. Enlace a completarla (la pagina de editar
             resalta las preguntas que faltan). Gildardo 2026-08-13 §1. */}
-        {state.completeHref ? (
+        {/* LA ETIQUETA VIENE CON EL ENLACE, no escrita aqui: este panel no sabe (ni tiene por que) de
+            que puerta viene la falta. Estuvo fija en "Completar la encuesta" hasta que aparecio la
+            segunda salida, la ficha del paciente. Ver `salida` en las acciones. */}
+        {state.salida ? (
           <Link
-            href={state.completeHref}
+            href={state.salida.href}
             className="text-sm font-medium text-primary underline underline-offset-4"
           >
-            Completar la encuesta con el paciente
+            {state.salida.etiqueta}
           </Link>
         ) : null}
         {/* EL BOTON SOLO REAPARECE SI FALLO. Con el camino feliz automatico, un boton permanente seria

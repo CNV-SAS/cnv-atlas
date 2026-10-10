@@ -16,14 +16,26 @@ import {
   resolverPropuestaDePrueba,
 } from "./data/de-prueba-writer";
 import { guardarContactoDelPaciente } from "./data/patient-contact-writer";
+import { completarSexoDelPaciente } from "./data/patient-sex-writer";
 import { getPatientDetail } from "./data/patient-detail-reader";
 import { setPatientArchivado } from "./data/patients-archive-writer";
 import { canArchivePatient } from "./policies/can-archive-patient";
+import { canCompletePatientSex } from "./policies/can-complete-patient-sex";
 import { canEditPatientContact } from "./policies/can-edit-patient-contact";
 import { canCreatePatientPresencial } from "./policies/can-create-patient";
 import { documentoAjenoParaProfesional } from "./text/documento-ajeno";
-import type { ArchivarPacienteState, ContactoPacienteState, VerificarDocumentoState } from "./types";
-import { archivarPacienteSchema, contactoPacienteSchema, documentoSchema } from "./validations";
+import type {
+  ArchivarPacienteState,
+  ContactoPacienteState,
+  SexoPacienteState,
+  VerificarDocumentoState,
+} from "./types";
+import {
+  archivarPacienteSchema,
+  contactoPacienteSchema,
+  documentoSchema,
+  sexoPacienteSchema,
+} from "./validations";
 
 // PRIMER PASO de crear un paciente en consulta: saber si ese documento ya esta en la organizacion.
 //
@@ -193,6 +205,64 @@ export async function guardarContactoPacienteAction(
     success: datos.data.email
       ? "Contacto actualizado. Ya se le puede enviar su documentación."
       : "Contacto actualizado.",
+    warning: null,
+  };
+}
+
+// ═══ COMPLETAR EL SEXO QUE FALTA (Sentry, 2026-10-10) ═══
+//
+// LA PANTALLA QUE NO EXISTIA. Habia pacientes sin sexo (el import del HTML lo deja en null cuando no
+// reconoce la palabra del archivo) y el motor lo exige estricto, asi que su diagnostico era imposible y
+// el unico remedio era un script contra la base. El profesional veia un 500.
+//
+// SOLO RELLENA UN HUECO: si el paciente ya tenia un sexo, el writer no actualiza nada y aqui se dice. Ver
+// `can-complete-patient-sex` (por que esto no es el bloque diferido de corregir datos personales) y
+// `patient-sex-writer` (por que el `where` es la frontera y no una comprobacion previa).
+export async function completarSexoPacienteAction(
+  _prev: SexoPacienteState,
+  form: FormData,
+): Promise<SexoPacienteState> {
+  const user = await requireUser();
+  if (!canCompletePatientSex(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const datos = sexoPacienteSchema.safeParse({
+    patientId: form.get("patientId"),
+    sex: form.get("sex"),
+  });
+  if (!datos.success) {
+    return {
+      error: datos.error.issues[0]?.message ?? "Elige Femenino o Masculino.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  // LA OWNERSHIP SE VERIFICA LEYENDO bajo RLS antes de escribir (mismo patron que el contacto): si el
+  // paciente no es suyo, el lector no lo alcanza y aqui es indistinguible de que no exista.
+  const paciente = await getPatientDetail(datos.data.patientId);
+  if (!paciente) return { error: "No se encontró ese paciente.", success: null, warning: null };
+
+  const ip = await getClientIp();
+  const escrito = await completarSexoDelPaciente(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!escrito) {
+    // NO ES UN FALLO: alguien lo completo mientras esta pantalla estaba abierta, o el dato ya estaba. Se
+    // dice lo que hay, sin afirmar que se guardo algo que no se guardo.
+    return {
+      error: null,
+      success: null,
+      warning: "Este paciente ya tenía el sexo registrado, así que no se cambió nada. Refresca la ficha para verlo.",
+    };
+  }
+
+  // No revalida: el refresco lo hace la pantalla tras el aviso (el candado del doble ciclo,
+  // `refresco-una-sola-vez`: nunca revalidatePath Y refresco de cliente).
+  return {
+    error: null,
+    success: "Sexo registrado. Ya se le puede generar el diagnóstico.",
     warning: null,
   };
 }

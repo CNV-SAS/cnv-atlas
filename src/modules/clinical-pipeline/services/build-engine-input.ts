@@ -148,6 +148,58 @@ export function normalizeSex(sex: string | null): Sex {
   throw new Error(`normalizeSex: sexo invalido, esperado "F" o "M", llego: ${JSON.stringify(sex)}`);
 }
 
+// ═══ QUE FALTE EL SEXO ES UNA PUERTA, NO UN 500 (Sentry, 2026-10-10) ═══
+//
+// ── EL CASO ──────────────────────────────────────────────────────────────────────────────────────
+//
+// Una integrante abrio la pestaña Diagnostico de una paciente sin sexo registrado y `normalizeSex`
+// lanzo. La excepcion salio de la accion, la peticion murio con un 500, el panel quedo en "Esta pestaña
+// no se pudo mostrar" y "Volver a intentarlo" llevaba a "This page couldn't load". Siete eventos en
+// Sentry: lo intento siete veces sin que nada le dijera que faltaba un dato ni como ponerlo.
+//
+// ── EL FRENO ES CORRECTO. LA FORMA DEL RECHAZO NO ──────────────────────────────────────────────────
+//
+// Es la MISMA leccion de la capacitancia de 16,22 nF: sin sexo no hay diagnostico posible, porque todos
+// los clasificadores del motor son sexo-especificos (FFMI, ASMI, umbrales), asi que `normalizeSex` tiene
+// que seguir siendo estricta y no se toca. Lo que estaba mal es que un dato que FALTA se tratara como un
+// fallo del sistema. Esta funcion es la traduccion: la misma regla, dicha como una frase con salida.
+//
+// ── Y POR QUE VIVE AQUI, AL LADO DEL QUE LANZA ────────────────────────────────────────────────────
+//
+// Porque una puerta y el freno que protege tienen que mirar lo MISMO. Separadas, el dia que una cambie
+// la otra queda admitiendo lo que la siguiente rechaza, y vuelve el 500. Las dos leen el mismo valor con
+// la misma normalizacion, y estan a la vista una de la otra.
+//
+// ── DOS RECHAZOS DISTINTOS, PORQUE EL REMEDIO ES DISTINTO ─────────────────────────────────────────
+//
+//   · VACIO: el profesional lo completa en la ficha del paciente, y ahi mismo se lo decimos.
+//   · PRESENTE PERO NO F/M (un "mujer" de los perfiles viejos de texto libre): eso NO lo arregla la
+//     ficha, que solo rellena huecos y nunca pisa un valor. Lo canoniza `normalize-patient-sex.mjs`.
+//     Mandar ese caso a la ficha seria mandarlo a una puerta cerrada, que es el defecto que acabamos de
+//     corregir en la prescripcion.
+export type PuertaDelSexo =
+  | { allowed: true }
+  | { allowed: false; message: string; /** Si lo arregla el profesional en la ficha. */ enLaFicha: boolean };
+
+export function sexoParaDiagnosticar(sex: string | null): PuertaDelSexo {
+  const v = (sex ?? "").trim().toUpperCase();
+  if (v === "F" || v === "M") return { allowed: true };
+  if (v === "") {
+    return {
+      allowed: false,
+      enLaFicha: true,
+      message:
+        "Falta registrar el sexo del paciente, y sin ese dato no se puede generar el diagnóstico: todas las clasificaciones del modelo son distintas para mujer y para hombre. Complétalo en la ficha del paciente y vuelve a intentarlo.",
+    };
+  }
+  return {
+    allowed: false,
+    enLaFicha: false,
+    message:
+      "El sexo registrado de este paciente no es válido, así que el modelo no puede clasificarlo. No se corrige desde la ficha: avísale a quien administra Atlas para que lo revise.",
+  };
+}
+
 // Reconstruye la fila cruda con headers EXACTOS del Biody desde los crudos normalizados
 // de B8, aplicando la misma normalizacion a cada header del contrato de columnas.
 export function buildBisRow(bisRaw: Record<string, number>): Record<string, unknown> {
