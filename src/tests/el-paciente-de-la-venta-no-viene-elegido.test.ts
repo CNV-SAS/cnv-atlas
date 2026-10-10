@@ -12,10 +12,16 @@ import { describe, expect, it } from "vitest";
 //    al paciente."* No es preferencia: un formulario de COBRO que llega con una persona ya puesta invita a
 //    registrarle la venta a quien encabeza la lista, y el que cobra no tiene por que notarlo.
 //
-//    Y ADEMAS ERA LA MITAD DEL BUG QUE EL REPORTO: con un paciente por defecto, los minibloques de "de que
-//    consulta sale esta compra" se montaban antes de que nadie eligiera a nadie, y el resultado era que *"solo
-//    le puedo registrar una venta al paciente que viene por default en el selector."* Sin paciente no se monta
-//    ningun bloque, asi que la acumulacion no tiene de donde salir.
+//    Y ERA LA MITAD DEL BUG QUE EL REPORTO: con un paciente por defecto, los minibloques de "de que consulta
+//    sale esta compra" se montaban antes de que nadie eligiera a nadie. Sin paciente no se monta ninguno.
+//
+//    LA OTRA MITAD SE CERRO EL MISMO DIA, Y CAMBIO DONDE VIVE ESTE CANDADO: el apilado seguia pasando porque
+//    /pagos tenia DOS tarjetas visibles a la vez, cada una con SU buscador y SU bloque. Ahora hay UNA tarjeta
+//    (`tarjeta-de-cobro.tsx`) que elige el paciente una sola vez y se lo pasa como prop al formulario del medio
+//    que corresponda, asi que mas de un bloque no puede existir. Por eso lo que antes se verificaba DENTRO de
+//    cada formulario (el estado vacio, el selector) se verifica ahora en la tarjeta: el hecho se mudo, no se
+//    relajo. Lo que sigue verificandose en los dos formularios es lo que sigue siendo suyo: que no dejen
+//    enviar sin paciente y que no monten los bloques sin el.
 //
 // 2. EL DESPLEGABLE SOLO MOSTRABA EL DOCUMENTO. Una lista de numeros sin nombres: *"hay una integrante con
 //    +200 pacientes y es muy dificil para ella buscar pacientes."* La causa no era la cantidad, era que el dato
@@ -33,26 +39,45 @@ const EFECTIVO = "src/modules/payments/components/register-cash-sale-form.tsx";
 const CHECKOUT = "src/modules/payments/components/create-checkout-form.tsx";
 const SELECTOR = "src/modules/payments/components/selector-de-paciente.tsx";
 const LECTOR = "src/modules/payments/data/payments-repository.ts";
+const TARJETA = "src/modules/payments/components/tarjeta-de-cobro.tsx";
 
-describe("los dos formularios de cobro arrancan sin paciente", () => {
-  it.each([
-    [EFECTIVO, "la venta en efectivo"],
-    [CHECKOUT, "el link de pago"],
-  ])("%s (%s) nace con el selector vacio", (ruta) => {
-    const src = leer(ruta);
+describe("el cobro de /pagos arranca sin paciente, y el paciente se elige UNA vez", () => {
+  it("la tarjeta nace con el selector vacio", () => {
+    const src = leer(TARJETA);
     expect(src).toMatch(/const \[patientId, setPatientId\] = useState\(""\)/);
     // NADIE vuelve a sembrar el primero de la lista, ni por `patients[0]` ni por `?.id` sobre el arreglo.
     expect(src).not.toMatch(/useState\(\s*patients\[0\]/);
     expect(src).not.toMatch(/setPatientId\(\s*patients\[0\]/);
   });
 
+  it("y usa el selector comun, no un <select> propio", () => {
+    const src = leer(TARJETA);
+    expect(src).toContain("<SelectorDePaciente");
+    expect(src).toContain('from "./selector-de-paciente"');
+  });
+
   it.each([
     [EFECTIVO, "la venta en efectivo"],
     [CHECKOUT, "el link de pago"],
-  ])("%s (%s) usa el selector comun, no un <select> propio", (ruta) => {
+  ])("%s (%s) ya NO elige paciente: lo recibe", (ruta) => {
     const src = leer(ruta);
-    expect(src).toContain("<SelectorDePaciente");
-    expect(src).toContain('from "./selector-de-paciente"');
+    // ESTO ES EL CANDADO DEL APILADO. Un segundo sitio con su propio estado de paciente devuelve el
+    // segundo bloque de "de que consulta sale esta compra", que es exactamente lo que Santiago vio.
+    expect(
+      src,
+      ruta + " volvio a tener su propio buscador: con dos, se ven dos bloques de consulta a la vez",
+    ).not.toContain("<SelectorDePaciente");
+    expect(src).not.toMatch(/const \[patientId, setPatientId\] = useState/);
+    // Lo recibe como prop, declarada en su firma.
+    expect(src).toMatch(/patientId: string;/);
+  });
+
+  it("y la pagina monta UNA sola tarjeta de cobro", () => {
+    const pagina = leer("src/app/(app)/pagos/page.tsx");
+    expect(pagina).toContain("<TarjetaDeCobro");
+    // Las dos tarjetas de antes ya no se montan desde la pagina: si volvieran, volveria el apilado.
+    expect(pagina).not.toContain("<CreateCheckoutForm");
+    expect(pagina).not.toContain("<RegisterCashSaleForm");
   });
 
   it.each([
@@ -99,6 +124,8 @@ describe("se puede buscar al paciente por su nombre", () => {
     // que viaja es el id, y va en el campo oculto de cada formulario.
     const campo = src.slice(src.indexOf("<Input"), src.indexOf("placeholder="));
     expect(campo).not.toMatch(/\bname=/);
+    // EL CAMPO OCULTO SIGUE SIENDO DE CADA FORMULARIO aunque el buscador viva arriba: es el envio de ESE
+    // formulario el que tiene que llevar el id, y un campo fuera de el no viajaria.
     expect(leer(EFECTIVO)).toMatch(/<input type="hidden" name="patientId" value=\{patientId\} \/>/);
     expect(leer(CHECKOUT)).toMatch(/<input type="hidden" name="patientId" value=\{patientId\} \/>/);
   });

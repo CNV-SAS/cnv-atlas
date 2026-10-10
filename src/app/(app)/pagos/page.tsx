@@ -12,7 +12,7 @@ import { listarReversas } from "@/modules/payments/data/reversas-writer";
 import { ultimaCorrida } from "@/modules/payments/data/conciliacion-repository";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 
 import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
@@ -26,12 +26,11 @@ import { formatDateTime } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
 import { AccionDeVentaButton } from "@/modules/payments/components/accion-de-venta-button";
 import { CheckoutLink } from "@/modules/payments/components/checkout-link";
-import {
-  CreateCheckoutForm,
-  type CheckoutNutraceutical,
-  type CheckoutPatient,
+import type {
+  CheckoutNutraceutical,
+  CheckoutPatient,
 } from "@/modules/payments/components/create-checkout-form";
-import { RegisterCashSaleForm } from "@/modules/payments/components/register-cash-sale-form";
+import { TarjetaDeCobro } from "@/modules/payments/components/tarjeta-de-cobro";
 import {
   consultasDeLasVentas,
   getProfessionalProfileIdByUser,
@@ -461,77 +460,32 @@ export default async function PagosPage({
           PERO NO SE BORRA SIN DECIR NADA: una tarjeta que desaparece se lee como algo que se rompió, y el
           integrante que sabe que el link existe se queda buscándolo. Así que en su lugar queda una línea que
           dice por qué no está y qué usar, que es el bloque de abajo. */}
+      {/* ═══ UNA SOLA TARJETA PARA COBRAR (Santiago, 2026-10-10) ═══
+
+          AQUI HABIA DOS: "Cobrar con un link de pago" y "Registrar una venta ya cobrada", visibles a la vez,
+          cada una con SU buscador de paciente y SU bloque de "de que consulta sale esta compra". De ahi salia
+          el apilado que reporto: *"apenas le doy cambiar para escribir el nombre de otro paciente, el
+          minibloque donde uno selecciona la consulta del paciente sigue ahi."*
+
+          Y SU PROPUESTA ES LA QUE SE APLICA, porque no arregla el sintoma sino que le quita el sitio: *"que
+          siempre este activo ese minibloque, sea solo 1, y solo aplique para el paciente que este buscado en
+          /pagos."* Con una tarjeta y un buscador, mas de uno no puede existir.
+
+          LO CLINICO Y LO CONTABLE NO CAMBIAN: son los mismos dos formularios y las mismas dos acciones por
+          dentro. Lo que se unifico es lo que se pregunta ANTES: el paciente y el medio de pago. Ver
+          `tarjeta-de-cobro.tsx`, que explica tambien por que esto es el primer paso de la unificacion con el
+          cobro en consulta y no la unificacion entera.
+
+          LA MODALIDAD SIGUE DECIDIENDO QUE SE OFRECE: bajo Distribucion no hay link de pago (el paciente le
+          paga al integrante y CNV no le cobra nada), asi que no hay medio que preguntar. Eso vive dentro de
+          la tarjeta, que es donde se puede decir sin dejar una tarjeta vacia explicando su propia ausencia. */}
       {canCreate ? (
-        miModalidadEsDistribucion ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Aquí no va un link de pago</CardTitle>
-              <CardDescription>
-                Estás en modalidad Distribución: el paciente te paga a ti y tú le facturas, así que CNV no le
-                cobra nada y no hay link que generar. Registra la venta en el bloque de abajo: Atlas descuenta
-                el producto de tu vitrina y lo suma a tu cuenta quincenal.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              {/* ── "CHECKOUT" NO ES UNA PALABRA QUE SE ENTIENDA AQUI (Santiago, 2026-10-10) ──
-
-                  Textual suyo: *"en vez de checkout poner pasarela de pago (Wompi) o pago en linea (Wompi),
-                  porque la palabra checkout para los colombianos es dificil."* Tiene razon, y el costo de
-                  dejarla es concreto: quien no sabe que significa no sabe cual de los dos bloques le sirve, y
-                  el que esta al lado tampoco se llama por su medio de pago.
-
-                  SE QUEDA "LINK DE PAGO" y no "pasarela": pasarela nombra la TUBERIA (Wompi), que es asunto
-                  nuestro; lo que el profesional hace es generar un link y mandarlo. Wompi se nombra aparte,
-                  porque es lo que el paciente va a ver en su telefono. */}
-              <CardTitle className="text-lg">Cobrar con un link de pago</CardTitle>
-              <CardDescription>
-                Genera un link (vale 24 horas) para que el paciente pague en línea con Wompi, desde su
-                teléfono: tarjeta, PSE o Nequi. La venta queda pendiente hasta que él pague.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CreateCheckoutForm
-                patients={patients}
-                nutraceuticals={nutraceuticals}
-                tratamientosPorPaciente={tratamientosPorPaciente}
-              />
-            </CardContent>
-          </Card>
-        )
-      ) : null}
-
-      {canCreate ? (
-        <Card>
-          <CardHeader>
-            {/* EL ROTULO DECIA SOLO "EFECTIVO" y el bloque ya ofrece TRANSFERENCIA (smoke del 2026-09-29).
-                Un titulo que nombra un medio y ofrece dos hace dudar de si la transferencia se registra bien. */}
-            {/* ── Y EL ROTULO CAMBIA CON LA MODALIDAD, porque decía algo FALSO (2026-10-07) ──
-
-                "Ese dinero es de CNV y lo custodias hasta consignar" es exactamente lo contrario de lo que pasa
-                bajo Distribución, donde el dinero es del integrante. Y lo decía JUSTO ENCIMA del aviso del
-                formulario que dice "el paciente te paga a ti": dos partes de la misma pantalla afirmando cosas
-                opuestas sobre la misma venta, que es el defecto que más nos ha costado este mes. */}
-            <CardTitle className="text-lg">
-              {miModalidadEsDistribucion ? "Registrar una venta de Distribución" : "Registrar una venta ya cobrada"}
-            </CardTitle>
-            <CardDescription>
-              {miModalidadEsDistribucion
-                ? "El paciente ya te pagó a ti. Esto no cobra nada: descuenta el producto de tu vitrina y lo suma a la cuenta quincenal que CNV te factura."
-                : "En efectivo o por transferencia, ya pagada. El precio y el producto son de CNV; si la cobraste en efectivo, ese dinero es de CNV y lo custodias hasta consignar."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RegisterCashSaleForm
-              patients={patients}
-              nutraceuticals={nutraceuticals}
-              tratamientosPorPaciente={tratamientosPorPaciente}
-              esDeDistribucion={miModalidadEsDistribucion}
-            />
-          </CardContent>
-        </Card>
+        <TarjetaDeCobro
+          patients={patients}
+          nutraceuticals={nutraceuticals}
+          tratamientosPorPaciente={tratamientosPorPaciente}
+          esDeDistribucion={miModalidadEsDistribucion}
+        />
       ) : null}
 
       {/* VA ANTES DE LA LISTA DE TRANSACCIONES a proposito: es lo que hay que mirar y resolver, y al

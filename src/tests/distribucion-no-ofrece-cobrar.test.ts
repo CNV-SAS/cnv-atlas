@@ -33,17 +33,36 @@ const leer = (rel: string) => readFileSync(join(raiz, rel), "utf8");
 
 const PAGOS = "src/app/(app)/pagos/page.tsx";
 const SECCION = "src/modules/treatment/components/venta-en-consulta-section.tsx";
+// LA TARJETA DE COBRO DE /pagos (Santiago, 2026-10-10). La pagina ya solo le PASA la modalidad; quien
+// decide que no haya link es la tarjeta. Sin este archivo en el barrido, el candado quedaria mirando una
+// bandera que llega y nadie usa, que es justo el defecto que el caso del QR nos enseno.
+const TARJETA = "src/modules/payments/components/tarjeta-de-cobro.tsx";
 const FORMULARIO = "src/modules/treatment/components/venta-en-consulta-form.tsx";
 
 describe("las DOS superficies de cobro conocen la modalidad", () => {
   it.each([
-    [PAGOS, "el checkout de /pagos"],
+    [PAGOS, "la pagina de /pagos"],
+    [TARJETA, "la tarjeta de cobro de /pagos"],
     [SECCION, "la venta en consulta"],
   ])("%s pregunta por la modalidad antes de ofrecer un cobro de CNV", (ruta) => {
     const src = leer(ruta);
     expect(src, `${ruta} no pregunta por la modalidad: va a ofrecer un cobro que el servidor rechaza`).toContain(
       "esDeDistribucion",
     );
+  });
+
+  it("y el link de pago de /pagos NO se ofrece bajo Distribución", () => {
+    const src = leer(TARJETA);
+    // DOS COSAS, Y LAS DOS IMPORTAN: que el medio no se ofrezca (ofrecerlo seria un formulario que el
+    // servidor siempre va a rechazar, que es lo que Santiago pidió esconder) y que el formulario del link
+    // no se monte ni por accidente si el estado llegara en 'link'.
+    expect(src, "el selector de medio dejo de colgar de la modalidad").toContain(
+      "esDeDistribucion ? null : (",
+    );
+    expect(
+      src,
+      "el formulario del link se monta sin mirar la modalidad: el servidor lo rechazaria",
+    ).toContain('medio === "link" && !esDeDistribucion');
   });
 
   it("y el QR de la consulta NO se rinde bajo Distribución", () => {
