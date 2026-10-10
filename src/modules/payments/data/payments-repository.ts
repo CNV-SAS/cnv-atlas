@@ -172,7 +172,27 @@ export async function getProfessionalIdForPatient(patientId: string): Promise<st
   return data?.[0]?.professional_id ?? null;
 }
 
-export type SelectablePatient = { id: string; label: string; tieneCelular: boolean };
+/**
+ * Un paciente para el selector de venta.
+ *
+ * ── EL NOMBRE VIAJA DESDE EL 2026-10-10, Y NO ES COSMETICO ────────────────────────────────────────
+ *
+ * El `label` era SOLO el documento ("CC 312312312312"), asi que el desplegable era una lista de numeros. Con
+ * 200 pacientes (una integrante ya los tiene) **no se podia encontrar a nadie**: para buscar por nombre hay
+ * que tener el nombre. Santiago lo reporto como "es muy dificil para ella buscar pacientes", y la causa era
+ * esa, no el tamaño de la lista.
+ *
+ * SE PARTE EN DOS CAMPOS y no en una cadena: el buscador tiene que poder mirar el nombre Y el documento por
+ * separado, y la pantalla decide como los muestra.
+ */
+export type SelectablePatient = {
+  id: string;
+  /** El documento, con su tipo: "CC 1234567". Es la llave con la que el profesional identifica sin ambiguedad. */
+  label: string;
+  /** El nombre, para poder buscar por el. Vacio si el perfil no lo tiene. */
+  nombre: string;
+  tieneCelular: boolean;
+};
 
 // Pacientes seleccionables para el form de checkout. RLS patients_select filtra
 // (el profesional ve los suyos, admin/soporte todos). Lectura minima y temporal
@@ -197,7 +217,9 @@ export async function listSelectablePatients(): Promise<SelectablePatient[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, document_type, document_number, patient_contacts(phone)")
+    // EL NOMBRE ENTRA EN LA MISMA CONSULTA (2026-10-10). El embed es inequivoco: `patient_profiles` tiene UN
+    // solo FK a `patients`, igual que `patient_contacts`.
+    .select("id, document_type, document_number, patient_contacts(phone), patient_profiles(first_name, last_name)")
     .order("document_number", { ascending: true });
   if (error) fail("listSelectablePatients", error.message);
   return (data ?? []).map((p) => {
@@ -206,6 +228,10 @@ export async function listSelectablePatients(): Promise<SelectablePatient[]> {
     return {
       id: p.id,
       label: `${p.document_type} ${p.document_number}`,
+      nombre: (() => {
+        const perfil = Array.isArray(p.patient_profiles) ? p.patient_profiles[0] : p.patient_profiles;
+        return `${perfil?.first_name ?? ""} ${perfil?.last_name ?? ""}`.trim();
+      })(),
       tieneCelular: (contacto?.phone ?? "").trim() !== "",
     };
   });

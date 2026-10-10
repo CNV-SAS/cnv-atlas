@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { createCheckoutFormAction } from "../actions";
 import { BloqueDomicilio } from "./bloque-domicilio";
 import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
+import { SelectorDePaciente } from "./selector-de-paciente";
+import type { SelectablePatient } from "../data/payments-repository";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import type { PaymentFormState } from "../validations";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
@@ -28,7 +30,9 @@ const selectClass =
 
 // VIAJA SI TIENE CELULAR, NO CUAL (2026-10-05): el bloque de domicilio lo necesita para pedirlo solo cuando
 // falta, y el numero no tiene por que estar en el HTML de la pantalla (ver `listSelectablePatients`).
-export type CheckoutPatient = { id: string; label: string; tieneCelular: boolean };
+// ES EL MISMO TIPO QUE EL LECTOR, no una copia: duplicarlo es como se llega a que el selector pida un campo
+// que la consulta no trae. El nombre entro el 2026-10-10 para poder buscar por el.
+export type CheckoutPatient = SelectablePatient;
 export type CheckoutNutraceutical = { id: string; name: string; unitPrice: number };
 
 // Crea un checkout de una linea (paciente + nutraceutico + cantidad). Al exito
@@ -47,7 +51,9 @@ export function CreateCheckoutForm({
   // Inputs CONTROLADOS a proposito: React 19 resetea el form tras cada submit (lo del prop `action`), y
   // el flujo de confirmacion del duplicado es de dos pasos (avisar -> "Generar de todos modos"). Sin
   // control, el segundo submit mandaria los valores por defecto, no los que el profesional eligio.
-  const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
+  // VACIO A PROPOSITO (Santiago, 2026-10-10): un formulario de COBRO que llega con una persona ya elegida
+  // invita a registrarle una venta a quien encabeza la lista. Ver `SelectorDePaciente`.
+  const [patientId, setPatientId] = useState("");
   // El celular del paciente ELEGIDO, para el bloque de domicilio. Sale de la lista que ya viajo y no de una
   // consulta aparte: cambiar de paciente no deberia ir al servidor por un dato que ya esta aqui.
   const tieneCelular = patients.find((p) => p.id === patientId)?.tieneCelular === true;
@@ -102,24 +108,16 @@ export function CreateCheckoutForm({
   return (
     <div className="flex flex-col gap-4">
       <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="patientId" className="text-xs">
-            Paciente
-          </Label>
-          <select
-            id="patientId"
-            name="patientId"
-            required
-            value={patientId}
-            onChange={(e) => setPatientId(e.target.value)}
-            className={selectClass}
-          >
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+        {/* EL MISMO SELECTOR QUE LA VENTA EN EFECTIVO, y por eso es un componente: dos buscadores distintos en
+            la misma pantalla se separan al primer cambio, y aqui los dos resuelven la misma pregunta. */}
+        <input type="hidden" name="patientId" value={patientId} />
+        <div className="w-full">
+          <SelectorDePaciente
+            id="checkout-paciente"
+            pacientes={patients}
+            valor={patientId}
+            onElegir={setPatientId}
+          />
         </div>
 
         <div className="flex w-full flex-col gap-2">
@@ -179,19 +177,22 @@ export function CreateCheckoutForm({
         {/* LA `key` POR PACIENTE re-monta el bloque al cambiar de paciente: sin ella, la consulta elegida
             para uno se quedaría seleccionada para el siguiente, que es como se le cuelga una compra a la
             consulta de otra persona. */}
-        <BloqueTratamiento
-          key={patientId}
-          patientId={patientId}
-          tratamientos={tratamientosPorPaciente[patientId] ?? []}
-        />
+        {/* SIN PACIENTE NO HAY BLOQUES, igual que en la venta en efectivo y por lo mismo. */}
+        {patientId ? (
+          <BloqueTratamiento
+            key={patientId}
+            patientId={patientId}
+            tratamientos={tratamientosPorPaciente[patientId] ?? []}
+          />
+        ) : null}
 
         {/* LA MISMA `key` POR PACIENTE que el bloque de arriba, y por el mismo motivo: el campo del celular
             se precarga con el del paciente elegido. Sin re-montar, el numero del anterior se quedaría en el
             campo y se despacharía un envío al teléfono de otra persona. */}
-        <BloqueDomicilio key={patientId} tieneCelularRegistrado={tieneCelular} />
+        {patientId ? <BloqueDomicilio key={patientId} tieneCelularRegistrado={tieneCelular} /> : null}
 
-        <Button type="submit" disabled={pending || (total > 0 && total < WOMPI_MONTO_MINIMO)}>
-          {pending ? "Creando..." : "Crear checkout"}
+        <Button type="submit" disabled={pending || !patientId || (total > 0 && total < WOMPI_MONTO_MINIMO)}>
+          {pending ? "Creando..." : patientId ? "Crear el link de pago" : "Elige un paciente"}
         </Button>
         {total > 0 && total < WOMPI_MONTO_MINIMO ? (
           <p className="w-full text-sm text-attention">{MENSAJE_MINIMO_WOMPI}</p>

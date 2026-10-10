@@ -86,6 +86,23 @@ describe.skipIf(!HAS_DB)("el historial puede decir de quién es la venta (BD rea
     ).toContain("profiles!profile_id(full_name)");
   });
 
+  // ── Y EL NOMBRE DEL PACIENTE EN EL SELECTOR DE COBRO (Santiago, 2026-10-10) ──────────────────────
+  //
+  // El selector de /pagos mostraba solo el documento, y buscar a alguien entre 200 numeros es imposible porque
+  // el dato por el que uno busca a una persona no estaba. Traer el nombre obliga a embeber
+  // `patients -> patient_profiles` en `listSelectablePatients`, asi que su precondicion se vigila igual que
+  // las de arriba: hoy hay UNA sola relacion y por eso el embed va sin hint.
+  it("patient_profiles tiene UNA sola relacion a patients, que deja el embed del nombre sin hint", async () => {
+    const cols = await relaciones("patient_profiles", "patients");
+    expect(
+      cols,
+      `patient_profiles -> patients tiene ${cols.length} relaciones (${cols.join(", ")}). Con mas de una, el ` +
+        "embed `patient_profiles(first_name, last_name)` de listSelectablePatients se vuelve AMBIGUO y /pagos " +
+        "revienta en runtime sin que tsc diga nada. Desambigualo con el hint en TODOS los embeds de esa tabla.",
+    ).toHaveLength(1);
+    expect(cols[0]).toBe("patient_id");
+  });
+
   it("y el camino a la consulta sigue siendo de dos saltos, que es por lo que NO se embebe", async () => {
     // Si algun dia `transactions` gana un `evaluation_id` propio, este test truena y el mensaje dice que ya se
     // puede leer directo: `consultasDeLasVentas` existe SOLO porque hoy hay que pasar por treatments ->
