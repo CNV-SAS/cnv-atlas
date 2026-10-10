@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { registerCashSaleFormAction } from "../actions";
 import { BloqueDomicilio } from "./bloque-domicilio";
 import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
-import { SelectorDePaciente } from "./selector-de-paciente";
 import type { CashSaleFormState } from "../validations";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 
@@ -32,6 +31,8 @@ export function RegisterCashSaleForm({
   nutraceuticals,
   tratamientosPorPaciente = {},
   esDeDistribucion = false,
+  patientId,
+  canal,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
@@ -42,11 +43,20 @@ export function RegisterCashSaleForm({
    * decision real la toma el servidor derivandola de la modalidad guardada.
    */
   esDeDistribucion?: boolean;
+  /**
+   * EL PACIENTE YA NO SE ELIGE AQUI (Santiago, 2026-10-10): lo elige la tarjeta, con UN solo buscador
+   * compartido con el link de pago. Ver tarjeta-de-cobro.tsx.
+   */
+  patientId: string;
+  /**
+   * COMO LLEGO LA PLATA, decidido ARRIBA junto al link de pago. Era un desplegable propio de este
+   * formulario, y mientras el link de pago vivia en otra tarjeta eso partia una sola pregunta (con que
+   * medio se cobra) en dos sitios que no se miraban. Bajo Distribucion no se usa: el servidor deriva el
+   * canal de la modalidad.
+   */
+  canal: "efectivo" | "transferencia";
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
-  // VACIO A PROPOSITO (Santiago, 2026-10-10): un formulario de COBRO que llega con una persona ya elegida
-  // invita a registrarle una venta a quien encabeza la lista. Ver `SelectorDePaciente`.
-  const [patientId, setPatientId] = useState("");
   // El celular del paciente ELEGIDO, para el bloque de domicilio. Sale de la lista que ya viajo y no de una
   // consulta aparte: cambiar de paciente no deberia ir al servidor por un dato que ya esta aqui.
   const tieneCelular = patients.find((p) => p.id === patientId)?.tieneCelular === true;
@@ -205,14 +215,6 @@ export function RegisterCashSaleForm({
         {/* EL ID VIAJA EN UN CAMPO OCULTO y no en el buscador: el texto tecleado no es un paciente, y un campo
             con `name` lo mandaria en el envio (hazard 4 y 5 de CLAUDE.md, la familia del FormData). */}
         <input type="hidden" name="patientId" value={patientId} />
-        <div className="w-full">
-          <SelectorDePaciente
-            id="cash-paciente"
-            pacientes={patients}
-            valor={patientId}
-            onElegir={setPatientId}
-          />
-        </div>
 
         <div className="flex w-full flex-col gap-2">
           <Label className="text-xs">Productos</Label>
@@ -274,16 +276,14 @@ export function RegisterCashSaleForm({
             </p>
           </div>
         ) : (
-          /* COMO LLEGO LA PLATA (2026-09-25). Antes solo habia efectivo, y una transferencia se anotaba como
-             efectivo: eso pone en la factura un medio que la DIAN distingue y apunta el dinero a la cuenta
-             "Efectivo en poder de Integrantes", que dice que sigue por recoger cuando ya esta en un banco. */
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="canal-del-pago">Cómo pagó</Label>
-            <select id="canal-del-pago" name="canal" defaultValue="efectivo" className={selectClass} disabled={pending}>
-              <option value="efectivo">Efectivo</option>
-              <option value="transferencia">Transferencia</option>
-            </select>
-          </div>
+          /* COMO LLEGO LA PLATA (2026-09-25). Importa porque el medio viaja a la factura electronica (la
+             DIAN los distingue) y decide la cuenta contra la que se registra el pago: efectivo entra en
+             "Efectivo en poder de Integrantes" (sigue por recoger) y la transferencia en el banco.
+
+             EL DESPLEGABLE SUBIO A LA TARJETA (Santiago, 2026-10-10) y aqui queda el campo oculto por el
+             que viaja. Era la misma pregunta partida en dos sitios: este desplegable ofrecia dos medios, y
+             el link de pago, que es el tercero, vivia en otra tarjeta. */
+          <input type="hidden" name="canal" value={canal} />
         )}
 
         {/* LA `key` POR PACIENTE re-monta el bloque al cambiar de paciente: sin ella, la consulta elegida
@@ -295,10 +295,13 @@ export function RegisterCashSaleForm({
             render. Ahora empieza vacío, y montarlos sin paciente no tendría nada que decir: un "de qué consulta
             sale esta compra" sin paciente no tiene consultas que ofrecer.
 
-            Y ES LO QUE SOSPECHO QUE CIERRA EL BLOQUE DUPLICADO que reportó (cuatro "de qué consulta sale esta
-            compra" apilados): con un paciente por defecto, el primer bloque se montaba antes de que nadie
-            eligiera. No lo afirmo, porque no reproduje el apilado leyendo el código; lo que sí es seguro es que
-            ahora no puede existir más de uno, porque solo hay un `patientId` y sin él no se monta ninguno. */}
+            Y ESTO SOLO ERA LA MITAD DEL BLOQUE DUPLICADO que reportó: lo escribí como sospecha y la sospecha
+            era corta. El apilado siguió pasando, porque /pagos tenía DOS tarjetas visibles a la vez y cada una
+            con su propio paciente y su propio bloque.
+
+            LA OTRA MITAD SE CERRÓ DONDE ESTABA LA CAUSA: hoy el paciente se elige UNA vez, arriba, y se monta
+            un solo formulario a la vez (ver `tarjeta-de-cobro.tsx`). Así que la gestión de aquí es la correcta
+            pero no era suficiente, y queda escrito para que no se lea como el arreglo completo. */}
         {patientId ? (
           <BloqueTratamiento
             key={patientId}

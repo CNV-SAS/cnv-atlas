@@ -63,12 +63,31 @@ describe("el medio de pago de una transferencia", () => {
 describe("las dos pantallas que cobran ofrecen transferencia", () => {
   const leer = (rel: string) => readFileSync(join(process.cwd(), rel), "utf8");
   const PAGOS = "src/modules/payments/components/register-cash-sale-form.tsx";
+  // LA PREGUNTA SUBIO A LA TARJETA (Santiago, 2026-10-10). Era un desplegable dentro del formulario de la
+  // venta ya cobrada, con dos opciones, mientras el link de pago (el TERCER medio) vivia en otra tarjeta:
+  // una sola pregunta partida en dos sitios que no se miraban. Hoy los tres medios son un solo selector y
+  // el formulario recibe el canal como prop. El hecho se mudo, no se relajo: se verifica que la tarjeta
+  // ofrezca la transferencia Y que el formulario la MANDE.
+  const TARJETA = "src/modules/payments/components/tarjeta-de-cobro.tsx";
   const CONSULTA = "src/modules/treatment/components/venta-en-consulta-form.tsx";
 
-  it("/pagos la pregunta en el campo del medio", () => {
+  it("/pagos la ofrece como uno de los tres medios", () => {
+    const src = leer(TARJETA);
+    expect(src).toMatch(/id: "transferencia"/);
+    expect(src).toMatch(/id: "efectivo"/);
+    expect(src).toMatch(/id: "link"/);
+    // Y SE DICE QUE PASA CON EL DINERO Y CON LA FACTURA en el propio boton: el medio decide la cuenta
+    // contable y el estado de la factura, y hasta hoy eso no estaba escrito en ninguna parte de /pagos.
+    expect(src).toMatch(/sin cobrar/i);
+  });
+
+  it("y el formulario de /pagos MANDA el canal que la tarjeta eligio", () => {
     const src = leer(PAGOS);
     expect(src).toContain('name="canal"');
-    expect(src).toContain('<option value="transferencia">Transferencia</option>');
+    // Sin el `value={canal}` el campo viajaria vacio y el servidor caeria en efectivo: una transferencia
+    // registrada como efectivo apunta el dinero a "Efectivo en poder de Integrantes", que dice que sigue
+    // por recoger cuando ya esta en un banco.
+    expect(src).toContain('<input type="hidden" name="canal" value={canal} />');
   });
 
   it("la venta en consulta la ofrece y MANDA el canal", () => {

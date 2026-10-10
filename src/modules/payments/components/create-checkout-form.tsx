@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { createCheckoutFormAction } from "../actions";
 import { BloqueDomicilio } from "./bloque-domicilio";
 import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
-import { SelectorDePaciente } from "./selector-de-paciente";
 import type { SelectablePatient } from "../data/payments-repository";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import type { PaymentFormState } from "../validations";
@@ -41,19 +40,22 @@ export function CreateCheckoutForm({
   patients,
   nutraceuticals,
   tratamientosPorPaciente = {},
+  patientId,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
   /** Las consultas de cada paciente, para poder atar la compra a la suya sin ir al servidor. */
   tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
+  /**
+   * EL PACIENTE YA NO SE ELIGE AQUI (Santiago, 2026-10-10). Lo elige la tarjeta que contiene a este
+   * formulario y al de la venta ya cobrada, con UN solo buscador. Ver tarjeta-de-cobro.tsx.
+   */
+  patientId: string;
 }) {
   const [state, action, pending] = useActionState(createCheckoutFormAction, initial);
   // Inputs CONTROLADOS a proposito: React 19 resetea el form tras cada submit (lo del prop `action`), y
   // el flujo de confirmacion del duplicado es de dos pasos (avisar -> "Generar de todos modos"). Sin
   // control, el segundo submit mandaria los valores por defecto, no los que el profesional eligio.
-  // VACIO A PROPOSITO (Santiago, 2026-10-10): un formulario de COBRO que llega con una persona ya elegida
-  // invita a registrarle una venta a quien encabeza la lista. Ver `SelectorDePaciente`.
-  const [patientId, setPatientId] = useState("");
   // El celular del paciente ELEGIDO, para el bloque de domicilio. Sale de la lista que ya viajo y no de una
   // consulta aparte: cambiar de paciente no deberia ir al servidor por un dato que ya esta aqui.
   const tieneCelular = patients.find((p) => p.id === patientId)?.tieneCelular === true;
@@ -108,17 +110,11 @@ export function CreateCheckoutForm({
   return (
     <div className="flex flex-col gap-4">
       <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3">
-        {/* EL MISMO SELECTOR QUE LA VENTA EN EFECTIVO, y por eso es un componente: dos buscadores distintos en
-            la misma pantalla se separan al primer cambio, y aqui los dos resuelven la misma pregunta. */}
+        {/* EL BUSCADOR DE PACIENTE SUBIO A LA TARJETA (Santiago, 2026-10-10): era el mismo componente en
+            los dos formularios de /pagos, cada uno con SU estado, y por eso se podian ver DOS bloques de
+            de-que-consulta-sale-esta-compra a la vez. Lo que queda aqui es el campo oculto por el que
+            viaja el id, que es lo unico que el servidor necesita. */}
         <input type="hidden" name="patientId" value={patientId} />
-        <div className="w-full">
-          <SelectorDePaciente
-            id="checkout-paciente"
-            pacientes={patients}
-            valor={patientId}
-            onElegir={setPatientId}
-          />
-        </div>
 
         <div className="flex w-full flex-col gap-2">
           <Label className="text-xs">Productos</Label>
