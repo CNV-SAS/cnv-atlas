@@ -1,11 +1,10 @@
 import "server-only";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
   diagnoses,
-  patientContraindications,
   treatmentNotes,
   treatmentNutraceuticals,
   treatments,
@@ -149,69 +148,18 @@ export class StaleTiemposActivosError extends Error {
   }
 }
 
-export type SaveNutraDecisionWrite = {
-  treatmentId: string;
-  patientId: string;
-  decision: "si" | "no" | "pendiente";
-  reason: string | null;
-  note: string | null;
-  // Cuando la razon es clinica, el motivo se guarda ADEMAS como contraindicacion del paciente.
-  contraindicationFor: string | null; // nutraceuticalId, si el descarte fue de un producto concreto
-  actorId: string;
-  actorEmail: string;
-  ip: string | null;
-};
-
-// Guarda la decision sobre los nutraceuticos (CP-N1) y, si la razon es CLINICA, la contraindicacion del
-// PACIENTE, en la MISMA transaccion. Las dos juntas a proposito: si se guardara la decision comercial y
-// fallara la contraindicacion, quedaria registrado que se descarto por alergia sin que la alergia exista
-// en ninguna parte, que es el peor de los dos estados posibles.
+// ═══ AQUI VIVIA EL ESCRITOR DE LA DECISION VIEJA, Y SE RETIRO (Santiago, 2026-10-10) ═══
 //
-// Sin candado de firma: no es un set que se reemplace en bloque como el resto de las secciones, es UNA
-// decision con su fecha. Si dos profesionales la responden a la vez, la ultima gana y las dos quedan en el
-// audit log; no hay trabajo que se pueda perder.
-export async function saveNutraDecision(input: SaveNutraDecisionWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    await assertDiagnosisExists(tx, input.treatmentId);
-    await tx
-      .update(treatments)
-      .set({
-        nutraceuticalDecision: input.decision,
-        nutraceuticalDecisionReason: input.reason as never,
-        nutraceuticalDecisionNote: input.note,
-        nutraceuticalDecisionAt: sql`now()`,
-        nutraceuticalDecisionBy: input.actorId,
-      })
-      .where(eq(treatments.id, input.treatmentId));
-
-    if (input.reason === "profesional_clinica" && input.note) {
-      await tx.insert(patientContraindications).values({
-        patientId: input.patientId,
-        nutraceuticalId: input.contraindicationFor,
-        source: "descarte_nutraceutico",
-        reason: input.note,
-        recordedBy: input.actorId,
-      });
-    }
-
-    await recordAudit(tx, {
-      event: "treatment.nutraceutical_decision",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      // Se audita la decision y su razon (dato comercial). El MOTIVO en texto libre NO va al log: cuando es
-      // clinico es dato del paciente y ya queda en su contraindicacion, con su propio control de acceso.
-      payload: {
-        decision: input.decision,
-        reason: input.reason,
-        contraindicacion_registrada: input.reason === "profesional_clinica" && Boolean(input.note),
-      },
-      ip: input.ip,
-    });
-  });
-}
-
+// `saveNutraDecision` escribia `nutraceutical_decision*` (congelado por la 0214) y era el UNICO sitio que
+// insertaba en `patient_contraindications`, por su rama `reason = 'profesional_clinica'`. Esa rama ya estaba
+// sin pantalla desde el 2026-09-28.
+//
+// DECISION DE SANTIAGO: se retira. La tabla lleva VACIA desde siempre y su sitio propio esta previsto como
+// otro origen (`observacion_clinica`, una contraindicacion del paciente independiente de prescribir), que es
+// lo que hay que construir cuando se retome, no volver a colgarla de la prescripcion.
+//
+// LA TABLA Y SU AVISO NO SE TOCAN: el dia que exista el registro no hay que rehacer la pantalla, y una
+// contraindicacion de origen antiguo se seguiria viendo.
 export type RegistrarSinPrescripcionWrite = {
   treatmentId: string;
   motivo: string;
@@ -238,8 +186,21 @@ export async function registrarSinPrescripcion(input: RegistrarSinPrescripcionWr
       .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId))
       .limit(1);
     if (prescritos.length > 0) {
+      // ═══ EL MENSAJE MANDABA A HACER ALGO IMPOSIBLE (Santiago, 2026-10-10) ═══
+      //
+      // Decía *"quítalos de la prescripción antes de registrar"*, y él los quitó de la grilla y volvió a
+      // pulsar: mismo rechazo. Textual suyo: *"esto es falso, no se pueden quitar de la prescripción."*
+      //
+      // Y TENÍA RAZÓN POR DOS MOTIVOS. Quitar una línea de la grilla es estado del NAVEGADOR: hasta que se
+      // guarda, el registro sigue teniendo lo de antes, así que el rechazo era correcto y el mensaje
+      // describía mal por qué. Pero además la salida que proponía NO EXISTE: guardar una prescripción vacía
+      // lo frena el aviso de "no hay nada que guardar todavía", que está ahí para que la consulta no quede
+      // sin ninguno de los dos hechos. O sea que mandaba a una puerta cerrada.
+      //
+      // ASÍ QUE AHORA DICE LO QUE ES: con una prescripción guardada, esta opción no aplica. Y la pantalla ya
+      // no ofrece el botón en ese caso, así que esto es el cinturón, no el camino.
       throw new TreatmentStateError(
-        "Esta consulta ya tiene nutracéuticos prescritos. Quítalos de la prescripción antes de registrar que no prescribes ninguno.",
+        "Esta consulta ya tiene una prescripción guardada, así que registrar que no prescribes nutracéuticos no aplica. Si la prescripción es la correcta, no hay nada que registrar.",
       );
     }
     // LOS TRES CAMPOS JUNTOS, que es lo que el CHECK de la 0214 exige: un motivo sin autor no dice quien
@@ -395,6 +356,38 @@ export async function saveNutraceuticals(input: SaveNutraceuticalsWrite): Promis
       payload: { nutraceuticals_count: input.nutraceuticals.length },
       ip: input.ip,
     });
+
+    // ═══ PRESCRIBIR LEVANTA EL "NO PRESCRIBO" (Santiago, 2026-10-10) ═══
+    //
+    // SU REGLA: *"puede pasar que primero el profesional no quiera prescribir, pero luego sí lo haga.
+    // Entonces en ese caso NO debería bloquear poder cambiar de decisión."* Lo único que no puede pasar es
+    // tener las dos cosas a la vez sobre la misma consulta.
+    //
+    // SE LEVANTA AQUÍ Y NO EN LA PANTALLA porque es la misma transacción que escribe la prescripción: si
+    // fueran dos pasos, un fallo entre ellos dejaría la consulta afirmando las dos cosas, que es justo lo
+    // que hay que impedir.
+    //
+    // Y NO SE PIERDE EL HECHO DE QUE EXISTIÓ: queda en `clinical_audit_log` con quién y cuándo. Ahí es donde
+    // vive el historial de una decisión corregida; la columna guarda el estado, no la bitácora.
+    if (input.nutraceuticals.length > 0) {
+      const [levantado] = await tx
+        .update(treatments)
+        .set({ sinPrescripcionMotivo: null, sinPrescripcionAt: null, sinPrescripcionBy: null })
+        .where(and(eq(treatments.id, input.treatmentId), isNotNull(treatments.sinPrescripcionMotivo)))
+        .returning({ id: treatments.id });
+      if (levantado) {
+        await recordAudit(tx, {
+          event: "treatment.sin_prescripcion_levantada",
+          actorId: input.actorId,
+          actorEmail: input.actorEmail,
+          entityType: "treatment",
+          entityId: input.treatmentId,
+          // El motivo no va al log (texto libre de una consulta); que se levantó, y al prescribir, sí.
+          payload: { al_prescribir: true, nutraceuticals_count: input.nutraceuticals.length },
+          ip: input.ip,
+        });
+      }
+    }
   });
 }
 

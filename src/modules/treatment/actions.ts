@@ -18,7 +18,6 @@ import {
   emitirPrescripcion,
   guardarProtocolo,
   saveNutraceuticals,
-  saveNutraDecision,
   registrarSinPrescripcion,
 } from "./services/treatment-service";
 import {
@@ -29,7 +28,6 @@ import {
   emitirPrescripcionSchema,
   guardarProtocoloSchema,
   saveNutraceuticalsSchema,
-  saveNutraDecisionSchema,
   registrarSinPrescripcionSchema,
 } from "./validations";
 
@@ -97,39 +95,19 @@ export async function registrarSinPrescripcionAction(
   };
 }
 
-// CP-N1: la decision sobre los nutraceuticos, su propia accion.
-export async function saveNutraDecisionAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  const parsed = saveNutraDecisionSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    decision: (form.get("decision") as string | null) ?? "",
-    reason: (form.get("reason") as string | null) || null,
-    note: (form.get("note") as string | null) || null,
-    contraindicationFor: (form.get("contraindicationFor") as string | null) || null,
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Decisión inválida.");
-  }
-
-  const result = await saveNutraDecision(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) return fail(result.error.message);
-  // NO se revalida: el componente ya refresca con useFormToastRefreshOnSuccess, asi que este
-  // revalidatePath era REDUNDANTE, y ademas es el que arrastraba la pagina al inicio al pulsar
-  // "Registrar decisión" (revalidar una ruta la trata como navegacion; router.refresh preserva el
-  // scroll). El sintoma "la primera vez salta y la segunda no" es que salta SIEMPRE: la segunda vez ya
-  // se esta arriba. Verificado sobre esta accion, que es una de las cuatro que hacian las dos cosas.
-  return { error: null, success: "Decisión registrada.", warning: null };
-}
-
+// ═══ LA DECISION VIEJA SOBRE LOS NUTRACEUTICOS SE RETIRO ENTERA (Santiago, 2026-10-10) ═══
+//
+// AQUI VIVIA `saveNutraDecisionAction`. Su pantalla ("el paciente no los adquiere por ahora") se retiro con
+// la migracion 0214, y la accion se quedo un dia declarada sin pantalla, porque su writer era el UNICO que
+// insertaba en `patient_contraindications` y borrarla dejaba esa tabla sin escritor.
+//
+// SE RETIRA IGUAL, y la razon es de Santiago: esa tabla lleva VACIA desde siempre, su sitio propio ya esta
+// previsto como un origen distinto (`observacion_clinica`, una contraindicacion del paciente independiente
+// de prescribir), y mejor sin escritor que con uno que nadie puede alcanzar. Una accion viva sin pantalla es
+// una puerta que sigue abriendo: podia reescribir el motivo de una consulta cerrada.
+//
+// LO QUE NO SE TOCO: la COLUMNA (congelada, con su COMMENT), su lectura, y la tabla de contraindicaciones con
+// su aviso. Lo que se fue es la capacidad de escribir.
 // Aplica UN cambio propuesto por la IA a la grilla. Cambio por cambio; el global es aparte.
 //
 // DEVUELVE ESTADO, Y ESO ES UN ARREGLO, no una preferencia de forma. Hasta el 2026-08-31 esta accion era

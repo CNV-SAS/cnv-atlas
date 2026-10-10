@@ -493,10 +493,22 @@ export function NutraceuticalsSection({
 
                 NO COMPITE CON GUARDAR (va `outline`): pulsarla registra una decisión clínica, no es una
                 forma de salir del paso. */}
+            {/* LO GUARDADO Y LO DE LA GRILLA, LAS DOS COSAS (Santiago, 2026-10-10) ═══
+
+                MIRABA SOLO LA GRILLA (`nutras`), que es estado del NAVEGADOR. Él quitó los nutracéuticos ya
+                prescritos, el botón apareció, y al pulsarlo el servidor lo rechazó con razón: el REGISTRO
+                seguía teniéndolos. Textual suyo: *"esto es falso, no se pueden quitar de la prescripción."*
+
+                La fuente de verdad de si esta consulta tiene prescripción es `protocol.nutraceuticals`, lo
+                GUARDADO. Y se suma la grilla porque ofrecerlo con líneas sin guardar invita a registrar una
+                decisión que contradice lo que está a punto de guardarse.
+
+                Y ES EL DEFECTO DE SIEMPRE AQUÍ: dos partes de la pantalla leyendo fuentes distintas del mismo
+                hecho. El arreglo no es cambiar el mensaje, es unir las fuentes. */}
             <SinPrescripcionForm
               evaluationId={evaluationId}
               yaRegistrado={protocol.sinPrescripcion}
-              hayPrescripcion={nutras.length > 0}
+              hayPrescripcion={protocol.nutraceuticals.length > 0 || nutras.length > 0}
             />
             {/* El aviso va JUNTO AL BOTON, que es donde se resuelve. Puesto al final de la sección o
                 arriba, el profesional lo lee cuando ya bajó a la entrega y no sabe qué hacer con él. */}

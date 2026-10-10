@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
-import { saveNutraDecisionSchema } from "@/modules/treatment/validations";
 
 // ═══ LA PREGUNTA DE TRES OPCIONES SE RETIRO, Y LO CLINICO NO SE FUE CON ELLA (2026-09-26) ═══
 //
@@ -88,18 +87,18 @@ describe("el 'no' del paciente, retirado el 2026-10-10", () => {
     expect(seccion).toContain('protocol.nutraceuticalDecision?.decision === "no"');
   });
 
-  it("y el schema viejo sigue siendo coherente, porque su accion no se ha borrado", () => {
-    // LA ACCION SIGUE VIVA SIN PANTALLA, declarada en `scripts/check-cables.mjs` con su razon: su writer es
-    // el UNICO que inserta en `patient_contraindications`, y borrarlo es alcance clinico (decision de
-    // Santiago). Mientras exista, su schema tiene que seguir aceptando lo que aceptaba.
-    const r = saveNutraDecisionSchema.safeParse({
-      evaluationId: "11111111-1111-1111-1111-111111111111",
-      decision: "no",
-      reason: "otra",
-      note: "Lo va a pensar hasta el mes entrante",
-      contraindicationFor: null,
-    });
-    expect(r.success).toBe(true);
+  it("y la vertical entera de escritura se fue con el: accion, servicio, writer y schema", () => {
+    // SE RETIRO ENTERA el mismo dia (decision de Santiago): su writer era el UNICO que insertaba en
+    // `patient_contraindications`, esa tabla lleva vacia desde siempre, y mejor sin escritor que con uno que
+    // nadie puede alcanzar. El barrido del arbol lo vigila en `nutra-decision.test.ts`; aqui se mira el par
+    // que importa en esta pantalla: ni la accion ni su schema existen, y la LECTURA sigue.
+    // SIN COMENTARIOS: los dos archivos NOMBRAN la pieza retirada para explicar por que se fue, y buscarla
+    // sobre el texto crudo acusaria a la propia explicacion.
+    const acciones = sinComentarios(leer("src/modules/treatment/actions.ts"));
+    const validaciones = sinComentarios(leer("src/modules/treatment/validations.ts"));
+    expect(acciones).not.toContain("saveNutraDecisionAction");
+    expect(validaciones).not.toContain("saveNutraDecisionSchema");
+    expect(seccion, "se perdio la lectura del historico").toContain("<NoLosAdquiereForm");
   });
 });
 

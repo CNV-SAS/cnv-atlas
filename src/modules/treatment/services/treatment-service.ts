@@ -25,7 +25,6 @@ import {
   addTreatmentNote,
   saveNutraceuticals as writeNutraceuticals,
   saveMenuSemanal as writeMenuSemanal,
-  saveNutraDecision as writeNutraDecision,
   registrarSinPrescripcion as writeSinPrescripcion,
   StaleNutraceuticalsError,
   StaleMenuSemanalError,
@@ -38,7 +37,6 @@ import type {
   GuardarProtocoloInput,
   SaveNutraceuticalsInput,
   SaveMenuSemanalInput,
-  SaveNutraDecisionInput,
   RegistrarSinPrescripcionInput,
 } from "../validations";
 
@@ -89,33 +87,6 @@ type Actor = { actorId: string; actorEmail: string; ip: string | null };
 // fuerte, no mas debil: el congelado protegia solo mientras nadie reabriera.
 
 // CP-N1: la decision sobre los nutraceuticos. Se pregunta SIEMPRE, y "pendiente" es respuesta valida.
-export async function saveNutraDecision(input: SaveNutraDecisionInput, actor: Actor): Promise<Result<void>> {
-  const protocol = await getTreatmentProtocol(input.evaluationId);
-  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  // NO se bloquea tras aprobar: la decision del paciente puede llegar despues de aprobar el protocolo (de
-  // hecho es lo normal), y es justo el caso que el "pendiente" contempla.
-  if (!protocol.patientId) {
-    return err(appError("internal", "No se pudo resolver el paciente de este tratamiento."));
-  }
-  try {
-    await writeNutraDecision({
-      treatmentId: protocol.treatmentId,
-      patientId: protocol.patientId,
-      decision: input.decision,
-      reason: input.reason,
-      note: input.note,
-      contraindicationFor: input.contraindicationFor,
-      ...actor,
-    });
-  } catch (e) {
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
-
 // ═══ EL PROFESIONAL DECIDE NO PRESCRIBIR NUTRACEUTICOS (0214) ═══
 //
 // MISMOS GATES QUE LA PRESCRIPCION, y por lo mismo: es una escritura clinica sobre el tratamiento, asi que
