@@ -257,8 +257,12 @@ describe("la prescripcion no se puede cerrar en blanco sin decirlo", () => {
     // cierra, y ahora esta literalmente al lado del boton de guardar.
     const seccion = leer("src/modules/treatment/components/nutraceuticals-section.tsx");
     const i = seccion.indexOf('{pending ? "Guardando..." : "Guardar prescripción"}');
+    const j = seccion.indexOf("{faltaCerrar ?", i);
     expect(i, "desaparecio el boton de guardar la prescripcion").toBeGreaterThan(0);
-    expect(seccion.slice(i, i + 1200)).toContain("<SinPrescripcionForm");
+    // HASTA UN LINDERO Y NO A N CARACTERES (ver `no-prescribo-nutraceuticos.test.ts`): una ventana fija la
+    // rompe el siguiente comentario que alguien escriba en medio.
+    expect(j, "desaparecio el aviso de falta cerrar, que es el lindero").toBeGreaterThan(i);
+    expect(seccion.slice(i, j)).toContain("<SinPrescripcionForm");
 
     const alt = leer("src/modules/treatment/components/sin-prescripcion-form.tsx");
     expect(alt).toContain("No prescribo nutracéuticos");

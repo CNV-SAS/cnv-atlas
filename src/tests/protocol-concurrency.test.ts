@@ -45,6 +45,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   let schema: any;
   let guardarProtocolo: any;
   let saveNutraceuticals: any;
+  let registrarSinPrescripcion: any;
+  let TreatmentStateError: any;
   let StaleNutraceuticalsError: any;
   let treatmentId: string;
   let diagnosisId: string;
@@ -63,6 +65,16 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     return nutraceuticalsSignature({ treatmentId, nutraceuticals: nutras });
   }
 
+  /** Lo registrado en "no prescribo nutraceuticos" (0214), o null. */
+  async function sinPrescripcion(): Promise<{ motivo: string | null; at: Date | null }> {
+    const [t] = await db
+      .select({ motivo: schema.treatments.sinPrescripcionMotivo, at: schema.treatments.sinPrescripcionAt })
+      .from(schema.treatments)
+      .where(eq(schema.treatments.id, treatmentId))
+      .limit(1);
+    return t;
+  }
+
   async function nutraCount(): Promise<number> {
     const rows = await db.select({ id: schema.treatmentNutraceuticals.id }).from(schema.treatmentNutraceuticals).where(eq(schema.treatmentNutraceuticals.treatmentId, treatmentId));
     return rows.length;
@@ -71,9 +83,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
-    ({ saveNutraceuticals, StaleNutraceuticalsError } = await import(
-      "@/modules/treatment/data/treatment-writer"
-    ));
+    ({ saveNutraceuticals, registrarSinPrescripcion, StaleNutraceuticalsError, TreatmentStateError } =
+      await import("@/modules/treatment/data/treatment-writer"));
     ({ guardarProtocolo } = await import("@/modules/treatment/data/protocolo-writer"));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
@@ -302,6 +313,64 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     ).rejects.toBeInstanceOf(StaleNutraceuticalsError);
     expect(await nutraCount()).toBe(antes); // no se borro la prescripcion
   });
+  // ═══ "NO PRESCRIBO" Y PRESCRIBIR NO PUEDEN CONVIVIR, PERO SE PUEDE CAMBIAR DE DECISION (2026-10-10) ═══
+  //
+  // LAS DOS REGLAS SON DE SANTIAGO, y la segunda es la que faltaba: *"puede pasar que primero el profesional
+  // no quiera prescribir, pero luego si lo haga. Entonces en ese caso NO deberia bloquear poder cambiar de
+  // decision."* Lo unico que no puede pasar es tener las dos cosas a la vez sobre la misma consulta.
+  //
+  // VA CONTRA BD REAL porque las dos reglas son propiedades de la TRANSACCION: el rechazo mira la tabla hija
+  // bajo el mismo lock, y el levantamiento ocurre dentro del guardado de la prescripcion. Un test de pantalla
+  // no prueba ninguna de las dos.
+  it("con prescripcion guardada, 'no prescribo' se rechaza (y el mensaje no manda a una puerta cerrada)", async () => {
+    expect(await nutraCount(), "el caso anterior dejo la prescripcion con dos lineas").toBeGreaterThan(0);
+    await expect(registrarSinPrescripcion({ treatmentId, motivo: "no aplica", ...actor })).rejects.toBeInstanceOf(
+      TreatmentStateError,
+    );
+    // EL MENSAJE IMPORTA Y ES PARTE DEL ARREGLO: el anterior decia "quitalos de la prescripcion", Santiago los
+    // quito de la grilla, volvio a pulsar y le salio lo mismo. Y la salida que proponia no existe: guardar una
+    // prescripcion vacia lo frena el aviso de "no hay nada que guardar todavia".
+    await expect(registrarSinPrescripcion({ treatmentId, motivo: "no aplica", ...actor })).rejects.toThrow(
+      /no aplica|prescripción guardada/i,
+    );
+    await expect(registrarSinPrescripcion({ treatmentId, motivo: "no aplica", ...actor })).rejects.not.toThrow(
+      /[Qq]uítalos/,
+    );
+    expect((await sinPrescripcion()).motivo, "el rechazo no debe dejar nada escrito").toBeNull();
+  });
+
+  it("sin prescripcion se registra, y PRESCRIBIR DESPUES lo levanta solo", async () => {
+    // Se vacia la prescripcion por el writer (el camino que el profesional no tiene, pero el test si) para
+    // llegar al estado donde la decision es valida.
+    await saveNutraceuticals({
+      treatmentId,
+      nutraceuticals: [],
+      baseSignature: await currentNutraSignature(),
+      ...actor,
+    });
+    await registrarSinPrescripcion({
+      treatmentId,
+      motivo: "prefiero ajustar primero la alimentacion",
+      ...actor,
+    });
+    const registrado = await sinPrescripcion();
+    expect(registrado.motivo).toBe("prefiero ajustar primero la alimentacion");
+    expect(registrado.at, "los tres campos van juntos: lo exige el CHECK de la 0214").not.toBeNull();
+
+    // Y AHORA CAMBIA DE DECISION: prescribe. El guardado levanta el "no prescribo" en la MISMA transaccion,
+    // asi que en ningun momento la consulta afirma las dos cosas.
+    await saveNutraceuticals({
+      treatmentId,
+      nutraceuticals: [{ nutraceuticalId: nutraA, dosage: "1/dia", durationDays: 30 }],
+      baseSignature: await currentNutraSignature(),
+      ...actor,
+    });
+    const despues = await sinPrescripcion();
+    expect(despues.motivo, "prescribir tiene que levantar el 'no prescribo'").toBeNull();
+    expect(despues.at).toBeNull();
+    expect(await nutraCount()).toBe(1);
+  });
+
   const INTER: IntercambioSaved = { objetivoBase: 2000, porciones: { Cereales: 3 } };
 
   // CAMINO REAL del 500 (2026-08-22): una fila guardada con la FORMA VIEJA (por-grupo, {grupos}) de las pruebas

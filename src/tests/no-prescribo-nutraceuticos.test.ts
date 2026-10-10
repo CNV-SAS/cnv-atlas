@@ -98,9 +98,15 @@ describe("la pantalla ofrece la vía nueva y solo LEE la vieja", () => {
   it("el botón va junto a Guardar prescripción", () => {
     const src = leer(SECCION);
     expect(src).toContain("<SinPrescripcionForm");
-    const fila = src.slice(src.indexOf('{pending ? "Guardando..." : "Guardar prescripción"}'));
+    // SE CORTA HASTA UN LINDERO, NO A N CARACTERES: con una ventana fija, el primer comentario que se
+    // escriba en medio empuja la asercion fuera y el candado truena contra codigo correcto. Ya paso dos
+    // veces en este proyecto.
+    const i = src.indexOf('{pending ? "Guardando..." : "Guardar prescripción"}');
+    const j = src.indexOf("{faltaCerrar ?", i);
+    expect(i, "desaparecio el boton de guardar").toBeGreaterThan(0);
+    expect(j, "desaparecio el aviso de falta cerrar, que es el lindero").toBeGreaterThan(i);
     expect(
-      fila.slice(0, 1200),
+      src.slice(i, j),
       "las dos salidas van juntas: es el momento en que el profesional cierra",
     ).toContain("<SinPrescripcionForm");
   });
@@ -133,5 +139,63 @@ describe("la pantalla ofrece la vía nueva y solo LEE la vieja", () => {
     const src = leer(SECCION);
     expect(src).toContain("<strong>No prescribo nutracéuticos</strong>");
     expect(src, "nombraba un botón retirado").not.toContain("<strong>el paciente no los adquiere por ahora</strong>");
+  });
+});
+
+// ═══ LAS DOS REGLAS QUE FALTABAN, Y QUE SALIERON DE PROBARLO (Santiago, 2026-10-10) ═══
+//
+// 1. EL GUARD LEIA LA FUENTE EQUIVOCADA. Él quitó de la grilla unos nutracéuticos ya prescritos, pulsó el
+//    botón nuevo, y le salió *"quítalos de la prescripción antes de registrar"*. Textual suyo: *"esto es falso,
+//    no se pueden quitar de la prescripción."*
+//
+//    Y tenía razón dos veces. Quitar una línea de la grilla es estado del NAVEGADOR: el registro seguía
+//    teniéndolos, así que el rechazo del servidor era correcto. Pero la salida que el mensaje proponía NO
+//    EXISTE, porque guardar una prescripción vacía lo frena el aviso de "no hay nada que guardar todavía". El
+//    mensaje mandaba a una puerta cerrada.
+//
+//    ES EL DEFECTO DE SIEMPRE AQUÍ: dos partes de la pantalla leyendo fuentes distintas del mismo hecho. El
+//    arreglo no es cambiar el mensaje, es unir las fuentes: el botón mira LO GUARDADO (y también la grilla, para
+//    no ofrecerlo con líneas a punto de guardarse).
+//
+// 2. Y SE PUEDE CAMBIAR DE DECISIÓN. Suyo: *"puede pasar que primero el profesional no quiera prescribir, pero
+//    luego sí lo haga. En ese caso NO debería bloquear."* Lo único que no puede pasar es tener las dos cosas a
+//    la vez, y por eso prescribir LEVANTA el "no prescribo", en la misma transacción.
+describe("el botón mira lo guardado, no lo que hay en la grilla", () => {
+  it("la pantalla pasa las DOS fuentes", () => {
+    const src = leer(SECCION);
+    expect(src).toContain("hayPrescripcion={protocol.nutraceuticals.length > 0 || nutras.length > 0}");
+  });
+
+  it("y el rechazo del servidor ya no manda a quitar lo que no se puede quitar", () => {
+    // SIN COMENTARIOS: el writer CITA el mensaje viejo para explicar por que se fue.
+    const src = soloCodigo(WRITER);
+    expect(src, "el mensaje volvió a mandar a una puerta cerrada").not.toMatch(/[Qq]uítalos de la prescripción/);
+    expect(src).toContain("ya tiene una prescripción guardada");
+  });
+});
+
+describe("se puede cambiar de decisión: prescribir levanta el 'no prescribo'", () => {
+  it("se levanta DENTRO del guardado de la prescripción, no en un segundo paso", () => {
+    // Si fueran dos pasos, un fallo entre ellos dejaría la consulta afirmando las dos cosas a la vez, que es
+    // justo lo que hay que impedir. El comportamiento contra BD real lo prueba `protocol-concurrency.test.ts`
+    // ("sin prescripcion se registra, y PRESCRIBIR DESPUES lo levanta solo"); aquí se vigila que siga estando
+    // en la misma transacción.
+    const src = leer(WRITER);
+    const guardado = src.slice(
+      src.indexOf("export async function saveNutraceuticals"),
+      src.indexOf("export type AddNoteWrite"),
+    );
+    expect(guardado).toContain("sinPrescripcionMotivo: null");
+    expect(guardado).toContain("isNotNull(treatments.sinPrescripcionMotivo)");
+    // Y NO SE PIERDE EL HECHO DE QUE EXISTIÓ: queda en el audit log, que es donde vive una decisión corregida.
+    expect(guardado).toContain('event: "treatment.sin_prescripcion_levantada"');
+  });
+
+  it("y el candado de BD que lo prueba sigue en la suite", () => {
+    // Un candado estático sobre una propiedad transaccional no basta; este caso evita que el de BD se borre y
+    // quede solo el de arriba, que pasaría con una implementación rota en dos pasos.
+    const db = leer("src/tests/protocol-concurrency.test.ts");
+    expect(db).toContain("PRESCRIBIR DESPUES lo levanta solo");
+    expect(leer("vitest.config.ts")).toContain("src/tests/protocol-concurrency.test.ts");
   });
 });

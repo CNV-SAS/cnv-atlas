@@ -105,7 +105,9 @@ export function SelectorDePaciente({
       />
       {busqueda.trim() === "" ? (
         <span className="text-xs text-muted-foreground">
-          Escribe el nombre o el documento del paciente. Ninguno viene elegido de antemano.
+          {/* SOBRABA "Ninguno viene elegido de antemano" (Santiago, 2026-10-10): el campo vacío ya lo dice.
+              Una frase que explica lo que la pantalla ya muestra se lee como disculpa. */}
+          Escribe el nombre o el documento del paciente.
         </span>
       ) : coincidencias.length === 0 ? (
         // SE DICE QUE NO HAY, y no se deja el hueco: un vacío silencioso se lee como que la pantalla se rompió.

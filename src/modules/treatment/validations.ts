@@ -283,48 +283,14 @@ export const registrarSinPrescripcionSchema = z.object({
 
 export type RegistrarSinPrescripcionInput = z.infer<typeof registrarSinPrescripcionSchema>;
 
-// DECISION SOBRE LOS NUTRACEUTICOS (CP-N1, 2026-08-24).
+// ═══ EL SCHEMA DE LA DECISION VIEJA SE RETIRO (Santiago, 2026-10-10) ═══
 //
-// Reglas que el schema impone, y por que cada una:
-//  - "no" EXIGE razon: un "no" sin razon no sirve para nada (ni a direccion ni al siguiente profesional).
-//  - "otra" y las DOS del profesional exigen TEXTO: en las del profesional porque el motivo es el dato
-//    (sobre todo el clinico, que se guarda como contraindicacion del paciente); en "otra" porque si no,
-//    "otra" se vuelve el cajon donde muere la informacion.
-//  - "si" y "pendiente" NO llevan razon: pedirla seria pedir explicacion por decidir bien o por no haber
-//    decidido todavia.
-export const NUTRA_DECISION_REASONS = [
-  "profesional_clinica",
-  "profesional_no_clinica",
-  "costo",
-  "lo_piensa",
-  "ya_toma_otros",
-  "otra",
-] as const;
-
-const REASONS_CON_TEXTO = new Set(["profesional_clinica", "profesional_no_clinica", "otra"]);
-
-export const saveNutraDecisionSchema = z
-  .object({
-    evaluationId: z.guid("Evaluación inválida."),
-    decision: z.enum(["si", "no", "pendiente"]),
-    reason: z.enum(NUTRA_DECISION_REASONS).nullish().transform((v) => v ?? null),
-    note: z.string().trim().max(1000).nullish().transform((v) => (v ? v : null)),
-    // Producto al que aplica el descarte clinico, si fue de uno concreto.
-    contraindicationFor: z.guid().nullish().transform((v) => v ?? null),
-  })
-  .superRefine((val, ctx) => {
-    if (val.decision === "no" && !val.reason) {
-      ctx.addIssue({ code: "custom", message: "Indica por qué no los adquiere." });
-    }
-    if (val.decision !== "no" && val.reason) {
-      ctx.addIssue({ code: "custom", message: "La razón solo aplica cuando la respuesta es no." });
-    }
-    if (val.reason && REASONS_CON_TEXTO.has(val.reason) && !val.note) {
-      ctx.addIssue({ code: "custom", message: "Esa razón necesita que escribas el motivo." });
-    }
-  });
-
-export type SaveNutraDecisionInput = z.infer<typeof saveNutraDecisionSchema>;
+// Validaba `saveNutraDecision`: la pregunta de "¿el paciente adquiere los nutraceuticos?" con sus seis
+// razones. La pregunta se retiro el 2026-09-26, su ultimo boton el 2026-10-10 (migracion 0214) y la accion
+// entera ese mismo dia. Un schema sin nada que validar es una pieza que invita a volver a cablearla.
+//
+// LO QUE LO REEMPLAZA es `registrarSinPrescripcionSchema`, que valida otro hecho: el criterio clinico de NO
+// prescribir. La COLUMNA vieja sigue leyendose; lo que ya no existe es la forma de escribirla.
 
 // Aplicar UN cambio propuesto por la IA a la grilla del menu semanal.
 //
