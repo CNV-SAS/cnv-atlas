@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
 import { NoLosAdquiereForm } from "./no-los-adquiere-form";
+import { SinPrescripcionForm } from "./sin-prescripcion-form";
 import { YuxtaposicionAlergenos } from "@/modules/nutraceuticals/components/yuxtaposicion-alergenos";
 
 import { saveNutraceuticalsAction, type TreatmentActionState } from "../actions";
@@ -179,11 +180,21 @@ export function NutraceuticalsSection({
           este: un botón apagado no dice por qué está apagado, y el profesional se queda buscando el motivo en la
           pantalla. Uno que se pulsa y responde sí lo dice.
 
-          CUÁNDO NO AVISA: si la decisión "no los adquiere" ya está registrada, una prescripción vacía es
-          coherente y guardarla es correcto. El aviso solo sale cuando faltan LAS DOS cosas. */}
+          CUÁNDO NO AVISA: si ya se registró que no se prescriben nutracéuticos, una prescripción vacía es
+          coherente y guardarla es correcto. El aviso solo sale cuando faltan LAS DOS cosas.
+
+          ── Y LA SEGUNDA SALIDA CAMBIÓ DE HECHO (Santiago, 2026-10-10. Migración 0214) ──
+
+          Era "el paciente no los adquiere por ahora". Ahora es "no prescribo nutracéuticos", que es el
+          criterio del PROFESIONAL. El viejo se sigue aceptando como cierre de las consultas que ya lo
+          tienen (nada de lo registrado se reinterpreta ni deja de valer), pero el que se ofrece es el
+          nuevo. */}
       <form
         onSubmit={(e) => {
-          const yaDecidido = protocol.nutraceuticalDecision?.decision === "no";
+          // LAS DOS FORMAS VÁLIDAS DE CERRAR SIN PRESCRIBIR: la nueva (el criterio clínico) y la vieja, que
+          // vale para las consultas que ya la tienen registrada.
+          const yaDecidido =
+            protocol.sinPrescripcion != null || protocol.nutraceuticalDecision?.decision === "no";
           if (nutras.length === 0 && !yaDecidido) {
             e.preventDefault();
             setFaltaCerrar(true);
@@ -202,19 +213,18 @@ export function NutraceuticalsSection({
         <fieldset className="flex flex-col gap-3">
           <RecommendedList recommended={recommended} isAdded={isAdded} onAdd={addProduct} dondeEsta={dondeEsta} />
 
-          {/* ═══ EL "NO" VA AQUI, SOBRE LOS RECOMENDADOS (Santiago, 2026-09-26) ═══
-              Un solo boton donde habia una pregunta de tres opciones. El "SI" no se pregunta: lo demuestra la
-              venta. Y va sobre los RECOMENDADOS POR EL MODELO y no sobre toda la prescripcion, porque son los
-              que importan para la investigacion: que el modelo recomiende algo y el paciente no lo tome es EL
-              dato. Solo aparece si el modelo recomendo algo; si no, no hay nada que no adquirir. */}
-          {recommended.length > 0 ? (
+          {/* ═══ LA NOTA VIEJA, SOLO SI ESTA CONSULTA LA TIENE (2026-10-10, migración 0214) ═══
+
+              Aquí había un BOTÓN para registrar "el paciente no los adquiere por ahora". Se retiró: medía si
+              el PACIENTE adquiere, y eso lo responden las ventas. Lo reemplaza "No prescribo nutracéuticos",
+              que registra el criterio del PROFESIONAL y va junto a Guardar (ver `SinPrescripcionForm`).
+
+              LO QUE QUEDA ES LA LECTURA, y queda a propósito: hay consultas cerradas con ese registro, es
+              parte de su historia clínica, y lo escrito antes NO se reinterpreta ni se esconde. Es el mismo
+              criterio que con los consentimientos del HTML. Solo aparece donde ese dato existe. */}
+          {protocol.nutraceuticalDecision?.decision === "no" ? (
             <NoLosAdquiereForm
-              evaluationId={evaluationId}
-              yaRegistrado={
-                protocol.nutraceuticalDecision?.decision === "no"
-                  ? (protocol.nutraceuticalDecision.note ?? "")
-                  : null
-              }
+              yaRegistrado={protocol.nutraceuticalDecision?.note ?? ""}
               registradoEn={protocol.nutraceuticalDecision?.at ?? null}
               ventaPosteriorEn={ventaPosteriorAlNo ?? null}
             />
@@ -477,6 +487,17 @@ export function NutraceuticalsSection({
             <Button type="submit" disabled={pending}>
               {pending ? "Guardando..." : "Guardar prescripción"}
             </Button>
+            {/* LAS DOS SALIDAS, UNA AL LADO DE LA OTRA: o se prescribe algo y se guarda, o se registra que
+                no se prescribe nada. Van juntas porque es el momento en que el profesional cierra, y porque
+                la segunda era invisible cuando vivía al final de la sección.
+
+                NO COMPITE CON GUARDAR (va `outline`): pulsarla registra una decisión clínica, no es una
+                forma de salir del paso. */}
+            <SinPrescripcionForm
+              evaluationId={evaluationId}
+              yaRegistrado={protocol.sinPrescripcion}
+              hayPrescripcion={nutras.length > 0}
+            />
             {/* El aviso va JUNTO AL BOTON, que es donde se resuelve. Puesto al final de la sección o
                 arriba, el profesional lo lee cuando ya bajó a la entrega y no sabe qué hacer con él. */}
             {haycambiosSinGuardar ? (
@@ -490,9 +511,9 @@ export function NutraceuticalsSection({
           {faltaCerrar ? (
             <p className="max-w-prose text-sm text-clinical-warning">
               No hay nada que guardar todavía. Esta consulta se cierra de una de dos formas:{" "}
-              <strong>agrega al menos un nutracéutico</strong> a la prescripción, o registra que{" "}
-              <strong>el paciente no los adquiere por ahora</strong> con el botón de abajo. Las dos quedan en su
-              historia clínica; dejarlo en blanco no registra ninguna.
+              <strong>agrega al menos un nutracéutico</strong> a la prescripción, o pulsa{" "}
+              <strong>No prescribo nutracéuticos</strong> y escribe tu criterio. Las dos quedan en la historia
+              clínica del paciente; dejarlo en blanco no registra ninguna.
             </p>
           ) : null}
         </fieldset>

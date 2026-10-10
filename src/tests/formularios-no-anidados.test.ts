@@ -98,22 +98,42 @@ describe("ningun formulario de accion se anida dentro de otro", () => {
   });
 });
 
-describe("el boton de 'no los adquiere', que fue el caso", () => {
-  const BLOQUE = sinComentarios(
-    readFileSync(join(RAIZ, "src/modules/treatment/components/no-los-adquiere-form.tsx"), "utf8"),
-  );
+// ═══ EL BLOQUE QUE FUE EL CASO, Y EL QUE OCUPO SU SITIO ═══
+//
+// EL CASO ORIGINAL fue "El paciente no los adquiere por ahora". Ese boton se retiro el 2026-10-10 (migracion
+// 0214) y lo reemplaza "No prescribo nutraceuticos", que vive EN EL MISMO SITIO: dentro del formulario de la
+// prescripcion. O sea que hereda el hazard entero.
+//
+// ES LA LECCION DEL SEGUNDO CONSTRUCTOR: cuando una pieza se reemplaza, la que llega empieza sin ninguno de
+// los defectos resueltos de la anterior. Por eso el candado apunta al NUEVO, que es el que hoy puede romper,
+// y de paso vigila que el viejo no vuelva a abrir un formulario mientras siga montado para leer el historico.
+describe("el bloque que vive dentro del formulario de la prescripcion", () => {
+  const leerSin = (rel: string) => sinComentarios(readFileSync(join(RAIZ, rel), "utf8"));
+  const NUEVO = leerSin("src/modules/treatment/components/sin-prescripcion-form.tsx");
+  const VIEJO = leerSin("src/modules/treatment/components/no-los-adquiere-form.tsx");
 
-  it("no abre un <form> propio, porque vive dentro del de la prescripcion", () => {
-    expect(BLOQUE, "volvio el <form> anidado").not.toMatch(/<form[\s>]/);
+  it("no abre un <form> propio, ni el nuevo ni el viejo", () => {
+    expect(NUEVO, "volvio el <form> anidado en el bloque nuevo").not.toMatch(/<form[\s>]/);
+    expect(VIEJO, "volvio el <form> anidado en la nota vieja").not.toMatch(/<form[\s>]/);
   });
 
   it("y sus campos no llevan `name`: con nombre viajarian en el envio de afuera", () => {
-    // La mitad del defecto que no se ve: aunque el boton ya no envie el formulario de afuera, un campo con
+    // La mitad del defecto que no se ve: aunque el boton no envie el formulario de afuera, un campo con
     // nombre seguiria colandose en ESE FormData y el servidor recibiria datos de un bloque que no pulso nadie.
-    expect(BLOQUE).not.toMatch(/name="(evaluationId|decision|reason|note)"/);
+    expect(NUEVO).not.toMatch(/name="(evaluationId|motivo)"/);
+    expect(VIEJO).not.toMatch(/name="(evaluationId|decision|reason|note)"/);
   });
 
-  it("invoca la accion por el camino de los botones sin formulario", () => {
-    expect(BLOQUE).toMatch(/ejecutarAccion\s*\(/);
+  it("el nuevo invoca la accion por el camino de los botones sin formulario", () => {
+    expect(NUEVO).toMatch(/ejecutarAccion\s*\(/);
+  });
+
+  it("y sus botones son type=button: un submit enviaria la prescripcion", () => {
+    // El otro sintoma del caso original: pulsar "Registrar" ejecutaba la accion de guardar la prescripcion.
+    const botones = NUEVO.match(/<Button[\s\S]*?>/g) ?? [];
+    expect(botones.length, "el bloque nuevo se quedo sin botones").toBeGreaterThan(0);
+    for (const b of botones) {
+      expect(b, `un <Button> del bloque nuevo no es type="button": ${b}`).toContain('type="button"');
+    }
   });
 });

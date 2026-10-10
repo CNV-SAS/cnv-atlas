@@ -212,6 +212,61 @@ export async function saveNutraDecision(input: SaveNutraDecisionWrite): Promise<
   });
 }
 
+export type RegistrarSinPrescripcionWrite = {
+  treatmentId: string;
+  motivo: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// ═══ "NO PRESCRIBO NUTRACEUTICOS" (0214) ═══
+//
+// Registra el CRITERIO CLINICO del profesional, que es un hecho distinto de si el paciente adquiere (eso lo
+// responden las ventas, ver el COMMENT que congela `nutraceutical_decision`).
+//
+// SE RECHAZA SI YA HAY PRESCRIPCION, y se comprueba DENTRO de la transaccion: la pantalla ya no ofrece el
+// boton cuando hay lineas, pero una guarda que solo vive en la pantalla se salta invocando la accion, y lo
+// que quedaria es una consulta que dice las dos cosas a la vez. Cual de las dos creeria quien la lea despues
+// no tiene respuesta, y es la historia clinica.
+export async function registrarSinPrescripcion(input: RegistrarSinPrescripcionWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertDiagnosisExists(tx, input.treatmentId);
+    const prescritos = await tx
+      .select({ id: treatmentNutraceuticals.id })
+      .from(treatmentNutraceuticals)
+      .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId))
+      .limit(1);
+    if (prescritos.length > 0) {
+      throw new TreatmentStateError(
+        "Esta consulta ya tiene nutracéuticos prescritos. Quítalos de la prescripción antes de registrar que no prescribes ninguno.",
+      );
+    }
+    // LOS TRES CAMPOS JUNTOS, que es lo que el CHECK de la 0214 exige: un motivo sin autor no dice quien
+    // decidio y una fecha sin motivo no dice nada.
+    await tx
+      .update(treatments)
+      .set({
+        sinPrescripcionMotivo: input.motivo,
+        sinPrescripcionAt: sql`now()`,
+        sinPrescripcionBy: input.actorId,
+      })
+      .where(eq(treatments.id, input.treatmentId));
+
+    await recordAudit(tx, {
+      event: "treatment.sin_prescripcion",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      // EL MOTIVO NO VA AL LOG, igual que en la decision de nutraceuticos: es texto libre de una consulta
+      // y puede nombrar al paciente. Que la decision se tomo, y quien, si queda.
+      payload: { motivo_registrado: true },
+      ip: input.ip,
+    });
+  });
+}
+
 export type SaveTiemposActivosWrite = {
   treatmentId: string;
   activos: Record<string, boolean>;

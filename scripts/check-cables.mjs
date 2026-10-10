@@ -49,6 +49,20 @@ const SIN_PANTALLA_A_PROPOSITO = new Map([
       "pantalla. A diferencia de la aprobacion del tratamiento, aqui SI hay un documento que dice que la " +
       "superficie no existe todavia, y esa es toda la diferencia entre un pendiente y un hueco.",
   ],
+  [
+    "saveNutraDecisionAction",
+    "SUPERADA, NO OLVIDADA (2026-10-10, migracion 0214). Su pantalla era \"El paciente no los adquiere por " +
+      "ahora\", y se retiro porque medía si el PACIENTE adquiere, que es un hecho que las VENTAS ya responden " +
+      "(Direccion cuenta 'comprado en N consultas' desde las transacciones). Lo reemplaza " +
+      "`registrarSinPrescripcionAction`, que registra otra cosa: el criterio clinico de NO prescribir. " +
+      "LA COLUMNA QUEDO CONGELADA, con su COMMENT en la base, y la LECTURA sigue viva porque hay consultas " +
+      "cerradas con ese registro.\n\n" +
+      "LA ACTION NO SE BORRO TODAVIA, y eso ES una decision pendiente de Santiago, no un descuido: su writer " +
+      "es el UNICO que inserta en `patient_contraindications` (rama `reason = profesional_clinica`), y esa " +
+      "rama ya estaba sin pantalla desde el 2026-09-26. Borrar el camino de escritura deja las " +
+      "contraindicaciones del paciente sin ningun escritor, y eso es alcance clinico: se pregunta, no se " +
+      "decide aqui. Mientras tanto la action no la invoca ninguna pantalla.",
+  ],
 ]);
 
 function listar(dir, out = []) {

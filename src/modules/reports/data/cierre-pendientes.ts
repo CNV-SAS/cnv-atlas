@@ -44,6 +44,12 @@ export type EstadoConsulta = {
    * pago y se los llevo) vale mas que una casilla marcada, y ademas no hay que acordarse de marcarla.
    */
   hayVentaDeNutraceuticos: boolean;
+  /**
+   * El profesional registró que NO prescribe nutracéuticos en esta consulta (0214). Es la tercera vía que
+   * resuelve este pendiente, y es la ÚNICA que se puede registrar hoy: `nutraceuticosDecision` quedó
+   * congelado el 2026-10-10.
+   */
+  sinPrescripcion: boolean;
   proximaCita: string | null;
   remisionesSinRetorno: number;
 };
@@ -118,8 +124,16 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
   // Asi que esto queda resuelto por CUALQUIERA de las dos vias, y sigue pendiente solo cuando no pasa ninguna:
   // ni se le vendieron ni se registro por que no. Un "pendiente" viejo (de antes del rediseño) se sigue
   // tratando como resuelto-con-nota, porque es una respuesta que alguien dio.
+  // ── Y LA TERCERA VIA, QUE ES LA UNICA QUE SE PUEDE REGISTRAR HOY (2026-10-10, migracion 0214) ──
+  //
+  // El boton "el paciente no los adquiere por ahora" se retiro: medía si el PACIENTE adquiere, que es un
+  // hecho que la VENTA ya responde. Lo reemplaza "No prescribo nutracéuticos", el criterio del PROFESIONAL.
+  //
+  // SI NO SE SUMARA AQUI, una consulta cerrada por la via nueva seguiria listando este pendiente, y su
+  // detalle mandaria a pulsar un boton que ya no existe. Es el defecto de la regla muerta en otra puerta,
+  // que en este archivo ya paso dos veces (el diagnostico confirmado y la entrega del plan).
   const resueltoPorLaVenta = e.hayVentaDeNutraceuticos;
-  const resueltoPorElNo = e.nutraceuticosDecision === "no";
+  const resueltoPorElNo = e.nutraceuticosDecision === "no" || e.sinPrescripcion;
   if (!resueltoPorLaVenta && !resueltoPorElNo) {
     out.push({
       id: "nutraceuticos",
@@ -130,7 +144,7 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
       detalle:
         e.nutraceuticosDecision === "pendiente"
           ? "Es una respuesta válida: se puede cerrar así y registrarla cuando el paciente decida."
-          : "Si se los llevó, queda registrado con la venta. Si no, usa el botón que hay debajo de los recomendados para decir por qué.",
+          : "Si se los llevó, queda registrado con la venta. Si no le prescribiste ninguno, usa el botón \"No prescribo nutracéuticos\", junto a Guardar prescripción.",
       etapa: "tratamiento",
       bloqueadoPor: null,
     });

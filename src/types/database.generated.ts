@@ -27,6 +27,7 @@ export type Database = {
                   Row: {
                     "active_model": string,"active_provider": string,"id": string,"updated_at": string,"updated_by": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "active_model": string,"active_provider": string,"id"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
@@ -46,6 +47,7 @@ isOneToOne: false
                   Row: {
                     "diagnosis_id": string,"generated_at": string,"generated_by": string,"generated_text": string | null,"id": string,"latency_ms": number | null,"model": string,"prompt_version": string,"provider": string,"raw_response": Json | null,"status": Database["public"]['Enums']["ai_suggestion_status"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "diagnosis_id": string,"generated_at"?: string,"generated_by": string,"generated_text"?: string | null,"id"?: string,"latency_ms"?: number | null,"model": string,"prompt_version": string,"provider": string,"raw_response"?: Json | null,"status": Database["public"]['Enums']["ai_suggestion_status"]
                   }
@@ -71,6 +73,7 @@ isOneToOne: false
                   Row: {
                     "generated_at": string,"generated_by": string,"generated_text": string | null,"id": string,"latency_ms": number | null,"menu_json": Json | null,"model": string,"prompt_version": string,"provider": string,"raw_response": Json | null,"status": Database["public"]['Enums']["ai_suggestion_status"],"treatment_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "generated_at"?: string,"generated_by": string,"generated_text"?: string | null,"id"?: string,"latency_ms"?: number | null,"menu_json"?: Json | null,"model": string,"prompt_version": string,"provider": string,"raw_response"?: Json | null,"status": Database["public"]['Enums']["ai_suggestion_status"],"treatment_id": string
                   }
@@ -96,6 +99,7 @@ isOneToOne: false
                   Row: {
                     "content": string,"created_at": string,"created_by": string | null,"id": string,"prompt_key": string,"status": string,"version": number
                   }
+                  ComputedFields: never
                   Insert: {
                     "content": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"prompt_key": string,"status"?: string,"version": number
                   }
@@ -115,6 +119,7 @@ isOneToOne: false
                   Row: {
                     "bank_account_efectivo_id": string,"bank_account_pasarela_id": string,"bank_account_transferencia_id": string | null,"cost_center_propio_id": string,"cost_center_tercero_id": string,"credit_note_template_id": string | null,"env": string,"id": string,"invoice_template_id": string,"iva_tax_id": string,"note": string | null,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "bank_account_efectivo_id": string,"bank_account_pasarela_id": string,"bank_account_transferencia_id"?: string | null,"cost_center_propio_id": string,"cost_center_tercero_id": string,"credit_note_template_id"?: string | null,"env": string,"id"?: string,"invoice_template_id": string,"iva_tax_id": string,"note"?: string | null,"updated_at"?: string
                   }
@@ -128,6 +133,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"env": string,"id": string,"item_id": string,"nutraceutical_id": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"env": string,"id"?: string,"item_id": string,"nutraceutical_id": string,"updated_at"?: string
                   }
@@ -147,6 +153,7 @@ isOneToOne: false
                   Row: {
                     "id": string,"item_keys": (string)[],"ran_at": string,"reason": string | null,"recipients": number,"run_date": string,"sent": boolean,"slot": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "id"?: string,"item_keys"?: (string)[],"ran_at"?: string,"reason"?: string | null,"recipients"?: number,"run_date": string,"sent": boolean,"slot": string
                   }
@@ -160,6 +167,7 @@ isOneToOne: false
                   Row: {
                     "code": string,"created_at": string,"id": string,"name": string,"notes": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "code": string,"created_at"?: string,"id"?: string,"name": string,"notes"?: string | null
                   }
@@ -173,6 +181,7 @@ isOneToOne: false
                   Row: {
                     "id": string,"notes": string | null,"published_at": string,"version_number": number
                   }
+                  ComputedFields: never
                   Insert: {
                     "id"?: string,"notes"?: string | null,"published_at"?: string,"version_number": number
                   }
@@ -186,6 +195,7 @@ isOneToOne: false
                   Row: {
                     "bis_condition_version_id": string,"compromises_validity": boolean,"detail_label": string | null,"detail_type": Database["public"]['Enums']["bis_condition_field_type"] | null,"id": string,"input_type": Database["public"]['Enums']["bis_condition_field_type"],"key": string,"kind": Database["public"]['Enums']["bis_condition_kind"],"label": string,"order_index": number,"requires_detail": boolean,"scope": Database["public"]['Enums']["bis_condition_scope"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "bis_condition_version_id": string,"compromises_validity"?: boolean,"detail_label"?: string | null,"detail_type"?: Database["public"]['Enums']["bis_condition_field_type"] | null,"id"?: string,"input_type"?: Database["public"]['Enums']["bis_condition_field_type"],"key": string,"kind": Database["public"]['Enums']["bis_condition_kind"],"label": string,"order_index": number,"requires_detail"?: boolean,"scope": Database["public"]['Enums']["bis_condition_scope"]
                   }
@@ -205,6 +215,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"error_detail": string | null,"evaluation_id": string | null,"id": string,"status": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"error_detail"?: string | null,"evaluation_id"?: string | null,"id"?: string,"status": string
                   }
@@ -224,6 +235,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"device_calibration_date": string | null,"device_id": string | null,"evaluation_id": string,"id": string,"import_batch_id": string | null,"measurement_date": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"device_calibration_date"?: string | null,"device_id"?: string | null,"evaluation_id": string,"id"?: string,"import_batch_id"?: string | null,"measurement_date": string
                   }
@@ -255,6 +267,7 @@ isOneToOne: false
                   Row: {
                     "derived_formula_version": string | null,"id": string,"measurement_id": string,"origin": Database["public"]['Enums']["bis_value_origin"],"value": number,"variable_name": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "derived_formula_version"?: string | null,"id"?: string,"measurement_id": string,"origin"?: Database["public"]['Enums']["bis_value_origin"],"value": number,"variable_name": string
                   }
@@ -274,6 +287,7 @@ isOneToOne: false
                   Row: {
                     "corrected_at": string,"corrected_by": string,"corrected_by_email": string,"measurement_id": string,"original_value": number,"variable_name": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "corrected_at"?: string,"corrected_by": string,"corrected_by_email": string,"measurement_id": string,"original_value": number,"variable_name": string
                   }
@@ -299,6 +313,7 @@ isOneToOne: false
                   Row: {
                     "description": string | null,"id": string,"name": string,"unit": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "description"?: string | null,"id"?: string,"name": string,"unit"?: string | null
                   }
@@ -312,6 +327,7 @@ isOneToOne: false
                   Row: {
                     "approver_id": string | null,"approver_role": Database["public"]['Enums']["app_role"],"created_at": string,"decided_at": string | null,"expires_at": string | null,"grant_type": Database["public"]['Enums']["access_grant_type"],"id": string,"reason": string,"reason_category": Database["public"]['Enums']["access_reason_category"],"requested_at": string,"requester_id": string,"resource_id": string | null,"status": Database["public"]['Enums']["access_grant_status"],"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "approver_id"?: string | null,"approver_role": Database["public"]['Enums']["app_role"],"created_at"?: string,"decided_at"?: string | null,"expires_at"?: string | null,"grant_type": Database["public"]['Enums']["access_grant_type"],"id"?: string,"reason": string,"reason_category": Database["public"]['Enums']["access_reason_category"],"requested_at"?: string,"requester_id": string,"resource_id"?: string | null,"status"?: Database["public"]['Enums']["access_grant_status"],"updated_at"?: string
                   }
@@ -343,6 +359,7 @@ isOneToOne: false
                   Row: {
                     "actor_email": string | null,"actor_id": string | null,"created_at": string,"entity_id": string | null,"entity_type": string | null,"event": string,"id": string,"ip_address": unknown,"model_version_id": string | null,"payload": Json | null,"user_agent": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "actor_email"?: string | null,"actor_id"?: string | null,"created_at"?: string,"entity_id"?: string | null,"entity_type"?: string | null,"event": string,"id"?: string,"ip_address"?: unknown,"model_version_id"?: string | null,"payload"?: Json | null,"user_agent"?: string | null
                   }
@@ -368,6 +385,7 @@ isOneToOne: false
                   Row: {
                     "corrected_by": string,"created_at": string,"id": string,"new_evaluation_id": string,"old_evaluation_id": string,"reason": string,"trigger_type": Database["public"]['Enums']["correction_trigger_type"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "corrected_by": string,"created_at"?: string,"id"?: string,"new_evaluation_id": string,"old_evaluation_id": string,"reason": string,"trigger_type": Database["public"]['Enums']["correction_trigger_type"]
                   }
@@ -399,6 +417,7 @@ isOneToOne: false
                   Row: {
                     "amount": number,"created_at": string,"id": string,"reversal_of": string | null,"sale_reversal_id": string | null,"transaction_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "amount": number,"created_at"?: string,"id"?: string,"reversal_of"?: string | null,"sale_reversal_id"?: string | null,"transaction_id": string
                   }
@@ -430,6 +449,7 @@ isOneToOne: false
                   Row: {
                     "conteo_dia_de_apertura": number,"conteo_dias_de_ventana": number,"dias_alerta_vencimiento": number,"fecha_de_arranque": string | null,"id": string,"margen_aviso_default": number,"updated_at": string,"updated_by": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "conteo_dia_de_apertura"?: number,"conteo_dias_de_ventana"?: number,"dias_alerta_vencimiento"?: number,"fecha_de_arranque"?: string | null,"id"?: string,"margen_aviso_default"?: number,"updated_at"?: string,"updated_by"?: string | null
                   }
@@ -449,6 +469,7 @@ isOneToOne: false
                   Row: {
                     "accumulated_year": number,"base_amount": number,"created_at": string,"created_by": string,"document_kind": string,"id": string,"net_amount": number,"notes": string | null,"paid_at": string | null,"payment_reference": string | null,"period_to": string,"professional_id": string,"tax_must_invoice": boolean | null,"tax_person_type": string | null,"tax_vat_responsible": boolean | null,"vat_amount": number,"withholding_amount": number,"withholding_rate": number
                   }
+                  ComputedFields: never
                   Insert: {
                     "accumulated_year": number,"base_amount": number,"created_at"?: string,"created_by": string,"document_kind": string,"id"?: string,"net_amount": number,"notes"?: string | null,"paid_at"?: string | null,"payment_reference"?: string | null,"period_to": string,"professional_id": string,"tax_must_invoice"?: boolean | null,"tax_person_type"?: string | null,"tax_vat_responsible"?: boolean | null,"vat_amount": number,"withholding_amount": number,"withholding_rate": number
                   }
@@ -474,6 +495,7 @@ isOneToOne: false
                   Row: {
                     "city": string,"created_at": string,"dane_code": string | null,"department": string,"id": string,"is_active": boolean
                   }
+                  ComputedFields: never
                   Insert: {
                     "city": string,"created_at"?: string,"dane_code"?: string | null,"department": string,"id"?: string,"is_active"?: boolean
                   }
@@ -487,6 +509,7 @@ isOneToOne: false
                   Row: {
                     "actual_return_date": string | null,"created_at": string,"device_id": string,"expected_end_date": string,"id": string,"legal_document_url": string | null,"professional_id": string,"start_date": string,"status": Database["public"]['Enums']["assignment_status"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "actual_return_date"?: string | null,"created_at"?: string,"device_id": string,"expected_end_date": string,"id"?: string,"legal_document_url"?: string | null,"professional_id": string,"start_date": string,"status"?: Database["public"]['Enums']["assignment_status"]
                   }
@@ -512,6 +535,7 @@ isOneToOne: false
                   Row: {
                     "asset_code": string,"brand": string | null,"created_at": string,"id": string,"last_calibration_date": string | null,"manufacturer_serial": string,"model": string,"organization_id": string,"purchase_date": string | null,"status": Database["public"]['Enums']["device_status"],"supplier": string | null,"system_email": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "asset_code": string,"brand"?: string | null,"created_at"?: string,"id"?: string,"last_calibration_date"?: string | null,"manufacturer_serial": string,"model": string,"organization_id": string,"purchase_date"?: string | null,"status"?: Database["public"]['Enums']["device_status"],"supplier"?: string | null,"system_email": string,"updated_at"?: string
                   }
@@ -531,6 +555,7 @@ isOneToOne: false
                   Row: {
                     "ai_summary": string | null,"confirmed_at": string | null,"confirmed_by": string | null,"confirmed_profession": Database["public"]['Enums']["professional_profession"] | null,"created_at": string,"diagnosis_name": string,"efr_state_number": number,"emission_versions": Json | null,"engine_version": string,"evaluation_id": string,"fr_sector_id": string | null,"id": string,"model_version_id": string,"phenotype_id": string | null,"rules_version": string,"survey_version_id": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "ai_summary"?: string | null,"confirmed_at"?: string | null,"confirmed_by"?: string | null,"confirmed_profession"?: Database["public"]['Enums']["professional_profession"] | null,"created_at"?: string,"diagnosis_name": string,"efr_state_number": number,"emission_versions"?: Json | null,"engine_version": string,"evaluation_id": string,"fr_sector_id"?: string | null,"id"?: string,"model_version_id": string,"phenotype_id"?: string | null,"rules_version": string,"survey_version_id"?: string | null
                   }
@@ -580,6 +605,7 @@ isOneToOne: false
                   Row: {
                     "ai_assisted": boolean,"created_at": string,"diagnosis_id": string,"id": string,"note": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "ai_assisted"?: boolean,"created_at"?: string,"diagnosis_id": string,"id"?: string,"note": string
                   }
@@ -599,6 +625,7 @@ isOneToOne: false
                   Row: {
                     "corte_desde": string,"corte_hasta": string,"emitted_at": string,"emitted_by": string | null,"id": string,"objected_at": string | null,"objection_note": string | null,"objection_outcome": string | null,"objection_resolved_at": string | null,"paid_amount": number | null,"paid_at": string | null,"paid_note": string | null,"professional_id": string,"replaced_by_id": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "corte_desde": string,"corte_hasta": string,"emitted_at"?: string,"emitted_by"?: string | null,"id"?: string,"objected_at"?: string | null,"objection_note"?: string | null,"objection_outcome"?: string | null,"objection_resolved_at"?: string | null,"paid_amount"?: number | null,"paid_at"?: string | null,"paid_note"?: string | null,"professional_id": string,"replaced_by_id"?: string | null
                   }
@@ -630,6 +657,7 @@ isOneToOne: false
                   Row: {
                     "biomarkers": string | null,"diagnosis_name": string,"ffmi_band": number,"fmi_band": number,"id": string,"ifc_band": number,"irc_band": number,"mechanism": string | null,"model_version_id": string,"risks": string | null,"state_number": number,"suggested_nutraceuticals": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "biomarkers"?: string | null,"diagnosis_name": string,"ffmi_band": number,"fmi_band": number,"id"?: string,"ifc_band": number,"irc_band": number,"mechanism"?: string | null,"model_version_id": string,"risks"?: string | null,"state_number": number,"suggested_nutraceuticals"?: string | null
                   }
@@ -649,6 +677,7 @@ isOneToOne: false
                   Row: {
                     "bis_condition_version_id": string,"condition_answers": NonNullable<Json>,"conditions_registered_at": string | null,"contraindicated": boolean,"created_at": string,"evaluation_id": string,"grip_strength_kg": number | null,"id": string,"updated_at": string,"weight_goal_kg": number | null,"weight_goal_set_in": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "bis_condition_version_id": string,"condition_answers": NonNullable<Json>,"conditions_registered_at"?: string | null,"contraindicated"?: boolean,"created_at"?: string,"evaluation_id": string,"grip_strength_kg"?: number | null,"id"?: string,"updated_at"?: string,"weight_goal_kg"?: number | null,"weight_goal_set_in"?: string | null
                   }
@@ -674,6 +703,7 @@ isOneToOne: true
                   Row: {
                     "author_id": string,"created_at": string,"evaluation_id": string,"id": string,"note": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "author_id": string,"created_at"?: string,"evaluation_id": string,"id"?: string,"note": string
                   }
@@ -699,6 +729,7 @@ isOneToOne: false
                   Row: {
                     "ancestry": string | null,"closed_at": string | null,"closed_by": string | null,"consent_version": string | null,"created_at": string,"declared_first_name": string | null,"declared_last_name": string | null,"education_level": string | null,"ethnicity": string | null,"id": string,"identity_conflict": boolean,"import_batch_id": string | null,"marital_status": string | null,"occupation": string | null,"organization_id": string,"patient_id": string,"professional_id": string,"reason_for_visit": string | null,"resume_token": string | null,"retirada_at": string | null,"retirada_motivo": string | null,"retirada_por": string | null,"socioeconomic_stratum": string | null,"status": Database["public"]['Enums']["evaluation_status"],"superseded_at": string | null,"type": Database["public"]['Enums']["evaluation_type"],"updated_at": string,"weight_goal_kg": number | null,"weight_goal_set_in": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "ancestry"?: string | null,"closed_at"?: string | null,"closed_by"?: string | null,"consent_version"?: string | null,"created_at"?: string,"declared_first_name"?: string | null,"declared_last_name"?: string | null,"education_level"?: string | null,"ethnicity"?: string | null,"id"?: string,"identity_conflict"?: boolean,"import_batch_id"?: string | null,"marital_status"?: string | null,"occupation"?: string | null,"organization_id": string,"patient_id": string,"professional_id": string,"reason_for_visit"?: string | null,"resume_token"?: string | null,"retirada_at"?: string | null,"retirada_motivo"?: string | null,"retirada_por"?: string | null,"socioeconomic_stratum"?: string | null,"status"?: Database["public"]['Enums']["evaluation_status"],"superseded_at"?: string | null,"type": Database["public"]['Enums']["evaluation_type"],"updated_at"?: string,"weight_goal_kg"?: number | null,"weight_goal_set_in"?: string | null
                   }
@@ -748,6 +779,7 @@ isOneToOne: false
                   Row: {
                     "followup_id": string,"id": string,"metric_name": string,"value": number | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "followup_id": string,"id"?: string,"metric_name": string,"value"?: number | null
                   }
@@ -767,6 +799,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"evaluation_id": string | null,"followup_date": string,"id": string,"patient_id": string,"treatment_id": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"evaluation_id"?: string | null,"followup_date"?: string,"id"?: string,"patient_id": string,"treatment_id"?: string | null
                   }
@@ -798,6 +831,7 @@ isOneToOne: false
                   Row: {
                     "code": string,"id": string,"model_version_id": string,"name": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "code": string,"id"?: string,"model_version_id": string,"name": string
                   }
@@ -817,6 +851,7 @@ isOneToOne: false
                   Row: {
                     "delivered_at": string,"delivered_by": string,"delivered_by_email": string,"evaluation_id": string,"id": string,"medium": string,"patient_id": string,"scope": string,"sent_to": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "delivered_at"?: string,"delivered_by": string,"delivered_by_email": string,"evaluation_id": string,"id"?: string,"medium"?: string,"patient_id": string,"scope"?: string,"sent_to": string
                   }
@@ -848,6 +883,7 @@ isOneToOne: false
                   Row: {
                     "consultation_count": number,"created_patient_ids": (string)[],"declaration_version": string,"declared_at": string,"id": string,"imported_at": string,"imported_by": string,"patient_count": number,"professional_id": string,"reverted_at": string | null,"reverted_by": string | null,"source_file_hash": string,"source_file_name": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "consultation_count"?: number,"created_patient_ids"?: (string)[],"declaration_version": string,"declared_at": string,"id"?: string,"imported_at"?: string,"imported_by": string,"patient_count"?: number,"professional_id": string,"reverted_at"?: string | null,"reverted_by"?: string | null,"source_file_hash": string,"source_file_name": string
                   }
@@ -879,6 +915,7 @@ isOneToOne: false
                   Row: {
                     "code": string,"description": string | null,"id": string,"model_version_id": string,"name": string,"unit": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "code": string,"description"?: string | null,"id"?: string,"model_version_id": string,"name": string,"unit"?: string | null
                   }
@@ -898,6 +935,7 @@ isOneToOne: false
                   Row: {
                     "classification": Database["public"]['Enums']["indicator_classification"],"id": string,"indicator_definition_id": string,"max_value": number | null,"min_value": number | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "classification": Database["public"]['Enums']["indicator_classification"],"id"?: string,"indicator_definition_id": string,"max_value"?: number | null,"min_value"?: number | null
                   }
@@ -917,6 +955,7 @@ isOneToOne: false
                   Row: {
                     "classification": Database["public"]['Enums']["indicator_classification"] | null,"created_at": string,"engine_version": string,"evaluation_id": string,"id": string,"indicator_definition_id": string,"model_version_id": string,"rules_version": string,"survey_version_id": string,"value": number | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "classification"?: Database["public"]['Enums']["indicator_classification"] | null,"created_at"?: string,"engine_version": string,"evaluation_id": string,"id"?: string,"indicator_definition_id": string,"model_version_id": string,"rules_version": string,"survey_version_id": string,"value"?: number | null
                   }
@@ -954,6 +993,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"id": string,"is_active": boolean,"kind": string,"name": string,"professional_id": string | null,"sellable": boolean
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"id"?: string,"is_active"?: boolean,"kind": string,"name": string,"professional_id"?: string | null,"sellable"?: boolean
                   }
@@ -973,6 +1013,7 @@ isOneToOne: false
                   Row: {
                     "consumed_at": string | null,"created_at": string,"expires_at": string,"id": string,"location_id": string,"lot_id": string,"nutraceutical_id": string,"quantity": number,"released_at": string | null,"transaction_item_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "consumed_at"?: string | null,"created_at"?: string,"expires_at": string,"id"?: string,"location_id": string,"lot_id": string,"nutraceutical_id": string,"quantity": number,"released_at"?: string | null,"transaction_item_id": string
                   }
@@ -1010,6 +1051,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"days_ahead": number,"expires_on": string,"id": string,"location_id": string,"lot_id": string,"nutraceutical_id": string,"professional_id": string | null,"seen_at": string | null,"seen_by": string | null,"units_at_alert": number
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"days_ahead": number,"expires_on": string,"id"?: string,"location_id": string,"lot_id": string,"nutraceutical_id": string,"professional_id"?: string | null,"seen_at"?: string | null,"seen_by"?: string | null,"units_at_alert": number
                   }
@@ -1053,6 +1095,7 @@ isOneToOne: false
                   Row: {
                     "code": string,"created_at": string,"expires_on": string,"id": string,"notes": string | null,"nutraceutical_id": string,"received_on": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "code": string,"created_at"?: string,"expires_on": string,"id"?: string,"notes"?: string | null,"nutraceutical_id": string,"received_on"?: string | null
                   }
@@ -1072,6 +1115,7 @@ isOneToOne: false
                   Row: {
                     "description": string | null,"id": string,"model_version_id": string,"variable_name": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "description"?: string | null,"id"?: string,"model_version_id": string,"variable_name": string
                   }
@@ -1091,6 +1135,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"description": string | null,"id": string,"rules_version": string,"status": Database["public"]['Enums']["model_status"],"version_name": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"description"?: string | null,"id"?: string,"rules_version": string,"status"?: Database["public"]['Enums']["model_status"],"version_name": string
                   }
@@ -1104,6 +1149,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"created_by": string | null,"id": string,"kind": string,"profile_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"created_by"?: string | null,"id"?: string,"kind": string,"profile_id": string
                   }
@@ -1129,6 +1175,7 @@ isOneToOne: false
                   Row: {
                     "absence_certified_for": string | null,"allergen_id": string,"created_at": string,"declared_as": string,"id": string,"notes": string | null,"nutraceutical_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "absence_certified_for"?: string | null,"allergen_id": string,"created_at"?: string,"declared_as": string,"id"?: string,"notes"?: string | null,"nutraceutical_id": string
                   }
@@ -1160,6 +1207,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"id": string,"lote": string | null,"nutraceutical_id": string,"physical_qty": number,"session_id": string,"system_qty": number
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"id"?: string,"lote"?: string | null,"nutraceutical_id": string,"physical_qty": number,"session_id": string,"system_qty": number
                   }
@@ -1185,6 +1233,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"id": string,"motivo": string,"opened_by": string,"professional_id": string,"valid_until": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"id"?: string,"motivo": string,"opened_by": string,"professional_id": string,"valid_until": string
                   }
@@ -1210,6 +1259,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"created_by": string | null,"id": string,"note": string | null,"professional_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"created_by"?: string | null,"id"?: string,"note"?: string | null,"professional_id": string
                   }
@@ -1235,6 +1285,7 @@ isOneToOne: false
                   Row: {
                     "charge_status": Database["public"]['Enums']["nutraceutical_faltante_charge"],"count_session_id": string | null,"created_at": string,"created_by": string | null,"deadline_at": string,"id": string,"justification_category": Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference": string | null,"lote": string | null,"nutraceutical_id": string,"professional_id": string,"quantity": number,"reported_at": string,"sealed_base_unit": number | null,"sealed_charge": number | null,"sealed_commission_rate": number | null,"sealed_total": number,"sealed_unit_price": number,"settlement_id": string | null,"status": Database["public"]['Enums']["nutraceutical_faltante_status"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "charge_status"?: Database["public"]['Enums']["nutraceutical_faltante_charge"],"count_session_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"deadline_at": string,"id"?: string,"justification_category"?: Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference"?: string | null,"lote"?: string | null,"nutraceutical_id": string,"professional_id": string,"quantity": number,"reported_at": string,"sealed_base_unit"?: number | null,"sealed_charge"?: number | null,"sealed_commission_rate"?: number | null,"sealed_total": number,"sealed_unit_price": number,"settlement_id"?: string | null,"status"?: Database["public"]['Enums']["nutraceutical_faltante_status"]
                   }
@@ -1278,6 +1329,7 @@ isOneToOne: false
                   Row: {
                     "actor_id": string | null,"case_id": string,"created_at": string,"from_status": Database["public"]['Enums']["nutraceutical_faltante_status"] | null,"id": string,"justification_category": Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference": string | null,"reason": string | null,"to_status": Database["public"]['Enums']["nutraceutical_faltante_status"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "actor_id"?: string | null,"case_id": string,"created_at"?: string,"from_status"?: Database["public"]['Enums']["nutraceutical_faltante_status"] | null,"id"?: string,"justification_category"?: Database["public"]['Enums']["nutraceutical_faltante_justification"] | null,"justification_reference"?: string | null,"reason"?: string | null,"to_status": Database["public"]['Enums']["nutraceutical_faltante_status"]
                   }
@@ -1303,6 +1355,7 @@ isOneToOne: false
                   Row: {
                     "id": string,"last_updated": string,"location_id": string,"lot_id": string,"nutraceutical_id": string,"professional_id": string | null,"stock_quantity": number
                   }
+                  ComputedFields: never
                   Insert: {
                     "id"?: string,"last_updated"?: string,"location_id": string,"lot_id": string,"nutraceutical_id": string,"professional_id"?: string | null,"stock_quantity"?: number
                   }
@@ -1340,6 +1393,7 @@ isOneToOne: false
                   Row: {
                     "close_note": string | null,"closed_at": string | null,"closed_by": string | null,"declared_at": string,"declared_by": string | null,"declared_quantity": number,"id": string,"location_id": string,"lot_id": string,"movement_in_id": string | null,"movement_out_id": string | null,"nutraceutical_id": string,"professional_id": string,"reason": string,"received_quantity": number | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "close_note"?: string | null,"closed_at"?: string | null,"closed_by"?: string | null,"declared_at"?: string,"declared_by"?: string | null,"declared_quantity": number,"id"?: string,"location_id": string,"lot_id": string,"movement_in_id"?: string | null,"movement_out_id"?: string | null,"nutraceutical_id": string,"professional_id": string,"reason": string,"received_quantity"?: number | null
                   }
@@ -1401,6 +1455,7 @@ isOneToOne: false
                   Row: {
                     "count_line_id": string | null,"created_at": string,"created_by": string | null,"delta": number,"id": string,"location_id": string,"lot_id": string,"lote": string | null,"nutraceutical_id": string,"professional_id": string | null,"reason": string | null,"remesa_id": string | null,"reported_quantity": number | null,"transaction_item_id": string | null,"treatment_id": string | null,"type": Database["public"]['Enums']["nutraceutical_movement_type"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "count_line_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"delta": number,"id"?: string,"location_id": string,"lot_id": string,"lote"?: string | null,"nutraceutical_id": string,"professional_id"?: string | null,"reason"?: string | null,"remesa_id"?: string | null,"reported_quantity"?: number | null,"transaction_item_id"?: string | null,"treatment_id"?: string | null,"type": Database["public"]['Enums']["nutraceutical_movement_type"]
                   }
@@ -1468,6 +1523,7 @@ isOneToOne: false
                   Row: {
                     "id": string,"nutraceutical_id": string,"quantity": number,"treatment_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "id"?: string,"nutraceutical_id": string,"quantity": number,"treatment_id": string
                   }
@@ -1493,6 +1549,7 @@ isOneToOne: false
                   Row: {
                     "alegra_env": string | null,"alegra_item_id": string | null,"brand_owner": string | null,"commercial_availability": Database["public"]['Enums']["nutraceutical_availability"],"composition": string | null,"created_at": string,"description": string | null,"dose_frequency": string | null,"id": string,"indication": string | null,"is_test": boolean,"manufacturer": string | null,"name": string,"organization_id": string,"ownership": Database["public"]['Enums']["nutraceutical_ownership"],"presentation": string | null,"sanitary_registration": string | null,"serving_size": string | null,"supplier_id": string | null,"unit": string | null,"unit_price": number | null,"updated_at": string,"vat_rate": number
                   }
+                  ComputedFields: never
                   Insert: {
                     "alegra_env"?: string | null,"alegra_item_id"?: string | null,"brand_owner"?: string | null,"commercial_availability"?: Database["public"]['Enums']["nutraceutical_availability"],"composition"?: string | null,"created_at"?: string,"description"?: string | null,"dose_frequency"?: string | null,"id"?: string,"indication"?: string | null,"is_test"?: boolean,"manufacturer"?: string | null,"name": string,"organization_id": string,"ownership"?: Database["public"]['Enums']["nutraceutical_ownership"],"presentation"?: string | null,"sanitary_registration"?: string | null,"serving_size"?: string | null,"supplier_id"?: string | null,"unit"?: string | null,"unit_price"?: number | null,"updated_at"?: string,"vat_rate"?: number
                   }
@@ -1518,6 +1575,7 @@ isOneToOne: false
                   Row: {
                     "city": string | null,"country": string | null,"created_at": string,"id": string,"name": string,"type": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "city"?: string | null,"country"?: string | null,"created_at"?: string,"id"?: string,"name": string,"type": string,"updated_at"?: string
                   }
@@ -1531,6 +1589,7 @@ isOneToOne: false
                   Row: {
                     "consent_type": Database["public"]['Enums']["consent_type_enum"],"consent_version": string,"declaration_version": string | null,"declared_by": string | null,"document_hash": string,"id": string,"legal_representative_document": string | null,"legal_representative_email": string | null,"legal_representative_name": string | null,"legal_representative_relationship": string | null,"patient_id": string,"revoked_at": string | null,"signature_channel": string | null,"signed_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "consent_type": Database["public"]['Enums']["consent_type_enum"],"consent_version": string,"declaration_version"?: string | null,"declared_by"?: string | null,"document_hash": string,"id"?: string,"legal_representative_document"?: string | null,"legal_representative_email"?: string | null,"legal_representative_name"?: string | null,"legal_representative_relationship"?: string | null,"patient_id": string,"revoked_at"?: string | null,"signature_channel"?: string | null,"signed_at"?: string
                   }
@@ -1556,6 +1615,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"email": string | null,"patient_id": string,"phone": string | null,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"email"?: string | null,"patient_id": string,"phone"?: string | null,"updated_at"?: string
                   }
@@ -1575,6 +1635,7 @@ isOneToOne: true
                   Row: {
                     "created_at": string,"id": string,"nutraceutical_id": string | null,"patient_id": string,"reason": string,"recorded_by": string,"source": Database["public"]['Enums']["contraindication_source"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"id"?: string,"nutraceutical_id"?: string | null,"patient_id": string,"reason": string,"recorded_by": string,"source": Database["public"]['Enums']["contraindication_source"]
                   }
@@ -1606,6 +1667,7 @@ isOneToOne: false
                   Row: {
                     "batch_id": string,"created_at": string,"document_hash": string,"id": string,"origin": string,"patient_id": string,"recorded_date": string,"signature_method": string,"source_consultation_date": string,"text_version": string,"typed_name": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "batch_id": string,"created_at"?: string,"document_hash": string,"id"?: string,"origin": string,"patient_id": string,"recorded_date": string,"signature_method": string,"source_consultation_date": string,"text_version": string,"typed_name"?: string | null
                   }
@@ -1631,6 +1693,7 @@ isOneToOne: false
                   Row: {
                     "assigned_at": string,"id": string,"patient_id": string,"professional_id": string,"status": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "assigned_at"?: string,"id"?: string,"patient_id": string,"professional_id": string,"status"?: string
                   }
@@ -1656,6 +1719,7 @@ isOneToOne: false
                   Row: {
                     "ancestry": string | null,"birth_date": string | null,"city": string | null,"country": string | null,"created_at": string,"education_level": string | null,"ethnicity": string | null,"first_name": string,"last_name": string,"marital_status": string | null,"occupation": string | null,"patient_id": string,"sex": string | null,"socioeconomic_stratum": string | null,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "ancestry"?: string | null,"birth_date"?: string | null,"city"?: string | null,"country"?: string | null,"created_at"?: string,"education_level"?: string | null,"ethnicity"?: string | null,"first_name": string,"last_name": string,"marital_status"?: string | null,"occupation"?: string | null,"patient_id": string,"sex"?: string | null,"socioeconomic_stratum"?: string | null,"updated_at"?: string
                   }
@@ -1675,6 +1739,7 @@ isOneToOne: true
                   Row: {
                     "alegra_contact_id": string | null,"alegra_env": string | null,"created_at": string,"cuenta_como_de_prueba": boolean,"deleted_at": string | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"es_real_confirmado": boolean,"id": string,"is_test": boolean,"organization_id": string,"status": Database["public"]['Enums']["patient_status"],"test_marked_at": string | null,"test_marked_by": string | null,"test_proposed_at": string | null,"test_proposed_by": string | null,"test_proposed_reason": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "alegra_contact_id"?: string | null,"alegra_env"?: string | null,"created_at"?: string,"cuenta_como_de_prueba"?: boolean,"deleted_at"?: string | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"es_real_confirmado"?: boolean,"id"?: string,"is_test"?: boolean,"organization_id": string,"status"?: Database["public"]['Enums']["patient_status"],"test_marked_at"?: string | null,"test_marked_by"?: string | null,"test_proposed_at"?: string | null,"test_proposed_by"?: string | null,"test_proposed_reason"?: string | null
                   }
@@ -1706,6 +1771,7 @@ isOneToOne: false
                   Row: {
                     "actor_id": string | null,"checked": number,"detail": NonNullable<Json>,"failed_reason": string | null,"from_date": string,"id": string,"mismatched": number,"origin": string,"ran_at": string,"recovered": number,"until_date": string,"wompi_env": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "actor_id"?: string | null,"checked"?: number,"detail"?: NonNullable<Json>,"failed_reason"?: string | null,"from_date": string,"id"?: string,"mismatched"?: number,"origin": string,"ran_at"?: string,"recovered"?: number,"until_date": string,"wompi_env": string
                   }
@@ -1725,6 +1791,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"external_id": string,"id": string,"payload": NonNullable<Json>,"processed_at": string | null,"provider": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"external_id": string,"id"?: string,"payload": NonNullable<Json>,"processed_at"?: string | null,"provider": string
                   }
@@ -1738,6 +1805,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"created_by": string,"fact_fingerprint": string,"id": string,"kind": string,"reason": string,"revoked_at": string | null,"revoked_by": string | null,"transaction_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"created_by": string,"fact_fingerprint": string,"id"?: string,"kind": string,"reason": string,"revoked_at"?: string | null,"revoked_by"?: string | null,"transaction_id": string
                   }
@@ -1769,6 +1837,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"created_by": string,"id": string,"kind": string,"note": string,"transaction_id": string,"until_date": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"created_by": string,"id"?: string,"kind": string,"note": string,"transaction_id": string,"until_date": string
                   }
@@ -1794,6 +1863,7 @@ isOneToOne: false
                   Row: {
                     "code": string,"id": string,"model_version_id": string,"name": string,"risk": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "code": string,"id"?: string,"model_version_id": string,"name": string,"risk"?: string | null
                   }
@@ -1813,6 +1883,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"emitted_at": string,"emitted_by": string | null,"emitted_by_email": string | null,"evaluation_id": string,"id": string,"kcal_objetivo": number | null,"prescripcion": NonNullable<Json>,"proteina_g": number | null,"treatment_id": string,"via": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"emitted_at"?: string,"emitted_by"?: string | null,"emitted_by_email"?: string | null,"evaluation_id": string,"id"?: string,"kcal_objetivo"?: number | null,"prescripcion": NonNullable<Json>,"proteina_g"?: number | null,"treatment_id": string,"via": string
                   }
@@ -1844,6 +1915,7 @@ isOneToOne: false
                   Row: {
                     "confirmed_at": string | null,"created_at": string,"created_by": string,"declaracion_version": string,"declarado_apellidos": string | null,"declarado_autorizaciones": Json | null,"declarado_document_number": string | null,"declarado_document_type": Database["public"]['Enums']["document_type"] | null,"declarado_nombres": string | null,"declared_at": string | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"estado": string,"expires_at": string,"id": string,"lectura_hasta": string | null,"mismo_origen": boolean | null,"opened_at": string | null,"organization_id": string,"patient_id": string | null,"patient_ip": unknown,"patient_user_agent": string | null,"professional_id": string,"professional_ip": unknown,"sin_correo_declarado": boolean,"token": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "confirmed_at"?: string | null,"created_at"?: string,"created_by": string,"declaracion_version": string,"declarado_apellidos"?: string | null,"declarado_autorizaciones"?: Json | null,"declarado_document_number"?: string | null,"declarado_document_type"?: Database["public"]['Enums']["document_type"] | null,"declarado_nombres"?: string | null,"declared_at"?: string | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"estado"?: string,"expires_at": string,"id"?: string,"lectura_hasta"?: string | null,"mismo_origen"?: boolean | null,"opened_at"?: string | null,"organization_id": string,"patient_id"?: string | null,"patient_ip"?: unknown,"patient_user_agent"?: string | null,"professional_id": string,"professional_ip"?: unknown,"sin_correo_declarado"?: boolean,"token": string
                   }
@@ -1881,6 +1953,7 @@ isOneToOne: false
                   Row: {
                     "content_type": string | null,"created_at": string,"document_date": string | null,"id": string,"kind": string,"original_name": string | null,"path": string,"professional_id": string,"size_bytes": number | null,"superseded_at": string | null,"superseded_by": string | null,"uploaded_at": string,"uploaded_by": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "content_type"?: string | null,"created_at"?: string,"document_date"?: string | null,"id"?: string,"kind": string,"original_name"?: string | null,"path": string,"professional_id": string,"size_bytes"?: number | null,"superseded_at"?: string | null,"superseded_by"?: string | null,"uploaded_at"?: string,"uploaded_by"?: string | null
                   }
@@ -1912,6 +1985,7 @@ isOneToOne: false
                   Row: {
                     "certification_name": string,"created_at": string,"id": string,"institution": string | null,"professional_id": string,"year": number | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "certification_name": string,"created_at"?: string,"id"?: string,"institution"?: string | null,"professional_id": string,"year"?: number | null
                   }
@@ -1931,6 +2005,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"created_by": string | null,"id": string,"note": string | null,"professional_id": string,"rate": number,"valid_from": string,"valid_to": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"created_by"?: string | null,"id"?: string,"note"?: string | null,"professional_id": string,"rate": number,"valid_from": string,"valid_to"?: string | null
                   }
@@ -1956,6 +2031,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"document_type": Database["public"]['Enums']["professional_document_type"],"id": string,"professional_id": string,"signed_at": string,"signed_version": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"document_type": Database["public"]['Enums']["professional_document_type"],"id"?: string,"professional_id": string,"signed_at": string,"signed_version": string,"updated_at"?: string
                   }
@@ -1975,6 +2051,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"decided_at": string,"decided_by": string | null,"id": string,"modality": string,"note": string | null,"professional_id": string,"requisitos_verificados_at": string | null,"valid_from": string,"valid_to": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"decided_at"?: string,"decided_by"?: string | null,"id"?: string,"modality": string,"note"?: string | null,"professional_id": string,"requisitos_verificados_at"?: string | null,"valid_from": string,"valid_to"?: string | null
                   }
@@ -2000,6 +2077,7 @@ isOneToOne: false
                   Row: {
                     "bank_account_holder_document": string | null,"bank_account_holder_name": string | null,"bank_account_number": string | null,"bank_account_type": Database["public"]['Enums']["bank_account_type"] | null,"bank_name": string | null,"certification_status": string | null,"commission_rate": number,"created_at": string,"credit_limit": number | null,"id": string,"is_test": boolean,"license": string | null,"office_address": string | null,"office_city": string | null,"phone": string | null,"profession": Database["public"]['Enums']["professional_profession"],"profile_id": string,"rut_document_date": string | null,"rut_path": string | null,"rut_rejected_at": string | null,"rut_rejected_by": string | null,"rut_rejected_reason": string | null,"rut_verified_at": string | null,"rut_verified_by": string | null,"tax_has_rut": boolean | null,"tax_id_dv": string | null,"tax_id_number": string | null,"tax_id_type": Database["public"]['Enums']["document_type"] | null,"tax_is_income_declarant": boolean | null,"tax_is_vat_responsible": boolean | null,"tax_is_withholding_agent": boolean | null,"tax_must_invoice": boolean | null,"tax_person_type": Database["public"]['Enums']["tax_person_type"] | null,"tax_status_completed_at": string | null,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "bank_account_holder_document"?: string | null,"bank_account_holder_name"?: string | null,"bank_account_number"?: string | null,"bank_account_type"?: Database["public"]['Enums']["bank_account_type"] | null,"bank_name"?: string | null,"certification_status"?: string | null,"commission_rate"?: number,"created_at"?: string,"credit_limit"?: number | null,"id"?: string,"is_test"?: boolean,"license"?: string | null,"office_address"?: string | null,"office_city"?: string | null,"phone"?: string | null,"profession": Database["public"]['Enums']["professional_profession"],"profile_id": string,"rut_document_date"?: string | null,"rut_path"?: string | null,"rut_rejected_at"?: string | null,"rut_rejected_by"?: string | null,"rut_rejected_reason"?: string | null,"rut_verified_at"?: string | null,"rut_verified_by"?: string | null,"tax_has_rut"?: boolean | null,"tax_id_dv"?: string | null,"tax_id_number"?: string | null,"tax_id_type"?: Database["public"]['Enums']["document_type"] | null,"tax_is_income_declarant"?: boolean | null,"tax_is_vat_responsible"?: boolean | null,"tax_is_withholding_agent"?: boolean | null,"tax_must_invoice"?: boolean | null,"tax_person_type"?: Database["public"]['Enums']["tax_person_type"] | null,"tax_status_completed_at"?: string | null,"updated_at"?: string
                   }
@@ -2031,6 +2109,7 @@ isOneToOne: false
                   Row: {
                     "commission_amount": number,"commission_rate": number,"created_at": string,"id": string,"professional_id": string,"reversal_of": string | null,"sale_reversal_id": string | null,"settlement_id": string | null,"transaction_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "commission_amount": number,"commission_rate": number,"created_at"?: string,"id"?: string,"professional_id": string,"reversal_of"?: string | null,"sale_reversal_id"?: string | null,"settlement_id"?: string | null,"transaction_id": string
                   }
@@ -2074,6 +2153,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"email": string,"full_name": string,"id": string,"organization_id": string,"status": Database["public"]['Enums']["profile_status"],"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"email": string,"full_name": string,"id": string,"organization_id": string,"status"?: Database["public"]['Enums']["profile_status"],"updated_at"?: string
                   }
@@ -2093,6 +2173,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"created_by": string,"id": string,"organization_id": string,"patient_id": string,"reason": string,"referred_at": string,"referred_to": Database["public"]['Enums']["referral_target"],"referred_to_other": string | null,"return_notes": string | null,"returned_at": string | null,"treatment_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"created_by": string,"id"?: string,"organization_id": string,"patient_id": string,"reason": string,"referred_at": string,"referred_to": Database["public"]['Enums']["referral_target"],"referred_to_other"?: string | null,"return_notes"?: string | null,"returned_at"?: string | null,"treatment_id": string
                   }
@@ -2130,6 +2211,7 @@ isOneToOne: false
                   Row: {
                     "approved_at": string | null,"approved_by": string | null,"created_at": string,"evaluation_id": string,"id": string,"last_resent_at": string | null,"patient_id": string,"professional_notes": string | null,"resent_count": number,"send_mode": string | null,"sent_at": string | null,"snapshot": NonNullable<Json>,"status": Database["public"]['Enums']["report_status"],"storage_path": string | null,"trajectory": Json | null,"trajectory_communicated_at": string | null,"trajectory_communicated_by": string | null,"type": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"evaluation_id": string,"id"?: string,"last_resent_at"?: string | null,"patient_id": string,"professional_notes"?: string | null,"resent_count"?: number,"send_mode"?: string | null,"sent_at"?: string | null,"snapshot": NonNullable<Json>,"status"?: Database["public"]['Enums']["report_status"],"storage_path"?: string | null,"trajectory"?: Json | null,"trajectory_communicated_at"?: string | null,"trajectory_communicated_by"?: string | null,"type": string
                   }
@@ -2167,6 +2249,7 @@ isOneToOne: false
                   Row: {
                     "anonymization_level": string,"created_at": string,"id": string,"requested_by": string,"scope": string,"status": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "anonymization_level": string,"created_at"?: string,"id"?: string,"requested_by": string,"scope": string,"status"?: string
                   }
@@ -2186,6 +2269,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"created_by": string | null,"id": string,"margen_aviso": number | null,"note": string | null,"nutraceutical_id": string,"supplier_share": number,"valid_from": string,"valid_to": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"created_by"?: string | null,"id"?: string,"margen_aviso"?: number | null,"note"?: string | null,"nutraceutical_id": string,"supplier_share": number,"valid_from": string,"valid_to"?: string | null
                   }
@@ -2211,6 +2295,7 @@ isOneToOne: false
                   Row: {
                     "description": string | null,"id": string,"name": Database["public"]['Enums']["app_role"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "description"?: string | null,"id"?: string,"name": Database["public"]['Enums']["app_role"]
                   }
@@ -2224,6 +2309,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"credit_note_manual_number": string | null,"debited_amount": number | null,"debited_at": string | null,"dispute_reference": string | null,"id": string,"kind": string,"note": string | null,"opened_at": string,"opened_by": string | null,"product_ownership": string,"resolution_reference": string | null,"resolved_at": string | null,"resolved_by": string | null,"returned_quantity": number | null,"state": string,"transaction_id": string,"transaction_item_id": string | null,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"credit_note_manual_number"?: string | null,"debited_amount"?: number | null,"debited_at"?: string | null,"dispute_reference"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"opened_at"?: string,"opened_by"?: string | null,"product_ownership": string,"resolution_reference"?: string | null,"resolved_at"?: string | null,"resolved_by"?: string | null,"returned_quantity"?: number | null,"state"?: string,"transaction_id": string,"transaction_item_id"?: string | null,"updated_at"?: string
                   }
@@ -2261,6 +2347,7 @@ isOneToOne: false
                   Row: {
                     "author_email": string,"author_id": string,"author_profession": string | null,"created_at": string,"evaluation_id": string,"id": string,"note": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "author_email": string,"author_id": string,"author_profession"?: string | null,"created_at"?: string,"evaluation_id": string,"id"?: string,"note": string
                   }
@@ -2286,6 +2373,7 @@ isOneToOne: false
                   Row: {
                     "alegra_contact_id": string | null,"created_at": string,"cut_days": (number)[],"id": string,"is_active": boolean,"name": string,"notes": string | null,"tax_id_dv": string | null,"tax_id_number": string | null,"tax_id_type": string | null,"tax_is_vat_responsible": boolean | null,"tax_is_withholding_agent": boolean | null,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "alegra_contact_id"?: string | null,"created_at"?: string,"cut_days"?: (number)[],"id"?: string,"is_active"?: boolean,"name": string,"notes"?: string | null,"tax_id_dv"?: string | null,"tax_id_number"?: string | null,"tax_id_type"?: string | null,"tax_is_vat_responsible"?: boolean | null,"tax_is_withholding_agent"?: boolean | null,"updated_at"?: string
                   }
@@ -2299,6 +2387,7 @@ isOneToOne: false
                   Row: {
                     "answer_value": string | null,"id": string,"question_id": string,"response_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "answer_value"?: string | null,"id"?: string,"question_id": string,"response_id": string
                   }
@@ -2324,6 +2413,7 @@ isOneToOne: false
                   Row: {
                     "consumed_at": string | null,"created_at": string,"created_by": string | null,"expires_at": string | null,"id": string,"organization_id": string,"patient_id": string | null,"prefill": Json | null,"professional_id": string,"token": string,"type": Database["public"]['Enums']["evaluation_type"]
                   }
+                  ComputedFields: never
                   Insert: {
                     "consumed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"expires_at"?: string | null,"id"?: string,"organization_id": string,"patient_id"?: string | null,"prefill"?: Json | null,"professional_id": string,"token": string,"type": Database["public"]['Enums']["evaluation_type"]
                   }
@@ -2361,6 +2451,7 @@ isOneToOne: false
                   Row: {
                     "allergen_id": string,"created_at": string,"id": string,"survey_option_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "allergen_id": string,"created_at"?: string,"id"?: string,"survey_option_id": string
                   }
@@ -2386,6 +2477,7 @@ isOneToOne: false
                   Row: {
                     "id": string,"option_text": string,"order_index": number,"question_id": string,"value": number | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "id"?: string,"option_text": string,"order_index": number,"question_id": string,"value"?: number | null
                   }
@@ -2405,6 +2497,7 @@ isOneToOne: false
                   Row: {
                     "data_class": Database["public"]['Enums']["field_data_class"],"field_key": string | null,"hint": string | null,"id": string,"order_index": number,"question_text": string,"question_type": string,"section": string | null,"survey_version_id": string,"used_in_diagnosis": boolean
                   }
+                  ComputedFields: never
                   Insert: {
                     "data_class": Database["public"]['Enums']["field_data_class"],"field_key"?: string | null,"hint"?: string | null,"id"?: string,"order_index": number,"question_text": string,"question_type": string,"section"?: string | null,"survey_version_id": string,"used_in_diagnosis"?: boolean
                   }
@@ -2424,6 +2517,7 @@ isOneToOne: false
                   Row: {
                     "captured_by": string | null,"created_at": string,"evaluation_id": string,"id": string,"import_batch_id": string | null,"ip_address": unknown,"survey_version_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "captured_by"?: string | null,"created_at"?: string,"evaluation_id": string,"id"?: string,"import_batch_id"?: string | null,"ip_address"?: unknown,"survey_version_id": string
                   }
@@ -2461,6 +2555,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"description": string | null,"id": string,"name": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"description"?: string | null,"id"?: string,"name": string
                   }
@@ -2474,6 +2569,7 @@ isOneToOne: false
                   Row: {
                     "id": string,"published_at": string,"template_id": string,"version_number": number
                   }
+                  ComputedFields: never
                   Insert: {
                     "id"?: string,"published_at"?: string,"template_id": string,"version_number": number
                   }
@@ -2493,6 +2589,7 @@ isOneToOne: false
                   Row: {
                     "base_amount": number | null,"cnv_amount": number | null,"commission_amount": number | null,"commission_rate": number | null,"id": string,"modality": string | null,"nutraceutical_id": string,"quantity": number,"sealed_at": string | null,"supplier_amount": number | null,"supplier_share": number | null,"transaction_id": string,"unit_price": number,"vat_rate": number | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "base_amount"?: number | null,"cnv_amount"?: number | null,"commission_amount"?: number | null,"commission_rate"?: number | null,"id"?: string,"modality"?: string | null,"nutraceutical_id": string,"quantity": number,"sealed_at"?: string | null,"supplier_amount"?: number | null,"supplier_share"?: number | null,"transaction_id": string,"unit_price": number,"vat_rate"?: number | null
                   }
@@ -2518,6 +2615,7 @@ isOneToOne: false
                   Row: {
                     "alegra_attempts": number,"alegra_cufe": string | null,"alegra_emitted_at": string | null,"alegra_env": string | null,"alegra_invoice_id": string | null,"alegra_invoice_number": string | null,"alegra_invoice_state": Database["public"]['Enums']["alegra_invoice_state"] | null,"alegra_last_attempt_at": string | null,"alegra_last_error": string | null,"alegra_legal_status": string | null,"alegra_payment_id": string | null,"amount": number,"cancelled_at": string | null,"cancelled_by": string | null,"cancelled_by_sale_id": string | null,"cash_not_received_at": string | null,"cash_not_received_by": string | null,"created_at": string,"created_by": string | null,"credit_note_manual_number": string | null,"cuenta_como_de_prueba": boolean,"currency": string,"delivered_at": string | null,"delivered_by": string | null,"delivery_mode": string | null,"distribucion_statement_id": string | null,"fulfillment_state": string | null,"id": string,"idempotency_key": string,"location_id": string | null,"modalidad_de_la_venta": string,"operated_at": string | null,"organization_id": string,"patient_id": string | null,"payment_card_type": string | null,"payment_method": Database["public"]['Enums']["payment_method"],"payment_method_type": string | null,"professional_id": string | null,"registered_retroactively_at": string | null,"registered_retroactively_by": string | null,"retracto_ejercido_at": string | null,"retracto_nota": string | null,"retracto_sello_intacto": boolean | null,"review_notified_at": string | null,"review_opened_at": string | null,"review_professional_version": string | null,"review_professional_version_at": string | null,"review_professional_version_by": string | null,"review_reason": string | null,"review_refund_reference": string | null,"review_resolution": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"shipping_address": string | null,"shipping_city": string | null,"shipping_dane_code": string | null,"shipping_department": string | null,"shipping_phone": string | null,"sin_tratamiento_motivo": string | null,"status": Database["public"]['Enums']["transaction_status"],"stock_covered_by_sale_id": string | null,"stock_last_error": string | null,"stock_state": string | null,"transferencia_verificada_at": string | null,"transferencia_verificada_by": string | null,"treatment_id": string | null,"updated_at": string,"wompi_env": string,"wompi_transaction_id": string | null
                   }
+                  ComputedFields: never
                   Insert: {
                     "alegra_attempts"?: number,"alegra_cufe"?: string | null,"alegra_emitted_at"?: string | null,"alegra_env"?: string | null,"alegra_invoice_id"?: string | null,"alegra_invoice_number"?: string | null,"alegra_invoice_state"?: Database["public"]['Enums']["alegra_invoice_state"] | null,"alegra_last_attempt_at"?: string | null,"alegra_last_error"?: string | null,"alegra_legal_status"?: string | null,"alegra_payment_id"?: string | null,"amount": number,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"cancelled_by_sale_id"?: string | null,"cash_not_received_at"?: string | null,"cash_not_received_by"?: string | null,"created_at"?: string,"created_by"?: string | null,"credit_note_manual_number"?: string | null,"cuenta_como_de_prueba"?: boolean,"currency"?: string,"delivered_at"?: string | null,"delivered_by"?: string | null,"delivery_mode"?: string | null,"distribucion_statement_id"?: string | null,"fulfillment_state"?: string | null,"id"?: string,"idempotency_key": string,"location_id"?: string | null,"modalidad_de_la_venta"?: string,"operated_at"?: string | null,"organization_id": string,"patient_id"?: string | null,"payment_card_type"?: string | null,"payment_method"?: Database["public"]['Enums']["payment_method"],"payment_method_type"?: string | null,"professional_id"?: string | null,"registered_retroactively_at"?: string | null,"registered_retroactively_by"?: string | null,"retracto_ejercido_at"?: string | null,"retracto_nota"?: string | null,"retracto_sello_intacto"?: boolean | null,"review_notified_at"?: string | null,"review_opened_at"?: string | null,"review_professional_version"?: string | null,"review_professional_version_at"?: string | null,"review_professional_version_by"?: string | null,"review_reason"?: string | null,"review_refund_reference"?: string | null,"review_resolution"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"shipping_address"?: string | null,"shipping_city"?: string | null,"shipping_dane_code"?: string | null,"shipping_department"?: string | null,"shipping_phone"?: string | null,"sin_tratamiento_motivo"?: string | null,"status"?: Database["public"]['Enums']["transaction_status"],"stock_covered_by_sale_id"?: string | null,"stock_last_error"?: string | null,"stock_state"?: string | null,"transferencia_verificada_at"?: string | null,"transferencia_verificada_by"?: string | null,"treatment_id"?: string | null,"updated_at"?: string,"wompi_env": string,"wompi_transaction_id"?: string | null
                   }
@@ -2627,6 +2725,7 @@ isOneToOne: false
                   Row: {
                     "approved_at": string,"approved_by": string | null,"created_at": string,"id": string,"kcal_objetivo": number | null,"proteina_g": number | null,"protocol_approved": NonNullable<Json>,"reopen_reason": string,"reopened_at": string,"reopened_by": string | null,"treatment_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "approved_at": string,"approved_by"?: string | null,"created_at"?: string,"id"?: string,"kcal_objetivo"?: number | null,"proteina_g"?: number | null,"protocol_approved": NonNullable<Json>,"reopen_reason": string,"reopened_at"?: string,"reopened_by"?: string | null,"treatment_id": string
                   }
@@ -2658,6 +2757,7 @@ isOneToOne: false
                   Row: {
                     "guideline_text": string,"id": string,"treatment_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "guideline_text": string,"id"?: string,"treatment_id": string
                   }
@@ -2677,6 +2777,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"id": string,"note": string,"profession": Database["public"]['Enums']["professional_profession"] | null,"treatment_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"id"?: string,"note": string,"profession"?: Database["public"]['Enums']["professional_profession"] | null,"treatment_id": string
                   }
@@ -2696,6 +2797,7 @@ isOneToOne: false
                   Row: {
                     "dosage": string | null,"duration_days": number | null,"id": string,"nutraceutical_id": string,"treatment_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "dosage"?: string | null,"duration_days"?: number | null,"id"?: string,"nutraceutical_id": string,"treatment_id": string
                   }
@@ -2719,13 +2821,14 @@ isOneToOne: false
                   ]
                 },"treatments": {
                   Row: {
-                    "adj_deficit": number | null,"adj_fat_pct": number | null,"adj_geb": number | null,"adj_kcal_obj": number | null,"adj_pal": number | null,"adj_peso_meta": number | null,"adj_prot_gkg": number | null,"approved_at": string | null,"approved_by": string | null,"created_at": string,"created_by": string,"diagnosis_id": string,"id": string,"intercambio_porciones": Json | null,"kcal_objetivo": number | null,"menu_semanal": Json | null,"micronutrientes_texto": string | null,"nutraceutical_decision": Database["public"]['Enums']["nutraceutical_decision"] | null,"nutraceutical_decision_at": string | null,"nutraceutical_decision_by": string | null,"nutraceutical_decision_note": string | null,"nutraceutical_decision_reason": Database["public"]['Enums']["nutraceutical_decision_reason"] | null,"objetivo_texto": string | null,"proteina_g": number | null,"protocol_approved": Json | null,"protocol_suggested": Json | null,"proxima_cita": string | null,"reopen_reason": string | null,"reopened_at": string | null,"reopened_by": string | null,"restricciones": (string)[],"restrictions_ack_at": string | null,"restrictions_ack_by": string | null,"status": Database["public"]['Enums']["treatment_status"],"tiempos": Json | null,"tiempos_activos": Json | null
+                    "adj_deficit": number | null,"adj_fat_pct": number | null,"adj_geb": number | null,"adj_kcal_obj": number | null,"adj_pal": number | null,"adj_peso_meta": number | null,"adj_prot_gkg": number | null,"approved_at": string | null,"approved_by": string | null,"created_at": string,"created_by": string,"diagnosis_id": string,"id": string,"intercambio_porciones": Json | null,"kcal_objetivo": number | null,"menu_semanal": Json | null,"micronutrientes_texto": string | null,"nutraceutical_decision": Database["public"]['Enums']["nutraceutical_decision"] | null,"nutraceutical_decision_at": string | null,"nutraceutical_decision_by": string | null,"nutraceutical_decision_note": string | null,"nutraceutical_decision_reason": Database["public"]['Enums']["nutraceutical_decision_reason"] | null,"objetivo_texto": string | null,"proteina_g": number | null,"protocol_approved": Json | null,"protocol_suggested": Json | null,"proxima_cita": string | null,"reopen_reason": string | null,"reopened_at": string | null,"reopened_by": string | null,"restricciones": (string)[],"restrictions_ack_at": string | null,"restrictions_ack_by": string | null,"sin_prescripcion_at": string | null,"sin_prescripcion_by": string | null,"sin_prescripcion_motivo": string | null,"status": Database["public"]['Enums']["treatment_status"],"tiempos": Json | null,"tiempos_activos": Json | null
                   }
+                  ComputedFields: never
                   Insert: {
-                    "adj_deficit"?: number | null,"adj_fat_pct"?: number | null,"adj_geb"?: number | null,"adj_kcal_obj"?: number | null,"adj_pal"?: number | null,"adj_peso_meta"?: number | null,"adj_prot_gkg"?: number | null,"approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"created_by": string,"diagnosis_id": string,"id"?: string,"intercambio_porciones"?: Json | null,"kcal_objetivo"?: number | null,"menu_semanal"?: Json | null,"micronutrientes_texto"?: string | null,"nutraceutical_decision"?: Database["public"]['Enums']["nutraceutical_decision"] | null,"nutraceutical_decision_at"?: string | null,"nutraceutical_decision_by"?: string | null,"nutraceutical_decision_note"?: string | null,"nutraceutical_decision_reason"?: Database["public"]['Enums']["nutraceutical_decision_reason"] | null,"objetivo_texto"?: string | null,"proteina_g"?: number | null,"protocol_approved"?: Json | null,"protocol_suggested"?: Json | null,"proxima_cita"?: string | null,"reopen_reason"?: string | null,"reopened_at"?: string | null,"reopened_by"?: string | null,"restricciones"?: (string)[],"restrictions_ack_at"?: string | null,"restrictions_ack_by"?: string | null,"status"?: Database["public"]['Enums']["treatment_status"],"tiempos"?: Json | null,"tiempos_activos"?: Json | null
+                    "adj_deficit"?: number | null,"adj_fat_pct"?: number | null,"adj_geb"?: number | null,"adj_kcal_obj"?: number | null,"adj_pal"?: number | null,"adj_peso_meta"?: number | null,"adj_prot_gkg"?: number | null,"approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"created_by": string,"diagnosis_id": string,"id"?: string,"intercambio_porciones"?: Json | null,"kcal_objetivo"?: number | null,"menu_semanal"?: Json | null,"micronutrientes_texto"?: string | null,"nutraceutical_decision"?: Database["public"]['Enums']["nutraceutical_decision"] | null,"nutraceutical_decision_at"?: string | null,"nutraceutical_decision_by"?: string | null,"nutraceutical_decision_note"?: string | null,"nutraceutical_decision_reason"?: Database["public"]['Enums']["nutraceutical_decision_reason"] | null,"objetivo_texto"?: string | null,"proteina_g"?: number | null,"protocol_approved"?: Json | null,"protocol_suggested"?: Json | null,"proxima_cita"?: string | null,"reopen_reason"?: string | null,"reopened_at"?: string | null,"reopened_by"?: string | null,"restricciones"?: (string)[],"restrictions_ack_at"?: string | null,"restrictions_ack_by"?: string | null,"sin_prescripcion_at"?: string | null,"sin_prescripcion_by"?: string | null,"sin_prescripcion_motivo"?: string | null,"status"?: Database["public"]['Enums']["treatment_status"],"tiempos"?: Json | null,"tiempos_activos"?: Json | null
                   }
                   Update: {
-                    "adj_deficit"?: number | null,"adj_fat_pct"?: number | null,"adj_geb"?: number | null,"adj_kcal_obj"?: number | null,"adj_pal"?: number | null,"adj_peso_meta"?: number | null,"adj_prot_gkg"?: number | null,"approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"created_by"?: string,"diagnosis_id"?: string,"id"?: string,"intercambio_porciones"?: Json | null,"kcal_objetivo"?: number | null,"menu_semanal"?: Json | null,"micronutrientes_texto"?: string | null,"nutraceutical_decision"?: Database["public"]['Enums']["nutraceutical_decision"] | null,"nutraceutical_decision_at"?: string | null,"nutraceutical_decision_by"?: string | null,"nutraceutical_decision_note"?: string | null,"nutraceutical_decision_reason"?: Database["public"]['Enums']["nutraceutical_decision_reason"] | null,"objetivo_texto"?: string | null,"proteina_g"?: number | null,"protocol_approved"?: Json | null,"protocol_suggested"?: Json | null,"proxima_cita"?: string | null,"reopen_reason"?: string | null,"reopened_at"?: string | null,"reopened_by"?: string | null,"restricciones"?: (string)[],"restrictions_ack_at"?: string | null,"restrictions_ack_by"?: string | null,"status"?: Database["public"]['Enums']["treatment_status"],"tiempos"?: Json | null,"tiempos_activos"?: Json | null
+                    "adj_deficit"?: number | null,"adj_fat_pct"?: number | null,"adj_geb"?: number | null,"adj_kcal_obj"?: number | null,"adj_pal"?: number | null,"adj_peso_meta"?: number | null,"adj_prot_gkg"?: number | null,"approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"created_by"?: string,"diagnosis_id"?: string,"id"?: string,"intercambio_porciones"?: Json | null,"kcal_objetivo"?: number | null,"menu_semanal"?: Json | null,"micronutrientes_texto"?: string | null,"nutraceutical_decision"?: Database["public"]['Enums']["nutraceutical_decision"] | null,"nutraceutical_decision_at"?: string | null,"nutraceutical_decision_by"?: string | null,"nutraceutical_decision_note"?: string | null,"nutraceutical_decision_reason"?: Database["public"]['Enums']["nutraceutical_decision_reason"] | null,"objetivo_texto"?: string | null,"proteina_g"?: number | null,"protocol_approved"?: Json | null,"protocol_suggested"?: Json | null,"proxima_cita"?: string | null,"reopen_reason"?: string | null,"reopened_at"?: string | null,"reopened_by"?: string | null,"restricciones"?: (string)[],"restrictions_ack_at"?: string | null,"restrictions_ack_by"?: string | null,"sin_prescripcion_at"?: string | null,"sin_prescripcion_by"?: string | null,"sin_prescripcion_motivo"?: string | null,"status"?: Database["public"]['Enums']["treatment_status"],"tiempos"?: Json | null,"tiempos_activos"?: Json | null
                   }
                   Relationships: [
                     {
@@ -2764,12 +2867,19 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "treatments_sin_prescripcion_by_fkey"
+      columns: ["sin_prescripcion_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
     }
                   ]
                 },"user_roles": {
                   Row: {
                     "assigned_at": string,"role_id": string,"user_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "assigned_at"?: string,"role_id": string,"user_id": string
                   }
@@ -2798,6 +2908,7 @@ isOneToOne: false
                   Row: {
                     "integrante": string | null,"participacion_proveedor": number | null,"producto": string | null,"residuo_cnv": number | null,"tasa_integrante": number | null,"umbral_aplicado": number | null
                   }
+                  ComputedFields: never
                   Relationships: [
                     
                   ]

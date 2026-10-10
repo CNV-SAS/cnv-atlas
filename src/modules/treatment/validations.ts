@@ -263,6 +263,26 @@ export const addNoteSchema = z.object({
 
 export type AddNoteInput = z.infer<typeof addNoteSchema>;
 
+// ═══ "NO PRESCRIBO NUTRACEUTICOS": EL CRITERIO CLINICO (Santiago, 2026-10-10. Migracion 0214) ═══
+//
+// Es un hecho DISTINTO de "el paciente no los adquiere", que es lo que preguntaba el campo viejo. Textual
+// suyo: *"una cosa es prescribir un producto, que basicamente eso lo hacen los integrantes, y otra cosa es
+// que el paciente quiera comprar o no."* Lo primero es del PROFESIONAL y no deja rastro en ninguna otra
+// parte; lo segundo lo responden las VENTAS.
+//
+// EL MOTIVO ES OBLIGATORIO Y DE AL MENOS 5 CARACTERES, igual que el CHECK de la 0214: lo que alimenta la
+// investigacion es el criterio, no la ausencia. Un "no" sin razon no se puede leer despues.
+export const registrarSinPrescripcionSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  motivo: z
+    .string()
+    .trim()
+    .min(5, "Escribe por qué no prescribes nutracéuticos en esta consulta.")
+    .max(1000, "El motivo es demasiado largo."),
+});
+
+export type RegistrarSinPrescripcionInput = z.infer<typeof registrarSinPrescripcionSchema>;
+
 // DECISION SOBRE LOS NUTRACEUTICOS (CP-N1, 2026-08-24).
 //
 // Reglas que el schema impone, y por que cada una:

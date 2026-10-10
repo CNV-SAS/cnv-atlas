@@ -84,9 +84,14 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
       // ERA `nutra-decision-section.tsx` HASTA EL 2026-10-02, y ese cambio importa: ese componente era la
       // pantalla de la pregunta retirada el 2026-09-26, y llevaba meses SIN RENDERIZARSE EN NINGUN SITIO.
       // O sea que este caso vigilaba una superficie que ya no existia para nadie. Se borro el componente
-      // (traia de vuelta el guard de la respuesta que nadie puede dar, dos veces) y la superficie viva de
-      // esa nota es el boton de "no los adquiere por ahora", que es donde el profesional la escribe hoy.
-      "src/modules/treatment/components/no-los-adquiere-form.tsx",
+      // (traia de vuelta el guard de la respuesta que nadie puede dar, dos veces).
+      //
+      // Y DESDE EL 2026-10-10 (migracion 0214) ES `sin-prescripcion-form.tsx`. El boton de "no los adquiere
+      // por ahora" se retiro: medía si el PACIENTE adquiere, que es un hecho que las ventas ya responden.
+      // La nota que el profesional escribe hoy en este punto del flujo es el MOTIVO de no prescribir, que es
+      // su criterio clinico. CAMBIO EL HECHO Y CAMBIO LA COLUMNA, pero la superficie sigue siendo UNA y sigue
+      // siendo de clase A: pegada a una decision concreta, no un cajon de observaciones.
+      "src/modules/treatment/components/sin-prescripcion-form.tsx",
       "src/modules/treatment/components/treatment-panel.tsx",
       "src/modules/nutraceuticals/components/mi-conteo-form.tsx",
     ];
@@ -94,9 +99,17 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
     // "no los adquiere" tuvo que dejar de ser un `<form>` (vivia anidado dentro del de la prescripcion, ver
     // `formularios-no-anidados.test.ts`) sus campos pasaron a armarse a mano: el caso se puso rojo contra el
     // arreglo correcto. Lo que define una superficie de nota es que ESCRIBA una, por cualquiera de las dos vias.
+    // Y SE ADMITE EL NOMBRE DEL CAMPO, NO SOLO LA PALABRA "note" (2026-10-10): la nota del nutraceutico
+    // pasó a llamarse `motivo` al cambiar de hecho. Buscar solo "note" habria contado UNA superficie menos y
+    // el caso se habria puesto rojo contra el cambio correcto, que es lo que ya paso el 2026-10-02 con el
+    // marcado. Lo que define una superficie es que ESCRIBA una nota, no como se llame su campo.
     return dirs.filter((f) => {
       const src = readFileSync(f, "utf8");
-      return src.includes('name="note"') || /set\(\s*["']note["']/.test(src);
+      return (
+        src.includes('name="note"') ||
+        /set\(\s*["']note["']/.test(src) ||
+        /set\(\s*["']motivo["']/.test(src)
+      );
     });
   };
 
@@ -138,10 +151,11 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
     //
     // EL CRITERIO DEL DIAGNÓSTICO YA NO ESTÁ AQUÍ (2026-09-08): dejó de ser una superficie de escritura.
     // Lo escrito no se perdió, se muestra en solo lectura en la cuarta subpestaña.
-    const nutra = readFileSync("src/modules/treatment/components/no-los-adquiere-form.tsx", "utf8");
+    const nutra = readFileSync("src/modules/treatment/components/sin-prescripcion-form.tsx", "utf8");
     const conteo = readFileSync("src/modules/nutraceuticals/components/mi-conteo-form.tsx", "utf8");
     // El del nutraceutico arma sus campos a mano (no puede abrir un `<form>` propio: vive dentro de otro).
-    expect(nutra).toMatch(/set\(\s*["']note["']/);
+    // Su campo se llama `motivo` desde el 2026-10-10: es el criterio clinico de no prescribir.
+    expect(nutra).toMatch(/set\(\s*["']motivo["']/);
     expect(conteo).toContain('name="note"');
   });
 

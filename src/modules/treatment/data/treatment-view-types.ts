@@ -240,12 +240,18 @@ export type TreatmentProtocol = {
   // Contraindicaciones vigentes del paciente, mas recientes primero. Vienen de TODAS sus consultas, no
   // solo de esta: es dato de la persona.
   contraindications: PatientContraindication[];
+  // CONGELADO el 2026-10-10 (0214). Registraba si el PACIENTE adquiria los nutraceuticos, que es un hecho
+  // que las VENTAS ya responden. Se sigue LEYENDO porque hay consultas cerradas con el, y lo escrito antes
+  // no se reinterpreta; lo que ya no existe es la forma de escribirlo.
   nutraceuticalDecision: {
     decision: "si" | "no" | "pendiente";
     reason: string | null;
     note: string | null;
     at: string;
   } | null;
+  // EL CRITERIO CLINICO: el profesional evaluo y decidio NO prescribir, con su razon (0214). null = no se
+  // ha registrado. Es otro hecho, no otra forma del de arriba.
+  sinPrescripcion: { motivo: string; at: string } | null;
   // Menu semanal guardado (CP4). null = nunca guardado -> la grilla usa la precarga del ciclo con el
   // arranque DERIVADO del treatmentId.
   menuSemanal: MenuSemanalSaved | null;

@@ -1,170 +1,64 @@
-"use client";
-
-import { useActionState, useState } from "react";
-
-import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
-import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/format/date";
 
-import { saveNutraDecisionAction, type TreatmentActionState } from "../actions";
-
-const INICIAL: TreatmentActionState = { error: null, success: null, warning: null };
-
-// ═══ UN SOLO BOTON DONDE HABIA UNA PREGUNTA DE TRES OPCIONES (Santiago, 2026-09-26) ═══
+// ═══ LA NOTA VIEJA DE "EL PACIENTE NO LOS ADQUIERE": SOLO LECTURA (2026-10-10, migración 0214) ═══
 //
-// LO QUE SE RETIRO: "¿El paciente adquiere los nutraceuticos?" con si / no / pendiente y un desplegable de seis
-// razones. La razon de fondo es que el "SI" NO HAY QUE PREGUNTARLO: si el paciente se los lleva, hay una venta,
-// y una venta es un hecho. Preguntarlo ademas obligaba a marcar una casilla que decia lo mismo que la venta ya
-// decia, y esa casilla se olvidaba.
+// ── QUÉ ERA ESTO, Y POR QUÉ YA NO SE ESCRIBE ────────────────────────────────────────────────────
 //
-// LO QUE SI HAY QUE PREGUNTAR ES EL "NO", porque de eso no queda rastro en ninguna parte: nadie registra las
-// ventas que no ocurrieron. Y VA SOBRE LOS RECOMENDADOS POR EL MODELO, no sobre toda la prescripcion: son los
-// que importan para la investigacion (que el modelo recomiende algo y el paciente no lo tome es el dato).
+// Era un botón para registrar que el paciente no se llevaba los nutracéuticos recomendados. Se retiró el
+// 2026-10-10 por el argumento que Santiago trajo de la reunión con la integrante que más vende: *"una cosa es
+// prescribir un producto... y otra cosa es que el paciente quiera comprar o no."*
 //
-// ── COMO SE GUARDA, SIN MIGRACION ──
+// Medía lo que no servía. Si el paciente adquiere, LO DICE LA VENTA (Dirección cuenta "comprado en N
+// consultas" desde las transacciones), así que un campo que pregunta lo mismo y lo responde de memoria solo
+// puede contradecir al hecho. Y su respuesta caduca: el paciente puede comprarlos la semana siguiente.
 //
-// Reusa la decision que ya existe: `decision: "no"` con `reason: "otra"` y el motivo en `note`. El schema ya lo
-// admite (y ya exige texto cuando la razon es "otra"), asi que no hace falta ni una columna nueva ni un valor
-// nuevo de enum. Las otras cinco razones dejan de ofrecerse pero siguen existiendo en los registros viejos, que
-// es lo correcto: un dato que alguien dio no se borra porque cambiamos la pantalla.
+// Lo reemplaza `SinPrescripcionForm`, que registra otra cosa: el criterio clínico de NO prescribir, que es del
+// profesional y no deja rastro en ninguna otra parte.
 //
-// ═══ POR QUE ESTO NO ES UN <form>, Y ES UN ARREGLO (bloqueo de Santiago, 2026-10-02) ═══
+// ── POR QUÉ SE QUEDA LA LECTURA ─────────────────────────────────────────────────────────────────
 //
-// LO QUE PASABA: este componente se monta DENTRO del formulario de la prescripcion (`nutraceuticals-section`),
-// y antes abria su propio `<form>`. Un `<form>` dentro de otro es HTML INVALIDO: el navegador DESCARTA la
-// etiqueta interna al construir el DOM, asi que sus campos y su boton pasan a ser del formulario de AFUERA.
+// Hay consultas cerradas con este registro, y es parte de su historia clínica. Lo escrito antes NO se
+// reinterpreta (no pasa a leerse como criterio clínico, que era otra cosa) y tampoco se esconde: esconderlo
+// dejaría una consulta que se cerró por esa vía pareciendo cerrada por nada. Es el mismo criterio con el que
+// se congeló la columna en la base, con su COMMENT.
 //
-// El resultado, con sus dos sintomas, que es como lo reporto Santiago:
-//   · pulsar "Registrar" ejecutaba la accion de GUARDAR LA PRESCRIPCION, no esta: no se registraba nada;
-//   · y esa otra accion recargaba la seccion, con lo que la pantalla saltaba a la pestaña de Diagnostico.
-//
-// Y NO LO VE NADIE: tsc compila, el lint calla, y jsdom no reproduce el parseo del navegador. Es la misma
-// familia de los hazards de formulario de CLAUDE.md, y por eso entra alli como el septimo.
-//
-// EL ARREGLO ES NO ANIDAR: sin `<form>` propio, los campos se arman a mano y la accion se invoca por el camino
-// que el proyecto ya tiene para esto (`ejecutarAccion`, el mismo de los cinco botones sin formulario). Los
-// campos NO llevan `name`, a proposito: con `name` seguirian viajando en el formulario de afuera, que es la
-// mitad del defecto que no se ve.
+// NO ES UN COMPONENTE CLIENTE: ya no tiene estado ni acción, solo pinta un dato. Lo importa una sección
+// cliente, así que viaja igual en su bundle; lo que se gana es que no declara interactividad que no tiene.
 export function NoLosAdquiereForm({
-  evaluationId,
+  /** El motivo que se escribió entonces. Cadena vacía si se registró sin texto. */
   yaRegistrado,
+  /** Cuándo se registró, para poder decir cuál de los dos hechos es el último. */
   registradoEn,
+  /** La venta pagada MÁS RECIENTE posterior al "no", si la hay. */
   ventaPosteriorEn,
 }: {
-  evaluationId: string;
-  /** El motivo escrito si ya se registro el "no"; null si no se ha registrado. */
-  yaRegistrado: string | null;
-  /** Cuando se registro, para poder decir cual de los dos hechos es el ultimo. */
+  yaRegistrado: string;
   registradoEn?: string | null;
-  /** La venta pagada MAS RECIENTE posterior al "no", si la hay. */
   ventaPosteriorEn?: string | null;
 }) {
-  const [state, action, pending] = useActionState(saveNutraDecisionAction, INICIAL);
-  const [abierto, setAbierto] = useState(false);
-  const [motivo, setMotivo] = useState("");
-  useFormToastRefreshOnSuccess(state);
-
-  // YA REGISTRADO: se dice y no se vuelve a ofrecer el boton. Ofrecerlo otra vez invita a escribir dos motivos
-  // para lo mismo y deja el segundo pisando al primero sin que nadie lo note.
-  if (yaRegistrado != null) {
-    return (
-      <div className="flex flex-col gap-1">
-        <p className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
-          Quedó registrado{registradoEn ? ` el ${formatDate(registradoEn)}` : ""} que el paciente no los adquiere
-          por ahora
-          {yaRegistrado.trim() !== "" ? <>: &ldquo;{yaRegistrado}&rdquo;</> : null}. Si cambia de decisión y se
-          los lleva, regístralo con la venta.
-        </p>
-        {/* ═══ LOS DOS HECHOS CONVIVEN, Y LA PANTALLA DICE CUAL ES EL ULTIMO (Santiago, 2026-10-02) ═══
-
-            Registrar "no los adquiere" y despues venderle NO es una contradiccion que haya que resolver
-            borrando una de las dos: son DOS HECHOS EN DOS MOMENTOS, y los dos son verdad. El "no" fue la
-            decision de esa consulta y la compra ocurrio despues.
-
-            Borrar la nota al vender perderia el dato que la nota existe para capturar (que el modelo recomendo
-            algo y en ese momento no se lo llevo). Dejarla sola haria que la pantalla contradijera a la venta.
-            Asi que se quedan las dos y se dice CUAL ES LA MAS NUEVA, que es lo unico que faltaba. */}
-        {ventaPosteriorEn ? (
-          <p className="px-3 text-xs text-attention">
-            Después, el {formatDate(ventaPosteriorEn)}, sí compró. Lo último que pasó es la compra; la nota de
-            arriba fue la decisión de ese momento y se conserva.
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (!abierto) {
-    return (
-      /* ═══ SE RESALTA, PORQUE ERA UNA SALIDA QUE NO SE VEÍA (Santiago, smoke del 2026-10-07) ═══
-
-         *"Sería bueno resaltar más el botón 'el paciente no los adquiere por ahora', para que sepan que también
-         es una opción."* Iba como un `outline` suelto al final, indistinguible del marco, y es una de las DOS
-         formas válidas de cerrar la prescripción: o se prescribe algo, o se registra que no lo adquiere.
-
-         Y NO SE VUELVE PRIMARIO: competir con "Guardar" invitaría a pulsarlo por salir del paso, y esto registra
-         una decisión clínica del paciente. Lo que necesita es NOMBRARSE como la alternativa que es, con la línea
-         que lo dice al lado, no más peso visual que el camino principal. */
-      <div className="flex flex-col gap-1.5 self-start rounded-md border border-dashed border-border bg-muted/30 p-3">
-        <span className="text-xs text-muted-foreground">
-          Si el paciente no va a llevarse nada, esta es la otra forma de cerrar la prescripción:
-        </span>
-        <Button type="button" variant="outline" onClick={() => setAbierto(true)} className="self-start">
-          El paciente no los adquiere por ahora
-        </Button>
-      </div>
-    );
-  }
-
-  const registrar = () => {
-    // Los campos se arman aqui porque este bloque NO tiene formulario propio (ver la cabecera). Son los
-    // mismos cuatro que el schema espera.
-    const fd = new FormData();
-    fd.set("evaluationId", evaluationId);
-    fd.set("decision", "no");
-    // "otra" con el motivo escrito. Las cinco razones cerradas que habia (costo, lo piensa, ya toma otros...)
-    // se retiraron por decision de Santiago: era un formulario en cada consulta para un dato agregado que
-    // nadie consultaba. Lo que queda es el motivo en palabras de quien atendio.
-    fd.set("reason", "otra");
-    fd.set("note", motivo);
-    ejecutarAccion(action, fd);
-  };
-
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="motivo-no-adquiere" className="text-xs">
-          Por qué no los adquiere por ahora
-        </Label>
-        {/* SIN `name`, a proposito: este bloque vive dentro del formulario de la prescripcion, y un campo con
-            nombre viajaria en ESE envio. Controlado, que ademas es lo que pide el hazard 2 de CLAUDE.md. */}
-        <Input
-          id="motivo-no-adquiere"
-          maxLength={1000}
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          placeholder="Por ejemplo: lo va a pensar, o los va a comprar el mes entrante"
-          autoFocus
-        />
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {/* type="button" EN LOS DOS: dentro del formulario de afuera, un submit enviaria la prescripcion. */}
-        <Button key="registrar-no" type="button" disabled={pending} onClick={registrar}>
-          {pending ? "Registrando..." : "Registrar"}
-        </Button>
-        <Button
-          key="cancelar-no"
-          type="button"
-          variant="ghost"
-          onClick={() => setAbierto(false)}
-          disabled={pending}
-        >
-          Cancelar
-        </Button>
-      </div>
+    <div className="flex flex-col gap-1">
+      <p className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+        Quedó registrado{registradoEn ? ` el ${formatDate(registradoEn)}` : ""} que el paciente no los adquiere
+        por ahora
+        {yaRegistrado.trim() !== "" ? <>: &ldquo;{yaRegistrado}&rdquo;</> : null}. Si cambia de decisión y se
+        los lleva, regístralo con la venta.
+      </p>
+      {/* ═══ LOS DOS HECHOS CONVIVEN, Y LA PANTALLA DICE CUÁL ES EL ÚLTIMO (Santiago, 2026-10-02) ═══
+
+          Registrar "no los adquiere" y después venderle NO es una contradicción que haya que resolver
+          borrando una de las dos: son DOS HECHOS EN DOS MOMENTOS, y los dos son verdad. El "no" fue la
+          decisión de esa consulta y la compra ocurrió después.
+
+          Borrar la nota al vender perdería el dato que la nota existe para capturar (que el modelo recomendó
+          algo y en ese momento no se lo llevó). Dejarla sola haría que la pantalla contradijera a la venta.
+          Así que se quedan las dos y se dice CUÁL ES LA MÁS NUEVA, que es lo único que faltaba. */}
+      {ventaPosteriorEn ? (
+        <p className="px-3 text-xs text-attention">
+          Después, el {formatDate(ventaPosteriorEn)}, sí compró. Lo último que pasó es la compra; la nota de
+          arriba fue la decisión de ese momento y se conserva.
+        </p>
+      ) : null}
     </div>
   );
 }
