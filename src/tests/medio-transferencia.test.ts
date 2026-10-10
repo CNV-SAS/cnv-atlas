@@ -76,9 +76,62 @@ describe("las dos pantallas que cobran ofrecen transferencia", () => {
     expect(src).toMatch(/id: "transferencia"/);
     expect(src).toMatch(/id: "efectivo"/);
     expect(src).toMatch(/id: "link"/);
-    // Y SE DICE QUE PASA CON EL DINERO Y CON LA FACTURA en el propio boton: el medio decide la cuenta
-    // contable y el estado de la factura, y hasta hoy eso no estaba escrito en ninguna parte de /pagos.
-    expect(src).toMatch(/sin cobrar/i);
+  });
+
+  // ═══ Y DICE A DONDE TRANSFIERE EL PACIENTE, QUE ES LO QUE FALTABA (Santiago, 2026-10-10) ═══
+  //
+  // ── LO QUE SE RETIRO, Y POR QUE NO ES UNA RELAJACION ──
+  //
+  // El boton decia "Factura al banco principal, y queda sin cobrar hasta que se verifique". El lo rechazo:
+  // *"Esto no se dice a los integrantes, es algo interno de CNV."* El HECHO contable es verdad y sigue
+  // vigilado donde manda, en los tres primeros casos de este archivo (`cuentaDelPago` y `medioDianDelPago`);
+  // lo que se retiro es decirselo a quien no le sirve.
+  //
+  // ── Y LO QUE SI LE SIRVE, QUE NO ESTABA EN NINGUNA PARTE ──
+  //
+  // La CUENTA. El medio existia desde el 2026-09-25 y la pantalla nunca dijo a donde transferir: el integrante
+  // tenia que sabersela de memoria o pedirla por interno, con el paciente delante. Un medio sin su destino es
+  // una etiqueta, no un medio.
+  //
+  // SE VIGILA QUE SALGAN DE LA CONSTANTE COMPARTIDA, no escritas a mano: el mismo dato hace falta en la venta
+  // en consulta (paso 2 de la unificacion), y una cuenta bancaria copiada en dos pantallas es una que el dia
+  // que cambie quedara bien en una y mal en la otra. El dinero iria a una cuenta que ya no es.
+  describe("y dice A DONDE transfiere el paciente", () => {
+    const CUENTA = "src/modules/payments/cuenta-de-cnv.ts";
+
+    it("la constante tiene la llave Breb, la cuenta y el titular", () => {
+      const src = leer(CUENTA);
+      expect(src).toContain("llaveBreb");
+      expect(src).toContain("numeroDeCuenta");
+      expect(src).toContain("Connected Nutrition Ventures");
+    });
+
+    it("la tarjeta los muestra DESDE la constante, no a mano", () => {
+      const src = leer(TARJETA);
+      expect(src).toContain("CUENTA_DE_CNV.llaveBreb");
+      expect(src).toContain("CUENTA_DE_CNV.numeroDeCuenta");
+      // Y NADIE LOS TECLEA EN LA PANTALLA: un numero de cuenta literal aqui es la copia que se desincroniza.
+      const numeros = leer(CUENTA).match(/"\d{8,}"/g) ?? [];
+      expect(numeros.length, "la constante dejo de tener los numeros").toBeGreaterThan(0);
+      for (const n of numeros) {
+        expect(src, "la tarjeta tiene un numero de cuenta escrito a mano: " + n).not.toContain(
+          n.replace(/"/g, ""),
+        );
+      }
+    });
+
+    it("y dice que hay que mandarle el comprobante a admin", () => {
+      // LA MITAD QUE SE OLVIDA: sin la captura, admin no puede cotejar la transferencia contra el extracto y
+      // la venta queda registrada sin forma de confirmar que el dinero llego. Un paso manual que no esta en
+      // la pantalla es un paso que no se hace.
+      expect(leer(CUENTA)).toMatch(/captura de la transferencia/i);
+      expect(leer(TARJETA)).toContain("QUE_HACER_CON_EL_COMPROBANTE");
+    });
+
+    it("y el bloque de la cuenta solo sale cuando se eligio transferencia", () => {
+      // Ensenarla siempre seria decirle al paciente que transfiera cuando va a pagar en efectivo.
+      expect(leer(TARJETA)).toContain('{medio === "transferencia" ? (');
+    });
   });
 
   it("y el formulario de /pagos MANDA el canal que la tarjeta eligio", () => {

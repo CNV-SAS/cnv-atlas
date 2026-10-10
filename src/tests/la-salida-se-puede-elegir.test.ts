@@ -21,6 +21,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 // que decir, y un test de servicio recibe el objeto ya armado. Solo se ve en un navegador real, o con esto.
 
 const RAICES = ["src/modules", "src/app"];
+const BLOQUE = "src/modules/payments/components/bloque-tratamiento.tsx";
 
 function archivos(dir: string): string[] {
   const out: string[] = [];
@@ -58,19 +59,81 @@ describe("la salida de un campo obligatorio se puede elegir de verdad", () => {
     ).toEqual([]);
   });
 
-  // Y SE COMPRUEBA QUE EL BLOQUE SIGUE OFRECIENDO LAS DOS COSAS: si alguien quitara la casilla, el barrido de
-  // arriba dejaria de mirar este archivo y pasaria en verde sin proteger nada. Un candado cuyo disparador se
-  // puede borrar sin que nadie se entere no es un candado.
+  // ═══ Y SE COMPRUEBA QUE EL BLOQUE SIGUE OFRECIENDO LA SALIDA ═══
+  //
+  // Si alguien quitara la casilla, el barrido de arriba dejaria de mirar este archivo y pasaria en verde sin
+  // proteger nada. Un candado cuyo disparador se puede borrar sin que nadie se entere no es un candado.
   it("y el bloque de la consulta sigue teniendo su salida y su campo", () => {
-    const src = sinComentarios(
-      readFileSync("src/modules/payments/components/bloque-tratamiento.tsx", "utf8"),
-    );
+    const src = sinComentarios(readFileSync(BLOQUE, "utf8"));
     expect(OFRECE_SALIDA.test(src), "el bloque dejó de ofrecer la salida").toBe(true);
-    expect(src).toMatch(/required=\{!suelta\}/);
-    // Y NO SE RESUELVE CON `disabled`: un campo deshabilitado no viaja en el FormData (hazard 4), y el
-    // servidor necesita recibirlo vacio para saber que la compra va suelta.
-    // El `\s` NO es cosmetico: sin el, el patron tambien casa dentro de `aria-disabled={suelta}`, que es
-    // justo lo que SI queremos. Lo descubrio este caso fallando contra el arreglo correcto.
-    expect(src).not.toMatch(/\sdisabled=\{suelta\}/);
+    expect(src, "el bloque dejó de pedir el motivo al tomar la salida").toContain("valor.motivo");
+  });
+});
+
+// ═══ Y DONDE SE EXIGE AHORA, QUE YA NO ES EL NAVEGADOR (Santiago, 2026-10-10) ═══
+//
+// ── QUE CAMBIO ──
+//
+// El bloque SALIO del formulario: vive en la tarjeta de cobro, encima, porque montarlo dentro de cada
+// formulario es lo que producia los minibloques apilados que Santiago reporto tres dias seguidos. Y un
+// control que no es campo de un formulario NO LO VALIDA EL NAVEGADOR: dejar ahi un obligatorio seria una
+// bandera que nadie lee, que es peor que no tenerla (ver la memoria de la bandera ignorada).
+//
+// ── ASI QUE LA EXIGENCIA SE MUDO AL BOTON, Y ES MAS ESTRICTA ──
+//
+// `consultaRespondida` es UNA sola funcion, al lado del bloque, que define que cuenta como respondido (una
+// consulta elegida, o la salida CON su motivo escrito), y los tres formularios que usan el bloque apagan su
+// boton mientras no lo este. El navegador avisaba AL PULSAR; esto lo dice desde el principio.
+//
+// ── POR QUE ESTO ES LO QUE HAY QUE VIGILAR AHORA ──
+//
+// Porque es el mismo riesgo del bloqueo del 2026-09-30, girado: entonces la salida no se podia tomar; ahora,
+// sin este gate, la salida se podria tomar SIN MOTIVO y la venta quedaria suelta sin que nadie lo diga, que es
+// justo lo que el bloque existe para evitar.
+describe("la exigencia vive en el botón, porque el bloque salió del formulario", () => {
+  const CONSUMIDORES = [
+    "src/modules/payments/components/register-cash-sale-form.tsx",
+    "src/modules/payments/components/create-checkout-form.tsx",
+    "src/modules/payments/components/venta-retroactiva-form.tsx",
+  ];
+
+  it("el bloque no deja un obligatorio inerte en sus controles", () => {
+    const src = sinComentarios(readFileSync(BLOQUE, "utf8"));
+    expect(
+      src,
+      "volvió un `required` al bloque: ya no es campo de ningún formulario, así que el navegador no lo valida y la bandera engaña",
+    ).not.toMatch(/\brequired\b/);
+  });
+
+  it("y define UNA sola vez qué cuenta como respondido", () => {
+    const src = readFileSync(BLOQUE, "utf8");
+    expect(src).toMatch(/export function consultaRespondida/);
+    // LA SALIDA EXIGE SU MOTIVO. Sin esta mitad, marcar la casilla bastaria y la venta quedaria suelta sin
+    // que nadie dijera por que, que es el defecto que el bloque entero viene a cerrar.
+    expect(src).toContain('c.suelta ? c.motivo.trim().length > 0 : c.treatmentId !== ""');
+  });
+
+  it.each(CONSUMIDORES)("%s apaga su botón mientras no esté respondido", (ruta) => {
+    const src = sinComentarios(readFileSync(ruta, "utf8"));
+    expect(src, ruta + " no mira si la consulta está respondida").toMatch(/consultaRespondida/);
+    // Y LO MIRA EN EL `disabled`, no solo lo recibe: un valor calculado que no entra en el gate es la
+    // bandera ignorada otra vez.
+    const gates = src.match(/disabled=\{[^}]*\}/g) ?? [];
+    expect(
+      gates.some((g) => /falta != null|consultaRespondida/.test(g)),
+      ruta + " calcula si falta la consulta pero no lo usa para apagar el botón",
+    ).toBe(true);
+  });
+
+  it("y los tres dicen en el rótulo del botón que falta decirlo", () => {
+    // UN BOTON MUERTO SIN EXPLICACION ES PEOR QUE UN ERROR CLARO, y lo dice este proyecto en el propio
+    // formulario de ventas retroactivas. Apagar el boton sin decir por que repite el defecto que acabamos de
+    // cerrar en la prescripcion: el profesional no sabe que le falta y prueba cosas.
+    for (const ruta of CONSUMIDORES) {
+      const src = sinComentarios(readFileSync(ruta, "utf8"));
+      expect(src, ruta + " apaga el botón sin decir que falta la consulta").toContain(
+        "Di de qué consulta sale",
+      );
+    }
   });
 });

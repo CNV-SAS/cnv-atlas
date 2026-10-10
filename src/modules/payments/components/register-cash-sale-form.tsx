@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 
 import { registerCashSaleFormAction } from "../actions";
 import { BloqueDomicilio } from "./bloque-domicilio";
-import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
 import type { CashSaleFormState } from "../validations";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 
@@ -29,15 +28,15 @@ const selectClass =
 export function RegisterCashSaleForm({
   patients,
   nutraceuticals,
-  tratamientosPorPaciente = {},
   esDeDistribucion = false,
   patientId,
+  treatmentId,
+  ventaSueltaMotivo,
+  consultaRespondida,
   canal,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
-  /** Las consultas de cada paciente, para poder atar la compra a la suya sin ir al servidor. */
-  tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
   /**
    * Si QUIEN MIRA opera bajo Distribucion. Cambia lo que el formulario dice y pide, no lo que hace: la
    * decision real la toma el servidor derivandola de la modalidad guardada.
@@ -48,6 +47,20 @@ export function RegisterCashSaleForm({
    * compartido con el link de pago. Ver tarjeta-de-cobro.tsx.
    */
   patientId: string;
+  /**
+   * ═══ LA CONSULTA TAMPOCO SE ELIGE AQUI (Santiago, 2026-10-10) ═══
+   *
+   * El minibloque vive en la tarjeta, montado SIEMPRE y uno solo, porque montarlo dentro de cada formulario
+   * es lo que producia los bloques apilados que el reporto tres veces. Aqui llegan ya las dos respuestas
+   * posibles, y lo unico que queda es mandarlas: un campo oculto cada una.
+   *
+   * `ventaSueltaMotivo` llega VACIO cuando la compra si sale de una consulta, que es exactamente lo que
+   * el servidor espera para distinguir los dos casos.
+   */
+  treatmentId: string;
+  ventaSueltaMotivo: string;
+  /** Si el minibloque esta respondido (consulta elegida, o suelta con su motivo). Lo exige el boton. */
+  consultaRespondida: boolean;
   /**
    * COMO LLEGO LA PLATA, decidido ARRIBA junto al link de pago. Era un desplegable propio de este
    * formulario, y mientras el link de pago vivia en otra tarjeta eso partia una sola pregunta (con que
@@ -159,6 +172,11 @@ export function RegisterCashSaleForm({
     // Los controlados se re-afirman: su valor vive en el estado de React, no en el DOM.
     fd.set("patientId", patientId);
     fd.set("lineas", JSON.stringify(lineas));
+    // LA RESPUESTA DEL MINIBLOQUE, que vive ARRIBA en la tarjeta. Los campos ocultos ya la mandan, pero este
+    // formulario arma su FormData a mano y aqui se re-afirma todo lo que no es un input suelto del DOM: es la
+    // misma razon por la que `lineas` y `patientId` estan en esta lista.
+    fd.set("treatmentId", treatmentId);
+    fd.set("ventaSueltaMotivo", ventaSueltaMotivo);
     fd.set("idempotencyKey", keyRef.current);
     // Lo que se confirma AHORA (por opcion, o por el `name`/`value` del boton que envio) se suma a lo ya
     // confirmado. Objeto NUEVO, no mutacion de campos: el lint de inmutabilidad lo exige y ademas deja la
@@ -208,6 +226,13 @@ export function RegisterCashSaleForm({
       </p>
     );
   }
+
+  // LO QUE FALTA PARA PODER ENVIAR, en el orden en que se pregunta. Null = no falta nada.
+  const falta = !patientId
+    ? "Elige un paciente"
+    : !consultaRespondida
+      ? "Di de qué consulta sale"
+      : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -286,29 +311,13 @@ export function RegisterCashSaleForm({
           <input type="hidden" name="canal" value={canal} />
         )}
 
-        {/* LA `key` POR PACIENTE re-monta el bloque al cambiar de paciente: sin ella, la consulta elegida
-            para uno se quedaría seleccionada para el siguiente, que es como se le cuelga una compra a la
-            consulta de otra persona. */}
-        {/* ═══ SIN PACIENTE NO HAY BLOQUES (Santiago, 2026-10-10) ═══
+        {/* ═══ LA RESPUESTA DEL MINIBLOQUE VIAJA EN DOS CAMPOS OCULTOS ═══
 
-            Antes el formulario llegaba con un paciente elegido, así que estos bloques existían desde el primer
-            render. Ahora empieza vacío, y montarlos sin paciente no tendría nada que decir: un "de qué consulta
-            sale esta compra" sin paciente no tiene consultas que ofrecer.
-
-            Y ESTO SOLO ERA LA MITAD DEL BLOQUE DUPLICADO que reportó: lo escribí como sospecha y la sospecha
-            era corta. El apilado siguió pasando, porque /pagos tenía DOS tarjetas visibles a la vez y cada una
-            con su propio paciente y su propio bloque.
-
-            LA OTRA MITAD SE CERRÓ DONDE ESTABA LA CAUSA: hoy el paciente se elige UNA vez, arriba, y se monta
-            un solo formulario a la vez (ver `tarjeta-de-cobro.tsx`). Así que la gestión de aquí es la correcta
-            pero no era suficiente, y queda escrito para que no se lea como el arreglo completo. */}
-        {patientId ? (
-          <BloqueTratamiento
-            key={patientId}
-            patientId={patientId}
-            tratamientos={tratamientosPorPaciente[patientId] ?? []}
-          />
-        ) : null}
+            El bloque esta en la tarjeta, ENCIMA de este formulario, y un campo fuera del formulario no viaja
+            en su envio. Asi que lo que viaja es esto, y el bloque de alla no lleva `name` en ningun control.
+            Es el mismo arreglo del hazard 7 de CLAUDE.md, por el mismo motivo. */}
+        <input type="hidden" name="treatmentId" value={treatmentId} />
+        <input type="hidden" name="ventaSueltaMotivo" value={ventaSueltaMotivo} />
 
         {/* LA MISMA `key` POR PACIENTE que el bloque de arriba, y por el mismo motivo: el campo del celular
             se precarga con el del paciente elegido. Sin re-montar, el numero del anterior se quedaria en el
@@ -318,8 +327,16 @@ export function RegisterCashSaleForm({
         {/* SIN PACIENTE NO SE PUEDE REGISTRAR, y el boton lo dice en vez de rebotar: antes el `required` del
             desplegable lo impedia, y al quitarlo habria quedado un envio sin paciente que solo fallaria en el
             servidor. */}
-        <Button type="submit" disabled={pending || !patientId}>
-          {pending ? "Registrando..." : patientId ? "Registrar la venta" : "Elige un paciente"}
+        {/* ═══ EL BOTON DICE QUE FALTA, Y NO DEJA PASAR HASTA QUE NO FALTE NADA (Santiago, 2026-10-10) ═══
+
+            *"que el boton no pase hasta que haya un paciente seleccionado y una consulta elegida o la razon
+            de por que no hay una consulta elegida."*
+
+            Y ES AQUI DONDE SE EXIGE, no en el navegador: el minibloque salio del formulario, asi que su
+            `required` ya no aplicaria (el navegador solo valida campos del formulario). Esto es mas estricto
+            y se ve antes: el navegador avisaba al pulsar, el boton lo dice desde el principio. */}
+        <Button type="submit" disabled={pending || falta != null}>
+          {pending ? "Registrando..." : (falta ?? "Registrar la venta")}
         </Button>
 
         {/* ═══ SE VENDE ALGO FUERA DEL PLAN DE ESA CONSULTA (2026-09-30) ═══
