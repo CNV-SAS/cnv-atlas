@@ -10,7 +10,12 @@ import { enteroDeTexto, pesosDeTexto } from "@/core/pesos";
 import { Label } from "@/components/ui/label";
 
 import { registrarVentaRetroactivaAction, type DevolucionState } from "../actions";
-import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
+import {
+  BloqueTratamiento,
+  consultaRespondida,
+  type ConsultaDeLaCompra,
+  type TratamientoParaElegir,
+} from "./bloque-tratamiento";
 
 // ═══ REGISTRAR UNA VENTA QUE YA OCURRIO (Bloque R) ═══
 //
@@ -63,6 +68,24 @@ export function VentaRetroactivaForm({
   const pacienteElegido = pacientesVisibles.some((x) => x.id === pacienteId)
     ? pacienteId
     : (pacientesVisibles[0]?.id ?? "");
+
+  // ═══ LA RESPUESTA DEL BLOQUE DE LA CONSULTA, AQUI (Santiago, 2026-10-10) ═══
+  //
+  // El bloque dejo de tener estado propio: lo guarda quien lo usa. Antes se re-montaba con una
+  // `key={pacienteElegido}`, que es lo que en /pagos producia los bloques apilados que el reporto. Aqui
+  // el bloque no se apilaba (hay un solo formulario), pero la regla se barre en los dos sitios: una regla
+  // que vive en varios sitios y se arregla en uno vuelve por el que se dejo.
+  const VACIA: ConsultaDeLaCompra = { treatmentId: "", suelta: false, motivo: "" };
+  const [consulta, setConsulta] = useState<ConsultaDeLaCompra>(VACIA);
+  // Y SE VACIA AL CAMBIAR DE PACIENTE, que es lo que la `key` hacia: sin esto, la consulta elegida para
+  // uno se queda seleccionada para el siguiente, y asi se le cuelga una venta a la consulta de otra persona.
+  // Pasa tambien al cambiar de PROFESIONAL, porque `pacienteElegido` es derivado y cae al primero de la
+  // lista nueva. Se ajusta durante el render, no en un efecto (regla de lint set-state-in-effect).
+  const [pacienteVisto, setPacienteVisto] = useState(pacienteElegido);
+  if (pacienteElegido !== pacienteVisto) {
+    setPacienteVisto(pacienteElegido);
+    setConsulta(VACIA);
+  }
 
   const [tocadas, setTocadas] = useState<{ cantidad?: boolean; precioUnitario?: boolean }[]>([{}]);
   const tocar = (i: number, campo: "cantidad" | "precioUnitario") =>
@@ -175,13 +198,23 @@ export function VentaRetroactivaForm({
 
             SE REUSA EL MISMO BLOQUE de /pagos, no una copia: la regla (ninguno preseleccionado, cada opción
             con su fecha, salida explícita con motivo) tiene que ser la misma, y dos redacciones se separan.
-            La `key` lo re-arma al cambiar de paciente, porque sus opciones son otras. */}
+
+            Y DESDE EL 2026-10-10 EL BLOQUE NO GUARDA SU RESPUESTA: la guarda este formulario y la manda en dos
+            campos ocultos, porque el bloque dejó de llevar `name` en sus controles. Ver su cabecera. */}
         <div className="flex flex-col gap-1 sm:col-span-2">
           <Label>De qué consulta sale</Label>
+          <input type="hidden" name="treatmentId" value={consulta.treatmentId} />
+          <input
+            type="hidden"
+            name="ventaSueltaMotivo"
+            value={consulta.suelta ? consulta.motivo : ""}
+          />
           <BloqueTratamiento
-            key={pacienteElegido}
-            patientId={pacienteElegido}
             tratamientos={tratamientosPorPaciente[pacienteElegido] ?? []}
+            valor={consulta}
+            onCambiar={(cambio) => setConsulta((prev) => ({ ...prev, ...cambio }))}
+            hayPaciente={pacienteElegido !== ""}
+            id="vr-consulta"
           />
           <span className="text-xs text-muted-foreground">
             En una venta de hace meses lo normal es que no se pueda decir: entonces se marca la salida y se
@@ -276,8 +309,20 @@ export function VentaRetroactivaForm({
         </p>
       </div>
 
-      <Button type="submit" disabled={pending || incompleto} className="w-fit">
-        Registrar la venta
+      {/* ═══ Y LA CONSULTA ENTRA EN EL GATE, PERO DICIENDOLO ═══
+
+          El bloque salio del alcance del navegador (sus controles ya no son campos del formulario), asi que
+          su `required` no aplicaria y hacia falta sustituirlo. Se sustituye en el boton.
+
+          Y EL BOTON LO DICE EN SU ROTULO, que no es un adorno: tres lineas mas arriba este archivo tiene
+          escrito que *"un boton muerto sin explicacion es peor que un error claro"*, y deshabilitarlo en
+          silencio seria contradecir su propia regla en el mismo formulario. */}
+      <Button
+        type="submit"
+        disabled={pending || incompleto || !consultaRespondida(consulta)}
+        className="w-fit"
+      >
+        {consultaRespondida(consulta) ? "Registrar la venta" : "Di de qué consulta sale"}
       </Button>
       {problemas.map((x) => (
         <p key={x} className="text-sm text-destructive">

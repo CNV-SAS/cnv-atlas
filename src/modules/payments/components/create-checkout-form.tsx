@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 
 import { createCheckoutFormAction } from "../actions";
 import { BloqueDomicilio } from "./bloque-domicilio";
-import { BloqueTratamiento, type TratamientoParaElegir } from "./bloque-tratamiento";
 import type { SelectablePatient } from "../data/payments-repository";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "../wompi-minimo";
 import type { PaymentFormState } from "../validations";
@@ -39,18 +38,32 @@ export type CheckoutNutraceutical = { id: string; name: string; unitPrice: numbe
 export function CreateCheckoutForm({
   patients,
   nutraceuticals,
-  tratamientosPorPaciente = {},
   patientId,
+  treatmentId,
+  ventaSueltaMotivo,
+  consultaRespondida,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
-  /** Las consultas de cada paciente, para poder atar la compra a la suya sin ir al servidor. */
-  tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
   /**
    * EL PACIENTE YA NO SE ELIGE AQUI (Santiago, 2026-10-10). Lo elige la tarjeta que contiene a este
    * formulario y al de la venta ya cobrada, con UN solo buscador. Ver tarjeta-de-cobro.tsx.
    */
   patientId: string;
+  /**
+   * ═══ LA CONSULTA TAMPOCO SE ELIGE AQUI (Santiago, 2026-10-10) ═══
+   *
+   * El minibloque vive en la tarjeta, montado SIEMPRE y uno solo, porque montarlo dentro de cada formulario
+   * es lo que producia los bloques apilados que el reporto tres veces. Aqui llegan ya las dos respuestas
+   * posibles, y lo unico que queda es mandarlas: un campo oculto cada una.
+   *
+   * `ventaSueltaMotivo` llega VACIO cuando la compra si sale de una consulta, que es exactamente lo que el
+   * servidor espera para distinguir los dos casos.
+   */
+  treatmentId: string;
+  ventaSueltaMotivo: string;
+  /** Si el minibloque esta respondido (consulta elegida, o suelta con su motivo). Lo exige el boton. */
+  consultaRespondida: boolean;
 }) {
   const [state, action, pending] = useActionState(createCheckoutFormAction, initial);
   // Inputs CONTROLADOS a proposito: React 19 resetea el form tras cada submit (lo del prop `action`), y
@@ -106,6 +119,13 @@ export function CreateCheckoutForm({
       </p>
     );
   }
+
+  // LO QUE FALTA PARA PODER ENVIAR, en el orden en que se pregunta. Null = no falta nada.
+  const falta = !patientId
+    ? "Elige un paciente"
+    : !consultaRespondida
+      ? "Di de qué consulta sale"
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -170,25 +190,32 @@ export function CreateCheckoutForm({
           </div>
         </div>
 
-        {/* LA `key` POR PACIENTE re-monta el bloque al cambiar de paciente: sin ella, la consulta elegida
-            para uno se quedaría seleccionada para el siguiente, que es como se le cuelga una compra a la
-            consulta de otra persona. */}
-        {/* SIN PACIENTE NO HAY BLOQUES, igual que en la venta en efectivo y por lo mismo. */}
-        {patientId ? (
-          <BloqueTratamiento
-            key={patientId}
-            patientId={patientId}
-            tratamientos={tratamientosPorPaciente[patientId] ?? []}
-          />
-        ) : null}
+        {/* ═══ LA RESPUESTA DEL MINIBLOQUE VIAJA EN DOS CAMPOS OCULTOS ═══
+
+            El bloque esta en la tarjeta, ENCIMA de este formulario, y un campo fuera del formulario no viaja
+            en su envio. Asi que lo que viaja es esto, y el bloque de alla no lleva `name` en ningun control.
+            Es el mismo arreglo del hazard 7 de CLAUDE.md, por el mismo motivo. */}
+        <input type="hidden" name="treatmentId" value={treatmentId} />
+        <input type="hidden" name="ventaSueltaMotivo" value={ventaSueltaMotivo} />
 
         {/* LA MISMA `key` POR PACIENTE que el bloque de arriba, y por el mismo motivo: el campo del celular
             se precarga con el del paciente elegido. Sin re-montar, el numero del anterior se quedaría en el
             campo y se despacharía un envío al teléfono de otra persona. */}
         {patientId ? <BloqueDomicilio key={patientId} tieneCelularRegistrado={tieneCelular} /> : null}
 
-        <Button type="submit" disabled={pending || !patientId || (total > 0 && total < WOMPI_MONTO_MINIMO)}>
-          {pending ? "Creando..." : patientId ? "Crear el link de pago" : "Elige un paciente"}
+        {/* ═══ EL BOTON DICE QUE FALTA, Y NO DEJA PASAR HASTA QUE NO FALTE NADA (Santiago, 2026-10-10) ═══
+
+            *"que el boton no pase hasta que haya un paciente seleccionado y una consulta elegida o la razon
+            de por que no hay una consulta elegida."*
+
+            Y ES AQUI DONDE SE EXIGE, no en el navegador: el minibloque salio del formulario, asi que su
+            `required` ya no aplicaria (el navegador solo valida campos del formulario). Esto es mas estricto
+            y se ve antes: el navegador avisaba al pulsar, el boton lo dice desde el principio. */}
+        <Button
+          type="submit"
+          disabled={pending || falta != null || (total > 0 && total < WOMPI_MONTO_MINIMO)}
+        >
+          {pending ? "Creando..." : (falta ?? "Crear el link de pago")}
         </Button>
         {total > 0 && total < WOMPI_MONTO_MINIMO ? (
           <p className="w-full text-sm text-attention">{MENSAJE_MINIMO_WOMPI}</p>

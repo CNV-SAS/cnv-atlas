@@ -59,10 +59,27 @@ describe("las DOS superficies de cobro conocen la modalidad", () => {
     expect(src, "el selector de medio dejo de colgar de la modalidad").toContain(
       "esDeDistribucion ? null : (",
     );
+    // ── Y DESDE EL 2026-10-10 SE MIRA LA DERIVACION, NO LA CONDICION SUELTA ──
+    //
+    // El medio dejo de tener un valor por defecto (Santiago: *"tocaria remover de que aparezca Efectivo por
+    // default"*), asi que el estado nace VACIO y bajo Distribucion no hay selector que lo llene nunca. La
+    // guarda vive ahora en una sola linea que convierte el medio en el medio efectivo: sin ella, bajo
+    // Distribucion no se montaria NINGUN formulario (el estado se queda vacio) y la pantalla quedaria muda.
+    //
+    // SE VERIFICAN LAS DOS MITADES, porque cada una falla distinto: la derivacion (sin ella, pantalla muda) y
+    // que el formulario del link cuelgue del valor DERIVADO y no del crudo (con el crudo, un estado en 'link'
+    // montaria un cobro que el servidor rechaza).
     expect(
       src,
-      "el formulario del link se monta sin mirar la modalidad: el servidor lo rechazaria",
-    ).toContain('medio === "link" && !esDeDistribucion');
+      "la tarjeta dejo de derivar el medio de la modalidad: bajo Distribucion no se montaria ningun formulario",
+    ).toContain('const medioResuelto: Medio = esDeDistribucion ? "efectivo" : medio;');
+    expect(
+      src,
+      "el formulario del link se monta mirando el medio CRUDO: un estado en 'link' burlaria la modalidad",
+    ).toContain('medioResuelto === "link" ? (');
+    expect(src, "el formulario del link volvio a colgar del medio crudo").not.toMatch(
+      /\{\s*medio === "link"/,
+    );
   });
 
   it("y el QR de la consulta NO se rinde bajo Distribución", () => {

@@ -5,47 +5,51 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 
+import { CUENTA_DE_CNV, QUE_HACER_CON_EL_COMPROBANTE } from "../cuenta-de-cnv";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 import { CreateCheckoutForm } from "./create-checkout-form";
-import type { TratamientoParaElegir } from "./bloque-tratamiento";
+import {
+  BloqueTratamiento,
+  consultaRespondida,
+  type ConsultaDeLaCompra,
+  type TratamientoParaElegir,
+} from "./bloque-tratamiento";
 import { RegisterCashSaleForm } from "./register-cash-sale-form";
 import { SelectorDePaciente } from "./selector-de-paciente";
 
-// ═══ UNA SOLA TARJETA PARA COBRAR, CON EL MEDIO ARRIBA (Santiago, 2026-10-10) ═══
+/** Ninguno viene marcado: el medio decide la cuenta contable, y no se elige por nadie. */
+type Medio = "" | "efectivo" | "transferencia" | "link";
+
+// ═══ UNA SOLA TARJETA PARA COBRAR, Y ELLA PREGUNTA TODO LO QUE NO DEPENDE DEL MEDIO ═══
 //
-// ── LO QUE HABIA, Y POR QUE SE VEIA ROTO ─────────────────────────────────────────────────────────
+// ── LO QUE HABIA, Y POR QUE SE VEIA ROTO (Santiago, 2026-10-10) ──────────────────────────────────
 //
 // /pagos tenía DOS tarjetas, "Cobrar con un link de pago" y "Registrar una venta ya cobrada", visibles a la
-// vez, y cada una con SU buscador de paciente y SU bloque de "de qué consulta sale esta compra". Textual de
-// Santiago: *"apenas le doy cambiar para escribir el nombre de otro paciente, el minibloque donde uno
-// selecciona la consulta del paciente sigue ahí. Cuando se debería eliminar, es así de simple."*
+// vez, y cada una con SU buscador de paciente y SU bloque de "de qué consulta sale esta compra". Las dos
+// registraban EL MISMO HECHO (una venta a un paciente) y se diferenciaban solo en el medio de pago, así que
+// partirlo en dos obligaba a elegir el formulario antes de elegir el medio: el orden inverso al que piensa
+// quien cobra, que primero sabe qué vende y a quién, y después cómo le pagan.
 //
-// Y SU PROPUESTA ES LA BUENA, no un parche: *"que siempre esté activo ese minibloque, sea solo 1, y solo
-// aplique para el paciente que esté buscado en /pagos."* Con una sola tarjeta no hay forma de que exista
-// más de uno, venga el apilado de donde viniera. Esa es la diferencia entre arreglar un síntoma y quitarle
-// el sitio donde puede volver a aparecer.
+// ── Y LA TERCERA VUELTA, QUE ES ESTA ────────────────────────────────────────────────────────────
 //
-// ── Y EL ARGUMENTO DE FONDO ES SUYO TAMBIEN ─────────────────────────────────────────────────────
+// Juntarlas en una no cerró el bloque duplicado que él reportaba. Así que esta vez no se busca la causa: se
+// quita el sitio donde puede aparecer, como él propuso. Esta tarjeta es ahora la ÚNICA dueña de:
 //
-// Las dos tarjetas registraban EL MISMO HECHO (una venta a un paciente) y se diferenciaban solo en el medio
-// de pago. Partirlo en dos tarjetas obligaba a elegir el formulario antes de elegir el medio, que es el orden
-// inverso al que piensa quien cobra: primero sabe qué le va a vender y a quién, y después cómo le pagan.
-// Así que el medio es UNA pregunta con tres respuestas, y va arriba.
+//   · el paciente (un buscador),
+//   · la consulta de la que sale la compra (un minibloque, siempre montado, que no se re-monta nunca),
+//   · y el medio de pago (una pregunta con tres respuestas, ninguna marcada).
 //
-// ── QUE ES ESTE PASO Y QUE NO ES ────────────────────────────────────────────────────────────────
+// Los formularios reciben todo eso como props y solo se ocupan de lo que de verdad depende del medio: los
+// productos, el domicilio y su propio envío. Mientras no haya un medio elegido NO SE MONTA NINGUNO, y eso
+// resuelve dos cosas de una: obliga a elegirlo (lo pidió él) y evita que lo que alguien escriba en los
+// productos se pierda al cambiar de formulario, porque no hay nada escrito todavía.
 //
-// Es el PRIMERO de la unificación (la que iguala /pagos con el cobro en consulta: domicilio con los mismos
-// campos y despacho desde la bodega en los dos). Aquí los dos formularios siguen siendo piezas distintas por
-// dentro; lo que se unifica es lo que se pregunta ANTES de ellos: el paciente y el medio. Se hace primero
-// porque es barato y quita los bloques duplicados ya, y porque es el andamio donde el bloque compartido va a
-// montarse después del smoke.
+// ── POR QUE AL CAMBIAR DE PACIENTE SE VACIA LA CONSULTA ─────────────────────────────────────────
 //
-// ── POR QUE EL CAMBIO DE MEDIO DESMONTA UNO Y MONTA EL OTRO, Y POR QUE NO IMPORTA ───────────────
-//
-// Entre efectivo y transferencia es el MISMO formulario (cambia un campo oculto), así que lo que esté escrito
-// se queda: ese es el cambio que alguien hace a mitad de camino. Pasar a link de pago sí monta el otro
-// formulario y pierde sus líneas, y es lo correcto: son dos actos distintos (uno cobra ya, el otro genera un
-// link que vence en 24 horas) y arrastrar las líneas de uno al otro invitaría a enviar el que no se quería.
+// Porque antes lo hacía una `key={patientId}` que re-montaba el bloque, y esa `key` es justo lo que había
+// que quitar. Lo que protegía no era cosmético: sin vaciarla, la consulta elegida para un paciente se queda
+// seleccionada para el siguiente, y así se le cuelga una compra a la consulta de otra persona. Por eso el
+// paciente SOLO se mueve por `elegirPaciente`, y hay un candado que lo verifica.
 export function TarjetaDeCobro({
   patients,
   nutraceuticals,
@@ -61,12 +65,39 @@ export function TarjetaDeCobro({
   // VACIO A PROPOSITO (Santiago, 2026-10-10): un formulario de COBRO que llega con una persona ya elegida
   // invita a registrarle una venta a quien encabeza la lista alfabética. Ver `SelectorDePaciente`.
   const [patientId, setPatientId] = useState("");
-  // EFECTIVO POR DEFECTO y no vacío, porque aquí sí hay una respuesta que no decide nada por nadie: es el
-  // medio más frecuente, y los otros dos están a la vista al lado. Es distinto del paciente, donde un valor
-  // por defecto es un cobro a la persona equivocada.
-  const [medio, setMedio] = useState<"efectivo" | "transferencia" | "link">("efectivo");
+  // ═══ NINGUN MEDIO MARCADO DE ANTEMANO (Santiago, 2026-10-10) ═══
+  //
+  // Antes venía "efectivo" puesto, con el argumento de que es el más frecuente. Él lo rechazó: *"tocaría
+  // remover de que aparezca Efectivo por default y que sea el profesional que tenga que darle click."* Y
+  // tiene razón, por lo mismo que el paciente: el medio decide la cuenta contable y el estado de la factura,
+  // así que una respuesta puesta por nosotros es un dato nuestro disfrazado de decisión suya. Que el medio
+  // más frecuente sea el efectivo no lo vuelve el medio de ESTA venta.
+  const [medio, setMedio] = useState<Medio>("");
+  const [consulta, setConsulta] = useState<ConsultaDeLaCompra>({
+    treatmentId: "",
+    suelta: false,
+    motivo: "",
+  });
 
-  const comunes = { patients, nutraceuticals, tratamientosPorPaciente, patientId };
+  // EL UNICO SITIO DESDE EL QUE SE MUEVE EL PACIENTE, y por eso vacía la consulta en el mismo gesto. Si
+  // alguien llamara a `setPatientId` por su cuenta, la respuesta del paciente anterior quedaría viva: ese es
+  // el defecto que la `key` evitaba y el candado `el-paciente-de-la-venta-no-viene-elegido` vigila.
+  const elegirPaciente = (id: string) => {
+    setPatientId(id);
+    setConsulta({ treatmentId: "", suelta: false, motivo: "" });
+  };
+
+  const respondida = consultaRespondida(consulta);
+  // Bajo Distribución no se pregunta el medio (ver más abajo), así que el formulario se monta directo.
+  const medioResuelto: Medio = esDeDistribucion ? "efectivo" : medio;
+  const comunes = {
+    patients,
+    nutraceuticals,
+    patientId,
+    treatmentId: consulta.treatmentId,
+    ventaSueltaMotivo: consulta.suelta ? consulta.motivo : "",
+    consultaRespondida: respondida,
+  };
 
   return (
     <Card>
@@ -77,7 +108,7 @@ export function TarjetaDeCobro({
         <CardDescription>
           {esDeDistribucion
             ? "El paciente ya te pagó a ti. Esto no cobra nada: descuenta el producto de tu vitrina y lo suma a la cuenta quincenal que CNV te factura."
-            : "Elige el paciente, los productos y cómo paga. El precio y el producto son de CNV."}
+            : "Elige el paciente, de qué consulta sale la compra y cómo paga. El precio y el producto son de CNV."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -98,7 +129,18 @@ export function TarjetaDeCobro({
               id="cobro-paciente"
               pacientes={patients}
               valor={patientId}
-              onElegir={setPatientId}
+              onElegir={elegirPaciente}
+            />
+
+            {/* EL MINIBLOQUE DE LA CONSULTA, UNO Y SIEMPRE PUESTO. Va aquí, pegado al buscador y encima del
+                medio, porque es una pregunta sobre el PACIENTE y no sobre cómo paga: la respuesta es la misma
+                se cobre en efectivo o con un link. Y por eso mismo no puede vivir dentro de un formulario que
+                se monta y se desmonta al cambiar de medio. Ver su cabecera. */}
+            <BloqueTratamiento
+              tratamientos={tratamientosPorPaciente[patientId] ?? []}
+              valor={consulta}
+              onCambiar={(cambio) => setConsulta((prev) => ({ ...prev, ...cambio }))}
+              hayPaciente={patientId !== ""}
             />
 
             {/* ═══ BAJO DISTRIBUCION NO SE PREGUNTA EL MEDIO (0211) ═══
@@ -113,23 +155,27 @@ export function TarjetaDeCobro({
                 <div className="flex flex-wrap gap-2">
                   {(
                     [
-                      // QUE PASA CON LA PLATA Y CON LA FACTURA, dicho en el propio botón. Son los tres destinos
-                      // contables reales, y hasta hoy no estaban escritos en ningún sitio de la pantalla: quien
-                      // cobra elegía el medio sin saber que eso decide la cuenta y el estado de la factura.
+                      // ═══ LOS TEXTOS SON LOS DE SANTIAGO, Y UNO DE ELLOS SE RETIRO ═══
+                      //
+                      // La transferencia decía "Factura al banco principal, y queda sin cobrar hasta que se
+                      // verifique". Él lo rechazó: *"Esto no se dice a los integrantes, es algo interno de
+                      // CNV."* Y es cierto, aunque el hecho sea verdad: al integrante no le sirve saber en
+                      // qué cuenta contable cae, le sirve saber A DÓNDE transfiere el paciente. El hecho
+                      // contable sigue vivo donde manda (ver `cuentaDelPago` y su candado).
                       {
                         id: "efectivo" as const,
                         rotulo: "Efectivo",
-                        nota: "Queda cobrada. El dinero es de CNV y lo custodias hasta consignar.",
+                        nota: "El paciente te paga en efectivo. El dinero es de CNV y lo custodias hasta consignar.",
                       },
                       {
                         id: "transferencia" as const,
                         rotulo: "Transferencia",
-                        nota: "Factura al banco principal, y queda sin cobrar hasta que se verifique.",
+                        nota: "El paciente transfiere directamente a la cuenta de CNV.",
                       },
                       {
                         id: "link" as const,
-                        rotulo: "Link de pago",
-                        nota: "El paciente paga en línea con Wompi desde su teléfono. Vale 24 horas.",
+                        rotulo: "Link de pago por Wompi",
+                        nota: "El paciente paga en línea (tarjeta de crédito, débito, PSE). Link válido por 24 horas.",
                       },
                     ] as const
                   ).map((m) => {
@@ -162,9 +208,52 @@ export function TarjetaDeCobro({
               </div>
             )}
 
-            {/* UN SOLO FORMULARIO MONTADO, y con él un solo bloque de "de qué consulta sale esta compra". El
-                link de pago no existe bajo Distribución, así que ahí siempre es el de la venta ya cobrada. */}
-            {medio === "link" && !esDeDistribucion ? (
+            {/* ═══ A DONDE TRANSFIERE, EN GRANDE Y SOLO CUANDO HACE FALTA (Santiago, 2026-10-10) ═══
+
+                El medio existía desde el 2026-09-25 y la pantalla NO DECÍA LA CUENTA: el integrante tenía que
+                sabérsela de memoria o pedirla por interno, con el paciente delante. Un medio sin su destino no
+                es un medio, es una etiqueta.
+
+                RESALTA porque es un dato que alguien va a LEER EN VOZ ALTA o a copiar, y un número de cuenta
+                mal leído manda el dinero a otra parte. Los dígitos van en `tabular-nums` y seleccionables por
+                eso mismo. Los números viven en `cuenta-de-cnv.ts`, no aquí: el mismo dato hace falta en la
+                venta en consulta, y una cuenta copiada en dos pantallas es una que el día que cambie quedará
+                bien en una y mal en la otra. */}
+            {medio === "transferencia" ? (
+              <div className="flex flex-col gap-2 rounded-lg border-2 border-primary bg-primary/5 p-4">
+                <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  Dile al paciente que transfiera aquí
+                </span>
+                <div className="flex flex-col gap-1 text-sm text-foreground">
+                  <span>
+                    Llave Breb:{" "}
+                    <strong className="select-all font-mono tabular-nums">
+                      {CUENTA_DE_CNV.llaveBreb}
+                    </strong>
+                  </span>
+                  <span>
+                    o cuenta de {CUENTA_DE_CNV.tipoDeCuenta} {CUENTA_DE_CNV.banco}:{" "}
+                    <strong className="select-all font-mono tabular-nums">
+                      {CUENTA_DE_CNV.numeroDeCuenta}
+                    </strong>
+                  </span>
+                  <span className="text-muted-foreground">A nombre de {CUENTA_DE_CNV.titular}</span>
+                </div>
+                <p className="text-xs text-foreground">{QUE_HACER_CON_EL_COMPROBANTE}</p>
+              </div>
+            ) : null}
+
+            {/* ═══ SIN MEDIO ELEGIDO NO HAY FORMULARIO ═══
+
+                Es la forma más limpia de "que obligue a elegir un método de pago": no se puede saltar lo que
+                no está. Y evita el problema que tendría la alternativa (montar un formulario por defecto):
+                quien escribiera los productos antes de elegir el medio los perdería al elegir el link, porque
+                son dos formularios distintos. Aquí no hay nada que perder todavía. */}
+            {medioResuelto === "" ? (
+              <p className="text-sm text-muted-foreground">
+                Elige cómo paga para continuar.
+              </p>
+            ) : medioResuelto === "link" ? (
               <CreateCheckoutForm {...comunes} />
             ) : (
               <RegisterCashSaleForm
@@ -172,7 +261,7 @@ export function TarjetaDeCobro({
                 esDeDistribucion={esDeDistribucion}
                 // Bajo Distribución el canal lo deriva el servidor de la modalidad; lo que se mande aquí se
                 // descarta, y "efectivo" es el valor que ya viajaba antes de que este selector existiera.
-                canal={medio === "transferencia" ? "transferencia" : "efectivo"}
+                canal={medioResuelto === "transferencia" ? "transferencia" : "efectivo"}
               />
             )}
           </>
