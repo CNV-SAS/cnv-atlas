@@ -71,3 +71,80 @@ export async function completarSexoDelPaciente(
     return true;
   });
 }
+
+// ═══ Y CORREGIR UN SEXO YA REGISTRADO (Santiago, 2026-10-10) ═══
+//
+// ── POR QUE SE ABRE ESTA PUERTA, QUE EL BLOQUE DE ARRIBA DECIA NO ABRIR ───────────────────────────
+//
+// Porque el bloque de arriba resolvia un hueco y dejaba un callejon al lado. Textual de Santiago:
+// *"un paciente por ejemplo transexual puede pensar que es el genero, entonces el profesional debe poder
+// cambiarlo."* El motor usa el sexo BIOLOGICO, asi que un genero anotado ahi no es un detalle de papeleria:
+// es un insumo clinico equivocado que produce clasificaciones equivocadas, y hasta hoy no tenia arreglo.
+//
+// Es el mismo defecto que ya nos costo dos veces: un freno correcto SIN SALIDA se vive como un sistema
+// roto. La frontera no era proteger el dato, era que nadie lo pisara EN SILENCIO.
+//
+// ── LO QUE NO HACE, Y ES LA PARTE QUE IMPORTA ─────────────────────────────────────────────────────
+//
+// NO rehace ningun diagnostico. Un diagnostico generado es el registro de lo que se concluyo con los datos
+// de entonces, y reescribirlo por detras seria cambiar una conclusion clinica sin que nadie la decida.
+// Lo que si pasa: el motor LEE el sexo del perfil en cada corrida (`readPipelineInputs`), asi que el
+// siguiente diagnostico, y cualquier evaluacion rehecha por el camino de correccion, salen con el nuevo.
+//
+// Quien tenga que rehacer una evaluacion ya diagnosticada usa ese camino (`correctEvaluation`), que crea una
+// VERSION NUEVA, recalcula y marca la vieja como reemplazada con su motivo. Existe desde antes y es el unico
+// sitio donde una conclusion clinica se sustituye, dicho.
+//
+// ── LA FRONTERA AQUI ES EL CANDADO DE FILA, no el `where` ─────────────────────────────────────────
+//
+// El de arriba se defiende con su propia condicion (`sex is null`), porque le basta con no pisar. Este
+// TIENE que pisar, y ademas tiene que contar DE QUE valor a cual, asi que lee y escribe: por eso lee con
+// `for update`, que bloquea la fila hasta el final de la transaccion. Sin ese candado, entre leer y
+// escribir cabe otra correccion y el rastro afirmaria que se partio de un valor que ya no era el que habia.
+
+export type CorreccionDeSexo = { patientId: string; sex: "F" | "M"; motivo: string };
+
+export type ResultadoDeLaCorreccion =
+  | { estado: "corregido"; sexoAnterior: string | null }
+  /** El paciente ya tenia ese mismo sexo (o no existe): no se toco nada y no hay rastro que escribir. */
+  | { estado: "sin-cambio" };
+
+export async function corregirSexoDelPaciente(
+  { patientId, sex, motivo }: CorreccionDeSexo,
+  actor: ActorDelSexo,
+): Promise<ResultadoDeLaCorreccion> {
+  return db.transaction(async (tx) => {
+    // ── EL VALOR VIEJO SE LEE CON LA FILA BLOQUEADA, no antes de la transaccion ──
+    //
+    // `for update` es lo que hace segura esta lectura-y-escritura: cualquier otra transaccion que quiera
+    // tocar esta fila espera hasta que esta termine. Sin el candado, entre leer y escribir cabe otra
+    // correccion y el rastro diria que se paso de un valor que ya no era el que habia.
+    //
+    // (El `returning old.sex` de una sola sentencia, que seria mas corto, es de Postgres 18.)
+    const [antes] = await tx
+      .select({ sex: patientProfiles.sex })
+      .from(patientProfiles)
+      .where(eq(patientProfiles.patientId, patientId))
+      .for("update");
+    if (!antes) return { estado: "sin-cambio" };
+    const anterior = (antes.sex ?? "").trim().toUpperCase();
+    // MISMO VALOR, NADA QUE CORREGIR. Asi un doble clic, o dos pestañas abiertas, no dejan dos filas de
+    // rastro afirmando una correccion que no cambio nada.
+    if (anterior === sex) return { estado: "sin-cambio" };
+
+    await tx.update(patientProfiles).set({ sex }).where(eq(patientProfiles.patientId, patientId));
+
+    await recordAudit(tx, {
+      event: "patient.sexo_corregido",
+      actorId: actor.actorId,
+      actorEmail: actor.actorEmail,
+      entityType: "patient",
+      entityId: patientId,
+      // DE QUE A QUE, Y POR QUE. Sin el valor viejo el rastro no explica por que dos diagnosticos del mismo
+      // paciente clasifican distinto, que es justo lo que hay que poder reconstruir.
+      payload: { sexo: sex, sexoAnterior: antes.sex, motivo },
+      ip: actor.ip ?? null,
+    });
+    return { estado: "corregido", sexoAnterior: antes.sex };
+  });
+}

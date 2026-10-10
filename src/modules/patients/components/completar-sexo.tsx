@@ -27,10 +27,11 @@ const VACIO: SexoPacienteState = { error: null, success: null, warning: null };
 // puede clasificar a nadie sin el: todas sus clasificaciones son distintas para mujer y para hombre. Si el
 // aviso no lo dice, el dato se queda sin poner.
 //
-// ── Y SE DICE QUE NO SE PODRA CAMBIAR ─────────────────────────────────────────────────────────────
+// ── Y SE DICE QUE UN DIAGNOSTICO EMITIDO NO SE RECALCULA ──────────────────────────────────────────
 //
-// El writer rellena el hueco y nunca pisa un valor (ver `patient-sex-writer`), asi que esto se elige UNA
-// vez. Quien lo va a pulsar tiene que saberlo ANTES, no descubrirlo despues al querer corregirse.
+// Este formulario rellena el hueco y nunca pisa un valor; corregir un sexo YA registrado es otro acto, con
+// su propio bloque (`corregir-sexo.tsx`), su motivo y su rastro. Lo que las dos comparten, y lo que quien
+// pulsa tiene que saber ANTES, es que ninguna de las dos rehace un diagnostico ya generado.
 //
 // El envio va por `enviarSinReset` (onSubmit + startTransition) y NO por la prop `action`: la prop resetea
 // los campos tras la accion (hazard de React 19 registrado en CLAUDE.md).
@@ -72,9 +73,12 @@ export function CompletarSexo({ patientId }: { patientId: string }) {
           {pending ? "Guardando..." : "Registrar el sexo"}
         </Button>
       </div>
+      {/* ANTES DECIA QUE NO SE PODRIA CAMBIAR, y desde el 2026-10-10 si se puede (Santiago: el caso del
+          paciente trans que registra su genero). Dejar la frase vieja habria puesto a la pantalla a
+          contradecir al boton "Corregir el sexo" que esta en esta misma ficha. */}
       <p className="text-xs text-muted-foreground">
-        Revísalo con el paciente antes de guardarlo: una vez registrado no se cambia desde aquí, porque un
-        diagnóstico ya emitido se calculó con ese dato.
+        Revísalo con el paciente antes de guardarlo. Si después hay que corregirlo, se puede desde esta misma
+        ficha, pero un diagnóstico ya emitido no se recalcula solo.
       </p>
     </form>
   );

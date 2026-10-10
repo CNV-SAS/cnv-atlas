@@ -52,3 +52,26 @@ export const contactoPacienteSchema = z.object({
     message: "El teléfono es demasiado largo.",
   }),
 });
+
+// ═══ CORREGIR UN SEXO YA REGISTRADO (Santiago, 2026-10-10) ═══
+//
+// ES OTRO ACTO QUE COMPLETAR EL QUE FALTA, y por eso tiene su propio schema: aquel rellena un hueco y no
+// puede equivocarse contra nada; este PISA un dato que ya alimento (o va a alimentar) clasificaciones.
+//
+// EL CASO QUE LO PIDE es suyo y es real: *"un paciente por ejemplo transexual puede pensar que es el
+// genero, entonces el profesional debe poder cambiarlo."* El motor usa el sexo BIOLOGICO (sus
+// clasificadores son sexo-especificos), asi que un genero registrado en ese campo no es un dato de
+// identidad mal puesto: es un insumo clinico equivocado, y sin salida era un callejon.
+//
+// POR ESO EXIGE MOTIVO: no como tramite, sino porque el rastro clinico tiene que poder explicar por que el
+// mismo paciente se clasifico de dos formas. Sin el, un diagnostico viejo y uno nuevo se contradicen y
+// nadie sabe cual leer.
+export const correccionDeSexoSchema = z.object({
+  patientId: z.guid(),
+  sex: z.enum(["F", "M"], { message: "Elige Femenino o Masculino." }),
+  motivo: z
+    .string()
+    .trim()
+    .min(10, { message: "Escribe por qué se corrige, con al menos 10 caracteres." })
+    .max(300, { message: "El motivo es demasiado largo (máximo 300 caracteres)." }),
+});
