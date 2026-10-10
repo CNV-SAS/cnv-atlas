@@ -7,9 +7,14 @@ import { requireUser } from "@/modules/auth/session";
 import { ArchivarPaciente } from "@/modules/patients/components/archivar-paciente";
 import { HistorialEvaluaciones } from "@/modules/patients/components/historial-evaluaciones";
 import { canArchivePatient } from "@/modules/patients/policies/can-archive-patient";
-import { canCompletePatientSex } from "@/modules/patients/policies/can-complete-patient-sex";
+import {
+  canCompletePatientSex,
+  canCorrectPatientSex,
+} from "@/modules/patients/policies/can-complete-patient-sex";
 import { canEditPatientContact } from "@/modules/patients/policies/can-edit-patient-contact";
 import { CompletarSexo } from "@/modules/patients/components/completar-sexo";
+import { CorregirSexo } from "@/modules/patients/components/corregir-sexo";
+import { contarDiagnosticosDelPaciente } from "@/modules/patients/data/diagnosticos-del-paciente-reader";
 import { EditarContacto } from "@/modules/patients/components/editar-contacto";
 import { FollowupLinkEmitter } from "@/modules/evaluations/components/followup-link-emitter";
 import {
@@ -53,10 +58,14 @@ export default async function HistoriaPacientePage({
 
   // Autorizaciones del paciente y la via para registrar una revocacion (CONSENT_ATLAS seccion 10). Se lee
   // DESPUES del 404: si el paciente no es suyo, no se consulta nada mas.
-  const [autorizaciones, deOrigenHtml] = await Promise.all([
+  const [autorizaciones, deOrigenHtml, diagnosticosGenerados] = await Promise.all([
     getPatientConsents(patientId),
     // Los del HTML de Gildardo, importados como lo que son (0159). Aparte: no habilitan evaluaciones.
     getExternalConsents(patientId),
+    // CUANTOS DIAGNOSTICOS VIGENTES TIENE. Lo necesita el bloque de corregir el sexo para decir si queda
+    // algo por rehacer, y decirlo CON LA CIFRA: con cero no hay nada que rehacer y una advertencia
+    // generica solo asusta; con dos, hay trabajo concreto y un sitio donde hacerlo.
+    contarDiagnosticosDelPaciente(patientId),
   ]);
 
   // Solo el profesional dueno puede cerrar un shell firmado sin responder (la RLS ya acota que sea suyo).
@@ -70,6 +79,10 @@ export default async function HistoriaPacientePage({
   // que tapar; con el dato puesto, la ficha no muestra nada (ver `completar-sexo.tsx`).
   const leFaltaElSexo = (paciente.sex ?? "").trim() === "";
   const puedeCompletarSexo = canCompletePatientSex(user) && leFaltaElSexo;
+  // CORREGIR EL QUE YA ESTA (Santiago, 2026-10-10): el otro lado del mismo dato. Son EXCLUYENTES por
+  // construccion (uno pide que falte, el otro que este), y eso es lo que evita que la ficha ofrezca a la
+  // vez "completalo" y "corrigelo" sobre el mismo campo, que es como se lee una pantalla mal hecha.
+  const puedeCorregirSexo = canCorrectPatientSex(user) && !leFaltaElSexo;
   // Emitir link de seguimiento: sitio FIJO en el perfil (antes vivia en la tarjeta de confirmar identidad,
   // que desaparece al confirmar; Santiago 2026-08-20 §5a). El action re-resuelve el profesional asignado.
   const puedeEmitirSeguimiento = canEmitFollowupLink(user);
@@ -135,11 +148,20 @@ export default async function HistoriaPacientePage({
         {/* CORREGIR EL CONTACTO va JUNTO A LAS TARJETAS que lo muestran, no en un menu: el dato que se
             corrige esta ahi mismo, y quien llega buscando por que no le llego un correo al paciente ya
             esta mirando esta zona. */}
-        {puedeEditarContacto ? (
-          <EditarContacto patientId={patientId} email={paciente.email} phone={paciente.phone} />
-        ) : (
-          <span />
-        )}
+        {/* LAS DOS CORRECCIONES DE LA FICHA, JUNTAS. Son el mismo gesto (corregir un dato del paciente que
+            ya esta registrado) y vivian separadas solo porque la del sexo no existia. */}
+        <div className="flex flex-wrap items-start gap-2">
+          {puedeEditarContacto ? (
+            <EditarContacto patientId={patientId} email={paciente.email} phone={paciente.phone} />
+          ) : null}
+          {puedeCorregirSexo ? (
+            <CorregirSexo
+              patientId={patientId}
+              sexoActual={paciente.sex ?? ""}
+              diagnosticosGenerados={diagnosticosGenerados}
+            />
+          ) : null}
+        </div>
         {puedeArchivar ? (
           <ArchivarPaciente patientId={patientId} archivado={paciente.status === "inactive"} />
         ) : null}

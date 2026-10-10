@@ -170,15 +170,89 @@ describe("el remedio existe y solo rellena huecos", () => {
     expect(src, "vacio es nulo O en blanco: las dos formas existen en la base").toMatch(/btrim/);
   });
 
-  it("y ningun otro escritor del modulo actualiza el perfil sin esa condicion", () => {
+  it("y ningun otro ARCHIVO del modulo actualiza el perfil", () => {
     const todos = readdirSync(join(RAIZ, "src/modules/patients/data"))
       .filter((f) => f.endsWith(".ts"))
       .map((f) => `src/modules/patients/data/${f}`);
     const escritores = todos.filter((f) => /update\(patientProfiles\)/.test(sinComentarios(leer(f))));
     expect(
       escritores,
-      "un segundo escritor sin el where dejaria el candado del primero sin valor",
+      "un segundo archivo que escriba el sexo dejaria el candado de este sin valor: las dos formas de " +
+        "escribirlo (rellenar un hueco y corregir un valor) viven juntas a proposito, para que no divergan",
     ).toEqual([WRITER]);
+  });
+
+  // ═══ Y DESDE EL 2026-10-10 HAY DOS ACTOS, NO UNO (Santiago) ═══
+  //
+  // ── POR QUE SE ABRIO LA PUERTA QUE ESTE MISMO ARCHIVO DECIA CERRAR ──
+  //
+  // Porque cerrarla dejaba un callejon. Textual suyo: *"un paciente por ejemplo transexual puede pensar que
+  // es el genero, entonces el profesional debe poder cambiarlo."* El motor usa el sexo BIOLOGICO, asi que un
+  // genero anotado ahi no es un dato de identidad mal puesto: es un insumo clinico equivocado que produce
+  // clasificaciones equivocadas, y no tenia arreglo desde la pantalla.
+  //
+  // ── LO QUE NO SE RELAJO ──
+  //
+  // Que nadie pise un sexo EN SILENCIO. Rellenar un hueco sigue sin poder pisar nada (su `where` lo impone);
+  // pisar un valor es OTRA funcion, exige motivo, y deja en el rastro de que valor a cual se paso. Si esas
+  // tres cosas se caen, volvemos a tener un dato clinico que cambia sin que nadie pueda reconstruir por que
+  // el mismo paciente se clasifico de dos formas.
+  describe("corregir un sexo ya registrado es otro acto, y deja dicho de que a que", () => {
+    it("rellenar un hueco sigue sin poder pisar un valor", () => {
+      const src = sinComentarios(leer(WRITER));
+      const completar = src.slice(
+        src.indexOf("export async function completarSexoDelPaciente"),
+        src.indexOf("export async function corregirSexoDelPaciente"),
+      );
+      expect(completar.length, "falta la funcion de completar").toBeGreaterThan(0);
+      expect(completar, "completar dejo de condicionar al valor vacio: ya podria pisar un sexo").toMatch(
+        /is null/,
+      );
+    });
+
+    it("corregir exige MOTIVO y lo valida en el servidor", () => {
+      const validaciones = leer("src/modules/patients/validations.ts");
+      expect(validaciones).toMatch(/correccionDeSexoSchema/);
+      // SIN MINIMO, un espacio pasaria por motivo y el rastro no explicaria nada.
+      const schema = validaciones.slice(validaciones.indexOf("correccionDeSexoSchema"));
+      expect(schema, "el motivo tiene que exigir algo escrito, no solo existir").toMatch(/\.min\(\d+/);
+    });
+
+    it("y escribe en el rastro clinico el valor ANTERIOR, el nuevo y el motivo", () => {
+      const src = sinComentarios(leer(WRITER));
+      const corregir = src.slice(src.indexOf("export async function corregirSexoDelPaciente"));
+      expect(corregir, "falta la funcion de corregir").not.toBe("");
+      expect(corregir).toMatch(/recordAudit/);
+      expect(
+        corregir,
+        "sin el valor anterior, el rastro no explica por que dos diagnosticos del mismo paciente clasifican distinto",
+      ).toMatch(/sexoAnterior/);
+      expect(corregir).toMatch(/motivo/);
+      // ── Y EL VIEJO SE LEE CON LA FILA BLOQUEADA ──
+      //
+      // Lee y escribe en la misma transaccion. Sin `for update`, entre leer y escribir cabe otra correccion
+      // y el rastro afirmaria que se partio de un valor que ya no era el que habia.
+      expect(corregir, 'la lectura del valor viejo perdio su `for("update")`').toMatch(
+        /\.for\(\s*"update"\s*\)/,
+      );
+    });
+
+    it("la ficha ofrece completar O corregir, nunca las dos a la vez", () => {
+      const pagina = sinComentarios(leer("src/app/(app)/pacientes/[patientId]/page.tsx"));
+      expect(pagina).toMatch(/<CorregirSexo/);
+      // SON EXCLUYENTES POR CONSTRUCCION: uno pide que falte, el otro que este. Ofrecer los dos sobre el
+      // mismo campo es como se lee una pantalla mal hecha.
+      expect(pagina).toMatch(/puedeCorregirSexo = canCorrectPatientSex\(user\) && !leFaltaElSexo/);
+    });
+
+    it("y dice que NO rehace los diagnosticos ya generados, antes de pulsar", () => {
+      // ES LA PARTE QUE MAS IMPORTA DEL TEXTO. Un diagnostico generado es el registro de lo que se concluyo
+      // con los datos de entonces, y Atlas no lo reescribe por detras. Sin decirlo, el profesional corrige
+      // el dato y se va creyendo que el diagnostico de al lado quedo al dia.
+      const comp = leer("src/modules/patients/components/corregir-sexo.tsx");
+      expect(comp).toMatch(/diagnosticosGenerados/);
+      expect(comp, "el aviso tiene que nombrar el camino que SI los rehace").toMatch(/Corregir/);
+    });
   });
 
   it("el bloque de la ficha aparece SOLO cuando falta", () => {
@@ -217,6 +291,30 @@ describe("y el import deja de meter pacientes sin sexo en silencio", () => {
       leer("src/modules/importacion-html/components/revision-importacion.tsx"),
     );
     expect(pantalla).toMatch(/pacientesSinSexo/);
+  });
+
+  // ═══ Y EL OTRO HUECO DEL MISMO LOTE: LAS CONSULTAS SIN ENCUESTA (Santiago, 2026-10-10) ═══
+  //
+  // El caso llego al reves: el pregunto por dos pacientes que aparecian sin respuestas y habia que averiguar
+  // si el importador las habia perdido. NO las habia perdido (el archivo no las trae), y en ese lote eran
+  // CATORCE, no dos.
+  //
+  // O SEA QUE EL IMPORTADOR HIZO LO CORRECTO Y NADIE PUDO SABERLO sin cotejar el JSON a mano. Es el mismo
+  // defecto que el sexo y por eso va en el mismo candado: un hueco que entra en silencio reaparece meses
+  // despues como una pantalla que no deja pasar.
+  it("y tampoco mete consultas sin encuesta en silencio", () => {
+    const writer = sinComentarios(leer("src/modules/importacion-html/data/importar-lote-writer.ts"));
+    expect(writer).toMatch(/consultasSinRespuestas/);
+    // SE CUENTA DONDE SE SABE: el unico punto que ya cruzo las respuestas de esa consulta contra las
+    // preguntas vigentes. Contarlo en otro sitio obliga a repetir el cruce, y dos sitios que cuentan lo
+    // mismo acaban dando cifras distintas.
+    expect(writer).toMatch(/if \(respuestas\.length === 0\) sinRespuestas\+\+/);
+    const pantalla = sinComentarios(
+      leer("src/modules/importacion-html/components/revision-importacion.tsx"),
+    );
+    expect(pantalla, "se cuenta pero no se dice: un conteo que no llega a la pantalla no avisa a nadie").toMatch(
+      /consultasSinRespuestas/,
+    );
   });
 
   it("y ningun lector clinico vuelve a suponer masculino cuando falta", () => {

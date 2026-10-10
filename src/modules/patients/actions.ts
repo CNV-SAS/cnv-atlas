@@ -16,11 +16,12 @@ import {
   resolverPropuestaDePrueba,
 } from "./data/de-prueba-writer";
 import { guardarContactoDelPaciente } from "./data/patient-contact-writer";
-import { completarSexoDelPaciente } from "./data/patient-sex-writer";
+import { completarSexoDelPaciente, corregirSexoDelPaciente } from "./data/patient-sex-writer";
+import { contarDiagnosticosDelPaciente } from "./data/diagnosticos-del-paciente-reader";
 import { getPatientDetail } from "./data/patient-detail-reader";
 import { setPatientArchivado } from "./data/patients-archive-writer";
 import { canArchivePatient } from "./policies/can-archive-patient";
-import { canCompletePatientSex } from "./policies/can-complete-patient-sex";
+import { canCompletePatientSex, canCorrectPatientSex } from "./policies/can-complete-patient-sex";
 import { canEditPatientContact } from "./policies/can-edit-patient-contact";
 import { canCreatePatientPresencial } from "./policies/can-create-patient";
 import { documentoAjenoParaProfesional } from "./text/documento-ajeno";
@@ -33,6 +34,7 @@ import type {
 import {
   archivarPacienteSchema,
   contactoPacienteSchema,
+  correccionDeSexoSchema,
   documentoSchema,
   sexoPacienteSchema,
 } from "./validations";
@@ -263,6 +265,66 @@ export async function completarSexoPacienteAction(
   return {
     error: null,
     success: "Sexo registrado. Ya se le puede generar el diagnóstico.",
+    warning: null,
+  };
+}
+
+// ═══ CORREGIR UN SEXO YA REGISTRADO (Santiago, 2026-10-10) ═══
+//
+// ES OTRA ACTION Y NO UN PARAMETRO DE LA DE ARRIBA, a proposito. Completar un hueco y pisar un insumo del
+// motor son dos actos con permisos distintos, validaciones distintas (este exige motivo) y mensajes
+// distintos. Juntarlos en una con una bandera es como se llega a que un camino herede el gate del otro.
+export async function corregirSexoPacienteAction(
+  _prev: SexoPacienteState,
+  form: FormData,
+): Promise<SexoPacienteState> {
+  const user = await requireUser();
+  if (!canCorrectPatientSex(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const datos = correccionDeSexoSchema.safeParse({
+    patientId: form.get("patientId"),
+    sex: form.get("sex"),
+    motivo: form.get("motivo"),
+  });
+  if (!datos.success) {
+    return {
+      error: datos.error.issues[0]?.message ?? "Revisa el sexo y el motivo.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  // MISMA VERIFICACION DE OWNERSHIP que completar: se LEE bajo RLS antes de escribir, asi que un paciente
+  // que no es suyo es indistinguible de uno que no existe.
+  const paciente = await getPatientDetail(datos.data.patientId);
+  if (!paciente) return { error: "No se encontró ese paciente.", success: null, warning: null };
+
+  const ip = await getClientIp();
+  const resultado = await corregirSexoDelPaciente(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (resultado.estado === "sin-cambio") {
+    return {
+      error: null,
+      success: null,
+      warning: "Este paciente ya tenía registrado ese sexo, así que no se cambió nada.",
+    };
+  }
+
+  // ═══ EL MENSAJE DICE LO QUE QUEDA POR HACER, no solo que se guardo ═══
+  //
+  // Si el paciente ya tiene diagnosticos, cambiar el sexo NO los rehace (ver el escritor), y callarlo seria
+  // dejarlo creyendo que con esto quedo resuelto. Se cuenta cuantos hay y se nombra el camino que los rehace.
+  const diagnosticos = await contarDiagnosticosDelPaciente(datos.data.patientId);
+  const base = datos.data.sex === "F" ? "Sexo corregido a Femenino." : "Sexo corregido a Masculino.";
+  return {
+    error: null,
+    success:
+      diagnosticos === 0
+        ? `${base} El próximo diagnóstico se generará con este dato.`
+        : `${base} ${diagnosticos === 1 ? "El diagnóstico ya generado se calculó" : `Los ${diagnosticos} diagnósticos ya generados se calcularon`} con el dato anterior, y no se rehacen solos: para rehacer una evaluación, entra en ella y usa Corregir.`,
     warning: null,
   };
 }
