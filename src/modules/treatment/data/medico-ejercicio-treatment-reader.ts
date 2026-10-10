@@ -99,7 +99,20 @@ export async function getMedicoEjercicioForEvaluation(
       .maybeSingle(),
   ]);
 
-  const sexo = (profile?.sex ?? "").toLowerCase().startsWith("f") ? "F" : "M";
+  // ═══ SIN SEXO NO SE ADIVINA: SE DEVUELVE NADA (2026-10-10) ═══
+  //
+  // Esta linea decia `startsWith("f") ? "F" : "M"`, o sea que CUALQUIER ausencia caia en masculino: una
+  // paciente sin sexo se clasificaba y se trataba como hombre, y nada en pantalla lo decia. Es el mismo
+  // defecto que ya se corrigio en el import del HTML, y seguia vivo aqui.
+  //
+  // HOY NO ES ALCANZABLE, y se deja escrito para que no se lea como un arreglo a medias: este lector exige
+  // un reporte SELLADO, y sellar pasa por `normalizeSex`, que nunca admitio un sexo invalido. Asi que esto
+  // es el cinturon, no el camino. Lo que no puede quedarse es la suposicion: el dia que un diagnostico
+  // llegue por otra via (un import que traiga el sellado, por ejemplo) la suposicion volveria a gendear a
+  // una paciente en silencio, que es la peor forma de equivocarse aqui.
+  const sexoCrudo = (profile?.sex ?? "").trim().toUpperCase();
+  if (sexoCrudo !== "F" && sexoCrudo !== "M") return null;
+  const sexo = sexoCrudo;
   const raw: Record<string, number> = {};
   for (const r of rawRows ?? []) raw[r.variable_name] = Number(r.value);
   const bis = {

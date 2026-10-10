@@ -195,6 +195,15 @@ export function RevisionImportacion({
             Importado: {state.resumen.consultasImportadas} consultas · {state.resumen.pacientesCreados} pacientes
             nuevos · {state.resumen.pacientesExistentes} que ya existían.
           </span>
+          {/* SE DICE LO QUE BLOQUEA, aunque la importacion haya salido bien. Un paciente sin sexo entraba
+              en silencio y el tope aparecia meses despues, en la pestaña Diagnostico, con un 500. */}
+          {state.resumen.pacientesSinSexo > 0 ? (
+            <span className="font-medium text-clinical-warning">
+              {state.resumen.pacientesSinSexo === 1
+                ? "1 paciente entró sin sexo (el archivo no lo trae): no se le podrá generar diagnóstico hasta registrarlo en su ficha."
+                : `${state.resumen.pacientesSinSexo} pacientes entraron sin sexo (el archivo no lo trae): no se les podrá generar diagnóstico hasta registrarlo en su ficha.`}
+            </span>
+          ) : null}
           {state.resumen.consultasOmitidas.length ? (
             <span className="text-muted-foreground">
               No se repitieron {state.resumen.consultasOmitidas.length} consultas que ya estaban importadas:{" "}

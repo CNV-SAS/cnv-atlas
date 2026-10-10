@@ -31,6 +31,14 @@ const vacioANull = (v: string | null | undefined) => {
   return s.length === 0 ? null : s;
 };
 
+// COMPLETAR EL SEXO QUE FALTA. Exactamente F/M, como el intake (`intakeIdentitySchema`) y como lo exige
+// el motor (`normalizeSex` falla en voz alta ante cualquier otra cosa). No se acepta texto libre: el
+// desplegable produce F/M y ya hubo que canonizar perfiles viejos una vez.
+export const sexoPacienteSchema = z.object({
+  patientId: z.guid(),
+  sex: z.enum(["F", "M"], { message: "Elige Femenino o Masculino." }),
+});
+
 export const contactoPacienteSchema = z.object({
   patientId: z.guid(),
   email: z

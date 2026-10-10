@@ -15,10 +15,16 @@ export type RunPipelineState = {
   success: string | null;
   warning: string | null;
   done: boolean;
-  // Enlace a la via de completar la encuesta, presente SOLO cuando el gate de encuesta incompleta
-  // bloqueo la generacion. La UI lo muestra para que el profesional sepa que falta y vaya a llenarlo,
-  // no quede bloqueado sin saber por que (Gildardo 2026-08-13 §1).
-  completeHref: string | null;
+  // ═══ LA SALIDA: A DONDE VA EL PROFESIONAL A ARREGLAR LO QUE FALTA ═══
+  //
+  // Nacio como `completeHref`, un enlace FIJO a completar la encuesta, y con la etiqueta escrita a mano en
+  // cada panel. Al aparecer la segunda puerta que se puede resolver en otra pantalla (falta el sexo del
+  // paciente, Sentry 2026-10-10) ese enlace habria mandado a la encuesta a arreglar un dato que no esta
+  // ahi: un enlace que no resuelve nada es peor que ninguno.
+  //
+  // ASI QUE EL DESTINO Y SU ETIQUETA VIAJAN JUNTOS, decididos donde se sabe cual es la falta. Los paneles
+  // solo lo pintan; ninguno vuelve a suponer de que puerta viene.
+  salida: { href: string; etiqueta: string } | null;
 };
 
 // Server action: genera el diagnostico (propagacion contra el stub). Orden: auth ->
@@ -28,12 +34,15 @@ export async function runPipelineAction(
   _prev: RunPipelineState,
   form: FormData,
 ): Promise<RunPipelineState> {
-  const fail = (error: string, completeHref: string | null = null): RunPipelineState => ({
+  const fail = (
+    error: string,
+    salida: RunPipelineState["salida"] = null,
+  ): RunPipelineState => ({
     error,
     success: null,
     warning: null,
     done: false,
-    completeHref,
+    salida,
   });
 
   const user = await requireUser();
@@ -56,11 +65,23 @@ export async function runPipelineAction(
     ip: ip === "unknown" ? null : ip,
   });
   if (!result.ok) {
-    // Encuesta incompleta: se ofrece la via de completar (la pagina de editar resalta las que faltan).
-    const completeHref = result.error.fields?.incompleteSurvey
-      ? `/ani-bis-e/${evaluationId}/encuesta/editar`
-      : null;
-    return fail(result.error.message, completeHref);
+    // CADA PUERTA QUE SE PUEDE RESOLVER EN OTRA PANTALLA TRAE LA SUYA. Las que no (una contraindicacion,
+    // un valor fuera de rango fisiologico) no ofrecen ninguna: su mensaje ya dice que hacer.
+    //
+    // Encuesta incompleta: la pagina de editar resalta las preguntas que faltan.
+    // Falta el sexo: la ficha del paciente, que es el unico sitio donde se completa.
+    const salida: RunPipelineState["salida"] = result.error.fields?.incompleteSurvey
+      ? {
+          href: `/ani-bis-e/${evaluationId}/encuesta/editar`,
+          etiqueta: "Completar la encuesta con el paciente",
+        }
+      : result.error.fields?.faltaElSexo
+        ? {
+            href: `/pacientes/${ownership.patientId}`,
+            etiqueta: "Ir a la ficha del paciente a completar el sexo",
+          }
+        : null;
+    return fail(result.error.message, salida);
   }
 
   revalidatePath("/ani-bis-e");
@@ -72,6 +93,6 @@ export async function runPipelineAction(
     success: `Diagnostico generado (${result.value.indicatorCount} indicadores).`,
     warning: null,
     done: true,
-    completeHref: null,
+    salida: null,
   };
 }

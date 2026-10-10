@@ -27,7 +27,7 @@ const initialState: RunPipelineState = {
   success: null,
   warning: null,
   done: false,
-  completeHref: null,
+  salida: null,
 };
 
 export function PipelineRunner({ evaluation }: { evaluation: DiagnosisCandidateView }) {
@@ -61,14 +61,15 @@ export function PipelineRunner({ evaluation }: { evaluation: DiagnosisCandidateV
           <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-2">
             <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
             {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
-            {/* Encuesta incompleta: no queda bloqueado a ciegas. Enlace a completarla con el paciente
-                (la pagina de editar resalta las preguntas que faltan). Gildardo 2026-08-13 §1. */}
-            {state.completeHref ? (
+            {/* No queda bloqueado a ciegas: la puerta que lo freno trae a donde se arregla, con su
+                etiqueta. Gildardo 2026-08-13 §1 para la encuesta; la ficha del paciente se sumo el
+                2026-10-10 (faltaba el sexo y esto mandaba a la encuesta, que no lo tiene). */}
+            {state.salida ? (
               <Link
-                href={state.completeHref}
+                href={state.salida.href}
                 className="w-fit text-sm font-medium text-primary underline underline-offset-4"
               >
-                Completar la encuesta con el paciente
+                {state.salida.etiqueta}
               </Link>
             ) : null}
             <Button type="submit" disabled={pending} className="w-fit">

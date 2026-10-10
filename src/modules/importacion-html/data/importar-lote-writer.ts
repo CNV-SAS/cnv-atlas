@@ -89,6 +89,16 @@ export type ImportarLoteResultado = {
   consultasImportadas: number;
   /** Consultas que ya estaban importadas (el mismo documento y la misma fecha): no se duplican. */
   consultasOmitidas: { documento: string; fecha: string }[];
+  // ═══ LOS QUE ENTRARON SIN SEXO, Y HAY QUE DECIRLO (Sentry, 2026-10-10) ═══
+  //
+  // ESTE ES EL HUECO POR DONDE ENTRO EL CASO: `sexoDeAtlas` devuelve null cuando no reconoce la palabra
+  // del archivo, el paciente se creaba igual y NADIE SE ENTERABA. Meses despues una integrante abria su
+  // pestaña Diagnostico y se encontraba un 500, porque el motor exige el sexo estricto.
+  //
+  // NO SE RECHAZA LA IMPORTACION por esto: el resto de la historia de esa persona es valido y perderla
+  // seria peor. Lo que no puede seguir pasando es que entre EN SILENCIO. Se cuenta aqui y la pantalla lo
+  // dice al terminar, con el remedio (la ficha de cada paciente ya lo completa).
+  pacientesSinSexo: number;
 };
 
 export async function importarLote(input: ImportarLoteInput): Promise<ImportarLoteResultado> {
@@ -113,6 +123,7 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
     const porDocumento = new Map(existentes.map((p) => [normalizarDocumento(p.documento), p.id]));
 
     const creados: string[] = [];
+    let sinSexo = 0;
     const omitidas: { documento: string; fecha: string }[] = [];
     let consultasImportadas = 0;
     let pacientesExistentes = 0;
@@ -141,6 +152,8 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
           .insert(patientProfessionalRelationships)
           .values({ patientId, professionalId: input.professionalId })
           .onConflictDoNothing();
+        const sexoDelHtml = sexoDeAtlas(primera.sexo);
+        if (sexoDelHtml == null) sinSexo++;
         await tx.insert(patientProfiles).values({
           patientId,
           firstName,
@@ -150,7 +163,7 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
           // aceptaba "M"/"F" y el HTML nunca las manda, asi que TODO paciente importado quedaba con el sexo
           // nulo: ninguno podia diagnosticarse, y en dos lectores que caen a masculino cuando falta, una
           // paciente se clasificaba y se trataba como hombre sin que nada lo dijera.
-          sex: sexoDeAtlas(primera.sexo),
+          sex: sexoDelHtml,
           country: typeof primera.pais === "string" ? primera.pais : null,
           city: typeof primera.ciudad === "string" ? primera.ciudad : null,
           // LOS SOCIODEMOGRAFICOS VAN TAMBIEN AQUI (barrido del 2026-09-23). Se escribian solo en la
@@ -333,6 +346,7 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
       pacientesExistentes,
       consultasImportadas,
       consultasOmitidas: omitidas,
+      pacientesSinSexo: sinSexo,
     };
   });
 }
