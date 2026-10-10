@@ -204,6 +204,21 @@ export function RevisionImportacion({
                 : `${state.resumen.pacientesSinSexo} pacientes entraron sin sexo (el archivo no lo trae): no se les podrá generar diagnóstico hasta registrarlo en su ficha.`}
             </span>
           ) : null}
+          {/* ═══ Y LAS CONSULTAS SIN ENCUESTA (Santiago, 2026-10-10) ═══
+
+              El caso llego al reves: el pregunto por dos pacientes que aparecian sin respuestas y habia que
+              averiguar si el importador las habia perdido. No las habia perdido: el archivo no las trae.
+
+              PERO QUE NADIE PUEDA SABERLO SIN COTEJAR EL JSON A MANO es el defecto. Se dice aqui, al importar,
+              cuando todavia se puede planear a quien hay que llamar, y no meses despues en la pestaña
+              Diagnostico. Es el mismo arreglo que el del sexo, por el mismo motivo. */}
+          {state.resumen.consultasSinRespuestas > 0 ? (
+            <span className="font-medium text-clinical-warning">
+              {state.resumen.consultasSinRespuestas === 1
+                ? "1 consulta entró sin ninguna respuesta de encuesta (el archivo no las trae): no se le podrá generar diagnóstico hasta completar la encuesta con el paciente."
+                : `${state.resumen.consultasSinRespuestas} consultas entraron sin ninguna respuesta de encuesta (el archivo no las trae): no se les podrá generar diagnóstico hasta completar la encuesta con el paciente.`}
+            </span>
+          ) : null}
           {state.resumen.consultasOmitidas.length ? (
             <span className="text-muted-foreground">
               No se repitieron {state.resumen.consultasOmitidas.length} consultas que ya estaban importadas:{" "}

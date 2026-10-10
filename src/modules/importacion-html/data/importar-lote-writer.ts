@@ -99,6 +99,21 @@ export type ImportarLoteResultado = {
   // seria peor. Lo que no puede seguir pasando es que entre EN SILENCIO. Se cuenta aqui y la pantalla lo
   // dice al terminar, con el remedio (la ficha de cada paciente ya lo completa).
   pacientesSinSexo: number;
+  // ═══ Y LAS CONSULTAS QUE ENTRARON SIN NINGUNA RESPUESTA DE ENCUESTA (Santiago, 2026-10-10) ═══
+  //
+  // EL CASO: *"hay 2 pacientes con identificacion X y Y, ambas aparecen sin respuestas de la encuesta."* Al
+  // cotejar el archivo contra el importador, la encuesta NO SE PERDIO AL IMPORTAR: en el propio JSON esas
+  // consultas traen los datos de registro, el consentimiento, el peso y la talla, y CERO respuestas. En ese
+  // lote eran CATORCE, no dos.
+  //
+  // O SEA QUE EL IMPORTADOR HIZO LO CORRECTO y aun asi nadie se entero, que es el mismo defecto que el sexo:
+  // un hueco que entra en silencio y reaparece meses despues como una pantalla que no deja pasar. (Esa
+  // reaparicion ya tiene su puerta con salida: el pipeline frena con "falta completar la encuesta" y lleva a
+  // completarla con el paciente. Lo que faltaba era decirlo AL IMPORTAR, cuando todavia se puede planear.)
+  //
+  // NO SE RECHAZA NADA: una consulta sin encuesta es una consulta real, con su medicion y su fecha, y
+  // perderla seria peor. Se cuenta y se dice.
+  consultasSinRespuestas: number;
 };
 
 export async function importarLote(input: ImportarLoteInput): Promise<ImportarLoteResultado> {
@@ -124,6 +139,7 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
 
     const creados: string[] = [];
     let sinSexo = 0;
+    let sinRespuestas = 0;
     const omitidas: { documento: string; fecha: string }[] = [];
     let consultasImportadas = 0;
     let pacientesExistentes = 0;
@@ -241,6 +257,10 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
         consultasImportadas++;
 
         const respuestas = respuestasDeLaConsulta(c.consulta, Object.keys(input.preguntasPorClave));
+        // SE CUENTA AQUI, donde se sabe: es el unico punto que ha mirado las respuestas de ESTA consulta
+        // contra las preguntas de la encuesta vigente. Contarlo fuera obligaria a repetir ese cruce, y dos
+        // sitios que cuentan lo mismo acaban dando cifras distintas.
+        if (respuestas.length === 0) sinRespuestas++;
         if (respuestas.length) {
           const [respuesta] = await tx
             .insert(surveyResponses)
@@ -347,6 +367,7 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
       consultasImportadas,
       consultasOmitidas: omitidas,
       pacientesSinSexo: sinSexo,
+      consultasSinRespuestas: sinRespuestas,
     };
   });
 }
