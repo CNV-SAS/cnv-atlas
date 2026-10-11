@@ -323,7 +323,19 @@ describe("y el import deja de meter pacientes sin sexo en silencio", () => {
     // Se barre la FORMA, no el archivo, porque la misma linea reaparecio en tres sitios distintos.
     const sospechosos = fuentes("src/modules").filter((f) => {
       const src = sinComentarios(leer(f));
-      return /startsWith\(\s*"f"\s*\)\s*\?\s*"F"\s*:\s*"M"/.test(src) || /!\(\w*\.?sex\w*\s*\?\?\s*""\)/.test(src);
+      // LA FORMA SE BARRE EN TRES VARIANTES, y la tercera existe porque la segunda SE LE ESCAPO UNA
+      // (2026-10-10): `celular-badges-reader` decia `!(profile?.sex ?? "")` y el patron pedia `\w*\.?sex`,
+      // que no admite el `?.` del encadenamiento opcional. O sea que el candado llevaba semanas verde
+      // JUNTO AL archivo que tenia que atrapar. Un candado que no cubre su propio caso es peor que no
+      // tenerlo, porque se lee como que la regla ya se cumple. Ahora la clase admite `?` y `.`.
+      const negacionDelSexo = /!\s*\(\s*[\w?.]*sex[\w?.]*\s*\?\?\s*""\s*\)/i;
+      const ternarioPorLaF = /startsWith\(\s*"f"\s*\)\s*\?\s*"F"\s*:\s*"M"/;
+      // Y LA TERCERA, LA QUE LO ATRAPA DE VERDAD: la `f` NEGADA. Lo que vuelve masculina la ausencia no es
+      // mirar la inicial, es que el "si no" caiga en hombre, y eso se escribe negando la prueba de la f
+      // (`!(...).startsWith("f")`). Asi queda fuera `sexoLabel`, que mira la misma inicial para ROTULAR y
+      // ante un valor que no reconoce devuelve el valor crudo, sin elegir sexo por nadie.
+      const negacionDeLaF = /![^\n]*startsWith\(\s*"f"\s*\)/;
+      return ternarioPorLaF.test(src) || negacionDelSexo.test(src) || negacionDeLaF.test(src);
     });
     expect(
       sospechosos,
@@ -331,5 +343,32 @@ describe("y el import deja de meter pacientes sin sexo en silencio", () => {
         "sin sexo se clasifica y se trata como hombre, y nada en pantalla lo dice. Sin el dato no se adivina: " +
         "se devuelve null y el bloque no se rinde.",
     ).toEqual([]);
+  });
+
+  // ═══ EL QUE SE LE ESCAPO AL BARRIDO, Y POR QUE SE LE DEJA UN CASO PROPIO ═══════════════════════════
+  //
+  // `celular-badges-reader` lleva SIN LLAMADOR desde el 2026-09-07, y a proposito (cotejo punto 10: las
+  // badges duplicaban filas de la tabla de Wang). Lo que lo vuelve peligroso NO es que este descablado, es
+  // que re-cablearlo es UNA LINEA, y hasta hoy esa linea traia de vuelta el sexo adivinado.
+  //
+  // El barrido de arriba es por FORMA y vale para lo que venga; este caso pin la CONDUCTA del unico archivo
+  // que ya cayo: sin un sexo valido no computa, devuelve null y la seccion no se rinde. Los dos juntos,
+  // porque la forma prohibida se puede escribir de mil maneras y la conducta correcta solo de una.
+  it("y el lector descablado de badges celulares no computa sin un sexo valido", () => {
+    const src = sinComentarios(leer("src/modules/diagnoses/data/celular-badges-reader.ts"));
+    expect(
+      src,
+      "sin sexo tiene que RENDIRSE, no elegir uno: los cuatro cortes celulares son sexo-especificos",
+    ).toMatch(/!==\s*"F"\s*&&\s*\w+\s*!==\s*"M"\)\s*return null/);
+    expect(src, 'el sexo se decide por igualdad con "M", no por la inicial').toMatch(
+      /===\s*"M"/,
+    );
+    // Y QUE SIGA DECLARADO: si alguien lo borra por "codigo muerto" se pierde la pregunta abierta a
+    // Gildardo, y si lo re-cablea sin leer nada vuelve el caso. El comentario es la mitad del arreglo, asi
+    // que se lee del archivo CON comentarios, a proposito.
+    expect(
+      leer("src/modules/diagnoses/data/celular-badges-reader.ts"),
+      "la ausencia deliberada se distingue de un hueco SOLO porque esta escrita",
+    ).toMatch(/SIN LLAMADOR DESDE EL 2026-09-07, A PROPOSITO/);
   });
 });
