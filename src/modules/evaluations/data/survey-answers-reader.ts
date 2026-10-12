@@ -73,28 +73,26 @@ export function groupSurveyAnswers(
   return domains;
 }
 
-export async function getSurveyAnswersForEvaluation(
-  evaluationId: string,
-): Promise<SurveyDomain[] | null> {
-  const supabase = await createSupabaseServerClient();
+type Cliente = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
-  const { data: resp, error: rErr } = await supabase
-    .from("survey_responses")
-    .select("id, survey_version_id")
-    .eq("evaluation_id", evaluationId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (rErr) throw new Error(`survey-answers-reader: survey_responses: ${rErr.message}`);
-  if (!resp) return null; // aun sin encuesta para esta evaluacion
-
+// Las preguntas de UNA version con las respuestas de UNA respuesta (o ninguna). Sale de la funcion de
+// abajo para que el formulario de completado pueda pedir el instrumento SIN respuesta, sin repetir las
+// tres consultas ni el ensamblado (dos sitios que arman el mismo instrumento acaban difiriendo en el
+// orden o en la numeracion, y "pregunta 38" deja de ser la misma pregunta en las dos pantallas).
+async function leerInstrumento(
+  supabase: Cliente,
+  surveyVersionId: string,
+  responseId: string | null,
+): Promise<SurveyDomain[]> {
   const [questionsRes, answersRes] = await Promise.all([
     supabase
       .from("survey_questions")
       .select("id, question_text, hint, question_type, field_key, used_in_diagnosis, section, order_index")
-      .eq("survey_version_id", resp.survey_version_id)
+      .eq("survey_version_id", surveyVersionId)
       .order("order_index"),
-    supabase.from("survey_answers").select("question_id, answer_value").eq("response_id", resp.id),
+    responseId
+      ? supabase.from("survey_answers").select("question_id, answer_value").eq("response_id", responseId)
+      : Promise.resolve({ data: [] as AnswerRow[], error: null }),
   ]);
   if (questionsRes.error) {
     throw new Error(`survey-answers-reader: survey_questions: ${questionsRes.error.message}`);
@@ -117,4 +115,67 @@ export async function getSurveyAnswersForEvaluation(
   }
 
   return groupSurveyAnswers(questions, answersRes.data ?? [], optionsRes.data ?? []);
+}
+
+export async function getSurveyAnswersForEvaluation(
+  evaluationId: string,
+): Promise<SurveyDomain[] | null> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data: resp, error: rErr } = await supabase
+    .from("survey_responses")
+    .select("id, survey_version_id")
+    .eq("evaluation_id", evaluationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (rErr) throw new Error(`survey-answers-reader: survey_responses: ${rErr.message}`);
+  if (!resp) return null; // aun sin encuesta para esta evaluacion
+
+  return leerInstrumento(supabase, resp.survey_version_id, resp.id);
+}
+
+/**
+ * ═══ EL INSTRUMENTO PARA COMPLETARLO, EXISTA O NO LA RESPUESTA (Santiago, 2026-10-12) ═══
+ *
+ * EL CASO REAL: en el lote del HTML del 2 de octubre hay 15 consultas que llegaron con su consentimiento y
+ * su medicion completa y CERO respuestas de encuesta. El importador no crea la fila de `survey_responses`
+ * cuando no hay ni una respuesta que meter (y hace bien: una respuesta vacia afirmaria que hubo encuesta).
+ * Pero entonces `getSurveyAnswersForEvaluation` devolvia null, la pantalla de completar rendia un
+ * formulario SIN NINGUNA PREGUNTA, y la puerta del diagnostico ofrecia "Completar la encuesta con el
+ * paciente" como salida. **Un enlace que no resuelve nada es peor que ninguno**, y es la regla que ese
+ * mismo codigo ya tiene escrita.
+ *
+ * POR QUE UNA FUNCION APARTE Y NO CAMBIAR LA DE ARRIBA: ese null significa "esta evaluacion no tiene
+ * encuesta", y lo leen la historia clinica, el SOAP, los antecedentes y las alertas clinicas. Devolverles
+ * 64 preguntas con respuesta nula convertiria "no respondio" en "no refiere", que es una afirmacion
+ * clinica FALSA sobre una persona. La distincion entre las dos es la misma que el D8 ya cuida.
+ *
+ * LA VERSION, cuando no hay respuesta, es la VIGENTE (la ultima publicada, mismo criterio que
+ * `getActiveSurvey`): el profesional va a preguntar con el instrumento de hoy, y es lo que el writer
+ * sellara en la fila que cree.
+ */
+export async function getSurveyFormForEvaluation(evaluationId: string): Promise<SurveyDomain[]> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data: resp, error: rErr } = await supabase
+    .from("survey_responses")
+    .select("id, survey_version_id")
+    .eq("evaluation_id", evaluationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (rErr) throw new Error(`survey-answers-reader: survey_responses: ${rErr.message}`);
+  if (resp) return leerInstrumento(supabase, resp.survey_version_id, resp.id);
+
+  const { data: version, error: vErr } = await supabase
+    .from("survey_versions")
+    .select("id")
+    .order("published_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (vErr) throw new Error(`survey-answers-reader: survey_versions: ${vErr.message}`);
+  if (!version) return [];
+
+  return leerInstrumento(supabase, version.id, null);
 }

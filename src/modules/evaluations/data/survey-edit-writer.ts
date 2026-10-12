@@ -1,9 +1,16 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { diagnoses, evaluations, professionalProfiles, surveyAnswers, surveyResponses } from "@/db/schema";
+import {
+  diagnoses,
+  evaluations,
+  professionalProfiles,
+  surveyAnswers,
+  surveyResponses,
+  surveyVersions,
+} from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 // Edicion de la encuesta del paciente por el PROFESIONAL, ANTES del diagnostico (a). El paciente pudo
@@ -58,19 +65,56 @@ export async function saveSurveyEdit(input: {
     if (diag.length > 0) return { ok: false, reason: "already_diagnosed" };
     if (!EDITABLE_STATUSES.has(ev.status)) return { ok: false, reason: "not_editable" };
 
-    // La respuesta existe pre-diagnostico en draft/in_progress (el paciente envio, aunque sea a medias).
-    const [response] = await tx
+    // La respuesta existe pre-diagnostico cuando el paciente envio algo, aunque sea a medias.
+    const [existente] = await tx
       .select({ id: surveyResponses.id })
       .from(surveyResponses)
       .where(eq(surveyResponses.evaluationId, input.evaluationId))
       .limit(1);
-    if (!response) return { ok: false, reason: "not_editable" };
+
+    // ═══ Y SI NO EXISTE, SE CREA AQUI (Santiago, 2026-10-12) ═══
+    //
+    // EL CASO: las 15 consultas del lote del HTML que entraron con consentimiento y medicion completa y
+    // CERO respuestas. El importador no crea la fila cuando no hay ni una respuesta (bien: una fila vacia
+    // afirmaria que hubo encuesta), asi que esta funcion devolvia `not_editable` y la unica salida que la
+    // puerta del diagnostico ofrecia ("Completar la encuesta con el paciente") no llevaba a ninguna parte.
+    //
+    // DOS COSAS SE SELLAN AL CREARLA, y son las que hacen que esto no sea una encuesta inventada:
+    //
+    //   · `surveyVersionId` = la version VIGENTE (ultima publicada, mismo criterio que `getActiveSurvey`).
+    //     Es con el instrumento de hoy con el que se esta preguntando, y la regla dura 7 exige que quede
+    //     dicho cual fue; sin eso, un `dfi.complete` sellado no se puede reconstruir.
+    //   · `capturedBy` = el profesional. NULO significa "la autodiligencio el paciente", y aqui no fue asi:
+    //     la seccion S de la historia clinica dice "lo que el paciente refiere", y quien pregunta cambia lo
+    //     que la gente responde. Es la misma columna que ya existe para la encuesta que se registra en
+    //     consulta (0172), usada para el mismo acto.
+    //
+    // NO se toca `importBatchId`: estas respuestas no vienen del lote, se tomaron despues. Dejarlo nulo es
+    // lo que permite distinguir en la base lo que trajo el archivo de lo que se completo a mano.
+    let responseId = existente?.id ?? null;
+    if (!responseId) {
+      const [version] = await tx
+        .select({ id: surveyVersions.id })
+        .from(surveyVersions)
+        .orderBy(desc(surveyVersions.publishedAt))
+        .limit(1);
+      if (!version) return { ok: false, reason: "not_editable" };
+      const [creada] = await tx
+        .insert(surveyResponses)
+        .values({
+          evaluationId: input.evaluationId,
+          surveyVersionId: version.id,
+          capturedBy: input.actorId,
+        })
+        .returning({ id: surveyResponses.id });
+      responseId = creada.id;
+    }
 
     // Reemplaza el snapshot completo (el form manda todo lo contestado; lo ausente = sin responder).
-    await tx.delete(surveyAnswers).where(eq(surveyAnswers.responseId, response.id));
+    await tx.delete(surveyAnswers).where(eq(surveyAnswers.responseId, responseId));
     if (input.answers.length > 0) {
       await tx.insert(surveyAnswers).values(
-        input.answers.map((a) => ({ responseId: response.id, questionId: a.questionId, answerValue: a.answerValue })),
+        input.answers.map((a) => ({ responseId, questionId: a.questionId, answerValue: a.answerValue })),
       );
     }
 
@@ -84,7 +128,7 @@ export async function saveSurveyEdit(input: {
       actorEmail: input.actorEmail,
       entityType: "evaluation",
       entityId: input.evaluationId,
-      payload: { answered: input.answers.length },
+      payload: { answered: input.answers.length, respuestaCreada: existente == null },
       ip: input.ip,
     });
     return { ok: true, answered: input.answers.length };

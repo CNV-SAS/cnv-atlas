@@ -7,7 +7,7 @@ import { requireUser } from "@/modules/auth/session";
 import { getEvaluationHeaderForSession, getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { formatDate } from "@/lib/format/date";
 import { SurveyEditForm } from "@/modules/evaluations/components/survey-edit-form";
-import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
+import { getSurveyFormForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 
 export const metadata = { title: "Completar encuesta - Atlas" };
@@ -24,7 +24,10 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
   const [header, results, domains] = await Promise.all([
     getEvaluationHeaderForSession(id),
     getEvaluationResults(id),
-    getSurveyAnswersForEvaluation(id),
+    // EL LECTOR DEL FORMULARIO, no el de las respuestas: trae el instrumento aunque la evaluacion no
+    // tenga ni una respuesta (las 15 consultas del lote del HTML). El otro devuelve null en ese caso y
+    // esta pantalla rendia un formulario sin ninguna pregunta.
+    getSurveyFormForEvaluation(id),
   ]);
   if (!header) notFound();
   // Ya diagnosticada: no se edita directo, se corrige (version nueva).
@@ -42,7 +45,7 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
 
       {/* En superficie, igual que la vista de lectura: el formulario estaba suelto sobre el gris. */}
       <Panel>
-        <SurveyEditForm evaluationId={id} domains={domains ?? []} backHref={backHref} />
+        <SurveyEditForm evaluationId={id} domains={domains} backHref={backHref} />
       </Panel>
     </div>
   );
