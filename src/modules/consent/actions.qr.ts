@@ -253,6 +253,27 @@ export async function declararYCrearQrAction(
     return fail("Marca la declaración para poder crear el paciente.");
   }
 
+  // ═══ LA FECHA DE NACIMIENTO SE EXIGE AQUI, NO SOLO EN EL FORMULARIO (2026-10-12) ═══
+  //
+  // El `required` del campo lo comprueba el NAVEGADOR, y la validacion dura de menores depende de este
+  // dato: `signIntakeEvaluation` decide por la EDAD, asi que sin fecha `edadAlFirmar` es null y el guard
+  // NO PUEDE DISPARAR. O sea que con la fecha vacia se podia guardar el consentimiento de un menor sin
+  // representante, que es exactamente el estado imposible que ya costo seis evaluaciones bloqueadas.
+  //
+  // Es textual del dictamen: *"este hueco existio porque el formulario permitio guardar un estado
+  // imposible, y mientras eso siga siendo posible va a volver a ocurrir POR OTRA VIA"*. Un `required` es
+  // una cortesia de la pantalla; la via es esta.
+  //
+  // SE EXIGE EN ESTA SUPERFICIE Y NO EN EL WRITER a proposito: en el intake remoto la fecha es opcional a
+  // proposito (`intakeIdentitySchema` la deja nullish) y un adulto se puede registrar sin ella. Aqui no
+  // puede faltar porque aqui la escribe el profesional CON EL DOCUMENTO DELANTE, que es el acto que esta
+  // declarando dos lineas mas abajo.
+  if (!s("birthDate")) {
+    return fail(
+      "Falta la fecha de nacimiento. Es lo que decide si el paciente es menor de edad, y sin ella no se puede comprobar.",
+    );
+  }
+
   const { getProfessionalProfileIdByUser } = await import(
     "@/modules/payments/data/payments-repository"
   );
@@ -268,9 +289,8 @@ export async function declararYCrearQrAction(
   }
 
   const ip = await getClientIp();
-  const { signIntakeEvaluation, ConsentGateError } = await import(
-    "@/modules/evaluations/data/intake-writer"
-  );
+  const { signIntakeEvaluation, ConsentGateError, ConsentimientoDeMenorSinRepresentanteError } =
+    await import("@/modules/evaluations/data/intake-writer");
   const { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } = await import("@/modules/consent/consent-hash");
 
   try {
@@ -316,6 +336,23 @@ export async function declararYCrearQrAction(
   } catch (e) {
     if (e instanceof ConsentGateError) {
       return fail("Faltan autorizaciones necesarias: no se puede crear la evaluación.");
+    }
+    // ═══ EL MENOR SIN REPRESENTANTE: SE DICE, Y SE DICE OTRA COSA QUE EN EL CAMINO REMOTO ═══
+    //
+    // Sin esta rama caia en el generico de abajo (*"No pudimos crear el paciente en este momento. Intenta
+    // de nuevo"*) mas una excepcion en Sentry. Es el PEOR desenlace: invita a repetir lo mismo, y lo mismo
+    // va a volver a fallar porque el problema no es pasajero. Es la misma leccion que ya se aplico en
+    // `survey-intake` el 2026-10-09, en el camino del enlace.
+    //
+    // Y NO SE REUSA SU MENSAJE, aunque el error lo traiga: ese esta escrito para el PACIENTE en su telefono
+    // y le dice *"vuelve al paso anterior y elige la opcion de menor de edad"*. Aqui lo lee el PROFESIONAL,
+    // y en este pase esa opcion NO EXISTE todavia: mandarlo a pulsar algo que no esta es un guard correcto
+    // mal expuesto, que se vive como un sistema roto. Asi que dice la verdad: que por aqui no se puede, y
+    // cual es el camino que si pide los datos del representante.
+    if (e instanceof ConsentimientoDeMenorSinRepresentanteError) {
+      return fail(
+        "La fecha de nacimiento indica que el paciente es menor de edad, así que el consentimiento lo tiene que otorgar su representante legal, y este pase todavía no pide sus datos. Hazlo con el enlace del consentimiento, que sí tiene la opción de menor de edad. Si el representante no tiene correo, avísale a quien administra Atlas: ese caso aún no tiene salida y no se puede resolver aquí.",
+      );
     }
     // El documento pudo dejar de estar libre entre la verificacion y ahora (otro profesional lo creo en
     // ese rato). El unique de la base lo impide; aqui se dice con palabras.
