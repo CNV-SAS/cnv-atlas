@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { diagnoses, evaluations, patientConsents, patientProfiles } from "@/db/schema";
@@ -305,9 +305,147 @@ export type RetirarEvaluacionInput = {
   ip: string | null;
 };
 
+
+/**
+ * ═══ QUIEN ES LA INICIAL CUANDO LA INICIAL SE RETIRA (Santiago, 2026-10-12) ═══
+ *
+ * EL PEDIDO: *"Si era la Inicial y habia una Seguimiento 1, esa pasa a ser la Inicial"*. Su argumento es
+ * correcto: una consulta que no ocurrio no deberia consumir el puesto de la primera.
+ *
+ * ── LO QUE YA FUNCIONABA Y LO QUE NO ────────────────────────────────────────────────────────────
+ *
+ * El NUMERO del seguimiento ya se renumeraba solo, porque no esta guardado: sale de contar las que estan
+ * en pie (`patients-list-reader` filtra `retirada_at`). Retirar la Seguimiento 2 ya libera ese numero.
+ *
+ * Lo que NO se movia es el TIPO, que si esta guardado en la columna. Asi que al retirar la inicial el
+ * paciente se quedaba con una sola consulta rotulada "Seguimiento 1" y sin ninguna inicial.
+ *
+ * ── POR QUE SOLO SE ASCIENDE UNA SIN DIAGNOSTICO ───────────────────────────────────────────────
+ *
+ * Lo propuso Santiago y la verificacion le da la razon: el diagnostico, el reporte y el followup se
+ * escriben en UNA transaccion, asi que una evaluacion sin diagnostico no tiene reporte emitido, ni fila
+ * de followup, ni banda de trayectoria sellada. Sin diagnostico no hay nada sellado que contradecir.
+ *
+ * CON diagnostico si lo habria, y de tres formas: un informe ya entregado al paciente que dice
+ * "Seguimiento 1" dejaria de corresponder (su tipo se lee VIVO de la evaluacion, no esta sellado en el
+ * snapshot); quedaria una fila de `followups`, que el motor solo escribe para seguimientos, colgando de
+ * una inicial; y una banda de trayectoria sellada comparando contra una previa que acaba de retirarse.
+ * Asi que esa no se toca y se queda como seguimiento, que es lo que pasa hoy.
+ *
+ * LO QUE SI SE VERIFICO QUE NO SE ROMPE: el comparador de seguimiento elige la previa por FECHA DE
+ * MEDICION y ya excluye las retiradas, no por el tipo. Renumerar no lo toca.
+ *
+ * ── Y ES SIMETRICO, QUE ES LA PARTE FRAGIL ─────────────────────────────────────────────────────
+ *
+ * Si el retiro se deshace, la que se ascendio tiene que volver a seguimiento. Sin eso el paciente queda
+ * con DOS iniciales, y entonces el rotulo de la lista pinta dos "Inicial" y el numero del seguimiento
+ * empieza a contar desde el sitio equivocado. Un traspaso sin su vuelta es peor que ningun traspaso,
+ * porque el estado roto no se ve hasta que alguien mira la lista.
+ */
+async function traspasarLaInicial(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: { patientId: string; excluyendo: string; actorId: string; actorEmail: string; ip: string | null },
+): Promise<string | null> {
+  // LAS CANDIDATAS SE BLOQUEAN: dos retiros simultaneos del mismo paciente ascenderian cada uno a una
+  // distinta y el paciente acabaria con dos iniciales. Es la misma razon por la que la correccion del
+  // sexo lee con la fila bloqueada.
+  const enPie = await tx
+    .select({ id: evaluations.id, type: evaluations.type })
+    .from(evaluations)
+    .where(
+      and(
+        eq(evaluations.patientId, input.patientId),
+        ne(evaluations.id, input.excluyendo),
+        isNull(evaluations.retiradaAt),
+        isNull(evaluations.supersededAt),
+      ),
+    )
+    .orderBy(asc(evaluations.createdAt))
+    .for("update");
+
+  const candidata = enPie[0];
+  if (!candidata || candidata.type !== "seguimiento") return null;
+
+  const diag = await tx
+    .select({ id: diagnoses.id })
+    .from(diagnoses)
+    .where(eq(diagnoses.evaluationId, candidata.id))
+    .limit(1);
+  if (diag.length > 0) return null; // con diagnostico no se toca: ver el porque arriba.
+
+  await tx
+    .update(evaluations)
+    .set({ type: "inicial" })
+    .where(eq(evaluations.id, candidata.id));
+
+  // RASTRO PROPIO: el tipo de una consulta es un dato de la historia clinica, y acaba de cambiar sin que
+  // nadie lo escribiera a mano. Sin esta fila, dentro de seis meses no hay forma de saber por que la
+  // primera consulta del paciente cambio de nombre.
+  await recordAudit(tx, {
+    event: "evaluation.tipo_traspasado",
+    actorId: input.actorId,
+    actorEmail: input.actorEmail,
+    entityType: "evaluation",
+    entityId: candidata.id,
+    payload: { de: "seguimiento", a: "inicial", porElRetiroDe: input.excluyendo },
+    ip: input.ip,
+  });
+  return candidata.id;
+}
+
+/**
+ * LA VUELTA DEL TRASPASO, al deshacer el retiro. Busca la OTRA inicial en pie (como maximo hay una: la
+ * que se ascendio) y la devuelve a seguimiento. Si no hay ninguna, no hubo traspaso que deshacer y no
+ * pasa nada, que es el caso cuando la candidata tenia diagnostico.
+ */
+async function devolverLaInicial(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: { patientId: string; excluyendo: string; actorId: string; actorEmail: string; ip: string | null },
+): Promise<string | null> {
+  const otras = await tx
+    .select({ id: evaluations.id })
+    .from(evaluations)
+    .where(
+      and(
+        eq(evaluations.patientId, input.patientId),
+        ne(evaluations.id, input.excluyendo),
+        eq(evaluations.type, "inicial"),
+        isNull(evaluations.retiradaAt),
+        isNull(evaluations.supersededAt),
+      ),
+    )
+    .for("update");
+  if (otras.length === 0) return null;
+
+  // SOLO LAS QUE NO TIENEN DIAGNOSTICO, por lo mismo que al ascender. Una con diagnostico no pudo haber
+  // sido ascendida por nosotros, asi que si aparece aqui es una inicial legitima y no se toca.
+  for (const otra of otras) {
+    const diag = await tx
+      .select({ id: diagnoses.id })
+      .from(diagnoses)
+      .where(eq(diagnoses.evaluationId, otra.id))
+      .limit(1);
+    if (diag.length > 0) continue;
+    await tx
+      .update(evaluations)
+      .set({ type: "seguimiento" })
+      .where(eq(evaluations.id, otra.id));
+    await recordAudit(tx, {
+      event: "evaluation.tipo_traspasado",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "evaluation",
+      entityId: otra.id,
+      payload: { de: "inicial", a: "seguimiento", porElRetiroDeshechoDe: input.excluyendo },
+      ip: input.ip,
+    });
+    return otra.id;
+  }
+  return null;
+}
 export async function retirarEvaluacion(
   input: RetirarEvaluacionInput,
-): Promise<{ retirada: boolean }> {
+): Promise<{ retirada: boolean; traspasada: boolean }> {
   const motivo = input.motivo.trim();
   // EL MOTIVO SE EXIGE AQUI ADEMAS DEL CHECK: asi el profesional recibe una frase que explica, en vez del
   // error de una restriccion de la base.
@@ -336,9 +474,16 @@ export async function retirarEvaluacion(
       .update(evaluations)
       .set({ retiradaAt: sql`now()`, retiradaMotivo: motivo, retiradaPor: input.actorId })
       .where(and(eq(evaluations.id, input.evaluationId), isNull(evaluations.retiradaAt)))
-      .returning({ id: evaluations.id });
+      // EL TIPO Y EL PACIENTE SALEN DE AQUI, del propio UPDATE, y no de una lectura aparte: leerlos
+      // antes abriria la ventana en que otra pestaña retira la misma y los dos traspasan.
+      .returning({
+        id: evaluations.id,
+        type: evaluations.type,
+        patientId: evaluations.patientId,
+      });
     // IDEMPOTENTE POR EL `isNull`: retirar dos veces no reescribe el motivo ni la firma de la primera.
-    if (updated.length === 0) return { retirada: false };
+    if (updated.length === 0) return { retirada: false, traspasada: false };
+    const retirada = updated[0];
 
     await recordAudit(tx, {
       event: "evaluation.retirada",
@@ -349,7 +494,22 @@ export async function retirarEvaluacion(
       payload: { motivo },
       ip: input.ip,
     });
-    return { retirada: true };
+
+    // EL TRASPASO VA DESPUES DEL RASTRO DEL RETIRO, y en la misma transaccion: el orden de las dos filas
+    // del audit cuenta la historia en el orden en que paso (se retiro la inicial, y por eso la siguiente
+    // paso a serlo). Solo si la retirada ERA la inicial: retirar un seguimiento no mueve a nadie, porque
+    // su numero ya se renumera solo al no estar guardado.
+    let traspasada: string | null = null;
+    if (retirada.type === "inicial") {
+      traspasada = await traspasarLaInicial(tx, {
+        patientId: retirada.patientId,
+        excluyendo: input.evaluationId,
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        ip: input.ip,
+      });
+    }
+    return { retirada: true, traspasada: traspasada !== null };
   });
 }
 
@@ -365,14 +525,19 @@ export async function deshacerRetiroDeEvaluacion(input: {
   actorId: string;
   actorEmail: string;
   ip: string | null;
-}): Promise<{ restaurada: boolean }> {
+}): Promise<{ restaurada: boolean; traspasada: boolean }> {
   return db.transaction(async (tx) => {
     const updated = await tx
       .update(evaluations)
       .set({ retiradaAt: null, retiradaMotivo: null, retiradaPor: null })
       .where(and(eq(evaluations.id, input.evaluationId), isNotNull(evaluations.retiradaAt)))
-      .returning({ id: evaluations.id });
-    if (updated.length === 0) return { restaurada: false };
+      .returning({
+        id: evaluations.id,
+        type: evaluations.type,
+        patientId: evaluations.patientId,
+      });
+    if (updated.length === 0) return { restaurada: false, traspasada: false };
+    const restaurada = updated[0];
 
     // EL EVENTO ES PROPIO y no "retirada con un campo distinto": la traza tiene que poder decir que una
     // consulta volvio, y cuando. Si los dos actos compartieran evento, habria que leer el payload para
@@ -386,6 +551,20 @@ export async function deshacerRetiroDeEvaluacion(input: {
       payload: {},
       ip: input.ip,
     });
-    return { restaurada: true };
+
+    // Y LA VUELTA DEL TRASPASO. ES LA PIEZA FRAGIL DE TODO ESTO: sin ella el paciente queda con DOS
+    // iniciales, la lista pinta dos "Inicial" y el numero del seguimiento empieza a contar desde el sitio
+    // equivocado. Y no falla en ninguna parte: el estado roto solo se ve mirando la lista.
+    let devuelta: string | null = null;
+    if (restaurada.type === "inicial") {
+      devuelta = await devolverLaInicial(tx, {
+        patientId: restaurada.patientId,
+        excluyendo: input.evaluationId,
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        ip: input.ip,
+      });
+    }
+    return { restaurada: true, traspasada: devuelta !== null };
   });
 }

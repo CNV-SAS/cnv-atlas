@@ -1141,6 +1141,17 @@ export async function retirarEvaluacionFormAction(
     if (!r.retirada) {
       return { error: null, success: null, warning: "Esta consulta ya estaba retirada." };
     }
+    // EL TRASPASO SE DICE, no se deja pasar: el tipo de una consulta es un dato de la historia clinica y
+    // acaba de cambiar sin que nadie lo pidiera. Callarlo es la clase de cambio que despues se descubre
+    // mirando la lista y no se sabe de donde salio.
+    if (r.traspasada) {
+      return {
+        error: null,
+        success:
+          "Consulta retirada, y la siguiente pasó a ser la Inicial. Su encuesta y su consentimiento se conservan, y puedes deshacerlo.",
+        warning: null,
+      };
+    }
   } catch (e) {
     if (e instanceof RetiroDeEvaluacionError) return { error: e.message, success: null, warning: null };
     reportServerError("evaluacion.retirar", e);
@@ -1179,6 +1190,13 @@ export async function deshacerRetiroFormAction(
     });
     if (!r.restaurada) {
       return { error: null, success: null, warning: "Esta consulta no estaba retirada." };
+    }
+    if (r.traspasada) {
+      return {
+        error: null,
+        success: "Retiro deshecho, y esta consulta recuperó su puesto de Inicial.",
+        warning: null,
+      };
     }
   } catch (e) {
     reportServerError("evaluacion.deshacer-retiro", e);
