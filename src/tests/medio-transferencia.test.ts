@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 vi.mock("server-only", () => ({}));
 
 import { cuentaDelPago, type MapaDeAlegra } from "@/modules/payments/facturacion";
@@ -165,5 +167,64 @@ describe("las dos pantallas que cobran ofrecen transferencia", () => {
     // Preguntar allá sería ofrecer una respuesta que se descarta: el paciente le paga al integrante.
     const bloque = src.slice(src.indexOf("LA TRANSFERENCIA, QUE AQUÍ NO EXISTÍA"), src.indexOf("Cobrar por transferencia"));
     expect(bloque).toContain("esDeDistribucion ? null : (");
+  });
+
+  // ═══ Y LA CONSULTA TAMBIÉN DICE A DÓNDE, CON LOS MISMOS NÚMEROS (Santiago, 2026-10-12) ═══
+  //
+  // *"Que quede igual que /pagos."* El medio existía en las dos pantallas desde el 2026-10-10, pero solo
+  // /pagos decía la cuenta. Y la consulta es DONDE MÁS HACE FALTA: el paciente está delante y alguien le
+  // lee la llave en voz alta.
+  //
+  // SE BARREN LAS DOS PANTALLAS EN EL MISMO CANDADO a propósito: es una REGLA, y una regla vive en todos
+  // los sitios donde se cobra. Arreglar una y dejar la otra es como volvió este defecto la primera vez.
+  describe("la cuenta de CNV, en las DOS pantallas donde se cobra", () => {
+    const DONDE_SE_COBRA = [
+      ["la tarjeta de /pagos", TARJETA],
+      ["la venta en consulta", CONSULTA],
+    ] as const;
+
+    for (const [nombre, archivo] of DONDE_SE_COBRA) {
+      it(nombre + " muestra la cuenta DESDE la constante", () => {
+        const src = leer(archivo);
+        expect(src, "sin la llave, el integrante tiene que sabérsela de memoria con el paciente delante").toContain(
+          "CUENTA_DE_CNV.llaveBreb",
+        );
+        expect(src).toContain("CUENTA_DE_CNV.numeroDeCuenta");
+        expect(src, "el paso manual que no está en la pantalla es el que no se hace").toContain(
+          "QUE_HACER_CON_EL_COMPROBANTE",
+        );
+        // NADIE LOS TECLEA: una cuenta copiada es una cuenta que el día que cambie queda bien en una
+        // pantalla y mal en la otra, y el dinero va a una cuenta que ya no es.
+        const numeros = leer("src/modules/payments/cuenta-de-cnv.ts").match(/"\d{8,}"/g) ?? [];
+        expect(numeros.length, "la constante dejó de tener los números").toBeGreaterThan(0);
+        for (const n of numeros) {
+          expect(src, nombre + " tiene un número de cuenta escrito a mano: " + n).not.toContain(
+            n.replace(/"/g, ""),
+          );
+        }
+      });
+
+      it(nombre + " no le cuenta al integrante la contabilidad interna de CNV", () => {
+        // LA FRASE QUE SANTIAGO RETIRÓ: *"administración confirma el pago contra el extracto antes de
+        // facturar"*. *"Esto no se dice a los integrantes, es algo interno de CNV."* El hecho sigue vivo
+        // donde manda (`transferencia-la-confirma-una-persona`); lo que se retiró es decírselo a quien no
+        // le sirve. Se lee SIN comentarios: el de arriba cita la frase para explicar por qué no está.
+        const src = sinComentarios(leer(archivo));
+        expect(src, nombre + " volvió a anunciar lo que hace admin después").not.toMatch(/extracto/i);
+        expect(src, nombre + " volvió a decir que queda sin cobrar").not.toMatch(/sin cobrar/i);
+      });
+    }
+  });
+
+  it("y el medio en línea nombra a Wompi en las dos, cada una con su presentación", () => {
+    // EL MISMO MEDIO, DOS PRESENTACIONES: en /pagos se manda un link (el cobro puede no ser presencial) y
+    // en la consulta se muestra un QR (el paciente está delante). Lo que no puede pasar es que una de las
+    // dos no diga que es Wompi, porque entonces el integrante no sabe qué le va a aparecer al paciente.
+    expect(leer(TARJETA)).toContain("Link de pago por Wompi");
+    expect(leer(CONSULTA)).toContain("Cobrar con QR de Wompi");
+    // Y LA DESCRIPCIÓN DEL MEDIO SALE DEL MÓDULO COMPARTIDO, no escrita dos veces: así no se corrige en la
+    // pantalla donde se vio el problema dejando la otra diciendo lo de antes.
+    expect(leer(TARJETA)).toContain("MEDIOS_DE_PAGO.");
+    expect(leer(CONSULTA)).toContain("MEDIOS_DE_PAGO.");
   });
 });

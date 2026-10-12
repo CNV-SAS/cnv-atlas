@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createCheckoutFormAction, registerCashSaleFormAction } from "@/modules/payments/actions";
+import { CUENTA_DE_CNV, QUE_HACER_CON_EL_COMPROBANTE } from "@/modules/payments/cuenta-de-cnv";
 import { TEXTO_AVISO_DOMICILIO } from "@/modules/payments/domicilio";
+import { MEDIOS_DE_PAGO } from "@/modules/payments/medios-de-pago";
 import type { CashSaleFormState, PaymentFormState } from "@/modules/payments/validations";
 import { MENSAJE_MINIMO_WOMPI, WOMPI_MONTO_MINIMO } from "@/modules/payments/wompi-minimo";
 
@@ -415,44 +417,82 @@ export function VentaEnConsultaForm({
       ) : null}
 
       {confirmando ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-3">
+        <div className="flex flex-col gap-3 rounded-md bg-muted/40 p-3">
+          {/* ═══ A DÓNDE TRANSFIERE, TAMBIÉN AQUÍ (Santiago, 2026-10-12) ═══
+
+              /pagos muestra la cuenta desde el 2026-10-10 y esta pantalla no, aunque es DONDE MÁS HACE falta:
+              aquí el paciente está delante y alguien tiene que leerle la llave en voz alta. Los números salen
+              de `cuenta-de-cnv.ts`, los mismos que la otra pantalla, porque una cuenta copiada en dos sitios
+              es una cuenta que el día que cambie quedará bien en una y mal en la otra, y el dinero iría a una
+              cuenta que ya no es. */}
+          {esDeDistribucion || confirmando !== "transferencia" ? null : (
+            <div className="flex flex-col gap-2 rounded-lg border-2 border-primary bg-primary/5 p-4">
+              <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+                Dile al paciente que transfiera aquí
+              </span>
+              <div className="flex flex-col gap-1 text-sm text-foreground">
+                <span>
+                  Llave Breb:{" "}
+                  <strong className="select-all font-mono tabular-nums">{CUENTA_DE_CNV.llaveBreb}</strong>
+                </span>
+                <span>
+                  o cuenta de {CUENTA_DE_CNV.tipoDeCuenta} {CUENTA_DE_CNV.banco}:{" "}
+                  <strong className="select-all font-mono tabular-nums">
+                    {CUENTA_DE_CNV.numeroDeCuenta}
+                  </strong>
+                </span>
+                <span className="text-muted-foreground">A nombre de {CUENTA_DE_CNV.titular}</span>
+              </div>
+              <p className="text-xs text-foreground">{QUE_HACER_CON_EL_COMPROBANTE}</p>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
           {/* BAJO DISTRIBUCIÓN EL DINERO NO ES DE CNV, así que la confirmación no puede decir que lo custodia:
               sería pedirle que confirme algo falso justo antes de registrar.
 
               Y LA TRANSFERENCIA TAMPOCO SE CUSTODIA, que es por lo que no comparte la frase del efectivo: el
-              dinero ya salió de las manos de alguien y entró a una cuenta. Lo que sí hay que decir es qué
-              falta para que cuente como pagada, porque Atlas NO lo afirma solo: lo afirma quien ve el
-              extracto. Esa es la regla de la confirmación de transferencias, y aquí se anuncia ANTES de
-              registrar para que nadie espere que la venta quede pagada al instante. */}
-          <span className="text-sm text-foreground">
-            {esDeDistribucion
-              ? `¿Registras la entrega de ${total.toLocaleString("es-CO")} COP? El paciente te paga a ti; esto suma a tu cuenta quincenal con CNV.`
-              : confirmando === "transferencia"
-                ? `¿Te transfirió los ${total.toLocaleString("es-CO")} COP? Queda registrada como transferencia; administración confirma el pago contra el extracto antes de facturar.`
-                : `¿Recibiste ${total.toLocaleString("es-CO")} COP en efectivo? Ese dinero es de CNV y lo custodias hasta consignar.`}
-          </span>
-          <Button
-            key="ya-pagada-si"
-            type="button"
-            size="sm"
-            disabled={pending || !listo}
-            onClick={() => cobrarYaPagada(confirmando)}
-          >
-            {registrando ? "Registrando..." : confirmando === "transferencia" ? "Sí, me transfirió" : "Sí, lo recibí"}
-          </Button>
-          <Button
-            key="ya-pagada-no"
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => setConfirmando(null)}
-          >
-            Cancelar
-          </Button>
+              dinero ya salió de las manos de alguien y entró a una cuenta.
+
+              LO QUE DECÍA Y YA NO DICE: "administración confirma el pago contra el extracto antes de facturar".
+              Santiago lo retiró de /pagos el 2026-10-10 y vale igual aquí: "Esto no se dice a los integrantes,
+              es algo interno de CNV". Y es cierto aunque el hecho sea verdad (la confirmación la sigue haciendo
+              quien ve el extracto, con su propio candado): al integrante no le sirve saber qué hace CNV después,
+              le sirve saber QUÉ TIENE QUE HACER ÉL, y eso es mandar la captura. Esa frase es la que quedó, y
+              vive en `cuenta-de-cnv.ts` para que las dos pantallas digan la misma. */}
+            <span className="text-sm text-foreground">
+              {esDeDistribucion
+                ? `¿Registras la entrega de ${total.toLocaleString("es-CO")} COP? El paciente te paga a ti; esto suma a tu cuenta quincenal con CNV.`
+                : confirmando === "transferencia"
+                  ? `¿Ya transfirió los ${total.toLocaleString("es-CO")} COP a la cuenta de CNV? Queda registrada como transferencia.`
+                  : `¿Recibiste ${total.toLocaleString("es-CO")} COP en efectivo? Ese dinero es de CNV y lo custodias hasta consignar.`}
+            </span>
+            <Button
+              key="ya-pagada-si"
+              type="button"
+              size="sm"
+              disabled={pending || !listo}
+              onClick={() => cobrarYaPagada(confirmando)}
+            >
+              {registrando
+                ? "Registrando..."
+                : confirmando === "transferencia"
+                  ? "Sí, ya transfirió"
+                  : "Sí, lo recibí"}
+            </Button>
+            <Button
+              key="ya-pagada-no"
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => setConfirmando(null)}
+            >
+              Cancelar
+            </Button>
+          </div>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-start gap-3">
           {/* ═══ EL QR NO SE OFRECE BAJO DISTRIBUCIÓN (Santiago, 2026-10-07) ═══
 
               Un botón que el servidor siempre va a rechazar no es una validación: es trabajo perdido y, aquí,
@@ -461,24 +501,34 @@ export function VentaEnConsultaForm({
               Y SE QUEDA EL DE REGISTRAR, que es el camino válido, con su propio nombre: "Cobrar en efectivo"
               diría que entra dinero de CNV, y bajo Distribución no entra ninguno. */}
           {esDeDistribucion ? null : (
+            <div className="flex min-w-[14rem] max-w-[20rem] flex-1 flex-col gap-1">
             <Button
               key="qr"
               type="button"
+              className="w-full"
               disabled={pending || !listo || excede || total < WOMPI_MONTO_MINIMO}
               onClick={() => cobrarConQr()}
             >
-              {generando ? "Generando..." : "Cobrar con QR"}
+              {generando ? "Generando..." : "Cobrar con QR de Wompi"}
             </Button>
+            <p className="text-xs text-muted-foreground">{MEDIOS_DE_PAGO.wompiQr}</p>
+            </div>
           )}
+          <div className="flex min-w-[14rem] max-w-[20rem] flex-1 flex-col gap-1">
           <Button
             key="efectivo"
             type="button"
+            className="w-full"
             variant={esDeDistribucion ? "default" : "outline"}
             disabled={pending || !listo || excede}
             onClick={() => setConfirmando("efectivo")}
           >
             {esDeDistribucion ? "Registrar la entrega" : "Cobrar en efectivo"}
           </Button>
+          <p className="text-xs text-muted-foreground">
+            {esDeDistribucion ? MEDIOS_DE_PAGO.distribucion : MEDIOS_DE_PAGO.efectivo}
+          </p>
+          </div>
           {/* ═══ LA TRANSFERENCIA, QUE AQUÍ NO EXISTÍA (Santiago, 2026-10-10) ═══
 
               /pagos la ofrece desde el 2026-09-25 y esta pantalla no, así que una transferencia cobrada en
@@ -490,15 +540,19 @@ export function VentaEnConsultaForm({
               paga al integrante y el servidor DERIVA el canal de la modalidad, así que la respuesta se
               descartaría. Un campo cuyo valor se ignora enseña a desconfiar de los otros. */}
           {esDeDistribucion ? null : (
+            <div className="flex min-w-[14rem] max-w-[20rem] flex-1 flex-col gap-1">
             <Button
               key="transferencia"
               type="button"
               variant="outline"
+              className="w-full"
               disabled={pending || !listo || excede}
               onClick={() => setConfirmando("transferencia")}
             >
               Cobrar por transferencia
             </Button>
+            <p className="text-xs text-muted-foreground">{MEDIOS_DE_PAGO.transferencia}</p>
+            </div>
           )}
         </div>
       )}

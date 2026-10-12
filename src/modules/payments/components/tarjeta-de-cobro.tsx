@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 
 import { CUENTA_DE_CNV, QUE_HACER_CON_EL_COMPROBANTE } from "../cuenta-de-cnv";
+import { MEDIOS_DE_PAGO } from "../medios-de-pago";
 import type { CheckoutNutraceutical, CheckoutPatient } from "./create-checkout-form";
 import { CreateCheckoutForm } from "./create-checkout-form";
 import {
@@ -162,20 +163,25 @@ export function TarjetaDeCobro({
                       // CNV."* Y es cierto, aunque el hecho sea verdad: al integrante no le sirve saber en
                       // qué cuenta contable cae, le sirve saber A DÓNDE transfiere el paciente. El hecho
                       // contable sigue vivo donde manda (ver `cuentaDelPago` y su candado).
+                      //
+                      // Y VIVEN EN `medios-de-pago.ts` desde el 2026-10-12, no aquí: al día siguiente pidió
+                      // que la venta en consulta dijera lo mismo (*"Que quede igual que /pagos"*), y copiar
+                      // los textos a la segunda pantalla es como empiezan a divergir. Se corrige la frase
+                      // donde se vio el problema y la otra sigue diciendo lo de antes.
                       {
                         id: "efectivo" as const,
                         rotulo: "Efectivo",
-                        nota: "El paciente te paga en efectivo. El dinero es de CNV y lo custodias hasta consignar.",
+                        nota: MEDIOS_DE_PAGO.efectivo,
                       },
                       {
                         id: "transferencia" as const,
                         rotulo: "Transferencia",
-                        nota: "El paciente transfiere directamente a la cuenta de CNV.",
+                        nota: MEDIOS_DE_PAGO.transferencia,
                       },
                       {
                         id: "link" as const,
                         rotulo: "Link de pago por Wompi",
-                        nota: "El paciente paga en línea (tarjeta de crédito, débito, PSE). Link válido por 24 horas.",
+                        nota: MEDIOS_DE_PAGO.wompiLink,
                       },
                     ] as const
                   ).map((m) => {
