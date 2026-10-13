@@ -53,6 +53,8 @@ import { listarEfectivosNoRecibidos, listarVentasPorRevisar } from "@/modules/pa
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
 import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
+import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
+import { MarcarVentaDePrueba } from "@/modules/payments/components/marcar-venta-de-prueba";
 import { PendientesSinSalida } from "@/modules/avisos/components/pendientes-sin-salida";
 import { listarPendientesDeAccion } from "@/modules/avisos/data/avisos-repository";
 import { elQueMiraEsProfesionalDePrueba } from "@/modules/payments/data/payments-repository";
@@ -268,6 +270,9 @@ export default async function PagosPage({
   const miraUnProfesionalDePrueba = await elQueMiraEsProfesionalDePrueba(user.id);
   const canCreate = canCreateCheckout(user);
   const canView = canViewRevenue(user);
+  // MARCAR UNA VENTA COMO PRUEBA ES DE ADMIN (0217), con la misma policy que marcar un paciente: saca plata
+  // de las cifras y de las comisiones, y no es una lectura sino una decision.
+  const esAdmin = canAccessAdmin(user);
   // SOPORTE ATIENDE LOS PENDIENTES (Bloque A): con la marca de avisos le llegan por correo, y un correo que lleva
   // a una pantalla que no puede abrir no sirve. Ve los paneles y marca "en gestion"; no resuelve ni reintenta.
   const canAtender = canAtenderPendientesVentas(user);
@@ -655,6 +660,24 @@ export default async function PagosPage({
                         retracto={retractos.get(tx.id)}
                         puedeRegistrarRetracto={canView}
                       />
+                      {/* ═══ "FUE UNA PRUEBA": LA CUARTA ENTRADA DE LA MARCA (0217) ═══
+
+                          EL CASO QUE NO SE PUEDE DERIVAR: profesional real, producto real, paciente real,
+                          acto de prueba. La marca de prueba se deriva de QUIÉN y de QUÉ, nunca del ACTO, así
+                          que esta venta no tenía de dónde salir. Es la de LUVIA que, textual de Santiago,
+                          *"nunca lo habíamos podido borrar ni ocultar"*.
+
+                          VA AQUÍ porque la pregunta se responde mirando la venta: su paciente, su producto,
+                          su fecha. Una lista aparte obligaría a identificarla por el monto, que es la
+                          confusión que esta fila ya resolvió al poner el nombre y el documento.
+
+                          SOLO ADMIN: saca plata de las cifras y de las comisiones. */}
+                      {esAdmin ? (
+                        <MarcarVentaDePrueba
+                          transactionId={tx.id}
+                          yaMarcada={Boolean(tx.marcada_como_prueba_at)}
+                        />
+                      ) : null}
                       {/* LA DEVOLUCION SE REGISTRA DESDE LA VENTA (2026-09-24), que es donde está el hecho:
                           el paciente devuelve lo que compró, y la unidad que vuelve es la que salió con esa
                           línea. Solo sobre una venta PAGADA Y ENTREGADA: lo que nunca salió no vuelve. */}

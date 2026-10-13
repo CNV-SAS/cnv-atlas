@@ -344,6 +344,72 @@ export async function resolverObjecion(input: {
   });
 }
 
+/**
+ * ANULA una cuenta emitida, SIN reemplazo (0215).
+ *
+ * ── POR QUE HACIA FALTA, Y POR QUE NO EXISTIA ──
+ *
+ * La 0188 diseño la re-emision (una cuenta se reemplaza por otra) pero no el RETIRO: una cuenta emitida por
+ * error no tenia salida, y sus ventas quedaban facturadas para siempre en un documento que nadie iba a
+ * cobrar. Lo expuso el arranque a produccion: las cuentas de los cortes de prueba no se podian retirar.
+ *
+ * ── LA DIFERENCIA CON REEMPLAZAR, que es toda la razon de que sean dos actos ──
+ *
+ * Reemplazar dice "esta cuenta estaba mal, aqui esta la buena". Anular dice "esta cuenta no debio existir".
+ * En la primera las ventas pasan a la nueva; en la segunda VUELVEN AL POZO sin facturar, y es lo correcto:
+ * si la venta era real, alguien tendra que facturarla; si era de prueba, su marca la saca de las cifras.
+ *
+ * LA PAGADA NO SE ANULA: lo impide el trigger de la 0215 y aqui se dice con palabras. La plata ya se movio,
+ * y un pago registrado contra un documento que dice no existir es peor que una cuenta mal emitida.
+ *
+ * EL MOTIVO ES OBLIGATORIO: es el unico sitio donde queda por que un documento fiscal desaparecio de las
+ * pantallas.
+ */
+export async function anularCuentaDistribucion(input: {
+  statementId: string;
+  motivo: string;
+  actorId: string;
+  actorEmail: string | null;
+}): Promise<{ ventasLiberadas: number }> {
+  const motivo = input.motivo.trim();
+  if (motivo.length < 10) {
+    throw new CuentaNoEmitibleError("Escribe por qué se anula esta cuenta.");
+  }
+  return db.transaction(async (tx) => {
+    const [s] = await tx.execute<{ id: string; paid_at: string | null; superseded_at: string | null }>(sql`
+      select id, paid_at, superseded_at from distribucion_statements
+       where id = ${input.statementId} for update`);
+    if (!s) throw new CuentaNoEmitibleError("Esa cuenta no existe.");
+    if (s.superseded_at) throw new CuentaNoEmitibleError("Esa cuenta ya estaba retirada.");
+    if (s.paid_at) {
+      throw new CuentaNoEmitibleError(
+        "Esa cuenta ya está pagada: no se puede anular, porque la plata ya se movió.",
+      );
+    }
+
+    // LAS VENTAS VUELVEN AL POZO: la cuenta no debio existir, asi que tampoco debio llevarselas.
+    const liberadas = await tx.execute<{ id: string }>(sql`
+      update transactions set distribucion_statement_id = null
+       where distribucion_statement_id = ${input.statementId}
+      returning id`);
+
+    await tx.execute(sql`
+      update distribucion_statements
+         set superseded_at = now(), superseded_reason = 'anulada'
+       where id = ${input.statementId}`);
+
+    await recordAudit(tx, {
+      event: "distribucion.cuenta_anulada",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "distribucion_statements",
+      entityId: input.statementId,
+      payload: { motivo, ventasLiberadas: liberadas.length },
+    });
+    return { ventasLiberadas: liberadas.length };
+  });
+}
+
 /** CNV registra el pago de la cuenta. El monto es la cifra que contabilidad concilia contra el extracto. */
 export async function registrarPagoDeCuenta(input: {
   statementId: string;

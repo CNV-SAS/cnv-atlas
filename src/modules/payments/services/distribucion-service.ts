@@ -6,6 +6,7 @@ import { db } from "@/db";
 
 import {
   CuentaNoEmitibleError,
+  anularCuentaDistribucion,
   cuentaDelCorte,
   emitirCuenta,
   estadoDeCredito,
@@ -234,6 +235,7 @@ export async function cortesDeDistribucion(hoy: string): Promise<CortesDeDistrib
 
 export {
   CuentaNoEmitibleError,
+  anularCuentaDistribucion,
   emitirCuenta,
   estadoDeCredito,
   objetarCuenta,
