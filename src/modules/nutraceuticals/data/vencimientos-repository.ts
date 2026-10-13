@@ -226,6 +226,20 @@ export async function alertasAbiertas(): Promise<AlertaEnPantalla[]> {
   return filas.map(aAlerta);
 }
 
+/**
+ * Las parejas (lote, ubicacion) que YA tienen alerta registrada, como claves `lotId|locationId`.
+ *
+ * SIRVE PARA LO CONTRARIO DE LO HABITUAL: no para leer las alertas, sino para saber cuales FALTAN. La fila
+ * de la alerta la crea la tarea diaria, asi que un lote que entra en la ventana hoy no tiene fila hasta la
+ * mañana siguiente, y las pantallas (que leen filas) no lo mostraban en ninguna parte.
+ */
+export async function clavesDeAlertasRegistradas(): Promise<Set<string>> {
+  const filas = await db.execute<{ lot_id: string; location_id: string }>(
+    sql`select lot_id, location_id from lot_expiry_alerts`,
+  );
+  return new Set(filas.map((f) => `${f.lot_id}|${f.location_id}`));
+}
+
 /** El registro de la alerta de un lote en una ubicacion, para decidir quien asume su vencido. */
 export async function alertaDe(lotId: string, locationId: string): Promise<RegistroDeAlerta | null> {
   const [f] = await db.execute<{ generada_el: string; days_ahead: number; vista_el: string | null }>(sql`

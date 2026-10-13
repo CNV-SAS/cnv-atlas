@@ -3,6 +3,7 @@ import "server-only";
 import * as repo from "../data/vencimientos-repository";
 import {
   clasificar,
+  lotesQueAlertar,
   quienAsumeElVencido,
   textoDelPlazo,
   diaEnColombia,
@@ -91,6 +92,89 @@ export async function vencimientosParaCnv(ahora: Date = new Date()): Promise<Ven
           : null,
     };
   });
+}
+
+// ═══ LOS LOTES EN VENTANA QUE TODAVIA NO TIENEN ALERTA REGISTRADA (segundo smoke, 2026-10-12) ═══
+//
+// EL DEFECTO QUE CIERRA: Santiago marco un lote que vence en 15 dias y no salio en NINGUNA pantalla. La
+// ventana no era el problema (son 60 dias); lo que pasa es que las dos lecturas de arriba leen FILAS de
+// `lot_expiry_alerts`, y esas filas las crea la tarea diaria a las 8:30 a. m. de Colombia. Un lote que entra
+// en la ventana hoy no tiene fila hasta la mañana siguiente.
+//
+// ── POR QUE NO SE DERIVA LA ALERTA AL VUELO, QUE SERIA LO MAS CORTO ──
+//
+// Porque esa fila es lo que DECIDE QUIEN ASUME un vencido: lleva cuando se genero, con cuanta anticipacion y
+// si el Integrante la vio, y el servicio hasta la BORRA cuando el correo no sale, para no afirmar que se
+// aviso a quien no se entero. Una alerta calculada al abrir una pantalla afirmaria un aviso que nadie
+// entrego, y con ella se le podria cobrar a alguien.
+//
+// ── ASI QUE SE MUESTRA LO QUE ES, CON SU NOMBRE ──
+//
+// El lote esta en la ventana y el aviso todavia no ha salido. Sin esto, la pantalla no decia nada y PARECIA
+// QUE EL SISTEMA NO HABIA VISTO EL LOTE, que es peor que un dia de retraso: es la clase de silencio que hace
+// desconfiar de un control que si funciona. Y no lleva propuesta de quien asume, porque no hay alerta de la
+// que derivarla.
+//
+// LA REGLA ES LA MISMA que usa la tarea (`lotesQueAlertar` sobre `custodiasConLotes`), a proposito: lo que
+// esta lista muestra hoy es exactamente lo que va a quedar registrado mañana.
+
+export type LoteSinAvisar = {
+  lotId: string;
+  locationId: string;
+  producto: string;
+  codigo: string;
+  vence: string;
+  unidades: number;
+  plazo: string;
+  vencido: boolean;
+  /** null = bodega central de CNV. */
+  professionalId: string | null;
+  quien: string | null;
+  donde: string;
+};
+
+async function enVentanaSinAvisar(ahora: Date): Promise<LoteSinAvisar[]> {
+  const dias = await repo.diasDeAlerta();
+  const hoy = diaEnColombia(ahora);
+  const [custodias, yaAlertados] = await Promise.all([
+    repo.custodiasConLotes(),
+    repo.clavesDeAlertasRegistradas(),
+  ]);
+  const out: LoteSinAvisar[] = [];
+  for (const c of custodias) {
+    for (const l of lotesQueAlertar(c.lotes, hoy, dias)) {
+      if (yaAlertados.has(`${l.lotId}|${c.locationId}`)) continue;
+      out.push({
+        lotId: l.lotId,
+        locationId: c.locationId,
+        producto: l.producto,
+        codigo: l.codigo,
+        vence: l.vence,
+        unidades: l.unidades,
+        plazo: textoDelPlazo(l),
+        vencido: l.estado === "vencido",
+        professionalId: c.professionalId,
+        quien: c.professionalName,
+        donde: c.locationName,
+      });
+    }
+  }
+  return out.sort((a, b) => a.vence.localeCompare(b.vence));
+}
+
+/** Lo de TODAS las ubicaciones, para CNV. */
+export async function lotesEnVentanaSinAvisar(ahora: Date = new Date()): Promise<LoteSinAvisar[]> {
+  return enVentanaSinAvisar(ahora);
+}
+
+/** Lo del Integrante, para Mi inventario. */
+export async function misLotesEnVentanaSinAvisar(
+  userId: string,
+  ahora: Date = new Date(),
+): Promise<LoteSinAvisar[]> {
+  const professionalId = await repo.profesionalDelUsuario(userId);
+  if (!professionalId) return [];
+  return (await enVentanaSinAvisar(ahora)).filter((l) => l.professionalId === professionalId);
 }
 
 /** El Integrante marca que vio la alerta. Devuelve false si no era suya o ya estaba marcada. */

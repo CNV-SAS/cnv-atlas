@@ -55,6 +55,7 @@ const DB_TESTS = [
   "src/tests/completar-la-encuesta-que-nunca-hubo-db.test.ts",
   "src/tests/el-retiro-libera-el-puesto-db.test.ts",
   "src/tests/rehacer-la-cuenta-de-distribucion-db.test.ts",
+  "src/tests/lote-en-ventana-sin-avisar-db.test.ts",
   // ── LOS DIECISEIS QUE FALTABAN (2026-10-05) ──────────────────────────────────────────────────────
   //
   // La verificacion que esta escrita arriba (`grep -rl DATABASE_URL src/tests` contenido aqui) estaba

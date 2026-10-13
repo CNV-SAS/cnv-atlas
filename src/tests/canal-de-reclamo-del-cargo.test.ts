@@ -56,3 +56,20 @@ describe("el canal para reclamar un cargo de faltante", () => {
     });
   }
 });
+
+// ═══ Y EL CANAL ES DEL QUE RECLAMA, NO DEL QUE LO RECIBE (segundo smoke, 2026-10-12) ═══
+//
+// EL DEFECTO: en /comercial como admin salia "si no estas de acuerdo, escribe a admin@cnvsystem.com", y
+// admin ES quien recibe ese correo. La causa es que `FilaLiquidacion` es la MISMA fila en las dos pantallas
+// y ese aviso no miraba quien esta mirando.
+//
+// POR QUE EL CANDADO MIRA EL FUENTE Y NO UN RENDER: lo que se protege es que la condicion ESTE, y un render
+// de la pantalla del integrante pasaria igual con o sin ella (ahi el aviso debe salir). El caso que falla es
+// el otro, y es el que no se ve a menos que se mire la condicion.
+describe("el aviso del reclamo solo sale en la pantalla del que reclama", () => {
+  const src = sinComentarios(readFileSync(SUPERFICIES["la liquidacion"], "utf8"));
+
+  it("la condicion del aviso descarta a quien gira (puedePagar)", () => {
+    expect(src).toMatch(/item\.cargosDeFaltante > 0 && !item\.pagadaEn && !puedePagar/);
+  });
+});

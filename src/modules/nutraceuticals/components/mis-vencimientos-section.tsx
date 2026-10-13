@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/shared/panel";
 
-import { misLotesPorVencer } from "../services/vencimientos-lectura";
+import { misLotesEnVentanaSinAvisar, misLotesPorVencer } from "../services/vencimientos-lectura";
 import { MarcarVencimientoVistoForm } from "./marcar-vencimiento-visto-form";
 
 // ═══ LO QUE SE LE VENCE AL INTEGRANTE (0186) ═══
@@ -17,10 +17,13 @@ import { MarcarVencimientoVistoForm } from "./marcar-vencimiento-visto-form";
 // LA FRASE DE LA CONSECUENCIA ES EL PUNTO DE LA SECCION, no un adorno legal: sin ella esto es un dato
 // curioso, y con ella es lo que le permite no perder plata. La dice igual que el correo, a proposito.
 export async function MisVencimientosSection({ userId }: { userId: string }) {
-  const lotes = await misLotesPorVencer(userId);
-  if (lotes.length === 0) return null;
+  const [lotes, sinAvisar] = await Promise.all([
+    misLotesPorVencer(userId),
+    misLotesEnVentanaSinAvisar(userId),
+  ]);
+  if (lotes.length === 0 && sinAvisar.length === 0) return null;
 
-  const hayVencido = lotes.some((l) => l.vencido);
+  const hayVencido = lotes.some((l) => l.vencido) || sinAvisar.some((l) => l.vencido);
 
   return (
     <Panel titulo={hayVencido ? "Producto vencido o por vencer" : "Producto por vencer"}>
@@ -34,6 +37,40 @@ export async function MisVencimientosSection({ userId }: { userId: string }) {
           : en ese caso se te cobra al precio de facturación, igual que un faltante. Si no vas a poder
           venderlos, escríbele a CNV para devolverlos antes de que venzan.
         </p>
+
+        {/* ═══ LOS QUE ENTRARON EN LA VENTANA Y TODAVIA NO TIENEN AVISO (segundo smoke, 2026-10-12) ═══
+            Un lote marcado hoy no tiene su alerta registrada hasta la tarea de mañana, y antes de esto no
+            salía en ninguna parte: parecía que el sistema no lo había visto. Van aparte y SIN la marca de
+            "lo vi", porque todavía no hay alerta que marcar, y con la consecuencia dicha al revés: mientras
+            el aviso no exista, el vencido es de CNV. */}
+        {sinAvisar.map((l) => (
+          <div
+            key={`${l.lotId}-${l.locationId}`}
+            className="flex flex-col gap-1 rounded-lg border border-dashed border-border bg-card p-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium text-foreground">{l.producto}</span>
+                <span className="text-xs text-muted-foreground">
+                  Lote {l.codigo} · vence el {l.vence}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-foreground">
+                  {l.unidades} {l.unidades === 1 ? "unidad" : "unidades"}
+                </span>
+                <Badge variant="outline" className="border-attention/60 font-normal text-attention">
+                  {l.plazo}
+                </Badge>
+                <span className="text-xs text-muted-foreground">sin avisar todavía</span>
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              Entró en la ventana de aviso y el correo sale mañana por la mañana. Hasta que el aviso exista,
+              este vencido lo asume CNV.
+            </span>
+          </div>
+        ))}
 
         {lotes.map((l) => (
           <div
