@@ -87,7 +87,15 @@ export default async function ConsentimientoQrPage({
           preguntarle a tu profesional cualquier punto que no te quede claro.
         </p>
       </div>
-      <ConsentimientoQr token={token} consentText={CONSENT_TEXT_V1_0} />
+      {/* LA RAMA DE EDAD VIENE DE LA SESIÓN, no de una opción en esta pantalla (0216). La fijó el
+          profesional al emitir el pase, con la fecha del documento delante. Ofrecerla aquí la volvería
+          elegible por quien tiene el teléfono, que es justo lo que no puede ser. */}
+      <ConsentimientoQr
+        token={token}
+        consentText={CONSENT_TEXT_V1_0}
+        esDeMenor={sesion.esDeMenor}
+        pideAsentimiento={sesion.pideAsentimiento}
+      />
     </Shell>
   );
 }

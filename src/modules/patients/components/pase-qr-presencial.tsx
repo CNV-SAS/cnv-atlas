@@ -14,7 +14,8 @@ import {
   type SesionQrState,
 } from "@/modules/consent/actions.qr";
 import { Input } from "@/components/ui/input";
-import { DECLARACION_PRESENCIAL } from "@/modules/consent/text/declaracion-presencial";
+import { textoDeLaDeclaracion } from "@/modules/consent/text/declaracion-presencial";
+import { computeAgeYears, isMinorAge } from "@/modules/consent/validations";
 import { checkboxClass } from "@/modules/evaluations/components/survey-form-shared";
 import { citiesForCountry, COUNTRIES, DEFAULT_COUNTRY } from "@/modules/evaluations/data/geo";
 import type { EstadoSesion } from "@/modules/consent/data/sesion-presencial";
@@ -41,6 +42,10 @@ export type PaseQrProps = {
   onCreado: (resumeToken: string) => void;
 };
 
+// LA MISMA REGLA DE EDAD QUE EL SERVIDOR, importada y no reescrita: dos definiciones del corte de los 18
+// es como la pantalla dice una rama y el servidor abre la otra.
+const esMenorPorFecha = (fecha: string) => isMinorAge(computeAgeYears(fecha, new Date()));
+
 const inicial: SesionQrState = { error: null, token: null, sessionId: null, qrDataUrl: null };
 
 export function PaseQrPresencial({ documentType, documentNumber, onCreado }: PaseQrProps) {
@@ -54,6 +59,11 @@ export function PaseQrPresencial({ documentType, documentNumber, onCreado }: Pas
   // pulsar una y otra vez (en el smoke quedaron CUATRO eventos de anulacion del mismo pase).
   const [tokenAnulado, setTokenAnulado] = useState<string | null>(null);
   const [anulando, setAnulando] = useState(false);
+  // LA FECHA DE NACIMIENTO, antes de mostrar el codigo (0216): decide la rama de edad, y de ella depende
+  // quien autoriza en el telefono y cual de los tres textos de declaracion se acepta. Se queda en estado
+  // para poder DECIRLE al profesional que rama abrio, en vez de que lo descubra en la pantalla siguiente.
+  const [nacimiento, setNacimiento] = useState("");
+  const esMenorDeEdad = nacimiento ? esMenorPorFecha(nacimiento) : null;
   // RECUPERADA DEL SERVIDOR tras una recarga. El id de la sesion vivia SOLO aqui, asi que recargar lo
   // borraba y la pantalla volvia a pedir un documento. Con el paciente ya confirmado eso significa perder
   // un consentimiento que YA se dio y repetirlo con la persona delante, que es lo peor de esta pieza.
@@ -187,6 +197,32 @@ export function PaseQrPresencial({ documentType, documentNumber, onCreado }: Pas
               lo hagas tú desde este dispositivo.
             </p>
           </div>
+
+          {/* ═══ LA FECHA DE NACIMIENTO SE PIDE AQUÍ, ANTES DEL CÓDIGO (0216) ═══
+              Y no al final, que es donde estaba. De ella depende quién autoriza: si el paciente es menor
+              de edad, la pantalla de su teléfono tiene que pedirle los datos al representante legal, y el
+              texto de la declaración que tú aceptas es otro. Con la fecha al final, un menor completaba el
+              acto entero en su teléfono para que el sistema lo frenara después. */}
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-medium text-muted-foreground">
+              Fecha de nacimiento del documento
+            </span>
+            <Input
+              type="date"
+              name="birthDate"
+              value={nacimiento}
+              onChange={(e) => setNacimiento(e.target.value)}
+              className="h-9 max-w-xs"
+              required
+            />
+            <span className="text-xs text-muted-foreground">
+              {esMenorDeEdad === null
+                ? "Decide si autoriza el paciente o su representante legal, así que se pide antes de mostrar el código."
+                : esMenorDeEdad
+                  ? "Es menor de edad: en su teléfono la autorización la va a otorgar su representante legal, y le vas a pedir sus datos."
+                  : "Es mayor de edad: autoriza el paciente desde su teléfono."}
+            </span>
+          </label>
           {anulado ? (
             <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
               Ese pase quedó anulado: el código anterior ya no sirve. Genera uno nuevo cuando quieras.
@@ -197,9 +233,14 @@ export function PaseQrPresencial({ documentType, documentNumber, onCreado }: Pas
               {sesion.error}
             </p>
           ) : null}
-          <Button type="submit" disabled={emitiendo} className="self-start">
+          <Button type="submit" disabled={emitiendo || !nacimiento} className="self-start">
             {emitiendo ? "Generando..." : "Mostrar el código al paciente"}
           </Button>
+          {!nacimiento ? (
+            <p className="text-xs text-muted-foreground">
+              Escribe la fecha de nacimiento para poder mostrar el código.
+            </p>
+          ) : null}
         </section>
       </form>
     );
@@ -360,6 +401,7 @@ function Declaracion({
   const [res, declarar, enviando] = useActionState(declararYCrearQrAction, inicialDecl);
   const [pais, setPais] = useState(DEFAULT_COUNTRY);
   const [declarado, setDeclarado] = useState(false);
+  const representante = estado.representante;
   const ciudades = citiesForCountry(pais);
 
   useEffect(() => {
@@ -370,10 +412,25 @@ function Declaracion({
     <form onSubmit={enviarSinReset(declarar)} className="flex flex-col gap-4">
       <input type="hidden" name="sessionId" value={sessionId} />
       <div className="flex flex-col gap-2 rounded-md border border-clinical-optimal/50 bg-clinical-optimal/10 px-3 py-3 text-sm">
-        <p className="font-medium text-foreground">El paciente autorizó</p>
+        <p className="font-medium text-foreground">
+          {representante ? "El representante legal autorizó" : "El paciente autorizó"}
+        </p>
         <p className="text-foreground">
           {estado.declaradoNombres} {estado.declaradoApellidos} · {estado.declaradoDocumentNumber}
+          {representante ? " (el menor)" : ""}
         </p>
+        {/* QUIEN AUTORIZO, A LA VISTA Y CON SU PARENTESCO: es lo que el profesional está a punto de
+            declarar haber verificado contra el documento, así que tiene que poder leerlo antes de marcar. */}
+        {representante ? (
+          <p className="text-foreground">
+            Autoriza: <strong>{representante.nombre}</strong> · {representante.documento} ·{" "}
+            {representante.parentesco}
+            {representante.email ? ` · ${representante.email}` : " · sin correo"}
+          </p>
+        ) : null}
+        {estado.asentimientoMenor ? (
+          <p className="text-foreground">El menor otorgó su asentimiento.</p>
+        ) : null}
         {/* LA DISTANCIA ENTRE ABRIR Y CONFIRMAR, a la vista y sin veredicto: quien juzga si fue poco es
             una persona, no la pantalla. */}
         {estado.segundosDeLectura !== null ? (
@@ -384,15 +441,26 @@ function Declaracion({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Falta completar los datos que el paciente no escribió en su teléfono. Su nombre y su documento no
-        se piden aquí: ya los escribió él.
+        Falta completar los datos que no se escribieron en el teléfono. El nombre y el documento no se
+        piden aquí: ya los escribieron ellos. La fecha de nacimiento tampoco: la escribiste al mostrar el
+        código, y es la que decidió esta declaración.
       </p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs font-medium text-muted-foreground">Fecha de nacimiento</span>
-          <Input type="date" name="birthDate" className="h-9" required />
-        </label>
+        {/* LA FECHA NO SE VUELVE A PEDIR, se muestra (0216). Es la que fijó la rama de edad y el texto de
+            la declaración que vas a aceptar dos bloques más abajo; volver a pedirla aquí abriría la puerta
+            a que el texto aceptado y la edad guardada no correspondan. Si está mal, se anula el pase. */}
+        {estado.patientBirthDate ? (
+          <div className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-medium text-muted-foreground">Fecha de nacimiento</span>
+            <p className="flex h-9 items-center rounded-md border border-border bg-muted/40 px-3 text-sm text-foreground">
+              {estado.patientBirthDate}
+            </p>
+            <span className="text-xs text-muted-foreground">
+              La escribiste al mostrar el código. Si está mal, anula el pase y genera otro.
+            </span>
+          </div>
+        ) : null}
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs font-medium text-muted-foreground">Sexo</span>
           <select
@@ -445,6 +513,13 @@ function Declaracion({
         </label>
       </div>
 
+      {/* ═══ EL TEXTO QUE SE ACEPTA ES EL DE LA VERSIÓN DE ESTE PASE (0216) ═══
+          Tres textos congelados, elegidos por la fecha de nacimiento: 1.0 mayor de edad, 1.1-a menor de
+          14, 1.1-b de 14 a 17. El 1.1-a NO lleva la frase del asentimiento, porque para un menor de 14 esa
+          frase afirmaría algo que no ocurrió.
+
+          SALE DE LA VERSIÓN GUARDADA, no de la edad recalculada aquí: la fila ya dice qué versión es, y lo
+          que se guarda tiene que ser exactamente el texto que el profesional vio. */}
       <label className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
         <input
           type="checkbox"
@@ -453,8 +528,14 @@ function Declaracion({
           checked={declarado}
           onChange={(e) => setDeclarado(e.target.checked)}
         />
-        <span>{DECLARACION_PRESENCIAL}</span>
+        <span>
+          {textoDeLaDeclaracion(estado.declaracionVersion) ??
+            "No se pudo cargar el texto de la declaración de este pase. Anúlalo y genera otro."}
+        </span>
       </label>
+      <p className="text-xs text-muted-foreground">
+        Declaración versión {estado.declaracionVersion}. Queda guardada con el consentimiento.
+      </p>
 
       {res.error ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

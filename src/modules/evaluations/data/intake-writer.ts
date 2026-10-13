@@ -78,7 +78,16 @@ export type IntakeConsent = {
     name: string;
     document: string;
     relationship: string;
-    email: string;
+    /**
+     * EL CORREO PUEDE FALTAR, Y SOLO POR UNA VIA (0216). En el camino REMOTO es obligatorio y lo exige
+     * `consentSchema`, porque por ahi va el codigo de verificacion: ahi el codigo ES la verificacion de
+     * identidad, asi que sin correo no hay firma que sostener. En el PRESENCIAL la identidad la verifica el
+     * profesional contra el documento, con la persona delante, y esa via existe precisamente porque no hay
+     * correo: exigirlo cerraria la unica puerta que tiene un menor sin correo.
+     *
+     * NULO, NO CADENA VACIA: la columna es nula y "" diria que dio un correo vacio.
+     */
+    email: string | null;
   };
 };
 
