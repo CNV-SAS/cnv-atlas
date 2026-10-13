@@ -87,10 +87,29 @@ export const transactions = pgTable(
      * Y UN CAMBIO DE MODALIDAD DEL INTEGRANTE NO REESCRIBE LAS VENTAS ANTERIORES: el trigger cuelga de la
      * linea, no de `professional_modalities`. Colgarlo de ahi haria que cada cambio reescribiera la historia.
      *
-     * (Su hermana `cuenta_como_de_prueba` no esta declarada aqui, y es un hueco anterior: se lee por SQL
-     * crudo y por los tipos generados. Esta si se declara, porque encontrarla importa mas que la simetria.)
+     * (Su hermana `cuenta_como_de_prueba` se declara justo abajo desde la 0217, porque dejo de tener solo
+     * insumos derivados: ahora una persona puede marcar una venta, y encontrar esa columna importa.)
      */
     modalidadDeLaVenta: text("modalidad_de_la_venta").notNull().default("comision"),
+    /**
+     * ¿ESTA VENTA CUENTA? Es la UNICA respuesta, y la leen catorce lectores (0203).
+     *
+     * DERIVADA: LA ESCRIBE EL TRIGGER, NUNCA LA APLICACION. Se declara para poder leerla con tipos, no para
+     * escribirla; un `set` sobre esto lo pisa el trigger en el mismo statement.
+     *
+     * CUATRO INSUMOS desde la 0217: la marca manual de abajo, o profesional, paciente o producto de prueba.
+     */
+    cuentaComoDePrueba: boolean("cuenta_como_de_prueba").notNull().default(false),
+    // ── LA MARCA MANUAL (0217): el caso que no se puede derivar ──────────────────────────────────────
+    //
+    // Profesional real, paciente real, producto real, acto de prueba. Es la venta de LUVIA a una paciente
+    // real que, textual de Santiago, *"nunca lo habiamos podido borrar ni ocultar"*.
+    //
+    // EL MOTIVO ES OBLIGATORIO (CHECK en la 0217) porque esta marca no se deriva de nada: la pone una
+    // persona, y sin motivo la respuesta a "¿por que esta venta no cuenta?" seria "porque alguien la marco".
+    marcadaComoPruebaAt: timestamp("marcada_como_prueba_at", { withTimezone: true }),
+    marcadaComoPruebaPor: uuid("marcada_como_prueba_por").references(() => profiles.id),
+    marcadaComoPruebaMotivo: text("marcada_como_prueba_motivo"),
     // De donde sale el producto, sellado al crear la venta.
     locationId: uuid("location_id"),
     deliveryMode: text("delivery_mode"), // en_consulta | domicilio

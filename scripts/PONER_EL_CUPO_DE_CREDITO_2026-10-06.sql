@@ -62,7 +62,9 @@ select p.full_name                                  as integrante,
           where ti.modality = 'distribucion'
             and ti.sealed_at is not null
             and t.professional_id = pp.id
-            and ((s.id is not null and s.paid_at is null and s.replaced_by_id is null)
+            -- superseded_at desde la 0215: antes era replaced_by_id, que dejo de ser la señal de "ya no
+            -- esta viva" cuando se separo el HECHO del puntero (una cuenta anulada no tiene reemplazo).
+            and ((s.id is not null and s.paid_at is null and s.superseded_at is null)
                  or t.distribucion_statement_id is null)
        ), 0)                                        as saldo_pendiente
   from professional_profiles pp

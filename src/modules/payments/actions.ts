@@ -25,6 +25,12 @@ import { registrarRetracto, RetractoError } from "./data/retracto-writer";
 import { MODALIDAD_LABEL } from "./modalidad";
 import { cambiarModalidad, ModalidadError } from "./data/modalidad-writer";
 import { canViewRevenue } from "./policies/can-view-revenue";
+import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
+import {
+  desmarcarVentaComoPrueba,
+  marcarVentaComoPrueba,
+  MarcaDeVentaError,
+} from "./data/marca-de-prueba-de-la-venta";
 import { productosFueraDelPlan } from "./data/tratamientos-del-paciente";
 import {
   CuentaNoEmitibleError,
@@ -1346,5 +1352,70 @@ export async function confirmarTransferenciaAction(
     }
     reportServerError("confirmarTransferenciaAction", e);
     return { error: "No se pudo registrar el pago. Vuelve a intentarlo.", success: null, warning: null };
+  }
+}
+
+// ═══ MARCAR UNA VENTA COMO PRUEBA, O QUITARLE LA MARCA (0217) ═══
+//
+// EL CASO QUE NO SE PUEDE DERIVAR: profesional real, producto real, paciente real, acto de prueba. Es la
+// venta de LUVIA que, textual de Santiago, *"nunca lo habiamos podido borrar ni ocultar"*.
+//
+// UNA SOLA ACCION PARA LAS DOS DIRECCIONES, y el boton manda su `accion` en un campo oculto y no en su
+// `name`: el `name` del BOTON no viaja en `new FormData(form)` (hazard 5 de CLAUDE.md), y aunque
+// `enviarSinReset` si pasa el submitter, un campo oculto no depende de eso.
+//
+// ES DE ADMIN, con la misma policy que marcar un paciente: saca plata de las cifras y de las comisiones.
+export async function marcarVentaDePruebaFormAction(
+  _prev: DevolucionState,
+  form: FormData,
+): Promise<DevolucionState> {
+  const user = await getCurrentUser();
+  if (!user || !canAccessAdmin(user)) return sinPermiso;
+  const transactionId = String(form.get("transactionId") ?? "");
+  const motivo = String(form.get("motivo") ?? "");
+  const desmarcar = String(form.get("accion") ?? "") === "desmarcar";
+  try {
+    if (desmarcar) {
+      const r = await desmarcarVentaComoPrueba({
+        transactionId,
+        motivo,
+        actorId: user.id,
+        actorEmail: user.email,
+        ip: null,
+      });
+      if (r.noEstaba) {
+        return { error: null, success: null, warning: "Esa venta no estaba marcada como prueba." };
+      }
+      // SI SIGUE SIENDO DE PRUEBA POR OTRA RAZON, SE DICE. Quitar la marca y que la cifra no se mueva es la
+      // clase de contradiccion que, si no se nombra, se descubre mirando un total que no cambio.
+      return r.sigueSiendoDePrueba
+        ? {
+            error: null,
+            success: null,
+            warning:
+              "Marca quitada, pero la venta sigue sin contar: su paciente, su profesional o su producto están marcados como de prueba.",
+          }
+        : { error: null, success: "La venta vuelve a contar en todas las cifras.", warning: null };
+    }
+    const r = await marcarVentaComoPrueba({
+      transactionId,
+      motivo,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: null,
+    });
+    if (r.yaEstaba) {
+      return { error: null, success: null, warning: "Esa venta ya estaba marcada como prueba." };
+    }
+    return {
+      error: null,
+      success:
+        "Marcada como prueba: deja de contar en las cifras, en las comisiones y en los pendientes. El inventario no se devuelve solo: si la unidad salió de verdad, cuadra la ubicación con un ajuste por conteo.",
+      warning: null,
+    };
+  } catch (e) {
+    if (e instanceof MarcaDeVentaError) return { error: e.message, success: null, warning: null };
+    reportServerError("marcarVentaDePruebaFormAction", e);
+    return { error: "No se pudo cambiar la marca de esa venta.", success: null, warning: null };
   }
 }
