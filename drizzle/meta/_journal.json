@@ -1506,6 +1506,13 @@
       "when": 1791954926103,
       "tag": "0214_no_prescribo_nutraceuticos",
       "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1791954986103,
+      "tag": "0215_una_cuenta_de_distribucion_se_puede_reemplazar",
+      "breakpoints": true
     }
   ]
 }

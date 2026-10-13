@@ -137,6 +137,20 @@ async function lineasDeLaCuenta(statementId: string): Promise<LineaDeLaCuenta[]>
  *
  * SIN VENTAS NO SE EMITE, y no es una comodidad: el modelo lo dice textual, "si no hubo ventas, no se emite
  * factura". Una factura en cero es un documento fiscal por nada.
+ *
+ * ═══ Y SI EL CORTE YA TIENE CUENTA, SE RE-EMITE REEMPLAZANDOLA (0215) ═══
+ *
+ * EL DEFECTO QUE ARREGLA (segundo smoke, parte 10): emitir dos veces el mismo corte reventaba contra el
+ * indice unico con un `duplicate key`, porque la re-emision estaba diseñada en la 0188 y sin cablear. Y no
+ * era un caso del borde: `resolverObjecion('corregida')` devuelve las ventas al pozo *"para que el corte se
+ * pueda volver a emitir"*, asi que el mecanismo de objecion del modelo era inalcanzable.
+ *
+ * LA CUENTA VIEJA NO SE EDITA NI SE BORRA: queda con su rastro, marcada como reemplazada y apuntando a la
+ * nueva. Sus ventas vuelven al pozo PRIMERO, para que la nueva cargue el corte COMPLETO y no solo lo que
+ * llego despues: dos cuentas parciales del mismo periodo serian dos documentos fiscales por un solo corte.
+ *
+ * LA PAGADA NO SE REEMPLAZA, y se dice con una frase en vez de reventar. Retirar una cuenta ya pagada
+ * dejaria un pago contra un documento que dice no existir, y la plata ya se movio.
  */
 export async function emitirCuenta(input: {
   professionalId: string;
@@ -145,7 +159,7 @@ export async function emitirCuenta(input: {
   actorId: string;
   actorEmail: string | null;
   ip: string | null;
-}): Promise<{ statementId: string; ventas: number }> {
+}): Promise<{ statementId: string; ventas: number; reemplazoA: string | null }> {
   const corte = corteDe(input.dia);
   return db.transaction(async (tx) => {
     // Se bloquean las ventas antes de leerlas: dos emisiones simultaneas del mismo corte se llevarian las
@@ -158,6 +172,47 @@ export async function emitirCuenta(input: {
          and t.distribucion_statement_id is null
            for update of t`);
 
+    // LA CUENTA VIVA DEL CORTE, BLOQUEADA: si existe, esta emision la reemplaza. Se lee con la fila trabada
+    // porque dos emisiones simultaneas podrian reemplazar cada una a la misma vieja y dejar dos vivas.
+    const [vieja] = await tx.execute<{ id: string; paid_at: string | null; emitida: string }>(sql`
+      select id, paid_at, (emitted_at at time zone 'America/Bogota')::date::text as emitida
+        from distribucion_statements
+       where professional_id = ${input.professionalId}
+         and corte_hasta = ${corte.hasta}::date
+         and superseded_at is null
+         for update`);
+
+    if (vieja?.paid_at) {
+      throw new CuentaNoEmitibleError(
+        `La cuenta del corte del ${corte.desde} al ${corte.hasta} ya se pagó, así que no se puede rehacer. ` +
+          `Las ventas de ese corte que quedaron fuera siguen sin facturar: decide con contabilidad si se ` +
+          `facturan aparte, porque por su fecha no pueden entrar en el corte siguiente.`,
+      );
+    }
+
+    if (vieja) {
+      // UNA RE-EMISION QUE NO AGREGA NADA NO SE HACE. Si el corte ya tiene cuenta y no quedo ninguna venta
+      // sin facturar, rehacerla produciria una factura IDENTICA reemplazando la que el Integrante ya
+      // recibio: dos documentos por lo mismo y el rastro contando un acto que no cambio nada.
+      const nuevas = await lineasDelCorte(tx, input.professionalId, corte.desde, corte.hasta);
+      if (nuevas.length === 0) {
+        throw new CuentaNoEmitibleError(
+          `La cuenta del corte del ${corte.desde} al ${corte.hasta} ya está emitida y no hay ventas sin facturar que agregarle.`,
+        );
+      }
+      // Las ventas de la vieja vuelven al pozo ANTES de leer las lineas definitivas, para que la nueva
+      // cargue el corte completo. Si ya venian liberadas (una objecion corregida), esto no encuentra nada.
+      await tx.execute(sql`
+        update transactions set distribucion_statement_id = null
+         where distribucion_statement_id = ${vieja.id}`);
+      // Y DEJA DE ESTAR VIVA AQUI, antes de insertar la nueva: es lo que mira el indice, y el puntero a su
+      // reemplazo no se puede escribir todavia porque la nueva no existe.
+      await tx.execute(sql`
+        update distribucion_statements
+           set superseded_at = now(), superseded_reason = 'reemplazada'
+         where id = ${vieja.id}`);
+    }
+
     const lineas = await lineasDelCorte(tx, input.professionalId, corte.desde, corte.hasta);
     if (lineas.length === 0) {
       throw new CuentaNoEmitibleError(
@@ -169,6 +224,11 @@ export async function emitirCuenta(input: {
       insert into distribucion_statements (professional_id, corte_desde, corte_hasta, emitted_by)
       values (${input.professionalId}, ${corte.desde}::date, ${corte.hasta}::date, ${input.actorId})
       returning id`);
+
+    if (vieja) {
+      await tx.execute(sql`
+        update distribucion_statements set replaced_by_id = ${s.id} where id = ${vieja.id}`);
+    }
 
     const ids = [...new Set(lineas.map((l) => l.transactionId))];
     for (const id of ids) {
@@ -198,10 +258,13 @@ export async function emitirCuenta(input: {
         total: cuenta.total,
         // EL TOTAL QUEDA EN EL AUDIT, no en la tabla: asi hay rastro de lo que se afirmo el dia de la
         // emision sin crear una segunda fuente que la pantalla pueda leer y contradecir a las lineas.
+        // Y QUE REEMPLAZO A CUAL va aqui tambien: la cuenta vieja queda apuntando a la nueva, pero el
+        // motivo de la re-emision solo se puede reconstruir por el rastro.
+        reemplazoA: vieja?.id ?? null,
       },
     });
 
-    return { statementId: s.id, ventas: ids.length };
+    return { statementId: s.id, ventas: ids.length, reemplazoA: vieja?.id ?? null };
   });
 }
 
@@ -220,7 +283,7 @@ export async function objetarCuenta(input: {
        and professional_id = ${input.professionalId}
        and objected_at is null
        and paid_at is null
-       and replaced_by_id is null
+       and superseded_at is null
     returning id`);
   if (filas.length === 0) {
     throw new CuentaNoEmitibleError("Esa cuenta no es tuya, ya la objetaste, o ya está pagada.");
@@ -292,7 +355,7 @@ export async function registrarPagoDeCuenta(input: {
   const filas = await db.execute<{ id: string }>(sql`
     update distribucion_statements
        set paid_at = now(), paid_amount = ${String(input.monto)}, paid_note = ${input.nota}
-     where id = ${input.statementId} and paid_at is null and replaced_by_id is null
+     where id = ${input.statementId} and paid_at is null and superseded_at is null
     returning id`);
   if (filas.length === 0) throw new CuentaNoEmitibleError("Esa cuenta ya estaba pagada o fue reemplazada.");
   await db.transaction(async (tx) => {
@@ -370,7 +433,7 @@ export async function estadoDeCredito(professionalId: string, hoy: string): Prom
        and t.professional_id = ${professionalId}
        and (
          -- FACTURADO Y SIN PAGAR
-         (s.id is not null and s.paid_at is null and s.replaced_by_id is null)
+         (s.id is not null and s.paid_at is null and s.superseded_at is null)
          -- O VENDIDO Y TODAVIA SIN FACTURAR
          or t.distribucion_statement_id is null
        )`);
@@ -382,7 +445,7 @@ export async function estadoDeCredito(professionalId: string, hoy: string): Prom
     select id, corte_desde::text, corte_hasta::text,
            (emitted_at at time zone 'America/Bogota')::date::text as emitida
       from distribucion_statements
-     where professional_id = ${professionalId} and paid_at is null and replaced_by_id is null
+     where professional_id = ${professionalId} and paid_at is null and superseded_at is null
      order by corte_hasta`);
   let enMoraDesde: string | null = null;
   for (const a of abiertas) {

@@ -381,7 +381,15 @@ export const distribucionStatements = pgTable(
     objectionResolvedAt: timestamp("objection_resolved_at", { withTimezone: true }),
     /** 'corregida' (se reemplaza por otra cuenta) | 'sostenida' (queda como estaba). */
     objectionOutcome: text("objection_outcome"),
-    /** Una cuenta emitida no se edita: se reemplaza. Misma forma que `superseded_by`. */
+    /**
+     * EL HECHO de que dejo de estar viva, y es lo que mira el indice de una sola cuenta por corte (0215).
+     * Va separado del puntero porque se escribe ANTES: para que la nueva fila quepa en el indice, la vieja
+     * tiene que dejar de estar viva cuando su reemplazo todavia no existe.
+     */
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    /** 'reemplazada' (se re-emitio el corte) | 'anulada' (se retiro sin reemplazo). */
+    supersededReason: text("superseded_reason"),
+    /** EL PUNTERO: por cual la reemplazaron. Nulo en una anulada. Misma forma que `superseded_by`. */
     replacedById: uuid("replaced_by_id"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     paidAmount: numeric("paid_amount"),

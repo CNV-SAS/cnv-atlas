@@ -4,6 +4,7 @@ import { UVT_2026 } from "@/modules/payments/liquidacion";
 import {
   DESCUENTO_DISTRIBUCION,
   armarCuentaQuincenal,
+  corteCerrado,
   corteDe,
   plazosDelCorte,
   precioDeFacturacion,
@@ -241,5 +242,31 @@ describe("la cuenta sale de lo SELLADO, no del precio de hoy", () => {
     expect(precioDeFacturacionSellado(100_000, 20_000).total).toBe(95_200);
     // Y si el Integrante tenia otra tasa cuando vendio (25%), la cuenta la respeta.
     expect(precioDeFacturacionSellado(100_000, 25_000).baseDescontada).toBe(75_000);
+  });
+});
+
+// ═══ SOLO UN CORTE CERRADO SE FACTURA (0215) ═══
+//
+// EL DEFECTO QUE CIERRA (segundo smoke, parte 10): la pantalla ofrecia emitir el corte que CONTIENE hoy. Y
+// no era una comodidad: el modelo §4 da dos dias habiles DESPUES del corte para emitir, o sea que la
+// emision ocurre siempre con el corte ya cerrado. Emitir el 12 el corte que cierra el 15 dejaba sin cuenta
+// a toda venta del 12 al 15, y producia una factura que vence el 15 por un periodo que termina el 15.
+describe("solo un corte cerrado se factura", () => {
+  it("el corte que contiene hoy NO esta cerrado: es el que se esta llenando", () => {
+    expect(corteCerrado(corteDe("2026-10-12"), "2026-10-12")).toBe(false);
+  });
+
+  it("y el dia del cierre tampoco: ese dia todavia se puede vender dentro del corte", () => {
+    expect(corteCerrado({ desde: "2026-10-01", hasta: "2026-10-15" }, "2026-10-15")).toBe(false);
+  });
+
+  it("el dia siguiente al cierre si: es cuando empieza el plazo de emitir", () => {
+    expect(corteCerrado({ desde: "2026-10-01", hasta: "2026-10-15" }, "2026-10-16")).toBe(true);
+  });
+
+  // UN CORTE VIEJO SIN FACTURAR SIGUE SIENDO EMITIBLE: pasado el plazo la factura es tardia, no imposible, y
+  // lo que no puede pasar es que una venta quede sin cuenta porque nadie emitio a tiempo.
+  it("un corte de hace meses sigue cerrado, y por tanto emitible", () => {
+    expect(corteCerrado(corteDe("2026-07-03"), "2026-10-12")).toBe(true);
   });
 });
