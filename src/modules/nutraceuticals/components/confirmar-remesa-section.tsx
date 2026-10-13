@@ -1,5 +1,6 @@
 "use client";
 
+import { PackageCheck } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
@@ -98,15 +99,42 @@ export function ConfirmarRemesaSection({ pending }: { pending: PendingRemesa[] }
         CNV declaró, escribe lo que llegó; si no llegó nada, confirma 0). Tu inventario sube según lo que
         recibiste; cualquier diferencia queda registrada para que CNV la revise.
       </p>
+      {/* ═══ FONDO DE TARJETA, Y LA TESELA DE CONTRATIK (segundo smoke, 2026-10-12) ═══
+
+          EL DEFECTO: el bloque era `border` SIN `bg-card`, así que quedaba sobre el gris del layout y se
+          leía como apagado. El gris solo funciona como CALLE entre bloques; sin fondo, el bloque es
+          penumbra (es la misma razón por la que existe `Panel`).
+
+          Y LA DECORACIÓN sale de la referencia de Contratik ya portada en `motor-hoy.tsx`: tesela de icono
+          en azul de marca, rótulo en versalitas y la cifra grande. El azul puede pesar aquí porque no hay
+          ningún dato de paciente; el verde, el ámbar y el rojo siguen reservados al semáforo clínico, que
+          es lo que los mantiene vivos donde sí lo hay. */}
       <div className="flex flex-col gap-4">
         {pending.map((r) => (
-          <div key={r.remesaId} className="flex flex-col gap-2 rounded-lg border border-border p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-medium text-foreground">{r.nutraceuticalName}</span>
-              <span className="text-sm text-muted-foreground">
-                CNV declaró <span className="font-bold text-foreground">{r.declaredQuantity}</span>
-                {r.lote ? ` · lote ${r.lote}` : ""} · {fmtDate(r.declaredAt)}
-              </span>
+          <div
+            key={r.remesaId}
+            className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <PackageCheck className="size-[1.1rem]" aria-hidden />
+                </span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                    En consignación
+                  </span>
+                  <span className="font-medium text-foreground">{r.nutraceuticalName}</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+                  {r.declaredQuantity}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  declaradas por CNV{r.lote ? ` · lote ${r.lote}` : ""} · {fmtDate(r.declaredAt)}
+                </span>
+              </div>
             </div>
             <ConfirmRemesaForm remesa={r} />
           </div>

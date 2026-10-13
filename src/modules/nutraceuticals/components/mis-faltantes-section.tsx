@@ -44,7 +44,7 @@ export async function MisFaltantesSection({ userId }: { userId: string }) {
       </p>
       <div className="flex flex-col gap-3">
         {cases.map((c) => (
-          <div key={c.id} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+          <div key={c.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium text-foreground">{c.nutraceuticalName}</span>

@@ -187,7 +187,10 @@ function FilaCuenta({ cuenta, hoy }: { cuenta: CuentaParaVer; hoy: string }) {
 
   return (
     <div
-      className={`flex flex-col gap-2 rounded-lg border p-3 ${enMora ? "border-attention bg-attention-bg" : "border-border"}`}
+      // MISMO ARREGLO QUE EL BLOQUE DEL INTEGRANTE: sin `bg-card` la fila quedaba sobre el gris del layout,
+      // al lado de las liquidaciones, que sí son tarjeta blanca. La mora conserva su ámbar, que es un estado
+      // y no una superficie.
+      className={`flex flex-col gap-2 rounded-xl border p-4 shadow-sm ${enMora ? "border-attention bg-attention-bg" : "border-border bg-card"}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-col gap-0.5">
