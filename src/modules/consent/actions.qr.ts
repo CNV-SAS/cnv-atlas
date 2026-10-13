@@ -19,7 +19,12 @@ import {
   sesionEnCursoDelProfesional,
   type EstadoSesion,
 } from "./data/sesion-presencial";
-import { DECLARACION_PRESENCIAL_VERSION } from "./text/declaracion-presencial";
+import { computeAgeYears } from "./validations";
+import {
+  declaracionAfirmaAsentimiento,
+  declaracionPorEdad,
+  esDeclaracionDeMenor,
+} from "./text/declaracion-presencial";
 
 // ACCIONES DE LA MODALIDAD 2 (QR). Dos superficies muy distintas conviven aqui:
 //
@@ -57,6 +62,31 @@ export async function emitirSesionQrAction(
   const documentNumber = String(form.get("documentNumber") ?? "").trim();
   if (!documentType || documentNumber.length < 3) return fail("Falta el documento verificado.");
 
+  // ═══ LA FECHA DE NACIMIENTO SE EXIGE AL EMITIR EL PASE (0216) ═══
+  //
+  // Y NO AL DECLARAR, QUE ES DONDE ESTABA. La fecha decide la rama de edad, y de la rama dependen dos
+  // cosas que ocurren ANTES de declarar: a quien le pide los datos la pantalla del paciente (para un
+  // menor, al representante legal) y cual de los tres textos de declaracion se le muestra al profesional.
+  //
+  // CON LA FECHA AL FINAL, un menor completaba el acto entero en su telefono para que el guard del
+  // escritor lo frenara despues, con un mensaje que lo mandaba a otro camino. Un guard correcto mal
+  // expuesto, y encima con el trabajo ya hecho.
+  //
+  // SE EXIGE EN EL SERVIDOR y no solo con el `required` del campo: el `required` lo comprueba el
+  // navegador, y es textual del dictamen que *"este hueco existio porque el formulario permitio guardar
+  // un estado imposible, y mientras eso siga siendo posible va a volver a ocurrir POR OTRA VIA"*.
+  const birthDate = String(form.get("birthDate") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    return fail(
+      "Escribe la fecha de nacimiento del documento. Es lo que decide si autoriza el paciente o su representante legal.",
+    );
+  }
+  const edad = computeAgeYears(birthDate, new Date());
+  const declaracion = declaracionPorEdad(edad);
+  if (!declaracion) {
+    return fail("Esa fecha de nacimiento no es válida: revísala en el documento.");
+  }
+
   const ip = await getClientIp();
   const s = await crearSesionPresencial({
     organizationId: user.organizationId,
@@ -64,7 +94,11 @@ export async function emitirSesionQrAction(
     createdBy: user.id,
     documentType,
     documentNumber,
-    declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
+    patientBirthDate: birthDate,
+    // LA VERSION SE FIJA AQUI, una sola vez, y es la que viaja a `patient_consents` al declarar. Si se
+    // volviera a calcular al declarar habria dos sitios que la eligen, y el dia que discreparan el
+    // profesional aceptaria un texto y se guardaria otro.
+    declaracionVersion: declaracion.version,
     ip: ip === "unknown" ? null : ip,
   });
   if ("yaHayUna" in s) {
@@ -180,6 +214,16 @@ export async function confirmarSesionQrAction(
     ),
   ];
 
+  // ═══ LA RAMA DE MENOR: LOS DATOS DEL REPRESENTANTE, ESCRITOS POR EL (0216) ═══
+  //
+  // SE MANDAN SIEMPRE QUE VENGAN, y es el ESCRITOR el que decide si aplican, mirando la rama que la sesion
+  // fijo al emitir el pase. Decidirlo aqui seria creerle al formulario en lo que el formulario podria
+  // equivocarse, que es el mismo criterio del guard de menores del escritor.
+  //
+  // EL CORREO ES OPCIONAL, y es la unica diferencia con el camino remoto: alli es obligatorio porque por
+  // ahi va el codigo, que ES la verificacion de identidad. Aqui la verifica el profesional contra el
+  // documento, y esta via existe precisamente porque no hay correo.
+  const repNombre = s("representanteNombre");
   const r = await confirmarSesionPresencial({
     token,
     nombres,
@@ -187,8 +231,25 @@ export async function confirmarSesionQrAction(
     documentType,
     documentNumber,
     autorizaciones,
+    representante: repNombre
+      ? {
+          nombre: repNombre,
+          documento: s("representanteDocumento"),
+          parentesco: s("representanteParentesco"),
+          email: s("representanteEmail") || null,
+        }
+      : undefined,
+    asentimientoMenor: marcada("asentimiento_menor"),
   });
 
+  if (r.estado === "faltan_datos_del_representante") {
+    return {
+      error:
+        "Completa tu nombre, tu documento y tu parentesco con el menor, y marca que el menor dio su asentimiento si tiene 14 años o más.",
+      estado: "pendiente",
+      declarado: null,
+    };
+  }
   if (r.estado === "no_disponible") {
     return {
       error:
@@ -253,27 +314,6 @@ export async function declararYCrearQrAction(
     return fail("Marca la declaración para poder crear el paciente.");
   }
 
-  // ═══ LA FECHA DE NACIMIENTO SE EXIGE AQUI, NO SOLO EN EL FORMULARIO (2026-10-12) ═══
-  //
-  // El `required` del campo lo comprueba el NAVEGADOR, y la validacion dura de menores depende de este
-  // dato: `signIntakeEvaluation` decide por la EDAD, asi que sin fecha `edadAlFirmar` es null y el guard
-  // NO PUEDE DISPARAR. O sea que con la fecha vacia se podia guardar el consentimiento de un menor sin
-  // representante, que es exactamente el estado imposible que ya costo seis evaluaciones bloqueadas.
-  //
-  // Es textual del dictamen: *"este hueco existio porque el formulario permitio guardar un estado
-  // imposible, y mientras eso siga siendo posible va a volver a ocurrir POR OTRA VIA"*. Un `required` es
-  // una cortesia de la pantalla; la via es esta.
-  //
-  // SE EXIGE EN ESTA SUPERFICIE Y NO EN EL WRITER a proposito: en el intake remoto la fecha es opcional a
-  // proposito (`intakeIdentitySchema` la deja nullish) y un adulto se puede registrar sin ella. Aqui no
-  // puede faltar porque aqui la escribe el profesional CON EL DOCUMENTO DELANTE, que es el acto que esta
-  // declarando dos lineas mas abajo.
-  if (!s("birthDate")) {
-    return fail(
-      "Falta la fecha de nacimiento. Es lo que decide si el paciente es menor de edad, y sin ella no se puede comprobar.",
-    );
-  }
-
   const { getProfessionalProfileIdByUser } = await import(
     "@/modules/payments/data/payments-repository"
   );
@@ -286,6 +326,30 @@ export async function declararYCrearQrAction(
   if (!sesion) return fail("Esa sesión ya no está disponible.");
   if (sesion.estado !== "confirmada") {
     return fail("El paciente todavía no ha confirmado su autorización.");
+  }
+
+  // ═══ LA FECHA Y LA RAMA SALEN DE LA SESION, NO DEL FORMULARIO (0216) ═══
+  //
+  // Se escribieron al EMITIR el pase, con el documento delante, y son las que decidieron cual de los tres
+  // textos de declaracion se le mostro al profesional. Volver a pedir la fecha aqui abriria la puerta a
+  // que el texto que acepto y la edad que se guarda no correspondan, que es el estado imposible que esta
+  // pieza existe para cerrar.
+  //
+  // UNA SESION SIN FECHA es de antes de este cambio. No se le inventa una (seria un dato del paciente que
+  // nadie leyo): se dice que hay que volver a emitir el pase, que toma un segundo.
+  if (!sesion.patientBirthDate) {
+    return fail(
+      "Este pase se emitió antes de que Atlas pidiera la fecha de nacimiento, así que no se puede saber si el paciente es menor de edad. Anúlalo y genera uno nuevo: ahora la fecha se pide al mostrar el código.",
+    );
+  }
+  const esDeMenor = esDeclaracionDeMenor(sesion.declaracionVersion);
+  // LA COHERENCIA SE COMPRUEBA, no se supone: una sesion de la rama menor sin representante no deberia
+  // existir (lo impide el CHECK de la 0216 y lo comprueba el escritor de la confirmacion), y si existiera,
+  // declarar sobre ella afirmaria que un representante autorizo cuando no consta quien.
+  if (esDeMenor && !sesion.representante) {
+    return fail(
+      "Este pase es de un paciente menor de edad y no quedaron registrados los datos del representante legal. Anúlalo y genera uno nuevo.",
+    );
   }
 
   const ip = await getClientIp();
@@ -305,19 +369,58 @@ export async function declararYCrearQrAction(
         documentNumber: sesion.declaradoDocumentNumber ?? "",
         firstName: sesion.declaradoNombres ?? "",
         lastName: sesion.declaradoApellidos ?? "",
-        // Del profesional, que ya los tenia.
-        birthDate: s("birthDate") || null,
+        // Del profesional, que ya los tenia. La FECHA sale de la sesion: se escribio al emitir.
+        birthDate: sesion.patientBirthDate,
         sex: s("sex"),
         country: s("country") || null,
         city: s("city") || null,
         email: null,
         phone: s("phone") || null,
       },
-      consents: (sesion.autorizaciones ?? []).map((type) => ({
-        type: type as never,
-        consentVersion: CONSENT_VERSION,
-        documentHash: CONSENT_DOCUMENT_HASH,
-      })),
+      consents: [
+        ...(sesion.autorizaciones ?? []).map((type) => ({
+          type: type as never,
+          consentVersion: CONSENT_VERSION,
+          documentHash: CONSENT_DOCUMENT_HASH,
+        })),
+        // ═══ LA RAMA DE MENOR: LOS DOS TIPOS DERIVADOS (0216) ═══
+        //
+        // SON LOS MISMOS QUE ARMA EL CAMINO REMOTO (`survey-intake`), y se arman aqui por la misma razon:
+        // no son casillas que alguien marque, son la consecuencia de que quien autorizo fue el
+        // representante. Que las dos vias produzcan los MISMOS tipos es lo que hace que el gate clinico,
+        // los lectores y la auditoria no tengan que saber por donde entro el consentimiento.
+        //
+        // EL CORREO VIAJA NULO SI NO LO DIO, y aqui si se puede: en el remoto es obligatorio porque por
+        // ahi va el codigo, que ES la verificacion; aqui la identidad la verifico el profesional contra el
+        // documento, con la persona delante.
+        ...(esDeMenor && sesion.representante
+          ? [
+              {
+                type: "representante_legal" as never,
+                consentVersion: CONSENT_VERSION,
+                documentHash: CONSENT_DOCUMENT_HASH,
+                legalRepresentative: {
+                  name: sesion.representante.nombre,
+                  document: sesion.representante.documento,
+                  relationship: sesion.representante.parentesco,
+                  email: sesion.representante.email,
+                },
+              },
+            ]
+          : []),
+        // EL ASENTIMIENTO SOLO SI LA DECLARACION LO AFIRMA. La 1.1-a existe porque para un menor de 14 el
+        // profesional no puede declarar un asentimiento que no ocurrio; guardar la fila seria la misma
+        // afirmacion falsa por la puerta de al lado.
+        ...(declaracionAfirmaAsentimiento(sesion.declaracionVersion) && sesion.asentimientoMenor
+          ? [
+              {
+                type: "asentimiento_menor" as never,
+                consentVersion: CONSENT_VERSION,
+                documentHash: CONSENT_DOCUMENT_HASH,
+              },
+            ]
+          : []),
+      ],
       linkId: null,
       ipAddress: ip === "unknown" ? null : ip,
       presencial: {
@@ -326,7 +429,9 @@ export async function declararYCrearQrAction(
         // `professional_profiles.id` (que esta a mano, dos lineas arriba) es el defecto que ya rompio un
         // smoke entero, y compila igual de verde porque los dos son uuid.
         declaradoPorProfileId: user.id,
-        declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
+        // LA VERSION ES LA DE LA SESION, la que se fijo al emitir y la que el profesional vio en pantalla.
+        // Una constante aqui volveria a decir "1.0" sobre un menor, que es la declaracion equivocada.
+        declaracionVersion: sesion.declaracionVersion,
         // La sesion se cierra dentro de la MISMA transaccion que crea al paciente.
         sessionId,
       },
@@ -349,9 +454,19 @@ export async function declararYCrearQrAction(
     // y en este pase esa opcion NO EXISTE todavia: mandarlo a pulsar algo que no esta es un guard correcto
     // mal expuesto, que se vive como un sistema roto. Asi que dice la verdad: que por aqui no se puede, y
     // cual es el camino que si pide los datos del representante.
+    // ═══ YA NO ES UN CALLEJON SIN SALIDA (0216) ═══
+    //
+    // ANTES DECIA que este pase no pedia los datos del representante y mandaba al camino del enlace, "y si
+    // el representante no tiene correo, avisale a quien administra Atlas: ese caso aun no tiene salida".
+    // Era cierto y era el hueco: la via presencial existe PORQUE no hay correo, asi que un menor sin
+    // correo no tenia ninguna. La rama de menor ya vive en este pase.
+    //
+    // LA RAMA SE QUEDA COMO DEFENSA DE FONDO, no por si acaso: si el guard del escritor llega a disparar
+    // aqui es que la sesion se emitio como de mayor y la fecha dice otra cosa, o sea que la version de la
+    // declaracion y la edad no corresponden. Eso no se arregla reintentando, y el mensaje lo dice.
     if (e instanceof ConsentimientoDeMenorSinRepresentanteError) {
       return fail(
-        "La fecha de nacimiento indica que el paciente es menor de edad, así que el consentimiento lo tiene que otorgar su representante legal, y este pase todavía no pide sus datos. Hazlo con el enlace del consentimiento, que sí tiene la opción de menor de edad. Si el representante no tiene correo, avísale a quien administra Atlas: ese caso aún no tiene salida y no se puede resolver aquí.",
+        "La fecha de nacimiento de este pase indica que el paciente es menor de edad, pero el pase se emitió como de mayor, así que no se pidieron los datos del representante legal. Anúlalo y genera uno nuevo: al escribir la fecha, Atlas abre la vía del representante.",
       );
     }
     // El documento pudo dejar de estar libre entre la verificacion y ahora (otro profesional lo creo en

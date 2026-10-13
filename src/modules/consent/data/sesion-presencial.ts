@@ -8,6 +8,11 @@ import { presencialConsentSessions } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 import { generateOpaqueToken } from "@/modules/evaluations/services/survey-link-service";
 
+import {
+  DECLARACION_PRESENCIAL_MENOR_CON_ASENTIMIENTO_VERSION as VERSION_CON_ASENTIMIENTO,
+  esDeclaracionDeMenor as esRamaDeMenor,
+} from "../text/declaracion-presencial";
+
 // LA SESION DE CONSENTIMIENTO PRESENCIAL · MODALIDAD 2 (QR), dictamen 2026-09-09.
 //
 // LO QUE ESTA MODALIDAD ES Y LO QUE NO, repetido aqui porque es el modulo que la gobierna: produce una
@@ -55,6 +60,13 @@ export async function crearSesionPresencial(input: {
   createdBy: string;
   documentType: string;
   documentNumber: string;
+  /**
+   * La fecha que el profesional leyo del documento. DECIDE LA RAMA DE EDAD (0216), asi que llega aqui y
+   * no al final: la pantalla del paciente tiene que saber a quien pedirle los datos antes de que alguien
+   * marque nada, y el profesional tiene que ver el texto de la declaracion que va a aceptar.
+   */
+  patientBirthDate: string;
+  /** La que corresponde a esa fecha. Se fija una vez y es la que viaja a `patient_consents`. */
   declaracionVersion: string;
   ip: string | null;
 }): Promise<{ token: string; id: string } | { yaHayUna: true; documento: string }> {
@@ -99,6 +111,7 @@ export async function crearSesionPresencial(input: {
         createdBy: input.createdBy,
         documentType: input.documentType as never,
         documentNumber: input.documentNumber,
+        patientBirthDate: input.patientBirthDate,
         declaracionVersion: input.declaracionVersion,
         // La IP de QUIEN EMITE, para poder contrastarla despues con la del paciente. No se compara aqui:
         // en este instante todavia no hay con que.
@@ -120,7 +133,10 @@ export async function crearSesionPresencial(input: {
       actorEmail: null,
       entityType: "presencial_session",
       entityId: fila.id,
-      payload: { professional_id: input.professionalId },
+      // LA VERSION DE LA DECLARACION VA EN EL AUDIT desde la emision: es lo que dice si este pase se
+      // abrio como de mayor o de menor, y es la pregunta que alguien va a hacer meses despues. La FECHA
+      // de nacimiento no va: es un dato del paciente y vive en la fila de la sesion, bajo RLS.
+      payload: { professional_id: input.professionalId, declaracion_version: input.declaracionVersion },
       ip: input.ip,
     });
     return { token, id: fila.id };
@@ -180,7 +196,9 @@ export async function abrirSesionPresencial(input: {
 export type ResultadoConfirmacion =
   | { estado: "confirmada"; id: string }
   | { estado: "discrepancia" }
-  | { estado: "no_disponible" };
+  | { estado: "no_disponible" }
+  /** La rama de menor exige los datos del representante, y la 1.1-b ademas el asentimiento. */
+  | { estado: "faltan_datos_del_representante" };
 
 // ── 3. CONFIRMAR (el paciente escribio su identidad y marco; superficie publica) ───────────────────
 export async function confirmarSesionPresencial(input: {
@@ -191,6 +209,18 @@ export async function confirmarSesionPresencial(input: {
   documentNumber: string;
   /** Lo que marco en SU dispositivo. Espera aqui hasta que el profesional declare. */
   autorizaciones: string[];
+  /**
+   * EN LA RAMA DE MENOR, quien autoriza es el representante legal, y escribe LO SUYO aqui (0216). El
+   * correo es opcional: en el presencial no hay codigo que mandar, y esta via existe porque no hay correo.
+   */
+  representante?: {
+    nombre: string;
+    documento: string;
+    parentesco: string;
+    email: string | null;
+  };
+  /** El asentimiento del menor de 14 a 17. Solo tiene sentido en la 1.1-b. */
+  asentimientoMenor?: boolean;
 }): Promise<ResultadoConfirmacion> {
   return db.transaction(async (tx) => {
     const [fila] = await tx
@@ -199,6 +229,7 @@ export async function confirmarSesionPresencial(input: {
         documentType: presencialConsentSessions.documentType,
         documentNumber: presencialConsentSessions.documentNumber,
         createdBy: presencialConsentSessions.createdBy,
+        declaracionVersion: presencialConsentSessions.declaracionVersion,
       })
       .from(presencialConsentSessions)
       .where(
@@ -212,6 +243,31 @@ export async function confirmarSesionPresencial(input: {
         ),
       );
     if (!fila) return { estado: "no_disponible" };
+
+    // ═══ LA RAMA LA DECIDE LA SESION, NO EL FORMULARIO (0216) ═══
+    //
+    // La version se fijo al emitir el pase, a partir de la fecha que el profesional leyo del documento.
+    // Asi que lo que llegue del telefono no puede cambiar de rama: se comprueba CONTRA la sesion.
+    //
+    // POR QUE SE COMPRUEBA AQUI Y TAMBIEN EN LA BASE: el CHECK de la 0216 es la defensa de fondo y lanza,
+    // que desde una superficie publica es un 500 para el representante. Esto devuelve un desenlace que la
+    // pantalla sabe decir con palabras.
+    const esMenor = esRamaDeMenor(fila.declaracionVersion);
+    const r = input.representante;
+    if (esMenor) {
+      if (!r || !r.nombre.trim() || !r.documento.trim() || !r.parentesco.trim()) {
+        return { estado: "faltan_datos_del_representante" };
+      }
+      if (
+        fila.declaracionVersion === VERSION_CON_ASENTIMIENTO &&
+        input.asentimientoMenor !== true
+      ) {
+        return { estado: "faltan_datos_del_representante" };
+      }
+    }
+    // Y EN LA RAMA MAYOR NO SE GUARDA REPRESENTANTE aunque alguien lo mande: ahi la declaracion 1.0
+    // afirma que marco el PACIENTE, y un representante colgando de esa fila la contradice.
+    const representante = esMenor && r ? r : null;
 
     // LA DISCREPANCIA SE PARA, NO SE RESUELVE SOLA. Ni se pisa lo que escribio el paciente ni lo que
     // escribio el profesional: son dos afirmaciones y la contradiccion es informacion, no ruido. Lo
@@ -229,6 +285,11 @@ export async function confirmarSesionPresencial(input: {
         declaradoDocumentType: input.documentType as never,
         declaradoDocumentNumber: input.documentNumber,
         declaradoAutorizaciones: input.autorizaciones,
+        representanteNombre: representante?.nombre.trim() ?? null,
+        representanteDocumento: representante?.documento.trim() ?? null,
+        representanteParentesco: representante?.parentesco.trim() ?? null,
+        representanteEmail: representante?.email?.trim() || null,
+        asentimientoMenor: esMenor ? input.asentimientoMenor === true : null,
         ...(coincide
           ? { estado: "confirmada", confirmedAt: sql`now()` }
           : { estado: "discrepancia" }),
@@ -243,7 +304,10 @@ export async function confirmarSesionPresencial(input: {
       entityId: fila.id,
       // SIN DOCUMENTO NI NOMBRE en el audit: el registro del intento dice QUE paso, no QUIEN. Los datos
       // declarados viven en la fila de la sesion, que es efimera y esta bajo RLS del profesional.
-      payload: { coincide },
+      //
+      // SI QUIEN AUTORIZO FUE UN REPRESENTANTE, eso SI va: es un hecho sobre el acto, no un dato de nadie,
+      // y es la primera pregunta de cualquiera que revise un consentimiento de un menor.
+      payload: { coincide, rama: esMenor ? "menor" : "mayor" },
     });
 
     return coincide ? { estado: "confirmada", id: fila.id } : { estado: "discrepancia" };
@@ -271,6 +335,17 @@ export type EstadoSesion = {
   declaradoNombres: string | null;
   declaradoApellidos: string | null;
   declaradoDocumentNumber: string | null;
+  // ── LA RAMA DE EDAD DE ESTE PASE (0216) ──────────────────────────────────────────────────────────
+  //
+  // Viaja a la pantalla del profesional porque es ella la que tiene que mostrarle EL TEXTO QUE VA A
+  // ACEPTAR, y ese texto depende de la edad. Derivarlo en la pantalla seria tener dos sitios que eligen
+  // la declaracion, y el dia que discrepen el profesional aceptaria un texto y se guardaria otro.
+  declaracionVersion: string;
+  /** La que se leyo del documento al emitir. Se muestra en solo lectura: aqui ya no se escribe. */
+  patientBirthDate: string | null;
+  /** Quien autorizo, en la rama de menor. null en la rama mayor (ahi autoriza el paciente). */
+  representante: { nombre: string; documento: string; parentesco: string; email: string | null } | null;
+  asentimientoMenor: boolean | null;
 };
 
 export async function leerEstadoSesion(sessionId: string): Promise<EstadoSesion | null> {
@@ -282,7 +357,7 @@ export async function leerEstadoSesion(sessionId: string): Promise<EstadoSesion 
   const { data, error } = await supabase
     .from("presencial_consent_sessions")
     .select(
-      "id, estado, opened_at, confirmed_at, declarado_nombres, declarado_apellidos, declarado_document_number",
+      "id, estado, opened_at, confirmed_at, declarado_nombres, declarado_apellidos, declarado_document_number, declaracion_version, patient_birth_date, representante_nombre, representante_documento, representante_parentesco, representante_email, asentimiento_menor",
     )
     .eq("id", sessionId)
     .maybeSingle();
@@ -300,6 +375,17 @@ export async function leerEstadoSesion(sessionId: string): Promise<EstadoSesion 
     declaradoNombres: data.declarado_nombres,
     declaradoApellidos: data.declarado_apellidos,
     declaradoDocumentNumber: data.declarado_document_number,
+    declaracionVersion: data.declaracion_version,
+    patientBirthDate: data.patient_birth_date,
+    representante: data.representante_nombre
+      ? {
+          nombre: data.representante_nombre,
+          documento: data.representante_documento ?? "",
+          parentesco: data.representante_parentesco ?? "",
+          email: data.representante_email,
+        }
+      : null,
+    asentimientoMenor: data.asentimiento_menor,
   };
 }
 
@@ -335,6 +421,14 @@ export async function resolverSesionPorToken(token: string): Promise<{
   professionalId: string;
   estado: string;
   vigente: boolean;
+  /**
+   * LA RAMA DE EDAD, para que la pantalla del paciente sepa a quien le esta hablando (0216). Es lo UNICO
+   * de la rama que viaja a una superficie publica: ni la fecha de nacimiento ni el documento, que son
+   * datos del paciente y no hacen falta para pintar la pagina.
+   */
+  esDeMenor: boolean;
+  /** Si hay que pedir el asentimiento del menor (14 a 17). Solo en la 1.1-b. */
+  pideAsentimiento: boolean;
 } | null> {
   if (!token) return null;
   const [fila] = await db
@@ -344,6 +438,7 @@ export async function resolverSesionPorToken(token: string): Promise<{
       expiresAt: presencialConsentSessions.expiresAt,
       lecturaHasta: presencialConsentSessions.lecturaHasta,
       confirmedAt: presencialConsentSessions.confirmedAt,
+      declaracionVersion: presencialConsentSessions.declaracionVersion,
     })
     .from(presencialConsentSessions)
     .where(eq(presencialConsentSessions.token, token));
@@ -353,6 +448,8 @@ export async function resolverSesionPorToken(token: string): Promise<{
     professionalId: fila.professionalId,
     estado: fila.estado,
     vigente: fila.confirmedAt === null && limite.getTime() > Date.now(),
+    esDeMenor: esRamaDeMenor(fila.declaracionVersion),
+    pideAsentimiento: fila.declaracionVersion === VERSION_CON_ASENTIMIENTO,
   };
 }
 
@@ -372,7 +469,7 @@ export async function sesionEnCursoDelProfesional(): Promise<EstadoSesion | null
   const { data, error } = await supabase
     .from("presencial_consent_sessions")
     .select(
-      "id, estado, opened_at, confirmed_at, declarado_nombres, declarado_apellidos, declarado_document_number",
+      "id, estado, opened_at, confirmed_at, declarado_nombres, declarado_apellidos, declarado_document_number, declaracion_version, patient_birth_date, representante_nombre, representante_documento, representante_parentesco, representante_email, asentimiento_menor",
     )
     // MISMA LISTA QUE EL BLOQUEO, y SIN filtro de tiempo: ver el bloque de arriba. El filtro por
     // `lectura_hasta` dejaba invisibles justo las que no se vencen solas (confirmada y discrepancia),
@@ -395,6 +492,17 @@ export async function sesionEnCursoDelProfesional(): Promise<EstadoSesion | null
     declaradoNombres: data.declarado_nombres,
     declaradoApellidos: data.declarado_apellidos,
     declaradoDocumentNumber: data.declarado_document_number,
+    declaracionVersion: data.declaracion_version,
+    patientBirthDate: data.patient_birth_date,
+    representante: data.representante_nombre
+      ? {
+          nombre: data.representante_nombre,
+          documento: data.representante_documento ?? "",
+          parentesco: data.representante_parentesco ?? "",
+          email: data.representante_email,
+        }
+      : null,
+    asentimientoMenor: data.asentimiento_menor,
   };
 }
 
@@ -409,6 +517,20 @@ export type SesionParaDeclarar = {
   declaradoDocumentType: string | null;
   declaradoDocumentNumber: string | null;
   autorizaciones: string[] | null;
+  /**
+   * LA FECHA Y LA VERSION SALEN DE AQUI, no del formulario del profesional (0216). La fecha se escribio al
+   * emitir el pase, con el documento delante, y es la que decidio que declaracion se le mostro. Volver a
+   * pedirla al declarar abriria la puerta a que el texto aceptado y la edad guardada no correspondan.
+   */
+  patientBirthDate: string | null;
+  declaracionVersion: string;
+  representante: {
+    nombre: string;
+    documento: string;
+    parentesco: string;
+    email: string | null;
+  } | null;
+  asentimientoMenor: boolean | null;
 };
 
 export async function leerSesionParaDeclarar(sessionId: string): Promise<SesionParaDeclarar | null> {
@@ -416,7 +538,7 @@ export async function leerSesionParaDeclarar(sessionId: string): Promise<SesionP
   const { data, error } = await supabase
     .from("presencial_consent_sessions")
     .select(
-      "estado, declarado_nombres, declarado_apellidos, declarado_document_type, declarado_document_number, declarado_autorizaciones",
+      "estado, declarado_nombres, declarado_apellidos, declarado_document_type, declarado_document_number, declarado_autorizaciones, patient_birth_date, declaracion_version, representante_nombre, representante_documento, representante_parentesco, representante_email, asentimiento_menor",
     )
     .eq("id", sessionId)
     .maybeSingle();
@@ -429,5 +551,16 @@ export async function leerSesionParaDeclarar(sessionId: string): Promise<SesionP
     declaradoDocumentType: data.declarado_document_type,
     declaradoDocumentNumber: data.declarado_document_number,
     autorizaciones: (data.declarado_autorizaciones as string[] | null) ?? null,
+    patientBirthDate: data.patient_birth_date,
+    declaracionVersion: data.declaracion_version,
+    representante: data.representante_nombre
+      ? {
+          nombre: data.representante_nombre,
+          documento: data.representante_documento ?? "",
+          parentesco: data.representante_parentesco ?? "",
+          email: data.representante_email,
+        }
+      : null,
+    asentimientoMenor: data.asentimiento_menor,
   };
 }

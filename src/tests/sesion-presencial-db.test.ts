@@ -63,7 +63,8 @@ async function emitir(documento: string) {
     createdBy: pro.profileId,
     documentType: "CC",
     documentNumber: documento,
-    declaracionVersion: "1.0",
+    patientBirthDate: "1990-05-20",
+      declaracionVersion: "1.0",
     ip: null,
   });
   if ("yaHayUna" in s) throw new Error(`ya habia un pase en curso: ${s.documento}`);
@@ -263,7 +264,8 @@ describe.skipIf(!HAS_DB)("la marca de mismo origen (BD real)", () => {
         createdBy: pro.profileId,
         documentType: "CC",
         documentNumber: `ORIG-${Date.now()}-${Math.random()}`,
-        declaracionVersion: "1.0",
+        patientBirthDate: "1990-05-20",
+      declaracionVersion: "1.0",
         ip: ipProfesional,
       });
       if ("yaHayUna" in s) throw new Error(`ya habia un pase en curso: ${s.documento}`);
@@ -299,6 +301,7 @@ describe.skipIf(!HAS_DB)("la marca de mismo origen (BD real)", () => {
       createdBy: pro.profileId,
       documentType: "CC",
       documentNumber: `ORIG-NULL-${Date.now()}`,
+      patientBirthDate: "1990-05-20",
       declaracionVersion: "1.0",
       ip: null,
     });
@@ -483,6 +486,7 @@ describe.skipIf(!HAS_DB)("un solo pase por profesional (BD real)", () => {
       createdBy: pro.profileId,
       documentType: "CC",
       documentNumber: `OTRO-${Date.now()}`,
+      patientBirthDate: "1990-05-20",
       declaracionVersion: "1.0",
       ip: null,
     });
@@ -509,6 +513,7 @@ describe.skipIf(!HAS_DB)("un solo pase por profesional (BD real)", () => {
       createdBy: pro.profileId,
       documentType: "CC",
       documentNumber: `ANUL2-${Date.now()}`,
+      patientBirthDate: "1990-05-20",
       declaracionVersion: "1.0",
       ip: null,
     });
@@ -535,6 +540,7 @@ describe.skipIf(!HAS_DB)("un solo pase por profesional (BD real)", () => {
       createdBy: pro.profileId,
       documentType: "CC",
       documentNumber: `VENC2-${Date.now()}`,
+      patientBirthDate: "1990-05-20",
       declaracionVersion: "1.0",
       ip: null,
     });

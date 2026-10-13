@@ -208,9 +208,34 @@ export const presencialConsentSessions = pgTable(
       .references(() => profiles.id),
     /** El profesional AFIRMA que el paciente no tiene correo. No impide el atajo: lo vuelve atribuible. */
     sinCorreoDeclarado: boolean("sin_correo_declarado").notNull().default(true),
+    /**
+     * La version de la declaracion que le toca a ESTE pase, fijada al emitirlo (0216).
+     *
+     * SE FIJA AL EMITIR y no al declarar, porque el profesional tiene que VER el texto que va a aceptar y
+     * porque la pantalla del paciente tiene que saber a quien pedirle los datos. 1.0 mayor de edad,
+     * 1.1-a menor de 14, 1.1-b de 14 a 17.
+     */
     declaracionVersion: text("declaracion_version").notNull(),
     documentType: documentType("document_type").notNull(),
     documentNumber: text("document_number").notNull(),
+    /**
+     * La fecha de nacimiento que el profesional leyo del documento al emitir. Decide la rama de edad.
+     * NULA solo en sesiones anteriores al 2026-10-12, que por eso no se pueden declarar.
+     */
+    patientBirthDate: date("patient_birth_date"),
+    // ── EL REPRESENTANTE LEGAL, en la rama de menor. Los escribe EL en el telefono, por la misma razon
+    //    por la que el paciente escribe los suyos: es su manifestacion, no un dato que otro registro.
+    representanteNombre: text("representante_nombre"),
+    representanteDocumento: text("representante_documento"),
+    representanteParentesco: text("representante_parentesco"),
+    /**
+     * OPCIONAL AQUI, Y SOLO AQUI. En el camino remoto el correo es obligatorio porque por ahi va el
+     * codigo, y ahi el codigo ES la verificacion; en el presencial la identidad la verifica el profesional
+     * contra el documento, y esta via existe porque no hay correo.
+     */
+    representanteEmail: text("representante_email"),
+    /** El asentimiento del menor de 14 a 17. No es una autorizacion: la autorizacion la da el representante. */
+    asentimientoMenor: boolean("asentimiento_menor"),
     // Lo que el PACIENTE escribio en SU dispositivo, tal cual, para poder compararlo.
     declaradoNombres: text("declarado_nombres"),
     declaradoApellidos: text("declarado_apellidos"),
