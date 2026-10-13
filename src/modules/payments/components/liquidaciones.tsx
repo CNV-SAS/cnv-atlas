@@ -166,8 +166,13 @@ function FilaLiquidacion({ item, puedePagar }: { item: LiquidacionParaVer; puede
       {/* ═══ A DONDE RECLAMAR EL CARGO (Santiago, 2026-09-28) ═══
           "Un canal que nadie sabe que existe no es un canal." Solo sale cuando hay cargo, y solo mientras NO se
           haya girado: después el reclamo es otra conversación, y decir que se puede revisar algo ya pagado sería
-          prometer lo que el sistema no sostiene. */}
-      {item.cargosDeFaltante > 0 && !item.pagadaEn ? (
+          prometer lo que el sistema no sostiene.
+
+          Y SOLO EN LA PANTALLA DEL QUE RECLAMA (segundo smoke, 2026-10-12). Esta fila es la MISMA en las dos
+          pantallas, así que en /comercial como admin salía "si no estás de acuerdo, escribe a
+          admin@cnvsystem.com", y admin ES quien recibe ese correo. El canal de reclamo es del que reclama:
+          `puedePagar` ya distingue las dos lecturas de la pantalla y es lo único que faltaba mirar. */}
+      {item.cargosDeFaltante > 0 && !item.pagadaEn && !puedePagar ? (
         <span className="text-xs text-muted-foreground">
           El descuento por faltante se puede revisar antes del giro: si no estás de acuerdo, escribe a{" "}
           <a className="font-medium text-foreground underline" href={`mailto:${CANAL_ADMIN}`}>

@@ -1,7 +1,11 @@
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { Badge } from "@/components/ui/badge";
 
-import { lotesProvisionales, vencimientosParaCnv } from "../services/vencimientos-lectura";
+import {
+  lotesEnVentanaSinAvisar,
+  lotesProvisionales,
+  vencimientosParaCnv,
+} from "../services/vencimientos-lectura";
 import { CompletarVencimientoForm } from "./completar-vencimiento-form";
 
 // ═══ LOS VENCIMIENTOS, DEL LADO DE CNV (0186) ═══
@@ -16,8 +20,12 @@ import { CompletarVencimientoForm } from "./completar-vencimiento-form";
 // Gildardo. Un lote vencido es un aviso sobre el TRABAJO. Lo exige el candado `capa-clinica-solo-veredictos`,
 // que atrapo este mismo archivo al escribirlo.
 export async function VencimientosCnvSection() {
-  const [todos, provisionales] = await Promise.all([vencimientosParaCnv(), lotesProvisionales()]);
-  if (todos.length === 0 && provisionales.length === 0) return null;
+  const [todos, provisionales, sinAvisar] = await Promise.all([
+    vencimientosParaCnv(),
+    lotesProvisionales(),
+    lotesEnVentanaSinAvisar(),
+  ]);
+  if (todos.length === 0 && provisionales.length === 0 && sinAvisar.length === 0) return null;
 
   const vencidos = todos.filter((v) => v.vencido);
   const porVencer = todos.filter((v) => !v.vencido);
@@ -53,6 +61,46 @@ export async function VencimientosCnvSection() {
                 </span>
               </div>
               <CompletarVencimientoForm lotId={l.lotId} />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* ═══ LO QUE ENTRO EN LA VENTANA Y TODAVIA NO TIENE ALERTA REGISTRADA (segundo smoke, 2026-10-12) ═══
+          Las listas de abajo leen FILAS de alerta, y esas filas las crea la tarea diaria. Un lote marcado hoy
+          no aparecía en ninguna parte hasta la mañana siguiente, y el silencio hacía creer que el control no
+          lo había visto. Va primero porque es lo único de esta pantalla que todavía puede cambiar antes de
+          que el aviso quede registrado. */}
+      {sinAvisar.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <p className="max-w-prose text-sm text-muted-foreground">
+            <strong className="text-foreground">Entraron en la ventana y el aviso aún no ha salido.</strong>{" "}
+            La tarea diaria registra la alerta y manda el correo mañana a las 8:30 a. m. Hasta que esa fila
+            exista, el vencido lo asume CNV: es el registro de la alerta lo que puede desplazarlo al
+            Integrante.
+          </p>
+          {sinAvisar.map((l) => (
+            <div
+              key={`${l.lotId}-${l.locationId}`}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-card p-3"
+            >
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">
+                  {l.producto} · lote {l.codigo}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {l.quien ?? "Bodega central de CNV"} · {l.donde} · vence el {l.vence}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-foreground">
+                  {l.unidades} {l.unidades === 1 ? "unidad" : "unidades"}
+                </span>
+                <Badge variant="outline" className="border-attention/60 font-normal text-attention">
+                  {l.plazo}
+                </Badge>
+                <span className="text-xs text-muted-foreground">sin avisar todavía</span>
+              </div>
             </div>
           ))}
         </div>
