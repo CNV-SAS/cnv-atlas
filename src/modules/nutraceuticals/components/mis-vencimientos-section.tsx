@@ -46,7 +46,7 @@ export async function MisVencimientosSection({ userId }: { userId: string }) {
         {sinAvisar.map((l) => (
           <div
             key={`${l.lotId}-${l.locationId}`}
-            className="flex flex-col gap-1 rounded-lg border border-dashed border-border bg-card p-3"
+            className="flex flex-col gap-1 rounded-lg border border-dashed border-border bg-muted/30 p-3"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col gap-0.5">

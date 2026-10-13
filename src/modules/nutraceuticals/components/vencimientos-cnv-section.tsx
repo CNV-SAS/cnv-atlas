@@ -172,7 +172,7 @@ export async function VencimientosCnvSection() {
           {porVencer.map((v) => (
             <div
               key={v.alertaId}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3"
             >
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-foreground">

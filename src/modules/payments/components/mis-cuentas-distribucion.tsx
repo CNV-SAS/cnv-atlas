@@ -1,5 +1,6 @@
 "use client";
 
+import { ReceiptText } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
@@ -58,20 +59,44 @@ function Cuenta({ cuenta, hoy }: { cuenta: MiCuenta; hoy: string }) {
   const puedeObjetar = cuenta.objetadaEl == null && cuenta.pagadaEl == null && hoy <= cuenta.objetarHasta;
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium text-foreground">
-            Del {cuenta.corteDesde} al {cuenta.corteHasta} · {pesos(cuenta.total)}
+    // ═══ FONDO DE TARJETA, Y LA TESELA DE CONTRATIK (segundo smoke, 2026-10-12) ═══
+    //
+    // EL DEFECTO, en las palabras de Santiago: estas cuentas quedaban "escondidas". Y era literal: el
+    // bloque era `border` SIN `bg-card`, sobre el gris del layout, justo al lado de las liquidaciones, que
+    // SÍ son tarjeta blanca. Dos bloques de la misma pantalla con dos tratamientos hacían que uno de los
+    // dos se leyera como apagado.
+    //
+    // La decoración sale de la referencia de Contratik ya portada en `motor-hoy.tsx`: tesela de icono en
+    // azul de marca, rótulo en versalitas y la cifra grande, que aquí es lo que el Integrante viene a ver.
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <ReceiptText className="size-[1.1rem]" aria-hidden />
           </span>
-          <span className="text-xs text-muted-foreground">
-            Emitida el {cuenta.emitidaEl}
-            {cuenta.pagadaEl ? ` · pagada el ${cuenta.pagadaEl}` : ` · vence el ${cuenta.pagarHasta}`}
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
+              Cuenta quincenal
+            </span>
+            <span className="text-sm font-medium text-foreground">
+              Del {cuenta.corteDesde} al {cuenta.corteHasta}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Emitida el {cuenta.emitidaEl}
+              {cuenta.pagadaEl ? ` · pagada el ${cuenta.pagadaEl}` : ` · vence el ${cuenta.pagarHasta}`}
+            </span>
+          </div>
         </div>
-        {puedeObjetar ? (
-          <span className="text-xs text-muted-foreground">Puedes objetarla hasta el {cuenta.objetarHasta}</span>
-        ) : null}
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+            {pesos(cuenta.total)}
+          </span>
+          {puedeObjetar ? (
+            <span className="text-xs text-muted-foreground">
+              Puedes objetarla hasta el {cuenta.objetarHasta}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="-mx-1 overflow-x-auto">
