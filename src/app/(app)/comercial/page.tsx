@@ -16,7 +16,7 @@ import {
 import { liquidarComision } from "@/modules/payments/liquidacion";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
 import {
-  cortesPorEmitir,
+  cortesDeDistribucion,
   cuentasParaCnv,
   detalleDeLaCuenta,
   misCuentas,
@@ -47,11 +47,15 @@ export default async function ComercialPage() {
 
   // EL LADO DE DISTRIBUCION. Se lee aparte porque su corte es otro (quincenal) y su direccion es la
   // contraria: aqui CNV COBRA. Quien no tiene nada en Distribucion no ve ninguno de los dos bloques.
-  const [cortes, cuentasCnv, mias] = await Promise.all([
-    puedeLiquidar ? cortesPorEmitir(hasta) : Promise.resolve([]),
+  const [cortesDeDistri, cuentasCnv, mias] = await Promise.all([
+    puedeLiquidar
+      ? cortesDeDistribucion(hasta)
+      : Promise.resolve({ porEmitir: [], enCurso: [] }),
     puedeLiquidar ? cuentasParaCnv() : Promise.resolve([]),
     misCuentas(user.id),
   ]);
+  const cortes = cortesDeDistri.porEmitir;
+  const cortesEnCurso = cortesDeDistri.enCurso;
 
   // LOS ENVIOS A DOMICILIO, solo para quien ve el ingreso. YA NO ES UNA CUENTA (2026-10-05): el flete salio
   // de CNV, asi que no hay pago al domiciliario que soportar. Es la cola de lo que hay que coordinar.
@@ -110,10 +114,15 @@ export default async function ComercialPage() {
           VA EN ESTA MISMA PANTALLA porque es la otra mitad del dinero del Integrante, pero EN SU PROPIO
           BLOQUE y con su propio encabezado: bajo Comisión CNV le PAGA y bajo Distribución le COBRA, y
           mezclar las dos listas es como un administrador termina girando plata que en realidad le deben. */}
-      {cortes.length > 0 || cuentasCnv.length > 0 ? (
+      {cortes.length > 0 || cortesEnCurso.length > 0 || cuentasCnv.length > 0 ? (
         <div className="flex flex-col gap-3">
           <TituloSeccion>Distribución: lo que CNV le factura al Integrante</TituloSeccion>
-          <CuentasDistribucion cortes={cortes} cuentas={cuentasCnv} hoy={hasta} />
+          <CuentasDistribucion
+            cortes={cortes}
+            enCurso={cortesEnCurso}
+            cuentas={cuentasCnv}
+            hoy={hasta}
+          />
         </div>
       ) : null}
 

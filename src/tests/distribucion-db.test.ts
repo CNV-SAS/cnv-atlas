@@ -120,8 +120,11 @@ describe.skipIf(!HAS_DB)("la cuenta quincenal de Distribucion (BD real)", () => 
     await venta(100_000, 20_000);
     const primera = await emitir();
     expect(primera.ventas).toBe(1);
-    // El mismo corte, otra vez: ya no queda nada por facturar.
-    await expect(emitir()).rejects.toThrow(/no hay ventas sin facturar/i);
+    // El mismo corte, otra vez: ya no queda nada por facturar, asi que no se rehace. Desde la 0215 el corte
+    // SI se puede re-emitir, pero solo cuando hay ventas nuevas que agregarle; una re-emision identica
+    // reemplazaria la factura que el Integrante ya recibio por otra igual (candado:
+    // `rehacer-la-cuenta-de-distribucion-db`).
+    await expect(emitir()).rejects.toThrow(/ya está emitida y no hay ventas sin facturar/i);
   });
 
   it("emitir marca las ventas con su cuenta", async () => {

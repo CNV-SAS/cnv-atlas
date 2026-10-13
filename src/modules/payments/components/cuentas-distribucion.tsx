@@ -24,6 +24,9 @@ export type CorteListoParaVer = {
   total: number;
   corteDesde: string;
   corteHasta: string;
+  cuentaVigenteId: string | null;
+  cuentaVigenteEmitidaEl: string | null;
+  cuentaVigentePagadaEl: string | null;
 };
 
 export type CuentaParaVer = {
@@ -51,14 +54,16 @@ export type CuentaParaVer = {
 // con ella: un administrador que confunda las dos giraria plata que en realidad le deben.
 export function CuentasDistribucion({
   cortes,
+  enCurso,
   cuentas,
   hoy,
 }: {
   cortes: CorteListoParaVer[];
+  enCurso: CorteListoParaVer[];
   cuentas: CuentaParaVer[];
   hoy: string;
 }) {
-  if (cortes.length === 0 && cuentas.length === 0) return null;
+  if (cortes.length === 0 && enCurso.length === 0 && cuentas.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,11 +71,40 @@ export function CuentasDistribucion({
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-foreground">Cortes listos para facturar</span>
           <p className="max-w-prose text-xs text-muted-foreground">
-            Ventas selladas bajo Distribución que todavía no se han facturado. Emitir crea la cuenta y marca
-            esas ventas, para que no puedan entrar en otra.
+            Cortes ya cerrados con ventas selladas bajo Distribución que todavía no se han facturado. Emitir
+            crea la cuenta y marca esas ventas, para que no puedan entrar en otra.
           </p>
           {cortes.map((c) => (
-            <FilaCorte key={`${c.professionalId}-${c.corteHasta}`} corte={c} hoy={hoy} />
+            <FilaCorte key={`${c.professionalId}-${c.corteHasta}`} corte={c} />
+          ))}
+        </div>
+      ) : null}
+
+      {/* ═══ EL CORTE EN CURSO SE VE, Y NO SE PUEDE EMITIR (0215) ═══
+          VA A LA PANTALLA porque la pregunta que deja su ausencia es peor: sin él, admin ve ventas
+          registradas y ningún corte, y no sabe si el sistema las tomó. Y no lleva botón porque emitir un
+          corte abierto deja sin cuenta a toda venta posterior del mismo período. */}
+      {enCurso.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-foreground">El corte en curso</span>
+          <p className="max-w-prose text-xs text-muted-foreground">
+            Todavía no se factura: se emite cuando cierre. Si se emitiera hoy, lo que se venda hasta el
+            cierre quedaría sin poder entrar en ninguna cuenta.
+          </p>
+          {enCurso.map((c) => (
+            <div
+              key={`${c.professionalId}-${c.corteHasta}`}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3"
+            >
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">{c.quien}</span>
+                <span className="text-xs text-muted-foreground">
+                  Del {c.corteDesde} al {c.corteHasta} · {c.ventas}{" "}
+                  {c.ventas === 1 ? "venta" : "ventas"} · {pesos(c.total)}
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">Cierra el {c.corteHasta}</span>
+            </div>
           ))}
         </div>
       ) : null}
@@ -87,25 +121,56 @@ export function CuentasDistribucion({
   );
 }
 
-function FilaCorte({ corte, hoy }: { corte: CorteListoParaVer; hoy: string }) {
+function FilaCorte({ corte }: { corte: CorteListoParaVer }) {
   const [state, action, pending] = useActionState(emitirCuentaDistribucionAction, inicial);
   useFormToastAndRefresh(state);
+
+  // LA PAGADA NO SE REEMPLAZA, así que no se ofrece el botón: la plata ya se movió y retirar su cuenta
+  // dejaría un pago contra un documento que dice no existir. Se dice qué pasa con esas ventas, que es lo
+  // que admin necesita para decidir, en vez de un botón que revienta contra la base.
+  if (corte.cuentaVigentePagadaEl) {
+    return (
+      <div className="flex flex-col gap-1 rounded-lg border border-attention bg-attention-bg p-3">
+        <span className="text-sm font-medium text-foreground">{corte.quien}</span>
+        <span className="text-xs text-muted-foreground">
+          Del {corte.corteDesde} al {corte.corteHasta} · {corte.ventas}{" "}
+          {corte.ventas === 1 ? "venta" : "ventas"} sin facturar · {pesos(corte.total)}
+        </span>
+        <span className="text-xs text-attention">
+          La cuenta de este corte ya se pagó el {corte.cuentaVigentePagadaEl}, así que no se puede rehacer.
+          Estas ventas quedan sin facturar: por su fecha no pueden entrar en el corte siguiente, y hay que
+          decidir con contabilidad si se facturan aparte.
+        </span>
+      </div>
+    );
+  }
+
+  const esReemision = corte.cuentaVigenteId != null;
+
   return (
     <form
       onSubmit={enviarSinReset(action)}
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3"
     >
       <input type="hidden" name="professionalId" value={corte.professionalId} />
-      <input type="hidden" name="dia" value={hoy} />
+      {/* EL DÍA QUE VIAJA ES EL DEL CORTE, no hoy: el servidor deriva el período de esta fecha, y mandar
+          hoy facturaría el corte en curso, que es justo el defecto que la 0215 arregla. */}
+      <input type="hidden" name="dia" value={corte.corteHasta} />
       <div className="flex flex-col gap-0.5">
         <span className="text-sm font-medium text-foreground">{corte.quien}</span>
         <span className="text-xs text-muted-foreground">
           Del {corte.corteDesde} al {corte.corteHasta} · {corte.ventas}{" "}
           {corte.ventas === 1 ? "venta" : "ventas"} · {pesos(corte.total)}
         </span>
+        {esReemision ? (
+          <span className="text-xs text-attention">
+            Este corte ya tiene una cuenta, emitida el {corte.cuentaVigenteEmitidaEl}. Rehacerla la reemplaza:
+            la nueva lleva el corte completo y la anterior queda con su rastro, marcada como reemplazada.
+          </span>
+        ) : null}
       </div>
       <Button type="submit" size="sm" disabled={pending}>
-        {pending ? "Emitiendo..." : "Emitir la cuenta"}
+        {pending ? "Emitiendo..." : esReemision ? "Rehacer la cuenta" : "Emitir la cuenta"}
       </Button>
     </form>
   );

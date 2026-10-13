@@ -1166,9 +1166,13 @@ export async function emitirCuentaDistribucionAction(
       actorEmail: user.email,
       ip: null,
     });
+    // EL MENSAJE DISTINGUE EMITIR DE REHACER: una re-emision reemplaza una factura que el Integrante ya
+    // recibio, y callarlo dejaria creer que se emitio una segunda cuenta del mismo corte.
     return {
       error: null,
-      success: `Cuenta emitida con ${r.ventas} ${r.ventas === 1 ? "venta" : "ventas"}.`,
+      success: r.reemplazoA
+        ? `Cuenta rehecha con ${r.ventas} ${r.ventas === 1 ? "venta" : "ventas"}: lleva el corte completo y reemplaza a la anterior, que queda con su rastro.`
+        : `Cuenta emitida con ${r.ventas} ${r.ventas === 1 ? "venta" : "ventas"}.`,
       warning: null,
     };
   } catch (e) {

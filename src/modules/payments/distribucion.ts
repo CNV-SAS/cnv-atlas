@@ -103,6 +103,28 @@ export function corteDe(dia: string): Corte {
   return { desde: ymd(new Date(d.getFullYear(), d.getMonth(), 16, 12)), hasta: ymd(finDeMes(d)) };
 }
 
+/**
+ * ¿Ese corte YA CERRO? Solo un corte cerrado se factura.
+ *
+ * ═══ LA REGLA QUE FALTABA, Y EL DEFECTO QUE CAUSO (segundo smoke, parte 10) ═══
+ *
+ * La pantalla ofrecia emitir el corte que CONTIENE hoy, aunque su propio comentario dijera *"el corte que
+ * acaba de cerrar"*. Emitir el 12 el corte que cierra el 15 tiene dos consecuencias, las dos malas:
+ *
+ *   · toda venta registrada del 12 al 15 queda sin poder entrar en ninguna cuenta, porque por su fecha
+ *     pertenece a un corte que ya se facturo;
+ *   · y produce una factura que VENCE el 15 por un periodo que TERMINA el 15 (los plazos del Integrante
+ *     cuelgan de la emision), asi que se le acaba el plazo de objetar antes de que el corte exista.
+ *
+ * El modelo §4 ademas da dos dias habiles DESPUES del corte para emitir, o sea que la emision ocurre
+ * siempre con el corte ya cerrado. No era una comodidad de la pantalla: era una contradiccion con el
+ * calendario del modelo.
+ *
+ * Y UN CORTE VIEJO SIN FACTURAR SIGUE SIENDO EMITIBLE: pasado el plazo la factura es tardia, no imposible,
+ * y lo que no se puede es que una venta quede sin cuenta porque nadie emitio a tiempo.
+ */
+export const corteCerrado = (corte: Corte, hoy: string): boolean => corte.hasta < hoy;
+
 export type PlazosDelCorte = {
   /** Hasta cuando CNV tiene para emitir: dos dias habiles siguientes al corte (§4). */
   emitirHasta: string;

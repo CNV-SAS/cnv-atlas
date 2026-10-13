@@ -15,7 +15,13 @@ import {
   resolverObjecion,
   totalDeLaCuenta,
 } from "../data/distribucion-writer";
-import { corteDe, plazosDelCorte, type CuentaQuincenal } from "../distribucion";
+import {
+  corteCerrado,
+  corteDe,
+  plazosDelCorte,
+  type Corte,
+  type CuentaQuincenal,
+} from "../distribucion";
 
 // ═══ EL RECAUDO DE DISTRIBUCION: LO QUE VEN LAS DOS PANTALLAS (0188) ═══
 //
@@ -100,7 +106,7 @@ async function aCuenta(f: FilaCuenta): Promise<CuentaEnPantalla> {
 export async function cuentasParaCnv(): Promise<CuentaEnPantalla[]> {
   const filas = await db.execute<FilaCuenta>(sql`
     ${SELECT_CUENTAS}
-     where s.replaced_by_id is null
+     where s.superseded_at is null
      order by s.paid_at nulls first, s.corte_hasta desc
      limit 60`);
   return Promise.all(filas.map(aCuenta));
@@ -110,7 +116,7 @@ export async function cuentasParaCnv(): Promise<CuentaEnPantalla[]> {
 export async function misCuentas(userId: string): Promise<CuentaEnPantalla[]> {
   const filas = await db.execute<FilaCuenta>(sql`
     ${SELECT_CUENTAS}
-     where pp.profile_id = ${userId} and s.replaced_by_id is null
+     where pp.profile_id = ${userId} and s.superseded_at is null
      order by s.corte_hasta desc
      limit 24`);
   return Promise.all(filas.map(aCuenta));
@@ -131,40 +137,99 @@ export type CorteListo = {
   total: number;
   corteDesde: string;
   corteHasta: string;
+  /**
+   * La cuenta VIVA que ya tiene este corte, si la tiene. Emitir entonces la REEMPLAZA (0215), y la pantalla
+   * tiene que decirlo: no es lo mismo facturar un corte que rehacer una factura que el Integrante ya recibio.
+   */
+  cuentaVigenteId: string | null;
+  cuentaVigenteEmitidaEl: string | null;
+  /**
+   * Y si esa cuenta ya esta PAGADA, estas ventas no se pueden facturar aqui: la pagada no se reemplaza. Se
+   * dice y no se ofrece boton, en vez de ofrecerlo y reventar contra la base.
+   */
+  cuentaVigentePagadaEl: string | null;
+};
+
+export type CortesDeDistribucion = {
+  /** Cortes CERRADOS con ventas sin facturar: lo que CNV puede emitir hoy. */
+  porEmitir: CorteListo[];
+  /**
+   * EL CORTE EN CURSO, solo para verlo. Va a la pantalla porque la pregunta que deja su ausencia es peor:
+   * sin el, admin ve ventas registradas y ningun corte, y no sabe si el sistema las perdio.
+   */
+  enCurso: CorteListo[];
 };
 
 /**
- * A QUIEN HAY QUE FACTURARLE: Integrantes en Distribucion con ventas selladas y sin facturar en el corte que
- * acaba de cerrar. Sin ventas no aparece nadie, que es lo que el modelo pide ("si no hubo ventas, no se
- * emite factura").
+ * A QUIEN HAY QUE FACTURARLE, Y DE QUE CORTE.
+ *
+ * ── POR QUE SE AGRUPA POR EL CORTE DE CADA VENTA Y NO POR EL DE HOY ──
+ *
+ * Porque una venta pertenece al corte de SU fecha, no al de la fecha en que alguien abre la pantalla. Leer
+ * solo el corte de hoy escondia dos cosas: el corte que acaba de cerrar (el unico que de verdad se puede
+ * facturar) y cualquier corte viejo que nadie emitio. Una venta que no aparece en ninguna parte es una
+ * venta que no se le va a cobrar a nadie.
+ *
+ * LA AGRUPACION LA HACE `corteDe`, el modulo puro, y no un `case` en SQL: el calendario del modelo tiene
+ * una sola implementacion con candado, y dos seria como se descuadra una factura entera.
+ *
+ * Sin ventas no aparece nadie, que es lo que el modelo pide ("si no hubo ventas, no se emite factura").
  */
-export async function cortesPorEmitir(hoy: string): Promise<CorteListo[]> {
-  const corte = corteDe(hoy);
-  const filas = await db.execute<{ professional_id: string; quien: string | null }>(sql`
-    select distinct t.professional_id, pr.full_name as quien
+export async function cortesDeDistribucion(hoy: string): Promise<CortesDeDistribucion> {
+  const filas = await db.execute<{ professional_id: string; quien: string | null; dia: string }>(sql`
+    select distinct t.professional_id, pr.full_name as quien,
+           (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date::text as dia
       from transaction_items ti
       join transactions t on t.id = ti.transaction_id
       join professional_profiles pp on pp.id = t.professional_id
       left join profiles pr on pr.id = pp.profile_id
      where ti.modality = 'distribucion'
        and ti.sealed_at is not null
-       and t.distribucion_statement_id is null
-       and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date
-             between ${corte.desde}::date and ${corte.hasta}::date`);
-  const out: CorteListo[] = [];
+       and t.distribucion_statement_id is null`);
+
+  // Un grupo por (Integrante, corte). El dia que lo representa es el `hasta` del corte, que es el que
+  // `cuentaDelCorte` necesita para derivar el mismo periodo.
+  const grupos = new Map<string, { professionalId: string; quien: string; corte: Corte }>();
   for (const f of filas) {
-    const c = await cuentaDelCorte(f.professional_id, hoy);
+    const corte = corteDe(f.dia);
+    const clave = `${f.professional_id}|${corte.hasta}`;
+    if (!grupos.has(clave)) {
+      grupos.set(clave, {
+        professionalId: f.professional_id,
+        quien: f.quien ?? "Integrante",
+        corte,
+      });
+    }
+  }
+
+  const porEmitir: CorteListo[] = [];
+  const enCurso: CorteListo[] = [];
+  for (const g of grupos.values()) {
+    const c = await cuentaDelCorte(g.professionalId, g.corte.hasta);
     if (c.ventas === 0) continue;
-    out.push({
-      professionalId: f.professional_id,
-      quien: f.quien ?? "Integrante",
+    const [viva] = await db.execute<{ id: string; emitida: string; pagada: string | null }>(sql`
+      select id, (emitted_at at time zone 'America/Bogota')::date::text as emitida,
+             (paid_at at time zone 'America/Bogota')::date::text as pagada
+        from distribucion_statements
+       where professional_id = ${g.professionalId}
+         and corte_hasta = ${g.corte.hasta}::date
+         and superseded_at is null`);
+    const fila: CorteListo = {
+      professionalId: g.professionalId,
+      quien: g.quien,
       ventas: c.ventas,
       total: c.total,
       corteDesde: c.corte.desde,
       corteHasta: c.corte.hasta,
-    });
+      cuentaVigenteId: viva?.id ?? null,
+      cuentaVigenteEmitidaEl: viva?.emitida ?? null,
+      cuentaVigentePagadaEl: viva?.pagada ?? null,
+    };
+    (corteCerrado(g.corte, hoy) ? porEmitir : enCurso).push(fila);
   }
-  return out;
+  porEmitir.sort((a, b) => a.corteHasta.localeCompare(b.corteHasta) || a.quien.localeCompare(b.quien));
+  enCurso.sort((a, b) => a.quien.localeCompare(b.quien));
+  return { porEmitir, enCurso };
 }
 
 export {
