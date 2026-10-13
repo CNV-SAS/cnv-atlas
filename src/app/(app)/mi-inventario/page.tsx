@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Panel } from "@/components/shared/panel";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
+import { leerConReintento } from "@/db/reintento";
 import { requireUser } from "@/modules/auth/session";
 import { ConfirmarRemesaSection } from "@/modules/nutraceuticals/components/confirmar-remesa-section";
 import { MiConteoForm } from "@/modules/nutraceuticals/components/mi-conteo-form";
@@ -42,11 +43,16 @@ export default async function MiInventarioPage() {
   const user = await requireUser();
   if (!canLoadOwnStock(user)) redirect("/no-autorizado");
 
+  // ═══ LAS CUATRO LECTURAS, CON UN REINTENTO SI FALLA LA CONEXION (segundo smoke, 2026-10-12) ═══
+  //
+  // Esta pantalla fue la que cayó con "Failed to connect to database: timeout" (una vez, el pooler ocupado
+  // un instante). Son LECTURAS, así que un fallo al conectar significa que no corrió nada y pedirlo otra vez
+  // no puede repetir ningún efecto. La condición y sus límites están en `leerConReintento`.
   const [inventory, movements, pendingRemesas, ventanaDelConteo] = await Promise.all([
-    getOwnInventory(user.id),
-    getOwnMovements(user.id),
-    getPendingRemesasForOwn(user.id),
-    ventanaDeConteoDelUsuario(user.id),
+    leerConReintento(() => getOwnInventory(user.id)),
+    leerConReintento(() => getOwnMovements(user.id)),
+    leerConReintento(() => getPendingRemesasForOwn(user.id)),
+    leerConReintento(() => ventanaDeConteoDelUsuario(user.id)),
   ]);
   const lines = inventory ?? [];
 
