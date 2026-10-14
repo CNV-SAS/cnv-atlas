@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
--- EL ARRANQUE A PRODUCCION  ·  fecha de corte 2026-10-14 (Santiago, 2026-10-12)
+-- EL ARRANQUE A PRODUCCION  ·  fecha de corte 2026-10-15 (Santiago, 2026-10-14: "Fecha 15, manana iniciamos")
 --
 -- ═══ QUE SE DECIDIO, Y POR QUE ESTA ES LA TERCERA OPCION ═══
 --
@@ -35,13 +35,14 @@
 --   2. Y A MANO, FILA POR FILA, es como se olvida una. Aqui el criterio es uno y se aplica entero.
 --
 -- COMO SE ENSAYA ANTES (contra la base local, revierte al final):
---   pnpm db:probar scripts/ARRANQUE_A_PRODUCCION_2026-10-14.sql
+--   pnpm db:probar scripts/ARRANQUE_A_PRODUCCION_2026-10-15.sql
 --
 -- COMO SE CORRE DE VERDAD: pegarlo en el SQL editor de Supabase de PRODUCCION, leyendo los `select` de
 -- verificacion ANTES del `commit`.
 --
 -- ⚠ TRES COSAS QUE HAY QUE REVISAR ANTES DE CORRERLO, y estan marcadas con PARA_REVISAR:
---   · la FECHA de arranque (aqui 2026-10-14; Santiago dijo "14 o 15, depende de como avancemos");
+--   · la FECHA de arranque: ya esta en 2026-10-15, que es la que Santiago confirmo. Se deja marcada igual
+--     porque es el parametro del que depende TODO lo que el script decide;
 --   · el CORREO del actor, que es quien queda como autor de las marcas;
 --   · y la CONCILIACION FISICA del inventario, que NO se puede inventar: va en su propio bloque al final,
 --     con las cifras que el cuente de verdad.
@@ -58,11 +59,11 @@ begin;
 -- Distribucion ya se netea por periodo y el corte del 01-15 se va a anular entero en el paso (3).
 create temporary table _arranque(fecha date, correo text, motivo text) on commit drop;
 insert into _arranque values (
-  '2026-10-14',
+  '2026-10-15',
   'gilurgi69@gmail.com',
   -- EL MISMO MOTIVO PARA TODAS, y es lo que pidio Santiago: un motivo generico que se pueda buscar despues.
   -- Cumple el minimo de diez caracteres del CHECK de la 0217.
-  'Smoke anterior a produccion: operacion de prueba previa al arranque del 2026-10-14'
+  'Smoke anterior a produccion: operacion de prueba previa al arranque del 2026-10-15'
 );
 
 -- EL ACTOR TIENE QUE EXISTIR. Sin esto, un correo mal escrito dejaria `marcada_como_prueba_por` en nulo, el
@@ -214,22 +215,29 @@ select 'DESPUES' as momento,
     where l.event not in ('venta.marcada_de_prueba', 'distribucion.cuenta_anulada'))
                                                                              as auditoria_sin_contar_este_script;
 
--- ── (5b) LO QUE VA A SEGUIR PIDIENDO ACCION, Y POR QUE ───────────────────────────────────────────
+-- ── (5b) LAS VENTAS QUE MOVIERON UNIDADES: LA LISTA PARA CONTAR ─────────────────────────────────
 --
--- LA MARCA DE PRUEBA SI ALCANZA A LOS AVISOS: el lector de pendientes filtra por `cuenta_como_de_prueba`,
--- asi que las ventas marcadas dejan de aparecerle a admin. Verificado en `avisos-repository.ts`.
+-- ═══ ESTE BLOQUE CAMBIO DE SENTIDO CON LA 0218, Y HAY QUE DECIRLO ═══
 --
--- CON UNA EXCEPCION DELIBERADA: la rama "cobrada sin saldo" mira el PRODUCTO, no la marca, porque habla de
--- UNIDADES FISICAS y las unidades no entienden de marcas. Si el producto era real, la vitrina esta
--- descuadrada DE VERDAD, y esconderlo esconderia un problema fisico.
+-- CUANDO SE ESCRIBIO, estas filas eran "lo que va a seguir pidiendo accion": la rama "cobrada sin saldo"
+-- miraba el PRODUCTO y no la marca, asi que una venta marcada de producto real seguia apareciendole a admin.
 --
--- ASI QUE ESTAS FILAS SON EL TRABAJO QUE QUEDA, y su remedio es el bloque (6): cuadrar cada ubicacion con un
--- ajuste por conteo. Mientras no se haga, se pueden descartar desde "Pendientes sin salida", con su motivo.
+-- LA 0218 LO CAMBIO, y a pedido de Santiago: *"hagamos el esfuerzo a ver si marcamos cada caso como de
+-- prueba para que se oculten esta vez si de verdad"*. La marca MANUAL entro como insumo de la excepcion
+-- fisica, porque es la unica de las cuatro que la pone una persona, con motivo y con su fila de auditoria,
+-- afirmando que el acto no ocurrio. Asi que estas ventas SI dejan de pedir accion.
+--
+-- PERO LA UNIDAD SIGUE SIN ESTAR EN EL ESTANTE. Lo que la marca quita es el AVISO, no el hueco. Por eso esta
+-- lista no desaparece: cambia de dueño. Ya no es la bandeja de pendientes de admin, es LA LISTA CON LA QUE
+-- SE CUENTA EL INVENTARIO, y su remedio esta en el script de al lado:
+--
+--   scripts/CONCILIAR_EL_INVENTARIO_AL_ARRANQUE_2026-10-15.sql
+--
 -- SOLO LAS QUE MARCO ESTE SCRIPT, por su motivo. Listar todas las ventas de prueba de la historia (que en
 -- una base con años de pruebas son miles) mezclaria lo que este arranque dejo pendiente con lo que ya
 -- estaba, y ademas convierte este `select` en un barrido de la tabla de movimientos: en el ensayo contra la
 -- base local, con 20.030 transacciones, se llevaba el script entero por delante.
-select 'SIGUEN PIDIENDO ACCION (cobrada sin saldo)' as que,
+select 'MOVIERON UNIDADES: CONTAR ESTAS UBICACIONES' as que,
        t.id as venta,
        (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date as dia,
        coalesce(l.name, 'sin ubicacion') as ubicacion,
@@ -246,37 +254,39 @@ select 'SIGUEN PIDIENDO ACCION (cobrada sin saldo)' as que,
    )
  order by dia;
 
--- ── (6) EL INVENTARIO FISICO: NO SE PUEDE INVENTAR ──────────────────────────────────────────────
+-- ── (6) EL INVENTARIO FISICO: VA EN SU PROPIO SCRIPT ────────────────────────────────────────────
 --
--- PARA_REVISAR, y es el unico paso que este script NO puede hacer solo.
+-- ═══ POR QUE NO ESTA AQUI ═══
 --
--- POR QUE: marcar una venta como prueba NO devuelve la unidad al estante, y es a proposito. Los movimientos
--- de inventario son inmutables porque describen algo que PASO: la unidad salio de verdad, aunque el acto
--- fuera una prueba. Un script que "devolviera" las unidades estaria afirmando que nunca salieron.
+-- Porque necesita una cifra que este script no tiene y no puede adivinar: cuantas unidades hay DE VERDAD,
+-- por ubicacion y por lote. Mientras estuvo aqui estaba COMENTADA, o sea que no se podia correr; aparte, se
+-- corre cuando el conteo exista.
 --
--- LO CORRECTO es un movimiento de `conciliacion` por ubicacion, con su motivo, igual al que se registra tras
--- un conteo fisico: el saldo del sistema se ajusta a lo que hay DE VERDAD en la vitrina. Esa cifra la tiene
--- que contar una persona, y ninguna consulta la puede adivinar.
+--   scripts/CONCILIAR_EL_INVENTARIO_AL_ARRANQUE_2026-10-15.sql
 --
--- EL SALDO DE HOY, para que Santiago lo coteje contra lo que cuente:
-select 'SALDO DE HOY, PARA COTEJAR CONTRA EL CONTEO FISICO' as que,
-       l.name as ubicacion, n.name as producto, lt.code as lote, i.stock_quantity as sistema
-  from nutraceutical_inventory i
-  join inventory_locations l on l.id = i.location_id
-  join nutraceuticals n on n.id = i.nutraceutical_id
-  join lots lt on lt.id = i.lot_id
- where i.stock_quantity <> 0
- order by l.name, n.name, lt.code;
+-- Ese script imprime el saldo de hoy con los nombres exactos, recibe lo CONTADO, calcula la diferencia,
+-- MUESTRA lo que va a hacer, y por defecto NO guarda (termina en `rollback`). Tiene tambien la bandera que
+-- aplica la decision de Santiago, *"que la bodega de CNV inicie con todas las unidades"*: lleva a cero todo
+-- lo que no se liste, con la advertencia de que una linea olvidada se interpreta como un cero.
 --
--- Y CUANDO TENGA LAS CIFRAS, un movimiento por diferencia (una linea por cada una, con su delta con signo):
+-- ═══ Y POR QUE NO SE PUEDE MARCAR UN MOVIMIENTO COMO DE PRUEBA (Santiago, 2026-10-14) ═══
 --
---   insert into nutraceutical_stock_movements
---     (professional_id, nutraceutical_id, location_id, lot_id, type, delta, reason)
---   values (<profesional de la ubicacion>, <producto>, <ubicacion>, <lote>, 'conciliacion', <+/- diferencia>,
---           'Arranque a produccion 2026-10-14: ajuste al conteo fisico');
+-- Lo propuso, y la razon era buena: *"a futuro, si llegamos a medir los movimientos de inventario,
+-- apareceran mezclados con movimientos de prueba"*. Pero no hay donde escribir esa marca, y no por descuido:
+-- `nutraceutical_stock_movements` es append-only POR TRIGGER (0040), con el mensaje *"un error se corrige con
+-- un movimiento inverso, no se edita ni se borra"*. Marcar una fila existente exigiria apagar ese trigger, y
+-- apagarlo para escribir en el libro de custodia es justo lo que el libro existe para impedir.
 --
--- SE DEJA COMENTADO Y NO SE GENERA SOLO: un ajuste de inventario con una cifra que nadie conto es
--- exactamente la clase de numero del que despues nadie sabe de donde salio.
+-- LO QUE SI RESUELVE SU PREOCUPACION, y ya esta:
+--
+--   · HOY NINGUNA CIFRA SUMA MOVIMIENTOS. Las pantallas de inventario leen el SALDO, que es lo que la
+--     conciliacion deja en cero. O sea que el reseteo que el pidio se consigue con el otro script, no con
+--     una marca.
+--   · Y EL DIA QUE SE MIDAN, la frontera ya existe y es la misma del paso (4): `fecha_de_arranque`. Un
+--     movimiento anterior a esa fecha es de la etapa de pruebas, y eso se DERIVA de su fecha sin tener que
+--     escribir nada en una fila inmutable. Queda anotado como condicion de ese reporte en SMOKE_SEGUNDO.
+--   · Los ajustes que escribe el script de conciliacion llevan el motivo del arranque en su `reason`, asi
+--     que tambien se pueden distinguir uno por uno.
 
 -- ⚠ LEER LOS `select` DE ARRIBA ANTES DE CONFIRMAR.
 -- rollback;
