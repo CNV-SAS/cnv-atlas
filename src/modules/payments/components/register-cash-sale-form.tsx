@@ -34,6 +34,7 @@ export function RegisterCashSaleForm({
   ventaSueltaMotivo,
   consultaRespondida,
   canal,
+  esAdmin = false,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
@@ -68,8 +69,28 @@ export function RegisterCashSaleForm({
    * canal de la modalidad.
    */
   canal: "efectivo" | "transferencia";
+  /**
+   * ═══ SI QUIEN MIRA ES ADMIN: PUEDE DECIR QUE LA UNIDAD SALIO DE LA BODEGA (Santiago, 2026-10-14) ═══
+   *
+   * EL CASO, textual suyo: *"hay que revisar los casos en que un profesional hizo venta de productos que ya
+   * se le habian acabado en el consultorio, entonces que exista la opcion en admin de poner que esa venta
+   * salio desde la bodega y no desde el integrante"*.
+   *
+   * LA VENTA SIGUE SIENDO DEL INTEGRANTE: cuando admin registra una venta en /pagos, el servidor ya se la
+   * atribuye al profesional ASIGNADO AL PACIENTE (`resolveSale`), no a admin. Lo que esto elige no es de
+   * quien es la venta, es DE DONDE SALE EL PRODUCTO, que son dos cosas distintas y por eso hacia falta una
+   * pregunta propia.
+   *
+   * SOLO PARA ADMIN, y no por permisos: para el Integrante la pregunta correcta ya existe y vive en la
+   * consulta, donde aparece sola cuando su vitrina esta en cero y la bodega tiene unidades. Ofrecersela aqui
+   * seria invitarlo a descontar de una bodega que no es suya.
+   */
+  esAdmin?: boolean;
 }) {
   const [state, action, pending] = useActionState(registerCashSaleFormAction, initial);
+  // DE DONDE SALE EL PRODUCTO. Controlado y sin `name`: el valor viaja en el campo oculto de abajo, que es
+  // como viajan los demas de este formulario (hazard 5 de CLAUDE.md, el `name` del control que no viaja).
+  const [desdeLaBodega, setDesdeLaBodega] = useState(false);
   // El celular del paciente ELEGIDO, para el bloque de domicilio. Sale de la lista que ya viajo y no de una
   // consulta aparte: cambiar de paciente no deberia ir al servidor por un dato que ya esta aqui.
   const tieneCelular = patients.find((p) => p.id === patientId)?.tieneCelular === true;
@@ -318,6 +339,52 @@ export function RegisterCashSaleForm({
             Es el mismo arreglo del hazard 7 de CLAUDE.md, por el mismo motivo. */}
         <input type="hidden" name="treatmentId" value={treatmentId} />
         <input type="hidden" name="ventaSueltaMotivo" value={ventaSueltaMotivo} />
+
+        {/* ═══ DE DONDE SALIO EL PRODUCTO, Y SOLO ADMIN LO ELIGE (Santiago, 2026-10-14) ═══
+
+            SU CASO: un profesional vendio algo que ya se le habia acabado en el consultorio. La unidad salio
+            de la bodega de CNV, no de su vitrina, y hasta hoy no habia donde decirlo: la venta descontaba de
+            la vitrina y la dejaba contando unidades que nunca tuvo.
+
+            EL CAMINO YA EXISTIA COMPLETO del servidor hacia abajo (`desdeLaBodega` en la accion, en el
+            escritor y en el aviso de "pagada y sin entregar" que le llega a admin). Lo unico que faltaba era
+            esta pregunta: estaba solo en la venta en consulta. Es la mitad chica del paso 2 de la
+            unificacion, y se adelanta porque es un caso de la operacion de esta semana.
+
+            NO MIRA EL DISPONIBLE, a diferencia del bloque de la consulta, que solo se muestra cuando la
+            vitrina esta en cero y la bodega tiene unidades. Aqui no hay esa cifra (el catalogo de /pagos no
+            trae existencias) y traerla seria una consulta mas en una pantalla que ya se colgo por eso. El
+            freno de verdad esta donde siempre estuvo: si la bodega no tiene las unidades, el servidor lo
+            dice y la venta queda "cobrada sin saldo", igual que cualquier otra. */}
+        {esAdmin ? (
+          <div className="flex w-full flex-col gap-1.5 rounded-md border border-attention/40 bg-attention-bg/50 p-3">
+            <input type="hidden" name="desdeLaBodega" value={desdeLaBodega ? "true" : "false"} />
+            <label className="flex items-start gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={desdeLaBodega}
+                onChange={(e) => setDesdeLaBodega(e.target.checked)}
+                disabled={pending}
+                className="mt-0.5 size-4 accent-primary"
+              />
+              <span>
+                El producto salió de la bodega de CNV, no de la vitrina del Integrante
+                {desdeLaBodega ? null : (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    (por defecto se descuenta de su vitrina)
+                  </span>
+                )}
+              </span>
+            </label>
+            {desdeLaBodega ? (
+              <p className="text-xs text-attention">
+                Se descuenta de la <strong>bodega</strong> y la venta queda pendiente de despacho, con su
+                aviso. La venta sigue siendo del Integrante asignado al paciente: su comisión no cambia.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* LA MISMA `key` POR PACIENTE que el bloque de arriba, y por el mismo motivo: el campo del celular
             se precarga con el del paciente elegido. Sin re-montar, el numero del anterior se quedaria en el

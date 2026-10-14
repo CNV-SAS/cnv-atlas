@@ -490,6 +490,7 @@ export default async function PagosPage({
           nutraceuticals={nutraceuticals}
           tratamientosPorPaciente={tratamientosPorPaciente}
           esDeDistribucion={miModalidadEsDistribucion}
+          esAdmin={esAdmin}
         />
       ) : null}
 
