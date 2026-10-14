@@ -150,3 +150,73 @@ export const declaracionAfirmaAsentimiento = (version: string): boolean =>
 //
 // LA DECLARACION DE ARRIBA SE QUEDA: la usan la modalidad 2 (QR) y la 3 (papel), que es donde de verdad
 // carga peso, porque ahi no hay OTP.
+
+// ═══ SI LA FECHA DE NACIMIENTO SE CORRIGE DESPUES, LA RAMA DECLARADA PUEDE QUEDAR MAL ═══
+//
+// ── EL HALLAZGO ES DEL ABOGADO (2026-10-14), y es correcto ──────────────────────────────────────
+//
+// Textual suyo: *"lo que determina el texto declarado es la fecha de nacimiento tal como estaba al emitir
+// el pase. Si esa fecha esta mal digitada y se corrige despues, el consentimiento ya firmado quedo bajo la
+// rama equivocada, y NADA LO VA A DETECTAR."*
+//
+// Y NO PIDE CAMBIAR EL DISEÑO: elegir la rama UNA VEZ, en la emision, es lo correcto, porque la alternativa
+// es que la rama cambie a mitad del acto. Lo que pide es que una correccion de fecha que CRUCE un umbral
+// (los 18, o los 14 del asentimiento) marque ese consentimiento para revision. Su criterio es el mismo del
+// hallazgo de la fecha vacia: *"un registro que afirma algo que no corresponde al hecho"*.
+//
+// NO ES HIPOTETICO: en este proyecto ya hubo TRES correcciones de fecha de nacimiento (las de la fecha
+// imposible, 2026-10-09).
+//
+// ── POR QUE ESTO NO NECESITA NINGUNA COLUMNA NUEVA ─────────────────────────────────────────────
+//
+// Porque la sesion ya CONGELA la fecha que uso (`patient_birth_date`, 0216). O sea que la incoherencia es
+// COMPUTABLE con lo que ya hay: se compara la fecha congelada contra la del paciente HOY, y si las dos
+// implican ramas distintas, ese registro afirma algo que no corresponde al hecho. Sin esa columna habria
+// que adivinar con que fecha se emitio.
+//
+// LO QUE FALTA, Y NO SE INVENTA AQUI, es la SUPERFICIE que lo muestre y el estado de "pendiente de
+// revision": eso es la pieza 2 del consentimiento, que todavia no esta construida, y abrirle un mecanismo
+// propio a este caso seria el segundo constructor del mismo insumo. Mientras tanto la deteccion vive en
+// `scripts/RAMA_DEL_CONSENTIMIENTO_CONTRA_LA_FECHA_DE_HOY.sql`, que se puede correr despues de cualquier
+// correccion de fecha (y que ya se puede correr hoy, sobre lo que haya).
+
+/**
+ * SI LA RAMA DECLARADA SIGUE CORRESPONDIENDO A LA EDAD QUE EL PACIENTE TENIA AL FIRMAR.
+ *
+ * Las dos edades se calculan A LA FECHA DEL ACTO, no a hoy: un menor que cumplio 18 el mes siguiente firmo
+ * bien, y comparar contra hoy lo marcaria mal. Lo que se busca es un ERROR DE DIGITACION, no el paso del
+ * tiempo.
+ *
+ * `null` en cualquiera de las dos fechas devuelve `null`: no se puede afirmar ni negar. Una sesion sin fecha
+ * congelada es anterior a la 0216, y decir de ella que esta mal seria inventar.
+ */
+export function ramaSigueCorrespondiendo(e: {
+  /** La fecha con la que se emitio el pase, congelada en la sesion. */
+  fechaAlEmitir: string | null;
+  /** La fecha que el paciente tiene HOY, ya corregida. */
+  fechaDeHoy: string | null;
+  /** El dia del acto: las dos edades se miden ahi. */
+  diaDelActo: string;
+}): { coherente: boolean; versionQueCorresponde: string | null; versionQueSeUso: string | null } | null {
+  if (!e.fechaAlEmitir || !e.fechaDeHoy) return null;
+  const conLaVieja = declaracionPorEdad(edadAlDia(e.fechaAlEmitir, e.diaDelActo));
+  const conLaNueva = declaracionPorEdad(edadAlDia(e.fechaDeHoy, e.diaDelActo));
+  return {
+    coherente: conLaVieja?.version === conLaNueva?.version,
+    versionQueCorresponde: conLaNueva?.version ?? null,
+    versionQueSeUso: conLaVieja?.version ?? null,
+  };
+}
+
+/**
+ * La edad en años cumplidos a un dia dado. Aritmetica de calendario y no de milisegundos: con
+ * milisegundos, un año bisiesto corre la edad un dia, y el dia que corre es justo el del cumpleaños.
+ */
+function edadAlDia(nacimiento: string, dia: string): number | null {
+  const n = nacimiento.slice(0, 10).split("-").map(Number);
+  const d = dia.slice(0, 10).split("-").map(Number);
+  if (n.length !== 3 || d.length !== 3 || n.some(Number.isNaN) || d.some(Number.isNaN)) return null;
+  let edad = d[0] - n[0];
+  if (d[1] < n[1] || (d[1] === n[1] && d[2] < n[2])) edad -= 1;
+  return edad;
+}
