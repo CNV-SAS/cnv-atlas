@@ -56,12 +56,15 @@ export function TarjetaDeCobro({
   nutraceuticals,
   tratamientosPorPaciente = {},
   esDeDistribucion = false,
+  esAdmin = false,
 }: {
   patients: CheckoutPatient[];
   nutraceuticals: CheckoutNutraceutical[];
   tratamientosPorPaciente?: Record<string, TratamientoParaElegir[]>;
   /** Si QUIEN MIRA opera bajo Distribución: no hay link de pago ni medio que preguntar. */
   esDeDistribucion?: boolean;
+  /** Si QUIEN MIRA es admin: puede decir que el producto salió de la bodega. Ver RegisterCashSaleForm. */
+  esAdmin?: boolean;
 }) {
   // VACIO A PROPOSITO (Santiago, 2026-10-10): un formulario de COBRO que llega con una persona ya elegida
   // invita a registrarle una venta a quien encabeza la lista alfabética. Ver `SelectorDePaciente`.
@@ -268,6 +271,7 @@ export function TarjetaDeCobro({
                 // Bajo Distribución el canal lo deriva el servidor de la modalidad; lo que se mande aquí se
                 // descarta, y "efectivo" es el valor que ya viajaba antes de que este selector existiera.
                 canal={medioResuelto === "transferencia" ? "transferencia" : "efectivo"}
+                esAdmin={esAdmin}
               />
             )}
           </>
