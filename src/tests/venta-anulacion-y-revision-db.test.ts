@@ -602,7 +602,7 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
     expect(lista.find((v) => v.id === aMano)?.efectivo).toBe("sin_efectivo");
 
     await resolverRevision(coinciden.link, "efectivo_no_recibido", actorId);
-    const efectivos = await listarEfectivosNoRecibidos();
+    const efectivos = await listarEfectivosNoRecibidos(true);
     const marcado = efectivos.find((e) => e.id === coinciden.cash);
     expect(marcado?.notaCredito).toBeNull();
     expect(marcado?.casosEn90Dias).toBeGreaterThanOrEqual(1);

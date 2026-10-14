@@ -241,6 +241,20 @@ export async function getVentaParaFacturar(
   return { ...t, canal };
 }
 
+/**
+ * SI ALGUIEN MARCO ESTA VENTA COMO PRUEBA (0217). Leido de la fila y no recibido del llamador, por lo mismo
+ * que el ambiente: un llamador que pasara el dato podria pasarlo mal, y lo que esto decide es si sale un
+ * documento fiscal.
+ */
+export async function getMarcaDePruebaDeLaVenta(txId: string): Promise<Date | null> {
+  const [t] = await db
+    .select({ marcadaEn: transactions.marcadaComoPruebaAt })
+    .from(transactions)
+    .where(eq(transactions.id, txId))
+    .limit(1);
+  return t?.marcadaEn ?? null;
+}
+
 /** Con que pago el paciente, para el medio de pago de la factura. Leido de la fila, igual que el ambiente. */
 export async function getInstrumentoDeVenta(
   txId: string,
@@ -474,6 +488,23 @@ export async function listarFacturasPendientes(
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
        and ${LA_FACTURA_ES_DE_CNV}
+       -- ═══ UNA VENTA MARCADA A MANO NO ENTRA A LA COLA (2026-10-14) ═══
+       --
+       -- ESTE ERA EL HALLAZGO GRAVE DEL BARRIDO DE /pagos, y no es un contador: es la cola que de verdad
+       -- EMITE. El unico freno que habia esta mas adelante, en emitirFacturaDeVenta, y mira
+       -- patients.cuenta_como_de_prueba, o sea el PACIENTE. La marca de la 0217 es por VENTA, justo para el
+       -- caso de paciente y profesional REALES con acto de prueba, asi que ese freno NO LA VE: una venta
+       -- marcada a mano se iba a facturar en Alegra PRODUCCION, con numeracion de la DIAN, y deshacerla pide
+       -- una nota credito que tiene que hacer una persona.
+       --
+       -- Con el arranque esto deja de ser teorico: el script marca como prueba todo lo anterior al corte, y
+       -- sin esta linea la cola habria intentado facturarlo.
+       --
+       -- ES LA MARCA MANUAL Y NO LA COLUMNA DERIVADA, a proposito: una venta de un paciente de prueba SI se
+       -- factura, en SANDBOX, y es asi como se prueba la facturacion. Lo que no se factura en ningun ambiente
+       -- es un acto que alguien declaro que no ocurrio. El freno gemelo, para la pulsacion manual del boton,
+       -- esta en laVentaFueMarcadaComoPrueba.
+       and marcada_como_prueba_at is null
        and alegra_attempts < ${maxIntentos}
      order by created_at asc
      limit ${limite}`);
@@ -487,7 +518,9 @@ export async function listarFacturasPendientes(
  *
  * Incluye las que agotaron reintentos, que la cola ya no toca y que por eso son justo las que hay que ver.
  */
-export async function contarVentasSinDocumento(): Promise<{ total: number; agotadas: number }> {
+export async function contarVentasSinDocumento(
+  incluirDePrueba = false,
+): Promise<{ total: number; agotadas: number }> {
   const [r] = await db.execute<{ total: number; agotadas: number }>(sql`
     select count(*)::int as total,
            count(*) filter (where alegra_attempts >= 5)::int as agotadas
@@ -495,15 +528,26 @@ export async function contarVentasSinDocumento(): Promise<{ total: number; agota
      where status = 'paid'
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
-       and ${LA_FACTURA_ES_DE_CNV}`);
+       and ${LA_FACTURA_ES_DE_CNV}
+       and (${incluirDePrueba} or not cuenta_como_de_prueba)`);
   return { total: Number(r?.total ?? 0), agotadas: Number(r?.agotadas ?? 0) };
 }
 
 /**
  * CUANTAS VENTAS SIN DOCUMENTO QUEDAN POR DIA, en los ultimos `dias` dias de Colombia (hoy incluido). Solo los
  * dias que tienen alguna: un dia en cero no aparece, que es lo que se quiere ver.
+ *
+ * ── EL FILTRO DE PRUEBA LE FALTABA, Y PRODUCIA LA CONTRADICCION DEL HAZARD 4 (2026-10-14) ───────
+ *
+ * La LISTA de abajo si filtraba (`listarVentasSinDocumento`) y estos chips de dias no. Asi que un dia podia
+ * aparecer arriba con "(3)" y al pulsarlo la lista decia *"Ese dia quedo en cero"*: dos partes de la misma
+ * pantalla diciendo cosas opuestas porque leian fuentes distintas. Es la regla de fondo del hazard 4 de
+ * CLAUDE.md, y el arreglo es el mismo: unir las fuentes, no corregir el mensaje.
  */
-export async function contarVentasSinDocumentoPorDia(dias = 30): Promise<{ dia: string; total: number }[]> {
+export async function contarVentasSinDocumentoPorDia(
+  dias = 30,
+  incluirDePrueba = false,
+): Promise<{ dia: string; total: number }[]> {
   const filas = await db.execute<{ dia: string; total: number }>(sql`
     select (created_at at time zone 'America/Bogota')::date::text as dia, count(*)::int as total
       from transactions
@@ -511,6 +555,7 @@ export async function contarVentasSinDocumentoPorDia(dias = 30): Promise<{ dia: 
        and ${LE_FALTA_ALGO}
        and ${FACTURABLE}
        and ${LA_FACTURA_ES_DE_CNV}
+       and (${incluirDePrueba} or not cuenta_como_de_prueba)
        and (created_at at time zone 'America/Bogota')::date > (now() at time zone 'America/Bogota')::date - ${dias}::int
      group by 1
      order by 1 desc`);

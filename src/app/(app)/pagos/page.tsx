@@ -315,16 +315,16 @@ export default async function PagosPage({
     ? await enTandas([
         () => conLimite("pagos.ventas-sin-documento", () => listarVentasSinDocumento(50, dia, verDePrueba), []),
         () => conLimite("pagos.ventas-por-revisar", () => listarVentasPorRevisar(verDePrueba), []),
-        () => conLimite("pagos.efectivos-no-recibidos", listarEfectivosNoRecibidos, []),
-        () => conLimite("pagos.dias-con-ventas-sin-cerrar", contarVentasSinDocumentoPorDia, []),
+        () => conLimite("pagos.efectivos-no-recibidos", () => listarEfectivosNoRecibidos(verDePrueba), []),
+        () => conLimite("pagos.dias-con-ventas-sin-cerrar", () => contarVentasSinDocumentoPorDia(30, verDePrueba), []),
         // CON LOS DESCARTADOS, y de esta MISMA consulta (0205): el panel de "pendientes sin salida" tiene que
         // mostrarlos (quien, cuando, por que) en vez de esconderlos, y pedirlos aparte seria una segunda
         // consulta capaz de contar un universo distinto del que cuenta el correo. Para el mapa de "en gestion",
         // que es el otro consumidor de esta lista, traer los descartados no cambia nada.
-        () => conLimite("pagos.pendientes-de-accion", () => listarPendientesDeAccion({ incluirDescartados: true }), []),
+        () => conLimite("pagos.pendientes-de-accion", () => listarPendientesDeAccion({ incluirDescartados: true, incluirDePrueba: verDePrueba }), []),
         () => conLimite("pagos.reversas", () => listarReversas(50, verDePrueba), []),
         // La devolucion fisica (3b sesion 2): lo que volvio del paciente y espera verificacion.
-        () => conLimite("pagos.devueltas", leerDevolucionesPendientes, { items: [], destinos: [] }),
+        () => conLimite("pagos.devueltas", () => leerDevolucionesPendientes(verDePrueba), { items: [], destinos: [] }),
       ])
     : [];
   // El cotejo con Wompi lo ve quien responde por el dinero (no soporte): recuperar un pago sella ingreso,

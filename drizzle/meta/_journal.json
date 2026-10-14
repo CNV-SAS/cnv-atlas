@@ -1527,6 +1527,13 @@
       "when": 1791955106103,
       "tag": "0217_una_venta_se_puede_marcar_como_prueba",
       "breakpoints": true
+    },
+    {
+      "idx": 218,
+      "version": "7",
+      "when": 1792020146130,
+      "tag": "0218_el_descuadre_fisico_es_real",
+      "breakpoints": true
     }
   ]
 }
