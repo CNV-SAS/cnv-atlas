@@ -128,6 +128,20 @@ function FilaCorte({ corte }: { corte: CorteListoParaVer }) {
   // LA PAGADA NO SE REEMPLAZA, así que no se ofrece el botón: la plata ya se movió y retirar su cuenta
   // dejaría un pago contra un documento que dice no existir. Se dice qué pasa con esas ventas, que es lo
   // que admin necesita para decidir, en vez de un botón que revienta contra la base.
+  //
+  // ═══ Y CONTABILIDAD YA RESPONDIÓ QUÉ PASA CON ELLAS (2026-10-14) ═══
+  //
+  // Este mensaje decía *"hay que decidir con contabilidad si se facturan aparte"*. Era honesto cuando se
+  // escribió, y dejó de serlo el día que contabilidad decidió: **nunca se deja de cobrar**. Textual:
+  // *"si el producto se vendió, CNV tiene que facturarlo. Si no lo hace, pierde el ingreso, el inventario no
+  // cuadra y queda una venta sin factura"*. La regla es que la venta rezagada entra AL SIGUIENTE CORTE del
+  // mismo Integrante, marcada como de un periodo anterior.
+  //
+  // UNA PANTALLA QUE SIGUE PREGUNTANDO LO QUE YA SE RESPONDIÓ es peor que una que calla: invita a improvisar
+  // una decisión que ya está tomada, y cada quien improvisa distinto.
+  //
+  // EL TRASLADO AUTOMÁTICO TODAVÍA NO ESTÁ CONSTRUIDO, así que el mensaje dice la regla y dice que hoy el
+  // paso es a mano. Decir la regla sin decir que falta el automatismo sería afirmar que ya funciona.
   if (corte.cuentaVigentePagadaEl) {
     return (
       <div className="flex flex-col gap-1 rounded-lg border border-attention bg-attention-bg p-3">
@@ -137,9 +151,11 @@ function FilaCorte({ corte }: { corte: CorteListoParaVer }) {
           {corte.ventas === 1 ? "venta" : "ventas"} sin facturar · {pesos(corte.total)}
         </span>
         <span className="text-xs text-attention">
-          La cuenta de este corte ya se pagó el {corte.cuentaVigentePagadaEl}, así que no se puede rehacer.
-          Estas ventas quedan sin facturar: por su fecha no pueden entrar en el corte siguiente, y hay que
-          decidir con contabilidad si se facturan aparte.
+          La cuenta de este corte ya se pagó el {corte.cuentaVigentePagadaEl}, así que no se puede rehacer: su
+          factura ya existe en la DIAN. Estas ventas <strong>no quedan sin cobrar</strong>: van al siguiente
+          corte de este Integrante, como ventas de un periodo anterior. Hoy ese traslado hay que hacerlo a
+          mano, y si la venta y el siguiente corte caen en bimestres de IVA distintos, hay que facturarla
+          aparte antes de que cierre el bimestre en que se vendió.
         </span>
       </div>
     );

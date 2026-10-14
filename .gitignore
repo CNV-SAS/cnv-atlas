@@ -81,6 +81,13 @@ docs/entregas/**/*.csv
 # una imagen. Las de cotejo visual ya estan arriba; esto cubre el resto de entregas.
 docs/entregas/dudas/**
 
+# EL ACTA DEL SMOKE, a pedido de Santiago (2026-10-14: "El .md sin commitear que lo haga pero con
+# gitignore"). Es el documento donde quedan sus palabras tal cual mientras corre las pruebas, y por eso
+# NOMBRA PACIENTES: al prepararlo para commitear, un grep encontro tres lineas con datos que identifican a
+# una persona. El guion del smoke SI se versiona (SMOKE_SEGUNDO_*.md, sin nombres); lo que no se versiona es
+# el acta de la corrida, que es donde los nombres aparecen solos.
+docs/entregas/RESULTADOS_SMOKE_Y_PROXIMOS_PASOS.md
+
 # Prototipos HTML que entrega Gildardo. NO van al repositorio, por dos razones:
 #   · son prototipos (el v10 pesa 1,46 MB) y Santiago ya planea depurar los que hay;
 #   · y traen CREDENCIALES VIVAS. El v9 versionado las tiene tapadas a mano

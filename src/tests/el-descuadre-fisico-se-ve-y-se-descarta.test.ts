@@ -24,13 +24,51 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 const BANDEJA = sinComentarios(readFileSync("src/modules/payments/data/ventas-por-revisar.ts", "utf8"));
 const PENDIENTES = sinComentarios(readFileSync("src/modules/avisos/data/avisos-repository.ts", "utf8"));
 
+// ═══ Y EL MECANISMO CAMBIO EL 2026-10-14, SIN QUE LA REGLA CAMBIE (0218) ═══
+//
+// LO QUE PASABA: esta misma excepcion estaba escrita DOS VECES y distinto. La bandeja decia "ninguna linea es
+// de producto de prueba" (`not exists (... is_test)`) y los avisos decian "alguna linea es real"
+// (`exists (... is_test = false)`). Coincidian solo porque el servicio no deja mezclar productos de prueba y
+// reales en una venta, o sea por una regla de OTRA capa. Este candado vigilaba las dos redacciones, una por
+// archivo, que es tan fragil como el codigo que vigilaba.
+//
+// AHORA LAS DOS LLAMAN A `public.el_descuadre_fisico_es_real` (0218), que lo dice una vez. Asi que lo que hay
+// que vigilar ya no es que cada archivo tenga su condicion: es que las dos usen LA MISMA, y que la funcion
+// siga mirando el producto.
+//
+// Es [[una-regla-nueva-invalida-el-mecanismo-no-el-fixture]]: la regla no se movio (un descuadre de producto
+// real sigue viendose), se movio DONDE vive. El candado sigue a la regla.
+const FUNCION = readFileSync("drizzle/0218_el_descuadre_fisico_es_real.sql", "utf8");
+
 describe("la bandeja y el panel de descartar deciden igual sobre un sin_saldo", () => {
-  it("la bandeja mira el PRODUCTO, no la marca de la venta", () => {
-    // Si algun dia filtrara por `cuenta_como_de_prueba`, esconderia un descuadre fisico real.
-    expect(BANDEJA, "la bandeja empezo a esconder por la marca de la venta").not.toMatch(
-      /and\s+not\s+t\.cuenta_como_de_prueba/,
+  it("las dos ramas de saldo llaman a la MISMA funcion, no a dos condiciones parecidas", () => {
+    expect(BANDEJA, "la bandeja dejo de usar la definicion compartida").toContain(
+      "el_descuadre_fisico_es_real",
     );
-    expect(BANDEJA, "la bandeja dejo de mirar si el producto es de prueba").toContain("n.is_test");
+    expect(PENDIENTES, "los avisos dejaron de usar la definicion compartida").toContain(
+      "el_descuadre_fisico_es_real",
+    );
+  });
+
+  it("y la funcion mira el PRODUCTO, que es lo que sostiene el argumento fisico", () => {
+    // Si dejara de mirarlo, un hueco de saldo en un producto que no existe entraria al correo.
+    expect(FUNCION, "la funcion dejo de exigir que el producto sea real").toMatch(
+      /is_test,\s*false\)\s*=\s*false/,
+    );
+    // Y LA MARCA MANUAL es el otro insumo (Santiago: "que se oculten esta vez si de verdad"). Si se cayera,
+    // volveria el caso que nunca se pudo ocultar.
+    expect(FUNCION, "la funcion dejo de mirar la marca manual del acto").toContain("marcada_como_prueba_at");
+  });
+
+  it("la bandeja NO esconde un descuadre por la marca DERIVADA de la venta", () => {
+    // El control que sigue valiendo: la rama de saldo no puede filtrar por `cuenta_como_de_prueba`, porque esa
+    // columna es verdadera tambien por el PACIENTE, y un paciente de prueba no devuelve la unidad al estante.
+    const i = BANDEJA.indexOf("stock_state in ('sin_saldo', 'fallido')");
+    expect(i, "cambio la rama de saldo de la bandeja: revisa este candado").toBeGreaterThan(0);
+    const rama = BANDEJA.slice(i, BANDEJA.indexOf("order by", i));
+    expect(rama, "la rama de saldo empezo a esconder por la marca derivada").not.toContain(
+      "cuenta_como_de_prueba",
+    );
   });
 
   it("y el lector de pendientes NO saca un sin_saldo por la marca de la venta", () => {
@@ -42,7 +80,7 @@ describe("la bandeja y el panel de descartar deciden igual sobre un sin_saldo", 
     ).toMatch(/not tx\.cuenta_como_de_prueba or p\.tipo = 'sin_saldo'/);
   });
 
-  it("y la rama de sin_saldo conserva su propia regla, que es la del producto", () => {
+  it("y la rama de sin_saldo conserva su propia regla, ahora como llamada a la funcion", () => {
     // El control: si alguien quitara la condicion de la rama creyendo que la excepcion de arriba la sustituye,
     // entraria al correo cualquier venta de un producto de prueba.
     const i = PENDIENTES.indexOf("'sin_saldo', t.id");
@@ -54,10 +92,13 @@ describe("la bandeja y el panel de descartar deciden igual sobre un sin_saldo", 
     //
     // Es el mismo defecto de corte del candado de `cierre-consulta`, que rebanaba "hasta el fin del archivo":
     // una ventana por longitud envejece con el codigo y acaba acusando lo que no es. La rama termina donde
-    // empieza la siguiente (`union all`), que es un limite que no se mueve.
+    // empieza la siguiente (`union all`), o donde acaba el `with` si es la ultima: las dos son limites que no
+    // se mueven con el texto de la rama.
     const siguiente = PENDIENTES.indexOf("union all", i);
-    const rama = PENDIENTES.slice(i, siguiente > i ? siguiente : undefined);
-    expect(rama, "la rama de sin_saldo dejo de exigir que el producto sea real").toContain("is_test, false) = false");
+    const rama = PENDIENTES.slice(i, siguiente > i ? siguiente : PENDIENTES.indexOf("from pendientes p", i));
+    expect(rama, "la rama de sin_saldo dejo de exigir que el descuadre sea real").toContain(
+      "el_descuadre_fisico_es_real",
+    );
   });
 });
 
