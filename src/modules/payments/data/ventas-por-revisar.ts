@@ -91,20 +91,23 @@ export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<V
       from transactions t
       left join profiles p on p.id = t.review_professional_version_by
      where t.status = 'paid'
-       -- ═══ EL MATIZ DE ESTA BANDEJA, Y NO ES EL MISMO QUE EN LAS DEMAS (Santiago, 2026-10-02) ═══
+       -- ═══ EL FILTRO DE PRUEBA NO ES EL MISMO PARA LAS TRES RAMAS (Santiago, 2026-10-14) ═══
        --
-       -- Las otras tres ocultan lo de prueba con la columna de la venta. Esta NO puede usarla para el caso
-       -- de SIN SALDO: si el producto era REAL, el descuento de inventario tambien fue real y la vitrina
-       -- esta descuadrada DE VERDAD, aunque el paciente o el profesional sean de prueba. Esconderlo
-       -- esconderia un problema fisico.
+       -- EL DEFECTO QUE SE ARREGLA AQUI: el filtro de producto estaba ARRIBA, suelto, aplicandose a las TRES
+       -- ramas de la bandeja. Y su razon (la que esta escrita desde el 2026-10-02) vale solo para las de
+       -- SALDO: hablan de unidades fisicas, y si el producto era real la vitrina esta descuadrada de verdad.
        --
-       -- Asi que mira el PRODUCTO: una venta cuyas lineas son todas de producto de prueba no movio nada.
-       and (${incluirDePrueba} or not exists (
-         select 1 from transaction_items ti join nutraceuticals n on n.id = ti.nutraceutical_id
-          where ti.transaction_id = t.id and coalesce(n.is_test, false)
-       ))
+       -- PERO "PAGO SOBRE LINK ANULADO" NO HABLA DE UNIDADES: es una DECISION pendiente sobre dinero (si fue
+       -- una segunda compra o si se devolvio). Puesto bajo el filtro del producto, el de un paciente de
+       -- prueba seguia pidiendo accion a admin solo porque el producto era real. Textual de Santiago sobre
+       -- esta pantalla: *"aparece en lo real cosas que ya estan marcadas con pacientes de prueba"*.
+       --
+       -- Asi que cada rama lleva su propio filtro, y los dos salen de un sitio: la columna derivada para la
+       -- decision, y el_descuadre_fisico_es_real (0218) para el saldo, que es la MISMA funcion que usa la
+       -- rama sin_saldo de los avisos. Antes eran dos condiciones escritas distinto en dos archivos.
        and (
-         (t.review_reason is not null and t.review_resolution is null)
+         (t.review_reason is not null and t.review_resolution is null
+          and (${incluirDePrueba} or not t.cuenta_como_de_prueba))
          -- LA VENTANA MIRA CUANDO SE REGISTRO, NO CUANDO OCURRIO (Santiago, 2026-09-30).
          --
          -- Una venta RETROACTIVA escribe su created_at en la fecha real, asi que una registrada hoy con
@@ -112,7 +115,8 @@ export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<V
          -- mas hace falta ver: si no alcanzo el saldo, la vitrina esta contando unidades que salieron hace
          -- meses. Paso en el smoke con una LUVIA: quedo "no alcanzo el saldo" y nadie tenia donde trabajarla.
          or (t.stock_state in ('sin_saldo', 'fallido')
-             and coalesce(t.registered_retroactively_at, t.created_at) > now() - interval '30 days')
+             and coalesce(t.registered_retroactively_at, t.created_at) > now() - interval '30 days'
+             and (${incluirDePrueba} or public.el_descuadre_fisico_es_real(t.id)))
        )
      order by (t.review_reason is not null and t.review_resolution is null) desc, t.created_at desc
      limit 100`);
@@ -146,8 +150,15 @@ export type EfectivoNoRecibido = {
 /**
  * EFECTIVO REGISTRADO QUE NO SE RECIBIO (0142). Las que tienen la nota credito pendiente, siempre; y las de los
  * ultimos 90 dias, porque es la ventana de la escalada por Integrante.
+ *
+ * ── Y LO DE PRUEBA NO ENTRA (Santiago, 2026-10-14) ──────────────────────────────────────────────
+ *
+ * Faltaba, y era el lector mas descubierto de los ocho de /pagos: ni leia la columna derivada ni recibia el
+ * interruptor. Esta bandeja habla de DINERO (un efectivo que no entro, y su nota credito en Alegra), y de una
+ * venta de prueba no entro ni dejo de entrar nada. Tambien cuenta "casos en 90 dias" por Integrante, que es
+ * una ESCALADA: contar pruebas ahi es escalarle a alguien por data inventada.
  */
-export async function listarEfectivosNoRecibidos(): Promise<EfectivoNoRecibido[]> {
+export async function listarEfectivosNoRecibidos(incluirDePrueba = false): Promise<EfectivoNoRecibido[]> {
   const filas = await db.execute<{
     id: string;
     amount: string;
@@ -159,13 +170,20 @@ export async function listarEfectivosNoRecibidos(): Promise<EfectivoNoRecibido[]
   }>(sql`
     select t.id, t.amount::text as amount, t.cash_not_received_at::text as marcada_en, pr.full_name as profesional,
            t.alegra_invoice_number as factura, t.credit_note_manual_number as nota_credito,
+           -- LA CUENTA DE LA ESCALADA SIGUE EL MISMO FILTRO QUE LA LISTA, y es la parte que mas importa de
+           -- este arreglo: este numero DECIDE SOBRE UNA PERSONA (a los tres casos en 90 dias se escala al
+           -- Integrante). Sin el filtro, una fila REAL podia decir "4 casos" con tres de prueba dentro, y la
+           -- escalada salia por data inventada. Encendido cuenta todo, porque ahi lo que se esta mirando es
+           -- justo lo de prueba.
            (select count(*)::int from transactions o
              where o.professional_id is not distinct from t.professional_id
-               and o.cash_not_received_at > now() - interval '90 days') as casos
+               and o.cash_not_received_at > now() - interval '90 days'
+               and (${incluirDePrueba} or not o.cuenta_como_de_prueba)) as casos
       from transactions t
       left join professional_profiles pp on pp.id = t.professional_id
       left join profiles pr on pr.id = pp.profile_id
      where t.cash_not_received_at is not null
+       and (${incluirDePrueba} or not t.cuenta_como_de_prueba)
        and (t.credit_note_manual_number is null or t.cash_not_received_at > now() - interval '90 days')
      order by t.cash_not_received_at desc
      limit 100`);

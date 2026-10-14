@@ -258,7 +258,7 @@ export type DevueltaPendiente = {
 };
 
 /** Lo que espera verificacion, por producto y lote. */
-export async function listarDevueltasPendientes(): Promise<DevueltaPendiente[]> {
+export async function listarDevueltasPendientes(incluirDePrueba = false): Promise<DevueltaPendiente[]> {
   // LA CUARENTENA VA DENTRO DE LA CONSULTA, no en un viaje aparte (2026-09-24). Preguntarla primero eran DOS
   // idas a la base para una pantalla que ya pide muchas, y cada ida tiene que esperar cupo en un pool de
   // seis. Para ESCRIBIR sigue resolviendose aparte, porque ahi hace falta el mensaje propio si no existe.
@@ -280,6 +280,20 @@ export async function listarDevueltasPendientes(): Promise<DevueltaPendiente[]> 
       join lots l on l.id = i.lot_id
      where i.location_id = (select id from inventory_locations where kind = 'cuarentena' and is_active limit 1)
        and i.stock_quantity > 0
+       -- ═══ NI AQUI NI EN NINGUNA CIFRA DE INVENTARIO ENTRA UN PRODUCTO DE PRUEBA (2026-10-14) ═══
+       --
+       -- Le faltaba, y salio del barrido de /pagos: de los ocho lectores de la pantalla este era el unico
+       -- que no filtraba NADA, ni por venta ni por producto.
+       --
+       -- Y NO PUEDE FILTRAR POR VENTA, que es lo que hay que entender de este panel: no lee transactions.
+       -- Cuenta UNIDADES paradas en la ubicacion de cuarentena, asi que ninguna marca de venta lo puede
+       -- vaciar; marcar la venta de la que salio una devolucion no saca la unidad de la cuarentena, igual
+       -- que no la devuelve al estante. Lo que si corresponde es no contar productos que no existen.
+       --
+       -- LAS UNIDADES DE PRODUCTO REAL QUE QUEDEN AQUI SE CIERRAN CON LOS DOS BOTONES QUE YA TIENE el panel
+       -- (volver al lote, o dar de baja), que es un juicio fisico: alguien mira la unidad y decide. No hay
+       -- script que pueda tomarlo.
+       and (${incluirDePrueba} or coalesce(n.is_test, false) = false)
      order by n.name`);
   return filas.map((f) => ({
     nutraceuticalId: f.nutraceutical_id,
@@ -302,11 +316,11 @@ export async function listarDevueltasPendientes(): Promise<DevueltaPendiente[]> 
  * Asi que las dos se piden juntas, y los destinos SOLO cuando hay algo que verificar, que es lo normal que
  * no haya: en el caso comun esto es una consulta, no dos.
  */
-export async function leerDevolucionesPendientes(): Promise<{
+export async function leerDevolucionesPendientes(incluirDePrueba = false): Promise<{
   items: DevueltaPendiente[];
   destinos: { id: string; nombre: string }[];
 }> {
-  const items = await listarDevueltasPendientes();
+  const items = await listarDevueltasPendientes(incluirDePrueba);
   if (items.length === 0) return { items, destinos: [] };
   return { items, destinos: await listarDestinosVendibles() };
 }

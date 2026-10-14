@@ -167,7 +167,7 @@ describe.skipIf(!HAS_DB)("la devolución física (BD real)", () => {
     expect(await saldo(suyaId), "la unidad devuelta volvió al lote vendible").toBe(vendibleAntes);
     expect(await saldo(cuarentenaId)).toBe(enEsperaAntes + 1);
 
-    const pendientes = await listarDevueltasPendientes();
+    const pendientes = await listarDevueltasPendientes(true);
     const mia = pendientes.find((p) => p.nutraceuticalId === nutraceuticalId && p.lotId === lotId);
     expect(mia?.cantidad).toBe(enEsperaAntes + 1);
     expect(mia?.ultimoMotivo).toBe("El paciente la devolvió sin abrir");

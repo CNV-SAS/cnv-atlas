@@ -303,3 +303,25 @@ export function rangoDeBusqueda(fecha: string): { desde: string; hasta: string }
 export function pudoHaberseCreado(e: unknown): boolean {
   return !(e instanceof HttpError && e.status >= 400 && e.status < 500);
 }
+
+/**
+ * ═══ UN ACTO QUE ALGUIEN DECLARO DE PRUEBA NO SE FACTURA EN NINGUN AMBIENTE (2026-10-14) ═══
+ *
+ * ── POR QUE ES UNA TERCERA DECISION Y NO UNA RAMA DE LA DE ARRIBA ───────────────────────────────
+ *
+ * `motivoSiPacienteYAmbienteNoCuadran` es SIMETRICA: en sandbox exige un paciente de prueba, en produccion
+ * exige uno real. La marca de la 0217 existe justo para el caso que esa simetria no cubre, paciente y
+ * profesional REALES con acto de prueba, asi que en produccion esa funcion la deja pasar y la factura sale.
+ *
+ * Y NO TIENE AMBIENTE AL QUE PERTENECER: en produccion seria un documento fiscal por algo que no ocurrio, y
+ * en sandbox el paciente es real y su identidad no viaja a un ambiente de pruebas. Las dos puertas estan
+ * cerradas, asi que esta no se abre en ninguna.
+ *
+ * SE MIRA LA MARCA MANUAL Y NO `cuenta_como_de_prueba`, por lo mismo que lo hace la cola: la columna derivada
+ * es verdadera tambien para un paciente de prueba, y esa venta SI se factura (en sandbox) porque es asi como
+ * se prueba la facturacion.
+ */
+export function laVentaFueMarcadaComoPrueba(marcadaEn: Date | string | null): string | null {
+  if (marcadaEn == null) return null;
+  return "Alguien marcó esta venta como de PRUEBA, con su motivo. No se factura en ningún ambiente: un documento fiscal afirmaría un acto que ya se declaró que no ocurrió. Si la venta es real, quítale la marca y vuelve a intentarlo.";
+}

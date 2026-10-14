@@ -18,6 +18,7 @@ import {
   cuentaDelPago,
   desgloseDeLaVenta,
   fechaEnColombia,
+  laVentaFueMarcadaComoPrueba,
   motivoSiPacienteYAmbienteNoCuadran,
   pudoHaberseCreado,
   rangoDeBusqueda,
@@ -328,7 +329,18 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       return;
     }
 
-    // 2. EL PACIENTE: uno real no viaja al sandbox, y uno de prueba no se factura en produccion.
+    // 2. EL ACTO: una venta que alguien marco como prueba no se factura en NINGUN ambiente (2026-10-14). Va
+    //    junto a las otras dos y antes del reclamo por la misma razon: si la marca se quita, la venta sale
+    //    sola de `rechazada` sin haber gastado intentos. El freno gemelo, para la COLA, esta en
+    //    `listarFacturasPendientes`; este cubre el boton de "Reintentar" y el webhook, que no pasan por ella.
+    const marcadaEn = await fr.getMarcaDePruebaDeLaVenta(venta.id);
+    const motivoDeLaMarca = laVentaFueMarcadaComoPrueba(marcadaEn);
+    if (motivoDeLaMarca) {
+      await fr.registrarIntentoDeFactura(venta.id, { estado: "rechazada", error: motivoDeLaMarca });
+      return;
+    }
+
+    // 3. EL PACIENTE: uno real no viaja al sandbox, y uno de prueba no se factura en produccion.
     const datos = await fr.getDatosDelContacto(venta.patientId);
     const motivoPaciente = datos
       ? motivoSiPacienteYAmbienteNoCuadran(datos.esDePrueba, mapa.env)

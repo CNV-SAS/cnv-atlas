@@ -29,8 +29,20 @@ export type TipoDeMarca = "pendientes_ventas" | "escalamiento_ventas";
  * `incluirDescartados` NO duplica la regla: es la MISMA consulta, que trae tambien el descarte para que el panel
  * lo muestre (quien, cuando, por que) en vez de esconder la fila. El correo y la franja llaman sin la opcion.
  */
-export async function listarPendientesDeAccion(opciones?: { incluirDescartados?: boolean }): Promise<Pendiente[]> {
+export async function listarPendientesDeAccion(opciones?: {
+  incluirDescartados?: boolean;
+  /**
+   * EL INTERRUPTOR DE /pagos (Santiago, 2026-10-14). Faltaba, y era la mitad que hacia que el interruptor
+   * mintiera: al encenderlo, cuatro paneles mostraban lo de prueba y este no. Un interruptor que cubre la
+   * mitad de la pantalla es peor que no tenerlo, porque quien lo enciende cree que esta viendo todo.
+   *
+   * EL CORREO Y LA FRANJA LLAMAN SIN ESTO, y es lo que tiene que seguir pasando: un aviso operativo que
+   * mezcla data inventada con real se deja de leer.
+   */
+  incluirDePrueba?: boolean;
+}): Promise<Pendiente[]> {
   const incluirDescartados = opciones?.incluirDescartados === true;
+  const incluirDePrueba = opciones?.incluirDePrueba === true;
   const filas = await db.execute<{
     tipo: TipoDePendiente;
     transaction_id: string;
@@ -162,14 +174,14 @@ export async function listarPendientesDeAccion(opciones?: { incluirDescartados?:
          -- cuadrando el inventario). Sin tope seria una linea eterna en el correo, y un aviso que no se
          -- puede quitar deja de ser un aviso: se vuelve ruido que se aprende a ignorar.
          and coalesce(t.registered_retroactively_at, t.operated_at, t.created_at) > now() - interval '30 days'
-         -- Y SIN PRODUCTOS DE PRUEBA: un hueco de saldo en un producto que no existe no es un problema de
-         -- operacion, y mandarlo por correo entrena a la gente a ignorar el correo. Es la misma regla que ya
-         -- aplican las cifras de inventario.
-         and exists (
-           select 1 from transaction_items ti
-             join nutraceuticals n on n.id = ti.nutraceutical_id
-            where ti.transaction_id = t.id and coalesce(n.is_test, false) = false
-         )
+         -- ═══ LA EXCEPCION, AHORA EN UNA SOLA DEFINICION (0218) ═══
+         --
+         -- Aqui habia un exists (... is_test = false) escrito a mano, y en la bandeja de "ventas por
+         -- revisar" el MISMO criterio escrito al reves (not exists (... is_test)). Coincidian solo porque
+         -- el servicio no deja mezclar productos de prueba y reales en una venta, o sea por una regla de otra
+         -- capa. La funcion lo dice una vez, y le suma la marca MANUAL de la venta: la unica de las cuatro
+         -- entradas que la pone una persona afirmando que el acto no ocurrio. Ver la 0218.
+         and (${incluirDePrueba} or public.el_descuadre_fisico_es_real(t.id))
     )
     -- ═══ Y NADA DE PRUEBA LLEGA AL CORREO NI AL AVISO (Santiago, 2026-10-02) ═══
     --
@@ -223,7 +235,7 @@ export async function listarPendientesDeAccion(opciones?: { incluirDescartados?:
       -- prueba no pide nada; sin_saldo habla de UNIDADES FISICAS, que no entienden de marcas.
       join transactions tx
         on tx.id = p.transaction_id
-       and (not tx.cuenta_como_de_prueba or p.tipo = 'sin_saldo')
+       and (${incluirDePrueba} or not tx.cuenta_como_de_prueba or p.tipo = 'sin_saldo')
       left join lateral (
         select f.until_date, f.note, pr.full_name as por
           from pending_followups f join profiles pr on pr.id = f.created_by
