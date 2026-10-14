@@ -13,6 +13,7 @@ import {
   declaracionAfirmaAsentimiento,
   declaracionPorEdad,
   esDeclaracionDeMenor,
+  ramaSigueCorrespondiendo,
   textoDeLaDeclaracion,
 } from "@/modules/consent/text/declaracion-presencial";
 
@@ -152,5 +153,91 @@ describe("que declaracion le toca a cada edad", () => {
       expect(textoDeLaDeclaracion(v)).toBeTruthy();
     }
     expect(textoDeLaDeclaracion("9.9"), "una version que no existe no se inventa").toBeNull();
+  });
+});
+
+// ═══ LA RAMA CONTRA UNA FECHA CORREGIDA (el hallazgo del abogado, 2026-10-14) ═══
+//
+// *"Si esa fecha esta mal digitada y se corrige despues, el consentimiento ya firmado quedo bajo la rama
+// equivocada, y NADA LO VA A DETECTAR."*
+//
+// LO QUE ESTE CANDADO SOSTIENE, y es lo unico de esa pieza que puede salir mal en silencio: la ARITMETICA.
+// La deteccion vive en un script (`RAMA_DEL_CONSENTIMIENTO_CONTRA_LA_FECHA_DE_HOY.sql`) y la superficie que
+// lo avise es la pieza 2; pero si estas cuentas estuvieran mal, el script diria "no hay nada" y seria peor
+// que no tenerlo.
+describe("la rama declarada contra una fecha de nacimiento corregida", () => {
+  it("sin la fecha congelada no afirma nada, en vez de adivinar", () => {
+    // Las sesiones anteriores a la 0216 no la tienen. Decir de ellas que estan mal seria inventar.
+    expect(ramaSigueCorrespondiendo({ fechaAlEmitir: null, fechaDeHoy: "2010-01-01", diaDelActo: "2026-10-14" })).toBeNull();
+    expect(ramaSigueCorrespondiendo({ fechaAlEmitir: "2010-01-01", fechaDeHoy: null, diaDelActo: "2026-10-14" })).toBeNull();
+  });
+
+  it("la misma fecha es coherente, y un error que NO cruza umbral tampoco alarma", () => {
+    const igual = ramaSigueCorrespondiendo({
+      fechaAlEmitir: "1990-05-20",
+      fechaDeHoy: "1990-05-20",
+      diaDelActo: "2026-10-14",
+    });
+    expect(igual?.coherente).toBe(true);
+
+    // Un dedazo en el DIA de un adulto: sigue siendo adulto, y marcarlo seria ruido.
+    const dedazo = ramaSigueCorrespondiendo({
+      fechaAlEmitir: "1990-05-20",
+      fechaDeHoy: "1990-05-02",
+      diaDelActo: "2026-10-14",
+    });
+    expect(dedazo?.coherente, "un error que no cambia la rama no cambia nada de lo declarado").toBe(true);
+  });
+
+  it("EL CASO GRAVE: se declaro como adulto y era menor", () => {
+    const r = ramaSigueCorrespondiendo({
+      fechaAlEmitir: "2006-03-10", // 20 años el dia del acto
+      fechaDeHoy: "2016-03-10", // 10 años
+      diaDelActo: "2026-10-14",
+    });
+    expect(r?.coherente).toBe(false);
+    expect(r?.versionQueSeUso).toBe("1.0");
+    expect(r?.versionQueCorresponde, "faltaria el representante legal entero").toBe("1.1-a");
+  });
+
+  it("y el umbral del asentimiento, que es el que mas facil se pasa por alto", () => {
+    const r = ramaSigueCorrespondiendo({
+      fechaAlEmitir: "2013-01-01", // 13 el dia del acto: 1.1-a
+      fechaDeHoy: "2011-01-01", // 15: 1.1-b
+      diaDelActo: "2026-10-14",
+    });
+    expect(r?.versionQueSeUso).toBe("1.1-a");
+    expect(r?.versionQueCorresponde).toBe("1.1-b");
+    expect(r?.coherente).toBe(false);
+  });
+
+  // ── LA EDAD SE MIDE EL DIA DEL ACTO, NO HOY, y esto es lo que lo prueba ────────────────────────
+  //
+  // Un menor que firmo bien y cumplio 18 despues NO esta mal declarado. Comparado contra hoy saldria como
+  // incoherente, y el script se llenaria de falsos positivos que harian que nadie lo mirara.
+  it("el paso del tiempo NO vuelve incoherente un consentimiento bien firmado", () => {
+    const r = ramaSigueCorrespondiendo({
+      fechaAlEmitir: "2008-06-01",
+      fechaDeHoy: "2008-06-01",
+      diaDelActo: "2025-01-15", // tenia 16: 1.1-b, correcto
+    });
+    expect(r?.versionQueSeUso).toBe("1.1-b");
+    expect(r?.coherente, "hoy ya tiene 18, y eso no cambia lo que firmo con 16").toBe(true);
+  });
+
+  // EL CUMPLEAÑOS EXACTO, que es donde una resta de milisegundos se equivoca por un dia.
+  it("cumplir 18 el dia mismo del acto ya es adulto", () => {
+    const r = ramaSigueCorrespondiendo({
+      fechaAlEmitir: "2008-10-14",
+      fechaDeHoy: "2008-10-14",
+      diaDelActo: "2026-10-14",
+    });
+    expect(r?.versionQueSeUso).toBe("1.0");
+    const vispera = ramaSigueCorrespondiendo({
+      fechaAlEmitir: "2008-10-15",
+      fechaDeHoy: "2008-10-15",
+      diaDelActo: "2026-10-14",
+    });
+    expect(vispera?.versionQueSeUso, "la vispera todavia es menor").toBe("1.1-b");
   });
 });
