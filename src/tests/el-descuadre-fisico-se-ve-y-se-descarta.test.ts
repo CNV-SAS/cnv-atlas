@@ -113,3 +113,70 @@ describe("y la bandeja DICE por que muestra una venta de prueba", () => {
     expect(COMPONENTE).toContain("el producto es real");
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y LA OTRA MITAD, QUE FALTABA: EL DESCARTE TENIA QUE VALER EN LOS DOS PANELES (0220, 2026-10-15)
+//
+// EL CASO: con el arranque ya comiteado y las 55 ventas anteriores marcadas de prueba, admin seguia viendo
+// cinco filas en "Ventas por revisar". Las cinco son correctas (son el descuadre fisico de arriba). Lo que no
+// era correcto es que el texto de ESTA bandeja manda a *"cuadrarlo o descartarlo abajo, en Pendientes sin
+// salida"*, y `listarVentasPorRevisar` no sabia nada del descarte: se descartaba abajo y arriba seguia igual.
+//
+// POR QUE ES GRAVE Y NO COSMETICO: la pantalla pide una accion y no reconoce que se hizo. Quien la lee no
+// concluye "son dos reglas distintas", concluye "el sistema no guardo lo que hice", y deja de creerle al
+// panel. Es el mismo coste que ya se pago con el aviso que acusaba a la vitrina equivocada.
+//
+// Es el hazard 4 de CLAUDE.md en su forma pura: dos partes de la pantalla diciendo cosas opuestas porque leen
+// FUENTES DISTINTAS, y el arreglo es unir las fuentes, no corregir el mensaje.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("un descarte vigente vale en los dos paneles", () => {
+  const DESCARTE = readFileSync("drizzle/0220_un_descarte_vale_en_los_dos_paneles.sql", "utf8");
+
+  it("la bandeja de ventas por revisar consulta el descarte", () => {
+    expect(BANDEJA, "la bandeja volvio a ignorar el descarte que ella misma manda a hacer").toContain(
+      "public.el_pendiente_sigue_pidiendo_accion(",
+    );
+  });
+
+  it("y el lector de pendientes usa LA MISMA funcion, no su propia redaccion", () => {
+    expect(PENDIENTES, "el lector de pendientes se quedo con la condicion escrita a mano").toContain(
+      "public.el_pendiente_sigue_pidiendo_accion(p.tipo, p.transaction_id)",
+    );
+    // La condicion vieja vivia SOLO aqui, y es justo por eso que el otro panel no la tenia. Si vuelve a
+    // aparecer en el where, volvio a haber dos fuentes.
+    expect(PENDIENTES, "volvio la condicion de descarte escrita a mano en el where").not.toMatch(
+      /where \$\{incluirDescartados\} or d\.reason is null/,
+    );
+  });
+
+  it("y el filtro del descarte NO depende del interruptor de lo de prueba", () => {
+    // Son dos cosas distintas: la marca de prueba habla de si el acto cuenta, y el descarte habla de si una
+    // persona ya juzgo ese hecho fisico. Colgar el descarte del interruptor haria que al ver lo de prueba
+    // reaparecieran filas ya resueltas, que es la contradiccion de vuelta.
+    const llamada = BANDEJA.slice(BANDEJA.indexOf("el_pendiente_sigue_pidiendo_accion"));
+    expect(llamada.slice(0, 200)).not.toContain("incluirDePrueba");
+  });
+
+  it("la funcion exige descarte NO revocado y huella VIGENTE, las dos", () => {
+    expect(DESCARTE).toContain("d.revoked_at IS NULL");
+    // Caducado no cuenta: el hecho cambio despues del juicio, asi que el juicio ya no lo cubre.
+    expect(DESCARTE).toContain("public.huella_del_pendiente(d.kind, d.transaction_id)");
+    expect(DESCARTE).toMatch(/SELECT NOT EXISTS/);
+  });
+
+  it("y no la alcanza el navegador", () => {
+    expect(DESCARTE).toMatch(
+      /REVOKE ALL ON FUNCTION public\.el_pendiente_sigue_pidiendo_accion\(text, uuid\) FROM anon, authenticated/,
+    );
+  });
+
+  it("'fallido' no tiene camino de descarte, y la huella LANZA para un tipo sin definir", () => {
+    // `huella_del_pendiente` revienta con un tipo que no conoce (hoy solo sin_saldo y por_despachar). El
+    // EXISTS la protege: para `fallido` no hay filas de descarte, asi que nunca se evalua. Si alguien
+    // cambiara el EXISTS por un calculo previo de la huella, esta bandeja empezaria a lanzar.
+    expect(DESCARTE).toContain("FROM pending_discards d");
+    const huella = readFileSync("drizzle/0205_descartar_un_pendiente_sin_salida.sql", "utf8");
+    expect(huella).toContain("tipo de pendiente sin huella definida");
+  });
+});

@@ -253,7 +253,18 @@ export async function listarPendientesDeAccion(opciones?: {
       ) d on true
      -- UN DESCARTE VIGENTE Y NO CADUCADO saca el pendiente del correo y de la franja. Caducado NO lo saca: el
      -- hecho cambio despues del juicio, asi que el juicio ya no lo cubre y vuelve a pedir accion.
-     where ${incluirDescartados} or d.reason is null or d.caducado
+     --
+     -- ═══ Y ESA REGLA LA DICE LA FUNCION, NO ESTE WHERE (0220) ═══
+     --
+     -- Estaba escrita aqui (d.reason is null or d.caducado) y en ningun otro sitio, asi que la bandeja de
+     -- "Ventas por revisar" (que muestra el MISMO hecho) no la tenia: se descartaba abajo y arriba seguia
+     -- pidiendo accion. Ahora las dos consultas preguntan lo mismo al mismo sitio, que es el argumento de la
+     -- 0218 y de huella_del_pendiente.
+     --
+     -- El lateral d SE QUEDA, pero ya solo para MOSTRAR (motivo, autor, fecha, caducado). Quien decide si
+     -- la fila sale es la funcion, y ademas aguanta lo que el lateral no: si algun dia hubiera dos descartes
+     -- sin revocar de la misma venta, d multiplicaria la fila y el EXISTS no.
+     where ${incluirDescartados} or public.el_pendiente_sigue_pidiendo_accion(p.tipo, p.transaction_id)
      order by p.desde`);
   return filas.map((f) => ({
     tipo: f.tipo,

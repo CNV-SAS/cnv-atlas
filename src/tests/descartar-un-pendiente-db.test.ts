@@ -44,6 +44,17 @@ describe.skipIf(!HAS_DB)("descartar un pendiente sin salida (BD real)", () => {
       (p) => p.transactionId === ventaId && p.tipo === "sin_saldo",
     );
 
+  // ═══ Y LA BANDEJA DE "VENTAS POR REVISAR", QUE MUESTRA EL MISMO HECHO (0220, 2026-10-15) ═══
+  //
+  // POR QUE ENTRA EN ESTE CANDADO Y NO EN UNO NUEVO: la regla que se agrego no es "el descarte calla el
+  // correo", que ya estaba probada aqui. Es que el descarte vale en LOS DOS PANELES que hablan del mismo
+  // hecho. Probarla en un archivo aparte dejaria la mitad vieja y la nueva mirandose de lejos, que es la
+  // forma del defecto que arreglamos.
+  const bandeja = async () => {
+    const { listarVentasPorRevisar } = await import("@/modules/payments/data/ventas-por-revisar");
+    return (await listarVentasPorRevisar()).filter((v) => v.id === ventaId && v.motivo === "sin_saldo");
+  };
+
   const huella = async (): Promise<string> => {
     const [f] = await db.execute(
       dsql`select public.huella_del_pendiente('sin_saldo', ${ventaId}::uuid) as h`,
@@ -98,6 +109,8 @@ describe.skipIf(!HAS_DB)("descartar un pendiente sin salida (BD real)", () => {
   it("la venta sin saldo pide accion antes de descartarla", async () => {
     const vistos = await pendientes();
     expect(vistos.map((p) => p.tipo)).toContain("sin_saldo");
+    // Y la bandeja tambien la ve: es el punto de partida de los dos paneles.
+    expect((await bandeja()).length, "la bandeja no vio el descuadre, y es el hecho que ella existe para mostrar").toBe(1);
   });
 
   it("descartada con motivo, sale del correo; y la pantalla la sigue viendo con quien y por que", async () => {
@@ -117,6 +130,16 @@ describe.skipIf(!HAS_DB)("descartar un pendiente sin salida (BD real)", () => {
     expect(enPantalla, "el panel dejo de ver la venta descartada: la escondio en vez de mostrarla").toBeTruthy();
     expect(enPantalla.descarte?.motivo).toContain("Se conto la vitrina");
     expect(enPantalla.descarte?.caducado).toBe(false);
+
+    // ═══ Y LA BANDEJA, QUE ES LA MITAD QUE FALTABA (0220) ═══
+    //
+    // Su propio texto manda a descartar aqui abajo. Antes de la 0220 la fila se quedaba arriba igual, asi que
+    // la pantalla pedia una accion y no reconocia que se hizo. Si esto se rompe, admin descarta y no pasa nada
+    // visible: deja de creerle al panel, que cuesta mas que el ruido.
+    expect(
+      (await bandeja()).length,
+      "se descarto abajo y la bandeja siguio pidiendo lo mismo arriba",
+    ).toBe(0);
   });
 
   it("y queda en el audit, porque apagar un control lleva firma", async () => {
@@ -142,6 +165,10 @@ describe.skipIf(!HAS_DB)("descartar un pendiente sin salida (BD real)", () => {
     expect(vistos[0].descarte?.caducado, "volvio al correo pero sin decir que venia de un descarte caducado").toBe(
       true,
     );
+
+    // Y VUELVE A LA BANDEJA TAMBIEN: la caducidad no puede valer en un panel y no en el otro, o el hecho
+    // cambiado quedaria callado justo en la pantalla donde se trabaja.
+    expect((await bandeja()).length, "el descarte caducado siguio escondiendo la fila de la bandeja").toBe(1);
   });
 
   it("una linea nueva tambien lo caduca: el juicio era sobre otras unidades", async () => {
