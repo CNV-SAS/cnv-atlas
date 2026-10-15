@@ -1534,6 +1534,13 @@
       "when": 1792020146130,
       "tag": "0218_el_descuadre_fisico_es_real",
       "breakpoints": true
+    },
+    {
+      "idx": 219,
+      "version": "7",
+      "when": 1792074379451,
+      "tag": "0219_la_operacion_real_tiene_una_sola_definicion",
+      "breakpoints": true
     }
   ]
 }
