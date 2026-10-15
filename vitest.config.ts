@@ -10,6 +10,8 @@ import { defineConfig } from "vitest/config";
 // ser flaky. Verificacion: `grep -rl DATABASE_URL src/tests` debe estar contenido aqui.
 const DB_TESTS = [
   "src/tests/aplicar-migracion-con-commit-no-revierte-db.test.ts",
+  "src/tests/la-central-no-despacha-lo-que-no-tiene-db.test.ts",
+  "src/tests/el-sello-del-ambiente-se-avisa-en-pagos-db.test.ts",
   "src/tests/el-menor-sin-representante-no-queda-detenido-db.test.ts",
   // NO es un candado: es la MEDICION del efecto de un bump de motor (imprime cifras, asegura que
   // hubo algo que recomputar). Vive en la suite de BD porque necesita datos reales; en la de unit haria

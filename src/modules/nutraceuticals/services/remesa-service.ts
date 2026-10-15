@@ -1,4 +1,8 @@
 import "server-only";
+import {
+  loQueLaCentralPuedeDespachar,
+  motivoSiLaCentralNoTieneEsasUnidades,
+} from "../data/lo-que-la-central-puede-despachar";
 import { resolverLoteDeRecepcion, ubicacionDelProfesional } from "./ubicacion-y-lote";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -6,6 +10,7 @@ import { estadoDeCreditoDeDistribucion } from "@/modules/payments/data/distribuc
 
 import type {
   CnvRemesa,
+  DisponibleEnCentral,
   EligibleProfessional,
   PendingRemesa,
   RemesableProduct,
@@ -16,6 +21,7 @@ import type {
 // remesa-types (neutro) para no dejar este módulo `server-only` al alcance del cliente.
 export type {
   CnvRemesa,
+  DisponibleEnCentral,
   EligibleProfessional,
   PendingRemesa,
   RemesableProduct,
@@ -114,6 +120,22 @@ export async function declareRemesa(input: {
   // que todavia no existe, que es el caso normal: la remesa suele ser lo PRIMERO que se sabe de ese lote.
   const locationId = await ubicacionDelProfesional(supabase, input.professionalId);
   if (!locationId) return { ok: false, message: "Ese Integrante no tiene ubicación de inventario." };
+
+  // ═══ NO SE DESPACHA LO QUE LA BODEGA NO TIENE (Santiago, 2026-10-15) ═══
+  //
+  // Es la mitad barata de "la remesa descuenta de la central": no mueve saldo, solo se niega a prometer
+  // unidades que no estan. El porque de la resta, y por que NO es "lo que esta sin confirmar", vive en
+  // `data/lo-que-la-central-puede-despachar.ts`.
+  //
+  // VA ANTES DE RESOLVER EL LOTE porque `resolverLoteDeRecepcion` lo CREA cuando no existe: comprobar
+  // despues dejaria un lote provisional huerfano por cada remesa rechazada.
+  const sinExistencias = await motivoSiLaCentralNoTieneEsasUnidades({
+    nutraceuticalId: input.nutraceuticalId,
+    lote: input.lote,
+    quantity: input.quantity,
+  });
+  if (sinExistencias) return { ok: false, message: sinExistencias };
+
   const { lotId, message: msgLote } = await resolverLoteDeRecepcion(
     supabase,
     input.nutraceuticalId,
@@ -158,6 +180,16 @@ export async function getEligibleProfessionalsForRemesa(): Promise<EligibleProfe
         "Integrante",
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * LO QUE LA BODEGA CENTRAL PUEDE DESPACHAR, para mostrarlo JUNTO AL FORMULARIO.
+ *
+ * Existe porque el freno nuevo lo pide: una cantidad que se rechaza al enviar, contra un numero que no estaba
+ * a la vista, se lee como un defecto. Con el cuadro al lado, el freno es una regla que se ve venir.
+ */
+export async function getDisponibleEnCentral(): Promise<DisponibleEnCentral[]> {
+  return loQueLaCentralPuedeDespachar();
 }
 
 // Productos que se pueden enviar en consignación: los en_consultorio (los solo_tienda los compra el

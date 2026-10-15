@@ -14,6 +14,7 @@ import { canSeeRemesasCnv } from "@/modules/nutraceuticals/policies/can-declarar
 import { canResolveSobrante, canSeeFaltanteQueue } from "@/modules/nutraceuticals/policies/can-review-faltante";
 import { getFaltanteQueue, getPendingSobrantes, type FaltanteQueueRow } from "@/modules/nutraceuticals/services/faltante-service";
 import {
+  getDisponibleEnCentral,
   getEligibleProfessionalsForRemesa,
   getRemesableProducts,
   getRemesasForCnv,
@@ -89,14 +90,15 @@ export default async function FaltantesPage() {
   const sobrantes = canResolveSobrante(user) ? await getPendingSobrantes() : [];
 
   // Lado remesa (admin/soporte). Se carga solo si el rol lo ve.
-  const [remesas, unbacked, remesaProfs, remesaProducts] = seeRemesas
+  const [remesas, unbacked, remesaProfs, remesaProducts, enCentral] = seeRemesas
     ? await Promise.all([
         getRemesasForCnv(),
         getUnbackedReceptionsForCnv(),
         getEligibleProfessionalsForRemesa(),
         getRemesableProducts(),
+        getDisponibleEnCentral(),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
   // Tiempo de request (página dinámica) para la antigüedad de las remesas sin confirmar.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
@@ -117,6 +119,7 @@ export default async function FaltantesPage() {
           unbacked={unbacked}
           professionals={remesaProfs}
           products={remesaProducts}
+          enCentral={enCentral}
           nowMs={nowMs}
         />
       ) : null}

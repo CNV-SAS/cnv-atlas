@@ -2,7 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 
 import { DeclararRemesaForm } from "./declarar-remesa-form";
-import type { CnvRemesa, EligibleProfessional, RemesableProduct, UnbackedReception } from "../remesa-types";
+import type {
+  CnvRemesa,
+  DisponibleEnCentral,
+  EligibleProfessional,
+  RemesableProduct,
+  UnbackedReception,
+} from "../remesa-types";
 
 function fmtDate(iso: string): string {
   return iso.slice(0, 10);
@@ -26,14 +32,20 @@ export function RemesasCnvSection({
   unbacked,
   professionals,
   products,
+  enCentral,
   nowMs,
 }: {
   remesas: CnvRemesa[];
   unbacked: UnbackedReception[];
   professionals: EligibleProfessional[];
   products: RemesableProduct[];
+  enCentral: DisponibleEnCentral[];
   nowMs: number;
 }) {
+  // SOLO EL PRODUCTO REAL, y solo lo que tenga algo que decir. El de prueba queda EXENTO del tope, asi que
+  // su cifra no explica ningun rechazo, y llenaria el cuadro de ruido: la central arrastra una fila por cada
+  // producto de smoke retirado.
+  const disponibles = enCentral.filter((d) => !d.esDePrueba && (d.saldo !== 0 || d.yaDeclarado !== 0));
   const enviadas = remesas.filter((r) => r.status === "enviada");
   const conDiferencia = remesas.filter(
     (r) => r.status === "confirmada_faltante" || r.status === "confirmada_sobrante",
@@ -51,8 +63,44 @@ export function RemesasCnvSection({
               El saldo del integrante NO sube aquí: sube cuando él confirma la recepción.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
             <DeclararRemesaForm professionals={professionals} products={products} />
+            {/* ═══ LO QUE LA BODEGA TIENE, A LA VISTA (Santiago, 2026-10-15) ═══
+
+                Desde hoy la declaracion se rechaza si la central no tiene esas unidades. Un freno sobre un
+                numero que no esta en la pantalla se siente como un defecto, asi que el numero se muestra.
+
+                Y DICE LAS DOS CIFRAS CUANDO DIFIEREN: la remesa no descuenta el saldo de la central todavia
+                (hueco conocido), asi que "disponible" puede ser menor que el saldo que se ve en
+                /nutraceuticos. Sin la explicacion al lado, las dos pantallas se contradicen. */}
+            {disponibles.length > 0 ? (
+              <div className="flex flex-col gap-1.5 border-t pt-3">
+                <p className="text-sm font-medium">Disponible en la bodega central</p>
+                <ul className="flex flex-col gap-0.5 text-sm text-muted-foreground">
+                  {disponibles.map((d) => (
+                    <li key={`${d.nutraceuticalId}-${d.lotId}`}>
+                      {/* NUNCA NEGATIVO EN PANTALLA: si se declaro mas de lo que habia, el disponible da en
+                          negativo y un "-2" junto a "no se puede declarar mas de lo disponible" se lee como
+                          un sistema roto. La verdad entera va en el parentesis de al lado. */}
+                      <span className="font-medium tabular-nums text-foreground">
+                        {Math.max(0, d.disponible)}
+                      </span>{" "}
+                      {d.nombre}{" "}
+                      <span className="text-xs">lote {d.lote}</span>
+                      {d.yaDeclarado > 0 ? (
+                        <span className="text-xs">
+                          {" "}
+                          (saldo {d.saldo}, {d.yaDeclarado} ya declaradas en remesas)
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted-foreground">
+                  No se puede declarar más de lo disponible. Los productos de prueba no tienen ese tope.
+                </p>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </section>
