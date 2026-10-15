@@ -1,0 +1,44 @@
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+-- LO QUE ESTA MARCADO COMO PRUEBA VIVE EN EL FILTRO DE PRUEBA  ·  2026-10-15
+--
+-- ═══ LA DECISION (Santiago, 2026-10-15, con /pagos delante) ═══
+--
+-- Descarto las cinco filas de "Pendientes sin salida" con su motivo, el contador quedo en "0 pendientes sin
+-- resolver, 5 descartados", y las cinco seguian listadas en el lado REAL del interruptor. Textual:
+--
+--   *"Si son pruebas simplemente no deben aparecer en la pantalla de produccion, es asi de simple. NI
+--    SIQUIERA TENIA QUE HABERLAS DESCARTADO. La logica deberia ser simple: si algo esta marcado como prueba,
+--    aparece en el filtro de prueba."*
+--
+-- ═══ QUE SE RETIRA, Y POR QUE NO ES UN RETROCESO ═══
+--
+-- `el_descuadre_fisico_es_real` (0218) era la excepcion de DOS lectores de /pagos, los unicos dos de catorce
+-- que no filtraban por `cuenta_como_de_prueba`: la bandeja "Ventas por revisar" (rama de saldo) y la rama
+-- `sin_saldo` de los avisos. Su argumento: si el producto era real, la unidad salio de una vitrina real y la
+-- vitrina esta descuadrada de verdad, aunque el paciente sea de prueba.
+--
+-- EL ARGUMENTO ES CIERTO. Lo que la 0218 no podia ver es que no servia:
+--
+--   · el smoke se hace con pacientes de prueba sobre vitrinas REALES, asi que cada venta que no alcanza
+--     saldo levanta un descuadre que nadie va a ir a contar;
+--   · y un aviso que sale por data que nadie puso se aprende a ignorar. Ya se pago dos veces en esta misma
+--     pantalla (el aviso que acusaba a la vitrina equivocada, los siete pendientes inventados). El dia que
+--     salga un descuadre de verdad, nadie lo va a mirar.
+--
+-- Y EL HUECO FISICO NO QUEDA SIN SITIO, que es la parte que importa: lo cuadra un movimiento de
+-- `conciliacion` por ubicacion, con sus cifras y su motivo. Textual de Santiago: *"el hueco de inventario,
+-- si lo hay, se cuadra por conciliacion, que es donde vive"*. Y la fila no se vuelve invisible: el
+-- interruptor de prueba la muestra, en los dos paneles.
+--
+-- ═══ POR QUE LA FUNCION NO SE BORRA ═══
+--
+-- Dos razones, y la primera es operativa: entre aplicar una migracion y desplegar el codigo hay una ventana,
+-- y un DROP dejaria a /pagos llamando a una funcion que ya no existe (500 en la pantalla entera, para todos).
+-- Un COMMENT se puede aplicar antes o despues del deploy sin romper nada.
+--
+-- La segunda: el comentario anterior AFIRMA que dos lectores la usan, y eso ya es falso. Un comentario que
+-- miente en la base es peor que una funcion sin usar, porque el que la encuentre va a creerle.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+COMMENT ON FUNCTION public.el_descuadre_fisico_es_real(uuid) IS
+  'RETIRADA el 2026-10-15 y SIN USO: ya no la llama ningun lector. Decia si una venta pudo mover unidades fisicas (sin marca manual del acto y con al menos una linea de producto real), y era la excepcion de los dos lectores de /pagos que no filtraban por cuenta_como_de_prueba. Se retiro porque lo marcado como prueba tiene que vivir en el filtro de prueba: el descuadre fisico se cuadra con un movimiento de conciliacion por ubicacion, no con un aviso en una pantalla de dinero. Ver la 0221. No la vuelvas a cablear sin esa conversacion.';

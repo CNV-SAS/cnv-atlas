@@ -136,19 +136,21 @@ export function VentasPorRevisar({
                 <span className="text-xs text-muted-foreground">{v.productos}</span>
               </div>
               <p className="max-w-prose text-xs text-muted-foreground">{EXPLICACION[v.motivo]}</p>
-              {/* ═══ POR QUE UNA VENTA DE PRUEBA APARECE EN ESTA BANDEJA (Santiago, 2026-10-03) ═══
+              {/* ═══ POR QUE UNA VENTA DE PRUEBA APARECE EN ESTA BANDEJA (Santiago, 2026-10-15) ═══
 
-                  La lista principal de /pagos la esconde (mira la VENTA) y esta la muestra (mira el
-                  PRODUCTO). Las dos reglas son correctas y por separado se defienden solas, pero juntas se
-                  leen como una contradicción: el mismo hecho se ve en un panel y no en el otro.
+                  Hasta el 15 aparecía también en el lado REAL, porque la rama de saldo miraba el PRODUCTO y
+                  no la marca: la unidad había salido de una vitrina de verdad. El argumento era cierto y el
+                  resultado no servía (admin veía filas de prueba que ya había descartado), así que la
+                  excepción se retiró: ahora solo llega aquí con el interruptor de pruebas encendido.
 
-                  No se resuelve cambiando un filtro, se resuelve DICIÉNDOLO. El descuadre es físico: una
-                  unidad real salió de una vitrina real, y eso no lo cambia que el paciente sea de prueba. */}
+                  LA FRASE SE QUEDA, y dice otra cosa: por qué la estás viendo, y dónde se cuadra el hueco de
+                  inventario que marcar NO devuelve. Una fila sin explicación en una pantalla de dinero se
+                  lee como un error del sistema. */}
               {v.deUnaVentaDePrueba ? (
                 <p className="max-w-prose text-xs text-muted-foreground">
-                  Esta venta está marcada como de prueba, y su dinero no cuenta en ninguna cifra. Aparece aquí
-                  igual porque el producto es real: la unidad salió de verdad de la vitrina, y ese descuadre
-                  hay que cuadrarlo o descartarlo abajo, en <strong>Pendientes sin salida</strong>.
+                  Esta venta cuenta como de prueba, y su dinero no entra en ninguna cifra. La ves porque
+                  tienes encendido el filtro de pruebas. Si alcanzó a descontar unidades, eso se cuadra con
+                  una conciliación de inventario en la ubicación, no desde aquí.
                 </p>
               ) : null}
               {v.detalle && <p className="break-words font-mono text-xs text-muted-foreground">{v.detalle}</p>}

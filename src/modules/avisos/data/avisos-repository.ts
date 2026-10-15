@@ -174,14 +174,16 @@ export async function listarPendientesDeAccion(opciones?: {
          -- cuadrando el inventario). Sin tope seria una linea eterna en el correo, y un aviso que no se
          -- puede quitar deja de ser un aviso: se vuelve ruido que se aprende a ignorar.
          and coalesce(t.registered_retroactively_at, t.operated_at, t.created_at) > now() - interval '30 days'
-         -- ═══ LA EXCEPCION, AHORA EN UNA SOLA DEFINICION (0218) ═══
+         -- ═══ Y AQUI YA NO VA NINGUN FILTRO DE PRUEBA (Santiago, 2026-10-15) ═══
          --
-         -- Aqui habia un exists (... is_test = false) escrito a mano, y en la bandeja de "ventas por
-         -- revisar" el MISMO criterio escrito al reves (not exists (... is_test)). Coincidian solo porque
-         -- el servicio no deja mezclar productos de prueba y reales en una venta, o sea por una regla de otra
-         -- capa. La funcion lo dice una vez, y le suma la marca MANUAL de la venta: la unica de las cuatro
-         -- entradas que la pone una persona afirmando que el acto no ocurrio. Ver la 0218.
-         and (${incluirDePrueba} or public.el_descuadre_fisico_es_real(t.id))
+         -- Tuvo uno propio: primero un exists escrito a mano, y desde la 0218 una llamada a
+         -- el_descuadre_fisico_es_real, para que un descuadre de producto REAL se siguiera viendo aunque el
+         -- paciente fuera de prueba. Se retira con su gemela de la bandeja, por la decision de Santiago del
+         -- 15: lo que esta marcado como prueba vive en el filtro de prueba, y el hueco de saldo se cuadra por
+         -- conciliacion. La razon larga esta escrita en ventas-por-revisar.ts, que es donde se ve.
+         --
+         -- O SEA QUE sin_saldo VUELVE AL FILTRO GENERAL DE ABAJO, con las otras cinco ramas. Es el diseno
+         -- original de este lector: un solo sitio, "para que no se olvide en la septima".
     )
     -- ═══ Y NADA DE PRUEBA LLEGA AL CORREO NI AL AVISO (Santiago, 2026-10-02) ═══
     --
@@ -218,24 +220,24 @@ export async function listarPendientesDeAccion(opciones?: {
            d.reason as descarte_motivo, d.por as descarte_por, d.created_at::text as descarte_en,
            d.caducado as descarte_caducado
       from pendientes p
-      -- ═══ EL FILTRO DE PRUEBA NO ES EL MISMO PARA TODOS LOS TIPOS (Santiago, smoke del 2026-10-03) ═══
+      -- ═══ EL FILTRO DE PRUEBA, UNO PARA LAS SEIS RAMAS (Santiago, 2026-10-15) ═══
       --
-      -- EL DEFECTO: este filtro, puesto "al final y no en cada rama para que no se olvide en la septima",
-      -- PISABA la regla que la rama de sin_saldo ya tenia. Esa rama mira el PRODUCTO (si es real, la unidad
-      -- salio de verdad y la vitrina esta descuadrada DE VERDAD, aunque el paciente sea de prueba), y este
-      -- and not tx.cuenta_como_de_prueba la sacaba igual por el paciente.
+      -- SU HISTORIA, porque explica por que hoy no tiene excepciones. Nacio aqui abajo "para que no se
+      -- olvide en la septima rama". El 3 de octubre se le puso una excepcion (or p.tipo = 'sin_saldo'),
+      -- porque esa rama tenia su propia regla mirando el PRODUCTO y este filtro la pisaba: la LUVIA se veia
+      -- en la bandeja de "ventas por revisar" y no se podia descartar aqui, que es el unico sitio que tiene
+      -- el boton. Esa parte era real y hubo que arreglarla.
       --
-      -- LO QUE PRODUJO, y es peor que esconder de mas: la bandeja de "ventas por revisar" SI mostraba esa
-      -- LUVIA (su filtro mira el producto) y el panel de "Pendientes sin salida" NO, porque sale de aqui. Asi
-      -- que la fila se veia en un panel y no se podia descartar en el otro: el remedio que existe para ella
-      -- quedaba fuera de su alcance.
+      -- Y HOY LA EXCEPCION SE RETIRA ENTERA. Con el arranque corrido, las ventas marcadas de prueba seguian
+      -- pidiendo accion en el lado REAL de la pantalla, descartadas y todo. Textual de Santiago: *"si algo
+      -- esta marcado como prueba, aparece en el filtro de prueba"*. Las seis ramas dicen lo mismo otra vez, y
+      -- la bandeja tambien: es la misma condicion en los dos paneles, que es lo que nunca puede divergir.
       --
-      -- Asi que el filtro general sigue, y sin_saldo queda EXCEPTUADA con su razon escrita. Las otras cinco
-      -- ramas hablan de DINERO o de DOCUMENTOS (facturas, notas credito, despachos), y ahi una venta de
-      -- prueba no pide nada; sin_saldo habla de UNIDADES FISICAS, que no entienden de marcas.
+      -- El hueco de inventario que la excepcion protegia no desaparece: se cuadra con un movimiento de
+      -- conciliacion por ubicacion. La razon larga esta en ventas-por-revisar.ts.
       join transactions tx
         on tx.id = p.transaction_id
-       and (${incluirDePrueba} or not tx.cuenta_como_de_prueba or p.tipo = 'sin_saldo')
+       and (${incluirDePrueba} or not tx.cuenta_como_de_prueba)
       left join lateral (
         select f.until_date, f.note, pr.full_name as por
           from pending_followups f join profiles pr on pr.id = f.created_by
