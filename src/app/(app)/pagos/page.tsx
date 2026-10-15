@@ -40,9 +40,11 @@ import {
   listTransactions,
 } from "@/modules/payments/data/payments-repository";
 import {
+  contarVentasRealesConSelloDePrueba,
   contarVentasSinDocumentoPorDia,
   listarVentasSinDocumento,
 } from "@/modules/payments/data/facturacion-repository";
+import { wompiEnvDeLaLlave } from "@/modules/payments/ambiente";
 import { FacturasPendientes } from "@/modules/payments/components/facturas-pendientes";
 import { RegistrarDestinoForm } from "@/modules/payments/components/registrar-destino-form";
 import { VentasPorRevisar } from "@/modules/payments/components/ventas-por-revisar";
@@ -265,6 +267,12 @@ export default async function PagosPage({
   // mundos justo donde hay que decidir. Y se puede ver con un clic, porque esconder algo ABIERTO lo volveria
   // invisible, que era mi reserva. El numero de abajo dice cuantas quedan fuera.
   const verDePrueba = sp.prueba === "1";
+  // ═══ EN QUE AMBIENTE NACE UNA VENTA HOY (2026-10-15) ═══
+  //
+  // Se lee de la MISMA funcion que lo sella al crear la venta, no de una comparacion escrita aqui: si el
+  // aviso dedujera el ambiente por su cuenta, podria decir "produccion" mientras las ventas nacen en prueba,
+  // que es justo la contradiccion que este aviso existe para no tener.
+  const ambienteDelPago = wompiEnvDeLaLlave(process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY);
   const ventasDePrueba = await contarVentasDePrueba();
   // Quien mira: decide si se le ofrecen los productos de prueba para cobrar (ver el filtro mas abajo).
   const miraUnProfesionalDePrueba = await elQueMiraEsProfesionalDePrueba(user.id);
@@ -325,6 +333,9 @@ export default async function PagosPage({
         () => conLimite("pagos.reversas", () => listarReversas(50, verDePrueba), []),
         // La devolucion fisica (3b sesion 2): lo que volvio del paciente y espera verificacion.
         () => conLimite("pagos.devueltas", () => leerDevolucionesPendientes(verDePrueba), { items: [], destinos: [] }),
+        // EL SELLO DEL AMBIENTE (2026-10-15): cuantas ventas reales nacieron como pago de prueba y por eso ya
+        // no se pueden facturar. Ver el aviso de mas abajo.
+        () => conLimite("pagos.sello-de-prueba", contarVentasRealesConSelloDePrueba, 0),
       ])
     : [];
   // El cotejo con Wompi lo ve quien responde por el dinero (no soporte): recuperar un pago sella ingreso,
@@ -340,6 +351,7 @@ export default async function PagosPage({
     TIPOS_SIN_SALIDA.includes(p.tipo as (typeof TIPOS_SIN_SALIDA)[number]),
   );
   const reversas = paneles[5]?.dato ?? [];
+  const conSelloDePrueba = paneles[7]?.dato ?? 0;
   const devueltas = paneles[6]?.dato.items ?? [];
   const destinos = paneles[6]?.dato.destinos ?? [];
   // EL ESTADO DE LA REVERSA, TAMBIEN EN LA LISTA (smoke del 2026-09-17): una venta con la disputa perdida se veia
@@ -442,6 +454,48 @@ export default async function PagosPage({
               </Link>
             </>
           )}
+        </p>
+      ) : null}
+
+      {/* ═══ EL SELLO DEL AMBIENTE, AVISADO ANTES DE QUE DUELA (Santiago, 2026-10-15) ═══
+
+          SU PETICION: *"¿Hay forma de que Atlas AVISE si se registra una venta real mientras el ambiente esta
+          en sandbox? Porque la ventana entre que yo cierre el smoke y monte las llaves es justo cuando
+          Katherine podria vender, y nadie estaria mirando."*
+
+          ESTO ES LO QUE MIRA. Y es un AVISO, no un freno: frenar la venta dejaria a un Integrante sin poder
+          cobrarle a un paciente que tiene al frente, por una configuracion que el no puede cambiar. El
+          sistema ya se equivoca hacia el lado seguro (no factura), asi que lo que faltaba era decirlo.
+
+          LO VE TODO EL QUE PUEDE COBRAR, no solo admin: el aviso sirve en la pantalla donde se crea la venta.
+          La CIFRA, que es informacion de la operacion entera, solo quien ve los paneles. */}
+      {ambienteDelPago === "test" ? (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+          <strong className="font-semibold">El sistema está en modo de pruebas.</strong> Una venta que se registre
+          ahora queda marcada como pago de prueba y no se podrá facturar después, ni cuando se conecten las
+          cuentas reales. Aplica también a efectivo y transferencia. Antes de cobrarle a un paciente real,
+          confirma con CNV que las cuentas ya están conectadas.
+          {verPaneles && conSelloDePrueba > 0 ? (
+            <>
+              {" "}
+              Ya hay{" "}
+              <strong className="font-semibold">
+                {conSelloDePrueba} {conSelloDePrueba === 1 ? "venta" : "ventas"} de pacientes reales
+              </strong>{" "}
+              en ese estado.
+            </>
+          ) : null}
+        </p>
+      ) : verPaneles && conSelloDePrueba > 0 ? (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+          <strong className="font-semibold">
+            {conSelloDePrueba === 1
+              ? "Una venta de un paciente real quedó marcada como pago de prueba"
+              : `${conSelloDePrueba} ventas de pacientes reales quedaron marcadas como pago de prueba`}
+          </strong>{" "}
+          porque se registraron antes de conectar las cuentas reales, así que no se pueden facturar desde aquí.
+          Si ya se facturaron por fuera, van por &ldquo;Registrar una venta ya cobrada&rdquo;; si fueron
+          pruebas, márcalas como ventas de prueba.
         </p>
       ) : null}
 
