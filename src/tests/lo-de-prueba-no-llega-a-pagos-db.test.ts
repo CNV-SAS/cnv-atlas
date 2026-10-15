@@ -141,10 +141,21 @@ describe.skipIf(!HAS_DB)("lo de prueba no llega a /pagos (BD real)", () => {
     ).toBe(false);
   }, 30_000);
 
-  // Y LA OTRA MITAD, que es la que sostiene el argumento fisico: sin marca manual, un descuadre de producto
-  // real SIGUE pidiendo accion aunque el paciente sea de prueba. Si esto se rompe, se esta escondiendo una
-  // vitrina descuadrada de verdad.
-  it("un 'sin saldo' de producto REAL sigue en la bandeja aunque su paciente sea de prueba", async () => {
+  // ── Y LA EXCEPCION FISICA, QUE SE RETIRO EL 15 (0221) ──────────────────────────────────────────
+  //
+  // ESTE CANDADO DECIA LO CONTRARIO HASTA AYER, y conviene dejar escrito por que cambio.
+  //
+  // Decia: un `sin_saldo` de producto REAL sigue en la bandeja aunque el paciente sea de prueba, porque la
+  // unidad salio del estante de verdad. El argumento es cierto. Lo que no era cierto es que sirviera: con el
+  // arranque corrido, admin descarto las cinco filas que quedaban y las siguio viendo en el lado REAL.
+  //
+  // Y el smoke se hace con pacientes de prueba sobre vitrinas REALES, asi que cada venta sin saldo de una
+  // prueba levanta un descuadre que nadie va a ir a contar. Textual de Santiago: *"si algo esta marcado como
+  // prueba, aparece en el filtro de prueba, es asi de simple"*.
+  //
+  // EL HUECO FISICO NO QUEDA SIN SITIO: lo cuadra un movimiento de `conciliacion` por ubicacion. Lo que se
+  // movio no es la verdad del descuadre, es DONDE se pide la cuenta.
+  it("un 'sin saldo' de producto REAL sale del lado real si su paciente es de prueba", async () => {
     const [p] = await db.execute(dsql`
       insert into patients (organization_id, document_type, document_number, is_test,
                             test_marked_at, test_marked_by, test_proposed_at, test_proposed_by,
@@ -158,16 +169,58 @@ describe.skipIf(!HAS_DB)("lo de prueba no llega a /pagos (BD real)", () => {
     const [f] = await db.execute(dsql`select cuenta_como_de_prueba as p from transactions where id = ${id}`);
     expect(f.p, "la venta ya cuenta como de prueba, por su paciente").toBe(true);
 
-    const lista = await vpr.listarVentasPorRevisar();
     expect(
-      lista.some((v: any) => v.id === id),
-      "el producto era real: la unidad salio del estante y la vitrina esta descuadrada DE VERDAD",
-    ).toBe(true);
+      (await vpr.listarVentasPorRevisar()).some((v: any) => v.id === id),
+      "una venta de prueba volvio a pedir accion en el lado real de la bandeja",
+    ).toBe(false);
+    expect(
+      (await avisos.listarPendientesDeAccion({ incluirDescartados: true })).some(
+        (x: any) => x.transactionId === id,
+      ),
+      "y en el panel de pendientes tampoco: era la otra mitad de la misma queja",
+    ).toBe(false);
 
-    // Y LA MARCA MANUAL SI LA SACA (0218), porque la pone una persona afirmando que el acto no ocurrio.
-    await marcar(id);
-    const despues = await vpr.listarVentasPorRevisar();
-    expect(despues.some((v: any) => v.id === id)).toBe(false);
+    // Y NO SE VUELVE INVISIBLE, que es la unica forma de que esto fuera peor: el interruptor la muestra, en
+    // los dos paneles. Esconder algo abierto en las dos vistas es como se pierde un caso de verdad.
+    expect(
+      (await vpr.listarVentasPorRevisar(true)).some((v: any) => v.id === id),
+      "con el interruptor encendido la bandeja tiene que mostrarla",
+    ).toBe(true);
+    expect(
+      (await avisos.listarPendientesDeAccion({ incluirDescartados: true, incluirDePrueba: true })).some(
+        (x: any) => x.transactionId === id,
+      ),
+      "un interruptor que cubre la mitad de la pantalla es peor que no tenerlo",
+    ).toBe(true);
+  }, 30_000);
+
+  // ── Y LOS DESCARTES QUE YA SE ESCRIBIERON NO PUEDEN ESTORBAR DESPUES (Santiago, 2026-10-15) ────
+  //
+  // SU PREGUNTA, literal: *"verifica que los descartes que ya escribio no estorben despues"*. Alcanzo a
+  // descartar las cinco filas de prueba antes de que la regla cambiara, y esas filas de `pending_discards`
+  // se quedan en la base (son historial: no se borran, se revocan).
+  //
+  // LO QUE HAY QUE PROBAR es que un descarte no puede callar NADA mas que su propio hecho: su fila nombra una
+  // transaccion y una huella. Si por alguna razon alcanzara a otra venta, un descuadre real de mañana
+  // quedaria mudo por un juicio que se hizo sobre otra cosa, y ese es el fallo silencioso que no se ve venir.
+  it("un descarte calla SU hecho y ninguno mas", async () => {
+    const descartada = await ventaReal({ stock_state: "sin_saldo" });
+    const otra = await ventaReal({ stock_state: "sin_saldo" });
+
+    await avisos.descartarPendiente({
+      tipo: "sin_saldo",
+      transactionId: descartada,
+      motivo: "Contada la vitrina y cuadrada: era del periodo de pruebas.",
+      actorId,
+      actorEmail: null,
+    });
+
+    const bandeja = await vpr.listarVentasPorRevisar();
+    expect(bandeja.some((v: any) => v.id === descartada), "el descarte no callo su propio hecho").toBe(false);
+    expect(
+      bandeja.some((v: any) => v.id === otra),
+      "un descarte callo una venta que nadie juzgo: cualquier descuadre real quedaria mudo",
+    ).toBe(true);
   }, 30_000);
 
   // ── 5 · LOS AVISOS: LA MISMA FUNCION QUE LA BANDEJA, Y NO DOS CONDICIONES PARECIDAS ────────────

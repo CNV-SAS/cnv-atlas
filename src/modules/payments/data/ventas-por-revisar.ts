@@ -34,7 +34,7 @@ export type VentaPorRevisar = {
   versionEn: string | null;
   /** Si se puede marcar "el efectivo no se recibio" (0142). */
   efectivo: "si" | "sin_efectivo" | "no_coinciden";
-  /** La venta esta marcada de prueba (paciente, profesional o producto) pero su descuadre es fisico y real. */
+  /** La venta cuenta como de prueba: solo se ve con el interruptor encendido, y se dice en la fila. */
   deUnaVentaDePrueba: boolean;
 };
 
@@ -91,23 +91,30 @@ export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<V
       from transactions t
       left join profiles p on p.id = t.review_professional_version_by
      where t.status = 'paid'
-       -- ═══ EL FILTRO DE PRUEBA NO ES EL MISMO PARA LAS TRES RAMAS (Santiago, 2026-10-14) ═══
+       -- ═══ UN SOLO FILTRO DE PRUEBA, Y VALE PARA LAS TRES RAMAS (Santiago, 2026-10-15) ═══
        --
-       -- EL DEFECTO QUE SE ARREGLA AQUI: el filtro de producto estaba ARRIBA, suelto, aplicandose a las TRES
-       -- ramas de la bandeja. Y su razon (la que esta escrita desde el 2026-10-02) vale solo para las de
-       -- SALDO: hablan de unidades fisicas, y si el producto era real la vitrina esta descuadrada de verdad.
+       -- AQUI VIVIO UNA EXCEPCION Y HOY SE RETIRA. La rama de SALDO no filtraba por la marca de la venta sino
+       -- por el_descuadre_fisico_es_real (0218): si el producto era real, la unidad salio de una vitrina de
+       -- verdad y el descuadre seguia pidiendo accion aunque el paciente fuera de prueba.
        --
-       -- PERO "PAGO SOBRE LINK ANULADO" NO HABLA DE UNIDADES: es una DECISION pendiente sobre dinero (si fue
-       -- una segunda compra o si se devolvio). Puesto bajo el filtro del producto, el de un paciente de
-       -- prueba seguia pidiendo accion a admin solo porque el producto era real. Textual de Santiago sobre
-       -- esta pantalla: *"aparece en lo real cosas que ya estan marcadas con pacientes de prueba"*.
+       -- EL ARGUMENTO ERA CIERTO Y SIGUE SIENDOLO. Lo que no era cierto es que sirviera. Con el arranque ya
+       -- comiteado, admin descarto las cinco filas que quedaban y las siguio viendo en el lado REAL del
+       -- interruptor. Textual suyo: *"si son pruebas simplemente no deben aparecer en la pantalla de
+       -- produccion, es asi de simple. NI SIQUIERA TENIA QUE HABERLAS DESCARTADO"*.
        --
-       -- Asi que cada rama lleva su propio filtro, y los dos salen de un sitio: la columna derivada para la
-       -- decision, y el_descuadre_fisico_es_real (0218) para el saldo, que es la MISMA funcion que usa la
-       -- rama sin_saldo de los avisos. Antes eran dos condiciones escritas distinto en dos archivos.
+       -- Y TIENE RAZON POR ALGO QUE LA 0218 NO PODIA VER: el smoke se hace con pacientes de prueba sobre
+       -- vitrinas REALES, asi que cada venta que no alcanza saldo levanta un descuadre que nadie va a ir a
+       -- contar. Es el defecto que ya se pago dos veces en esta misma pantalla (el aviso que acusaba a la
+       -- vitrina equivocada, los siete pendientes inventados): un aviso que sale por data que nadie puso se
+       -- aprende a ignorar, y el dia que salga uno de verdad nadie lo va a mirar.
+       --
+       -- LO QUE ESTO NO ARREGLA, y hay que decirlo igual de fuerte: marcar no devuelve la unidad al estante.
+       -- El hueco de saldo, si lo hay, lo cuadra un movimiento de conciliacion por ubicacion con sus cifras,
+       -- que es donde vive. Textual de Santiago: *"el hueco de inventario, si lo hay, se cuadra por
+       -- conciliacion, que es donde vive"*. Y la fila no se vuelve invisible: el interruptor la muestra.
+       and (${incluirDePrueba} or not t.cuenta_como_de_prueba)
        and (
-         (t.review_reason is not null and t.review_resolution is null
-          and (${incluirDePrueba} or not t.cuenta_como_de_prueba))
+         (t.review_reason is not null and t.review_resolution is null)
          -- LA VENTANA MIRA CUANDO SE REGISTRO, NO CUANDO OCURRIO (Santiago, 2026-09-30).
          --
          -- Una venta RETROACTIVA escribe su created_at en la fecha real, asi que una registrada hoy con
@@ -116,7 +123,6 @@ export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<V
          -- meses. Paso en el smoke con una LUVIA: quedo "no alcanzo el saldo" y nadie tenia donde trabajarla.
          or (t.stock_state in ('sin_saldo', 'fallido')
              and coalesce(t.registered_retroactively_at, t.created_at) > now() - interval '30 days'
-             and (${incluirDePrueba} or public.el_descuadre_fisico_es_real(t.id))
              -- ═══ Y UN DESCARTE VIGENTE LO SACA TAMBIEN DE AQUI (0220, Santiago 2026-10-15) ═══
              --
              -- EL DEFECTO: el texto de ESTA bandeja manda a *"cuadrarlo o descartarlo abajo, en Pendientes
