@@ -13,8 +13,12 @@ git de este mismo archivo (`git show ff4f4211:docs/entregas/SMOKE_SEGUNDO_2026-0
 2026-10-14, a pedido de Santiago): es donde quedan sus palabras tal cual mientras prueba, y por eso nombra
 pacientes. Este archivo, el guion, si se versiona: no lleva nombres.
 
-**EL ORDEN DE HOY (2026-10-14 por la noche, para el arranque del 15):** primero **F a I**, que es lo que
-frenaba el arranque; despues **A a E**, que son los arreglos del 12. Nada mas: no el documento entero.
+**EL ORDEN DE HOY (2026-10-15, el dia del arranque):** primero **F a I**, que es lo que
+frenaba el arranque; despues **A a E**, que son los arreglos del 12. **J es de despues**: se construyo el 15,
+no es del arranque y puede esperar. Nada mas: no el documento entero.
+
+**Y antes de la I, lee su aviso:** si el inventario arranca en cero sin contar, la prueba **H** (la venta
+desde la bodega) no puede pasar, porque no habria existencias en la central.
 
 ---
 
@@ -83,6 +87,82 @@ tiene.
 5. **La bandera `llevar_a_cero_lo_no_listado`:** ponla en `true` solo si el conteo esta **completo**. Es lo
    que hace cierta tu frase *"que la bodega de CNV inicie con todas las unidades"*, pero una linea olvidada se
    interpreta como "ahi no hay nada" y su saldo se borra. Y no se puede deshacer.
+
+#### ⚠ SI ARRANCAS TODO EN CERO (tu plan del 2026-10-15), HAY QUE LEER ESTO ANTES
+
+Tu plan es otro y es razonable: *"iniciar con todo en 0 y que admin vaya poniendo X nutraceuticos a tal
+profesional... ya luego voy a la oficina, cuento y comparo."* O sea el bloque (2) **vacio** y la bandera en
+`true`. Se puede, y la mayor parte de lo que necesitas sigue funcionando. **Dos cosas no.**
+
+**LO QUE SIGUE FUNCIONANDO CON LA BODEGA EN CERO, y es la parte importante:** la **remesa no descuenta de la
+central**. Se declara sobre la ubicacion del Integrante DESTINO, el trigger del saldo la excluye, y el saldo
+sube cuando el Integrante confirma la recepcion. Asi que *"admin va poniendo X nutraceuticos a tal
+profesional"* funciona hoy, tal cual, con la bodega en cero. El unico requisito es que **el Integrante
+confirme** en *Mi inventario*: no hay forma de que admin le suba el saldo por el.
+
+**LO QUE SE ROMPE:** todo lo que SALE de la bodega, porque la reserva de la venta exige existencias y lanza
+*"No hay existencias de X para vender"*. Son dos casos:
+
+- la **venta desde la bodega** de la prueba **H** de esta misma lista (la casilla nueva de /pagos), y
+- cualquier venta de un paciente **sin Integrante asignado**, que sale de la central por definicion.
+
+**Y NO HAY PANTALLA PARA CARGAR LA CENTRAL.** Hoy a la bodega solo entran unidades por una **devolucion de un
+Integrante** o por una **reincorporacion desde cuarentena**. *"Admin debe poder registrar en central"* es el
+punto 3 de **R14**, que tu mismo pospusiste al modulo grande de inventario (seccion 2 de este documento).
+
+**LA SALIDA, y no necesita construir nada:** el bloque (2) del script **es** la via para cargar la central.
+Lista ahi las lineas de `central` con las unidades con que quieres que arranque la bodega (las que recibiste),
+deja fuera todo lo demas y pon la bandera en `true`. Eso es exactamente *"la bodega inicia con todas las
+unidades y nadie mas tiene nada"*, y no exige contar las vitrinas: solo saber que hay en la bodega.
+
+**Si prefieres arrancar de verdad en cero**, entonces **corre H antes que I** (mientras todavia hay saldo) y
+cuenta con que la venta desde la bodega queda inutilizable hasta que exista la pantalla de R14. Dimelo y la
+construyo: es una pantalla, un escritor y su candado, del tamaño de la seccion de devoluciones de /faltantes.
+
+**Dos cosas mas que preguntaste, las dos confirmadas en el codigo:**
+
+- **Los lotes sobreviven al cero.** El ajuste escribe un movimiento, no borra filas de `lots`. Un lote con
+  saldo cero desaparece de la **lista** de /mi-inventario (a proposito: listarlo diria que hay producto que no
+  queda), pero el campo de lote de la recepcion y de la remesa es **texto libre** y se resuelve por codigo, asi
+  que volver a cargar ese mismo lote funciona escribiendolo igual. Y si el codigo no existiera, se crea.
+- **El cero queda legible en el historial.** Cada ajuste es un movimiento `conciliacion` con
+  `reason` = tu motivo + `(sistema N -> contado M)`. El motivo que trae el script ya dice *"Arranque a
+  produccion 2026-10-15: ajuste al conteo fisico"*; **si arrancas en cero sin contar, cambialo**, porque esa
+  frase afirmaria un conteo que no hubo. Algo como *"Arranque a produccion 2026-10-15: el inventario se declara
+  en cero y se vuelve a cargar; no hubo conteo fisico"*.
+
+### J · El consentimiento que existe y no alcanza (pieza 2)  → `feat(consentimiento)`
+
+**Esta NO es del arranque y puede esperar a despues de F-I.** Va aqui porque se construyo el 2026-10-15 y su
+superficie es nueva.
+
+**Que se construyo:** el estado derivado *"pendiente de regularizar"* del dictamen legal del 2026-10-09, su
+freno en el gate y su aviso en pantalla. La prevencion ya existia (un consentimiento de menor sin
+representante no se puede guardar desde el 2026-10-09); lo que faltaba es que **lo ya guardado se reconozca**.
+
+**En la base local hay 3 casos**, uno de ellos de un paciente **real**: 13 años al firmar, por el camino del
+correo, version 1.0, sin representante. Los otros dos son de prueba y tienen fecha de nacimiento imposible.
+**Corre la consulta en la nube antes de probar**, para saber a quien vas a ver marcado.
+
+1. Abre la **ficha** de un paciente que firmo siendo menor sin representante. **Criterio:** arriba de las
+   autorizaciones sale un bloque rojo con el titulo *"Consentimiento de menor sin representante"*, dice que no
+   se le pueden crear evaluaciones nuevas, dice **que hacer**, y dice que el consentimiento firmado **no se
+   borra ni se invalida**. Las tres autorizaciones siguen apareciendo *"Vigente"* abajo, porque lo son.
+2. En la **lista de pacientes**, ese paciente lleva su propia etiqueta con ese mismo texto. **Criterio:** NO
+   dice *"Sin autorizacion vigente"*, porque no retiro ninguna.
+3. Intenta iniciarle un **seguimiento**. **Criterio:** no se crea nada y el aviso dice lo mismo que la ficha.
+   **El criterio al reves, que es el que de verdad importa:** el profesional **sigue entrando a su historia**,
+   viendo sus consultas anteriores y su reporte. Lo que se frena es crear evaluaciones NUEVAS, nada mas.
+4. Firmale el consentimiento de nuevo con la rama que corresponda a su edad de hoy. **Criterio:** el bloque
+   rojo desaparece y el seguimiento se puede iniciar, sin tocar nada a mano.
+5. **Un paciente con fecha de nacimiento imposible** (de los dos de prueba) sale marcado con *"Fecha de
+   nacimiento imposible"*, **en tono neutro y sin frenar nada**. Corrige la fecha en la ficha: **criterio:** la
+   marca desaparece sola.
+
+**Lo que NO cubre:** la pieza 4 (el *"consentimiento de regularizacion"* como documento propio) sigue sin
+construirse, y la exclusion de estos pacientes de los **usos secundarios** (investigacion, estadistica
+comercializable) tampoco: hoy no existe el filtro de dataset donde engancharla, y darsela a esta pieza seria
+inventarle un mecanismo. Queda anotado aqui.
 
 ---
 
@@ -179,15 +259,58 @@ cerrados. Son excluyentes: la A permite emitir a mitad de periodo y la B lo proh
    periodo que el Integrante espera.
 3. **Y la B evita dos o tres facturas por periodo** al mismo Integrante, que es lo que la A permite.
 
-**Hay que llevarle estas tres razones a contabilidad**, porque la decision final es suya. Si insiste en la A,
-es una pieza mayor: la ventana del corte pasa a ser un dato de cada cuenta.
+**CONTABILIDAD ACEPTO LAS TRES RAZONES (2026-10-15).** Queda cerrado asi: **se mantiene la B**, el traslado de
+las rezagadas es **manual por ahora** y hay que **automatizarlo antes del 1 de noviembre**, y el *"Facturar
+ahora"* se posterga (mientras no exista, una rezagada que cruce de bimestre la factura admin a mano en
+Alegra).
+
+### 1b · EL PUNTO NUEVO DE CONTABILIDAD: el corte que cierra bimestre se emitiria tarde
+
+**Su observacion (2026-10-15):** *"con la B, el corte que cierra cada bimestre (fin de feb, abr, jun, ago, oct
+y dic) se emitiria en el bimestre siguiente, y en diciembre en el año siguiente. Eso desplaza el IVA y el
+ingreso de periodo en 6 de cada 24 cortes."* Y su propuesta: permitir emitir **esos** cortes el **ultimo dia
+del mes**, antes de medianoche, con lo posterior entrando como rezagada.
+
+**Preguntan: ¿choca con la funcion de la ventana? NO.** `corteDe(dia)` es aritmetica de calendario pura y **no
+cambia nada**: la ventana del segundo corte sigue siendo del 16 al ultimo dia del mes. Lo que cambia es **una
+comparacion**, `corteCerrado = corte.hasta < hoy`, que para esos seis cortes pasaria a `<=`. El indice de "una
+cuenta viva por corte" cuelga de `corte_hasta`, que no se mueve, asi que tampoco se toca. **Es un cambio
+pequeño y acotado.**
+
+**Y tampoco revive el otro defecto que ese freno existe para evitar.** El viejo era emitir el dia 12 un corte
+que cierra el 15: la factura vencia antes de que el corte existiera. Emitir **el ultimo dia** no hace eso,
+porque el periodo ya esta completo y los plazos del Integrante cuelgan de la **emision**, no del corte.
+
+**PERO SI CHOCA CON OTRA COSA, Y ES LA QUE HAY QUE DECIDIR PRIMERO.** La venta que se registre el dia 31
+**despues** de emitir cae **DENTRO** de la ventana de un corte ya emitido, no fuera. Asi que la regla de
+deteccion que les propuse (*"una linea cuya venta cae fuera de la ventana de su cuenta es una rezagada"*)
+**no la ve**, y por el indice no se puede abrir una segunda cuenta del mismo corte: esa venta quedaria
+invisible.
+
+**La regla correcta es otra, y es mejor que la mia:** una rezagada es **una venta sin cuenta cuyo corte ya
+tiene una cuenta viva**. Sigue sin necesitar columna nueva (`transactions.distribucion_statement_id` nulo mas
+el corte derivado de su fecha), cubre el caso del dia 31 **y** cubre la venta retroactiva, que era el hueco de
+fondo.
+
+**Asi que el orden importa: primero el traslado automatico con esta regla, y despues la emision del ultimo
+dia.** Al reves se abre un dia por bimestre en el que una venta no tiene donde vivir. Dicho de otro modo: su
+propuesta es prevencion A por la puerta de atras para un dia de cada bimestre, y se puede, pero solo cuando el
+traslado exista.
 
 ### Lo que falta construir, con su plazo real
 
-- **El traslado automatico** (la regla por defecto). No es urgente **hasta que exista la primera cuenta
-  pagada**, o sea hacia el 1 de noviembre: con el arranque el 15, hoy no hay ninguna. Y la buena noticia es
-  que **no necesita columna nueva**: una linea cuya venta cae fuera de la ventana de su cuenta **es** una
-  rezagada, asi que el rotulo *"de un periodo anterior"* se deriva de lo que ya se guarda.
+- **El traslado automatico** (la regla por defecto), **antes del 1 de noviembre** por decision de
+  contabilidad. La regla es la de 1b (*venta sin cuenta cuyo corte ya tiene una cuenta viva*), no la primera
+  que propuse, y **no necesita columna nueva**: el rotulo *"de un periodo anterior"* se deriva de lo que ya se
+  guarda.
+- **Registrar una venta COMO YA FACTURADA por fuera** (lo piden contabilidad el 2026-10-15: *"necesito que eso
+  se pueda marcar para que no se facture dos veces"*). **Dimensionado: es la mas pequeña de las tres.** La
+  venta ya tiene las columnas del documento (`alegra_invoice_number`, `alegra_invoice_state`,
+  `alegra_emitted_at`) y la cola de facturacion sale sola en cuanto el estado deja de pedir emision. Lo que
+  hay que añadir es la **superficie** (admin teclea el numero de la factura de Alegra y la fecha) y **un
+  motivo obligatorio**, porque es una afirmacion sobre un documento fiscal que Atlas no emitio y que nadie
+  mas puede verificar. Del tamaño de la marca de prueba de la 0217: una migracion chica, un escritor, un
+  formulario y su candado.
 - **El "Facturar ahora" del bimestre distinto.** Esta es la pieza grande: hoy una cuenta de Distribucion se
   emite **por corte**, y esto pide una factura **suelta**, fuera de corte, que no existe. Antes de
   construirla hay que decidir si esa factura es una cuenta de Distribucion con un corte de un dia o un
@@ -202,6 +325,12 @@ central. Y admin debe poder registrar en central."* Es la salida (a) de las dos 
 **Y lo pospuso a proposito:** *"esto va a hacer parte de todo el modulo de inventario grande que nos falta
 organizar."* Mientras no se construya, el total de inventario de /direccion **crece con cada recepcion**,
 porque suma lo que sale de la bodega y lo que entra a la vitrina.
+
+**VERIFICADO EL 2026-10-15, porque de esto depende arrancar en cero:** la mitad de *"admin debe poder
+registrar en central"* **no existe**. A la bodega central solo entran unidades por una **devolucion de un
+Integrante** (`devolucion-a-cnv-writer`) o por una **reincorporacion desde cuarentena**; no hay ninguna
+pantalla donde admin diga *"entraron N unidades del lote X a la bodega"*. La consecuencia practica y lo que se
+hace mientras tanto estan en la prueba **I** de arriba.
 
 ## 3 · ABIERTO POR DECISION · Distribucion y el domicilio
 
@@ -300,9 +429,123 @@ Contra la base local devuelve **cero filas**, que tambien es una respuesta. La a
 (`declaracion-presencial-congelada`): si estuviera mal, el script diria "no hay nada" y seria peor que no
 tenerlo.
 
-**LO QUE FALTA ES LA SUPERFICIE QUE LO AVISE**, y es de la **pieza 2** del consentimiento (el estado de
-"pendiente de revision"), que no esta construida. Darle un mecanismo propio a este caso seria un segundo
-constructor del mismo insumo.
+**LA SUPERFICIE QUE LO AVISA SE CONSTRUYO EL 2026-10-15**, dentro de la pieza 2 y no como mecanismo propio,
+que era justo el riesgo: es otro **motivo** del mismo estado derivado (`rama_que_ya_no_corresponde`). Sale en
+la ficha del paciente, en tono de revision y **sin frenar la atencion**, porque el consentimiento puede estar
+bien y lo que hace falta es que alguien lo mire. Su smoke es el paso 5 de la prueba **J**.
+
+**El script sigue sirviendo y no se retira:** barre la base entera de una vez, que es lo que hay que hacer
+despues de corregir una fecha. La pantalla responde por un paciente; el script, por todos.
+
+## 4c · RESPONDIDO · Las llaves reales de Alegra y Wompi NO enrutan por paciente
+
+**La pregunta de Santiago (2026-10-15):** *"¿solo es montar las api keys reales de alegra y wompi, y ya con
+eso si el paciente es de prueba se factura con alegra/wompi de prueba y si es real con el real? ¿El sistema
+los reconoceria?"*
+
+**No, y conviene tenerlo claro antes de montar las llaves. Hay UN solo juego de credenciales a la vez**, y el
+ambiente lo decide `ALEGRA_BASE_URL` (se deduce de la URL a proposito, para que una variable no pueda decir
+"produccion" mientras apunta al sandbox). **La marca de prueba no enruta: FRENA.**
+
+- **Paciente de prueba, llaves de produccion:** no se factura. Se escribe el motivo en la venta y el panel lo
+  dice. El sistema **si lo reconoce**, pero deteniendose, no desviandose.
+- **Paciente real, llaves de sandbox:** tampoco se factura (su identidad no viaja a un ambiente de pruebas).
+  Es simetrico a proposito.
+- **Venta marcada a mano como de prueba:** no se factura **en ningun ambiente** (lo del 2026-10-14).
+
+**Y montar las llaves NO alcanza.** Hay que correr `scripts/config-alegra-produccion.sql`, porque los ids de
+Alegra son **por ambiente** y el item 7 del sandbox no es el 7 de produccion: sin esa fila, la primera venta
+real falla con *"Items de otro ambiente"*. Lo que ese script pide son los ids de **produccion** de la
+numeracion de factura, la de nota credito, el IVA, los dos centros de costo y las cuentas puente (se leen con
+`scripts/leer-alegra.mjs` con las credenciales de produccion). Aborta sin escribir mientras quede un
+`<LLENAR>`. Los **contactos de los pacientes** no hay que tocarlos: si el contacto guardado es de otro
+ambiente, el servicio crea el de produccion solo.
+
+**Se le añadio la cuenta de TRANSFERENCIAS (2026-10-15), que faltaba.** Sin ella, una venta pagada por
+transferencia se factura y **el pago no se registra**: el paciente figura *"por cobrar"* en Alegra. El panel lo
+dice, pero mientras nadie lo mire queda asi. **Tambien falta en la fila del sandbox**, asi que si quieres
+probar ese caso antes, hay que llenarla ahi tambien.
+
+## 4d · CONSTRUIDO · "Operacion real", con una sola definicion en la base
+
+**La preocupacion de Santiago (2026-10-15):** *"el nucleo de CNV es la data, que puede que en algun futuro la
+vendamos... entre mas facil sea acceder, organizar y cumplir con la calidad, mejor."* Y el riesgo que nombro es
+el correcto: si cada consulta repite a mano las dos condiciones, tarde o temprano una se olvida.
+
+**Se creo la vista `public.ventas_reales` (migracion 0219)**, con las dos condiciones dentro: no marcada como
+de prueba, y del dia del arranque en adelante. Es **para consultar la base** (analisis, exportaciones), que es
+donde no hay candado ni revision de codigo. Respeta la RLS de quien pregunta y esta revocada para `anon` y
+`authenticated`.
+
+**NO se metieron las pantallas dentro**, y es deliberado: ahi la frontera **no es la misma para todas**. La
+fecha recorta las cifras de RESUMEN y **no** lo que se le debe a alguien ni el inventario (un saldo no es un
+flujo). Una vista para todo habria metido la fecha donde no va.
+
+**Y una correccion al enunciado, que vale mas que la vista: las dos condiciones son de lo COMERCIAL. La data
+CLINICA tiene UNA sola**, no ser de prueba. Una consulta del 2 de octubre es una consulta de verdad, con su
+medicion y su diagnostico, aunque la operacion comercial arranque el 15; el propio script de arranque las
+preservo a proposito (509 consultas y 1.781 consentimientos intactos). Aplicarle la fecha a lo clinico borraria
+del dataset pacientes reales medidos de verdad.
+
+## 4e · RESPONDIDO · La cuenta de Distribucion pagada que quedo viva
+
+**El caso:** el script de arranque dejo una cuenta viva, la **pagada**. Santiago confirma que es de una venta
+de prueba y que *"no ha movido dinero real ni generado factura real"*.
+
+**No se puede retirar, y no es una limitacion: es la regla.** `anularCuentaDistribucion` se niega con una
+cuenta pagada, y el trigger `distribucion_statements_inmutable` (0215) lo impide por debajo en las dos
+direcciones: no se puede retirar una pagada **ni** devolver `paid_at` a nulo. Su razon esta escrita ahi: *"un
+pago registrado contra un documento que dice no existir es peor que una cuenta mal emitida."* **Eso se queda
+como esta**: abrirle una puerta a esta fila le quitaria al mecanismo su unica garantia.
+
+**Y no hace falta retirarla, porque no hace nada.** Verificado lector por lector:
+
+- **el Integrante la ve como PAGADA**, no como algo que debe. Una fila en su historial de cuentas, con su
+  fecha de pago;
+- **no le suspende despachos ni le consume cupo:** las dos mitades del saldo pendiente excluyen las cuentas
+  pagadas, y la mora se calcula solo sobre las **abiertas**;
+- **no entra en /pagos** en absoluto: las cuentas de Distribucion viven en /comercial;
+- **y sus ventas ya estan marcadas como de prueba** por el script de arranque, asi que no cuentan en ninguna
+  cifra de dinero.
+
+**Lo unico que falta es dejar escrito de que etapa es**, y para eso esta
+`scripts/ANOTAR_LA_CUENTA_PAGADA_DEL_PERIODO_DE_PRUEBAS.sql`: anota la fila (`paid_note`) y deja una fila de
+auditoria. **No niega el acto** (la cuenta se emitio y el pago se registro, y las dos cosas pasaron): dice que
+fue del periodo de pruebas, para que en seis meses la pregunta se responda sola. Elige las cuentas **por la
+fecha del corte**, no por un id pegado a mano, y si la fecha de arranque no esta fijada no alcanza a ninguna.
+Termina en `rollback`.
+
+## 4f · DIMENSIONADO, NO CONSTRUIDO · La venta de admin sin profesional, con otro precio y sin comision
+
+**El caso de Santiago (2026-10-15):** *"hemos distribuido inventario incluso a pacientes que no son de ningun
+integrante (con descuento)... que admin ponga esas ventas sin estar asociadas a un profesional, con un precio
+diferente y sin porcentaje de comision (ejercicio de mercadeo y con familiares)."*
+
+**Son tres cosas y conviene separarlas, porque dos ya existen:**
+
+- **(a) Venta sin profesional: YA FUNCIONA, y esta previsto.** `ubicacionDeLaVenta` dice textualmente que una
+  venta sin profesional (la crea un administrador para un paciente sin Integrante asignado) **sale de la
+  central**, confirmado por Santiago el 2026-09-13. La columna `transactions.professional_id` es nulable. Lo
+  que hay que verificar antes de usarlo en serio son **las lecturas que agrupan por profesional**: las del
+  tablero de /direccion ya tratan el nulo a proposito (su comentario explica por que no usan un `!inner`,
+  justo para no perder la venta sin profesional en silencio), pero la liquidacion y las cuentas **cuelgan del
+  Integrante**, asi que una venta sin profesional simplemente no entra en ninguna, que es lo correcto: no hay
+  a quien pagarle.
+  **Y requiere saldo en la central**, o sea que depende de R14 (ver la prueba I).
+- **(c) Sin comision: sale solo.** La comision se **sella** en la linea de la venta; sin profesional no hay
+  porcentaje que aplicar, asi que queda en cero sin inventar nada.
+- **(b) El precio distinto del de lista: ESTA es la pieza.** Hoy el PVP se **sella** al crear el checkout
+  desde el catalogo, y eso es a proposito (es lo que impide que un cambio de precio reescriba una venta
+  vieja). Un precio distinto pide una **entrada de precio con motivo obligatorio** y la decision contable de
+  que es: ¿un descuento (misma base, menos valor) o un precio especial? **Esa decision es de contabilidad, no
+  nuestra**, y de ella depende como queda el IVA y como se ve en la factura.
+
+**Lo mas barato NO es permitir el nulo** (ya esta permitido). **Lo mas barato es (b) con su motivo**, y
+preguntarle a contabilidad si es descuento o precio especial **antes** de construir. Un *"profesional CNV"*
+con comision en cero seria peor: inventaria un Integrante que no existe, le crearia una ubicacion de
+inventario propia y ensuciaria todas las agrupaciones por profesional para siempre.
+
+**Es para despues del arranque**, como dijo Claude web.
 
 ## 5 · NO SE CONSTRUYO, Y SIGUE SIN CONSTRUIRSE
 
