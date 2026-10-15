@@ -142,7 +142,10 @@ representante no se puede guardar desde el 2026-10-09); lo que faltaba es que **
 
 **En la base local hay 3 casos**, uno de ellos de un paciente **real**: 13 años al firmar, por el camino del
 correo, version 1.0, sin representante. Los otros dos son de prueba y tienen fecha de nacimiento imposible.
-**Corre la consulta en la nube antes de probar**, para saber a quien vas a ver marcado.
+**Corre `scripts/CONSENTIMIENTOS_PENDIENTES_DE_REGULARIZAR.sql` contra la nube antes de probar**, para
+saber a quien vas a ver marcado y cuantos son. Es de solo lectura y dice que hacer con cada caso. Y vale
+para despues: hay que correrlo tras cualquier correccion de fecha de nacimiento. **Esa lista no puede
+crecer** (la prevencion esta desde el 2026-10-09): solo se vacia.
 
 1. Abre la **ficha** de un paciente que firmo siendo menor sin representante. **Criterio:** arriba de las
    autorizaciones sale un bloque rojo con el titulo *"Consentimiento de menor sin representante"*, dice que no
