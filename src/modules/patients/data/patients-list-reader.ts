@@ -3,6 +3,10 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { ConsentType } from "@/modules/consent/validations";
+import {
+  hechosDelConsentimiento,
+  motivoDeRegularizacion,
+} from "@/modules/consent/regularizacion";
 import { canCreateEvaluation } from "@/modules/evaluations/policies/can-create-evaluation";
 
 import { NON_COUNTING_EVALUATION_STATUSES } from "../labels";
@@ -38,7 +42,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // `created_at` DEL PACIENTE (no de su evaluacion): es la columna "Fecha de creacion", y la tiene
       // tambien quien no tiene ninguna evaluacion, que es justo cuando mas informa.
       // `retirada_at` (0212): la consulta que NO OCURRIO no cuenta en ninguna de las cifras de esta fila.
-      "id, created_at, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, retirada_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
+      "id, created_at, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at, signed_at), evaluations(id, type, superseded_at, retirada_at, status, created_at, import_batch_id, bis_measurements(measurement_date), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -87,10 +91,26 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
     // pregunta a la MISMA policy que gatea la creacion, no a una copia del criterio: la regla vive en un
     // solo sitio, asi que la lista y el gate no pueden discrepar.
     const consents =
-      (row.patient_consents as { consent_type: string; revoked_at: string | null }[] | null) ?? [];
-    const vigentes = consents
-      .filter((c) => c.revoked_at === null)
-      .map((c) => c.consent_type as ConsentType);
+      (row.patient_consents as
+        | { consent_type: string; revoked_at: string | null; signed_at: string | null }[]
+        | null) ?? [];
+    const soloVigentes = consents.filter((c) => c.revoked_at === null);
+    const vigentes = soloVigentes.map((c) => c.consent_type as ConsentType);
+    // ── EL SEGUNDO INSUMO DEL GATE (pieza 2) ────────────────────────────────────────────────────────
+    //
+    // Los HECHOS se arman con la funcion compartida y no a mano aqui, para que la lista y la ficha no
+    // puedan decir cosas distintas del mismo paciente.
+    //
+    // SIN LAS SESIONES PRESENCIALES, y es una ausencia deliberada: el motivo que sale de ellas (una fecha
+    // corregida que cambia la rama) NO frena evaluaciones, asi que no cambia esta columna, y traerlas
+    // costaria un embed mas en la consulta de TODO el roster. Ese motivo se ve en la ficha, que es donde
+    // se puede actuar sobre el.
+    const regularizar = motivoDeRegularizacion(
+      hechosDelConsentimiento({
+        fechaDeNacimiento: profile?.birth_date ?? null,
+        consents: soloVigentes,
+      }),
+    );
     return {
       patientId: row.id,
       createdAt: row.created_at as string,
@@ -102,7 +122,12 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       status: row.status,
       evaluationCount: reales.length,
       lastEvaluationDate: fechas.length ? fechas[fechas.length - 1] : null,
-      sinAutorizacionVigente: !canCreateEvaluation(vigentes).ok,
+      // SOLO LAS QUE FALTAN, y por eso pasa `null` aqui: este rotulo dice "Sin autorizacion vigente", y
+      // un menor sin representante NO retiro ninguna. Meter los dos casos en el mismo booleano hacia que la
+      // lista afirmara una revocacion que no existe y mandara al profesional a pedir algo que ya tiene.
+      sinAutorizacionVigente: !canCreateEvaluation(vigentes, null).ok,
+      // EL MOTIVO, dicho para que la lista pueda rotularlo sin volver a derivarlo.
+      pendienteDeRegularizar: regularizar,
       // QUE LE FALTA, dicho como accion. La regla vive en un modulo puro (`pendientes.ts`) para que se
       // pueda probar corriendola; aqui solo se le pasan los hechos. Se mira sobre `enPie` (ni supersedidas
       // ni retiradas), no sobre `reales`: una que espera la encuesta no cuenta como consulta hecha pero SI
@@ -139,7 +164,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
             tieneDiagnostico: (e.diagnoses ?? []).length > 0,
             reporte: e.reports?.[0]?.status ?? null,
           })),
-        !canCreateEvaluation(vigentes).ok,
+        !canCreateEvaluation(vigentes, regularizar).ok,
       ),
       // LA LISTA SI LOS MUESTRA (capa de TRABAJO), marcados. El conteo del tablero no los cuenta.
       // LA DERIVADA (0202): si sus cifras lo excluyen, su ficha tiene que decirlo. Mostrar la marca solo

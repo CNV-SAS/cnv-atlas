@@ -22,6 +22,7 @@ import {
   closeAwaitingIfConsentRevoked,
   ConsentGateError,
   ConsentimientoDeMenorSinRepresentanteError,
+  ConsentimientoPendienteDeRegularizarError,
   getResumeTokenStatus,
   getSurveyProgress,
   ResumeTokenError,
@@ -324,6 +325,15 @@ export async function signSurveyIntake(
     // Es la misma leccion de la lista blanca de `intakeIdentitySchema` de ayer: un guard nuevo con mensaje
     // propio no llega a la pantalla si nadie lo conecta, y eso no falla en ninguna parte.
     if (e instanceof ConsentimientoDeMenorSinRepresentanteError) {
+      return err(appError("validation", e.message));
+    }
+    // ── Y LO MISMO PARA EL PENDIENTE DE REGULARIZAR (pieza 2) ──────────────────────────────────────
+    //
+    // Por este camino casi no puede salir (el guard de arriba atrapa antes al menor que firma sin
+    // representante), y se conecta IGUAL: un freno que cae en el generico "intenta de nuevo" se vive como
+    // un sistema roto y manda a repetir lo que va a volver a fallar. La leccion ya esta escrita dos parrafos
+    // arriba; no hace falta pagarla una tercera vez.
+    if (e instanceof ConsentimientoPendienteDeRegularizarError) {
       return err(appError("validation", e.message));
     }
     // Cualquier otro fallo: NO se propaga en silencio (dejaba al paciente pulsando "Firmar" sin mensaje). Se

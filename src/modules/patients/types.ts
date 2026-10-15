@@ -1,3 +1,5 @@
+import type { MotivoDeRegularizacion } from "@/modules/consent/regularizacion";
+
 import type { PendienteDelPaciente } from "./pendientes";
 
 /**
@@ -84,6 +86,17 @@ export type PatientListItem = {
    * Se calcula con la MISMA policy que gatea la creacion, para que la lista y el gate no discrepen.
    */
   sinAutorizacionVigente: boolean;
+  /**
+   * TIENE LAS TRES Y NO ALCANZAN (pieza 2 del consentimiento, dictamen legal del 2026-10-09).
+   *
+   * VA APARTE DE `sinAutorizacionVigente` porque la salida es OTRA: ahi el paciente retiro algo y hay que
+   * pedirselo de nuevo; aqui nunca retiro nada y lo que falta es que firme quien podia firmar. Un solo
+   * booleano para los dos casos mandaria al profesional a buscar una revocacion que no existe.
+   *
+   * Null = completo. Con valor, `frenaEvaluaciones` dice si ademas lo frena: no todos frenan (una fecha mal
+   * digitada se corrige en dos clics y pararle la atencion al paciente por eso seria mas daño).
+   */
+  pendienteDeRegularizar: MotivoDeRegularizacion | null;
   /**
    * DE PRUEBA, Y SE MUESTRA AQUI A PROPOSITO. La lista es una superficie de TRABAJO (capa 3 de
    * `de-prueba.ts`), asi que el paciente de prueba sigue en ella: si desapareciera, el profesional no

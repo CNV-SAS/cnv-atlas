@@ -2,6 +2,11 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import {
+  hechosDelConsentimiento,
+  motivoDeRegularizacion,
+  type MotivoDeRegularizacion,
+} from "../regularizacion";
 import { CONSENT_TYPES, NECESSARY_CONSENT_TYPES, type ConsentType } from "../validations";
 
 // Autorizaciones del paciente para la ficha (`/pacientes/[patientId]`): que firmo, cuando, con que version
@@ -79,4 +84,39 @@ export async function getExternalConsents(patientId: string): Promise<Consentimi
     fechaRegistrada: r.recorded_date,
     versionDelTexto: r.text_version,
   }));
+}
+
+// ── EL ESTADO DE REGULARIZACION DEL PACIENTE (pieza 2) ──────────────────────────────────────────────────
+// La derivacion vive en `regularizacion.ts` (modulo puro); aqui solo se le pasan los hechos guardados.
+// Misma RLS que arriba (su profesional y admin), mas `presencial_sessions_select` para la sesion.
+
+export async function getRegularizacionDelPaciente(
+  patientId: string,
+): Promise<MotivoDeRegularizacion | null> {
+  const supabase = await createSupabaseServerClient();
+
+  const [{ data: perfil }, { data: consents }, { data: sesiones }] = await Promise.all([
+    supabase.from("patient_profiles").select("birth_date").eq("patient_id", patientId).maybeSingle(),
+    supabase
+      .from("patient_consents")
+      .select("consent_type, signed_at, revoked_at")
+      .eq("patient_id", patientId)
+      .is("revoked_at", null),
+    // SOLO LAS CONFIRMADAS Y CON FECHA CONGELADA: una sesion abierta no declaro nada todavia, y una
+    // anterior a la 0216 no congelo la fecha, asi que de ella no se puede afirmar ni negar nada.
+    supabase
+      .from("presencial_consent_sessions")
+      .select("confirmed_at, patient_birth_date, declaracion_version")
+      .eq("patient_id", patientId)
+      .not("confirmed_at", "is", null)
+      .not("patient_birth_date", "is", null),
+  ]);
+
+  return motivoDeRegularizacion(
+    hechosDelConsentimiento({
+      fechaDeNacimiento: perfil?.birth_date ?? null,
+      consents: consents ?? [],
+      sesiones: sesiones ?? [],
+    }),
+  );
 }

@@ -214,6 +214,12 @@ export type StartFollowupState = {
   error: string | null;
   resumeToken: string | null;
   revoked: boolean;
+  /**
+   * TIENE LAS TRES AUTORIZACIONES Y NO ALCANZAN (pieza 2): lo que hay que hacer, dicho con las palabras
+   * del motivo. Va APARTE de `revoked` porque el paciente no retiro nada, y el aviso de la revocacion
+   * manda a buscar algo que no paso.
+   */
+  pendienteDeRegularizar: string | null;
   /** Misma senal que en SignSurveyState: se retomo una evaluacion que ya tenia respuestas. */
   reanudar: boolean;
   /**

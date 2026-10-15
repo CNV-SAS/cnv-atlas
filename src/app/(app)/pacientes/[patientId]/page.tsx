@@ -27,7 +27,11 @@ import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { DesmarcarDePrueba, ProponerDePrueba } from "@/modules/patients/components/propuestas-de-prueba";
 import { leyendaDePrueba } from "@/modules/patients/de-prueba";
 import { ConsentimientosOrigenHtml } from "@/modules/consent/components/consentimientos-origen-html";
-import { getExternalConsents, getPatientConsents } from "@/modules/consent/data/consent-reader";
+import {
+  getExternalConsents,
+  getPatientConsents,
+  getRegularizacionDelPaciente,
+} from "@/modules/consent/data/consent-reader";
 import { canRevokeConsent } from "@/modules/consent/policies/can-revoke-consent";
 import { getPatientDetail } from "@/modules/patients/data/patient-detail-reader";
 import { formatDateOnlyShort } from "@/lib/format/date";
@@ -58,7 +62,7 @@ export default async function HistoriaPacientePage({
 
   // Autorizaciones del paciente y la via para registrar una revocacion (CONSENT_ATLAS seccion 10). Se lee
   // DESPUES del 404: si el paciente no es suyo, no se consulta nada mas.
-  const [autorizaciones, deOrigenHtml, diagnosticosGenerados] = await Promise.all([
+  const [autorizaciones, deOrigenHtml, diagnosticosGenerados, pendienteDeRegularizar] = await Promise.all([
     getPatientConsents(patientId),
     // Los del HTML de Gildardo, importados como lo que son (0159). Aparte: no habilitan evaluaciones.
     getExternalConsents(patientId),
@@ -66,6 +70,9 @@ export default async function HistoriaPacientePage({
     // algo por rehacer, y decirlo CON LA CIFRA: con cero no hay nada que rehacer y una advertencia
     // generica solo asusta; con dos, hay trabajo concreto y un sitio donde hacerlo.
     contarDiagnosticosDelPaciente(patientId),
+    // PIEZA 2: si tiene las tres y no alcanzan, el panel lo dice. Va en el MISMO Promise.all y no en una
+    // espera aparte: son dos consultas cortas sobre tablas que esta pantalla ya toca.
+    getRegularizacionDelPaciente(patientId),
   ]);
 
   // Solo el profesional dueno puede cerrar un shell firmado sin responder (la RLS ya acota que sea suyo).
@@ -206,6 +213,7 @@ export default async function HistoriaPacientePage({
         patientId={patientId}
         autorizaciones={autorizaciones}
         puedeRevocar={canRevokeConsent(user)}
+        pendienteDeRegularizar={pendienteDeRegularizar}
       />
 
       <PatientReferralsSection patientId={patientId} canMarkReturn={canRegisterReferral(user)} />

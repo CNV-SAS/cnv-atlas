@@ -11,23 +11,23 @@ describe("canCreateEvaluation (gate regla 15)", () => {
   // v1.0 (revision legal): DOS necesarias del gate clinico (internacional_ia dejo de ser autorizacion, se
   // absorbio en servicio). El acuse del medio electronico es necesario para FIRMAR, no del gate clinico.
   it("permite con las 2 autorizaciones necesarias vigentes", () => {
-    const r = canCreateEvaluation(["servicio", "datos_sensibles"]);
+    const r = canCreateEvaluation(["servicio", "datos_sensibles"], null);
     expect(r.ok).toBe(true);
   });
 
   it("permite aunque haya tambien opcionales", () => {
-    const r = canCreateEvaluation(["servicio", "datos_sensibles", "investigacion"]);
+    const r = canCreateEvaluation(["servicio", "datos_sensibles", "investigacion"], null);
     expect(r.ok).toBe(true);
   });
 
   it("bloquea si falta una necesaria y reporta cual", () => {
-    const r = canCreateEvaluation(["servicio"]);
+    const r = canCreateEvaluation(["servicio"], null);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.missing).toEqual(["datos_sensibles"]);
   });
 
   it("bloquea sin ninguna autorizacion", () => {
-    const r = canCreateEvaluation([]);
+    const r = canCreateEvaluation([], null);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.missing).toHaveLength(2);
   });
