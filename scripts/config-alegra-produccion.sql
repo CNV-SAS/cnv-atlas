@@ -55,6 +55,31 @@ insert into cfg_produccion (clave, valor) values
   -- plata esta en el bolsillo de alguien, y una transferencia ya llego a una cuenta.
   ('bank_account_transferencia_id', '<LLENAR>');  -- la cuenta PUENTE de las transferencias
 
+-- ══ 1b. EL VISTO BUENO DE LAS VENTAS QUE QUEDAN PENDIENTES ═══════════════════════════════════════
+--
+-- ═══ POR QUE ESTE SCRIPT PREGUNTA ESTO (Santiago, 2026-10-15) ═══
+--
+-- EL ORDEN ES LA REGLA, NO UNA RECOMENDACION: las llaves de produccion NO se montan hasta que el smoke
+-- termine y todo lo de prueba este marcado. Y la razon es que la marca a mano solo frena la factura si llega
+-- ANTES que la cola: en el instante en que esta fila queda escrita y Vercel apunta a produccion, todo lo que
+-- estaba esperando se emite con numeracion de la DIAN. Lo que se marque cinco minutos despues ya no se
+-- arregla con una marca, se arregla con una nota credito que tiene que hacer una persona.
+--
+-- Y el smoke se hace con profesionales y pacientes REALES (decision suya del 15: *"es lo que necesita para
+-- probar de verdad"*), asi que esas ventas NACEN REALES. El unico freno que las cubre es la marca a mano.
+--
+-- LO QUE HACE EL BLOQUE (2) DE ABAJO: lista, una por una, las ventas que la cola emitiria en cuanto esto
+-- quede, y ABORTA mientras esta bandeja diga '<REVISAR>'. No decide por nadie: obliga a mirar la lista. Si
+-- la lista sale vacia, no pregunta nada.
+--
+-- PARA VER LA LISTA SIN MONTAR NADA: correr este mismo script en ENSAYO (sin --commit) con los '<LLENAR>'
+-- como estan. La lista se imprime antes de que se revise cualquier otra cosa.
+create temp table revision_previa (clave text primary key, valor text not null) on commit drop;
+insert into revision_previa (clave, valor) values
+  -- Se cambia a 'si' cuando CADA venta de la lista este decidida: marcada como prueba (si fue del smoke) o
+  -- aceptada como real (y entonces su factura es correcta y tiene que salir).
+  ('ventas_pendientes_revisadas', '<REVISAR>');
+
 create temp table items_produccion (producto text primary key, item text not null) on commit drop;
 insert into items_produccion (producto, item) values
   -- El nombre de la izquierda es el de ATLAS, tal cual (no se toca). El id es el del item de Alegra
@@ -74,6 +99,69 @@ declare
   v         record;
   n         int;
 begin
+  -- ══ LO QUE SE VA A FACTURAR EN EL INSTANTE EN QUE ESTO QUEDE ══════════════════════════════════
+  --
+  -- VA PRIMERO, ANTES DE REVISAR LOS VALORES, por dos razones: es lo irreversible (un id mal copiado se
+  -- corrige y se vuelve a correr; una factura emitida pide nota credito), y asi la lista se puede ver hoy
+  -- corriendo el script en ensayo con los '<LLENAR>' puestos.
+  --
+  -- ⚠ ESTA CONDICION ES LA DE LA COLA, COPIADA. Sale de LE_FALTA_ALGO, FACTURABLE y LA_FACTURA_ES_DE_CNV
+  --   (src/modules/payments/data/facturacion-repository.ts), mas la marca a mano y el tope de intentos. Se
+  --   escribe con el prefijo "transactions." aunque sobre, para que coincida LETRA POR LETRA con lo que
+  --   exporta ese archivo: el candado "las-llaves-no-entran-con-ventas-sin-revisar.test.ts" compara los
+  --   textos, y si la cola cambia, se pone rojo nombrando este archivo. Una condicion parecida seria peor
+  --   que ninguna: diria que no hay nada que facturar y la cola emitiria otra cosa.
+  --
+  -- NO ENTRAN LAS DE PACIENTE DE PRUEBA: a esas las frena "motivoSiPacienteYAmbienteNoCuadran", que en
+  -- produccion exige paciente real. Las peligrosas son las de paciente REAL que fueron pruebas, que es
+  -- justo lo que deja el smoke.
+  select count(*) into n
+    from transactions
+    left join patients pa on pa.id = transactions.patient_id
+   where transactions.status = 'paid'
+     and (transactions.registered_retroactively_at is null and (transactions.alegra_invoice_state is distinct from 'emitida' or transactions.alegra_payment_id is null))
+     and (transactions.review_reason is null or transactions.review_resolution in ('segunda_compra', 'efectivo_no_recibido'))
+     and (transactions.modalidad_de_la_venta <> 'distribucion')
+     and transactions.marcada_como_prueba_at is null
+     and transactions.alegra_attempts < 5
+     and coalesce(pa.cuenta_como_de_prueba, false) = false;
+
+  raise notice '--- VENTAS QUE SE FACTURARIAN EN PRODUCCION EN CUANTO ESTO QUEDE: % ---', n;
+  for v in
+    select transactions.id, transactions.created_at::date as dia, transactions.amount,
+           transactions.payment_method, pr.full_name as profesional,
+           (select string_agg(nn.name || ' x' || ti.quantity, ', ' order by nn.name)
+              from transaction_items ti join nutraceuticals nn on nn.id = ti.nutraceutical_id
+             where ti.transaction_id = transactions.id) as productos
+      from transactions
+      left join patients pa on pa.id = transactions.patient_id
+      left join professional_profiles pp on pp.id = transactions.professional_id
+      left join profiles pr on pr.id = pp.profile_id
+     where transactions.status = 'paid'
+       and (transactions.registered_retroactively_at is null and (transactions.alegra_invoice_state is distinct from 'emitida' or transactions.alegra_payment_id is null))
+       and (transactions.review_reason is null or transactions.review_resolution in ('segunda_compra', 'efectivo_no_recibido'))
+       and (transactions.modalidad_de_la_venta <> 'distribucion')
+       and transactions.marcada_como_prueba_at is null
+       and transactions.alegra_attempts < 5
+       and coalesce(pa.cuenta_como_de_prueba, false) = false
+     order by transactions.created_at
+     -- UN TOPE, porque la salida se lee: con cientos de lineas el aviso del final se pierde arriba. El
+     -- numero de la cabecera y el aborto cuentan TODAS; esta lista solo sirve para reconocerlas.
+     limit 40
+  loop
+    -- SIN DATOS DEL PACIENTE: esta salida se pega en un chat y en un documento de entrega. Con la fecha, el
+    -- monto, el medio y el Integrante alcanza para reconocer una venta propia.
+    raise notice 'venta % | % | % | % | % | %', v.id, v.dia, v.amount, v.payment_method,
+      coalesce(v.profesional, 'sin Integrante'), coalesce(v.productos, 'sin lineas');
+  end loop;
+  if n > 40 then
+    raise notice '... y % mas. Si son tantas, la lista no es el camino: mira /pagos con el filtro de prueba.', n - 40;
+  end if;
+
+  if n > 0 and (select valor from revision_previa where clave = 'ventas_pendientes_revisadas') <> 'si' then
+    raise exception 'ABORTADO: % ventas se facturarian en Alegra PRODUCCION con numeracion de la DIAN en cuanto esto quede. Revisa la lista de arriba: lo que fue del smoke se marca como prueba en /pagos (la marca frena la factura en cualquier ambiente), y lo que es real se deja. Despues cambia ventas_pendientes_revisadas a si, en el bloque (1b) de este archivo.', n;
+  end if;
+
   -- Todo lleno, y con forma de id de Alegra (un entero). Un '<LLENAR>', un vacio o un nombre pegado donde
   -- iba el id abortan aqui.
   select string_agg(clave, ', ') into faltan from cfg_produccion where valor !~ '^[0-9]+$';
