@@ -96,7 +96,7 @@ Las cinco son: cuatro ADAPTO-STRESS de 107.100 (tres del 8-oct y una del 7-oct) 
 *"1 descartado"*. Y seguia apareciendo arriba en "Ventas por revisar".
 
 Porque el texto de esa bandeja dice, para cada una de esas filas: *"ese descuadre hay que cuadrarlo o
-descartarlo abajo, en Pendientes sin salida"* — **y `listarVentasPorRevisar` no sabia nada del descarte.** La
+descartarlo abajo, en Pendientes sin salida"*, y **`listarVentasPorRevisar` no sabia nada del descarte.** La
 condicion ("no revocado y con la huella vigente") vivia escrita a mano en el `where` del **otro** lector, y en
 ningun otro sitio.
 
@@ -253,10 +253,11 @@ Alegra, no lotes**.
 
 No es el inventario: es **un producto y dos perfiles**.
 
-**ADAPTO-STRESS tiene 18 unidades y ningun lote de verdad.** Sus ocho lotes son `aaaaa`, `aaaaab`, `jkl-11`,
-`Lote 001`, `LOTE SMOKE ADPTS`, `LOTESMK1`, `LOTESMK222` y `SMOKE (FINAL)`: nadie escribe `aaaaa` en un lote
-real. Y **no esta en la primera tanda del laboratorio**. Reparto de esas 18: Profesional Prueba 6, Profesional
-demo 2 9, Profesional Demo 1, y 2 en cuarentena.
+**ADAPTO-STRESS tiene 16 unidades y ningun lote de verdad** (eran 18: las 2 de cuarentena se dieron de baja
+el 15 a las 18:30). Sus lotes son `aaaaa`, `aaaaab`, `jkl-11`, `Lote 001`, `LOTE SMOKE ADPTS`, `LOTESMK1`,
+`LOTESMK222` y `SMOKE (FINAL)`: nadie escribe `aaaaa` en un lote real. Y **no esta en la primera tanda del
+laboratorio**. Reparto de las 16, las tres en cuentas de smoke: Profesional Prueba 6, Profesional demo 2 9,
+Profesional Demo 1. **El camino para dejarlo en cero, con sus lineas exactas, esta en la seccion 4l.**
 
 **Lo grave no es el saldo, es que esta en `en_consultorio`:** o sea que un Integrante real puede venderlo
 mañana, y esa venta se factura en Alegra produccion con numeracion de la DIAN, de un producto que no esta en
@@ -538,6 +539,80 @@ registrar en central"* **no existe**. A la bodega central solo entran unidades p
 Integrante** (`devolucion-a-cnv-writer`) o por una **reincorporacion desde cuarentena**; no hay ninguna
 pantalla donde admin diga *"entraron N unidades del lote X a la bodega"*. La consecuencia practica y lo que se
 hace mientras tanto estan en la prueba **I** de arriba.
+
+### DIMENSIONADO EL 2026-10-15 · Las tres formas, y cual recomiendo
+
+Santiago propone ahora **descontar AL ENVIAR**: *"que apenas admin envie una remesa (se acepte o no)
+inmediatamente se descuente desde la bodega central"*. Es distinto de lo que decidio el 12 (descontar **al
+confirmar**), y conviene verlo junto porque las dos tienen un agujero simetrico.
+
+**Lo primero, el mecanismo, porque de ahi sale todo el coste.** El saldo de una ubicacion NO es un dato que se
+escriba: lo calcula un trigger como la **SUMA de los movimientos** de ese (ubicacion, producto, lote),
+**excluyendo los de tipo `remesa`**. Y una remesa se declara **sobre la ubicacion del Integrante**, no sobre
+la central. O sea que hoy la remesa no es un traslado: es un anuncio.
+
+| | que pasa en el hueco | el riesgo |
+|---|---|---|
+| **(a) al enviar** | las unidades salieron de central y no estan en la vitrina | **no estan en ningun lado**: invisibles hasta que confirme |
+| **(b) al confirmar** | la central sigue contandolas | **las cuenta dos veces en la practica**: admin puede vender desde la bodega lo que ya va en camino |
+| **(c) como hoy** | nada sale de central nunca | el total **crece** con cada recepcion |
+
+**La (b) no es mas segura que la (a), es insegura al revés.** Medido: una de las 14 remesas tardo **90 horas**
+en confirmarse. Con la (b), durante esos cuatro dias la central dice que tiene unas unidades que ya van en una
+mochila, y una venta a domicilio sale de ahi: se despacharia algo que no esta. Con la (a) el riesgo es no
+verlas; con la (b) es venderlas dos veces.
+
+#### RECOMIENDO LA (a), Y CON LA FORMA QUE YA EXISTE EN EL SISTEMA
+
+**El transito no hay que inventarlo: es una UBICACION, igual que la cuarentena.** Ya existe una ubicacion
+`cuarentena` que no es vendible (`sellable: false`) y sostiene unidades en limbo con un panel para resolverlas.
+"En transito" es exactamente la misma figura:
+
+- **al declarar:** dos movimientos, central **−x** y transito **+x**;
+- **al confirmar:** transito **−y** y vitrina **+y**, con la `y` que el Integrante confirmo;
+- **lo que sobra se queda en transito**, visible, hasta que alguien lo resuelva.
+
+**El total nunca cambia**, que es lo que hoy no se cumple. Y responde tus tres preguntas sin piezas nuevas:
+
+- **¿Donde se ve?** Donde ya se ven las ubicaciones: el tablero de Direccion agrupa el inventario por
+  ubicacion y `kind`, y la pantalla de vencimientos lo agrupa por custodia. Una ubicacion nueva **aparece
+  sola** en las dos, igual que aparecio la cuarentena. Mas el panel de remesas, que ya lista las pendientes.
+- **¿Y si nunca confirma?** Hace falta un "volver a central", que es **el mismo escritor** que falta desde R14
+  (*"admin debe poder registrar en central"*, verificado el 15: **no existe**; a la central solo entran
+  unidades por una devolucion de un Integrante o una reincorporacion de cuarentena). O sea que esa mitad hay
+  que construirla igual, y sirve para las dos cosas.
+- **¿Y si confirma MENOS?** Hoy el saldo sube por el **minimo** entre lo declarado y lo reportado, asi que el
+  faltante **desaparece sin dejar rastro**. Con transito, ese faltante **se queda en transito** y alguien
+  tiene que decir si volvio a central o si se perdio. Es estrictamente mejor que hoy, y es el unico cambio
+  que convierte la asimetria en algo visible en vez de silencioso.
+
+#### PERO SI: ES EL MODULO GRANDE, Y LO DEJO ANOTADO OTRA VEZ
+
+Lo que lo vuelve modulo y no parche es **quien puede escribir**. Hoy la confirmacion es **un solo insert bajo
+la RLS del propio Integrante**, que solo puede escribir en SU ubicacion. Un traslado transito → vitrina pide
+un movimiento **en una ubicacion que no es suya**, asi que la escritura tiene que pasar a una funcion
+`SECURITY DEFINER` (o al cliente de servicio) con sus propias comprobaciones. Eso es cambiar el camino de
+escritura de lo que mueve el inventario.
+
+**El precedente mide el tamaño:** la cuarentena (que es la misma figura) costo **cuatro migraciones**
+(0164 a 0167: la ubicacion nueva, su CHECK y tres tipos de movimiento), un escritor de **333 lineas** y su
+panel. El transito es eso **mas** la entrada a central que falta **mas** el cambio del camino de escritura de
+la confirmacion.
+
+**Asi que se queda pospuesto**, como decidiste el 12 (*"esto va a hacer parte de todo el modulo de inventario
+grande"*). Y la recomendacion es que cuando se haga, se haga **con la (a)**: la (b) cuesta casi lo mismo y
+deja el riesgo de despachar desde la bodega algo que ya salio.
+
+#### LO BARATO QUE SI SE PUEDE HACER ANTES, SI QUIERES
+
+De tu decision del 12 habia una mitad que **no** necesita el modulo: *"no deberia dejar cargar nutraceuticos
+que no esten en central"*. Es una comprobacion en `declareRemesa` contra el saldo de la central **menos lo ya
+declarado y sin confirmar**, y aborta antes de escribir. Una consulta, un mensaje y su candado.
+
+Eso cierra el peor fallo de hoy (declarar una remesa de unidades que la bodega no tiene, que nadie avisa) sin
+tocar el saldo ni la RLS. No arregla que el total crezca: eso es el modulo.
+
+---
 
 ## 3 · ABIERTO POR DECISION · Distribucion y el domicilio
 
@@ -996,6 +1071,10 @@ decidio posponerlo. Dimensionarlo es otra conversacion, pero no se resuelve poni
 **Las credenciales reales de Alegra y Wompi se montan SOLO cuando el smoke termine y todo lo de prueba este
 marcado. Antes no.** Confirmado por Santiago el 2026-10-15.
 
+> ⚠ **Y HAY UN SEGUNDO LIMITE, POR EL OTRO LADO: tienen que estar ANTES DE LA PRIMERA VENTA REAL.** Una venta
+> nace con su ambiente sellado, y una sellada como prueba **no se factura nunca** en produccion, ni cuando se
+> monten las llaves. Vale para efectivo y transferencia tambien. Esta medido y explicado en la **seccion 7**.
+
 **Por que es un orden y no una recomendacion:** la marca a mano frena la factura, pero solo si llega **antes
 que la cola**. En el instante en que `alegra_config` tiene su fila de produccion y Vercel apunta a la URL de
 produccion, **todo lo que estaba esperando se emite con numeracion de la DIAN**. Una venta del smoke sobre un
@@ -1033,21 +1112,66 @@ ventas reales anteriores a hoy que nadie marco"* que pediste.
 5. Y solo entonces: Vercel, `leer-alegra.mjs`, `config-alegra-produccion.sql` con la bandeja en `si`, y la
    cuenta puente de **transferencias**, que falta en los dos ambientes.
 
-### ⚠ PENDIENTE CON RIESGO ESCRITO · ADAPTO-STRESS
+### ⚠ PENDIENTE AL CERRAR EL SMOKE · ADAPTO-STRESS a cero (el camino, confirmado el 2026-10-15)
 
-**Santiago lo deja para despues del smoke:** *"podemos limpiar adapto stress, pero despues del smoke segundo
-que falta."* Queda anotado con el riesgo, que sigue en pie:
+**Santiago hace el smoke CON el** (paciente real, Integrante real, producto real) **y al terminar lo deja en
+cero**, *"ya que dicho producto todavia ni existe"*. Su lectura era que no hace falta un script: se pone en
+`no_disponible` y las unidades se bajan por conciliacion. **Es correcta, y no hace falta escribir nada nuevo.**
 
-- **18 unidades** sobre **ocho lotes de smoke** (`aaaaa`, `aaaaab`, `jkl-11`, `Lote 001`, `LOTE SMOKE ADPTS`,
-  `LOTESMK1`, `LOTESMK222`, `SMOKE (FINAL)`): 16 en consultorios (Profesional Prueba 6, Profesional demo 2 9,
-  Profesional Demo 1) y 2 en cuarentena.
-- **No esta en la primera tanda del laboratorio.** CNV no tiene ese producto.
-- **El riesgo:** esta en `en_consultorio`, asi que **un Integrante real puede venderlo y facturarlo** en
-  Alegra produccion siendo un producto que no esta en ninguna bodega. Los otros cinco que CNV no tiene
-  (BERBERINA METABO, GUT-IMMUNE PRO, HEPA-DETOX, MITO-Q10 PLUS, SARCO-PROTECT) ya estan en `no_disponible`.
-- **La salida:** pasarlo a `no_disponible` y dar de baja las 18 unidades. Es decision de Santiago.
+**El estado medido en la nube (2026-10-15, despues de que diera de baja las dos de cuarentena):**
 
-**Recordatorio:** esto se trae de vuelta **cuando el smoke cierre**, junto con los pasos 1 a 4 de arriba.
+| Ubicacion | Lote | Unidades |
+|---|---|---|
+| Profesional Prueba | `SMOKE (FINAL)` | 6 |
+| Profesional demo 2 | `Lote 001` | 9 |
+| Profesional Demo | `LOTE SMOKE ADPTS` | 1 |
+| **Total** | | **16** |
+
+**Cuarentena quedo en cero** (las 2 unidades se dieron de baja a las 18:30 con sus motivos). Y las tres
+ubicaciones son **cuentas de smoke**, no Integrantes reales: ningun Integrante real tiene ADAPTO-STRESS.
+
+#### "Dar de baja" y "conciliar" NO son lo mismo, y aqui importa cual
+
+- **`baja`** dice *"la unidad existia y se perdio o se destruyo"*. Es el boton del panel de devueltas, y
+  **solo alcanza a las unidades en CUARENTENA**: ese panel lee esa ubicacion y ninguna otra. Es lo que uso
+  para las 2, y era el camino correcto para ellas.
+- **`conciliacion`** dice *"el saldo estaba mal y lo que hay es esto"*. No afirma que nada se destruyera, que
+  es exactamente el caso de estas 16: **nunca existieron fisicamente**, salieron de pruebas.
+
+Usar `baja` para las 16 afirmaria que CNV destruyo 16 frascos que nunca tuvo. Por eso van por conciliacion.
+
+#### Los tres pasos, en este orden
+
+**1 · El smoke primero.** Si se pone `no_disponible` antes, la venta del smoke **falla**: la disponibilidad se
+comprueba en el servicio donde se decide la venta (`payments-service.ts`), no solo en la pantalla, y responde
+*"no esta disponible para la venta"*.
+
+**2 · `no_disponible` desde la pantalla**, en /nutraceuticos, editando el producto. No hace falta script.
+Eso cierra las dos puertas de venta (el cobro y la remesa de admin, que solo ofrece `en_consultorio`).
+**Lo que NO hace es esconderlo del catalogo de prescripcion:** un producto real "aun no disponible" se sigue
+mostrando con su rotulo, a proposito (cotejo 2026-08-24: el profesional debe saber que el modelo lo
+contempla).
+
+**3 · `CONCILIAR_EL_INVENTARIO_AL_ARRANQUE_2026-10-15.sql`**, con la bandera
+`llevar_a_cero_lo_no_listado` en **`false`** (como viene, asi no toca ninguna otra linea), el motivo cambiado
+y el bloque (2) con estas tres lineas, que son las de hoy:
+
+```sql
+insert into _conteo values
+  ('Profesional Prueba', 'ADAPTO-STRESS', 'SMOKE (FINAL)',    0),
+  ('Profesional demo 2', 'ADAPTO-STRESS', 'Lote 001',         0),
+  ('Profesional Demo',   'ADAPTO-STRESS', 'LOTE SMOKE ADPTS', 0);
+```
+
+Y el motivo del bloque (0), que el que trae habla de un conteo fisico que aqui no hubo:
+
+```sql
+'Cierre del smoke 2026-10-15: unidades de prueba de un producto que CNV no tiene en bodega'
+```
+
+**Ensayo primero** (sin `--commit`): el bloque (1) imprime el saldo de hoy y el (3) las diferencias, asi que
+se ve exactamente lo que va a escribir antes de escribirlo. Si alguna de las tres cantidades cambio durante
+el smoke, el ensayo lo muestra y basta con volver a copiar los nombres de la salida del bloque (1).
 
 ### ✅ CONFIRMADO · El producto de prueba NO hace falta limpiarlo
 
@@ -1077,6 +1201,80 @@ Dos matices, por si aparecen:
   emitir el documento fiscal necesita la configuracion de produccion, que esta en el checklist de arranque.
 - **Desbloquear la venta bajo Distribucion.** El mecanismo del recaudo ya existe, asi que es una decision, no
   una falta de construccion. Hoy queda dentro del punto 3.
+
+## 7 · ¿FALTA ALGO POR CONSTRUIR PARA ARRANCAR? · La lista, al 2026-10-15
+
+Pregunta de Santiago: *"¿no queda faltando nada mas por construir, verdad? solo hacer smoke."*
+
+**Para el smoke: nada.** Todo lo que las pruebas I, F, G, H y A a E recorren esta construido y con candados.
+
+**Para que la operacion arranque de verdad hay UNA cosa, y no es una funcion que falte: son las llaves.** Y
+tiene un filo que no habiamos nombrado.
+
+### ⚠ LO QUE NADIE HABIA DICHO: una venta hecha ANTES de las llaves no se puede facturar DESPUES
+
+`wompi_env` se sella en el momento de crear la venta, derivado de la llave publica de Wompi
+(`pub_prod_` = produccion, cualquier otra cosa = `test`), **y vale para TODOS los medios de pago**: efectivo y
+transferencia tambien. Medido: las 55 ventas de la nube son `wompi_env = test`, incluidas las 24 de efectivo.
+
+Y la regla de ambiente (`motivoSiLaVentaNoEsDeEsteAmbiente`) dice: *"Es un pago de PRUEBA y Alegra esta en
+produccion. No se emite: seria una factura fiscal por un pago que no movio dinero."* **No hay excepcion ni
+boton de administrador.**
+
+**La consecuencia practica:** si Katherine vende manana en efectivo, con las llaves todavia en sandbox, esa
+venta **real** queda sellada como pago de prueba y **Atlas no la va a facturar nunca**, ni cuando se monten las
+llaves. Se queda visible y quieta en "Ventas cobradas sin cerrar en contabilidad", con su motivo.
+
+**El sistema se equivoca hacia el lado bueno** (prefiere no facturar a facturar un pago de juguete), y por eso
+no es un defecto. Pero fija el orden de verdad:
+
+> **Las llaves no van "despues del smoke": van ANTES de la primera venta real.** Entre el cierre del smoke y
+> la primera venta de un Integrante no deberia haber ninguna venta registrada.
+
+**La salida si pasa** (o para las ventas que CNV ya hizo a mano desde la central): registrarlas como **venta
+retroactiva**, que es la via que ya existe para "esto se facturo por fuera". Pide el numero de la factura de
+Alegra y la base lo exige (`tx_retroactiva_completa`: pagada, con numero y marcada emitida), y Atlas no
+vuelve a facturarla. **Lo que NO existe** es convertir en "ya facturada" una venta **ya registrada** por el
+camino normal: eso es la pieza de la seccion 1, y este caso es una razon mas para construirla.
+
+### Lo que falta construir, por orden de urgencia
+
+| | Que | Cuando |
+|---|---|---|
+| 1 | **El traslado automatico de rezagadas** (seccion 1) | **antes del 1 de noviembre**, por decision de contabilidad |
+| 2 | **"Ya facturada por fuera"** sobre una venta ya registrada (seccion 1) | antes de la primera rezagada de otro bimestre, y sirve para el filo de arriba |
+| 3 | **El descuento comercial** con la especificacion de contabilidad (4h) | despues del arranque |
+| 4 | **Repetir el consentimiento de un paciente que ya existe** (4g), y volver `frenaEvaluaciones` a `true` | no frena a nadie hoy; antes de que la lista de pendientes crezca |
+| 5 | **El "Facturar ahora" del bimestre distinto** (seccion 1) | pospuesto, pide una decision de contabilidad primero |
+| 6 | **La remesa que descuenta de central** (seccion 2) | el modulo de inventario, pospuesto otra vez el 15 |
+| 7 | **Paso 2 de la unificacion** del bloque de venta (3b) | despues, y con la decision de donde sale el dato de existencias |
+| 8 | **La venta de admin sin profesional** (4f) y **la emision el ultimo dia del mes** (1b) | dimensionadas, esperan decision |
+
+### Y lo que falta que NO es codigo (y de esto depende mas que de lo anterior)
+
+- **Las llaves de Alegra y Wompi**, con la cuenta puente de **transferencias**, que falta en los dos
+  ambientes. Es el gate real del arranque.
+- **Los datos fiscales y bancarios de los Integrantes.** Medido hoy: de los trece perfiles reales,
+  **ninguno** tiene los datos tributarios completos ni cuenta bancaria registrada (el unico completo es
+  `Profesional Prueba`, que es una cuenta de smoke). **No frena atender ni vender:** nada en el codigo lo
+  exige para una venta de Comision. Frena **pagarles** la comision del primer corte, y el RUT lo tiene que
+  verificar CNV, asi que no se resuelve la noche anterior.
+- **`tax_is_withholding_agent`** esta sin definir en los trece. Solo se lee al generar una cuenta de
+  **Distribucion**, y hoy ningun Integrante real la tiene habilitada, asi que no afecta al primer corte de
+  Comision. El dia que se habilite, hay que definirlo antes o la retencion saldra mal.
+
+### ¿Falta algo para que KATHERINE pueda empezar? NO, en codigo
+
+Medido en la nube: `Katherine Ruiz Velez`, nutricionista, **no** marcada de prueba, con su ubicacion de
+inventario **activa y vendible** y **96 unidades** en vitrina (24 de MULTI-CELL, OMEGA, CURCUMIN y D3-K2),
+sin remesas pendientes de confirmar y con comision del 20 %.
+
+Puede **atender, evaluar, prescribir y registrar ventas** hoy mismo. Las dos salvedades son las de arriba y
+ninguna es de codigo: **que sus ventas no se facturan hasta que esten las llaves** (y si las hace antes, no se
+facturaran nunca por el sello del ambiente), y **que para pagarle la comision del primer corte hace falta su
+informacion fiscal y bancaria**.
+
+---
 
 ## 6 · SE PULE CON LA OPERACION, NO CON UN SMOKE
 
