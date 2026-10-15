@@ -16,13 +16,20 @@ pacientes. Este archivo, el guion, si se versiona: no lleva nombres.
 **EL ORDEN DE HOY (2026-10-15, el dia del arranque):** primero **F a I**, que es lo que
 frenaba el arranque; despues **A a E**, que son los arreglos del 12. Nada mas: no el documento entero.
 
-**EL ORDEN CORREGIDO DEL 2026-10-15, porque hay algo mas urgente:**
+**EL ORDEN DEFINITIVO DEL 2026-10-15 (corregido dos veces el mismo dia, y la segunda cancela scripts):**
 
-1. **El paso 3 de la J**, que desbloquea a los seis menores que la profesional tenia detenidos.
-2. **La I**, que ahora incluye cargar la bodega con la primera tanda del laboratorio (y sin eso la **H** no
-   puede pasar, porque la central estaria vacia).
-3. **F, G, H**, y luego **A a E**.
-4. El resto de la **J** y lo demas, despues.
+1. **Aplicar la 0220** en la nube: `node scripts/aplicar-migracion.mjs drizzle/0220_un_descarte_vale_en_los_dos_paneles.sql --commit`. Es una funcion nueva, no toca tablas.
+2. **Marcar como de prueba** los perfiles `Profesional Prueba` y `Profesional demo 2` en /admin, y decidir si
+   `ADAPTO-STRESS` pasa a `no_disponible` (seccion I).
+3. **Descartar las 4 ventas `sin_saldo`** que quedan en "Pendientes sin salida", y **dar de baja** las 2
+   unidades de cuarentena. Con eso /pagos queda en cero (seccion F).
+4. **El paso 3 de la J**, que desbloquea a los seis menores.
+5. **F, G, H**, luego **A a E**, todo con pacientes de prueba (seccion **4j**).
+6. El resto de la **J** y lo demas, despues.
+
+**NO SE CORREN** `CARGAR_LA_BODEGA_AL_ARRANQUE` ni `CONCILIAR_EL_INVENTARIO_AL_ARRANQUE`: la bodega ya estaba
+cargada con la primera tanda desde el 11 de septiembre, y ocho ubicaciones tienen producto fisico encima.
+El porque esta en la seccion **I**.
 
 ---
 
@@ -49,6 +56,77 @@ defecto: *"aparece en lo real cosas que ya estan marcadas"*. Eran **cinco** lect
    paradas en cuarentena**. Las de producto de prueba ya no salen. Si queda alguna de producto **real**, no
    la quita ninguna marca: se cierra con los dos botones que el panel ya tiene (volver al lote, o dar de
    baja). Son dos clics y es un juicio fisico, no algo que un script pueda decidir.
+
+
+#### ✅ AVERIGUADO EL 2026-10-15, CON EL SCRIPT YA COMITEADO: NO ERA EL DESPLIEGUE NI UN LECTOR SIN CUBRIR
+
+Tu reporte: *"las 55 ventas estan marcadas, la fecha de arranque esta fijada, y ADMIN SIGUE VIENDO LO MISMO"*,
+con tres hipotesis: (a) el deploy no subio, (b) quedo un lector sin cubrir, (c) cache de pagina.
+**Ninguna de las tres.** Lo que medi:
+
+- **(a) descartada.** `origin/main` y `main` estan en el mismo commit, 0 adelante y 0 atras. Todo esta
+  desplegado, y el barrido de los lectores venia de varios push atras.
+- **(b) descartada, lector por lector.** Los ocho reciben el interruptor y los ocho filtran. Dos filtran por
+  otra cosa **a proposito y con su razon escrita** (0218): hablan de UNIDADES FISICAS, no de dinero.
+- **(c) descartada.** La pantalla es dinamica (`requireUser`), no hay cache de ruta que invalidar.
+
+**La base esta impecable:** 55 transacciones en total, **las 55 marcadas de prueba, CERO reales**, y
+`fecha_de_arranque = 2026-10-15`. Por eso los cuatro paneles que leen dinero estan en cero de verdad: el
+universo de ventas reales esta vacio, no hay nada que puedan mostrar.
+
+**ENTONCES POR QUE VES CINCO.** Son las dos excepciones fisicas, y cuadran exactamente con lo que reportaste:
+
+| Lo que ves | De donde sale | Es correcto |
+|---|---|---|
+| **5** ventas por revisar | 5 ventas `sin_saldo` de **producto real** sin marca a mano | si, es el descuadre fisico |
+| **4 + 1 descartado** en pendientes sin salida | las **mismas** 5, por la misma funcion | si |
+| **2** devueltas pendientes | 2 ADAPTO-STRESS **reales** parados en cuarentena | si, se cierra con los botones |
+| 1 cobrada sin cerrar · 3 en el historial | ya no existen | **estaban en cero** |
+
+Las cinco son: cuatro ADAPTO-STRESS de 107.100 (tres del 8-oct y una del 7-oct) y una LUVIA de 30.000 del
+2026-01-02 registrada retroactivamente.
+
+#### ⛔ Y EL DEFECTO QUE SI HABIA, QUE ES POR LO QUE PARECIA QUE NADA SURTIA EFECTO  → 0220
+
+**La quinta, la LUVIA, YA ESTABA DESCARTADA** en la nube, con motivo *"Era una prueba (smoke final)"*. Es tu
+*"1 descartado"*. Y seguia apareciendo arriba en "Ventas por revisar".
+
+Porque el texto de esa bandeja dice, para cada una de esas filas: *"ese descuadre hay que cuadrarlo o
+descartarlo abajo, en Pendientes sin salida"* — **y `listarVentasPorRevisar` no sabia nada del descarte.** La
+condicion ("no revocado y con la huella vigente") vivia escrita a mano en el `where` del **otro** lector, y en
+ningun otro sitio.
+
+**Asi que la pantalla mandaba a hacer algo y no reconocia que se hizo.** Eso no se lee como dos reglas
+distintas: se lee como que el sistema no guardo la accion, y entonces se deja de creerle al panel. Es el
+**hazard 4 de CLAUDE.md** en su forma pura, dos partes de la pantalla diciendo cosas opuestas porque leen
+fuentes distintas, y el arreglo es el de siempre: unir las fuentes.
+
+La **0220** crea `public.el_pendiente_sigue_pidiendo_accion(kind, tx)` y la llaman los dos lectores. El
+`lateral` del otro se queda, pero solo para MOSTRAR (motivo, autor, fecha, caducado); quien decide si la fila
+sale es la funcion. Y aguanta algo que el lateral no: dos descartes sin revocar de la misma venta multiplicaban
+la fila, el `EXISTS` no.
+
+Tres detalles que importan:
+
+- **El filtro del descarte NO cuelga del interruptor de prueba.** Son cosas distintas: la marca dice si el
+  acto cuenta, el descarte dice si una persona ya juzgo ese hecho fisico. Colgarlo del interruptor haria
+  reaparecer filas ya resueltas al encenderlo.
+- **`fallido` no tiene camino de descarte**, y `huella_del_pendiente` **lanza** para un tipo sin huella
+  definida. El `EXISTS` lo protege: para `fallido` no hay filas, asi que la huella no se evalua nunca.
+- **La caducidad vale en los dos lados.** Si el hecho cambia despues del juicio, la fila vuelve a los dos
+  paneles. Probado contra Postgres de verdad.
+
+**QUE TIENES QUE HACER PARA DEJARLO EN CERO** (en este orden):
+
+1. **Aplica la 0220** en la nube. Es una funcion nueva, no toca ninguna tabla.
+2. Recarga /pagos: "Ventas por revisar" baja de **5 a 4** sola, porque la LUVIA ya estaba descartada.
+3. **Descarta las otras 4** en "Pendientes sin salida", con su motivo, igual que hiciste con la LUVIA. Las dos
+   bandejas quedan en **0**.
+4. **Las 2 devueltas:** dos clics en el panel, *"dar de baja"* (son ADAPTO-STRESS de lotes de smoke). Eso es
+   un juicio fisico y ningun script lo puede tomar.
+
+Candados: `src/tests/el-descuadre-fisico-se-ve-y-se-descarta.test.ts` (12) y, contra BD real,
+`src/tests/descartar-un-pendiente-db.test.ts` (8, tres de ellos nuevos).
 
 ### G · Que una venta de prueba NO se facture  → `fix(pagos)` (mismo commit)
 
@@ -92,44 +170,69 @@ tiene.
    que hace cierta tu frase *"que la bodega de CNV inicie con todas las unidades"*, pero una linea olvidada se
    interpreta como "ahi no hay nada" y su saldo se borra. Y no se puede deshacer.
 
-#### ✅ RESUELTO EL 2026-10-15: LA BODEGA SE CARGA CON UN SCRIPT, Y H SI PASA
+#### ⛔ CORREGIDO EL 2026-10-15: LA BODEGA YA ESTABA CARGADA. NO SE CORRE NINGUNO DE LOS DOS SCRIPTS
 
-Santiago no cuenta hoy, y la salida es cargar la bodega con la **primera tanda del laboratorio**, que es un
-dato que si existe. `scripts/CARGAR_LA_BODEGA_AL_ARRANQUE_2026-10-15.sql` lo hace, **ensayado**: crea los
-cinco lotes con su vencimiento real y mete **1.810 unidades** en seis lineas.
+**Esto se escribio al reves el 2026-10-14 y hay que decirlo claro.** Di por hecho que la central estaba vacia
+porque tu dijiste *"Santiago NO PUEDE CONTAR FISICAMENTE HOY"*, y de ahi salieron el script de carga y la
+conciliacion en cero. **Mire el saldo de la nube antes de correrlos y los dos sobran, y los dos harian daño.**
 
-| Producto | Lote | Vence | Unidades |
-|---|---|---|---|
-| MULTI-CELL BASE | 19826 | 2028-07-18 | 500 |
-| OMEGA COMPLEX | 20226 | 2028-07-22 | 500 |
-| CURCUMIN BIOACTIV | 20526 | 2028-07-25 | 426 |
-| D3-K2 OSTEO | 19726 | 2028-07-17 | 300 |
-| LUVIA (tercero) | 04197232 | 2028-07-10 | 60 + 24 = 84 |
+**La primera tanda entro el 2026-09-11**, con un movimiento `recepcion` por producto cuyo texto dice *"Carga
+inicial: saldo en bodega central tras la primera entrega a Integrantes"*. Lotes y vencimientos reales
+incluidos. Y cuadra **unidad por unidad** con lo que acabas de pasar:
 
-**EL ORDEN NO ES INDIFERENTE:** primero la **conciliacion** con la bandera en `true` y el bloque (2) vacio
-(deja todo en cero), **despues** la carga. Al reves, la conciliacion llevaria a cero lo que la carga acaba de
-meter. **Y cambia el motivo de la conciliacion**, porque el que trae dice *"ajuste al conteo fisico"* y no
-hubo conteo.
+| Producto | Lote | Declarado | En central hoy | En vitrinas | Suma |
+|---|---|---|---|---|---|
+| MULTI-CELL BASE | 19826 | 500 | 382 | 114 | **496** (4 vendidas) |
+| OMEGA COMPLEX | 20226 | 500 | 385 | 113 | **498** (2 vendidas) |
+| CURCUMIN BIOACTIV | 20526 | 426 | 312 | 114 | **426** ✓ |
+| D3-K2 OSTEO | 19726 | 300 | 186 | 114 | **300** ✓ |
+| LUVIA (tercero) | 04197232 | 84 | 14 | 70 | **84** ✓ |
 
-**Con la bodega asi, la prueba H pasa:** la reserva de la venta exige existencias y ahora las hay.
+Siete vitrinas de Integrantes reales tienen producto encima (Angela, Camilo, Diana, Katherine, Maria Camila,
+Roberto y Valentina). **Total: 1.822 unidades de producto real.**
 
-Tres cosas que el script resuelve y conviene saber:
+**POR QUE NO SE CORRE LA CARGA:** metia 1.810 unidades encima de las 1.822 que ya hay. La bodega quedaria con
+**3.632** y nadie sabria cual mitad es inventada. El script no podia detectarlo: cargar una recepcion es una
+operacion legitima, y un segundo envio del laboratorio se veria exactamente igual.
 
-- **LUVIA va en DOS lineas** (60 el 26 de agosto, 24 el 27), porque dos entregas son dos hechos y una sola
-  linea de 84 pierde lo unico que se sabe de como llego. Las fechas reales viajan en el **texto** del
-  movimiento y no en `created_at`: esa columna dice cuando se escribio la fila, y backdatearla en un libro
-  append-only afirmaria que el registro existe desde agosto.
-- **El modelo SI distingue el producto de tercero:** LUVIA es `ownership = 'tercero'` y ya tiene su titular de
-  marca cargado, de donde cuelgan el centro de costo de su factura y la linea que el paciente ve. Lo que no
-  cambia es el inventario: las unidades estan en la bodega de CNV igual.
-- **Los codigos NUT-00X son de Alegra, no lotes**, y el script no los usa: el inventario de Atlas no los
-  conoce y meterlos invitaria a confundirlos con el lote.
+**POR QUE NO SE CORRE LA CONCILIACION EN CERO:** era tu propia condicion (*"confirma que eso no borra el saldo
+de ninguna vitrina que de verdad tenga producto fisico encima. Si alguna lo tiene, dilo ANTES"*). **Ocho la
+tienen**, y la bandera `llevar_a_cero_lo_no_listado` en `true` con el bloque (2) vacio habria borrado las
+1.822, sin vuelta atras.
 
-Y un hallazgo del ensayo: el script **aborta si hay mas de una bodega central activa**. La aplicacion la
-resuelve con `limit 1` porque da por hecho que hay una sola (en la nube lo hay); sin ese guard, el script
-podria cargar 1.810 unidades en una bodega cualquiera sin error y sin aviso.
+**Con la bodega asi, la prueba H pasa.** La reserva de la venta exige existencias y hay 385 OMEGA, 382
+MULTI-CELL, 312 CURCUMIN, 186 D3-K2 y 14 LUVIA en la central. Era la otra cosa que pediste confirmar.
 
-#### Y LO QUE PASARIA SI ARRANCARAS EN CERO SIN CARGAR (queda anotado)
+**Los dos scripts se quedan en `scripts/`**, sin correr, con su cabecera corregida: sirven para el **segundo**
+envio del laboratorio, que es cuando la carga de verdad hara falta. Y las tres notas que salieron de tu dato
+siguen valiendo para entonces: LUVIA son dos entregas (60 el 26 de agosto y 24 el 27), el modelo si distingue
+el producto de tercero (`ownership = 'tercero'`, con su titular de marca), y los **NUT-00X son codigos de
+Alegra, no lotes**.
+
+#### LO QUE SI HAY QUE LIMPIAR, Y ES MUCHO MAS PEQUEÑO
+
+No es el inventario: es **un producto y dos perfiles**.
+
+**ADAPTO-STRESS tiene 18 unidades y ningun lote de verdad.** Sus ocho lotes son `aaaaa`, `aaaaab`, `jkl-11`,
+`Lote 001`, `LOTE SMOKE ADPTS`, `LOTESMK1`, `LOTESMK222` y `SMOKE (FINAL)`: nadie escribe `aaaaa` en un lote
+real. Y **no esta en la primera tanda del laboratorio**. Reparto de esas 18: Profesional Prueba 6, Profesional
+demo 2 9, Profesional Demo 1, y 2 en cuarentena.
+
+**Lo grave no es el saldo, es que esta en `en_consultorio`:** o sea que un Integrante real puede venderlo
+mañana, y esa venta se factura en Alegra produccion con numeracion de la DIAN, de un producto que no esta en
+ninguna bodega. Los otros cinco que CNV no tiene (BERBERINA METABO, GUT-IMMUNE PRO, HEPA-DETOX, MITO-Q10 PLUS,
+SARCO-PROTECT) ya estan en `no_disponible`, que es lo que lo impide. **Decide tu:** si CNV no tiene
+ADAPTO-STRESS, va a `no_disponible` como los otros cinco.
+
+**Y dos perfiles de prueba estan marcados como REALES:** `Profesional Prueba` y `Profesional demo 2`. Solo
+`Profesional Demo` y `Santi pruebas` tienen la marca. Por eso sus 15 ADAPTO-STRESS cuentan como inventario
+real y sus ventas como ventas reales. Se arregla desde **/admin**, con la misma accion que marca un paciente
+(`marcarProfesionalDePrueba`), y el trigger de la 0203 recalcula sus ventas hacia atras solo.
+
+#### Y LO QUE PASARIA SI ARRANCARAS EN CERO SIN CARGAR (YA NO ES EL PLAN: queda anotado)
+
+**No se va a hacer:** la bodega ya estaba cargada (arriba). Esto se queda porque la mitad de abajo sigue siendo
+cierta y util, y porque el dia del segundo envio la pregunta vuelve.
 
 Tu plan es otro y es razonable: *"iniciar con todo en 0 y que admin vaya poniendo X nutraceuticos a tal
 profesional... ya luego voy a la oficina, cuento y comparo."* O sea el bloque (2) **vacio** y la bandera en
@@ -676,6 +779,75 @@ O sea que la misma pieza cubre **la rezagada que cruza de bimestre** y **la vent
 hace mas facil de justificar y no cambia su tamaño: sigue siendo la superficie donde admin teclea el numero de
 la factura y la fecha, con **motivo obligatorio**, porque es una afirmacion sobre un documento fiscal que Atlas
 no emitio y que nadie mas puede verificar.
+
+## 4j · RESPONDIDO · COMO HACER EL SMOKE DE HOY SIN ENSUCIAR LO QUE SE ACABA DE LIMPIAR
+
+Tu pregunta, y era la que faltaba pensar: *"desde el commit, TODA VENTA NUEVA CUENTA COMO REAL... el smoke que
+falta (F a I, A a E) genera ventas. Si las hago con gente real, vuelvo a ensuciar."*
+
+**La premisa hay que corregirla, y a tu favor: lo que vuelve real una venta NO es la fecha.** Son dos filtros
+distintos y trabajan por separado:
+
+- **`cuenta_como_de_prueba`**, la marca por venta, con cuatro entradas (profesional, paciente, producto, y la
+  marca a mano). La escribe un **trigger** en el momento del insert, cualquier dia. No sabe que existe el 15.
+- **`fecha_de_arranque`**, la frontera, que usan la vista `ventas_reales` y las cifras de periodo.
+
+Una venta de hoy a un **paciente de prueba** sale marcada sola, al instante, y queda fuera de todo. La
+frontera no la alcanza porque la marca ya la saco.
+
+### Las tres respuestas, en orden
+
+**1. ¿Alcanza con usar el profesional y el paciente de prueba ya marcados? SI, y no hay que correr nada.**
+Hay 25 pacientes de prueba. El trigger marca la venta en el insert, no hay segunda pasada ni script. Es la via
+limpia y es la que recomiendo para **todo** el smoke de dinero (F, G, A a E).
+
+**Antes de empezar, marca los dos perfiles que estan mal** (`Profesional Prueba` y `Profesional demo 2`, ver
+la seccion I): hoy cuentan como reales, asi que probar con ellos es exactamente lo que quieres evitar.
+
+**2. La prueba H funciona con un paciente de prueba. Pero hay una trampa, y es de INVENTARIO, no de dinero.**
+
+La casilla *"salio de la bodega de CNV"* depende de **quien mira** (admin), no del paciente. Asi que H pasa con
+un paciente de prueba sin problema. Lo que no cambia es esto: **admin solo ve productos REALES en el
+desplegable** (los de prueba se ofrecen unicamente a una cuenta de prueba, por la regla de
+`catalogo-prescribible`). O sea que H **saca una unidad real de la central de verdad**.
+
+El dinero queda limpio solo; **la unidad no vuelve sola**. Tres salidas, de mejor a peor:
+
+- **La limpia, y ademas prueba mas sistema:** haz la venta, registra la **devolucion del paciente** desde la
+  propia fila de la venta, y en "Devueltas pendientes de verificacion" pulsa **"volver al lote"** eligiendo la
+  bodega central. La unidad regresa y ademas acabas de probar el circuito completo de devolucion.
+- **La aceptable:** haz H con **1 unidad** y dejala ir. Cuando cuentes en la oficina, la conciliacion la
+  cuadra, que es justo para lo que existe.
+- **La que NO:** hacer H con un producto de prueba. No se puede, y es correcto que no se pueda.
+
+**3. La marca a mano sirve HOY y cualquier dia. No tiene nada que ver con el arranque.**
+
+Es una columna de la venta; el trigger recalcula al escribirla y la funcion del descuadre fisico tambien la
+respeta. La fecha del script solo decidia **a cuales** ventas alcanzaba el script, no como funciona la marca.
+Exige admin, motivo de 10 caracteres y deja su fila de auditoria.
+
+**Y lo que la marca a mano hace de verdad bien:** una venta marcada **no se factura en NINGUN ambiente**
+(*"un documento fiscal afirmaria un acto que ya se declaro que no ocurrio"*). Es el freno de la **G**.
+
+> **⚠ EL AVISO QUE IMPORTA PARA CUANDO PONGAS LAS LLAVES REALES.** La marca a mano frena la factura, pero solo
+> si llega **antes** que la cola. Hoy Alegra esta en sandbox y da igual. Con las llaves de produccion puestas,
+> una venta de prueba hecha sobre un paciente **real** y marcada cinco minutos despues puede haberse facturado
+> ya, con numeracion de la DIAN, y eso no se deshace con una marca: se deshace con una nota credito. **Por eso
+> la via de los pacientes de prueba no es solo la mas comoda, es la unica que no depende de llegar primero.**
+
+### Si necesitas saldo en una vitrina de prueba
+
+`Santi pruebas` esta vacia y `Profesional Demo` tiene 1 unidad. Para probar una venta de Integrante hace falta
+saldo, y se consigue sin tocar nada real: **admin hace una remesa** al profesional de prueba y **el confirma**
+en *Mi inventario*. La remesa **no descuenta de la central** (es el hueco conocido de la seccion 2 de este
+documento, decidido y pospuesto), asi que la central no se mueve ni una unidad.
+
+### Lo que NO hace falta
+
+- Volver a correr el script de arranque. No se puede y no hace falta.
+- Mover `fecha_de_arranque`. Es la frontera del periodo y moverla para probar seria mentir sobre el periodo.
+
+---
 
 ## 5 · NO SE CONSTRUYO, Y SIGUE SIN CONSTRUIRSE
 
