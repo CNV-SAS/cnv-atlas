@@ -562,6 +562,42 @@ export async function contarVentasSinDocumentoPorDia(
   return filas.map((f) => ({ dia: String(f.dia), total: Number(f.total) }));
 }
 
+/**
+ * ═══ VENTAS REALES QUE NACIERON CON EL SELLO DE PRUEBA, Y POR ESO NO SE PODRAN FACTURAR ═══
+ *
+ * ── EL FILO QUE ESTO HACE VISIBLE (2026-10-15) ──────────────────────────────────────────────────
+ *
+ * `wompi_env` se sella AL CREAR la venta, derivado de la llave publica de Wompi, y vale para TODOS los
+ * medios de pago: efectivo y transferencia tambien. Con las llaves en sandbox, una venta REAL nace
+ * `wompi_env = test`, y `motivoSiLaVentaNoEsDeEsteAmbiente` se niega a emitirla en produccion. SIN
+ * EXCEPCION NI BOTON DE ADMINISTRADOR, que es lo correcto: lo contrario seria una factura fiscal por un pago
+ * que no movio dinero.
+ *
+ * La consecuencia es que una venta real hecha ANTES de montar las llaves no se puede facturar DESPUES. Se
+ * queda quieta en "Ventas cobradas sin cerrar" para siempre, y la unica salida es la venta retroactiva.
+ *
+ * ── POR QUE SE CUENTA, Y POR QUE CON ESTAS CONDICIONES ──────────────────────────────────────────
+ *
+ * Santiago, 2026-10-15: *"la ventana entre que yo cierre el smoke y monte las llaves es justo cuando
+ * Katherine podria vender, y nadie estaria mirando"*. Esto es lo que mira, y lo dice en /pagos.
+ *
+ * Y REUSA LOS TRES PREDICADOS DE LA COLA en vez de escribir la condicion a mano, por la misma razon que
+ * ellos existen: la pregunta es "de lo que la cola querria emitir, cuanto no va a poder por el sello". Una
+ * condicion propia contaria otro universo, y la pantalla diria una cifra que el guard de las llaves no dice.
+ */
+export async function contarVentasRealesConSelloDePrueba(): Promise<number> {
+  const filas = await db.execute<{ total: number }>(sql`
+    select count(*)::int as total
+      from transactions
+     where status = 'paid'
+       and wompi_env = 'test'
+       and ${LE_FALTA_ALGO}
+       and ${FACTURABLE}
+       and ${LA_FACTURA_ES_DE_CNV}
+       and not cuenta_como_de_prueba`);
+  return Number(filas[0]?.total ?? 0);
+}
+
 // ═══ LA CONFIRMACION MANUAL DE UNA TRANSFERENCIA (0201) ═══
 
 export type VentaParaConfirmar = {
