@@ -724,6 +724,43 @@ fue del periodo de pruebas, para que en seis meses la pregunta se responda sola.
 fecha del corte**, no por un id pegado a mano, y si la fecha de arranque no esta fijada no alcanza a ninguna.
 Termina en `rollback`.
 
+#### ⛔ CORRIO EL 2026-10-15 Y NO ALCANZO NINGUNA. SE QUEDA SIN ANOTAR, A PROPOSITO
+
+Santiago lo corrio y salio *"CUENTAS PAGADAS ANTERIORES AL ARRANQUE: 0"*, que no cuadraba con la verificacion
+del arranque (`cuentas_pagadas_que_quedan: 1`). **Su lectura era exacta:**
+
+| | |
+|---|---|
+| El corte de esa cuenta | 2026-10-01 a **2026-10-15** |
+| `fecha_de_arranque` | **2026-10-15** |
+| La condicion del script | `corte_hasta < fecha_de_arranque` |
+
+El 15 no es menor que el 15, asi que **queda fuera por diseno**. Medido en la nube, no deducido.
+
+**Y la condicion NO se afloja a `<=`, por una razon mas fuerte que la que estaba escrita.** El comentario del
+script decia que seria peor anotar como "de pruebas" una cuenta real del futuro. Con `<=` el caso no es
+hipotetico: **el corte que termina exactamente el dia del arranque es el PRIMER corte real del periodo
+nuevo** (el 01 al 15 de octubre cierra hoy). O sea que `<=` anotaria como periodo de pruebas justo la primera
+cuenta real que CNV va a emitir.
+
+**Y el proposito documental ya esta medio cubierto:** esa fila lleva `paid_note = 'smoke-recibido'`, escrita
+cuando se registro el pago. No dice "periodo de pruebas" con esas palabras, pero cualquiera que la mire en
+seis meses ve que salio de un smoke.
+
+**Entonces queda escrito aqui por que existe esa cuenta**, que era el proposito original de la anotacion:
+
+> El 2026-10-12, probando el bloque de Distribucion, se emitio una cuenta del corte 01 al 15 de octubre a un
+> Integrante de prueba por 171.360 COP y se le registro el pago (`paid_note: smoke-recibido`). **Las dos cosas
+> ocurrieron** y por eso no se retiran: el trigger `distribucion_statements_inmutable` (0215) lo impide en las
+> dos direcciones, y un pago registrado contra un documento que dice no existir es peor que una cuenta mal
+> emitida. **Sus ventas estan marcadas como de prueba** por el script de arranque, asi que no cuenta en
+> ninguna cifra de dinero, no le suspende despachos y no le consume cupo a nadie.
+
+**El script se queda en el repositorio** y sigue siendo correcto: el dia que aparezca una cuenta pagada de un
+corte **anterior** al arranque, lo anota sin editarlo.
+
+---
+
 ## 4f · DIMENSIONADO, NO CONSTRUIDO · La venta de admin sin profesional, con otro precio y sin comision
 
 **El caso de Santiago (2026-10-15):** *"hemos distribuido inventario incluso a pacientes que no son de ningun
