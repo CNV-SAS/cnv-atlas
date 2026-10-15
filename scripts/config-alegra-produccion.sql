@@ -44,7 +44,16 @@ insert into cfg_produccion (clave, valor) values
   ('cost_center_tercero_id',   '<LLENAR>'),   -- productos de TERCERO (LUVIA)
   -- CUENTAS PUENTE. Nunca una de tipo bank.
   ('bank_account_efectivo_id', '<LLENAR>'),   -- "Efectivo en poder de Integrantes"
-  ('bank_account_pasarela_id', '<LLENAR>');   -- "Wompi por liquidar"
+  ('bank_account_pasarela_id', '<LLENAR>'),   -- "Wompi por liquidar"
+  -- ═══ Y LA DE LA TRANSFERENCIA, QUE FALTABA (2026-10-15) ═══
+  --
+  -- NO ES OPCIONAL AUNQUE LA COLUMNA LA ADMITA NULA. `cuentaDelPago` devuelve null sin ella, y entonces la
+  -- factura de una venta pagada POR TRANSFERENCIA se emite y el pago NO se registra: el panel dice por que,
+  -- pero mientras nadie lo mire el paciente figura "por cobrar" en Alegra.
+  --
+  -- Y NO HEREDA LA DEL EFECTIVO a proposito (2026-09-25): "Efectivo en poder de Integrantes" dice que la
+  -- plata esta en el bolsillo de alguien, y una transferencia ya llego a una cuenta.
+  ('bank_account_transferencia_id', '<LLENAR>');  -- la cuenta PUENTE de las transferencias
 
 create temp table items_produccion (producto text primary key, item text not null) on commit drop;
 insert into items_produccion (producto, item) values
@@ -85,6 +94,12 @@ begin
    = (select valor from cfg_produccion where clave = 'bank_account_pasarela_id') then
     raise exception 'ABORTADO: la cuenta de efectivo y la de Wompi son el mismo id.';
   end if;
+  -- LAS TRES CUENTAS PUENTE SON TRES SITIOS DISTINTOS. Si dos coinciden es que se copio la misma linea, y el
+  -- cotejo contra el extracto no puede notarlo: veria una cuenta que cuadra en el total y miente en el origen.
+  if (select valor from cfg_produccion where clave = 'bank_account_transferencia_id')
+   in (select valor from cfg_produccion where clave in ('bank_account_efectivo_id', 'bank_account_pasarela_id')) then
+    raise exception 'ABORTADO: la cuenta de transferencias repite la de efectivo o la de Wompi.';
+  end if;
   if (select valor from cfg_produccion where clave = 'invoice_template_id')
    = (select valor from cfg_produccion where clave = 'credit_note_template_id') then
     raise exception 'ABORTADO: la numeracion de factura y la de nota credito son el mismo id.';
@@ -123,7 +138,7 @@ end $$;
 insert into alegra_config
   (env, invoice_template_id, credit_note_template_id, iva_tax_id,
    cost_center_propio_id, cost_center_tercero_id,
-   bank_account_efectivo_id, bank_account_pasarela_id, note, updated_at)
+   bank_account_efectivo_id, bank_account_pasarela_id, bank_account_transferencia_id, note, updated_at)
 select 'produccion',
        max(valor) filter (where clave = 'invoice_template_id'),
        max(valor) filter (where clave = 'credit_note_template_id'),
@@ -132,6 +147,7 @@ select 'produccion',
        max(valor) filter (where clave = 'cost_center_tercero_id'),
        max(valor) filter (where clave = 'bank_account_efectivo_id'),
        max(valor) filter (where clave = 'bank_account_pasarela_id'),
+       max(valor) filter (where clave = 'bank_account_transferencia_id'),
        'Leido de Alegra PRODUCCION con scripts/leer-alegra.mjs. Numeracion compartida con la facturacion manual (FE/NC), decision de contabilidad 2026-09-13. Pago contra cuentas PUENTE por el BRUTO.',
        now()
   from cfg_produccion
@@ -143,6 +159,7 @@ on conflict (env) do update set
   cost_center_tercero_id   = excluded.cost_center_tercero_id,
   bank_account_efectivo_id = excluded.bank_account_efectivo_id,
   bank_account_pasarela_id = excluded.bank_account_pasarela_id,
+  bank_account_transferencia_id = excluded.bank_account_transferencia_id,
   note                     = excluded.note,
   updated_at               = now();
 
@@ -167,9 +184,10 @@ do $$
 declare r record;
 begin
   for r in select * from alegra_config order by env loop
-    raise notice 'alegra_config %: factura % | nota credito % | IVA % | centro propio % | centro tercero % | cuenta efectivo % | cuenta Wompi %',
+    raise notice 'alegra_config %: factura % | nota credito % | IVA % | centro propio % | centro tercero % | cuenta efectivo % | cuenta Wompi % | cuenta transferencias %',
       r.env, r.invoice_template_id, r.credit_note_template_id, r.iva_tax_id,
-      r.cost_center_propio_id, r.cost_center_tercero_id, r.bank_account_efectivo_id, r.bank_account_pasarela_id;
+      r.cost_center_propio_id, r.cost_center_tercero_id, r.bank_account_efectivo_id, r.bank_account_pasarela_id,
+      r.bank_account_transferencia_id;
   end loop;
   for r in select n.name, n.ownership, ai.item_id, ai.env from alegra_items ai
              join nutraceuticals n on n.id = ai.nutraceutical_id
