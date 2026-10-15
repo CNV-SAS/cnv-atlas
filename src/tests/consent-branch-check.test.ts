@@ -24,14 +24,25 @@ describe("checkConsentBranchConsistency (DELTA2 B3)", () => {
     expect(r.ok).toBe(true);
   });
 
-  it("rama mayor + menor por documento: bloquea", () => {
+  // ═══ RAMA MAYOR SOBRE UN MENOR: YA NO BLOQUEA AQUI (Santiago, 2026-10-15) ═══
+  //
+  // Bloqueaba, y tuvo a una profesional con SEIS pacientes reales detenidos: su evaluacion se quedaba en
+  // `draft` al confirmar identidad y no habia nada que hacer con ellos. El mensaje mandaba a *"repetir el
+  // consentimiento con el representante legal"*, y para un paciente QUE YA EXISTE ese camino no esta
+  // construido (el pase presencial con rama de menor solo crea pacientes nuevos; el remoto pide un correo
+  // que estos pacientes no tienen). Un freno sin salida no protege: detiene la atencion de un menor real.
+  //
+  // EL HECHO NO SE PERDIO: lo marca el estado derivado `menor_sin_representante`
+  // (`consentimiento-pendiente-de-regularizar.test.ts`), en la ficha y en la lista, con que hacer. **El dia
+  // que exista el camino, el freno vuelve ahi, en el gate, no aqui**: este muro compara una rama contra una
+  // fecha, que es otra pregunta.
+  it("rama mayor + menor por documento: NO bloquea (lo marca el estado de regularizacion)", () => {
     const r = checkConsentBranchConsistency({
       birthDate: "2012-01-01", // 14 años
       usedMinorBranch: false,
       now: NOW,
     });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toContain("menor de edad");
+    expect(r.ok).toBe(true);
   });
 
   it("rama menor + menor por documento: consistente", () => {
