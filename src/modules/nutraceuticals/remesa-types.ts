@@ -49,3 +49,24 @@ export type EligibleProfessional = { professionalId: string; name: string };
  * Asi que se muestra, MARCADO y AL FINAL de la lista: visible donde se trabaja, imposible de confundir.
  */
 export type RemesableProduct = { id: string; name: string; esDePrueba: boolean };
+
+/**
+ * Lo que la bodega central puede despachar de un (producto, lote): lo que dice su saldo, lo que ya prometio
+ * en remesas y la diferencia.
+ *
+ * VIVE AQUI Y NO EN EL REPOSITORIO porque la pantalla de remesas lo muestra. El porque de la resta vive en
+ * `data/lo-que-la-central-puede-despachar.ts`, que es quien la calcula.
+ */
+export type DisponibleEnCentral = {
+  nutraceuticalId: string;
+  nombre: string;
+  esDePrueba: boolean;
+  lotId: string;
+  lote: string;
+  /** Lo que dice el saldo de la central (no descuenta remesas). */
+  saldo: number;
+  /** Suma de TODAS las remesas declaradas de ese (producto, lote), confirmadas o no. */
+  yaDeclarado: number;
+  /** `saldo - yaDeclarado`. Puede ser negativo si se declaro mas de lo que habia. */
+  disponible: number;
+};
