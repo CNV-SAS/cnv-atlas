@@ -80,9 +80,42 @@ try {
   await sql.begin(async (tx) => {
     // El "begin;"/"commit;" propio del archivo se retira: la transaccion la pone esta herramienta, y
     // dejar el commit del archivo confirmaria lo que el ensayo iba a revertir.
-    const contenido = readFileSync(archivo, "utf8")
+    //
+    // ── Y EL "rollback;" TAMBIEN, QUE FALTABA Y ERA EL PEOR DE LOS TRES (2026-10-15) ───────────────
+    //
+    // EL CASO: Santiago corrio ANOTAR_LA_CUENTA_PAGADA con --commit y salio "there is no transaction in
+    // progress". Ese aviso es la prueba de que algo se rompio: el archivo trae su "rollback;" al final (es
+    // el que lo vuelve seguro al pegarlo en el editor de Supabase, donde se descomenta el "commit;" cuando
+    // se quiere aplicar). Esa linea REVIRTIO la transaccion de esta herramienta desde dentro; las
+    // sentencias siguientes, si hubiera, corren en autocommit; y el COMMIT final del driver llega sin
+    // transaccion abierta, que es de donde sale el aviso.
+    //
+    // O SEA QUE DECIA "CONFIRMADO: los cambios quedan en la base" Y NO QUEDABA NADA. Es exactamente el
+    // defecto de `--confirmar` que esta contado arriba, con otra puerta: la herramienta promete un modo y
+    // hace el otro, y quien la corrio no tiene como saberlo. En ese caso no se perdio nada porque el script
+    // no alcanzaba ninguna fila, pero con la carga de la bodega habria dicho que cargo 1.810 unidades.
+    //
+    // SE QUITA, NO SE PROHIBE: el archivo tiene razon en traerlo (pegado a mano, es lo unico que lo hace
+    // reversible). Lo que no puede es decidir sobre la transaccion que abrio esta herramienta. Y SE DICE EN
+    // VOZ ALTA, porque un cambio silencioso al contenido de un script es la otra mitad del mismo problema.
+    const crudo = readFileSync(archivo, "utf8");
+    const contenido = crudo
       .replace(/^[ 	]*begin[ 	]*;[ 	]*$/gim, "")
-      .replace(/^[ 	]*commit[ 	]*;[ 	]*$/gim, "");
+      .replace(/^[ 	]*commit[ 	]*;[ 	]*$/gim, "")
+      .replace(/^[ 	]*rollback[ 	]*;[ 	]*$/gim, "");
+    const quitadas = [
+      ["begin;", /^[ 	]*begin[ 	]*;[ 	]*$/gim],
+      ["commit;", /^[ 	]*commit[ 	]*;[ 	]*$/gim],
+      ["rollback;", /^[ 	]*rollback[ 	]*;[ 	]*$/gim],
+    ]
+      .map(([rotulo, re]) => [rotulo, (crudo.match(re) ?? []).length])
+      .filter(([, n]) => n > 0);
+    if (quitadas.length > 0) {
+      console.log(
+        `Del archivo se retiro ${quitadas.map(([r, n]) => `${n} "${r}"`).join(" y ")}: la transaccion la ` +
+          `pone esta herramienta, y el modo lo decide la bandera.`,
+      );
+    }
     await tx.unsafe(contenido).simple();
     console.log(`El archivo corrio SIN ERRORES.`);
     if (!confirmar) {
