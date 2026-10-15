@@ -33,7 +33,21 @@ vi.mock("@/modules/evaluations/data/intake-writer", () => {
       this.name = "ConsentimientoDeMenorSinRepresentanteError";
     }
   }
-  return { signIntakeEvaluation: vi.fn(), ConsentGateError, ConsentimientoDeMenorSinRepresentanteError };
+  // Y la tercera, de la pieza 2 (2026-10-15). La leccion de arriba se volvio a cobrar en el mismo sitio:
+  // añadir un `instanceof` en el servicio obliga a añadir la clase aqui, y lo que falla es el CARGUE del
+  // modulo, asi que el error no apunta al error nuevo.
+  class ConsentimientoPendienteDeRegularizarError extends Error {
+    constructor(public readonly motivo: unknown) {
+      super("pendiente de regularizar");
+      this.name = "ConsentimientoPendienteDeRegularizarError";
+    }
+  }
+  return {
+    signIntakeEvaluation: vi.fn(),
+    ConsentGateError,
+    ConsentimientoDeMenorSinRepresentanteError,
+    ConsentimientoPendienteDeRegularizarError,
+  };
 });
 
 // Firma electronica (B7): el servicio verifica el codigo antes de crear nada. Se mockea el servicio
