@@ -406,6 +406,9 @@ No el documento entero: **cinco pruebas cortas**, que son las unicas superficies
 ### D · Los bloques sin fondo  → `style(inventario,comercial)`
 
 1. Mi inventario con una remesa por confirmar; /comercial del Integrante con una cuenta de Distribucion.
+   ⚠ **La remesa, declarala de 1 unidad de MULTI-CELL BASE lote `19826`** (producto de bodega), no de
+   ADAPTO-STRESS: desde el 15 la central no deja declarar lo que no tiene, y de ADAPTO-STRESS no tiene nada.
+   El porque esta en la **seccion 2**.
 2. **Criterio:** los dos son tarjeta blanca con sombra, con la tesela de icono azul y la cifra grande, y se
    leen igual de "vivos" que las liquidaciones de al lado. Tambien cambiaron: las cuentas del lado de CNV,
    los lotes por vencer de /faltantes y el bloque de tus faltantes.
@@ -603,14 +606,84 @@ la confirmacion.
 grande"*). Y la recomendacion es que cuando se haga, se haga **con la (a)**: la (b) cuesta casi lo mismo y
 deja el riesgo de despachar desde la bodega algo que ya salio.
 
-#### LO BARATO QUE SI SE PUEDE HACER ANTES, SI QUIERES
+#### LO BARATO, CONSTRUIDO EL 2026-10-15 · La central no despacha lo que no tiene
 
 De tu decision del 12 habia una mitad que **no** necesita el modulo: *"no deberia dejar cargar nutraceuticos
-que no esten en central"*. Es una comprobacion en `declareRemesa` contra el saldo de la central **menos lo ya
-declarado y sin confirmar**, y aborta antes de escribir. Una consulta, un mensaje y su candado.
+que no esten en central"*. Esa quedo hecha. El resto de la seccion (el transito, que la central BAJE) sigue
+pospuesto.
 
-Eso cierra el peor fallo de hoy (declarar una remesa de unidades que la bodega no tiene, que nadie avisa) sin
-tocar el saldo ni la RLS. No arregla que el total crezca: eso es el modulo.
+**Lo que hace:** al declarar una remesa, si la bodega central no tiene esas unidades de ese lote, **se rechaza
+antes de escribir nada** y el mensaje dice cuantas hay. Y el cuadro **"Disponible en la bodega central"**
+aparece junto al formulario, en /faltantes, para que el numero este a la vista ANTES de teclear una cantidad.
+Un freno sobre una cifra que no esta en la pantalla se lee como un defecto; con el cuadro al lado es una regla.
+
+#### TU PREGUNTA CORRIGIO LA RESTA, Y ERA EL FONDO DEL ASUNTO
+
+Yo habia dicho "el saldo menos **lo ya declarado SIN CONFIRMAR**". Tu pregunta: *"como hoy la confirmacion NO
+descuenta de central, confirma que la resta NO SE SUELTA cuando el Integrante confirma. Si se suelta, la misma
+unidad vuelve a estar disponible para una segunda remesa y la comprobacion solo tapa el caso de las remesas
+simultaneas."*
+
+**Tenias razon y estaba mal.** Con "sin confirmar", al confirmar la remesa salia del conjunto restado y la
+central volvia a ofrecer unas unidades que ya iban en camino. Asi que se restan **TODAS las remesas de ese
+(producto, lote), confirmadas o no**. Nada se suelta nunca, porque la confirmacion no devuelve nada a la
+bodega.
+
+El tercer caso del candado `la-central-no-despacha-lo-que-no-tiene-db.test.ts` **es esa pregunta**: declara
+seis de diez, confirma, y exige que sigan quedando cuatro. Verificado en rojo con la version equivocada.
+
+#### Y NO HIZO FALTA NINGUNA FECHA DE CORTE (medido, no supuesto)
+
+Restar TODAS las remesas seria doble resta si alguna ya estuviera descontada del saldo. La condicion que hay
+que cumplir es esta, y esta medida: **ninguna remesa de la historia salio de un lote que la central tuviera.**
+
+Las 14 que existen son de **ADAPTO-STRESS** (129 unidades, un producto del catalogo que **todavia no existe
+fisicamente**, asi que no esta marcado de prueba pero tampoco tiene bodega) y de **PRUEBA SMOKE**. De los
+**cinco productos de bodega** (MULTI-CELL, OMEGA, CURCUMIN, D3-K2 y LUVIA) **no hay una sola remesa**: las 525
+unidades de las siete vitrinas entraron antes de que existiera el mecanismo, y la carga de la central del
+2026-09-11 ya se hizo con el remanente (*"saldo en bodega central tras la primera entrega a Integrantes"*).
+
+Medido hoy, el disponible **coincide con el saldo** en los cinco:
+
+| Producto | Lote | Saldo | Remesado | Disponible |
+|---|---|---|---|---|
+| MULTI-CELL BASE | 19826 | 382 | 0 | **382** |
+| OMEGA COMPLEX | 20226 | 385 | 0 | **385** |
+| CURCUMIN BIOACTIV | 20526 | 312 | 0 | **312** |
+| D3-K2 OSTEO | 19726 | 186 | 0 | **186** |
+| LUVIA | 04197232 | 14 | 0 | **14** |
+
+Asi que no habia nada que indultar, y esto no necesita una constante de corte como `REMESA_LAUNCH_ISO`.
+
+**Y la resta se mantiene sola despues:** una devolucion del Integrante entra a la central y sube el
+disponible; una venta a domicilio lo baja; una conciliacion lo cuadra contra el conteo. Nada pide
+mantenimiento.
+
+#### DOS COSAS QUE HAY QUE SABER ANTES DE USARLO
+
+**1 · El producto marcado de PRUEBA queda EXENTO del tope, y es a proposito.** Un producto de prueba **no
+tiene bodega fisica que proteger**, y sus unidades existen solo para poder volver a probar. Con el tope puesto
+se cerraria el unico camino para recargar una vitrina de prueba dentro de produccion, que existe por tu
+decision del 2026-10-01.
+
+> ⚠ **PERO ADAPTO-STRESS NO ESTA MARCADO DE PRUEBA** (medido: `is_test = false`, `en_consultorio`), asi que
+> **NO queda exento**, y la central no tiene ninguno de sus lotes. **La prueba D del smoke** (*"Mi inventario
+> con una remesa por confirmar"*) **ya no se puede hacer con ADAPTO-STRESS** en cuanto esto se despliegue.
+>
+> **Hazla con producto de bodega, que ademas es la prueba mejor:** declara **1 unidad de MULTI-CELL BASE, lote
+> `19826`** (disponible 382) al Integrante que uses. Con eso aparece la remesa por confirmar, que es lo que la
+> D mira. Si la confirmas, el total del sistema sube en 1 unidad (el hueco conocido de esta seccion); se
+> cuadra con el script de conciliacion cuando cuentes en la oficina. Si no la confirmas, no se mueve nada.
+>
+> Y despues del smoke el punto desaparece solo: ADAPTO-STRESS pasa a `no_disponible`, y eso lo saca de la
+> lista de la remesa.
+
+**2 · La salida del freno, cuando el lote no esta en la central, es un script.** El mensaje dice *"hay que
+registrar su entrada a la bodega antes de despacharlo"*, y eso hoy se hace con
+`CARGAR_LA_BODEGA_AL_ARRANQUE_2026-10-15.sql`, **no hay pantalla**. Es el mismo escritor que falta desde R14
+(*"admin debe poder registrar en central"*) y el mismo que pide el "volver a central" del transito. Con los
+cinco lotes de bodega cargados no estorba; el dia que llegue el segundo envio del laboratorio, **primero se
+carga la bodega y despues se despacha**, que es justo el orden que querias.
 
 ---
 
@@ -1066,23 +1139,31 @@ decidio posponerlo. Dimensionarlo es otra conversacion, pero no se resuelve poni
 
 ## 4l · LA REGLA DE LAS LLAVES, Y LO QUE QUEDA PARA EL CIERRE DEL SMOKE
 
-### LA REGLA, CONSTRUIDA Y NO SOLO ESCRITA
+> ## ⚠ EL ORDEN DE LAS LLAVES, EN UNA FRASE
+>
+> **Las llaves de produccion se montan DESPUES de que el smoke termine y todo lo de prueba este marcado, y
+> ANTES de la primera venta real de un Integrante.** Las dos mitades son limites, no recomendaciones, y cada
+> una tiene su guardian construido.
 
-**Las credenciales reales de Alegra y Wompi se montan SOLO cuando el smoke termine y todo lo de prueba este
-marcado. Antes no.** Confirmado por Santiago el 2026-10-15.
+**Confirmado por Santiago el 2026-10-15**, y el segundo limite lo fijo el mismo dia: *"No es 'despues del
+smoke'. Es DESPUES DEL SMOKE Y ANTES DE LA PRIMERA VENTA REAL DE KATHERINE. Si ella vende manana en efectivo
+con Alegra en sandbox, esa venta no se factura nunca."*
 
-> ⚠ **Y HAY UN SEGUNDO LIMITE, POR EL OTRO LADO: tienen que estar ANTES DE LA PRIMERA VENTA REAL.** Una venta
-> nace con su ambiente sellado, y una sellada como prueba **no se factura nunca** en produccion, ni cuando se
-> monten las llaves. Vale para efectivo y transferencia tambien. Esta medido y explicado en la **seccion 7**.
+### POR QUE LA PRIMERA MITAD (no antes de terminar el smoke)
 
-**Por que es un orden y no una recomendacion:** la marca a mano frena la factura, pero solo si llega **antes
-que la cola**. En el instante en que `alegra_config` tiene su fila de produccion y Vercel apunta a la URL de
-produccion, **todo lo que estaba esperando se emite con numeracion de la DIAN**. Una venta del smoke sobre un
-paciente real, marcada cinco minutos despues, ya no se arregla con una marca: se arregla con una **nota
+La marca a mano frena la factura, pero solo si llega **antes que la cola**. En el instante en que
+`alegra_config` tiene su fila de produccion y Vercel apunta a la URL de produccion, **todo lo que estaba
+esperando se emite con numeracion de la DIAN**. Una venta hecha DESPUES de montar las llaves, sobre un
+paciente real, marcada cinco minutos tarde, ya no se arregla con una marca: se arregla con una **nota
 credito** que tiene que hacer una persona.
 
-**Y ahora hay algo que lo verifica.** `scripts/config-alegra-produccion.sql` (el unico sitio por el que se
-pasa obligatoriamente para montar las llaves) hace, **antes de escribir nada**:
+> **Precision sobre esto, del 2026-10-15:** ese riesgo vale para las ventas creadas **despues** de montar la
+> llave de Wompi. Las de hoy estan protegidas dos veces (la marca **y** el sello del ambiente, que las deja
+> como pago de prueba). O sea que el peligro real es **seguir probando despues** de montar las llaves, no
+> antes.
+
+**Su guardian:** `scripts/config-alegra-produccion.sql` (el unico sitio por el que se pasa obligatoriamente
+para montar las llaves) hace, **antes de escribir nada**:
 
 1. **lista las ventas que la cola emitiria** en cuanto eso quede (fecha, monto, medio, Integrante y productos;
    sin datos del paciente, porque esa salida se pega en un chat);
@@ -1098,6 +1179,33 @@ facturar mientras la cola emite otra cosa.
 `<LLENAR>` como estan. La lista se imprime antes de que se revise cualquier otra cosa. Eso es la *"lista de
 ventas reales anteriores a hoy que nadie marco"* que pediste.
 
+### POR QUE LA SEGUNDA MITAD (no despues de la primera venta real)
+
+`wompi_env` se sella **al CREAR** la venta, y una venta sellada como prueba **no se factura nunca** en
+produccion, ni cuando se monten las llaves. Vale para efectivo y transferencia tambien. El detalle y la
+medicion estan en la **seccion 7**.
+
+**Su guardian, construido el 2026-10-15:** un **aviso en /pagos**, que es tu peticion textual (*"¿Hay forma
+de que Atlas AVISE si se registra una venta real mientras el ambiente esta en sandbox? Porque la ventana entre
+que yo cierre el smoke y monte las llaves es justo cuando Katherine podria vender, y nadie estaria
+mirando."*).
+
+- **Mientras el ambiente este en pruebas**, la pantalla lo dice arriba: *"El sistema está en modo de pruebas.
+  Una venta que se registre ahora queda marcada como pago de prueba y no se podrá facturar después..."*, con
+  la nota de que aplica a efectivo y transferencia.
+- **Lo ve todo el que puede cobrar**, no solo admin: el aviso sirve en la pantalla donde se crea la venta, y
+  Katherine cobra desde ahi.
+- **Y lleva la cifra** para quien ve los paneles: cuantas ventas de pacientes reales ya quedaron en ese
+  estado. Hoy son **cero**.
+- **Cuando las llaves ya esten puestas**, el aviso desaparece solo; y si quedo alguna venta atrapada, cambia
+  de texto y dice la salida (registrarla como venta ya cobrada, o marcarla como prueba).
+
+**ES UN AVISO, NO UN FRENO, y es deliberado:** frenar la venta dejaria a un Integrante sin poder cobrarle a un
+paciente que tiene al frente, por una configuracion que el no puede cambiar. El sistema ya se equivoca hacia
+el lado seguro (no factura); lo que faltaba era decirlo. La cifra sale de **los mismos tres predicados** de la
+cola que usa el guard del script, asi que las dos superficies no pueden contar universos distintos. Candado:
+`el-sello-del-ambiente-se-avisa-en-pagos-db.test.ts`.
+
 ### LO QUE HAY QUE HACER AL CERRAR EL SMOKE, EN ORDEN
 
 1. **Marcar a mano las ventas del smoke** en /pagos (admin, motivo de 10 caracteres). Es lo que las saca de
@@ -1111,6 +1219,10 @@ ventas reales anteriores a hoy que nadie marco"* que pediste.
 4. **Decidir ADAPTO-STRESS** (abajo).
 5. Y solo entonces: Vercel, `leer-alegra.mjs`, `config-alegra-produccion.sql` con la bandeja en `si`, y la
    cuenta puente de **transferencias**, que falta en los dos ambientes.
+6. **Abrir /pagos y confirmar que el aviso amarillo del modo de pruebas DESAPARECIO.** Es la comprobacion de
+   que las dos llaves quedaron puestas: si sigue ahi, la de Wompi no entro, y toda venta que se registre
+   seguira naciendo sellada como prueba. Las dos van juntas, ademas: con Wompi en produccion y Alegra en
+   sandbox, las ventas nacen reales y no se pueden facturar en ningun lado hasta que Alegra tambien pase.
 
 ### ⚠ PENDIENTE AL CERRAR EL SMOKE · ADAPTO-STRESS a cero (el camino, confirmado el 2026-10-15)
 
@@ -1237,16 +1349,31 @@ Alegra y la base lo exige (`tx_retroactiva_completa`: pagada, con numero y marca
 vuelve a facturarla. **Lo que NO existe** es convertir en "ya facturada" una venta **ya registrada** por el
 camino normal: eso es la pieza de la seccion 1, y este caso es una razon mas para construirla.
 
+### CONSTRUIDO EL 2026-10-15, DESPUES DE ESCRIBIR ESTA LISTA
+
+Dos piezas que estaban aqui ya no estan pendientes:
+
+- **El aviso del ambiente en /pagos.** Mientras las llaves esten en pruebas, la pantalla lo dice donde se
+  crea la venta, y lleva la cuenta de las ventas reales que ya quedaron selladas como pago de prueba. Es el
+  guardian de la segunda mitad de la regla de las llaves (**4l**).
+- **La central no despacha lo que no tiene.** La mitad barata de la seccion 2: la remesa se rechaza si la
+  bodega no tiene esas unidades, y el disponible se muestra junto al formulario. El transito sigue pospuesto.
+
+**Y DEL PUNTO DE LAS LLAVES NO QUEDA NADA MAS POR CONSTRUIR.** Lo que falta de ahi no es codigo: las
+credenciales de Alegra y Wompi, y la **cuenta puente de transferencias**, que falta en los dos ambientes. La
+unica pieza de codigo emparentada es la numero 2 de la tabla ("ya facturada por fuera"), que es la salida si
+alguna venta real alcanza a quedar sellada como prueba; hoy esa cuenta esta en cero, asi que no corre prisa.
+
 ### Lo que falta construir, por orden de urgencia
 
 | | Que | Cuando |
 |---|---|---|
 | 1 | **El traslado automatico de rezagadas** (seccion 1) | **antes del 1 de noviembre**, por decision de contabilidad |
-| 2 | **"Ya facturada por fuera"** sobre una venta ya registrada (seccion 1) | antes de la primera rezagada de otro bimestre, y sirve para el filo de arriba |
+| 2 | **"Ya facturada por fuera"** sobre una venta ya registrada (seccion 1) | antes de la primera rezagada de otro bimestre, y es la salida del filo del sello |
 | 3 | **El descuento comercial** con la especificacion de contabilidad (4h) | despues del arranque |
 | 4 | **Repetir el consentimiento de un paciente que ya existe** (4g), y volver `frenaEvaluaciones` a `true` | no frena a nadie hoy; antes de que la lista de pendientes crezca |
 | 5 | **El "Facturar ahora" del bimestre distinto** (seccion 1) | pospuesto, pide una decision de contabilidad primero |
-| 6 | **La remesa que descuenta de central** (seccion 2) | el modulo de inventario, pospuesto otra vez el 15 |
+| 6 | **Que la remesa MUEVA el saldo**, con la ubicacion de transito, y el escritor que falta para **registrar unidades en central** y **devolver a central** lo que nadie confirmo (seccion 2) | el modulo de inventario, pospuesto otra vez el 15. La mitad barata ya esta |
 | 7 | **Paso 2 de la unificacion** del bloque de venta (3b) | despues, y con la decision de donde sale el dato de existencias |
 | 8 | **La venta de admin sin profesional** (4f) y **la emision el ultimo dia del mes** (1b) | dimensionadas, esperan decision |
 
