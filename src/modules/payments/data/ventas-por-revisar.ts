@@ -116,7 +116,21 @@ export async function listarVentasPorRevisar(incluirDePrueba = false): Promise<V
          -- meses. Paso en el smoke con una LUVIA: quedo "no alcanzo el saldo" y nadie tenia donde trabajarla.
          or (t.stock_state in ('sin_saldo', 'fallido')
              and coalesce(t.registered_retroactively_at, t.created_at) > now() - interval '30 days'
-             and (${incluirDePrueba} or public.el_descuadre_fisico_es_real(t.id)))
+             and (${incluirDePrueba} or public.el_descuadre_fisico_es_real(t.id))
+             -- ═══ Y UN DESCARTE VIGENTE LO SACA TAMBIEN DE AQUI (0220, Santiago 2026-10-15) ═══
+             --
+             -- EL DEFECTO: el texto de ESTA bandeja manda a *"cuadrarlo o descartarlo abajo, en Pendientes
+             -- sin salida"*, y esta consulta no sabia nada del descarte. Asi que admin descartaba y la fila
+             -- seguia aqui pidiendo lo mismo: la pantalla mandaba a hacer algo y no reconocia que se hizo.
+             --
+             -- NO VA BAJO incluirDePrueba: un descarte es el juicio de una persona sobre un hecho fisico,
+             -- y no tiene nada que ver con el interruptor de lo de prueba. El hecho no desaparece, queda en
+             -- el otro panel con su motivo, su autor y su fecha, que es donde ese juicio vive.
+             --
+             -- fallido NO TIENE CAMINO DE DESCARTE y por eso no se filtra nunca por aqui: la funcion
+             -- pregunta por filas que para ese tipo no existen (ver la nota de la 0220 sobre la huella).
+             and public.el_pendiente_sigue_pidiendo_accion(
+                   case when t.stock_state = 'sin_saldo' then 'sin_saldo' else 'fallido' end, t.id))
        )
      order by (t.review_reason is not null and t.review_resolution is null) desc, t.created_at desc
      limit 100`);

@@ -1541,6 +1541,13 @@
       "when": 1792074379451,
       "tag": "0219_la_operacion_real_tiene_una_sola_definicion",
       "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1792085770286,
+      "tag": "0220_un_descarte_vale_en_los_dos_paneles",
+      "breakpoints": true
     }
   ]
 }
