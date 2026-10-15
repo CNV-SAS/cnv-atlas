@@ -9,9 +9,9 @@
 --
 -- ═══ POR QUE NO SE RETIRA, Y NO ES UNA LIMITACION SINO LA REGLA ═══
 --
--- `anularCuentaDistribucion` se niega con una cuenta pagada, y el trigger `distribucion_statements_inmutable`
--- (0215) lo impide por debajo en las DOS direcciones: no se puede poner `superseded_at` en una pagada, y no se
--- puede devolver `paid_at` a nulo. Su razon esta escrita ahi: *"un pago registrado contra un documento que
+-- anularCuentaDistribucion se niega con una cuenta pagada, y el trigger distribucion_statements_inmutable
+-- (0215) lo impide por debajo en las DOS direcciones: no se puede poner superseded_at en una pagada, y no se
+-- puede devolver paid_at a nulo. Su razon esta escrita ahi: *"un pago registrado contra un documento que
 -- dice no existir es peor que una cuenta mal emitida."*
 --
 -- ESO SE QUEDA COMO ESTA. Abrirle una puerta para esta fila dejaria el mecanismo sin la unica garantia que
@@ -24,16 +24,23 @@
 -- pagada antes del arranque?" se responde sola.
 --
 -- DOS SITIOS, porque hoy ninguno de los dos alcanza solo:
---   · `paid_note`, que es el campo de la propia fila. HOY NINGUNA PANTALLA LO MUESTRA: la anotacion vive en
+--   · paid_note, que es el campo de la propia fila. HOY NINGUNA PANTALLA LO MUESTRA: la anotacion vive en
 --     los datos, que es donde se va a hacer la pregunta;
---   · y una fila en `clinical_audit_log`, que es el registro que SI se consulta y que es append-only.
+--   · y una fila en clinical_audit_log, que es el registro que SI se consulta y que es append-only.
 --
 -- ⚠ LAS VENTAS NO SE TOCAN. Ya quedaron marcadas como de prueba por el script de arranque, asi que no cuentan
 --   en ninguna cifra. Esto es solo el documento.
 --
--- COMO SE CORRE:
+-- ⚠ NO EN EL EDITOR SQL DE SUPABASE. Alla revento con "syntax error at or near aid_at" (2026-10-15): el
+--   editor parte el texto y un comentario cortado a mitad de palabra se vuelve una sentencia. Ademas no
+--   sostiene la transaccion, asi que el rollback del final no protegeria nada.
+--
+-- COMO SE CORRE (en PowerShell, con el DATABASE_URL de la nube exportado):
 --   node scripts/aplicar-migracion.mjs scripts/ANOTAR_LA_CUENTA_PAGADA_DEL_PERIODO_DE_PRUEBAS.sql
 --   ... y con --commit cuando el ensayo diga "SIN ERRORES" y el NOTICE muestre la cuenta correcta.
+--
+-- Y ES OPCIONAL: la cuenta ya no aparece en ninguna pantalla operativa y sus ventas ya estan marcadas. Esto
+-- solo deja escrito de que etapa fue, para quien lo pregunte en seis meses.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 begin;
@@ -50,7 +57,7 @@ declare v_id uuid;
 begin
   select p.id into v_id from profiles p join _anotacion a on true where lower(p.email) = lower(a.correo);
   if v_id is null then
-    raise exception 'No hay ningun perfil con ese correo. Revisa el parametro `correo` del bloque (0).';
+    raise exception 'No hay ningun perfil con ese correo. Revisa el parametro correo del bloque (0).';
   end if;
 end $$;
 
@@ -58,7 +65,7 @@ end $$;
 --
 -- SE ELIGEN POR LA FECHA DEL CORTE Y NO POR UN ID PEGADO A MANO: un uuid copiado a mano es la clase de dato
 -- que se pega mal una vez y nadie lo nota. La frontera es la misma que usa todo lo demas
--- (`commercial_config.fecha_de_arranque`), asi que si manana aparece otra del periodo de pruebas, este
+-- (commercial_config.fecha_de_arranque), asi que si manana aparece otra del periodo de pruebas, este
 -- script la cubre sin editarlo.
 --
 -- Y NO ALCANZA A NINGUNA POSTERIOR AL ARRANQUE: esas son reales y anotarlas seria mentir al reves.
@@ -68,7 +75,7 @@ select s.id, s.professional_id, s.corte_desde, s.corte_hasta, s.paid_at, s.paid_
  where s.paid_at is not null
    and s.superseded_at is null
    -- SI LA FECHA NO ESTA FIJADA, NO ALCANZA A NINGUNA. El fallback seguro es el VACIO y no el TODO:
-   -- con `infinity` este script habria anotado como "de pruebas" cualquier cuenta pagada, incluidas las
+   -- con infinity este script habria anotado como "de pruebas" cualquier cuenta pagada, incluidas las
    -- reales del futuro, y una anotacion falsa en un documento de cobro es peor que no tener anotacion.
    and s.corte_hasta < coalesce(
          (select c.fecha_de_arranque from commercial_config c limit 1),
@@ -91,8 +98,8 @@ end $$;
 
 -- ── (2) LA ANOTACION EN LA PROPIA FILA ───────────────────────────────────────────────────────────
 --
--- Solo `paid_note`. El trigger de inmutabilidad deja pasar este UPDATE (no toca el corte, ni la emision, ni
--- `paid_at`, ni `superseded_at`), y eso es exactamente la frontera que queremos respetar.
+-- Solo paid_note. El trigger de inmutabilidad deja pasar este UPDATE (no toca el corte, ni la emision, ni
+-- paid_at, ni superseded_at), y eso es exactamente la frontera que queremos respetar.
 --
 -- SE CONCATENA EN VEZ DE PISAR: si alguien habia escrito una nota al registrar el pago, es un dato de esa
 -- persona y no se borra.

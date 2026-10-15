@@ -14,11 +14,15 @@ git de este mismo archivo (`git show ff4f4211:docs/entregas/SMOKE_SEGUNDO_2026-0
 pacientes. Este archivo, el guion, si se versiona: no lleva nombres.
 
 **EL ORDEN DE HOY (2026-10-15, el dia del arranque):** primero **F a I**, que es lo que
-frenaba el arranque; despues **A a E**, que son los arreglos del 12. **J es de despues**: se construyo el 15,
-no es del arranque y puede esperar. Nada mas: no el documento entero.
+frenaba el arranque; despues **A a E**, que son los arreglos del 12. Nada mas: no el documento entero.
 
-**Y antes de la I, lee su aviso:** si el inventario arranca en cero sin contar, la prueba **H** (la venta
-desde la bodega) no puede pasar, porque no habria existencias en la central.
+**EL ORDEN CORREGIDO DEL 2026-10-15, porque hay algo mas urgente:**
+
+1. **El paso 3 de la J**, que desbloquea a los seis menores que la profesional tenia detenidos.
+2. **La I**, que ahora incluye cargar la bodega con la primera tanda del laboratorio (y sin eso la **H** no
+   puede pasar, porque la central estaria vacia).
+3. **F, G, H**, y luego **A a E**.
+4. El resto de la **J** y lo demas, despues.
 
 ---
 
@@ -88,7 +92,44 @@ tiene.
    que hace cierta tu frase *"que la bodega de CNV inicie con todas las unidades"*, pero una linea olvidada se
    interpreta como "ahi no hay nada" y su saldo se borra. Y no se puede deshacer.
 
-#### ⚠ SI ARRANCAS TODO EN CERO (tu plan del 2026-10-15), HAY QUE LEER ESTO ANTES
+#### ✅ RESUELTO EL 2026-10-15: LA BODEGA SE CARGA CON UN SCRIPT, Y H SI PASA
+
+Santiago no cuenta hoy, y la salida es cargar la bodega con la **primera tanda del laboratorio**, que es un
+dato que si existe. `scripts/CARGAR_LA_BODEGA_AL_ARRANQUE_2026-10-15.sql` lo hace, **ensayado**: crea los
+cinco lotes con su vencimiento real y mete **1.810 unidades** en seis lineas.
+
+| Producto | Lote | Vence | Unidades |
+|---|---|---|---|
+| MULTI-CELL BASE | 19826 | 2028-07-18 | 500 |
+| OMEGA COMPLEX | 20226 | 2028-07-22 | 500 |
+| CURCUMIN BIOACTIV | 20526 | 2028-07-25 | 426 |
+| D3-K2 OSTEO | 19726 | 2028-07-17 | 300 |
+| LUVIA (tercero) | 04197232 | 2028-07-10 | 60 + 24 = 84 |
+
+**EL ORDEN NO ES INDIFERENTE:** primero la **conciliacion** con la bandera en `true` y el bloque (2) vacio
+(deja todo en cero), **despues** la carga. Al reves, la conciliacion llevaria a cero lo que la carga acaba de
+meter. **Y cambia el motivo de la conciliacion**, porque el que trae dice *"ajuste al conteo fisico"* y no
+hubo conteo.
+
+**Con la bodega asi, la prueba H pasa:** la reserva de la venta exige existencias y ahora las hay.
+
+Tres cosas que el script resuelve y conviene saber:
+
+- **LUVIA va en DOS lineas** (60 el 26 de agosto, 24 el 27), porque dos entregas son dos hechos y una sola
+  linea de 84 pierde lo unico que se sabe de como llego. Las fechas reales viajan en el **texto** del
+  movimiento y no en `created_at`: esa columna dice cuando se escribio la fila, y backdatearla en un libro
+  append-only afirmaria que el registro existe desde agosto.
+- **El modelo SI distingue el producto de tercero:** LUVIA es `ownership = 'tercero'` y ya tiene su titular de
+  marca cargado, de donde cuelgan el centro de costo de su factura y la linea que el paciente ve. Lo que no
+  cambia es el inventario: las unidades estan en la bodega de CNV igual.
+- **Los codigos NUT-00X son de Alegra, no lotes**, y el script no los usa: el inventario de Atlas no los
+  conoce y meterlos invitaria a confundirlos con el lote.
+
+Y un hallazgo del ensayo: el script **aborta si hay mas de una bodega central activa**. La aplicacion la
+resuelve con `limit 1` porque da por hecho que hay una sola (en la nube lo hay); sin ese guard, el script
+podria cargar 1.810 unidades en una bodega cualquiera sin error y sin aviso.
+
+#### Y LO QUE PASARIA SI ARRANCARAS EN CERO SIN CARGAR (queda anotado)
 
 Tu plan es otro y es razonable: *"iniciar con todo en 0 y que admin vaya poniendo X nutraceuticos a tal
 profesional... ya luego voy a la oficina, cuento y comparo."* O sea el bloque (2) **vacio** y la bandera en
@@ -133,8 +174,28 @@ construyo: es una pantalla, un escritor y su candado, del tamaño de la seccion 
 
 ### J · El consentimiento que existe y no alcanza (pieza 2)  → `feat(consentimiento)`
 
-**Esta NO es del arranque y puede esperar a despues de F-I.** Va aqui porque se construyo el 2026-10-15 y su
-superficie es nueva.
+**EL PASO 3 SI ES URGENTE Y VA ANTES QUE TODO**, porque es el que desbloquea a los seis pacientes que la
+profesional tenia detenidos. El resto puede esperar a despues de F-I.
+
+#### Lo que estaba pasando, que no era lo que yo reporte
+
+Reporte que *"la atencion no se frena"*, y era falso: **habia un segundo muro, anterior a la pieza 2 y mas
+abajo**. `checkConsentBranchConsistency` (el "segundo muro" de DELTA2 B3) frenaba la **CONFIRMACION DE
+IDENTIDAD**, asi que la evaluacion se quedaba en `draft` y no se podia hacer nada. En la base local habia
+**3 pacientes y 2 evaluaciones paradas**; en la nube son **6 pacientes**.
+
+**Y el bloqueo no tenia salida**, que es lo que lo convierte en un defecto y no en un guard: su mensaje
+mandaba a *"repetir el consentimiento con el representante legal"*, y para un paciente QUE YA EXISTE ese
+camino **no esta construido**. El pase presencial con rama de menor (0216) solo crea pacientes NUEVOS, y el
+camino remoto necesita un correo que estos pacientes no tienen, que es justo por lo que entraron por el QR.
+
+**Lo que se cambio (2026-10-15):** ese muro ya no frena ese caso, y el gate de la pieza 2 tampoco. **El hecho
+no se perdio**: lo marca el estado derivado, en la ficha y en la lista, con que hacer. Candado contra base
+real: `el-menor-sin-representante-no-queda-detenido-db.test.ts`, que confirma identidad de un menor sin
+representante y comprueba que avanza Y que queda marcado.
+
+**Y queda pendiente la otra mitad, que es la que de verdad cierra el caso:** el camino para repetir el
+consentimiento de un paciente **que ya existe** (seccion 4g).
 
 **Que se construyo:** el estado derivado *"pendiente de regularizar"* del dictamen legal del 2026-10-09, su
 freno en el gate y su aviso en pantalla. La prevencion ya existia (un consentimiento de menor sin
@@ -147,25 +208,25 @@ saber a quien vas a ver marcado y cuantos son. Es de solo lectura y dice que hac
 para despues: hay que correrlo tras cualquier correccion de fecha de nacimiento. **Esa lista no puede
 crecer** (la prevencion esta desde el 2026-10-09): solo se vacia.
 
-1. Abre la **ficha** de un paciente que firmo siendo menor sin representante. **Criterio:** arriba de las
-   autorizaciones sale un bloque rojo con el titulo *"Consentimiento de menor sin representante"*, dice que no
-   se le pueden crear evaluaciones nuevas, dice **que hacer**, y dice que el consentimiento firmado **no se
-   borra ni se invalida**. Las tres autorizaciones siguen apareciendo *"Vigente"* abajo, porque lo son.
+1. Abre la **ficha** de uno de los seis. **Criterio:** arriba de las autorizaciones sale un bloque con el
+   titulo *"Consentimiento de menor sin representante"*, dice **"(por revisar; no bloquea la atención)"**,
+   dice **que hacer**, y dice que el consentimiento firmado **no se borra ni se invalida**. Las tres
+   autorizaciones siguen apareciendo *"Vigente"* abajo, porque lo son.
 2. En la **lista de pacientes**, ese paciente lleva su propia etiqueta con ese mismo texto. **Criterio:** NO
    dice *"Sin autorizacion vigente"*, porque no retiro ninguna.
-3. Intenta iniciarle un **seguimiento**. **Criterio:** no se crea nada y el aviso dice lo mismo que la ficha.
-   **El criterio al reves, que es el que de verdad importa:** el profesional **sigue entrando a su historia**,
-   viendo sus consultas anteriores y su reporte. Lo que se frena es crear evaluaciones NUEVAS, nada mas.
-4. Firmale el consentimiento de nuevo con la rama que corresponda a su edad de hoy. **Criterio:** el bloque
-   rojo desaparece y el seguimiento se puede iniciar, sin tocar nada a mano.
-5. **Un paciente con fecha de nacimiento imposible** (de los dos de prueba) sale marcado con *"Fecha de
-   nacimiento imposible"*, **en tono neutro y sin frenar nada**. Corrige la fecha en la ficha: **criterio:** la
-   marca desaparece sola.
+3. **ESTE ES EL QUE DESBLOQUEA, Y VA PRIMERO.** Abrele una consulta nueva y **confirma su identidad**.
+   **Criterio:** la confirmacion pasa y la evaluacion queda *en curso*. Antes se quedaba en borrador con el
+   aviso *"repite el consentimiento con el representante legal antes de confirmar"*, y no habia forma de
+   cumplirlo. **Que la profesional pueda atender a los seis es el criterio de aceptacion de hoy.**
+4. **Un paciente con fecha de nacimiento imposible** sale marcado con *"Fecha de nacimiento imposible"*, en
+   tono neutro y sin frenar nada. Corrige la fecha en la ficha: **criterio:** la marca desaparece sola. (En la
+   nube no hay ninguno; en local hay dos, de prueba.)
 
-**Lo que NO cubre:** la pieza 4 (el *"consentimiento de regularizacion"* como documento propio) sigue sin
-construirse, y la exclusion de estos pacientes de los **usos secundarios** (investigacion, estadistica
-comercializable) tampoco: hoy no existe el filtro de dataset donde engancharla, y darsela a esta pieza seria
-inventarle un mecanismo. Queda anotado aqui.
+**Lo que NO cubre, y es lo que sigue (seccion 4g):** repetir el consentimiento de un paciente **que ya
+existe**. Mientras eso no exista, los seis quedan **marcados y atendidos**, que es lo que pedia el dictamen,
+pero el consentimiento sigue sin regularizar. Y sigue sin construirse la exclusion de estos pacientes de los
+**usos secundarios** (investigacion, estadistica comercializable): hoy no existe el filtro de dataset donde
+engancharla, y darsela a esta pieza seria inventarle un mecanismo.
 
 ---
 
@@ -264,8 +325,8 @@ cerrados. Son excluyentes: la A permite emitir a mitad de periodo y la B lo proh
 
 **CONTABILIDAD ACEPTO LAS TRES RAZONES (2026-10-15).** Queda cerrado asi: **se mantiene la B**, el traslado de
 las rezagadas es **manual por ahora** y hay que **automatizarlo antes del 1 de noviembre**, y el *"Facturar
-ahora"* se posterga (mientras no exista, una rezagada que cruce de bimestre la factura admin a mano en
-Alegra).
+ahora"* se posterga (mientras no exista, una rezagada que cruce de bimestre la factura admin a mano en Alegra,
+y para que no se emita dos veces hace falta la pieza de la seccion 4i).
 
 ### 1b · EL PUNTO NUEVO DE CONTABILIDAD: el corte que cierra bimestre se emitiria tarde
 
@@ -549,6 +610,72 @@ con comision en cero seria peor: inventaria un Integrante que no existe, le crea
 inventario propia y ensuciaria todas las agrupaciones por profesional para siempre.
 
 **Es para despues del arranque**, como dijo Claude web.
+
+## 4g · LO QUE SIGUE · Repetir el consentimiento de un paciente QUE YA EXISTE
+
+**Es la mitad que cierra el caso de los seis menores**, y hoy no existe por ningun camino:
+
+- el **pase presencial con rama de menor** (0216) existe y funciona, pero `declararYCrearQrAction` llama al
+  escritor con `mode: "inicial"` y `patientId: null`, o sea que **siempre crea un paciente nuevo**. Con uno
+  que ya existe choca contra `patients_org_document_unique` y responde *"ese documento ya esta registrado"*;
+- el **camino remoto** si puede re-consentir a un paciente existente (el escritor lo soporta con
+  `mode: "seguimiento"`), pero necesita un **correo** para el codigo, y estos pacientes no lo tienen.
+
+**La maquinaria esta casi toda puesta**, y por eso no es una pieza grande:
+
+- la sesion presencial ya tiene columna `patient_id` (hoy se llena al crear el paciente; aqui se conoceria
+  desde el principio);
+- ya congela la fecha de nacimiento y **ya elige la rama** con ella (0216);
+- el escritor ya sabe re-consentir: revoca la autorizacion vigente del mismo tipo e inserta la nueva;
+- y el guard del menor sin representante ya protege el resultado.
+
+**Lo que hay que construir:** que `crearSesionPresencial` acepte un `patientId` existente, un boton
+*"Regularizar el consentimiento"* en la ficha del paciente (junto al bloque que ya lo anuncia), y que al
+declarar se llame al escritor con `mode: "seguimiento"` y ese id en vez de crear. **Mas un candado contra base
+real**, porque es el unico sitio donde se ve si el consentimiento viejo queda revocado y el nuevo vigente.
+
+**Y por que no se construyo el 2026-10-15:** es la zona de los ocho hazards de formulario (dos pantallas y un
+flujo de dos dispositivos), cuya unica verificacion real es un smoke humano en navegador, y el dia del
+arranque no habia forma de correrlo. **El desbloqueo, que es lo urgente, ya esta hecho y verificado contra
+base real.** Esto es lo que sigue.
+
+**Cuando exista, hay una linea que volver a poner:** `frenaEvaluaciones: true` en el motivo
+`menor_sin_representante` de `modules/consent/regularizacion`. Su candado lo dice y falla cuando se toque, que
+es lo que impide que la exclusion que pide el dictamen se quede en nada para siempre.
+
+## 4h · DECIDIDO POR CONTABILIDAD · El descuento comercial (la (b) de la venta de admin)
+
+**Textual (2026-10-15):** *"es DESCUENTO COMERCIAL, no precio especial."* La especificacion completa, para
+construirla despues del arranque:
+
+- la linea **conserva el PVP sellado** desde el catalogo, como hoy;
+- se agrega un **descuento por linea** (valor o %), aplicado **sobre la base SIN IVA**, y el **IVA se calcula
+  sobre la base ya descontada**;
+- en Alegra va como **descuento en la linea** del item, **no** como precio modificado;
+- **motivo obligatorio, de lista cerrada:** `venta_institucional`, `colaborador_socio`, `proximo_vencer`,
+  `cortesia_comercial`, `otro` (con texto libre obligatorio);
+- **tope: no se permite el 100%.** *"Un producto sin cobro no es una venta, es un retiro de inventario y va
+  por otra via"* (fuera de alcance por ahora);
+- **se persiste:** `pvp_catalogo`, `descuento_valor`, `descuento_motivo`, `descuento_aplicado_por`;
+- y el **tablero de Direccion** suma descuentos **por motivo y por periodo**.
+
+**Y aceptan (a) y (c) y el no crear un "profesional CNV"**, que era la alternativa que yo recomendaba evitar.
+
+**UNA NOTA SOBRE EL IVA, para que no se pierda:** hoy `armarFactura` manda la **base unitaria sin IVA**
+(`baseFromTotal`) y deja que Alegra aplique el impuesto. Un descuento sobre esa base encaja sin tocar esa
+aritmetica, pero **el cotejo contra lo cobrado** (`desgloseDeLaVenta`) tiene que descontar igual, o la venta y
+la factura diran cifras distintas del mismo acto. Es el punto donde este cambio puede salir mal en silencio.
+
+## 4i · Y LA PIEZA DE "YA FACTURADA POR FUERA" SIRVE PARA DOS CASOS, NO UNO
+
+Contabilidad lo añade el 2026-10-15: *"las ventas que ya se hicieron desde la central se facturan a mano en
+Alegra. Atlas necesita poder registrarlas como ya facturadas, igual que las rezagadas, para que no se emitan
+dos veces."*
+
+O sea que la misma pieza cubre **la rezagada que cruza de bimestre** y **la venta ya facturada a mano**. Eso la
+hace mas facil de justificar y no cambia su tamaño: sigue siendo la superficie donde admin teclea el numero de
+la factura y la fecha, con **motivo obligatorio**, porque es una afirmacion sobre un documento fiscal que Atlas
+no emitio y que nadie mas puede verificar.
 
 ## 5 · NO SE CONSTRUYO, Y SIGUE SIN CONSTRUIRSE
 
