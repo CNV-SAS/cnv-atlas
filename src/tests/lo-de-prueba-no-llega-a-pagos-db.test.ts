@@ -223,6 +223,45 @@ describe.skipIf(!HAS_DB)("lo de prueba no llega a /pagos (BD real)", () => {
     ).toBe(true);
   }, 30_000);
 
+  // Y EL CASO EXACTO DE LAS CINCO FILAS DEL 15: marcada de prueba Y descartada. Las dos reglas la esconden,
+  // cada una en su lado, y lo unico que no puede pasar es que quede invisible en LOS DOS. Si eso pasara, el
+  // hecho desapareceria sin que nadie lo haya decidido, que es el fallo silencioso de siempre.
+  it("una venta de prueba Y descartada sigue siendo visible en el panel que guarda el juicio", async () => {
+    const [p] = await db.execute(dsql`
+      insert into patients (organization_id, document_type, document_number, is_test,
+                            test_marked_at, test_marked_by, test_proposed_at, test_proposed_by,
+                            test_proposed_reason)
+      values (${orgId}, 'CC', ${`ZZ-DESC-${Date.now()}`}, true,
+              now(), ${actorId}, now(), ${actorId}, 'paciente de prueba del candado')
+      returning id`);
+    pacientes.push(p.id);
+    const id = await ventaReal({ stock_state: "sin_saldo", patient_id: p.id });
+    await avisos.descartarPendiente({
+      tipo: "sin_saldo",
+      transactionId: id,
+      motivo: "Era del smoke: se descarto antes de que cambiara la regla.",
+      actorId,
+      actorEmail: null,
+    });
+
+    // El lado REAL, los dos paneles: nada.
+    expect((await vpr.listarVentasPorRevisar()).some((v: any) => v.id === id)).toBe(false);
+    expect(
+      (await avisos.listarPendientesDeAccion({ incluirDescartados: true })).some(
+        (x: any) => x.transactionId === id,
+      ),
+    ).toBe(false);
+
+    // Con el interruptor: la bandeja la sigue escondiendo (el descarte no cuelga del interruptor)...
+    expect((await vpr.listarVentasPorRevisar(true)).some((v: any) => v.id === id)).toBe(false);
+    // ...y el panel que guarda el juicio SI la muestra, con su motivo. Ese es el sitio donde no se pierde.
+    const [fila] = (
+      await avisos.listarPendientesDeAccion({ incluirDescartados: true, incluirDePrueba: true })
+    ).filter((x: any) => x.transactionId === id && x.tipo === "sin_saldo");
+    expect(fila, "quedo invisible en los dos lados: el hecho desaparecio sin que nadie lo decidiera").toBeTruthy();
+    expect(fila.descarte?.motivo).toContain("Era del smoke");
+  }, 30_000);
+
   // ── 5 · LOS AVISOS: LA MISMA FUNCION QUE LA BANDEJA, Y NO DOS CONDICIONES PARECIDAS ────────────
   //
   // Es el defecto que ya se pago una vez: la LUVIA se veia en un panel y no se podia descartar en el otro.

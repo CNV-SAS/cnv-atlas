@@ -139,26 +139,36 @@ describe.skipIf(!HAS_DB)("una venta sabe si es de prueba (BD real)", () => {
     expect(await marca(t), "agregar una linea de producto de prueba no recalculo la venta").toBe(true);
   });
 
-  // ═══ Y LA BANDEJA DE REVISAR TIENE SU PROPIO MATIZ, que NO es esta columna ═══
+  // ═══ Y LA BANDEJA DE REVISAR OBEDECE LA COLUMNA COMO TODAS LAS DEMAS (0221, 2026-10-15) ═══
   //
-  // Las otras bandejas ocultan por la columna. Esta no puede: si el producto era REAL, el descuento de
-  // inventario tambien fue real y la vitrina esta descuadrada DE VERDAD, aunque el paciente o el profesional
-  // sean de prueba. Esconderlo esconderia un problema FISICO, que es el unico de esta familia que cuesta
-  // unidades y no una cifra.
-  it("la bandeja de revisar oculta por el PRODUCTO, no por la columna", async () => {
+  // ESTE CANDADO DECIA LO CONTRARIO HASTA EL 15, y el argumento viejo era bueno: si el producto era REAL, el
+  // descuento de inventario tambien fue real y la vitrina esta descuadrada DE VERDAD aunque el paciente sea
+  // de prueba, asi que esconderlo esconderia un problema FISICO.
+  //
+  // POR QUE SE CAYO. El argumento es cierto y el resultado no servia: el smoke se hace con pacientes de
+  // prueba sobre vitrinas REALES, asi que cada venta que no alcanza saldo levantaba un descuadre que nadie
+  // iba a ir a contar. Textual de Santiago, con la pantalla delante: *"si algo esta marcado como prueba,
+  // aparece en el filtro de prueba, es asi de simple"*.
+  //
+  // EL HUECO FISICO NO QUEDA SIN SITIO: lo cuadra un movimiento de `conciliacion` por ubicacion. Lo que se
+  // movio no es la verdad del descuadre, es DONDE se pide la cuenta. La razon larga esta en la 0221 y en
+  // `los-dos-paneles-del-mismo-hecho-deciden-igual.test.ts`.
+  it("la bandeja de revisar obedece la columna, y el interruptor la vuelve a mostrar", async () => {
     const { listarVentasPorRevisar } = await import("@/modules/payments/data/ventas-por-revisar");
-    // Una venta a un paciente de PRUEBA con producto REAL: la columna la marca, y la bandeja la deja ver,
-    // porque su descuento de inventario si fue real.
     const t = await venta(pacienteDePrueba, productoReal);
     // SOLO EL ESTADO: poner `registered_retroactively_at` sin su responsable y su factura lo rechaza el
     // CHECK `tx_retroactiva_completa` (las tres van juntas). La venta es de hoy, asi que ya entra en la
     // ventana de 30 dias de la bandeja.
     await db.execute(dsql`update transactions set stock_state = 'sin_saldo' where id = ${t}`);
     expect(await marca(t), "la columna deberia marcarla por el paciente").toBe(true);
-    const visibles = await listarVentasPorRevisar();
     expect(
-      visibles.some((v: { id: string }) => v.id === t),
-      "la bandeja escondio un descuadre de inventario REAL por ser de un paciente de prueba",
+      (await listarVentasPorRevisar()).some((v: { id: string }) => v.id === t),
+      "una venta marcada volvio a pedir accion en el lado real de la bandeja",
+    ).toBe(false);
+    // Y NO SE VUELVE INVISIBLE, que seria la unica forma de que esto fuera peor que antes.
+    expect(
+      (await listarVentasPorRevisar(true)).some((v: { id: string }) => v.id === t),
+      "con el interruptor encendido la bandeja tiene que mostrarla",
     ).toBe(true);
   });
 
