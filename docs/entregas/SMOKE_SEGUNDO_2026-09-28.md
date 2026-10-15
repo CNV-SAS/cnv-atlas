@@ -13,18 +13,22 @@ git de este mismo archivo (`git show ff4f4211:docs/entregas/SMOKE_SEGUNDO_2026-0
 2026-10-14, a pedido de Santiago): es donde quedan sus palabras tal cual mientras prueba, y por eso nombra
 pacientes. Este archivo, el guion, si se versiona: no lleva nombres.
 
-**EL ORDEN DE HOY (2026-10-15, el dia del arranque):** primero **F a I**, que es lo que
-frenaba el arranque; despues **A a E**, que son los arreglos del 12. Nada mas: no el documento entero.
+**EL ORDEN DEFINITIVO DEL 2026-10-15 (corregido tres veces el mismo dia: la segunda cancelo los scripts de
+inventario y la tercera cambio como se prueba):**
 
-**EL ORDEN DEFINITIVO DEL 2026-10-15 (corregido dos veces el mismo dia, y la segunda cancela scripts):**
-
-1. **Aplicar la 0220** en la nube: `node scripts/aplicar-migracion.mjs drizzle/0220_un_descarte_vale_en_los_dos_paneles.sql --commit`. Es una funcion nueva, no toca tablas.
-2. **Marcar como de prueba** los perfiles `Profesional Prueba` y `Profesional demo 2` en /admin, y decidir si
-   `ADAPTO-STRESS` pasa a `no_disponible` (seccion I).
-3. **Descartar las 4 ventas `sin_saldo`** que quedan en "Pendientes sin salida", y **dar de baja** las 2
-   unidades de cuarentena. Con eso /pagos queda en cero (seccion F).
-4. **El paso 3 de la J**, que desbloquea a los seis menores.
-5. **F, G, H**, luego **A a E**, todo con pacientes de prueba (seccion **4j**).
+1. **Push y deploy.** Lo que pone /pagos en cero es el **codigo** (el filtro de prueba sin excepciones), no una
+   migracion. La 0220 ya quedo aplicada; la **0221** es solo un comentario en la base y se puede aplicar antes
+   o despues, sin riesgo:
+   `node scripts/aplicar-migracion.mjs drizzle/0221_lo_de_prueba_vive_en_el_filtro_de_prueba.sql --commit`
+2. **Verificar /pagos.** Del lado real tienen que quedar solo las **2 unidades de ADAPTO-STRESS en
+   cuarentena**, que se cierran con los dos botones del panel. Las cinco ventas de prueba desaparecen solas,
+   descartadas o no (seccion **F**). Los descartes que ya escribiste no estorban: cada uno nombra su propia
+   venta y su propia huella.
+3. **El paso 3 de la J**, que desbloquea a los seis menores.
+4. **F, G, H**, luego **A a E**, con **gente real** y marcando al final (seccion **4j**, reescrita).
+5. Al cerrar el smoke: **marcar a mano las ventas del smoke**, **marcar los dos perfiles**
+   (`Profesional Prueba`, `Profesional demo 2`) y **decidir ADAPTO-STRESS** (seccion **4l**). No es opcional:
+   es la condicion para montar las llaves de produccion, y ahora hay un guard que lo verifica.
 6. El resto de la **J** y lo demas, despues.
 
 **NO SE CORREN** `CARGAR_LA_BODEGA_AL_ARRANQUE` ni `CONCILIAR_EL_INVENTARIO_AL_ARRANQUE`: la bodega ya estaba
@@ -116,17 +120,53 @@ Tres detalles que importan:
 - **La caducidad vale en los dos lados.** Si el hecho cambia despues del juicio, la fila vuelve a los dos
   paneles. Probado contra Postgres de verdad.
 
-**QUE TIENES QUE HACER PARA DEJARLO EN CERO** (en este orden):
+**QUE TIENES QUE HACER PARA DEJARLO EN CERO** (corregido el 2026-10-15, segunda vuelta: **ya no hay que
+descartar nada**):
 
-1. **Aplica la 0220** en la nube. Es una funcion nueva, no toca ninguna tabla.
-2. Recarga /pagos: "Ventas por revisar" baja de **5 a 4** sola, porque la LUVIA ya estaba descartada.
-3. **Descarta las otras 4** en "Pendientes sin salida", con su motivo, igual que hiciste con la LUVIA. Las dos
-   bandejas quedan en **0**.
-4. **Las 2 devueltas:** dos clics en el panel, *"dar de baja"* (son ADAPTO-STRESS de lotes de smoke). Eso es
-   un juicio fisico y ningun script lo puede tomar.
+1. **Push y deploy.** Lo que vacia la pantalla es el codigo de la **0221**, no una migracion.
+2. Recarga /pagos. Las **cinco** ventas desaparecen del lado real, descartadas o no, y el panel de
+   "Pendientes sin salida" queda en **0 · 0**. Estan en el lado del interruptor de prueba, con su fila
+   explicando por que la ves.
+3. **Las 2 devueltas:** dos clics en el panel, *"dar de baja"* (son ADAPTO-STRESS de lotes de smoke). Eso es
+   un juicio fisico, ningun script lo puede tomar, y no lo cambia ningun filtro de prueba: ese panel cuenta
+   **unidades paradas en cuarentena**, no ventas.
 
-Candados: `src/tests/el-descuadre-fisico-se-ve-y-se-descarta.test.ts` (12) y, contra BD real,
-`src/tests/descartar-un-pendiente-db.test.ts` (8, tres de ellos nuevos).
+#### ⛔ Y LA SEGUNDA VUELTA DEL MISMO PUNTO, QUE ES LA QUE LO CIERRA  → 0221
+
+Descartaste las cinco con su motivo, el contador quedo en *"0 pendientes sin resolver · 5 descartados"*, y las
+cinco **seguian listadas en el lado real**. Textual tuyo:
+
+> *"Si son pruebas simplemente no deben aparecer en la pantalla de produccion, es asi de simple. NI SIQUIERA
+> TENIA QUE HABERLAS DESCARTADO. La logica deberia ser simple: si algo esta marcado como prueba, aparece en el
+> filtro de prueba."*
+
+**Tienes razon, y la excepcion de la 0218 estaba mal calibrada.** Su argumento (si el producto es real, la
+unidad salio de una vitrina real y el descuadre es real) **es cierto**, y aun asi no servia:
+
+- el smoke se hace con **pacientes de prueba sobre vitrinas reales**, asi que cada venta que no alcanza saldo
+  levanta un descuadre que nadie va a ir a contar;
+- y **un aviso que sale por data que nadie puso se aprende a ignorar**. Ya se pago dos veces en esta misma
+  pantalla (el aviso que acusaba a la vitrina equivocada, los siete pendientes inventados). El dia que salga
+  un descuadre de verdad, nadie lo va a mirar.
+
+**Lo que se hizo:** el filtro de prueba vuelve a ser **uno solo** y sin excepciones, en los dos lectores (las
+tres ramas de la bandeja y las seis ramas de los avisos). `el_descuadre_fisico_es_real` queda **retirada**: no
+la llama nadie, y la 0221 cambia su comentario en la base para que nadie la vuelva a cablear sin esta
+conversacion. **No se borra** a proposito: un `DROP` dejaria /pagos llamando a una funcion que no existe entre
+la migracion y el deploy, o sea un 500 en la pantalla entera.
+
+**Donde quedo el hueco fisico:** donde vive, en un movimiento de **conciliacion** por ubicacion. Tu frase:
+*"el hueco de inventario, si lo hay, se cuadra por conciliacion"*. Marcar nunca devolvio una unidad al
+estante; lo que se movio es **donde se pide la cuenta**.
+
+**Y los descartes que ya escribiste no estorban despues**, que es lo otro que pediste verificar: cada fila de
+`pending_discards` nombra **una** transaccion y **una** huella del hecho. No puede callar otra venta, y si el
+hecho de la suya cambia, **caduca** y vuelve a pedir accion. Hay un candado nuevo contra BD real que lo prueba
+con dos ventas a la vez (*"un descarte calla SU hecho y ninguno mas"*).
+
+Candados: `src/tests/los-dos-paneles-del-mismo-hecho-deciden-igual.test.ts` (12, renombrado porque la regla
+que vigila cambio) y, contra BD real, `src/tests/lo-de-prueba-no-llega-a-pagos-db.test.ts` (9) y
+`src/tests/descartar-un-pendiente-db.test.ts` (8).
 
 ### G · Que una venta de prueba NO se facture  → `fix(pagos)` (mismo commit)
 
@@ -606,6 +646,8 @@ despues de corregir una fecha. La pantalla responde por un paciente; el script, 
 
 ## 4c · RESPONDIDO · Las llaves reales de Alegra y Wompi NO enrutan por paciente
 
+**Y el ORDEN en que se montan esta en la seccion 4l**, con el guard que lo verifica.
+
 **La pregunta de Santiago (2026-10-15):** *"¿solo es montar las api keys reales de alegra y wompi, y ya con
 eso si el paciente es de prueba se factura con alegra/wompi de prueba y si es real con el real? ¿El sistema
 los reconoceria?"*
@@ -780,72 +822,211 @@ hace mas facil de justificar y no cambia su tamaño: sigue siendo la superficie 
 la factura y la fecha, con **motivo obligatorio**, porque es una afirmacion sobre un documento fiscal que Atlas
 no emitio y que nadie mas puede verificar.
 
-## 4j · RESPONDIDO · COMO HACER EL SMOKE DE HOY SIN ENSUCIAR LO QUE SE ACABA DE LIMPIAR
+## 4j · CORREGIDO EL 2026-10-15 · EL SMOKE VA CON GENTE REAL, Y SE MARCA AL FINAL
 
-Tu pregunta, y era la que faltaba pensar: *"desde el commit, TODA VENTA NUEVA CUENTA COMO REAL... el smoke que
-falta (F a I, A a E) genera ventas. Si las hago con gente real, vuelvo a ensuciar."*
+**Decision de Santiago, y cambia la recomendacion que tenia esta seccion:** el smoke se hace con
+**profesionales y pacientes reales**, y se marca como prueba **al terminar**. *"Es lo que necesita para probar
+de verdad."* Lo que decia antes (hacerlo todo con pacientes de prueba) queda abajo, porque sigue siendo cierto
+como alternativa y explica el mecanismo.
 
-**La premisa hay que corregirla, y a tu favor: lo que vuelve real una venta NO es la fecha.** Son dos filtros
+**Lo primero, que es lo que hace esto viable: lo que vuelve real una venta NO es la fecha.** Son dos filtros
 distintos y trabajan por separado:
 
 - **`cuenta_como_de_prueba`**, la marca por venta, con cuatro entradas (profesional, paciente, producto, y la
-  marca a mano). La escribe un **trigger** en el momento del insert, cualquier dia. No sabe que existe el 15.
-- **`fecha_de_arranque`**, la frontera, que usan la vista `ventas_reales` y las cifras de periodo.
+  marca a mano). La escribe un **trigger** en el momento del insert, y la **recalcula** cada vez que una de
+  las cuatro entradas cambia, hacia atras. No sabe que existe el 15.
+- **`fecha_de_arranque`**, la frontera de periodo, que usan la vista `ventas_reales` y las cifras de periodo.
 
-Una venta de hoy a un **paciente de prueba** sale marcada sola, al instante, y queda fuera de todo. La
-frontera no la alcanza porque la marca ya la saco.
+Por eso marcar al final funciona: cuando marques la venta (o el perfil), el trigger recalcula y esa venta sale
+de todas las cifras **sin que nadie vuelva a correr nada**.
 
-### Las tres respuestas, en orden
+### Las tres cosas que hay que saber antes de empezar
 
-**1. ¿Alcanza con usar el profesional y el paciente de prueba ya marcados? SI, y no hay que correr nada.**
-Hay 25 pacientes de prueba. El trigger marca la venta en el insert, no hay segunda pasada ni script. Es la via
-limpia y es la que recomiendo para **todo** el smoke de dinero (F, G, A a E).
+**1 · EL DINERO SE LIMPIA AL FINAL, Y HOY ES SEGURO.** La marca a mano exige admin y un motivo de 10
+caracteres, deja su fila de auditoria, y **una venta marcada no se factura en ningun ambiente** (*"un
+documento fiscal afirmaria un acto que ya se declaro que no ocurrio"*). Hoy Alegra esta en sandbox, asi que
+nada se emite mientras pruebas. El dia que eso cambie, cambia todo: ver la seccion **4l**.
 
-**Antes de empezar, marca los dos perfiles que estan mal** (`Profesional Prueba` y `Profesional demo 2`, ver
-la seccion I): hoy cuentan como reales, asi que probar con ellos es exactamente lo que quieres evitar.
+**2 · EL INVENTARIO NO SE LIMPIA SOLO, Y ESA ES LA PARTE QUE CUESTA.** Con cuentas reales el desplegable solo
+ofrece **productos reales** (`catalogo-prescribible`: lo de prueba se ofrece unicamente a una cuenta marcada
+`is_test`, verificado en el codigo). O sea que **cada venta del smoke saca unidades reales** de una vitrina
+real o de la central, y marcar la venta despues **no devuelve la unidad**.
 
-**2. La prueba H funciona con un paciente de prueba. Pero hay una trampa, y es de INVENTARIO, no de dinero.**
+Dos salidas, y la primera prueba mas sistema:
 
-La casilla *"salio de la bodega de CNV"* depende de **quien mira** (admin), no del paciente. Asi que H pasa con
-un paciente de prueba sin problema. Lo que no cambia es esto: **admin solo ve productos REALES en el
-desplegable** (los de prueba se ofrecen unicamente a una cuenta de prueba, por la regla de
-`catalogo-prescribible`). O sea que H **saca una unidad real de la central de verdad**.
+- **La limpia:** despues de cada venta, registra la **devolucion del paciente** desde la fila de la venta, y
+  en "Devueltas pendientes de verificacion" pulsa **"volver al lote"** eligiendo la ubicacion de donde salio.
+  La unidad regresa y de paso queda probado el circuito completo de devolucion.
+- **La aceptable:** hazlo con **1 unidad** por prueba y dejala ir. Cuando cuentes en la oficina, la
+  conciliacion cuadra la diferencia, que es justo para lo que existe. Apunta cuantas fueron.
 
-El dinero queda limpio solo; **la unidad no vuelve sola**. Tres salidas, de mejor a peor:
+**3 · EL ORDEN DE LAS LLAVES ES UNA REGLA, NO UNA RECOMENDACION.** Seccion **4l**: las credenciales de
+produccion no se montan hasta que el smoke termine y todo lo de prueba este marcado. Y ahora hay algo que lo
+verifica, no solo un parrafo.
 
-- **La limpia, y ademas prueba mas sistema:** haz la venta, registra la **devolucion del paciente** desde la
-  propia fila de la venta, y en "Devueltas pendientes de verificacion" pulsa **"volver al lote"** eligiendo la
-  bodega central. La unidad regresa y ademas acabas de probar el circuito completo de devolucion.
-- **La aceptable:** haz H con **1 unidad** y dejala ir. Cuando cuentes en la oficina, la conciliacion la
-  cuadra, que es justo para lo que existe.
-- **La que NO:** hacer H con un producto de prueba. No se puede, y es correcto que no se pueda.
+### La alternativa, que sigue siendo valida (la recomendacion anterior)
 
-**3. La marca a mano sirve HOY y cualquier dia. No tiene nada que ver con el arranque.**
+Hay **25 pacientes de prueba**. Una venta a uno de ellos nace marcada sola, al instante, y no requiere
+limpieza posterior ni expone a nada. Lo que no te da es probar con la gente de verdad, que es lo que pediste.
 
-Es una columna de la venta; el trigger recalcula al escribirla y la funcion del descuadre fisico tambien la
-respeta. La fecha del script solo decidia **a cuales** ventas alcanzaba el script, no como funciona la marca.
-Exige admin, motivo de 10 caracteres y deja su fila de auditoria.
+Si quieres saldo en una vitrina de prueba: **admin hace una remesa** al profesional de prueba y **el confirma**
+en *Mi inventario*. La remesa **no descuenta de la central** (hueco conocido, seccion 2), asi que la central
+no se mueve ni una unidad.
 
-**Y lo que la marca a mano hace de verdad bien:** una venta marcada **no se factura en NINGUN ambiente**
-(*"un documento fiscal afirmaria un acto que ya se declaro que no ocurrio"*). Es el freno de la **G**.
+### Lo que NO hace falta, en ningun caso
 
-> **⚠ EL AVISO QUE IMPORTA PARA CUANDO PONGAS LAS LLAVES REALES.** La marca a mano frena la factura, pero solo
-> si llega **antes** que la cola. Hoy Alegra esta en sandbox y da igual. Con las llaves de produccion puestas,
-> una venta de prueba hecha sobre un paciente **real** y marcada cinco minutos despues puede haberse facturado
-> ya, con numeracion de la DIAN, y eso no se deshace con una marca: se deshace con una nota credito. **Por eso
-> la via de los pacientes de prueba no es solo la mas comoda, es la unica que no depende de llegar primero.**
-
-### Si necesitas saldo en una vitrina de prueba
-
-`Santi pruebas` esta vacia y `Profesional Demo` tiene 1 unidad. Para probar una venta de Integrante hace falta
-saldo, y se consigue sin tocar nada real: **admin hace una remesa** al profesional de prueba y **el confirma**
-en *Mi inventario*. La remesa **no descuenta de la central** (es el hueco conocido de la seccion 2 de este
-documento, decidido y pospuesto), asi que la central no se mueve ni una unidad.
-
-### Lo que NO hace falta
-
-- Volver a correr el script de arranque. No se puede y no hace falta.
+- Volver a correr el script de arranque. No se puede y no hace falta: el trigger recalcula solo.
 - Mover `fecha_de_arranque`. Es la frontera del periodo y moverla para probar seria mentir sobre el periodo.
+
+---
+
+## 4k · RESPONDIDO, Y LA RECOMENDACION ES NO HACERLO · Poner las vitrinas en cero
+
+Tu idea: *"poner en saldo a 0 a todos los profesionales, ya que hicimos algunos cambios: algunos devolvieron y
+otros recibieron mas. La idea es que solo se quede el saldo de la bodega y se vaya descontando a medida que
+admin vaya haciendole remesas."* Y tu propia duda: *"para descontarse efectivamente ellos tendrian que aceptar
+la remesa, correcto?"*
+
+### Tu duda es correcta, y hay una segunda que no habiamos visto
+
+**SI: la remesa no entra al saldo hasta que el Integrante la confirma.** La declara admin, se guarda dirigida
+a la ubicacion del Integrante y el trigger del saldo **la excluye**; lo que suma es la **recepcion** que
+escribe el Integrante desde *Mi inventario*. Verificado en `remesa-service.ts`.
+
+**Y LA SEGUNDA, QUE TUMBA EL PLAN: la remesa tampoco DESCUENTA de la bodega central.** Ni al declararla ni al
+confirmarla. Hoy la central solo baja por dos vias: una **venta marcada "sale de la bodega"** (un domicilio) o
+una **baja**. O sea que *"que la bodega se vaya descontando a medida que admin hace remesas"* **no es lo que
+pasa hoy**: es el hueco conocido de la **seccion 2** de este documento, decidido y pospuesto. Poner las
+vitrinas en cero no lo arregla; solo lo deja mas visible.
+
+### Lo que implica, con las cifras de la nube de hoy
+
+| | |
+|---|---|
+| Vitrinas con producto real | **7** (Angela 75, Camilo 70, Diana 60, Katherine 96, Maria Camila 74, Roberto 75, Valentina 75) |
+| Unidades reales en vitrinas | **525** |
+| Unidades reales en la central | **1.279** |
+| Lineas (producto + lote) que habria que reponer | **33** |
+
+Ponerlas en cero y volver a mandarlas son, en el mejor de los casos, **33 remesas declaradas por admin y 33
+confirmaciones de siete personas distintas**, para acabar con las mismas 1.804 unidades donde ya estan. Con el
+agravante de que la central **no se habria movido**, asi que el total subiria si alguien repone creyendo que
+descuenta.
+
+### Tus cuatro preguntas, una por una
+
+**¿Cuanto tarda una confirmacion en la practica?** Medido, no estimado: de las **14 remesas** que existen en la
+nube, **las 14 estan confirmadas**. Trece se confirmaron **en menos de una hora**; una tardo **90 horas** (casi
+cuatro dias). Esa ultima es la que importa: con la vitrina en cero, ese Integrante habria estado **cuatro dias
+sin poder vender**.
+
+**¿Que ve un Integrante con la vitrina en cero mientras no confirma?** En *Mi inventario*, cero, y arriba la
+**remesa pendiente** (es asi como se entera; no hay aviso aparte). **Puede atender con normalidad**: la
+consulta, la evaluacion y la prescripcion no dependen del saldo, solo del consentimiento. Lo que **no puede es
+registrar una venta**: el reservador lanza `InventarioDeVentaError` y la venta no se completa.
+
+**¿Puede admin confirmar por el?** **No, y ese camino no existe.** Es deliberado (`can-declarar-remesa.ts`:
+*"El integrante NO declara, el recibe"*), y la confirmacion resuelve el perfil del **usuario que la escribe**.
+La razon de fondo es la asimetria que protege el saldo: si el Integrante reporta **menos** de lo declarado se
+le cree a el, y si reporta **mas**, el excedente no infla el saldo. Admin confirmando por otro afirmaria que
+alguien recibio algo que no ha visto, que es justo lo que esa asimetria evita. **Se podria construir** como
+camino excepcional con auditoria, pero con 13 de 14 confirmaciones en menos de una hora, no hay caso que lo
+pida.
+
+**¿Queda legible en el historial que las unidades si estaban en el consultorio?** El movimiento de
+`conciliacion` guarda su motivo y se ve en el historial de la ubicacion, asi que **si**. Pero ese motivo
+tendria que decir que hubo un conteo, **y no lo hubo**. Es tu propia objecion del 15 (*"el que trae dice
+'ajuste al conteo fisico' y no hubo conteo"*), y aqui aplica igual.
+
+### LA RECOMENDACION: dejar los saldos como estan
+
+Sale caro (66 operaciones y siete personas), no consigue lo que buscas (la central no se descuenta) y escribe
+en el historial un ajuste sin conteo detras. **Lo que si resuelve el problema real** (*"algunos devolvieron y
+otros recibieron mas"*) es lo que ya tenias previsto: **contar en la oficina y cuadrar contra el conteo**, con
+`CONCILIAR_EL_INVENTARIO_AL_ARRANQUE`, que para eso esta escrito y es correcto cuando las cifras salen de un
+conteo real.
+
+Y si de verdad quieres el modelo de *"la bodega se descuenta con cada remesa"*, eso **no es una operacion, es
+un cambio**: que la remesa descuente de la central al declararse (o al confirmarse). Esta en la seccion 2 y se
+decidio posponerlo. Dimensionarlo es otra conversacion, pero no se resuelve poniendo saldos en cero.
+
+---
+
+## 4l · LA REGLA DE LAS LLAVES, Y LO QUE QUEDA PARA EL CIERRE DEL SMOKE
+
+### LA REGLA, CONSTRUIDA Y NO SOLO ESCRITA
+
+**Las credenciales reales de Alegra y Wompi se montan SOLO cuando el smoke termine y todo lo de prueba este
+marcado. Antes no.** Confirmado por Santiago el 2026-10-15.
+
+**Por que es un orden y no una recomendacion:** la marca a mano frena la factura, pero solo si llega **antes
+que la cola**. En el instante en que `alegra_config` tiene su fila de produccion y Vercel apunta a la URL de
+produccion, **todo lo que estaba esperando se emite con numeracion de la DIAN**. Una venta del smoke sobre un
+paciente real, marcada cinco minutos despues, ya no se arregla con una marca: se arregla con una **nota
+credito** que tiene que hacer una persona.
+
+**Y ahora hay algo que lo verifica.** `scripts/config-alegra-produccion.sql` (el unico sitio por el que se
+pasa obligatoriamente para montar las llaves) hace, **antes de escribir nada**:
+
+1. **lista las ventas que la cola emitiria** en cuanto eso quede (fecha, monto, medio, Integrante y productos;
+   sin datos del paciente, porque esa salida se pega en un chat);
+2. y **ABORTA** mientras su bandeja `ventas_pendientes_revisadas` diga `<REVISAR>`.
+
+La condicion es la de la cola **copiada letra por letra** (`LE_FALTA_ALGO`, `FACTURABLE`,
+`LA_FACTURA_ES_DE_CNV`, la marca a mano y el tope de intentos), y el candado
+`las-llaves-no-entran-con-ventas-sin-revisar.test.ts` compara los textos: si la cola cambia, se pone rojo
+nombrando el script. Una condicion *parecida* seria peor que ninguna, porque diria que no hay nada que
+facturar mientras la cola emite otra cosa.
+
+**PARA VER LA LISTA HOY, SIN MONTAR NADA:** correr ese mismo script en **ensayo** (sin `--commit`) con los
+`<LLENAR>` como estan. La lista se imprime antes de que se revise cualquier otra cosa. Eso es la *"lista de
+ventas reales anteriores a hoy que nadie marco"* que pediste.
+
+### LO QUE HAY QUE HACER AL CERRAR EL SMOKE, EN ORDEN
+
+1. **Marcar a mano las ventas del smoke** en /pagos (admin, motivo de 10 caracteres). Es lo que las saca de
+   todas las cifras y lo que impide que se facturen.
+2. **Marcar los dos perfiles como de prueba** en /admin: `Profesional Prueba` y `Profesional demo 2`. Hoy
+   cuentan como **reales** a pesar del nombre, y con ellos se hizo el smoke. El trigger recalcula sus ventas
+   **hacia atras**, asi que esto limpia de una vez lo que haya quedado suelto. (Santiago: *"con ellos hago el
+   smoke, se marcan al final"*.)
+3. **Correr el script de las llaves en ensayo** y revisar la lista. Lo que fue del smoke se marca; lo que es
+   real se deja, y entonces su factura es correcta y tiene que salir.
+4. **Decidir ADAPTO-STRESS** (abajo).
+5. Y solo entonces: Vercel, `leer-alegra.mjs`, `config-alegra-produccion.sql` con la bandeja en `si`, y la
+   cuenta puente de **transferencias**, que falta en los dos ambientes.
+
+### ⚠ PENDIENTE CON RIESGO ESCRITO · ADAPTO-STRESS
+
+**Santiago lo deja para despues del smoke:** *"podemos limpiar adapto stress, pero despues del smoke segundo
+que falta."* Queda anotado con el riesgo, que sigue en pie:
+
+- **18 unidades** sobre **ocho lotes de smoke** (`aaaaa`, `aaaaab`, `jkl-11`, `Lote 001`, `LOTE SMOKE ADPTS`,
+  `LOTESMK1`, `LOTESMK222`, `SMOKE (FINAL)`): 16 en consultorios (Profesional Prueba 6, Profesional demo 2 9,
+  Profesional Demo 1) y 2 en cuarentena.
+- **No esta en la primera tanda del laboratorio.** CNV no tiene ese producto.
+- **El riesgo:** esta en `en_consultorio`, asi que **un Integrante real puede venderlo y facturarlo** en
+  Alegra produccion siendo un producto que no esta en ninguna bodega. Los otros cinco que CNV no tiene
+  (BERBERINA METABO, GUT-IMMUNE PRO, HEPA-DETOX, MITO-Q10 PLUS, SARCO-PROTECT) ya estan en `no_disponible`.
+- **La salida:** pasarlo a `no_disponible` y dar de baja las 18 unidades. Es decision de Santiago.
+
+**Recordatorio:** esto se trae de vuelta **cuando el smoke cierre**, junto con los pasos 1 a 4 de arriba.
+
+### ✅ CONFIRMADO · El producto de prueba NO hace falta limpiarlo
+
+Santiago: *"el producto SMOKE no se limpia: es de prueba, se supone que solo aparece a las cuentas de
+prueba."* **Es cierto, verificado en el codigo** (`catalogo-prescribible.ts`): al prescribir y al cobrar, una
+cuenta **real** ve `is_test = false` y nada mas; los productos de prueba se ofrecen **solo** a una cuenta
+marcada `is_test`. Hay **60 unidades** de `PRUEBA SMOKE BLOQUE 3` y sus variantes retiradas en la central, y
+no estorban: ninguna cifra de dinero las cuenta y ninguna pantalla de venta las ofrece.
+
+Dos matices, por si aparecen:
+
+- **El inventario SI las muestra**, y es deliberado: esa pantalla existe para **contar**, y esconder unidades
+  la haria contradecir el conteo fisico.
+- **La remesa de admin tambien las ofrece**, marcadas y al final de la lista, para poder recargar una vitrina
+  de prueba. Mandarselas por error a un Integrante real no le permite venderlas (el catalogo se lo impide),
+  pero le ensucia el conteo.
 
 ---
 
