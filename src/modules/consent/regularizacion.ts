@@ -36,8 +36,22 @@ export type MotivoDeRegularizacion =
       clave: "menor_sin_representante";
       /** Años cumplidos el dia que firmo. */
       edadAlFirmar: number;
-      /** FRENA evaluaciones nuevas: quien firmo no tenia capacidad para autorizar. */
-      frenaEvaluaciones: true;
+      /**
+       * ═══ HOY NO FRENA, Y HAY QUE ENTENDER POR QUE (Santiago, 2026-10-15) ═══
+       *
+       * El dictamen pide que *"valido"* excluya un consentimiento de menor sin representante, y eso es
+       * correcto. Pero **el freno solo se sostiene si existe el camino para salir de el**, y hoy no existe:
+       * el pase presencial con rama de menor (0216) solo CREA pacientes nuevos, y el camino remoto necesita
+       * un correo que estos pacientes no tienen (es por lo que entraron por el QR).
+       *
+       * Frenar sin salida es lo que tuvo a una profesional con SEIS pacientes reales detenidos: *"no ha
+       * podido hacer nada con ellos"*. Y el propio dictamen nunca pidio eso: *"el profesional trabaja
+       * normalmente con ese paciente. La historia es suya y la atencion sigue."*
+       *
+       * **ESTO VUELVE A `true` EL DIA QUE EXISTA EL CAMINO DE REGULARIZACION** (el pase presencial sobre un
+       * paciente que ya existe). Es una linea, y su candado dice que hoy vale `false` y por que.
+       */
+      frenaEvaluaciones: false;
       queHacer: string;
     }
   | {
@@ -107,9 +121,9 @@ export function motivoDeRegularizacion(h: HechosDelConsentimiento): MotivoDeRegu
       return {
         clave: "menor_sin_representante",
         edadAlFirmar: edadAlFirmar as number,
-        frenaEvaluaciones: true,
+        frenaEvaluaciones: false,
         queHacer:
-          "Era menor de edad el día que firmó y no quedó registrado su representante legal, así que ese consentimiento no lo autorizaba quien tenía que autorizarlo. No se borra: queda como la constancia de lo que se firmó ese día. Para volver a evaluarlo, firma el consentimiento de nuevo con la rama que corresponda a su edad de hoy; si hoy sigue siendo menor, el representante recibe el código y firma él.",
+          "Era menor de edad el día que firmó y no quedó registrado su representante legal, así que ese consentimiento no lo autorizaba quien tenía que autorizarlo. El registro no se borra: queda como la constancia de lo que se firmó ese día. Puedes seguir atendiéndolo con normalidad, y eso incluye abrirle consultas nuevas. Lo que queda pendiente es repetir el consentimiento con su representante legal: la vía para hacerlo sobre un paciente que ya existe está en construcción, así que por ahora esto queda anotado aquí y quien administra Atlas ya lo tiene en la lista.",
       };
     }
   }

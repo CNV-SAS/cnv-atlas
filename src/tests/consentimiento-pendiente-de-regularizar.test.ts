@@ -29,11 +29,45 @@ const UN_MENOR = {
   tieneRepresentanteVigente: false,
 };
 
+/** Un ejemplo de CADA motivo, para los casos que valen para todos. */
+const TODOS_LOS_MOTIVOS = () => [
+  motivoDeRegularizacion(UN_MENOR),
+  motivoDeRegularizacion({
+    fechaDeNacimiento: "2049-01-01",
+    firmadoEl: "2026-03-01T15:00:00.000Z",
+    tieneRepresentanteVigente: false,
+  }),
+  motivoDeRegularizacion({
+    fechaDeNacimiento: "1990-01-01",
+    firmadoEl: "2026-03-01T15:00:00.000Z",
+    tieneRepresentanteVigente: false,
+    ramaIncoherente: { versionQueSeUso: "1.1-a", versionQueCorresponde: "1.0" },
+  }),
+];
+
 describe("el motivo de regularizacion", () => {
-  it("marca al menor que firmo sin representante, y FRENA", () => {
+  it("marca al menor que firmo sin representante", () => {
     const m = motivoDeRegularizacion(UN_MENOR);
     expect(m?.clave).toBe("menor_sin_representante");
-    expect(m?.frenaEvaluaciones).toBe(true);
+  });
+
+  // ═══ Y HOY NINGUN MOTIVO FRENA, A PROPOSITO (Santiago, 2026-10-15) ═══
+  //
+  // Esto empezo frenando y se cambio el mismo dia: el freno tuvo a una profesional con SEIS pacientes
+  // reales detenidos, porque el camino para salir de el NO EXISTE (el pase presencial con rama de menor
+  // solo crea pacientes nuevos, y el remoto necesita un correo que estos pacientes no tienen).
+  //
+  // ESTE CASO ES EL RECORDATORIO, y por eso se escribe como una afirmacion y no como un hueco: el dia que
+  // exista el camino de regularizacion, esta prueba falla, y ese fallo es la señal de que hay que volver a
+  // poner el freno. Un `frenaEvaluaciones` que nadie vigila se queda en false para siempre.
+  it("NINGUN motivo frena evaluaciones hoy: el camino de regularizacion no existe todavia", () => {
+    for (const m of TODOS_LOS_MOTIVOS()) {
+      expect(m, "aparecio un motivo nuevo: decide si frena y actualiza este candado").not.toBeNull();
+      expect(
+        m!.frenaEvaluaciones,
+        `el motivo ${m!.clave} volvio a frenar. Si es a proposito, el camino de regularizacion tiene que existir primero: frenar sin salida detiene la atencion de un paciente real.`,
+      ).toBe(false);
+    }
   });
 
   it("no marca nada si el menor SI tiene representante vigente", () => {
@@ -99,20 +133,7 @@ describe("el motivo de regularizacion", () => {
   });
 
   it("cada motivo tiene rotulo y dice QUE HACER", () => {
-    for (const m of [
-      motivoDeRegularizacion(UN_MENOR),
-      motivoDeRegularizacion({
-        fechaDeNacimiento: "2049-01-01",
-        firmadoEl: "2026-03-01T15:00:00.000Z",
-        tieneRepresentanteVigente: false,
-      }),
-      motivoDeRegularizacion({
-        fechaDeNacimiento: "1990-01-01",
-        firmadoEl: "2026-03-01T15:00:00.000Z",
-        tieneRepresentanteVigente: false,
-        ramaIncoherente: { versionQueSeUso: "1.1-a", versionQueCorresponde: "1.0" },
-      }),
-    ]) {
+    for (const m of TODOS_LOS_MOTIVOS()) {
       expect(m).not.toBeNull();
       expect(rotuloDeRegularizacion(m!).length).toBeGreaterThan(5);
       // Un aviso que solo dice que algo esta mal deja al profesional sin salida (guard correcto mal expuesto).
@@ -193,24 +214,32 @@ describe("los hechos se arman en un solo sitio", () => {
 describe("el gate (regla dura 15) lo ejerce", () => {
   const LAS_TRES = ["servicio", "datos_sensibles"] as const;
 
-  it("con las necesarias y un menor sin representante, NO autoriza", () => {
-    const g = canCreateEvaluation(LAS_TRES as never, motivoDeRegularizacion(UN_MENOR));
+  it("HOY ninguno bloquea la atencion, que es la decision del 2026-10-15", () => {
+    // El control que importa de verdad: con las necesarias vigentes, un consentimiento pendiente de
+    // regularizar NO impide abrir la consulta. Si esto se pone rojo, la profesional vuelve a quedarse con
+    // pacientes detenidos y sin forma de desatascarlos.
+    for (const m of TODOS_LOS_MOTIVOS()) {
+      expect(canCreateEvaluation(LAS_TRES as never, m).ok, `el motivo ${m!.clave} volvio a bloquear`).toBe(
+        true,
+      );
+    }
+  });
+
+  it("pero el CABLE sigue puesto: el gate lee el motivo y sabria frenar", () => {
+    // La maquinaria se deja montada a proposito: el dia que exista el camino de regularizacion, volver a
+    // frenar es cambiar `frenaEvaluaciones` a true, nada mas. Esto vigila que no se desmonte mientras tanto,
+    // porque entonces ese dia habria que rehacerlo todo y la exclusion que pide el dictamen quedaria en nada.
+    const g = canCreateEvaluation(LAS_TRES as never, {
+      clave: "menor_sin_representante",
+      edadAlFirmar: 12,
+      // Se fuerza a `true` SOLO aqui, para probar el cable sin cambiar la regla.
+      frenaEvaluaciones: true as never,
+      queHacer: "x",
+    });
     expect(g.ok).toBe(false);
     // Y no miente sobre lo que falta: no hay autorizaciones ausentes, hay una que no sirve.
     expect(g.ok === false && g.missing).toEqual([]);
     expect(g.ok === false && g.regularizar?.clave).toBe("menor_sin_representante");
-  });
-
-  it("los motivos que no frenan NO bloquean la atencion", () => {
-    const g = canCreateEvaluation(
-      LAS_TRES as never,
-      motivoDeRegularizacion({
-        fechaDeNacimiento: "2049-01-01",
-        firmadoEl: "2026-03-01T15:00:00.000Z",
-        tieneRepresentanteVigente: false,
-      }),
-    );
-    expect(g.ok).toBe(true);
   });
 
   it("si faltan necesarias, eso manda: el motivo no sustituye a lo que falta", () => {
