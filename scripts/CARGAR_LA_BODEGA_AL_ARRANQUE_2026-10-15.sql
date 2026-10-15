@@ -1,4 +1,18 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
+-- ⛔ NO SE CORRIO EL 2026-10-15, Y NO SE DEBE CORRER HOY. LA PRIMERA TANDA YA ESTABA CARGADA.
+--
+-- Al mirar el saldo de la nube ANTES de correrlo, la primera tanda ya estaba en la central desde el
+-- 2026-09-11 (movimiento `recepcion`, texto *"Carga inicial: saldo en bodega central tras la primera entrega
+-- a Integrantes"*), con ESTOS MISMOS lotes y vencimientos, y cuadrando unidad por unidad con lo declarado:
+-- 500 MULTI-CELL, 500 OMEGA, 426 CURCUMIN, 300 D3-K2 y 84 LUVIA, repartidas entre la central y siete vitrinas.
+--
+-- Correrlo habria dejado 3.632 unidades donde hay 1.822.
+--
+-- ESTE SCRIPT SIRVE PARA EL SEGUNDO ENVIO DEL LABORATORIO: se editan las lineas del bloque (1) con los lotes
+-- nuevos y se corre. El bloque (2b) aborta solo si algun lote de la tanda ya tiene saldo en la central.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
 -- CARGAR LA BODEGA CENTRAL CON LA PRIMERA TANDA DEL LABORATORIO  ·  2026-10-15
 --
 -- ═══ DE DONDE SALE ═══
@@ -110,6 +124,48 @@ begin
   elsif n > 1 then
     raise exception 'ABORTADO: hay % bodegas centrales activas y este script no puede elegir. Resuelvelo antes.', n;
   end if;
+end $$;
+
+-- ── (2b) EL GUARD QUE FALTABA: ESTA TANDA YA PUEDE ESTAR CARGADA ─────────────────────────────────
+--
+-- ═══ POR QUE SE AGREGO, Y COSTO CARO NO TENERLO (2026-10-15) ═══
+--
+-- Este script se escribio el 14 dando por hecho que la central estaba vacia, y se ensayo con exito. Al mirar
+-- el saldo de la nube el 15, ANTES de correrlo, la primera tanda ya estaba cargada desde el 2026-09-11 (con
+-- estos mismos lotes y vencimientos) y cuadraba unidad por unidad con lo declarado. Correrlo habria dejado
+-- 3.632 unidades donde hay 1.822, y nadie podria decir cual mitad es inventada.
+--
+-- LO QUE HAY QUE ENTENDER: el script no podia saberlo solo mirando su propia logica. Cargar una recepcion es
+-- una operacion legitima, y un SEGUNDO envio del laboratorio se ve exactamente igual que una doble carga.
+-- La diferencia no esta en la forma del movimiento, esta en el LOTE: un envio nuevo trae lotes nuevos.
+--
+-- ASI QUE EL GUARD MIRA EL LOTE, no el producto ni el total: si alguna linea de la tanda nombra un lote que
+-- YA tiene saldo en la central, esta tanda ya entro y el script aborta. Para el segundo envio, los lotes seran
+-- otros y el guard deja pasar sin tocar nada.
+--
+-- Y SI DE VERDAD HICIERA FALTA REPETIR UN LOTE que ya tiene saldo (un envio del mismo lote, que el laboratorio
+-- puede mandar), se quita este bloque A MANO en una copia del script, mirando el saldo primero. Que cueste un
+-- gesto deliberado es el punto: lo que no puede pasar es que ocurra sin que nadie lo decida.
+do $$
+declare r record; n int := 0;
+begin
+  for r in
+    select t.producto, t.lote, sum(i.stock_quantity)::int as saldo
+      from _tanda t
+      join nutraceuticals nu on lower(btrim(nu.name)) = lower(btrim(t.producto))
+      join lots l on l.nutraceutical_id = nu.id and btrim(l.code) = btrim(t.lote)
+      join nutraceutical_inventory i on i.lot_id = l.id and i.nutraceutical_id = nu.id
+      join inventory_locations lo on lo.id = i.location_id and lo.kind = 'central' and lo.is_active
+     group by t.producto, t.lote
+    having sum(i.stock_quantity) > 0
+  loop
+    n := n + 1;
+    raise notice 'YA CARGADO: % lote % tiene % unidades en la central.', r.producto, r.lote, r.saldo;
+  end loop;
+  if n > 0 then
+    raise exception 'ABORTADO: % de las lineas de esta tanda ya tienen saldo en la central con ESE MISMO LOTE. Esta tanda ya entro; correrlo duplicaria el inventario. Mira los NOTICE de arriba.', n;
+  end if;
+  raise notice 'GUARD (2b): ninguno de los lotes de esta tanda tiene saldo en la central. Se puede cargar.';
 end $$;
 
 -- ── (3) LOS LOTES: SE CREAN CON SU VENCIMIENTO REAL ──────────────────────────────────────────────

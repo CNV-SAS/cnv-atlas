@@ -1,4 +1,17 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
+-- ⛔ NO SE CORRIO EL 2026-10-15, Y NO SE DEBE CORRER EN CERO. OCHO UBICACIONES TIENEN PRODUCTO REAL.
+--
+-- El plan del 14 era correrlo con el bloque (2) VACIO y `llevar_a_cero_lo_no_listado` en `true`, para que
+-- todo arrancara en cero. Santiago pidio confirmar antes *"que eso no borra el saldo de ninguna vitrina que
+-- de verdad tenga producto fisico encima"*. **Lo tienen la central y siete vitrinas de Integrantes reales:
+-- 1.822 unidades de la primera tanda del laboratorio.** En cero las habria borrado, sin vuelta atras.
+--
+-- ESTE SCRIPT SIGUE SIENDO EL CORRECTO PARA SU PROPOSITO: cuadrar contra un CONTEO FISICO. Cuando Santiago
+-- cuente en la oficina, se llena el bloque (2) con lo contado y se corre. Lo que no se vuelve a plantear es
+-- usarlo para "arrancar en cero": ese arranque ya ocurrio en septiembre y la data esta buena.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
 -- EL INVENTARIO SE CUADRA CON EL CONTEO FISICO  ·  arranque del 2026-10-15
 --
 -- ═══ POR QUE ESTE SCRIPT EXISTE APARTE DEL DE ARRANQUE ═══
