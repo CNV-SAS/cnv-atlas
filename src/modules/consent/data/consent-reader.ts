@@ -95,7 +95,11 @@ export async function getRegularizacionDelPaciente(
 ): Promise<MotivoDeRegularizacion | null> {
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: perfil }, { data: consents }, { data: sesiones }] = await Promise.all([
+  const [
+    { data: perfil, error: ePerfil },
+    { data: consents, error: eConsents },
+    { data: sesiones, error: eSesiones },
+  ] = await Promise.all([
     supabase.from("patient_profiles").select("birth_date").eq("patient_id", patientId).maybeSingle(),
     supabase
       .from("patient_consents")
@@ -111,6 +115,16 @@ export async function getRegularizacionDelPaciente(
       .not("confirmed_at", "is", null)
       .not("patient_birth_date", "is", null),
   ]);
+
+  // ── UN FALLO SE LANZA, NO SE CONVIERTE EN "ESTA COMPLETO" ───────────────────────────────────────
+  //
+  // Si una de las tres consultas falla y se trata como lista vacia, este lector devuelve null y el panel
+  // afirma que el consentimiento esta en orden. Eso es peor que la pantalla caida: es la unica superficie
+  // que existe para este hallazgo, y daria la tranquilidad al reves. Misma razon que en los dos lectores
+  // de arriba, y la misma de [[completar-una-encuesta-que-nunca-existio]]: convertir un fallo en un vacio
+  // cambia "no se sabe" por "no hay nada".
+  const fallo = ePerfil ?? eConsents ?? eSesiones;
+  if (fallo) throw new Error(`consent-reader: getRegularizacionDelPaciente: ${fallo.message}`);
 
   return motivoDeRegularizacion(
     hechosDelConsentimiento({
