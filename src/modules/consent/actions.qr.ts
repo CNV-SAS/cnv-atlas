@@ -353,8 +353,12 @@ export async function declararYCrearQrAction(
   }
 
   const ip = await getClientIp();
-  const { signIntakeEvaluation, ConsentGateError, ConsentimientoDeMenorSinRepresentanteError } =
-    await import("@/modules/evaluations/data/intake-writer");
+  const {
+    signIntakeEvaluation,
+    ConsentGateError,
+    ConsentimientoDeMenorSinRepresentanteError,
+    ConsentimientoPendienteDeRegularizarError,
+  } = await import("@/modules/evaluations/data/intake-writer");
   const { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } = await import("@/modules/consent/consent-hash");
 
   try {
@@ -468,6 +472,14 @@ export async function declararYCrearQrAction(
       return fail(
         "La fecha de nacimiento de este pase indica que el paciente es menor de edad, pero el pase se emitió como de mayor, así que no se pidieron los datos del representante legal. Anúlalo y genera uno nuevo: al escribir la fecha, Atlas abre la vía del representante.",
       );
+    }
+    // ── Y EL PENDIENTE DE REGULARIZAR (pieza 2), por la misma razon de arriba ──────────────────────
+    //
+    // Tambien es una defensa de fondo: a un paciente que se acaba de crear no le puede faltar nada por
+    // regularizar. Si llegara a disparar, el generico de abajo seria lo peor posible (reintentar lo que no
+    // es pasajero, mas una excepcion en Sentry que no es un fallo tecnico), asi que viaja su mensaje.
+    if (e instanceof ConsentimientoPendienteDeRegularizarError) {
+      return fail(e.message);
     }
     // El documento pudo dejar de estar libre entre la verificacion y ahora (otro profesional lo creo en
     // ese rato). El unique de la base lo impide; aqui se dice con palabras.

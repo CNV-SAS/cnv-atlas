@@ -8,7 +8,7 @@ import { startFollowupAction } from "../actions";
 import type { StartFollowupState } from "../validations";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
-const initialState: StartFollowupState = { error: null, resumeToken: null, revoked: false, reanudar: false, tieneCorreo: null };
+const initialState: StartFollowupState = { error: null, resumeToken: null, revoked: false, pendienteDeRegularizar: null, reanudar: false, tieneCorreo: null };
 
 // Pantalla de inicio del SEGUIMIENTO SIN FIRMA (dictamen legal 2026-08-20 §3): el paciente ya esta verificado
 // y su consentimiento vigente cubre el seguimiento (numeral 4), asi que NO se re-firma ni se pide codigo. Un
@@ -31,7 +31,13 @@ export function FollowupStartScreen({
 
   // Autorizacion necesaria no vigente (revocada): no se creo nada; se avisa sin culpar y se remite al
   // profesional (redaccion aprobada 2026-08-20).
-  if (state.revoked) {
+  // ── Y EL PENDIENTE DE REGULARIZAR SE DICE IGUAL, A PROPOSITO (pieza 2) ─────────────────────────
+  //
+  // Esta pantalla la lee el PACIENTE solo, en su telefono. El texto de abajo no afirma que el haya
+  // revocado nada (dice "una autorizacion que hoy no esta vigente"), asi que sirve para los dos casos y es
+  // lo unico que se le puede decir sin contarle que su consentimiento quedo corto: eso lo resuelve su
+  // profesional, que es a quien se le manda. El detalle viaja igual en el estado, para su ficha.
+  if (state.revoked || state.pendienteDeRegularizar) {
     return (
       <div className="rounded-lg border border-clinical-warning/40 bg-clinical-warning-bg px-4 py-3 text-sm text-clinical-warning">
         Para continuar necesitamos una autorización que hoy no está vigente. Comunícate con tu profesional

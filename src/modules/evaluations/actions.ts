@@ -35,7 +35,11 @@ import {
   getPatientPrefill,
   pacienteTieneCorreo,
 } from "./data/evaluations-repository";
-import { ConsentGateError, startFollowupWithoutSignature } from "./data/intake-writer";
+import {
+  ConsentGateError,
+  ConsentimientoPendienteDeRegularizarError,
+  startFollowupWithoutSignature,
+} from "./data/intake-writer";
 import {
   abandonAwaitingEvaluation,
   confirmEvaluationIdentity,
@@ -356,7 +360,7 @@ export async function enlaceEncuestaPendienteAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false, tieneCorreo: null });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, pendienteDeRegularizar: null, reanudar: false, tieneCorreo: null });
   const user = await requireUser();
   if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
 
@@ -370,6 +374,7 @@ export async function enlaceEncuestaPendienteAction(
   return {
     error: null,
     resumeToken,
+    pendienteDeRegularizar: null,
     revoked: false,
     reanudar: true,
     tieneCorreo: dueño ? await pacienteTieneCorreo(dueño.patientId) : null,
@@ -381,7 +386,7 @@ export async function abrirEvaluacionEnConsultaAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false, tieneCorreo: null });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, pendienteDeRegularizar: null, reanudar: false, tieneCorreo: null });
   const user = await requireUser();
   if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
 
@@ -406,13 +411,19 @@ export async function abrirEvaluacionEnConsultaAction(
       error: null,
       resumeToken: result.resumeToken,
       revoked: false,
+      pendienteDeRegularizar: null,
       reanudar: result.reused,
       tieneCorreo: await pacienteTieneCorreo(patientId),
     };
   } catch (e) {
     // Autorizacion necesaria revocada: el gate corrio ANTES de crear nada. No es fallo tecnico, y en esta
     // pantalla el profesional TIENE al paciente delante: puede volver a pedirle el consentimiento.
-    if (e instanceof ConsentGateError) return { error: null, resumeToken: null, revoked: true, reanudar: false, tieneCorreo: null };
+    if (e instanceof ConsentGateError) return { error: null, resumeToken: null, revoked: true, pendienteDeRegularizar: null, reanudar: false, tieneCorreo: null };
+    // PENDIENTE DE REGULARIZAR (pieza 2): tampoco se creo nada, y tampoco es un fallo tecnico. Se atrapa
+    // aqui y NO se deja subir porque un freno que lanza desde una accion es un 500 con la pantalla caida.
+    if (e instanceof ConsentimientoPendienteDeRegularizarError) {
+      return { error: null, resumeToken: null, revoked: false, pendienteDeRegularizar: e.message, reanudar: false, tieneCorreo: null };
+    }
     throw e;
   }
 }
@@ -425,7 +436,7 @@ export async function startFollowupAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false, tieneCorreo: null });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, pendienteDeRegularizar: null, reanudar: false, tieneCorreo: null });
 
   const token = str(form, "token");
   if (!token) return fail("Link inválido.");
@@ -451,6 +462,7 @@ export async function startFollowupAction(
       error: null,
       resumeToken: result.resumeToken,
       revoked: false,
+      pendienteDeRegularizar: null,
       reanudar: result.reused,
       tieneCorreo: await pacienteTieneCorreo(link.patientId),
     };
@@ -458,7 +470,13 @@ export async function startFollowupAction(
     // Autorizacion necesaria revocada: el gate (regla 15) corrio ANTES de crear nada. No es un error tecnico;
     // se muestra el aviso de acudir al profesional (redaccion aprobada 2026-08-20).
     if (e instanceof ConsentGateError) {
-      return { error: null, resumeToken: null, revoked: true, reanudar: false, tieneCorreo: null };
+      return { error: null, resumeToken: null, revoked: true, pendienteDeRegularizar: null, reanudar: false, tieneCorreo: null };
+    }
+    // PENDIENTE DE REGULARIZAR (pieza 2). Aqui lo recorre el PACIENTE solo, asi que lo que ve es el mismo
+    // aviso de siempre (ver `followup-start-screen`): el detalle legal es para su profesional, no para el.
+    // Lo que no puede es quedar sin atrapar, porque seria un 500 en medio de su encuesta.
+    if (e instanceof ConsentimientoPendienteDeRegularizarError) {
+      return { error: null, resumeToken: null, revoked: false, pendienteDeRegularizar: e.message, reanudar: false, tieneCorreo: null };
     }
     throw e;
   }

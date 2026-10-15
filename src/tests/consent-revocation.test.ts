@@ -141,7 +141,7 @@ describe("revokeConsents (BD real)", () => {
   });
 
   it("revocar una NECESARIA bloquea evaluaciones nuevas, por el gate real", async () => {
-    expect(canCreateEvaluation((await vigentes()) as never).ok).toBe(true);
+    expect(canCreateEvaluation((await vigentes()) as never, null).ok).toBe(true);
 
     await revokeConsents({
       patientId: PATIENT_ID,
@@ -154,7 +154,7 @@ describe("revokeConsents (BD real)", () => {
     });
 
     // No se consulta una copia del criterio: se le pregunta al MISMO gate que corre en el intake.
-    const gate = canCreateEvaluation((await vigentes()) as never);
+    const gate = canCreateEvaluation((await vigentes()) as never, null);
     expect(gate.ok).toBe(false);
     expect(gate.ok === false && gate.missing).toEqual(["datos_sensibles"]);
   });

@@ -10,6 +10,7 @@ import type { AutorizacionPaciente } from "../data/consent-reader";
 import { formatDate } from "@/lib/format/date";
 import { Panel } from "@/components/shared/panel";
 import { CANALES_REVOCACION, CONSENT_TYPE_LABELS } from "../labels";
+import { rotuloDeRegularizacion, type MotivoDeRegularizacion } from "../regularizacion";
 
 // PANEL DE AUTORIZACIONES de la ficha del paciente: que autorizo, cuando, y la via para registrar una
 // revocacion (`CONSENT_ATLAS.md` seccion 10, `DATA_GOVERNANCE.md` (c)).
@@ -30,10 +31,16 @@ export function PanelAutorizaciones({
   patientId,
   autorizaciones,
   puedeRevocar,
+  pendienteDeRegularizar,
 }: {
   patientId: string;
   autorizaciones: AutorizacionPaciente[];
   puedeRevocar: boolean;
+  /**
+   * PIEZA 2: tiene las tres y no alcanzan. Null = completo. El rotulo y el "que hacer" salen del modulo
+   * puro para que esta ficha y la lista de pacientes no nombren distinto el mismo estado.
+   */
+  pendienteDeRegularizar: MotivoDeRegularizacion | null;
 }) {
   const router = useRouter();
   const [pendiente, startTransition] = useTransition();
@@ -117,6 +124,36 @@ export function PanelAutorizaciones({
           ))}
         </ul>
       )}
+
+      {/* ═══ TIENE LAS TRES Y NO ALCANZAN (pieza 2, dictamen legal del 2026-10-09) ═══
+
+          VA ANTES del aviso de las que faltan y con su propio color, porque es el caso que NADIE veia: las
+          tres salen "Vigente" en la lista de arriba y el panel no decia nada. El dictamen pide que el
+          registro se conserve "marcado como insuficiente", y este es el sitio donde se marca.
+
+          DICE QUE HACER Y NO SOLO QUE PASA. El profesional que lo lee tiene que poder salir de aqui: el
+          texto es el del motivo, escrito una vez en el modulo puro. */}
+      {pendienteDeRegularizar ? (
+        <div className="flex flex-col gap-1 rounded-xl border border-clinical-critical/40 bg-clinical-critical-bg px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">
+            {rotuloDeRegularizacion(pendienteDeRegularizar)}
+            {pendienteDeRegularizar.frenaEvaluaciones ? (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                (no se le pueden crear evaluaciones nuevas)
+              </span>
+            ) : (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                (por revisar; no bloquea la atención)
+              </span>
+            )}
+          </span>
+          <span className="text-sm text-foreground">{pendienteDeRegularizar.queHacer}</span>
+          <span className="text-xs text-muted-foreground">
+            El consentimiento que ya firmó no se borra ni se invalida: queda como la constancia de lo que se
+            firmó ese día.
+          </span>
+        </div>
+      ) : null}
 
       {faltanNecesarias ? (
         <p className="rounded-xl border border-clinical-warning/40 bg-clinical-warning-bg px-4 py-3 text-sm text-foreground">

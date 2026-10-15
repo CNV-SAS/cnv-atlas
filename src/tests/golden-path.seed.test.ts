@@ -199,13 +199,13 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
   it("CONFIRMACION 2: el gate real (canCreateEvaluation) autoriza y solo entonces crea la evaluacion", async () => {
     // El gate importado es el REAL (unico hogar de la regla 15), no un stub: se comporta como
     // la regla. Evidencia de que esta en vigor: sin las 3, rehusa; con las 3, autoriza.
-    expect(canCreateEvaluation(["servicio", "datos_sensibles"]).ok).toBe(false);
+    expect(canCreateEvaluation(["servicio", "datos_sensibles"], null).ok).toBe(false);
 
     const active = await db
       .select({ type: schema.patientConsents.consentType })
       .from(schema.patientConsents)
       .where(and(eq(schema.patientConsents.patientId, PATIENT_ID), isNull(schema.patientConsents.revokedAt)));
-    const gate = canCreateEvaluation(active.map((r: { type: string }) => r.type));
+    const gate = canCreateEvaluation(active.map((r: { type: string }) => r.type), null);
     expect(gate.ok).toBe(true); // se EJERCE, no se saltea: sin ok no se inserta la evaluacion
     if (!gate.ok) throw new Error("gate de consentimiento no autorizado: no se crea la evaluacion");
 

@@ -44,6 +44,7 @@ const inicialSeguimiento: StartFollowupState = {
   error: null,
   resumeToken: null,
   revoked: false,
+  pendienteDeRegularizar: null,
   reanudar: false,
   tieneCorreo: null,
 };
@@ -343,6 +344,14 @@ function PacientePropio({
           Este paciente retiró alguna de las autorizaciones necesarias, así que
           no se le pueden crear evaluaciones. Si quiere continuar, tiene que
           autorizarlas de nuevo desde su ficha.
+        </p>
+      ) : null}
+      {/* PENDIENTE DE REGULARIZAR (pieza 2): aqui lo lee el PROFESIONAL, asi que se dice lo que es y que
+          hacer. Va APARTE del aviso de arriba porque el paciente no retiro ninguna autorizacion, y
+          mandarlo a buscar una revocacion que no existe es peor que no decir nada. */}
+      {estado.pendienteDeRegularizar ? (
+        <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning/10 px-3 py-2 text-sm text-foreground">
+          {estado.pendienteDeRegularizar}
         </p>
       ) : null}
       {estado.error ? (

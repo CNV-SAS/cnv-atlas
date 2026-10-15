@@ -38,7 +38,17 @@ describe("la casilla del profesional NO sustituye al gate", () => {
     // COMO se obtuvo el permiso; no lo otorgan.
     const limpio = sinComentarios(WRITER);
     expect(limpio).toContain("canCreateEvaluation(");
-    expect(limpio).toContain("throw new ConsentGateError(");
+    // ── LO QUE SE VIGILA ES LA REGLA, NO LA LINEA (2026-10-15) ──────────────────────────────────
+    //
+    // Esto decia `throw new ConsentGateError(`. Dejo de pasar al añadir el segundo insumo del gate (la
+    // pieza 2): ahora el fallo se lanza por `gateError(gate)`, que elige entre dos errores segun el
+    // motivo, y `ConsentGateError` sigue siendo uno de los dos. La regla no se movio: el gate corre y su
+    // fallo LANZA, asi que la transaccion entera se revierte y no se crea nada.
+    //
+    // Es la misma leccion de [[regla-nueva-invalida-el-mecanismo-no-el-fixture]]: un candado pegado al
+    // mecanismo envejece con el, y al fallar acusa lo que no es.
+    expect(limpio).toMatch(/if \(!gate\.ok\) throw /);
+    expect(limpio).toContain("new ConsentGateError(");
   });
 
   it("y la declaración NO es una vía para saltarse una autorización faltante", () => {

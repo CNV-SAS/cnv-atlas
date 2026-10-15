@@ -14,6 +14,7 @@ import { ROTULO_DE_PRUEBA } from "../de-prueba";
 import { PillEstado } from "@/components/shared/pill-estado";
 import { useConOrigen } from "@/components/shared/usar-origen";
 import { formatDateOnlyShort } from "@/lib/format/date";
+import { rotuloDeRegularizacion } from "@/modules/consent/regularizacion";
 import { edadEnAnios } from "../format";
 import type { PatientListItem } from "../types";
 
@@ -437,7 +438,18 @@ export function ListaPacientes({
                 >
                   Sin autorización vigente
                 </PillEstado>
-              ) : null
+              ) : /* ── TIENE LAS TRES Y NO ALCANZAN (pieza 2) ──────────────────────────────────────
+                      VA DESPUES de "sin autorización vigente" porque son estados distintos y el de arriba
+                      es el mas basico: a quien le falta una, lo que hay que hacer es pedirsela. El rotulo
+                      sale del modulo puro, el mismo que usa la ficha. */
+                p.pendienteDeRegularizar ? (
+                  <PillEstado
+                    tono={p.pendienteDeRegularizar.frenaEvaluaciones ? "atencion" : "neutro"}
+                    title={p.pendienteDeRegularizar.queHacer}
+                  >
+                    {rotuloDeRegularizacion(p.pendienteDeRegularizar)}
+                  </PillEstado>
+                ) : null
             }
           />
         );

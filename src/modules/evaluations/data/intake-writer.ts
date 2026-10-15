@@ -19,11 +19,16 @@ import {
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 import { consentUnchanged } from "@/modules/consent/consent-change";
+import {
+  hechosDelConsentimiento,
+  motivoDeRegularizacion,
+  type MotivoDeRegularizacion,
+} from "@/modules/consent/regularizacion";
 import { computeAgeYears, isMinorAge } from "@/modules/consent/validations";
 import type { ConsentType } from "@/modules/consent/validations";
 import { CONSENT_VERSION } from "@/modules/consent/versions";
 
-import { canCreateEvaluation } from "../policies/can-create-evaluation";
+import { canCreateEvaluation, type ConsentGateResult } from "../policies/can-create-evaluation";
 import type { EvaluationType, IntakeIdentity } from "../types";
 
 // Escritura del intake de la encuesta. Drizzle conecta como owner (BYPASSA RLS) a proposito: el paciente
@@ -42,6 +47,31 @@ export class ConsentGateError extends Error {
     super(`Faltan autorizaciones necesarias: ${missing.join(", ")}`);
     this.name = "ConsentGateError";
   }
+}
+
+/**
+ * TIENE LAS TRES Y NO SIRVEN (pieza 2, dictamen legal del 2026-10-09).
+ *
+ * ES OTRA CLASE DE ERROR Y NO UN `ConsentGateError` CON LISTA VACIA, y la razon es el mensaje: el gate se
+ * traduce en pantalla a *"este paciente retiro alguna de las autorizaciones"*, y aqui NO retiro nada. Decirle
+ * eso al profesional lo manda a buscar una revocacion que no existe, y la salida de verdad (volver a firmar
+ * con la rama que corresponda) no aparece en ningun sitio.
+ *
+ * EL MENSAJE ES EL `queHacer` DEL MOTIVO, que vive en el modulo puro: asi la ficha, la lista y este error
+ * dicen lo mismo con las mismas palabras.
+ */
+export class ConsentimientoPendienteDeRegularizarError extends Error {
+  constructor(public readonly motivo: MotivoDeRegularizacion) {
+    super(motivo.queHacer);
+    this.name = "ConsentimientoPendienteDeRegularizarError";
+  }
+}
+
+/** Traduce el resultado del gate al error que corresponde. Un solo sitio, para que no se elija mal. */
+function gateError(gate: Extract<ConsentGateResult, { ok: false }>): Error {
+  return gate.regularizar
+    ? new ConsentimientoPendienteDeRegularizarError(gate.regularizar)
+    : new ConsentGateError(gate.missing);
 }
 
 /**
@@ -322,11 +352,27 @@ async function writePatientConsentsAndGate(
   //    vigentes del paciente (no se confia en la entrada) y se exigen las necesarias. Si faltan, se
   //    lanza y la transaccion entera se revierte: sin consentimiento firmado no se crea nada.
   const active = await tx
-    .select({ type: patientConsents.consentType })
+    .select({ type: patientConsents.consentType, signedAt: patientConsents.signedAt })
     .from(patientConsents)
     .where(and(eq(patientConsents.patientId, patientId), isNull(patientConsents.revokedAt)));
-  const gate = canCreateEvaluation(active.map((r) => r.type as ConsentType));
-  if (!gate.ok) throw new ConsentGateError(gate.missing);
+  // EL SEGUNDO INSUMO (pieza 2) SE MIRA TAMBIEN AQUI, aunque el guard de arriba ya impida que entre uno
+  // nuevo: este camino lo recorre tambien quien RE-CONSIENTE, y la gracia es que al firmar bien el estado
+  // se apague. Si solo se mirara en el seguimiento, un paciente regularizado seguiria frenado hasta que
+  // alguien recargara otra pantalla. Las sesiones presenciales no entran: la rama se acaba de elegir con la
+  // fecha de hoy, asi que no puede estar desfasada de si misma.
+  const gate = canCreateEvaluation(
+    active.map((r) => r.type as ConsentType),
+    motivoDeRegularizacion(
+      hechosDelConsentimiento({
+        fechaDeNacimiento: input.identity.birthDate ?? null,
+        consents: active.map((r) => ({
+          consent_type: r.type,
+          signed_at: r.signedAt?.toISOString() ?? null,
+        })),
+      }),
+    ),
+  );
+  if (!gate.ok) throw gateError(gate);
 
   // Version EFECTIVA para la constancia de la evaluacion: si no hubo cambio (excepcion sin cambios), la que
   // el paciente ya TENIA; si re-consintio (o es inicial), la que acaba de firmar. Asi el sello no miente.
@@ -540,11 +586,40 @@ export async function startFollowupWithoutSignature(
   return db.transaction(async (tx) => {
     // Estado real de autorizaciones vigentes. GATE (regla 15) ANTES de crear el shell.
     const active = await tx
-      .select({ type: patientConsents.consentType, version: patientConsents.consentVersion })
+      .select({
+        type: patientConsents.consentType,
+        version: patientConsents.consentVersion,
+        signedAt: patientConsents.signedAt,
+      })
       .from(patientConsents)
       .where(and(eq(patientConsents.patientId, input.patientId), isNull(patientConsents.revokedAt)));
-    const gate = canCreateEvaluation(active.map((r) => r.type as ConsentType));
-    if (!gate.ok) throw new ConsentGateError(gate.missing);
+    // ═══ ESTE ES EL SITIO QUE EL DICTAMEN PIDE (pieza 2) ═══
+    //
+    // Textual: *"en la proxima evaluacion, el gate pide el consentimiento con la rama de menor"*. ESTE es
+    // ese gate: el seguimiento SIN FIRMA, que es el camino por el que un consentimiento viejo se reusa sin
+    // que nadie lo vuelva a mirar. Si aqui no se mira, el consentimiento insuficiente sirve para siempre.
+    //
+    // LAS SESIONES PRESENCIALES NO SE CONSULTAN AQUI a proposito: su motivo (una fecha corregida que cambia
+    // la rama) NO frena, asi que pedirlas seria una consulta mas en la transaccion del intake para un dato
+    // que no cambia la decision. Ese motivo se ve donde se puede actuar: la ficha del paciente.
+    const [perfil] = await tx
+      .select({ birthDate: patientProfiles.birthDate })
+      .from(patientProfiles)
+      .where(eq(patientProfiles.patientId, input.patientId))
+      .limit(1);
+    const gate = canCreateEvaluation(
+      active.map((r) => r.type as ConsentType),
+      motivoDeRegularizacion(
+        hechosDelConsentimiento({
+          fechaDeNacimiento: perfil?.birthDate ?? null,
+          consents: active.map((r) => ({
+            consent_type: r.type,
+            signed_at: r.signedAt?.toISOString() ?? null,
+          })),
+        }),
+      ),
+    );
+    if (!gate.ok) throw gateError(gate);
 
     // La version que el paciente TIENE (la del `servicio` vigente): es la que se sella (cuidado a).
     const heldVersion =
@@ -949,7 +1024,17 @@ async function tienenLasNecesarias(ejecutor: typeof db | Tx, patientId: string):
     .select({ type: patientConsents.consentType })
     .from(patientConsents)
     .where(and(eq(patientConsents.patientId, patientId), isNull(patientConsents.revokedAt)));
-  return canCreateEvaluation(active.map((r) => r.type as ConsentType)).ok;
+  // ── AQUI SE MIRAN SOLO LAS TRES, Y SE DICE POR QUE (pieza 2) ────────────────────────────────────
+  //
+  // Esto responde una pregunta distinta: el paciente esta A MITAD de la encuesta y lo que se quiere saber es
+  // si REVOCO mientras respondia, para no decirle "tu profesional cerro esta evaluacion". Un consentimiento
+  // pendiente de regularizar no es una revocacion y la encuesta ya esta autorizada por el acto que se firmo
+  // ese dia; cortarla aqui le borraria al paciente lo que llevaba escrito por algo que su profesional tiene
+  // que resolver en la ficha, y el aviso que vería hablaría de una autorizacion retirada que nadie retiro.
+  //
+  // SE PASA `null` EXPLICITO Y NO SE OMITE: el segundo argumento es obligatorio justamente para que esta
+  // decision quede escrita en vez de parecer un olvido.
+  return canCreateEvaluation(active.map((r) => r.type as ConsentType), null).ok;
 }
 
 // Se lanza cuando el paciente REVOCO mientras respondia. No es un fallo del enlace: es su derecho
