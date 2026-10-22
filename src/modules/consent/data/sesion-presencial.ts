@@ -54,6 +54,28 @@ export type SesionAbierta = {
  */
 export const ESTADOS_QUE_OCUPAN = ["emitida", "abierta", "confirmada", "discrepancia"] as const;
 
+/**
+ * LOS ESTADOS EN QUE EL TELEFONO DEL PACIENTE TODAVIA SIRVE. Es una lista APARTE de la de arriba, y la
+ * diferencia es `confirmada`: esa ocupa al profesional (le queda declarar) pero el paciente ya no tiene
+ * nada que hacer, y su `confirmed_at` ya lo excluye.
+ *
+ * ═══ EL DEFECTO QUE CIERRA (Sentry, 2026-10-17; 3 eventos) ═══
+ *
+ * `confirmarSesionPresencial` NO MIRABA EL ESTADO: solo el token y la ventana de lectura. Asi que un pase
+ * que el profesional ANULO seguia siendo confirmable desde el telefono durante los 45 minutos de lectura,
+ * y eso rompia por dos lados:
+ *
+ *   1. SI YA HABIA OTRO PASE, el update choca con el indice unico de la 0111 y revienta con un 23505 sin
+ *      manejar: 500 en la pantalla del paciente, en medio de la consulta. Reconstruido del audit del caso
+ *      real: pase anulado 13:51:13, pase nuevo 13:51:19, el paciente envio el viejo a las 13:52.
+ *   2. Y SI NO HABIA OTRO, que es lo mas grave, el pase anulado RESUCITABA: pasaba a `confirmada` y
+ *      volvia a ocupar al profesional, con una identidad declarada sobre un pase que el habia cancelado.
+ *      Un consentimiento no puede nacer de un pase anulado.
+ *
+ * LA REGLA DEL INDICE NO SE TOCA. El que sobraba era el camino que la violaba.
+ */
+export const ESTADOS_QUE_EL_PACIENTE_PUEDE_USAR = ["emitida", "abierta", "discrepancia"] as const;
+
 export async function crearSesionPresencial(input: {
   organizationId: string;
   professionalId: string;
@@ -180,7 +202,7 @@ export async function abrirSesionPresencial(input: {
         eq(presencialConsentSessions.token, input.token),
         isNull(presencialConsentSessions.confirmedAt),
         sql`${presencialConsentSessions.expiresAt} > now()`,
-        sql`${presencialConsentSessions.estado} in ('emitida','abierta','discrepancia')`,
+        inArray(presencialConsentSessions.estado, [...ESTADOS_QUE_EL_PACIENTE_PUEDE_USAR]),
       ),
     )
     .returning({
@@ -240,6 +262,11 @@ export async function confirmarSesionPresencial(input: {
           // abrio, `lectura_hasta` es nulo y cae a la ventana corta, que es la correcta para un token
           // que sigue en pantalla sin escanear.
           sql`coalesce(${presencialConsentSessions.lecturaHasta}, ${presencialConsentSessions.expiresAt}) > now()`,
+          // Y EL ESTADO, que era lo que faltaba: un pase ANULADO (o vencido, o ya declarado) no se puede
+          // confirmar desde el telefono. Ver `ESTADOS_QUE_EL_PACIENTE_PUEDE_USAR`. El desenlace cae en
+          // `no_disponible`, que la pantalla publica ya sabe decir con palabras ("este codigo ya no
+          // sirve... pidele a tu profesional que te muestre uno nuevo"), que es justo lo que ocurrio.
+          inArray(presencialConsentSessions.estado, [...ESTADOS_QUE_EL_PACIENTE_PUEDE_USAR]),
         ),
       );
     if (!fila) return { estado: "no_disponible" };
