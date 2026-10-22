@@ -151,13 +151,47 @@ describe("un cascaron con borrador no se lee como uno vacio", () => {
     expect(src).toContain("tieneBorradorDeEncuesta: (e.survey_responses ?? []).length > 0");
   });
 
-  it("y las dos salidas del estado de espera lo nombran", () => {
+  it("y el rotulo del enlace lo nombra: continuar no es empezar de cero", () => {
     const src = sinComentarios(readFileSync("src/modules/patients/components/historial-evaluaciones.tsx", "utf8"));
-    // El rotulo de quien puede actuar: continuar no es lo mismo que empezar de cero, y de ahi depende si
-    // la profesional le vuelve a preguntar todo.
+    // DE AHI DEPENDE SI LA PROFESIONAL LE VUELVE A PREGUNTAR TODO, asi que el dato va en el rotulo del
+    // enlace y no en un texto aparte: lo ve todo el que llega a la ficha, admin incluido (antes el texto
+    // muerto "Esperando la encuesta" era lo UNICO que admin veia, y era donde Santiago leyo la
+    // contradiccion con la pantalla del modelo).
     expect(src).toContain("Continuar con el paciente");
-    // Y el texto de quien solo mira (admin), que es donde Santiago vio la contradiccion.
-    expect(src).toContain("Esperando la encuesta (ya empezada)");
-    expect(src.split("tieneBorradorDeEncuesta").length - 1).toBe(2);
+    expect(src).toContain("Responder con el paciente");
+    expect(src).toContain("e.tieneBorradorDeEncuesta ?");
+  });
+});
+
+// ── EL ENLACE DE RESPONDER SE VE TAMBIEN SIN PODER PULSARLO (Santiago, 2026-10-22) ───────────────
+//
+// Estaba detras de `puedeCerrar`, que es SOLO del profesional dueño, asi que admin abria la ficha y veia
+// un texto muerto. Textual suyo: *"deberia poder ver ese apartado, y si trato de entrar me deberia decir
+// que solo el profesional asignado a dicho paciente lo puede responder"*. Es la misma forma que ya tomo el
+// retiro el 2026-10-07, por el mismo descubrimiento: una sola bandera dejaba sin boton justo a quien
+// estaba haciendo el trabajo.
+//
+// LO QUE ESTE CANDADO PROTEGE SON LAS DOS MITADES, porque arreglar una y olvidar la otra es lo facil: que
+// el enlace NO dependa de la bandera de escritura, y que la pantalla de destino EXPLIQUE en vez de rebotar.
+describe("el enlace de responder la encuesta se ve, y su destino explica", () => {
+  it("el enlace no cuelga de puedeCerrar; el boton de cerrar si", () => {
+    const src = sinComentarios(readFileSync("src/modules/patients/components/historial-evaluaciones.tsx", "utf8"));
+    const rama = src.slice(src.indexOf('e.status === "awaiting_survey"'), src.indexOf('e.status === "abandoned"'));
+    expect(rama, "la rama de espera tiene que ofrecer el enlace").toContain("responder-encuesta");
+    // CERRAR SI se esconde: es una escritura cuya RLS solo cubre al dueño, asi que mostrarla a admin seria
+    // ofrecer algo que la base rechaza.
+    expect(rama).toMatch(/puedeCerrar \? <AbandonEvaluation/);
+    // Y EL ENLACE NO: no puede quedar dentro de un ternario de esa bandera.
+    const antesDelEnlace = rama.slice(0, rama.indexOf("responder-encuesta"));
+    expect(antesDelEnlace, "el enlace volvio a quedar detras de la bandera de cerrar").not.toContain("puedeCerrar");
+  });
+
+  it("y la pantalla de responder no rebota a no-autorizado: dice quien puede", () => {
+    const src = readFileSync("src/app/(app)/ani-bis-e/[id]/responder-encuesta/page.tsx", "utf8");
+    expect(src, "el rebote a /no-autorizado deja a admin sin saber que pasa").not.toContain('redirect("/no-autorizado")');
+    expect(src).toContain("canRegistrarEncuestaDelPaciente");
+    expect(src).toMatch(/Solo el profesional asignado a este paciente puede responder la encuesta/);
+    // Y NOMBRA A QUIEN ES, cuando se sabe: "pideselo al que atendio" sin decir quien no resuelve nada.
+    expect(src).toContain("header.profesional");
   });
 });

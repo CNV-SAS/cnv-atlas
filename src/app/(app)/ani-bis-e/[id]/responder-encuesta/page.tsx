@@ -1,9 +1,10 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { Panel } from "@/components/shared/panel";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { requireUser } from "@/modules/auth/session";
+import { getEvaluationHeaderForSession } from "@/modules/diagnoses/data/results-reader";
 import { SurveyPhaseForm } from "@/modules/evaluations/components/survey-phase-form";
 import { getResumeTokenDeMiEvaluacion } from "@/modules/evaluations/data/evaluations-repository";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
@@ -31,7 +32,44 @@ export const metadata = { title: "Responder la encuesta - Atlas" };
 export default async function ResponderEncuestaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
-  if (!canRegistrarEncuestaDelPaciente(user)) redirect("/no-autorizado");
+
+  // ═══ A QUIEN NO PUEDE, SE LE DICE POR QUE (Santiago, 2026-10-22) ═══
+  //
+  // Esto rebotaba a /no-autorizado, que es correcto en permisos y malo como respuesta: deja a admin sin
+  // saber si el sistema esta roto, si le falta un permiso, o si el acto es de otra persona. Textual suyo:
+  // *"si trato de entrar me deberia decir que solo el profesional asignado a dicho paciente lo puede
+  // responder"*.
+  //
+  // LA POLICY NO SE ENSANCHA, y la razon es la misma que la de editar la encuesta: responder con el
+  // paciente ESCRIBE CONTENIDO CLINICO en su historia y el audit sella quien lo hizo. Que admin lo
+  // hiciera atribuiria lo que el paciente refiere a alguien que no estuvo en la consulta. Lo que cambia es
+  // que ahora se EXPLICA, en la pantalla a la que el enlace lleva.
+  if (!canRegistrarEncuestaDelPaciente(user)) {
+    const header = await getEvaluationHeaderForSession(id);
+    if (!header) notFound();
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+        <TituloPantalla
+          volver={<VolverA padre={`/pacientes/${header.patientId}`} />}
+          titulo="Esta encuesta la responde quien atiende"
+          descripcion={`${header.patientName} · ${header.documentLabel}`}
+        />
+        <Panel>
+          <p className="max-w-prose text-sm text-muted-foreground">
+            Solo el profesional asignado a este paciente puede responder la encuesta con él. No es un
+            permiso que falte: lo que se escribe aquí es lo que el paciente refiere en consulta, queda
+            firmado en su historia clínica a nombre de quien preguntó, y por eso lo hace quien lo atendió.
+            {header.profesional ? (
+              <>
+                {" "}
+                En este caso es <span className="font-medium text-foreground">{header.profesional}</span>.
+              </>
+            ) : null}
+          </p>
+        </Panel>
+      </div>
+    );
+  }
 
   // LA RLS ES EL ALCANCE FINO: si la evaluación no es de su paciente, esto devuelve null.
   const resumeToken = await getResumeTokenDeMiEvaluacion(id);

@@ -81,33 +81,37 @@ function Fila({
         {/* Segun estado: firmada sin responder -> cerrar (si es su profesional); cerrada -> rotulo sin
             accion; el resto -> ver resultados. Un shell no tiene resultados que ver. */}
         {e.status === "awaiting_survey" ? (
-          puedeCerrar ? (
-            // DOS SALIDAS, NO UNA (2026-09-24). Hasta hoy la unica era CERRAR, o sea archivar un
-            // consentimiento ya firmado y empezar de cero. Si el paciente esta en consulta, lo que hace
-            // falta es RESPONDERLA con el, y eso continua el mismo borrador que el hubiera dejado en casa.
-            <div className="flex items-center justify-end gap-3">
+          // ═══ EL ENLACE SE VE SIEMPRE, TAMBIEN PARA ADMIN (Santiago, 2026-10-22) ═══
+          //
+          // Estaba detras de `puedeCerrar`, que es SOLO del profesional dueño, asi que Santiago abria la
+          // ficha como admin y no veia nada: solo el texto muerto "Esperando la encuesta". Textual suyo:
+          // *"deberia poder ver ese apartado, y si trato de entrar me deberia decir que solo el profesional
+          // asignado a dicho paciente lo puede responder"*. Y tiene razon: un boton invisible no se
+          // distingue de uno que no existe, mientras uno con su motivo enseña como funciona el sistema.
+          //
+          // ES LA MISMA FORMA QUE YA TOMO EL RETIRO el 2026-10-07, por el mismo descubrimiento suyo: una
+          // sola bandera dejaba al unico que estaba haciendo el trabajo sin ver el boton.
+          //
+          // QUIEN PUEDE DE VERDAD NO CAMBIA: la policy sigue siendo solo del profesional que atiende, y la
+          // pantalla de destino lo dice con palabras en vez de rebotar a "no autorizado".
+          <div className="flex items-center justify-end gap-3">
               {/* Y SI YA LA EMPEZO, el rotulo lo dice: continuar no es lo mismo que empezar de cero, y
                   de ahi depende si la profesional le vuelve a preguntar todo. */}
-              <Link
-                href={`/ani-bis-e/${e.evaluationId}/responder-encuesta`}
-                className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
-              >
-                {e.tieneBorradorDeEncuesta ? "Continuar con el paciente" : "Responder con el paciente"}
-              </Link>
-              <AbandonEvaluation evaluationId={e.evaluationId} />
-            </div>
-          ) : (
-            /* ═══ Y SE DICE SI YA HAY UN BORRADOR (Santiago, 2026-10-22) ═══
-
-               "Esperando la encuesta" a secas se lee como "el paciente no ha hecho nada", y eso choca con
-               la pantalla del modelo, que muestra las respuestas que si dejo. Las dos decian la verdad por
-               separado (una lee el ESTADO, la otra las RESPUESTAS) y juntas parecian un defecto. */
-            <span className="text-xs text-muted-foreground">
-              {e.tieneBorradorDeEncuesta
-                ? "Esperando la encuesta (ya empezada)"
-                : "Esperando la encuesta"}
-            </span>
-          )
+            {/* Y SI YA LA EMPEZO, el rotulo lo dice: continuar no es lo mismo que empezar de cero, y de
+                ahi depende si la profesional le vuelve a preguntar todo. Es la otra mitad del hazard 4:
+                "Esperando la encuesta" a secas se lee como "el paciente no ha hecho nada", y eso choca con
+                la pantalla del modelo, que muestra las respuestas que si dejo. */}
+            <Link
+              href={`/ani-bis-e/${e.evaluationId}/responder-encuesta`}
+              className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              {e.tieneBorradorDeEncuesta ? "Continuar con el paciente" : "Responder con el paciente"}
+            </Link>
+            {/* CERRAR SIGUE SIENDO SOLO DEL PROFESIONAL DUEÑO, y aqui si se esconde: es una ESCRITURA que
+                archiva un consentimiento ya firmado, y su RLS solo cubre al dueño. Mostrarlo a admin seria
+                ofrecer algo que la base rechaza. */}
+            {puedeCerrar ? <AbandonEvaluation evaluationId={e.evaluationId} /> : null}
+          </div>
         ) : e.status === "abandoned" ? (
           <span className="text-xs text-muted-foreground">Cerrada</span>
         ) : (
