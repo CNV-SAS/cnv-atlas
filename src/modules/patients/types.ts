@@ -144,6 +144,15 @@ export type PatientEvaluationItem = {
   noOcurrio: boolean;
   /** Con que motivo se retiro, para poder leerlo sin ir al audit. */
   motivoDelRetiro: string | null;
+  /**
+   * HAY UN BORRADOR DE ENCUESTA del paciente, aunque no la haya enviado (2026-10-22).
+   *
+   * EL CASO QUE LO PIDE: una paciente respondio 22 preguntas, el envio final se cayo por red, y la
+   * evaluacion quedo en `awaiting_survey` con esas respuestas dentro. La ficha decia "Esperando la
+   * encuesta" y la pantalla del modelo la mostraba llena: las dos tenian razon, pero juntas se leen como
+   * un sistema roto (hazard 4 de CLAUDE.md). Decirlo aqui une las dos lecturas en una sola frase.
+   */
+  tieneBorradorDeEncuesta: boolean;
 };
 
 // Detalle del paciente para su historia (/pacientes/[id]): identidad, contacto y la

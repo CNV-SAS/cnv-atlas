@@ -132,3 +132,32 @@ describe("el chip de estado no habla el idioma del semáforo clínico", () => {
     expect(COMPONENTE).toContain("<ChipEstadoEvaluacion status={e.status} />");
   });
 });
+
+// ── LA FICHA DICE SI LA ENCUESTA YA ESTA EMPEZADA (Santiago, 2026-10-22) ─────────────────────────
+//
+// "Esperando la encuesta" a secas se lee como "el paciente no ha hecho nada", y eso choca con la pantalla
+// del modelo, que muestra las respuestas que si dejo. Las dos decian la verdad por separado (una lee el
+// ESTADO, la otra las RESPUESTAS) y juntas parecian un defecto: textual de Santiago, *"es como si el
+// paciente no hubiera enviado todavia la encuesta"*. El arreglo del hazard 4 es unir las fuentes, asi que
+// el dato del borrador viaja con la evaluacion y la frase lo dice.
+describe("un cascaron con borrador no se lee como uno vacio", () => {
+  it("el lector trae el borrador en el MISMO embed, sin una consulta nueva", () => {
+    const src = readFileSync("src/modules/patients/data/patient-detail-reader.ts", "utf8");
+    // Dentro del embed de evaluations que ya existia, no en un select aparte.
+    const embed = src.slice(src.indexOf("evaluations(id, type, status"), src.indexOf('.eq("id", patientId)'));
+    expect(embed).toContain("survey_responses(id)");
+    // SOLO EL ID: traer las respuestas serian 65 filas por evaluacion en una pantalla que lista todas.
+    expect(embed).not.toContain("survey_answers");
+    expect(src).toContain("tieneBorradorDeEncuesta: (e.survey_responses ?? []).length > 0");
+  });
+
+  it("y las dos salidas del estado de espera lo nombran", () => {
+    const src = sinComentarios(readFileSync("src/modules/patients/components/historial-evaluaciones.tsx", "utf8"));
+    // El rotulo de quien puede actuar: continuar no es lo mismo que empezar de cero, y de ahi depende si
+    // la profesional le vuelve a preguntar todo.
+    expect(src).toContain("Continuar con el paciente");
+    // Y el texto de quien solo mira (admin), que es donde Santiago vio la contradiccion.
+    expect(src).toContain("Esperando la encuesta (ya empezada)");
+    expect(src.split("tieneBorradorDeEncuesta").length - 1).toBe(2);
+  });
+});

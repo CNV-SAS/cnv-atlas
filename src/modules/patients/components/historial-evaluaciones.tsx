@@ -86,16 +86,27 @@ function Fila({
             // consentimiento ya firmado y empezar de cero. Si el paciente esta en consulta, lo que hace
             // falta es RESPONDERLA con el, y eso continua el mismo borrador que el hubiera dejado en casa.
             <div className="flex items-center justify-end gap-3">
+              {/* Y SI YA LA EMPEZO, el rotulo lo dice: continuar no es lo mismo que empezar de cero, y
+                  de ahi depende si la profesional le vuelve a preguntar todo. */}
               <Link
                 href={`/ani-bis-e/${e.evaluationId}/responder-encuesta`}
                 className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
               >
-                Responder con el paciente
+                {e.tieneBorradorDeEncuesta ? "Continuar con el paciente" : "Responder con el paciente"}
               </Link>
               <AbandonEvaluation evaluationId={e.evaluationId} />
             </div>
           ) : (
-            <span className="text-xs text-muted-foreground">Esperando la encuesta</span>
+            /* ═══ Y SE DICE SI YA HAY UN BORRADOR (Santiago, 2026-10-22) ═══
+
+               "Esperando la encuesta" a secas se lee como "el paciente no ha hecho nada", y eso choca con
+               la pantalla del modelo, que muestra las respuestas que si dejo. Las dos decian la verdad por
+               separado (una lee el ESTADO, la otra las RESPUESTAS) y juntas parecian un defecto. */
+            <span className="text-xs text-muted-foreground">
+              {e.tieneBorradorDeEncuesta
+                ? "Esperando la encuesta (ya empezada)"
+                : "Esperando la encuesta"}
+            </span>
           )
         ) : e.status === "abandoned" ? (
           <span className="text-xs text-muted-foreground">Cerrada</span>

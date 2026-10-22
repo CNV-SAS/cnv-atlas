@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { sql as dsql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -242,4 +244,101 @@ describe.skipIf(!HAS_DB)("la encuesta que registra el profesional (BD real)", ()
     );
     expect(respuestas.n).toBe(1);
   }, 30_000);
+});
+
+// ── UNA SOLA PUERTA PARA LA ENCUESTA A MEDIAS (Santiago, 2026-10-22) ──────────────────────────────
+//
+// EL CASO REAL: una paciente firmó, respondió 22 preguntas, el envío final se cayó por red y la
+// evaluación quedó en `awaiting_survey` CON datos. La ficha del paciente decía "Esperando la encuesta"
+// (lee el estado) y la pantalla del modelo mostraba las respuestas (lee las respuestas): las dos tenían
+// razón por separado, que es el hazard 4 de CLAUDE.md. Y la profesional, desde la pestaña Encuesta,
+// llegaba al formulario de EDITAR, lo llenaba, y al guardar le salía "esta evaluación no se puede editar
+// (revisa su estado)": el trabajo perdido.
+//
+// LA PUERTA BUENA YA EXISTÍA ("Responder la encuesta con el paciente", 2026-09-24) y estaba enlazada solo
+// desde la ficha del paciente, que no es por donde se trabaja. Lo que faltaba era que el estado ELIGIERA
+// la puerta, en vez de que cada pantalla adivinara por lo que alcanzaba a leer.
+describe.skipIf(!HAS_DB)("la encuesta a medias tiene UNA SOLA PUERTA (BD real)", () => {
+  it("editar un cascarón firmado se rechaza con un motivo que DICE qué hacer", async () => {
+    const { saveSurveyEdit } = await import("@/modules/evaluations/data/survey-edit-writer");
+    const { evaluationId } = await shellFirmado();
+
+    const r = await saveSurveyEdit({
+      evaluationId,
+      answers: preguntas.slice(0, 3).map((q) => ({ questionId: q.id, answerValue: "a mano" })),
+      actorId: profileId,
+      actorEmail: "prof@cnv",
+      ip: null,
+    });
+    expect(r.ok).toBe(false);
+    // NO `not_editable`: ese motivo se traduce a "revisa su estado", que no le dice a nadie qué hacer y
+    // es justo lo que vio la profesional.
+    if (!r.ok) expect(r.reason).toBe("esperando_la_encuesta");
+  }, 30_000);
+
+  it("y no escribió nada: un rechazo no puede dejar media encuesta", async () => {
+    const { db } = await import("@/db");
+    const { saveSurveyEdit } = await import("@/modules/evaluations/data/survey-edit-writer");
+    const { evaluationId } = await shellFirmado();
+    await saveSurveyEdit({
+      evaluationId,
+      answers: preguntas.slice(0, 3).map((q) => ({ questionId: q.id, answerValue: "a mano" })),
+      actorId: profileId,
+      actorEmail: "prof@cnv",
+      ip: null,
+    });
+    const [n] = await db.execute<{ n: number }>(dsql`
+      select count(sa.id)::int as n from survey_responses sr
+        left join survey_answers sa on sa.response_id = sr.id
+       where sr.evaluation_id = ${evaluationId}`);
+    expect(n.n).toBe(0);
+    const [ev] = await db.execute<{ status: string }>(
+      dsql`select status from evaluations where id = ${evaluationId}`,
+    );
+    expect(ev.status, "y la evaluación sigue esperando su encuesta").toBe("awaiting_survey");
+  }, 30_000);
+
+  it("la pantalla de editar no abre el formulario en ese estado: manda a la puerta que sí lleva", () => {
+    const src = readFileSync("src/app/(app)/ani-bis-e/[id]/encuesta/editar/page.tsx", "utf8");
+    // EL GUARD VA EN LA PÁGINA Y NO EN LOS ENLACES, y es la razón de ser de este candado: a esta pantalla
+    // se llega desde cuatro sitios (ver/editar, cada pregunta que falta, la puerta del diagnóstico y el
+    // historial), así que arreglarlos uno por uno deja el quinto abierto.
+    expect(src).toMatch(/header\.status === "awaiting_survey"/);
+    expect(src).toMatch(/redirect\(`\/ani-bis-e\/\$\{id\}\/responder-encuesta`\)/);
+    // Y ANTES de rendir el formulario, no después: el defecto era precisamente descubrirlo al guardar.
+    expect(src.indexOf('awaiting_survey')).toBeLessThan(src.indexOf("<SurveyEditForm"));
+    // A quien NO puede responderla (admin, soporte) se le explica, no se le manda a un "no autorizado".
+    expect(src).toContain("canRegistrarEncuestaDelPaciente");
+  });
+
+  it("y la pantalla de ver la encuesta ofrece responderla, no editarla", () => {
+    const src = readFileSync("src/app/(app)/ani-bis-e/[id]/encuesta/page.tsx", "utf8");
+    expect(src).toMatch(/esperandoLaEncuesta = header\.status === "awaiting_survey"/);
+    // Y SE MIRA DENTRO DE LA RAMA, no en el archivo entero: la rama de esperando va PRIMERO y ofrece
+    // responder; la de editar directo queda detrás, para cuando el paciente ya envió.
+    const iEsperando = src.indexOf("{esperandoLaEncuesta ? (");
+    const iSiguienteRama = src.indexOf(") : preDiagnosis ? (");
+    expect(iEsperando, "la rama de esperando tiene que existir").toBeGreaterThan(-1);
+    expect(iSiguienteRama, "y la de editar directo tiene que quedar DETRÁS").toBeGreaterThan(iEsperando);
+    const rama = src.slice(iEsperando, iSiguienteRama);
+    expect(rama).toContain("responder-encuesta");
+    expect(rama, "en este estado no se ofrece editar").not.toContain("encuesta/editar");
+  });
+
+  it("el estado viaja en la cabecera, que es lo que permite decidir sin otra consulta", () => {
+    const src = readFileSync("src/modules/diagnoses/data/results-reader.ts", "utf8");
+    // En el MISMO select: una consulta nueva por pantalla para saber el estado es como se consigue que
+    // una pantalla lo sepa y la otra no.
+    expect(src).toMatch(/"created_at, type, status, patient_id/);
+    expect(src).toMatch(/status: data\.status as string/);
+  });
+
+  it("el motivo nuevo llega a la persona con el nombre del botón que tiene que pulsar", () => {
+    const src = readFileSync("src/modules/evaluations/actions.ts", "utf8");
+    const mapa = src.slice(src.indexOf("const SURVEY_EDIT_ERROR"), src.indexOf("export async function saveSurveyEditAction"));
+    expect(mapa).toContain("esperando_la_encuesta");
+    expect(mapa, "el mensaje tiene que nombrar la puerta, no mandar a revisar un estado").toContain(
+      "Responder la encuesta con el paciente",
+    );
+  });
 });
