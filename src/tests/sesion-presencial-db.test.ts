@@ -549,3 +549,143 @@ describe.skipIf(!HAS_DB)("un solo pase por profesional (BD real)", () => {
     expect((await fila(vieja.id)).estado, "la vieja queda marcada como vencida").toBe("vencida");
   });
 });
+
+// ── EL PASE ANULADO DEJA DE SERVIR EN EL TELEFONO (Sentry 2026-10-17, 3 eventos) ──────────────────
+//
+// EL CASO REAL, reconstruido del audit: 13:48 se emite un pase, 13:49 el paciente lo abre, 13:50 escribe
+// un documento que no coincide (discrepancia), la profesional lo ANULA a las 13:51:13 para empezar otro,
+// y a las 13:51:19 emite el nuevo. A las 13:52 el paciente, que seguia en la misma pantalla, volvio a
+// pulsar enviar sobre el pase VIEJO.
+//
+// `confirmarSesionPresencial` no miraba el estado (solo el token y la ventana de lectura de 45 minutos),
+// asi que ese envio intentaba poner el pase anulado en 'discrepancia' y CHOCABA con el indice unico de la
+// 0111: un 23505 sin manejar, o sea un 500 en el telefono del paciente, en medio de la consulta.
+//
+// Y LA MITAD MAS GRAVE no es el choque: si NO hubiera habido un pase nuevo, el anulado habria
+// RESUCITADO, pasando a 'confirmada' y volviendo a ocupar a la profesional con una identidad declarada
+// sobre un pase que ella habia cancelado. Un consentimiento no puede nacer de un pase anulado, asi que se
+// comprueban LAS DOS.
+describe.skipIf(!HAS_DB)("un pase anulado ya no se puede confirmar (BD real)", () => {
+  it("con otro pase ya emitido, el envio del viejo NO revienta: dice que el codigo no sirve", async () => {
+    const { abandonarSesion, abrirSesionPresencial, confirmarSesionPresencial, crearSesionPresencial } =
+      await import("@/modules/consent/data/sesion-presencial");
+    const pro = await profesional();
+    const doc = `ANUL-CONF-${Date.now()}`;
+    const viejo = await emitir(doc);
+    await abrirSesionPresencial({ token: viejo.token, ip: "203.0.113.7", userAgent: "A" });
+    await abandonarSesion(viejo.id, pro.profileId);
+
+    const nuevo = await crearSesionPresencial({
+      organizationId: pro.organizationId,
+      professionalId: pro.professionalId,
+      createdBy: pro.profileId,
+      documentType: "CC",
+      documentNumber: `ANUL-CONF2-${Date.now()}`,
+      patientBirthDate: "1990-05-20",
+      declaracionVersion: "1.0",
+      ip: null,
+    });
+    expect("yaHayUna" in nuevo, "anular tiene que dejar emitir otro").toBe(false);
+    if (!("yaHayUna" in nuevo)) creadas.push(nuevo.id);
+
+    // EL ENVIO DEL PACIENTE SOBRE EL PASE VIEJO. Antes de este arreglo lanzaba (23505) y la pantalla del
+    // paciente quedaba en 500; ahora devuelve un desenlace que la pantalla sabe decir con palabras.
+    const r = await confirmarSesionPresencial({
+      token: viejo.token,
+      nombres: "Ana",
+      apellidos: "Pérez",
+      documentType: "CC",
+      documentNumber: "OTRO-DISTINTO",
+      autorizaciones: AUTORIZACIONES,
+    });
+    expect(r.estado).toBe("no_disponible");
+
+    // Y NO SE TOCO NADA: el pase anulado sigue anulado y el nuevo sigue en curso.
+    expect((await fila(viejo.id)).estado).toBe("abandonada");
+    if (!("yaHayUna" in nuevo)) expect((await fila(nuevo.id)).estado).toBe("emitida");
+  });
+
+  it("y SIN otro pase tampoco resucita: un consentimiento no nace de un pase anulado", async () => {
+    const { abandonarSesion, abrirSesionPresencial, confirmarSesionPresencial } = await import(
+      "@/modules/consent/data/sesion-presencial"
+    );
+    const pro = await profesional();
+    const doc = `ANUL-SOLO-${Date.now()}`;
+    const s = await emitir(doc);
+    await abrirSesionPresencial({ token: s.token, ip: "203.0.113.7", userAgent: "A" });
+    await abandonarSesion(s.id, pro.profileId);
+
+    // El documento CORRECTO, que es el caso que de verdad resucitaba: sin el filtro de estado esto
+    // devolvia 'confirmada' y sellaba `confirmed_at` sobre un pase cancelado.
+    const r = await confirmarSesionPresencial({
+      token: s.token,
+      nombres: "Ana",
+      apellidos: "Pérez",
+      documentType: "CC",
+      documentNumber: doc,
+      autorizaciones: AUTORIZACIONES,
+    });
+    expect(r.estado).toBe("no_disponible");
+    const f = await fila(s.id);
+    expect(f.estado, "sigue anulado").toBe("abandonada");
+    expect(f.confirmedAt, "y nadie confirmo nada").toBeNull();
+    expect(f.declaradoDocumentNumber, "ni se guardo lo que escribio").toBeNull();
+  });
+
+  it("pero una en DISCREPANCIA si se puede reintentar: ahi el paciente todavia tiene que resolver", async () => {
+    // La contrapartida. Si el filtro se hubiera escrito como "solo emitida y abierta", el camino normal de
+    // una discrepancia (mirar la cedula juntos y que el paciente lo escriba bien) se habria cerrado.
+    const { abrirSesionPresencial, confirmarSesionPresencial } = await import(
+      "@/modules/consent/data/sesion-presencial"
+    );
+    const doc = `DISC-RETRY-${Date.now()}`;
+    const s = await emitir(doc);
+    await abrirSesionPresencial({ token: s.token, ip: "203.0.113.7", userAgent: "A" });
+    await new Promise((r) => setTimeout(r, 1100));
+
+    expect(
+      (
+        await confirmarSesionPresencial({
+          token: s.token,
+          nombres: "Ana",
+          apellidos: "Pérez",
+          documentType: "CC",
+          documentNumber: "MAL-ESCRITO",
+          autorizaciones: AUTORIZACIONES,
+        })
+      ).estado,
+    ).toBe("discrepancia");
+
+    expect(
+      (
+        await confirmarSesionPresencial({
+          token: s.token,
+          nombres: "Ana",
+          apellidos: "Pérez",
+          documentType: "CC",
+          documentNumber: doc,
+          autorizaciones: AUTORIZACIONES,
+        })
+      ).estado,
+      "tras una discrepancia, escribirlo bien tiene que confirmar",
+    ).toBe("confirmada");
+  });
+
+  it("las dos listas de estados existen y son DISTINTAS, con confirmada solo en la del profesional", () => {
+    // Son dos preguntas distintas sobre la misma columna ("¿ocupa al profesional?" y "¿sirve en el
+    // telefono?"), y la diferencia es `confirmada`. Unificarlas rompe una de las dos: metida en la del
+    // paciente, un pase ya confirmado se podria reconfirmar; sacada de la del profesional, se podrian
+    // emitir dos pases con uno pendiente de declarar.
+    const src = readFileSync("src/modules/consent/data/sesion-presencial.ts", "utf8");
+    const ocupan = src.match(/ESTADOS_QUE_OCUPAN = \[([^\]]+)\]/)?.[1] ?? "";
+    const delPaciente = src.match(/ESTADOS_QUE_EL_PACIENTE_PUEDE_USAR = \[([^\]]+)\]/)?.[1] ?? "";
+    expect(ocupan).toContain("confirmada");
+    expect(delPaciente, "un pase ya confirmado no puede volver a confirmarse").not.toContain(
+      "confirmada",
+    );
+    expect(delPaciente).toContain("discrepancia");
+    // Y que el camino del paciente USE la lista, en sus dos puertas (abrir y confirmar).
+    const usos = src.split("ESTADOS_QUE_EL_PACIENTE_PUEDE_USAR").length - 1;
+    expect(usos, "la define y la usa al abrir y al confirmar").toBeGreaterThanOrEqual(3);
+  });
+});
