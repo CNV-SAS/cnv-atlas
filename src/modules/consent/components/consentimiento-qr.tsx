@@ -9,6 +9,8 @@ import { ConsentDocumentCollapsible } from "@/modules/consent/components/consent
 import { checkboxClass } from "@/modules/evaluations/components/survey-form-shared";
 import { LEGAL_REP_RELATIONSHIPS } from "@/modules/consent/validations";
 
+import { reportClientError } from "@/lib/observability/report-client-error";
+
 import { abrirSesionQrAction, confirmarSesionQrAction, type ConfirmacionQrState } from "../actions.qr";
 
 // LA PANTALLA DEL PACIENTE · MODALIDAD 2 (QR). Corre en SU telefono, no en el del profesional.
@@ -23,6 +25,28 @@ import { abrirSesionQrAction, confirmarSesionQrAction, type ConfirmacionQrState 
 // identificado seria aceptar en abstracto.
 
 const inicial: ConfirmacionQrState = { error: null, estado: "pendiente", declarado: null };
+
+// LA RED, COMO EN LAS OTRAS DOS PANTALLAS DEL PACIENTE (ver `sign-phase-form` y `survey-phase-form`).
+// Si la peticion no llega, la accion no corre, su `catch` del servidor tampoco, y `estado.error` se
+// queda en null: el paciente ve el boton volver a la normalidad y nada mas. Aqui ademas esta con la
+// profesional al lado esperando a que su pantalla cambie, asi que un fallo mudo los deja a los dos sin
+// saber que hacer. Se reporta a Sentry al atraparlo para no quedarnos ciegos al taparlo.
+const CONFIRMAR_CON_RED = async (
+  prev: ConfirmacionQrState,
+  form: FormData,
+): Promise<ConfirmacionQrState> => {
+  try {
+    return await confirmarSesionQrAction(prev, form);
+  } catch (e) {
+    reportClientError("consentimiento-qr.confirmar-sin-red", e);
+    return {
+      error:
+        "Parece que se cayó la conexión y no pudimos enviar tus datos. No se perdió nada de lo que escribiste: revisa tu internet y vuelve a pulsar el botón.",
+      estado: "pendiente",
+      declarado: null,
+    };
+  }
+};
 
 // Los mismos parentescos que el camino del enlace: dos listas del mismo dato es como las dos vias
 // acaban admitiendo cosas distintas del mismo representante.
@@ -55,7 +79,7 @@ export function ConsentimientoQr({
   /** El menor tiene entre 14 y 17: además de la autorización, hace falta su asentimiento. */
   pideAsentimiento?: boolean;
 }) {
-  const [estado, confirmar, enviando] = useActionState(confirmarSesionQrAction, inicial);
+  const [estado, confirmar, enviando] = useActionState(CONFIRMAR_CON_RED, inicial);
   const [nombres, setNombres] = useState("");
   const [apellidos, setApellidos] = useState("");
   const [documento, setDocumento] = useState("");
