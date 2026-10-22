@@ -34,6 +34,10 @@ type EvaluationEmbed = {
   retirada_motivo: string | null;
   reason_for_visit: string | null;
   bis_measurements: { measurement_date: string | null }[] | null;
+  // Solo el id: dice SI hay borrador, no cuanto. Traer las respuestas aqui serian 65 filas por
+  // evaluacion en una pantalla que lista todas las del paciente. La RLS de `survey_responses` admite a
+  // admin y al profesional del paciente, que son los dos unicos que alcanzan esta ficha.
+  survey_responses: { id: string }[] | null;
 };
 
 // Motivo (arreglo JSON de strings) tolerante: null/ilegible => []. No confia en el contenido de la BD.
@@ -64,7 +68,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, test_proposed_reason, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, retirada_at, retirada_motivo, reason_for_visit, bis_measurements(measurement_date))",
+      "id, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, test_proposed_reason, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, retirada_at, retirada_motivo, reason_for_visit, bis_measurements(measurement_date), survey_responses(id))",
     )
     .eq("id", patientId)
     .is("deleted_at", null)
@@ -90,6 +94,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
       superseded: e.superseded_at != null,
       noOcurrio: e.retirada_at != null,
       motivoDelRetiro: e.retirada_motivo ?? null,
+      tieneBorradorDeEncuesta: (e.survey_responses ?? []).length > 0,
       reasonForVisit: parseReasonForVisit(e.reason_for_visit),
     }))
     // Mas reciente primero, por fecha de MEDICION (cronologia clinica), no por created_at: una

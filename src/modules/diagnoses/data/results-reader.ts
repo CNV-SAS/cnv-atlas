@@ -108,6 +108,18 @@ export type EvaluationHeader = {
    * onboarding no la captura". Verificado contra produccion el 2026-09-10: ya no es cierto.)
    */
   profesion: string | null;
+  /**
+   * EL ESTADO DE LA EVALUACION, para que las pantallas que cuelgan de esta cabecera no tengan que
+   * adivinarlo por lo que encuentran. Entra en la MISMA consulta: cero consultas nuevas.
+   *
+   * POR QUE HIZO FALTA (Santiago, 2026-10-22): la pantalla de la encuesta decidia si se podia editar
+   * mirando si YA HAY DIAGNOSTICO, y con eso una evaluacion en `awaiting_survey` (el paciente firmo y
+   * dejo la encuesta a medias) caia en la rama de "editar directo", que su writer rechaza a proposito.
+   * La profesional llenaba el formulario y al guardar le salia "esta evaluacion no se puede editar":
+   * perdia el trabajo. Dos superficies leyendo fuentes distintas (hazard 4 de CLAUDE.md), y el arreglo
+   * es unirlas: la puerta se elige por el ESTADO, no por lo que se alcance a leer.
+   */
+  status: string;
 };
 
 // Cabecera minima de una evaluacion por RLS (existe y es del profesional?). Distingue
@@ -124,7 +136,7 @@ export async function getEvaluationHeaderForSession(
       // EL PROFESIONAL entra en la MISMA consulta: cero consultas nuevas, igual que `type` y la medicion.
       // El hint `profiles!profile_id` es obligatorio: hay TRES relaciones de professional_profiles hacia
       // profiles y sin el PostgREST no sabe por cual resolver el embed (ver la nota de ARCHITECTURE).
-      "created_at, type, patient_id, import_batch_id, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), professional_profiles(profession, profiles!profile_id(full_name))",
+      "created_at, type, status, patient_id, import_batch_id, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), professional_profiles(profession, profiles!profile_id(full_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -175,6 +187,7 @@ export async function getEvaluationHeaderForSession(
     // ¿Vino de un lote del HTML? Decide lo que la pantalla ofrece: en una importada la cintura y la cadera se
     // pueden teclear (el tamizaje fue hace meses y no hay forma de repetirlo); en una de Atlas, no.
     importada: data.import_batch_id != null,
+    status: data.status as string,
   };
 }
 

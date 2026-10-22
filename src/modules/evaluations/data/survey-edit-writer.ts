@@ -20,7 +20,7 @@ import { recordAudit } from "@/modules/audit/log";
 
 export type SurveyEditResult =
   | { ok: true; answered: number }
-  | { ok: false; reason: "not_assigned" | "already_diagnosed" | "not_editable" };
+  | { ok: false; reason: "not_assigned" | "already_diagnosed" | "esperando_la_encuesta" | "not_editable" };
 
 // Solo pre-diagnostico. awaiting_survey queda fuera a proposito: ahi el paciente aun puede llenar por su
 // enlace (token de reanudacion vivo); tocarlo colisiona con ese flujo. Se edita tras enviar (draft) o
@@ -63,6 +63,10 @@ export async function saveSurveyEdit(input: {
       .where(eq(diagnoses.evaluationId, input.evaluationId))
       .limit(1);
     if (diag.length > 0) return { ok: false, reason: "already_diagnosed" };
+    // EL ESTADO MAS FRECUENTE DEL RECHAZO TIENE SU PROPIO MOTIVO (Santiago, 2026-10-22): "revisa su
+    // estado" no le dice a nadie que hacer, y el caso real era este. La pantalla ya no deberia llegar
+    // hasta aqui (el guard vive en la pagina), pero el mensaje es el ultimo que ve una persona.
+    if (ev.status === "awaiting_survey") return { ok: false, reason: "esperando_la_encuesta" };
     if (!EDITABLE_STATUSES.has(ev.status)) return { ok: false, reason: "not_editable" };
 
     // La respuesta existe pre-diagnostico cuando el paciente envio algo, aunque sea a medias.

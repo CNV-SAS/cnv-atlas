@@ -908,6 +908,8 @@ const SURVEY_EDIT_ERROR: Record<string, string> = {
     "Solo el profesional que atiende a este paciente puede editar sus respuestas: quedan firmadas a su nombre en la historia clínica. Si hay algo que corregir, pídeselo a quien lo atendió.",
   already_diagnosed:
     "Esta evaluación ya tiene un diagnóstico. Para cambiar una respuesta ahora, usa Corregir la evaluación.",
+  esperando_la_encuesta:
+    "Esta encuesta todavía es un borrador del paciente: su enlace sigue abierto. Para completarla con él, usa \"Responder la encuesta con el paciente\"; al enviarla queda lista para diagnosticar.",
   not_editable: "Esta evaluación no se puede editar (revisa su estado).",
 };
 
