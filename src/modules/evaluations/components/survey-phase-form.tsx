@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { reportClientError } from "@/lib/observability/report-client-error";
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
 import {
@@ -71,6 +72,65 @@ const ICONO_DOMINIO: Record<string, LucideIcon> = {
 const initialSubmit: SurveyFormState = { error: null, fields: null, done: false };
 const initialSave: SaveProgressState = { saved: false, error: null };
 
+// ═══ SI SE CAE LA RED, LA ACCION NO CORRE, Y ESO TENIA QUE VERSE (Sentry, 13 y 15 de octubre) ═══
+//
+// LAS DOS ACCIONES YA ATRAPAN lo que falla EN EL SERVIDOR (un hipo del pooler, un 502 de Supabase) y
+// devuelven un mensaje con palabras. PERO SI EL TELEFONO PIERDE LA RED la peticion no llega: el servidor
+// no corre, su `catch` tampoco, y lo que se rechaza es la promesa que despacha `useActionState`. Ese
+// rechazo no pasa por ningun `fail()`, asi que `state.error` se queda en null.
+//
+// LO QUE VEIA EL PACIENTE, que es lo grave: el boton decia "Enviando...", volvia a decir "Enviar", y
+// NADA MAS. Ni error, ni pantalla de gracias (el exito es un redirect a /encuesta/gracias). Dos eventos
+// reales: "TypeError: Load failed" en Safari el 15-oct y "NetworkError when attempting to fetch
+// resource" en Firefox el 13-oct, los dos en el POST de /encuesta/:token.
+//
+// Y DEJA UN RASTRO QUE CONFUNDE A TODOS: el autoguardado SI alcanzo a escribir respuestas parciales, asi
+// que la evaluacion queda en `awaiting_survey` CON datos. El profesional ve una encuesta a medias y el
+// paciente cree que ya entrego. Es la causa del caso del 22-oct (la evaluacion "en dos estados").
+//
+// EL MISMO AGUJERO ESTABA EN EL AUTOGUARDADO: su indicador de "No se pudo guardar el avance" solo se
+// enciende con un error DEVUELTO, o sea nunca con el unico fallo que de verdad ocurre en un telefono.
+//
+// SE REPORTA A SENTRY AL ATRAPARLO (`reportClientError`): atrapar el error lo saca del camino que lo
+// reportaba solo, y arreglar lo que ve el paciente no puede costarnos la visibilidad.
+const SIN_RED_AL_ENVIAR =
+  "No pudimos enviar tu encuesta: parece que se cayó la conexión. No se perdió nada de lo que respondiste. Revisa tu internet y vuelve a pulsar Enviar.";
+
+function envioConRed(
+  accion: (prev: SurveyFormState, form: FormData) => Promise<SurveyFormState>,
+): (prev: SurveyFormState, form: FormData) => Promise<SurveyFormState> {
+  return async (prev, form) => {
+    try {
+      return await accion(prev, form);
+    } catch (e) {
+      reportClientError("encuesta.enviar-sin-red", e);
+      return { error: SIN_RED_AL_ENVIAR, fields: null, done: false };
+    }
+  };
+}
+
+function guardadoConRed(
+  accion: (prev: SaveProgressState, form: FormData) => Promise<SaveProgressState>,
+): (prev: SaveProgressState, form: FormData) => Promise<SaveProgressState> {
+  return async (prev, form) => {
+    try {
+      return await accion(prev, form);
+    } catch (e) {
+      reportClientError("encuesta.guardar-sin-red", e);
+      // El indicador de abajo solo mira si HAY error, no cual: ya dice "No se pudo guardar el avance" con
+      // su reintento, que es exactamente lo que toca aqui. El texto queda por si alguien lo lee en un log.
+      return { saved: false, error: "se cayo la conexion al guardar el avance" };
+    }
+  };
+}
+
+// Las cuatro envueltas, UNA sola vez y fuera del componente: `useActionState` guarda la accion con la que
+// se despacho, y crear una funcion nueva en cada render es pedirle problemas sin necesidad.
+const ENVIAR_DEL_PACIENTE = envioConRed(submitSurveyAnswersAction);
+const ENVIAR_DEL_PROFESIONAL = envioConRed(enviarEncuestaDelPacienteAction);
+const GUARDAR_DEL_PACIENTE = guardadoConRed(saveProgressAction);
+const GUARDAR_DEL_PROFESIONAL = guardadoConRed(guardarEncuestaDelPacienteAction);
+
 export type SurveyPhaseFormProps = {
   resumeToken: string;
   isFollowup: boolean;
@@ -113,11 +173,11 @@ export function SurveyPhaseForm({
 }: SurveyPhaseFormProps) {
   const delProfesional = modo === "profesional";
   const [state, submit, submitting] = useActionState(
-    delProfesional ? enviarEncuestaDelPacienteAction : submitSurveyAnswersAction,
+    delProfesional ? ENVIAR_DEL_PROFESIONAL : ENVIAR_DEL_PACIENTE,
     initialSubmit,
   );
   const [saveState, save, saving] = useActionState(
-    delProfesional ? guardarEncuestaDelPacienteAction : saveProgressAction,
+    delProfesional ? GUARDAR_DEL_PROFESIONAL : GUARDAR_DEL_PACIENTE,
     initialSave,
   );
   const formRef = useRef<HTMLFormElement>(null);
@@ -167,6 +227,13 @@ export function SurveyPhaseForm({
   const isLast = step === totalSteps - 1;
 
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // EL AVISO DEL ENVIO VIVE ARRIBA Y EL BOTON ESTA ABAJO, al final de una seccion larga. Un mensaje que
+  // aparece fuera de la pantalla no existe: el paciente pulsa Enviar, no pasa nada visible, y se va. Asi
+  // que cuando aparece un error de envio se sube hasta el. Es el mismo `scrollTop` de la navegacion.
+  useEffect(() => {
+    if (state.error) scrollTop();
+  }, [state.error]);
 
   // CENTRAR EL CHIP ACTIVO EN SU TIRA, SIN TOCAR EL SCROLL DE LA PAGINA (arreglo del 2026-09-04).
   //

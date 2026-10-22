@@ -14,9 +14,10 @@ import {
 import { citiesForCountry, COUNTRIES, DEFAULT_COUNTRY } from "../data/geo";
 import { checkConsentOtpAction, sendConsentOtpAction, signSurveyAction } from "../actions";
 import type { SignIdentityPrefill } from "../types";
-import type { OtpSendState, SignSurveyState } from "../validations";
+import type { OtpCheckState, OtpSendState, SignSurveyState } from "../validations";
 import { Field, checkboxClass, selectClass } from "./survey-form-shared";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
+import { reportClientError } from "@/lib/observability/report-client-error";
 
 // FASE 1 del intake: FIRMAR. Consentimiento + identidad + verificacion por codigo (OTP). Al firmar crea
 // el shell 'awaiting_survey' y devuelve el resume_token; el orquestador pasa entonces a la pantalla
@@ -28,8 +29,54 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 // (auto-reset de React 19); (3) el codigo OTP se pide al FINAL de esta fase (vence en 10 min).
 
 const initialSign: SignSurveyState = { error: null, fields: null, resumeToken: null, ethnicityAuthorized: false, reanudar: false };
-const initialOtpCheck = { error: null, valid: null, retryable: false };
+const initialOtpCheck: OtpCheckState = { error: null, valid: null, retryable: false };
 const initialOtp: OtpSendState = { error: null, sent: false, maskedDestination: null, remaining: null };
+
+// ═══ LA MISMA RED QUE EN LA FASE 2, Y AQUI ES DONDE SALIO EL EVENTO (Sentry, 15-oct) ═══
+//
+// El `select[name="sex"]` de ese evento es de ESTA pantalla, no de la encuesta: el fallo ("TypeError:
+// Load failed", Safari) ocurrio en el POST de una accion de la FIRMA. Las tres acciones de aqui corren en
+// el telefono del paciente, en una consulta, y las tres tenian el mismo agujero: si la peticion no llega,
+// la accion no corre, su `catch` del servidor tampoco, y el `error` del estado se queda en null. El
+// paciente ve el boton volver a la normalidad y nada mas.
+//
+// NO ES UN "por si acaso": una firma que no se guarda deja al paciente sin consentimiento y a la
+// profesional esperando. Se envuelve con el mismo criterio que la fase 2 (ver `survey-phase-form`), y el
+// error se reporta a Sentry al atraparlo para no quedarnos ciegos al taparlo.
+const SIN_RED =
+  "Parece que se cayó la conexión y no pudimos enviar los datos. No se perdió nada de lo que escribiste: revisa tu internet y vuelve a intentarlo.";
+
+const FIRMAR_CON_RED = async (prev: SignSurveyState, form: FormData): Promise<SignSurveyState> => {
+  try {
+    return await signSurveyAction(prev, form);
+  } catch (e) {
+    reportClientError("consentimiento.firmar-sin-red", e);
+    return { ...initialSign, error: SIN_RED };
+  }
+};
+
+const ENVIAR_CODIGO_CON_RED = async (prev: OtpSendState, form: FormData): Promise<OtpSendState> => {
+  try {
+    return await sendConsentOtpAction(prev, form);
+  } catch (e) {
+    reportClientError("consentimiento.enviar-codigo-sin-red", e);
+    return { ...initialOtp, error: SIN_RED };
+  }
+};
+
+const COMPROBAR_CODIGO_CON_RED = async (
+  prev: OtpCheckState,
+  form: FormData,
+): Promise<OtpCheckState> => {
+  try {
+    return await checkConsentOtpAction(prev, form);
+  } catch (e) {
+    reportClientError("consentimiento.comprobar-codigo-sin-red", e);
+    // `retryable` es exactamente esto: no es un codigo equivocado, asi que NO gasta intento y el mismo
+    // codigo se puede volver a comprobar (el efecto de abajo limpia `otpChecked` cuando lo ve).
+    return { error: SIN_RED, valid: null, retryable: true };
+  }
+};
 
 // Validez de correo para habilitar el envio del codigo en cliente (el servidor revalida con Zod).
 function emailLooksValid(value: string): boolean {
@@ -87,19 +134,19 @@ export function SignPhaseForm({
   onSigned,
   substantiveBump = false,
 }: SignPhaseFormProps) {
-  const [state, action, pending] = useActionState(signSurveyAction, initialSign);
+  const [state, action, pending] = useActionState(FIRMAR_CON_RED, initialSign);
   const topRef = useRef<HTMLDivElement>(null);
 
   // Firma electronica (B7). sessionId: nonce opaco de ESTE intento, generado una sola vez; ancla el
   // codigo a este navegador y viaja al enviar y al validar. El envio del codigo se invoca IMPERATIVAMENTE
   // (no como action del form) para no disparar el auto-reset de React 19 sobre el resto de campos.
   const [sessionId] = useState(() => crypto.randomUUID());
-  const [otpState, sendOtp, otpPending] = useActionState(sendConsentOtpAction, initialOtp);
+  const [otpState, sendOtp, otpPending] = useActionState(ENVIAR_CODIGO_CON_RED, initialOtp);
   const [email, setEmail] = useState(prefill?.email ?? "");
   const [otpCode, setOtpCode] = useState("");
   // COMPROBACION AUTOMATICA del codigo (2026-08-26). El paciente sabe que su codigo sirve mientras escribe,
   // en vez de descubrirlo al pulsar "Firmar". Solo es posible desde que verificar dejo de consumir.
-  const [otpCheck, checkOtp, otpChecking] = useActionState(checkConsentOtpAction, initialOtpCheck);
+  const [otpCheck, checkOtp, otpChecking] = useActionState(COMPROBAR_CODIGO_CON_RED, initialOtpCheck);
   // El ultimo codigo que se mando a comprobar. Cada comprobacion GASTA INTENTO (es lo que sostiene el
   // limite anti-fuerza-bruta), asi que no se puede comprobar el mismo dos veces: sin esto, escribir un
   // digito, borrarlo y volver a escribirlo gastaria dos de los cinco.
