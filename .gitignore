@@ -93,4 +93,17 @@ docs/entregas/RESULTADOS_SMOKE_Y_PROXIMOS_PASOS.md
 #   · y traen CREDENCIALES VIVAS. El v9 versionado las tiene tapadas a mano
 #     ("PROYECTO-RETIRADO"), y el v10 llego con la URL y la publishable key reales: el scrub
 #     no se hereda, se vuelve a perder en cada entrega.
+#
+# LA REGLA ES POR EL ARCHIVO, NO POR LA CARPETA (2026-10-22), y es la segunda vez que la misma
+# leccion llega por el mismo sitio (ver los .xlsx de arriba, 2026-10-02). La regla de abajo pedia
+# una carpeta llamada "gildardo-*", y la entrega de octubre llego en
+# "docs/entregas/Gildardo responses/Nuevos cambios html/", que NO coincide: tres HTML de 1,5 MB
+# cada uno quedaban a un "git add ." de entrar, y MEDIDO: los tres traen la URL del proyecto y
+# una publishable key. Ahora cubre cualquier ATLAS_*.html bajo entregas, con el nombre que sea.
+#
+# LO QUE SI SE VERSIONA son sus documentos de cambios (CAMBIOS_*.md, *_PENDIENTES_*.md): son
+# texto, dicen que hay que implementar, y se revisaron antes de commitearlos (no traen llaves ni
+# datos de paciente; los "anon" que mencionan son nombres de variable y el documento del ejemplo
+# del hash es inventado).
+docs/entregas/**/ATLAS_*.html
 docs/entregas/gildardo-*/ATLAS_*.html
