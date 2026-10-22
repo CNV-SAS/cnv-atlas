@@ -13,8 +13,33 @@ git de este mismo archivo (`git show ff4f4211:docs/entregas/SMOKE_SEGUNDO_2026-0
 2026-10-14, a pedido de Santiago): es donde quedan sus palabras tal cual mientras prueba, y por eso nombra
 pacientes. Este archivo, el guion, si se versiona: no lleva nombres.
 
-**EL ORDEN DEFINITIVO DEL 2026-10-15 (corregido tres veces el mismo dia: la segunda cancelo los scripts de
-inventario y la tercera cambio como se prueba):**
+## ⏸ EL SMOKE ESTA EN PAUSA DESDE EL 2026-10-22. QUEDA PENDIENTE, NO CANCELADO
+
+Santiago no pudo seguirlo. **Este es el orden con el que se retoma**, ya descontado lo que se hizo y lo que
+se cancelo. No hay que reconstruirlo leyendo el documento entero:
+
+> **F · G · H · A · B · C · D · E**
+
+Y las cuatro precisiones que ya no se pueden perder:
+
+- **La I NO se corre.** La bodega ya estaba cargada con la primera tanda desde el 11 de septiembre, y ocho
+  ubicaciones tienen producto fisico encima. Los dos scripts de inventario quedaron **cancelados** (seccion
+  **I**).
+- **El paso 3 de la J YA ESTA HECHO Y VERIFICADO:** los seis menores atienden. Los pasos 1, 2, 4 y 5 de la J,
+  cuando quieras.
+- **La D se hace con 1 unidad de MULTI-CELL BASE, lote `19826`**, no con ADAPTO-STRESS. El porque, con las
+  cifras, en la seccion **2 / DOS COSAS QUE HAY QUE SABER ANTES DE USARLO**.
+- **Al cerrar**, los pasos de la seccion **4l** en su orden (marcar las ventas del smoke, marcar los dos
+  perfiles, ADAPTO-STRESS a cero, ensayo del script de llaves) y **solo entonces las llaves**.
+
+**Lo que se hizo mientras estaba en pausa:** los cinco errores de produccion que Santiago reporto el 22 de
+octubre (seccion **8**) y el dimensionado de la recalibracion del motor (seccion **9**). Ninguno de los dos
+cambia el guion del smoke; el de los menores y el de la encuesta a medias lo hacen mas facil.
+
+---
+
+**EL ORDEN DEL 2026-10-15 (corregido tres veces el mismo dia: la segunda cancelo los scripts de
+inventario y la tercera cambio como se prueba). Lo cumplido queda tachado por la pausa de arriba:**
 
 1. **Push y deploy.** Lo que pone /pagos en cero es el **codigo** (el filtro de prueba sin excepciones), no una
    migracion. La 0220 ya quedo aplicada; la **0221** es solo un comentario en la base y se puede aplicar antes
@@ -1314,7 +1339,7 @@ Dos matices, por si aparecen:
 - **Desbloquear la venta bajo Distribucion.** El mecanismo del recaudo ya existe, asi que es una decision, no
   una falta de construccion. Hoy queda dentro del punto 3.
 
-## 7 · ¿FALTA ALGO POR CONSTRUIR PARA ARRANCAR? · La lista, al 2026-10-15
+## 7 · ¿FALTA ALGO POR CONSTRUIR PARA ARRANCAR? · La lista, al 2026-10-15 (y un punto nuevo el 22)
 
 Pregunta de Santiago: *"¿no queda faltando nada mas por construir, verdad? solo hacer smoke."*
 
@@ -1376,6 +1401,7 @@ alguna venta real alcanza a quedar sellada como prueba; hoy esa cuenta esta en c
 | 6 | **Que la remesa MUEVA el saldo**, con la ubicacion de transito, y el escritor que falta para **registrar unidades en central** y **devolver a central** lo que nadie confirmo (seccion 2) | el modulo de inventario, pospuesto otra vez el 15. La mitad barata ya esta |
 | 7 | **Paso 2 de la unificacion** del bloque de venta (3b) | despues, y con la decision de donde sale el dato de existencias |
 | 8 | **La venta de admin sin profesional** (4f) y **la emision el ultimo dia del mes** (1b) | dimensionadas, esperan decision |
+| 9 | **Levantar el freno de "no cambiaste nada" para `recalibracion_ciencia`** y el script de recalculo (seccion **9**) | cuando Gildardo pase sus correcciones del motor. Son tres lineas y un script; lo que decide si se puede hacer es si su cambio toca la encuesta |
 
 ### Y lo que falta que NO es codigo (y de esto depende mas que de lo anterior)
 
@@ -1410,3 +1436,368 @@ Santiago lo dijo de dos pantallas, y es una decision de ritmo, no un pendiente t
 - **La pantalla de insights** (parte 15): *"la vamos puliendo poco a poco a medida que avance la operacion."*
 - **El total de inventario y sus rotulos** (R15): *"esto lo vamos revisando poco a poco si sirve así o lo
   cambiamos."*
+
+---
+
+## 8 · LOS CINCO ERRORES DE PRODUCCION DEL 2026-10-22
+
+No son del smoke: pasaron en estos dias, con integrantes y pacientes reales adentro. Cuatro de los cinco son
+**un mismo defecto visto por cinco ventanas distintas**, y eso es lo que mas me importa de todo esto.
+
+### 8a · ⛔ LA EVALUACION "EN DOS ESTADOS", Y POR QUE NINGUNA PANTALLA MENTIA  → `fix(evaluaciones)`
+
+**Lo que mediste tu:** la ficha del paciente decia *"Esperando la encuesta"* y la pantalla del modelo
+mostraba la encuesta llena con preguntas faltantes; al editarla, *"esta evaluacion no se puede editar (revisa
+su estado)"*.
+
+**Lo verificado en la nube, y el paciente es UNO SOLO con UNA SOLA evaluacion** (descarta lo de "dos
+evaluaciones, cada pantalla mira una"):
+
+| dato | valor |
+|---|---|
+| evaluaciones del paciente | **1** |
+| estado | `awaiting_survey` |
+| creada | 22-oct 17:03:55 |
+| ultimo movimiento | 22-oct **17:08:02** |
+| respuestas guardadas | **22**, todas con valor |
+| diagnostico / medicion BIS | ninguno |
+| `resume_token` | vivo |
+
+Cuatro minutos de diferencia entre crearla y el ultimo guardado: **el autoguardado escribio 22 respuestas y
+el envio final nunca llego.** Tu hipotesis era la correcta, y la causa es el **8c** de abajo.
+
+**LAS DOS PANTALLAS TENIAN RAZON, cada una por separado.** La ficha lee el ESTADO (y el estado es "esperando
+la encuesta", que es verdad: nadie la envio). La pantalla del modelo lee las RESPUESTAS (y hay 22, que
+tambien es verdad). Es el **hazard 4 de CLAUDE.md** palabra por palabra: *"si dos partes de la pantalla dicen
+cosas opuestas, no es que una este mal, es que LEEN FUENTES DISTINTAS"*. Y el arreglo que manda esa regla no
+es corregir el mensaje, es unir las fuentes.
+
+**EL DEFECTO DE VERDAD, que es peor que la contradiccion:** la pantalla ofrecia un camino que **no podia
+llegar**. `saveSurveyEdit` rechaza `awaiting_survey` **a proposito** (el paciente aun puede estar
+respondiendo por su enlace, y editar ahi tampoco sacaria la evaluacion de la espera: quedaria con respuestas
+y sin poder diagnosticarse). O sea que la profesional llenaba el formulario entero y **lo descubria al
+guardar**, con el trabajo perdido. La vi ofrecida desde cuatro sitios: el boton "Ver o editar encuesta", cada
+pregunta de la lista de faltantes, la puerta del diagnostico y el historial.
+
+**Y LA PUERTA BUENA YA EXISTIA, desde el 2026-09-24:** *"Responder la encuesta con el paciente"*
+(`/ani-bis-e/[id]/responder-encuesta`). Continua **el mismo borrador** (las 22 respuestas precargadas,
+arrancando en la ultima seccion con respuesta), sella que la cerro la profesional (`captured_by`) y al
+enviarla pasa la evaluacion a `draft`, que es lo que la deja confirmable y diagnosticable. Estaba enlazada
+**solo desde la ficha del paciente**, que no es por donde se trabaja.
+
+**QUE SE CAMBIO:**
+
+1. **El guard vive en la PAGINA de editar, no en los enlaces.** Si la evaluacion esta en `awaiting_survey`,
+   el formulario **no se abre**: redirige a "Responder la encuesta con el paciente". Va ahi y no en los
+   cuatro enlaces a proposito: arreglarlos uno por uno deja el quinto abierto, hoy o el mes que viene.
+2. **La pantalla de ver la encuesta** ofrece ahora *responderla* en ese estado, no *editarla*, y dice por que
+   (*"el paciente firmo y todavia tiene su enlace abierto, asi que la encuesta no se edita: se continua"*).
+3. **A quien no puede responderla** (admin, soporte) se le **explica**, no se le manda a un "no autorizado":
+   responder la encuesta es un acto de la consulta y lo hace quien atiende.
+4. **El motivo del rechazo tiene su propio mensaje**, por si algun camino nuevo vuelve a llegar al writer:
+   nombra el boton que hay que pulsar, en vez de mandar a "revisar su estado".
+5. **El estado viaja en la cabecera de la evaluacion** (`EvaluationHeader.status`), en la misma consulta que
+   ya se hacia. Sin eso, cada pantalla lo adivina por lo que alcanza a leer, que es como nacio esto.
+
+**COMO SE RESUELVE EL CASO DE LA PACIENTE, HOY, SIN ESPERAR EL DESPLIEGUE:** la profesional entra a la **ficha
+del paciente** (no a la evaluacion) y pulsa **"Responder con el paciente"**. Ese enlace ya existe y ya
+funciona; sigue desde la pregunta 22 y al enviar queda lista. Despues del despliegue da igual por donde
+entre: las dos puertas llevan al mismo sitio.
+
+**Candado:** `encuesta-registrada-por-profesional-db.test.ts`, bloque *"la encuesta a medias tiene UNA SOLA
+PUERTA"* (6 casos, BD real): el rechazo trae el motivo nuevo, **no escribe nada** al rechazar, el formulario
+no se abre en ese estado, y la rama de "esperando" ofrece responder y **no** editar.
+
+### 8b · ⛔ EL `duplicate key` DEL CONSENTIMIENTO: UN PASE ANULADO SEGUIA SIRVIENDO  → `fix(consentimiento)`
+
+**Reconstruido del audit de la nube**, y no quedo ninguna duda:
+
+| hora (UTC, 17-oct) | que paso |
+|---|---|
+| 13:48:43 | la profesional emite el pase A |
+| 13:49:32 | el paciente lo abre (la ventana de lectura se extiende a 14:35) |
+| 13:50:10 | el paciente escribe un documento que no coincide → **discrepancia** |
+| 13:50:51 | lo intenta otra vez → discrepancia otra vez |
+| **13:51:13** | la profesional **ANULA** el pase A para empezar de cero |
+| **13:51:19** | emite el pase B |
+| **~13:52:24** | el paciente, que seguia en la misma pantalla, **vuelve a enviar sobre A** → 💥 |
+
+`confirmarSesionPresencial` **no miraba el estado**: solo el token y la ventana de lectura de 45 minutos. Asi
+que el envio sobre A intentaba ponerlo en `discrepancia` y **choco con el indice unico de la 0111** (un pase
+activo por profesional): `23505` sin manejar, o sea **un 500 en el telefono del paciente**, en mitad de la
+consulta. Tres eventos.
+
+**Y LA MITAD MAS GRAVE NO ES EL CHOQUE.** Si no hubiera habido un pase B, el pase anulado **habria
+RESUCITADO**: pasaba a `confirmada`, volvia a ocupar a la profesional, y quedaba una identidad declarada
+sobre un pase que ella habia cancelado. Un consentimiento no puede nacer de un pase anulado. Eso no habria
+dado ningun error: habria quedado guardado.
+
+**QUE SE CAMBIO, y es una condicion:** se anade al `where` la lista de estados en que el telefono del
+paciente todavia sirve (`emitida`, `abierta`, `discrepancia`). **La regla del indice no se toca**: el que
+sobraba era el camino que la violaba.
+
+Son **dos listas distintas sobre la misma columna**, y la diferencia es `confirmada`:
+
+- `ESTADOS_QUE_OCUPAN` (al profesional) **incluye** `confirmada`: le queda declarar.
+- `ESTADOS_QUE_EL_PACIENTE_PUEDE_USAR` **no**: ya no tiene nada que hacer.
+
+Unificarlas rompe una de las dos, asi que el candado exige que sean distintas.
+
+**LO QUE VE AHORA EL PACIENTE** es el desenlace `no_disponible`, que **ya existia y ya estaba bien escrito**:
+*"Este codigo ya no esta disponible: se uso o vencio. Pidele a tu profesional que te muestre uno nuevo."* Que
+es exactamente lo que pasa. No hubo que escribir pantalla nueva.
+
+**LO QUE HACE LA PROFESIONAL:** nada distinto de lo que ya hacia. Anula y emite otro; la diferencia es que
+ahora el telefono del paciente lo acompaña en vez de reventar.
+
+**Que paso con ESE consentimiento:** nada. El pase A quedo `abandonada`, sin `confirmed_at` y sin nada
+declarado; el flujo siguio por el pase C (13:53) y el paciente quedo atendido. No hay un consentimiento a
+medias que haya que reparar.
+
+**Candado:** `sesion-presencial-db.test.ts`, bloque *"un pase anulado ya no se puede confirmar"* (4 casos, BD
+real). **Verificado en rojo:** sin el arreglo, el primer caso falla con el mensaje textual de produccion
+(`duplicate key value violates unique constraint "presencial_sessions_una_activa"`). El tercer caso es la
+contrapartida: una sesion en `discrepancia` **si** se puede reintentar, que es el camino normal de mirar la
+cedula juntos.
+
+### 8c · ⛔ "Load failed" Y "NetworkError": EL FALLO QUE MAS PASA ERA EL UNICO QUE NO SE VEIA  → `fix(encuesta,consentimiento)`
+
+**La respuesta a tu pregunta** (*"¿que ve el paciente cuando el envio final falla por red? ¿sabe que no se
+envio, o cree que termino?"*): **no veia NADA**. Ni error, ni pantalla de gracias. El boton pasaba de
+"Enviando..." a "Enviar" y ahi se quedaba.
+
+**POR QUE, y es una rama que nadie habia escrito.** Las acciones ya atrapan lo que falla **en el servidor**
+(un hipo del pooler, un 502 de Supabase) y devuelven un mensaje con palabras: eso se blindo el 7 de octubre.
+Pero si el telefono pierde la red **la peticion no llega**: la accion no corre, su `catch` tampoco, y lo que
+se rechaza es la promesa que despacha React. Ese rechazo no pasa por ningun `fail()`, asi que el `error` del
+estado **se queda en null**. El unico fallo que de verdad ocurre en un telefono era el unico sin rama.
+
+**Y EL INDICADOR DEL AUTOGUARDADO TENIA EL MISMO AGUJERO:** "No se pudo guardar el avance" solo se encendia
+con un error **devuelto**, o sea nunca con una caida de red.
+
+**UNA CORRECCION A TU LECTURA, que cambia donde estaba el problema:** el `select[name="sex"]` del evento del
+15-oct **no es de la encuesta, es de la pantalla de FIRMAR**. O sea que ese fallo fue en una accion del
+consentimiento, no del autoguardado. Asi que se cubrieron **las tres pantallas que corren en el telefono del
+paciente**, no solo la de la encuesta:
+
+| pantalla | acciones envueltas |
+|---|---|
+| la encuesta (fase 2) | enviar y autoguardar, por los dos caminos (paciente y profesional) |
+| la firma (fase 1) | firmar, pedir el codigo y comprobarlo |
+| el consentimiento presencial (QR) | confirmar |
+
+**QUE SE CAMBIO:**
+
+1. Cada accion pasa por un **envoltorio** que atrapa el rechazo y devuelve un estado con mensaje: *"Parece que
+   se cayo la conexion... no se perdio nada de lo que respondiste... vuelve a pulsar"*. El mensaje **habla de
+   la conexion**, porque es lo unico que lleva a la accion correcta, y **no promete** que la encuesta quedo
+   entregada: no se sabe.
+2. En la comprobacion del codigo se devuelve `retryable`, que ya existia: **no gasta intento** y el mismo
+   codigo se puede volver a comprobar.
+3. **El aviso se lleva a la vista.** El recuadro del error vive arriba del formulario y "Enviar" esta al final
+   de una seccion larga: un mensaje fuera de la pantalla no existe. Ahora se sube hasta el.
+4. **Se reporta a Sentry al atraparlo** (`reportClientError`, hermano de cliente de `reportServerError`, que
+   es `server-only` y no se puede importar desde una pantalla). Esto no es un detalle: **atrapar un error lo
+   saca del camino que lo reportaba solo**, asi que arreglar lo que ve el paciente no puede costarnos la
+   visibilidad. Sin esta linea, los eventos que te avisaron del problema habrian desaparecido.
+
+**LO QUE NO SE PUEDE ARREGLAR DESDE AQUI:** que la red se caiga. Si al paciente se le cae en el envio final,
+la encuesta no queda entregada; lo que cambia es que **lo sabe** y que tiene un boton que pulsar. Y lo que ya
+estaba bien sigue estando bien: el autoguardado manda el **snapshot completo**, asi que lo respondido no se
+pierde y el enlace retoma donde iba.
+
+**Y CIERRA EL 8a:** este es el mecanismo que dejo la evaluacion de la paciente en `awaiting_survey` con 22
+respuestas dentro. El envio se cayo, ella no se enterro, y la profesional encontro una encuesta a medias sin
+saber de donde salio.
+
+**Candado:** `un-fallo-de-red-no-puede-ser-mudo.test.ts` (9 casos). Es de codigo fuente a proposito, y la
+razon esta escrita en el archivo: lo que hay que garantizar es que **la rama exista** en cada pantalla
+publica; simular un fetch caido dentro de `useActionState` en jsdom probaria React, no esto. Exige de cada
+una: que ninguna accion entre **cruda** en `useActionState`, que el catch produzca mensaje **y** reporte, y
+que el mensaje hable de la conexion sin prometer nada.
+
+### 8d · 🔍 EL `ERR_CONNECTION_TIMED_OUT` DE UN SOLO INTEGRANTE: NO ES NUESTRO, Y SE PUEDE PROBAR
+
+**Lo primero, que descarta la sospecha del firewall:** un bloqueo del firewall de Vercel **no da un
+connection timeout**. Devuelve un **403** (o la pagina de desafio, en Attack Challenge Mode), o sea una
+respuesta HTTP, y queda listado en Vercel → Firewall. `ERR_CONNECTION_TIMED_OUT` es otra cosa: el navegador
+**no logro ni abrir la conexion TCP**. Nunca hubo peticion. Y eso explica por si solo que Sentry no registrara
+nada: **el silencio de Sentry es coherente, y es evidencia**, no una pista perdida.
+
+Tambien descartado por codigo: en Atlas **no hay nada que bloquee por IP**. `src/proxy.ts` (72 lineas) solo
+refresca la sesion y redirige login/dashboard, y `vercel.json` no tiene ni una regla de firewall, solo los
+cuatro crons.
+
+**LO QUE MEDI del dominio**, y es lo que da la hipotesis concreta:
+
+```
+atlas.cnvsystem.com  CNAME  43cb1460408f1782.vercel-dns-017.com
+                     A      64.29.17.66  y  216.198.79.66
+                     AAAA   (ninguno)
+```
+
+Dos cosas salen de ahi:
+
+- **Sin AAAA**, asi que el clasico "IPv6 roto" queda descartado.
+- Esas dos direcciones son los rangos **nuevos** de Vercel (`64.29.17.x` y `216.198.79.x`), no el viejo
+  `76.76.21.21`. Y ahi esta la hipotesis: **una ruta o un filtro de su ISP que no alcanza esos rangos** deja
+  a esa persona sin poder abrir el sitio mientras a todos los demas les abre, porque todos los demas salen
+  por otra red. Que otras apps le carguen no lo contradice: cada app esta en otras direcciones.
+
+**COMO SE COMPRUEBA EN DOS MINUTOS, y el orden importa:**
+
+1. **Que lo abra con DATOS MOVILES, con el wifi apagado.** Es la prueba decisiva, porque cambia de ISP sin
+   cambiar de aparato. Si asi abre, es su red: el computador y el celular fallaban juntos **porque estaban en
+   la misma red**, no porque sean dos problemas.
+2. Si quieres el detalle tecnico, que corra en su computador `ping 64.29.17.66` y `tracert 64.29.17.66`. Si
+   el ping no pasa y el tracert muere en un salto de su operador, ya esta nombrado donde se corta.
+3. Y el arreglo que suele bastar sin llamar al operador: **cambiar el DNS del equipo o del router a 1.1.1.1 u
+   8.8.8.8** y vaciar la cache (`ipconfig /flushdns`). Si su resolutor le estaba devolviendo una direccion
+   vieja o incompleta, eso lo cura.
+
+**DONDE MIRAR SI AUN ASI QUIERES VERIFICARLO POR NUESTRO LADO:** Vercel → el proyecto → **Firewall**, pestaña
+de eventos, filtrando por su IP. Ahi se veria cualquier `deny` o `challenge`. Mi apuesta es que esta vacio,
+y si lo esta, queda confirmado que nunca nos llego.
+
+**LO QUE PODEMOS HACER NOSOTROS SI SE REPITE con mas de una persona:** darle al dominio un segundo camino (un
+`A` adicional o pasar el dominio por un CDN propio). No vale la pena por un caso, pero si el mismo operador
+deja fuera a dos integrantes, eso cambia.
+
+---
+
+## 9 · DIMENSIONADO, NO CONSTRUIDO · Recalcular los diagnosticos cuando Gildardo corrija el motor
+
+**Tu propuesta era actualizar todos los diagnosticos; la direccion propuesta por Claude web era recalcular
+SIN SOBRESCRIBIR, con version nueva y la anterior como reemplazada.**
+
+**La respuesta corta: esa direccion es exactamente la que el sistema ya tiene construida, y hasta el nombre
+coincide.** No hay que diseñar un modelo de versiones del diagnostico. Lo que falta es **una condicion de tres
+lineas y un script**, mas dos decisiones que son tuyas y de Gildardo.
+
+### Lo que ya existe, y lo preveia por escrito
+
+El **flujo de correccion** (`correct-evaluation.ts`) hace esto desde agosto: **no edita ni borra nada**; crea
+una **version nueva de la evaluacion** (copia los insumos, recalcula diagnostico, tratamiento y reporte) y la
+encadena a la vieja en `clinical_corrections`, que por trigger marca la vieja como **reemplazada**. Todo en
+una transaccion: si algo falla, revierte entero y la vieja queda intacta y vigente.
+
+Y el disparador ya esta en el enum, con este nombre: **`recalibracion_ciencia`**. De `PLAN_FLUJO_CORRECCION.md`
+(linea 105), escrito antes de que existiera el problema:
+
+> *"Gildardo dijo: cuando exista la calibracion poblacional, los registros SE REEMITEN. Es el MISMO mecanismo
+> de sucesion, con un TRIGGER distinto (cambio de ciencia, no error del profesional)."*
+
+Hasta la pantalla lo rotula ya: *"Recalibracion cientifica"* en el historial de correcciones.
+
+### Tus cinco preguntas, con las cifras de la nube de hoy
+
+**(a) ¿El diagnostico admite mas de una version por evaluacion?** **No, y no hace falta.** Hay **un
+diagnostico por evaluacion**; las versiones viven **a nivel de EVALUACION**, encadenadas. El efecto es el que
+pediste: el vigente es el ultimo de la cadena, el anterior queda **reemplazado y legible**, con su informe tal
+como se entrego. Y las lecturas de seguimiento **ya filtran lo reemplazado** (el comparador, la serie y el
+aviso de trayectoria lo hacen hoy, con `superseded_at is null`): no hay que tocarlas.
+
+**(b) ¿Esta guardado todo lo que el motor necesita?** **Si.** La correccion copia la medicion cruda
+(`bis_raw_values`), las respuestas, las condiciones de la toma y los datos de la consulta, y **verifica en
+tiempo de ejecucion que la copia sea identica al origen**, abortando si no. Y hay un detalle que resuelve tu
+preocupacion de cronologia: **la `measurement_date` se PRESERVA** en la copia, asi que la version nueva sigue
+siendo la consulta de su dia, no la de hoy.
+
+**(c) ¿Que se rompe?** Tres cosas, de menor a mayor:
+
+1. **Nada en seguimiento ni en las bandas.** Ya esta resuelto por (a).
+2. **La historia del paciente se DUPLICA.** Cada recalculo crea una evaluacion nueva: **390 filas nuevas**, y
+   la ficha mostraria dos por consulta, una con el chip *"reemplazada"*. Es para lo que el mecanismo existe,
+   pero hay que saberlo antes, no despues.
+3. **Se rehace el tratamiento, y eso es una decision clinica, no tecnica.** Lo dice el propio codigo:
+   regenerar *"rehace la cascada, PIERDE EL TRATAMIENTO e invalida la aprobacion"*. **Aqui la nube nos salva:
+   los 394 tratamientos estan TODOS en `draft`, ninguno aprobado.** Pero *draft* no significa vacio: puede
+   llevar ajustes que el profesional hizo a mano, y la Regla 0 dice que **el motor propone y el profesional
+   dispone**. Recalcular los sobreescribe. **Y 16 reportes estan `sent`**, o sea en manos de pacientes: esos
+   16 se conservan intactos en la version vieja (es justo lo que pediste), pero son los 16 donde alguien ya
+   leyo una cifra que va a cambiar.
+
+**(d) ¿Cuanto tarda?** Son **392 diagnosticos**, no ~300. Medida real de una correccion completa (copia +
+verificacion + pipeline + encadenado + auditoria) contra base local: **entre 0,5 y 0,8 s**. Contra la nube,
+con latencia por sentencia, cuenta 1,5 a 3 s. O sea **entre 10 y 20 minutos** para los 390, en serie, una
+transaccion por evaluacion. **No es un problema de escala**: es un script que se corre una vez y se mira.
+
+**(e) ¿Hay una forma mejor?** La forma es esta. Lo que falta:
+
+### Los tres frenos que hoy lo impedirian (y los dos primeros son correctos)
+
+1. **⛔ EL FRENO DE LA VERSION DE ENCUESTA, Y ES EL QUE DECIDE SI ESTO SE PUEDE HACER.** El motor congelado
+   esta acoplado **caracter por caracter** a la encuesta VIGENTE, asi que una evaluacion de una version
+   anterior se **rechaza**: *"Esta evaluacion se hizo con una version anterior del cuestionario y no puede
+   recalcularse con el modelo actual."* Medido hoy: **390 de los 392 estan en la version vigente (la 6) y 2
+   estan en la 5**, asi que hoy casi todos son recalculables.
+   **PERO ESTA ES LA PREGUNTA QUE HAY QUE HACERLE A GILDARDO ANTES DE PROMETER NADA:** si su correccion toca
+   **solo formulas o umbrales**, esto se puede hacer. Si tambien **cambia la encuesta** (una pregunta, una
+   opcion, un orden), la version sube y **ninguna evaluacion anterior se puede recalcular**, por diseño y con
+   razon: el instrumento con que se pregunto no fue este. En ese caso la salida no es recalcular, es que el
+   vigente quede marcado como *calculado con una formula anterior* y el recalculo ocurra en la **siguiente
+   consulta** del paciente.
+2. **El freno de "no cambiaste nada".** Hoy una correccion sin cambios en los insumos se rechaza, y el motivo
+   es bueno: *"regenerar una version identica rehace la cascada, pierde el tratamiento e invalida la
+   aprobacion sin que nada haya cambiado"*. Pero un recalculo **no cambia ningun insumo**: lo que cambio es el
+   motor. **Es el unico cambio de codigo que hace falta**: que `recalibracion_ciencia` cuente como cambio por
+   si misma. Tres lineas, con su candado.
+3. **El freno de la asignacion.** Solo el profesional asignado puede corregir, y admin no. Es correcto para
+   una correccion (es un acto clinico suyo), pero una recalibracion **no es un acto de nadie en consulta**: la
+   dispara la ciencia. Hay que decidir **a nombre de quien queda** (mi lectura: a nombre del sistema, con el
+   motivo citando la version del motor y el documento de Gildardo, y **sin** sellar `confirmed_by` de un
+   profesional que no miro nada).
+
+### Lo que recomiendo, y es poco
+
+- **Que el recalculo marque la diferencia clinicamente relevante**, como pediste. Sale gratis: el motivo de la
+  correccion es texto libre y el estado EFR viejo y el nuevo estan los dos en la cadena. Lo que si hay que
+  decidir es **que se considera relevante** (cambiar de estado EFR / de sector FyR / de clasificacion de un
+  indicador), y eso lo dice Gildardo, no nosotros.
+- **Que se corra en ENSAYO primero**, igual que los scripts del arranque: una pasada que diga cuantas
+  cambiarian, cuantas cambian de estado y cuales se rechazan, **sin escribir nada**. Con 392 filas eso es un
+  minuto y evita descubrir el problema a mitad.
+- **Y la pregunta de orden, que es tuya:** los **16 reportes ya enviados**. Recalcular no los toca, pero deja
+  al paciente con un informe en la mano que ya no es el vigente. Si eso se avisa o no, y como, es una decision
+  de direccion.
+
+**No se construyo nada.** El orden es: confirmar si el cambio toca la encuesta (el freno 1), levantar el
+freno 2 con su candado, decidir el actor (freno 3), correr el ensayo, y despues la pasada real.
+
+### ⚠ Y LA PRIMERA PREGUNTA YA TIENE RESPUESTA: sus tres entregas que estan en el disco NO disparan esto
+
+Al buscar el freno de la version de encuesta encontre que **las entregas de Gildardo ya estan aqui**, sin
+commitear, en `docs/entregas/Gildardo responses/Nuevos cambios html/`: **v10 (27-sep), v11 (29-sep) y v12
+(12-oct)**, cada una con su documento de cambios. Lei los tres documentos (no los HTML), y las tres dicen lo
+mismo con sus palabras:
+
+| entrega | lo que dice el propio documento |
+|---|---|
+| **v10** | *"No se toco ningun calculo, ninguna formula, ningun umbral clinico ni ningun flujo de guardado."* Agrega **un modulo nuevo y nada mas**: Bodega CNV. |
+| **v11** | *"No se toco el consentimiento, ni el motor clinico, ni la IA, ni ningun umbral diagnostico."* |
+| **v12** | *"No se toco el consentimiento, ni los clasificadores, ni los umbrales diagnosticos, ni la IA, ni Bodega, ni CNVResearch, ni la impresion del plan nutricional."* |
+
+**O sea que a hoy NO hay nada que recalcular**, y la seccion de arriba es preparacion, no trabajo pendiente.
+Lo que si viene de ahi, y es distinto:
+
+- **Dos numeros que Gildardo todavia no ha entregado**, y son los que SI dispararian esto cuando lleguen: los
+  **limites del control de calidad biologico** (v12 §2, Cole-Cole y antropometria, *"limites pendientes de
+  Gildardo"*) y los **cortes de la Diana EFR en semaforo** (v12 §4, *"cortes pendientes de Gildardo"*). El
+  primero es de la familia del `SANITY` del import de Biody: un cinturon que **decide sobre un paciente**, asi
+  que **no se escribe sin su fuente al lado** (CLAUDE.md, lo clinico).
+- **Dos cambios de la cadena CALORICA, que no son del diagnostico:** la cascada de macros (v11 §1) y
+  Harris-Benedict sobre **peso meta + 10 %** (v12 §6). Eso mueve la PRESCRIPCION, no un diagnostico sellado,
+  asi que no entra por este mecanismo. Y la nube ayuda: **los 394 tratamientos estan en `draft`, ninguno
+  aprobado**, asi que no hay prescripcion firmada que un cambio de formula contradiga.
+- **Y v12 pide cosas que no son del motor** y van por su propio camino (orden de la lista de pacientes,
+  eliminar perfil con su policy y auditoria, entrar directo a la encuesta, el flujo guiado del nutricionista).
+  Eso es trabajo aparte, no recalibracion.
+
+### 🧹 Y UN DETALLE DE HIGIENE, antes de que se commitee por accidente
+
+Esa carpeta pesa **4,4 MB** y lleva **tres HTML de 1,5 MB cada uno**. El `.gitignore` tiene la regla
+`docs/entregas/gildardo-*/ATLAS_*.html` para no versionar justamente esos archivos, pero **esta carpeta no
+coincide con el patron** (se llama `Gildardo responses/Nuevos cambios html/`). Asi que un `git add .` los
+mete al repositorio. Si la convencion sigue siendo no versionarlos, hay que **ampliar la regla a
+`docs/entregas/**/ATLAS_*.html`** y dejar solo los tres documentos de cambios, que son texto y si valen la
+pena en la historia. **No lo cambie**: es tu repositorio y tu decides que entra.
