@@ -394,3 +394,194 @@ tampoco lo hice: espero su visto bueno.
    prevé un consentimiento adicional para la publicación identificada. Su punto 12 está cerrado.
 5. **Y la cifra que cambia cómo se diseña el observatorio: 53 de 402 pacientes NO autorizaron
    investigación, y 4 la revocaron.** Su CNVResearch exporta a todos. El de Atlas no va a poder.
+
+---
+---
+
+# Segunda pasada (2026-10-24, tarde): lo que Santiago pidió verificar en Atlas
+
+**Lo que sigue no es el informe de arriba revisado: son los seis puntos concretos que Santiago pidió
+comprobar DENTRO de Atlas, con el veredicto medido en el código y en producción.** Él leyó la v11 así: lo
+cerrado por el informe de arriba (5.1, 5.3, 5.4, 5.5, 7.1, 7.2, 7.3 y 8) queda cerrado.
+
+## V11-1 · Nutrición: el defecto del HTML **no puede ocurrir en Atlas**. CERRADO
+
+**El defecto del HTML, dicho por él:** al guardar no se escribían `fat_g` ni `cho_g`, así que cambiar las
+calorías o la proteína dejaba la grasa y el carbohidrato en su valor viejo.
+
+**En Atlas eso no es posible, y la razón es de forma, no de cuidado: Atlas no GUARDA la grasa ni el
+carbohidrato.** Los deriva, cada vez, en un solo sitio:
+
+| | |
+|---|---|
+| Lo que se guarda | solo los **ajustes** del profesional: `kcalObj`, `protGkg`, `fatPct`, `deficit`, `geb`, `pal`, el peso meta |
+| Lo que se deriva | `protG`, `protKcal`, `fatG`, `fatKcal`, `choKcal`, `choG`, `choPct`, las porciones y el ICN |
+| Dónde | `computeProtocoloEfectivo` a `computeProtocoloCalorico` (`clinical-engine/protocolo-calorico.ts:178-215`), con las líneas de su archivo anotadas al lado de cada paso (`:14130` a `:14137`) |
+
+**Y las cuatro superficies leen esa misma función**, verificado archivo por archivo: el panel de tratamiento
+(`treatment-panel.tsx:606`), la tabla de validación del ICN (`:3326`), la historia clínica
+(`reports/data/hc-composicion.ts:1`) y, por la HC, la impresión. **No hay dos cálculos que puedan
+divergir**, que es justo el defecto del HTML: ahí el valor guardado y el valor en pantalla eran dos cosas.
+
+**Así que no hay nada que portar, y hay algo que NO portar.** Su `_sintMacro` (HTML:12144) tiene el error que
+ya le reporté (`fatG * 9` donde la fórmula viva usa `fatKcal`). Portarlo sería traer a Atlas el defecto que
+Atlas no tiene.
+
+> **Lo único que queda por verificar aquí es de navegador, no de código:** que al cambiar las calorías en la
+> pantalla, la tabla del ICN se repinte antes de guardar. El cálculo es síncrono y vive en el render, así
+> que debe hacerlo; pero esta es una de las ocho familias de defecto que solo se ven en un navegador real
+> (CLAUDE.md), y el smoke lo confirma en un minuto.
+
+## V11-2 · El ICN: dónde se imprime. **PROPUESTA**
+
+Ya está resuelto que se ve siempre y sin reja de profesión. Lo que falta es en qué documento se imprime, y
+hoy **no está en ninguno**: la tabla vive en el panel de tratamiento, que es pantalla de trabajo.
+
+**Mi propuesta: en la historia clínica, no en el plan del paciente.** Tres razones, y la tercera es la que
+decide:
+
+1. **El ICN es una validación del plan, no una instrucción para el paciente.** Dice si el plan cubre los
+   requerimientos; el paciente no actúa sobre un ICN de 0,87.
+2. **La HC ya es el documento del profesional** y ya lleva la composición derivada de la misma función, así
+   que la tabla entra donde sus insumos ya están.
+3. **El plan del paciente es la hoja que se imprime y se entrega**, y meter una tabla de catorce nutrientes
+   con semáforos convierte una hoja de "qué come" en un informe técnico. Es la misma línea que ya seguimos
+   con la EB-BIS: al paciente se le dice la evolución, no el constructo.
+
+**Es su decisión por Regla 0** (el documento es suyo), pero la pieza ya está: la tabla se calcula en
+`computeValidacion` y la HC ya importa la función que le da los insumos. Construirlo es mover un bloque.
+
+## V11-3 · El botón de impresión global: **DIMENSIONADO**. La maquinaria ya existe
+
+Lo que Atlas ya tiene construido, y es casi todo:
+
+- **La regla de impresión** (`globals.css:363-388`): oculta todo lo que no sea la hoja `.imprimible`, usando
+  `:has()` para no esconder la cadena de ancestros. Lleva dentro dos defectos ya resueltos y escritos: el
+  `visibility` que paginaba trece hojas en blanco, y las dos hojas montadas a la vez.
+- **`imprimirHoja(elemento)`** (`components/shared/imprimir-hoja.ts`): marca la hoja activa, imprime, y
+  limpia la marca al terminar **o al cancelar**. Con su candado (`imprimir-una-hoja.test.ts`).
+- **Cuatro hojas ya marcadas**: el diagnóstico, la hoja del DFI, la HC SOAP y el plan del paciente.
+
+**Así que el botón global no es un desarrollo nuevo: es un botón en la barra que llame a `imprimirHoja` con
+el panel activo.** Lo que cuesta de verdad es lo otro:
+
+| | |
+|---|---|
+| El botón en la barra, con la hoja activa | **pequeño**, la función ya existe |
+| Marcar como `.imprimible` los paneles que todavía no lo están | **mediano**: son las pestañas de Antropometría, Encuesta y Tratamiento |
+| **Que lo impreso se lea como un documento** | **el trabajo de verdad** |
+
+La última fila es la que hay que decir antes de prometer el botón. La regla de impresión **no quita los
+controles**: si una pestaña de trabajo se marca imprimible tal cual, en el papel salen los desplegables, los
+campos de texto y los botones, vacíos y sin borde. Cada panel necesita su pasada de estilo de impresión
+(ocultar controles, soltar los `overflow`, no cortar las tablas entre hojas). Es lo que distingue el botón de
+las cuatro hojas que ya existen: esas se diseñaron para el papel.
+
+**Mi recomendación: el botón sí, y panel por panel.** Se empieza por el que él nombra (la subpestaña de
+Nutricionista) y se añade cada uno cuando su hoja esté presentable, no todos a la vez con el aspecto de una
+captura de pantalla.
+
+## V11-3b · Lo que registra imprimir el plan, y por qué está así
+
+Santiago preguntó qué registra y por qué, antes de quitarlo. **Registra una emisión de prescripción**
+(`registrarPlanImpresoAction`, que llama a `emitirPrescripcion(..., "impresa")`), y eso guarda **una copia
+inmutable de lo que se imprimió**: no un marcador de "ya se entregó", sino el contenido exacto que el
+paciente recibió.
+
+**Y la decisión es suya, del 9 de septiembre.** Antes había un botón aparte, "Entregado en consulta", que
+**sellaba** la prescripción: a partir de ahí quedaba bloqueada y corregir una coma exigía reabrirla con un
+motivo escrito. Usted lo reportó como confuso y tenía razón: eran tres cosas que el profesional sufre para
+conseguir una que importa. Se cambió por esto, y a la vez **emitir dejó de cerrar**: la prescripción sigue
+abierta y dos impresiones dejan dos líneas que dicen la verdad ("se imprimió dos veces").
+
+**Mi recomendación: no quitarlo, y el argumento es el coste.** Esto **no le cuesta un clic a nadie**: ocurre
+sobre la impresión que el profesional hace de todos modos. Lo que se perdería al quitarlo es la única copia
+de qué plan se entregó, que es la pregunta que no se puede contestar después. Y si el problema es que los
+nutricionistas casi no usan el plan, **lo que sobra es el plan, no su registro**: el día que se decida
+retirar esa hoja, el registro se va con ella sin que haya que decidirlo aparte.
+
+Un límite que conviene tener escrito, y ya está en el código: `window.print()` no informa de si se imprimió o
+se canceló. Así que esto registra que el plan **se mandó a imprimir**. Es la afirmación que el sistema puede
+sostener.
+
+## V11-4.1 · Autoguardado: su lectura es correcta, y la confirmo
+
+**"Superado" en lo primero:** en Atlas los datos no viven en la pantalla. La medición entra a
+`bis_measurements` y `bis_raw_values` al importar, la encuesta a `survey_answers` al responder, y el
+tratamiento guarda sus ajustes en su propia fila. No hay nada que un botón de "forzar el guardado" pueda
+rescatar, porque no hay estado que solo exista en el navegador.
+
+**"Choca" en lo segundo, y la razón es la regla dura 7.** Confirmar un diagnóstico es un acto clínico que
+sella una constelación de versiones (`engine_version`, `model_version_id`, `rules_version`,
+`survey_version_id`) y queda en `clinical_audit_log` con quién lo confirmó. **Un sello automático es un sello
+sin autor.** El que firma tiene que ser una persona que decidió firmar.
+
+Y hay un matiz que vale la pena, porque es el mismo defecto visto del otro lado: **lo que sí hace falta es
+que un borrador no se pierda**, y eso ya está resuelto por otro camino (las etapas visitadas no se desmontan,
+precisamente para no perder el borrador del tratamiento, como dice el comentario de `imprimir-hoja`).
+
+## V11-4.2 · La consulta duplicada por fecha: **ES LO MISMO QUE LOS ERRORES 1 Y 2 DE LA v7**
+
+Santiago pidió mirarlos juntos, y tenía razón en sospecharlo. **Son el mismo defecto en dos sistemas.**
+
+En el HTML: la consulta se identifica por `fechaConsulta`, así que dos consultas del mismo día colisionan.
+En Atlas: nada impide que el mismo archivo del equipo se importe dos veces, ni que se importe al paciente
+equivocado. **Resultado medido: 11 grupos de mediciones con los crudos idénticos, 5 de ellos repartidos entre
+pacientes DISTINTOS.** El detalle completo está en `EB_BIS_V7_LO_QUE_TOCA_ANTES_DE_CONSTRUIR_2026-10-24.md`
+secciones 0 y 3, con el freno que propongo.
+
+**Lo que esto cambia en la lectura de la v11:** su punto 4.2 no era un detalle de su prototipo. Era la pista
+de un defecto que Atlas también tiene, por otro mecanismo, y que ya metió el dato de salud de una persona en
+la historia de otra. **Es el hallazgo más grave de las dos pasadas de la v11.**
+
+## V11-5.2 · El código de paciente: la vista del punto 1. **CONSTRUIDO**
+
+La lectura de Santiago es la correcta: el seudónimo reemplaza al documento en la exportación, y solo salen
+los que autorizaron investigación. Eso ya no depende de que cada consulta se acuerde:
+
+**Migración 0224**, dos vistas hermanas de `ventas_reales`:
+
+- **`evaluaciones_vigentes`**: no de prueba, no reemplazada, no retirada. **Sin** la fecha de arranque, que
+  es de lo comercial (la 0219 ya lo había dejado escrito, y la lectura de Santiago coincidía con ella).
+- **`evaluaciones_para_investigacion`**: lo anterior **más la autorización `investigacion` vigente**.
+
+Las dos con `security_invoker`, revocadas a `anon` y `authenticated`, con las columnas enumeradas una por una
+y **cero columnas que identifiquen a un paciente**: van los identificadores técnicos para poder unir, y la
+constelación de versiones del diagnóstico, que es lo que permite no mezclar motores en un mismo dataset.
+
+**Y la respuesta directa a su pregunta sobre el seudónimo:** no, no es el documento. El documento no sale.
+Cuando haya que entregar un dataset, el seudónimo se construye sobre `patient_id` (un UUID que ya no dice
+nada por sí solo), igual que hace hoy el CSV de la cohorte.
+
+## V11-6.1 · Dos roles en un usuario: **SÍ, y hoy nadie los tiene**
+
+| | |
+|---|---|
+| ¿El modelo lo permite? | **Sí.** `user_roles` es N:N y `CurrentUser.roles` es un **arreglo**; las policies preguntan con `hasAnyRole`, no con una igualdad. |
+| ¿Hay que cambiar código? | **No.** Dar a Gildardo `professional` más `obbia` son **dos filas** en `user_roles`. |
+| ¿Cuántos usuarios tienen dos hoy? | **Ninguno.** Medido: 18 usuarios, todos con un rol. |
+| ¿Cuántos tienen `obbia`? | **Ninguno.** El rol existe y su panel está construido, sin nadie asignado. |
+
+**Y lo que sí hay que mirar antes de dárselo**, porque es la parte que no se ve: la policy `canViewObbia`
+dice que *"obbia NUNCA accede a PII: su única fuente por RLS es `research_datasets`"*, con su candado
+(`obbia-no-pii.test.ts`). **Eso sigue siendo cierto para el rol, pero deja de ser cierto para la PERSONA**:
+Gildardo con los dos roles ve la PII por su rol de profesional, que es correcto y es lo que ya hace. Lo que
+no se puede afirmar después es "quien entra a CNVResearch no ve PII". Es una frase sobre el rol, no sobre el
+usuario, y conviene no confundirlas cuando se escriba la política de acceso al observatorio.
+
+**Y el dato que hace esto urgente de otra manera:** `research_datasets` tiene **0 filas** y su
+`anonymization_level` solo admite `aggregate` y `anonymized`. Así que hoy el único rótulo disponible para el
+dataset que él quiere es `anonymized`, que es precisamente la afirmación que su propia nota advierte que no
+se puede hacer ante un comité de ética. Abrir el vocabulario a `pseudonymized` es gratis mientras la tabla
+esté vacía.
+
+## V11-6.1b · El React #310 de su CNVResearch
+
+No lo arreglé, y quiero decir por qué antes de que parezca un olvido. El error #310 es *"se renderizaron más
+hooks que en el render anterior"*: un `useState` o un `useEffect` dentro de una condición, o después de un
+`return` temprano. Encontrarlo en el archivo minificado es viable (son 385 líneas del módulo), pero
+**arreglarlo en una copia local tiene un riesgo que no compensa**: si la copia arreglada se aparta del
+original, Santiago cotejaría contra una pantalla que no es la de Gildardo, y la Regla 0 dice que el archivo
+manda. **Lo que propongo en su lugar: decírselo a Gildardo.** Es su archivo, es un fallo de su código, y él lo
+arregla en una línea con el stack sin minificar. Mientras tanto el cotejo de esa pantalla espera, y no
+bloquea nada de Atlas: la pantalla de investigación de Atlas la diseñamos nosotros (sus puntos 6.2 y 6.3).
