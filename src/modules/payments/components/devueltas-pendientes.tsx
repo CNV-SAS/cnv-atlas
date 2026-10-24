@@ -66,7 +66,7 @@ function FilaDevuelta({
               disabled={pending}
               className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
             >
-              <option value="">— Elegir —</option>
+              <option value="">Elegir...</option>
               {destinos.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.nombre}

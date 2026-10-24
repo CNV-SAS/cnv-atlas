@@ -163,7 +163,7 @@ export function RevisionImportacion({
           disabled={pending}
           className="w-fit rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
         >
-          <option value="">— Elegir —</option>
+          <option value="">Elegir...</option>
           {profesionales.map((p) => (
             <option key={p.id} value={p.id}>
               {p.nombre} · {p.correo}
