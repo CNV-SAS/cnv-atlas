@@ -215,13 +215,56 @@ está entero fuera de git.
 
 | archivo | filas | contenido |
 |---|---|---|
-| `eb-bis-de-gildardo.csv` | **9** | identificado (nombre y documento), solo sus pacientes |
-| `eb-bis-cohorte.csv` | **361** | seudonimizado, toda la cohorte real |
+| `eb-bis-cohorte.csv` | **366** | seudonimizado, toda la cohorte real. **Es el único que sale por defecto** |
+| `eb-bis-de-gildardo.csv` | 9 | identificado (nombre y documento), solo sus pacientes. Solo con `--identificado` |
 
 > ⚠ **Nueve filas no alcanzan para ver el patrón de una fórmula.** Las nueve evaluaciones con diagnóstico
 > asignadas a usted son muy pocas, y además la cohorte está concentrada: 306 de las 361 son de una sola
 > integrante. El archivo que responde la pregunta es el de la cohorte, y al no llevar nombre ni documento se
 > puede compartir con mucho menos riesgo. El enlace entre los dos archivos es el id de la evaluación.
+
+**Actualización del 2026-10-24.** Usted pidió solo el archivo de cohorte, con cinco columnas más de
+composición, y dijo que el identificado no hace falta. Así quedó:
+
+- **El identificado dejó de generarse por defecto.** Ahora hace falta pasar `--identificado` a propósito.
+  Un archivo con nombre y cédula que se escribe sin que nadie lo pida es un archivo que alguien encuentra
+  después sin saber qué trae.
+- **La cohorte subió de 361 a 366 filas.** Son cinco evaluaciones diagnosticadas entre el 22 y el 24 de
+  octubre, con los mismos filtros. Las cifras del cuerpo de este informe son las de las 361; el orden de
+  magnitud no se mueve (EB-BIS media 29,91 contra 29,90; ICEC 76,74 contra 76,78).
+
+### 5.1 · Las cinco columnas de composición, y la que casi no existe
+
+| columna | filas con dato | de 366 | distribución |
+|---|---|---|---|
+| `peso_kg` | **366** | completa | media 73,67 · sd 14,81 · 47,0 a 134,0 |
+| `talla_cm` | **366** | completa | media 163,96 · sd 8,55 · 141,4 a 188,5 |
+| `MLG_kg` | **366** | completa | media 50,05 · sd 9,84 · 34,11 a 84,99 |
+| `ACT_L` | **366** | completa | media 35,71 · sd 7,28 · 24,89 a 61,68 |
+| `masa_seca_sin_grasa_kg` | **366** | completa | media 14,34 · sd 2,73 · 7,99 a 23,30 |
+| `fuerza_prensil_kgf` | **36** | ⚠ **330 vacías** | media 28,61 · sd 6,93 · 19,0 a 45,2 |
+
+Tres cosas sobre esas columnas:
+
+1. **El peso y la talla son los de LA MEDICIÓN, no los de la ficha de hoy, y no había manera de
+   equivocarse.** `patient_profiles` no guarda peso ni talla: el único sitio donde existen es
+   `bis_raw_values`, atado a la toma BIS. Si alguna vez se corrigió a mano (peso, estatura, cintura o
+   cadera, y solo antes del diagnóstico), lo que va en el CSV es el valor vigente, y el crudo original del
+   aparato queda aparte como evidencia.
+
+2. **La masa seca sin grasa la guarda el equipo, así que va la del equipo y no la calculamos.** Usted
+   ofreció calcularla como MLG − ACT por si no la teníamos. La tenemos, en las 366 filas. Y de paso
+   verifiqué su cuenta contra la del aparato: coinciden en las 366, con una diferencia máxima de
+   **0,001 kg**, que es el redondeo. O sea que su fórmula es exactamente la del equipo; lo que va en el CSV
+   es el campo medido, no una cifra nuestra.
+
+3. **La fuerza prensil la tienen 36 de 366 filas, y eso es un 10%.** No es un hueco de la base: es que la
+   mide el profesional con dinamómetro, es opcional en la pantalla de entrada, y casi nadie la registra.
+   **Con 36 filas no se sostiene un análisis**, y menos repartidas entre integrantes. Si la prensil va a
+   entrar en la revisión de los indicadores, la conversación previa es otra: que deje de ser opcional, o
+   que se mida en una cohorte a propósito. Como está, la columna sirve para mirar casos, no para medir.
+   Con un detalle que apunta a lo mismo: **usted sí la registra.** De sus nueve filas diagnosticadas, siete
+   traen prensil; de las 357 restantes, veintinueve. El dato no falta porque sea difícil de tomar.
 
 ### Diccionario de columnas
 
@@ -240,6 +283,13 @@ está entero fuera de git.
 | `AF` | ángulo de fase a 50 kHz (grados) |
 | `R50`, `Xc50`, `Fo` | resistencia y reactancia a 50 kHz, y frecuencia característica |
 | `origen_crudos` | `medido` = lo trajo el equipo · `derivado` = lo reconstruyó la derivación de espectro |
+| `peso_kg` | peso en kg **a la fecha de la medición** (columna `Peso kg` del export) |
+| `talla_cm` | talla en cm a la fecha de la medición (columna `Altura cm`) |
+| `MLG_kg` | masa libre de grasa, kg (columna `Masa sin grasa`, valor calculado del equipo) |
+| `ACT_L` | agua corporal total, litros (columna `Agua total`, valor calculado del equipo) |
+| `masa_seca_sin_grasa_kg` | kg, **la del equipo** (columna `Masa seca sin grasa`), no calculada por nosotros |
+| `origen_composicion` | lo mismo que `origen_crudos`, para las cinco columnas de arriba |
+| `fuerza_prensil_kgf` | Kgf del dinamómetro. **Vacío = no se midió** (es opcional), no "falta el dato" |
 | `IFC`, `PABU` | sin redondear, como los selló el motor |
 | `ICEC_LE8` | el total del LE8 (0-100) con el que se calculó la EB-BIS |
 | `EB_BIS`, `IAE` | las dos salidas, con un decimal |
