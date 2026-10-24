@@ -264,6 +264,9 @@ export async function writePipeline(
             patientId: input.patientId,
             evaluationId: input.evaluationId,
             currentEb: output.indicators.eb ?? null,
+            // LA VERSION DEL MOTOR QUE ACABA DE CALCULAR ESTA EB: es la misma que se sella en el
+            // diagnostico y en el snapshot, asi que la banda no puede quedar comparando otra cosa.
+            currentEngineVersion: output.versions.engine,
           })
         : null;
 

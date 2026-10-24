@@ -29,6 +29,15 @@ function ebOf(reports: { snapshot: unknown }[] | { snapshot: unknown } | null | 
   return eb == null ? null : Number(eb);
 }
 
+// La version del motor sellada en el snapshot. Del MISMO sitio que la EB, por la misma razon que en el
+// sellado: la resta se hace entre dos snapshots.
+function versionOf(
+  reports: { snapshot: unknown }[] | { snapshot: unknown } | null | undefined,
+): string | null {
+  const r = Array.isArray(reports) ? reports[0] : reports;
+  return (r?.snapshot as { versions?: { engine?: string | null } } | undefined)?.versions?.engine ?? null;
+}
+
 // `dfi.complete` sellado en el snapshot del reporte. undefined si no hay reporte (sin sellar aun).
 function dfiCompleteOf(
   reports: { snapshot: unknown }[] | { snapshot: unknown } | null | undefined,
@@ -40,7 +49,10 @@ function dfiCompleteOf(
 export type TrajectoryNotice =
   | { kind: "no_prior" }
   | { kind: "interval_too_short"; nearestWeeks: number }
-  | { kind: "incompleto" }; // la encuesta incompleta suprime la banda (D-007): el paciente no ve el cambio
+  | { kind: "incompleto" } // la encuesta incompleta suprime la banda (D-007): el paciente no ve el cambio
+  // LA PREVIA SE CALCULO CON OTRA VERSION MAYOR DEL MOTOR: no se resta. No es accionable esperando (a
+  // diferencia del intervalo), se resuelve recalculando esa evaluacion con el motor vigente.
+  | { kind: "otra_version_del_motor"; versionPrevia: string };
 
 export async function getTrajectoryNotice(evaluationId: string): Promise<TrajectoryNotice | null> {
   const supabase = await createSupabaseServerClient();
@@ -61,6 +73,7 @@ export async function getTrajectoryNotice(evaluationId: string): Promise<Traject
 
   const currentDate = latestMeasDate(current.bis_measurements);
   const currentEb = ebOf(current.reports);
+  const currentVersion = versionOf(current.reports);
   if (!currentDate || currentEb == null) return null;
 
   // Previas VIGENTES del paciente con EB sellada + fecha de medicion (misma disciplina que C2-a).
@@ -79,10 +92,14 @@ export async function getTrajectoryNotice(evaluationId: string): Promise<Traject
     evaluationId: e.id,
     date: latestMeasDate(e.bis_measurements) ?? "",
     eb: ebOf(e.reports),
+    engineVersion: versionOf(e.reports),
   }));
 
-  const result: TrajectoryResult = resolveTrajectory(currentDate, currentEb, priors);
+  const result: TrajectoryResult = resolveTrajectory(currentDate, currentEb, priors, currentVersion);
   if (result.kind === "band") return null; // hay banda comparable: el reporte la comunica, no hay aviso
   if (result.kind === "interval_too_short") return { kind: "interval_too_short", nearestWeeks: result.nearestWeeks };
+  if (result.kind === "otra_version_del_motor") {
+    return { kind: "otra_version_del_motor", versionPrevia: result.versionPrevia };
+  }
   return { kind: "no_prior" };
 }

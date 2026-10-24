@@ -24,7 +24,13 @@ import {
 // funcional, como en la 1a medicion.
 export async function computeTrajectoryToSeal(
   tx: DbTransaction,
-  args: { patientId: string; evaluationId: string; currentEb: number | null },
+  args: {
+    patientId: string;
+    evaluationId: string;
+    currentEb: number | null;
+    /** La version del motor con la que se acaba de calcular `currentEb`. Sin ella no hay comparabilidad. */
+    currentEngineVersion: string | null;
+  },
 ): Promise<EbTrajectory | null> {
   if (args.currentEb == null) return null; // sin EB actual no hay con que comparar (degradado)
 
@@ -43,6 +49,10 @@ export async function computeTrajectoryToSeal(
       evaluationId: evaluations.id,
       date: bisMeasurements.measurementDate,
       ebText: sql<string | null>`(${reports.snapshot} #>> '{indicators,eb}')`,
+      // LA VERSION CON LA QUE SE SELLO ESA EB. Sale del MISMO snapshot que la cifra, no de
+      // `diagnoses.engine_version`: la resta se hace entre dos snapshots, asi que la version tiene que
+      // venir de donde viene el numero.
+      engineVersion: sql<string | null>`(${reports.snapshot} #>> '{versions,engine}')`,
     })
     .from(evaluations)
     .innerJoin(reports, eq(reports.evaluationId, evaluations.id))
@@ -60,10 +70,11 @@ export async function computeTrajectoryToSeal(
       evaluationId: r.evaluationId,
       date: new Date(r.date as unknown as string).toISOString(),
       eb: r.ebText == null || r.ebText === "" ? null : Number(r.ebText),
+      engineVersion: r.engineVersion,
     }))
     // Mas reciente primero (measurement_date desc): lo que pickComparablePrior espera.
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
-  const result = resolveTrajectory(currentDate, args.currentEb, priors);
+  const result = resolveTrajectory(currentDate, args.currentEb, priors, args.currentEngineVersion);
   return result.kind === "band" ? result.trajectory : null;
 }
