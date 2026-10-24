@@ -79,3 +79,13 @@ export const resetUserMfaSchema = z.object({
 
 // Estado para los formularios de admin (useActionState).
 export type AdminFormState = { error: string | null; success: string | null };
+
+// EL ROL DE UN USUARIO QUE YA EXISTE (Santiago, 2026-10-24). `user_roles` es N:N desde el principio, pero
+// solo se escribia al crear la cuenta y con un rol: el modelo admitia dos y el sistema no tenia forma de
+// dar el segundo.
+export const rolDeUsuarioSchema = z.object({
+  userId: z.guid({ message: "Falta el usuario." }),
+  rol: z.enum(["admin", "direccion", "soporte", "obbia", "professional"], {
+    message: "Elige un rol válido.",
+  }),
+});
