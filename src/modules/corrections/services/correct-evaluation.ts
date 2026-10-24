@@ -30,6 +30,7 @@ import {
 import { writePipeline } from "@/modules/clinical-pipeline/data/pipeline-writer";
 import {
   buildEngineInput,
+  edadParaDiagnosticar,
   sexoParaDiagnosticar,
   type SurveyFieldAnswer,
 } from "@/modules/clinical-pipeline/services/build-engine-input";
@@ -338,6 +339,16 @@ export async function correctEvaluation(
   const sexo = sexoParaDiagnosticar(inputs.sex);
   if (!sexo.allowed) return err(appError("validation", sexo.message));
 
+  // Y LA DE LA EDAD, por la misma razon que la del sexo y en el mismo sitio: este es el OTRO camino al
+  // motor, y es ademas el que recorre la correccion versionada de las tres evaluaciones que quedaron con
+  // una edad inventada. `computeAge` ahora LANZA; sin esta puerta, corregir una de ellas con la fecha
+  // todavia vacia seria un 500 en vez de una frase que dice que falta.
+  const edad = edadParaDiagnosticar(
+    inputs.birthDate,
+    inputs.measurementDate ? new Date(inputs.measurementDate) : new Date(),
+  );
+  if (!edad.allowed) return err(appError("validation", edad.message));
+
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una versión del modelo activa."));
 
@@ -345,6 +356,7 @@ export async function correctEvaluation(
     {
       sex: inputs.sex,
       birthDate: inputs.birthDate,
+      measurementDate: inputs.measurementDate,
       surveyAnswers: engineAnswers,
       expectedFieldKeys: inputs.expectedFieldKeys,
       bisRaw: inputs.bisRaw,

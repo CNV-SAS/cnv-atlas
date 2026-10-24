@@ -39,6 +39,30 @@ export const sexoPacienteSchema = z.object({
   sex: z.enum(["F", "M"], { message: "Elige Femenino o Masculino." }),
 });
 
+// COMPLETAR LA FECHA DE NACIMIENTO QUE FALTA. `YYYY-MM-DD` exacto, que es lo que exige `computeAgeYears`
+// (la lectura estricta del consentimiento, la misma que usa el pipeline clinico desde el 2026-10-24).
+//
+// LOS DOS CINTURONES SON DE LO IMPOSIBLE, NO DE LO IMPROBABLE (Regla 0): una fecha POSTERIOR A HOY no es
+// una fecha de nacimiento de nadie, y una edad mayor de 130 anos tampoco. Son los dos casos que de verdad
+// aparecieron (el ano de cinco digitos del tecleo y el 1795 del import). No se pone ningun corte por
+// "paciente muy joven": eso si seria una cifra nuestra decidiendo sobre un paciente.
+export const fechaDeNacimientoPacienteSchema = z.object({
+  patientId: z.guid(),
+  birthDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "La fecha tiene que ir como AAAA-MM-DD." })
+    .refine(
+      (v) => {
+        const n = new Date(`${v}T00:00:00Z`);
+        if (Number.isNaN(n.getTime())) return false;
+        const hoy = new Date();
+        if (n.getTime() > hoy.getTime()) return false;
+        return hoy.getUTCFullYear() - n.getUTCFullYear() <= 130;
+      },
+      { message: "Esa fecha no corresponde a una persona viva. Revísala con el paciente." },
+    ),
+});
+
 export const contactoPacienteSchema = z.object({
   patientId: z.guid(),
   email: z
@@ -74,4 +98,17 @@ export const correccionDeSexoSchema = z.object({
     .trim()
     .min(10, { message: "Escribe por qué se corrige, con al menos 10 caracteres." })
     .max(300, { message: "El motivo es demasiado largo (máximo 300 caracteres)." }),
+});
+
+// REASIGNAR UN PACIENTE A OTRO PROFESIONAL. El motivo es obligatorio y con minimo: una reasignacion sin
+// motivo es indistinguible de un error, y un espacio en blanco no explica nada dentro de un ano. Mismo
+// criterio que la correccion del sexo y que la marca de prueba.
+export const reasignacionDePacienteSchema = z.object({
+  patientId: z.guid(),
+  haciaProfesionalId: z.guid({ message: "Elige el profesional que lo va a atender." }),
+  motivo: z
+    .string()
+    .trim()
+    .min(5, { message: "Escribe por qué se reasigna (al menos 5 caracteres)." })
+    .max(200),
 });

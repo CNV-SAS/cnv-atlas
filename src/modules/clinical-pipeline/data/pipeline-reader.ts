@@ -33,6 +33,8 @@ export type PipelineInputs = {
   evaluationType: string; // inicial | seguimiento: decide si el ciclo registra un followup
   sex: string | null;
   birthDate: string | null;
+  /** Fecha de la medicion BIS. A ESTA fecha se calcula la edad que entra al motor (EB-BIS v7 §3.1). */
+  measurementDate: string | null;
   surveyVersionId: string | null;
   surveyAnswers: SurveyFieldAnswer[]; // solo las preguntas con field_key (alimentan el motor)
   // Todos los field_key que DECLARA la version (respondidos o no): la lista contra la cual el
@@ -136,8 +138,11 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
   }
 
   // Crudos BIS de la medicion de la evaluacion (B8): nombre normalizado -> valor.
+  // LA FECHA VIAJA CON ELLOS porque la EDAD se calcula a la fecha de la MEDICION, no a la de hoy
+  // (Gildardo, EB-BIS v7 §3.1). Sin esto, diagnosticar el martes y corregir en marzo dan dos edades
+  // distintas sobre los mismos datos crudos.
   const [measurement] = await db
-    .select({ id: bisMeasurements.id })
+    .select({ id: bisMeasurements.id, measurementDate: bisMeasurements.measurementDate })
     .from(bisMeasurements)
     .where(eq(bisMeasurements.evaluationId, evaluationId))
     .limit(1);
@@ -168,6 +173,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     evaluationType: ev.evaluationType,
     sex: profile?.sex ?? null,
     birthDate: profile?.birthDate ?? null,
+    measurementDate: measurement?.measurementDate?.toISOString() ?? null,
     surveyVersionId,
     surveyAnswers: answers,
     expectedFieldKeys,

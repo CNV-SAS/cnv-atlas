@@ -35,6 +35,10 @@ export async function simularConCienciaDeHoy(
       {
         sex: inputs.sex,
         birthDate: inputs.birthDate,
+        // La fecha de la medicion tambien aqui: si esta simulacion usara la edad de HOY, compararia el
+        // diagnostico sellado contra uno calculado con otra edad y el aviso de reemision podria
+        // dispararse por el paso del tiempo, no por un cambio de ciencia.
+        measurementDate: inputs.measurementDate,
         surveyAnswers: inputs.surveyAnswers,
         expectedFieldKeys: inputs.expectedFieldKeys,
         bisRaw: inputs.bisRaw,

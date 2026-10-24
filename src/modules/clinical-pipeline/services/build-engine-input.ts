@@ -1,5 +1,10 @@
 import { BIODY_COLUMNS, type EngineInput, type EngineModelContext, type Sex } from "@/clinical-engine";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
+// LA EDAD EN ANOS CUMPLIDOS SE LEE CON LA FUNCION QUE YA EXISTIA, la del consentimiento. Es pura (sin
+// server-only, sin React) y ya era la ESTRICTA de la casa: exige `YYYY-MM-DD` y devuelve null ante
+// cualquier otra cosa. Escribir aqui una segunda seria exactamente como se llega a que el mismo paciente
+// tenga dos edades segun quien pregunte.
+import { computeAgeYears } from "@/modules/consent/validations";
 
 // Arma el EngineInput desde los datos persistidos de una evaluacion. PURO (sin BD).
 //
@@ -19,6 +24,13 @@ export type SurveyFieldAnswer = { fieldKey: string; type: string; value: string 
 export type RawEvaluationData = {
   sex: string | null;
   birthDate: string | null; // 'YYYY-MM-DD'
+  /**
+   * Fecha de la medicion BIS (`bis_measurements.measurement_date`, not null en el esquema). La edad se
+   * calcula A ESTA FECHA y no a la de hoy (Gildardo, EB-BIS v7 §3.1): si no, el mismo registro da una
+   * edad distinta segun el dia en que se diagnostique o se corrija. `null` solo si no hay medicion, y
+   * entonces no hay diagnostico posible (el gate de `hasBis` corta antes).
+   */
+  measurementDate: string | null;
   surveyAnswers: SurveyFieldAnswer[];
   // field_key que DECLARA la version de la encuesta (todas las preguntas con field_key de esa
   // version, respondidas o no). Es la lista contra la cual el motor mide dfi.complete (regla 7).
@@ -123,16 +135,118 @@ function buildSurvey(answers: SurveyFieldAnswer[]): Record<string, unknown> {
   return survey;
 }
 
-// Edad en anos cumplidos desde birthDate hasta now (UTC, determinista). now se inyecta
-// para poder testear. Sin fecha o fecha invalida -> 0.
-export function computeAge(birthDate: string | null, now: Date): number {
-  if (!birthDate) return 0;
-  const b = new Date(birthDate);
-  if (Number.isNaN(b.getTime())) return 0;
-  let age = now.getUTCFullYear() - b.getUTCFullYear();
-  const monthDelta = now.getUTCMonth() - b.getUTCMonth();
-  if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < b.getUTCDate())) age -= 1;
-  return age < 0 ? 0 : age;
+// ═══ LA EDAD NO SE ADIVINA, Y SE MIDE A LA FECHA DE LA MEDICION ═══
+//
+// ── QUE HACIA ANTES, Y POR QUE NO ERA UN DETALLE ──────────────────────────────────────────────────
+//
+// `computeAge` devolvia **0** ante una fecha ausente o ilegible, y ese 0 no se quedaba quieto. Medido el
+// 2026-10-22 sobre la cohorte real: TRES evaluaciones selladas lo arrastran, y la edad entra al motor por
+// CUATRO puertas distintas, cada una con su propio destrozo:
+//
+//   · `computeIAE`                   -> IAE = EB - 0 = EB. Una "aceleracion del envejecimiento" de +28,1
+//                                       anos que se lee perfectamente plausible y es invencion.
+//   · `capRef` (capacitancia)        -> devuelve null: la clasificacion SE PIERDE.
+//   · `atlas-tratamiento-nutri.js:97`-> `Number(e.edad)||30`: la edad 0 se vuelve 30 en el GEB de Mifflin
+//                                       sobre el peso meta. Para una paciente de 46, 80 kcal de mas.
+//   · `atlas-asesoria-macro.js:101`  -> `||0`: el aviso de resistencia anabolica de los 65+ nunca sale.
+//
+// Lo que se salvo fue por suerte y no por diseno: `ATLAS_GEB_HB` si guarda (`e > 0`) y `ATLAS_GEB`
+// prefiere el GEB medido por el equipo, que venia en las tres.
+//
+// ── AHORA FALLA EN VOZ ALTA, COMO SUS DOS VECINOS DE ESTE MISMO ARCHIVO ───────────────────────────
+//
+// `normalizeSex` (veinte lineas abajo) no adivina, y `computeAgeYears` del consentimiento tampoco: ante
+// una fecha que no es `YYYY-MM-DD` devuelve null, y por eso la rama de menor de edad nunca se calculo con
+// un ano de cinco digitos. O sea que la conducta correcta YA estaba escrita en la casa, sobre el MISMO
+// dato, y el pipeline clinico era el unico que la convertia en un numero.
+//
+// ── Y A LA FECHA DE LA MEDICION, NO A LA DE HOY (Gildardo, EB-BIS v7, tabla 1 error 6) ────────────
+//
+// Su especificacion lo dice en la tabla de entradas: "edad: anos cumplidos (entero). Fuente: fecha de
+// nacimiento y FECHA DE MEDICION". Antes se media contra `new Date()`, asi que un diagnostico generado
+// semanas despues de la toma podia usar un ano mas que el que tenia el paciente cuando se midio, y una
+// correccion del mismo registro meses mas tarde daba OTRA edad sobre los mismos datos crudos. La
+// medicion tiene su fecha (`bis_measurements.measurement_date`, not null) y es la que manda.
+//
+// EL REDONDEO: se truncan los anos cumplidos, que es lo que esta funcion ya hacia y lo que el pide. El
+// 30,95 que pasa a 31 de su error 6 NO es de aqui: es la columna `Edad` del equipo, que es decimal (156
+// de 361 filas de la cohorte difieren por exactamente eso). Verificado, nada que cambiar.
+
+// Techo y piso de lo HUMANAMENTE POSIBLE. NO es un criterio clinico: Regla 0 dice que ningun umbral que
+// decida sobre un dato clinico se escribe sin su fuente al lado, y que si no hay fuente el cinturon va
+// tan ancho que solo atrape lo IMPOSIBLE. 0 a 130 anos es el rango de lo que puede ser una persona viva:
+// atrapa el ano de cinco digitos del tecleo (daba edad 0) y el 1795 del import (daba 231), y no toca a
+// nadie mas. Medido en produccion el 2026-10-24: de 527 perfiles reales, 512 caen dentro, 15 no tienen
+// fecha, y CERO tienen una fecha imposible (el script del 9 de octubre las corrigio).
+//
+// EL 16 A 100 DE LA EB-BIS v7 ES OTRA COSA Y NO VA AQUI. Ahi la edad fuera de rango deja la EB-BIS en
+// "pendiente: edad no valida" (su seccion 3.1), que es un estado de UN indicador, no un freno al
+// diagnostico. Hay 6 menores de 16 en la base con medicion vigente: frenarles el diagnostico entero
+// seria ir mas lejos de lo que el pidio.
+export const EDAD_MAXIMA_POSIBLE = 130;
+
+/** La edad en anos cumplidos a la fecha dada, o `null` si la fecha no se puede leer o es imposible. */
+export function edadSiSePuede(birthDate: string | null, hasta: Date): number | null {
+  if (!birthDate) return null;
+  // LA MISMA LECTURA QUE EL CONSENTIMIENTO, no una copia: exige `YYYY-MM-DD` exacto (por eso rechaza el
+  // ano de cinco digitos) y trunca a anos cumplidos. Una segunda definicion de "edad" en la casa
+  // acabaria diciendo que el mismo paciente tiene dos edades.
+  const edad = computeAgeYears(birthDate, hasta);
+  if (edad == null || !Number.isFinite(edad)) return null;
+  if (edad < 0 || edad > EDAD_MAXIMA_POSIBLE) return null;
+  return edad;
+}
+
+/**
+ * Edad en anos cumplidos a la fecha de la medicion. NO ADIVINA: una fecha ausente, ilegible o imposible
+ * LANZA, igual que `normalizeSex`. La puerta (`edadParaDiagnosticar`) lo atrapa antes para que esto no
+ * llegue nunca a la pantalla como un 500.
+ */
+export function computeAge(birthDate: string | null, hasta: Date): number {
+  const edad = edadSiSePuede(birthDate, hasta);
+  if (edad === null) {
+    throw new Error(
+      `computeAge: fecha de nacimiento invalida, llego: ${JSON.stringify(birthDate)}`,
+    );
+  }
+  return edad;
+}
+
+// ═══ Y QUE FALTE LA EDAD ES UNA PUERTA, NO UN 500 ═══
+//
+// Misma estructura que el sexo, por la misma razon y con la misma pareja: el freno que LANZA vive al lado
+// de la puerta que lo traduce, para que el dia que uno cambie no quede el otro admitiendo lo que el
+// siguiente rechaza. Ver el bloque de `sexoParaDiagnosticar` abajo, que lo explica entero.
+//
+// DOS RECHAZOS, PORQUE EL REMEDIO ES DISTINTO:
+//
+//   · SIN FECHA: lo completa el profesional en la ficha, y ahi mismo se lo decimos. Son 15 pacientes
+//     reales hoy, todos del lote del HTML, y por eso este cambio llega CON su salida
+//     (`CompletarFechaDeNacimiento`): un freno sin salida no es un guard, detiene a una persona.
+//   · PRESENTE PERO IMPOSIBLE: la ficha solo rellena huecos y nunca pisa un valor, asi que mandar ese
+//     caso ahi seria mandarlo a una puerta cerrada. Hoy no existe ninguno en produccion (medido); el dia
+//     que aparezca por un tecleo del intake, el camino es el mismo que el del sexo corregido, que
+//     todavia no esta construido para la fecha. Queda dicho en el mensaje.
+export type PuertaDeLaEdad =
+  | { allowed: true }
+  | { allowed: false; message: string; /** Si lo completa el profesional en la ficha. */ enLaFicha: boolean };
+
+export function edadParaDiagnosticar(birthDate: string | null, hasta: Date): PuertaDeLaEdad {
+  if (edadSiSePuede(birthDate, hasta) !== null) return { allowed: true };
+  if (!birthDate || birthDate.trim() === "") {
+    return {
+      allowed: false,
+      enLaFicha: true,
+      message:
+        "Falta la fecha de nacimiento del paciente, y sin ella no se puede generar el diagnóstico: la edad entra en el índice de aceleración del envejecimiento, en la clasificación de capacitancia y en el gasto calórico. Complétala en la ficha del paciente y vuelve a intentarlo.",
+    };
+  }
+  return {
+    allowed: false,
+    enLaFicha: false,
+    message:
+      "La fecha de nacimiento registrada de este paciente no corresponde a una persona viva, así que el modelo no puede calcular su edad. No se corrige desde la ficha: avísale a quien administra Atlas para que la revise.",
+  };
 }
 
 // Sexo a 'M' | 'F', ESTRICTO (decision A, 2026-08-10). El intake guarda exactamente "F"/"M" (select con
@@ -220,7 +334,9 @@ export function buildEngineInput(
 ): EngineInput {
   return {
     sexo: normalizeSex(raw.sex),
-    edad: computeAge(raw.birthDate, now),
+    // A LA FECHA DE LA MEDICION. `now` queda solo como reserva para el caso sin medicion, que el gate
+    // del diagnostico ya impide: asi la edad de un registro no depende del dia en que se mire.
+    edad: computeAge(raw.birthDate, raw.measurementDate ? new Date(raw.measurementDate) : now),
     bisRow: buildBisRow(raw.bisRaw),
     // La encuesta llega keyed por field_key (d-field) con los multi ya decodificados a array.
     survey: buildSurvey(raw.surveyAnswers),

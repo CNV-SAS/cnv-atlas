@@ -8,10 +8,12 @@ import { ArchivarPaciente } from "@/modules/patients/components/archivar-pacient
 import { HistorialEvaluaciones } from "@/modules/patients/components/historial-evaluaciones";
 import { canArchivePatient } from "@/modules/patients/policies/can-archive-patient";
 import {
+  canCompletePatientBirthDate,
   canCompletePatientSex,
   canCorrectPatientSex,
 } from "@/modules/patients/policies/can-complete-patient-sex";
 import { canEditPatientContact } from "@/modules/patients/policies/can-edit-patient-contact";
+import { CompletarFechaDeNacimiento } from "@/modules/patients/components/completar-fecha-de-nacimiento";
 import { CompletarSexo } from "@/modules/patients/components/completar-sexo";
 import { CorregirSexo } from "@/modules/patients/components/corregir-sexo";
 import { contarDiagnosticosDelPaciente } from "@/modules/patients/data/diagnosticos-del-paciente-reader";
@@ -90,6 +92,11 @@ export default async function HistoriaPacientePage({
   // construccion (uno pide que falte, el otro que este), y eso es lo que evita que la ficha ofrezca a la
   // vez "completalo" y "corrigelo" sobre el mismo campo, que es como se lee una pantalla mal hecha.
   const puedeCorregirSexo = canCorrectPatientSex(user) && !leFaltaElSexo;
+  // Y LA FECHA DE NACIMIENTO, el otro insumo del motor que puede faltar (2026-10-24). Mismo bloque y
+  // misma condicion: solo existe cuando hay hueco. Es la SALIDA de la puerta nueva de la edad, y sin ella
+  // el aviso de "falta la fecha de nacimiento" seria un callejon.
+  const leFaltaLaFecha = !paciente.birthDate;
+  const puedeCompletarLaFecha = canCompletePatientBirthDate(user) && leFaltaLaFecha;
   // Emitir link de seguimiento: sitio FIJO en el perfil (antes vivia en la tarjeta de confirmar identidad,
   // que desaparece al confirmar; Santiago 2026-08-20 §5a). El action re-resuelve el profesional asignado.
   const puedeEmitirSeguimiento = canEmitFollowupLink(user);
@@ -147,6 +154,7 @@ export default async function HistoriaPacientePage({
           que impide diagnosticar a este paciente, asi que no puede estar mas abajo que el contacto ni
           detras de un boton: quien llega aqui viene de que la pestaña Diagnostico no le dejo pasar. */}
       {puedeCompletarSexo ? <CompletarSexo patientId={patientId} /> : null}
+      {puedeCompletarLaFecha ? <CompletarFechaDeNacimiento patientId={patientId} /> : null}
 
       {/* ARCHIVAR / DESARCHIVAR (Santiago, 2026-09-10). Va AQUI y no en la fila de la lista: es una
           decision sobre ESTE paciente y se toma con su ficha delante, no de pasada al recorrer un roster.
