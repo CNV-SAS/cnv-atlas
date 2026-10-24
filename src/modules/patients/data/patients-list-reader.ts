@@ -1,5 +1,6 @@
 import "server-only";
 
+import { reportServerError } from "@/lib/observability/report-error";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { ConsentType } from "@/modules/consent/validations";
@@ -28,7 +29,40 @@ function one<T>(embed: T | T[] | null): T | undefined {
   return Array.isArray(embed) ? embed[0] : (embed ?? undefined);
 }
 
-export async function listPatientsForProfessional(): Promise<PatientListItem[]> {
+// ═══ SI LA LISTA NO SE PUEDE TRAER, LA PANTALLA LO DICE (Sentry, 2026-10-23) ═══
+//
+// ── EL CASO ──────────────────────────────────────────────────────────────────────────────────────
+//
+// `canceling statement due to statement timeout`, cuatro eventos, Unhandled, en `GET /pacientes`. Esta
+// funcion LANZABA, la excepcion salia del Server Component, la peticion moria con un 500 y la pantalla
+// quedaba caida: ni la lista, ni las cifras, ni una frase. El profesional no podia ni saber que habia
+// pasado ni que hacer.
+//
+// ── EL FRENO ES DE LA BASE Y ESTA BIEN QUE EXISTA. LA FORMA DEL FALLO NO ──────────────────────────
+//
+// El `statement_timeout` protege la base de una consulta que se desboca. Lo que estaba mal es que una
+// consulta cancelada se tratara como un fallo del sistema. Es la MISMA leccion del sexo y de la
+// capacitancia de 16,22 nF, por tercera vez: la regla se queda, el rechazo se traduce.
+//
+// ── Y POR QUE UN RESULTADO Y NO UN `catch` EN LA PAGINA ───────────────────────────────────────────
+//
+// Porque la pagina necesita distinguir "no hay pacientes" de "no se pudieron traer", y esas dos cosas
+// con un arreglo vacio son indistinguibles. Una lista vacia que en realidad es un fallo le dice al
+// profesional que sus pacientes desaparecieron, que es peor que el 500.
+export type RosterDePacientes =
+  | { ok: true; items: PatientListItem[] }
+  /** `demasiado` = la base canceló la consulta por tiempo; el remedio que se ofrece es distinto. */
+  | { ok: false; demasiado: boolean; message: string };
+
+// El codigo de Postgres para `query_canceled` (lo que emite el statement_timeout). Se mira el codigo y no
+// el texto del mensaje: el texto viene en el idioma del servidor y cambia entre versiones.
+const QUERY_CANCELED = "57014";
+
+// LA FUNCION QUE LANZABA (`listPatientsForProfessional`) SE RETIRO, no se dejo envolviendo a esta. Dejarla
+// habria sido una puerta abierta a volver al 500 con una sola linea: el siguiente llamador la habria usado
+// por tener el nombre mas corto. Si hace falta un lector que lance, se decide entonces y se escribe con su
+// razon.
+export async function readRosterDePacientes(): Promise<RosterDePacientes> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("patients")
@@ -46,7 +80,20 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
     )
     .is("deleted_at", null);
   if (error) {
-    throw new Error(`patients-list-reader: listPatientsForProfessional: ${error.message}`);
+    // SE REPORTA IGUAL: que la pantalla no reviente no significa que el fallo deje de contarse. Sentry es
+    // lo que destapo este caso, y sin el aviso el timeout se volveria invisible.
+    reportServerError(
+      "pacientes.roster",
+      new Error(`${error.code ?? "sin-codigo"}: ${error.message}`),
+    );
+    const demasiado = error.code === QUERY_CANCELED;
+    return {
+      ok: false,
+      demasiado,
+      message: demasiado
+        ? "La lista de pacientes tardó demasiado y la base canceló la consulta. No es que no tengas pacientes: no se pudieron traer en este intento. Vuelve a intentarlo; si sigue pasando, avísale a quien administra Atlas."
+        : "No se pudo traer la lista de pacientes. Vuelve a intentarlo; si sigue pasando, avísale a quien administra Atlas.",
+    };
   }
 
   const items = (data ?? []).map((row) => {
@@ -184,5 +231,5 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
   items.sort((a, b) =>
     `${a.firstName} ${a.lastName}`.trim().localeCompare(`${b.firstName} ${b.lastName}`.trim(), "es"),
   );
-  return items;
+  return { ok: true, items };
 }

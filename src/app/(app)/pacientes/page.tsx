@@ -7,7 +7,7 @@ import { hasAnyRole } from "@/modules/auth/roles";
 import { requireUser } from "@/modules/auth/session";
 import { canArchivePatient } from "@/modules/patients/policies/can-archive-patient";
 import { QrConsultorioBoton } from "@/modules/evaluations/components/qr-consultorio-boton";
-import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
+import { readRosterDePacientes } from "@/modules/patients/data/patients-list-reader";
 
 import { ListaPacientes } from "@/modules/patients/components/lista-pacientes";
 import { canCreatePatientPresencial } from "@/modules/patients/policies/can-create-patient";
@@ -27,7 +27,11 @@ export default async function PacientesPage() {
     redirect("/no-autorizado");
   }
 
-  const pacientes = await listPatientsForProfessional();
+  // NO LANZA SI LA BASE CANCELA LA CONSULTA (Sentry, 2026-10-23): el roster llega como resultado y la
+  // pantalla dice que paso. Un arreglo vacio no sirve aqui, porque "no hay pacientes" y "no se pudieron
+  // traer" se leen igual y la primera es una frase falsa sobre el trabajo de alguien.
+  const roster = await readRosterDePacientes();
+  const pacientes = roster.ok ? roster.items : [];
   // El alcance real de la lista lo pone la RLS por rol; la pantalla solo necesita saber cual de las dos
   // lecturas esta mostrando para no rotular mal la cifra.
   const esAdmin = hasAnyRole(user, ["admin"]);
@@ -71,12 +75,18 @@ export default async function PacientesPage() {
         //
         // Y LOS ARCHIVADOS SOLO SI HAY: misma regla que el conmutador de la lista, que tampoco aparece
         // con cero. Un "0 archivados" ocupa sitio para decir que no hay nada que decir.
+        // Y SI EL ROSTER NO LLEGO, NO SE DA NINGUNA CIFRA. "0 pacientes en el sistema" seria una
+        // afirmacion falsa sobre el trabajo de alguien, que es peor que no decir nada.
         descripcion={
-          <>
-            {activos} {activos === 1 ? "paciente" : "pacientes"}{" "}
-            {esAdmin ? "en el sistema" : "asignados a ti"}
-            {archivados > 0 ? ` · ${archivados} ${archivados === 1 ? "archivado" : "archivados"}` : ""}
-          </>
+          roster.ok ? (
+            <>
+              {activos} {activos === 1 ? "paciente" : "pacientes"}{" "}
+              {esAdmin ? "en el sistema" : "asignados a ti"}
+              {archivados > 0 ? ` · ${archivados} ${archivados === 1 ? "archivado" : "archivados"}` : ""}
+            </>
+          ) : (
+            <>La lista no se pudo traer en este intento</>
+          )
         }
         acciones={
           // EL BOTON SOLO PARA QUIEN PUEDE CREAR (misma policy que gatea la ruta y la accion): un boton
@@ -97,6 +107,15 @@ export default async function PacientesPage() {
           ) : null
         }
       />
+
+      {/* EL AVISO VA ARRIBA DE LA LISTA, no en su lugar: la pantalla conserva su cabecera y sus botones (el
+          QR y "nuevo paciente en consulta" siguen sirviendo aunque el roster no haya llegado), y lo que
+          cambia es que se dice por que no hay filas. */}
+      {roster.ok ? null : (
+        <p className="rounded-xl border border-clinical-warning bg-clinical-warning-bg p-4 text-sm text-foreground">
+          {roster.message}
+        </p>
+      )}
 
       {/* Filas de dos lineas con buscador, no tabla: esta lista se BUSCA (BRAND, "si busca, densidad; si
           compara, columnas"). El buscador necesita estado, asi que la lista es un componente cliente; la
