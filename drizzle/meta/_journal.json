@@ -1555,6 +1555,27 @@
       "when": 1792090604810,
       "tag": "0221_lo_de_prueba_vive_en_el_filtro_de_prueba",
       "breakpoints": true
+    },
+    {
+      "idx": 222,
+      "version": "7",
+      "when": 1792861251305,
+      "tag": "0222_la_lista_de_pacientes_no_se_cae_por_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 223,
+      "version": "7",
+      "when": 1792862039195,
+      "tag": "0223_el_status_de_la_relacion_decide_el_acceso",
+      "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1792862136446,
+      "tag": "0224_la_data_clinica_tiene_una_sola_definicion",
+      "breakpoints": true
     }
   ]
 }

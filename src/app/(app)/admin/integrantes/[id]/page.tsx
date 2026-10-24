@@ -12,6 +12,8 @@ import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
+import { canReassignPatient } from "@/modules/patients/policies/can-reassign-patient";
+import { profesionalesParaReasignar } from "@/modules/professionals/data/profesionales-para-reasignar";
 import { leerIntegrante } from "@/modules/payments/data/integrante-reader";
 import { leerModalidad } from "@/modules/payments/data/modalidad-writer";
 import { ModalidadDelIntegrante } from "@/modules/payments/components/modalidad-del-integrante";
@@ -66,6 +68,11 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const [integrante, modalidad] = await Promise.all([leerIntegrante(id), leerModalidad(id)]);
   if (!integrante) redirect("/admin");
+
+  // LOS DESTINOS POSIBLES DE UNA REASIGNACION, solo si quien mira puede reasignar (regla 3: el control no
+  // aparece si la policy no lo deja, porque uno que lleva a "no autorizado" es peor que no tenerlo). Se
+  // excluye al propio integrante: reasignar a quien ya lo tiene no es una reasignacion.
+  const destinos = canReassignPatient(user) ? await profesionalesParaReasignar(id) : [];
 
 
   const profesion =
@@ -209,7 +216,7 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           Va ANTES del inventario y de las ventas a proposito: marcar un paciente cambia lo que esas dos
           secciones cuentan, asi que leerlo primero explica las cifras de abajo. */}
       <Panel titulo="Sus pacientes">
-        <PacientesDelIntegrante pacientes={integrante.listaDePacientes} />
+        <PacientesDelIntegrante pacientes={integrante.listaDePacientes} destinos={destinos} />
       </Panel>
 
       {/* ═══ INVENTARIO ═══ Por lote y ubicación, no agregado por producto: cuando una cifra no cuadra, lo que
