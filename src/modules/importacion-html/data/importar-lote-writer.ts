@@ -117,9 +117,10 @@ export type ImportarLoteResultado = {
   consultasSinRespuestas: number;
   // ═══ Y LAS MEDICIONES QUE YA ESTABAN EN LA BASE CON LOS MISMOS CRUDOS (Santiago, 2026-10-24) ═══
   //
-  // El lote del 2 de octubre metio 13 de las 23 evaluaciones que hoy comparten una medicion con otra, y 5 de
-  // esos grupos estan repartidos entre pacientes DISTINTOS. La consulta entra; su medicion repetida no. Se
-  // cuenta aqui y la pantalla lo dice, con el mismo criterio que el sexo y la encuesta vacia.
+  // En produccion hay 10 grupos de mediciones con los crudos identicos (4 entre pacientes DISTINTOS), y
+  // ninguno entro por aqui: entraron por la pantalla de importar. Este contador es para que tampoco pueda
+  // entrar por este camino. La consulta entra; su medicion repetida no. Se cuenta aqui y la pantalla lo
+  // dice, con el mismo criterio que el sexo ausente y la encuesta vacia.
   medicionesRepetidas: { documento: string; fecha: string }[];
 };
 
@@ -285,11 +286,13 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
 
         const valores = valoresBisDeLaConsulta(c.consulta, c.respaldos ?? {});
         if (valores.length) {
-          // ═══ EL FRENO DE LA MEDICION REPETIDA, Y AQUI FUE DONDE PASO (Santiago, 2026-10-24) ═══
+          // ═══ EL FRENO DE LA MEDICION REPETIDA (Santiago, 2026-10-24) ═══
           //
-          // De las 23 evaluaciones con una medicion repetida en produccion, 13 LLEVAN EL LOTE DEL HTML: este
-          // importador volvio a meter tomas que ya existian nativamente en Atlas. El salto por fecha de
-          // arriba no lo atrapa, porque mira el dia de la CONSULTA y aqui lo que se repite es la MEDICION.
+          // AQUI NO FUE DONDE PASO, y conviene decirlo para que nadie lo busque mal: solo 2 de las 406
+          // mediciones de produccion llevan un lote, asi que los 10 grupos repetidos entraron por la pantalla
+          // de importar, no por aqui. Pero por aqui TAMBIEN se puede: este importador crea mediciones y nada
+          // le impedia crear una que ya existiera. El salto por fecha de arriba no lo atrapa, porque mira el
+          // dia de la CONSULTA y lo que se repite es la MEDICION.
           //
           // NO SE RECHAZA EL LOTE, igual que con el sexo y con la encuesta vacia: la consulta es real y su
           // historia vale. Lo que no entra es la medicion repetida, y se dice al terminar. Una consulta sin

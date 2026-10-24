@@ -8,13 +8,16 @@ import { normalizeHeader } from "./header-map";
 // ═══ DE DONDE SALE, Y NO ES UNA SOSPECHA ═══
 //
 // Medido en produccion el 2026-10-24, al verificar los errores 1 y 2 de la especificacion EB-BIS v7 de
-// Gildardo: **11 grupos de mediciones con los crudos identicos hasta el ultimo decimal, 5 de ellos
-// repartidos entre pacientes DISTINTOS** (uno con tres evaluaciones). O sea: hay historias clinicas con la
-// bioimpedancia de otra persona, y de ahi salio el diagnostico que esa otra persona recibio.
+// Gildardo: 15 grupos de mediciones con los cuatro crudos del equipo identicos hasta el ultimo decimal.
+// Separando los pacientes de prueba y la copia legitima del flujo de correccion quedan **10 grupos reales:
+// 4 entre pacientes DISTINTOS y 6 dentro del mismo paciente**, 20 evaluaciones, todas de una profesional.
+// Es exactamente la lista que Gildardo reporto. O sea: hay historias clinicas con la bioimpedancia de otra
+// persona, y de ahi salio el diagnostico que esa otra persona recibio.
 //
-// Dos mecanismos, y los dos siguen abiertos sin esto: el lote del HTML volvio a importar mediciones que ya
-// existian nativamente, y nada impide importar el mismo archivo dos veces ni al paciente equivocado (un
-// grupo se creo en OCHO SEGUNDOS, que no es un lote: es la pantalla de importar usada dos veces).
+// UN SOLO MECANISMO, y sigue abierto sin esto: el MISMO archivo importado dos veces, o importado al
+// paciente equivocado, desde la pantalla de importar. Dos grupos se crearon con dos y cuatro minutos de
+// diferencia. (El lote del HTML NO fue: solo 2 de las 406 mediciones de la base llevan un lote. Las 13
+// evaluaciones con lote de esta lista vinieron del HTML SIN medicion, y su XLSX se importo despues.)
 //
 // ═══ POR QUE NO SIRVE UN FRENO SOBRE LA RELACION ═══
 //

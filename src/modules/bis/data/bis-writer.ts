@@ -35,8 +35,8 @@ export class BisAlreadyImportedError extends Error {
 //
 // No es un fallo del archivo ni de la validacion: el archivo esta perfecto y los numeros son buenos. Lo que
 // pasa es que esos numeros YA cuelgan de otra evaluacion, asi que importarlos crearia una segunda copia de
-// una toma que ocurrio una vez. De los 11 grupos medidos en produccion, 5 estaban repartidos entre pacientes
-// DISTINTOS: el caso util no es "ya existe", es "este archivo es de otra persona".
+// una toma que ocurrio una vez. De los 10 grupos reales medidos en produccion, 4 estaban repartidos entre
+// pacientes DISTINTOS: el caso util no es "ya existe", es "este archivo es de otra persona".
 export class MedicionDuplicadaError extends Error {
   constructor(public readonly choque: MedicionYaRegistrada) {
     super(mensajeDeLaMedicionDuplicada(choque));

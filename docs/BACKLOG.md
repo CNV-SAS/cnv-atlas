@@ -27,28 +27,100 @@
 
 ---
 
+## PENDIENTE (2026-10-24, noche) · LAS MEDICIONES REPETIDAS: EL FRENO YA ESTÁ, LA CORRECCIÓN NO · DECIDE ANGELA LO CLÍNICO
+
+**El informe completo, con el inventario grupo por grupo y la propuesta de corrección, está en
+`docs/entregas/MEDICIONES_REPETIDAS_COMO_SE_CORRIGEN_2026-10-24.md`.** La lista identificada (nombre y
+documento, para llamar a cada paciente) está en `docs/entregas/dudas/mediciones-repetidas-por-profesional.md`,
+que no entra a git.
+
+**LAS CIFRAS DE LA MAÑANA ESTABAN INFLADAS Y QUEDAN CORREGIDAS.** El primer barrido no separó los pacientes
+de prueba y confundí dos columnas de lote. Lo medido: **15 grupos** con los cuatro crudos del equipo
+idénticos; quitando los de prueba (4 grupos, el archivo del demo) y la copia legítima del flujo de
+corrección (1), quedan **10 grupos reales: 4 entre pacientes DISTINTOS y 6 dentro del mismo paciente, 20
+evaluaciones, todas de Angela.** Es exactamente la lista de Gildardo: **él tenía razón** y el "uno que se le
+pasó" no existía. Y el mecanismo es uno solo, **la pantalla de importar** (solo 2 de las 406 mediciones de
+la base llevan un lote del HTML), no el importador de lotes como dije.
+
+**Lo bueno, medido:** los 20 informes están en `draft`, **ninguno enviado, ninguno con PDF, ninguna banda de
+trayectoria sellada.** Ningún paciente recibió un informe de esas consultas por Atlas.
+
+| pendiente | de quién es la decisión | estado |
+|---|---|---|
+| **El freno del importador** por huella de los crudos, en los dos caminos | nuestra | **CONSTRUIDO.** `huella-de-la-medicion.ts` + `medicion-duplicada-reader.ts`, candado `la-misma-medicion-no-entra-dos-veces.test.ts`, migración 0225 (solo el índice) |
+| **Las tres piezas que le faltan al flujo de corrección** para resolver el caso 6 del `PLAN_FLUJO_CORRECCION` ("Biody del paciente equivocado"): un `trigger_type` propio, corregir SIN arrastrar la medición, y marcar la medición huérfana | Santiago da la orden, es nuestro | sin construir, **dimensionado en el informe** |
+| **De quién es cada medición** en los 10 grupos | **Angela** (quien atendió). La `Edad` del equipo resuelve 3 de los 4 cruzados | sin hacer |
+| **El grupo 12 no cierra con los datos**: a uno de los dos pacientes le falta la fecha de nacimiento | Santiago (completarla en la ficha) o Angela | sin hacer |
+| **Que la v7 no recalcule esas evaluaciones** | nuestra | sin construir. **No hace falta una lista**: el recálculo hace la misma pregunta que el freno (¿la huella choca con otra evaluación fuera de su cadena de corrección?), así que se mantiene solo |
+| **Excluirlas de `evaluaciones_para_investigacion`** mientras no se corrijan | **Gildardo**: cambia lo que la vista significa | sin construir, recomendado |
+| **La alerta de desfase de edad** al importar (Atlas contra la `Edad` del equipo) | nuestra | sin construir. Habría destapado los 10 grupos el día que ocurrieron |
+| **Marcar como de prueba las cuentas "Profesional Prueba" y "Profesional demo 2"** | Santiago, con el botón que ya existe | sin hacer. Hoy sus pacientes cuentan como reales en todas las cifras |
+
+---
+
+## PENDIENTE (2026-10-24, noche) · EL ROSTER DE /pacientes: LAS TRES SALIDAS, MEDIDAS · DECIDE SANTIAGO
+
+La 0222 quitó el coste de la RLS por fila y la pantalla ya no revienta. **Pero la consulta sigue sin techo.**
+Lo medido en producción con service role (sin RLS), el 2026-10-24:
+
+| | |
+|---|---|
+| La consulta de hoy, entera | **671 ms** · 553 pacientes · 656 KB · **~4.598 filas** |
+| La misma sin ningún embed | 224 ms · 126 KB · 553 filas |
+| Solo con el perfil del paciente | 160 ms · 179 KB · 553 filas |
+| Filtrando los consentimientos revocados en la consulta | 530 ms (solo 33 de 2.236 están revocados: **no sirve de nada**) |
+
+**Cuándo vuelve a chocar.** El `statement_timeout` es de 8 s. El coste crece con las filas embebidas, que son
+**8,3 por paciente**. Sin contar la RLS, esta consulta llega a 8 s alrededor de los **4.500 a 5.500
+pacientes**; con el coste de la RLS encima, bastante antes. Y el crecimiento es real: **47 pacientes en
+agosto, 123 en septiembre, 383 en octubre.** A ese ritmo son meses, no años. (La RLS en producción no se
+puede medir: `.env.production.local` no trae `DATABASE_URL` y no hay forma de autenticarse como un usuario
+desde un script. Lo que sí está medido es el antes y el después del 23 de octubre: la misma consulta, 489 ms
+con service role contra más de 8 s con `authenticated`.)
+
+**Las tres salidas, con su costo:**
+
+| salida | qué cuesta | ¿vuelve a chocar? |
+|---|---|---|
+| **A · Paginar el listado** | **No es "paginar y listo".** El buscador, el conmutador de archivados y las dos cifras de la cabecera viven hoy en el arreglo en memoria, así que los tres se van al servidor con la paginación. Y el nombre está en `patient_profiles` (tabla embebida), así que buscar por nombre Y documento a la vez necesita un rpc o una columna indexada: PostgREST no hace un `or` entre dos tablas. Además el buscador deja de ser instantáneo | nunca |
+| **B · Las cifras de la fila en SQL** | `pendienteDelPaciente`, `canCreateEvaluation` y `motivoDeRegularizacion` tendrían una **segunda definición en SQL**. Es justo lo que este repositorio evita, y el hazard 4 de CLAUDE.md es el caso de dos pantallas leyendo fuentes distintas | mucho después, pero sigue sin techo |
+| **C · Mover la AGREGACIÓN a SQL y dejar la REGLA en TS** · **lo que recomiendo** | Una vista que devuelva, por paciente, **una sola fila** con sus evaluaciones vigentes ya resumidas (id, status, `tieneBis`, `tieneDiagnostico`, estado del informe, `importada`, `tieneCondiciones`) y sus autorizaciones vigentes como arreglo. Son `EXISTS` y agregados, **no reglas clínicas**: las tres funciones de TS siguen decidiendo, sin copia. Las filas que cruzan la RLS bajan de **4.598 a 553** (8 veces menos), que es más de lo que ganó la 0222. Cuesta una migración y reescribir el mapeo del lector; y se puede **demostrar inerte** comparando las cifras de los 553 pacientes antes y después | el listado liviano aguanta a ~10.000 pacientes |
+
+**No construí ninguna porque la decisión es suya y porque la respuesta no era "paginar y listo".** Mi
+recomendación es **C**: es la única que acota la consulta sin escribir dos veces una regla clínica, y la
+única que se puede demostrar que no cambia ninguna cifra.
+
+| lo demás de esta pantalla | estado |
+|---|---|
+| **Abrir `research_datasets.anonymization_level` a `pseudonymized`** | Recomendado, sin construir. La tabla tiene **0 filas**, así que hoy es gratis |
+| **El ICN, en qué documento se imprime** | Propuesto: la historia clínica, no el plan del paciente (`REVISION_ATLAS_V11_2026-10-24.md`, V11-2). **Decide Gildardo** |
+| **El botón de impresión global** | Dimensionado (V11-3): el botón es pequeño, marcar los paneles es mediano, y **que lo impreso se lea como un documento es el trabajo de verdad**. Recomendación: panel por panel |
+| **Decirle a Gildardo del React #310 de su CNVResearch** | Es su archivo y su fallo |
+
+---
+
 ## PENDIENTE (2026-10-24, tarde) · LA EB-BIS v7 Y LO QUE SALIO AL VERIFICARLA · DECIDE GILDARDO LO CIENTIFICO
 
 **El informe completo, con las siete respuestas que Santiago pidió antes de construir, está en
 `docs/entregas/EB_BIS_V7_LO_QUE_TOCA_ANTES_DE_CONSTRUIR_2026-10-24.md`.** Aquí solo queda la lista de lo que
 falta, para que no se pierda.
 
-**LO MAS GRAVE, y no estaba en la lista de nadie: 11 grupos de mediciones con los crudos IDENTICOS, 5 de
-ellos repartidos entre pacientes DISTINTOS.** Es un dato de salud de una persona en la historia de otra, y de
-ahí salió el diagnóstico que esa otra persona recibió. Dos mecanismos: el lote del HTML volvió a importar
-mediciones que ya existían, y nada impide importar el mismo archivo dos veces ni importarlo al paciente
-equivocado. Gildardo encontró 10 (sus errores 1 y 2); el barrido completo encontró 11.
+**LO MAS GRAVE: hay mediciones repetidas, y una historia clínica puede llevar la bioimpedancia de otra
+persona.** Las cifras de este párrafo estaban infladas y quedaron corregidas esa misma noche: son **10 grupos
+reales (4 entre pacientes distintos, 6 del mismo paciente, 20 evaluaciones)**, que es exactamente la lista de
+Gildardo, y el mecanismo es **la pantalla de importar**, no el lote del HTML. Ver la entrada de la noche y
+`docs/entregas/MEDICIONES_REPETIDAS_COMO_SE_CORRIGEN_2026-10-24.md`.
 
 | pendiente | de quién es la decisión | estado |
 |---|---|---|
-| **Corregir las 23 evaluaciones con la medición compartida** | de quien atendió: hay que decidir de quién es cada medición. La columna `Edad` del equipo lo resuelve en 4 de los 5 pares | sin hacer, **y va primero que todo lo demás** |
-| **El freno del importador** contra la medición duplicada (mira los crudos, no la relación, y dice de quién es) | nuestra | dimensionado, sin construir |
+| **Corregir las 20 evaluaciones con la medición compartida** | de quien atendió (Angela). La columna `Edad` del equipo lo resuelve en 3 de los 4 grupos cruzados | sin hacer, **y va primero que todo lo demás**. Ver la entrada de la noche |
+| **El freno del importador** contra la medición duplicada (mira los crudos, no la relación, y dice de quién es) | nuestra | **CONSTRUIDO** el 2026-10-24 (migración 0225) |
 | **La función `ebBisV7` al frozen**, con `ENGINE_VERSION` a **2.0.0** y los 7 casos de su §6 como golden tests | Gildardo la escribió; la versión es nuestra y el criterio está en `VERSIONES.md` | sin construir, esperando dos respuestas suyas |
 | **Persistir `versionParametros`** junto a cada resultado (su §5) | nuestra | sin construir |
 | **El recálculo del histórico** por el flujo de corrección con `trigger_type = recalibracion_ciencia` | suya | sin construir, y **espera a que firme `escalaAniosPorDE`** |
 | **La fuerza prensil obligatoria CON SALIDA** ("no se midió" más motivo) | suya: cambia la captura | propuesto, sin construir. Precedente a copiar: `la-salida-se-puede-elegir.test.ts` |
 | **La alerta de desfase de edad** (Atlas contra el equipo, más de 1 año) al importar | nuestra | dimensionada, sin construir. Habría destapado los errores 1 y 2 el día que ocurrieron |
-| **La banda de trayectoria no puede comparar entre versiones del motor** | nuestra | sin construir. Hoy `eb-trajectory` no mira `engine_version`, así que una EB v5 contra una v7 daría un "mejoró" al paciente entre dos escalas distintas |
+| **La banda de trayectoria no puede comparar entre versiones del motor** | nuestra | **CONSTRUIDO** el 2026-10-24: la banda filtra por versión MAYOR (el criterio de `VERSIONES.md`) y el aviso al profesional dice que esa consulta hay que recalcularla. Hoy no cambia ninguna banda: los 406 reportes están en mayor 1 |
 
 **LAS DOS PREGUNTAS QUE HAY QUE HACERLE A GILDARDO ANTES DE CONSTRUIR LA v7:**
 
@@ -68,7 +140,7 @@ NO**, porque "pendiente" es un estado de la EB-BIS y vive dentro de la función 
 
 ---
 
-## PENDIENTE (2026-10-24, tarde) · LA LISTA DE PACIENTES Y EL `anonymization_level`
+## SUPERADA por la entrada de la noche (2026-10-24) · LA LISTA DE PACIENTES Y EL `anonymization_level`
 
 | pendiente | estado |
 |---|---|

@@ -221,9 +221,9 @@ export function RevisionImportacion({
           ) : null}
           {/* ═══ Y LAS MEDICIONES QUE YA ESTABAN, CON LOS MISMOS CRUDOS (Santiago, 2026-10-24) ═══
 
-              De las 23 evaluaciones que hoy comparten una medicion con otra, 13 entraron por un lote de
-              este importador. El aviso va en rojo y no en gris como las consultas omitidas, porque una
-              medicion repetida no es una fila de mas: puede ser la bioimpedancia de otra persona. */}
+              En produccion hay 20 evaluaciones que comparten una medicion con otra. El aviso va en rojo y
+              no en gris como las consultas omitidas, porque una medicion repetida no es una fila de mas:
+              puede ser la bioimpedancia de otra persona. */}
           {state.resumen.medicionesRepetidas.length ? (
             <span className="font-medium text-clinical-warning">
               {state.resumen.medicionesRepetidas.length === 1
