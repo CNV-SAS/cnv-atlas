@@ -3,11 +3,17 @@ import "server-only";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { bisImportLogs, bisMeasurements, bisRawValues, diagnoses } from "@/db/schema";
+import { bisImportLogs, bisMeasurements, bisRawValues, diagnoses, evaluations } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 import type { DerivedValue } from "../services/derive-composition";
 import type { BisRawValue } from "../types";
+
+import {
+  buscarLaMismaMedicion,
+  mensajeDeLaMedicionDuplicada,
+  type MedicionYaRegistrada,
+} from "./medicion-duplicada-reader";
 
 // Escritura del import BIS en UNA transaccion de BD. Drizzle conecta como owner para
 // poder dejar el audit INLINE (regla dura 8): bis_measurements, bis_raw_values, el log
@@ -22,6 +28,19 @@ export class BisAlreadyImportedError extends Error {
   constructor(public readonly evaluationId: string) {
     super(`La evaluacion ${evaluationId} ya tiene una medicion BIS importada.`);
     this.name = "BisAlreadyImportedError";
+  }
+}
+
+// ═══ ESTA MISMA TOMA YA ESTA EN LA BASE (Santiago, 2026-10-24) ═══
+//
+// No es un fallo del archivo ni de la validacion: el archivo esta perfecto y los numeros son buenos. Lo que
+// pasa es que esos numeros YA cuelgan de otra evaluacion, asi que importarlos crearia una segunda copia de
+// una toma que ocurrio una vez. De los 11 grupos medidos en produccion, 5 estaban repartidos entre pacientes
+// DISTINTOS: el caso util no es "ya existe", es "este archivo es de otra persona".
+export class MedicionDuplicadaError extends Error {
+  constructor(public readonly choque: MedicionYaRegistrada) {
+    super(mensajeDeLaMedicionDuplicada(choque));
+    this.name = "MedicionDuplicadaError";
   }
 }
 
@@ -65,6 +84,28 @@ export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWrit
       .where(eq(diagnoses.evaluationId, input.evaluationId))
       .limit(1);
     if (diagnostico) throw new BisAlreadyImportedError(input.evaluationId);
+
+    // ═══ EL FRENO DE LA MEDICION REPETIDA, Y VA ANTES DEL BORRADO ═══
+    //
+    // El orden importa: si se frenara despues, la medicion que ya tenia esta evaluacion ya estaria borrada.
+    // La transaccion lo revertiria, pero depender de eso para no destruir un registro clinico es apoyarse
+    // en el seguro en vez de en la cerradura.
+    //
+    // EL PACIENTE SE LEE DE LA EVALUACION, no se recibe: asi no hay forma de que quien llama diga un
+    // paciente y la evaluacion sea de otro, que es justo la clase de defecto que esto persigue.
+    const [laEvaluacion] = await tx
+      .select({ patientId: evaluations.patientId })
+      .from(evaluations)
+      .where(eq(evaluations.id, input.evaluationId))
+      .limit(1);
+    if (laEvaluacion) {
+      const choque = await buscarLaMismaMedicion(tx, {
+        evaluationId: input.evaluationId,
+        patientId: laEvaluacion.patientId,
+        valores: input.values,
+      });
+      if (choque) throw new MedicionDuplicadaError(choque);
+    }
 
     // Y LA VIEJA SE REEMPLAZA DE VERDAD: se borra ANTES de insertar, en la misma transaccion. Dejarla
     // convertiria "una medicion por evaluacion" en dos, y todo lo que lee la medicion elige "la primera"
