@@ -27,6 +27,59 @@
 
 ---
 
+## PENDIENTE (2026-10-24, tarde) · LA EB-BIS v7 Y LO QUE SALIO AL VERIFICARLA · DECIDE GILDARDO LO CIENTIFICO
+
+**El informe completo, con las siete respuestas que Santiago pidió antes de construir, está en
+`docs/entregas/EB_BIS_V7_LO_QUE_TOCA_ANTES_DE_CONSTRUIR_2026-10-24.md`.** Aquí solo queda la lista de lo que
+falta, para que no se pierda.
+
+**LO MAS GRAVE, y no estaba en la lista de nadie: 11 grupos de mediciones con los crudos IDENTICOS, 5 de
+ellos repartidos entre pacientes DISTINTOS.** Es un dato de salud de una persona en la historia de otra, y de
+ahí salió el diagnóstico que esa otra persona recibió. Dos mecanismos: el lote del HTML volvió a importar
+mediciones que ya existían, y nada impide importar el mismo archivo dos veces ni importarlo al paciente
+equivocado. Gildardo encontró 10 (sus errores 1 y 2); el barrido completo encontró 11.
+
+| pendiente | de quién es la decisión | estado |
+|---|---|---|
+| **Corregir las 23 evaluaciones con la medición compartida** | de quien atendió: hay que decidir de quién es cada medición. La columna `Edad` del equipo lo resuelve en 4 de los 5 pares | sin hacer, **y va primero que todo lo demás** |
+| **El freno del importador** contra la medición duplicada (mira los crudos, no la relación, y dice de quién es) | nuestra | dimensionado, sin construir |
+| **La función `ebBisV7` al frozen**, con `ENGINE_VERSION` a **2.0.0** y los 7 casos de su §6 como golden tests | Gildardo la escribió; la versión es nuestra y el criterio está en `VERSIONES.md` | sin construir, esperando dos respuestas suyas |
+| **Persistir `versionParametros`** junto a cada resultado (su §5) | nuestra | sin construir |
+| **El recálculo del histórico** por el flujo de corrección con `trigger_type = recalibracion_ciencia` | suya | sin construir, y **espera a que firme `escalaAniosPorDE`** |
+| **La fuerza prensil obligatoria CON SALIDA** ("no se midió" más motivo) | suya: cambia la captura | propuesto, sin construir. Precedente a copiar: `la-salida-se-puede-elegir.test.ts` |
+| **La alerta de desfase de edad** (Atlas contra el equipo, más de 1 año) al importar | nuestra | dimensionada, sin construir. Habría destapado los errores 1 y 2 el día que ocurrieron |
+| **La banda de trayectoria no puede comparar entre versiones del motor** | nuestra | sin construir. Hoy `eb-trajectory` no mira `engine_version`, así que una EB v5 contra una v7 daría un "mejoró" al paciente entre dos escalas distintas |
+
+**LAS DOS PREGUNTAS QUE HAY QUE HACERLE A GILDARDO ANTES DE CONSTRUIR LA v7:**
+
+1. **¿`escalaAniosPorDE = 5` es definitivo?** Su propio código lo marca `// provisional`. Si cambia después
+   de recalcular, hay que recalcular otra vez, y cada pasada deja una versión más de cada diagnóstico en la
+   historia del paciente. Técnicamente se apila; lo que no se apila es la lectura humana de esa historia.
+2. **¿La EB-BIS se calcula sin encuesta completa?** Su §1 dice que sí (el ICEC sale del cálculo). Pero el
+   gate de encuesta completa, que es suyo (§1 del 13 de agosto), frena el diagnóstico ENTERO, así que la
+   EB-BIS nunca se emitiría sin encuesta por otra razón. Si quiere lo primero, hay que tocar el gate.
+
+**Y lo que ya está construido de la v7, para que no se reconstruya:** `computeAge` falla en voz alta, la edad
+se calcula **a la fecha de la medición**, se trunca, y tiene su puerta en los dos caminos al motor más su
+salida en la ficha ("Completar la fecha de nacimiento"). Candado:
+`src/tests/la-edad-que-se-vuelve-cero.test.ts`. Sus errores 3, 4 y 6 quedan cerrados; **el 7 (menores de 16)
+NO**, porque "pendiente" es un estado de la EB-BIS y vive dentro de la función v7, no en nuestra puerta: hay
+6 menores reales en la base y frenarles el diagnóstico entero sería ir más lejos de lo que pidió.
+
+---
+
+## PENDIENTE (2026-10-24, tarde) · LA LISTA DE PACIENTES Y EL `anonymization_level`
+
+| pendiente | estado |
+|---|---|
+| **Acotar la consulta del roster de `/pacientes`** | La 0222 quita el coste de la RLS por fila (el admin ya no paga la comprobación de profesional en 4.000 filas) y la pantalla ya no revienta si la base cancela. **Pero una lista que crece sin techo acaba volviendo a chocar con el límite.** Lo de fondo es que las cifras de la fila no salgan de embeds, y eso choca con que la lógica vive en TS a propósito (`pendienteDelPaciente`, `canCreateEvaluation`): llevarla a SQL sería la segunda copia que esta base de código evita. **Hay que decidirlo, no es un detalle de implementación.** |
+| **Abrir `research_datasets.anonymization_level` a `pseudonymized`** | Recomendado, sin construir. La tabla tiene **0 filas**, así que hoy es gratis. Hoy el único rótulo disponible para el dataset que Gildardo quiere es `anonymized`, que es la única afirmación que su propia nota advierte que no se puede hacer. |
+| **El ICN, en qué documento se imprime** | Propuesto (la historia clínica, no el plan del paciente, con las tres razones). **Decide Gildardo:** el documento es suyo. |
+| **El botón de impresión global** | Dimensionado. La maquinaria existe (`imprimirHoja` más `.imprimible` más el candado). Lo que cuesta es que cada panel se lea como un documento al imprimirlo, no el botón. Recomendación: panel por panel. |
+| **Decirle a Gildardo del React #310 de su CNVResearch** | Es su archivo y su fallo; arreglarlo en una copia local haría que el cotejo se hiciera contra una pantalla que no es la suya. |
+
+---
+
 ## PENDIENTE (2026-10-24) · ATLAS v10 ENTERO, pospuesto por Santiago · DECIDE SANTIAGO CUÁNDO SE RETOMA
 
 **Santiago lo pospuso el 2026-10-24:** *"V10 va al backlog entero. No se construye nada de v10 por ahora,

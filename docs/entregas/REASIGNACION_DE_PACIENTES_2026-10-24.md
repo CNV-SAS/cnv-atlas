@@ -176,3 +176,84 @@ emitido sería decir que lo hizo alguien que no lo hizo.
 4. **La sellada no se mueve.** Queda de Gildardo, con su diagnóstico.
 
 **Lo que falta para arrancar es solo su lista.**
+
+---
+---
+
+# Segunda parte (2026-10-24, tarde): **CONSTRUIDA**
+
+Santiago cotejó la lista y decidió: **los 25 del 13 de octubre por el enlace de Gildardo, mañana y tarde,
+incluida la que tiene diagnóstico, pasan todos a María Camila.** Con sus cuatro precisiones, que cambian una
+cosa de lo que yo había recomendado arriba.
+
+## Lo que se construyó, y es una pieza, no un script
+
+| | |
+|---|---|
+| La condición del `status` | **migración 0223**, en `is_patient_of` **y** en `patient_professional_anexo3_current`, más un CHECK que cierra el vocabulario del estado |
+| La pieza | `modules/patients/data/reasignacion-writer.ts`, transaccional, con motivo obligatorio y rastro inline |
+| Quién puede | solo **admin** (`can-reassign-patient.ts`) |
+| Desde dónde | `/admin/integrantes/[id]`, en la lista "Sus pacientes", una fila por paciente con el destino y el motivo |
+| El candado | `src/tests/la-reasignacion-mueve-el-acceso-db.test.ts` (5 pruebas, suite de BD) |
+| La suite de RLS | **entera**: 103 archivos, 647 pruebas, 344 s, exit 0 |
+
+**Por qué una pieza y no un script, con su argumento:** la regla dura 14 dice *"Ninguna cuenta clínica se
+recicla. Offboarding = desactivar y reasignar"*. La primera mitad existía desde siempre (desactivar un
+integrante); **la segunda no existía en ninguna parte del sistema.** Así que al desactivar a alguien, sus
+pacientes se quedaban con el acceso del que ya se fue, o sin nadie que pudiera abrirlos. Esto cierra la
+regla, y el caso del 13 de octubre es su primer uso, no su motivo.
+
+## Lo que mueve, y lo que deliberadamente no
+
+| | se mueve | por qué |
+|---|---|---|
+| `patient_professional_relationships` | la activa pasa a **`reasignada`**, la nueva queda **`active`** | es el **acceso**: lo lee `is_patient_of`, que gobierna las policies de patients, patient_profiles, patient_consents y evaluations |
+| `evaluations.professional_id` | **sí, todas las vigentes**, incluida la diagnosticada | es la **atribución**: quién atiende esa consulta |
+| `diagnoses.confirmed_by` | **no** | quién firmó un diagnóstico es un hecho que ocurrió. Decisión de Santiago, y es la correcta: reescribirlo diría que lo firmó alguien que no lo firmó |
+| `patient_consents.declared_by` (los 6 de QR presencial) | **no** | registra que ese profesional declaró, ese día, que el paciente firmó delante de él. Es evidencia de un acto |
+| El consentimiento | **no se repite** | no tiene columna de profesional, el `document_hash` es sobre la plantilla, y la cláusula §2.1 habla del profesional "que le atiende" en genérico |
+
+**Donde cambié de opinión, y conviene decirlo:** arriba recomendé que la evaluación sellada **no** se moviera.
+Santiago decidió que sí, y separó las dos cosas que yo tenía juntas: `professional_id` dice **quién atiende**
+y `confirmed_by` dice **quién firmó**. Son dos preguntas distintas y el esquema ya tiene una columna para
+cada una. Su lectura es mejor que la mía: con la mía, María Camila vería una consulta de su paciente que
+sigue figurando como de otro profesional, y el guard de corregirla se lo impediría.
+
+**Y la fila vieja no se borra, que era su condición.** Pasa a `reasignada` y se queda, con su `assigned_at`
+original. El candado de BD exige las dos cosas a la vez: que el acceso se haya ido **y** que la fila siga ahí.
+
+## Un detalle del `status` que no estaba dimensionado y ahora está cerrado
+
+El `status` era `text not null default 'active'` **sin ninguna restricción**, y de él depende el acceso a una
+historia clínica. Un `'Active'` con mayúscula, o un `'activa'` en español, dejaría al paciente **invisible
+para su propio profesional sin un solo error**. La 0223 cierra el vocabulario a `active` y `reasignada`, con
+su prueba. Es un cinturón de lo imposible (un valor que ningún camino del código escribe), no de lo
+improbable.
+
+## Lo que falta para que los 25 se muevan de verdad, y no es una decisión más
+
+**Las migraciones 0222, 0223 y 0224 están aplicadas en local, NO en producción.** Y el orden importa, por lo
+que ya está escrito arriba: **primero la condición, después el movimiento.** Si los 25 se movieran hoy,
+Gildardo conservaría el acceso a sus 25 historias clínicas hasta que la 0223 llegue a la nube, porque
+`is_patient_of` todavía no mira el estado allí. Ese rato es exactamente la ventana que la condición existe
+para cerrar.
+
+**Así que el orden real es:**
+
+1. **Push y `pnpm db:migrate` contra producción** (0222, 0223, 0224). Son forward-only y ninguna excluye una
+   fila existente: las 551 relaciones están en `active`.
+2. **Comprobar que nadie perdió acceso**, que es barato: las 551 siguen activas, así que la cifra de
+   pacientes de cada integrante tiene que salir igual que antes.
+3. **Los 25, desde `/admin/integrantes/[id]` de Gildardo**, eligiendo María Camila y escribiendo el motivo.
+
+**Sobre el paso 3 hay una pregunta suya que contesto por adelantado:** son 25 filas, con su motivo cada una.
+La pantalla es por paciente **a propósito** (el motivo pertenece a cada movimiento, no al lote), pero si
+prefiere no teclearlo 25 veces, puedo correr los 25 en una pasada con el mismo motivo usando la misma pieza,
+no un script aparte. Dígame cuál prefiere; las dos dejan el mismo rastro.
+
+## Y lo que queda anotado para el abogado, sin construir
+
+La copia del consentimiento que se le envió por correo al paciente **sí nombra al profesional**. Si el
+paciente vuelve a leerla, verá un nombre que no es el de quien lo atiende. Mi lectura sigue siendo que no
+invalida nada (el consentimiento es con CNV y la cláusula es genérica), pero lo decide el abogado. **Anotado,
+no construido**, como usted pidió.
