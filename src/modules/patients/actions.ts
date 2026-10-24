@@ -17,7 +17,7 @@ import {
 } from "./data/de-prueba-writer";
 import { guardarContactoDelPaciente } from "./data/patient-contact-writer";
 import { completarFechaDeNacimiento } from "./data/patient-birthdate-writer";
-import { reasignarPaciente } from "./data/reasignacion-writer";
+import { reasignarPaciente, reasignarPacientesEnLote } from "./data/reasignacion-writer";
 import { completarSexoDelPaciente, corregirSexoDelPaciente } from "./data/patient-sex-writer";
 import { contarDiagnosticosDelPaciente } from "./data/diagnosticos-del-paciente-reader";
 import { getPatientDetail } from "./data/patient-detail-reader";
@@ -45,6 +45,7 @@ import {
   documentoSchema,
   fechaDeNacimientoPacienteSchema,
   reasignacionDePacienteSchema,
+  reasignacionEnLoteSchema,
   sexoPacienteSchema,
 } from "./validations";
 
@@ -625,6 +626,79 @@ export async function reasignarPacienteAction(
     success:
       `Paciente reasignado. ${r.evaluacionesMovidas === 1 ? "1 consulta pasó" : `${r.evaluacionesMovidas} consultas pasaron`} al profesional nuevo.` +
       firma,
+    warning: null,
+  };
+}
+
+// ═══ REASIGNAR VARIOS PACIENTES DE UNA PASADA (Santiago, 2026-10-24) ═══
+//
+// EL MISMO CAMINO QUE UNO SOLO: misma policy, mismo motivo obligatorio, misma pieza, mismo rastro por
+// paciente. Lo unico que cambia es que la lista llega marcada y los movimientos van en UNA transaccion.
+//
+// LOS IDS LLEGAN EN UN CAMPO OCULTO, separados por coma, porque las casillas viven FUERA de este formulario:
+// estan en las filas de la lista, y cada fila ya tiene sus propios formularios, asi que meter las casillas
+// dentro de este <form> anidaria un formulario en otro (hazard 7: el navegador DESCARTA el de adentro y sus
+// campos se cuelan en el envio de afuera). Las casillas son controladas y SIN `name`; lo que viaja es este
+// campo oculto. Es el remedio escrito del hazard 8.
+export async function reasignarPacientesEnLoteAction(
+  _prev: SexoPacienteState,
+  form: FormData,
+): Promise<SexoPacienteState> {
+  const user = await requireUser();
+  if (!canReassignPatient(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const datos = reasignacionEnLoteSchema.safeParse({
+    patientIds: String(form.get("patientIds") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    haciaProfesionalId: form.get("haciaProfesionalId"),
+    motivo: form.get("motivo"),
+  });
+  if (!datos.success) {
+    return {
+      error: datos.error.issues[0]?.message ?? "Revisa los datos de la reasignación.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  const ip = await getClientIp();
+  const r = await reasignarPacientesEnLote(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+
+  if ("estado" in r) {
+    return {
+      error: "Ese profesional no existe o es una cuenta de prueba. No se movió ninguno.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  if (r.reasignados === 0) {
+    return {
+      error: null,
+      success: null,
+      warning: "Todos los que marcaste ya estaban con ese profesional, así que no se movió nada.",
+    };
+  }
+
+  // SE DICE LO QUE SE MOVIO Y LO QUE NO. La firma de un diagnostico se queda con quien la hizo, y quien
+  // acaba de mover veinticinco historias clinicas tiene que leerlo aqui, no descubrirlo despues.
+  const pacientes = r.reasignados === 1 ? "1 paciente reasignado" : `${r.reasignados} pacientes reasignados`;
+  const consultas = r.evaluacionesMovidas === 1 ? "1 consulta" : `${r.evaluacionesMovidas} consultas`;
+  const yaEstaban = r.sinCambio === 0 ? "" : r.sinCambio === 1 ? " Uno ya estaba con ese profesional." : ` ${r.sinCambio} ya estaban con ese profesional.`;
+  const firmados = r.conDiagnosticoFirmado === 1 ? "un diagnóstico" : `${r.conDiagnosticoFirmado} diagnósticos`;
+  const firma =
+    r.conDiagnosticoFirmado > 0
+      ? ` La firma de ${firmados} se queda con quien la hizo, que es lo que de verdad pasó.`
+      : "";
+  return {
+    error: null,
+    success: `${pacientes}, con ${consultas}.` + yaEstaban + firma,
     warning: null,
   };
 }

@@ -103,6 +103,22 @@ export const correccionDeSexoSchema = z.object({
 // REASIGNAR UN PACIENTE A OTRO PROFESIONAL. El motivo es obligatorio y con minimo: una reasignacion sin
 // motivo es indistinguible de un error, y un espacio en blanco no explica nada dentro de un ano. Mismo
 // criterio que la correccion del sexo y que la marca de prueba.
+// LA PASADA EN LOTE: la misma regla con la lista en vez de un id. El tope de 200 no es un umbral clinico,
+// es un cinturon de lo IMPOSIBLE: el profesional con mas pacientes de CNV tiene 93, asi que una lista mas
+// larga que esa solo puede venir de un campo manipulado, no de una pantalla.
+export const reasignacionEnLoteSchema = z.object({
+  patientIds: z
+    .array(z.guid())
+    .min(1, { message: "Marca al menos un paciente." })
+    .max(200, { message: "Son demasiados pacientes para una sola pasada." }),
+  haciaProfesionalId: z.guid({ message: "Elige el profesional que los va a atender." }),
+  motivo: z
+    .string()
+    .trim()
+    .min(5, { message: "Escribe por qué se reasignan (al menos 5 caracteres)." })
+    .max(200),
+});
+
 export const reasignacionDePacienteSchema = z.object({
   patientId: z.guid(),
   haciaProfesionalId: z.guid({ message: "Elige el profesional que lo va a atender." }),
