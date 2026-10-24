@@ -12,6 +12,12 @@ export function TrajectoryNotice({ notice }: { notice: Notice | null }) {
       `El paciente no verá el cambio de su evaluación: la medición anterior es de hace ${notice.nearestWeeks} ` +
       "semanas y el modelo no compara cambios a menos de 12 semanas. No es una falla; para comunicar el " +
       "cambio, la próxima medición comparable debe estar al menos a esa distancia.";
+  } else if (notice.kind === "otra_version_del_motor") {
+    text =
+      "El paciente no verá el cambio de su evaluación: la medición anterior se calculó con otra versión del " +
+      `modelo (${notice.versionPrevia}), y las dos escalas no son comparables. Restarlas diría "mejoró" o ` +
+      '"empeoró" sobre números que no miden lo mismo. Para poder comunicar el cambio, esa consulta anterior ' +
+      "tiene que recalcularse con el modelo vigente.";
   } else if (notice.kind === "incompleto") {
     text =
       "El paciente no verá el cambio de su evaluación: la encuesta está incompleta y el modelo no comunica " +
