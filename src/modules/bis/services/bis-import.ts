@@ -5,6 +5,7 @@ import { appError, err, ok, type Result } from "@/core/errors";
 import {
   BisAlreadyImportedError,
   logBisImportFailure,
+  MedicionDuplicadaError,
   writeBisMeasurement,
 } from "../data/bis-writer";
 import { validateBisMeasurement } from "../validations/import-schema";
@@ -144,6 +145,15 @@ export async function importBisMeasurement(
             "Si importaste el archivo del paciente equivocado, la evaluación debe cerrarse y hacerse de nuevo.",
         ),
       );
+    }
+    // ═══ LA MISMA TOMA, OTRA VEZ (Santiago, 2026-10-24) ═══
+    //
+    // Es un CONFLICTO, no un fallo de archivo, asi que no genera fila en `bis_import_logs` (igual que el
+    // reimport sobre un diagnostico ya emitido): el archivo parseo y valido bien. El mensaje lo escribe el
+    // lector del choque, porque solo el sabe si esa toma esta en este paciente o en otra historia clinica,
+    // y de eso depende que tiene que hacer quien esta importando.
+    if (e instanceof MedicionDuplicadaError) {
+      return err(appError("conflict", e.message));
     }
     throw e; // error inesperado: que suba (lo captura el action / Sentry)
   }

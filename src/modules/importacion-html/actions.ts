@@ -31,6 +31,12 @@ export type ImportacionResumen = {
    * al importar: se coteja en el writer). Frenan su diagnostico hasta completar la encuesta con el paciente.
    */
   consultasSinRespuestas: number;
+  /**
+   * Mediciones que NO entraron porque esos mismos crudos ya estaban en la base, en otra evaluacion (el caso
+   * de los 11 grupos medidos el 2026-10-24, cinco de ellos repartidos entre pacientes distintos). La
+   * consulta si entra; su medicion repetida no.
+   */
+  medicionesRepetidas: { documento: string; fecha: string }[];
 };
 
 /**

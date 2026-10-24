@@ -219,6 +219,21 @@ export function RevisionImportacion({
                 : `${state.resumen.consultasSinRespuestas} consultas entraron sin ninguna respuesta de encuesta (el archivo no las trae): no se les podrá generar diagnóstico hasta completar la encuesta con el paciente.`}
             </span>
           ) : null}
+          {/* ═══ Y LAS MEDICIONES QUE YA ESTABAN, CON LOS MISMOS CRUDOS (Santiago, 2026-10-24) ═══
+
+              De las 23 evaluaciones que hoy comparten una medicion con otra, 13 entraron por un lote de
+              este importador. El aviso va en rojo y no en gris como las consultas omitidas, porque una
+              medicion repetida no es una fila de mas: puede ser la bioimpedancia de otra persona. */}
+          {state.resumen.medicionesRepetidas.length ? (
+            <span className="font-medium text-clinical-warning">
+              {state.resumen.medicionesRepetidas.length === 1
+                ? "1 medición no entró porque esos mismos valores del equipo ya estaban registrados en otra consulta"
+                : `${state.resumen.medicionesRepetidas.length} mediciones no entraron porque esos mismos valores del equipo ya estaban registrados en otras consultas`}{" "}
+              ({state.resumen.medicionesRepetidas.map((m) => `${m.documento} (${m.fecha})`).join(", ")}).
+              Esas consultas sí entraron, pero sin medición: avísale a CNV, porque la medición que ya está
+              puede pertenecer a otro paciente.
+            </span>
+          ) : null}
           {state.resumen.consultasOmitidas.length ? (
             <span className="text-muted-foreground">
               No se repitieron {state.resumen.consultasOmitidas.length} consultas que ya estaban importadas:{" "}

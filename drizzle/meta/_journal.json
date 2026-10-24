@@ -1576,6 +1576,13 @@
       "when": 1792862136446,
       "tag": "0224_la_data_clinica_tiene_una_sola_definicion",
       "breakpoints": true
+    },
+    {
+      "idx": 225,
+      "version": "7",
+      "when": 1792862137446,
+      "tag": "0225_la_misma_medicion_no_entra_dos_veces",
+      "breakpoints": true
     }
   ]
 }

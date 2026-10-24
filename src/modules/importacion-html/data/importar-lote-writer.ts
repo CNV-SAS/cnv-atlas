@@ -22,6 +22,7 @@ import {
   surveyResponses,
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
+import { buscarLaMismaMedicion } from "@/modules/bis/data/medicion-duplicada-reader";
 import { CONSENT_HTML_DOCUMENT_HASH } from "@/modules/consent/consent-hash";
 import { CONSENT_HTML_VERSION } from "@/modules/consent/text/consent-html-cnv-v3.0";
 
@@ -114,6 +115,12 @@ export type ImportarLoteResultado = {
   // NO SE RECHAZA NADA: una consulta sin encuesta es una consulta real, con su medicion y su fecha, y
   // perderla seria peor. Se cuenta y se dice.
   consultasSinRespuestas: number;
+  // ═══ Y LAS MEDICIONES QUE YA ESTABAN EN LA BASE CON LOS MISMOS CRUDOS (Santiago, 2026-10-24) ═══
+  //
+  // El lote del 2 de octubre metio 13 de las 23 evaluaciones que hoy comparten una medicion con otra, y 5 de
+  // esos grupos estan repartidos entre pacientes DISTINTOS. La consulta entra; su medicion repetida no. Se
+  // cuenta aqui y la pantalla lo dice, con el mismo criterio que el sexo y la encuesta vacia.
+  medicionesRepetidas: { documento: string; fecha: string }[];
 };
 
 export async function importarLote(input: ImportarLoteInput): Promise<ImportarLoteResultado> {
@@ -141,6 +148,7 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
     let sinSexo = 0;
     let sinRespuestas = 0;
     const omitidas: { documento: string; fecha: string }[] = [];
+    const medicionesRepetidas: { documento: string; fecha: string }[] = [];
     let consultasImportadas = 0;
     let pacientesExistentes = 0;
 
@@ -277,13 +285,32 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
 
         const valores = valoresBisDeLaConsulta(c.consulta, c.respaldos ?? {});
         if (valores.length) {
-          const [medicion] = await tx
-            .insert(bisMeasurements)
-            .values({ evaluationId: evaluacion.id, measurementDate: cuando, importBatchId: lote.id })
-            .returning({ id: bisMeasurements.id });
-          await tx.insert(bisRawValues).values(
-            valores.map((v) => ({ measurementId: medicion.id, variableName: v.variableName, value: String(v.value) })),
-          );
+          // ═══ EL FRENO DE LA MEDICION REPETIDA, Y AQUI FUE DONDE PASO (Santiago, 2026-10-24) ═══
+          //
+          // De las 23 evaluaciones con una medicion repetida en produccion, 13 LLEVAN EL LOTE DEL HTML: este
+          // importador volvio a meter tomas que ya existian nativamente en Atlas. El salto por fecha de
+          // arriba no lo atrapa, porque mira el dia de la CONSULTA y aqui lo que se repite es la MEDICION.
+          //
+          // NO SE RECHAZA EL LOTE, igual que con el sexo y con la encuesta vacia: la consulta es real y su
+          // historia vale. Lo que no entra es la medicion repetida, y se dice al terminar. Una consulta sin
+          // medicion ya tiene su puerta con mensaje en el diagnostico; una medicion de otra persona en la
+          // historia de este paciente, no: se descubre meses despues, si se descubre.
+          const choque = await buscarLaMismaMedicion(tx, {
+            evaluationId: evaluacion.id,
+            patientId,
+            valores,
+          });
+          if (choque) {
+            medicionesRepetidas.push({ documento: p.documento, fecha: c.fecha });
+          } else {
+            const [medicion] = await tx
+              .insert(bisMeasurements)
+              .values({ evaluationId: evaluacion.id, measurementDate: cuando, importBatchId: lote.id })
+              .returning({ id: bisMeasurements.id });
+            await tx.insert(bisRawValues).values(
+              valores.map((v) => ({ measurementId: medicion.id, variableName: v.variableName, value: String(v.value) })),
+            );
+          }
         }
 
         // ═══ LA FUERZA PRENSIL Y EL PESO META (2026-09-24) ═══
@@ -368,6 +395,7 @@ export async function importarLote(input: ImportarLoteInput): Promise<ImportarLo
       consultasOmitidas: omitidas,
       pacientesSinSexo: sinSexo,
       consultasSinRespuestas: sinRespuestas,
+      medicionesRepetidas,
     };
   });
 }
