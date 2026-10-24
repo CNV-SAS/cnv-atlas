@@ -7,10 +7,13 @@ import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import type { ProfesionalDestino } from "@/modules/professionals/data/profesionales-para-reasignar";
+
 import {
   confirmarPacienteRealAction,
   desmarcarPacienteDePruebaAction,
   marcarPacienteDePruebaAction,
+  reasignarPacienteAction,
   type MarcaDePruebaState,
 } from "../actions";
 import { ROTULO_DE_PRUEBA } from "../de-prueba";
@@ -101,7 +104,70 @@ function ConfirmarReal({ patientId, confirmado }: { patientId: string; confirmad
   );
 }
 
-export function PacientesDelIntegrante({ pacientes }: { pacientes: PacienteDelIntegrante[] }) {
+// ═══ REASIGNAR A OTRO PROFESIONAL (Santiago, 2026-10-24) ═══
+//
+// POR QUE AQUI: esta es la pantalla donde admin mira la operacion de un integrante, asi que es donde se
+// decide que pasa con sus pacientes cuando se va o cuando otra persona cubrio sus citas. La regla dura 14
+// dice "offboarding = desactivar y reasignar", y la segunda mitad no tenia ninguna superficie.
+//
+// EL MOTIVO VA EN LA PROPIA FILA, no en un dialogo: dentro de un ano alguien va a preguntar por que esta
+// historia clinica cambio de manos, y "porque alguien lo movio" no es una respuesta.
+//
+// Y SE DICE QUE LA FIRMA NO SE MUEVE, antes de pulsar. Lo que cambia es quien atiende y quien ve la ficha;
+// quien firmo un diagnostico se queda, porque es un hecho que ocurrio.
+function Reasignar({
+  patientId,
+  destinos,
+}: {
+  patientId: string;
+  destinos: ProfesionalDestino[];
+}) {
+  const [state, action, pending] = useActionState(reasignarPacienteAction, inicial);
+  useFormToastAndRefresh(state);
+  if (destinos.length === 0) return null;
+  return (
+    <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="patientId" value={patientId} />
+      <select
+        name="haciaProfesionalId"
+        required
+        defaultValue=""
+        disabled={pending}
+        aria-label="Profesional que lo va a atender"
+        className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        <option value="">Reasignar a...</option>
+        {destinos.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.nombre}
+            {d.profesion ? ` · ${d.profesion}` : ""}
+          </option>
+        ))}
+      </select>
+      <Input
+        name="motivo"
+        required
+        minLength={5}
+        maxLength={200}
+        placeholder="Por qué se reasigna"
+        className="h-8 w-56 text-xs"
+        disabled={pending}
+      />
+      <Button type="submit" variant="outline" size="sm" disabled={pending}>
+        {pending ? "Moviendo..." : "Reasignar"}
+      </Button>
+    </form>
+  );
+}
+
+export function PacientesDelIntegrante({
+  pacientes,
+  destinos = [],
+}: {
+  pacientes: PacienteDelIntegrante[];
+  /** Vacio = quien mira no puede reasignar, o no hay otro profesional activo. */
+  destinos?: ProfesionalDestino[];
+}) {
   if (pacientes.length === 0) {
     return <p className="text-sm text-muted-foreground">No tiene pacientes asignados.</p>;
   }
@@ -141,13 +207,19 @@ export function PacientesDelIntegrante({ pacientes }: { pacientes: PacienteDelIn
                 </span>
               ) : null}
             </span>
-            {p.marcadoAMano ? (
-              <Desmarcar patientId={p.id} />
-            ) : p.esDePrueba || p.confirmadoReal ? (
-              <ConfirmarReal patientId={p.id} confirmado={p.confirmadoReal} />
-            ) : (
-              <Marcar patientId={p.id} />
-            )}
+            {/* LAS DOS ACCIONES CONVIVEN EN LA FILA: la marca de prueba decide si el paciente cuenta en las
+                cifras, y la reasignacion decide quien lo atiende. Son preguntas distintas sobre el mismo
+                paciente, asi que no se excluyen (a diferencia de marcar y desmarcar, que si). */}
+            <span className="flex flex-wrap items-center gap-3">
+              {p.marcadoAMano ? (
+                <Desmarcar patientId={p.id} />
+              ) : p.esDePrueba || p.confirmadoReal ? (
+                <ConfirmarReal patientId={p.id} confirmado={p.confirmadoReal} />
+              ) : (
+                <Marcar patientId={p.id} />
+              )}
+              <Reasignar patientId={p.id} destinos={destinos} />
+            </span>
           </li>
         ))}
       </ul>
