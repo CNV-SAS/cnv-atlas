@@ -251,7 +251,19 @@ describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condi
     const [versionCondiciones] = await db.execute<{ id: string }>(
       dsql`select id from bis_condition_versions order by published_at desc limit 1`,
     );
-    const documento = `IMPGATE-${Date.now()}`;
+    // ═══ EL SELLO VA TAMBIEN EN LAS LECTURAS DEL EQUIPO, no solo en el documento (2026-10-24) ═══
+    //
+    // Desde que el import frena la medicion repetida por huella de los crudos, dos pacientes distintos con
+    // las CUATRO lecturas identicas son un choque, y eso es correcto: en una persona no se repiten. Pero
+    // este caso creaba un paciente nuevo en cada corrida con las MISMAS lecturas, asi que un resto de una
+    // corrida anterior (que es lo que habia: un IMPGATE del 22 de septiembre cuyo afterAll no corrio) hacia
+    // fallar la prueba por una razon que no es la que prueba.
+    //
+    // Variar la capacitancia con el mismo sello que el documento deja cada corrida con su propia toma, que
+    // es lo que de verdad pasa, y la prueba deja de depender de que la base este limpia.
+    const sello = Date.now();
+    const documento = `IMPGATE-${sello}`;
+    const capacitancia = 2.96 + (sello % 500) / 10000;
     const r = await importarLote({
       organizationId: pp.organization_id,
       professionalId: pp.id,
@@ -275,7 +287,7 @@ describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condi
               // entren, y que la puerta SIGA pidiendo las condiciones (la fila existe, pero nadie las
               // registro). Antes de la 0170 esto era imposible: crear la fila daba las condiciones por
               // puestas.
-              consulta: { nombre: "Sintético Gate", sexo: "Masculino", fechaNac: "1990-05-01", Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: 2.96, FM: 18.04, FFM: 62.36, FFMI: 19.9, peso: 80.4, tallaCm: 177, fuerzaPrensil: 34.5, pesoMeta: 75 },
+              consulta: { nombre: "Sintético Gate", sexo: "Masculino", fechaNac: "1990-05-01", Re: 627.3, Ri: 1306.4, Rinf: 423.8, C: capacitancia, FM: 18.04, FFM: 62.36, FFMI: 19.9, peso: 80.4, tallaCm: 177, fuerzaPrensil: 34.5, pesoMeta: 75 },
             },
           ],
         },
