@@ -13,20 +13,31 @@
 // y `docs/entregas/**/*.csv`, las dos reglas lo cubren). El primero lleva NOMBRE Y DOCUMENTO, asi que no
 // puede entrar a git ni subirse a ninguna parte que no sea el correo o el drive de CNV.
 //
-// ═══ DOS ARCHIVOS, Y LA RAZON ES LA MUESTRA ═══
+// ═══ UN ARCHIVO POR DEFECTO, Y EL IDENTIFICADO HAY QUE PEDIRLO ═══
 //
-//   1. `eb-bis-de-gildardo.csv`: IDENTIFICADO, solo sus pacientes. Es lo que el pidio, y Santiago decidio
-//      que no hace falta seudonimizar porque es su propio profesional tratante.
-//      PERO SON NUEVE FILAS. Con nueve no se ve el patron de una formula.
+//   1. `eb-bis-cohorte.csv`  (SIEMPRE): SEUDONIMIZADO, TODA la cohorte real (sin pacientes ni
+//      profesionales de prueba, sin evaluaciones reemplazadas ni retiradas). Es el que responde la
+//      pregunta de la formula, y al no llevar nombre ni documento se puede compartir con mucho menos
+//      riesgo.
 //
-//   2. `eb-bis-cohorte.csv`: SEUDONIMIZADO, TODA la cohorte real (sin pacientes ni profesionales de
-//      prueba, sin evaluaciones reemplazadas ni retiradas). Es el que de verdad responde la pregunta, y
-//      al no llevar nombre ni documento se puede compartir con mucho menos riesgo. El enlace entre los
-//      dos es la columna `evaluacion` (el id), que no dice nada por si solo.
+//   2. `eb-bis-de-gildardo.csv` (SOLO con `--identificado`): IDENTIFICADO, solo sus pacientes. Se pidio
+//      una vez, se entrego, y Gildardo dijo despues que NO hace falta (2026-10-24: "No hace falta el
+//      archivo identificado con nombres y documentos"). Queda detras de una bandera y NO sale por
+//      defecto, porque un archivo con nombre y cedula que se genera sin que nadie lo pida es un archivo
+//      que alguien va a encontrar sin saber que trae. El enlace entre los dos, si hiciera falta, es la
+//      columna `evaluacion` (el id), que no dice nada por si sola.
 //
 // ═══ DE DONDE SALE CADA COLUMNA ═══
 //
 //   · Re, Ri, Rinf, C, AF        -> `bis_raw_values` (lo que midio el equipo, o lo DERIVADO: va marcado)
+//   · peso, talla, MLG, ACT,     -> `bis_raw_values` TAMBIEN, y por eso son los de LA MEDICION y no los
+//     masa seca sin grasa           de la ficha de hoy: `patient_profiles` no guarda peso ni talla, asi
+//                                   que no hay un segundo sitio del que pudieran venir. El valor vigente
+//                                   vive aqui incluso si se corrigio a mano (la 0090 invirtio eso: el
+//                                   crudo original queda en `bis_value_corrections`).
+//   · fuerza_prensil             -> `evaluation_bis_intake.grip_strength_kg`. NO viene del equipo: la
+//                                   mide el profesional con dinamometro y es opcional, asi que la mayoria
+//                                   de las filas la tienen vacia (el conteo se imprime al final).
 //   · IFC, PABU, EB, IAE, IRC    -> `indicator_values` (lo que se sello ese dia, no un recalculo)
 //   · ICEC (LE8)                 -> `reports.snapshot -> dfi.le8Total`. NO existe como indicador: es el
 //                                   unico insumo de la EB-BIS que no esta en `indicator_values`, y sin el
@@ -37,6 +48,7 @@
 //
 // COMO SE CORRE (lee la nube, no escribe nada en ella):
 //   node --env-file=.env.production.local scripts/datos-eb-bis-para-gildardo.mjs
+//   node --env-file=.env.production.local scripts/datos-eb-bis-para-gildardo.mjs --identificado
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "@supabase/supabase-js";
@@ -83,13 +95,45 @@ const CRUDOS = {
   // perfil). Va como cotejo: si las dos difieren, una de las dos esta mal.
   edad_del_equipo: "Edad",
 };
-// Y SE CONSULTAN RECORTADAS, que es un filo con nombre y apellido: `clinical-engine/edge/biody-columns.ts`
-// declara los encabezados CON su espacio final ("Extracellular resistance ") porque asi vienen del Excel,
-// pero lo que se PERSISTE en `bis_raw_values.variable_name` esta recortado. Consultar con el espacio
-// devuelve CELDAS VACIAS sin un solo error: paso en la primera corrida de este script, con Re y Rinf en
-// blanco mientras Ri y C (que no llevan espacio) si llegaban.
-const CABECERAS = Object.values(CRUDOS).map((h) => h.trim());
-const porCabecera = new Map(Object.entries(CRUDOS).map(([k, v]) => [v.trim(), k]));
+// LA COMPOSICION QUE PIDIO GILDARDO EL 24-OCT. Misma tabla, mismos encabezados del export: son columnas
+// del equipo, no calculos nuestros.
+//
+// LA MASA SECA SIN GRASA LA GUARDA EL EQUIPO (403 filas medidas en la nube), asi que va la del equipo y
+// NO se calcula como MLG - ACT. El la ofrecio calcularla por si no la teniamos; si la calculamos nosotros
+// seria una cifra nuestra pasando por una del aparato, y las dos no tienen por que coincidir al decimal.
+const COMPOSICION = {
+  peso_kg: "Peso kg",
+  talla_cm: "Altura cm",
+  MLG_kg: "Masa sin grasa measurementDetails.VALEURCALCULEEEXPORT kg",
+  ACT_L: "Agua total measurementDetails.VALEURCALCULEEEXPORT L",
+  masa_seca_sin_grasa_kg: "Masa seca sin grasa measurementDetails.VALEURCALCULEEEXPORT kg",
+};
+
+// Y SE CONSULTAN NORMALIZADAS, que es un filo con nombre y apellido: `clinical-engine/edge/biody-columns.ts`
+// declara los encabezados TAL CUAL vienen del Excel, pero lo que se PERSISTE en
+// `bis_raw_values.variable_name` paso por `normalizeHeader` (modules/bis/services/header-map.ts): recorta,
+// colapsa espacios repetidos y TRADUCE los tokens de BiodyLife. Consultar con el encabezado crudo devuelve
+// CELDAS VACIAS sin un solo error: paso en la primera corrida de este script, con Re y Rinf en blanco
+// mientras Ri y C (que no llevan espacio final) si llegaban.
+//
+// Al principio bastaba un `.trim()` porque los insumos electricos no traen tokens. Las columnas de
+// composicion SI los traen ("...measurementDetails.VALEURCALCULEEEXPORT kg" se guarda como "...valor kg"),
+// asi que el `.trim()` habria devuelto las cinco columnas nuevas vacias. Esta es una COPIA de la funcion
+// del repo, no una aproximacion: el script es .mjs y no puede importar el TypeScript.
+const TOKENS = [
+  [/measurementDetails\.VALEURCALCULEEEXPORT/g, "valor"],
+  [/measurementDetails\.REFERENCEESTIMEEEXPORT/g, "referencia"],
+  [/measurementDetails\.ECARTTHEORIQUEEXPORT/g, "desviacion"],
+];
+function normaliza(raw) {
+  let s = (raw ?? "").trim();
+  for (const [re, rep] of TOKENS) s = s.replace(re, rep);
+  return s.replace(/\s+/g, " ").trim();
+}
+
+const PEDIDAS = { ...CRUDOS, ...COMPOSICION };
+const CABECERAS = Object.values(PEDIDAS).map(normaliza);
+const porCabecera = new Map(Object.entries(PEDIDAS).map(([k, v]) => [normaliza(v), k]));
 const INDICADORES = ["IFC", "PABU", "EB", "IAE", "IRC", "AF", "FMI", "FFMI", "ISCM", "IEHH"];
 
 console.log("Leyendo la nube...");
@@ -109,6 +153,10 @@ const valores = await todo("indicator_values", "evaluation_id, indicator_definit
   q.in("indicator_definition_id", idsIndicadores),
 );
 const reportes = await todo("reports", "evaluation_id, snapshot");
+// La fuerza prensil no es del equipo: la captura el profesional con dinamometro, en la entrada BIS, y es
+// opcional. Una celda vacia aqui significa "no se midio", no "falta el dato".
+const intakes = await todo("evaluation_bis_intake", "evaluation_id, grip_strength_kg");
+const prensilDe = new Map(intakes.filter((i) => i.grip_strength_kg != null).map((i) => [i.evaluation_id, Number(i.grip_strength_kg)]));
 
 const P = new Map(pacientes.map((p) => [p.id, p]));
 const F = new Map(perfiles.map((p) => [p.patient_id, p]));
@@ -199,6 +247,13 @@ for (const e of evs) {
     Fo: raw.Fo?.v ?? "",
     edad_del_equipo: raw.edad_del_equipo?.v ?? "",
     origen_crudos: [...new Set(Object.keys(CRUDOS).map((k) => raw[k]?.origen).filter(Boolean))].join("|"),
+    peso_kg: raw.peso_kg?.v ?? "",
+    talla_cm: raw.talla_cm?.v ?? "",
+    MLG_kg: raw.MLG_kg?.v ?? "",
+    ACT_L: raw.ACT_L?.v ?? "",
+    masa_seca_sin_grasa_kg: raw.masa_seca_sin_grasa_kg?.v ?? "",
+    origen_composicion: [...new Set(Object.keys(COMPOSICION).map((k) => raw[k]?.origen).filter(Boolean))].join("|"),
+    fuerza_prensil_kgf: prensilDe.get(e.id) ?? "",
     IFC: ind.IFC ?? "",
     PABU: ind.PABU ?? "",
     ICEC_LE8: icecDe.get(e.id) ?? "",
@@ -225,15 +280,24 @@ const csv = (filas, columnas) => {
 const SALIDA = "docs/entregas/dudas";
 mkdirSync(SALIDA, { recursive: true });
 
-// ── 1 · IDENTIFICADO, solo los de Gildardo ────────────────────────────────────────────────────────
+// La composicion va junta y despues de los crudos electricos, no intercalada: son columnas del mismo
+// aparato pero responden otra pregunta, y Gildardo las va a leer en bloque.
+const COLS_COMPOSICION = ["peso_kg", "talla_cm", "MLG_kg", "ACT_L", "masa_seca_sin_grasa_kg",
+  "origen_composicion", "fuerza_prensil_kgf"];
+
+// ── 1 · IDENTIFICADO, solo los de Gildardo · SOLO SI SE PIDE ──────────────────────────────────────
+// Gildardo dijo que no lo necesita, asi que no sale por defecto. Ver la cabecera del archivo.
 const deGildardo = filas.filter((f) => /gildardo/i.test(f.profesional));
-const COLS_ID = [
-  "evaluacion", "tipo", "documento", "nombre", "sexo", "nacimiento", "fecha_medicion", "edad_a_la_medicion",
-  "edad_que_uso_el_motor", "edad_del_equipo", "aviso_edad", "Re", "Ri", "Rinf", "C", "AF", "R50", "Xc50",
-  "Fo", "origen_crudos", "IFC", "PABU", "ICEC_LE8", "EB_BIS", "IAE", "IRC", "FMI", "FFMI", "ISCM", "IEHH",
-  "version_motor", "version_reglas",
-];
-writeFileSync(`${SALIDA}/eb-bis-de-gildardo.csv`, csv(deGildardo, COLS_ID), "utf8");
+const quierenIdentificado = process.argv.includes("--identificado");
+if (quierenIdentificado) {
+  const COLS_ID = [
+    "evaluacion", "tipo", "documento", "nombre", "sexo", "nacimiento", "fecha_medicion", "edad_a_la_medicion",
+    "edad_que_uso_el_motor", "edad_del_equipo", "aviso_edad", "Re", "Ri", "Rinf", "C", "AF", "R50", "Xc50",
+    "Fo", "origen_crudos", ...COLS_COMPOSICION, "IFC", "PABU", "ICEC_LE8", "EB_BIS", "IAE", "IRC", "FMI",
+    "FFMI", "ISCM", "IEHH", "version_motor", "version_reglas",
+  ];
+  writeFileSync(`${SALIDA}/eb-bis-de-gildardo.csv`, csv(deGildardo, COLS_ID), "utf8");
+}
 
 // ── 2 · SEUDONIMIZADO, toda la cohorte ────────────────────────────────────────────────────────────
 // Sin nombre ni documento, y el profesional como letra: el archivo responde la pregunta de la formula y
@@ -245,8 +309,8 @@ const cohorte = filas.map((f) => {
 });
 const COLS_SEUDO = ["evaluacion", "profesional", "profesion", "tipo", "sexo", "fecha_medicion", "edad_a_la_medicion",
   "edad_que_uso_el_motor", "edad_del_equipo", "aviso_edad", "Re", "Ri", "Rinf", "C", "AF", "R50", "Xc50",
-  "Fo", "origen_crudos", "IFC", "PABU", "ICEC_LE8", "EB_BIS", "IAE", "IRC", "FMI", "FFMI", "ISCM", "IEHH",
-  "version_motor", "version_reglas"];
+  "Fo", "origen_crudos", ...COLS_COMPOSICION, "IFC", "PABU", "ICEC_LE8", "EB_BIS", "IAE", "IRC", "FMI",
+  "FFMI", "ISCM", "IEHH", "version_motor", "version_reglas"];
 writeFileSync(`${SALIDA}/eb-bis-cohorte.csv`, csv(cohorte, COLS_SEUDO), "utf8");
 
 // ── 3 · LO QUE HAY QUE SABER ANTES DE MIRAR LOS ARCHIVOS ──────────────────────────────────────────
@@ -260,12 +324,27 @@ const est = (xs) => {
 };
 
 console.log(`\nESCRITOS (fuera de git, en ${SALIDA}/):`);
-console.log(`  eb-bis-de-gildardo.csv   ${deGildardo.length} filas   CON NOMBRE Y DOCUMENTO`);
 console.log(`  eb-bis-cohorte.csv       ${cohorte.length} filas   seudonimizado`);
-if (deGildardo.length < 30) {
-  console.log(`\n  ⚠ ${deGildardo.length} filas es POCO para ver el patron de una formula. El archivo de la cohorte`);
-  console.log(`    (${cohorte.length} filas) es el que responde la pregunta, y no lleva nombres.`);
+if (quierenIdentificado) {
+  console.log(`  eb-bis-de-gildardo.csv   ${deGildardo.length} filas   CON NOMBRE Y DOCUMENTO`);
+  if (deGildardo.length < 30) {
+    console.log(`\n  ⚠ ${deGildardo.length} filas es POCO para ver el patron de una formula. El archivo de la cohorte`);
+    console.log(`    (${cohorte.length} filas) es el que responde la pregunta, y no lleva nombres.`);
+  }
+} else {
+  console.log(`  (el identificado NO se genero: va solo con --identificado)`);
 }
+
+// CUANTAS CELDAS QUEDAN VACIAS POR COLUMNA NUEVA. Se imprime antes de las estadisticas porque decide si
+// una columna sirve para analizar: una con 300 vacias no es un dato, es una anecdota.
+console.log("\nLAS COLUMNAS NUEVAS, Y CUANTAS FILAS LAS TIENEN VACIAS:");
+for (const c of COLS_COMPOSICION) {
+  if (c === "origen_composicion") continue;
+  const vacias = cohorte.filter((f) => f[c] === "" || f[c] == null).length;
+  const marca = vacias === 0 ? "completa" : vacias > cohorte.length / 2 ? "⚠ MAS DE LA MITAD VACIA" : "";
+  console.log(`  ${c.padEnd(24)} ${String(cohorte.length - vacias).padStart(4)} con dato · ${String(vacias).padStart(4)} vacias   ${marca}`);
+}
+
 console.log("\nLO QUE SE VE SIN ABRIR NADA:");
 console.log("  EB-BIS           " + est(cohorte.map((f) => f.EB_BIS)));
 console.log("  edad real        " + est(cohorte.map((f) => f.edad_a_la_medicion)));
@@ -275,6 +354,12 @@ console.log("  PABU             " + est(cohorte.map((f) => f.PABU)) + "   (la fo
 console.log("  IFC              " + est(cohorte.map((f) => f.IFC)) + "   (la formula supone media 4,0146 y sd 2,2669)");
 console.log("  IFC en hombres   " + est(cohorte.filter((f) => f.sexo === "M").map((f) => f.IFC)));
 console.log("  IFC en mujeres   " + est(cohorte.filter((f) => f.sexo === "F").map((f) => f.IFC)));
+console.log("  peso (kg)        " + est(cohorte.map((f) => f.peso_kg)));
+console.log("  talla (cm)       " + est(cohorte.map((f) => f.talla_cm)));
+console.log("  MLG (kg)         " + est(cohorte.map((f) => f.MLG_kg)));
+console.log("  ACT (L)          " + est(cohorte.map((f) => f.ACT_L)));
+console.log("  masa seca (kg)   " + est(cohorte.map((f) => f.masa_seca_sin_grasa_kg)) + "   (la del equipo, NO calculada como MLG - ACT)");
+console.log("  prensil (Kgf)    " + est(cohorte.map((f) => f.fuerza_prensil_kgf)) + "   (opcional: la mide el profesional, no el equipo)");
 const conAviso = cohorte.filter((f) => f.aviso_edad);
 console.log(`\nFILAS CON AVISO DE EDAD: ${conAviso.length}  (su IAE no es confiable: la edad que entro al motor no es la de hoy)`);
 for (const f of conAviso) console.log(`  ${f.evaluacion.slice(0, 8)} · ${f.aviso_edad} · edad hoy ${f.edad_a_la_medicion} · el motor uso ${f.edad_que_uso_el_motor}`);
