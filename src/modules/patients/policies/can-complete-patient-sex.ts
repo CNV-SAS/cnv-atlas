@@ -48,3 +48,17 @@ export function canCompletePatientSex(user: CurrentUser): boolean {
 export function canCorrectPatientSex(user: CurrentUser): boolean {
   return hasAnyRole(user, ["professional", "admin"]);
 }
+
+// ── Y QUIEN PUEDE COMPLETAR UNA FECHA DE NACIMIENTO QUE FALTA (2026-10-24) ────────────────────────
+//
+// MISMOS ROLES, Y VIVE EN ESTE ARCHIVO A PROPOSITO: es el mismo acto que completar el sexo, sobre el otro
+// insumo del motor que puede faltar. Los dos rellenan un hueco que BLOQUEA el diagnostico, ninguno pisa
+// un valor, y ninguno rehace un diagnostico ya generado.
+//
+// LA DIFERENCIA CON "CORREGIR LOS DATOS PERSONALES", que sigue diferido (ver arriba): corregir una fecha
+// YA registrada toca la RAMA DEL CONSENTIMIENTO (mayor o menor de edad el dia que firmo), y eso no se
+// arregla por detras. COMPLETAR una que falta no pisa nada: lo unico que puede hacer es destapar que el
+// paciente era menor al firmar, y para eso ya existe `motivoDeRegularizacion`, que lo dice en la ficha.
+export function canCompletePatientBirthDate(user: CurrentUser): boolean {
+  return hasAnyRole(user, ["professional", "admin"]);
+}

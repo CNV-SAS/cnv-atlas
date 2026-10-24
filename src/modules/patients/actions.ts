@@ -16,13 +16,20 @@ import {
   resolverPropuestaDePrueba,
 } from "./data/de-prueba-writer";
 import { guardarContactoDelPaciente } from "./data/patient-contact-writer";
+import { completarFechaDeNacimiento } from "./data/patient-birthdate-writer";
+import { reasignarPaciente } from "./data/reasignacion-writer";
 import { completarSexoDelPaciente, corregirSexoDelPaciente } from "./data/patient-sex-writer";
 import { contarDiagnosticosDelPaciente } from "./data/diagnosticos-del-paciente-reader";
 import { getPatientDetail } from "./data/patient-detail-reader";
 import { setPatientArchivado } from "./data/patients-archive-writer";
 import { canArchivePatient } from "./policies/can-archive-patient";
-import { canCompletePatientSex, canCorrectPatientSex } from "./policies/can-complete-patient-sex";
+import {
+  canCompletePatientBirthDate,
+  canCompletePatientSex,
+  canCorrectPatientSex,
+} from "./policies/can-complete-patient-sex";
 import { canEditPatientContact } from "./policies/can-edit-patient-contact";
+import { canReassignPatient } from "./policies/can-reassign-patient";
 import { canCreatePatientPresencial } from "./policies/can-create-patient";
 import { documentoAjenoParaProfesional } from "./text/documento-ajeno";
 import type {
@@ -36,6 +43,8 @@ import {
   contactoPacienteSchema,
   correccionDeSexoSchema,
   documentoSchema,
+  fechaDeNacimientoPacienteSchema,
+  reasignacionDePacienteSchema,
   sexoPacienteSchema,
 } from "./validations";
 
@@ -498,4 +507,124 @@ export async function confirmarPacienteRealAction(
     reportServerError("paciente.confirmar-real", e);
     return { error: "No se pudo confirmarlo.", success: null, warning: null };
   }
+}
+
+// ═══ COMPLETAR LA FECHA DE NACIMIENTO QUE FALTA (2026-10-24) ═══
+//
+// LA SALIDA DE LA PUERTA NUEVA DE LA EDAD. Desde hoy `computeAge` no devuelve 0 ante una fecha ausente:
+// falla en voz alta, y `edadParaDiagnosticar` lo traduce a una frase. Sin esta pantalla esa frase seria un
+// callejon, que es el defecto que ya nos costo dos veces (la capacitancia de 16,22 y el sexo sin via).
+//
+// SOLO RELLENA UN HUECO: si el paciente ya tenia fecha, el writer no actualiza nada y aqui se dice. No es
+// el bloque diferido de corregir datos personales, y la diferencia esta escrita en la policy.
+export async function completarFechaDeNacimientoAction(
+  _prev: SexoPacienteState,
+  form: FormData,
+): Promise<SexoPacienteState> {
+  const user = await requireUser();
+  if (!canCompletePatientBirthDate(user)) {
+    return { error: "No autorizado.", success: null, warning: null };
+  }
+
+  const datos = fechaDeNacimientoPacienteSchema.safeParse({
+    patientId: form.get("patientId"),
+    birthDate: form.get("birthDate"),
+  });
+  if (!datos.success) {
+    return {
+      error: datos.error.issues[0]?.message ?? "Revisa la fecha de nacimiento.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  // LA OWNERSHIP SE VERIFICA LEYENDO bajo RLS antes de escribir (mismo patron que el sexo y el contacto):
+  // si el paciente no es suyo, el lector no lo alcanza y aqui es indistinguible de que no exista.
+  const paciente = await getPatientDetail(datos.data.patientId);
+  if (!paciente) return { error: "No se encontró ese paciente.", success: null, warning: null };
+
+  const ip = await getClientIp();
+  const escrito = await completarFechaDeNacimiento(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!escrito) {
+    return {
+      error: null,
+      success: null,
+      warning:
+        "Este paciente ya tenía la fecha de nacimiento registrada, así que no se cambió nada. Refresca la ficha para verla.",
+    };
+  }
+
+  return {
+    error: null,
+    success: "Fecha de nacimiento registrada. Ya se le puede generar el diagnóstico.",
+    warning: null,
+  };
+}
+
+// ═══ REASIGNAR UN PACIENTE A OTRO PROFESIONAL (Santiago, 2026-10-24) ═══
+//
+// LA SEGUNDA MITAD DE LA REGLA DURA 14 ("offboarding = desactivar y reasignar"), que hasta hoy no existia:
+// se podia desactivar a un integrante y sus pacientes se quedaban con el acceso del que se fue.
+//
+// SOLO ADMIN (ver `can-reassign-patient`), con MOTIVO, y el rastro queda inline en la transaccion. Lo que
+// se mueve y lo que no, con su razon cada cosa, esta escrito en `reasignacion-writer`.
+export async function reasignarPacienteAction(
+  _prev: SexoPacienteState,
+  form: FormData,
+): Promise<SexoPacienteState> {
+  const user = await requireUser();
+  if (!canReassignPatient(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const datos = reasignacionDePacienteSchema.safeParse({
+    patientId: form.get("patientId"),
+    haciaProfesionalId: form.get("haciaProfesionalId"),
+    motivo: form.get("motivo"),
+  });
+  if (!datos.success) {
+    return {
+      error: datos.error.issues[0]?.message ?? "Revisa los datos de la reasignación.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  const ip = await getClientIp();
+  const r = await reasignarPaciente(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+
+  if (r.estado === "profesional-no-existe") {
+    return {
+      error: "Ese profesional no existe o es una cuenta de prueba. Elige otro.",
+      success: null,
+      warning: null,
+    };
+  }
+  if (r.estado === "sin-cambio") {
+    return {
+      error: null,
+      success: null,
+      warning: "Este paciente ya estaba asignado a ese profesional, así que no se movió nada.",
+    };
+  }
+
+  // SE DICE QUE SE MOVIO Y QUE NO. El `confirmed_by` de un diagnostico firmado se queda donde esta, y quien
+  // acaba de reasignar tiene que saberlo: si no, va a creer que la consulta entera cambio de manos.
+  const firma =
+    r.conDiagnosticoFirmado > 0
+      ? ` La firma de ${r.conDiagnosticoFirmado === 1 ? "un diagnóstico" : `${r.conDiagnosticoFirmado} diagnósticos`} se queda con quien la hizo, que es lo que de verdad pasó.`
+      : "";
+  return {
+    error: null,
+    success:
+      `Paciente reasignado. ${r.evaluacionesMovidas === 1 ? "1 consulta pasó" : `${r.evaluacionesMovidas} consultas pasaron`} al profesional nuevo.` +
+      firma,
+    warning: null,
+  };
 }

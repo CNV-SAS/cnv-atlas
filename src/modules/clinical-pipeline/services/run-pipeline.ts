@@ -16,7 +16,7 @@ import {
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
 import { restriccionesDeLaEncuesta } from "@/modules/treatment/services/restricciones-de-la-encuesta";
-import { buildEngineInput, sexoParaDiagnosticar } from "./build-engine-input";
+import { buildEngineInput, edadParaDiagnosticar, sexoParaDiagnosticar } from "./build-engine-input";
 import { formatIncompleteSurveyMessage } from "./survey-completeness";
 
 // Orquesta la propagacion: leer insumos -> armar EngineInput -> runEngine (stub) ->
@@ -111,6 +111,26 @@ export async function runClinicalPipeline(
     );
   }
 
+  // Y LA EDAD, que es la SEXTA puerta y se abre por lo mismo que la del sexo (Gildardo, EB-BIS v7, tabla 1
+  // errores 3 y 4; Santiago, 2026-10-24). `computeAge` devolvia 0 ante una fecha ausente o ilegible y ese 0
+  // entraba al motor por cuatro sitios: inventaba el IAE, perdia la clasificacion de capacitancia y se
+  // volvia 30 en el GEB de la cadena calorica. Ahora LANZA, asi que hace falta la puerta: un dato que falta
+  // no es un fallo del sistema. Se mide a la fecha de la MEDICION, no a la de hoy.
+  const edad = edadParaDiagnosticar(
+    inputs.birthDate,
+    inputs.measurementDate ? new Date(inputs.measurementDate) : new Date(),
+  );
+  if (!edad.allowed) {
+    return err(
+      appError(
+        "validation",
+        edad.message,
+        // La bandera decide si el panel OFRECE la salida, y solo la lleva el caso que la ficha resuelve.
+        edad.enLaFicha ? { faltaLaFechaDeNacimiento: "1" } : undefined,
+      ),
+    );
+  }
+
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una versión del modelo activa."));
 
@@ -118,6 +138,7 @@ export async function runClinicalPipeline(
     {
       sex: inputs.sex,
       birthDate: inputs.birthDate,
+      measurementDate: inputs.measurementDate,
       surveyAnswers: inputs.surveyAnswers,
       expectedFieldKeys: inputs.expectedFieldKeys,
       bisRaw: inputs.bisRaw,

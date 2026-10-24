@@ -80,7 +80,15 @@ export async function runPipelineAction(
             href: `/pacientes/${ownership.patientId}`,
             etiqueta: "Ir a la ficha del paciente a completar el sexo",
           }
-        : null;
+        : // Falta la fecha de nacimiento: la misma ficha, y por la misma razon. Son 15 pacientes reales
+          // del lote del HTML, asi que esta salida es la que impide que la puerta nueva de la edad se
+          // viva como un sistema roto.
+          result.error.fields?.faltaLaFechaDeNacimiento
+          ? {
+              href: `/pacientes/${ownership.patientId}`,
+              etiqueta: "Ir a la ficha del paciente a completar la fecha de nacimiento",
+            }
+          : null;
     return fail(result.error.message, salida);
   }
 

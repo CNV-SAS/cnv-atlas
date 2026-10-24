@@ -174,7 +174,15 @@ describe("el remedio existe y solo rellena huecos", () => {
     const todos = readdirSync(join(RAIZ, "src/modules/patients/data"))
       .filter((f) => f.endsWith(".ts"))
       .map((f) => `src/modules/patients/data/${f}`);
-    const escritores = todos.filter((f) => /update\(patientProfiles\)/.test(sinComentarios(leer(f))));
+    // SE BUSCA QUIEN ESCRIBE EL SEXO, no quien toca el perfil. La diferencia aparecio el 2026-10-24, al
+    // llegar `patient-birthdate-writer`: el perfil tiene mas campos que pueden faltar y cada uno lleva su
+    // propio writer con su propio candado (el de la fecha esta en `la-edad-que-se-vuelve-cero.test.ts`).
+    // Lo que esta regla protege es que las DOS formas de escribir EL SEXO (rellenar y corregir) no se
+    // separen en dos archivos capaces de divergir.
+    const escritores = todos.filter((f) => {
+      const src = sinComentarios(leer(f));
+      return /update\(patientProfiles\)/.test(src) && /\.set\(\s*\{\s*sex\b/.test(src);
+    });
     expect(
       escritores,
       "un segundo archivo que escriba el sexo dejaria el candado de este sin valor: las dos formas de " +

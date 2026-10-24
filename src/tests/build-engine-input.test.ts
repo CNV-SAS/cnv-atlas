@@ -19,9 +19,13 @@ describe("computeAge", () => {
     expect(computeAge("1990-12-31", NOW)).toBe(35);
   });
 
-  it("sin fecha o fecha invalida devuelve 0", () => {
-    expect(computeAge(null, NOW)).toBe(0);
-    expect(computeAge("basura", NOW)).toBe(0);
+  // ANTES ESTE CASO ESPERABA 0, y ese 0 era el defecto (2026-10-24). Una fecha ausente o ilegible se
+  // convertia en una edad, y con ella en un IAE inventado, una clasificacion de capacitancia perdida y un
+  // GEB calculado como si el paciente tuviera 30. Ahora no adivina. El candado completo, con la puerta que
+  // lo traduce a una frase con salida, vive en `la-edad-que-se-vuelve-cero.test.ts`.
+  it("sin fecha o fecha invalida NO devuelve 0: falla en voz alta", () => {
+    expect(() => computeAge(null, NOW)).toThrow(/fecha de nacimiento invalida/);
+    expect(() => computeAge("basura", NOW)).toThrow(/fecha de nacimiento invalida/);
   });
 });
 
@@ -49,6 +53,7 @@ describe("buildEngineInput", () => {
     const raw = {
       sex: "F",
       birthDate: "2000-06-22",
+      measurementDate: null,
       surveyAnswers: [
         { fieldKey: "d2_19", type: "opcion", value: "Normal" },
         { fieldKey: "d5_39", type: "opcion_multiple", value: '["HTA","Prediabetes"]' },
@@ -76,7 +81,10 @@ describe("buildEngineInput", () => {
   it("ignora valores no finitos (no entran a bisRow)", () => {
     const raw = {
       sex: "M", // sexo valido: este test verifica bisRow, no el sexo (que ahora es estricto)
-      birthDate: null,
+      // FECHA VALIDA por la misma razon que el sexo: desde el 2026-10-24 la edad tampoco se adivina, asi
+      // que un null aqui haria fallar este test por un motivo que no es el que mira.
+      birthDate: "1990-01-01",
+      measurementDate: null,
       surveyAnswers: [],
       expectedFieldKeys: ["d2_19"],
       bisRaw: { [normalizeHeader(BIODY_COLUMNS.peso.header)]: Number.NaN },
@@ -94,6 +102,7 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
     const raw = {
       sex: "M",
       birthDate: "1990-01-01",
+      measurementDate: null,
       surveyAnswers: [
         // d5_39 lo lee el motor por substring: "Otra: cancer de piel" ahora SI llega, pero pelado el
         // centinela, para que el match (renal/cancer/diabet) opere sobre la condicion, no sobre "Otra:".
@@ -111,6 +120,7 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
     const raw = {
       sex: "M",
       birthDate: "1990-01-01",
+      measurementDate: null,
       surveyAnswers: [
         { fieldKey: "d5_38", type: "opcion_multiple", value: JSON.stringify(["HTA (presión alta)", "Otra: enfermedad renal"]) },
         { fieldKey: "d6_44", type: "opcion_multiple", value: JSON.stringify(["Otra: intolerancia a la lactosa"]) },
@@ -137,6 +147,7 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
     const raw = {
       sex: "M",
       birthDate: "1990-01-01",
+      measurementDate: null,
       surveyAnswers: [
         { fieldKey: "d5_42", type: "opcion_multiple", value: JSON.stringify(["Metales pesados", "Otra: humo de leña"]) },
       ],
@@ -152,6 +163,7 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
     const raw = {
       sex: "M",
       birthDate: "1990-01-01",
+      measurementDate: null,
       surveyAnswers: [
         { fieldKey: "d6_43", type: "opcion_multiple", value: JSON.stringify(["Maní", "Otra: mango"]) },
       ],

@@ -116,6 +116,7 @@ describe("medicion del encendido del LE8", () => {
           {
             sex: inputs.sex,
             birthDate: inputs.birthDate,
+            measurementDate: inputs.measurementDate,
             surveyAnswers: inputs.surveyAnswers,
             expectedFieldKeys: inputs.expectedFieldKeys,
             bisRaw: inputs.bisRaw,
