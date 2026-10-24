@@ -16,22 +16,22 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 //
 // ── LO QUE PASO, MEDIDO EN PRODUCCION EL 2026-10-24 ──────────────────────────────────────────────
 //
-// 11 grupos de mediciones con los crudos IDENTICOS hasta el ultimo decimal, 5 de ellos repartidos entre
-// pacientes DISTINTOS (uno con TRES evaluaciones). Es un dato de salud de una persona en la historia clinica
-// de otra, y de ahi salio el diagnostico que esa otra persona recibio. Gildardo encontro 10 (sus errores 1 y
-// 2 de la especificacion v7); el barrido por huella encontro 11.
+// 15 grupos con los cuatro crudos del equipo IDENTICOS hasta el ultimo decimal. Quitando los pacientes de
+// prueba y la copia legitima del flujo de correccion quedan 10 grupos REALES: 4 entre pacientes DISTINTOS y
+// 6 dentro del mismo paciente, 20 evaluaciones, todas de una profesional. Es exactamente la lista que
+// Gildardo reporto (sus errores 1 y 2 de la especificacion v7). Es un dato de salud de una persona en la
+// historia clinica de otra, y de ahi salio el diagnostico que esa otra persona recibio.
 //
-// Dos mecanismos: el lote del HTML volvio a importar tomas que ya existian nativamente (13 de las 23
-// evaluaciones implicadas llevan su lote), y nada impedia importar el mismo archivo dos veces ni al paciente
-// equivocado (un grupo se creo en OCHO SEGUNDOS: no es un lote, es la pantalla usada dos veces).
+// UN MECANISMO: el mismo archivo importado dos veces, o al paciente equivocado, desde la pantalla de
+// importar. Dos grupos se crearon con dos y cuatro minutos de diferencia. El lote del HTML no fue (solo 2 de
+// las 406 mediciones llevan un lote), pero por ahi tambien se puede, asi que el freno va en los dos.
 //
 // ── QUE DEFIENDE ESTE ARCHIVO, Y POR QUE ESTATICO ────────────────────────────────────────────────
 //
 //   1. QUE LA HUELLA NO SE DESACOPLE DEL EQUIPO: sus cuatro variables salen de BIODY_COLUMNS, no de una
 //      lista copiada a mano que se queda vieja cuando un encabezado cambia.
 //   2. QUE TODO CAMINO QUE CREE UNA MEDICION PASE POR EL FRENO. La regla vive en varios sitios (el XLSX y
-//      el lote del HTML), y un freno aplicado en uno solo deja la puerta abierta en el otro, que es
-//      exactamente por donde entraron 13 de las 23.
+//      el lote del HTML), y un freno aplicado en uno solo deja la puerta abierta en el otro.
 //   3. QUE EL FRENO VAYA ANTES DEL BORRADO de la medicion anterior: frenar despues significa haber
 //      destruido un registro clinico para luego revertirlo.
 //   4. QUE EL MENSAJE NO NOMBRE AL OTRO PACIENTE: quien importa puede no tener acceso a esa historia, y
@@ -135,8 +135,7 @@ describe("todo camino que crea una medicion pasa por el freno", () => {
     }
     expect(
       culpables,
-      "crean una medicion sin preguntar si esos mismos crudos ya estan en la base. 13 de las 23 " +
-        "evaluaciones con la medicion repetida entraron por el camino del lote, no por el del XLSX",
+      "crean una medicion sin preguntar si esos mismos crudos ya estan en la base",
     ).toEqual([]);
   });
 
