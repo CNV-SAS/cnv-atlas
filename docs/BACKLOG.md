@@ -27,6 +27,33 @@
 
 ---
 
+## PENDIENTE (2026-10-24) · ATLAS v10 ENTERO, pospuesto por Santiago · DECIDE SANTIAGO CUÁNDO SE RETOMA
+
+**Santiago lo pospuso el 2026-10-24:** *"V10 va al backlog entero. No se construye nada de v10 por ahora,
+ni el recall."* La revisión punto por punto está hecha y no hay que repetirla: vive en
+`docs/entregas/REVISION_ATLAS_V10_2026-10-22.md`, con los 22 veredictos (11 ya existían, 6 no aplican, 1
+queda fuera de Atlas, 3 son genuinamente nuevos).
+
+**Lo que de verdad vale cuando se retome, y es mi recomendación: el ítem A, el recall por lote.** Es lo más
+barato de los tres y lo único que resuelve un problema real que hoy no tiene salida: si un lote sale
+defectuoso, no hay manera de preguntarle a Atlas a quién se le entregó. El dato ya está guardado (cada
+movimiento de inventario lleva su lote), así que no hay que capturar nada nuevo: es una lectura y una
+pantalla. Los otros dos (B, mínimos y máximos de inventario; C, órdenes de compra) son construcción de
+módulo y pueden esperar sin que nada se degrade.
+
+**Y las dos cosas que se le devolvieron a Gildardo** (no son tareas nuestras, son decisiones suyas, y están
+argumentadas en el informe):
+
+1. **Las tres grafías de los productos ya están resueltas en Atlas**, y el registro INVIMA dice
+   `MULTI-CELL BASE` **con** guion (migración 0137). Su archivo emite las tres formas; el nuestro normaliza.
+2. **Una pregunta de método para las entregas siguientes**, para no volver a revisar un documento cuyo
+   veredicto depende del HTML y no del texto.
+
+> **Al retomar: no se replantea, se lee el informe.** Es justo el error que la nota de arriba de este
+> archivo describe.
+
+---
+
 ## HECHO (2026-10-05) · El domicilio simplificado: el flete salió de CNV
 
 **Decidido por contabilidad, relevado y aprobado por Santiago el 2026-10-05, y construido ese mismo día.**
