@@ -9,6 +9,7 @@ import { PacientesDelIntegrante } from "@/modules/patients/components/pacientes-
 import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
+import { RolesDelIntegrante } from "@/modules/auth/components/roles-del-integrante";
 import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
@@ -128,6 +129,17 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           asimetría se notaba justo cuando más se usa: durante un smoke, alternando una cuenta entre real y de
           prueba. Va aquí, junto al aviso que explica lo que la marca significa. */}
       <MarcaDePruebaForm professionalId={id} esDePrueba={integrante.esDePrueba} />
+
+      {/* ═══ SUS ROLES (Santiago, 2026-10-24) ═══
+
+          `user_roles` es N:N desde el principio y `hasAnyRole` ya soportaba varios, pero la tabla solo se
+          escribía al crear la cuenta y con un rol: el modelo admitía dos y el sistema no tenía forma de dar
+          el segundo. El caso que lo trae es Gildardo, que queda con profesional y obbia a la vez. */}
+      <RolesDelIntegrante
+        usuarioId={integrante.usuarioId}
+        nombre={integrante.nombre}
+        roles={integrante.roles}
+      />
 
       {/* ═══ PEDIRLE UN CONTEO FUERA DEL CALENDARIO (0208) ═══
 

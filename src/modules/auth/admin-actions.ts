@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import { appError, err, ok, type AppError, type Result } from "@/core/errors";
@@ -16,6 +16,7 @@ import {
   deactivateUserSchema,
   forcePasswordResetSchema,
   resetUserMfaSchema,
+  rolDeUsuarioSchema,
   setProfessionalLicenseSchema,
   type AdminFormState,
   type CreateUserInput,
@@ -362,4 +363,190 @@ export async function setProfessionalLicenseFormAction(
   });
   if (!result.ok) return { error: result.error.message, success: null };
   return { error: null, success: "Registro profesional guardado." };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS ROLES DE UN USUARIO QUE YA EXISTE  ·  AÑADIR Y QUITAR  (Santiago, 2026-10-24)
+//
+// ═══ DE DONDE SALE ═══
+//
+// *"Gildardo queda con profesional y obbia a la vez. Asignale el rol obbia."*
+//
+// `user_roles` es N:N desde el principio y `hasAnyRole` ya soporta varios, pero el UNICO sitio que
+// escribia esa tabla era `createUser`, al nacer la cuenta y con UN rol. O sea: el modelo admitia dos roles
+// y el sistema no tenia forma de dar el segundo. Un mecanismo sin superficie que lo alcance hace creer que
+// la regla ya se puede aplicar, y aqui la unica via era SQL a mano.
+//
+// ═══ Y SI SE PUEDE DAR, TIENE QUE PODERSE QUITAR ═══
+//
+// Dar el rol por script y no construir el camino de vuelta deja a CNV con un permiso que solo se revoca
+// pidiendole a alguien que escriba SQL contra produccion. Las dos direcciones van juntas.
+//
+// ═══ DOS FRENOS, Y CADA UNO SU RAZON ═══
+//
+//   · NO SE QUITA EL ULTIMO ROL. Un usuario sin ningun rol puede entrar y no ve nada: se parece a un
+//     defecto, no a una baja. Para dar de baja existe el camino que ya existe (desactivar la cuenta), y es
+//     el que la regla dura 14 nombra.
+//   · NADIE SE QUITA SU PROPIO `admin`. Es el unico movimiento que se puede hacer sin poder deshacerlo:
+//     al terminar, quien lo hizo ya no tiene permiso para volver a ponerselo.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+class UltimoRolError extends Error {}
+class YaLoTieneError extends Error {}
+class NoLoTieneError extends Error {}
+
+export async function agregarRolAUsuario(input: {
+  userId: string;
+  rol: AppRole;
+}): Promise<Result<null, AppError>> {
+  const { user, error: authzError } = await requireAdmin();
+  if (authzError) return err(authzError);
+
+  const parsed = rolDeUsuarioSchema.safeParse(input);
+  if (!parsed.success) return err(appError("validation", "Datos inválidos."));
+  const { userId, rol } = parsed.data;
+
+  const { ip, userAgent } = await auditContext();
+  try {
+    await db.transaction(async (tx) => {
+      const [elUsuario] = await tx
+        .select({ id: profiles.id })
+        .from(profiles)
+        .where(eq(profiles.id, userId))
+        .limit(1);
+      if (!elUsuario) throw new NotFoundError();
+
+      const [elRol] = await tx.select({ id: roles.id }).from(roles).where(eq(roles.name, rol)).limit(1);
+      if (!elRol) throw new RoleNotFoundError();
+
+      // YA LO TIENE: no es un error de la base (la clave primaria lo absorberia en silencio con un
+      // `onConflictDoNothing`), es una respuesta distinta en la pantalla. Un "listo" sobre algo que no
+      // paso deja creer que se hizo un cambio.
+      const suyos = await tx
+        .select({ roleId: userRoles.roleId })
+        .from(userRoles)
+        .where(eq(userRoles.userId, userId));
+      if (suyos.some((r) => r.roleId === elRol.id)) throw new YaLoTieneError();
+
+      await tx.insert(userRoles).values({ userId, roleId: elRol.id });
+
+      await recordAudit(tx, {
+        event: "admin.rol_agregado",
+        actorId: user.id,
+        actorEmail: user.email,
+        entityType: "profile",
+        entityId: userId,
+        payload: { rol, rolesQueTenia: suyos.length },
+        ip,
+        userAgent,
+      });
+    });
+  } catch (e) {
+    if (e instanceof NotFoundError) return err(appError("not_found", "Ese usuario no existe."));
+    if (e instanceof RoleNotFoundError) return err(appError("validation", "Ese rol no existe."));
+    if (e instanceof YaLoTieneError) {
+      return err(appError("conflict", "Ya tiene ese rol, así que no se cambió nada."));
+    }
+    reportServerError("agregarRolAUsuario", e);
+    return err(appError("internal", "No se pudo asignar el rol."));
+  }
+  return ok(null);
+}
+
+export async function quitarRolAUsuario(input: {
+  userId: string;
+  rol: AppRole;
+}): Promise<Result<null, AppError>> {
+  const { user, error: authzError } = await requireAdmin();
+  if (authzError) return err(authzError);
+
+  const parsed = rolDeUsuarioSchema.safeParse(input);
+  if (!parsed.success) return err(appError("validation", "Datos inválidos."));
+  const { userId, rol } = parsed.data;
+
+  // NADIE SE QUITA SU PROPIO ADMIN: es el unico movimiento irreversible por quien lo hace.
+  if (userId === user.id && rol === "admin") {
+    return err(
+      appError(
+        "validation",
+        "No puedes quitarte tu propio rol de admin: al terminar no tendrías permiso para devolvértelo. " +
+          "Pídeselo a otro admin.",
+      ),
+    );
+  }
+
+  const { ip, userAgent } = await auditContext();
+  try {
+    await db.transaction(async (tx) => {
+      const [elRol] = await tx.select({ id: roles.id }).from(roles).where(eq(roles.name, rol)).limit(1);
+      if (!elRol) throw new RoleNotFoundError();
+
+      const suyos = await tx
+        .select({ roleId: userRoles.roleId })
+        .from(userRoles)
+        .where(eq(userRoles.userId, userId));
+      if (!suyos.some((r) => r.roleId === elRol.id)) throw new NoLoTieneError();
+      // EL ULTIMO NO SE QUITA: un usuario sin rol entra y no ve nada, que se parece a un defecto y no a
+      // una baja. La baja tiene su propio camino (desactivar la cuenta), el que nombra la regla dura 14.
+      if (suyos.length <= 1) throw new UltimoRolError();
+
+      await tx
+        .delete(userRoles)
+        .where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, elRol.id)));
+
+      await recordAudit(tx, {
+        event: "admin.rol_quitado",
+        actorId: user.id,
+        actorEmail: user.email,
+        entityType: "profile",
+        entityId: userId,
+        payload: { rol, rolesQueLeQuedan: suyos.length - 1 },
+        ip,
+        userAgent,
+      });
+    });
+  } catch (e) {
+    if (e instanceof RoleNotFoundError) return err(appError("validation", "Ese rol no existe."));
+    if (e instanceof NoLoTieneError) {
+      return err(appError("conflict", "No tiene ese rol, así que no se cambió nada."));
+    }
+    if (e instanceof UltimoRolError) {
+      return err(
+        appError(
+          "validation",
+          "Es su único rol: quitárselo lo dejaría entrando a un Atlas sin nada, que parece un defecto y " +
+            "no una baja. Para darlo de baja, desactiva la cuenta.",
+        ),
+      );
+    }
+    reportServerError("quitarRolAUsuario", e);
+    return err(appError("internal", "No se pudo quitar el rol."));
+  }
+  return ok(null);
+}
+
+// Adaptadores de formulario (useActionState). El rol viaja en un campo oculto por boton, asi que cada
+// boton manda el suyo: el `name`/`value` del BOTON no viajaria con un envio propio (hazard 5).
+export async function agregarRolFormAction(
+  _prev: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  const r = await agregarRolAUsuario({
+    userId: String(formData.get("userId") ?? ""),
+    rol: String(formData.get("rol") ?? "") as AppRole,
+  });
+  if (!r.ok) return { error: r.error.message, success: null };
+  return { error: null, success: "Rol asignado. Tendrá efecto cuando vuelva a entrar." };
+}
+
+export async function quitarRolFormAction(
+  _prev: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  const r = await quitarRolAUsuario({
+    userId: String(formData.get("userId") ?? ""),
+    rol: String(formData.get("rol") ?? "") as AppRole,
+  });
+  if (!r.ok) return { error: r.error.message, success: null };
+  return { error: null, success: "Rol retirado. Tendrá efecto cuando vuelva a entrar." };
 }

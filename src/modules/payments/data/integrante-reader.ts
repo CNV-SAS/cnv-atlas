@@ -23,6 +23,11 @@ export type DetalleDelIntegrante = {
   nombre: string;
   correo: string;
   profesion: string;
+  /** `profiles.id` (= el usuario de auth). Hace falta para los roles: un rol es del USUARIO, no del perfil
+   *  profesional, y son dos identificadores distintos. */
+  usuarioId: string;
+  /** Los roles que tiene hoy. `user_roles` es N:N: desde el 2026-10-24 hay quien tiene dos. */
+  roles: string[];
   /**
    * Si es una cuenta de DEMOSTRACION. La pantalla lo dice arriba, y hace falta: sus cifras de abajo son
    * reales para el (lo que vendio, lo que se le debe) y NO cuentan en las de la organizacion. Sin decirlo,
@@ -101,9 +106,17 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
     correo: string;
     profesion: string;
     es_de_prueba: boolean;
+    usuario_id: string;
+    roles: string[] | null;
   }>(sql`
     select p.full_name as nombre, p.email as correo, pp.profession::text as profesion,
-           coalesce(pp.is_test, false) as es_de_prueba
+           coalesce(pp.is_test, false) as es_de_prueba,
+           p.id as usuario_id,
+           -- LOS ROLES DEL USUARIO, agregados aqui para no hacer una segunda ida a la base por una lista de
+           -- una o dos palabras. La tabla user_roles es N:N desde el principio.
+           (select array_agg(ro.name::text order by ro.name)
+              from user_roles ur join roles ro on ro.id = ur.role_id
+             where ur.user_id = p.id) as roles
       from professional_profiles pp
       join profiles p on p.id = pp.profile_id
      where pp.id = ${professionalId}::uuid`);
@@ -231,6 +244,8 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
   return {
     nombre: quien.nombre,
     correo: quien.correo,
+    usuarioId: quien.usuario_id,
+    roles: quien.roles ?? [],
     profesion: quien.profesion,
     esDePrueba: Boolean(quien.es_de_prueba),
     inventario: inventario.map((f) => ({
