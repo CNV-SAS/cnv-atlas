@@ -13,7 +13,9 @@ import { ConsultationSection } from "./consultation-section";
 import { bloqueCls } from "@/components/shared/bloque";
 
 import { RealimentacionAlert } from "./realimentacion-alert";
+import { HojaDelProtocolo } from "./hoja-del-protocolo";
 import { TreatmentPanel } from "./treatment-panel";
+import type { EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
 
 // B1 (T2b): area de tratamiento POR PROFESION. La parte comun (estado del paciente + rutas de atencion
 // + remisiones) va aparte, arriba, siempre visible (la ensambla la pagina); aqui va SOLO la seccion de
@@ -175,6 +177,7 @@ async function Panel({
   narrative,
   prescripcion,
   asesoria,
+  encabezado,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol | null;
@@ -198,6 +201,8 @@ async function Panel({
    * null cuando la evaluacion todavia no tiene protocolo con snapshot: no hay plan que entregar.
    */
   planImprimible?: ReactNode;
+  /** El encabezado de la hoja impresa. Sin el no se ofrece imprimir: ver el comentario de abajo. */
+  encabezado?: EncabezadoDeHoja;
 }) {
   if (!protocol) {
     return (
@@ -213,25 +218,44 @@ async function Panel({
   // LECTURA DEL DIAGNOSTICO (resumen + meta aqui, server; objetivo + guias + celular en el panel client); una
   // marca de bloque dentro del panel abre el PLAN ALIMENTARIO. El titulo de aqui nombra el bloque superior,
   // simetrico con la marca del plan; son marcas visuales, no controles.
+  // ═══ LA HOJA DEL PANEL (V11-3, primer panel: Santiago, 2026-10-24) ═══
+  //
+  // El `.imprimible` envuelve las DOS cosas: la hoja (que solo existe en papel) y el taller (que solo
+  // existe en pantalla). Asi `imprimirHoja`, llamada desde el boton del panel, encuentra esta hoja al
+  // subir y la marca como activa, y el plan del paciente (que es otra `.imprimible` montada en la misma
+  // pagina) no sale pegado detras.
+  //
+  // EL TALLER VA `no-print` COMPLETO y no "con sus controles ocultos": son 3.500 lineas de campos en vivo,
+  // grillas editables y barras pegadas al borde. Taparlos uno por uno es trabajo sin fin y el resultado
+  // sigue siendo una captura de pantalla. El documento se arma aparte, con los mismos datos.
+  //
+  // SIN ENCABEZADO NO SE IMPRIME. Una hoja clinica que no dice de quien es ni quien la firma no es un
+  // documento, es un volante; antes que emitir eso, no se ofrece el boton.
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h3 className="text-base font-bold text-foreground">Lectura del diagnóstico</h3>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-          El estado del paciente y hacia dónde va. Debajo se construye el plan.
-        </p>
+    <div className={encabezado ? "imprimible flex flex-col gap-6" : "flex flex-col gap-6"}>
+      {encabezado ? (
+        <HojaDelProtocolo protocol={protocol} prescripcion={prescripcion} encabezado={encabezado} />
+      ) : null}
+      <div className={encabezado ? "no-print flex flex-col gap-6" : "flex flex-col gap-6"}>
+        <div>
+          <h3 className="text-base font-bold text-foreground">Lectura del diagnóstico</h3>
+          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+            El estado del paciente y hacia dónde va. Debajo se construye el plan.
+          </p>
+        </div>
+        <DiagnosisReadingBlock
+          narrative={narrative}
+          alertaRealimentacion={protocol.protocolSuggested?.alertaSindRealim ?? false}
+        />
+        <TreatmentPanel
+          evaluationId={evaluationId}
+          protocol={protocol}
+          prescripcion={prescripcion}
+          asesoria={asesoria}
+          sePuedeImprimir={encabezado != null}
+        />
+        {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
       </div>
-      <DiagnosisReadingBlock
-        narrative={narrative}
-        alertaRealimentacion={protocol.protocolSuggested?.alertaSindRealim ?? false}
-      />
-      <TreatmentPanel
-        evaluationId={evaluationId}
-        protocol={protocol}
-        prescripcion={prescripcion}
-        asesoria={asesoria}
-      />
-      {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
     </div>
   );
 }
@@ -431,6 +455,7 @@ export function ProfessionTreatmentSection({
   prescripcion,
   asesoria,
   planImprimible,
+  encabezado,
 }: {
   evaluationId: string;
   actor: ActorProfession;
@@ -459,6 +484,8 @@ export function ProfessionTreatmentSection({
    * null cuando la evaluacion todavia no tiene protocolo con snapshot: no hay plan que entregar.
    */
   planImprimible?: ReactNode;
+  /** El encabezado de las hojas impresas, uno solo para todas (lo arma la pagina). */
+  encabezado?: EncabezadoDeHoja;
 }) {
   // Medico: panel de consulta con abordaje + indicaciones medicas de las rutas + examenes/suplementacion
   // (del protocolo sellado; si aun no hay protocolo, se dice). El contenido medico de las rutas trae que
@@ -504,6 +531,7 @@ export function ProfessionTreatmentSection({
         narrative={narrative}
         prescripcion={prescripcion}
         asesoria={asesoria}
+        encabezado={encabezado}
       />
       {/* LA HOJA DEL PACIENTE, AL FINAL: primero se construye el plan, y esto es lo que se entrega. Va
           DESPUES del panel por la misma razon por la que el boton de aprobar va al final. */}

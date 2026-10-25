@@ -1088,6 +1088,7 @@ export default async function ResultadosEvaluacionPage({
                 narrative={treatmentNarrative}
                 prescripcion={prescripcionNutricional}
                 asesoria={asesoriaMacros}
+                encabezado={{ ...encabezadoDeHoja, edad: hcHeader?.edad ?? null }}
                 planImprimible={
                   planPaciente ? (
                     <PlanImprimible

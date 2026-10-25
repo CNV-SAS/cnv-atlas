@@ -12,7 +12,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { RotateCcw, Sparkles } from "lucide-react";
+import { Printer, RotateCcw, Sparkles } from "lucide-react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { NIVELES_FA, nivelFaLabel, PROFESION_NOTA } from "../data/treatment-view-types";
@@ -36,6 +36,7 @@ import { AlimentosDelSubgrupo } from "./lista-intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
 import { bloqueCls, tituloBloqueCls } from "@/components/shared/bloque";
+import { imprimirHoja } from "@/components/shared/imprimir-hoja";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1171,6 +1172,7 @@ export function TreatmentPanel({
   protocol,
   prescripcion,
   asesoria,
+  sePuedeImprimir = false,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
@@ -1180,6 +1182,11 @@ export function TreatmentPanel({
   // Rangos de referencia por diagnostico para proteina y grasa (Gildardo 2026-09-03). Bajan hasta la
   // seccion de la cadena calorica, que es donde estan los dos campos.
   asesoria: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
+  /**
+   * Si la pagina monto la hoja imprimible alrededor del panel. Sin ella, `imprimirHoja` no encontraria
+   * ninguna hoja y caeria a imprimir la pagina entera, que es peor que no ofrecer el boton.
+   */
+  sePuedeImprimir?: boolean;
 }) {
   // Bloqueado para editar si el diagnostico no esta confirmado O si el protocolo YA se aprobo (la
   // prescripcion aprobada es inmutable: el trigger de BD la congela; sin este candado el campo se veria
@@ -1368,7 +1375,33 @@ export function TreatmentPanel({
     <BorradorContexto.Provider value={ctx}>
       <Card>
       <CardHeader>
-        <CardTitle>Protocolo de tratamiento</CardTitle>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <CardTitle>Protocolo de tratamiento</CardTitle>
+          {/* ═══ IMPRIMIR LA PRESCRIPCION (V11-3, primer panel) ═══
+
+              APAGADO MIENTRAS HAYA CAMBIOS SIN GUARDAR, Y LO DICE EN SU ROTULO. La hoja se arma en el
+              servidor con lo GUARDADO; si se pudiera imprimir con cambios en pantalla, el papel diria una
+              cifra que no consta en la base. Un documento clinico no puede salir de un borrador.
+
+              Y el rotulo explica el apagado (hazard 8): un boton muerto sin explicacion se lee como
+              pantalla rota, y aqui la salida esta a dos dedos (el boton de guardar, en la barra de abajo).
+
+              `imprimirHoja` sube al `.imprimible` que envuelve el panel y marca ESA hoja, asi que el plan
+              del paciente (que es otra hoja montada en la misma pagina) no sale pegado detras. */}
+          {sePuedeImprimir ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="no-print"
+              disabled={haySinGuardar}
+              onClick={(e) => imprimirHoja(e.currentTarget)}
+            >
+              <Printer className="size-4" aria-hidden />
+              {haySinGuardar ? "Guarda los cambios para imprimir" : "Imprimir la prescripción"}
+            </Button>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {/* SE RETIRO EL AVISO DE "diagnostico sin confirmar" (2026-09-09): el protocolo ya no se bloquea
