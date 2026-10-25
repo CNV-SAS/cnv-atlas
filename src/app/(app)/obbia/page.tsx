@@ -7,7 +7,23 @@ import { formatDate } from "@/lib/format/date";
 import { leerCohorteDeInvestigacion } from "@/modules/obbia/data/cohorte-reader";
 import { getResearchDatasets } from "@/modules/obbia/data/research-reader";
 import { canViewObbia } from "@/modules/obbia/policies/can-view-obbia";
+import {
+  EXPORT_FILA_A_FILA_DE_LA_VISTA,
+  nivelDeAnonimizacion,
+  type NivelDeAnonimizacion,
+} from "@/modules/obbia/services/nivel-de-anonimizacion";
 import { requireUser } from "@/modules/auth/session";
+
+// ═══ EL NIVEL SE DICE EN ESPAÑOL, Y EL CRUDO AL LADO ═══
+//
+// El crudo (`pseudonymized`) es el valor que la base guarda y el que hay que poder citar al hablar con
+// alguien que lea la tabla; el rótulo es para quien mira la pantalla. Decir solo uno de los dos deja a
+// alguien sin la palabra que necesita.
+const ROTULO_DEL_NIVEL: Record<NivelDeAnonimizacion, string> = {
+  aggregate: "Agregado",
+  pseudonymized: "Seudonimizado",
+  anonymized: "Anonimizado",
+};
 
 export const metadata = { title: "ObBIA - Atlas" };
 
@@ -39,6 +55,7 @@ export default async function ObbiaPage() {
     getResearchDatasets(),
     leerCohorteDeInvestigacion(),
   ]);
+  const nivelDelExport = nivelDeAnonimizacion(EXPORT_FILA_A_FILA_DE_LA_VISTA);
 
   return (
     <div className="flex flex-col gap-6">
@@ -119,6 +136,26 @@ export default async function ObbiaPage() {
         ) : null}
       </div>
 
+      {/* ═══ QUE NIVEL SALDRIA SI HOY SE GENERARA UN DATASET DE ESTA COHORTE ═══
+
+          Lo CALCULA la misma función que rotularía el dataset (`nivelDeAnonimizacion`), no un texto
+          escrito a mano: si mañana la vista deja de llevar `patient_id`, esta frase cambia sola. Y la
+          respuesta de hoy es la que hay que saber antes de prometer un dataset: la vista lleva
+          `patient_id` a propósito (es lo que permite el análisis longitudinal), así que un export fila a
+          fila es SEUDONIMIZADO, no anónimo. */}
+      <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
+        <p className="font-semibold text-foreground">
+          Un dataset fila a fila de esta cohorte saldría{" "}
+          {ROTULO_DEL_NIVEL[nivelDelExport.nivel].toLowerCase()} ({nivelDelExport.nivel})
+        </p>
+        <p className="mt-1 max-w-prose text-muted-foreground">{nivelDelExport.porQue}</p>
+        <p className="mt-1 max-w-prose text-xs text-muted-foreground">
+          El nivel no se escribe: se deriva de lo que el archivo lleva. Para producir uno anonimizado hay
+          que quitar la llave del paciente, generalizar los cuasi-identificadores y verificar el
+          k-anonimato, y esa verificación todavía no está construida.
+        </p>
+      </div>
+
       <h2 className="text-sm font-semibold text-foreground">Datasets entregados</h2>
       {datasets.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
@@ -140,7 +177,10 @@ export default async function ObbiaPage() {
               {datasets.map((d) => (
                 <tr key={d.id} className="border-b border-border/60 last:border-0">
                   <td className="px-3 py-2 font-medium text-foreground">{d.scope}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{d.anonymizationLevel}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {ROTULO_DEL_NIVEL[d.anonymizationLevel as NivelDeAnonimizacion] ??
+                      d.anonymizationLevel}
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">{d.status}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
                     {fmt(d.createdAt)}

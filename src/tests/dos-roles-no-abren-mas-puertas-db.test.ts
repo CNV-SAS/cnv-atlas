@@ -149,6 +149,35 @@ describe("sumar el rol obbia no abre ninguna puerta clinica", () => {
     expect(conObbia, "con el rol, la ve").toBe(1);
   });
 
+  it("el nivel de anonimizacion es un vocabulario cerrado (0227)", async () => {
+    // ANTES de la 0227 la columna era texto libre: un dataset podia quedar rotulado 'anonimizado',
+    // 'anon' o vacio, y los tres se leerian igual de validos. Y el rotulo DECIDE cosas (un dataset
+    // "anonymized" afirma que eso ya no es dato personal), asi que el vocabulario se cierra en la base y
+    // no en un comentario del schema, que es donde estaba.
+    const inventado = sql.begin(
+      async (tx) =>
+        await tx`insert into public.research_datasets (requested_by, scope, anonymization_level, status)
+                 values (${usuarioId}, 'prueba-vocabulario', 'anonimizado', 'pending')`,
+    );
+    await expect(inventado).rejects.toThrow(/check constraint/i);
+
+    // Y EL NIVEL QUE FALTABA, el que describe lo que CNV produce hoy, si entra. La transaccion revierte
+    // sola al lanzar, asi que no deja la fila.
+    const valido = sql.begin(async (tx) => {
+      const filas = await tx`insert into public.research_datasets
+                 (requested_by, scope, anonymization_level, status)
+                 values (${usuarioId}, 'prueba-vocabulario', 'pseudonymized', 'pending')
+                 returning id`;
+      expect(filas.length, "seudonimizado es un nivel valido desde la 0227").toBe(1);
+      throw new Error("revertir a proposito");
+    });
+    await expect(valido).rejects.toThrow("revertir a proposito");
+
+    const [{ n }] = await sql`select count(*)::int as n from public.research_datasets
+                              where scope = 'prueba-vocabulario'`;
+    expect(n, "ninguna de las dos filas se queda").toBe(0);
+  });
+
   it("las vistas de investigacion NO se leen con la sesion: estan revocadas a authenticated (0224)", async () => {
     // Y es a proposito: una vista abierta a `authenticated` seria una puerta alrededor de la RLS de
     // `evaluations`. El panel las lee como dueño, con la policy del servidor como unica autorizacion.
