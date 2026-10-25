@@ -49,10 +49,8 @@ function archivosDeDatos(desde: string): string[] {
 
 // ── LAS QUE TIENEN QUE FILTRAR: miran VARIAS evaluaciones (colas de trabajo, conteos, trayectoria) ──
 const DEBEN_FILTRAR = [
-  "src/modules/patients/data/patients-list-reader.ts",
   "src/modules/patients/data/patient-detail-reader.ts",
   "src/modules/patients/data/buscar-por-documento.ts",
-  "src/modules/dashboard/data/tablero-reader.ts",
   "src/modules/clinical-pipeline/data/pipeline-evaluations-reader.ts",
   "src/modules/bis/data/bis-evaluations-reader.ts",
   "src/modules/evaluations/data/evaluations-repository.ts",
@@ -135,19 +133,36 @@ describe("ninguna lectura de evaluaciones se olvida del retiro", () => {
     ).toBe(true);
   });
 
-  // ── Y LOS DOS QUE FILTRAN EN MEMORIA, que el caso de arriba NO cubre ──────────────────────────────
+  // ── Y LOS DOS QUE YA NO FILTRAN EN MEMORIA, PORQUE FILTRAN EN LA VISTA (0228) ─────────────────────
   //
-  // En el listado y en el tablero la columna viaja en el `select` y el descarte se hace en JS. Ahi
-  // "menciona la columna" se cumple con solo PEDIRLA, asi que alguien podria borrar el descarte y el caso
-  // anterior seguiria verde. Es la misma trampa del candado de la via 3 que paso trivialmente.
+  // El listado y el tablero descartaban en JS: la columna viajaba en el `select` y el `filter` la miraba.
+  // Desde la 0228 los dos leen `pacientes_del_roster`, que YA devuelve solo las evaluaciones en pie, asi
+  // que no tienen ninguna columna de retiro que mirar. El candado no se relaja, se MUEVE: ahora exige las
+  // dos mitades, que esas dos lecturas pasen por la vista Y que la vista excluya.
+  //
+  // Es mas fuerte que antes: el filtro vive en UN sitio en vez de dos, y aqui consta donde.
   it.each([
     "src/modules/patients/data/patients-list-reader.ts",
     "src/modules/dashboard/data/tablero-reader.ts",
-  ])("%s no solo pide la columna: descarta con ella", (ruta) => {
+  ])("%s lee el roster por la vista, que es donde vive el filtro", (ruta) => {
+    const src = leer(ruta);
     expect(
-      leer(ruta),
-      `${ruta} trae retirada_at pero no la usa para descartar: pedirla sin filtrar no excluye nada.`,
-    ).toContain("retirada_at == null");
+      src,
+      `${ruta} ya no filtra en memoria: tiene que leer la vista que filtra, o volver a filtrar aqui.`,
+    ).toContain("pacientes_del_roster");
+    expect(
+      /from\("evaluations"\)|\.select\([^)]*evaluations\(/.test(src),
+      `${ruta} no puede volver a leer evaluaciones por su cuenta sin el filtro del retiro`,
+    ).toBe(false);
+  });
+
+  it("la vista del roster excluye las retiradas Y las reemplazadas", () => {
+    // LAS DOS, porque las dos exclusiones viajaban juntas en el filtro de JS que esta vista reemplaza. Si
+    // una se cayera, una consulta retirada (o una version vieja de una correccion) reaparece en el
+    // listado, en sus tres mas recientes y en el conteo del tablero.
+    const sql = leer("drizzle/0228_el_roster_en_una_fila_por_paciente.sql");
+    expect(sql).toMatch(/e\."retirada_at" IS NULL/);
+    expect(sql).toMatch(/e\."superseded_at" IS NULL/);
   });
 
   // ── Y EL BARRIDO AL REVES: que no quede una lectura NUEVA sin clasificar ──────────────────────────

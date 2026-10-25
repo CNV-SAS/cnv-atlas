@@ -147,8 +147,17 @@ describe("la columna sale del mismo sitio que la regla", () => {
   });
 
   it("y el lector lo trae en la MISMA consulta, sin una por paciente", () => {
-    // Una consulta por fila sobre 73 pacientes es como una lista deja de abrirse.
+    // Una consulta por fila sobre 73 pacientes es como una lista deja de abrirse. Desde la 0228 llega en
+    // UNA consulta a la vista, que resuelve el diagnostico y el reporte con `exists` y una subconsulta;
+    // la exigencia es la misma, y de paso una fila por paciente en vez de ocho.
     const READER = readFileSync("src/modules/patients/data/patients-list-reader.ts", "utf8");
-    expect(READER).toContain("diagnoses(id), reports(status)");
+    expect(READER).toContain("pacientes_del_roster");
+    expect(
+      /from\(["'][^"']+["']\)/g.exec(READER)?.length,
+      "una sola consulta: si aparece otra tabla aqui, volvio el conteo por fila",
+    ).toBe(1);
+    const sql = readFileSync("drizzle/0228_el_roster_en_una_fila_por_paciente.sql", "utf8");
+    expect(sql).toMatch(/'tieneDiagnostico', EXISTS \(SELECT 1 FROM "diagnoses"/);
+    expect(sql).toMatch(/'reporte', \(\s*SELECT r\."status"/);
   });
 });

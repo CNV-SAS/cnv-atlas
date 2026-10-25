@@ -262,8 +262,10 @@ describe("los cables de la pieza 2", () => {
   const PANEL = sinComentarios(
     readFileSync("src/modules/consent/components/panel-autorizaciones.tsx", "utf8"),
   );
+  // LA FILA DE LA LISTA SE ARMA EN EL MODULO PURO desde la 0228 (el lector solo trae los hechos de la
+  // vista), asi que el cable de la regularizacion se verifica donde vive la decision.
   const LISTA_LECTOR = sinComentarios(
-    readFileSync("src/modules/patients/data/patients-list-reader.ts", "utf8"),
+    readFileSync("src/modules/patients/roster-fila.ts", "utf8"),
   );
   const LISTA = sinComentarios(readFileSync("src/modules/patients/components/lista-pacientes.tsx", "utf8"));
 

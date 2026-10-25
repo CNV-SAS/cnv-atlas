@@ -14,6 +14,7 @@ import {
 import { hoyEnColombia, inicioDelMesEnBogota } from "@/modules/payments/arranque";
 import { desdeElArranque, elMasTardio, fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
 import { pendienteDelPaciente } from "@/modules/patients/pendientes";
+import type { EvaluacionDelRoster } from "@/modules/patients/roster-fila";
 
 // ═══ LO QUE EL TABLERO NECESITA SABER, Y NADA MAS ═══
 //
@@ -110,13 +111,22 @@ export async function getTablero(userId: string): Promise<Tablero> {
     // LOS PENDIENTES SALEN DE LA MISMA REGLA QUE LA COLUMNA (`pendienteDelPaciente`), no de un conteo
     // paralelo: si aqui se contara "evaluaciones en progreso" y alli se dijera otra cosa, el tablero y la
     // lista discreparian sobre el mismo paciente.
+    // ═══ POR LA VISTA `pacientes_del_roster` (0228), NO POR LA CADENA DE EMBEDS ═══
+    //
+    // Esta consulta era la MISMA cadena que la del roster (~8 filas por paciente), asi que arrastraba el
+    // mismo riesgo de timeout en la pantalla de entrada. Y arrastraba tambien el mismo DEFECTO, que lo
+    // destapo la prueba de inercia del roster: `evaluation_bis_intake` tiene un UNIQUE sobre
+    // `evaluation_id`, asi que PostgREST la devolvia como OBJETO, y `(objeto ?? []).length > 0` es
+    // SIEMPRE false. El tablero contaba como pendiente de "registrar condiciones" a consultas que ya las
+    // tenian registradas. La vista lo resuelve con un `exists`, que no tiene esa ambiguedad.
+    //
+    // LO QUE NO CAMBIA: el criterio de la autorizacion (`NECESARIAS`, aqui abajo) se queda tal cual. Es
+    // una segunda escritura de la regla del consentimiento y habria que unificarla con la policy, pero
+    // eso MUEVE la cifra del tablero y es otra decision; cambiarlo de paso, dentro de un arreglo de
+    // rendimiento, seria esconder un cambio de semantica en un commit que dice que no la cambia.
     supabase
-      .from("patients")
-      .select(
-        // `retirada_at` (0212): una consulta que no ocurrio no es un pendiente de nadie.
-        "id, status, patient_consents(consent_type, revoked_at), evaluations(id, superseded_at, retirada_at, status, import_batch_id, bis_measurements(id), evaluation_bis_intake(evaluation_id), diagnoses(id), reports(status))",
-      )
-      .is("deleted_at", null)
+      .from("pacientes_del_roster")
+      .select("status, cuenta_como_de_prueba, consentimientos_vigentes, evaluaciones")
       // FUERA LOS DE PRUEBA: esto es una CIFRA (ver `patients/de-prueba.ts`, capa 1). Un profesional que se
       // creo a si mismo como paciente para probar veia su tablero diciendo un paciente mas, y lo mismo sus
       // pendientes. La LISTA si los muestra, marcados, porque ahi es donde se trabaja con ellos.
@@ -193,43 +203,28 @@ export async function getTablero(userId: string): Promise<Tablero> {
       : Promise.resolve({ data: [] as { stock_quantity: number }[] }),
   ]);
 
-  type FilaEval = {
-    id: string;
-    superseded_at: string | null;
-    retirada_at: string | null;
-    status: string;
-    import_batch_id: string | null;
-    bis_measurements: { id: string }[] | null;
-    evaluation_bis_intake: { evaluation_id: string }[] | null;
-    diagnoses: { id: string }[] | null;
-    reports: { status: string }[] | null;
-  };
-
   const NECESARIAS = ["servicio", "datos_sensibles"];
-  type FilaPaciente = {
+  // La vista ya trae las evaluaciones EN PIE (ni reemplazadas ni retiradas) con sus hechos resueltos, y
+  // las autorizaciones VIGENTES ya filtradas por `revoked_at`. Aqui solo queda la decision.
+  type FilaDeLaVista = {
     status: string;
-    patient_consents: unknown;
-    evaluations: unknown;
+    consentimientos_vigentes: { consent_type: string }[] | null;
+    evaluaciones: EvaluacionDelRoster[] | null;
   };
-  const conPendiente = ((pacientes.data ?? []) as unknown as FilaPaciente[]).filter((p) => {
+  const conPendiente = ((pacientes.data ?? []) as unknown as FilaDeLaVista[]).filter((p) => {
     // Los archivados no cuentan: salieron de la lista de trabajo a proposito.
     if (p.status === "inactive") return false;
-    const consents =
-      (p.patient_consents as { consent_type: string; revoked_at: string | null }[] | null) ?? [];
-    const vigentes = consents.filter((c) => c.revoked_at === null).map((c) => c.consent_type);
+    const vigentes = (p.consentimientos_vigentes ?? []).map((c) => c.consent_type);
     const sinAutorizacion = NECESARIAS.some((n) => !vigentes.includes(n));
-    const evals = ((p.evaluations as FilaEval[] | null) ?? []).filter(
-      (e) => e.superseded_at == null && e.retirada_at == null,
-    );
     const r = pendienteDelPaciente(
-      evals.map((e) => ({
-        evaluationId: e.id,
+      (p.evaluaciones ?? []).map((e) => ({
+        evaluationId: e.evaluationId,
         status: e.status,
-        tieneBis: (e.bis_measurements ?? []).length > 0,
-        importada: e.import_batch_id != null,
-        tieneCondicionesBis: (e.evaluation_bis_intake ?? []).length > 0,
-        tieneDiagnostico: (e.diagnoses ?? []).length > 0,
-        reporte: e.reports?.[0]?.status ?? null,
+        tieneBis: e.tieneBis,
+        importada: e.importada,
+        tieneCondicionesBis: e.tieneCondicionesBis,
+        tieneDiagnostico: e.tieneDiagnostico,
+        reporte: e.reporte,
       })),
       sinAutorizacion,
     );
