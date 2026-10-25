@@ -1319,6 +1319,29 @@ cola que usa el guard del script, asi que las dos superficies no pueden contar u
    cuentan como **reales** a pesar del nombre, y con ellos se hizo el smoke. El trigger recalcula sus ventas
    **hacia atras**, asi que esto limpia de una vez lo que haya quedado suelto. (Santiago: *"con ellos hago el
    smoke, se marcan al final"*.)
+
+2bis. **Y CON LAS CUENTAS, LOS TRES PACIENTES DEL SMOKE QUE HOY CUENTAN COMO REALES** (decidido el
+   2026-10-26: *"Santiago los usa como reales para el smoke, asi que se marcan AL CERRAR, con las
+   cuentas"*).
+
+   | paciente | por que se escapo de la derivacion | que se hace |
+   |---|---|---|
+   | Santiago Arroyave Uribe | tiene `es_real_confirmado`: alguien dijo a mano que SI es real, y es el **unico paciente de los 553** con esa marca | **"Quitar la confirmacion"** en su fila de /admin/integrantes/[id]. Al quitarla, la derivacion de la 0202 lo marca sola, porque su profesional (Profesional Demo) ya esta marcado |
+   | Santy menor Edad | su cuenta (`Profesional Prueba`) no esta marcada todavia | se marca sola al marcar la cuenta en el paso 2. Si no, **"Marcar de prueba"** con motivo |
+   | Santi prueba final | igual, con `Profesional demo 2` | igual |
+
+   **EL ORDEN IMPORTA Y AHORRA DOS CLICS:** marcar las CUENTAS (paso 2) arrastra a sus pacientes hacia
+   atras, asi que de los tres solo queda uno que hay que tocar a mano, y es Santiago Arroyave, porque su
+   `es_real_confirmado` **gana** sobre la derivacion (es justo para lo que existe esa salida).
+
+   **Y mientras no se marquen, siguen en la cohorte de investigacion:** son uno de los 11 grupos de huella
+   repetida (el del archivo del 13 de julio). Al marcarlos, esa cuenta vuelve a los 10 grupos y 4 cruzados
+   de la lista de Gildardo. Ver la seccion **4m**.
+
+2ter. **"Nicolas Prueba" NO entra en esta lista.** Es paciente de la cuenta REAL de Gildardo y solo el nombre
+   lo delata; **lo decide Gildardo** (2026-10-26). Queda anotado aqui para que no se marque por parecido:
+   marcar un paciente real por su nombre lo saca de las cifras y de la cohorte sin que nadie lo haya
+   decidido, que es el error contrario y mas dificil de ver.
 3. **Correr el script de las llaves en ensayo** y revisar la lista. Lo que fue del smoke se marca; lo que es
    real se deja, y entonces su factura es correcta y tiene que salir.
 4. **Decidir ADAPTO-STRESS** (abajo).

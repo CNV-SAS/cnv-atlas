@@ -15,6 +15,9 @@ import {
   getEvaluationPatientSex,
 } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { CorrectionEntry } from "@/modules/corrections/components/correction-entry";
+import { reportServerError } from "@/lib/observability/report-error";
+import { AvisoDeMedicionRepetida } from "@/modules/bis/components/aviso-de-medicion-repetida";
+import { huellaRepetidaDeLaConsulta } from "@/modules/bis/data/huellas-repetidas-reader";
 import { MedicionDeOtroPaciente } from "@/modules/corrections/components/medicion-de-otro-paciente";
 import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
 import { SupersededBanner } from "@/modules/corrections/components/superseded-banner";
@@ -927,6 +930,16 @@ export default async function ResultadosEvaluacionPage({
       alertas={alertasDisponibles(encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []))}
     />
   );
+  // ═══ ¿LA MEDICION DE ESTA CONSULTA ESTA EN OTRA? (Gildardo, 2026-10-26) ═══
+  //
+  // Se lee aqui y no dentro del componente para que la pestaña siga siendo presentacion pura, y se
+  // envuelve en `catch` por lo mismo que en el roster: un aviso que tumba la pantalla donde se trabaja es
+  // peor que un aviso que falta.
+  const medicionRepetida = await huellaRepetidaDeLaConsulta(id).catch((e) => {
+    reportServerError("evaluacion.huella-repetida", e);
+    return null;
+  });
+
   const entradaConDiagnostico = {
     evaluationId: id,
     consentStatus: entryConsent,
@@ -938,6 +951,9 @@ export default async function ResultadosEvaluacionPage({
     patientIsFemale: false,
     bisReadonly: entryReadonly,
     diagnosticoGenerado: Boolean(results),
+    avisoDeMedicionRepetida: <AvisoDeMedicionRepetida repetida={medicionRepetida} />,
+    // LA CORRECCION VIVE AHORA EN ANTROPOMETRIA, que es donde esta la toma (Gildardo, 2026-10-26).
+    correccionDeLaMedicion: <MedicionDeOtroPaciente evaluationId={id} />,
   };
 
   return (
@@ -1557,9 +1573,22 @@ export default async function ResultadosEvaluacionPage({
                   confirmedByName={results.confirmedByName}
                 />
                 <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
-                {/* EL CASO 6, aparte del boton de corregir: corregir una respuesta es trabajo del dia,
-                    decir que la medicion es de otra persona es un incidente de datos de salud. */}
-                <MedicionDeOtroPaciente evaluationId={id} />
+                {/* ═══ EL CASO 6 SE MUDO A "Antrop. & BIS" (Gildardo, 2026-10-26) ═══
+
+                    *"La correccion va en Antropometria y BIS, que es donde vive la toma, no en Diagnostico
+                    funcional."* Y es correcto: el acto es sobre la MEDICION. Quien se da cuenta de que el
+                    archivo era de otra persona lo ve mirando la medicion, y tenia que cambiar de pestaña
+                    para arreglarlo.
+
+                    QUEDA EL PUNTERO Y NO EL BOTON, porque quien lo aprendio aqui va a volver a buscarlo
+                    aqui. Y el nombre de la pestaña se DERIVA del mapa de etapas (`etiquetaDeEtapa`), no se
+                    escribe: un texto que nombra una pestaña a mano sobrevive a que esa pestaña se
+                    renombre, y eso ya paso una vez. */}
+                <p className="text-sm text-muted-foreground">
+                  Si la medición de esta consulta es de otra persona, eso se corrige en la pestaña{" "}
+                  <strong className="text-foreground">{etiquetaDeEtapa("antro")}</strong>, donde está la
+                  toma.
+                </p>
               </CardContent>
             </Card>
           }

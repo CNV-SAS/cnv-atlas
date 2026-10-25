@@ -28,6 +28,7 @@
 // MODULO NEUTRO: sin `server-only`, sin React, sin BD. Puro.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
+import type { HuellaRepetida } from "@/modules/bis/huella-repetida";
 import type { ConsentType } from "@/modules/consent/validations";
 import { hechosDelConsentimiento, motivoDeRegularizacion } from "@/modules/consent/regularizacion";
 import { canCreateEvaluation } from "@/modules/evaluations/policies/can-create-evaluation";
@@ -79,7 +80,21 @@ export type FilaCrudaDelRoster = {
 /**
  * La fila que pinta la pantalla. TODAS las decisiones de aqui para abajo son de TypeScript.
  */
-export function filaDelRoster(cruda: FilaCrudaDelRoster): PatientListItem {
+export function filaDelRoster(
+  cruda: FilaCrudaDelRoster,
+  /**
+   * LAS CONSULTAS CON LA MEDICION REPETIDA, por `evaluationId` (Gildardo, 2026-10-26).
+   *
+   * LLEGA COMO MAPA Y NO POR FILA, y es la razon por la que esto no toca la vista: el conjunto se calcula
+   * UNA VEZ para toda la lista (una consulta sobre las cuatro lecturas de las mediciones) y aqui solo se
+   * busca. Meterlo en `pacientes_del_roster` habria significado editar la vista que ya se midio al
+   * milisegundo, y para nada: la huella se arma en TypeScript con la MISMA funcion que el freno.
+   *
+   * Por defecto vacio para que un llamador que no la pase no rompa; el candado del SITIO DE LLAMADA es el
+   * que verifica que el lector la pase, porque el defecto aqui seria la omision silenciosa.
+   */
+  repetidas: ReadonlyMap<string, HuellaRepetida> = new Map(),
+): PatientListItem {
   // LAS QUE CUENTAN: en pie Y que sean una consulta hecha. La misma condicion sirve para el conteo y
   // para la ultima fecha; separarlas dejaria "3 consultas · Ultima: <de una que no cuenta>".
   const reales = cruda.evaluaciones.filter((e) => !NON_COUNTING_EVALUATION_STATUSES.has(e.status));
@@ -154,6 +169,21 @@ export function filaDelRoster(cruda: FilaCrudaDelRoster): PatientListItem {
     // LA LISTA SI LOS MUESTRA (capa de TRABAJO), marcados. El conteo del tablero no los cuenta. Y la
     // DERIVADA (0202) tambien se rotula: mostrar la marca solo cuando alguien la escribio a mano dejaria
     // al profesional viendo un paciente sin rotulo que las cifras ya no cuentan.
+    // SE MIRA SOBRE LAS QUE ESTAN EN PIE, no sobre `reales`: una consulta que espera la encuesta no
+    // cuenta como consulta hecha y SI puede tener la medicion repetida (asi quedaron varias de las
+    // importadas). Y se devuelve la PEOR de las suyas: si una comparte con otro paciente, eso es lo que
+    // hay que decir, no que otra comparte consigo misma.
+    medicionRepetida: (() => {
+      const suyas = cruda.evaluaciones
+        .map((e) => repetidas.get(e.evaluationId))
+        .filter((r): r is HuellaRepetida => r != null);
+      if (suyas.length === 0) return null;
+      return {
+        otras: suyas.reduce((n, r) => n + r.otras, 0),
+        mismoPaciente: suyas.some((r) => r.mismoPaciente),
+        otroPaciente: suyas.some((r) => r.otroPaciente),
+      };
+    })(),
     esDePrueba: cruda.cuentaComoDePrueba,
     propuestoDePrueba: !cruda.cuentaComoDePrueba && cruda.testProposedAt != null,
   } satisfies PatientListItem;

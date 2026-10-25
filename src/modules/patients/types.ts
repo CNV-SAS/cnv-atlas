@@ -1,3 +1,4 @@
+import type { HuellaRepetida } from "@/modules/bis/huella-repetida";
 import type { MotivoDeRegularizacion } from "@/modules/consent/regularizacion";
 
 import type { PendienteDelPaciente } from "./pendientes";
@@ -97,6 +98,19 @@ export type PatientListItem = {
    * digitada se corrige en dos clics y pararle la atencion al paciente por eso seria mas daño).
    */
   pendienteDeRegularizar: MotivoDeRegularizacion | null;
+  /**
+   * SU MEDICION ESTA EN OTRA CONSULTA VIGENTE (Gildardo, 2026-10-26).
+   *
+   * *"Hoy Angela solo se entera si alguien le dice. Atlas ya sabe cuales son por la huella."*
+   *
+   * NO ES UNA `AccionPendiente` Y ESO ES DELIBERADO: la columna de pendientes dice el ESCALON en el que
+   * esta parada la consulta, y solo uno a la vez. Meter esto ahi taparia el trabajo real (o quedaria
+   * tapado por el), y moveria el conteo del tablero, que cuenta esa misma regla. Va como CHIP, igual que
+   * `pendienteDeRegularizar`: un aviso sobre la fila, no un paso de la secuencia.
+   *
+   * null = ninguna de sus consultas vigentes comparte su toma con otra.
+   */
+  medicionRepetida: HuellaRepetida | null;
   /**
    * DE PRUEBA, Y SE MUESTRA AQUI A PROPOSITO. La lista es una superficie de TRABAJO (capa 3 de
    * `de-prueba.ts`), asi que el paciente de prueba sigue en ella: si desapareciera, el profesional no
