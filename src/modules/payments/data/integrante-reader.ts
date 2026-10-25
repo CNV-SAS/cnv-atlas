@@ -34,6 +34,14 @@ export type DetalleDelIntegrante = {
    * ver 3.542.000 aqui y 0 en /direccion se lee como un defecto.
    */
   esDePrueba: boolean;
+  /**
+   * SI HOY TIENE ACCESO A ATLAS (0229). Derivado de `inactivo_desde`, que el CHECK amarra a `status`: traer
+   * las dos columnas dejaria a la pantalla eligiendo cual creer, y ese es el hazard 4 (dos partes de la
+   * pantalla que leen fuentes distintas).
+   */
+  inactivoDesde: string | null;
+  /** Por que se le quito el acceso. Obligatorio cuando esta inactivo, por el CHECK de la 0229. */
+  motivoDeInactivacion: string | null;
   inventario: {
     producto: string;
     lote: string;
@@ -119,10 +127,16 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
     es_de_prueba: boolean;
     usuario_id: string;
     roles: string[] | null;
+    inactivo_desde: string | null;
+    inactivacion_motivo: string | null;
   }>(sql`
     select p.full_name as nombre, p.email as correo, pp.profession::text as profesion,
            coalesce(pp.is_test, false) as es_de_prueba,
            p.id as usuario_id,
+           -- EL ACCESO (0229). La columna status no se trae: el CHECK la amarra a inactivo_desde, asi que
+           -- dos columnas del mismo hecho dejarian a la pantalla eligiendo cual creer (hazard 4).
+           p.inactivo_desde::text as inactivo_desde,
+           p.inactivacion_motivo,
            -- LOS ROLES DEL USUARIO, agregados aqui para no hacer una segunda ida a la base por una lista de
            -- una o dos palabras. La tabla user_roles es N:N desde el principio.
            (select array_agg(ro.name::text order by ro.name)
@@ -263,6 +277,8 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
     roles: quien.roles ?? [],
     profesion: quien.profesion,
     esDePrueba: Boolean(quien.es_de_prueba),
+    inactivoDesde: quien.inactivo_desde,
+    motivoDeInactivacion: quien.inactivacion_motivo,
     inventario: inventario.map((f) => ({
       producto: f.producto,
       lote: f.lote,

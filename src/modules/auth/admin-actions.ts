@@ -13,7 +13,6 @@ import { recordAudit } from "@/modules/audit/log";
 
 import {
   createUserSchema,
-  deactivateUserSchema,
   forcePasswordResetSchema,
   resetUserMfaSchema,
   rolDeUsuarioSchema,
@@ -210,49 +209,16 @@ export async function resetUserMfa(input: {
   return ok(null);
 }
 
-// Offboarding: desactiva (status inactivo, conserva atribucion; no se recicla la
-// cuenta, regla 14). Mutacion de dominio + audit en UNA transaccion.
-export async function deactivateUser(input: {
-  userId: string;
-}): Promise<Result<null, AppError>> {
-  const { user, error: authzError } = await requireAdmin();
-  if (authzError) return err(authzError);
-
-  const parsed = deactivateUserSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Usuario inválido."));
-  const { userId } = parsed.data;
-  if (userId === user.id) {
-    return err(appError("validation", "No puedes desactivar tu propia cuenta."));
-  }
-
-  const { ip, userAgent } = await auditContext();
-  try {
-    await db.transaction(async (tx) => {
-      const updated = await tx
-        .update(profiles)
-        .set({ status: "inactive" })
-        .where(eq(profiles.id, userId))
-        .returning({ id: profiles.id });
-      if (updated.length === 0) throw new NotFoundError();
-
-      await recordAudit(tx, {
-        event: "user.deactivated",
-        actorId: user.id,
-        actorEmail: user.email,
-        entityType: "profile",
-        entityId: userId,
-        ip,
-        userAgent,
-      });
-    });
-  } catch (e) {
-    if (e instanceof NotFoundError) return err(appError("not_found", "Usuario no encontrado."));
-    reportServerError("deactivateUser", e);
-    return err(appError("internal", "No se pudo desactivar el usuario."));
-  }
-
-  return ok(null);
-}
+// ═══ AQUI VIVIA deactivateUser, Y SALIO EL 2026-10-25 ═══
+//
+// Existia desde el principio y NO LA LLAMABA NADIE: ponia status = inactive sin motivo, sin quien, sin
+// vuelta atras y sin pantalla. La regla dura 14 la daba por construida y lo unico que habia era un UPDATE
+// a mano. El acto completo vive ahora en professionals/data/acceso-del-integrante-writer.ts, con su motivo
+// obligatorio, su reactivacion, la sesion revocada y el retrato de lo que queda abierto.
+//
+// Y NO SE PODIA DEJAR DE ADORNO: desde la 0229 un UPDATE que ponga inactive sin inactivo_desde viola el
+// CHECK, asi que esta funcion ya no corre. Una action muerta que ademas reventaria es peor que no tenerla:
+// se lee como el camino oficial.
 
 // Registra o edita el registro profesional (licencia) de un profesional. Existe aparte de la invitacion
 // porque las licencias suelen llegar despues. Vacio => null (sin registro; el consentimiento omite esa

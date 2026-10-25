@@ -1,6 +1,9 @@
 import { Boxes, Receipt, TriangleAlert, Users, Wallet } from "lucide-react";
 import { PedirConteoForm } from "@/modules/nutraceuticals/components/pedir-conteo-form";
+import { AccesoDelIntegrante } from "@/modules/professionals/components/acceso-del-integrante";
 import { MarcaDePruebaForm } from "@/modules/professionals/components/marca-de-prueba-form";
+import { canDeactivateProfessional } from "@/modules/professionals/policies/can-deactivate-professional";
+import { loQueQuedaAbierto } from "@/modules/professionals/data/lo-que-queda-abierto";
 import { pieDeLoVendido } from "@/modules/payments/cobro-reconocido";
 import { redirect } from "next/navigation";
 
@@ -65,10 +68,22 @@ const fecha = (iso: string) =>
 export default async function IntegrantePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   if (!canAccessAdmin(user)) redirect("/no-autorizado");
+  // REGLA 3: el control no aparece si la policy no lo deja. Uno que lleva a "no autorizado" es peor que no
+  // tenerlo, y el bloque que lo acompaña (lo que queda abierto) tampoco se lee entonces.
+  const puedeQuitarElAcceso = canDeactivateProfessional(user);
 
   const { id } = await params;
   const [integrante, modalidad] = await Promise.all([leerIntegrante(id), leerModalidad(id)]);
   if (!integrante) redirect("/admin");
+
+  // ═══ LO QUE QUEDA ABIERTO SI SE LE QUITA EL ACCESO (Gildardo, 2026-10-25) ═══
+  //
+  // Se lee SIEMPRE, no solo cuando ya está inactivo: su razón de ser es que esté a la vista ANTES de pulsar.
+  // Quitar el acceso no mueve a sus pacientes ni cancela lo que se le debe, y un botón que no lo dice deja
+  // creer que inactivar resuelve el offboarding completo.
+  const abierto = puedeQuitarElAcceso
+    ? await loQueQuedaAbierto(id, integrante.inactivoDesde)
+    : null;
 
   // LOS DESTINOS POSIBLES DE UNA REASIGNACION, solo si quien mira puede reasignar (regla 3: el control no
   // aparece si la policy no lo deja, porque uno que lleva a "no autorizado" es peor que no tenerlo). Se
@@ -129,6 +144,24 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
           asimetría se notaba justo cuando más se usa: durante un smoke, alternando una cuenta entre real y de
           prueba. Va aquí, junto al aviso que explica lo que la marca significa. */}
       <MarcaDePruebaForm professionalId={id} esDePrueba={integrante.esDePrueba} />
+
+      {/* ═══ QUITARLE Y DEVOLVERLE EL ACCESO (Gildardo, 2026-10-25) ═══
+
+          La mitad que faltaba de la regla dura 14. Va ARRIBA, junto a la marca de prueba y antes de sus
+          pacientes, por el mismo motivo que ellas: cambia cómo se lee todo lo de abajo. Y va en ESTA
+          pantalla, no en una propia, porque el siguiente paso después de quitar el acceso es reasignar sus
+          pacientes, y ese bloque está unas líneas más abajo. */}
+      {puedeQuitarElAcceso && abierto ? (
+        <AccesoDelIntegrante
+          usuarioId={integrante.usuarioId}
+          professionalId={id}
+          nombre={integrante.nombre}
+          inactivo={integrante.inactivoDesde !== null}
+          inactivoDesde={integrante.inactivoDesde}
+          motivoVigente={integrante.motivoDeInactivacion}
+          abierto={abierto}
+        />
+      ) : null}
 
       {/* ═══ SUS ROLES (Santiago, 2026-10-24) ═══
 
