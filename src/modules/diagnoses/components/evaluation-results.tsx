@@ -37,7 +37,7 @@ import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
-import { type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
+import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
 import type { DfiPaciente } from "@/clinical-engine";
 import { HojaDiagnosticoFuncional, type RutaParaElPaciente } from "./hoja-diagnostico-funcional";
 import { sinGuionLargo } from "@/lib/format/guion";
@@ -866,18 +866,47 @@ export function EvaluationResults({
           </div>
         }
         composicion={
-          <div className="flex flex-col gap-8">
-            {composition ?? (
-              <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
-                Esta evaluación no tiene composición corporal registrada.
-              </p>
-            )}
-            {/* La tabla de indices ANI-BIS-E vive aca (Gildardo la tiene en composicion, con Wang); en
-                Funcional quedan los indices representativos inline por dominio (tarjetas del DFI). */}
-            {indicatorsSection}
-          </div>
+          // ═══ AQUI LA PANTALLA SI ES EL DOCUMENTO (Gildardo, 2026-10-25) ═══
+          //
+          // Las dos tablas (Wang y los indices ANI-BIS-E) no tienen un solo control: son filas con su
+          // valor, su referencia y su veredicto. Asi que esta subpestaña se imprime TAL CUAL, sin armar un
+          // documento aparte, que es lo que ya se decidio para las rutas de atencion.
+          //
+          // Y LA DISTINCION IMPORTA, porque es la que decide cuando hay que construir una hoja: la
+          // prescripcion y la antropometria son TALLERES (campos en vivo) y necesitan su documento; esto es
+          // una lectura, y duplicarla en un `solo-impresion` dejaria dos escrituras de la misma tabla.
+          <HojaImprimible
+            titulo="Composición corporal e índices"
+            encabezado={encabezado}
+            etiquetaBoton="Imprimir la composición"
+            queSale="Las dos tablas tal como se ven: composición corporal por niveles de Wang y los índices ANI-BIS-E, con sus referencias y su clasificación."
+          >
+            <div className="flex flex-col gap-8">
+              {composition ?? (
+                <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
+                  Esta evaluación no tiene composición corporal registrada.
+                </p>
+              )}
+              {/* La tabla de indices ANI-BIS-E vive aca (Gildardo la tiene en composicion, con Wang); en
+                  Funcional quedan los indices representativos inline por dominio (tarjetas del DFI). */}
+              {indicatorsSection}
+            </div>
+          </HojaImprimible>
         }
-        encuesta={surveyDiagnosis}
+        encuesta={
+          // La lectura D1-D8 tampoco tiene controles: es el read-out de lo que respondio el paciente,
+          // leido por el modelo. Se imprime tal cual.
+          surveyDiagnosis ? (
+            <HojaImprimible
+              titulo="Diagnóstico de la encuesta"
+              encabezado={encabezado}
+              etiquetaBoton="Imprimir el diagnóstico de la encuesta"
+              queSale="La lectura de los ocho dominios de la encuesta: qué respondió el paciente y cómo lo clasifica el modelo."
+            >
+              {surveyDiagnosis}
+            </HojaImprimible>
+          ) : null
+        }
         resumen={
           <div className="flex flex-col gap-8">
             {/* CUARTA SUBPESTAÑA (puntos 7 y 11). En su archivo se llama "Resumen del Diagnóstico" y
@@ -885,7 +914,20 @@ export function EvaluationResults({
                 partiendo del borrador. Los dos viven en este bloque, que es lo que se le declara: no le
                 cambiamos su panel, le añadimos encima la capa que su archivo no tiene porque en su
                 prototipo nadie firma nada. */}
-            {criterio ?? (
+            {criterio ? (
+              // ESTA SUBPESTAÑA SI TIENE UN CAMPO (el criterio que el profesional escribe), asi que no se
+              // imprime tal cual: lo que no va al papel lo marca `no-print` el propio bloque del criterio,
+              // que es quien sabe cual de sus partes es registro y cual es taller. Aqui solo se le pone la
+              // hoja alrededor y su boton arriba, en el mismo sitio que en las demas subpestañas.
+              <HojaImprimible
+                titulo="Resumen del diagnóstico"
+                encabezado={encabezado}
+                etiquetaBoton="Imprimir el resumen"
+                queSale="El resumen del diagnóstico y los criterios que el profesional ya registró. No sale el campo para escribir uno nuevo."
+              >
+                {criterio}
+              </HojaImprimible>
+            ) : (
               <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
                 El criterio del profesional aparece aquí cuando la evaluación tiene diagnóstico.
               </p>

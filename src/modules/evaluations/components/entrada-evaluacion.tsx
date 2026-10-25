@@ -18,7 +18,11 @@ import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
+import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
+import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
+
 import { ConsentStatusCard } from "./consent-status-card";
+import { SurveyReadonly } from "./survey-readonly";
 import type { ConsentStatus } from "../data/consent-status-reader";
 import type { SurveyDomain } from "../data/survey-answers-reader";
 
@@ -42,6 +46,7 @@ export function EntradaEvaluacion({
   diagnosticoGenerado,
   importada = false,
   identityConfirmationSlot = null,
+  encabezado = null,
 }: {
   /**
    * Cual de los DOS paneles se rinde. Desde el 2026-09-10 Encuesta y Antropometria & BIS son PESTAÑAS
@@ -51,6 +56,13 @@ export function EntradaEvaluacion({
    * juntos aqui en vez de partirse en dos componentes que tendrian que volver a recibir lo mismo.
    */
   panel: "encuesta" | "antropometria";
+  /**
+   * EL ENCABEZADO DE LA HOJA (Gildardo, 2026-10-25: el boton de imprimir en TODAS las subpestañas).
+   *
+   * null = no se ofrece el boton, y es la misma regla que la prescripcion: una hoja que no dice de quien
+   * es ni quien la firma no es un documento clinico, es un volante. Antes de emitir eso, no se ofrece.
+   */
+  encabezado?: EncabezadoDeHoja | null;
   evaluationId: string;
   /**
    * ¿La medicion llego importada del HTML? Solo ahi se pueden teclear la cintura y la cadera que falten: ese
@@ -259,7 +271,7 @@ export function EntradaEvaluacion({
                 `details` nativo y no estado de cliente: este panel es de servidor, y un desplegable que no
                 guarda nada no necesita hidratacion. */}
             {!diagnosticoGenerado && bisImportEval ? (
-              <details className="group -mt-1">
+              <details className="no-print group -mt-1">
                 <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline [&::-webkit-details-marker]:hidden">
                   <ChevronDown className="size-3 transition-transform group-open:rotate-180" aria-hidden />
                   ¿Importaste el archivo equivocado?
@@ -321,14 +333,94 @@ export function EntradaEvaluacion({
   // porque la pestaña de arriba decia "Evaluacion" y hacia falta decir que habia dentro. Ahora la pestaña
   // dice "Encuesta" o "Antrop. & BIS": repetirlo debajo es el mismo rotulo dos veces. Queda la linea que
   // SI aporta, que es la que dice para que sirve el panel.
-  return (
+  // ═══ LAS DOS HOJAS DE PAPEL DE ESTAS PESTAÑAS (Gildardo, 2026-10-25) ═══
+  //
+  // *"Hazlo ahora en TODAS las subpestañas, cada una con su hoja para papel (sin desplegables ni campos
+  // vacios)."*
+  //
+  // Y ESO ES LO QUE DECIDE QUE SALE: estas dos pestañas son TALLERES. La de Encuesta es una barra de
+  // progreso con enlaces a las preguntas que faltan, y la de Antropometria es un formulario de import con
+  // campos editables. Marcarlas imprimibles tal cual habria puesto en el papel la barra, los enlaces y los
+  // campos vacios, que es exactamente el aviso que el dimensionado llevaba.
+  //
+  // Asi que el papel se arma aparte, con lo GUARDADO, y REUSANDO los componentes que ya son documentos:
+  //
+  //   · Encuesta  -> `SurveyReadonly`, el MISMO bloque que pinta la pantalla de "Ver o editar encuesta",
+  //     mas las condiciones de la toma selladas. No es una segunda redaccion de las respuestas: es la
+  //     misma, y por eso no pueden decir cosas distintas.
+  //   · Antropometria -> la tabla de Wang COMPLETA (`CompositionSection`), que ya es una tabla sin
+  //     controles, con la fecha de la toma arriba.
+  //
+  // LO QUE NO LLEVA EL PAPEL DE LA ENCUESTA: las preguntas que faltan NO van como aviso. En pantalla son
+  // trabajo por hacer (y cada una enlaza a si misma); en un documento serian un reproche impreso. Lo que
+  // si va es la respuesta vacia de cada una, que es el hecho: "sin responder".
+  const hojaDeLaEncuesta =
+    surveyDomains && surveyDomains.length > 0 ? (
+      <div className="solo-impresion flex-col gap-6">
+        {consentStatus ? <ConsentStatusCard status={consentStatus} /> : null}
+        <SurveyReadonly domains={surveyDomains} />
+        {bisReadonly ? <BisConditionsReadonly data={bisReadonly} /> : null}
+      </div>
+    ) : null;
+
+  const hojaDeLaAntropometria = composition ? (
+    <div className="solo-impresion flex-col gap-6">
+      {composition.measurementDate ? (
+        <p className="text-sm text-foreground">
+          Medición tomada el {formatDateLong(composition.measurementDate)}.
+        </p>
+      ) : null}
+      {/* CON SU VEREDICTO (`showDiagnosis` por defecto) y SIN recortar a lo alterado: en la pantalla esta
+          tabla es el dato crudo que entra, pero en papel es el registro de la medicion, y un registro que
+          solo lista lo que esta mal no deja reconstruir la medicion. */}
+      {/* SIN `pesoMetaKg`, y lo dijo un candado: la meta de peso es la REFERENCIA DE TRABAJO de la fila
+          de Peso en la pantalla, y la decision de `composicion-a-peso-meta` es que NO llegue a un
+          documento (ni a la historia clinica ni a su PDF). Esta hoja es un documento, asi que tampoco.
+
+          Y no es un detalle de forma: la meta es un acuerdo con el paciente que puede cambiar, mientras el
+          peso medido es un hecho de ese dia. Imprimir la una como referencia del otro ataria el registro de
+          la medicion a una decision posterior. Donde SI va la meta es en la hoja de la prescripcion, con su
+          procedencia al lado. */}
+      <CompositionSection composition={composition} sexoM={!patientIsFemale} />
+      {sarcopeniaFuerza != null ? (
+        <p className="text-sm text-foreground">Fuerza prensil registrada: {sarcopeniaFuerza} kg.</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Fuerza prensil: no se registró.</p>
+      )}
+    </div>
+  ) : null;
+
+  const contenido = panel === "encuesta" ? encuestaPanel : antropometriaPanel;
+  const hoja = panel === "encuesta" ? hojaDeLaEncuesta : hojaDeLaAntropometria;
+
+  const cuerpo = (
     <div className="flex flex-col gap-8">
       <p className="text-sm text-muted-foreground">
         {panel === "encuesta"
           ? "Lo que entró antes de medir: consentimiento, encuesta del paciente y condiciones de la toma."
           : "La medición y lo que sale de ella: medidas del profesional, importación BIS y composición corporal."}
       </p>
-      {panel === "encuesta" ? encuestaPanel : antropometriaPanel}
+      {contenido}
     </div>
+  );
+
+  // SIN ENCABEZADO O SIN CONTENIDO GUARDADO NO HAY HOJA, y entonces tampoco boton: ofrecerlo sobre una
+  // evaluacion sin encuesta ni medicion imprimiria una pagina con un encabezado y nada debajo.
+  if (!encabezado || !hoja) return cuerpo;
+
+  return (
+    <HojaImprimible
+      titulo={panel === "encuesta" ? "Encuesta del paciente" : "Antropometría y bioimpedancia"}
+      encabezado={encabezado}
+      etiquetaBoton={panel === "encuesta" ? "Imprimir la encuesta" : "Imprimir la medición"}
+      queSale={
+        panel === "encuesta"
+          ? "Las respuestas del paciente tal como quedaron guardadas, con su consentimiento y las condiciones de la toma. No sale la barra de progreso ni los enlaces de la pantalla."
+          : "La medición: su fecha, la composición corporal por niveles de Wang con sus referencias y la fuerza prensil. No salen el formulario de importación ni los campos editables."
+      }
+    >
+      <div className="no-print">{cuerpo}</div>
+      {hoja}
+    </HojaImprimible>
   );
 }
