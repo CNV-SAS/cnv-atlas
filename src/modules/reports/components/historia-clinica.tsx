@@ -2,6 +2,14 @@
 // renderiza la page server. Porte de la HC del v8 (capturas 2026-08-24), con las divergencias anotadas
 // donde ocurren.
 
+import {
+  CLASE_DEL_NIVEL,
+  DEFINICION_DEL_ICN,
+  nivelDeCubrimiento,
+  nivelDelIcn,
+  POR_QUE_DISCREPAN,
+} from "@/modules/treatment/validacion-presentacion";
+
 import type { HcAntecedenteResuelto } from "../data/hc-antecedentes-map";
 import { etiquetaDeVia } from "../vias-de-entrega";
 import {
@@ -582,6 +590,115 @@ export function HcPlanNutricional({
           </ul>
         </div>
       ) : null}
+    </Tarjeta>
+  );
+}
+
+// ═══ BLOQUE 10bis: VALIDACION DEL PLAN · % DE CUBRIMIENTO E ICN (Gildardo, 2026-10-25) ═══
+//
+// *"El ICN va a la historia clinica. Construyelo."*
+//
+// POR QUE EN LA HISTORIA Y NO EN EL PLAN DEL PACIENTE, que era la pregunta abierta (V11-2, §A2): esto es
+// la VALIDACION de una prescripcion, y la historia clinica es donde queda constancia de COMO se
+// prescribio. Un ICN de 0,78 en fibra no le dice nada a quien va a comer; al que audita la prescripcion
+// dentro de un ano le dice si el plan estaba balanceado.
+//
+// VA JUSTO DESPUES DEL PLAN NUTRICIONAL, no al final: valida las cifras del bloque de encima, y leerla
+// antes de haberlas leido no significa nada. Es el mismo criterio de orden con el que la composicion
+// corporal subio antes de los parrafos.
+//
+// LAS CIFRAS NO SE RECALCULAN AQUI: llegan de `hc-composicion`, que llama a las MISMAS funciones del
+// motor que el panel del profesional (`computeProtocoloEfectivo` + `computeValidacion`), y los cortes de
+// color salen del modulo compartido. La historia clinica y la pantalla no pueden calificar la misma cifra
+// de dos maneras.
+//
+// Y DISTINGUE "NO HAY PLAN" DE "EL PLAN NO CUBRE NADA", igual que el panel: una tabla de ceros se lee
+// como "este plan cubre el 0 % de todo", que es falso cuando lo que pasa es que no hay plan.
+export type HcValidacion = {
+  nutrientes: {
+    k: string;
+    l: string;
+    u: string;
+    d: number;
+    lim: boolean;
+    obtenido: number;
+    requerido: number;
+    cob: number;
+    icn: number | null;
+  }[];
+  /** % de nutrientes con ICN aceptable, ya calculado con la regla compartida. */
+  icnPctOk: number;
+};
+
+export function HcValidacionNutricional({ validacion }: { validacion: HcValidacion | null }) {
+  if (!validacion || validacion.nutrientes.length === 0) {
+    return (
+      <Tarjeta>
+        <TituloSeccion>Tratamiento · validación del plan</TituloSeccion>
+        <p className="text-sm text-muted-foreground">
+          Esta evaluación todavía no tiene un plan con porciones asignadas, así que no hay nada que
+          validar.
+        </p>
+      </Tarjeta>
+    );
+  }
+  const fmt = (v: number, d: number) => v.toFixed(d);
+  return (
+    <Tarjeta>
+      <TituloSeccion>Tratamiento · validación del plan (meta ICN ≈ 1)</TituloSeccion>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[26rem] text-left text-sm">
+          <thead>
+            <tr className="border-b border-border text-[11px] text-muted-foreground">
+              <th className="px-2 py-1 font-medium">Nutriente</th>
+              <th className="px-2 py-1 text-right font-medium">Obtenido</th>
+              <th className="px-2 py-1 text-right font-medium">Necesidad</th>
+              <th className="px-2 py-1 text-right font-medium">% Cubrim.</th>
+              <th className="px-2 py-1 text-right font-medium">ICN</th>
+            </tr>
+          </thead>
+          <tbody>
+            {validacion.nutrientes.map((n) => (
+              <tr key={n.k} className="border-b border-border/60 last:border-0">
+                <td className="px-2 py-1.5 font-medium text-foreground">
+                  {n.l} <span className="text-[11px] text-muted-foreground">({n.u})</span>
+                  {n.lim ? (
+                    <span className="ml-1 text-[11px] text-muted-foreground">· a limitar</span>
+                  ) : null}
+                </td>
+                <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                  {fmt(n.obtenido, n.d)}
+                </td>
+                <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                  {fmt(n.requerido, n.d)}
+                </td>
+                <td
+                  className={
+                    "px-2 py-1.5 text-right font-medium tabular-nums " +
+                    CLASE_DEL_NIVEL[nivelDeCubrimiento(n)]
+                  }
+                >
+                  {Math.round(n.cob)}%
+                </td>
+                {/* El COLOR del ICN va incluso en el sodio (fiel al v8): un sodio denso da ICN alto y
+                    rojo, que refuerza el "te pasas". La energia no tiene ICN y queda en guion. */}
+                <td
+                  className={
+                    "px-2 py-1.5 text-right font-medium tabular-nums " + CLASE_DEL_NIVEL[nivelDelIcn(n.icn)]
+                  }
+                >
+                  {n.lim ? "límite" : n.k === "kcal" ? "-" : n.icn == null ? "-" : n.icn.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {DEFINICION_DEL_ICN} Nutrientes con ICN ≥ 0,9:{" "}
+        <span className="font-semibold text-foreground">{validacion.icnPctOk}%</span>.
+      </p>
+      <p className="text-xs text-muted-foreground">{POR_QUE_DISCREPAN}</p>
     </Tarjeta>
   );
 }
