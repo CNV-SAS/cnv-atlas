@@ -1583,6 +1583,13 @@
       "when": 1792862137446,
       "tag": "0225_la_misma_medicion_no_entra_dos_veces",
       "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1792862138446,
+      "tag": "0226_la_medicion_de_otro_paciente",
+      "breakpoints": true
     }
   ]
 }

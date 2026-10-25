@@ -39,9 +39,12 @@ export function CorrectionEntry({
         Corrige la respuesta equivocada. Se genera una versión nueva del diagnóstico, el tratamiento y el
         reporte con el dato corregido; la versión actual no se borra, queda registrada como reemplazada.
       </p>
+      {/* ESTE PARRAFO DECIA QUE LA MEDICION NO SE CORREGIA, y desde el 2026-10-24 si: el caso 6 del plan
+          ("la medición es de otra persona") tiene su propio bloque justo debajo. Dejarlo como estaba
+          mandaria a soporte a quien ya tiene el camino en la misma pantalla. */}
       <p className="max-w-prose text-xs text-muted-foreground">
-        Aquí solo se corrige la encuesta. Con el diagnóstico ya generado, la medición del equipo y la
-        identidad del paciente no se corrigen: escríbele a soporte.
+        Aquí solo se corrige la encuesta. Si la medición del equipo es de otra persona, usa el bloque de
+        abajo. La identidad del paciente no se corrige por aquí: escríbele a soporte.
       </p>
       {availability.available ? (
         <div>

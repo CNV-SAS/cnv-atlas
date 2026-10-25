@@ -54,6 +54,17 @@ export const bisMeasurements = pgTable(
     deviceCalibrationDate: date("device_calibration_date"), // snapshot de calibracion al escanear
     // Procedencia: el lote que la importo del HTML (0162). null = se importo del XLSX en Atlas.
     importBatchId: uuid("import_batch_id"),
+    // ═══ ESTA MEDICION NO ES DE ESTE PACIENTE (0226, caso 6 del flujo de correccion) ═══
+    //
+    // La medicion NO se borra, se queda colgada de la evaluacion reemplazada. La marca existe para que el
+    // freno de la 0225 (la huella de los crudos) deje al DUENO DE VERDAD importar su propio archivo: sin
+    // ella, corregir el error del paciente A deja al paciente B sin poder cargar su medicion, con un
+    // mensaje que le dice que el archivo es de otra persona. Cierto, pero al reves.
+    //
+    // Las tres viajan juntas (CHECK en la 0226) y la marca es write-once (trigger): es registro clinico.
+    noEsDelPacienteAt: timestamp("no_es_del_paciente_at", { withTimezone: true }),
+    noEsDelPacientePor: uuid("no_es_del_paciente_por").references(() => profiles.id),
+    noEsDelPacienteMotivo: text("no_es_del_paciente_motivo"),
     createdAt: createdAt(),
   },
   (t) => [index("bis_measurements_eval_idx").on(t.evaluationId)],

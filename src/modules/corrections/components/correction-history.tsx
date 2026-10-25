@@ -13,6 +13,9 @@ const TRIGGER_LABEL: Record<string, string> = {
   correccion_profesional: "Corrección del profesional",
   recalibracion_ciencia: "Recalibración científica",
   completar_profesional: "Completada en consulta",
+  // El rotulo dice el HECHO y no el procedimiento: quien lea esta cadena dentro de un ano tiene que
+  // entender que paso sin ir a buscar que significa el disparador.
+  medicion_de_otro_paciente: "La medición era de otro paciente",
 };
 
 function fmtDate(iso: string): string {

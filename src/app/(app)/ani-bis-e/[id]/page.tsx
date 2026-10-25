@@ -15,6 +15,7 @@ import {
   getEvaluationPatientSex,
 } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { CorrectionEntry } from "@/modules/corrections/components/correction-entry";
+import { MedicionDeOtroPaciente } from "@/modules/corrections/components/medicion-de-otro-paciente";
 import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
 import { SupersededBanner } from "@/modules/corrections/components/superseded-banner";
 import { getCorrectionAvailability } from "@/modules/corrections/data/correction-availability-reader";
@@ -1526,6 +1527,9 @@ export default async function ResultadosEvaluacionPage({
                   confirmedByName={results.confirmedByName}
                 />
                 <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
+                {/* EL CASO 6, aparte del boton de corregir: corregir una respuesta es trabajo del dia,
+                    decir que la medicion es de otra persona es un incidente de datos de salud. */}
+                <MedicionDeOtroPaciente evaluationId={id} />
               </CardContent>
             </Card>
           }
