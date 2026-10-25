@@ -200,3 +200,84 @@ describe("la constancia de cifras fuera de la referencia (P-109) llega a los DOS
     );
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL ICN LLEGA A LOS DOS DOCUMENTOS DE LA HISTORIA CLINICA (Gildardo, 2026-10-25)
+//
+// *"El ICN va a la historia clinica. Construyelo."*
+//
+// Y "la historia clinica" son DOS superficies: la pantalla (que se imprime) y el PDF que se le entrega al
+// paciente. Este archivo ya documenta la leccion dos veces, con el sodio y con las desviaciones: una
+// pieza que vive en una sola de las dos deja dos documentos del mismo acto clinico diciendo cosas
+// distintas, y la mitad que falta siempre es la del papel, porque es la que nadie mira al construir.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("la validacion del plan (el ICN) llega a los DOS documentos", () => {
+  const COMPARTIDO = readFileSync("src/modules/treatment/validacion-presentacion.ts", "utf8");
+  const HC_PDF_DOC = readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8");
+  const HC_READER_DOC = readFileSync("src/modules/reports/data/hc-documento-reader.ts", "utf8");
+  const HC_PANTALLA = readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8");
+
+  it("se compone UNA vez, en el composer, con las mismas funciones del motor que el panel", () => {
+    // El riesgo no es que el calculo este mal: es que se haga dos veces. Dos llamadas a
+    // `computeValidacion` con insumos distintos (el objetivo sugerido contra el efectivo, por ejemplo)
+    // darian dos ICN del mismo plan, y los dos documentos se contradirian sin que nada fallara.
+    expect(COMP).toContain("computeValidacion({");
+    expect(COMP).toContain("porcentajeConIcnOk(nutrientes)");
+    expect(HC_PDF_DOC, "el PDF calcula la validacion por su cuenta").not.toMatch(/computeValidacion\s*\(/);
+    expect(HC_PANTALLA, "la pantalla calcula la validacion por su cuenta").not.toMatch(
+      /computeValidacion\s*\(/,
+    );
+  });
+
+  it("los dos le PASAN las porciones al composer, que es donde estaria la omision", () => {
+    // Sin las porciones el composer devuelve null y el bloque dice "no hay plan que validar": seria una
+    // omision que se lee como una afirmacion sobre el paciente, y no fallaria nada.
+    expect(PAGE, "la pantalla no le pasa las porciones").toContain("intercambioPorciones: protocol?.intercambioPorciones");
+    expect(HC_READER_DOC, "el PDF no le pasa las porciones").toContain(
+      "intercambioPorciones: protocol?.intercambioPorciones",
+    );
+    expect(HC_READER_DOC, "el PDF no lleva la validacion al documento").toContain(
+      "validacion: compuesta.validacion",
+    );
+  });
+
+  it("y los dos la PINTAN", () => {
+    expect(PAGE, "la pantalla no monta el bloque").toContain(
+      "<HcValidacionNutricional validacion={hcCompuesta.validacion} />",
+    );
+    expect(HC_PANTALLA, "el bloque de pantalla no existe").toContain("export function HcValidacionNutricional");
+    expect(HC_PDF_DOC, "el PDF no pinta la tabla").toContain("hc.validacion.nutrientes.map(");
+  });
+
+  it("los cortes de color viven en UN sitio, no copiados en cada superficie", () => {
+    // Un color que califica una prescripcion decide sobre un dato clinico (regla de Santiago,
+    // 2026-10-02), asi que dos juegos de umbrales son dos veredictos posibles sobre la misma cifra.
+    expect(COMPARTIDO).toContain("CORTES_DEL_ICN");
+    expect(COMPARTIDO).toMatch(/interIcnColor/); // su fuente, el v8 de Gildardo
+    for (const [nombre, src] of [
+      ["el panel", PANEL],
+      ["el PDF", HC_PDF_DOC],
+      ["la pantalla de la HC", HC_PANTALLA],
+    ] as const) {
+      expect(src, `${nombre} vuelve a escribir los cortes del ICN`).not.toMatch(
+        /v >= 0\.9 && v <= 1\.15/,
+      );
+    }
+  });
+
+  it("el PDF dice el veredicto en PALABRAS, porque el color no sobrevive a una fotocopia", () => {
+    expect(HC_PDF_DOC).toContain("ROTULO_DEL_NIVEL[nivelDelIcn(");
+    expect(HC_PDF_DOC, "y no intenta pintar color en un documento impreso").not.toMatch(
+      /clinical-(optimal|warning|critical)/,
+    );
+  });
+
+  it("y el PDF DICE cuando no hay nada que validar, en vez de omitir la seccion", () => {
+    // Una seccion ausente en un documento probatorio se lee como que no se evaluo. Es la misma correccion
+    // que hubo que hacerle al sodio en este archivo.
+    const i = HC_PDF_DOC.indexOf('<Seccion titulo="Validación del plan">');
+    expect(i, "no hay rama para el caso sin plan").toBeGreaterThan(0);
+    expect(HC_PDF_DOC.slice(i, i + 400)).toContain("no hay nada que validar");
+  });
+});

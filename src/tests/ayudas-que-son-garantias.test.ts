@@ -18,7 +18,18 @@ import { describe, expect, it } from "vitest";
 // al salto exacto convertiria este candado en un detector de reformateo. Lo que tiene que resistir es que
 // alguien BORRE la frase, no que la vuelva a envolver.
 const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
-const PLANO = PANEL.replace(/\s+/g, " ");
+
+// Y EL MODULO COMPARTIDO DE LA VALIDACION (2026-10-25). Al construir el ICN de la historia clinica, dos
+// de estas garantias (la definicion del ICN y el "por que discrepan las dos columnas") salieron del panel
+// a `treatment/validacion-presentacion.ts`, porque los DOS documentos las dicen y una frase escrita dos
+// veces se aparta a la tercera edicion.
+//
+// EL CANDADO SIGUE A LA GARANTIA, no al archivo. Lo que se exige es que la frase llegue a la pantalla del
+// profesional, y sigue llegando: el panel la renderiza desde la constante. Dejarlo anclado solo al panel
+// habria convertido una mejora en un fallo, y "el candado falla, quito la frase" es exactamente como se
+// pierde una garantia.
+const COMPARTIDO = readFileSync("src/modules/treatment/validacion-presentacion.ts", "utf8");
+const PLANO = `${PANEL} ${COMPARTIDO}`.replace(/\s+/g, " ");
 const frasePlana = (f: string) => f.replace(/\s+/g, " ");
 
 // LA GARANTIA DE IRREVERSIBILIDAD SALIO DE ESTA LISTA, y no porque se podara (2026-09-06, cotejo punto

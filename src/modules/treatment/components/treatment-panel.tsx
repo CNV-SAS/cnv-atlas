@@ -35,6 +35,14 @@ import { AsesoriaMacroPanel } from "./asesoria-macro-panel";
 import { AlimentosDelSubgrupo } from "./lista-intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
+import {
+  CLASE_DEL_NIVEL,
+  DEFINICION_DEL_ICN,
+  nivelDeCubrimiento,
+  nivelDelIcn,
+  POR_QUE_DISCREPAN,
+  porcentajeConIcnOk,
+} from "../validacion-presentacion";
 import { bloqueCls, tituloBloqueCls } from "@/components/shared/bloque";
 import { imprimirHoja } from "@/components/shared/imprimir-hoja";
 import { Badge } from "@/components/ui/badge";
@@ -3400,25 +3408,16 @@ function ValidacionSection({
 
   // SEMAFORO portado del v8 (interCobColor/interIcnColor, cortes verbatim), con los tokens clinicos de Atlas
   // (verde=optimal, ambar=warning, rojo=critical; NO el azul de excellent, reservado a lo optimo de escala).
-  // Cubrimiento: [90,110] optimo, [70,130) alerta, resto critico. Sodio (a LIMITAR): <=100 bien, <=115 alerta,
-  // resto critico. ICN: [0.9,1.15] optimo, [0.7,1.3) alerta, resto critico; null (kcal) neutro.
-  const cobColor = (n: (typeof nutrientes)[number]): string => {
-    if (n.lim) return n.cob <= 100 ? "text-clinical-optimal" : n.cob <= 115 ? "text-clinical-warning" : "text-clinical-critical";
-    if (n.cob >= 90 && n.cob <= 110) return "text-clinical-optimal";
-    if (n.cob >= 70 && n.cob < 130) return "text-clinical-warning";
-    return "text-clinical-critical";
-  };
-  const icnColor = (v: number | null): string => {
-    if (v == null) return "text-muted-foreground";
-    if (v >= 0.9 && v <= 1.15) return "text-clinical-optimal";
-    if (v >= 0.7 && v < 1.3) return "text-clinical-warning";
-    return "text-clinical-critical";
-  };
+  //
+  // LOS CORTES SALIERON DE AQUI EL 2026-10-25, a `treatment/validacion-presentacion.ts`, al construir el
+  // ICN de la historia clinica (Gildardo). Copiarlos en el segundo documento habria dejado dos juegos de
+  // umbrales clinicos: la pantalla diria ambar y el documento probatorio verde sobre la misma cifra, y
+  // nadie sabria cual de los dos esta mal.
+  const cobColor = (n: (typeof nutrientes)[number]): string => CLASE_DEL_NIVEL[nivelDeCubrimiento(n)];
+  const icnColor = (v: number | null): string => CLASE_DEL_NIVEL[nivelDelIcn(v)];
   const fmt = (v: number, d: number) => v.toFixed(d);
 
-  // % de nutrientes con ICN >= 0,9 (resumen util del v8, _icnPctOk): excluye energia y los "a limitar".
-  const icnVals = nutrientes.filter((n) => n.k !== "kcal" && !n.lim && n.icn != null).map((n) => n.icn as number);
-  const icnPctOk = icnVals.length ? Math.round((icnVals.filter((v) => v >= 0.9).length / icnVals.length) * 100) : 0;
+  const icnPctOk = porcentajeConIcnOk(nutrientes);
 
   return (
     <section className={bloqueCls("derivado")}>
@@ -3475,18 +3474,14 @@ function ValidacionSection({
           </table>
           {/* Leyenda del ICN portada del v8: sin ella la columna es numeros sin significado. Incluye el % de
               nutrientes con ICN >= 0,9 (resumen util). */}
+          {/* LA DEFINICIÓN Y EL "POR QUÉ DISCREPAN" SALEN DEL MÓDULO COMPARTIDO desde el 2026-10-25: las
+              dice también la historia clínica, y una definición escrita dos veces se aparta a la tercera
+              edición. */}
           <p className="mt-2 text-xs text-muted-foreground">
-            ICN = (nutriente aportado / requerido) ÷ (energía aportada / requerida). ≈1 balanceado · &gt;1 denso
-            · &lt;1 deficitario. Nutrientes con ICN ≥ 0,9: <span className="font-semibold text-foreground">{icnPctOk}%</span>.
+            {DEFINICION_DEL_ICN} Nutrientes con ICN ≥ 0,9:{" "}
+            <span className="font-semibold text-foreground">{icnPctOk}%</span>.
           </p>
-          {/* Las dos columnas responden preguntas distintas y por eso su color puede discrepar en una misma
-              fila (p. ej. fibra al 136% en rojo pero su ICN en ámbar): NO es un error. */}
-          <p className="mt-1 text-xs text-muted-foreground">
-            El <span className="font-medium">% de cubrimiento</span> mide cuánto se cubre respecto a la necesidad;
-            el <span className="font-medium">ICN</span>, si el nutriente viene en proporción a las calorías del
-            plan. Un nutriente puede sobrar en cantidad y aun así estar bien proporcionado, así que las dos
-            columnas pueden tener colores distintos en la misma fila.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{POR_QUE_DISCREPAN}</p>
         </div>
       )}
     </section>

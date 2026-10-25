@@ -174,6 +174,9 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     d5_39: preguntas.find((q) => q.fieldKey === "d5_39")?.answerValue ?? null,
     flags: { tieneHTA: snapshot?.flags.tieneHTA ?? false, tieneIRC: snapshot?.flags.tieneIRC ?? false },
     deficitEstrategia: snapshot?.estrategia.deficit ?? 0,
+    // LAS PORCIONES GUARDADAS, para que el documento ENTREGADO lleve tambien la validacion del plan.
+    // Sin esta linea el ICN viviria solo en la pantalla, que es media instruccion.
+    intercambioPorciones: protocol?.intercambioPorciones ?? null,
     // EL PESO EFECTIVO DE LA CADENA, no una copia a mano de su regla: da lo mismo hoy y deja de darlo el
     // dia que la cadena cambie de criterio. Y ademas sigue al sello, como el resto del documento.
     pesoKg: efectivoHc?.pesoEfectivo ?? null,
@@ -279,6 +282,7 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
         : null,
     objetivoTratamiento: protocol?.objetivoTexto ?? null,
     plan: compuesta.plan,
+    validacion: compuesta.validacion,
     desviaciones: compuesta.desviaciones,
     recomendaciones: compuesta.recomendaciones,
     // LO QUE EL MODELO EXIGIÓ, por el MISMO helper que usa la pantalla (cotejo punto 30): el PDF y la

@@ -6,6 +6,14 @@ import {
   observacionesVigentes,
 } from "@/modules/reports/data/observaciones-vigentes";
 
+import {
+  DEFINICION_DEL_ICN,
+  nivelDeCubrimiento,
+  nivelDelIcn,
+  POR_QUE_DISCREPAN,
+  ROTULO_DEL_NIVEL,
+} from "@/modules/treatment/validacion-presentacion";
+
 import type { HistoriaClinicaDoc } from "../data/reports-view-types";
 
 // LA HISTORIA CLINICA EN PDF, para adjuntarla al correo del paciente.
@@ -280,6 +288,59 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             ))}
           </Seccion>
         ) : null}
+
+        {/* ═══ LA VALIDACIÓN DEL PLAN · % DE CUBRIMIENTO E ICN (Gildardo, 2026-10-25) ═══
+
+            "El ICN va a la historia clínica. Construyelo." Y va al documento ENTREGADO, no solo a la
+            pantalla: el sodio ya nos costó esa lección en este mismo archivo, cuando la fila desaparecía
+            aquí y salía con texto allá. Dos superficies del mismo acto clínico que dicen cosas distintas.
+
+            SIN COLOR, a propósito. El PDF se imprime y se fotocopia, y un veredicto que depende del color
+            desaparece en blanco y negro. Aquí el juicio va en PALABRAS, en su propia columna, con la
+            misma regla que pinta la pantalla (`nivelDelIcn`), así que las dos superficies no pueden
+            calificar la misma cifra de dos maneras. */}
+        {hc.validacion ? (
+          <Seccion titulo="Validación del plan · % de cubrimiento e ICN (meta ICN ≈ 1)">
+            <View style={styles.fila} wrap={false}>
+              <Text style={[styles.etiqueta, { width: 150, fontWeight: "bold" }]}>Nutriente</Text>
+              <Text style={[styles.valor, { fontWeight: "bold" }]}>Obtenido</Text>
+              <Text style={[styles.valor, { fontWeight: "bold" }]}>Necesidad</Text>
+              <Text style={[styles.valor, { fontWeight: "bold" }]}>Cubrim.</Text>
+              <Text style={[styles.valor, { fontWeight: "bold" }]}>ICN</Text>
+            </View>
+            {hc.validacion.nutrientes.map((n) => (
+              <View key={n.k} style={styles.fila} wrap={false}>
+                <Text style={[styles.etiqueta, { width: 150 }]}>
+                  {n.l} ({n.u}){n.lim ? " · a limitar" : ""}
+                </Text>
+                <Text style={styles.valor}>{n.obtenido.toFixed(n.d)}</Text>
+                <Text style={styles.valor}>{n.requerido.toFixed(n.d)}</Text>
+                <Text style={styles.valor}>
+                  {Math.round(n.cob)}% ({ROTULO_DEL_NIVEL[nivelDeCubrimiento(n)]})
+                </Text>
+                <Text style={styles.valor}>
+                  {n.lim
+                    ? "límite"
+                    : n.k === "kcal"
+                      ? "-"
+                      : n.icn == null
+                        ? "-"
+                        : `${n.icn.toFixed(2)} (${ROTULO_DEL_NIVEL[nivelDelIcn(n.icn)]})`}
+                </Text>
+              </View>
+            ))}
+            <Text style={styles.item}>
+              {DEFINICION_DEL_ICN} Nutrientes con ICN mayor o igual a 0,9: {hc.validacion.icnPctOk}%.
+            </Text>
+            <Text style={styles.item}>{POR_QUE_DISCREPAN}</Text>
+          </Seccion>
+        ) : (
+          <Seccion titulo="Validación del plan">
+            <Text style={styles.vacio}>
+              Esta evaluación no tiene un plan con porciones asignadas, así que no hay nada que validar.
+            </Text>
+          </Seccion>
+        )}
 
         <Seccion titulo="Recomendaciones">
           {hc.recomendaciones.length === 0 ? (

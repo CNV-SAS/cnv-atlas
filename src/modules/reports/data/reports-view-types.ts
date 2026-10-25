@@ -161,6 +161,15 @@ export type HistoriaClinicaDoc = {
   /** Lo que el profesional ESCRIBIO sobre el objetivo. Puede no haber escrito nada. */
   objetivoTratamiento: string | null;
   plan: HcPlanNutricionalDoc | null;
+  /**
+   * LA VALIDACION DEL PLAN (el ICN, 2026-10-25). null = no se puede validar (sin protocolo o sin
+   * porciones), y entonces el documento lo DICE: una ausencia no se puede leer como un cero.
+   *
+   * VA EN EL DOCUMENTO ENTREGADO Y NO SOLO EN LA PANTALLA, por la misma razon por la que el sodio tuvo
+   * que arreglarse: dos superficies del mismo acto clinico que dicen cosas distintas. Si el ICN viviera
+   * solo en la pantalla, la historia que el paciente recibe no tendria la validacion de su prescripcion.
+   */
+  validacion: HcValidacionDoc | null;
   /** Cifras prescritas fuera de lo que sugiere el diagnostico (P-109). Vacio = no hubo o no se comparo. */
   desviaciones: { macro: string; cifra: string; texto: string }[];
   recomendaciones: { titulo: string; items: string[]; pendiente?: boolean }[];
@@ -181,6 +190,21 @@ export type HistoriaClinicaDoc = {
   /** Version del consentimiento CON QUE SE CAPTURO ESTA CONSULTA, no la vigente hoy. */
   consentVersion: string | null;
   autorizaciones: HcAutorizacionDoc[];
+};
+
+export type HcValidacionDoc = {
+  nutrientes: {
+    k: string;
+    l: string;
+    u: string;
+    d: number;
+    lim: boolean;
+    obtenido: number;
+    requerido: number;
+    cob: number;
+    icn: number | null;
+  }[];
+  icnPctOk: number;
 };
 
 export type HcPlanNutricionalDoc = {

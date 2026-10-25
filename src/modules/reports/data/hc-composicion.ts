@@ -15,7 +15,11 @@ import { recomendacionesDe, type RecomendacionBloque } from "./hc-recomendacione
 import { asesoriaFuera } from "@/clinical-engine/frozen/atlas-asesoria-macro.js";
 import type { AsesoriaMacro } from "@/modules/treatment/data/treatment-view-types";
 
-import type { HcPlanNutricional, HcRemisionExigida } from "../components/historia-clinica";
+import { computeIntercambio } from "@/clinical-engine/intercambio";
+import { computeValidacion } from "@/clinical-engine/validacion";
+import { porcentajeConIcnOk } from "@/modules/treatment/validacion-presentacion";
+
+import type { HcPlanNutricional, HcRemisionExigida, HcValidacion } from "../components/historia-clinica";
 
 // LA COMPOSICION DE LA HISTORIA CLINICA, EN UN SOLO SITIO.
 //
@@ -89,6 +93,18 @@ export type HcEntradas = {
    * mismo que decir "no hubo desviaciones": una ausencia no puede leerse como una afirmacion.
    */
   asesoria?: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
+  /**
+   * LAS PORCIONES GUARDADAS de la lista de intercambio, para poder validar el plan (el ICN, 2026-10-25).
+   * `undefined` = el llamador no las pasa; entonces la validacion no sale, que NO es lo mismo que decir
+   * que el plan no cubre nada.
+   *
+   * SE PASAN LAS GUARDADAS Y EL MOTOR RELLENA EL RESTO, igual que el panel: una subpestana sin porciones
+   * guardadas sigue el reparto que el motor sugiere, y eso es lo que esta en vigor. Lo que un documento
+   * probatorio no puede hacer es inventar un reparto distinto del que el profesional esta viendo.
+   */
+  intercambioPorciones?: { porciones: Record<string, number> } | null;
+  /** Edad del paciente: los requerimientos DRI de la validacion son por sexo y edad. */
+  edad?: number | null;
 };
 
 /** Una cifra prescrita fuera de lo que sugiere el diagnostico. Lo que la historia deja por escrito. */
@@ -110,6 +126,11 @@ export type HcCompuesta = {
   recomendaciones: RecomendacionBloque[];
   /** Cifras prescritas fuera de lo sugerido. Vacio = no hubo (o no se pudo comparar; ver `asesoria`). */
   desviaciones: HcDesviacionMacro[];
+  /**
+   * LA VALIDACION DEL PLAN (el ICN). null = no se puede validar: sin protocolo, sin porciones o sin los
+   * insumos del snapshot. Una ausencia no se puede leer como un cero.
+   */
+  validacion: HcValidacion | null;
 };
 
 /**
@@ -194,6 +215,40 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
       }
     : null;
 
+  // ═══ LA VALIDACION DEL PLAN: EL ICN EN LA HISTORIA CLINICA (Gildardo, 2026-10-25) ═══
+  //
+  // LAS MISMAS DOS FUNCIONES DEL MOTOR QUE EL PANEL, con los mismos insumos: el objetivo EFECTIVO (no el
+  // sugerido), los macros efectivos, las porciones guardadas con el reparto del motor de respaldo, y el
+  // sexo y la edad del SNAPSHOT SELLADO. Los requerimientos DRI dependen de sexo y edad, asi que tomarlos
+  // de la ficha de hoy haria que un documento de hace un ano cambiara de veredicto al cumplir anos.
+  //
+  // SI NO SE PUEDE VALIDAR, DEVUELVE null y el bloque lo dice. Una tabla de ceros se lee como "este plan
+  // no cubre nada", que es falso cuando lo que pasa es que no hay plan.
+  const validacion: HcValidacion | null = (() => {
+    if (!efectivo || !e.suggested) return null;
+    const kcalObj = Math.round(efectivo.kcalObj);
+    if (!Number.isFinite(kcalObj) || kcalObj <= 0) return null;
+    const defaults = computeIntercambio(kcalObj);
+    const porcionesPorSub: Record<string, number> = {};
+    let algunaPorcion = false;
+    for (const a of defaults) {
+      const p = e.intercambioPorciones?.porciones[a.sub] ?? a.porciones;
+      porcionesPorSub[a.sub] = p;
+      if (p > 0) algunaPorcion = true;
+    }
+    if (!algunaPorcion) return null;
+    const nutrientes = computeValidacion({
+      porcionesPorSub,
+      kcalObj,
+      protG: efectivo.protG,
+      choG: efectivo.choG,
+      fatG: efectivo.fatG,
+      sexoM: e.suggested.caloricoInputs.sexoM,
+      edad: e.suggested.caloricoInputs.edad,
+    });
+    return { nutrientes, icnPctOk: porcentajeConIcnOk(nutrientes) };
+  })();
+
   // CONSTANCIA DE LAS CIFRAS FUERA DE LA REFERENCIA (P-109, porte de su bloque de la HC, L15622-15648).
   //
   // Se compara contra `efectivo`, que es lo que el profesional PRESCRIBIO, no contra la base del motor:
@@ -241,7 +296,7 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
     pesoKg: e.pesoKg,
   });
 
-  return { severidades, indices, plan, diagnosticos, recomendaciones, desviaciones };
+  return { severidades, indices, plan, diagnosticos, recomendaciones, desviaciones, validacion };
 }
 
 // ─── LAS REMISIONES QUE EL MODELO EXIGIO ───────────────────────────────────────────────────────────

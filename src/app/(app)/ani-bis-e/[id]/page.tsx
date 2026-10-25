@@ -104,6 +104,7 @@ import {
   HcMetaTerapeutica,
   HcObjetivoTratamiento,
   HcPlanNutricional,
+  HcValidacionNutricional,
   HcProximaConsulta,
   HcRecomendaciones,
   HcRemisiones,
@@ -826,6 +827,9 @@ export default async function ResultadosEvaluacionPage({
       null,
     flags: { tieneHTA: ps?.flags.tieneHTA ?? false, tieneIRC: ps?.flags.tieneIRC ?? false },
     deficitEstrategia: ps?.estrategia.deficit ?? 0,
+    // LAS PORCIONES GUARDADAS, para que la historia clinica pueda VALIDAR el plan (el ICN, 2026-10-25).
+    // Son las mismas que el panel: lo guardado, y el reparto del motor donde el profesional no toco nada.
+    intercambioPorciones: protocol?.intercambioPorciones ?? null,
     // El peso EFECTIVO (el que gobierna la prescripcion), para traducir la hidratacion a litros y vasos.
     pesoKg: cadenaDocumento?.pesoEfectivo ?? null,
   });
@@ -1332,6 +1336,11 @@ export default async function ResultadosEvaluacionPage({
                 rutas={rutas.map((r) => ({ id: r.id, label: r.label, activacion: r.activacion }))}
               />
               <HcPlanNutricional plan={hcPlan} desviaciones={hcCompuesta.desviaciones} />
+              {/* EL ICN, JUSTO DESPUÉS DEL PLAN (Gildardo, 2026-10-25). Valida las cifras del bloque de
+                  encima, así que leerla antes de haberlas leído no significa nada. Y va en la historia
+                  clínica y no en el plan del paciente, que era la pregunta abierta: esto es la validación
+                  de una prescripción, y un ICN de 0,78 en fibra no le dice nada a quien va a comer. */}
+              <HcValidacionNutricional validacion={hcCompuesta.validacion} />
               <HcRecomendaciones bloques={hcRecs} />
               <HcRemisiones
                 // LO QUE EL MODELO EXIGIO, ademas de lo registrado (cotejo punto 30). Sale de las rutas
