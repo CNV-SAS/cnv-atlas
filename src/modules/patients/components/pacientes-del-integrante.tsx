@@ -301,8 +301,8 @@ function describirSeleccion(
     const grupo = grupos.find((g) => g.dia === dia);
     const completo = grupo !== undefined && grupo.ids.length === n;
     return completo
-      ? `Marcados ${cuantos}: exactamente los asignados el ${formatDateOnlyShort(dia)}.`
-      : `Marcados ${cuantos}, todos del ${formatDateOnlyShort(dia)}, pero no los ${grupo?.ids.length ?? 0} de ese día.`;
+      ? `Marcados ${cuantos}: exactamente los asignados a este profesional el ${formatDateOnlyShort(dia)}.`
+      : `Marcados ${cuantos}, todos asignados a este profesional el ${formatDateOnlyShort(dia)}, pero no los ${grupo?.ids.length ?? 0} de ese día.`;
   }
   return `Marcados ${cuantos}, de ${dias.size} días de asignación distintos. Conviene revisar la lista antes de mover.`;
 }
@@ -359,10 +359,10 @@ export function PacientesDelIntegrante({
                 const grupo = grupos.find((g) => g.dia === e.target.value);
                 if (grupo) setMarcados(grupo.ids);
               }}
-              aria-label="Marcar los pacientes asignados un día"
+              aria-label="Marcar los pacientes asignados a este profesional un día"
               className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
-              <option value="">Marcar los de un día de asignación...</option>
+              <option value="">Marcar los asignados a este profesional un día...</option>
               {grupos.map((g) => (
                 <option key={g.dia} value={g.dia}>
                   {formatDateOnlyShort(g.dia)} · {g.ids.length}{" "}
@@ -402,9 +402,19 @@ export function PacientesDelIntegrante({
               <span className="min-w-0">
                 {p.nombre} <span className="text-muted-foreground">· {p.documento}</span>
                 {/* LA FECHA DE ASIGNACIÓN EN LA FILA: sin ella la preselección por día habría que
-                    creérsela. Con ella se puede comprobar a ojo que lo marcado es lo que se quería. */}
+                    creérsela. Con ella se puede comprobar a ojo que lo marcado es lo que se quería.
+
+                    Y DICE "A ESTE PROFESIONAL" (Gildardo, 2026-10-25). Decía "asignado el", y esa fecha NO
+                    es la de la consulta: los 25 que se movieron el 25-oct salían aquí con el 25-oct y en la
+                    ficha con el 13-oct. Las dos son correctas, porque contestan preguntas distintas (desde
+                    cuándo es suyo, contra cuándo se atendió), pero un rótulo que no dice cuál es cuál se lee
+                    como que una de las dos está mal. Es la familia del hazard 4: no se arregla cambiando el
+                    dato, se arregla diciendo de dónde sale. */}
                 {puedeReasignar ? (
-                  <span className="text-muted-foreground"> · asignado el {formatDateOnlyShort(p.asignadoEl)}</span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · asignado a este profesional el {formatDateOnlyShort(p.asignadoEl)}
+                  </span>
                 ) : null}
                 {/* ═══ EL RÓTULO DISTINGUE DERIVADO DE MARCADO, y la distinción no es cosmética ═══
 
