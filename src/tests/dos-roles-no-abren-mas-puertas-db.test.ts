@@ -32,11 +32,28 @@ let usuarioId: string;
 let obbiaRoleId: string;
 
 beforeAll(async () => {
+  // EL PROFESIONAL CON MAS PACIENTES, y no `limit 1` a secas (corregido el 2026-10-24).
+  //
+  // Decia `where r.name = 'professional' limit 1` SIN ORDEN, asi que Postgres devolvia el que quisiera, y
+  // eso depende del estado fisico de la tabla: el dia que otra prueba movio filas, cayo en un profesional
+  // con CERO pacientes y esta se cayo por su propio guard ("el seed tiene que darle al menos un
+  // paciente"), no por una regresion de la RLS. Un `limit 1` sin `order by` es una cifra absoluta
+  // disfrazada: envejece y falla por otra razon.
+  //
+  // Elegir al que MAS tiene es deterministico y es lo que la prueba necesita: comparar lo que ve con un
+  // rol y con dos solo significa algo si ve algo.
   [{ id: usuarioId }] = await sql`
-    select p.id from public.profiles p
-    join public.user_roles ur on ur.user_id = p.id
-    join public.roles r on r.id = ur.role_id
-    where r.name = 'professional' limit 1`;
+    select p.id
+      from public.profiles p
+      join public.user_roles ur on ur.user_id = p.id
+      join public.roles r on r.id = ur.role_id
+      join public.professional_profiles pp on pp.profile_id = p.id
+      join public.patient_professional_relationships rel on rel.professional_id = pp.id
+      join public.patients pa on pa.id = rel.patient_id
+     where r.name = 'professional' and rel.status = 'active' and pa.deleted_at is null
+     group by p.id
+     order by count(*) desc, p.id
+     limit 1`;
   [{ id: obbiaRoleId }] = await sql`select id from public.roles where name = 'obbia' limit 1`;
 });
 
