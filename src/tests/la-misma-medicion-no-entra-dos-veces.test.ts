@@ -207,3 +207,67 @@ describe("el mensaje del freno", () => {
     expect(/deVerdad\.find\(\(\[, x\]\) => x\.patientId !== input\.patientId\)/.test(codigo)).toBe(true);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y LA VISTA DE INVESTIGACION USA LOS MISMOS CUATRO NOMBRES (0230, Gildardo 2026-10-25)
+//
+// *"Las evaluaciones con huella repetida salen de evaluaciones_para_investigacion hasta que se corrijan,
+// CON LA MISMA FUNCION DE LA HUELLA."*
+//
+// Una vista no puede llamar a una funcion de TypeScript, asi que lo unico que se repite son los cuatro
+// NOMBRES de variable. El formato NO se repite (la vista compara arreglos numericos, no la cadena
+// `a|b|c|d`), que es donde cabria divergir por un cero de mas.
+//
+// Esto es lo que impide que los nombres se separen: si `BIODY_COLUMNS` o `normalizeHeader` cambian, la
+// vista seguiria filtrando por los nombres viejos, no encontraria ninguna huella y DEJARIA DE EXCLUIR,
+// en silencio y con las cifras intactas. Mismo patron que el candado del CHECK de la 0227 contra
+// `NIVELES_DE_ANONIMIZACION`.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("la vista de investigacion y la huella no se separan", () => {
+  const MIGRACION_0230 = "drizzle/0230_la_huella_repetida_sale_de_investigacion.sql";
+
+  it("los cuatro nombres de la vista son EXACTAMENTE los de VARIABLES_DE_LA_HUELLA", () => {
+    const sql = readFileSync(MIGRACION_0230, "utf8");
+    const bloque = /r\."variable_name" IN \(([\s\S]*?)\)/.exec(sql);
+    expect(bloque, "no encontre la lista de variables de la 0230").not.toBeNull();
+    const enLaVista = [...bloque![1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    expect(
+      enLaVista.sort(),
+      "si divergen, la vista no encuentra ninguna huella y deja de excluir SIN cambiar ninguna cifra",
+    ).toEqual([...VARIABLES_DE_LA_HUELLA].sort());
+  });
+
+  it("la vista compara NUMERICO, no texto", () => {
+    // 2.04 y 2.040 son el mismo valor y distinta cadena. La funcion de TS pasa a numero antes de comparar;
+    // la vista lo consigue con `::numeric` y la igualdad de arreglos de Postgres. Comparar `::text` habria
+    // dejado pasar el duplicado por un cero de mas, que es justo lo que la huella existe para atrapar.
+    const sql = readFileSync(MIGRACION_0230, "utf8");
+    expect(/r\."value"::numeric/.test(sql)).toBe(true);
+    expect(/array_agg\(d\."valor" ORDER BY d\."variable_name"\)/.test(sql)).toBe(true);
+  });
+
+  it("la exclusion compara solo entre VIGENTES, que es lo que hace innecesarias las dos excepciones", () => {
+    // Al corregir, la version vieja queda `superseded_at` y sale del universo; la medicion marcada como de
+    // otro paciente se queda colgada de ella. Las dos excepciones del freno se cumplen sin nombrarlas.
+    const sql = readFileSync(MIGRACION_0230, "utf8");
+    expect(/e\."superseded_at" IS NULL/.test(sql)).toBe(true);
+    expect(/e\."retirada_at" IS NULL/.test(sql)).toBe(true);
+    expect(
+      /count\(\*\) OVER \(PARTITION BY h\."huella"\)/.test(sql),
+      "la ventana corre despues del WHERE: la particion ya solo tiene vigentes",
+    ).toBe(true);
+    expect(
+      /count\(\*\) OVER \(PARTITION BY h\."huella", e\."id"\)/.test(sql),
+      "y se compara contra la particion por evaluacion, porque la vista da una fila por medicion",
+    ).toBe(true);
+  });
+
+  it("la exclusion se DICE en la pantalla, no es un filtro invisible", () => {
+    // Una cohorte que baja de 316 a 303 sin que nada lo explique es como se pierde la confianza en la
+    // cifra. Es la regla que la propia 0224 escribio: lo que queda fuera se dice.
+    const pantalla = readFileSync("src/app/(app)/obbia/page.tsx", "utf8");
+    expect(/fueraPorHuellaRepetida/.test(pantalla)).toBe(true);
+    expect(/por calidad de\s+dato|por calidad de dato/.test(pantalla)).toBe(true);
+  });
+});

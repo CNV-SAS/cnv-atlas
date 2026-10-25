@@ -3292,7 +3292,7 @@ isOneToOne: false
                   ]
                 },"evaluaciones_para_investigacion": {
                   Row: {
-                    "confirmed_at": string | null,"created_at": string,"dia": string | null,"diagnosis_id": string | null,"engine_version": string | null,"es_consulta_hecha": boolean | null,"id": string,"importada": boolean | null,"measurement_date": string | null,"measurement_id": string | null,"model_version_id": string | null,"organization_id": string,"patient_id": string,"professional_id": string,"rules_version": string | null,"status": Database["public"]['Enums']["evaluation_status"],"survey_version_id": string | null,"type": Database["public"]['Enums']["evaluation_type"]
+                    "confirmed_at": string | null,"created_at": string,"dia": string | null,"diagnosis_id": string | null,"engine_version": string | null,"es_consulta_hecha": boolean | null,"huella": (number)[] | null,"huella_repetida": boolean | null,"id": string,"importada": boolean | null,"measurement_date": string | null,"measurement_id": string | null,"model_version_id": string | null,"organization_id": string,"patient_id": string,"professional_id": string,"rules_version": string | null,"status": Database["public"]['Enums']["evaluation_status"],"survey_version_id": string | null,"type": Database["public"]['Enums']["evaluation_type"]
                   }
                   ComputedFields: never
                   Relationships: [
@@ -3336,7 +3336,7 @@ isOneToOne: false
                   ]
                 },"evaluaciones_vigentes": {
                   Row: {
-                    "confirmed_at": string | null,"created_at": string,"dia": string | null,"diagnosis_id": string | null,"engine_version": string | null,"es_consulta_hecha": boolean | null,"id": string,"importada": boolean | null,"measurement_date": string | null,"measurement_id": string | null,"model_version_id": string | null,"organization_id": string,"patient_id": string,"professional_id": string,"rules_version": string | null,"status": Database["public"]['Enums']["evaluation_status"],"survey_version_id": string | null,"type": Database["public"]['Enums']["evaluation_type"]
+                    "confirmed_at": string | null,"created_at": string,"dia": string | null,"diagnosis_id": string | null,"engine_version": string | null,"es_consulta_hecha": boolean | null,"huella": (number)[] | null,"huella_repetida": boolean | null,"id": string,"importada": boolean | null,"measurement_date": string | null,"measurement_id": string | null,"model_version_id": string | null,"organization_id": string,"patient_id": string,"professional_id": string,"rules_version": string | null,"status": Database["public"]['Enums']["evaluation_status"],"survey_version_id": string | null,"type": Database["public"]['Enums']["evaluation_type"]
                   }
                   ComputedFields: never
                   Relationships: [

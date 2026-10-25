@@ -12,6 +12,8 @@ import {
   type FormaDelExport,
 } from "@/modules/obbia/services/nivel-de-anonimizacion";
 
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // CANDADO: EL NIVEL DE ANONIMIZACION SALE DE LA FORMA DEL EXPORT, NO DE UNA DECISION
 //
@@ -158,11 +160,7 @@ describe("el encabezado del panel no se escribe a mano", () => {
   const PANTALLA = "src/app/(app)/obbia/page.tsx";
   // SIN LOS COMENTARIOS: el comentario que EXPLICA el arreglo cita la frase vieja, asi que buscarla en el
   // archivo crudo hace fallar al archivo por documentarse bien. Ya paso una vez hoy, en otro candado.
-  const pantalla = () =>
-    readFileSync(PANTALLA, "utf8")
-      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/\/\/.*$/gm, "");
+  const pantalla = () => sinComentarios(readFileSync(PANTALLA, "utf8"));
 
   it("la promesa vieja, que afirmaba de mas, no puede volver", () => {
     expect(

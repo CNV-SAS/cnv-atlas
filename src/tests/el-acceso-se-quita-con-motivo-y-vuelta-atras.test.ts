@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // INACTIVAR A UN PROFESIONAL: LA FORMA  ·  CANDADOS DE CODIGO  ·  0229
 //
@@ -17,13 +19,6 @@ const LOGIN = "src/modules/auth/actions.ts";
 const CABLES = "scripts/check-cables.mjs";
 
 const leer = (p: string) => readFileSync(p, "utf8");
-
-/** Quita comentarios de bloque, de linea y de JSX. */
-const sinComentarios = (s: string) =>
-  s
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/.*$/gm, "");
 
 describe("quitar el acceso sin borrar la cuenta", () => {
   it("el motivo es obligatorio EN LOS DOS SENTIDOS", () => {
