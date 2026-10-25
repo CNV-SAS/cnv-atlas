@@ -246,8 +246,8 @@ describe("el lote se preselecciona por dia, y el dia lo pone la base", () => {
   it("antes de pulsar se lee QUE esta marcado, y si es una mezcla lo dice", () => {
     const crudo = readFileSync(PANTALLA, "utf8");
     expect(
-      /exactamente los asignados el/.test(crudo),
-      "la frase tiene que confirmar que lo marcado es un dia completo",
+      /exactamente los asignados a este profesional el/.test(crudo),
+      "la frase tiene que confirmar que lo marcado es un dia completo, y DE QUE dia habla",
     ).toBe(true);
     expect(
       /días de asignación distintos/.test(crudo),
@@ -260,6 +260,26 @@ describe("el lote se preselecciona por dia, y el dia lo pone la base", () => {
   });
 
   it("la fila dice su fecha de asignacion: la preseleccion se puede comprobar a ojo", () => {
-    expect(/asignado el \{formatDateOnlyShort\(p\.asignadoEl\)\}/.test(src)).toBe(true);
+    expect(/formatDateOnlyShort\(p\.asignadoEl\)/.test(src)).toBe(true);
+  });
+
+  it("NINGUN rotulo de esa fecha dice solo 'asignado el': dice a QUIEN (Gildardo, 2026-10-25)", () => {
+    // DE DONDE SALE: los 25 que se movieron el 25-oct salian aqui con el 25-oct y en la ficha con el
+    // 13-oct (la consulta). Las dos fechas son correctas y contestan preguntas distintas, pero el rotulo
+    // no decia cual era cual, asi que se leia como que una de las dos estaba mal.
+    //
+    // FIJA EL HECHO, NO LA LINEA: cualquier texto de pantalla que hable de asignacion tiene que decir "a
+    // este profesional". Un candado sobre la expresion exacta se vuelve a pasar en cuanto alguien escriba
+    // la frase de otra forma (y es como el candado de `pendiente-importada` mantuvo un defecto congelado).
+    const crudo = readFileSync(PANTALLA, "utf8");
+    const sinComentarios = crudo
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+      .replace(/\/\/.*$/gm, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const rotulos = sinComentarios.match(/asignad[oa]s? (?!a este profesional)[^`"'<{]*/g) ?? [];
+    expect(
+      rotulos,
+      "un rotulo de fecha de asignacion que no dice a quien se confunde con la fecha de la consulta",
+    ).toEqual([]);
   });
 });
