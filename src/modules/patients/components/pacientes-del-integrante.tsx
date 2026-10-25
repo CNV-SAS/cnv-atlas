@@ -6,6 +6,7 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDateOnlyShort } from "@/lib/format/date";
 
 import type { ProfesionalDestino } from "@/modules/professionals/data/profesionales-para-reasignar";
 
@@ -40,6 +41,8 @@ export type PacienteDelIntegrante = {
   marcadoAMano: boolean;
   confirmadoReal: boolean;
   motivo: string | null;
+  /** El dia en que se le asigno este profesional, fecha PURA en hora de Colombia (aaaa-mm-dd). */
+  asignadoEl: string;
 };
 
 const inicial: MarcaDePruebaState = { error: null, success: null, warning: null };
@@ -180,10 +183,13 @@ function Reasignar({
 //     bandera inerte engaña más que su ausencia.
 function ReasignarEnLote({
   marcados,
+  resumen,
   destinos,
   alTerminar,
 }: {
   marcados: string[];
+  /** Que es lo marcado, en una frase, para leerlo ANTES de pulsar. */
+  resumen: string;
   destinos: ProfesionalDestino[];
   alTerminar: () => void;
 }) {
@@ -233,6 +239,14 @@ function ReasignarEnLote({
             ? "Marca los pacientes que se mueven"
             : `Reasignar ${marcados.length === 1 ? "el marcado" : `los ${marcados.length} marcados`}`}
       </Button>
+      {/* ═══ QUE ES LO MARCADO, EN UNA FRASE Y ANTES DE PULSAR (Gildardo, 2026-10-24) ═══
+
+          No basta con que el botón diga "los 25": hay que poder leer que esos 25 son EXACTAMENTE un día de
+          asignación y no una mezcla. La frase lo dice, y cuando la selección es mixta lo dice también, que
+          es el caso en el que conviene parar a mirar. */}
+      {marcados.length > 0 ? (
+        <p className="w-full text-xs font-medium text-foreground">{resumen}</p>
+      ) : null}
       <p className="w-full text-xs text-muted-foreground">
         Pasan al profesional nuevo el acceso a la ficha y la atribución de sus consultas.{" "}
         <strong className="text-foreground">La firma de un diagnóstico no se mueve</strong>: quien firmó lo
@@ -241,6 +255,56 @@ function ReasignarEnLote({
       </p>
     </form>
   );
+}
+
+// ═══ LA PRESELECCIÓN POR DÍA: ELEGIR 25 DE 93 A MANO ES COMO SE MUEVE EL PACIENTE EQUIVOCADO ═══
+//
+// (Gildardo, 2026-10-24, sobre el caso real de los 25 del 13 de octubre.)
+//
+// POR DÍA DE ASIGNACIÓN y no por una fecha escrita a mano: el caso que hay que resolver es "los que entraron
+// por el enlace de esta persona tal día", y ese grupo lo define la base, no quien mira. Un campo de fecha
+// libre vuelve a poner el error donde estaba: un día mal teclado marca otro grupo, y marca ALGO, así que no
+// se nota. Un desplegable con los días que existen y su conteo no puede señalar un grupo que no existe.
+//
+// Y NO ES SOLO PARA ESTE CASO: cuando un integrante se va (regla dura 14), lo que se mueve es todo, y para
+// eso está "Marcar los N". Los dos caminos conviven porque son dos preguntas distintas.
+function agruparPorDia(pacientes: PacienteDelIntegrante[]): { dia: string; ids: string[] }[] {
+  const porDia = new Map<string, string[]>();
+  for (const p of pacientes) {
+    const ya = porDia.get(p.asignadoEl);
+    if (ya) ya.push(p.id);
+    else porDia.set(p.asignadoEl, [p.id]);
+  }
+  // Del más reciente al más antiguo: el día que se va a corregir casi siempre es uno de los últimos.
+  return [...porDia.entries()]
+    .map(([dia, ids]) => ({ dia, ids }))
+    .sort((a, b) => b.dia.localeCompare(a.dia));
+}
+
+/**
+ * QUE ES LO MARCADO, en una frase que se lee antes de pulsar. Dice el dia cuando la seleccion es
+ * EXACTAMENTE un grupo completo, y avisa cuando es una mezcla: ese es el caso en el que conviene mirar.
+ */
+function describirSeleccion(
+  marcados: string[],
+  pacientes: PacienteDelIntegrante[],
+  grupos: { dia: string; ids: string[] }[],
+): string {
+  const n = marcados.length;
+  const cuantos = `${n} de ${pacientes.length}`;
+  if (n === pacientes.length) return `Marcados los ${pacientes.length}, es decir TODOS sus pacientes.`;
+  const dias = new Set(
+    pacientes.filter((p) => marcados.includes(p.id)).map((p) => p.asignadoEl),
+  );
+  if (dias.size === 1) {
+    const [dia] = [...dias];
+    const grupo = grupos.find((g) => g.dia === dia);
+    const completo = grupo !== undefined && grupo.ids.length === n;
+    return completo
+      ? `Marcados ${cuantos}: exactamente los asignados el ${formatDateOnlyShort(dia)}.`
+      : `Marcados ${cuantos}, todos del ${formatDateOnlyShort(dia)}, pero no los ${grupo?.ids.length ?? 0} de ese día.`;
+  }
+  return `Marcados ${cuantos}, de ${dias.size} días de asignación distintos. Conviene revisar la lista antes de mover.`;
 }
 
 export function PacientesDelIntegrante({
@@ -263,6 +327,7 @@ export function PacientesDelIntegrante({
     return <p className="text-sm text-muted-foreground">No tiene pacientes asignados.</p>;
   }
   const dePrueba = pacientes.filter((p) => p.esDePrueba).length;
+  const grupos = agruparPorDia(pacientes);
 
   return (
     <div className="flex flex-col gap-3">
@@ -278,8 +343,33 @@ export function PacientesDelIntegrante({
       </p>
       {puedeReasignar ? (
         <>
-          <ReasignarEnLote marcados={marcados} destinos={destinos} alTerminar={limpiar} />
-          <div className="flex items-center gap-2 text-xs">
+          <ReasignarEnLote
+            marcados={marcados}
+            resumen={describirSeleccion(marcados, pacientes, grupos)}
+            destinos={destinos}
+            alTerminar={limpiar}
+          />
+          {/* ESTE BLOQUE VIVE FUERA DEL FORMULARIO y nada de aquí viaja en el envío: solo mueve la
+              selección. Por eso el desplegable va SIN `name` y controlado (hazard 8), y los botones son
+              `type="button"`. Lo que viaja es el campo oculto `patientIds`, que está dentro. */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <select
+              value=""
+              onChange={(e) => {
+                const grupo = grupos.find((g) => g.dia === e.target.value);
+                if (grupo) setMarcados(grupo.ids);
+              }}
+              aria-label="Marcar los pacientes asignados un día"
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <option value="">Marcar los de un día de asignación...</option>
+              {grupos.map((g) => (
+                <option key={g.dia} value={g.dia}>
+                  {formatDateOnlyShort(g.dia)} · {g.ids.length}{" "}
+                  {g.ids.length === 1 ? "paciente" : "pacientes"}
+                </option>
+              ))}
+            </select>
             <Button
               type="button"
               variant="ghost"
@@ -311,6 +401,11 @@ export function PacientesDelIntegrante({
               ) : null}
               <span className="min-w-0">
                 {p.nombre} <span className="text-muted-foreground">· {p.documento}</span>
+                {/* LA FECHA DE ASIGNACIÓN EN LA FILA: sin ella la preselección por día habría que
+                    creérsela. Con ella se puede comprobar a ojo que lo marcado es lo que se quería. */}
+                {puedeReasignar ? (
+                  <span className="text-muted-foreground"> · asignado el {formatDateOnlyShort(p.asignadoEl)}</span>
+                ) : null}
                 {/* ═══ EL RÓTULO DISTINGUE DERIVADO DE MARCADO, y la distinción no es cosmética ═══
 
                     De ella depende qué botón tiene sentido: un derivado no se desmarca (nadie lo marcó), se
