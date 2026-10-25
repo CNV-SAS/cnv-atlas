@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -16,11 +16,31 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 const CSS = sinComentarios(readFileSync("src/app/globals.css", "utf8"));
 const HELPER = sinComentarios(readFileSync("src/components/shared/imprimir-hoja.ts", "utf8"));
-const BOTONES = [
-  "src/modules/reports/components/hc-imprimir.tsx",
-  "src/modules/reports/components/plan-imprimir-boton.tsx",
-  "src/components/shared/hoja-imprimible.tsx",
-];
+// ═══ LA LISTA SE BARRE, NO SE ESCRIBE (2026-10-25) ═══
+//
+// ERAN TRES RUTAS A MANO, y el dia que el boton paso a estar en todas las subpestañas (Gildardo) la lista
+// quedo corta sola: una ruta nueva con su propio `window.print()` habria pasado verde. Un candado que
+// enumera los sitios donde la regla aplica deja de cubrir el cuarto, y nadie se acuerda de sumarlo.
+//
+// Ahora se buscan TODOS los archivos que mencionan imprimir y se exige que ninguno llame a
+// `window.print()` por su cuenta. El helper queda excluido a proposito: es el unico que debe llamarlo.
+const HELPER_RUTA = "src/components/shared/imprimir-hoja.ts";
+
+function archivosQueImprimen(dir = "src", out: string[] = []): string[] {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const ruta = `${dir}/${e.name}`;
+    if (e.isDirectory()) {
+      if (e.name === "tests") continue;
+      archivosQueImprimen(ruta, out);
+    } else if (/.tsx?$/.test(e.name) && ruta !== HELPER_RUTA) {
+      // SIN COMENTARIOS: hay archivos que MENCIONAN window.print() para explicar lo que no se puede
+      // saber de una impresion. Un candado que caza una explicacion es ruido, y el ruido mata candados.
+      const codigo = sinComentarios(readFileSync(ruta, "utf8"));
+      if (/window.print|imprimirHoja/.test(codigo)) out.push(ruta);
+    }
+  }
+  return out;
+}
 
 describe("imprimir una sola hoja", () => {
   it("el CSS esconde las OTRAS hojas mientras una esta marcada", () => {
@@ -35,7 +55,14 @@ describe("imprimir una sola hoja", () => {
   });
 
   it("NINGUN boton de imprimir llama a window.print() por su cuenta: todos pasan por el helper", () => {
-    for (const ruta of BOTONES) {
+    const rutas = archivosQueImprimen();
+    // CONTROL: si el barrido encuentra cero archivos, el detector esta roto y "cero infractores" seria un
+    // verde falso. Es la misma red que lleva `check-cables`.
+    expect(
+      rutas.length,
+      "el barrido no encontro sitios que impriman; revisa el detector antes de confiar en el verde",
+    ).toBeGreaterThan(2);
+    for (const ruta of rutas) {
       const codigo = sinComentarios(readFileSync(ruta, "utf8"));
       expect(codigo, `${ruta} imprime sin pasar por el helper`).not.toMatch(/window\.print\(\)/);
       expect(codigo, `${ruta} no usa imprimirHoja`).toContain("imprimirHoja");
@@ -54,7 +81,12 @@ describe("las pantallas que se imprimen", () => {
   );
 
   it("RUTAS DE ATENCIÓN es una hoja, como en el archivo de Gildardo", () => {
-    expect(PAGE).toContain('<HojaImprimible titulo="Rutas de atención"');
+    // SE FIJA EL HECHO, no la linea: el 2026-10-25 la etiqueta paso a varias lineas al sumarle `queSale`
+    // (con ocho botones iguales, lo unico que distingue uno de otro es decir que imprime), y el candado
+    // anclado a la linea exacta se cayo sin que nada estuviera mal.
+    const i = PAGE.indexOf("<HojaImprimible");
+    expect(i, "la hoja de rutas desaparecio").toBeGreaterThan(0);
+    expect(PAGE.slice(i, i + 400)).toContain('titulo="Rutas de atención"');
   });
 
   it("y el DIAGNÓSTICO FUNCIONAL dejo de imprimir la pantalla: ahora compone su documento", () => {
@@ -73,7 +105,15 @@ describe("las pantallas que se imprimen", () => {
 
     const HOJA = readFileSync("src/modules/diagnoses/components/hoja-diagnostico-funcional.tsx", "utf8");
     // El documento vive en el DOM y solo aparece al imprimir, como el del plan.
-    expect(HOJA).toContain("solo-impresion imprimible");
+    expect(HOJA).toContain("solo-impresion");
+    // Y EL `.imprimible` ESTA EN EL CONTENEDOR, no en el documento (corregido el 2026-10-25). Con la hoja
+    // marcada solo en el documento, el boton quedaba FUERA de ella: `imprimirHoja` no encontraba hoja, no
+    // marcaba nada, y salian todas las montadas (este diagnostico con la prescripcion pegada detras). El
+    // candado fija la relacion que importa: el boton tiene que estar DENTRO de la hoja que marca.
+    const iHoja = HOJA.indexOf('className="imprimible');
+    const iBarra = HOJA.indexOf("<BarraDeImpresion");
+    expect(iHoja, "la hoja dejo de estar en el contenedor").toBeGreaterThan(0);
+    expect(iBarra, "el boton volvio a quedar fuera de su hoja").toBeGreaterThan(iHoja);
     // Y no lleva NADA del modelo: es el DFI ya traducido, el mismo que el informe.
     for (const idx of ["IFC", "IRC", "PABU", "stateNumber", "efrPhenotype"]) {
       expect(HOJA, idx + " no puede salir en la hoja del paciente").not.toContain(idx);

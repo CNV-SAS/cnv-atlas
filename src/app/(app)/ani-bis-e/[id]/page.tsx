@@ -1009,7 +1009,12 @@ export default async function ResultadosEvaluacionPage({
                 {/* IMPRIMIBLE, como en su archivo (2026-09-18): las rutas son lo que el paciente se lleva
                     para saber a donde va. Aqui la pantalla ES el documento, asi que se imprime lo mismo
                     que se mira, con un encabezado que solo sale en papel. */}
-                <HojaImprimible titulo="Rutas de atención" encabezado={encabezadoDeHoja}>
+                <HojaImprimible
+                  titulo="Rutas de atención"
+                  encabezado={encabezadoDeHoja}
+                  etiquetaBoton="Imprimir las rutas"
+                  queSale="Las rutas que activó el diagnóstico, con sus indicaciones, más los suplementos y las remisiones. Es la hoja que el paciente se lleva para saber a dónde va."
+                >
                   <RutasSection rutas={rutas} />
                   {/* Y LO QUE PIDIO SANTIAGO QUE LLEVARA ADEMAS (2026-09-19): los suplementos y las
                       remisiones, diciendo que sugiere el modelo y que indico el profesional. Sale del

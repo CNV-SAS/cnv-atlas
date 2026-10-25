@@ -3,7 +3,6 @@
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useSyncExternalStore } from "react";
 import {
-  createContext,
   useActionState,
   useContext,
   useEffect,
@@ -12,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Printer, RotateCcw, Sparkles } from "lucide-react";
+import { RotateCcw, Sparkles } from "lucide-react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { NIVELES_FA, nivelFaLabel, PROFESION_NOTA } from "../data/treatment-view-types";
@@ -36,6 +35,13 @@ import { AlimentosDelSubgrupo } from "./lista-intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
 import {
+  type BorradorCtx,
+  BorradorContexto,
+  crearAlmacenBorrador,
+  useBorrador,
+  usePublicar,
+} from "./borrador-contexto";
+import {
   CLASE_DEL_NIVEL,
   DEFINICION_DEL_ICN,
   nivelDeCubrimiento,
@@ -44,7 +50,6 @@ import {
   porcentajeConIcnOk,
 } from "../validacion-presentacion";
 import { bloqueCls, tituloBloqueCls } from "@/components/shared/bloque";
-import { imprimirHoja } from "@/components/shared/imprimir-hoja";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,7 +74,6 @@ import {
 import {
   ROTULO_SECCION,
   seccionesSucias,
-  type Publicado,
   type SeccionId,
 } from "../data/borrador-protocolo";
 import { agruparCambiosPorCelda, type CambioAgrupado, verificarCita } from "../ai/prompts/menu.v4";
@@ -121,89 +125,6 @@ const EMPTY: TreatmentActionState = { error: null, success: null, warning: null 
 // Y NINGUNA DE LAS DOS ES LA DEL CANDADO DE CONCURRENCIA, que se calcula sobre lo GUARDADO porque el
 // servidor la recomputa bajo lock. Conflarlas fue justo el defecto.
 
-/**
- * EL ALMACEN DEL BORRADOR, fuera de React a proposito.
- *
- * POR QUE NO ES `useState` DEL PADRE. Una seccion publica desde un efecto, y llamar al `setState` del
- * padre dentro del efecto de un hijo encadena renders (es lo que señala la regla `set-state-in-effect`, y
- * con razon: siete secciones publicando en cascada). Un almacen externo es justo el caso que React
- * documenta para esto: el hijo ACTUALIZA UN SISTEMA EXTERNO, y el padre se SUSCRIBE con
- * `useSyncExternalStore`. Un solo re-render del padre por cambio real, y ninguno por publicar lo mismo.
- *
- * EL GUARD CONTRA EL BUCLE sigue siendo la FIRMA: publicar lo mismo no notifica a nadie.
- */
-type AlmacenBorrador = {
-  publicar: (seccion: SeccionId, valor: unknown, firma: string, firmaBase: string) => void;
-  leer: () => Partial<Record<SeccionId, Publicado>>;
-  suscribir: (oyente: () => void) => () => void;
-};
-
-function crearAlmacenBorrador(): AlmacenBorrador {
-  let estado: Partial<Record<SeccionId, Publicado>> = {};
-  const oyentes = new Set<() => void>();
-  return {
-    publicar(seccion, valor, firma, firmaBase) {
-      const previo = estado[seccion];
-      // LAS DOS entran en el guard: la base tambien se mueve (los tiempos activos en vivo cambian el
-      // contexto de la distribucion), y comparar solo la de pantalla dejaria al padre sin enterarse.
-      if (previo?.firma === firma && previo?.firmaBase === firmaBase) return;
-      // Objeto NUEVO en cada cambio: `useSyncExternalStore` compara por identidad, y mutar el mismo dejaria
-      // al padre sin enterarse.
-      estado = { ...estado, [seccion]: { valor, firma, firmaBase } };
-      for (const o of oyentes) o();
-    },
-    leer: () => estado,
-    suscribir(oyente) {
-      oyentes.add(oyente);
-      return () => oyentes.delete(oyente);
-    },
-  };
-}
-
-type BorradorCtx = {
-  almacen: AlmacenBorrador;
-  /** Hay un guardado en vuelo: los campos se apagan para que no se pierda lo que se escriba encima. */
-  guardando: boolean;
-};
-
-const BorradorContexto = createContext<BorradorCtx | null>(null);
-
-function useBorrador(): BorradorCtx {
-  const ctx = useContext(BorradorContexto);
-  // No se cae con undefined en produccion: una seccion fuera del panel es un error de programacion, y el
-  // mensaje tiene que decir cual es en vez de reventar en un `publicar of undefined`.
-  if (!ctx) throw new Error("Una sección del protocolo se renderizó fuera del panel de tratamiento.");
-  return ctx;
-}
-
-/**
- * Publica el borrador de una seccion cada vez que su firma cambia.
- *
- * SE PUBLICA EN UN EFECTO Y NO EN EL RENDER porque cambiar el estado del padre durante el render del hijo
- * es justo lo que React prohibe. El efecto corre despues de pintar, asi que el aviso pegajoso aparece un
- * ciclo despues de teclear, que es imperceptible y es el precio de no reescribir las siete secciones.
- */
-function usePublicar(
-  seccion: SeccionId,
-  valor: unknown,
-  firma: string | null,
-  /** La firma de lo que esta seccion presentaria SIN TOCARLA. Es contra lo que se decide si hay cambios. */
-  firmaBase: string | null,
-): void {
-  const { almacen } = useBorrador();
-  useEffect(() => {
-    // FIRMA NULA = LA SECCION NO APLICA (un tratamiento sin snapshot sellado no tiene cadena ni lista de
-    // intercambio que publicar). Se llama al hook igual, sin condicion, porque el orden de los hooks no
-    // puede depender de los datos; lo que se salta es la publicacion.
-    if (firma == null || firmaBase == null) return;
-    almacen.publicar(seccion, valor, firma, firmaBase);
-    // `valor` se omite a proposito: la FIRMA es lo que decide si algo cambio, y el valor puede ser un
-    // objeto nuevo en cada render (un `.map`, un literal) sin que nada haya cambiado de verdad. Con el
-    // valor en las dependencias, el efecto correria en cada render y el guard del padre seria lo unico
-    // que impediria el bucle; con la firma, ni siquiera se llega ahi.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [almacen, seccion, firma, firmaBase]);
-}
 
 // Panel del protocolo de tratamiento (B13), vista interna del profesional. Edita objetivos,
 // nutraceuticos y guias, y agrega notas. Si el diagnostico no esta confirmado, la edicion
@@ -1180,7 +1101,6 @@ export function TreatmentPanel({
   protocol,
   prescripcion,
   asesoria,
-  sePuedeImprimir = false,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
@@ -1190,11 +1110,6 @@ export function TreatmentPanel({
   // Rangos de referencia por diagnostico para proteina y grasa (Gildardo 2026-09-03). Bajan hasta la
   // seccion de la cadena calorica, que es donde estan los dos campos.
   asesoria: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
-  /**
-   * Si la pagina monto la hoja imprimible alrededor del panel. Sin ella, `imprimirHoja` no encontraria
-   * ninguna hoja y caeria a imprimir la pagina entera, que es peor que no ofrecer el boton.
-   */
-  sePuedeImprimir?: boolean;
 }) {
   // Bloqueado para editar si el diagnostico no esta confirmado O si el protocolo YA se aprobo (la
   // prescripcion aprobada es inmutable: el trigger de BD la congela; sin este candado el campo se veria
@@ -1224,7 +1139,15 @@ export function TreatmentPanel({
   //
   // Las secciones publican lo que tienen en pantalla; aqui se reune, se compara contra lo guardado y se
   // manda entero. Ver la nota larga arriba, junto a `BorradorContexto`.
-  const almacen = useMemo(() => crearAlmacenBorrador(), []);
+  // ═══ EL ALMACEN SE HEREDA SI ALGUIEN LO CREO ARRIBA (2026-10-25) ═══
+  //
+  // La barra de impresion de la subpestaña vive ENCIMA de este panel y necesita saber si hay cambios sin
+  // guardar (la hoja se arma con lo guardado). En vez de duplicar el estado y sincronizarlo, el envoltorio
+  // crea el almacen y este panel lo usa: DOS SUSCRIPTORES DEL MISMO, que es lo que el almacen externo ya
+  // permitia. Sin envoltorio (cualquier otro uso del panel) crea el suyo y nada cambia.
+  const heredado = useContext(BorradorContexto);
+  const propio = useMemo(() => crearAlmacenBorrador(), []);
+  const almacen = heredado?.almacen ?? propio;
   const publicado = useSyncExternalStore(almacen.suscribir, almacen.leer, almacen.leer);
   const [estadoGuardado, guardar, guardando] = useActionState(guardarProtocoloAction, EMPTY);
   // RefreshOnSuccess: al guardar, el servidor devuelve el protocolo nuevo, las firmas cambian y el aviso
@@ -1383,33 +1306,17 @@ export function TreatmentPanel({
     <BorradorContexto.Provider value={ctx}>
       <Card>
       <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle>Protocolo de tratamiento</CardTitle>
-          {/* ═══ IMPRIMIR LA PRESCRIPCION (V11-3, primer panel) ═══
+        {/* ═══ EL BOTON DE IMPRIMIR SALIO DE AQUI EL 2026-10-25 ═══
 
-              APAGADO MIENTRAS HAYA CAMBIOS SIN GUARDAR, Y LO DICE EN SU ROTULO. La hoja se arma en el
-              servidor con lo GUARDADO; si se pudiera imprimir con cambios en pantalla, el papel diria una
-              cifra que no consta en la base. Un documento clinico no puede salir de un borrador.
+            Estaba en esta cabecera, y Santiago no lo encontro: queda detras del estado del paciente,
+            detras de la barra de subpestañas y detras de este titulo. Gildardo lo movio arriba ("debajo
+            del menu de subpestañas, igual en todas"), y con el se fue su guarda de "sin guardar", que
+            ahora la calcula el envoltorio suscribiendose al MISMO almacen del borrador.
 
-              Y el rotulo explica el apagado (hazard 8): un boton muerto sin explicacion se lee como
-              pantalla rota, y aqui la salida esta a dos dedos (el boton de guardar, en la barra de abajo).
-
-              `imprimirHoja` sube al `.imprimible` que envuelve el panel y marca ESA hoja, asi que el plan
-              del paciente (que es otra hoja montada en la misma pagina) no sale pegado detras. */}
-          {sePuedeImprimir ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="no-print"
-              disabled={haySinGuardar}
-              onClick={(e) => imprimirHoja(e.currentTarget)}
-            >
-              <Printer className="size-4" aria-hidden />
-              {haySinGuardar ? "Guarda los cambios para imprimir" : "Imprimir la prescripción"}
-            </Button>
-          ) : null}
-        </div>
+            Lo que NO cambio es la garantia: la hoja se arma en el servidor con lo GUARDADO, asi que con
+            cambios en pantalla el boton sigue apagado y lo sigue diciendo en su rotulo. Un documento
+            clinico no puede salir de un borrador. Ver `subpestana-del-profesional.tsx`. */}
+        <CardTitle>Protocolo de tratamiento</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {/* SE RETIRO EL AVISO DE "diagnostico sin confirmar" (2026-09-09): el protocolo ya no se bloquea

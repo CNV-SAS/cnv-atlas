@@ -28,17 +28,21 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 const HOJA = "src/modules/treatment/components/hoja-del-protocolo.tsx";
 const SECCION = "src/modules/treatment/components/profession-treatment-section.tsx";
-const PANEL = "src/modules/treatment/components/treatment-panel.tsx";
+// EL ENVOLTORIO, que es donde vive la barra de impresion desde el 2026-10-25. El boton salio de la
+// cabecera de la tarjeta del panel porque ahi no se encontraba (Gildardo: "debajo del menu de
+// subpestañas, igual en todas"), y con el se movieron sus tres garantias. El candado sigue a la garantia.
+const ENVOLTORIO = "src/modules/treatment/components/subpestana-del-profesional.tsx";
+const BARRA = "src/components/shared/barra-de-impresion.tsx";
 
 const leer = (f: string) => sinComentarios(readFileSync(f, "utf8"));
 
 describe("lo que se imprime es un documento", () => {
   it("la hoja existe SOLO en papel, y el taller SOLO en pantalla", () => {
     expect(leer(HOJA)).toContain("solo-impresion");
-    const seccion = leer(SECCION);
-    expect(seccion).toContain("imprimible flex flex-col gap-6");
+    const envoltorio = leer(ENVOLTORIO);
+    expect(envoltorio).toContain('"imprimible flex flex-col gap-6"');
     expect(
-      /no-print flex flex-col gap-6/.test(seccion),
+      /no-print flex flex-col gap-6/.test(envoltorio),
       "el taller entero va no-print: taparle los controles uno por uno sigue dando una captura",
     ).toBe(true);
   });
@@ -74,30 +78,68 @@ describe("lo que se imprime es un documento", () => {
   });
 });
 
-describe("el boton no deja imprimir un borrador", () => {
-  const panel = leer(PANEL);
+describe("el boton no deja imprimir un borrador, y esta donde se busca", () => {
+  const envoltorio = leer(ENVOLTORIO);
+  const barra = leer(BARRA);
 
   it("esta apagado mientras haya cambios sin guardar", () => {
-    expect(/disabled=\{haySinGuardar\}/.test(panel)).toBe(true);
+    expect(envoltorio).toContain("const haySinGuardar = seccionesSucias(publicado).length > 0");
+    expect(/motivoApagado=\{haySinGuardar \?/.test(envoltorio)).toBe(true);
+    expect(barra, "la barra tiene que apagar el boton con ese motivo").toContain("disabled={apagado}");
   });
 
   it("y DICE por que esta apagado (hazard 8)", () => {
-    expect(readFileSync(PANEL, "utf8")).toContain("Guarda los cambios para imprimir");
+    expect(readFileSync(ENVOLTORIO, "utf8")).toContain("Guarda los cambios para imprimir");
+    expect(barra, "el motivo va EN EL ROTULO del boton, no en un aviso aparte").toContain(
+      "{apagado ? motivoApagado : etiqueta}",
+    );
   });
 
-  it("no se ofrece si la pagina no monto la hoja alrededor", () => {
-    // Sin `.imprimible`, `imprimirHoja` cae a `window.print()` y sale la pagina entera.
-    expect(panel).toContain("sePuedeImprimir ? (");
-    expect(leer(SECCION)).toContain("sePuedeImprimir={encabezado != null}");
+  it("LA GUARDA LEE EL MISMO ALMACEN QUE EL PANEL, no un estado paralelo", () => {
+    // Si la barra tuviera su propia copia del estado, seria la que se queda vieja: diria "guardado"
+    // mientras el panel tiene cambios, y entonces el papel saldria con una cifra que no consta en la base.
+    // El almacen lo crea el envoltorio y el panel lo HEREDA: dos suscriptores, una sola verdad.
+    expect(envoltorio).toContain("crearAlmacenBorrador()");
+    expect(envoltorio).toContain("BorradorContexto.Provider");
+    const panel = leer("src/modules/treatment/components/treatment-panel.tsx");
+    expect(panel, "el panel volvio a crear su propio almacen sin heredar").toContain(
+      "const almacen = heredado?.almacen ?? propio",
+    );
+  });
+
+  it("no se ofrece si no hay encabezado: sin el, la hoja no es un documento", () => {
+    // Y ademas sin `.imprimible` alrededor, `imprimirHoja` caeria a imprimir la pagina entera.
+    expect(envoltorio).toContain("hoja ? (");
+    expect(leer(SECCION)).toContain("encabezado ? (");
   });
 
   it("el boton no sale en el papel", () => {
-    expect(/className="no-print"[\s\S]{0,200}imprimirHoja/.test(panel)).toBe(true);
+    expect(/no-print[\s\S]{0,500}imprimirHoja/.test(barra)).toBe(true);
   });
 
   it("imprime SU hoja, no todas las montadas", () => {
     // El plan del paciente es otra `.imprimible` en la misma pagina: sin la marca de hoja activa salen
     // las dos, el plan pegado detras de la prescripcion (el defecto que arreglo `imprimir-hoja`).
-    expect(panel).toContain("imprimirHoja(e.currentTarget)");
+    expect(barra).toContain("imprimirHoja(e.currentTarget)");
+  });
+
+  it("y la barra va ARRIBA, que es toda la peticion: primer hijo de la hoja", () => {
+    // SE FIJA EL ORDEN: barra, documento, taller. El defecto que esto cierra no era que faltara el boton,
+    // era que estaba en la cabecera de una tarjeta, detras del estado del paciente, de la barra de
+    // subpestañas y del titulo. Si el documento o el taller se colaran antes, volveria a quedar donde
+    // nadie lo encuentra, y un control que no se encuentra se reporta como que no existe.
+    const i = envoltorio.indexOf("<BarraDeImpresion");
+    const j = envoltorio.indexOf("{hoja}");
+    const k = envoltorio.indexOf("{taller}");
+    expect(i).toBeGreaterThan(0);
+    expect(j, "el documento va despues de la barra").toBeGreaterThan(i);
+    expect(k, "el taller va al final").toBeGreaterThan(j);
+  });
+
+  it("y el panel ya no tiene su propio boton: uno solo, en un sitio", () => {
+    const panel = leer("src/modules/treatment/components/treatment-panel.tsx");
+    expect(panel, "volvio a aparecer un boton de imprimir dentro del panel").not.toMatch(
+      /imprimirHoja|window\.print/,
+    );
   });
 });

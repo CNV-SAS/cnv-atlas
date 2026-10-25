@@ -183,8 +183,12 @@ describe("la decisión vive en UN sitio, y la pantalla no se la reescribe", () =
       const i = PANEL.indexOf(`"${k}",`);
       expect(i, `la sección ${k} dejó de publicarse`).toBeGreaterThan(-1);
     }
-    // El contrato: cuatro argumentos, no tres.
-    expect(PANEL).toContain("firmaBase: string | null,");
+    // El contrato: cuatro argumentos, no tres. SE LEE DONDE VIVE EL HOOK, que salio del panel el
+    // 2026-10-25 al mover el boton de imprimir arriba (la barra necesita el mismo almacen). El candado
+    // sigue a la garantia, no al archivo: lo que importa es que `usePublicar` exija la firma base.
+    expect(
+      sinComentarios(readFileSync("src/modules/treatment/components/borrador-contexto.tsx", "utf8")),
+    ).toContain("firmaBase: string | null,");
   });
 
   it("y los rótulos son UNA lista, compartida con el servidor", () => {

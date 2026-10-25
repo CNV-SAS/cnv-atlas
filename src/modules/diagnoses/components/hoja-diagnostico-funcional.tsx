@@ -1,10 +1,7 @@
 "use client";
 
-import { Printer } from "lucide-react";
-
+import { BarraDeImpresion } from "@/components/shared/barra-de-impresion";
 import { EncabezadoImpreso, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
-import { imprimirHoja } from "@/components/shared/imprimir-hoja";
-import { Button } from "@/components/ui/button";
 import type { DfiPaciente } from "@/clinical-engine";
 
 // ═══ EL DIAGNOSTICO FUNCIONAL, COMO DOCUMENTO Y NO COMO CAPTURA (Santiago, 2026-09-19) ═══
@@ -42,30 +39,28 @@ export function HojaDiagnosticoFuncional({
   // (decisión de Gildardo, D-007), y una hoja a medias en la mano del paciente es peor que ninguna.
   if (!dfi) return null;
 
+  // ═══ UN DEFECTO QUE SALIO AL UNIFICAR LOS BOTONES (2026-10-25) ═══
+  //
+  // EL BOTON ESTABA FUERA DE SU HOJA. El `.imprimible` era el documento de abajo y el boton su HERMANO,
+  // asi que `imprimirHoja` subia buscando una hoja, no encontraba ninguna y caia a `window.print()` SIN
+  // MARCAR NADA. Y sin marca, la regla del CSS deja salir TODAS las hojas montadas: quien hubiera pasado
+  // por Tratamiento imprimia este diagnostico con la prescripcion del paciente pegada detras.
+  //
+  // Es exactamente el defecto que `imprimir-hoja` se escribio para cerrar, vivo en el sitio donde nadie
+  // volvio a mirar. Se cierra moviendo el `.imprimible` AL CONTENEDOR: la barra queda dentro de la hoja
+  // (`no-print`, no sale en papel) y el documento sigue siendo `solo-impresion`. Es la misma forma que ya
+  // tenian la prescripcion y el plan del paciente, y es la razon por la que la barra compartida vive
+  // dentro de la hoja y no en la barra de subpestañas.
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-      <div className="no-print flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-0.5">
-          <h3 className="text-sm font-semibold text-foreground">Imprimir el diagnóstico para entregarlo</h3>
-          <p className="max-w-prose text-xs text-muted-foreground">
-            La hoja que el paciente se lleva: su diagnóstico en lenguaje claro, sin índices ni códigos. Es
-            el mismo que le llega en el informe.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="self-start"
-          onClick={(e) => imprimirHoja(e.currentTarget)}
-        >
-          <Printer className="size-4" aria-hidden />
-          Imprimir el diagnóstico
-        </Button>
-      </div>
+    <div className="imprimible flex flex-col gap-3">
+      <BarraDeImpresion
+        titulo="Imprimir el diagnóstico para entregarlo"
+        descripcion="La hoja que el paciente se lleva: su diagnóstico en lenguaje claro, sin índices ni códigos. Es el mismo que le llega en el informe."
+        etiqueta="Imprimir el diagnóstico"
+      />
 
       {/* EL DOCUMENTO: vive en el DOM, invisible en pantalla, y es lo único que sale al imprimir. */}
-      <div className="solo-impresion imprimible flex-col gap-5">
+      <div className="solo-impresion flex-col gap-5">
         <EncabezadoImpreso titulo="Tu diagnóstico funcional" encabezado={encabezado} />
 
         <section className="flex flex-col gap-2 break-inside-avoid">
