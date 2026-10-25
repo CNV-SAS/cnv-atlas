@@ -960,10 +960,10 @@ export default async function ResultadosEvaluacionPage({
           {/* La correccion YA NO vive aqui (Santiago 2026-08-15, b): en Encuesta el profesional REVISA lo
               que respondio el paciente, no decide sobre un diagnostico. La via versionada se movio a la
               pantalla "Ver o editar encuesta" (encuesta/page.tsx) y sigue en Diagnostico. */}
-          <EntradaEvaluacion panel="encuesta" {...entradaConDiagnostico} />
+          <EntradaEvaluacion panel="encuesta" encabezado={encabezadoDeHoja} {...entradaConDiagnostico} />
         </div>
       }
-      antro={<EntradaEvaluacion panel="antropometria" {...entradaConDiagnostico} />}
+      antro={<EntradaEvaluacion panel="antropometria" encabezado={encabezadoDeHoja} {...entradaConDiagnostico} />}
       tratamiento={
         <div className="flex flex-col gap-8">
           {/* Estado del paciente (sector EFR + fenotipo): contexto de una linea que hace legible el
@@ -1135,6 +1135,20 @@ export default async function ResultadosEvaluacionPage({
         // La comparacion aparece solo con una previa; el PROXIMO CONTROL aparece siempre, porque en la
         // PRIMERA consulta es justo cuando hace falta agendar. Antes de esto la unica via de fijar la cita
         // era confirmar un "empeoro", que exige una segunda medicion: un paciente que mejoro no tenia donde.
+        // ═══ SEGUIMIENTO TAMBIEN SE IMPRIME (Gildardo, 2026-10-25) ═══
+        //
+        // QUE SALE: las graficas con su referencia, la comparacion con la medicion anterior, la proxima
+        // cita y las observaciones YA REGISTRADAS. Es la hoja con la que se cierra la consulta de control.
+        //
+        // QUE NO SALE: el campo para escribir una observacion nueva y el formulario de la proxima cita.
+        // Los dos son taller, y los marcan `no-print` sus propios componentes, no esta pagina: cada
+        // bloque sabe cual de sus partes es registro y cual es trabajo por hacer.
+        <HojaImprimible
+          titulo="Seguimiento"
+          encabezado={{ ...encabezadoDeHoja, edad: hcHeader?.edad ?? null }}
+          etiquetaBoton="Imprimir el seguimiento"
+          queSale="La trayectoria del paciente: las gráficas con su referencia, la comparación con la medición anterior, la próxima cita y las observaciones ya registradas."
+        >
         <section className="flex flex-col gap-4">
           {/* EL BLOQUE VISUAL SE MUESTRA DESDE LA PRIMERA MEDICION (tercer smoke, 2026-09-06), y la
               regla es una: UN GRAFICO CON LINEA DE REFERENCIA DICE ALGO CON UN SOLO PUNTO (donde esta
@@ -1180,6 +1194,7 @@ export default async function ResultadosEvaluacionPage({
             puedeEscribir={Boolean(protocol)}
           />
         </section>
+        </HojaImprimible>
       }
       reporte={
         // QUINTA ETAPA, pieza 2 (2026-08-24): el reporte vive aqui, con su aprobacion, sus tres modos de

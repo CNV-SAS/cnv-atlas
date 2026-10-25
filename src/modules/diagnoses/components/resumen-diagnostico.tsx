@@ -75,10 +75,14 @@ export function ResumenDiagnostico({
             vuelve a generarlo. Tus observaciones de la consulta van en Seguimiento.
           </p>
         </div>
+        {/* `no-print`: generar el resumen es un acto del profesional sobre la pantalla. En el papel
+            seria un boton impreso, que es como se ve que una hoja es una captura y no un documento
+            (Gildardo, 2026-10-25: cada subpestaña con su hoja, "sin desplegables ni campos vacios"). */}
         <Button
           type="button"
           variant="outline"
           size="sm"
+          className="no-print"
           disabled={generando}
           onClick={() => {
             const fd = new FormData();
@@ -95,7 +99,8 @@ export function ResumenDiagnostico({
         </Button>
       </div>
 
-      {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+      {/* El error es de la pantalla, no del documento: en papel no significa nada. */}
+      {state.error ? <p className="no-print text-sm text-destructive">{state.error}</p> : null}
 
       {/* SIN LIMITE DE LONGITUD y en un bloque de lectura, no en un campo: son cinco parrafos, uno por
           dominio. `whitespace-pre-wrap` conserva los saltos que el modelo escribe, igual que el suyo. */}

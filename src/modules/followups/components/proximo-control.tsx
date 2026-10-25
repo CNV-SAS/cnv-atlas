@@ -87,7 +87,11 @@ export function ProximoControl({
             const data = new FormData(e.currentTarget);
             ejecutarAccion(save, data);
           }}
-          className="flex flex-col gap-3"
+          // `no-print`: el formulario para fijar la fecha es taller y no va al papel (Gildardo,
+          // 2026-10-25: cada hoja "sin desplegables ni campos vacios"). LA FECHA SI VA, por la linea de
+          // abajo: estaba SOLO dentro de este input, asi que ocultar el formulario la habria dejado fuera
+          // del documento. Un seguimiento impreso sin la proxima cita no es el seguimiento.
+          className="no-print flex flex-col gap-3"
         >
           <input type="hidden" name="evaluationId" value={evaluationId} />
           <input type="hidden" name="sugerida" value={vista.citaSugerida ?? ""} />
@@ -145,6 +149,17 @@ export function ProximoControl({
             </p>
           )}
         </form>
+
+        {/* SOLO EN PAPEL: la fecha fijada, en texto. Y SE DICE TAMBIEN CUANDO NO HAY, porque en un
+            documento clinico una ausencia sin explicar se lee como que no se evaluo. La distincion
+            sugerida/agendada se conserva: mientras nadie confirme, el paciente NO tiene cita. */}
+        <p className="solo-impresion text-sm text-foreground">
+          {vista.citaGuardada
+            ? `Próximo control agendado para el ${vista.citaGuardada}.`
+            : vista.citaSugerida
+              ? `Próximo control sin agendar. El modelo sugiere el ${vista.citaSugerida}.`
+              : "Próximo control sin agendar."}
+        </p>
       </CardContent>
     </Card>
   );

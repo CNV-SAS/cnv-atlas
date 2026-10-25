@@ -171,9 +171,12 @@ export function ObservacionesConsulta({
         {puedeEscribir ? (
           // NO se usa la prop `action`: en React 19 resetea el formulario tras la accion, y ahi es donde
           // se pierde lo escrito cuando el servidor rechaza (hazard 2 de CLAUDE.md).
+          // `no-print`: las observaciones YA ESCRITAS son registro y van al papel; el campo para
+          // escribir una nueva es taller y no (Gildardo, 2026-10-25: la hoja de cada subpestaña va "sin
+          // desplegables ni campos vacios"). Un campo de texto vacio impreso es la firma de una captura.
           <form
             onSubmit={enviarSinReset(action)}
-            className="flex flex-col gap-2 border-t border-border pt-4"
+            className="no-print flex flex-col gap-2 border-t border-border pt-4"
           >
             <input type="hidden" name="evaluationId" value={evaluationId} />
             {/* EL CAMPO SE VACIA AL GUARDAR, y la forma importa. Dejar el texto invita a pulsar dos
