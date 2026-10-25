@@ -189,6 +189,23 @@ export const EXPORT_FILA_A_FILA_DE_LA_VISTA: FormaDelExport = {
   kVerificado: null,
 };
 
+/**
+ * SI ESE NIVEL SIGUE SIENDO DATO PERSONAL.
+ *
+ * Existe para que el encabezado del panel no lo afirme a mano (Gildardo, 2026-10-25): decia *"Solo data
+ * agregada o anonimizada; nunca datos personales"* mientras el mismo panel, mas abajo, decia que un
+ * dataset de esa cohorte seria seudonimizado y que eso SIGUE siendo dato personal. Las dos frases
+ * describian lo mismo y se contradecian, que es el hazard 4 en un texto: no se arregla eligiendo una, se
+ * arregla haciendo que las dos salgan de la misma fuente.
+ *
+ * Y LA DEFINICION NO ES NUESTRA: `docs/DATA_GOVERNANCE.md` dice que un dato seudonimizado sigue siendo
+ * dato personal (la llave existe en otra parte), y que solo el anonimizado deja de serlo. De ahi que la
+ * unica respuesta `false` sea `anonymized`.
+ */
+export function sigueSiendoDatoPersonal(nivel: NivelDeAnonimizacion): boolean {
+  return nivel !== "anonymized";
+}
+
 /** La forma de lo que el panel de investigacion muestra hoy: cifras y agrupaciones, ni una fila. */
 export const CIFRAS_DEL_PANEL: FormaDelExport = {
   filaPorPaciente: false,

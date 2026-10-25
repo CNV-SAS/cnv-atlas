@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { mayorDelMotor } from "@/modules/followups/services/eb-trajectory";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // LA COHORTE DE INVESTIGACION, EN CIFRAS  ·  LA PANTALLA DE LA VISTA evaluaciones_para_investigacion
@@ -48,10 +49,45 @@ export type CohorteDeInvestigacion = {
   pacientesAutorizados: number;
   /** De la cohorte autorizada, cuantas tienen diagnostico sellado (las unicas con indicadores). */
   conDiagnostico: number;
-  /** Importadas del HTML: la procedencia es lo primero que se pregunta en un analisis de calidad. */
+  /** Importadas del HTML Y autorizadas: las que de verdad entran a un dataset. */
   importadas: number;
-  /** La cohorte autorizada por version del motor: mezclar mayores es comparar lo incomparable. */
+  /**
+   * TODAS las importadas vigentes, autorizadas o no.
+   *
+   * SIN ESTA, EL 8 ERA UNA SORPRESA (Gildardo, 2026-10-25): *"De Angela se importaron muchas"*, y la
+   * pantalla decia 8. Las dos cosas eran ciertas y la cifra sola no lo explicaba. Con el total al lado, el
+   * 8 deja de parecer un defecto del import y se lee como lo que es: el consentimiento del HTML no tenia
+   * casilla de investigacion, asi que esos pacientes no tienen nada que autorizar en Atlas.
+   */
+  importadasVigentes: number;
+  /**
+   * POR QUE QUEDAN FUERA LAS QUE QUEDAN FUERA.
+   *
+   * La cifra de excluidos ya estaba; la RAZON no, y sin ella el 38 % de consultas fuera no se podia cruzar
+   * con el 13 % de pacientes que no autorizaron: son dos preguntas distintas (un paciente sin autorizacion
+   * con tres consultas pone tres en el conteo de consultas). Por eso cada razon trae las dos cifras.
+   */
+  sinAutorizacionPorRazon: { razon: string; consultas: number; pacientes: number }[];
+  /** La cohorte autorizada por version del motor, TAL COMO ESTA SELLADA: es lo que hay que poder citar. */
   porVersionDelMotor: { version: string; evaluaciones: number }[];
+  /**
+   * LA MISMA COHORTE AGRUPADA POR FAMILIA MAYOR, que es lo que decide la comparabilidad.
+   *
+   * ═══ POR QUE HACEN FALTA LAS DOS (Gildardo, 2026-10-25) ═══
+   *
+   * El panel avisaba *"la cohorte mezcla 2 versiones del motor"* sobre `1.0.0` y `anibise-1.4.0`, y eso
+   * era FALSO: son la misma ciencia con dos grafias. El 2026-09-09 el motor se renombro de
+   * `anibise-1.4.0` a `1.0.0` (un renombre de frontera: no se movio una sola cifra), y los diagnosticos
+   * ya emitidos conservan la grafia vieja A PROPOSITO, porque el sello dice con que se calculo.
+   *
+   * La banda de trayectoria ya leia las dos formas igual (`mayorDelMotor`); la pantalla no. Un aviso que
+   * dice "no son comparables" sobre cifras que SI lo son es peor que no avisar: hace desconfiar de la
+   * cohorte entera. Asi que las dos agrupaciones usan la MISMA funcion que la banda, y la cruda se queda
+   * para poder nombrar la grafia exacta de cada diagnostico.
+   */
+  porFamiliaDelMotor: { mayor: string; evaluaciones: number; grafias: string[] }[];
+  /** `true` solo si de verdad hay dos familias MAYORES. Es lo unico que hace incomparables dos cifras. */
+  mezclaFamilias: boolean;
   /** La cohorte autorizada por mes de la medicion (hora de Colombia), de lo mas reciente a lo mas viejo. */
   porMes: { mes: string; evaluaciones: number }[];
 };
@@ -65,7 +101,8 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
       (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha) as con_autorizacion,
       (select count(distinct patient_id)::int from public.evaluaciones_para_investigacion where es_consulta_hecha) as pacientes_autorizados,
       (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha and diagnosis_id is not null) as con_diagnostico,
-      (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha and importada) as importadas
+      (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha and importada) as importadas,
+      (select count(*)::int from public.evaluaciones_vigentes where es_consulta_hecha and importada) as importadas_vigentes
   `);
   const t = (totales as unknown as Record<string, number>[])[0] ?? {};
   const vigentes = Number(t.vigentes ?? 0);
@@ -79,6 +116,35 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
      order by 2 desc
   `);
 
+  // ═══ EL DESGLOSE DE LOS EXCLUIDOS ═══
+  //
+  // EL ORDEN DE LOS `case` NO ES ARBITRARIO, y es la unica parte delicada: se pregunta PRIMERO por lo que
+  // existe y dice no (hay una fila de investigacion, luego la revoco) y DESPUES por lo que no existe. Al
+  // reves, un paciente que nunca firmo en Atlas se contaria como "firmo y no marco la casilla", y eso le
+  // atribuiria una decision que nunca tomo. Es la misma regla que el orden de `nivelDeAnonimizacion`: el
+  // error de omision tiene que caer del lado que NO afirma nada sobre la persona.
+  const excluidas = await db.execute(sql`
+    select
+      case
+        when exists (select 1 from patient_consents c
+                      where c.patient_id = v.patient_id and c.consent_type = 'investigacion')
+          then 'revocó la autorización'
+        when not exists (select 1 from patient_consents c where c.patient_id = v.patient_id)
+          then 'sin ningún consentimiento en Atlas (importada del HTML)'
+        else 'firmó en Atlas y no marcó la casilla de investigación'
+      end as razon,
+      count(*)::int as consultas,
+      count(distinct v.patient_id)::int as pacientes
+      from public.evaluaciones_vigentes v
+     where v.es_consulta_hecha
+       and not exists (select 1 from patient_consents c
+                        where c.patient_id = v.patient_id
+                          and c.consent_type = 'investigacion'
+                          and c.revoked_at is null)
+     group by 1
+     order by 2 desc
+  `);
+
   const meses = await db.execute(sql`
     select to_char(coalesce(dia, (created_at at time zone 'America/Bogota')::date), 'YYYY-MM') as mes,
            count(*)::int as evaluaciones
@@ -88,17 +154,44 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
      order by 1 desc
   `);
 
+  // LA FAMILIA SE CALCULA EN TS CON LA FUNCION DE LA BANDA, no con un `split` en SQL. Si el criterio de
+  // comparabilidad cambia, cambia en un sitio y las dos superficies lo siguen.
+  const crudas = (versiones as unknown as { version: string; evaluaciones: number }[]).map((r) => ({
+    version: r.version,
+    evaluaciones: Number(r.evaluaciones),
+  }));
+  const familias = new Map<string, { evaluaciones: number; grafias: string[] }>();
+  for (const v of crudas) {
+    // `sin diagnóstico` no es una version: no tiene mayor y no entra a la agrupacion por familia.
+    const mayor = mayorDelMotor(v.version);
+    if (mayor === null) continue;
+    const ya = familias.get(mayor) ?? { evaluaciones: 0, grafias: [] };
+    ya.evaluaciones += v.evaluaciones;
+    ya.grafias.push(v.version);
+    familias.set(mayor, ya);
+  }
+  const porFamiliaDelMotor = [...familias.entries()]
+    .map(([mayor, f]) => ({ mayor, evaluaciones: f.evaluaciones, grafias: f.grafias.sort() }))
+    .sort((a, b) => b.evaluaciones - a.evaluaciones);
+
   return {
     vigentes,
     conAutorizacion,
     sinAutorizacion: vigentes - conAutorizacion,
+    porFamiliaDelMotor,
+    mezclaFamilias: porFamiliaDelMotor.length > 1,
     pacientesAutorizados: Number(t.pacientes_autorizados ?? 0),
     conDiagnostico: Number(t.con_diagnostico ?? 0),
     importadas: Number(t.importadas ?? 0),
-    porVersionDelMotor: (versiones as unknown as { version: string; evaluaciones: number }[]).map((r) => ({
-      version: r.version,
-      evaluaciones: Number(r.evaluaciones),
+    importadasVigentes: Number(t.importadas_vigentes ?? 0),
+    sinAutorizacionPorRazon: (
+      excluidas as unknown as { razon: string; consultas: number; pacientes: number }[]
+    ).map((r) => ({
+      razon: r.razon,
+      consultas: Number(r.consultas),
+      pacientes: Number(r.pacientes),
     })),
+    porVersionDelMotor: crudas,
     porMes: (meses as unknown as { mes: string; evaluaciones: number }[]).map((r) => ({
       mes: r.mes,
       evaluaciones: Number(r.evaluaciones),

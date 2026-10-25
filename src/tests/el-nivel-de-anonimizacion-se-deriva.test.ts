@@ -8,6 +8,7 @@ import {
   K_MINIMO_PARA_ANONIMIZAR,
   NIVELES_DE_ANONIMIZACION,
   nivelDeAnonimizacion,
+  sigueSiendoDatoPersonal,
   type FormaDelExport,
 } from "@/modules/obbia/services/nivel-de-anonimizacion";
 
@@ -141,5 +142,69 @@ describe("el vocabulario esta cerrado, y es el MISMO en los tres sitios", () => 
     const sql = readFileSync(MIGRACION, "utf8");
     expect(sql).toMatch(/nivel-de-anonimizacion/);
     expect(/DROP TYPE|DROP COLUMN/.test(sql), "forward-only").toBe(false);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y LAS DOS FRASES DE LA PANTALLA NO PUEDEN CONTRADECIRSE (Gildardo, 2026-10-25)
+//
+// El encabezado decia *"Solo data agregada o anonimizada; nunca datos personales del paciente"* mientras
+// el bloque de abajo, calculado, decia que un dataset de esa cohorte seria SEUDONIMIZADO y que eso sigue
+// siendo dato personal. Las dos hablaban de lo mismo. La escrita a mano era la que estaba mal, y el
+// arreglo no es elegir una: es que las dos salgan de `nivelDeAnonimizacion`.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("el encabezado del panel no se escribe a mano", () => {
+  const PANTALLA = "src/app/(app)/obbia/page.tsx";
+  // SIN LOS COMENTARIOS: el comentario que EXPLICA el arreglo cita la frase vieja, asi que buscarla en el
+  // archivo crudo hace fallar al archivo por documentarse bien. Ya paso una vez hoy, en otro candado.
+  const pantalla = () =>
+    readFileSync(PANTALLA, "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+
+  it("la promesa vieja, que afirmaba de mas, no puede volver", () => {
+    expect(
+      /nunca datos personales/.test(pantalla()),
+      "afirmaba sobre el DATASET lo que solo era cierto de la PANTALLA",
+    ).toBe(false);
+  });
+
+  it("el encabezado deriva su nivel de la misma funcion que el bloque de abajo", () => {
+    const src = pantalla();
+    expect(/nivelDeAnonimizacion\(CIFRAS_DEL_PANEL\)/.test(src)).toBe(true);
+    expect(/nivelDeAnonimizacion\(EXPORT_FILA_A_FILA_DE_LA_VISTA\)/.test(src)).toBe(true);
+    expect(
+      /sigueSiendoDatoPersonal\(nivelDelExport\.nivel\)/.test(src),
+      "y si sigue siendo dato personal tambien se deriva, no se afirma",
+    ).toBe(true);
+  });
+
+  it("sigueSiendoDatoPersonal solo exime al anonimizado", () => {
+    // La definicion es de DATA_GOVERNANCE, no nuestra: un seudonimizado sigue siendo dato personal porque
+    // la llave existe en otra parte. Si algun dia esto devolviera false para pseudonymized, el panel
+    // prometeria algo que la ley no concede.
+    expect(sigueSiendoDatoPersonal("anonymized")).toBe(false);
+    expect(sigueSiendoDatoPersonal("pseudonymized")).toBe(true);
+    expect(sigueSiendoDatoPersonal("aggregate")).toBe(true);
+  });
+
+  it("el aviso de versiones solo salta con dos FAMILIAS, no con dos grafias", () => {
+    // `1.0.0` y `anibise-1.4.0` son el mismo motor: el renombre del 2026-09-09 no movio una cifra, y lo
+    // ya emitido conserva su grafia a proposito. El aviso viejo decia "no son comparables" sobre cifras
+    // que si lo son, y eso hace desconfiar de la cohorte entera.
+    const src = pantalla();
+    expect(/cohorte\.mezclaFamilias/.test(src)).toBe(true);
+    expect(
+      /cohorte\.porVersionDelMotor\.length > 1 \? \(\s*<p[^>]*clinical-warning/.test(src),
+      "la alarma no puede volver a colgarse del numero de grafias",
+    ).toBe(false);
+  });
+
+  it("y el desglose de los excluidos esta en la pantalla, no solo en un mensaje", () => {
+    const src = pantalla();
+    expect(/sinAutorizacionPorRazon/.test(src)).toBe(true);
+    expect(/importadasVigentes/.test(src), "el total al lado del 8, o el 8 parece un defecto").toBe(true);
   });
 });
