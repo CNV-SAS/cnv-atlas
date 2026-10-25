@@ -28,15 +28,34 @@ describe("la consulta importada del HTML", () => {
     );
   });
 
-  it("las dos pantallas que la pintan leen esos dos datos", () => {
+  // ═══ RE-ANCLADO EN LA 0228, Y LA RAZON IMPORTA ═══
+  //
+  // Este caso exigia, literalmente, `tieneCondicionesBis: (e.evaluation_bis_intake ?? []).length > 0` en
+  // los dos lectores. Esa expresion estaba MAL: `evaluation_bis_intake` tiene un UNIQUE sobre
+  // `evaluation_id`, asi que PostgREST la devolvia como OBJETO y `(objeto ?? []).length` es `undefined`.
+  // El dato era SIEMPRE false, y este candado lo mantenia congelado: exigia la linea equivocada.
+  //
+  // La leccion es del candado, no del lector: un candado que fija una EXPRESION fija tambien su defecto.
+  // Ahora exige el HECHO donde vive, que es la vista, y que las dos pantallas lo lean de ahi.
+  it("las dos pantallas que la pintan leen esos dos datos, y salen de la vista", () => {
+    const sql = readFileSync("drizzle/0228_el_roster_en_una_fila_por_paciente.sql", "utf8");
+    expect(sql).toMatch(/'importada', e\."import_batch_id" IS NOT NULL/);
+    expect(sql).toMatch(/'tieneCondicionesBis', EXISTS \(/);
+    expect(sql, "el hecho sale de evaluation_bis_intake, no de otra tabla").toMatch(
+      /EXISTS \(\s*SELECT 1 FROM "evaluation_bis_intake"/,
+    );
+
     for (const f of [
       "src/modules/patients/data/patients-list-reader.ts",
       "src/modules/dashboard/data/tablero-reader.ts",
     ]) {
       const s = readFileSync(f, "utf8");
-      expect(s, f).toContain("importada: e.import_batch_id != null");
-      expect(s, f).toContain("tieneCondicionesBis: (e.evaluation_bis_intake ?? []).length > 0");
+      expect(s, f).toContain("pacientes_del_roster");
     }
+    // Y la regla sigue consumiendo los dos datos en el mismo sitio de siempre.
+    const mapeo = readFileSync("src/modules/patients/roster-fila.ts", "utf8");
+    expect(mapeo).toContain("importada: e.importada");
+    expect(mapeo).toContain("tieneCondicionesBis: e.tieneCondicionesBis");
   });
 });
 

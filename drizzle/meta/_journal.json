@@ -1597,6 +1597,13 @@
       "when": 1792862139446,
       "tag": "0227_el_nivel_de_anonimizacion_es_un_vocabulario",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1792862140446,
+      "tag": "0228_el_roster_en_una_fila_por_paciente",
+      "breakpoints": true
     }
   ]
 }

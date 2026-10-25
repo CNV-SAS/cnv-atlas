@@ -62,6 +62,18 @@ isOneToOne: false
       referencedRelation: "diagnoses"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "ai_criterion_suggestions_diagnosis_id_diagnoses_id_fk"
+      columns: ["diagnosis_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["diagnosis_id"]
+    },{
+      foreignKeyName: "ai_criterion_suggestions_diagnosis_id_diagnoses_id_fk"
+      columns: ["diagnosis_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["diagnosis_id"]
+    },{
       foreignKeyName: "ai_criterion_suggestions_generated_by_profiles_id_fk"
       columns: ["generated_by"]
 isOneToOne: false
@@ -227,20 +239,32 @@ isOneToOne: false
       foreignKeyName: "bis_import_logs_evaluation_id_evaluations_id_fk"
       columns: ["evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bis_import_logs_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bis_import_logs_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
     }
                   ]
                 },"bis_measurements": {
                   Row: {
-                    "created_at": string,"device_calibration_date": string | null,"device_id": string | null,"evaluation_id": string,"id": string,"import_batch_id": string | null,"measurement_date": string
+                    "created_at": string,"device_calibration_date": string | null,"device_id": string | null,"evaluation_id": string,"id": string,"import_batch_id": string | null,"measurement_date": string,"no_es_del_paciente_at": string | null,"no_es_del_paciente_motivo": string | null,"no_es_del_paciente_por": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"device_calibration_date"?: string | null,"device_id"?: string | null,"evaluation_id": string,"id"?: string,"import_batch_id"?: string | null,"measurement_date": string
+                    "created_at"?: string,"device_calibration_date"?: string | null,"device_id"?: string | null,"evaluation_id": string,"id"?: string,"import_batch_id"?: string | null,"measurement_date": string,"no_es_del_paciente_at"?: string | null,"no_es_del_paciente_motivo"?: string | null,"no_es_del_paciente_por"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"device_calibration_date"?: string | null,"device_id"?: string | null,"evaluation_id"?: string,"id"?: string,"import_batch_id"?: string | null,"measurement_date"?: string
+                    "created_at"?: string,"device_calibration_date"?: string | null,"device_id"?: string | null,"evaluation_id"?: string,"id"?: string,"import_batch_id"?: string | null,"measurement_date"?: string,"no_es_del_paciente_at"?: string | null,"no_es_del_paciente_motivo"?: string | null,"no_es_del_paciente_por"?: string | null
                   }
                   Relationships: [
                     {
@@ -253,6 +277,18 @@ isOneToOne: false
       foreignKeyName: "bis_measurements_evaluation_id_evaluations_id_fk"
       columns: ["evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bis_measurements_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bis_measurements_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
     },{
@@ -260,6 +296,12 @@ isOneToOne: false
       columns: ["import_batch_id"]
 isOneToOne: false
       referencedRelation: "html_import_batches"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bis_measurements_no_es_del_paciente_por_fkey"
+      columns: ["no_es_del_paciente_por"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -281,6 +323,18 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "bis_measurements"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bis_raw_values_measurement_id_bis_measurements_id_fk"
+      columns: ["measurement_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["measurement_id"]
+    },{
+      foreignKeyName: "bis_raw_values_measurement_id_bis_measurements_id_fk"
+      columns: ["measurement_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["measurement_id"]
     }
                   ]
                 },"bis_value_corrections": {
@@ -307,6 +361,18 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "bis_measurements"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bis_value_corrections_measurement_id_fkey"
+      columns: ["measurement_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["measurement_id"]
+    },{
+      foreignKeyName: "bis_value_corrections_measurement_id_fkey"
+      columns: ["measurement_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["measurement_id"]
     }
                   ]
                 },"bis_variables": {
@@ -347,6 +413,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clinical_access_grants_resource_id_patients_id_fk"
+      columns: ["resource_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
     },{
       foreignKeyName: "clinical_access_grants_resource_id_patients_id_fk"
       columns: ["resource_id"]
@@ -403,7 +475,31 @@ isOneToOne: false
       foreignKeyName: "clinical_corrections_new_evaluation_id_evaluations_id_fk"
       columns: ["new_evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clinical_corrections_new_evaluation_id_evaluations_id_fk"
+      columns: ["new_evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clinical_corrections_new_evaluation_id_evaluations_id_fk"
+      columns: ["new_evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clinical_corrections_old_evaluation_id_evaluations_id_fk"
+      columns: ["old_evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clinical_corrections_old_evaluation_id_evaluations_id_fk"
+      columns: ["old_evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "clinical_corrections_old_evaluation_id_evaluations_id_fk"
@@ -442,6 +538,12 @@ isOneToOne: false
       columns: ["transaction_id"]
 isOneToOne: false
       referencedRelation: "transactions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "cnv_revenue_transaction_id_transactions_id_fk"
+      columns: ["transaction_id"]
+isOneToOne: false
+      referencedRelation: "ventas_reales"
       referencedColumns: ["id"]
     }
                   ]
@@ -573,6 +675,18 @@ isOneToOne: false
       foreignKeyName: "diagnoses_evaluation_id_evaluations_id_fk"
       columns: ["evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diagnoses_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diagnoses_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
     },{
@@ -619,6 +733,18 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "diagnoses"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diagnosis_notes_diagnosis_id_diagnoses_id_fk"
+      columns: ["diagnosis_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["diagnosis_id"]
+    },{
+      foreignKeyName: "diagnosis_notes_diagnosis_id_diagnoses_id_fk"
+      columns: ["diagnosis_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["diagnosis_id"]
     }
                   ]
                 },"distribucion_statements": {
@@ -695,6 +821,18 @@ isOneToOne: false
       foreignKeyName: "evaluation_bis_intake_evaluation_id_evaluations_id_fk"
       columns: ["evaluation_id"]
 isOneToOne: true
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluation_bis_intake_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: true
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluation_bis_intake_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: true
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
     }
@@ -716,6 +854,18 @@ isOneToOne: true
       columns: ["author_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluation_notes_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluation_notes_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "evaluation_notes_evaluation_id_evaluations_id_fk"
@@ -755,6 +905,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluations_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
     },{
       foreignKeyName: "evaluations_patient_id_patients_id_fk"
       columns: ["patient_id"]
@@ -811,8 +967,26 @@ isOneToOne: false
       foreignKeyName: "followups_evaluation_id_evaluations_id_fk"
       columns: ["evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "followups_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "followups_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "followups_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
     },{
       foreignKeyName: "followups_patient_id_patients_id_fk"
       columns: ["patient_id"]
@@ -869,8 +1043,26 @@ isOneToOne: false
       foreignKeyName: "hc_deliveries_evaluation_id_fkey"
       columns: ["evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "hc_deliveries_evaluation_id_fkey"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "hc_deliveries_evaluation_id_fkey"
+      columns: ["evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "hc_deliveries_patient_id_fkey"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
     },{
       foreignKeyName: "hc_deliveries_patient_id_fkey"
       columns: ["patient_id"]
@@ -964,6 +1156,18 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "indicator_values_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "indicator_values_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "indicator_values_evaluation_id_evaluations_id_fk"
       columns: ["evaluation_id"]
 isOneToOne: false
@@ -1607,6 +1811,12 @@ isOneToOne: false
       foreignKeyName: "patient_consents_patient_id_patients_id_fk"
       columns: ["patient_id"]
 isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
+      foreignKeyName: "patient_consents_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
       referencedRelation: "patients"
       referencedColumns: ["id"]
     }
@@ -1624,6 +1834,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "patient_contacts_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: true
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
       foreignKeyName: "patient_contacts_patient_id_patients_id_fk"
       columns: ["patient_id"]
 isOneToOne: true
@@ -1649,6 +1865,12 @@ isOneToOne: true
 isOneToOne: false
       referencedRelation: "nutraceuticals"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "patient_contraindications_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
     },{
       foreignKeyName: "patient_contraindications_patient_id_patients_id_fk"
       columns: ["patient_id"]
@@ -1685,6 +1907,12 @@ isOneToOne: false
       foreignKeyName: "patient_external_consents_patient_id_fkey"
       columns: ["patient_id"]
 isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
+      foreignKeyName: "patient_external_consents_patient_id_fkey"
+      columns: ["patient_id"]
+isOneToOne: false
       referencedRelation: "patients"
       referencedColumns: ["id"]
     }
@@ -1702,6 +1930,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "patient_professional_relationships_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
       foreignKeyName: "patient_professional_relationships_patient_id_patients_id_fk"
       columns: ["patient_id"]
 isOneToOne: false
@@ -1728,6 +1962,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "patient_profiles_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: true
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
       foreignKeyName: "patient_profiles_patient_id_patients_id_fk"
       columns: ["patient_id"]
 isOneToOne: true
@@ -1831,6 +2071,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "transactions"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pending_discards_transaction_id_fkey"
+      columns: ["transaction_id"]
+isOneToOne: false
+      referencedRelation: "ventas_reales"
+      referencedColumns: ["id"]
     }
                   ]
                 },"pending_followups": {
@@ -1856,6 +2102,12 @@ isOneToOne: false
       columns: ["transaction_id"]
 isOneToOne: false
       referencedRelation: "transactions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pending_followups_transaction_id_fkey"
+      columns: ["transaction_id"]
+isOneToOne: false
+      referencedRelation: "ventas_reales"
       referencedColumns: ["id"]
     }
                   ]
@@ -1901,6 +2153,18 @@ isOneToOne: false
       foreignKeyName: "prescription_emissions_evaluation_id_fkey"
       columns: ["evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "prescription_emissions_evaluation_id_fkey"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "prescription_emissions_evaluation_id_fkey"
+      columns: ["evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
     },{
@@ -1935,6 +2199,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "presencial_consent_sessions_patient_id_fkey"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
     },{
       foreignKeyName: "presencial_consent_sessions_patient_id_fkey"
       columns: ["patient_id"]
@@ -2147,6 +2417,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "transactions"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "professional_revenue_transaction_id_transactions_id_fk"
+      columns: ["transaction_id"]
+isOneToOne: false
+      referencedRelation: "ventas_reales"
+      referencedColumns: ["id"]
     }
                   ]
                 },"profiles": {
@@ -2197,6 +2473,12 @@ isOneToOne: false
       foreignKeyName: "referrals_patient_id_patients_id_fk"
       columns: ["patient_id"]
 isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
+      foreignKeyName: "referrals_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
       referencedRelation: "patients"
       referencedColumns: ["id"]
     },{
@@ -2229,8 +2511,26 @@ isOneToOne: false
       foreignKeyName: "reports_evaluation_id_evaluations_id_fk"
       columns: ["evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
     },{
       foreignKeyName: "reports_patient_id_patients_id_fk"
       columns: ["patient_id"]
@@ -2336,6 +2636,12 @@ isOneToOne: false
       referencedRelation: "transactions"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "sale_reversals_transaction_id_fkey"
+      columns: ["transaction_id"]
+isOneToOne: false
+      referencedRelation: "ventas_reales"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "sale_reversals_transaction_item_id_fkey"
       columns: ["transaction_item_id"]
 isOneToOne: false
@@ -2360,6 +2666,18 @@ isOneToOne: false
       columns: ["author_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "soap_subjective_notes_evaluation_id_fkey"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "soap_subjective_notes_evaluation_id_fkey"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "soap_subjective_notes_evaluation_id_fkey"
@@ -2433,6 +2751,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "organizations"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_links_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
     },{
       foreignKeyName: "survey_links_patient_id_patients_id_fk"
       columns: ["patient_id"]
@@ -2535,6 +2859,18 @@ isOneToOne: false
       foreignKeyName: "survey_responses_evaluation_id_evaluations_id_fk"
       columns: ["evaluation_id"]
 isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_responses_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_responses_evaluation_id_evaluations_id_fk"
+      columns: ["evaluation_id"]
+isOneToOne: false
       referencedRelation: "evaluations"
       referencedColumns: ["id"]
     },{
@@ -2609,6 +2945,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "transactions"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "transaction_items_transaction_id_transactions_id_fk"
+      columns: ["transaction_id"]
+isOneToOne: false
+      referencedRelation: "ventas_reales"
+      referencedColumns: ["id"]
     }
                   ]
                 },"transactions": {
@@ -2634,6 +2976,12 @@ isOneToOne: false
       columns: ["cancelled_by_sale_id"]
 isOneToOne: false
       referencedRelation: "transactions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "transactions_cancelled_by_sale_id_fkey"
+      columns: ["cancelled_by_sale_id"]
+isOneToOne: false
+      referencedRelation: "ventas_reales"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "transactions_cash_not_received_by_fkey"
@@ -2681,6 +3029,12 @@ isOneToOne: false
       foreignKeyName: "transactions_patient_id_patients_id_fk"
       columns: ["patient_id"]
 isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
+      foreignKeyName: "transactions_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
       referencedRelation: "patients"
       referencedColumns: ["id"]
     },{
@@ -2712,6 +3066,12 @@ isOneToOne: false
       columns: ["stock_covered_by_sale_id"]
 isOneToOne: false
       referencedRelation: "transactions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "transactions_stock_covered_by_sale_id_fkey"
+      columns: ["stock_covered_by_sale_id"]
+isOneToOne: false
+      referencedRelation: "ventas_reales"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "transactions_transferencia_verificada_by_fkey"
@@ -2856,6 +3216,18 @@ isOneToOne: false
       referencedRelation: "diagnoses"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "treatments_diagnosis_id_diagnoses_id_fk"
+      columns: ["diagnosis_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_para_investigacion"
+      referencedColumns: ["diagnosis_id"]
+    },{
+      foreignKeyName: "treatments_diagnosis_id_diagnoses_id_fk"
+      columns: ["diagnosis_id"]
+isOneToOne: false
+      referencedRelation: "evaluaciones_vigentes"
+      referencedColumns: ["diagnosis_id"]
+    },{
       foreignKeyName: "treatments_nutraceutical_decision_by_profiles_id_fk"
       columns: ["nutraceutical_decision_by"]
 isOneToOne: false
@@ -2912,17 +3284,163 @@ isOneToOne: false
           Views: {
             "combinaciones_bajo_umbral": {
                   Row: {
-                    "integrante": string | null,"participacion_proveedor": number | null,"producto": string | null,"residuo_cnv": number | null,"tasa_integrante": number | null,"umbral_aplicado": number | null
+                    "integrante": string,"participacion_proveedor": number,"producto": string,"residuo_cnv": number | null,"tasa_integrante": number,"umbral_aplicado": number | null
                   }
                   ComputedFields: never
                   Relationships: [
                     
+                  ]
+                },"evaluaciones_para_investigacion": {
+                  Row: {
+                    "confirmed_at": string | null,"created_at": string,"dia": string | null,"diagnosis_id": string | null,"engine_version": string | null,"es_consulta_hecha": boolean | null,"id": string,"importada": boolean | null,"measurement_date": string | null,"measurement_id": string | null,"model_version_id": string | null,"organization_id": string,"patient_id": string,"professional_id": string,"rules_version": string | null,"status": Database["public"]['Enums']["evaluation_status"],"survey_version_id": string | null,"type": Database["public"]['Enums']["evaluation_type"]
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "diagnoses_model_version_id_model_versions_id_fk"
+      columns: ["model_version_id"]
+isOneToOne: false
+      referencedRelation: "model_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diagnoses_survey_version_id_survey_versions_id_fk"
+      columns: ["survey_version_id"]
+isOneToOne: false
+      referencedRelation: "survey_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluations_organization_id_organizations_id_fk"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluations_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
+      foreignKeyName: "evaluations_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "patients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluations_professional_id_professional_profiles_id_fk"
+      columns: ["professional_id"]
+isOneToOne: false
+      referencedRelation: "professional_profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"evaluaciones_vigentes": {
+                  Row: {
+                    "confirmed_at": string | null,"created_at": string,"dia": string | null,"diagnosis_id": string | null,"engine_version": string | null,"es_consulta_hecha": boolean | null,"id": string,"importada": boolean | null,"measurement_date": string | null,"measurement_id": string | null,"model_version_id": string | null,"organization_id": string,"patient_id": string,"professional_id": string,"rules_version": string | null,"status": Database["public"]['Enums']["evaluation_status"],"survey_version_id": string | null,"type": Database["public"]['Enums']["evaluation_type"]
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    {
+      foreignKeyName: "diagnoses_model_version_id_model_versions_id_fk"
+      columns: ["model_version_id"]
+isOneToOne: false
+      referencedRelation: "model_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diagnoses_survey_version_id_survey_versions_id_fk"
+      columns: ["survey_version_id"]
+isOneToOne: false
+      referencedRelation: "survey_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluations_organization_id_organizations_id_fk"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluations_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
+      foreignKeyName: "evaluations_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "patients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "evaluations_professional_id_professional_profiles_id_fk"
+      columns: ["professional_id"]
+isOneToOne: false
+      referencedRelation: "professional_profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pacientes_del_roster": {
+                  Row: {
+                    "birth_date": string | null,"consentimientos_vigentes": Json | null,"created_at": string,"cuenta_como_de_prueba": boolean | null,"document_number": string,"document_type": Database["public"]['Enums']["document_type"],"evaluaciones": Json | null,"first_name": string,"last_name": string,"patient_id": string,"status": Database["public"]['Enums']["patient_status"],"test_proposed_at": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"ventas_reales": {
+                  Row: {
+                    "alegra_invoice_number": string | null,"alegra_invoice_state": Database["public"]['Enums']["alegra_invoice_state"] | null,"amount": number,"created_at": string,"currency": string,"dia": string | null,"id": string,"modalidad_de_la_venta": string,"momento": string | null,"organization_id": string,"patient_id": string | null,"payment_method": Database["public"]['Enums']["payment_method"],"professional_id": string | null,"status": Database["public"]['Enums']["transaction_status"],"treatment_id": string | null,"wompi_env": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                           "alegra_invoice_number"?: string | null,"alegra_invoice_state"?: Database["public"]['Enums']["alegra_invoice_state"] | null,"amount"?: number | null,"created_at"?: string | null,"currency"?: string | null,"dia"?: never,"id"?: string | null,"modalidad_de_la_venta"?: string | null,"momento"?: never,"organization_id"?: string | null,"patient_id"?: string | null,"payment_method"?: Database["public"]['Enums']["payment_method"] | null,"professional_id"?: string | null,"status"?: Database["public"]['Enums']["transaction_status"] | null,"treatment_id"?: string | null,"wompi_env"?: string | null
+                         }
+                        Update: {
+                           "alegra_invoice_number"?: string | null,"alegra_invoice_state"?: Database["public"]['Enums']["alegra_invoice_state"] | null,"amount"?: number | null,"created_at"?: string | null,"currency"?: string | null,"dia"?: never,"id"?: string | null,"modalidad_de_la_venta"?: string | null,"momento"?: never,"organization_id"?: string | null,"patient_id"?: string | null,"payment_method"?: Database["public"]['Enums']["payment_method"] | null,"professional_id"?: string | null,"status"?: Database["public"]['Enums']["transaction_status"] | null,"treatment_id"?: string | null,"wompi_env"?: string | null
+                         }
+                        Relationships: [
+                    {
+      foreignKeyName: "transactions_organization_id_organizations_id_fk"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "transactions_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
+      foreignKeyName: "transactions_patient_id_patients_id_fk"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "patients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "transactions_professional_id_professional_profiles_id_fk"
+      columns: ["professional_id"]
+isOneToOne: false
+      referencedRelation: "professional_profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "transactions_treatment_id_fkey"
+      columns: ["treatment_id"]
+isOneToOne: false
+      referencedRelation: "treatments"
+      referencedColumns: ["id"]
+    }
                   ]
                 }
           }
           Functions: {
             "current_user_roles":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["app_role"][]
+                           },
+"el_descuadre_fisico_es_real":
+{ Args: { "p_tx": string }; Returns: boolean
+                           },
+"el_pendiente_sigue_pidiendo_accion":
+{ Args: { "p_kind": string,"p_tx": string }; Returns: boolean
                            },
 "es_mi_ficha_profesional":
 { Args: { "p_professional_id": string }; Returns: boolean
@@ -2959,7 +3477,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "access_grant_status": "pending"|"approved"|"denied"|"revoked","access_grant_type": "notes_pseudonymous"|"notes_identified","access_reason_category": "auditoria_calidad"|"soporte_tecnico","ai_suggestion_status": "success"|"timeout"|"parse_failed"|"provider_error","alegra_invoice_state": "pendiente"|"borrador"|"emitida"|"fallida"|"emitida_sin_sellar"|"rechazada","app_role": "admin"|"direccion"|"soporte"|"obbia"|"professional","assignment_status": "active"|"completed"|"breach","bank_account_type": "ahorros"|"corriente","bis_condition_field_type": "boolean"|"number"|"text","bis_condition_kind": "calidad"|"contraindicacion"|"advertencia"|"validez","bis_condition_scope": "general"|"mujeres","bis_value_origin": "medido"|"derivado"|"tecleado","consent_type_enum": "servicio"|"datos_sensibles"|"internacional_ia"|"investigacion"|"comunicaciones_continuidad"|"comunicaciones_comerciales"|"representante_legal"|"asentimiento_menor"|"aceptacion_medio_electronico","contraindication_source": "descarte_nutraceutico"|"observacion_clinica","correction_trigger_type": "correccion_profesional"|"recalibracion_ciencia"|"completar_profesional","device_status": "available"|"in_use"|"maintenance"|"out_of_service"|"lost"|"retired","document_type": "CC"|"CE"|"TI"|"PA"|"NIT","evaluation_status": "awaiting_survey"|"draft"|"in_progress"|"completed"|"abandoned","evaluation_type": "inicial"|"seguimiento","field_data_class": "identifier"|"quasi_identifier"|"clinical","indicator_classification": "normal"|"riesgo"|"critico","model_status": "draft"|"active"|"retired","nutraceutical_availability": "en_consultorio"|"solo_tienda"|"no_disponible","nutraceutical_decision": "si"|"no"|"pendiente","nutraceutical_decision_reason": "profesional_clinica"|"profesional_no_clinica"|"costo"|"lo_piensa"|"ya_toma_otros"|"otra","nutraceutical_faltante_charge": "sin_cargo"|"pendiente_liquidacion"|"liquidado","nutraceutical_faltante_justification": "hurto_denuncia"|"transporte_documentado"|"venta_no_registrada"|"devolucion_guia","nutraceutical_faltante_status": "reportado"|"en_revision"|"justificado"|"venta_no_registrada"|"injustificado_pendiente"|"injustificado","nutraceutical_movement_type": "remesa"|"recepcion"|"despacho"|"conciliacion"|"devolucion"|"venta"|"devolucion_paciente"|"reincorporacion"|"baja","nutraceutical_ownership": "propio"|"tercero","patient_status": "active"|"inactive","payment_method": "wompi"|"efectivo"|"transferencia"|"cobrado_por_el_integrante","professional_document_type": "anexo3","professional_profession": "medico"|"psicologo"|"deportologo"|"nutricionista","profile_status": "active"|"inactive","referral_target": "medico"|"psicologo"|"deportologo"|"nutricionista"|"otro","report_status": "draft"|"approved"|"sent","tax_person_type": "natural"|"juridica","transaction_status": "pending"|"paid"|"failed"|"refunded","treatment_status": "draft"|"approved"
+            "access_grant_status": "pending"|"approved"|"denied"|"revoked","access_grant_type": "notes_pseudonymous"|"notes_identified","access_reason_category": "auditoria_calidad"|"soporte_tecnico","ai_suggestion_status": "success"|"timeout"|"parse_failed"|"provider_error","alegra_invoice_state": "pendiente"|"borrador"|"emitida"|"fallida"|"emitida_sin_sellar"|"rechazada","app_role": "admin"|"direccion"|"soporte"|"obbia"|"professional","assignment_status": "active"|"completed"|"breach","bank_account_type": "ahorros"|"corriente","bis_condition_field_type": "boolean"|"number"|"text","bis_condition_kind": "calidad"|"contraindicacion"|"advertencia"|"validez","bis_condition_scope": "general"|"mujeres","bis_value_origin": "medido"|"derivado"|"tecleado","consent_type_enum": "servicio"|"datos_sensibles"|"internacional_ia"|"investigacion"|"comunicaciones_continuidad"|"comunicaciones_comerciales"|"representante_legal"|"asentimiento_menor"|"aceptacion_medio_electronico","contraindication_source": "descarte_nutraceutico"|"observacion_clinica","correction_trigger_type": "correccion_profesional"|"recalibracion_ciencia"|"completar_profesional"|"medicion_de_otro_paciente","device_status": "available"|"in_use"|"maintenance"|"out_of_service"|"lost"|"retired","document_type": "CC"|"CE"|"TI"|"PA"|"NIT","evaluation_status": "awaiting_survey"|"draft"|"in_progress"|"completed"|"abandoned","evaluation_type": "inicial"|"seguimiento","field_data_class": "identifier"|"quasi_identifier"|"clinical","indicator_classification": "normal"|"riesgo"|"critico","model_status": "draft"|"active"|"retired","nutraceutical_availability": "en_consultorio"|"solo_tienda"|"no_disponible","nutraceutical_decision": "si"|"no"|"pendiente","nutraceutical_decision_reason": "profesional_clinica"|"profesional_no_clinica"|"costo"|"lo_piensa"|"ya_toma_otros"|"otra","nutraceutical_faltante_charge": "sin_cargo"|"pendiente_liquidacion"|"liquidado","nutraceutical_faltante_justification": "hurto_denuncia"|"transporte_documentado"|"venta_no_registrada"|"devolucion_guia","nutraceutical_faltante_status": "reportado"|"en_revision"|"justificado"|"venta_no_registrada"|"injustificado_pendiente"|"injustificado","nutraceutical_movement_type": "remesa"|"recepcion"|"despacho"|"conciliacion"|"devolucion"|"venta"|"devolucion_paciente"|"reincorporacion"|"baja","nutraceutical_ownership": "propio"|"tercero","patient_status": "active"|"inactive","payment_method": "wompi"|"efectivo"|"transferencia"|"cobrado_por_el_integrante","professional_document_type": "anexo3","professional_profession": "medico"|"psicologo"|"deportologo"|"nutricionista","profile_status": "active"|"inactive","referral_target": "medico"|"psicologo"|"deportologo"|"nutricionista"|"otro","report_status": "draft"|"approved"|"sent","tax_person_type": "natural"|"juridica","transaction_status": "pending"|"paid"|"failed"|"refunded","treatment_status": "draft"|"approved"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -3079,7 +3597,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "access_grant_status": ["pending", "approved", "denied", "revoked"],"access_grant_type": ["notes_pseudonymous", "notes_identified"],"access_reason_category": ["auditoria_calidad", "soporte_tecnico"],"ai_suggestion_status": ["success", "timeout", "parse_failed", "provider_error"],"alegra_invoice_state": ["pendiente", "borrador", "emitida", "fallida", "emitida_sin_sellar", "rechazada"],"app_role": ["admin", "direccion", "soporte", "obbia", "professional"],"assignment_status": ["active", "completed", "breach"],"bank_account_type": ["ahorros", "corriente"],"bis_condition_field_type": ["boolean", "number", "text"],"bis_condition_kind": ["calidad", "contraindicacion", "advertencia", "validez"],"bis_condition_scope": ["general", "mujeres"],"bis_value_origin": ["medido", "derivado", "tecleado"],"consent_type_enum": ["servicio", "datos_sensibles", "internacional_ia", "investigacion", "comunicaciones_continuidad", "comunicaciones_comerciales", "representante_legal", "asentimiento_menor", "aceptacion_medio_electronico"],"contraindication_source": ["descarte_nutraceutico", "observacion_clinica"],"correction_trigger_type": ["correccion_profesional", "recalibracion_ciencia", "completar_profesional"],"device_status": ["available", "in_use", "maintenance", "out_of_service", "lost", "retired"],"document_type": ["CC", "CE", "TI", "PA", "NIT"],"evaluation_status": ["awaiting_survey", "draft", "in_progress", "completed", "abandoned"],"evaluation_type": ["inicial", "seguimiento"],"field_data_class": ["identifier", "quasi_identifier", "clinical"],"indicator_classification": ["normal", "riesgo", "critico"],"model_status": ["draft", "active", "retired"],"nutraceutical_availability": ["en_consultorio", "solo_tienda", "no_disponible"],"nutraceutical_decision": ["si", "no", "pendiente"],"nutraceutical_decision_reason": ["profesional_clinica", "profesional_no_clinica", "costo", "lo_piensa", "ya_toma_otros", "otra"],"nutraceutical_faltante_charge": ["sin_cargo", "pendiente_liquidacion", "liquidado"],"nutraceutical_faltante_justification": ["hurto_denuncia", "transporte_documentado", "venta_no_registrada", "devolucion_guia"],"nutraceutical_faltante_status": ["reportado", "en_revision", "justificado", "venta_no_registrada", "injustificado_pendiente", "injustificado"],"nutraceutical_movement_type": ["remesa", "recepcion", "despacho", "conciliacion", "devolucion", "venta", "devolucion_paciente", "reincorporacion", "baja"],"nutraceutical_ownership": ["propio", "tercero"],"patient_status": ["active", "inactive"],"payment_method": ["wompi", "efectivo", "transferencia", "cobrado_por_el_integrante"],"professional_document_type": ["anexo3"],"professional_profession": ["medico", "psicologo", "deportologo", "nutricionista"],"profile_status": ["active", "inactive"],"referral_target": ["medico", "psicologo", "deportologo", "nutricionista", "otro"],"report_status": ["draft", "approved", "sent"],"tax_person_type": ["natural", "juridica"],"transaction_status": ["pending", "paid", "failed", "refunded"],"treatment_status": ["draft", "approved"]
+            "access_grant_status": ["pending", "approved", "denied", "revoked"],"access_grant_type": ["notes_pseudonymous", "notes_identified"],"access_reason_category": ["auditoria_calidad", "soporte_tecnico"],"ai_suggestion_status": ["success", "timeout", "parse_failed", "provider_error"],"alegra_invoice_state": ["pendiente", "borrador", "emitida", "fallida", "emitida_sin_sellar", "rechazada"],"app_role": ["admin", "direccion", "soporte", "obbia", "professional"],"assignment_status": ["active", "completed", "breach"],"bank_account_type": ["ahorros", "corriente"],"bis_condition_field_type": ["boolean", "number", "text"],"bis_condition_kind": ["calidad", "contraindicacion", "advertencia", "validez"],"bis_condition_scope": ["general", "mujeres"],"bis_value_origin": ["medido", "derivado", "tecleado"],"consent_type_enum": ["servicio", "datos_sensibles", "internacional_ia", "investigacion", "comunicaciones_continuidad", "comunicaciones_comerciales", "representante_legal", "asentimiento_menor", "aceptacion_medio_electronico"],"contraindication_source": ["descarte_nutraceutico", "observacion_clinica"],"correction_trigger_type": ["correccion_profesional", "recalibracion_ciencia", "completar_profesional", "medicion_de_otro_paciente"],"device_status": ["available", "in_use", "maintenance", "out_of_service", "lost", "retired"],"document_type": ["CC", "CE", "TI", "PA", "NIT"],"evaluation_status": ["awaiting_survey", "draft", "in_progress", "completed", "abandoned"],"evaluation_type": ["inicial", "seguimiento"],"field_data_class": ["identifier", "quasi_identifier", "clinical"],"indicator_classification": ["normal", "riesgo", "critico"],"model_status": ["draft", "active", "retired"],"nutraceutical_availability": ["en_consultorio", "solo_tienda", "no_disponible"],"nutraceutical_decision": ["si", "no", "pendiente"],"nutraceutical_decision_reason": ["profesional_clinica", "profesional_no_clinica", "costo", "lo_piensa", "ya_toma_otros", "otra"],"nutraceutical_faltante_charge": ["sin_cargo", "pendiente_liquidacion", "liquidado"],"nutraceutical_faltante_justification": ["hurto_denuncia", "transporte_documentado", "venta_no_registrada", "devolucion_guia"],"nutraceutical_faltante_status": ["reportado", "en_revision", "justificado", "venta_no_registrada", "injustificado_pendiente", "injustificado"],"nutraceutical_movement_type": ["remesa", "recepcion", "despacho", "conciliacion", "devolucion", "venta", "devolucion_paciente", "reincorporacion", "baja"],"nutraceutical_ownership": ["propio", "tercero"],"patient_status": ["active", "inactive"],"payment_method": ["wompi", "efectivo", "transferencia", "cobrado_por_el_integrante"],"professional_document_type": ["anexo3"],"professional_profession": ["medico", "psicologo", "deportologo", "nutricionista"],"profile_status": ["active", "inactive"],"referral_target": ["medico", "psicologo", "deportologo", "nutricionista", "otro"],"report_status": ["draft", "approved", "sent"],"tax_person_type": ["natural", "juridica"],"transaction_status": ["pending", "paid", "failed", "refunded"],"treatment_status": ["draft", "approved"]
           }
         }
 } as const

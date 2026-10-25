@@ -124,10 +124,13 @@ describe("las cifras no cuentan a los pacientes de prueba", () => {
 
 describe("la lista del profesional SI los muestra, marcados", () => {
   it("el lector trae la marca y la propuesta", () => {
+    // DESDE LA 0228 el lector pide las dos columnas a la vista y la fila se arma en el modulo puro.
     const src = leer("src/modules/patients/data/patients-list-reader.ts");
-    expect(src).toContain("cuenta_como_de_prueba, test_proposed_at");
-    expect(src).toContain("esDePrueba:");
-    expect(src).toContain("propuestoDePrueba:");
+    expect(src).toContain("cuenta_como_de_prueba");
+    expect(src).toContain("test_proposed_at");
+    const mapeo = leer("src/modules/patients/roster-fila.ts");
+    expect(mapeo).toContain("esDePrueba:");
+    expect(mapeo).toContain("propuestoDePrueba:");
   });
 
   it("y NO los filtra, que es lo que la haria inutil para probar", () => {

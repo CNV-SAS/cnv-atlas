@@ -49,7 +49,11 @@ describe("la fecha de una evaluacion sale de la MEDICION, no de created_at", () 
 
   it("y los tres criterios coinciden: medicion primero, created_at solo como caida", () => {
     // La ficha del paciente ya lo hacia asi antes del arreglo; se fija para que los tres no se separen.
-    const roster = readFileSync("src/modules/patients/data/patients-list-reader.ts", "utf8");
-    expect(roster).toContain("bis_measurements?.[0]?.measurement_date ?? e.created_at");
+    // DESDE LA 0228 el criterio se parte en dos mitades, y las dos se verifican: la vista trae la fecha
+    // de la MEDICION (no la de creacion del registro), y el mapeo usa `created_at` SOLO como caida.
+    const sql = readFileSync("drizzle/0228_el_roster_en_una_fila_por_paciente.sql", "utf8");
+    expect(sql).toMatch(/'fechaDeMedicion', \(\s*SELECT m\."measurement_date"/);
+    const mapeo = readFileSync("src/modules/patients/roster-fila.ts", "utf8");
+    expect(mapeo).toContain("e.fechaDeMedicion ?? e.createdAt");
   });
 });

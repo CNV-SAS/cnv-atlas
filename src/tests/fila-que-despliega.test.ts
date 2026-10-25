@@ -16,25 +16,36 @@ const FILA = readFileSync("src/components/shared/fila-lista.tsx", "utf8");
 const LISTA = readFileSync("src/modules/patients/components/lista-pacientes.tsx", "utf8");
 const ACCIONES = readFileSync("src/modules/patients/components/acciones-paciente.tsx", "utf8");
 const READER = readFileSync("src/modules/patients/data/patients-list-reader.ts", "utf8");
+// EL MAPEO DE LA FILA SALIO DEL LECTOR EN LA 0228 (una fila por paciente en vez de ocho embeds): la
+// numeracion del seguimiento y el recorte de las tres ultimas viven ahora en el modulo puro, que es donde
+// se pueden probar corriendolos y no leyendolos.
+const MAPEO = readFileSync("src/modules/patients/roster-fila.ts", "utf8");
+const VISTA_SQL = readFileSync("drizzle/0228_el_roster_en_una_fila_por_paciente.sql", "utf8");
 
 describe("desplegar no cuesta una consulta", () => {
   it("las evaluaciones vienen en el MISMO embed que ya se hacía", () => {
     // Era lo que había que verificar antes de construirlo: el lector ya embebía las evaluaciones (para
     // contarlas y para la columna de pendientes), y solo les faltaban el id y el tipo. Si hubiera que
     // pedirlas al desplegar, esto sería otra cosa: una llamada por fila sobre 73 pacientes.
-    expect(READER).toContain("evaluations(id, type, superseded_at");
+    // DESDE LA 0228 lo que trae las evaluaciones es la vista, no el embed: llegan ya agregadas en la
+    // MISMA fila del paciente, con su id y su tipo. La exigencia no cambia (no una consulta por fila al
+    // desplegar); cambia donde se cumple.
+    expect(VISTA_SQL).toContain("'evaluationId', e.");
+    expect(VISTA_SQL).toContain("'type', e.");
+    expect(READER).toContain("pacientes_del_roster");
+    expect(READER).toContain("evaluaciones");
   });
 
   it("y el rótulo del seguimiento se numera donde están todas juntas, no en la vista", () => {
     // "Seguimiento 2" depende del ORDEN entre las evaluaciones del paciente. Calcularlo fila por fila en
     // la vista daría el número de la fila, no el del seguimiento.
-    expect(READER).toContain("`Seguimiento ${++n}`");
+    expect(MAPEO).toContain("`Seguimiento ${++n}`");
     expect(LISTA, "la vista empezó a numerar los seguimientos").not.toContain("Seguimiento ${");
   });
 
   it("son las TRES últimas, de la más reciente a la más antigua", () => {
     // Es el orden en que se buscan: quien despliega viene a por la última.
-    expect(READER).toContain(".slice(-3).reverse()");
+    expect(MAPEO).toContain(".slice(-3).reverse()");
   });
 });
 

@@ -16,8 +16,9 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 const VISTA = sinComentarios(
   readFileSync("src/modules/patients/components/lista-pacientes.tsx", "utf8"),
 );
+// EL ORDEN BASE salio del lector en la 0228: vive en `ordenarElRoster`, en el modulo puro.
 const READER = sinComentarios(
-  readFileSync("src/modules/patients/data/patients-list-reader.ts", "utf8"),
+  readFileSync("src/modules/patients/roster-fila.ts", "utf8"),
 );
 
 describe("se ordena por lo que se ve", () => {

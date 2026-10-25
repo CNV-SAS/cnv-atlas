@@ -91,8 +91,9 @@ export async function medicionDeOtroPacienteAction(
   );
   if (!result.ok) return { error: result.error.message, success: null, warning: null };
 
-  revalidatePath("/ani-bis-e");
-  revalidatePath("/pacientes");
+  // SIN `revalidatePath` A PROPOSITO: la pantalla refresca (`useFormToastAndRefresh`), y los dos juntos
+  // montan los segmentos dos veces, asi que la pagina salta al inicio dos veces y el formulario puede
+  // desmontarse antes de que se vea el aviso. Candado: `refresco-una-sola-vez.test.ts`.
   return {
     error: null,
     success:
