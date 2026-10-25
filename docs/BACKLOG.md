@@ -125,6 +125,27 @@ paciente con los EXISTS, y las reglas siguen en TS. Demuéstrala inerte."*
 
 ---
 
+## v11 CERRADO · v12 REVISADO (2026-10-26) · DECIDE GILDARDO LO CIENTIFICO
+
+**El cotejo de CNVResearch pasa a v12** (decidido el 2026-10-26: ahi el boton funciona; Gildardo arregla
+`_sintMacro` y el React #310 en su HTML).
+
+**El informe punto por punto esta en `docs/entregas/REVISION_ATLAS_V12_2026-10-26.md`.** Lo que de verdad
+decide el orden de trabajo:
+
+| | |
+|---|---|
+| **Lo que se puede construir sin esperar a nadie** | Las ONCE identidades imposibles del QC biologico (no dependen de ningun umbral); el borrado logico del paciente; soltar la cifra manual de calorias al cambiar el peso meta (defecto nuestro); y mover las condiciones de la toma a Antropometria si Santiago quiere |
+| **Los percentiles del QC: HECHOS** | `scripts/PERCENTILES_PARA_EL_QC_BIOLOGICO_2026-10-26.mjs`, sobre 352 mediciones (cohorte limpia: sin prueba, sin reemplazadas ni retiradas, sin huella repetida). **Sus limites provisionales ya rechazarian CINCO mediciones reales**, una de ellas la capacitancia de 16,22 nF que ya dejo a una paciente sin diagnostico. Y hay dos grasas NEGATIVAS, que su lista de imposibles no atrapa |
+| **El cambio grande es el motor calorico** | Harris-Benedict sobre peso meta + 10 % de termogenesis: **+301 kcal/dia** sobre lo que Atlas prescribe hoy, en su propio ejemplo verificado. Mueve a toda la cohorte, asi que es bump de `ENGINE_VERSION` con golden tests. **Y serian DOS Harris-Benedict en el sistema**: Atlas tiene la de 1919 (respaldo del basal medido, portada el 2026-09-02) y v12 trae la de 1984 |
+| **Eliminar perfil: el borrado duro YA esta cerrado** | No por nosotros: `DATA_GOVERNANCE.md` dice que el derecho al olvido se atiende por anonimizacion, no destruyendo evidencia clinica, y la historia clinica se conserva 15 anos. Asi que el borrado logico que el pidio como paso intermedio **es la respuesta**. `patients.deleted_at` existe y la filtran OCHO lectores; no la escribe nadie |
+| **Lo que espera su firma** | Los cortes del QC (con la advertencia de metodo); los tres cortes de la Diana; cual Harris-Benedict manda y sobre que se aplica el 10 %; si el recalculo versionado entra con el bump; y el aviso de realimentacion, que en Atlas sale del motor viejo igual que en su HTML |
+
+**La v7 queda EN PAUSA** hasta que llegue su respuesta final y el Excel de referencia (2026-10-26). No se
+construye nada de v7, ni el recalculo.
+
+---
+
 ## PENDIENTE (2026-10-24, tarde) · LA EB-BIS v7 Y LO QUE SALIO AL VERIFICARLA · DECIDE GILDARDO LO CIENTIFICO
 
 **El informe completo, con las siete respuestas que Santiago pidió antes de construir, está en
