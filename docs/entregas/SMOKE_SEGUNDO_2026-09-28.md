@@ -1074,6 +1074,30 @@ Dos salidas, y la primera prueba mas sistema:
 produccion no se montan hasta que el smoke termine y todo lo de prueba este marcado. Y ahora hay algo que lo
 verifica, no solo un parrafo.
 
+**4 · EN LOS SMOKES NO SE USAN ARCHIVOS DE PACIENTES REALES** (Gildardo, 2026-10-25). Es una regla, no un
+consejo, y salio de un caso medido:
+
+> El XLSX de un paciente real de Angela (medicion del 24 de septiembre) se importo **primero a un paciente de
+> prueba** ("Paciente Prueba Uno", de Profesional Demo) a las 11:13 de la mañana, y **cinco horas y doce
+> minutos despues** al paciente real que le corresponde. Resultado: la bioimpedancia de una persona real
+> quedo tambien en la historia clinica de un paciente inventado.
+
+**Por que importa aunque el paciente de prueba no cuente en ninguna cifra:** esa copia es un dato de salud de
+una persona real guardado donde no le corresponde, y **ocupa la huella de la medicion**. Desde la 0225 el
+freno compara los cuatro crudos del equipo, asi que la copia de prueba puede frenar al dueño de verdad el dia
+que haya que reimportarle su propio archivo, y el mensaje le diria que ese archivo es de otra persona. Cierto,
+y al reves.
+
+**Que se usa en su lugar.** El archivo del 13 de julio que ya se viene usando: esta en **26 evaluaciones** de
+pacientes de smoke y **nunca fue de un paciente real** (verificado el 2026-10-25: la primera importacion de
+esa huella fue a un paciente de prueba el 9 de septiembre, y ningun paciente real la tiene). Ese es el archivo
+de smoke, y sirve para todo lo que haya que probar.
+
+**Y la consecuencia para la exclusion de investigacion (0230):** una huella repetida saca a las dos
+evaluaciones de la cohorte **solo si las dos son vigentes y de pacientes reales**. La copia de prueba no lo
+es, asi que este caso NO saca al paciente real de la cohorte; lo que hay que hacer es marcar la copia como
+"no es de este paciente" (seccion **4m**).
+
 ### La alternativa, que sigue siendo valida (la recomendacion anterior)
 
 Hay **25 pacientes de prueba**. Una venta a uno de ellos nace marcada sola, al instante, y no requiere
@@ -1087,6 +1111,62 @@ no se mueve ni una unidad.
 
 - Volver a correr el script de arranque. No se puede y no hace falta: el trigger recalcula solo.
 - Mover `fecha_de_arranque`. Es la frontera del periodo y moverla para probar seria mentir sobre el periodo.
+
+---
+
+## 4m · EL ENSAYO DE "LA MEDICION NO ES DE ESTE PACIENTE", QUE ADEMAS ARREGLA EL GRUPO 3
+
+**Gildardo, 2026-10-25:** *"Marca la copia de prueba como huerfana con el mecanismo nuevo"* y *"dime como lo
+prueba Santiago antes con un paciente de prueba"*.
+
+**Las dos cosas son LA MISMA.** La copia de prueba del grupo 3 es el caso perfecto para ensayar el flujo:
+es un paciente de prueba, el archivo de verdad es de otra persona, y marcarla es justo el resultado que hay
+que conseguir. Ensayar con un caso inventado habria sido ensayar otra cosa.
+
+### Lo que pasa (verificado contra produccion el 2026-10-25)
+
+| | |
+|---|---|
+| **La copia de prueba** | "Paciente Prueba Uno", de Profesional Demo. Seguimiento, `in_progress`. Medicion importada el **25-sep a las 11:13** (hora de Colombia) |
+| **El paciente real** | Paciente de Angela. Consulta inicial, `completed`. Misma medicion importada el **25-sep a las 16:25**, cinco horas y doce minutos despues |
+| **La toma fisica** | Una sola, del 24-sep a las 09:28. Las dos filas la llevan igual |
+
+**Asi que la copia de prueba ENTRO PRIMERO.** Lo que paso es claro: se uso el archivo de un paciente real
+para probar una importacion por la mañana, y por la tarde se hizo la importacion de verdad. El dato del
+paciente real **esta bien**; la que contamina es la copia.
+
+### El ensayo, paso a paso
+
+1. Entra con **Profesional Demo** (es la asignada: esto lo hace quien atiende al paciente, no admin).
+2. Abre a **"Paciente Prueba Uno"** y entra al **seguimiento** que tiene la medicion del 24-sep.
+3. Pestaña **Diagnostico** -> subpestaña **Diagnostico Funcional** -> tarjeta **Cierre del diagnostico**
+   -> bloque punteado **"La medicion no es de este paciente"**.
+4. Motivo, por ejemplo: *"Se uso el archivo de un paciente real para probar la importacion el 25 de
+   septiembre; la medicion es de el, no de este paciente de prueba."*
+5. Marca la confirmacion y pulsa **"Retirar la medicion y crear la version nueva"**.
+
+### Las cuatro cosas que hay que mirar despues, en este orden
+
+1. **La version vieja queda reemplazada y su diagnostico sigue legible**, con su firma. No desaparece.
+2. **La version nueva nace sin medicion y su pendiente dice "Montar BIS".** Si dice otra cosa, eso es el
+   hallazgo.
+3. **Las condiciones de la toma vuelven a quedar pendientes de registro**, con la contraindicacion
+   conservada si la habia.
+4. **Y LA QUE IMPORTA, porque es la que nadie va a mirar:** el paciente REAL tiene que poder reimportar su
+   propio archivo. Entra con Angela, abre su consulta y comprueba que el freno ya **no** la bloquea. Antes
+   de la marca, la bloqueaba. Esa es la razon de ser de todo el mecanismo, y es lo unico que no se puede
+   verificar leyendo la pantalla del paciente de prueba.
+
+### Por que esto NO saca al paciente real de la cohorte de investigacion
+
+Porque la exclusion de la 0230 compara **solo entre consultas vigentes de pacientes reales**, y la copia de
+prueba no es ninguna de las dos. Asi que este grupo nunca estuvo sacando al paciente real; lo que habia era
+un dato de salud suyo guardado donde no le corresponde, y la huella ocupada. Las dos cosas las cierra la
+marca.
+
+**La regla que sale de aqui esta en la seccion 4j, punto 4:** en los smokes no se usan archivos de pacientes
+reales. Y la guia que Angela va a seguir para sus propios casos esta en
+`docs/entregas/GUIA_LA_MEDICION_NO_ES_DE_ESTE_PACIENTE_2026-10-25.md`.
 
 ---
 
