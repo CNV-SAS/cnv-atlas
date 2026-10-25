@@ -118,6 +118,10 @@ export const correctionTriggerType = pgEnum("correction_trigger_type", [
   "correccion_profesional",
   "recalibracion_ciencia",
   "completar_profesional",
+  // EL CASO 6 (0226): la medicion era de OTRA persona. No se reusa `correccion_profesional` porque esto
+  // no es un dato mal digitado, es un dato de salud de alguien en la historia de otro, y al auditar la
+  // cadena hay que poder contarlo y reportarlo por separado.
+  "medicion_de_otro_paciente",
 ]);
 
 export const transactionStatus = pgEnum("transaction_status", [

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import type { DbTransaction } from "@/db";
 import { bisMeasurements, bisRawValues, clinicalCorrections, evaluations } from "@/db/schema";
@@ -27,12 +27,17 @@ import {
 //      escribir la comparacion en SQL, y entonces habria dos definiciones de "es la misma medicion" capaces
 //      de divergir: la de la huella y la del freno.
 //
-// ═══ LA UNICA EXCEPCION: LA CADENA DE CORRECCION ═══
+// ═══ LAS DOS EXCEPCIONES, Y SOLO ESAS ═══
 //
-// Cuando una evaluacion se corrige, la nueva se queda con una COPIA de la medicion (asi tiene que ser: la
-// toma fisica ocurrio una vez). Esas dos evaluaciones estan unidas en `clinical_corrections`, asi que el
-// freno ignora un choque dentro de esa cadena. Es una excepcion NOMBRADA y verificable, no un permiso
-// general: cualquier otro choque frena.
+//   1. LA CADENA DE CORRECCION. Cuando una evaluacion se corrige, la nueva se queda con una COPIA de la
+//      medicion (asi tiene que ser: la toma fisica ocurrio una vez). Esas dos evaluaciones estan unidas en
+//      `clinical_corrections`, asi que el freno ignora un choque dentro de esa cadena.
+//   2. LA MEDICION QUE CONSTA COMO DE OTRO PACIENTE (0226). Al corregir el caso 6, la toma se queda
+//      colgada de la evaluacion reemplazada y marcada; si siguiera frenando, bloquearia al DUENO DE VERDAD
+//      cuando importe su propio archivo. Era el agujero de la primera version del freno.
+//
+// Las dos son NOMBRADAS y verificables (una relacion y una marca auditada), no un permiso general:
+// cualquier otro choque frena.
 //
 // ═══ LO QUE EL MENSAJE NO PUEDE DECIR ═══
 //
@@ -98,6 +103,14 @@ export async function buscarLaMismaMedicion(
         inArray(bisMeasurements.id, ids),
         inArray(bisRawValues.variableName, VARIABLES_DE_LA_HUELLA),
         sql`${bisMeasurements.evaluationId} <> ${input.evaluationId}`,
+        // LA MEDICION QUE CONSTA COMO DE OTRO PACIENTE NO FRENA (0226). Es la segunda excepcion, y es
+        // la razon de ser de esa marca: cuando se corrige el caso 6, la toma se queda colgada de la
+        // evaluacion reemplazada, y sin esto el freno bloquearia al DUENO DE VERDAD al importar su
+        // propio archivo, diciendole que es de otra persona. Cierto, pero al reves.
+        //
+        // Y no es un permiso general como lo seria ignorar todas las reemplazadas: la marca la puso el
+        // profesional asignado, con motivo, en una correccion auditada y write-once.
+        isNull(bisMeasurements.noEsDelPacienteAt),
       ),
     );
 
