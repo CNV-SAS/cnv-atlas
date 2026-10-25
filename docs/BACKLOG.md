@@ -48,13 +48,13 @@ trayectoria sellada.** Ningún paciente recibió un informe de esas consultas po
 | pendiente | de quién es la decisión | estado |
 |---|---|---|
 | **El freno del importador** por huella de los crudos, en los dos caminos | nuestra | **CONSTRUIDO.** `huella-de-la-medicion.ts` + `medicion-duplicada-reader.ts`, candado `la-misma-medicion-no-entra-dos-veces.test.ts`, migración 0225 (solo el índice) |
-| **Las tres piezas que le faltan al flujo de corrección** para resolver el caso 6 del `PLAN_FLUJO_CORRECCION` ("Biody del paciente equivocado"): un `trigger_type` propio, corregir SIN arrastrar la medición, y marcar la medición huérfana | Santiago da la orden, es nuestro | sin construir, **dimensionado en el informe** |
+| **Las tres piezas del flujo de corrección** para el caso 6 del `PLAN_FLUJO_CORRECCION` ("Biody del paciente equivocado") | Santiago dio la orden el 2026-10-24 | **CONSTRUIDAS** (migración 0226): el `trigger_type` `medicion_de_otro_paciente`, `corregir-medicion-de-otro-paciente.ts` (la versión nueva nace sin BIS y su puerta dice "Montar BIS"), y la marca `no_es_del_paciente_at` que deja al dueño de verdad importar su archivo. Probado contra base real: `la-medicion-de-otro-paciente-db.test.ts` |
 | **De quién es cada medición** en los 10 grupos | **Angela** (quien atendió). La `Edad` del equipo resuelve 3 de los 4 cruzados | sin hacer |
 | **El grupo 12 no cierra con los datos**: a uno de los dos pacientes le falta la fecha de nacimiento | Santiago (completarla en la ficha) o Angela | sin hacer |
 | **Que la v7 no recalcule esas evaluaciones** | nuestra | sin construir. **No hace falta una lista**: el recálculo hace la misma pregunta que el freno (¿la huella choca con otra evaluación fuera de su cadena de corrección?), así que se mantiene solo |
 | **Excluirlas de `evaluaciones_para_investigacion`** mientras no se corrijan | **Gildardo**: cambia lo que la vista significa | sin construir, recomendado |
 | **La alerta de desfase de edad** al importar (Atlas contra la `Edad` del equipo) | nuestra | sin construir. Habría destapado los 10 grupos el día que ocurrieron |
-| **Marcar como de prueba las cuentas "Profesional Prueba" y "Profesional demo 2"** | Santiago, con el botón que ya existe | sin hacer. Hoy sus pacientes cuentan como reales en todas las cifras |
+| **Marcar como de prueba las cuentas "Profesional Prueba" y "Profesional demo 2"** | Santiago, con el botón que ya existe | **AL CERRAR EL SMOKE, no antes** (decisión de Gildardo, 2026-10-24): marcarlas ahora saca de las cifras los pacientes con los que todavía se está probando. Hasta entonces sus pacientes cuentan como reales |
 
 ---
 
@@ -86,15 +86,37 @@ con service role contra más de 8 s con `authenticated`.)
 | **B · Las cifras de la fila en SQL** | `pendienteDelPaciente`, `canCreateEvaluation` y `motivoDeRegularizacion` tendrían una **segunda definición en SQL**. Es justo lo que este repositorio evita, y el hazard 4 de CLAUDE.md es el caso de dos pantallas leyendo fuentes distintas | mucho después, pero sigue sin techo |
 | **C · Mover la AGREGACIÓN a SQL y dejar la REGLA en TS** · **lo que recomiendo** | Una vista que devuelva, por paciente, **una sola fila** con sus evaluaciones vigentes ya resumidas (id, status, `tieneBis`, `tieneDiagnostico`, estado del informe, `importada`, `tieneCondiciones`) y sus autorizaciones vigentes como arreglo. Son `EXISTS` y agregados, **no reglas clínicas**: las tres funciones de TS siguen decidiendo, sin copia. Las filas que cruzan la RLS bajan de **4.598 a 553** (8 veces menos), que es más de lo que ganó la 0222. Cuesta una migración y reescribir el mapeo del lector; y se puede **demostrar inerte** comparando las cifras de los 553 pacientes antes y después | el listado liviano aguanta a ~10.000 pacientes |
 
-**No construí ninguna porque la decisión es suya y porque la respuesta no era "paginar y listo".** Mi
-recomendación es **C**: es la única que acota la consulta sin escribir dos veces una regla clínica, y la
-única que se puede demostrar que no cambia ninguna cifra.
+**GILDARDO ELIGIO LA C Y ESTA CONSTRUIDA** (2026-10-24, migración 0228): *"La vista de una fila por
+paciente con los EXISTS, y las reglas siguen en TS. Demuéstrala inerte."*
+
+- La vista `pacientes_del_roster` responde HECHOS (`exists` de medición, condiciones y diagnóstico, el
+  estado del reporte, los consentimientos vigentes agregados). Las REGLAS siguen en TypeScript, en
+  `modules/patients/roster-fila.ts`, en una sola escritura.
+- **Demostrada inerte**, y el mapeo salió a un módulo puro justo para poder demostrarlo:
+  `el-roster-por-la-vista-no-cambia-ninguna-cifra-db.test.ts` arma la misma fila por los DOS caminos (la
+  cadena de embeds, conservada verbatim, y la vista) con la MISMA función, y compara campo por campo.
+- Medido con PostgREST sobre los 143 pacientes de la base local: **144 ms y 100 KB** por embeds contra
+  **37 ms y 86 KB** por la vista. La medición de producción se hace cuando la migración esté aplicada.
+- Y probado que `security_invoker` no abre ninguna puerta: el profesional con más pacientes ve por la
+  vista exactamente los que tiene asignados, no los 143.
+- **Y LA PRUEBA DE INERCIA ENCONTRO UN DEFECTO QUE LLEVABA AHI DESDE SIEMPRE.**
+  `evaluation_bis_intake` tiene un UNIQUE sobre `evaluation_id`, así que PostgREST la devolvía como
+  **objeto** y no como arreglo: `(e.evaluation_bis_intake ?? []).length > 0` es `undefined > 0`,
+  **siempre false**. El listado y el tablero no podían decir nunca que las condiciones de la toma
+  estaban registradas, y a quien ya las había registrado le seguían pidiendo *"Registrar condiciones de
+  la toma"* en vez de *"Generar diagnóstico"*. El candado `pendiente-importada` exigía esa línea
+  literal, así que mantenía el defecto congelado. **El conteo del tablero no se mueve** (las dos acciones
+  son un pendiente), y eso lo exige la prueba.
+- El tablero pasa a la misma vista: era la misma cadena de embeds, con el mismo riesgo de timeout en la
+  pantalla de entrada. **Su criterio de autorización se queda tal cual** (`NECESARIAS` a mano, una
+  segunda escritura de la regla del consentimiento): unificarlo con la policy MUEVE la cifra del tablero
+  y es otra decisión, que no se mete dentro de un arreglo de rendimiento.
 
 | lo demás de esta pantalla | estado |
 |---|---|
-| **Abrir `research_datasets.anonymization_level` a `pseudonymized`** | Recomendado, sin construir. La tabla tiene **0 filas**, así que hoy es gratis |
+| **Abrir `research_datasets.anonymization_level` a `pseudonymized`** | **HECHO** el 2026-10-24 (migración 0227): vocabulario cerrado con CHECK (`aggregate` / `pseudonymized` / `anonymized`) y el nivel se DERIVA de lo que el export quita (`nivel-de-anonimizacion.ts`), no se teclea |
 | **El ICN, en qué documento se imprime** | Propuesto: la historia clínica, no el plan del paciente (`REVISION_ATLAS_V11_2026-10-24.md`, V11-2). **Decide Gildardo** |
-| **El botón de impresión global** | Dimensionado (V11-3): el botón es pequeño, marcar los paneles es mediano, y **que lo impreso se lea como un documento es el trabajo de verdad**. Recomendación: panel por panel |
+| **El botón de impresión** | **PRIMER PANEL CONSTRUIDO** el 2026-10-24 (el de Nutricionista, que es el que Santiago nombró): el taller queda `no-print` y lo imprimible es una hoja aparte con los mismos datos en forma de documento (`hoja-del-protocolo.tsx`). Apagado mientras haya cambios sin guardar, porque la hoja se arma con lo guardado. Faltan Antropometría, Encuesta y Rutas, y cada uno cuesta su pasada de documento |
 | **Decirle a Gildardo del React #310 de su CNVResearch** | Es su archivo y su fallo |
 
 ---
@@ -144,10 +166,10 @@ NO**, porque "pendiente" es un estado de la EB-BIS y vive dentro de la función 
 
 | pendiente | estado |
 |---|---|
-| **Acotar la consulta del roster de `/pacientes`** | La 0222 quita el coste de la RLS por fila (el admin ya no paga la comprobación de profesional en 4.000 filas) y la pantalla ya no revienta si la base cancela. **Pero una lista que crece sin techo acaba volviendo a chocar con el límite.** Lo de fondo es que las cifras de la fila no salgan de embeds, y eso choca con que la lógica vive en TS a propósito (`pendienteDelPaciente`, `canCreateEvaluation`): llevarla a SQL sería la segunda copia que esta base de código evita. **Hay que decidirlo, no es un detalle de implementación.** |
-| **Abrir `research_datasets.anonymization_level` a `pseudonymized`** | Recomendado, sin construir. La tabla tiene **0 filas**, así que hoy es gratis. Hoy el único rótulo disponible para el dataset que Gildardo quiere es `anonymized`, que es la única afirmación que su propia nota advierte que no se puede hacer. |
+| **Acotar la consulta del roster de `/pacientes`** | **RESUELTO** el 2026-10-24 por la salida C (migración 0228), que era justo lo que había que decidir: la AGREGACIÓN baja a SQL (una fila por paciente, con `exists`) y las REGLAS se quedan en TS, sin la segunda copia que esta base de código evita. Demostrada inerte campo por campo, y de paso destapó que `tieneCondicionesBis` era siempre `false` por un embed to-one. Ver la entrada de la noche. |
+| **Abrir `research_datasets.anonymization_level` a `pseudonymized`** | **HECHO** el 2026-10-24 (0227). Era el caso que lo pedía: el único rótulo disponible para el dataset que Gildardo quiere era `anonymized`, que es justo la afirmación que su propia nota advierte que no se puede hacer. Ahora el nivel se deriva de lo que el export quita, y el panel dice que un export fila a fila de la vista sale **seudonimizado** porque lleva `patient_id`. |
 | **El ICN, en qué documento se imprime** | Propuesto (la historia clínica, no el plan del paciente, con las tres razones). **Decide Gildardo:** el documento es suyo. |
-| **El botón de impresión global** | Dimensionado. La maquinaria existe (`imprimirHoja` más `.imprimible` más el candado). Lo que cuesta es que cada panel se lea como un documento al imprimirlo, no el botón. Recomendación: panel por panel. |
+| **El botón de impresión global** | **PRIMER PANEL CONSTRUIDO** el 2026-10-24: el de Nutricionista. El taller queda `no-print` y lo imprimible es una hoja aparte en forma de documento. Faltan Antropometría, Encuesta y Rutas: cada uno cuesta su pasada de documento, que es el trabajo de verdad. |
 | **Decirle a Gildardo del React #310 de su CNVResearch** | Es su archivo y su fallo; arreglarlo en una copia local haría que el cotejo se hiciera contra una pantalla que no es la suya. |
 
 ---
