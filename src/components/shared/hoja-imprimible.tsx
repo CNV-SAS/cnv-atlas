@@ -1,10 +1,8 @@
 "use client";
 
-import { Printer } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { imprimirHoja } from "@/components/shared/imprimir-hoja";
-import { Button } from "@/components/ui/button";
+import { BarraDeImpresion } from "@/components/shared/barra-de-impresion";
 
 // ═══ UNA PANTALLA QUE SE IMPRIME (2026-09-18) ═══
 //
@@ -81,21 +79,36 @@ export function HojaImprimible({
   titulo,
   encabezado,
   etiquetaBoton = "Imprimir / Guardar PDF",
+  queSale,
+  motivoApagado = null,
   children,
 }: {
   titulo: string;
   encabezado: EncabezadoDeHoja;
   etiquetaBoton?: string;
+  /**
+   * QUE SALE EN EL PAPEL, en una linea. Obligatorio desde el 2026-10-25, cuando el boton paso a estar en
+   * todas las subpestañas: con ocho botones iguales en ocho pantallas, el unico que distingue uno de otro
+   * es lo que dice que imprime. Sin esta linea, "Imprimir" en la pestaña de Encuesta y "Imprimir" en la de
+   * Composicion se leen igual, y quien pulsa no sabe que va a salir.
+   */
+  queSale: string;
+  /** Por que no se puede imprimir ahora (apaga el boton y se dice en su rotulo). Ver `BarraDeImpresion`. */
+  motivoApagado?: string | null;
   children: ReactNode;
 }) {
   return (
     <div className="imprimible flex flex-col gap-3">
-      <div className="no-print flex justify-end">
-        <Button type="button" variant="outline" size="sm" onClick={(e) => imprimirHoja(e.currentTarget)}>
-          <Printer className="size-4" aria-hidden />
-          {etiquetaBoton}
-        </Button>
-      </div>
+      {/* ARRIBA, Y EL MISMO BLOQUE EN TODAS (Gildardo, 2026-10-25). Antes era un boton suelto alineado a
+          la derecha, sin decir que imprimia; ahora es el bloque compartido, que es como "igual en todas"
+          deja de depender de que alguien lo repita bien. Y va DENTRO de la hoja a proposito: el boton sube
+          buscando su `.imprimible` para marcarla. */}
+      <BarraDeImpresion
+        titulo={titulo}
+        descripcion={queSale}
+        etiqueta={etiquetaBoton}
+        motivoApagado={motivoApagado}
+      />
 
       <div className="solo-impresion flex-col">
         <EncabezadoImpreso titulo={titulo} encabezado={encabezado} />

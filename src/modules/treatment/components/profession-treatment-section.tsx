@@ -17,6 +17,8 @@ import { HojaDelProtocolo } from "./hoja-del-protocolo";
 import { TreatmentPanel } from "./treatment-panel";
 import type { EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
 
+import { SubpestanaDelProfesional } from "./subpestana-del-profesional";
+
 // B1 (T2b): area de tratamiento POR PROFESION. La parte comun (estado del paciente + rutas de atencion
 // + remisiones) va aparte, arriba, siempre visible (la ensambla la pagina); aqui va SOLO la seccion de
 // la especialidad. NO hay barra de subpestanas a proposito: cada profesional ve UNA sola seccion (la
@@ -231,12 +233,20 @@ async function Panel({
   //
   // SIN ENCABEZADO NO SE IMPRIME. Una hoja clinica que no dice de quien es ni quien la firma no es un
   // documento, es un volante; antes que emitir eso, no se ofrece el boton.
+  // LA BARRA DE IMPRESION VA ARRIBA, no en la cabecera de la tarjeta de la prescripcion, que es donde
+  // estaba y donde Santiago no la encontro (Gildardo, 2026-10-25). El porque completo, y por que hizo
+  // falta un envoltorio para conservar la guarda de "sin guardar", esta en `SubpestanaDelProfesional`.
   return (
-    <div className={encabezado ? "imprimible flex flex-col gap-6" : "flex flex-col gap-6"}>
-      {encabezado ? (
-        <HojaDelProtocolo protocol={protocol} prescripcion={prescripcion} encabezado={encabezado} />
-      ) : null}
-      <div className={encabezado ? "no-print flex flex-col gap-6" : "flex flex-col gap-6"}>
+    <SubpestanaDelProfesional
+      etiquetaBoton="Imprimir la prescripción"
+      queSale="La prescripción nutricional como documento para la historia clínica: objetivo, cadena calórica, macros, lo que fijó el profesional, límites y entregas. Se arma con lo guardado."
+      hoja={
+        encabezado ? (
+          <HojaDelProtocolo protocol={protocol} prescripcion={prescripcion} encabezado={encabezado} />
+        ) : null
+      }
+      taller={
+        <>
         <div>
           <h3 className="text-base font-bold text-foreground">Lectura del diagnóstico</h3>
           <p className="mt-1 max-w-prose text-sm text-muted-foreground">
@@ -252,11 +262,11 @@ async function Panel({
           protocol={protocol}
           prescripcion={prescripcion}
           asesoria={asesoria}
-          sePuedeImprimir={encabezado != null}
         />
         {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }
 
