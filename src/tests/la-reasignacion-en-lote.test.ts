@@ -271,12 +271,8 @@ describe("el lote se preselecciona por dia, y el dia lo pone la base", () => {
     // FIJA EL HECHO, NO LA LINEA: cualquier texto de pantalla que hable de asignacion tiene que decir "a
     // este profesional". Un candado sobre la expresion exacta se vuelve a pasar en cuanto alguien escriba
     // la frase de otra forma (y es como el candado de `pendiente-importada` mantuvo un defecto congelado).
-    const crudo = readFileSync(PANTALLA, "utf8");
-    const sinComentarios = crudo
-      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
-      .replace(/\/\/.*$/gm, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
-    const rotulos = sinComentarios.match(/asignad[oa]s? (?!a este profesional)[^`"'<{]*/g) ?? [];
+    const codigo = sinComentarios(readFileSync(PANTALLA, "utf8"));
+    const rotulos = codigo.match(/asignad[oa]s? (?!a este profesional)[^`"'<{]*/g) ?? [];
     expect(
       rotulos,
       "un rotulo de fecha de asignacion que no dice a quien se confunde con la fecha de la consulta",

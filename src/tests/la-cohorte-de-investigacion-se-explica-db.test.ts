@@ -44,8 +44,14 @@ describe.skipIf(!HAS_DB)("la cohorte de investigacion (BD real)", () => {
     cohorte = await lector.leerCohorteDeInvestigacion();
   });
 
-  it("las cifras del panel son coherentes entre si", () => {
-    expect(cohorte.conAutorizacion + cohorte.sinAutorizacion).toBe(cohorte.vigentes);
+  it("las cifras del panel son coherentes entre si, y CADA vigente cae en un solo cubo", () => {
+    // LOS TRES CUBOS SUMAN EL TOTAL: dentro, fuera por consentimiento, fuera por calidad de dato (0230).
+    // Es el invariante que impide que una exclusion nueva se esconda dentro de otra: antes
+    // `sinAutorizacion` era una RESTA, asi que al empezar a excluir por huella repetida habria absorbido
+    // esas 13 y el rotulo "sin autorizacion" habria dicho que no autorizaron quienes si lo hicieron.
+    expect(
+      cohorte.conAutorizacion + cohorte.sinAutorizacion + cohorte.fueraPorHuellaRepetida.consultas,
+    ).toBe(cohorte.vigentes);
     expect(cohorte.conAutorizacion).toBeLessThanOrEqual(cohorte.vigentes);
     expect(cohorte.conDiagnostico).toBeLessThanOrEqual(cohorte.conAutorizacion);
   });
@@ -90,6 +96,16 @@ describe.skipIf(!HAS_DB)("la cohorte de investigacion (BD real)", () => {
     }
     // Y la alarma solo salta con DOS familias, no con dos grafias.
     expect(cohorte.mezclaFamilias).toBe(cohorte.porFamiliaDelMotor.length > 1);
+  });
+
+  it("la exclusion por huella repetida es un subconjunto de los que SI autorizaron", () => {
+    // Si alguna vez saliera mayor que las vigentes con huella repetida, estaria contando a alguien que
+    // tampoco autorizo, y entonces esa consulta estaria en dos cubos a la vez.
+    expect(cohorte.fueraPorHuellaRepetida.consultas).toBeLessThanOrEqual(cohorte.vigentes);
+    if (cohorte.fueraPorHuellaRepetida.consultas > 0) {
+      expect(cohorte.fueraPorHuellaRepetida.grupos).toBeGreaterThan(0);
+      expect(cohorte.fueraPorHuellaRepetida.pacientes).toBeGreaterThan(0);
+    }
   });
 
   it("los meses suman la cohorte autorizada", () => {

@@ -43,8 +43,21 @@ export type CohorteDeInvestigacion = {
   vigentes: number;
   /** De ellas, las que el paciente autorizo para investigacion. */
   conAutorizacion: number;
-  /** Las que quedan fuera por no tener la autorizacion vigente. */
+  /**
+   * Las que quedan fuera POR NO TENER LA AUTORIZACION. Se cuenta directo, no por resta.
+   *
+   * Y ESO CAMBIO CON LA 0230: antes era `vigentes - conAutorizacion`, y al empezar a excluir tambien por
+   * calidad de dato esa resta habria metido las de huella repetida en el cubo del consentimiento. El
+   * rotulo dice "sin autorizacion", asi que contarlas ahi seria afirmar que 13 pacientes no autorizaron
+   * cuando si lo hicieron. Una cifra por resta hereda todo lo que se le quite al total.
+   */
   sinAutorizacion: number;
+  /**
+   * LAS QUE SALEN POR CALIDAD DE DATO (0230): autorizadas, pero con la misma toma fisica en otra consulta
+   * vigente. Se dice aparte porque no es lo mismo que no tener permiso, y porque vuelven solas en cuanto
+   * se corrija cual de las dos es.
+   */
+  fueraPorHuellaRepetida: { consultas: number; grupos: number; pacientes: number };
   /** Pacientes distintos en la cohorte autorizada. */
   pacientesAutorizados: number;
   /** De la cohorte autorizada, cuantas tienen diagnostico sellado (las unicas con indicadores). */
@@ -102,7 +115,26 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
       (select count(distinct patient_id)::int from public.evaluaciones_para_investigacion where es_consulta_hecha) as pacientes_autorizados,
       (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha and diagnosis_id is not null) as con_diagnostico,
       (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha and importada) as importadas,
-      (select count(*)::int from public.evaluaciones_vigentes where es_consulta_hecha and importada) as importadas_vigentes
+      (select count(*)::int from public.evaluaciones_vigentes where es_consulta_hecha and importada) as importadas_vigentes,
+      -- SIN AUTORIZACION, CONTADO DIRECTO (ver la nota del tipo: por resta heredaria la exclusion de
+      -- calidad de dato y el rotulo diria que alguien no autorizo cuando si lo hizo).
+      (select count(*)::int from public.evaluaciones_vigentes v
+        where v.es_consulta_hecha
+          and not exists (select 1 from patient_consents c
+                           where c.patient_id = v.patient_id
+                             and c.consent_type = 'investigacion'
+                             and c.revoked_at is null)) as sin_autorizacion,
+      -- Y LAS QUE SALEN POR CALIDAD DE DATO: autorizadas, pero con la huella en otra consulta vigente.
+      (select count(*)::int from public.evaluaciones_vigentes v
+        where v.es_consulta_hecha and v.huella_repetida
+          and exists (select 1 from patient_consents c
+                       where c.patient_id = v.patient_id
+                         and c.consent_type = 'investigacion'
+                         and c.revoked_at is null)) as fuera_por_huella,
+      (select count(distinct v.huella)::int from public.evaluaciones_vigentes v
+        where v.es_consulta_hecha and v.huella_repetida) as grupos_de_huella,
+      (select count(distinct v.patient_id)::int from public.evaluaciones_vigentes v
+        where v.es_consulta_hecha and v.huella_repetida) as pacientes_de_huella
   `);
   const t = (totales as unknown as Record<string, number>[])[0] ?? {};
   const vigentes = Number(t.vigentes ?? 0);
@@ -177,7 +209,12 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
   return {
     vigentes,
     conAutorizacion,
-    sinAutorizacion: vigentes - conAutorizacion,
+    sinAutorizacion: Number(t.sin_autorizacion ?? 0),
+    fueraPorHuellaRepetida: {
+      consultas: Number(t.fuera_por_huella ?? 0),
+      grupos: Number(t.grupos_de_huella ?? 0),
+      pacientes: Number(t.pacientes_de_huella ?? 0),
+    },
     porFamiliaDelMotor,
     mezclaFamilias: porFamiliaDelMotor.length > 1,
     pacientesAutorizados: Number(t.pacientes_autorizados ?? 0),

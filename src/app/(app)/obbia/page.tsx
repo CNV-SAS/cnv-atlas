@@ -107,6 +107,8 @@ export default async function ObbiaPage() {
             valor={cohorte.conDiagnostico}
             nota="las únicas con indicadores"
           />
+          {/* ESTA CIFRA SE CUENTA DIRECTO, NO POR RESTA. Con la 0230 la resta habría metido las 13 de
+              huella repetida en este cubo, y el rótulo diría que no autorizaron quienes sí autorizaron. */}
           <Cifra
             rotulo="Fuera, sin autorización"
             valor={cohorte.sinAutorizacion}
@@ -120,6 +122,27 @@ export default async function ObbiaPage() {
             nota={`de ${cohorte.importadasVigentes} importadas en total`}
           />
         </div>
+
+        {/* ═══ LA EXCLUSIÓN POR CALIDAD DE DATO (0230) ═══
+
+            Va ARRIBA del desglose por consentimiento y separada de él, porque no es lo mismo: el paciente
+            SÍ autorizó, lo que falla es el dato. La misma toma física está en dos historias clínicas, y en
+            5 de los 11 grupos son pacientes distintos, así que el diagnóstico de una de las dos salió de
+            la bioimpedancia de otra persona. Vuelven solas cuando la corrección deje una sola vigente. */}
+        {cohorte.fueraPorHuellaRepetida.consultas > 0 ? (
+          <p className="max-w-prose rounded border border-attention bg-attention-bg p-2 text-xs text-foreground">
+            <strong>
+              {cohorte.fueraPorHuellaRepetida.consultas} consultas autorizadas quedan fuera por calidad de
+              dato
+            </strong>
+            : su medición tiene la misma huella que otra consulta vigente (
+            {cohorte.fueraPorHuellaRepetida.grupos}{" "}
+            {cohorte.fueraPorHuellaRepetida.grupos === 1 ? "grupo" : "grupos"},{" "}
+            {cohorte.fueraPorHuellaRepetida.pacientes} pacientes). Es la misma toma física en dos historias
+            clínicas, así que no se puede saber de quién es el cuerpo que describe. Vuelven a entrar solas
+            cuando la corrección deje una sola de las dos vigente.
+          </p>
+        ) : null}
 
         {/* ═══ POR QUÉ QUEDAN FUERA LAS QUE QUEDAN FUERA (Gildardo, 2026-10-25) ═══
 

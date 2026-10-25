@@ -1611,6 +1611,13 @@
       "when": 1792862141446,
       "tag": "0229_inactivar_sin_borrar_la_cuenta",
       "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1792862142446,
+      "tag": "0230_la_huella_repetida_sale_de_investigacion",
+      "breakpoints": true
     }
   ]
 }
