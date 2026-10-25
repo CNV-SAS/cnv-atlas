@@ -3,6 +3,9 @@ import "server-only";
 import { reportServerError } from "@/lib/observability/report-error";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { huellasRepetidasEnVigentes } from "@/modules/bis/data/huellas-repetidas-reader";
+import type { HuellaRepetida } from "@/modules/bis/huella-repetida";
+
 import {
   filaDelRoster,
   ordenarElRoster,
@@ -98,8 +101,24 @@ export async function readRosterDePacientes(): Promise<RosterDePacientes> {
     };
   }
 
+  // ═══ LAS CONSULTAS CON LA MEDICION REPETIDA (Gildardo, 2026-10-26) ═══
+  //
+  // UNA SOLA CONSULTA PARA TODA LA LISTA, despues de traer el roster y no por fila. Y DESPUES a proposito:
+  // si fallara, la lista tiene que salir igual. Un aviso que tumba la pantalla donde se trabaja es peor
+  // que un aviso que falta, asi que un fallo aqui se reporta y la lista sigue sin los chips.
+  //
+  // LEE CON LA CONEXION DE SISTEMA (ver el lector): la huella gemela puede estar en la historia de otro
+  // profesional, que es justo el caso que hay que avisar. Lo que cruza de ahi no identifica a nadie:
+  // cuantas otras consultas y si alguna es del mismo paciente.
+  let repetidas: ReadonlyMap<string, HuellaRepetida> = new Map();
+  try {
+    repetidas = await huellasRepetidasEnVigentes();
+  } catch (e) {
+    reportServerError("pacientes.roster.huellas-repetidas", e);
+  }
+
   const items = ((data ?? []) as unknown as FilaDeLaVista[]).map((row) =>
-    filaDelRoster(crudaDeLaVista(row)),
+    filaDelRoster(crudaDeLaVista(row), repetidas),
   );
   return { ok: true, items: ordenarElRoster(items) };
 }

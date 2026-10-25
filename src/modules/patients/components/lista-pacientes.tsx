@@ -10,6 +10,8 @@ import { AccionesPaciente } from "./acciones-paciente";
 import { ANCHO_NOMBRE, COLUMNAS_PACIENTES } from "../columnas";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { FilaLista, ListaFilas } from "@/components/shared/fila-lista";
+import { avisoDeHuellaRepetida } from "@/modules/bis/huella-repetida";
+
 import { ROTULO_DE_PRUEBA } from "../de-prueba";
 import { PillEstado } from "@/components/shared/pill-estado";
 import { useConOrigen } from "@/components/shared/usar-origen";
@@ -404,6 +406,23 @@ export function ListaPacientes({
             // paciente que ejercio su derecho no esta en riesgo. El texto habla de la AUTORIZACION, no de
             // la persona: "Revocado" sonaria a que el revocado es el paciente.
             chip={
+              <>
+              {/* ═══ LA MEDICION REPETIDA VA PRIMERO, Y POR ENCIMA DE TODO (Gildardo, 2026-10-26) ═══
+
+                  Es el unico chip que se SUMA a los demas en vez de competir con ellos, y la razon es que
+                  no habla del estado administrativo de la fila: habla de que la bioimpedancia de alguien
+                  puede estar en la historia clinica equivocada. Un paciente puede, a la vez, estar sin
+                  autorizacion vigente y tener su medicion repetida, y las dos cosas hay que verlas.
+
+                  SIN DECIR DE QUIEN ES LA OTRA, como ya hace el freno: quien mira puede no tener acceso a
+                  esa historia, y darle el nombre seria filtrar el dato de un tercero para avisarle de un
+                  error. El texto sale del modulo neutro, el mismo que usa la pantalla de la consulta. */}
+              {p.medicionRepetida ? (
+                <PillEstado tono="atencion" title={avisoDeHuellaRepetida(p.medicionRepetida)}>
+                  Medición repetida
+                </PillEstado>
+              ) : null}
+              {
               // ARCHIVADO MANDA SOBRE EL OTRO CHIP: si esta fuera de la lista de trabajo, eso es lo
               // primero que hay que saber de la fila; que ademas le falte una autorizacion es
               // informacion de segundo orden mientras este archivado.
@@ -450,6 +469,8 @@ export function ListaPacientes({
                     {rotuloDeRegularizacion(p.pendienteDeRegularizar)}
                   </PillEstado>
                 ) : null
+              }
+              </>
             }
           />
         );

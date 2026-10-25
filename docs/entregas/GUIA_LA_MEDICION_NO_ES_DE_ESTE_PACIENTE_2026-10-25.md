@@ -28,15 +28,36 @@ registradas y las dos son difíciles de deshacer.
 
 ---
 
-## 1 · Dónde está
+## Lo primero que vas a ver: Atlas te avisa solo
+
+**No tienes que ir a buscar estos casos.** Cuando una medición está también en otra consulta, Atlas lo
+detecta por sí mismo (compara las cuatro lecturas eléctricas del equipo, que son idénticas hasta el último
+decimal, así que es la misma toma física y no dos mediciones parecidas) y lo dice en dos sitios:
+
+- **En la lista de pacientes**, con una etiqueta: *Medición repetida*.
+- **En la consulta**, en la pestaña **Antrop. & BIS**, con un aviso encima de la medición.
+
+**El aviso no te dice de quién es la otra consulta**, y eso es a propósito: puede ser un paciente que no es
+tuyo, y entonces no te corresponde ver su historia. Lo que necesitas saber es que esa toma está en dos
+sitios, y eso sí te lo dice.
+
+**Y se apaga solo.** No hay nada que marcar como revisado: en cuanto la corrección deje una sola de las dos
+consultas en pie, el aviso desaparece por su cuenta.
+
+---
+
+## 1 · Dónde está la corrección
 
 1. Abre el paciente y entra a **la consulta** que tiene la medición equivocada.
-2. Pestaña **Diagnóstico** → subpestaña **Diagnóstico Funcional**.
-3. Baja hasta la tarjeta **Cierre del diagnóstico**, al final.
-4. Ahí abajo, en un bloque con borde punteado, dice **"La medición no es de este paciente"**. Púlsalo.
+2. Pestaña **Antrop. & BIS** (es donde vive la medición).
+3. Debajo del aviso y de la tabla de composición corporal dice **"La medición no es de este paciente"**.
+   Púlsalo.
 
 El bloque se abre y te explica lo que va a pasar **antes** de pedirte nada. Lee esa lista: es lo mismo que
 está más abajo en esta guía.
+
+> **Si alguien te dijo que estaba en Diagnóstico:** ahí estaba antes del 26 de octubre. Se movió a
+> Antrop. & BIS porque es donde está la toma, y en Diagnóstico quedó una línea que te manda aquí.
 
 ---
 

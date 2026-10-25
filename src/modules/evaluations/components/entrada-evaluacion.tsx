@@ -47,6 +47,8 @@ export function EntradaEvaluacion({
   importada = false,
   identityConfirmationSlot = null,
   encabezado = null,
+  avisoDeMedicionRepetida = null,
+  correccionDeLaMedicion = null,
 }: {
   /**
    * Cual de los DOS paneles se rinde. Desde el 2026-09-10 Encuesta y Antropometria & BIS son PESTAÑAS
@@ -63,6 +65,21 @@ export function EntradaEvaluacion({
    * es ni quien la firma no es un documento clinico, es un volante. Antes de emitir eso, no se ofrece.
    */
   encabezado?: EncabezadoDeHoja | null;
+  /**
+   * EL AVISO DE QUE ESTA MEDICION ESTA EN OTRA CONSULTA (Gildardo, 2026-10-26). Lo arma la pagina, que es
+   * quien lee; aqui solo se COLOCA, pegado a la medicion. null = no esta repetida, o no hay medicion.
+   */
+  avisoDeMedicionRepetida?: ReactNode;
+  /**
+   * LA CORRECCION "la medicion no es de este paciente", MOVIDA AQUI (Gildardo, 2026-10-26).
+   *
+   * *"La correccion va en Antropometria y BIS, que es donde vive la toma, no en Diagnostico funcional."*
+   * Y tiene razon: el acto es sobre la MEDICION. Quien se da cuenta de que el archivo era de otra persona
+   * lo ve mirando la medicion, no leyendo el diagnostico, y tenia que cambiar de pestaña para arreglarlo.
+   *
+   * Va DEBAJO del aviso y de la medicion a proposito: primero el hecho, despues la salida.
+   */
+  correccionDeLaMedicion?: ReactNode;
   evaluationId: string;
   /**
    * ¿La medicion llego importada del HTML? Solo ahi se pueden teclear la cintura y la cadera que falten: ese
@@ -314,6 +331,11 @@ export function EntradaEvaluacion({
           <BisImportForm evaluation={bisImportEval} />
         )}
       </section>
+
+      {/* EL AVISO Y SU SALIDA, PEGADOS A LA MEDICION. El orden es el hecho y despues la accion: un boton
+          de corregir sin el aviso encima obliga a saber de antemano que hay algo que corregir. */}
+      {avisoDeMedicionRepetida}
+      {composition ? correccionDeLaMedicion : null}
 
       {/* Diagnostico de sarcopenia (EWGSOP2): fuerza + ASMI + AF. Solo con medicion (necesita ASMI/AF de la
           composicion). La fuerza prensil viene de las condiciones de la toma (gripStrengthKg); si el profesional
