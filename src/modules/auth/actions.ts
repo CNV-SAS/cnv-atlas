@@ -8,6 +8,8 @@ import { limitLoginByIp } from "@/core/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { mfaRelaxedForTesting } from "@/modules/auth/mfa-relaxation";
 
+import { getCurrentUser } from "./session";
+
 import {
   type AuthFormState,
   forgotPasswordSchema,
@@ -16,6 +18,11 @@ import {
   mfaCodeSchema,
   setPasswordSchema,
 } from "./validations";
+
+// EL MENSAJE DE UNA CUENTA SIN ACCESO. Uno solo para los dos caminos (el bloqueo del servicio de sesion y
+// el estado del dominio), porque son el mismo hecho para quien esta mirando la pantalla.
+const SIN_ACCESO =
+  "Tu cuenta no tiene acceso a Atlas. Si crees que es un error, escríbele a CNV: restablecer la contraseña no lo resuelve.";
 
 // Login con correo y contrasena. Si el usuario tiene MFA verificada, el AAL pide
 // aal2 y se desvia al challenge; si no, va al dashboard. Mensajes de error
@@ -39,7 +46,25 @@ export async function loginAction(
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: "Correo o contraseña incorrectos." };
+  if (error) {
+    // UNA CUENTA SIN ACCESO NO SE DISFRAZA DE CLAVE MALA (Gildardo, 2026-10-25). Al inactivar a un
+    // integrante se bloquea su cuenta en el servicio de sesion, y ese fallo llega como `user_banned`.
+    // Contestarle "correo o contraseña incorrectos" lo mandaria a restablecer la clave, que funcionaria, y
+    // seguiria sin poder entrar: un freno sin salida se siente como un defecto del sistema, no como una
+    // decision. Aqui no hay riesgo de enumeracion: para llegar a este error ya acerto la contraseña.
+    if (error.code === "user_banned") return { error: SIN_ACCESO };
+    return { error: "Correo o contraseña incorrectos." };
+  }
+
+  // Y LA MITAD DEL DOMINIO, por si el bloqueo del servicio de sesion no quedo puesto (la llamada externa
+  // puede fallar y el acto no se revierte por eso). La verdad de "tiene acceso" es `profiles.status`, asi
+  // que se pregunta ahi antes de seguir, y se cierra la sesion que se acaba de abrir. Va ANTES del step-up
+  // de MFA: sin esto, un inactivo con segundo factor acaba tecleando un codigo para que lo echen despues.
+  const quien = await getCurrentUser();
+  if (quien && quien.status !== "active") {
+    await supabase.auth.signOut();
+    return { error: SIN_ACCESO };
+  }
 
   // Step-up de MFA: si hay un factor TOTP verificado, la sesion queda en aal1 y
   // se exige subir a aal2. getClaims valida el JWT server-side (como getUser) y

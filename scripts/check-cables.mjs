@@ -97,9 +97,21 @@ const huerfanas = [];
 for (const d of declaradas) {
   const fuera = archivos.some((a) => a.p !== d.en && contiene(a.s, d.n));
   if (fuera) continue;
-  // Dentro de su archivo: la declaracion cuenta una vez; mas de una es un envoltorio que la llama.
+  // ── DENTRO DE SU ARCHIVO: SE CUENTAN LAS LLAMADAS, NO LAS MENCIONES ──────────────────────────────
+  //
+  // ESTE CONTROL TENIA UN AGUJERO, y lo encontro justo el caso para el que existe (2026-10-25). Contaba
+  // las veces que el NOMBRE aparecia como subcadena en su propio archivo, y con dos ya daba la action por
+  // cableada. `deactivateUser` llegaba a tres sin que nadie la llamara: `deactivateUserSchema` en el
+  // import, otra vez en el safeParse, y la cadena `reportServerError("deactivateUser", e)`. Resultado: una
+  // server action que NO TENIA PANTALLA pasaba verde en el check que existe para encontrar exactamente eso,
+  // y la regla dura 14 parecia construida.
+  //
+  // Ahora se cuentan las aperturas de parentesis: `nombre(`. La declaracion cuenta una, asi que mas de una
+  // sigue significando "un envoltorio del mismo archivo la llama", que es lo que se queria medir. Una
+  // mencion en una cadena o un schema con el mismo prefijo ya no cuenta.
   const propio = porRuta.get(d.en).s;
-  if (propio.split(d.n).length - 1 > 1) continue;
+  const llamadas = propio.split(new RegExp(`\\b${d.n}\\s*\\(`)).length - 1;
+  if (llamadas > 1) continue;
   huerfanas.push(d);
 }
 

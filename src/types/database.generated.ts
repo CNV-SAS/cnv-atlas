@@ -2427,14 +2427,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "created_at": string,"email": string,"full_name": string,"id": string,"organization_id": string,"status": Database["public"]['Enums']["profile_status"],"updated_at": string
+                    "created_at": string,"email": string,"full_name": string,"id": string,"inactivacion_motivo": string | null,"inactivado_por": string | null,"inactivo_desde": string | null,"organization_id": string,"status": Database["public"]['Enums']["profile_status"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"email": string,"full_name": string,"id": string,"organization_id": string,"status"?: Database["public"]['Enums']["profile_status"],"updated_at"?: string
+                    "created_at"?: string,"email": string,"full_name": string,"id": string,"inactivacion_motivo"?: string | null,"inactivado_por"?: string | null,"inactivo_desde"?: string | null,"organization_id": string,"status"?: Database["public"]['Enums']["profile_status"],"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"organization_id"?: string,"status"?: Database["public"]['Enums']["profile_status"],"updated_at"?: string
+                    "created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"inactivacion_motivo"?: string | null,"inactivado_por"?: string | null,"inactivo_desde"?: string | null,"organization_id"?: string,"status"?: Database["public"]['Enums']["profile_status"],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -3433,7 +3433,10 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "current_user_roles":
+            "cuenta_activa":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"current_user_roles":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["app_role"][]
                            },
 "el_descuadre_fisico_es_real":

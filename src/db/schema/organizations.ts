@@ -49,6 +49,17 @@ export const profiles = pgTable(
     email: text("email").notNull(),
     fullName: text("full_name").notNull(),
     status: profileStatus("status").notNull().default("active"),
+    /**
+     * LA INACTIVACION VIGENTE (0229). Las tres van juntas y AMARRADAS a `status` por CHECK: no cabe un
+     * inactivo sin motivo ni un motivo sobre una cuenta activa.
+     *
+     * Describen el estado de HOY, no la historia: al reactivar se limpian. Las idas y venidas viven en
+     * `clinical_audit_log` (`user.deactivated` / `user.reactivated`), que no se borra.
+     */
+    inactivoDesde: timestamp("inactivo_desde", { withTimezone: true }),
+    /** Quien lo inactivo. SIN FK a propósito: ver la nota de la 0229 sobre los embeds de PostgREST. */
+    inactivadoPor: uuid("inactivado_por"),
+    inactivacionMotivo: text("inactivacion_motivo"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

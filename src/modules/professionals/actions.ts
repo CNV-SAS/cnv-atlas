@@ -3,7 +3,13 @@
 import { reportServerError } from "@/lib/observability/report-error";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 
+import {
+  AccesoDelIntegranteError,
+  inactivarIntegrante,
+  reactivarIntegrante,
+} from "./data/acceso-del-integrante-writer";
 import { MarcaDeProfesionalError, marcarProfesionalDePrueba } from "./data/marca-de-prueba-writer";
+import { canDeactivateProfessional } from "./policies/can-deactivate-professional";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
@@ -286,5 +292,83 @@ export async function marcarProfesionalDePruebaFormAction(
     if (e instanceof MarcaDeProfesionalError) return { error: e.message, success: null, warning: null };
     reportServerError("profesionales.marca-de-prueba", e);
     return { error: "No se pudo cambiar la marca.", success: null, warning: null };
+  }
+}
+
+// ═══ QUITARLE Y DEVOLVERLE EL ACCESO A UN INTEGRANTE (Gildardo, 2026-10-25) ═══
+//
+// LA MITAD QUE FALTABA DE LA REGLA DURA 14 ("offboarding = desactivar y reasignar"). Reasignar se construyo
+// el 23 de octubre; desactivar existia como `deactivateUser` y no la llamaba NADIE: sin motivo, sin vuelta
+// atras y sin pantalla. La razon y las tres mitades del acto estan en `acceso-del-integrante-writer`.
+//
+// LAS DOS ACCIONES COMPARTEN UNA, y es deliberado: son el mismo acto en los dos sentidos, con el mismo
+// motivo obligatorio y el mismo rastro. Dos acciones separadas acaban con una pidiendo motivo y la otra no.
+export type AccesoFormState = {
+  error: string | null;
+  success: string | null;
+  warning: string | null;
+};
+
+const SIN_TOAST: AccesoFormState = { error: null, success: null, warning: null };
+
+export async function cambiarAccesoDelIntegranteAction(
+  _prev: AccesoFormState,
+  form: FormData,
+): Promise<AccesoFormState> {
+  const user = await requireUser();
+  if (!canDeactivateProfessional(user)) {
+    return { ...SIN_TOAST, error: "Solo un administrador quita o devuelve el acceso." };
+  }
+
+  const usuarioId = String(form.get("usuarioId") ?? "").trim();
+  const professionalId = String(form.get("professionalId") ?? "").trim();
+  const motivo = String(form.get("motivo") ?? "").trim();
+  const quitar = String(form.get("quitar") ?? "") === "true";
+  if (!usuarioId || !professionalId) return { ...SIN_TOAST, error: "Integrante inválido." };
+
+  try {
+    const entrada = { usuarioId, professionalId, motivo, actorId: user.id, actorEmail: user.email };
+    const r = quitar ? await inactivarIntegrante(entrada) : await reactivarIntegrante(entrada);
+
+    // EL AVISO DICE LO QUE QUEDO ABIERTO, no solo que se hizo. Es la unica parte del acto que nadie va a ir
+    // a buscar: sus pacientes siguen siendo suyos y su margen se le sigue debiendo, y si el aviso no lo
+    // dice, lo normal es dar por hecho que inactivar lo resolvio todo.
+    const pendientes: string[] = [];
+    if (r.abierto.pacientesActivos > 0) {
+      pendientes.push(
+        r.abierto.pacientesActivos === 1
+          ? "1 paciente sigue asignado a él"
+          : `${r.abierto.pacientesActivos} pacientes siguen asignados a él`,
+      );
+    }
+    if (r.abierto.margenPendiente > 0) {
+      pendientes.push(`se le siguen debiendo $${r.abierto.margenPendiente.toLocaleString("es-CO")}`);
+    }
+    if (r.abierto.remesasPorConfirmar > 0) {
+      pendientes.push(`${r.abierto.remesasPorConfirmar} remesa(s) sin confirmar`);
+    }
+    const cola = pendientes.length > 0 ? ` Sigue abierto: ${pendientes.join("; ")}.` : "";
+
+    // SIN `revalidatePath`: el refresco lo hace la pantalla despues del toast (`useFormToastAndRefresh`).
+    // Los dos ciclos montarian segmentos dos veces. Lo atrapa `refresco-una-sola-vez`.
+    if (r.sesionSinRevocar) {
+      return {
+        ...SIN_TOAST,
+        warning:
+          (quitar
+            ? "Acceso quitado en Atlas, pero NO se pudo bloquear la cuenta en el servicio de sesión: puede intentar entrar y rebotará."
+            : "Acceso devuelto en Atlas, pero NO se pudo levantar el bloqueo del servicio de sesión: avísale que todavía no podrá entrar.") + cola,
+      };
+    }
+    return {
+      ...SIN_TOAST,
+      success: quitar
+        ? `Acceso quitado. No puede entrar ni ver ninguna historia clínica.${cola}`
+        : `Acceso devuelto. Ya puede entrar y ver lo suyo.${cola}`,
+    };
+  } catch (e) {
+    if (e instanceof AccesoDelIntegranteError) return { ...SIN_TOAST, error: e.message };
+    reportServerError("profesionales.acceso-del-integrante", e);
+    return { ...SIN_TOAST, error: "No se pudo cambiar el acceso." };
   }
 }

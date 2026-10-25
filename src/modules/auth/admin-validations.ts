@@ -66,10 +66,6 @@ export const forcePasswordResetSchema = z.object({
   email: z.string().email(),
 });
 
-export const deactivateUserSchema = z.object({
-  userId: z.guid(),
-});
-
 export const resetUserMfaSchema = z.object({
   userId: z.guid(),
   // Motivo obligatorio: el audit registra al admin que EJECUTA, no a quien PIDE. El reason es lo unico
