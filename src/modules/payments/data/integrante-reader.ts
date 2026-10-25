@@ -97,6 +97,17 @@ export type DetalleDelIntegrante = {
     /** Si alguien dijo que SI es real aunque su profesional sea de prueba. */
     confirmadoReal: boolean;
     motivo: string | null;
+    /**
+     * EL DIA EN QUE SE LE ASIGNO, como fecha PURA en hora de Colombia (Santiago, 2026-10-24).
+     *
+     * Existe para que la reasignacion en lote se pueda preseleccionar por dia en vez de a mano: 25 de 93
+     * elegidos uno por uno, con un boton "Marcar los 93" al lado, es como se mueve el paciente equivocado.
+     *
+     * Y VA EN HORA DE COLOMBIA, no en la del servidor: `assigned_at` es un instante, y una asignacion de
+     * las 7 de la noche en Bogota cae al dia siguiente en UTC. Agrupar por el dia equivocado dejaria la
+     * preseleccion con un paciente de menos y otro de mas, que es exactamente el error que esto evita.
+     */
+    asignadoEl: string;
   }[];
 };
 
@@ -222,6 +233,7 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
     marcado_a_mano: boolean;
     confirmado_real: boolean;
     motivo: string | null;
+    asignado_el: string;
   }>(sql`
     select p.id,
            nullif(btrim(coalesce(pp.first_name, '') || ' ' || coalesce(pp.last_name, '')), '') as nombre,
@@ -233,7 +245,10 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
            coalesce(p.cuenta_como_de_prueba, false) as cuenta_como_de_prueba,
            coalesce(p.is_test, false) as marcado_a_mano,
            coalesce(p.es_real_confirmado, false) as confirmado_real,
-           p.test_proposed_reason as motivo
+           p.test_proposed_reason as motivo,
+           -- EN HORA DE COLOMBIA Y COMO FECHA PURA: el dia se decide en el huso del pais, no en el del
+           -- servidor (Vercel corre en UTC). Es el mismo patron de los insights y de /pagos.
+           (r.assigned_at at time zone 'America/Bogota')::date::text as asignado_el
       from patient_professional_relationships r
       join patients p on p.id = r.patient_id
       left join patient_profiles pp on pp.patient_id = p.id
@@ -283,6 +298,7 @@ export async function leerIntegrante(professionalId: string): Promise<DetalleDel
       marcadoAMano: Boolean(f.marcado_a_mano),
       confirmadoReal: Boolean(f.confirmado_real),
       motivo: f.motivo,
+      asignadoEl: f.asignado_el,
     })),
   };
 }

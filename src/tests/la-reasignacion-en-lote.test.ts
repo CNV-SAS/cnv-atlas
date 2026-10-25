@@ -195,3 +195,71 @@ describe("las casillas del lote no rompen los formularios de la lista", () => {
     ).toBe(true);
   });
 });
+
+// ═══ CANDADO: LA PRESELECCION POR DIA (Gildardo, 2026-10-24) ═══
+//
+// "Elegir 25 de 93 a mano, con un boton 'Marcar los 93' al lado, es como se mueve el paciente equivocado."
+//
+// Lo que se defiende aqui no es que el desplegable exista, es DE DONDE SALE el grupo: de los dias que la
+// base tiene, con su conteo. Un campo de fecha escrito a mano vuelve a poner el error donde estaba, y peor:
+// un dia mal teclado marca OTRO grupo, no ninguno, asi que no se nota. Y el dia se decide en hora de
+// Colombia; en UTC, una asignacion de las 7 de la noche cae al dia siguiente y el grupo sale con uno de
+// menos y otro de mas, que es justo el error que esto evita.
+describe("el lote se preselecciona por dia, y el dia lo pone la base", () => {
+  const src = leer(PANTALLA);
+  const LECTOR = "src/modules/payments/data/integrante-reader.ts";
+
+  it("el dia de asignacion se calcula en hora de Colombia, no en la del servidor", () => {
+    const lector = leer(LECTOR);
+    expect(
+      /\(r\.assigned_at at time zone 'America\/Bogota'\)::date/.test(lector),
+      "sin el huso del pais, el grupo de un dia se parte en dos",
+    ).toBe(true);
+  });
+
+  it("las opciones salen de los dias agrupados, no de un campo de fecha a mano", () => {
+    expect(
+      /grupos\.map\(/.test(src),
+      "el desplegable tiene que listar los dias que existen, con su conteo",
+    ).toBe(true);
+    expect(
+      /<input[^>]*type="date"/.test(src),
+      "un dia escrito a mano puede senalar un grupo que no es el que se quiere, y marcar algo igualmente",
+    ).toBe(false);
+  });
+
+  it("el desplegable del dia es controlado y SIN name: solo mueve la seleccion", () => {
+    const sel = src.match(/<select\s+value=""[\s\S]*?<\/select>/)?.[0] ?? "";
+    expect(sel, "no encontre el desplegable de la preseleccion").not.toBe("");
+    expect(
+      /\bname=/.test(sel),
+      "vive fuera del formulario del lote: con `name` viajaria en el envio equivocado (hazard 8)",
+    ).toBe(false);
+  });
+
+  it("marcar un dia deja EXACTAMENTE ese grupo, no lo suma a lo ya marcado", () => {
+    // `setMarcados(grupo.ids)` y no `[...previos, ...grupo.ids]`: sumar dejaria una mezcla silenciosa de
+    // dos dias, que es el movimiento equivocado con cara de preseleccion.
+    expect(/setMarcados\(grupo\.ids\)/.test(src)).toBe(true);
+  });
+
+  it("antes de pulsar se lee QUE esta marcado, y si es una mezcla lo dice", () => {
+    const crudo = readFileSync(PANTALLA, "utf8");
+    expect(
+      /exactamente los asignados el/.test(crudo),
+      "la frase tiene que confirmar que lo marcado es un dia completo",
+    ).toBe(true);
+    expect(
+      /días de asignación distintos/.test(crudo),
+      "y tiene que AVISAR cuando la seleccion mezcla dias: ese es el caso en el que hay que mirar",
+    ).toBe(true);
+    expect(
+      /es decir TODOS sus pacientes/.test(crudo),
+      "y decir cuando lo marcado es todo el roster, que es el caso de la regla dura 14",
+    ).toBe(true);
+  });
+
+  it("la fila dice su fecha de asignacion: la preseleccion se puede comprobar a ojo", () => {
+    expect(/asignado el \{formatDateOnlyShort\(p\.asignadoEl\)\}/.test(src)).toBe(true);
+  });
+});
