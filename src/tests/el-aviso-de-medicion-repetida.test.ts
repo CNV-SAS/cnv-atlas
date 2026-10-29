@@ -21,7 +21,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 const NEUTRO = "src/modules/bis/huella-repetida.ts";
 const LECTOR = "src/modules/bis/data/huellas-repetidas-reader.ts";
-const AVISO = "src/modules/bis/components/aviso-de-medicion-repetida.tsx";
+const BLOQUE = "src/modules/corrections/components/medicion-de-otro-paciente.tsx";
 const ENTRADA = "src/modules/evaluations/components/entrada-evaluacion.tsx";
 const PAGINA = "src/app/(app)/ani-bis-e/[id]/page.tsx";
 const LISTA = "src/modules/patients/components/lista-pacientes.tsx";
@@ -69,8 +69,8 @@ describe("el aviso no identifica al otro paciente", () => {
   it("el TEXTO vive en UN sitio: la lista y la consulta no lo escriben distinto", () => {
     // Dos redacciones del mismo aviso acaban diciendo cosas distintas del mismo hecho (hazard 4).
     expect(leer(LISTA)).toContain("avisoDeHuellaRepetida(");
-    expect(leer(AVISO)).toContain("avisoDeHuellaRepetida(");
-    for (const archivo of [LISTA, AVISO]) {
+    expect(leer(BLOQUE)).toContain("avisoDeHuellaRepetida(");
+    for (const archivo of [LISTA, BLOQUE]) {
       expect(leer(archivo), `${archivo} redacta el aviso por su cuenta`).not.toMatch(
         /está repetida en/,
       );
@@ -109,10 +109,28 @@ describe("el aviso se deriva: no hay marca que acordarse de apagar", () => {
 });
 
 describe("donde aparece, y donde NO", () => {
-  it("en la consulta, pegado a la medicion", () => {
+  it("en la consulta: UN SOLO bloque, con el aviso y su salida juntos", () => {
+    // ERAN DOS, separados por media pantalla: el aviso arriba y la salida casi al final (Santiago,
+    // 2026-10-28). Un aviso que no lleva su salida al lado obliga a buscarla, y el que la busca y no la
+    // encuentra deja el dato mal.
+    expect(leer(PAGINA)).toContain(
+      "<MedicionDeOtroPaciente evaluationId={id} repetida={medicionRepetida} />",
+    );
+    expect(
+      leer(PAGINA),
+      "volvio a haber un bloque de aviso aparte",
+    ).not.toContain("<AvisoDeMedicionRepetida");
+  });
+
+  it("y ese bloque es LO PRIMERO de Antrop. & BIS, no lo ultimo", () => {
+    // El defecto de siempre con esta pantalla: un control que esta y no se encuentra se reporta como que
+    // no esta. Se fija el ORDEN: antes de la seccion de la medicion.
     const entrada = leer(ENTRADA);
-    expect(entrada).toContain("{avisoDeMedicionRepetida}");
-    expect(leer(PAGINA)).toContain("<AvisoDeMedicionRepetida repetida={medicionRepetida} />");
+    const i = entrada.indexOf("{composition ? correccionDeLaMedicion : null}");
+    const j = entrada.indexOf("Medición BIS");
+    expect(i, "el bloque desaparecio del panel").toBeGreaterThan(0);
+    expect(j, "no encontre la seccion de la medicion").toBeGreaterThan(0);
+    expect(i, "el bloque volvio a quedar debajo de la medicion").toBeLessThan(j);
   });
 
   it("y en la lista de pacientes, como CHIP y no como pendiente", () => {
@@ -148,7 +166,7 @@ describe("donde aparece, y donde NO", () => {
 describe("la correccion vive donde vive la toma", () => {
   it("se monta en Antrop. & BIS", () => {
     expect(leer(ENTRADA)).toContain("{composition ? correccionDeLaMedicion : null}");
-    expect(leer(PAGINA)).toContain("correccionDeLaMedicion: <MedicionDeOtroPaciente evaluationId={id} />");
+    expect(leer(PAGINA)).toContain("correccionDeLaMedicion: <MedicionDeOtroPaciente");
   });
 
   it("y en Diagnostico queda el PUNTERO, con el nombre derivado del mapa de etapas", () => {

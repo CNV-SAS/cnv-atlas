@@ -35,7 +35,7 @@ detecta por sí mismo (compara las cuatro lecturas eléctricas del equipo, que s
 decimal, así que es la misma toma física y no dos mediciones parecidas) y lo dice en dos sitios:
 
 - **En la lista de pacientes**, con una etiqueta: *Medición repetida*.
-- **En la consulta**, en la pestaña **Antrop. & BIS**, con un aviso encima de la medición.
+- **En la consulta**, en la pestaña **Antrop. & BIS**: un recuadro amarillo, **lo primero de la pestaña**, con el aviso y el botón para corregirlo en el mismo sitio.
 
 **El aviso no te dice de quién es la otra consulta**, y eso es a propósito: puede ser un paciente que no es
 tuyo, y entonces no te corresponde ver su historia. Lo que necesitas saber es que esa toma está en dos
@@ -50,8 +50,8 @@ consultas en pie, el aviso desaparece por su cuenta.
 
 1. Abre el paciente y entra a **la consulta** que tiene la medición equivocada.
 2. Pestaña **Antrop. & BIS** (es donde vive la medición).
-3. Debajo del aviso y de la tabla de composición corporal dice **"La medición no es de este paciente"**.
-   Púlsalo.
+3. **Lo primero que aparece** es el recuadro con el botón **"La medición no es de este paciente"**. Púlsalo.
+   (Si la medición no está repetida, el recuadro sigue ahí pero en gris: la salida existe igual.)
 
 El bloque se abre y te explica lo que va a pasar **antes** de pedirte nada. Lee esa lista: es lo mismo que
 está más abajo en esta guía.

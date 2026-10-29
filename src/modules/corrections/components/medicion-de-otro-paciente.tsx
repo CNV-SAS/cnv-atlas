@@ -1,10 +1,13 @@
 "use client";
 
+import { TriangleAlert } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
+
+import { avisoDeHuellaRepetida, type HuellaRepetida } from "@/modules/bis/huella-repetida";
 
 import { medicionDeOtroPacienteAction, type MedicionDeOtroState } from "../actions";
 
@@ -40,7 +43,24 @@ import { medicionDeOtroPacienteAction, type MedicionDeOtroState } from "../actio
 
 const inicial: MedicionDeOtroState = { error: null, success: null, warning: null };
 
-export function MedicionDeOtroPaciente({ evaluationId }: { evaluationId: string }) {
+export function MedicionDeOtroPaciente({
+  evaluationId,
+  repetida = null,
+}: {
+  evaluationId: string;
+  /**
+   * EL AVISO DE QUE ESTA MEDICION ESTA EN OTRA CONSULTA, DENTRO DEL MISMO BLOQUE (Santiago, 2026-10-28).
+   *
+   * ERAN DOS BLOQUES y estaban separados por media pantalla: el aviso amarillo arriba y la salida casi al
+   * final. *"¿No seria mejor unificar ambos bloques en uno solo amarillo de advertencia?"* Si: un aviso que
+   * no lleva su salida al lado obliga a buscarla, y el que la busca y no la encuentra deja el dato mal.
+   *
+   * null = la medicion no esta repetida. El bloque sigue existiendo, discreto: el profesional puede
+   * darse cuenta por otro camino (la edad del equipo que no cuadra, una masa grasa imposible), y la
+   * salida tiene que estar igual.
+   */
+  repetida?: HuellaRepetida | null;
+}) {
   const [state, action, pending] = useActionState(medicionDeOtroPacienteAction, inicial);
   useFormToastAndRefresh(state);
   const [abierto, setAbierto] = useState(false);
@@ -49,11 +69,39 @@ export function MedicionDeOtroPaciente({ evaluationId }: { evaluationId: string 
   const motivoSuficiente = motivo.trim().length >= 15;
 
   if (!abierto) {
+    // ═══ UN SOLO BLOQUE, Y SU TONO LO DECIDE EL HECHO ═══
+    //
+    // CON LA MEDICION REPETIDA va en amarillo y el aviso ENCABEZA: es lo que hay que leer primero, y la
+    // salida queda debajo, en el mismo bloque. Sin repeticion queda discreto, porque entonces no hay nada
+    // que avisar: solo la salida, por si el profesional se dio cuenta por otro camino.
+    //
+    // LAS DOS VIVEN ARRIBA DE Antrop. & BIS, no al final. El defecto que esto cierra es el de siempre con
+    // esta pantalla: un control que esta y no se encuentra se reporta como que no esta.
     return (
-      <section className="flex flex-col gap-2 rounded-xl border border-dashed border-clinical-warning/40 bg-muted/20 p-4">
-        <h3 className="text-sm font-semibold text-foreground">
-          ¿La bioimpedancia de esta consulta es de otra persona?
-        </h3>
+      <section
+        className={
+          repetida
+            ? "flex flex-col gap-2 rounded-xl border border-attention bg-attention-bg p-4"
+            : "flex flex-col gap-2 rounded-xl border border-dashed border-clinical-warning/40 bg-muted/20 p-4"
+        }
+      >
+        {repetida ? (
+          <>
+            <h3 className="flex items-start gap-2 text-sm font-semibold text-foreground">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-attention" aria-hidden />
+              {avisoDeHuellaRepetida(repetida)}
+            </h3>
+            <p className="max-w-prose text-sm text-muted-foreground">
+              Las cuatro lecturas eléctricas del equipo son idénticas hasta el último decimal, así que es
+              la misma toma física y no dos mediciones parecidas. Este aviso desaparece solo cuando la toma
+              deje de estar en dos consultas.
+            </p>
+          </>
+        ) : (
+          <h3 className="text-sm font-semibold text-foreground">
+            ¿La bioimpedancia de esta consulta es de otra persona?
+          </h3>
+        )}
         <p className="max-w-prose text-sm text-muted-foreground">
           Pasa cuando se importa el archivo equivocado. No es lo mismo que un dato mal digitado: el
           diagnóstico de esta consulta se calculó con la medición de otro paciente, así que no se corrige

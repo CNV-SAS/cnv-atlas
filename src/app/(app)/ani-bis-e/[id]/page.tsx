@@ -16,7 +16,6 @@ import {
 } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { CorrectionEntry } from "@/modules/corrections/components/correction-entry";
 import { reportServerError } from "@/lib/observability/report-error";
-import { AvisoDeMedicionRepetida } from "@/modules/bis/components/aviso-de-medicion-repetida";
 import { huellaRepetidaDeLaConsulta } from "@/modules/bis/data/huellas-repetidas-reader";
 import { MedicionDeOtroPaciente } from "@/modules/corrections/components/medicion-de-otro-paciente";
 import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
@@ -951,9 +950,10 @@ export default async function ResultadosEvaluacionPage({
     patientIsFemale: false,
     bisReadonly: entryReadonly,
     diagnosticoGenerado: Boolean(results),
-    avisoDeMedicionRepetida: <AvisoDeMedicionRepetida repetida={medicionRepetida} />,
-    // LA CORRECCION VIVE AHORA EN ANTROPOMETRIA, que es donde esta la toma (Gildardo, 2026-10-26).
-    correccionDeLaMedicion: <MedicionDeOtroPaciente evaluationId={id} />,
+    // UN SOLO BLOQUE, ARRIBA DE Antrop. & BIS (Santiago, 2026-10-28). El aviso y su salida iban en dos
+    // bloques separados por media pantalla; ahora el aviso ENCABEZA el bloque de la correccion y los dos
+    // suben al inicio de la pestaña. El porque, en el componente.
+    correccionDeLaMedicion: <MedicionDeOtroPaciente evaluationId={id} repetida={medicionRepetida} />,
   };
 
   return (

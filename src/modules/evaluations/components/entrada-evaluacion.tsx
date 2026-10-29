@@ -47,7 +47,6 @@ export function EntradaEvaluacion({
   importada = false,
   identityConfirmationSlot = null,
   encabezado = null,
-  avisoDeMedicionRepetida = null,
   correccionDeLaMedicion = null,
 }: {
   /**
@@ -66,18 +65,15 @@ export function EntradaEvaluacion({
    */
   encabezado?: EncabezadoDeHoja | null;
   /**
-   * EL AVISO DE QUE ESTA MEDICION ESTA EN OTRA CONSULTA (Gildardo, 2026-10-26). Lo arma la pagina, que es
-   * quien lee; aqui solo se COLOCA, pegado a la medicion. null = no esta repetida, o no hay medicion.
-   */
-  avisoDeMedicionRepetida?: ReactNode;
-  /**
    * LA CORRECCION "la medicion no es de este paciente", MOVIDA AQUI (Gildardo, 2026-10-26).
    *
    * *"La correccion va en Antropometria y BIS, que es donde vive la toma, no en Diagnostico funcional."*
    * Y tiene razon: el acto es sobre la MEDICION. Quien se da cuenta de que el archivo era de otra persona
    * lo ve mirando la medicion, no leyendo el diagnostico, y tenia que cambiar de pestaña para arreglarlo.
    *
-   * Va DEBAJO del aviso y de la medicion a proposito: primero el hecho, despues la salida.
+   * VA ARRIBA DE TODO (Santiago, 2026-10-28), no debajo de la medicion: estaba "abajo casi al final" y
+   * no se encontraba. Lleva el aviso de medicion repetida DENTRO, en el mismo bloque, porque un aviso que
+   * no trae su salida al lado obliga a buscarla.
    */
   correccionDeLaMedicion?: ReactNode;
   evaluationId: string;
@@ -260,6 +256,10 @@ export function EntradaEvaluacion({
   // referencias entran en el siguiente paso.) Depende de la subpestaña Encuesta: el aviso lo hace explicito.
   const antropometriaPanel = (
     <div className="flex flex-col gap-8">
+      {/* EL AVISO Y SU SALIDA, LO PRIMERO DE LA PESTAÑA (Santiago, 2026-10-28). Si la toma de esta consulta
+          puede no ser de este paciente, eso se lee ANTES de mirar sus cifras: todo lo de abajo describe un
+          cuerpo que quizas no es el suyo. Solo con medicion: sin toma no hay nada que desligar. */}
+      {composition ? correccionDeLaMedicion : null}
       {/* Seccion Medicion BIS SIEMPRE presente (no aparece/desaparece: eso confunde). Con medicion,
           muestra un mensaje de exito PERSISTENTE + la composicion; sin medicion, el import GATEADO
           (boton deshabilitado con explicacion en gris). Mismo criterio de "estados vacios limpios". */}
@@ -331,11 +331,6 @@ export function EntradaEvaluacion({
           <BisImportForm evaluation={bisImportEval} />
         )}
       </section>
-
-      {/* EL AVISO Y SU SALIDA, PEGADOS A LA MEDICION. El orden es el hecho y despues la accion: un boton
-          de corregir sin el aviso encima obliga a saber de antemano que hay algo que corregir. */}
-      {avisoDeMedicionRepetida}
-      {composition ? correccionDeLaMedicion : null}
 
       {/* Diagnostico de sarcopenia (EWGSOP2): fuerza + ASMI + AF. Solo con medicion (necesita ASMI/AF de la
           composicion). La fuerza prensil viene de las condiciones de la toma (gripStrengthKg); si el profesional
