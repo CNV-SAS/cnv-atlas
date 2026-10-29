@@ -239,6 +239,38 @@ Ver `SECURITY.md` para el procedimiento técnico completo.
 
 ---
 
+## Cómo se prueba sobre datos reales: cuenta propia y archivos de prueba aparte (2026-10-29)
+
+**Dos reglas que salen de un hallazgo medido, no de una preferencia.**
+
+**1. Quien prueba, prueba con su propia cuenta.** Al rastrear de quién era un archivo de Biody colgado de un
+paciente de prueba, el `clinical_audit_log` dijo la hora exacta y la cuenta (`profesional.demo@cnvsystem.com`)
+y ahí se detuvo: esa cuenta **la usa más de una persona**. El registro hizo su trabajo y el rastro no pudo
+llegar hasta nadie. Una cuenta compartida convierte un incidente de datos en un hecho sin responsable, que es
+precisamente lo que el registro existe para evitar. Cada persona que pruebe lo hace con su propia cuenta de
+profesional de prueba, aunque compartan los pacientes de prueba.
+
+**2. Los archivos de prueba van en una carpeta aparte de las exportaciones reales del equipo.** Medido el
+2026-10-29: de los **cuatro** archivos distintos que se usan como copia de prueba en la base, **uno es
+probadamente la toma de un paciente real** (las cuatro lecturas eléctricas coinciden hasta el último decimal
+con una evaluación real, y la edad del equipo cuadra con esa ficha y no con la del paciente de prueba), y los
+otros tres llevan edades de equipo que no corresponden a la ficha donde están. Nadie lo decidió: pasa porque
+los archivos de prueba y las exportaciones reales del Biody viven revueltos, y al buscar "un xlsx para
+probar" se toma el que está a mano. Un archivo de prueba que es la medición de una persona real mete datos de
+salud de esa persona en un registro que no es el suyo, y el diagnóstico que sale de ahí es de otro.
+
+**Qué hace Atlas por su parte**, para que la regla no dependa solo de la disciplina: el aviso de medición
+repetida marca las consultas que comparten una toma física (huella de `Re`/`Ri`/`Rinf`/`C`), el aviso de edad
+discordante avisa cuando la edad del equipo se separa más de un año de la de la ficha, y la corrección "la
+medición no es de este paciente" retira la toma dejando que el dueño real cargue la suya.
+
+**Límite conocido:** cuando el archivo entró desde fuera y ninguna evaluación real comparte su huella, Atlas
+**no puede decir de quién es**. La edad del equipo no identifica a nadie (en los dos casos del 2026-10-29,
+9 y 11 pacientes reales encajaban por edad). Esa pregunta se responde con la carpeta de exportaciones, no con
+la base.
+
+---
+
 ## Acceso a la historia clínica y auditoría operativa
 
 CNV no es parte del equipo tratante del paciente. Como Encargado:
