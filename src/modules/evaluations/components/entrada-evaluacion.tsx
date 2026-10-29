@@ -48,6 +48,7 @@ export function EntradaEvaluacion({
   identityConfirmationSlot = null,
   encabezado = null,
   correccionDeLaMedicion = null,
+  avisoDeEdadDelEquipo = null,
 }: {
   /**
    * Cual de los DOS paneles se rinde. Desde el 2026-09-10 Encuesta y Antropometria & BIS son PESTAÑAS
@@ -76,6 +77,14 @@ export function EntradaEvaluacion({
    * no trae su salida al lado obliga a buscarla.
    */
   correccionDeLaMedicion?: ReactNode;
+  /**
+   * EL AVISO DE SU ERROR 5: la edad de la ficha y la del equipo difieren en mas de un año.
+   *
+   * Va APARTE del bloque de la correccion aunque los dos encabecen la pestaña: son dos hechos distintos
+   * con dos arreglos distintos (uno desliga la medicion, el otro manda a verificar la fecha de
+   * nacimiento). Juntarlos en un bloque haria que una salida pareciera servir para el otro problema.
+   */
+  avisoDeEdadDelEquipo?: ReactNode;
   evaluationId: string;
   /**
    * ¿La medicion llego importada del HTML? Solo ahi se pueden teclear la cintura y la cadera que falten: ese
@@ -260,6 +269,10 @@ export function EntradaEvaluacion({
           puede no ser de este paciente, eso se lee ANTES de mirar sus cifras: todo lo de abajo describe un
           cuerpo que quizas no es el suyo. Solo con medicion: sin toma no hay nada que desligar. */}
       {composition ? correccionDeLaMedicion : null}
+      {/* LA EDAD DE LA FICHA CONTRA LA DEL EQUIPO (su error 5), al lado del bloque anterior y por lo
+          mismo: las dos son dudas sobre DE QUIEN es esta toma, y las dos se resuelven antes de leer las
+          cifras. Esta no frena nada; avisa y dice donde mirar. */}
+      {composition ? avisoDeEdadDelEquipo : null}
       {/* Seccion Medicion BIS SIEMPRE presente (no aparece/desaparece: eso confunde). Con medicion,
           muestra un mensaje de exito PERSISTENTE + la composicion; sin medicion, el import GATEADO
           (boton deshabilitado con explicacion en gris). Mismo criterio de "estados vacios limpios". */}

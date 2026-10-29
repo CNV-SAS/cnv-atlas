@@ -110,6 +110,8 @@ function calcularEbBis(
     ebBis: {
       estado,
       motivo,
+      eb: null,
+      iae: null,
       zPares: null,
       topado: false,
       alertaDiscordancia: false,
@@ -153,6 +155,8 @@ function calcularEbBis(
     ebBis: {
       estado: "ok",
       motivo: null,
+      eb: r.EB_BIS,
+      iae: r.IAE,
       zPares: r.zPares,
       topado: r.topado,
       alertaDiscordancia: r.alertaDiscordancia,

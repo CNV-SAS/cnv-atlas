@@ -150,6 +150,21 @@ export type EngineDfi = {
 export type ResultadoEbBis = {
   /** "ok" trae las cifras; los otros tres traen `motivo` y las cifras en null. */
   estado: "ok" | "pendiente" | "revisar" | "error";
+  /**
+   * LAS DOS CIFRAS QUE SU TABLA 3 MANDA A LOS DOS LECTORES, repetidas aqui a proposito.
+   *
+   * Tambien estan en `indicators.eb` e `indicators.iae`, que es de donde las lee la tabla del profesional.
+   * La copia existe porque el INFORME DEL PACIENTE no puede tocar `indicators`: ese objeto lleva los doce
+   * indicadores, y un candado (`report-render`) prohibe que el documento del paciente lo tenga en mano,
+   * porque *"un documento que no tiene el dato no puede filtrarlo por descuido"* (§7.1).
+   *
+   * Asi el bloque del paciente se arma SOLO con esto, y la frontera deja de depender de que quien escriba
+   * la plantilla se acuerde de sacar unicamente dos campos de doce.
+   *
+   * null cuando `estado` no es "ok": no hay cifra que mostrar, y el profesional ve el motivo.
+   */
+  eb: number | null;
+  iae: number | null;
   /** Su texto literal cuando no calcula. Su §5 lo muestra como "EB-BIS pendiente: " mas esto. */
   motivo: string | null;
   /** Dos decimales. Su §5: SOLO profesional. */
