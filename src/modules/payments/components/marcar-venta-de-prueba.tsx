@@ -30,14 +30,30 @@ const inicial: DevolucionState = { error: null, success: null, warning: null };
 export function MarcarVentaDePrueba({
   transactionId,
   yaMarcada,
+  yaNoCuentaPorDerivacion = false,
 }: {
   transactionId: string;
   /** Ya la marcó alguien: entonces lo que se ofrece es deshacerlo, no volver a marcar. */
   yaMarcada: boolean;
+  /**
+   * YA NO CUENTA, PERO POR OTRA ENTRADA (2026-10-28): su profesional, su paciente o su producto son de
+   * prueba, y nadie la marcó a mano.
+   *
+   * ENTONCES NO SE OFRECE MARCARLA, y la distinción no es cosmética: marcar a mano una venta que ya está
+   * fuera de las cifras no cambia ninguna cifra, pero SÍ cambia qué botón aparece después (pasaría a
+   * ofrecer "quitar la marca", que tampoco la devolvería a las cifras porque la derivación sigue). Dos
+   * clics que no hacen lo que dicen. Es la misma regla que el paciente derivado, al que se le ofrece "es
+   * real" y no "desmarcar".
+   */
+  yaNoCuentaPorDerivacion?: boolean;
 }) {
   const [state, action, pending] = useActionState(marcarVentaDePruebaFormAction, inicial);
   useFormToastAndRefresh(state);
   const [abierto, setAbierto] = useState(false);
+
+  // NO SE OFRECE NADA sobre una venta que ya está fuera por derivación: el chip de la fila ya dice por
+  // qué, y ahí es donde hay que actuar (sobre el paciente, el profesional o el producto).
+  if (yaNoCuentaPorDerivacion && !yaMarcada) return null;
 
   if (!abierto) {
     return (
