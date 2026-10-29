@@ -1,6 +1,6 @@
 import "server-only";
 
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { appError, err, ok, type Result } from "@/core/errors";
 import { db, type DbTransaction } from "@/db";
@@ -152,6 +152,28 @@ export async function reemitirDiagnostico(
       return err(appError("not_found", "Esa evaluación no tiene un diagnóstico que reemitir."));
     }
 
+    // ═══ LA TRAYECTORIA SELLADA SE COPIA, Y NO ES UN DETALLE ═══
+    //
+    // `emitirVersionNueva` (el OTRO sitio que inserta una fila de `reports` para la misma consulta) ya
+    // lo tenia escrito con su razon: *"la trayectoria se copia porque es la banda que se sello ese dia, y
+    // el freno del cambio desfavorable tiene que seguir aplicando sobre la version nueva; si no se
+    // copiara, emitir una version nueva seria la forma de saltarse el freno"*.
+    //
+    // Esta reemision nacio sin copiarla, o sea que era exactamente eso: un segundo constructor del mismo
+    // insumo que no heredo lo ya resuelto en el primero. Con la banda en nulo, el informe nuevo (que es
+    // la ultima fila, y por tanto el vigente) se habria podido enviar SIN el paso que obliga al
+    // profesional a hacerse cargo de un cambio desfavorable.
+    const [informeAnterior] = await tx
+      .select({
+        trajectory: reports.trajectory,
+        trajectoryCommunicatedAt: reports.trajectoryCommunicatedAt,
+        trajectoryCommunicatedBy: reports.trajectoryCommunicatedBy,
+      })
+      .from(reports)
+      .where(and(eq(reports.evaluationId, input.evaluationId), eq(reports.type, "paciente")))
+      .orderBy(desc(reports.createdAt))
+      .limit(1);
+
     const [perfilDelActor] = await tx
       .select({ profession: professionalProfiles.profession })
       .from(professionalProfiles)
@@ -200,6 +222,10 @@ export async function reemitirDiagnostico(
           // recalculan aqui. Lo que cambia es la ciencia, no lo que se prescribio.
           surveyVersionId: inputs.surveyVersionId,
         },
+        // La banda sellada y su acuse viajan con la version nueva: ver la nota de arriba.
+        trajectory: (informeAnterior?.trajectory ?? null) as object | null,
+        trajectoryCommunicatedAt: informeAnterior?.trajectoryCommunicatedAt ?? null,
+        trajectoryCommunicatedBy: informeAnterior?.trajectoryCommunicatedBy ?? null,
       })
       .returning({ id: reports.id });
 
@@ -219,6 +245,9 @@ export async function reemitirDiagnostico(
         // QUE NO SE TOCO, dicho explicitamente y no por omision: dentro de un año, "el tratamiento no
         // aparece en el payload" no distingue entre "no se toco" y "nadie lo registro".
         tratamiento_no_modificado: true,
+        // La banda sellada se copio del informe anterior, no se recalculo: el freno del cambio
+        // desfavorable sigue aplicando sobre la version nueva.
+        trayectoria_copiada: informeAnterior?.trajectory != null,
         informe_enviado_no_modificado: true,
         // Y lo que del tratamiento SI dependia de la cifra vieja, caso por caso: es la respuesta a (a), y
         // va en el rastro para que un tratamiento apoyado en una EB-BIS v5 sea buscable.

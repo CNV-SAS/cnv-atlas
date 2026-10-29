@@ -95,13 +95,23 @@ export async function getTreatmentProtocol(
   if (dErr) throw new Error(`treatment-reader: diagnoses: ${dErr.message}`);
   if (!diag) return null;
 
-  // El tratamiento que el pipeline creo para ese diagnostico.
+  // EL TRATAMIENTO ES DE LA EVALUACION, NO DEL DIAGNOSTICO VIGENTE (2026-10-29).
+  //
+  // Antes esto filtraba por `diagnosis_id = diag.id`, el diagnostico vigente que se resolvio arriba. Al
+  // reemitir por recalibracion nace un diagnostico nuevo y `treatments.diagnosis_id` sigue apuntando al
+  // anterior (a proposito: la prescripcion del profesional no se toca). Entonces este filtro no encontraba
+  // nada y la pantalla decia "El protocolo aparece cuando el diagnostico esta generado" CON el tratamiento
+  // intacto en la base: el dato existia y la pantalla afirmaba que no.
+  //
+  // Asi que se busca por la EVALUACION, subiendo del tratamiento a su diagnostico. Es el camino que ya
+  // usaban los otros ocho lectores (informe, HC, plan, proximo control, tablero), y por eso ellos nunca
+  // se rompieron. El `!inner` mantiene el gate: un tratamiento sin diagnostico no existe.
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, sin_prescripcion_motivo, sin_prescripcion_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit",
+      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, sin_prescripcion_motivo, sin_prescripcion_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit, diagnoses!inner(evaluation_id)",
     )
-    .eq("diagnosis_id", diag.id)
+    .eq("diagnoses.evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -399,12 +409,14 @@ export async function getTreatmentForApproval(
   if (dErr) throw new Error(`treatment-reader(approval): diagnoses: ${dErr.message}`);
   if (!diag) return null;
 
+  // Por la EVALUACION, no por el diagnostico vigente: ver la nota en `getTreatmentProtocol`. Si filtrara
+  // por el vigente, aprobar la prescripcion de una evaluacion reemitida diria "no hay nada que aprobar".
   const { data: t, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit",
+      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit, diagnoses!inner(evaluation_id)",
     )
-    .eq("diagnosis_id", diag.id)
+    .eq("diagnoses.evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
