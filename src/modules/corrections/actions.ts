@@ -60,7 +60,20 @@ export async function correctEvaluationAction(input: {
 // La forma de FormToastState (error/success/warning), DECLARADA AQUI y no importada del hook: ese modulo
 // es "use client", y un archivo de servidor no cruza esa frontera ni por un tipo. Es lo que hacen las
 // otras acciones con estado de toast (bis, reports).
-export type MedicionDeOtroState = { error: string | null; success: string | null; warning: string | null };
+export type MedicionDeOtroState = {
+  error: string | null;
+  success: string | null;
+  warning: string | null;
+  /**
+   * LA VERSION NUEVA, PARA PODER IR A ELLA (Santiago, 2026-10-29).
+   *
+   * El servicio ya devolvia `newEvaluationId` y esta action lo TIRABA, asi que la pantalla solo podia
+   * refrescar, y refrescar mostraba la version REEMPLAZADA: la nueva es otra evaluacion, con otra URL.
+   * De ahi el *"solo salio el toast y toco recargar a mano"*: no era que el refresco fallara, es que
+   * refrescar no podia llevar a donde habia que llegar.
+   */
+  nuevaEvaluacionId: string | null;
+};
 
 const medicionDeOtroSchema = z.object({
   evaluationId: z.guid(),
@@ -80,7 +93,12 @@ export async function medicionDeOtroPacienteAction(
     confirmar: formData.get("confirmar"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Revisa los datos.", success: null, warning: null };
+    return {
+      error: parsed.error.issues[0]?.message ?? "Revisa los datos.",
+      success: null,
+      warning: null,
+      nuevaEvaluacionId: null,
+    };
   }
 
   const user = await requireUser();
@@ -89,16 +107,20 @@ export async function medicionDeOtroPacienteAction(
     { evaluationId: parsed.data.evaluationId, reason: parsed.data.motivo, confirmed: true },
     { actorId: user.id, actorEmail: user.email, ip: ip === "unknown" ? null : ip },
   );
-  if (!result.ok) return { error: result.error.message, success: null, warning: null };
+  if (!result.ok)
+    return { error: result.error.message, success: null, warning: null, nuevaEvaluacionId: null };
 
-  // SIN `revalidatePath` A PROPOSITO: la pantalla refresca (`useFormToastAndRefresh`), y los dos juntos
-  // montan los segmentos dos veces, asi que la pagina salta al inicio dos veces y el formulario puede
-  // desmontarse antes de que se vea el aviso. Candado: `refresco-una-sola-vez.test.ts`.
+  // NO SE REVALIDA, Y AHORA POR UNA RAZON MAS FUERTE QUE ANTES. Antes era para no montar los segmentos
+  // dos veces junto al refresco de la pantalla. Desde el 2026-10-29 la pantalla ya no refresca: NAVEGA a
+  // la version nueva con el id que va aqui abajo, porque la nueva es otra evaluacion y otra URL.
+  // Revalidar esta ruta seria recomponer la pagina que estamos abandonando.
+  // Candados: `refresco-una-sola-vez.test.ts` y `la-pantalla-de-recalibracion-y-el-cierre.test.ts`.
   return {
     error: null,
     success:
       "Listo. La medición quedó marcada como de otro paciente y esta consulta tiene una versión nueva, " +
       "sin medición, lista para montar la que sí es suya.",
     warning: null,
+    nuevaEvaluacionId: result.value.newEvaluationId,
   };
 }

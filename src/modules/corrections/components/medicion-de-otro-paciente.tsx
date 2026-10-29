@@ -1,10 +1,11 @@
 "use client";
 
 import { TriangleAlert } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
-import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
+import { useFormToast } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 
 import { avisoDeHuellaRepetida, type HuellaRepetida } from "@/modules/bis/huella-repetida";
@@ -41,7 +42,12 @@ import { medicionDeOtroPacienteAction, type MedicionDeOtroState } from "../actio
 //     explicacion se lee como pantalla rota.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
-const inicial: MedicionDeOtroState = { error: null, success: null, warning: null };
+const inicial: MedicionDeOtroState = {
+  error: null,
+  success: null,
+  warning: null,
+  nuevaEvaluacionId: null,
+};
 
 export function MedicionDeOtroPaciente({
   evaluationId,
@@ -62,11 +68,54 @@ export function MedicionDeOtroPaciente({
   repetida?: HuellaRepetida | null;
 }) {
   const [state, action, pending] = useActionState(medicionDeOtroPacienteAction, inicial);
-  useFormToastAndRefresh(state);
-  const [abierto, setAbierto] = useState(false);
-  const [motivo, setMotivo] = useState("");
-  const [confirmado, setConfirmado] = useState(false);
+  // EL TOAST SIN REFRESCO, porque aqui no hay nada que refrescar: al terminar se NAVEGA a la version
+  // nueva (ver abajo). Dejar ademas un `router.refresh()` montaria los segmentos dos veces y la pagina
+  // saltaria al inicio dos veces, que es el defecto que el guard del scroll vino a cerrar.
+  useFormToast(state);
+  const router = useRouter();
+  const [abiertoPorElUsuario, setAbierto] = useState(false);
+  const [motivoEscrito, setMotivo] = useState("");
+  const [confirmadoPorElUsuario, setConfirmado] = useState(false);
+
+  // ═══ AL TERMINAR: SE CIERRA, SE LIMPIA Y SE VA A LA VERSION NUEVA (Santiago, 2026-10-29) ═══
+  //
+  // *"El formulario quedo abierto, el motivo no se limpio, solo salio el toast y toco recargar a mano."*
+  //
+  // Las tres cosas eran el MISMO defecto: la action no devolvia el id de la version nueva, asi que la
+  // pantalla no tenia a donde ir. Un formulario que sigue abierto con el motivo escrito despues de un
+  // acto irreversible invita a pulsar otra vez.
+  //
+  // ═══ Y LAS TRES SE DERIVAN DEL HECHO, NO SE APAGAN A MANO ═══
+  //
+  // La primera version de esto apagaba las tres cosas dentro de un efecto, y eslint lo marco con razon
+  // (`set-state-in-effect`). El arreglo no fue callar la regla: es que no hacia falta ningun apagado.
+  // `nuevaEvaluacionId` ES el hecho de que la correccion ocurrio, asi que lo que se ve se calcula de ahi
+  // y no puede quedar desincronizado. Es la misma leccion de la marca del tratamiento apoyado en un
+  // diagnostico anterior: una bandera que hay que acordarse de bajar sobrevive al arreglo o muere antes.
+  //
+  // Y SIGUE CUMPLIENDO LO QUE IMPORTA: si la navegacion no ocurre (un fallo de red no llega al catch del
+  // servidor y la pantalla queda muda), lo que queda delante NO es un formulario listo para repetir una
+  // correccion que ya se hizo, porque lo derivado ya lo cerro y lo vacio.
+  const yaSeCorrigio = state.nuevaEvaluacionId != null;
+  const abierto = abiertoPorElUsuario && !yaSeCorrigio;
+  const motivo = yaSeCorrigio ? "" : motivoEscrito;
+  const confirmado = yaSeCorrigio ? false : confirmadoPorElUsuario;
   const motivoSuficiente = motivo.trim().length >= 15;
+
+  // LA NAVEGACION SI ES UN EFECTO, porque es lo unico que no se puede derivar: ir a otra URL es una
+  // accion, no un estado. Depende SOLO del id, asi que no se repite cuando el estado cambia por otra
+  // razon.
+  //
+  // `replace` Y NO `push`: la version vieja queda legible como registro, pero no es un sitio al que
+  // volver con el boton de atras, donde diria 'reemplazada' sin explicar por que.
+  //
+  // EL GUARD DEL SCROLL NO ESTORBA AQUI, verificado en `preservar-scroll`: solo actua si la ruta NO
+  // cambio ('un redirect legitimo se respeta'). Al irse a otra evaluacion la ruta cambia, el guard se
+  // queda quieto y la pagina nueva abre arriba, que es lo correcto para un documento distinto.
+  useEffect(() => {
+    if (!state.nuevaEvaluacionId) return;
+    router.replace(`/ani-bis-e/${state.nuevaEvaluacionId}`);
+  }, [state.nuevaEvaluacionId, router]);
 
   if (!abierto) {
     // ═══ UN SOLO BLOQUE, Y SU TONO LO DECIDE EL HECHO ═══
