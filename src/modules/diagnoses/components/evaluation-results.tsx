@@ -17,6 +17,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type EngineIndicators, indicatorSeverities, isBisDerivedDomain } from "@/clinical-engine";
 import { veredictoSev } from "@/clinical-engine/severity";
+import {
+  ebBisParaElProfesional,
+  NOTA_DFI_SIN_ENCUESTA,
+} from "@/clinical-engine/presentacion-eb-bis";
 
 import { DetailsSection } from "./details-section";
 import { RadarPanel, DianaExplorer } from "./maps-section";
@@ -306,6 +310,9 @@ export function EvaluationResults({
   // (emission_versions.calibration), NO de una constante: el dia que exista la calibracion
   // poblacional, los diagnosticos nuevos dejan de marcarse solos. Primer uso real de emission_versions.
   const ebIaeProvisional = isProvisionalCalibration(results.emissionVersions);
+  // El soporte de la v7, del snapshot SELLADO. null en los diagnosticos anteriores a la v7 (salieron de la
+  // v5, que no tenia z de pares, ni tope, ni alerta de discordancia).
+  const soporteEbBis = snapshot.ebBis ? ebBisParaElProfesional(snapshot.ebBis) : null;
   // Severidad por indicador (recomputada del snapshot) para el punto de color de la clasificacion.
   //
   // LA FILA ICA-BIS SE RESUELVE APARTE, con `clasificarIcaBis`, que es el porte de SU `dICA`: en ESTA
@@ -471,6 +478,39 @@ export function EvaluationResults({
             paciente y no aparecen en su reporte.
           </p>
         ) : null}
+        {/* ═══ EL SOPORTE DE LA EB-BIS v7 QUE SOLO VE EL PROFESIONAL (su tabla 3, 2026-10-26) ═══
+
+            La z de pares, el tope y la alerta de discordancia. Las frases vienen del motor
+            (`presentacion-eb-bis`) y no de aquí: la EB-BIS sale por tres superficies, y tres copias de la
+            misma frase divergen por donde nadie mira.
+
+            SE PINTA DEBAJO DE LA TABLA Y NO EN LA FILA, a propósito: son tres cosas distintas sobre el
+            MISMO indicador, y metidas en la celda de "clasificación" competirían con el veredicto del IAE,
+            que es el que la fila lleva.
+
+            null = diagnóstico sellado antes de la v7. No se pinta nada en vez de pintar un vacío: ese
+            diagnóstico salió de la v5, que no tenía ninguna de las tres. */}
+        {soporteEbBis ? (
+          <div className="flex max-w-prose flex-col gap-1 text-xs">
+            {soporteEbBis.pendiente ? (
+              <p className="text-clinical-warning">{soporteEbBis.pendiente}</p>
+            ) : null}
+            {soporteEbBis.zPares ? (
+              <p className="text-muted-foreground">
+                {soporteEbBis.zPares}{" "}
+                <span className="text-muted-foreground/80">
+                  (dato de soporte: a cuántas desviaciones está del valor esperado para su edad y su FMI)
+                </span>
+              </p>
+            ) : null}
+            {soporteEbBis.tope ? <p className="text-muted-foreground">{soporteEbBis.tope}</p> : null}
+            {/* LA ALERTA ES LA UNICA DE LAS TRES QUE PIDE UNA ACCION, y por eso es la única que va en el
+                color de atención: su texto termina en "verificar hábitos o cambio reciente". */}
+            {soporteEbBis.alerta ? (
+              <p className="text-clinical-warning">{soporteEbBis.alerta}</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </DetailsSection>
   );
@@ -574,12 +614,23 @@ export function EvaluationResults({
               {missingDomains.length ? (
                 <span>Faltan estos dominios de la encuesta: {missingDomains.join(", ")}.</span>
               ) : null}
+              {/* ═══ ESTA FRASE CAMBIO CON LA EB-BIS v7 (su entrega del 2026-10-26) ═══
+
+                  Decía "no se emitieron la edad bioeléctrica, el índice contextual ni las rutas". La
+                  primera de las tres dejó de ser cierta: su §2 retira el ICEC del cálculo, así que la
+                  EB-BIS se emite con la encuesta a medias. Lo que sigue suspendido es lo que sigue
+                  DEPENDIENDO de la encuesta, y es lo que la frase nombra ahora.
+
+                  Una frase que suspende algo que sí se emitió es peor que una que falta: manda al
+                  profesional a buscar una cifra que tiene delante. */}
               <span>
-                No se emitieron la edad bioeléctrica, el índice contextual ni las rutas que dependen de la
-                encuesta: no se calculan sobre respuestas que faltan. El diagnóstico bioeléctrico (de la
-                medición) se emite igual. El desglose de dominios de abajo es provisional (sobre lo
-                respondido), no la lectura definitiva.
+                No se emitieron el índice contextual ni las rutas que dependen de la encuesta: no se
+                calculan sobre respuestas que faltan. La edad biológica estimada y el diagnóstico
+                bioeléctrico (los dos de la medición) se emiten igual. El desglose de dominios de abajo es
+                provisional (sobre lo respondido), no la lectura definitiva.
               </span>
+              {/* SU NOTA, literal (tabla 3): es lo que hay que decir cuando la EB-BIS sale sola. */}
+              <span className="font-medium">{NOTA_DFI_SIN_ENCUESTA}.</span>
             </div>
           ) : null}
 
