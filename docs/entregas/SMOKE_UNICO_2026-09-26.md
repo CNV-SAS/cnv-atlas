@@ -32,6 +32,42 @@ marcados como reemplazados: sus pasos están aquí, y sus afirmaciones caídas e
 
 ---
 
+## Cómo se prueba, y por qué estas dos reglas (anotado el 2026-10-29)
+
+**Salen de un hallazgo, no de una preferencia.** Al rastrear de quién era un archivo de Biody que estaba en
+un paciente de prueba, el registro de auditoría pudo decir **a qué hora y desde qué cuenta** se importó, y
+ahí se detuvo: la cuenta era `profesional.demo@cnvsystem.com`, que **la usa más de una persona**. El rastro
+llegó hasta la cuenta y no pudo llegar hasta nadie.
+
+### 1. Las pruebas, con cuenta propia
+
+**La cuenta compartida rompe el rastro justo donde hace falta.** Un `clinical_audit_log` que dice
+"`profesional.demo` importó esto" no permite preguntarle a quien lo hizo qué archivo usó ni de dónde lo sacó,
+que es la única forma de cerrar el caso. Y no es un problema del registro: el registro hizo su trabajo.
+
+Así que cada persona que pruebe lo hace **con su propia cuenta de profesional de prueba**, aunque trabajen
+sobre los mismos pacientes de prueba. Cuesta un alta y devuelve la pregunta "¿quién?".
+
+### 2. Los archivos de prueba, en una carpeta aparte de las exportaciones reales del equipo
+
+**El riesgo medido:** de los **cuatro** archivos distintos que hoy se usan como copia de prueba, **uno es
+probadamente la toma de un paciente real** (la del 24-sep: sus cuatro lecturas eléctricas coinciden hasta el
+último decimal con una evaluación real, y la edad del equipo cuadra con esa ficha y no con la del paciente de
+prueba). Los otros tres llevan edades de equipo de 28, 29 y 58 años sobre fichas de prueba de 22, así que
+tampoco son del paciente donde están.
+
+Nadie decidió eso: pasa porque los archivos de prueba y las exportaciones reales del Biody viven revueltos, y
+al buscar "un xlsx para probar" se toma el que está a mano.
+
+**Dos carpetas separadas**, y las de prueba con nombres que no se confundan. Un archivo de prueba que es la
+medición de una persona real mete datos de salud de esa persona en un registro que no es el suyo, y el
+diagnóstico que sale de ahí es de otro.
+
+> Esto vale más allá de este smoke: la regla está en `docs/DATA_GOVERNANCE.md`, para que no se pierda cuando
+> este documento se reemplace.
+
+---
+
 ## Parte 1 · La devolución, con su dinero y su nota crédito
 
 **Qué se prueba:** que devolver haga las **tres** cosas: la unidad espera verificación fuera del inventario
