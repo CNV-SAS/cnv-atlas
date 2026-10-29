@@ -179,10 +179,15 @@ function buildSurvey(answers: SurveyFieldAnswer[]): Record<string, unknown> {
 // nadie mas. Medido en produccion el 2026-10-24: de 527 perfiles reales, 512 caen dentro, 15 no tienen
 // fecha, y CERO tienen una fecha imposible (el script del 9 de octubre las corrigio).
 //
-// EL 16 A 100 DE LA EB-BIS v7 ES OTRA COSA Y NO VA AQUI. Ahi la edad fuera de rango deja la EB-BIS en
+// EL 18 A 100 DE LA EB-BIS v7 ES OTRA COSA Y NO VA AQUI. Ahi la edad fuera de rango deja la EB-BIS en
 // "pendiente: edad no valida" (su seccion 3.1), que es un estado de UN indicador, no un freno al
-// diagnostico. Hay 6 menores de 16 en la base con medicion vigente: frenarles el diagnostico entero
+// diagnostico. Hay 6 menores de 18 en la base con medicion vigente: frenarles el diagnostico entero
 // seria ir mas lejos de lo que el pidio.
+//
+// (Este comentario decia "16 a 100" y los "6 menores de 16". El frozen dice `edad < 18 || edad > 100`
+// y la cohorte de su entrega es de 18 anos o mas, asi que el 16 era un error de transcripcion mio.
+// Corregido el 2026-10-29 al construir la exclusion de la pantalla de recalibracion, que lee el corte
+// del frozen y no de aqui: un comentario con una cifra equivocada es un candado que nadie corre.)
 export const EDAD_MAXIMA_POSIBLE = 130;
 
 /** La edad en anos cumplidos a la fecha dada, o `null` si la fecha no se puede leer o es imposible. */
