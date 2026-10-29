@@ -343,7 +343,7 @@ export async function getEvaluationResults(
 // Devuelve tambien `engine_version`: es la COLUMNA SELLADA (constelacion de la regla 7), que es la
 // autoridad sobre con que motor se emitio. El `versions.engine` del snapshot deberia coincidir, pero
 // para decidir si un documento quedo con ciencia anterior manda lo sellado en la fila, no lo copiado.
-async function getDiagnosisEmissionVersions(
+export async function getDiagnosisEmissionVersions(
   evaluationId: string,
 ): Promise<{ emissionVersions: Record<string, unknown> | null; engineVersion: string | null }> {
   const supabase = await createSupabaseServerClient();
