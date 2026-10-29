@@ -51,6 +51,10 @@ vi.mock("@/modules/reports/data/hc-entregas-writer", () => ({
 vi.mock("@/modules/reports/data/report-storage", () => ({
   uploadReportPdf: vi.fn(),
   downloadReportPdf: vi.fn(async () => Buffer.from("%PDF-guardado")),
+  // El PLAN viaja en su propio objeto desde el 2026-10-28 (el segundo adjunto del correo). El reenvio lo
+  // recupera igual que el informe; aqui devuelve null para que estos casos sigan midiendo SOLO el informe.
+  uploadPlanPdf: vi.fn(),
+  downloadPlanPdf: vi.fn(async () => null),
 }));
 vi.mock("@/lib/email/resend", () => ({
   sendReportEmail: vi.fn(),
@@ -76,6 +80,7 @@ function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
     evaluationId: "ev-1",
     patientId: "pat-1",
     status: "draft",
+    profesional: { nombre: "Profesional de prueba", profesion: "Nutricionista" },
     // snapshot parcial: sendReport solo se lo pasa a renderReportPdf, que esta mockeado.
     snapshot: { versions: { engine: "anibise-1.0.0" } } as unknown as ReportDispatch["snapshot"],
     professionalNotes: null,

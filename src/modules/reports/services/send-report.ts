@@ -1,7 +1,7 @@
 import "server-only";
 
 import { appError, err, ok, type Result } from "@/core/errors";
-import { sendReportEmail } from "@/lib/email/resend";
+import { sendReportEmail, type Adjunto } from "@/lib/email/resend";
 
 import { formatDate } from "@/lib/format/date";
 import { emitirPrescripcion } from "@/modules/treatment/services/treatment-service";
@@ -9,13 +9,19 @@ import { emitirPrescripcion } from "@/modules/treatment/services/treatment-servi
 import { frenoDeTrayectoria, ultimaObservacionDeLaConsulta } from "../data/freno-de-trayectoria";
 import { writeHcDelivery } from "../data/hc-entregas-writer";
 import { getReportDispatch } from "../data/reports-repository";
-import { downloadReportPdf, uploadReportPdf } from "../data/report-storage";
+import {
+  downloadPlanPdf,
+  downloadReportPdf,
+  uploadPlanPdf,
+  uploadReportPdf,
+} from "../data/report-storage";
 import { markReportResent, markReportSent, ReportStateError } from "../data/reports-writer";
 import type { SendMode } from "../pdf/report-document";
 import { getInformeDelPaciente } from "../data/informe-paciente-reader";
 import { getSerieDelPaciente } from "../data/serie-del-paciente";
 import { getPlanPaciente } from "../data/plan-paciente-reader";
-import { renderReportPdf } from "./render-report";
+import { renderPlanPdf, renderReportPdf } from "./render-report";
+import type { PlanMeta } from "../pdf/plan-document";
 
 // Orquesta el envio del reporte al paciente. Orden (D4, accion externa hacia afuera):
 // render -> subir a Storage -> enviar correo -> SOLO si el correo sale, marcar sent +
@@ -28,6 +34,53 @@ export type SendReportInput = {
   actorEmail: string;
   ip: string | null;
 };
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL SEGUNDO ADJUNTO: LA HOJA DEL PLAN  (Santiago, 2026-10-28)
+//
+// *"Que el correo al paciente adjunte TAMBIEN la hoja del plan cuando haya prescripcion emitida. Asi la
+// cifra de calorias y proteina le llega por su canal."*
+//
+// Cierra la duda que abrio el informe: los cuatro bloques de la prescripcion salieron de el (pedido de una
+// nutricionista), y sin esto esa cifra habria dependido de que su profesional se acordara de imprimir la
+// hoja. La §7.1 de Gildardo dice que el paciente recibe el PLAN COMPLETO, y ahora le llega.
+//
+// SIN PRESCRIPCION NO VA SEGUNDO ARCHIVO: un adjunto que el paciente abre y no dice nada es peor que no
+// mandarlo, y el informe ya omite el plan entero por la misma razon.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+type DatosDelPlan = {
+  patientName: string;
+  documentLabel: string;
+  consultationDate: string;
+  profesional: { nombre: string; profesion: string | null } | null;
+};
+
+function nombreDelPlan(documentLabel: string): string {
+  return `plan-${documentLabel.replace(/\s+/g, "-") || "anibise"}.pdf`;
+}
+
+function metaDelPlan(d: DatosDelPlan): PlanMeta {
+  return {
+    patientName: d.patientName || "Paciente",
+    documentLabel: d.documentLabel,
+    consultationDate: formatDate(d.consultationDate),
+    profesional: d.profesional,
+  };
+}
+
+/**
+ * EL TEXTO DEL CORREO DICE CUANTOS DOCUMENTOS LLEVA, y por eso se deriva del adjunto.
+ *
+ * Es el hazard de siempre: si el texto dijera "tu informe y tu plan" fijo, un paciente sin prescripcion
+ * leeria que le mandaron un plan que no esta ahi, y el correo y su contenido se contradirian.
+ */
+function textoDelCorreo(nombre: string, conPlan: boolean): string {
+  const saludo = `Hola ${nombre || ""}.`.trim();
+  return conPlan
+    ? `${saludo} Adjuntamos dos documentos: tu informe ANI-BIS-E y tu plan de alimentación. Si tienes dudas, escribe a tu profesional de salud.`
+    : `${saludo} Adjuntamos tu informe ANI-BIS-E. Si tienes dudas, escribe a tu profesional de salud.`;
+}
 
 export async function sendReport(input: SendReportInput): Promise<Result<{ emailId: string }>> {
   const dispatch = await getReportDispatch(input.reportId);
@@ -123,6 +176,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       documentLabel: dispatch.documentLabel,
       evaluationDate: formatDate(dispatch.evaluationDate),
       consultationDate: formatDate(dispatch.consultationDate),
+      profesional: dispatch.profesional,
       reportId: dispatch.reportId,
     },
     {
@@ -142,11 +196,34 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
 
   // 3. Correo con el PDF adjunto (externo). Si falla, el reporte sigue approved.
   const filename = `informe-${dispatch.documentLabel.replace(/\s+/g, "-") || "anibise"}.pdf`;
+  // Y LA HOJA DEL PLAN, SI HAY PRESCRIPCION (Santiago, 2026-10-28). Los cuatro bloques de la prescripcion
+  // salieron del informe, asi que sin esto la cifra de calorias y de proteina dependeria de que su
+  // profesional se acordara de imprimir el plan. Va como SEGUNDO adjunto: dos documentos con dos trabajos.
+  //
+  // Y SE GUARDAN SUS BYTES, como los del informe: la prescripcion esta siempre abierta, asi que un reenvio
+  // que re-renderizara el plan podria mandar otro documento diciendo que es el mismo. Si la subida falla,
+  // el correo NO se detiene: el paciente recibe sus dos documentos y lo que se pierde es la copia del
+  // segundo, que es mucho menos grave que no entregarle el plan.
+  let planAdjunto: Adjunto | null = null;
+  if (plan) {
+    const planPdf = await renderPlanPdf(
+      plan,
+      metaDelPlan({
+        patientName: dispatch.patientName,
+        documentLabel: dispatch.documentLabel,
+        consultationDate: dispatch.consultationDate,
+        profesional: dispatch.profesional,
+      }),
+    );
+    await uploadPlanPdf(dispatch.patientId, dispatch.reportId, planPdf);
+    planAdjunto = { filename: nombreDelPlan(dispatch.documentLabel), content: planPdf };
+  }
   const sent = await sendReportEmail({
     to: dispatch.email,
     subject: "Tu informe ANI-BIS-E",
-    text: `Hola ${dispatch.patientName || ""}. Adjuntamos tu informe con tu plan y tus indicaciones. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
+    text: textoDelCorreo(dispatch.patientName, planAdjunto != null),
     pdf: { filename, content: pdf },
+    extra: planAdjunto,
   });
   if (!sent.ok) return sent;
 
@@ -228,6 +305,7 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
         documentLabel: dispatch.documentLabel,
         evaluationDate: formatDate(dispatch.evaluationDate),
         consultationDate: formatDate(dispatch.consultationDate),
+        profesional: dispatch.profesional,
         reportId: dispatch.reportId,
       },
       {
@@ -244,11 +322,36 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
   }
 
   const filename = `informe-${dispatch.documentLabel.replace(/\s+/g, "-") || "anibise"}.pdf`;
+  // EL PLAN DEL REENVIO SON LOS BYTES QUE SALIERON, por lo mismo que el informe: la prescripcion esta
+  // siempre abierta, asi que re-renderizarlo mandaria otro plan afirmando que es el mismo.
+  //
+  // EL RENDER SIGUE COMO RESPALDO para los reportes anteriores a que se guardara la copia: entre mandarle
+  // una reconstruccion de su plan y no mandarle plan, el paciente prefiere recibirlo.
+  let planAdjunto: Adjunto | null = null;
+  const planGuardado = await downloadPlanPdf(dispatch.patientId, dispatch.reportId);
+  if (planGuardado) {
+    planAdjunto = { filename: nombreDelPlan(dispatch.documentLabel), content: planGuardado };
+  } else {
+    const plan = await getPlanPaciente(dispatch.evaluationId, dispatch.snapshot);
+    if (plan) {
+      const planPdf = await renderPlanPdf(
+        plan,
+        metaDelPlan({
+          patientName: dispatch.patientName,
+          documentLabel: dispatch.documentLabel,
+          consultationDate: dispatch.consultationDate,
+          profesional: dispatch.profesional,
+        }),
+      );
+      planAdjunto = { filename: nombreDelPlan(dispatch.documentLabel), content: planPdf };
+    }
+  }
   const sent = await sendReportEmail({
     to: dispatch.email,
     subject: "Tu informe ANI-BIS-E",
-    text: `Hola ${dispatch.patientName || ""}. Te reenviamos tu informe, es el mismo documento. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
+    text: `Hola ${dispatch.patientName || ""}. Te reenviamos ${planAdjunto ? "tus documentos, son los mismos" : "tu informe, es el mismo documento"}. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
     pdf: { filename, content: pdf },
+    extra: planAdjunto,
   });
   if (!sent.ok) return sent;
 

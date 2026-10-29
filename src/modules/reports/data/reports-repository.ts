@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { EngineOutput } from "@/clinical-engine";
+import { etiquetaDeProfesion } from "@/modules/auth/admin-validations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { BAND_TEXT, type EbBand } from "@/modules/followups/services/eb-trajectory";
 
@@ -220,6 +221,16 @@ export type ReportDispatch = {
   patientName: string;
   documentLabel: string;
   email: string | null;
+  /**
+   * QUIEN LO ATENDIO, para el informe del paciente (nutricionista, 2026-10-28).
+   *
+   * El documento llevaba el nombre del paciente, su documento y dos fechas, y no decia quien lo firmaba.
+   * Una hoja clinica que no dice quien la emitio no es un documento: es un volante. Es la misma regla que
+   * ya aplica el encabezado de las hojas impresas desde pantalla.
+   *
+   * null = no se pudo resolver, y entonces no se inventa un autor: la linea no sale.
+   */
+  profesional: { nombre: string; profesion: string | null } | null;
   evaluationDate: string;
   /** Fecha de la CONSULTA (`evaluations.created_at`). Distinta de la de la medicion, que sale del BIS.
    *  Hoy se DEDUCE del registro; su archivo la captura, y esta preguntado (ronda del 31, punto 2). Si
@@ -268,7 +279,10 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     .select(
       // La fecha de la EVALUACION sale de su medicion, no del `created_at` del REPORTE. Se suma a la
       // misma consulta: cero consultas nuevas.
-      "id, evaluation_id, patient_id, status, snapshot, professional_notes, send_mode, storage_path, created_at, trajectory, trajectory_communicated_at, evaluations!inner(created_at, bis_measurements(measurement_date)), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
+      // EL NOMBRE DEL PROFESIONAL (nutricionista, 2026-10-28): el informe que recibe el paciente no decia
+      // quien lo atendio. Va con el HINT `profiles!profile_id` porque `professional_profiles` tiene TRES
+      // relaciones a `profiles`; sin el, PostgREST no sabe por cual resolver y falla en runtime.
+      "id, evaluation_id, patient_id, status, snapshot, professional_notes, send_mode, storage_path, created_at, trajectory, trajectory_communicated_at, evaluations!inner(created_at, bis_measurements(measurement_date), professional_profiles(profession, profiles!profile_id(full_name))), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
     )
     .eq("id", reportId)
     .maybeSingle();
@@ -299,12 +313,35 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     patientBandAppointmentDate = formatAppointmentDate((t?.proxima_cita as string | null) ?? "");
   }
 
+  // EL PROFESIONAL, resuelto con el mismo `one()` que el resto: PostgREST devuelve objeto o arreglo
+  // segun la cardinalidad que deduzca, y asumir una de las dos es el defecto del embed to-one.
+  const evaluacion = one<{
+    professional_profiles?: unknown;
+  }>(data.evaluations as never);
+  const perfilProfesional = one<{ profession: string | null; profiles: unknown }>(
+    (evaluacion?.professional_profiles ?? null) as never,
+  );
+  const personaProfesional = one<{ full_name: string | null }>(
+    (perfilProfesional?.profiles ?? null) as never,
+  );
+  const nombreProfesional = (personaProfesional?.full_name ?? "").trim();
+
   return {
     reportId: data.id,
     evaluationId: data.evaluation_id,
     patientId: data.patient_id,
     status: data.status as ReportStatus,
     snapshot: data.snapshot as EngineOutput,
+    profesional:
+      nombreProfesional !== ""
+        ? {
+            nombre: nombreProfesional,
+            // LA ETIQUETA SE RESUELVE AQUI, con la fuente unica de esos nombres: el documento no tiene por
+            // que saber que "nutricionista" se escribe "Nutricionista" de cara al paciente. Si la profesion
+            // no esta en el mapa, va el valor crudo antes que nada.
+            profesion: etiquetaDeProfesion(perfilProfesional?.profession ?? null),
+          }
+        : null,
     professionalNotes: data.professional_notes,
     sendMode: data.send_mode,
     storagePath: data.storage_path,

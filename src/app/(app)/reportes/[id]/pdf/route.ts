@@ -56,6 +56,7 @@ export async function GET(
       documentLabel: dispatch.documentLabel,
       evaluationDate: formatDate(dispatch.evaluationDate),
       consultationDate: formatDate(dispatch.consultationDate),
+      profesional: dispatch.profesional,
       reportId: dispatch.reportId,
     },
     {

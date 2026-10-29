@@ -1,7 +1,11 @@
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
 import { COLOR_SEVERIDAD, RadarDelPaciente } from "./radar-del-paciente";
+
+import { cambioDesdeLaAnterior } from "../cambio-desde-la-anterior";
+import { BloqueEvitar, BloqueIntercambio, BloqueMenu } from "./bloques-del-plan";
+import { styles } from "./estilos-del-pdf";
 
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
@@ -19,6 +23,18 @@ export type ReportMeta = {
   evaluationDate: string;
   /** Fecha de la CONSULTA. null = no se pudo resolver; entonces solo se muestra la de la medicion. */
   consultationDate?: string | null; // ya formateada
+  /**
+   * QUIEN LO ATENDIO (una nutricionista, via Santiago, 2026-10-28): *"Nombre del profesional"*.
+   *
+   * El informe llevaba el nombre del paciente, su documento y dos fechas, y no decia quien se lo entrego.
+   * Un documento de salud que no dice quien lo emitio no es un documento: es un volante, y el paciente que
+   * quiere preguntar algo no sabe a quien. La historia clinica ya lo trae; el informe no.
+   *
+   * `profesion` llega YA COMO ETIQUETA ("Nutricionista"), resuelta en el repositorio con
+   * `PROFESSION_LABELS`, que es la fuente unica de esos nombres. null = no se pudo resolver, y entonces la
+   * linea no sale: no se inventa un autor.
+   */
+  profesional?: { nombre: string; profesion: string | null } | null;
   reportId: string;
 };
 
@@ -27,64 +43,6 @@ export type ReportMeta = {
 // IAE revela el constructo; la clase de IAE tampoco se imprime. La expresion "edad biologica" es
 // termino retirado del sistema. La EB-BIS/IAE SI las ve el profesional (con marca de calibracion
 // provisional), en la vista interna. Gate del Hito 3 en LANZAMIENTO.md.
-const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
-  // Discreta: mismo gris del pie, sin negrita y sin caja. Informa, no invita ni disuade.
-  derechoHc: { marginTop: 18, fontSize: 8, color: "#6b7280" },
-  // Cada dia del menu junto: un dia partido entre dos hojas obliga a pasar pagina a media comida.
-  diaMenu: { marginTop: 6 },
-  title: { fontSize: 18, fontWeight: "bold", marginBottom: 2 },
-  subtitle: { fontSize: 10, color: "#555", marginBottom: 12 },
-  meta: { marginBottom: 12 },
-  metaRow: { flexDirection: "row", marginBottom: 1 },
-  metaLabel: { width: 110, color: "#555" },
-  notice: {
-    backgroundColor: "#fff4e5",
-    borderColor: "#d99a2b",
-    borderWidth: 1,
-    borderRadius: 4,
-    padding: 8,
-    marginBottom: 14,
-    color: "#8a5a00",
-    fontSize: 9,
-  },
-  // Rotulo de advertencia permanente (siempre visible; preview interno y version al
-  // paciente). El motor produce asociaciones a valorar, no un diagnostico.
-  disclaimer: {
-    backgroundColor: "#eef2f7",
-    borderColor: "#16324f",
-    borderWidth: 1,
-    borderRadius: 4,
-    padding: 8,
-    marginBottom: 12,
-    color: "#16324f",
-    fontSize: 9,
-    fontWeight: "bold",
-  },
-  section: { marginBottom: 12 },
-  sectionTitle: { fontSize: 12, fontWeight: "bold", marginBottom: 4, color: "#16324f" },
-  tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderColor: "#ddd", paddingVertical: 2 },
-  cellLabel: { width: 90 },
-  cellValue: { flex: 1, textAlign: "right" },
-  para: { marginBottom: 2 },
-  // CADA DOMINIO, UN BLOQUE (Santiago, 2026-09-21): el nombre en negrita, su etiqueta con su color y la
-  // frase debajo. En parrafo corrido las cinco se leian como un solo texto y no se veia cual pedia trabajo.
-  // La barra de la izquierda repite el color de la etiqueta: refuerza, no sustituye a la palabra.
-  dominio: { marginTop: 5, paddingLeft: 7, borderLeftWidth: 2.5 },
-  dominioLectura: { marginTop: 1, color: "#374151" },
-  bold: { fontWeight: "bold" },
-  footer: {
-    position: "absolute",
-    bottom: 24,
-    left: 40,
-    right: 40,
-    fontSize: 8,
-    color: "#888",
-    borderTopWidth: 0.5,
-    borderColor: "#ddd",
-    paddingTop: 6,
-  },
-});
 
 
 // Modo de envio: que contenido incluye el PDF (B10.1). 'atlas' = reporte del motor;
@@ -153,6 +111,9 @@ export function ReportDocument({
   // para que valga también en reportes YA SELLADOS con encuesta incompleta (no se reescriben, pero dejan de
   // mostrar la banda). El sellado (computeTrajectoryToSeal) ya no sella banda para incompletos de aquí en más.
   const showBand = showAtlas && Boolean(bandText) && dfi.complete;
+  // El cambio desde la consulta anterior, en frases. Vacio cuando no hay dos mediciones que comparar, y
+  // entonces el bloque de seguimiento sale solo con su grafica, como estaba.
+  const cambios = showAtlas ? cambioDesdeLaAnterior(serie) : [];
   return (
     <Document
       title={`Informe ANI-BIS-E ${meta.documentLabel}`}
@@ -191,6 +152,17 @@ export function ReportDocument({
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Fecha de la consulta</Text>
               <Text>{meta.consultationDate}</Text>
+            </View>
+          ) : null}
+          {/* QUIEN LO ATENDIO, al final del encabezado: la ultima linea del bloque es la que se lee como
+              firma. Si no se pudo resolver el nombre, la fila no sale. */}
+          {meta.profesional ? (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Te atendió</Text>
+              <Text>
+                {meta.profesional.nombre}
+                {meta.profesional.profesion ? ` · ${meta.profesional.profesion}` : ""}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -250,6 +222,24 @@ export function ReportDocument({
         {showAtlas && dfiPac && dfi.complete ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Cómo estás</Text>
+            {/* ═══ LA PEQUEÑA EXPLICACION DEL RESUMEN (una nutricionista, via Santiago, 2026-10-28) ═══
+
+                *"Nombre del profesional, junto a una pequeña explicacion del resumen del diagnostico. Algo
+                simple que el paciente pueda entender."*
+
+                EXPLICA EL DOCUMENTO, NO AL PACIENTE: dice de donde salen las cifras y como se lee lo que
+                sigue. Ni una palabra sobre que significa clinicamente, porque ese lenguaje es el de
+                Gildardo (`dfiParaPaciente` es su mapa portado) y escribirlo nosotros seria inventar
+                contenido clinico, que es justo lo que prohibe la Regla 0.
+
+                Y NO VUELVE EL "no constituye diagnostico" que se retiro el 2026-09-01: ese negaba lo que el
+                bloque afirma. Esto no niega nada; orienta la lectura. */}
+            <Text style={styles.para}>
+              Este es el resumen de tu valoración: cómo está tu cuerpo hoy, según las medidas que te tomamos
+              y lo que nos contaste. La primera frase es el resumen general; debajo aparece cada área por
+              separado, y la figura las muestra todas juntas. Si algo no te queda claro, pregúntaselo a
+              quien te atendió.
+            </Text>
             <Text style={styles.para}>
               <Text style={styles.bold}>{dfiPac.riesgo}. </Text>
               {dfiPac.enfoque}
@@ -287,139 +277,42 @@ export function ReportDocument({
             (decia "falta el septimo, bloqueado por P2"; el bloqueo se cerro con su respuesta §2). ═══ */}
         {showAtlas && plan ? (
           <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Tu meta</Text>
-              {plan.objetivoTexto ? <Text style={styles.para}>{plan.objetivoTexto}</Text> : null}
-              {plan.pesoMeta != null ? (
-                <Text style={styles.para}>Peso que acordaste con tu profesional: {plan.pesoMeta} kg.</Text>
-              ) : null}
-              {plan.kcalObjetivo != null ? (
-                <Text style={styles.para}>Tu plan es de {plan.kcalObjetivo} calorías al día.</Text>
-              ) : null}
-            </View>
+            {/* ═══ LA CIFRA DE LA PRESCRIPCION SALE DEL INFORME DEL PACIENTE (una nutricionista, via
+                Santiago, 2026-10-28) ═══
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Tu plan de alimentación</Text>
-              {plan.tipoDieta ? (
-                <Text style={styles.para}>
-                  <Text style={styles.bold}>Dieta {plan.tipoDieta.toLowerCase()}</Text>
-                  {plan.kcalObjetivo != null ? ` de ${plan.kcalObjetivo} kcal al día.` : "."}
-                </Text>
-              ) : null}
-              {plan.prescripcion.map((f) => (
-                <Text key={f.nombre} style={styles.para}>
-                  {f.nombre}: {f.valor}
-                </Text>
-              ))}
-              {plan.atributos.length ? (
-                <Text style={styles.para}>{plan.atributos.join(" · ")}</Text>
-              ) : null}
-              {plan.notasDelModelo.map((n) => (
-                <Text key={n} style={styles.para}>
-                  {n}
-                </Text>
-              ))}
-            </View>
+                *"Quitar el apartado que dice tu meta dieta X calórica, proteína X, Priorizar X y Vigilar X.
+                También quitar el apartado de 'cómo repartir tus porciones en el día' y 'recomendaciones
+                para tu caso'."*
 
-            {/* LO QUE NO PUEDE COMER, ANTES DEL MENU y no despues, y el orden importa: el paciente lee el
-                menu para saber que comer, y tiene que llegar sabiendo que evitar. Su §7.1 no nombra este
-                bloque; va declarado, con su razon: un plan sin las restricciones es un plan que el
-                paciente no puede seguir, porque el menu que recibe puede contradecirlas. */}
-            {plan.restricciones.length ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Lo que debes evitar</Text>
-                {plan.restricciones.map((r) => (
-                  <Text key={r} style={styles.para}>
-                    {r}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
+                ERAN CUATRO BLOQUES, no tres, y por eso se nombran los cuatro: lo que ella describe en una
+                frase estaba repartido entre "Tu meta" (el objetivo, el peso acordado y las calorías) y "Tu
+                plan de alimentación" (el tipo de dieta, la prescripción por macro y las notas del modelo,
+                que son las que empiezan por "Priorizar" y "Vigilar"). Los dos iban seguidos y se leen como
+                uno. Con ellos salen "Cómo repartir tus porciones en el día" y "Recomendaciones para tu
+                caso", que ella nombra aparte.
 
-            {plan.distribucion.length ? (
-              <View style={styles.section} break>
-                <Text style={styles.sectionTitle}>Cómo repartir tus porciones en el día</Text>
-                <Text style={styles.para}>
-                  Comidas de tu día: {plan.tiemposActivos.join(", ")}.
-                </Text>
-                {plan.distribucion.map((f) => (
-                  <View key={f.alimento} style={styles.tableRow}>
-                    <Text style={styles.cellLabel}>{f.alimento}</Text>
-                    <Text style={styles.cellValue}>
-                      {f.porTiempo.map((t) => `${t.tiempo} ${t.porciones}`).join(" · ")}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
+                POR QUE SE VAN DEL INFORME Y NO DEL PLAN: son el contenido del PLAN, y el plan ya existe
+                como documento aparte (`plan-imprimible`), que es el que el paciente se lleva con sus
+                porciones. Tenerlos en los dos hacía que el informe compitiera con el plan y, peor, que un
+                paciente con dos papeles en la mano no supiera cuál seguir.
 
-            {/* EL ENCABEZADO QUE AGRUPA, que es la única alineación en esta dirección (2026-09-04). Aquí
-                cada recomendación era su propia sección de primer nivel, así que "Alimentación saludable
-                general" quedaba al mismo rango que "Tu meta" y sin decir de qué es. La hoja impresa sí
-                las agrupaba, y esa es la mejor de las dos. */}
-            {plan.recomendaciones.length ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recomendaciones para tu caso</Text>
-                {plan.recomendaciones.map((r) => (
-                  <View key={r.titulo}>
-                    <Text style={styles.bold}>{r.titulo}</Text>
-                    {r.lineas.map((l) => (
-                      <Text key={l} style={styles.para}>
-                        {l}
-                      </Text>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            ) : null}
+                LO QUE SI SE QUEDA, y no es casualidad: "Lo que debes evitar", la lista de intercambio y el
+                menú de ejemplo. La diferencia no es de tema sino de LENGUAJE: "proteína 1,6 g/kg" es la
+                cifra con la que trabaja el profesional, y una lista de alimentos por grupo es lo que el
+                paciente puede usar. Sale la prescripción, se queda lo que se puede seguir.
 
-            {/* BLOQUE 7 · la lista de intercambio recortada por región. `break`: su archivo la imprime en
-                su propia página, y aquí importa más, porque es la hoja que el paciente lleva al mercado. */}
-            <View style={styles.section} break>
-              <Text style={styles.sectionTitle}>Tu lista de intercambio</Text>
-              <Text style={styles.para}>
-                Los alimentos de un mismo grupo aportan aproximadamente lo mismo por porción, así que puedes
-                intercambiarlos libremente. Sigue las porciones que te indicó tu nutricionista para cada
-                grupo y elige entre los alimentos de la lista, variando cada día para lograr una
-                alimentación completa y diversa. La cantidad entre paréntesis es el tamaño de una porción de
-                intercambio.
-              </Text>
-              <Text style={styles.para}>
-                {plan.listaIntercambio.region
-                  ? `Preparada para ${plan.listaIntercambio.ciudad}, región ${plan.listaIntercambio.region}: ${plan.listaIntercambio.total} alimentos de los ${plan.listaIntercambio.deTotal}.`
-                  : `Lista completa: ${plan.listaIntercambio.deTotal} alimentos.`}
-              </Text>
-              {plan.listaIntercambio.grupos.map((g) => (
-                <View key={g.nombre} style={styles.diaMenu}>
-                  <Text style={styles.bold}>{g.nombre}</Text>
-                  {g.subgrupos.map((s) => (
-                    <Text key={s.sub} style={styles.para}>
-                      {s.sub}: {s.alimentos.join(", ")}
-                      {s.hayMas ? ", entre otros" : ""}
-                    </Text>
-                  ))}
-                </View>
-              ))}
-            </View>
+                Y LA DUDA QUE ESTO ABRIO SE CERRO EL MISMO DIA (Santiago): el correo adjuntaba SOLO este
+                informe, asi que la cifra de calorías y de proteína habría quedado únicamente en la hoja que
+                le imprime su profesional. Ahora el correo adjunta TAMBIEN el plan (`plan-document.tsx`)
+                cuando hay prescripción emitida, así que le llega por su canal. ═══ */}
 
-            {plan.menu.length ? (
-              <View style={styles.section} break>
-                <Text style={styles.sectionTitle}>Ejemplo de menú para una semana</Text>
-                <Text style={styles.para}>
-                  Es un ejemplo, no una obligación: puedes cambiar preparaciones por otras equivalentes.
-                </Text>
-                {plan.menu.map((d) => (
-                  <View key={d.dia} style={styles.diaMenu}>
-                    <Text style={styles.bold}>{d.dia}</Text>
-                    {d.comidas.map((c) => (
-                      <Text key={c.tiempo} style={styles.para}>
-                        {c.tiempo}: {c.texto}
-                      </Text>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            ) : null}
+            {/* LOS TRES QUE SE QUEDAN, compuestos desde `bloques-del-plan.tsx`: el JSX vive UNA vez y lo
+                comparten las tres superficies (esta, el PDF del plan y la hoja de pantalla). Tres copias
+                del mismo bloque es pedir la séptima divergencia, y de las seis anteriores salió el candado
+                que compara los canales. */}
+            <BloqueEvitar plan={plan} />
+            <BloqueIntercambio plan={plan} />
+            <BloqueMenu plan={plan} />
           </>
         ) : null}
 
@@ -430,6 +323,25 @@ export function ReportDocument({
               Tus medidas en las últimas consultas. Son las mismas que te toma el equipo cada vez.
             </Text>
             <GraficaTrayectoria puntos={serie} />
+            {/* ═══ EL CAMBIO EN PALABRAS, NO SOLO EN LA GRAFICA (una nutricionista, via Santiago,
+                2026-10-28) ═══
+
+                *"Si el paciente va para seguimiento, animarlo comparando el seguimiento con la consulta
+                anterior."*
+
+                La gráfica ya estaba; una gráfica de tres líneas no es una frase. Las reglas de qué se
+                puede decir y por qué no hay umbral están en `cambio-desde-la-anterior.ts`. Va DESPUES de la
+                figura: la figura es el recorrido completo y esto es el último tramo. */}
+            {cambios.length ? (
+              <>
+                <Text style={[styles.para, styles.bold]}>Desde tu consulta anterior</Text>
+                {cambios.map((c) => (
+                  <Text key={c.medida} style={styles.para}>
+                    {c.texto}
+                  </Text>
+                ))}
+              </>
+            ) : null}
           </View>
         ) : null}
 

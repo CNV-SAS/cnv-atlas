@@ -14,6 +14,42 @@ function reportPath(patientId: string, reportId: string): string {
   return `${patientId}/${reportId}.pdf`;
 }
 
+// ═══ EL PLAN VIAJA EN SU PROPIO OBJETO, al lado del informe (Santiago, 2026-10-28) ═══
+//
+// Desde que el correo adjunta tambien la hoja del plan, el reenvio tiene el mismo problema que ya resolvio
+// el informe: la prescripcion esta SIEMPRE ABIERTA (2026-09-09), asi que entre el envio y el reenvio el
+// plan puede haber cambiado, y "te reenviamos el mismo documento" habria dejado de ser cierto para el
+// segundo adjunto. Se guardan los bytes que salieron, igual que los del informe.
+//
+// SIN MIGRACION: mismo bucket, mismo prefijo de paciente (que es donde el route handler valida ownership),
+// con el sufijo del documento. Si manana hay un tercer documento, sigue el mismo patron.
+function planPath(patientId: string, reportId: string): string {
+  return `${patientId}/${reportId}-plan.pdf`;
+}
+
+export async function uploadPlanPdf(
+  patientId: string,
+  reportId: string,
+  pdf: Buffer,
+): Promise<{ path: string } | null> {
+  const supabase = createSupabaseAdminClient();
+  const path = planPath(patientId, reportId);
+  const { error } = await supabase.storage.from(BUCKET).upload(path, pdf, {
+    contentType: "application/pdf",
+    upsert: true,
+  });
+  if (error) return null;
+  return { path };
+}
+
+/** Los bytes del plan que SE ENVIO, o null si ese reporte es anterior a que se guardara. */
+export async function downloadPlanPdf(patientId: string, reportId: string): Promise<Buffer | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.storage.from(BUCKET).download(planPath(patientId, reportId));
+  if (error || !data) return null;
+  return Buffer.from(await data.arrayBuffer());
+}
+
 // Sube (o reemplaza) el PDF del reporte. upsert es seguro: el snapshot es inmutable, asi
 // que el PDF de un reporte es deterministico; reenviar regenera el mismo objeto.
 export async function uploadReportPdf(

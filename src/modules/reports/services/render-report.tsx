@@ -5,6 +5,7 @@ import type { EngineOutput } from "@/clinical-engine";
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { HistoriaClinicaDoc, InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
 import { HistoriaClinicaDocument } from "../pdf/hc-document";
+import { PlanDocument, type PlanMeta } from "../pdf/plan-document";
 import { ReportDocument, type ReportMeta, type SendMode } from "../pdf/report-document";
 
 export type RenderReportOptions = {
@@ -41,6 +42,16 @@ export function renderReportPdf(
       serie={options.serie}
     />,
   );
+}
+
+/**
+ * EL PLAN A PDF, para adjuntarlo al correo del paciente (Santiago, 2026-10-28).
+ *
+ * Mismo patron que los otros dos: puro respecto a BD y secretos, recibe el plan ya armado por
+ * `getPlanPaciente` (el MISMO lector que la hoja de pantalla) y devuelve los bytes.
+ */
+export function renderPlanPdf(plan: PlanPaciente, meta: PlanMeta): Promise<Buffer> {
+  return renderToBuffer(<PlanDocument plan={plan} meta={meta} />);
 }
 
 // LA HISTORIA CLINICA A PDF. Mismo patron que el reporte y por la misma razon: puro respecto a BD y
