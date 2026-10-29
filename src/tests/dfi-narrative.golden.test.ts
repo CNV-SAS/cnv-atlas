@@ -188,9 +188,25 @@ describe("DFI narrativa: golden diferencial contra la funcion vigente de Gildard
     expect(colaMia, "activamos una ruta sobre un dominio no medido").not.toContain("Ruta 4");
     // Y quitando esa ruta, el resto de la cola es byte a byte la suya (mismo nivel de riesgo incluido).
     expect(colaMia).toBe(colaRef.replace("; Ruta 4 (Desaceleración del Envejecimiento), complementaria", ""));
-    // Y lo que su prosa afirmaba sobre los dos vacios, para que quede escrito lo que se corrigio:
-    expect(ref.parrafo).toContain("su envejecimiento biológico está acelerado (0 años");
+    // Y lo que su prosa afirma sobre los dos vacios, para que quede escrito lo que se corrigio:
+    expect(ref.parrafo).toContain("su envejecimiento biológico está acelerado");
     expect(ref.parrafo).toContain("la carga contextual y de estilo de vida es moderada");
+    // ═══ EL CERO DESAPARECIO CON LA EB-BIS v7 (2026-10-28), Y VALE DEJAR DICHO POR QUE ═══
+    //
+    // Hasta aqui esta linea exigia el texto literal "acelerado (0 años por encima de lo esperado)": con la
+    // v5, un paciente sin encuesta no tenia IAE, y su prosa rellenaba el hueco con un cero y lo llamaba
+    // acelerado igual. Ahora la v7 calcula el IAE SIN la encuesta (su §2), asi que la cifra que entra es
+    // real y el parrafo dice los años que son.
+    //
+    // LO QUE NO CAMBIO, y es lo que este golden vigila: su prosa SIGUE afirmando sobre un dominio que el
+    // DFI no midio, y nosotros seguimos diciendo "no se evaluó". CA-6 sigue en pie; lo que se fue es una
+    // de sus dos manifestaciones. Si alguien vuelve a ver un cero aqui, es que el IAE dejo de llegar.
+    const aniosEnLaProsa = /acelerado \((\d+) años/.exec(ref.parrafo);
+    expect(aniosEnLaProsa, "cambio la forma de la frase del envejecimiento").toBeTruthy();
+    expect(
+      Number(aniosEnLaProsa![1]),
+      "volvio el cero fabricado: el IAE no esta llegando a la narrativa",
+    ).toBeGreaterThan(0);
     // LAS METAS heredan la misma consecuencia, y aqui es donde mas pesa: la R4 fabricada le ponia a las
     // CUATRO profesiones un objetivo de envejecimiento, y a nutricion y ejercicio ademas una meta medible
     // a 24 semanas ("reducción del IAE de al menos 2 años") sobre un IAE que no existe. Se le estaba

@@ -21,14 +21,30 @@ import type { DFIResult } from "./frozen/engine.dfi";
 // original queda byte-identico (anclado por su DIFF). Ver authorized-modifications.js.
 import * as dfi from "./frozen/engine.dfi.authorized.js";
 import * as ix from "./frozen/engine.indices.js";
+import { ebBisV7, EB_BIS_V7 } from "./frozen/eb-bis-v7.js";
 import { type BiodyImport, parseBiodyRow } from "./edge/biody-import";
 import { ordinalesPatron } from "./patron";
 import { normalizeSexo, type SexoCanonico } from "./edge/normalize";
+import type { ResultadoEbBis } from "./types";
 
-/** Contexto de encuesta necesario SOLO para EB-BIS/IAE (opcional). */
+/**
+ * Contexto que la EB-BIS necesita de FUERA de la medicion.
+ *
+ * ═══ QUE CAMBIO CON LA v7 (su §2, entrega del 2026-10-26) ═══
+ *
+ * *"El ICEC ya no entra al calculo. La EB-BIS se calcula aunque la encuesta no este completa."* Asi que
+ * `icec` dejo de ser el insumo que HABILITA la EB-BIS y pasa a alimentar SOLO la alerta de discordancia.
+ * Lo que ahora habilita el calculo es la EDAD, que antes era opcional (se usaba para restar el IAE) y hoy
+ * entra a la formula: sin edad valida la v7 devuelve "pendiente".
+ *
+ * Por eso la edad sigue siendo opcional en el TIPO y no en el contrato: el que no la tiene recibe un estado
+ * con su motivo, que es lo que su §5 pide mostrar, en vez de un null sin explicacion.
+ */
 export interface ContextoEncuesta {
-  icec?: number | null; // ICEC/LE8 total de la encuesta (calcLE8)
-  edad?: number | null; // edad cronologica (anos)
+  /** ICEC/LE8 total de la encuesta (calcLE8). Con la v7 solo decide la alerta de discordancia. */
+  icec?: number | null;
+  /** Edad en años CUMPLIDOS (entero). Insumo de la formula desde la v7; su §4.1 la exige de 18 a 100. */
+  edad?: number | null;
 }
 
 export interface AnalisisANIBISE {
@@ -44,6 +60,15 @@ export interface AnalisisANIBISE {
     EB_BIS: number | null;
     IAE: number | null;
   };
+  /**
+   * LO QUE LA v7 DEVUELVE ADEMAS DE LA CIFRA, y que su §5 reparte entre dos lectores.
+   *
+   * `EB_BIS` e `IAE` de arriba son para el profesional Y el paciente; esto es el soporte: la z de pares, si
+   * el valor se limito al tope, la alerta de discordancia, y el ESTADO con su motivo cuando no se pudo
+   * calcular. Va aparte y no mezclado entre los indices por eso mismo: lo que se le muestra a un paciente
+   * y lo que no tiene que distinguirse en el tipo, no en la plantilla de cada pantalla.
+   */
+  ebBis: ResultadoEbBis;
   clases: {
     IFC: { l: string; k: number };
     IRC: { l: string; k: number };
@@ -60,6 +85,82 @@ export interface AnalisisANIBISE {
 
 // Insumos secundarios que habilitan ISCM (todos presentes o ISCM = null).
 const SECONDARY_FIELDS = ["FFW", "MCA_dif", "ECW_sg", "ICW_sg"] as const;
+
+
+/** El rotulo de la FORMULA que se sella con cada resultado (su §6). */
+export const EB_BIS_VERSION_MOTOR = "EB-BIS v7";
+
+/**
+ * Corre su funcion y reparte la salida: las dos cifras que ve el paciente, y el soporte del profesional.
+ *
+ * LA EDAD SE EXIGE ENTERA Y SE COMPRUEBA AQUI, aunque su funcion tambien la compruebe. No es doble guarda
+ * por desconfianza: es que un `null` o un decimal que entre a su funcion vuelve con "edad no válida", un
+ * motivo correcto pero que no dice si falta la fecha de nacimiento o si alguien paso 30,95. Sus errores 3,
+ * 4 y 6 son exactamente eso (edad 0, edad 231, y el 30,95 que el equipo redondea a 31), y los tres se
+ * diagnostican por el motivo que llega a la pantalla.
+ */
+function calcularEbBis(
+  sexo: SexoCanonico,
+  enc: ContextoEncuesta,
+  imp: BiodyImport,
+): { EB_BIS: number | null; IAE: number | null; ebBis: ResultadoEbBis } {
+  const sinCalcular = (estado: ResultadoEbBis["estado"], motivo: string) => ({
+    EB_BIS: null,
+    IAE: null,
+    ebBis: {
+      estado,
+      motivo,
+      zPares: null,
+      topado: false,
+      alertaDiscordancia: false,
+      versionMotor: EB_BIS_VERSION_MOTOR,
+      versionParametros: EB_BIS_V7.version,
+    } satisfies ResultadoEbBis,
+  });
+
+  const edad = enc.edad;
+  if (edad == null) return sinCalcular("pendiente", "falta la fecha de nacimiento del paciente");
+  if (!Number.isInteger(edad)) {
+    // Su error 6: el equipo redondea la columna decimal hacia arriba (30,95 pasa a 31) y Atlas trunca.
+    // Su correccion: *"Usar siempre años cumplidos desde la fecha de nacimiento (truncar)"*. Si llega un
+    // decimal, alguien lo tomo de la columna del equipo y no de la fecha, y eso se dice en vez de truncar
+    // en silencio: truncar aqui taparia el defecto que el pidio corregir en su origen.
+    return sinCalcular("pendiente", `la edad no viene en años cumplidos (llego ${edad})`);
+  }
+
+  // El ACT es opcional en el contrato de columnas (`TBW`), asi que puede faltar. Se nombra el dato que
+  // falta, como hace su funcion con los demas.
+  const ACT = imp.raw.TBW;
+  if (ACT == null) return sinCalcular("pendiente", "dato faltante o inválido: ACT (agua total)");
+
+  const r = ebBisV7({
+    sexo,
+    edad,
+    Re: imp.Re,
+    Ri: imp.Ri,
+    C: imp.C,
+    peso: imp.peso,
+    MLG: imp.FFM,
+    ACT,
+    FMI: imp.FMI,
+    ICEC: enc.icec ?? null,
+  });
+
+  if (r.estado !== "ok") return sinCalcular(r.estado, r.motivo);
+  return {
+    EB_BIS: r.EB_BIS,
+    IAE: r.IAE,
+    ebBis: {
+      estado: "ok",
+      motivo: null,
+      zPares: r.zPares,
+      topado: r.topado,
+      alertaDiscordancia: r.alertaDiscordancia,
+      versionMotor: r.version,
+      versionParametros: r.versionParametros,
+    },
+  };
+}
 
 /**
  * Punto de entrada oficial (composicion BIS). `row` = fila cruda del Excel Biody;
@@ -86,9 +187,19 @@ export function analizarDesdeBiody(
       ? ix.computeIEHH({ Re: imp.Re, Rinf: imp.Rinf, C: imp.C, FFW: imp.raw.FFW })
       : null;
 
-  // EB-BIS/IAE: solo si la encuesta aporta ICEC.
-  const EB_BIS = enc.icec != null ? ix.computeEBBIS(IFC, PABU, enc.icec) : null;
-  const IAE = ix.computeIAE(EB_BIS, enc.edad ?? null);
+  // ═══ EB-BIS v7 (su entrega del 2026-10-26, parametros 7.1.0) ═══
+  //
+  // LA v5 SE RETIRA DEL MOTOR, literal en su §2: *"La EB-BIS v5 (IFC, PABU e ICEC con intercepto fijo de
+  // 41,438 años) se retira del motor de ATLAS y se sustituye por la EB-BIS v7."* `ix.computeEBBIS` sigue
+  // existiendo en el frozen (es su codigo y no se edita), pero ya no se llama desde aqui: los valores v5
+  // ya calculados viven en los snapshots sellados, que es el "campo historico" que su §6 pide conservar.
+  //
+  // LOS INSUMOS NUEVOS SALEN DE LA MISMA MEDICION, y vale la pena dejar escrito cual es cual porque sus
+  // nombres no son los del equipo: MLG es la masa libre de grasa (la `FFM` del export) y ACT es el agua
+  // corporal total (la `TBW`). La PSSG (masa seca sin grasa) NO se lee de la columna que el equipo
+  // reporta: su funcion la calcula como MLG - ACT, y su funcion es la especificacion. Es la misma decision
+  // que ya se tomo con el ASMI (derivar, no leer) y por el mismo motivo: fidelidad a su modelo.
+  const { EB_BIS, IAE, ebBis } = calcularEbBis(sexo, enc, imp);
 
   const cIFC = core.cIFC(IFC, sexo);
   const cIRC = core.cIRC(IRC, sexo);
@@ -102,6 +213,7 @@ export function analizarDesdeBiody(
   return {
     sexo,
     indices: { IFC, IRC, PABU, FMI: imp.FMI, FFMI: imp.FFMI, ISCM, IEHH, EB_BIS, IAE },
+    ebBis,
     clases: {
       IFC: { l: cIFC.l, k: cIFC.k },
       IRC: { l: cIRC.l, k: cIRC.k },

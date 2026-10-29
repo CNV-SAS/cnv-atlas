@@ -94,7 +94,39 @@
 // dentro del VALOR solo obligaba a parsear para comparar. Tres numeros (no dos ni cuatro): con dos no se
 // puede corregir un decimal sin anunciar cambio de ciencia. Y nunca fechas: `2026-09-04` no ordena contra
 // `1.4.0` y no dice si el cambio fue de fondo o de forma.
-export const ENGINE_VERSION = "1.0.0";
+// ═══ 2.0.0: LA EB-BIS v7 (2026-10-28) ═══
+//
+// MAYOR, y el criterio no es nuestro: `docs/VERSIONES.md` dice *"Mayor = la ciencia cambia y lo emitido
+// antes no es comparable"*. Aqui se cumplen las dos mitades, y la segunda es la que obliga.
+//
+// LA CIENCIA CAMBIA. La EB-BIS v5 (IFC, PABU e ICEC con intercepto fijo de 41,438 años) se RETIRA del
+// motor y la sustituye la EB-BIS v7 con parametros 7.1.0 (entrega de Gildardo del 2026-10-26, §2: *"se
+// retira del motor de ATLAS y se sustituye"*). No es la misma formula con otros numeros: cambian los
+// INSUMOS (ahora Re, Ri, C, peso, MLG, ACT y FMI de la misma medicion, mas sexo y edad), cambia el
+// esperado (curvo, con termino de edad²), y el ICEC SALE del calculo.
+//
+// Y LO EMITIDO ANTES NO ES COMPARABLE, que es lo que hace falta que esta version sea mayor y no menor:
+// `sonComparables` (followups/eb-trajectory) refusa restar dos EB de MAYORES distintos, y esa resta es la
+// que el paciente ve como "mejoro" o "empeoro". Con un bump menor, la banda habria restado una EB v7
+// contra una v5 sellada y le habria mostrado al paciente el salto de ESCALA como si fuera su cambio.
+// Ese freno se construyo el 2026-10-24 justo para este dia.
+//
+// QUE SE MUEVE, en concreto:
+//  · La EB-BIS y el IAE de TODO paciente, con otra escala. Y el IAE alimenta la ruta R1 y el dominio 3 del
+//    DFI, asi que las rutas y el riesgo integrado pueden voltear.
+//  · La EB-BIS y el IAE pasan a emitirse SIN encuesta completa (su §2: el ICEC ya no entra). El DFI sigue
+//    sin generarse hasta que este completa (su §5).
+//  · Aparecen tres salidas nuevas que la v5 no tenia: la z de pares, el tope y la alerta de discordancia.
+//  · Cada resultado sella `versionMotor` y `versionParametros` (su §6), porque los parametros pueden
+//    cambiar sin que cambie la formula: ya paso entre el 24 y el 26 de octubre (7.0.0 a 7.1.0).
+//  · Y la EDAD pasa a ser insumo de la formula, exigida ENTERA (años cumplidos). Un paciente sin fecha de
+//    nacimiento deja de recibir una EB-BIS: recibe "pendiente" con su motivo. Es la correccion de sus
+//    errores 3, 4 y 6, y es un caso REAL (13 evaluaciones calcularon con edad 0).
+//
+// LOS VALORES v5 YA CALCULADOS SE CONSERVAN, que es lo que pide su §6: viven en los snapshots sellados y
+// no se reescriben nunca (regla 7). No hace falta un "campo historico" nuevo; el campo historico es el
+// snapshot. Lo que si hay que hacer, y va aparte, es el RECALCULO de las evaluaciones limpias.
+export const ENGINE_VERSION = "2.0.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada

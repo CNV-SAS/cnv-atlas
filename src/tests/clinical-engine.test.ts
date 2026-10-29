@@ -71,13 +71,16 @@ describe("clinical-engine runEngine (motor real)", () => {
     expect(out.versions.rules).toBe("1.0");
   });
 
-  it("marca el DFI DEGRADADO sin encuesta (EB/IAE null, flag explicito)", () => {
+  it("marca el DFI DEGRADADO sin encuesta, y la EB-BIS sale igual (v7)", () => {
+    // EL DFI Y LA EB-BIS DEJARON DE IR JUNTOS el 2026-10-28. Su §5: *"Mientras la encuesta no este
+    // completa, la EB-BIS y el IAE se muestran SOLOS con la nota 'Diagnostico integrado pendiente de la
+    // encuesta'; el DFI no se genera."* Asi que lo degradado es el DFI, y la EB-BIS no es parte de eso.
     const out = runEngine(input({}));
     expect(out.dfi.complete).toBe(false);
     expect(out.dfi.degradedReason).toBeTruthy();
     expect(out.dfi.le8Total).toBeNull();
-    expect(out.indicators.eb).toBeNull();
-    expect(out.indicators.iae).toBeNull();
+    expect(out.indicators.eb, "la EB-BIS v7 se calcula sin encuesta").not.toBeNull();
+    expect(out.indicators.iae).not.toBeNull();
   });
 
   it("marca el DFI COMPLETO solo cuando TODOS los field_key declarados estan respondidos", () => {
@@ -98,22 +101,46 @@ describe("clinical-engine runEngine (motor real)", () => {
     expect(out.dfi.degradedReason).toContain("faltan");
   });
 
-  // SUSPENSION por encuesta incompleta (Q28, Gildardo, implementado 2026-08-11 en la glue). Con la
-  // encuesta INCOMPLETA (parcial o vacia) las tres salidas de encuesta NO se emiten: EB/IAE null, ICEC
-  // (le8Total) null, y las rutas quedan solo las BIS (R1/R2; se suspenden R3/R4/R5/R6). Antes de este
-  // cambio, una parcial emitia EB/ICEC/rutas sobre defaults (edad inflada +14 años medida).
-  it("suspende EB/IAE/ICEC y las rutas de encuesta cuando la encuesta esta INCOMPLETA", () => {
+  // ═══ LA SUSPENSION SE PARTIO EN DOS CON LA EB-BIS v7 (su entrega del 2026-10-26) ═══
+  //
+  // La suspension original (Q28, 2026-08-11) metia TRES salidas en el mismo saco: EB/IAE, el ICEC y las
+  // rutas de encuesta. Era correcto porque las tres dependian de la encuesta: en la v5 el ICEC pesaba
+  // -7,982 en la formula de la EB-BIS, asi que sin encuesta la cifra se habria calculado sobre defaults
+  // (y se midio: inflaba la edad +14 años).
+  //
+  // EN LA v7 EL ICEC NO ENTRA AL CALCULO (su §2, literal: *"La EB-BIS se calcula aunque la encuesta no
+  // este completa. Desaparece la leyenda 'EB-BIS pendiente: requiere encuesta'"*). Asi que la EB-BIS sale
+  // del saco y el ICEC y las rutas se quedan: lo que sigue suspendido es lo que SIGUE dependiendo de la
+  // encuesta. El test se parte igual, para que no se pueda relajar una mitad creyendo que se relaja la
+  // otra.
+  it("con encuesta INCOMPLETA la EB-BIS SI se emite: la v7 no necesita el ICEC", () => {
     const parcial = runEngine(input({ d3_23: "5", d3_24: "Más de 60 min" }));
     expect(parcial.dfi.complete).toBe(false);
-    expect(parcial.indicators.eb).toBeNull();
-    expect(parcial.indicators.iae).toBeNull();
-    expect(parcial.dfi.le8Total).toBeNull();
+    expect(parcial.indicators.eb, "la EB-BIS v7 no depende de la encuesta").not.toBeNull();
+    expect(parcial.indicators.iae).not.toBeNull();
+    // Y se sella con las dos versiones que su §6 pide, aunque la encuesta este a medias.
+    expect(parcial.ebBis?.estado).toBe("ok");
+    expect(parcial.ebBis?.versionMotor).toBe("EB-BIS v7");
+    expect(parcial.ebBis?.versionParametros).toBe("7.1.0");
+  });
+
+  it("pero el ICEC y las rutas de encuesta SIGUEN suspendidos, que es lo que depende de ella", () => {
+    const parcial = runEngine(input({ d3_23: "5", d3_24: "Más de 60 min" }));
+    expect(parcial.dfi.le8Total, "el ICEC se emitio sobre una encuesta a medias").toBeNull();
     // Ninguna ruta de encuesta (R3/R4/R5/R6); solo pueden quedar BIS (R1/R2).
     expect(parcial.dfi.rutas.some((r) => /^R[3-6]\b/.test(r) || /^R[3-6]·/.test(r))).toBe(false);
     expect(parcial.dfi.rutas.every((r) => /^R[12]/.test(r))).toBe(true);
   });
 
-  it("con encuesta COMPLETA NO se suspende: EB/ICEC se emiten (los golden de paridad no cambian)", () => {
+  it("y sin ICEC la alerta de discordancia NO se activa, en vez de activarse sobre un hueco", () => {
+    // Su regla es z de pares >= 1 Y ICEC >= 80. Sin encuesta no hay ICEC, y un hueco no puede cumplir una
+    // condicion: la alerta queda apagada aunque la z sea alta. Es la diferencia entre "no hay alerta" y
+    // "no se pudo evaluar la alerta", y la segunda no se afirma como la primera.
+    const parcial = runEngine(input({ d3_23: "5" }));
+    expect(parcial.ebBis?.alertaDiscordancia).toBe(false);
+  });
+
+  it("con encuesta COMPLETA el ICEC se emite (los golden de paridad no cambian)", () => {
     const out = runEngine(input(FULL_SURVEY));
     expect(out.dfi.complete).toBe(true);
     expect(out.indicators.eb).not.toBeNull();
