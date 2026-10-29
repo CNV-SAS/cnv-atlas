@@ -42,10 +42,15 @@ describe("emission_versions", () => {
   // La marca "calibracion provisional" (P0) sale del campo SELLADO, no de una constante. El dia que
   // exista la calibracion poblacional, un valor que NO termine en "-provisional" apaga la marca solo.
   it("isProvisionalCalibration: sellado provisional/null -> true; poblacional -> false", () => {
-    expect(isProvisionalCalibration(buildEmissionVersions())).toBe(true); // hoy: ebbis-v5-provisional
+    // LA CALIBRACION LLEGO EL 2026-10-28, y este caso lo registra: lo que se emite HOY ya no es
+    // provisional (EB-BIS v7, parametros 7.1.0, ajustados sobre n = 5.891). Este test afirmaba lo
+    // contrario, y tenia razon mientras duro.
+    expect(isProvisionalCalibration(buildEmissionVersions())).toBe(false); // hoy: ebbis-v7-7.1.0
+    // Y LO VIEJO SIGUE MARCADO, que es la mitad que importa: los diagnosticos sellados con la v5 llevan
+    // su etiqueta y la conservan. No se reescribe ni uno (regla 7).
     expect(isProvisionalCalibration(null)).toBe(true); // diagnosticos previos a la columna
     expect(isProvisionalCalibration({})).toBe(true); // sin calibration
     expect(isProvisionalCalibration({ calibration: "ebbis-v5-provisional" })).toBe(true);
-    expect(isProvisionalCalibration({ calibration: "ebbis-v6" })).toBe(false); // calibracion poblacional
+    expect(isProvisionalCalibration({ calibration: "ebbis-v7-7.1.0" })).toBe(false);
   });
 });

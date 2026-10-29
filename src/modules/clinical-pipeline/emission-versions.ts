@@ -49,7 +49,23 @@ const CURRENT: EmissionVersions = {
   // (El cambio de `cAF` del mismo dia NO justifica por si solo el bump: solo cambio el COLOR del label
   // "Normal", y el color no se sella. La etiqueta sellada no se movio.)
   classification: "cXXX-2026-08-29", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
-  calibration: "ebbis-v5-provisional",
+  // ═══ BUMP 2026-10-28: LLEGO LA CALIBRACION, Y CON OTRA FORMULA ═══
+  //
+  // Esta clave nacio "ebbis-v5-provisional" y el comentario de arriba decia que la calibracion
+  // poblacional seria "el primer caso concreto y PREVISTO de reemision". Llego: la EB-BIS v7 con
+  // parametros 7.1.0 (entrega de Gildardo del 2026-10-26) esta ajustada sobre la base consolidada
+  // BiodyXpert ZM3, n = 5.891 adultos de 18 años o mas. Ya no es provisional.
+  //
+  // Y EL AUTOMATICO FUNCIONA SOLO, que es lo que su comentario prometio: `isProvisionalCalibration`
+  // mira si la etiqueta TERMINA en "-provisional", asi que los diagnosticos nuevos dejan de marcarse sin
+  // tocar nada mas, y los viejos conservan su marca porque llevan la etiqueta vieja sellada. No se
+  // reescribe ni uno.
+  //
+  // LA ETIQUETA LLEVA LOS PARAMETROS Y NO SOLO LA VERSION DE LA FORMULA, a proposito: los parametros
+  // cambiaron de 7.0.0 a 7.1.0 en DOS DIAS sin tocar la v7, y la DE residual femenina paso de 3,75 a
+  // 2,793, que mueve toda la escala del IAE. Dos emisiones con la misma formula y distinto esperado
+  // tienen que poder distinguirse, y es justo lo que esta clave existe para hacer.
+  calibration: "ebbis-v7-7.1.0",
   // BUMP 2026-08-02 (mccb-1.0 -> mccb-2026-07-30, fechada al vigente): el re-sync unificó la frontera
   // de desnutrición del clasificador MCCB con el vigente (FMI H 3.5->3.0, FFMI H 17.92->17, M 15.64->15).
   // Un paciente en esas franjas cambia de banda -> su fenotipo MCCB sellado se movería; por eso sube.
