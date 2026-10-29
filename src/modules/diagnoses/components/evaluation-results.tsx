@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type EngineIndicators, indicatorSeverities, isBisDerivedDomain } from "@/clinical-engine";
 import { veredictoSev } from "@/clinical-engine/severity";
 import {
+  cifraEbBis,
   ebBisParaElProfesional,
   NOTA_DFI_SIN_ENCUESTA,
 } from "@/clinical-engine/presentacion-eb-bis";
@@ -41,6 +42,7 @@ import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
+import { MarcaDeReemision } from "./marca-de-reemision";
 import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
 import type { DfiPaciente } from "@/clinical-engine";
 import { HojaDiagnosticoFuncional, type RutaParaElPaciente } from "./hoja-diagnostico-funcional";
@@ -379,14 +381,19 @@ export function EvaluationResults({
                     ? indicators.eb - indicators.iae
                     : null;
                 const range = indicatorRange(code, indicators, sexM);
+                // COMA DECIMAL, como el resto de la fila (Santiago, 2026-10-29): *"los decimales se
+                // mezclan: 23,5 junto a 20.0 y +3.5"*. Estas dos celdas se escribieron a mano con
+                // `toFixed`, que es el default de JavaScript y usa punto, mientras la celda de Valor de
+                // la MISMA fila ya pasaba por `fmtNum`. Es el defecto del cotejo del 2026-08-27 otra vez,
+                // y en el peor sitio posible: la fila de la edad biologica, que es la que se lee.
                 const refText = isEb
                   ? edadCronologica != null
-                    ? edadCronologica.toFixed(1)
+                    ? cifraEbBis(edadCronologica)
                     : "-"
                   : (range?.reference ?? "-");
                 const deltaText = isEb
                   ? indicators.iae != null
-                    ? `${indicators.iae >= 0 ? "+" : ""}${indicators.iae.toFixed(1)}`
+                    ? `${indicators.iae >= 0 ? "+" : ""}${cifraEbBis(Math.abs(indicators.iae))}`
                     : "-"
                   : (range?.delta ?? "-");
                 // EB toma la severidad y la etiqueta del IAE (comparten el veredicto de envejecimiento).
@@ -570,6 +577,11 @@ export function EvaluationResults({
           nunca por encima de la conclusión: es una nota de procedencia, no un hallazgo clínico.
           NO invalida el diagnóstico (ver el componente). */}
       <AvisoCienciaAnterior vigencia={results.vigencia} veredicto={results.veredictoReemision} />
+
+      {/* Y su par: este documento ya se puso al dia, y antes decia otra cosa. Nunca salen las dos
+          (o esta desfasado, o esta reemitido), y van en el mismo sitio porque son la misma clase de
+          nota: procedencia del documento, no hallazgo del paciente. */}
+      <MarcaDeReemision reemision={results.reemision} />
 
       {/* Cuatro subpestañas, en el orden de su archivo (puntos 7 y 11). Default Funcional (DIV-7, que no
           cambia con el reorden: cambió cuál va primero en la fila, no cuál se abre). */}
