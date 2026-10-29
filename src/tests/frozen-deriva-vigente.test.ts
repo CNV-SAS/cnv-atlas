@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { ENTREGAS, htmlDeEntrega, HTML_VIGENTE } from "./fixtures/html-vigente";
@@ -182,6 +182,24 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
   ],
 };
 
+/**
+ * LOS QUE NO SALEN DEL HTML, cada uno con su razon y con QUE LOS ANCLA EN SU LUGAR.
+ *
+ * Este candado coteja linea por linea contra el ATLAS vigente, asi que un modulo que Gildardo entrego
+ * APARTE (como un .js suelto) no puede estar en `MODULOS`: fallaria por no encontrarse en un archivo donde
+ * nunca estuvo. Pero tampoco puede quedar simplemente fuera, porque entonces la cobertura de arriba
+ * mentiria. Asi que se declara, y la declaracion EXIGE nombrar el candado que si lo vigila: una exencion
+ * sin su reemplazo es un modulo del frozen sin nadie mirandolo.
+ */
+const FUERA_DEL_HTML: Record<string, { razon: string; anclaEn: string }> = {
+  "eb-bis-v7.js": {
+    razon:
+      "Entrega SUELTA, no del HTML: su ebBisV7.js del 2026-10-26 (especificacion param 7.1.0, §4.4 " +
+      "'puede integrarse tal cual al motor'). La EB-BIS v7 no esta en ningun ATLAS_*.html.",
+    anclaEn: "src/tests/eb-bis-v7.golden.test.ts",
+  },
+};
+
 const MODULOS = [
   "engine.patron.js",
   "engine.dfi.js",
@@ -210,8 +228,21 @@ describe("el frozen no derivó de la entrega vigente de Gildardo", () => {
           !/\.authorized\.js$|\.derived\.js$|^authorized-modifications\.js$/.test(
             f,
           ),
-      );
+      )
+      // Y los que Gildardo entrego APARTE del HTML, declarados arriba con su razon.
+      .filter((f) => !(f in FUERA_DEL_HTML));
     expect([...enDisco].sort()).toEqual([...MODULOS].sort());
+  });
+
+  it("y cada exencion del HTML nombra el candado que SI lo vigila, y ese candado existe", () => {
+    // El riesgo de una exencion es que se convierta en un agujero: un modulo del frozen que ningun
+    // candado mira, con una razon escrita que suena bien. Asi que la razon no basta; hay que apuntar al
+    // reemplazo, y el reemplazo tiene que existir en disco.
+    for (const [modulo, d] of Object.entries(FUERA_DEL_HTML)) {
+      expect(existsSync(`src/clinical-engine/frozen/${modulo}`), `${modulo} ya no existe`).toBe(true);
+      expect(d.razon.length, `${modulo}: la exencion no dice por que`).toBeGreaterThan(40);
+      expect(existsSync(d.anclaEn), `${modulo}: su candado (${d.anclaEn}) no existe`).toBe(true);
+    }
   });
 
   for (const modulo of MODULOS) {
