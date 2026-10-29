@@ -12,7 +12,13 @@ export type TransactionStatus = Database["public"]["Enums"]["transaction_status"
 
 // Transaccion con sus items y el nombre del nutraceutico, para los listados de UI.
 export type TransactionWithItems = Transaction & {
-  transaction_items: (TransactionItem & { nutraceuticals: { name: string } | null })[];
+  transaction_items: (TransactionItem & {
+    /**
+     * `is_test` VIAJA CON EL NOMBRE (2026-10-28) porque es una de las tres entradas de la marca derivada,
+     * y la lista tiene que poder DECIR por que una venta no cuenta. Ver `por-que-cuenta-como-de-prueba`.
+     */
+    nutraceuticals: { name: string; is_test: boolean | null } | null;
+  })[];
   /**
    * El perfil del profesional que se lleva la comisión (0193).
    *
@@ -23,6 +29,8 @@ export type TransactionWithItems = Transaction & {
   professional_profiles:
     | {
         profile_id: string;
+        /** Entrada de la marca derivada (0199): un profesional de prueba hace de prueba todas sus ventas. */
+        is_test: boolean | null;
         /**
          * EL NOMBRE DE QUIEN SE LLEVA LA COMISIÓN (Santiago, smoke del 2026-10-07): *"como admin debería ver
          * datos del paciente y datos del profesional"*. Admin ve TODAS las ventas, así que sin esto no sabe de
@@ -38,6 +46,8 @@ export type TransactionWithItems = Transaction & {
   patients: {
     document_type: string;
     document_number: string;
+    /** Entrada de la marca derivada (0202). El paciente de prueba hace de prueba la venta. */
+    cuenta_como_de_prueba: boolean | null;
     patient_profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
   } | null;
 };

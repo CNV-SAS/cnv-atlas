@@ -57,6 +57,7 @@ import { canDeliverSale } from "@/modules/payments/policies/can-deliver-sale";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { MarcarVentaDePrueba } from "@/modules/payments/components/marcar-venta-de-prueba";
+import { porQueCuentaComoDePrueba } from "@/modules/payments/por-que-cuenta-como-de-prueba";
 import { PendientesSinSalida } from "@/modules/avisos/components/pendientes-sin-salida";
 import { listarPendientesDeAccion } from "@/modules/avisos/data/avisos-repository";
 import { elQueMiraEsProfesionalDePrueba } from "@/modules/payments/data/payments-repository";
@@ -715,6 +716,32 @@ export default async function PagosPage({
                         retracto={retractos.get(tx.id)}
                         puedeRegistrarRetracto={canView}
                       />
+                      {/* ═══ LA VENTA DE PRUEBA SE MARCA, NO SE ESCONDE (Santiago, 2026-10-28) ═══
+
+                          EL DEFECTO: con el interruptor de "ver las de prueba" encendido, una venta de
+                          prueba y una real se veian IGUAL. Santiago reporto "ventas duplicadas de María
+                          Camila"; medido contra producción no estaban duplicadas (tres ventas de tres días
+                          distintos, dos de ellas OMEGA COMPLEX en efectivo, y 214.200 es 2 x 107.100). Lo
+                          que fallaba es que la lista no decía cuál era cuál ni por qué.
+
+                          Y DICE LA RAZÓN, no solo que lo es: de ella depende qué hacer. Una marcada a mano
+                          se desmarca desde esta misma fila; una derivada del paciente no, porque lo que
+                          hay que mirar es el paciente. Es la misma regla que el rótulo de los pacientes
+                          derivados. */}
+                      {(() => {
+                        const razon = porQueCuentaComoDePrueba({
+                          cuentaComoDePrueba: Boolean(tx.cuenta_como_de_prueba),
+                          marcadaAMano: tx.marcada_como_prueba_at != null,
+                          profesionalDePrueba: Boolean(tx.professional_profiles?.is_test),
+                          pacienteDePrueba: Boolean(tx.patients?.cuenta_como_de_prueba),
+                          productoDePrueba: tx.transaction_items.some((it) => it.nutraceuticals?.is_test),
+                        });
+                        return razon ? (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                            {razon}
+                          </span>
+                        ) : null;
+                      })()}
                       {/* ═══ "FUE UNA PRUEBA": LA CUARTA ENTRADA DE LA MARCA (0217) ═══
 
                           EL CASO QUE NO SE PUEDE DERIVAR: profesional real, producto real, paciente real,
@@ -731,6 +758,9 @@ export default async function PagosPage({
                         <MarcarVentaDePrueba
                           transactionId={tx.id}
                           yaMarcada={Boolean(tx.marcada_como_prueba_at)}
+                          yaNoCuentaPorDerivacion={
+                            Boolean(tx.cuenta_como_de_prueba) && tx.marcada_como_prueba_at == null
+                          }
                         />
                       ) : null}
                       {/* LA DEVOLUCION SE REGISTRA DESDE LA VENTA (2026-09-24), que es donde está el hecho:

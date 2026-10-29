@@ -45,7 +45,7 @@ export async function listTransactions(incluirDePrueba = false): Promise<Transac
     // tiene DOS relaciones a `profiles` (`profile_id` y `rut_verified_by`), así que sin el hint PostgREST no sabe
     // por cuál resolver y falla en runtime. Es el caso exacto que rompió tres embeds el 2026-08-12.
     .select(
-      "*, professional_profiles(profile_id, profiles!profile_id(full_name)), patients(document_type, document_number, patient_profiles(first_name, last_name)), transaction_items(*, nutraceuticals(name))",
+      "*, professional_profiles(profile_id, is_test, profiles!profile_id(full_name)), patients(document_type, document_number, cuenta_como_de_prueba, patient_profiles(first_name, last_name)), transaction_items(*, nutraceuticals(name, is_test))",
     )
     .order("created_at", { ascending: false });
   const { data, error } = await (incluirDePrueba ? base : base.eq(COLUMNA_VENTA_DE_PRUEBA, false));
