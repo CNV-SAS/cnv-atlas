@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { ClinicalInputError, computeProtocolo, runEngine, type ProtocoloSnapshot } from "@/clinical-engine";
 import { resolveRutasContent } from "@/clinical-engine/rutas-content";
 import { appError, err, ok, type Result } from "@/core/errors";
+import { qcBiologicoDeLaConsulta } from "@/modules/bis/data/qc-biologico-reader";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
 import {
   circunferenciasParaDiagnosticar,
@@ -93,6 +94,38 @@ export async function runClinicalPipeline(
   // 500 en una frase que dice que falta y por que no se puede escribir a mano.
   const insumos = insumosDelMotorParaDiagnosticar(Object.keys(inputs.bisRaw), inputs.importada);
   if (!insumos.allowed) return err(appError("validation", insumos.message));
+
+  // ═══ EL CORTA-PISO DEL CONTROL DE CALIDAD BIOLOGICO (su v12, 2026-10-29) ═══
+  //
+  // Su diseño dice *"la navegacion no deja salir de Antropometria"*, y en Atlas eso se cumple AQUI y no en
+  // una pestaña: desde que se quito el boton de generar, el diagnostico se genera al ENTRAR a su pestaña
+  // (Santiago, 2026-10-28). Un candado de navegacion seria saltable escribiendo la URL; este no.
+  //
+  // Es la misma estructura que las cinco puertas de arriba, y por la misma razon: la regla se mira donde
+  // ningun camino puede saltarsela.
+  //
+  // LO QUE FRENA Y LO QUE NO:
+  //   · frena GENERAR un diagnostico nuevo sobre una medicion fisicamente imposible;
+  //   · NO frena la reemision por recalibracion cientifica, que no pasa por aqui. Es deliberado: esa no
+  //     toma una medicion nueva, recalcula una ya emitida, y bloquearla dejaria esas consultas desfasadas
+  //     para siempre sin que nadie pueda ponerlas al dia.
+  //
+  // SE USA EL MISMO LECTOR QUE PINTA EL PANEL, nunca una segunda comprobacion: si el gate midiera por su
+  // cuenta, la pantalla podria decir que todo esta bien y el servidor negarse, que es el hazard 4 (dos
+  // partes de la pantalla diciendo cosas opuestas porque leen fuentes distintas).
+  const qc = await qcBiologicoDeLaConsulta(input.evaluationId);
+  if (qc.hallazgos.length > 0 && !qc.visto) {
+    return err(
+      appError(
+        "validation",
+        qc.hallazgos.length === 1
+          ? `La medición de esta consulta no es físicamente posible: ${qc.hallazgos[0].texto} Corrige el dato o vuelve a subir el Excel; si la medición es correcta tal como está, déjalo registrado en Antropometría y BIS.`
+          : `La medición de esta consulta tiene ${qc.hallazgos.length} valores que no son físicamente posibles. Revísalos en Antropometría y BIS: corrige el dato, vuelve a subir el Excel, o déjalo registrado si la medición es correcta tal como está.`,
+        // La bandera manda la salida a Antropometria y BIS, que es el unico sitio donde esto se resuelve.
+        { qcBiologico: "1" },
+      ),
+    );
+  }
 
   // Y EL SEXO, que es la QUINTA puerta y la que faltaba (Sentry, 2026-10-10). `normalizeSex` LANZA, y esta
   // llamada estaba fuera de todo try: la peticion moria con un 500 y el panel quedaba roto. Es el mismo

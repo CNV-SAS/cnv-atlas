@@ -1618,6 +1618,13 @@
       "when": 1792862142446,
       "tag": "0230_la_huella_repetida_sale_de_investigacion",
       "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1792862143446,
+      "tag": "0231_el_visto_bueno_del_control_biologico",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,54 @@
+-- EL VISTO BUENO DEL CONTROL DE CALIDAD BIOLOGICO, CON LA HUELLA DE LO QUE SE VIO
+--
+-- ═══ DE DONDE SALE ═══
+--
+-- Su entrega v12 del 2026-10-12, seccion del control de calidad biologico, literal:
+--
+--   *"El panel sale en rojo encima de la importacion y la navegacion no deja salir de Antropometria. El
+--   profesional tiene dos caminos: corregir el dato o volver a subir el Excel -y el panel desaparece
+--   solo-, o pulsar «Revise la curva de Cole y los datos: continuar con esta medicion». Ese visto bueno
+--   viaja con la consulta (`qcBioVisto`), asi que no se vuelve a pedir al reabrir el modulo. Si despues
+--   cambia un dato y aparece un hallazgo distinto, se pide de nuevo."*
+--
+-- Y su regla de diseño que acota lo que esta tabla puede guardar:
+--
+--   *"El control avisa y frena, pero no decide. La decision de continuar es del profesional y queda
+--   registrada. No lo conviertas en un bloqueo sin salida."*
+--
+-- ═══ POR QUE VA EN `evaluations` Y NO EN `bis_measurements` ═══
+--
+-- Porque asi lo dice el: el visto bueno *"viaja con la consulta"*. Y tiene sentido clinico: lo que el
+-- profesional decide no es "este numero esta bien", es "sigo adelante con esta consulta sabiendo esto".
+-- Colgarlo de la medicion lo perderia al volver a subir el Excel, que es justo cuando hay que preguntar de
+-- nuevo, pero tambien lo perderia cuando el archivo nuevo trae el MISMO hallazgo, y entonces se
+-- preguntaria dos veces por lo mismo.
+--
+-- ═══ LAS TRES COLUMNAS, Y POR QUE NO BASTA UNA BANDERA ═══
+--
+-- `qc_bio_visto_at`         cuando se dio.
+-- `qc_bio_visto_por`        QUIEN se hizo cargo. Es una decision clinica registrada, no un clic.
+-- `qc_bio_visto_hallazgos`  LA HUELLA DE LO QUE VIO: los codigos de las identidades violadas, ordenados y
+--                           unidos por "|". Es lo que cumple su ultima frase.
+--
+-- CON UNA BANDERA DE "YA LO VI" A SECAS, subir otro Excel igual de imposible pasaria sin preguntar y el
+-- visto bueno cubriria algo que nadie vio. Guardando la huella, el control compara lo que se dio por visto
+-- contra lo que hay hoy: si no coinciden, vuelve a pedirlo. Y como se COMPARA en vez de marcarse, no hay
+-- bandera que nadie tenga que acordarse de bajar (la misma leccion del aviso de medicion repetida).
+--
+-- NO SE GUARDAN LOS HALLAZGOS COMO DATO CLINICO. Los hallazgos se computan al LEER, desde los crudos de la
+-- medicion, igual que la vigencia de la emision: si se sellaran, describirian una medicion que ya no esta.
+-- Lo unico que se guarda aqui es de QUE se hizo cargo una persona.
+--
+-- ═══ NULLABLE, Y ESO NO ES UN HUECO ═══
+--
+-- Las 400 mediciones vigentes de pacientes reales que ya existen quedan en null, y es correcto: nadie les
+-- dio un visto bueno porque el control no existia. MEDIDO ANTES DE APLICAR ESTO (2026-10-29, solo lectura,
+-- `scripts/CUANTO_CIERRAN_LAS_IDENTIDADES_2026-10-29.mjs`): de esas 400, solo **2** violan alguna
+-- identidad, y las dos violan las MISMAS DOS por un unico defecto fisico (su masa grasa es negativa, y
+-- entonces la masa sin grasa sale mayor que el peso). O sea que esto no llega como un freno retroactivo
+-- sobre historias cerradas: llega como una red que hoy atrapa dos consultas, y esas dos hay que mirarlas.
+
+ALTER TABLE "evaluations" ADD COLUMN "qc_bio_visto_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "evaluations" ADD COLUMN "qc_bio_visto_por" uuid;--> statement-breakpoint
+ALTER TABLE "evaluations" ADD COLUMN "qc_bio_visto_hallazgos" text;--> statement-breakpoint
+ALTER TABLE "evaluations" ADD CONSTRAINT "evaluations_qc_bio_visto_por_profiles_id_fk" FOREIGN KEY ("qc_bio_visto_por") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;
