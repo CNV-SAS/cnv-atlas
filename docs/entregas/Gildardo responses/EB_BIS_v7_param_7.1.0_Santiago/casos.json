@@ -1,0 +1,135 @@
+[
+ {
+  "evaluacion": "ed83ff97-7906-42b9-af9d-7081761594f7",
+  "sexo": "F",
+  "edad": 64,
+  "Re": 680.5,
+  "Ri": 2485.3,
+  "C": 1.01,
+  "peso": 50.1,
+  "MLG": 34.108,
+  "ACT": 26.117,
+  "FMI": 7.998,
+  "ICEC": 79,
+  "esperado": {
+   "EB_BIS": 76.4,
+   "IAE": 12.4,
+   "zPares": 2.48,
+   "alerta": false
+  }
+ },
+ {
+  "evaluacion": "bb9ec59d-c002-4818-a801-c9f1600fc808",
+  "sexo": "F",
+  "edad": 25,
+  "Re": 639.0,
+  "Ri": 2914.5,
+  "C": 0.88,
+  "peso": 60.8,
+  "MLG": 41.15,
+  "ACT": 31.264,
+  "FMI": 7.773,
+  "ICEC": 65,
+  "esperado": {
+   "EB_BIS": 40.0,
+   "IAE": 15.0,
+   "zPares": 4.06,
+   "alerta": false
+  }
+ },
+ {
+  "evaluacion": "7ce51226-356b-4ae6-b196-65c1fbe22a1e",
+  "sexo": "F",
+  "edad": 43,
+  "Re": 600.1,
+  "Ri": 1744.8,
+  "C": 2.16,
+  "peso": 95.0,
+  "MLG": 52.766,
+  "ACT": 36.825,
+  "FMI": 17.134,
+  "ICEC": 75,
+  "esperado": {
+   "EB_BIS": 43.5,
+   "IAE": 0.5,
+   "zPares": 0.11,
+   "alerta": false
+  }
+ },
+ {
+  "evaluacion": "0172b849-fed6-4e94-ba69-a255a530fea6",
+  "sexo": "M",
+  "edad": 20,
+  "Re": 741.4,
+  "Ri": 1745.4,
+  "C": 1.92,
+  "peso": 75.0,
+  "MLG": 55.117,
+  "ACT": 38.014,
+  "FMI": 6.8,
+  "ICEC": 88,
+  "esperado": {
+   "EB_BIS": 23.5,
+   "IAE": 3.5,
+   "zPares": 0.69,
+   "alerta": false
+  }
+ },
+ {
+  "evaluacion": "89f75aee-8d02-46a6-93c7-7c16293ce248",
+  "sexo": "M",
+  "edad": 61,
+  "Re": 557.0,
+  "Ri": 1446.8,
+  "C": 1.94,
+  "peso": 70.0,
+  "MLG": 48.768,
+  "ACT": 36.039,
+  "FMI": 8.398,
+  "ICEC": 82,
+  "esperado": {
+   "EB_BIS": 65.3,
+   "IAE": 4.3,
+   "zPares": 0.87,
+   "alerta": false
+  }
+ },
+ {
+  "evaluacion": "0c6e5068-b399-47eb-a0c8-8dcc9bfc17e0",
+  "sexo": "F",
+  "edad": 72,
+  "Re": 672.8,
+  "Ri": 2158.2,
+  "C": 1.44,
+  "peso": 73.0,
+  "MLG": 47.522,
+  "ACT": 34.191,
+  "FMI": 9.136,
+  "ICEC": 63,
+  "esperado": {
+   "EB_BIS": 70.6,
+   "IAE": -1.4,
+   "zPares": -0.28,
+   "alerta": false
+  }
+ },
+ {
+  "evaluacion": "6d3c9169-e8d6-47eb-b636-671242f019ee",
+  "sexo": "F",
+  "edad": 37,
+  "Re": 759.5,
+  "Ri": 2900.3,
+  "C": 0.75,
+  "peso": 68.0,
+  "MLG": 41.899,
+  "ACT": 29.492,
+  "FMI": 10.324,
+  "ICEC": 82,
+  "esperado": {
+   "EB_BIS": 45.7,
+   "IAE": 8.7,
+   "zPares": 1.74,
+   "alerta": true
+  }
+ }
+]
