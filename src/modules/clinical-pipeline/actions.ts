@@ -88,7 +88,16 @@ export async function runPipelineAction(
               href: `/pacientes/${ownership.patientId}`,
               etiqueta: "Ir a la ficha del paciente a completar la fecha de nacimiento",
             }
-          : null;
+          : // El control de calidad biologico: la medicion no es fisicamente posible. Se resuelve en
+            // Antropometria y BIS, que es donde esta el panel con los hallazgos, el import para volver a
+            // subir el Excel, y el boton de dejarlo registrado. Las tres salidas estan ahi; mandarlo a
+            // cualquier otro sitio seria mandarlo a una puerta cerrada.
+            result.error.fields?.qcBiologico
+            ? {
+                href: `/ani-bis-e/${evaluationId}`,
+                etiqueta: "Ir a Antropometría y BIS a revisar la medición",
+              }
+            : null;
     return fail(result.error.message, salida);
   }
 

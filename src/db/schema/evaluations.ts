@@ -114,6 +114,26 @@ export const evaluations = pgTable(
     consentVersion: text("consent_version"),
     // Procedencia: el lote que la importo del HTML (0162). null = nacio en Atlas.
     importBatchId: uuid("import_batch_id"),
+    // ═══ EL VISTO BUENO DEL CONTROL DE CALIDAD BIOLOGICO (v12 §QC, 2026-10-29) ═══
+    //
+    // Su diseño: *"el profesional tiene dos caminos: corregir el dato o volver a subir el Excel, o pulsar
+    // «Revisé la curva de Cole y los datos: continuar con esta medición». Ese visto bueno viaja con la
+    // consulta (`qcBioVisto`)... Si después cambia un dato y aparece un hallazgo distinto, se pide de nuevo."*
+    //
+    // VIAJA CON LA CONSULTA, no con la medicion, porque asi lo dice el: la decision es sobre seguir
+    // adelante con ESTA consulta. Y por eso vive aqui y no en `bis_measurements`.
+    //
+    // LOS HALLAZGOS SE GUARDAN, no solo la fecha, y es lo que cumple su ultima frase: se guarda la HUELLA
+    // de lo que el profesional vio (los codigos de las identidades, ordenados). Si manana se sube otro
+    // Excel y aparece un hallazgo distinto, la huella deja de coincidir y se vuelve a preguntar. Con una
+    // bandera de "ya lo vi" a secas, cambiar el archivo por otro igual de imposible pasaria sin aviso y el
+    // visto bueno cubriria algo que nadie vio.
+    //
+    // NO SE GUARDAN LOS HALLAZGOS COMPUTADOS como dato clinico: eso se computa al leer, como la vigencia de
+    // la emision. Aqui solo esta de QUE se hizo cargo el profesional.
+    qcBioVistoAt: timestamp("qc_bio_visto_at", { withTimezone: true }),
+    qcBioVistoPor: uuid("qc_bio_visto_por").references(() => profiles.id),
+    qcBioVistoHallazgos: text("qc_bio_visto_hallazgos"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

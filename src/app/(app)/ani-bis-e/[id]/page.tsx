@@ -18,6 +18,8 @@ import { CorrectionEntry } from "@/modules/corrections/components/correction-ent
 import { reportServerError } from "@/lib/observability/report-error";
 import { edadDiscordanteDeLaConsulta } from "@/modules/bis/data/edad-del-equipo-reader";
 import { AvisoDeEdadDiscordante } from "@/modules/bis/components/aviso-de-edad-discordante";
+import { PanelDeCalidadBiologica } from "@/modules/bis/components/panel-de-calidad-biologica";
+import { qcBiologicoDeLaConsulta } from "@/modules/bis/data/qc-biologico-reader";
 import { huellaRepetidaDeLaConsulta } from "@/modules/bis/data/huellas-repetidas-reader";
 import { MedicionDeOtroPaciente } from "@/modules/corrections/components/medicion-de-otro-paciente";
 import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
@@ -950,6 +952,17 @@ export default async function ResultadosEvaluacionPage({
     return null;
   });
 
+  // ═══ EL CONTROL DE CALIDAD BIOLOGICO: LAS IDENTIDADES IMPOSIBLES (su v12) ═══
+  //
+  // Mismo patron que los dos de arriba, y el `catch` tiene aqui una consecuencia que conviene decir: si la
+  // lectura falla, el panel no se pinta y la consulta NO queda frenada. Es deliberado. Un control de
+  // calidad que al fallar bloquea la pantalla donde se trabaja convierte su propio error en un freno sobre
+  // un paciente, y un freno sin causa es peor que un control que falta. El fallo se reporta a Sentry.
+  const qcBiologico = await qcBiologicoDeLaConsulta(id).catch((e) => {
+    reportServerError("evaluacion.qc-biologico", e);
+    return { hallazgos: [], huella: "", visto: false, vistoEl: null };
+  });
+
   const entradaConDiagnostico = {
     evaluationId: id,
     consentStatus: entryConsent,
@@ -966,6 +979,9 @@ export default async function ResultadosEvaluacionPage({
     // suben al inicio de la pestaña. El porque, en el componente.
     correccionDeLaMedicion: <MedicionDeOtroPaciente evaluationId={id} repetida={medicionRepetida} />,
     avisoDeEdadDelEquipo: <AvisoDeEdadDiscordante discordancia={edadDiscordante} />,
+    // EL CONTROL DE CALIDAD BIOLOGICO (su v12). El panel decide solo si se pinta: sin hallazgos devuelve
+    // null, que es el 99,5 % de las consultas.
+    panelDeCalidadBiologica: <PanelDeCalidadBiologica evaluationId={id} qc={qcBiologico} />,
   };
 
   return (

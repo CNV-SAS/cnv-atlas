@@ -49,6 +49,7 @@ export function EntradaEvaluacion({
   encabezado = null,
   correccionDeLaMedicion = null,
   avisoDeEdadDelEquipo = null,
+  panelDeCalidadBiologica = null,
 }: {
   /**
    * Cual de los DOS paneles se rinde. Desde el 2026-09-10 Encuesta y Antropometria & BIS son PESTAÑAS
@@ -85,6 +86,14 @@ export function EntradaEvaluacion({
    * nacimiento). Juntarlos en un bloque haria que una salida pareciera servir para el otro problema.
    */
   avisoDeEdadDelEquipo?: ReactNode;
+  /**
+   * EL CONTROL DE CALIDAD BIOLOGICO (su v12): las identidades fisicas que esta medicion viola.
+   *
+   * VA PRIMERO DE LOS TRES, y el orden no es cosmetico. Los otros dos preguntan DE QUIEN es esta
+   * toma; este pregunta si la toma puede existir. Si la respuesta es que no, de quien sea da igual:
+   * no hay cuerpo que describa. Asi que se lee antes.
+   */
+  panelDeCalidadBiologica?: ReactNode;
   evaluationId: string;
   /**
    * ¿La medicion llego importada del HTML? Solo ahi se pueden teclear la cintura y la cadera que falten: ese
@@ -265,6 +274,11 @@ export function EntradaEvaluacion({
   // referencias entran en el siguiente paso.) Depende de la subpestaña Encuesta: el aviso lo hace explicito.
   const antropometriaPanel = (
     <div className="flex flex-col gap-8">
+      {/* EL CONTROL DE CALIDAD BIOLOGICO, LO PRIMERO DE TODO. Los dos bloques de abajo preguntan DE QUIEN
+          es esta toma; este pregunta si la toma PUEDE EXISTIR, y si no puede, de quien sea da igual. Es
+          tambien el unico de los tres que FRENA: mientras haya un hallazgo sin revisar, la composicion y el
+          diagnostico de esta consulta describen un cuerpo que no existe. */}
+      {composition ? panelDeCalidadBiologica : null}
       {/* EL AVISO Y SU SALIDA, LO PRIMERO DE LA PESTAÑA (Santiago, 2026-10-28). Si la toma de esta consulta
           puede no ser de este paciente, eso se lee ANTES de mirar sus cifras: todo lo de abajo describe un
           cuerpo que quizas no es el suyo. Solo con medicion: sin toma no hay nada que desligar. */}
