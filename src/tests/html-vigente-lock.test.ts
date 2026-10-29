@@ -16,6 +16,12 @@ const CONGELADOS = new Set([
   // necesitar la excepcion, que es lo que la mantiene honesta.
   // No ancla nada: CITA la entrega vigente para verificar que el texto salio de su archivo.
   "salvaguarda-tca-mensaje.test.ts",
+  // ANCLA A PROPOSITO A SU ENTREGA, y no al HTML vigente, porque la EB-BIS v7 NO esta en ningun
+  // ATLAS_*.html: llego como .js suelto con su especificacion (param 7.1.0, 2026-10-26). El golden
+  // compara byte a byte el frozen contra ESE archivo, asi que la ruta literal es la afirmacion, no un
+  // descuido: si apuntara a `HTML_VIGENTE` no compararia nada. Si manana el absorbe la v7 en su HTML,
+  // este candado se re-ancla por nombre y sale de la lista, como ya hizo `frozen-protocolo-diff`.
+  "eb-bis-v7.golden.test.ts",
 ]);
 
 // CANDADO SOBRE EL SITIO DE LLAMADA, no sobre la funcion, porque el defecto es una OMISION: nadie
