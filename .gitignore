@@ -77,6 +77,17 @@ atlas-exportacion-*.json
 docs/entregas/**/*.xlsx
 docs/entregas/**/*.xls
 docs/entregas/**/*.csv
+
+# LOS .DOCX DE GILDARDO TAMPOCO (Santiago, 2026-10-28): "el .docx y el Excel de cohorte quedan fuera por
+# .gitignore, por archivo, como los HTML". De su entrega entra lo que es CODIGO (su funcion del motor y sus
+# casos de prueba, que no llevan nombres ni documentos); el documento que los explica se lee en local.
+#
+# ESTA REGLA MIRA HACIA ADELANTE, Y HAY QUE SABERLO: SIETE .docx suyos YA ESTAN versionados de antes
+# (entre ellos la especificacion v7 del 24 de octubre), y gitignore no desversiona nada. Asi que esto
+# detiene al PROXIMO, no limpia los que hay. Sacar los siete es otra decision, con su consecuencia (un
+# clon nuevo se queda sin sus especificaciones) y no se toma de paso: esta anotada para Santiago.
+docs/entregas/**/*.docx
+docs/entregas/**/*.doc
 # Y las capturas de pantalla de un caso: una tabla de composicion corporal es dato clinico aunque sea
 # una imagen. Las de cotejo visual ya estan arriba; esto cubre el resto de entregas.
 docs/entregas/dudas/**
