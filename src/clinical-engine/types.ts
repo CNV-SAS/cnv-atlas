@@ -139,6 +139,31 @@ export type EngineDfi = {
   le8Total: number | null;
 };
 
+/**
+ * El resultado de la EB-BIS v7 tal como lo consume Atlas.
+ *
+ * SE CONSERVAN LAS DOS VERSIONES QUE EL PIDE SELLAR (su §6: `versionmotor` y `versionparametros`), y no
+ * son redundantes: la FORMULA puede quedarse quieta mientras los PARAMETROS cambian, que es justo lo que
+ * paso entre el 24 y el 26 de octubre (7.0.0 a 7.1.0 sin tocar la v7). Con una sola version, dos
+ * resultados calculados con esperados distintos se verian iguales.
+ */
+export type ResultadoEbBis = {
+  /** "ok" trae las cifras; los otros tres traen `motivo` y las cifras en null. */
+  estado: "ok" | "pendiente" | "revisar" | "error";
+  /** Su texto literal cuando no calcula. Su §5 lo muestra como "EB-BIS pendiente: " mas esto. */
+  motivo: string | null;
+  /** Dos decimales. Su §5: SOLO profesional. */
+  zPares: number | null;
+  /** El IAE se limito a ±15. Su §5: SOLO profesional. */
+  topado: boolean;
+  /** z de pares >= 1 con ICEC >= 80. Su §5: SOLO profesional. */
+  alertaDiscordancia: boolean;
+  /** "EB-BIS v7". Se sella con cada resultado (su §6). */
+  versionMotor: string;
+  /** "7.1.0". Se sella con cada resultado (su §6). */
+  versionParametros: string;
+};
+
 export type EngineVersions = {
   engine: string; // ENGINE_VERSION
   model: string; // eco del input
@@ -169,6 +194,29 @@ export type EngineOutput = {
   // ANTES de este campo no lo tienen (null): el consumidor lo trata como "no se pudo evaluar", distinto
   // de un valor. NO es un indicator_value (no va a la tabla ni tiene definicion): solo vive en el snapshot.
   asmi: number | null;
+  /**
+   * LA EB-BIS v7, con su soporte y sus DOS versiones (su entrega del 2026-10-26, §5 y §6).
+   *
+   * ═══ POR QUE AQUI Y NO EN COLUMNAS ═══
+   *
+   * Su §6 pide guardar con cada resultado `versionmotor` y `versionparametros`. El snapshot es
+   * justamente donde se sella lo que el motor produjo, es inmutable, y ya lleva `versions`: es el mismo
+   * criterio que se aplico al fenotipo MCCB y al ASMI. Se movera a columna el dia que haya que FILTRAR o
+   * AGREGAR por version de parametros (por ejemplo para encontrar lo que quedo en 7.0.0).
+   *
+   * ═══ QUE HACE QUE ESTO NO SEA UN INDICADOR MAS ═══
+   *
+   * `indicators.eb` e `indicators.iae` son las dos cifras que su §5 reparte a los DOS lectores
+   * (profesional y paciente). Lo de aqui es lo que NO va al paciente: la z de pares, el tope y la alerta
+   * de discordancia. Estan separados en el TIPO para que la frontera no dependa de que cada pantalla se
+   * acuerde: una pantalla de paciente que lea `indicators` no puede filtrar esto por descuido.
+   *
+   * null = snapshot sellado ANTES de la v7 (es decir, con la v5). El consumidor lo trata como "este
+   * diagnostico no salio de la v7", que es distinto de un resultado sin cifras: los valores v5 que ese
+   * snapshot ya tiene son el "campo historico" que su §6 pide conservar, y se conservan por no
+   * reescribirse nunca.
+   */
+  ebBis: ResultadoEbBis | null;
   versions: EngineVersions;
 };
 

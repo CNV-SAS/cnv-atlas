@@ -87,7 +87,12 @@ describe("ANI-BIS-E · fallar en voz alta (proteccion anti-caos)", () => {
 
 describe("ANI-BIS-E fase 2 · indices secundarios (datos reales)", () => {
   const sin = analizarDesdeBiody(biody, sexoBiody);
-  const con = analizarDesdeBiody(biody, sexoBiody, { icec: 58.578, edad: 54.628 });
+  // LA EDAD VA ENTERA, Y ESTO CAMBIO EL 2026-10-28. Decia `edad: 54.628`, que es la columna DECIMAL del
+  // equipo, o sea exactamente el error 6 que Gildardo pidio corregir: *"La edad tomada de la columna
+  // decimal del equipo se redondea hacia arriba (30,95 pasa a 31), mientras ATLAS la trunca (30).
+  // Correccion: usar siempre años cumplidos desde la fecha de nacimiento (truncar)"*. El fixture del
+  // golden traia el defecto adentro, y la v7 lo rechaza en vez de calcular sobre el.
+  const con = analizarDesdeBiody(biody, sexoBiody, { icec: 58.578, edad: 54 });
 
   it("ISCM-BIS anclado al Excel real (con el FIX de FMI: -2.072, no -1.568)", () => {
     expect(near(sin.indices.ISCM, -2.072)).toBe(true);
@@ -99,15 +104,47 @@ describe("ANI-BIS-E fase 2 · indices secundarios (datos reales)", () => {
     expect(sin.clases.IEHH?.l).toBe("Leve");
   });
 
-  it("EB-BIS/IAE = null sin encuesta (no se inventa edad biologica)", () => {
+  it("EB-BIS/IAE = null sin EDAD, y el motivo lo dice", () => {
+    // CAMBIO LA RAZON, NO EL RESULTADO (2026-10-28). Antes era null "sin encuesta", porque la v5 necesitaba
+    // el ICEC. La v7 no lo necesita, pero SI necesita la edad, que antes solo servia para restar el IAE.
+    // Que el null venga con su motivo es lo que su §5 pide mostrar ("EB-BIS pendiente: " mas el motivo);
+    // un null sin explicacion manda a buscar en siete campos.
     expect(sin.indices.EB_BIS).toBeNull();
     expect(sin.indices.IAE).toBeNull();
+    expect(sin.ebBis.estado).toBe("pendiente");
+    expect(sin.ebBis.motivo).toContain("fecha de nacimiento");
   });
 
-  it("EB-BIS/IAE con ICEC sintetico documentado (media 58.578)", () => {
-    expect(near(con.indices.EB_BIS, 42.7)).toBe(true);
-    expect(near(con.indices.IAE, -11.9)).toBe(true);
-    expect(con.clases.IAE?.l).toBe("Desacelerado");
+  it("EB-BIS/IAE v7 con la edad entera: calcula, y sella las dos versiones", () => {
+    // LAS CIFRAS DE ESTE DONANTE NO SE ANCLAN AQUI, a proposito: el ancla no circular de la v7 son los
+    // SIETE casos que Gildardo calculo con su implementacion (`eb-bis-v7.golden.test.ts`). Fijar aqui un
+    // numero que salio de nuestra propia corrida seria anclar el motor contra si mismo, que es justo lo
+    // que ese golden evita. Esto comprueba el CABLEADO: que los insumos llegan y el resultado se sella.
+    expect(con.ebBis.estado).toBe("ok");
+    expect(con.indices.EB_BIS).not.toBeNull();
+    expect(con.indices.IAE).not.toBeNull();
+    expect(con.ebBis.versionMotor).toBe("EB-BIS v7");
+    expect(con.ebBis.versionParametros).toBe("7.1.0");
+    expect(con.clases.IAE?.l).toBeTruthy();
+  });
+
+  it("y la edad DECIMAL se rechaza en vez de truncarse en silencio (su error 6)", () => {
+    // Truncar aqui taparia el defecto que el pidio corregir EN SU ORIGEN: si llega 54,628 es que alguien
+    // tomo la edad de la columna del equipo y no de la fecha de nacimiento, y eso hay que verlo. La
+    // diferencia no es cosmetica: el equipo redondea hacia arriba y Atlas trunca, asi que el mismo
+    // paciente tenia dos edades segun quien la leyera.
+    const conDecimal = analizarDesdeBiody(biody, sexoBiody, { icec: 58.578, edad: 54.628 });
+    expect(conDecimal.ebBis.estado).toBe("pendiente");
+    expect(conDecimal.ebBis.motivo).toContain("años cumplidos");
+    expect(conDecimal.indices.EB_BIS).toBeNull();
+  });
+
+  it("el ICEC ya NO mueve la EB-BIS: solo decide la alerta (su §2)", () => {
+    // Es el cambio de fondo frente a la v5, donde el ICEC pesaba -7,982 en la formula. Si alguien
+    // reintroduce el ICEC al calculo, estas dos cifras dejan de coincidir.
+    const sinIcec = analizarDesdeBiody(biody, sexoBiody, { edad: 54 });
+    expect(sinIcec.indices.EB_BIS).toBe(con.indices.EB_BIS);
+    expect(sinIcec.ebBis.alertaDiscordancia).toBe(false);
   });
 });
 

@@ -81,6 +81,15 @@ const QUE_ES_ESTA_VERSION: Record<string, { texto: string; fecha: string }> = {
   // cuando. La historia del renombre no se pierde: vive en `version.ts` y en docs/VERSIONES.md, que es
   // donde la busca quien mantiene el motor.
   "1.0.0": { texto: "Primera versión oficial del modelo.", fecha: "2026-09-09" },
+  // UNA FRASE, Y DICE LO QUE EL PROFESIONAL VA A NOTAR: que la edad biológica se calcula de otra forma y
+  // que ya no espera la encuesta. Lo demás (el esperado curvo, la z de pares, por qué es versión mayor)
+  // vive en `version.ts` y en su especificación, que es donde lo busca quien mantiene el motor.
+  "2.0.0": {
+    texto:
+      "Nueva edad biológica estimada (EB-BIS v7). Se calcula con la medición del equipo y ya no " +
+      "necesita la encuesta completa; el diagnóstico integrado sí la sigue necesitando.",
+    fecha: "2026-10-28",
+  },
 };
 
 export type MotorVigente = {

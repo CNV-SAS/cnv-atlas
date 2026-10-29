@@ -20,12 +20,19 @@ tabla dice qué significaba.
 
 | Artefacto | Formato | Hoy | Dónde vive |
 |---|---|---|---|
-| Motor clínico | **semver de tres** | `1.0.0` | `ENGINE_VERSION` (`src/clinical-engine/version.ts`) |
+| Motor clínico | **semver de tres** | `2.0.0` | `ENGINE_VERSION` (`src/clinical-engine/version.ts`) |
 | Conjunto de protocolo | **semver de tres** | `1.0.0` | `PROTOCOL_ENGINE_VERSION` (mismo archivo) |
 | Modelo | **semver de tres** | `1.0.0` | fila de `model_versions` (`version_name`) |
 | Reglas | **semver de tres** | `1.0.0` | fila de `model_versions` (`rules_version`) |
 | Encuesta | **entero** | `6` | fila de `survey_versions` (`version_number`) |
 | Prompt del resumen de IA | **entero** | `14` | fila de `ai_prompts` (`criterio.generate`, `version`) y su JSON en `src/modules/diagnoses/ai/prompts/` |
+
+**El motor subió a 2.0.0 el 2026-10-28, y es el primer MAYOR.** Entró la EB-BIS v7 (parámetros 7.1.0,
+entrega de Gildardo del 26 de octubre) y la v5 se retiró del motor. Cumple la definición de mayor de este
+documento, y la segunda mitad es la que obliga: `sonComparables` (`followups/eb-trajectory`) se niega a
+restar dos EB-BIS de mayores distintos, y esa resta es la que el paciente ve como "mejoró" o "empeoró".
+Con un bump menor, la banda habría restado una EB v7 contra una v5 sellada y le habría mostrado el salto
+de escala como si fuera su cambio. El detalle de qué se mueve está en `version.ts`.
 
 **Los prompts NO se renumeran a v1 (pregunta de Santiago, 2026-09-21).** Es la misma razon que el sello del
 motor: cada resumen de IA guarda con que version se genero (`ai_criterion_suggestions.prompt_version`), y en

@@ -111,12 +111,20 @@ export function runEngine(input: EngineInput): EngineOutput {
     icaBis: r4(Math.abs(a.indices.PABU - 1.618)),
     iscm: a.indices.ISCM,
     iehh: a.indices.IEHH,
-    // SUSPENSION por encuesta incompleta (Q28, Gildardo): EB-BIS e IAE dependen del ICEC (LE8, encuesta),
-    // asi que con la encuesta incompleta NO se emiten (null), no se emite una edad inflada sobre defaults.
-    // El eje envejecimiento (EB + IAE) es una sola salida; se suspenden juntos. ISCM/IEHH son BIS: se
-    // conservan. Con encuesta completa, sin cambio (los golden de paridad no se tocan).
-    iae: surveyComplete ? a.indices.IAE : null,
-    eb: surveyComplete ? a.indices.EB_BIS : null,
+    // ═══ LA SUSPENSION POR ENCUESTA INCOMPLETA SE RETIRA CON LA v7 (su §2, 2026-10-26) ═══
+    //
+    // Hasta aqui decia: "EB-BIS e IAE dependen del ICEC (LE8, encuesta), asi que con la encuesta
+    // incompleta NO se emiten". Era correcto para la v5, donde el ICEC pesaba -7,982 en la formula y sin
+    // el no habia cifra. En la v7 el ICEC NO ENTRA AL CALCULO: solo decide la alerta de discordancia.
+    //
+    // Literal suyo: *"El ICEC ya no entra al calculo. La EB-BIS se calcula aunque la encuesta no este
+    // completa. Desaparece la leyenda 'EB-BIS pendiente: requiere encuesta'."*
+    //
+    // LO QUE SIGUE SUSPENDIDO ES EL DFI, no esto, y su §5 dice como se presenta la diferencia: *"Mientras
+    // la encuesta no este completa, la EB-BIS y el IAE se muestran solos con la nota 'Diagnostico
+    // integrado pendiente de la encuesta'; el DFI no se genera."*
+    iae: a.indices.IAE,
+    eb: a.indices.EB_BIS,
     FMI: a.indices.FMI,
     FFMI: a.indices.FFMI,
     AF: typeof rawAF === "number" ? rawAF : 0,
@@ -233,6 +241,9 @@ export function runEngine(input: EngineInput): EngineOutput {
     // ASMI ya esta computado (a.fuente.ASMI, alimenta el fenotipo); se SELLA para los motores de
     // tratamiento (medico/ejercicio). null si falta MMEM (NaN -> null, JSON no tiene NaN).
     asmi: Number.isFinite(a.fuente.ASMI) ? a.fuente.ASMI : null,
+    // La EB-BIS v7 con su soporte y sus dos versiones (su §5 y §6). Ver types.ts: por que en el snapshot
+    // y por que separada de `indicators`.
+    ebBis: a.ebBis,
     versions: {
       engine: ENGINE_VERSION,
       model: model.version,
