@@ -24,6 +24,8 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 const ok = (p: Partial<ResultadoEbBis> = {}): ResultadoEbBis => ({
   estado: "ok",
   motivo: null,
+  eb: 76.4,
+  iae: 12.4,
   zPares: 2.48,
   topado: false,
   alertaDiscordancia: false,
@@ -147,5 +149,58 @@ describe("la nota del DFI reemplaza a la leyenda vieja", () => {
         "requiere encuesta",
       );
     }
+  });
+});
+
+describe("la v7 en el informe del PACIENTE (su tabla 3 lo revierte)", () => {
+  const INFORME = sinComentarios(
+    readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8"),
+  );
+
+  it("el informe pinta las dos frases, y las toma del motor", () => {
+    // Hasta el 2026-10-26 su decision era la contraria (P0, 2026-08-01: "la cifra de EB-BIS nunca va al
+    // paciente"). Su tabla 3 la revierte: las dos filas dicen "Profesional y paciente". Santiago lo
+    // confirmo el 28.
+    expect(INFORME).toContain("ebBisParaTodos(");
+    expect(INFORME).toContain("Tu edad biológica estimada");
+    // Y NO redacta la frase por su cuenta: la misma cifra sale por la pantalla del profesional y por aqui.
+    expect(INFORME, "el informe escribe la frase a mano").not.toContain("Edad biológica estimada:");
+  });
+
+  it("SOLO de la v7: un snapshot viejo no publica su cifra v5", () => {
+    // ES LA MITAD QUE IMPORTA. Un snapshot sellado antes lleva una EB-BIS v5 en `indicators.eb`, sin
+    // calibrar, y esa es exactamente la cifra que su decision de agosto no queria que el paciente viera.
+    // Pintarla "porque el campo trae un numero" seria publicar la cifra retirada.
+    expect(INFORME).toContain('snapshot.ebBis?.estado === "ok"');
+  });
+
+  it("y los indices del modelo SIGUEN fuera: su tabla 3 solo devuelve estos dos", () => {
+    // Su §7.1: "ningun indice del modelo va al paciente". La tabla 3 nombra la EB-BIS y el IAE, no los
+    // demas. Si alguien lee la reversion como "ya se puede mostrar todo", esto lo para.
+    for (const indice of ["indicators.ifc", "indicators.irc", "indicators.pabu", "indicators.icaBis"]) {
+      expect(INFORME, `volvio ${indice} al informe del paciente`).not.toContain(indice);
+    }
+  });
+
+  it("lo del profesional NO se cuela al informe", () => {
+    // La z de pares, el tope y la alerta son solo suyos (su §5). La frontera esta en el tipo, y esto
+    // comprueba que el informe use la funcion del paciente y no la del profesional.
+    expect(INFORME, "el informe del paciente usa la salida del profesional").not.toContain(
+      "ebBisParaElProfesional",
+    );
+  });
+
+  it("va ANTES del diagnostico, porque es el bloque que sobrevive a la encuesta incompleta", () => {
+    // Por el orden de su §7.1 (primero que tiene, despues la solucion) y por una razon practica: si
+    // fuera debajo, un paciente sin encuesta completa abriria su informe con un hueco.
+    const eb = INFORME.indexOf("Tu edad biológica estimada");
+    const dfi = INFORME.indexOf("Cómo estás");
+    expect(eb).toBeGreaterThan(0);
+    expect(dfi).toBeGreaterThan(0);
+    expect(eb, "la edad biologica quedo despues del diagnostico").toBeLessThan(dfi);
+  });
+
+  it("y con la encuesta a medias lleva SU nota, no un hueco", () => {
+    expect(INFORME).toContain("NOTA_DFI_SIN_ENCUESTA");
   });
 });

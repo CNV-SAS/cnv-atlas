@@ -220,6 +220,9 @@ describe("los DOS canales son el mismo documento, no dos documentos", () => {
     "Cómo estás":
       "el diagnóstico abre el REPORTE completo; la hoja impresa es solo el plan, lo que el paciente necesita en la cocina (declarado en plan-imprimible.tsx)",
     "Tus suplementos": "va con el informe completo, no con la hoja de la cocina",
+    "Tu edad biológica estimada":
+      "la EB-BIS v7 que su tabla 3 manda al paciente (2026-10-26): es lectura del modelo sobre su " +
+      "medición, no parte del plan dietético, y la hoja de la cocina no lleva diagnóstico",
     "Cómo has cambiado":
       "la gráfica de la trayectoria: necesita dos consultas y la hoja del plan es de UNA, la de hoy",
     "Nota de tu profesional":

@@ -16,6 +16,8 @@ import {
 } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { CorrectionEntry } from "@/modules/corrections/components/correction-entry";
 import { reportServerError } from "@/lib/observability/report-error";
+import { edadDiscordanteDeLaConsulta } from "@/modules/bis/data/edad-del-equipo-reader";
+import { AvisoDeEdadDiscordante } from "@/modules/bis/components/aviso-de-edad-discordante";
 import { huellaRepetidaDeLaConsulta } from "@/modules/bis/data/huellas-repetidas-reader";
 import { MedicionDeOtroPaciente } from "@/modules/corrections/components/medicion-de-otro-paciente";
 import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
@@ -939,6 +941,15 @@ export default async function ResultadosEvaluacionPage({
     return null;
   });
 
+  // ═══ ¿LA EDAD DE LA FICHA COINCIDE CON LA DEL EQUIPO? (su error 5) ═══
+  //
+  // Mismo patron que el aviso de huella repetida: se lee aqui para que la pestaña siga siendo presentacion
+  // pura, y con catch porque un aviso que tumba la pantalla donde se trabaja es peor que uno que falta.
+  const edadDiscordante = await edadDiscordanteDeLaConsulta(id).catch((e) => {
+    reportServerError("evaluacion.edad-discordante", e);
+    return null;
+  });
+
   const entradaConDiagnostico = {
     evaluationId: id,
     consentStatus: entryConsent,
@@ -954,6 +965,7 @@ export default async function ResultadosEvaluacionPage({
     // bloques separados por media pantalla; ahora el aviso ENCABEZA el bloque de la correccion y los dos
     // suben al inicio de la pestaña. El porque, en el componente.
     correccionDeLaMedicion: <MedicionDeOtroPaciente evaluationId={id} repetida={medicionRepetida} />,
+    avisoDeEdadDelEquipo: <AvisoDeEdadDiscordante discordancia={edadDiscordante} />,
   };
 
   return (

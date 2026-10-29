@@ -4,6 +4,7 @@ import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
 import { COLOR_SEVERIDAD, RadarDelPaciente } from "./radar-del-paciente";
 
 import { cambioDesdeLaAnterior } from "../cambio-desde-la-anterior";
+import { ebBisParaTodos, NOTA_DFI_SIN_ENCUESTA } from "@/clinical-engine/presentacion-eb-bis";
 import { BloqueEvitar, BloqueIntercambio, BloqueMenu } from "./bloques-del-plan";
 import { styles } from "./estilos-del-pdf";
 
@@ -38,11 +39,30 @@ export type ReportMeta = {
   reportId: string;
 };
 
-// Indicadores en el reporte del PACIENTE. EB e IAE quedan FUERA a proposito (P0, decision de
-// Gildardo 2026-08-01): la cifra de EB-BIS nunca va al paciente, y como IAE = EB - edad, mostrar
-// IAE revela el constructo; la clase de IAE tampoco se imprime. La expresion "edad biologica" es
-// termino retirado del sistema. La EB-BIS/IAE SI las ve el profesional (con marca de calibracion
-// provisional), en la vista interna. Gate del Hito 3 en LANZAMIENTO.md.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// INDICADORES EN EL REPORTE DEL PACIENTE
+//
+// ═══ LA EDAD BIOLOGICA ESTIMADA SI VA, DESDE EL 2026-10-26 ═══
+//
+// Aqui decia lo contrario, y era su decision de entonces (P0, 2026-08-01): *"la cifra de EB-BIS nunca va
+// al paciente, y como IAE = EB - edad, mostrar IAE revela el constructo"*, con "edad biologica" declarado
+// termino retirado del sistema.
+//
+// SU TABLA 3 LA REVIERTE, y de forma explicita: las filas de EB-BIS y de IAE dicen "Profesional y
+// paciente", y la frase que el escribe es *"Edad biologica estimada: 76,4 años"*, o sea que vuelve a usar
+// la expresion, ahora calificada como ESTIMACION. Santiago lo confirmo el 2026-10-28.
+//
+// QUE CAMBIO PARA QUE SE PUEDA, y no es solo que el cambiara de opinion: la v5 estaba sin calibrar (la
+// marca "calibracion provisional" existia por eso) y la v7 esta ajustada sobre 5.891 adultos. La cifra que
+// se le muestra al paciente hoy no es la que se le negaba en agosto.
+//
+// LO QUE SIGUE FUERA son los demas indices del modelo (IFC, IRC, PABU, ICA-BIS, ISCM, IEHH y el codigo
+// N_N_N_A). Su §7.1 los excluye y su tabla 3 no los devuelve: solo nombra estos dos.
+//
+// Y SOLO DE LA v7. Se gatea por `snapshot.ebBis`, que es null en los diagnosticos sellados antes: un
+// snapshot viejo lleva una EB-BIS v5 en `indicators.eb`, y esa es justo la que el no queria que el
+// paciente viera. Pintarla "porque el campo trae un numero" seria publicar la cifra retirada.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 
 // Modo de envio: que contenido incluye el PDF (B10.1). 'atlas' = reporte del motor;
@@ -114,6 +134,15 @@ export function ReportDocument({
   // El cambio desde la consulta anterior, en frases. Vacio cuando no hay dos mediciones que comparar, y
   // entonces el bloque de seguimiento sale solo con su grafica, como estaba.
   const cambios = showAtlas ? cambioDesdeLaAnterior(serie) : [];
+  // LA EDAD BIOLOGICA ESTIMADA, solo de la v7 (ver la cabecera: un snapshot viejo lleva la cifra v5 en
+  // `indicators.eb`, que es justo la que su decision de agosto no queria que el paciente viera).
+  // SE ARMA SOLO CON `snapshot.ebBis`, que lleva sus dos cifras: este documento NO puede tocar
+  // `snapshot.indicators` (un candado lo prohibe, y con razon: ahi estan los doce indicadores y §7.1 dice
+  // que ninguno va al paciente). Ver el porque de la copia en `ResultadoEbBis`.
+  const ebBisPaciente =
+    snapshot.ebBis?.estado === "ok"
+      ? ebBisParaTodos(snapshot.ebBis.eb, snapshot.ebBis.iae)
+      : null;
   return (
     <Document
       title={`Informe ANI-BIS-E ${meta.documentLabel}`}
@@ -219,6 +248,41 @@ export function ReportDocument({
             El PLAN COMPLETO -diagnostico, meta, plan dietetico, menu, distribucion, recomendaciones y la
             lista de intercambio recortada por region- es lo que su §7.1 dice que el paciente debe recibir,
             y se construye aparte. Este documento NO es ese plan todavia. ═══ */}
+        {/* ═══ LA EDAD BIOLOGICA ESTIMADA (su tabla 3, 2026-10-26) ═══
+
+            VA ANTES DE "Cómo estás" y no después, por el orden de su §7.1: primero qué tiene, después la
+            solución. Y porque es el bloque que SOBREVIVE a la encuesta incompleta: si fuera debajo del
+            diagnóstico, un paciente sin encuesta completa abriría su informe con un hueco.
+
+            LAS DOS FRASES SON SUYAS, del motor (`presentacion-eb-bis`), no escritas aquí: la misma cifra
+            sale por la pantalla del profesional y por este informe, y dos redacciones del mismo hecho
+            acaban diciendo cosas distintas. */}
+        {showAtlas && ebBisPaciente ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tu edad biológica estimada</Text>
+            <Text style={styles.para}>
+              <Text style={styles.bold}>{ebBisPaciente.eb}</Text>
+            </Text>
+            <Text style={styles.para}>{ebBisPaciente.iae}</Text>
+            {/* QUE ES, EN UNA LINEA. Su tabla da la cifra y su banda, no una explicación; sin ella la
+                frase "acorde con sus pares" deja al paciente sin saber con quién se lo compara. Esto
+                describe de dónde sale el número, no lo interpreta: el veredicto es el de su banda. */}
+            <Text style={styles.para}>
+              Es una estimación que sale de tu medición corporal, comparada con personas de tu misma edad
+              y composición. No es una enfermedad ni un pronóstico: es un punto de partida para lo que
+              vas a trabajar con tu profesional.
+            </Text>
+            {/* SU NOTA, cuando la encuesta no está completa (tabla 3): la edad biológica sale sola y el
+                diagnóstico integrado queda pendiente. Es lo que explica que el bloque siguiente falte. */}
+            {!dfi.complete ? (
+              <Text style={styles.para}>
+                {NOTA_DFI_SIN_ENCUESTA}: cuando termines la encuesta, tu profesional puede completar la
+                lectura por áreas.
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {showAtlas && dfiPac && dfi.complete ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Cómo estás</Text>
