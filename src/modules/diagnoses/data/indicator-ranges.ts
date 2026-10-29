@@ -1,4 +1,5 @@
 import type { EngineIndicators } from "@/clinical-engine";
+import { bandaIae } from "@/clinical-engine/presentacion-eb-bis";
 import { fmtDec } from "@/lib/format/decimal";
 
 // Rangos de referencia y DELTA de la tabla de indicadores. Los RANGOS de referencia se transcriben
@@ -178,8 +179,21 @@ const ROTULOS_DISPLAY: Record<string, (v: number) => string> = {
   // barrido del 9 vino por el IAE, que si reporto el delante de Santiago, y arrastro al PABU por ser de
   // la misma familia. Es el patron del alergeno: una pregunta cerrada que vuelve porque nadie miro donde
   // estaba la respuesta.
-  // dIAE (L14444): es el que reporto Santiago. Dos de los tres escalones llevan la palabra que faltaba.
-  IAE: (v) => (v < -5 ? "Envejecimiento desacelerado" : v <= 5 ? "Concordante" : "Envejecimiento acelerado"),
+  // EL IAE YA NO SALE DE `dIAE`, SALE DE SU TABLA 3 (Santiago, 2026-10-29). Su capa de display vieja
+  // (`dIAE`, L14444) decia "Concordante"; su tabla 3 del 2026-10-26, que es la que gobierna la
+  // presentacion de la EB-BIS v7, dice "acorde con sus pares" / "envejecimiento acelerado estimado" /
+  // "desacelerado estimado". Lo nuevo manda, y la palabra "estimado" no es un adorno: su pie de tabla
+  // dice *"toda salida se presenta como estimacion, nunca como diagnostico"*.
+  //
+  // SE DELEGA AL MOTOR en vez de copiar las frases aqui: es el mismo `bandaIae` que usan el bloque de
+  // EB-BIS de esta pantalla, el informe del paciente y la historia clinica. Cuatro copias de la misma
+  // frase divergen por donde nadie mira.
+  //
+  // OJO CON EL BORDE, que es lo unico que no cuadra: los cortes de su tabla 3 son CERRADOS (>= +5,0 y
+  // <= -5,0) y los del clasificador sellado `cIAE` son abiertos (<-5 y <=5). El COLOR sigue saliendo del
+  // sellado, asi que en un IAE de exactamente +5,0 (o -5,0) el rotulo diria acelerado y el color seguiria
+  // el del sellado. Es una pregunta suya, no nuestra: va al documento de dudas.
+  IAE: (v) => bandaIae(v),
   // dIEHH (L14445): los cuatro escalones. "Óptimo/Leve/Moderado/Severo" no dice de QUE, y en una tabla
   // donde la fila de al lado tambien gradua, un "Leve" suelto no se sabe leve de que.
   IEHH: (v) =>
@@ -282,8 +296,9 @@ export function indicatorBands(code: string, sexM: boolean): string | null {
       return "óptimo ≤0 · leve ≤1 · moderado ≤2 · severo >2";
     case "ISCM": // cISCM (sin sexo): ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2.5 · ISCM-4 >2.5
       return "ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2,5 · ISCM-4 >2,5";
-    case "IAE": // cIAE (sin sexo, años): <−5 desacelerado · −5..5 concordante · >5 acelerado
-      return "desacelerado <−5 · concordante −5 a 5 · acelerado >5";
+    case "IAE": // Su tabla 3 (2026-10-26): >= +5,0 acelerado · entre −5,0 y +5,0 acorde · <= −5,0 desacelerado
+      // Sus cortes, con sus palabras y cerrados en los dos extremos como el los escribio.
+      return "desacelerado ≤−5 · acorde con sus pares entre −5 y +5 · acelerado ≥+5";
     case "FMI": // cFMI: banda media Normal (H 3–6, F 5–9)
       return sexM ? "bajo <3 · normal 3–6 · alto >6" : "bajo <5 · normal 5–9 · alto >9";
     case "FFMI": // cFFMI: banda media Normal (H 17–25, F 15–23)

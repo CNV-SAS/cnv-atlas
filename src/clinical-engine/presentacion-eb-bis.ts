@@ -53,9 +53,31 @@ export function textoEbBis(eb: number): string {
  */
 export function textoIae(iae: number): string {
   const conSigno = `${iae > 0 ? "+" : iae < 0 ? "-" : ""}${enEspanol(Math.abs(iae))} años`;
-  if (iae >= BANDA_IAE_ANIOS) return `${conSigno}: envejecimiento acelerado estimado`;
-  if (iae <= -BANDA_IAE_ANIOS) return `${conSigno}: envejecimiento desacelerado estimado`;
-  return `${conSigno}: acorde con sus pares`;
+  return `${conSigno}: ${bandaIae(iae)}`;
+}
+
+/**
+ * SOLO LA BANDA, sin la cifra: es el rotulo que va en una celda de tabla, donde el valor ya esta en
+ * su propia columna.
+ *
+ * ESTA SEPARADO DE `textoIae` PORQUE LA PANTALLA LO NECESITABA Y NO LO TENIA (Santiago, 2026-10-29):
+ * *"la tabla 3 de Gildardo dice 'acorde con sus pares', 'envejecimiento acelerado estimado' y
+ * 'desacelerado estimado'. La pantalla dice 'Concordante'. Usa sus textos."* La tabla de indicadores
+ * pintaba el rotulo de su capa de DISPLAY vieja (`dIAE`, ATLAS_v8 L14444), que es anterior a la tabla 3
+ * y usa otra palabra Y OTRO CORTE (`<-5` y `<=5`, abiertos, contra `>=` y `<=` cerrados de la tabla 3).
+ *
+ * Las tres frases y los dos cortes viven AQUI y en un solo sitio. Dos copias con cortes distintos es
+ * exactamente lo que hacia que un IAE de +5,0 se llamara de dos formas segun donde se leyera.
+ */
+export function bandaIae(iae: number): string {
+  if (iae >= BANDA_IAE_ANIOS) return "envejecimiento acelerado estimado";
+  if (iae <= -BANDA_IAE_ANIOS) return "envejecimiento desacelerado estimado";
+  return "acorde con sus pares";
+}
+
+/** Una cifra de la EB-BIS en el formato de su tabla 3: un decimal y coma, con el cero final. */
+export function cifraEbBis(n: number): string {
+  return enEspanol(n);
 }
 
 /** Lo que su §5 deja ver a los DOS lectores. `null` = no hay cifras que mostrar. */

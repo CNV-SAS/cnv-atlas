@@ -4,6 +4,8 @@ import { type EngineOutput, isEngineOutput } from "@/clinical-engine";
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 import type { ValidityCaveat } from "@/modules/bis-intake/services/validity";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+import { leerReemision, type Reemision } from "./reemision-reader";
 import { simularConCienciaDeHoy } from "@/modules/clinical-pipeline/data/simular-con-ciencia-de-hoy";
 import { vigenciaEmision, type VigenciaEmision } from "@/modules/clinical-pipeline/emision-vigencia";
 import { veredictoDeReemision, type VeredictoReemision } from "@/modules/clinical-pipeline/reemision";
@@ -80,6 +82,12 @@ export type EvaluationResults = {
   vigencia: VigenciaEmision;
   // §12b: si cambió de banda, la reemisión es obligatoria. Solo se computa cuando hay desfase.
   veredictoReemision: VeredictoReemision;
+  /**
+   * Si este diagnostico sucede a otro (recalibracion cientifica). null en el caso normal.
+   *
+   * Se DERIVA de que la evaluacion tenga mas de un diagnostico, no de una columna: ver reemision-reader.
+   */
+  reemision: Reemision | null;
 };
 
 export type EvaluationHeader = {
@@ -229,6 +237,11 @@ export async function getEvaluationResults(
   // borraria el rastro, que es la otra mitad de su misma instruccion.
   const recomputado = vigencia.alDia ? null : await simularConCienciaDeHoy(evaluationId);
 
+  // Si este documento sucede a otro. Va en las DOS ramas del retorno (tambien en la degradada): un
+  // snapshot de una era anterior del motor es justo el que mas probablemente fue reemitido, asi que
+  // esconder la marca ahi seria esconderla donde hace falta.
+  const reemision = await leerReemision(evaluationId);
+
   // Compatibilidad del snapshot con la forma actual del motor. Los snapshots de eras
   // anteriores (stub-0.1.0 pre-B11) no tienen efrPhenotype/dfi/structural: se degrada la
   // vista en vez de tronar. reports es inmutable, no se pueden migrar.
@@ -246,6 +259,7 @@ export async function getEvaluationResults(
         recomputado,
         !vigencia.alDia,
       ),
+      reemision,
       efrState: null,
       validityCaveats: [],
       rutasContent: [],
@@ -318,6 +332,7 @@ export async function getEvaluationResults(
     compatible: true,
     vigencia,
     veredictoReemision: veredictoDeReemision(rawSnapshot, recomputado, !vigencia.alDia),
+    reemision,
     engineVersion,
     efrState,
     validityCaveats,

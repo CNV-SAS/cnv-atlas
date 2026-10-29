@@ -35,7 +35,10 @@ function rotulosDeSuDisplay(nombre: string): string[] {
 const SONDAS: Record<string, number[]> = {
   // El IFC YA NO SE SONDEA POR VALOR (2026-09-21): sus cortes de display (3,5/6,0) son los historicos
   // que el propio Gildardo prohibio. Se traduce por su banda sellada; ver el bloque de abajo.
-  IAE: [-8, 0, 8], // <-5 · -5..5 · >5
+  //
+  // Y EL IAE TAMPOCO, DESDE EL 2026-10-29, por la MISMA razon de fondo: una entrega posterior suya pisa
+  // su capa de display vieja. Su tabla 3 de la EB-BIS v7 (2026-10-26) gobierna como se presenta este
+  // indicador, y dice otras palabras Y otros cortes que `dIAE`. Ver el bloque del final.
   IEHH: [-1, 0.5, 1.5, 3], // <=0 · <=1 · <=2 · resto
 };
 
@@ -59,11 +62,10 @@ describe("los rótulos de los índices son los de SU capa de display", () => {
     }
   });
 
-  it("el IAE es el que se reportó, y trae la palabra que faltaba", () => {
-    // El caso concreto que abrio esto. Se deja explicito para que el mensaje de un rojo futuro nombre lo
-    // que Gildardo vio en pantalla.
-    expect(rotuloDisplayDeIndice("IAE", 8)).toBe("Envejecimiento acelerado");
-    expect(rotuloDisplayDeIndice("IAE", -8)).toBe("Envejecimiento desacelerado");
+  it("el control: sigue habiendo indices que SI salen de su capa de display", () => {
+    // Si el mapa se quedara vacio (porque cada indice se fuera yendo a una entrega posterior, como se
+    // fueron el IFC y el IAE), la comparacion de arriba pasaria verde sin comparar nada.
+    expect(Object.keys(SONDAS).length).toBeGreaterThan(0);
   });
 
   it("y los que NO difieren no se tocan", () => {
@@ -76,6 +78,7 @@ describe("los rótulos de los índices son los de SU capa de display", () => {
 
   it("y sin valor no hay rótulo que inventar", () => {
     expect(rotuloDisplayDeIndice("IAE", null)).toBeNull();
+    expect(rotuloDisplayDeIndice("IEHH", null)).toBeNull();
   });
 });
 
@@ -128,5 +131,48 @@ describe("el PABU de la tabla es el sellado, por respuesta de Gildardo", () => {
   it("y la respuesta sigue escrita donde se la hicimos", () => {
     const pendientes = readFileSync("docs/PENDIENTES_CIENTIFICOS.md", "utf8");
     expect(pendientes).toContain("Ya revisé ATLAS y está bien como lo tienen");
+  });
+});
+
+// ═══ EL IAE: SUS PALABRAS DE LA TABLA 3, QUE PISAN A `dIAE` (2026-10-29) ═══
+//
+// ESTE CANDADO ESTABA VERDE DEFENDIENDO LA FUENTE EQUIVOCADA, y lo atrapo al cambiarla, que es
+// exactamente para lo que existe. Lo defendido era correcto cuando se escribio: el 2026-09-09 Santiago
+// vio con Gildardo delante que su tabla decia "Envejecimiento acelerado" y la nuestra "Acelerado", y la
+// fuente de la verdad entonces era su capa de display `dIAE` (ATLAS_v8 L14444).
+//
+// LO QUE CAMBIO ES QUE HAY UNA ENTREGA SUYA POSTERIOR Y MAS ESPECIFICA. Su tabla 3 del 2026-10-26
+// ("Salidas y presentacion en pantalla" de la EB-BIS v7) define como se presenta ESTE indicador, con su
+// pie literal: *"toda salida se presenta como estimacion, nunca como diagnostico"*. Dice "envejecimiento
+// acelerado estimado", "desacelerado estimado" y "acorde con sus pares", y sus cortes son CERRADOS
+// (>= +5,0 y <= -5,0) donde los de `dIAE` eran abiertos (<-5 y <=5).
+//
+// ES EL MISMO MOVIMIENTO QUE HIZO EL IFC un mes antes, y por eso no hay que inventar criterio: un
+// clasificador de display suyo deja de regir cuando el entrega algo posterior que habla de ese mismo
+// indicador. Santiago lo instruyo asi, textual: *"la tabla 3 de Gildardo dice 'acorde con sus pares'...
+// La pantalla dice 'Concordante'. Usa sus textos."*
+//
+// LO QUE QUEDA SIN CERRAR, Y VA AL DOCUMENTO DE DUDAS: el COLOR de la fila sigue saliendo del
+// clasificador SELLADO (`cIAE`), cuyos cortes son los abiertos. En un IAE de exactamente +5,0 el rotulo
+// dice "acelerado" (tabla 3) y el color sigue el del sellado. Es una pregunta suya, no nuestra.
+describe("el IAE se rotula con su tabla 3, no con su display viejo", () => {
+  it("las tres frases suyas, con la palabra 'estimado' que su pie de tabla exige", () => {
+    expect(rotuloDisplayDeIndice("IAE", 8)).toBe("envejecimiento acelerado estimado");
+    expect(rotuloDisplayDeIndice("IAE", -8)).toBe("envejecimiento desacelerado estimado");
+    expect(rotuloDisplayDeIndice("IAE", 0)).toBe("acorde con sus pares");
+  });
+
+  it("y sus cortes cerrados: +5,0 exacto es acelerado, no intermedio", () => {
+    // Es la diferencia concreta con `dIAE`, que en +5,0 decia "Concordante". Su tabla 3 escribe ">=" y
+    // "<=", asi que el borde pertenece a la cola.
+    expect(rotuloDisplayDeIndice("IAE", 5)).toBe("envejecimiento acelerado estimado");
+    expect(rotuloDisplayDeIndice("IAE", -5)).toBe("envejecimiento desacelerado estimado");
+    expect(rotuloDisplayDeIndice("IAE", 4.9)).toBe("acorde con sus pares");
+  });
+
+  it("CONTROL: su display viejo sigue en su archivo, y no se toca", () => {
+    // No se borra de su HTML ni se corrige: su archivo es su archivo. Lo que cambia es CUAL de sus dos
+    // fuentes rige esta fila. Si algun dia `dIAE` desapareciera de su entrega, este control lo diria.
+    expect(rotulosDeSuDisplay("dIAE")).toContain("Envejecimiento acelerado");
   });
 });
