@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
+import { titulosDelPlanPdf } from "./helpers/titulos-del-plan";
 
 // CANDADO DE LA HOJA DEL PLAN (2026-09-02). Cierra la mitad del pedido legal que está del lado del
 // profesional: poder ENTREGARLE al paciente su plan en la consulta, sin esperar al correo.
@@ -132,7 +133,6 @@ describe("el encabezado y el orden que pidió Gildardo (2026-09-18)", () => {
   // intercambio..."), y una comparacion de posiciones sobre el texto crudo mediria el comentario, no el
   // codigo. Es el mismo detector flojo que ya nos engano una vez.
   const hoja = sinComentarios(readFileSync("src/modules/reports/components/plan-imprimible.tsx", "utf8"));
-  const pdf = sinComentarios(readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8"));
 
   // EL ENCABEZADO SE COMPARTIO (2026-09-19): vivia copiado aqui y ahora es `EncabezadoImpreso`, el mismo
   // de las otras dos hojas. El candado sigue el dato: mide donde vive la garantia, y de paso exige que el
@@ -173,11 +173,17 @@ describe("el encabezado y el orden que pidió Gildardo (2026-09-18)", () => {
     expect(porcionesH).toBeLessThan(listaH);
     expect(listaH, "el menú tiene que ir al final, después de la lista").toBeLessThan(menuH);
 
-    const [porcionesP, listaP, menuP] = orden(pdf, [
+    // LA SEGUNDA SUPERFICIE ES EL PDF DEL PLAN (el adjunto del correo) y no el informe, desde el
+    // 2026-10-28: los cuatro bloques de la prescripción salieron del informe, así que las porciones ya no
+    // están ahí y comparar contra él medía una ausencia. El plan completo vive en la hoja de pantalla y en
+    // su PDF, y esos dos son los que tienen que contar el mismo plan en el mismo orden.
+    const titulosP = titulosDelPlanPdf();
+    const [porcionesP, listaP, menuP] = [
       "Cómo repartir tus porciones en el día",
       "Tu lista de intercambio",
       "Ejemplo de menú para una semana",
-    ]);
+    ].map((t) => titulosP.indexOf(t));
+    expect(porcionesP, "el PDF del plan no lleva las porciones").toBeGreaterThan(-1);
     expect(porcionesP).toBeLessThan(listaP);
     expect(listaP, "el PDF y la hoja tienen que contar el mismo plan en el mismo orden").toBeLessThan(menuP);
   });

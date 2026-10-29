@@ -27,6 +27,18 @@ export const PROFESSION_LABELS: Record<Profession, string> = {
   nutricionista: "Nutricionista",
 };
 
+/**
+ * La etiqueta de una profesion que llega como texto suelto (de la BD, de un embed, de un lector).
+ *
+ * Existe para no repetir el `?? crudo` en cada sitio que la pinta, y porque los lectores no traen el tipo
+ * `Profession` sino `string | null`. Una profesion que no este en el mapa sale CRUDA antes que vacia: un
+ * rotulo raro se nota y se arregla; uno vacio parece que el dato no existe.
+ */
+export function etiquetaDeProfesion(profesion: string | null | undefined): string | null {
+  if (!profesion) return null;
+  return PROFESSION_LABELS[profesion as Profession] ?? profesion;
+}
+
 export const createUserSchema = z
   .object({
     email: z.string().email(),

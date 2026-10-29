@@ -36,11 +36,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
+export type Adjunto = { filename: string; content: Buffer };
+
 export type ReportEmailInput = {
   to: string;
   subject: string;
   text: string;
-  pdf: { filename: string; content: Buffer };
+  pdf: Adjunto;
+  /**
+   * SEGUNDO ADJUNTO, opcional: la hoja del PLAN cuando hay prescripcion emitida (Santiago, 2026-10-28).
+   *
+   * Va como adjunto aparte y NO dentro del informe, porque son dos documentos con dos trabajos distintos:
+   * el informe se lee una vez y el plan se pega en la nevera. Si no hay prescripcion, no se manda un
+   * segundo archivo vacio: un adjunto que el paciente abre y no dice nada es peor que no mandarlo.
+   */
+  extra?: Adjunto | null;
 };
 
 // Envia el reporte al paciente con el PDF adjunto. Devuelve Result: el envio es una
@@ -67,7 +77,10 @@ export async function sendReportEmail(input: ReportEmailInput): Promise<Result<{
         to: input.to,
         subject: input.subject,
         text: input.text,
-        attachments: [{ filename: input.pdf.filename, content: input.pdf.content }],
+        attachments: [
+          { filename: input.pdf.filename, content: input.pdf.content },
+          ...(input.extra ? [{ filename: input.extra.filename, content: input.extra.content }] : []),
+        ],
       }),
       SEND_TIMEOUT_MS,
     );
