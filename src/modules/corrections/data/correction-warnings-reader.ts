@@ -1,11 +1,16 @@
 import "server-only";
 
 import { desc, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { ENGINE_VERSION } from "@/clinical-engine";
 import { db } from "@/db";
 import { diagnoses, reports, treatmentDietGuidelines, treatmentNotes, treatmentNutraceuticals, treatments } from "@/db/schema";
 import { buildEmissionVersions, EMISSION_VERSION_KEYS } from "@/modules/clinical-pipeline/emission-versions";
+
+// Alias de `diagnoses` para el join que sube del tratamiento a su evaluacion. Hace falta porque esta misma
+// funcion ya consulta `diagnoses` para el diagnostico VIGENTE, y son dos filas distintas de la misma tabla.
+const dxDelTratamiento = alias(diagnoses, "dx_del_tratamiento");
 
 // Calcula los avisos CONDICIONALES de la confirmación de corrección (S2): lo que se pierde y lo que
 // puede cambiar. La lista honesta, específica de ESTA evaluación. Vacía si no hay nada que advertir.
@@ -42,7 +47,12 @@ export async function getCorrectionWarnings(evaluationId: string): Promise<strin
       proximaCita: treatments.proximaCita,
     })
     .from(treatments)
-    .where(eq(treatments.diagnosisId, diag.id))
+    // POR LA EVALUACION, NO POR EL DIAGNOSTICO VIGENTE (2026-10-29). Este era el mas peligroso de los
+    // cuatro sitios con esta forma: tras una reemision no encontraba el tratamiento, y entonces NO avisaba
+    // "vas a perder N ajustes, las notas, la proxima cita" justo antes de una correccion que los rehace.
+    // Un aviso que calla se lee como "no hay nada que perder", que es lo contrario de la verdad.
+    .innerJoin(dxDelTratamiento, eq(dxDelTratamiento.id, treatments.diagnosisId))
+    .where(eq(dxDelTratamiento.evaluationId, evaluationId))
     .orderBy(desc(treatments.createdAt))
     .limit(1);
 

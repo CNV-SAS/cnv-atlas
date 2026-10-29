@@ -16,7 +16,9 @@ export async function getDiagnosisCriterion(
   evaluationId: string,
 ): Promise<DiagnosisCriterion | null> {
   const supabase = await createSupabaseServerClient();
-  // El pipeline crea un diagnostico por evaluacion; si hubiera mas de uno, el mas reciente.
+  // EL DIAGNOSTICO VIGENTE, que es DONDE SE ESCRIBE una nota nueva. El comentario que habia aqui decia
+  // "el pipeline crea un diagnostico por evaluacion", y la reemision por recalibracion volvio falsa esa
+  // premisa: ahora hay varios por evaluacion de forma rutinaria.
   const { data: diag, error } = await supabase
     .from("diagnoses")
     .select("id")
@@ -27,10 +29,18 @@ export async function getDiagnosisCriterion(
   if (error) throw new Error(`diagnosis-notes-reader: diagnoses: ${error.message}`);
   if (!diag) return null;
 
+  // PERO SE LEEN LAS DE TODA LA EVALUACION, no las del vigente (2026-10-29). Filtrar por el vigente
+  // hacia que al reemitir un diagnostico el criterio escrito por el profesional DESAPARECIERA de la
+  // pantalla: sus palabras seguian en la base, colgadas del diagnostico anterior, y la pantalla salia
+  // vacia. Es el mismo defecto que escondia el tratamiento, en la otra pestana.
+  //
+  // Las dos mitades son distintas a proposito: una nota NUEVA pertenece al diagnostico de hoy (por eso
+  // `diagnosisId` sigue siendo el vigente), pero las ESCRITAS no se mudan ni se duplican, se siguen
+  // viendo. Van en orden cronologico, que es lo que deja leer el criterio como lo que es, un historial.
   const { data: notes, error: nErr } = await supabase
     .from("diagnosis_notes")
-    .select("id, note, created_at")
-    .eq("diagnosis_id", diag.id)
+    .select("id, note, created_at, diagnoses!inner(evaluation_id)")
+    .eq("diagnoses.evaluation_id", evaluationId)
     .order("created_at", { ascending: true });
   if (nErr) throw new Error(`diagnosis-notes-reader: notes: ${nErr.message}`);
 

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { diagnoses, treatments } from "@/db/schema";
@@ -34,26 +34,30 @@ export type SaveProximoControlInput = {
 
 export async function saveProximoControl(input: SaveProximoControlInput): Promise<void> {
   await db.transaction(async (tx) => {
-    const [diag] = await tx
-      .select({ id: diagnoses.id })
-      .from(diagnoses)
-      .where(eq(diagnoses.evaluationId, input.evaluationId))
-      .limit(1);
-    if (!diag) {
-      throw new ProximoControlError("La evaluación todavía no tiene diagnóstico donde agendar la cita.");
-    }
+    // EL TRATAMIENTO SE BUSCA POR LA EVALUACION (2026-10-29). Antes se resolvia el diagnostico y luego el
+    // tratamiento de ESE diagnostico, con dos defectos: (a) tras una reemision el tratamiento cuelga del
+    // diagnostico anterior, asi que agendar la cita LANZABA "La evaluación no tiene tratamiento donde
+    // agendar la cita" teniendolo; y (b) el `limit(1)` sobre `diagnoses` NO llevaba `orderBy`, asi que con
+    // dos diagnosticos la fila elegida era indefinida ("paginar sin order by no define que trae cada
+    // pagina"). Un solo join por la evaluacion resuelve los dos, y el `innerJoin` conserva el gate de que
+    // sin diagnostico no hay donde agendar.
     const [prev] = await tx
       .select({ id: treatments.id, cita: treatments.proximaCita })
       .from(treatments)
-      .where(eq(treatments.diagnosisId, diag.id))
+      .innerJoin(diagnoses, eq(diagnoses.id, treatments.diagnosisId))
+      .where(eq(diagnoses.evaluationId, input.evaluationId))
+      .orderBy(desc(treatments.createdAt))
       .limit(1);
     if (!prev) {
       throw new ProximoControlError("La evaluación no tiene tratamiento donde agendar la cita.");
     }
+    // El UPDATE va por el id del tratamiento, que es su clave. La condicion extra de `diagnosis_id` que
+    // habia aqui ya no aplica: el tratamiento vive colgado del diagnostico que lo origino, y exigir que
+    // fuera el vigente dejaba el update en CERO filas despues de una reemision.
     const updated = await tx
       .update(treatments)
       .set({ proximaCita: input.proximaCita })
-      .where(and(eq(treatments.id, prev.id), eq(treatments.diagnosisId, diag.id)))
+      .where(eq(treatments.id, prev.id))
       .returning({ id: treatments.id });
     if (updated.length === 0) throw new ProximoControlError("No se pudo agendar la cita.");
 
