@@ -69,6 +69,26 @@ export async function custodiasConLotes(): Promise<CustodiaConLotes[]> {
        and loc.is_active
        -- La cuarentena no se vende ni se avisa: lo que esta ahi ya salio del circuito (0164).
        and loc.sellable
+       -- ═══ EL PRODUCTO DE PRUEBA NO GENERA AVISO (Santiago, 2026-10-28) ═══
+       --
+       -- Reporto que seguia recibiendo el correo de lotes con DOCE lineas de "PRUEBA SMOKE BLOQUE 3" en la
+       -- bodega central, todas del mismo lote SMOKE-A. Un producto que existe para probar no vence para
+       -- nadie: avisar de el es pedir una accion sobre algo que no la necesita, y doce lineas de ruido en
+       -- un correo son lo que hace que el correo se deje de leer.
+       --
+       -- SE FILTRA EL PRODUCTO Y NO LA UBICACION, a proposito: si un profesional marcado de prueba tiene
+       -- producto REAL en su vitrina, esas unidades son de CNV y SI hay que recogerlas. La marca de prueba
+       -- saca de las CIFRAS lo que no es operacion real; no convierte en irreal un frasco que existe.
+       --
+       -- QUE DESAPARECE Y QUE NO. Esta lectura alimenta DOS cosas y las dos son avisos: el correo
+       -- (avisarDeVencimientos) y la lista de "lotes en ventana sin avisar", que existe para decir que el
+       -- sistema vio el lote y que mañana queda registrado. Dejar ahi un producto de prueba seria prometer
+       -- un aviso que no va a salir, que es la contradiccion de siempre entre dos partes de la pantalla.
+       --
+       -- EL LOTE SIGUE EN EL INVENTARIO, marcado, porque /nutraceuticos lo lee por su cuenta: es superficie
+       -- de TRABAJO (la capa 3 de la regla del paciente de prueba) y un lote que desaparece de la vista es
+       -- peor que uno marcado. Lo que se deja de hacer es PEDIR UNA ACCION sobre el.
+       and coalesce(n.is_test, false) = false
      order by loc.name, l.expires_on, n.name`);
 
   const porUbicacion = new Map<string, CustodiaConLotes>();
@@ -207,12 +227,24 @@ const aAlerta = (f: FilaDeAlerta): AlertaEnPantalla => ({
   unidadesHoy: Number(f.unidades_hoy),
 });
 
+// ═══ LA ALERTA DE UN PRODUCTO DE PRUEBA NO ES UNA ALERTA (Santiago, 2026-10-28) ═══
+//
+// Las filas YA ESCRITAS no se borran: son el registro de que ese dia se aviso, y borrarlas seria perder la
+// cuenta de cuantos dias tuvo el Integrante para actuar, que es justo lo que se le puede discutir. Lo que
+// se deja de mostrar es la alerta ABIERTA, porque una alerta es una peticion de accion y sobre un producto
+// de prueba no hay accion que pedir.
+//
+// (El filtro de ORIGEN, para que no nazcan nuevas, esta en `custodiasConLotes`. Este es para las que ya
+// existen: doce lineas de "PRUEBA SMOKE BLOQUE 3" que seguian llegando por correo.)
+const SIN_PRODUCTOS_DE_PRUEBA = sql`coalesce(n.is_test, false) = false`;
+
 /** Las alertas de un Integrante que TODAVIA tienen unidades: lo que le queda por resolver. */
 export async function alertasAbiertasDelProfesional(professionalId: string): Promise<AlertaEnPantalla[]> {
   const filas = await db.execute<FilaDeAlerta>(sql`
     ${SELECT_ALERTAS}
      where a.professional_id = ${professionalId}
        and coalesce(i.stock_quantity, 0) > 0
+       and ${SIN_PRODUCTOS_DE_PRUEBA}
      order by a.expires_on`);
   return filas.map(aAlerta);
 }
@@ -222,6 +254,7 @@ export async function alertasAbiertas(): Promise<AlertaEnPantalla[]> {
   const filas = await db.execute<FilaDeAlerta>(sql`
     ${SELECT_ALERTAS}
      where coalesce(i.stock_quantity, 0) > 0
+       and ${SIN_PRODUCTOS_DE_PRUEBA}
      order by a.expires_on`);
   return filas.map(aAlerta);
 }

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -130,5 +132,54 @@ describe("quien asume el vencido", () => {
     expect(p.asume).toBe("integrante");
     expect(p.diasQueTuvo).toBe(11);
     expect(p.alertaTardia).toBe(true);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL PRODUCTO DE PRUEBA NO GENERA AVISO (Santiago, 2026-10-28)
+//
+// Reporto que el correo de lotes seguia llegando con DOCE lineas de "PRUEBA SMOKE BLOQUE 3". Medido contra
+// produccion: las DOCE filas de `lot_expiry_alerts` que existen son productos de prueba, y 25 de las 66
+// lineas de inventario con stock tambien. O sea que el correo era ruido al 100%, y un correo que es todo
+// ruido se deja de leer, con lo que el primer lote REAL que venza pasa de largo.
+//
+// ESTE CANDADO MIRA EL SQL porque la regla vive en tres consultas y lo que hay que vigilar es una AUSENCIA:
+// la cuarta consulta que alguien escriba. Es el mismo motivo del barrido de "paciente de prueba".
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("el aviso de vencimiento no habla de productos de prueba", () => {
+  const REPO = readFileSync("src/modules/nutraceuticals/data/vencimientos-repository.ts", "utf8");
+
+  it("las TRES lecturas que alimentan un aviso lo filtran", () => {
+    // Dos de alertas abiertas (la del Integrante y la de CNV) comparten el fragmento, y el origen
+    // (`custodiasConLotes`) lo lleva inline por estar dentro de su propio `where`.
+    expect(REPO).toContain("const SIN_PRODUCTOS_DE_PRUEBA");
+    expect(
+      (REPO.match(/\$\{SIN_PRODUCTOS_DE_PRUEBA\}/g) ?? []).length,
+      "una de las dos lecturas de alertas abiertas se quedo sin el filtro",
+    ).toBe(2);
+    expect(
+      (REPO.match(/coalesce\(n\.is_test, false\) = false/g) ?? []).length,
+      "el filtro de origen (custodiasConLotes) desaparecio",
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("filtra el PRODUCTO, no la ubicacion ni el profesional", () => {
+    // Si un profesional marcado de prueba tiene producto REAL en su vitrina, esas unidades son de CNV y SI
+    // hay que recogerlas. La marca de prueba saca de las CIFRAS lo que no es operacion real; no convierte
+    // en irreal un frasco que existe.
+    expect(REPO, "se filtro por la ubicacion o por el profesional, no por el producto").not.toMatch(
+      /and coalesce\((loc|pp|p)\.is_test, false\) = false/,
+    );
+  });
+
+  it("y las filas YA ESCRITAS no se borran", () => {
+    // Son el registro de que ese dia se aviso, y con el la cuenta de cuantos dias tuvo el Integrante para
+    // actuar, que es justo lo que se le puede discutir. Lo que se deja de MOSTRAR es la alerta abierta.
+    // El UNICO borrado de esta tabla sigue siendo el de una alerta cuyo correo no salio, por id y solo si
+    // nadie la vio (`borrarAlertaNoEntregada`). Un borrado en bloque por `is_test` seria otra cosa.
+    const borrados = REPO.match(/delete\s+from\s+lot_expiry_alerts[^`]*/gi) ?? [];
+    expect(borrados.length, "aparecio un segundo borrado de alertas").toBe(1);
+    expect(borrados[0]).toContain("seen_at is null");
+    expect(borrados[0], "se borran alertas por ser de un producto de prueba").not.toContain("is_test");
   });
 });
