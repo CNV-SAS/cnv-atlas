@@ -20,8 +20,7 @@ import type { SendMode } from "../pdf/report-document";
 import { getInformeDelPaciente } from "../data/informe-paciente-reader";
 import { getSerieDelPaciente } from "../data/serie-del-paciente";
 import { getPlanPaciente } from "../data/plan-paciente-reader";
-import { renderPlanPdf, renderReportPdf } from "./render-report";
-import type { PlanMeta } from "../pdf/plan-document";
+import { metaDelPlan, renderPlanPdf, renderReportPdf } from "./render-report";
 
 // Orquesta el envio del reporte al paciente. Orden (D4, accion externa hacia afuera):
 // render -> subir a Storage -> enviar correo -> SOLO si el correo sale, marcar sent +
@@ -49,24 +48,8 @@ export type SendReportInput = {
 // mandarlo, y el informe ya omite el plan entero por la misma razon.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
-type DatosDelPlan = {
-  patientName: string;
-  documentLabel: string;
-  consultationDate: string;
-  profesional: { nombre: string; profesion: string | null } | null;
-};
-
 function nombreDelPlan(documentLabel: string): string {
   return `plan-${documentLabel.replace(/\s+/g, "-") || "anibise"}.pdf`;
-}
-
-function metaDelPlan(d: DatosDelPlan): PlanMeta {
-  return {
-    patientName: d.patientName || "Paciente",
-    documentLabel: d.documentLabel,
-    consultationDate: formatDate(d.consultationDate),
-    profesional: d.profesional,
-  };
 }
 
 /**
@@ -184,7 +167,8 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       professionalNotes: notasDeLaConsulta,
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
-      plan,
+      // SIN EL PLAN: el informe dejo de llevar nada del plan el 2026-10-30. El plan viaja como SEGUNDO
+      // adjunto (mas abajo), no dentro de este documento.
       informe,
       serie,
     },
@@ -294,10 +278,7 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
   // una reconstruccion y no poder mandar nada, el paciente prefiere recibir su documento.
   let pdf = dispatch.storagePath ? await downloadReportPdf(dispatch.storagePath) : null;
   if (!pdf) {
-    const [plan, informe] = await Promise.all([
-      getPlanPaciente(dispatch.evaluationId, dispatch.snapshot),
-      getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot),
-    ]);
+    const informe = await getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot);
     pdf = await renderReportPdf(
       dispatch.snapshot,
       {
@@ -313,7 +294,6 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
         professionalNotes: dispatch.professionalNotes,
         bandText: dispatch.patientBandText,
         bandAppointmentDate: dispatch.patientBandAppointmentDate,
-        plan,
         informe,
       },
     );

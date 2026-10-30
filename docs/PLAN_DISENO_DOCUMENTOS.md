@@ -66,6 +66,22 @@ sobre los documentos ya estables.
 
 ## 3. ¿El informe debe seguir llevando el plan entero?
 
+> **REVERTIDO (Santiago, 2026-10-30). El informe ya NO lleva nada del plan.** Esta sección se conserva
+> porque su argumento era bueno y conviene saber qué lo tumbó, no porque siga siendo la decisión.
+>
+> **Lo que la tumba son dos hechos, no una preferencia.** (1) La premisa del argumento de abajo era que
+> remitir al plan *"obligaría al paciente a tener dos archivos y a cruzarlos"*: desde el 2026-10-28 el
+> correo adjunta los dos documentos solo, así que el paciente no tiene que cruzar nada ni pedir nada.
+> (2) Y el criterio de qué va en el informe cambió a uno más general: *"es transversal a todas las
+> disciplinas: trata la salud bioeléctrica, no la alimentación"*. El mismo paciente puede ir a ejercicio
+> o a psicología, y su informe no puede parecer un informe de nutrición. El candado de la §7.1 exige
+> ahora las dos mitades juntas: los siete bloques en la hoja del plan **y** el correo adjuntándola.
+>
+> **Y LA MITAD DE ESTA SECCIÓN QUE SOBREVIVE SE APLICÓ:** decía *"lo que sí conviene, y es distinto: que
+> el informe DIGA que el plan va dentro... Hoy no lo dice en ninguna parte"*. Con el plan fuera, esa
+> falta pasó de conveniente a necesaria: un paciente que abre solo el informe no vería ni el plan ni una
+> señal de que existe. El informe lo dice ahora, en el sitio donde estaban los bloques de alimentación.
+
 **Sí, y no por inercia.** Son dos usos distintos:
 
 - **El plan** se imprime y se lleva **a la cocina**. Es una hoja de trabajo: se pega en la nevera, se

@@ -31,6 +31,14 @@ export type ReportCardView = {
   // evaluacion (getReportCardForEvaluation); las LISTAS la dejan undefined. Aqui ya NO se confirma nada:
   // sirve para ADELANTAR el freno de la entrega, que vive en el servicio.
   trajectory?: TrajectoryConfirmation | null;
+  /**
+   * SI ESTA CONSULTA TIENE PRESCRIPCION EMITIDA, o sea si el correo lleva un SEGUNDO documento.
+   *
+   * `undefined` = no se consulto (las listas no lo traen), misma convencion que `trajectory`, y entonces
+   * no se ofrece el enlace: es distinto de "no hay plan". Ofrecer un enlace que puede no llevar a nada es
+   * el defecto que la tarjeta ya evito al retirar el aviso de aprobar la prescripcion.
+   */
+  conPlan?: boolean;
   // La ultima vez que este reporte salio hacia el paciente, del registro de entregas (0148). undefined =
   // no se consulto (las listas no lo traen).
   ultimaEntrega?: { fecha: string; enviadaA: string } | null;
@@ -122,6 +130,25 @@ export function ReportCard({ report }: { report: ReportCardView }) {
           >
             {enviado ? "Ver el informe enviado" : "Ver o imprimir el informe"}
           </a>
+          {/* ═══ EL SEGUNDO DOCUMENTO, DESDE DONDE SE APRUEBA (2026-10-30) ═══
+
+              El informe dejo de llevar nada del plan (es transversal a las disciplinas) y el correo adjunta
+              la hoja del plan cuando hay prescripcion. O sea que el paciente recibe DOS documentos, y hasta
+              aqui esta tarjeta solo ensenaba uno: el profesional aprobaba mirando la mitad.
+
+              Se ofrece solo cuando hay prescripcion emitida (`conPlan`), que es la misma condicion con la
+              que el correo decide si adjunta. Asi lo que la tarjeta ofrece y lo que el correo manda no
+              pueden decir cosas distintas. */}
+          {report.conPlan ? (
+            <a
+              href={`/reportes/${report.reportId}/pdf?doc=plan`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {enviado ? "Ver la hoja del plan enviada" : "Ver o imprimir la hoja del plan"}
+            </a>
+          ) : null}
         </div>
 
         {/* EL FRENO, ADELANTADO. No es un aviso decorativo: el envio fallaria con este mismo motivo. Se

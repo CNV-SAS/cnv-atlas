@@ -10,6 +10,7 @@ import {
   BloqueMeta,
   BloqueRecomendaciones,
 } from "./bloques-del-plan";
+import { MarcaDeFondo } from "./marca-de-fondo";
 import { styles } from "./estilos-del-pdf";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -53,6 +54,10 @@ export function PlanDocument({ plan, meta }: { plan: PlanPaciente; meta: PlanMet
       {/* CARTA, como todo lo que se imprime en Atlas: en Colombia el papel es carta, y A4 impresa en carta
           deja margenes desiguales (Santiago, 2026-09-20). */}
       <Page size="LETTER" style={styles.page}>
+        {/* LA MISMA MARCA QUE EL INFORME, y por eso es un componente: los dos llegan en el mismo correo,
+            y uno decorado junto a otro sin decorar se lee como dos sistemas distintos. Va LO PRIMERO para
+            quedar detras del contenido. */}
+        <MarcaDeFondo />
         <Text style={styles.title}>Tu plan de alimentación</Text>
         <Text style={styles.subtitle}>Connected Nutrition Ventures</Text>
 
