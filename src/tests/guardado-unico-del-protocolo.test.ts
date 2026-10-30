@@ -172,6 +172,72 @@ describe("lo que gobierna a otra sección se lee EN VIVO", () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA VERIFICACION DE LA REGLA DE v12 §5: "TODO SE CALCULA SOLO" (Santiago lo pidio, 2026-10-30)
+//
+// Su regla, literal: *"todo se calcula solo al subir el Excel"*, o sea sin botones de calcular repartidos.
+// Atlas la cumple en lo DERIVADO, y lo que este bloque hace es dejarlo COMPROBADO en vez de afirmado, que
+// es la unica forma de que la verificacion no envejezca.
+//
+// Y DEJA ESCRITAS LAS DOS EXCEPCIONES, las dos deliberadas:
+//
+//   · EL SELLO NO ES AUTOMATICO. Generar el diagnostico escribe el snapshot con su constelacion de
+//     versiones (regla dura 7) y tiene un actor. Eso es un ACTO, no un derivado.
+//   · LAS PORCIONES DEL INTERCAMBIO SIGUEN EL OBJETIVO *GUARDADO*, no el de pantalla, y por eso la
+//     distribucion tambien. Es la "base estable" del 2026-09-10: seguir el objetivo sin guardar
+//     reescribiria las porciones en cada pulsacion de tecla del campo de kcal, y las porciones son
+//     editables. Cuando el guardado se mueve, se re-derivan solas si nadie las toco, y si las toco manda
+//     el aviso de desfase con su boton de redistribuir.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("lo derivado se recalcula en el render, sin botones de calcular", () => {
+  it("la cadena calórica sale de los ajustes VIVOS, no de los guardados", () => {
+    // `adj` es lo que hay en pantalla; `efectivo` se computa con el en cada render, con la MISMA funcion
+    // que recomputa el servidor bajo lock. Si esto leyera `protocol.adj*`, la vista previa mostraria la
+    // cuenta de antes de escribir.
+    expect(PANEL).toContain("const efectivo = computeProtocoloEfectivo(snap, adj, opciones);");
+  });
+
+  it("y la validación con el ICN también", () => {
+    // Es una FUNCION y no un nodo a proposito (2026-09-06, punto 21b): los cuatro campos viven en el
+    // estado de la seccion, asi que el padre no podria pasar un nodo ya calculado.
+    expect(PANEL).toContain("{validacion(adj, opciones)}");
+  });
+
+  it("y NO hay ningún botón de «calcular»", () => {
+    const codigo = sinComentarios(PANEL);
+    expect(codigo).not.toMatch(/>\s*Calcular/);
+    // Los dos RECALCULAR que existen no son de esta familia y conviene que el candado lo diga: rehacen el
+    // reparto DESCARTANDO los ajustes manuales (asi los tiene el tambien), y por eso piden confirmacion
+    // cuando hay algo que perder. No calculan un derivado que la pantalla deberia saber sola.
+    expect(codigo).toContain("Se pierden tus ajustes manuales.");
+  });
+
+  it("las porciones del intercambio siguen el objetivo GUARDADO, y se re-derivan si nadie las tocó", () => {
+    expect(PANEL).toContain(
+      "const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;",
+    );
+    // La re-derivacion al moverse el guardado, con su condicion: solo si lo de pantalla sigue siendo lo
+    // que salia del objetivo anterior.
+    expect(PANEL).toContain("if (objetivoSembrado !== objetivoEfectivo) {");
+    expect(PANEL).toContain("anteriores.every((a) => (porciones[a.sub] ?? 0) === a.porciones)");
+  });
+
+  it("y el SELLO sigue siendo un acto, no una consecuencia de subir el archivo", () => {
+    // v12 §5 pide que todo se calcule al subir el Excel. Lo derivado, si; el sello, no, y no es inercia:
+    // escribe la constelacion de versiones y consta con un actor. Que el import lo disparara dejaria el
+    // diagnostico firmado por quien importo, sin que nadie haya decidido emitirlo.
+    const PIPELINE = readFileSync(
+      "src/modules/clinical-pipeline/components/generate-diagnosis-panel.tsx",
+      "utf8",
+    );
+    expect(PIPELINE).toContain("use client");
+    const IMPORT = sinComentarios(
+      readFileSync("src/modules/bis/services/bis-import.ts", "utf8"),
+    );
+    expect(IMPORT, "el import empezó a sellar el diagnóstico solo").not.toContain("runPipeline");
+  });
+});
+
 describe("el guardado no puede quedar a medias", () => {
   it("el servicio traduce el rechazo de concurrencia SIN refrescar la pantalla", () => {
     // Si refrescara, traería el cambio del otro profesional y DESCARTARIA lo que este escribió, que es

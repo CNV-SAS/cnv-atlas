@@ -41,6 +41,7 @@ peso meta. Conviene que conste, porque la frase del 2 de septiembre está citada
 | 6.1 | Harris-Benedict sobre peso meta + 10 % | C | **Nuevo, y es el cambio grande.** Además habría DOS Harris-Benedict distintos. §A4 |
 | 6.2 | Flujo guiado del nutricionista | S | **Nuevo**, y choca en una pieza con el guardado único. §B5 |
 | 6.3 | La impresión sale igual · "no unifiques los dos bloques" | S | **Ya está así**, y por su mismo argumento. §B6 |
+| 6.4 | Se retira la tabla vieja de la fórmula sintética (`filasFx`, tarjeta `secD`) | S | **No aplica: en Atlas no existe esa tabla.** Verificado el 2026-10-30. §B7 |
 | 8.1 | El menú se sortea en cada redibujado | S | **Superado** (semilla persistida) |
 | 8.2 | Dos motores opinando sobre realimentación | C | **Está en Atlas igual.** §A5 |
 | 8.3 | `guardarEnPC` escribe `ATLAS_v7` | S | **No aplica** (no hay exportación a archivo local) |
@@ -302,6 +303,25 @@ mirar antes:
 **Recomendación:** adoptar la regla para todo lo DERIVADO (ya está) y dejar el sello como acto. Si Gildardo
 lo quiere automático, es una línea en el import y hay que escribir en el audit que lo disparó el archivo.
 
+### VERIFICADO el 2026-10-30 (Santiago lo pidió), y hay una excepción que conviene conocer
+
+**Se recalcula en el render, sin botón:** la cadena calórica entera (GEB, PAL, GET, déficit, objetivo y el
+cuadre de macros, con `computeProtocoloEfectivo` sobre los ajustes **vivos**, la misma función que el
+servidor recomputa bajo lock), la validación con el ICN, la tabla de Wang mientras se escribe la cintura y
+la cadera, y la distribución respecto a los tiempos de comida y a las porciones **que hay en pantalla**.
+
+**La excepción, y es deliberada:** las porciones de la lista de intercambio siguen el objetivo **guardado**,
+no el de pantalla, y por ellas los valores por defecto de la distribución. Es la "base estable" del
+2026-09-10: seguir un objetivo sin guardar reescribiría las porciones en cada pulsación de tecla del campo
+de kcal, y las porciones son editables. Cuando el guardado se mueve, se re-derivan solas **si nadie las
+tocó**; si el profesional las ajustó, se conservan y manda el aviso de desfase con su botón de redistribuir.
+
+**Y los dos botones de «recalcular» que existen no son de la familia que su regla prohíbe:** no calculan un
+derivado que la pantalla debería saber sola, rehacen el reparto **descartando** los ajustes manuales (así
+los tiene él también), y por eso piden confirmación cuando hay algo que perder.
+
+Candado: `guardado-unico-del-protocolo.test.ts`, que deja la verificación comprobada en vez de afirmada.
+
 ## B5 · El flujo guiado del nutricionista: nuevo, y una pieza choca
 
 Los seis pasos con revelación progresiva son nuevos para Atlas, y el argumento es bueno (el panel actual
@@ -315,6 +335,12 @@ muestra todo a la vez). Lo que hay que resolver antes de portarlo:
   un acierto que Atlas no tiene: hoy un `adj_kcalObj` fijado a mano deja el plan clavado aunque el gasto
   cambie. Es un defecto real nuestro y se puede arreglar aparte del flujo, con su enlace para volver a la
   cifra calculada.
+  > **HECHO el 2026-10-30.** Se suelta desde los **tres** insumos (peso meta, PAL y déficit, no solo los
+  > dos que él nombra: dejar el tercero fuera daría un comportamiento que depende de cuál se toque) y
+  > desde las dos copias del PAL, que son un campo mostrado dos veces. **Y no se suelta en silencio:** la
+  > pantalla dice qué pasó, nombra la cifra que había y volver a ella es un clic, porque descartar sin
+  > avisar una cifra del profesional choca con su §5 del 2026-08-27 (*"el motor propone, el profesional
+  > dispone"*). Candado: `cadena-dos-bloques.test.ts`.
 - **"Resumen clínico y meta terapéutica ya no salen en pantalla; siguen en la impresión."** En Atlas los dos
   están en pantalla (bloque "Lectura del diagnóstico") y en los documentos. Retirarlos de pantalla es
   decisión de Santiago.
@@ -328,6 +354,25 @@ muestra todo a la vez). Lo que hay que resolver antes de portarlo:
 3.500 líneas de campos en vivo, así que lo imprimible es una hoja aparte (`hoja-del-protocolo.tsx`) armada
 con lo **guardado**, y el taller va `no-print`. Ayer eso se extendió a las nueve superficies. **Nada que
 hacer, y conviene decírselo:** el riesgo que su nota previene ya está cubierto por construcción.
+
+---
+
+## B7 · La tabla vieja de la fórmula (6.4): no hay nada que retirar, y sí algo que decidir
+
+**Verificado el 2026-10-30:** en Atlas no existe el equivalente de `filasFx` ni de la tarjeta `secD`. No hay
+una tabla de la fórmula que duplique la cadena: el bloque "Fórmula sintética" **es** la cadena en vivo (los
+cuatro campos y la vista previa que se recalcula al escribir), que es justo lo que en su HTML va a hacer el
+paso 2 del flujo guiado. Y la hoja imprimible lleva las cifras del plan, no esa tabla, así que su nota
+(*"no se imprimía, así que el impreso no la echa de menos"*) tampoco aplica.
+
+**Lo único que su retiro toca aquí es el NOMBRE, y conviene decirlo:** el título "Fórmula sintética" no es
+nuestro, es el de su tarjeta `secD` (lo adoptamos en el cotejo del 2026-09-05, punto 23, porque Santiago
+pidió usar el suyo). v12 retira esa tarjeta, así que el rótulo se queda sin la fuente que lo justificaba.
+
+**No se renombra todavía, y la razón es de orden:** lo que reemplaza a esa tarjeta en su versión es el
+**paso 2 del flujo guiado**, que en Atlas es todavía una propuesta de diseño sin construir (§B5). Cambiar el
+nombre antes dejaría el bloque rebautizado por nosotros y sin el flujo que lo justifica. **Entra en la
+propuesta de diseño de Nutricionista**, que es donde se decide cómo se parte ese panel.
 
 ---
 

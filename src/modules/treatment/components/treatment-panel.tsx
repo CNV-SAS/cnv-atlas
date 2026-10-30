@@ -470,6 +470,35 @@ function CadenaCaloricaSection({
   const [fatPct, setFatPct] = useState(numToInput(protocol.adjFatPct));
   const [deficit, setDeficit] = useState(numToInput(protocol.adjDeficit));
 
+  // ═══ LA CIFRA MANUAL DE CALORIAS SE SUELTA AL CAMBIAR LO QUE LA PRODUCE (v12 §6.2, 2026-10-30) ═══
+  //
+  // EL DEFECTO ES NUESTRO y v12 lo nombra bien: *"al cambiar el peso meta o el factor de actividad, se
+  // suelta la cifra manual de calorias"*. Hasta hoy un `adjKcalObj` escrito a mano DEJABA EL PLAN CLAVADO:
+  // el profesional subia el peso meta o cambiaba la actividad, el gasto se recalculaba en vivo delante
+  // suyo... y el objetivo seguia en la cifra vieja, sin decir nada. El plan entero (macros, reparto, menu)
+  // colgaba de un numero que ya no correspondia a sus propios insumos.
+  //
+  // ── POR QUE SOLTARLA Y NO SOLO AVISAR, QUE ERA LA OTRA SALIDA ──
+  //
+  // Un aviso al lado se puede ignorar, y lo que queda ignorado es un plan con una cifra que ya no sale de
+  // nada. Pero soltarla a secas seria descartar en silencio una decision del profesional, y eso choca con
+  // su §5 del 2026-08-27 (*"el motor propone, el profesional dispone"*, sin techos ni frenos sobre
+  // ninguna cifra de la prescripcion).
+  //
+  // ASI QUE SE SUELTA, SE DICE, Y SE PUEDE DESHACER DE UN CLIC. La cifra que se solto se recuerda, la
+  // pantalla nombra lo que paso y por que, y volver a ella es un boton. Nada se pierde sin que se vea, y
+  // el plan no se queda colgando de un numero huerfano.
+  //
+  // SE SUELTA SOLO UNA VEZ: tras soltarla el campo queda vacio, asi que las siguientes pulsaciones de
+  // tecla no la vuelven a "soltar" ni pisan la cifra recordada.
+  const [kcalSoltado, setKcalSoltado] = useState<string | null>(null);
+  const soltarElObjetivo = () => {
+    setKcalObj((actual) => {
+      if (actual.trim() !== "") setKcalSoltado(actual);
+      return "";
+    });
+  };
+
   const snap = protocol.protocolSuggested;
 
   // Ajustes vivos (lo que hay en pantalla ahora) = exactamente lo que se guardara.
@@ -685,7 +714,13 @@ function CadenaCaloricaSection({
               name="pesoMeta"
               label="Peso meta (kg)"
               value={pesoMeta}
-              onChange={setPesoMeta}
+              // CAMBIAR LA META SUELTA EL OBJETIVO ESCRITO A MANO (v12 §6.2): el peso meta es un insumo
+              // de la cuenta, asi que una cifra fijada antes deja de corresponder a lo que el profesional
+              // acaba de decidir. Ver `soltarElObjetivo`.
+              onChange={(v) => {
+                setPesoMeta(v);
+                soltarElObjetivo();
+              }}
               placeholder={`calculado: ${pesoCalcDisp}`}
               step="0.1"
             />
@@ -706,13 +741,27 @@ function CadenaCaloricaSection({
                 y el otro cambia con el, porque no son dos campos, es uno mostrado dos veces. */}
             <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-sm font-medium leading-none">PAL (factor)</span>
-              <PalSelect name="adjPal" value={pal} onChange={setPal} modelo={base.pal} />
+              <PalSelect
+                name="adjPal"
+                value={pal}
+                onChange={(v) => {
+                  setPal(v);
+                  soltarElObjetivo();
+                }}
+                modelo={base.pal}
+              />
             </label>
             <AdjInput
               name="adjDeficit"
               label="Déficit (kcal)"
               value={deficit}
-              onChange={setDeficit}
+              // EL DEFICIT TAMBIEN, aunque v12 solo nombre el peso meta y la actividad: es el tercer
+              // insumo de la misma cuenta, y dejarlo fuera daria un comportamiento que depende de cual de
+              // los tres se toque, que es peor que cualquiera de los dos consistentes.
+              onChange={(v) => {
+                setDeficit(v);
+                soltarElObjetivo();
+              }}
               placeholder={`modelo: ${d0(snap.estrategia.deficit ?? 0)}`}
               step="1"
             />
@@ -744,6 +793,33 @@ function CadenaCaloricaSection({
               Un déficit negativo es un superávit (para recuperar peso).
             </span>
           </p>
+          {/* ═══ LO QUE SE SOLTO, DICHO Y DESHACIBLE DE UN CLIC (v12 §6.2) ═══
+
+              Es la mitad que hace legitimo soltarla: la cifra no desaparece en silencio, la pantalla
+              nombra lo que paso y volver a ella es un boton. Sin esto, el profesional veria su objetivo
+              cambiar solo y no sabria por que, que es el mismo defecto al reves.
+
+              SOLO MIENTRAS EL CAMPO SIGA VACIO: si escribe otra cifra, lo que se solto ya no es lo que
+              hay, y ofrecer "volver a 2000" al lado de un 1800 recien escrito seria ofrecer pisarlo. */}
+          {kcalSoltado != null && kcalObj === "" ? (
+            <p className="flex flex-wrap items-baseline gap-2 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-xs">
+              <span className="text-foreground">
+                El objetivo volvió a la cifra que sale de la cuenta, porque cambiaste un dato que la
+                produce. La que tenías escrita era <strong>{kcalSoltado} kcal</strong>.
+              </span>
+              <button
+                type="button"
+                className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+                onClick={() => {
+                  setKcalObj(kcalSoltado);
+                  setKcalSoltado(null);
+                }}
+                title="Vuelve a fijar a mano el objetivo que tenías"
+              >
+                Volver a {kcalSoltado} kcal
+              </button>
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {origenPeso === "tratamiento" ? (
               <span className="text-clinical-optimal">
@@ -948,7 +1024,19 @@ function CadenaCaloricaSection({
               op="×"
               label="Nivel de actividad física (PAL)"
               value={String(cal.pal)}
-              control={<PalSelect value={pal} onChange={setPal} modelo={base.pal} compacto />}
+              // MISMO ESTADO Y MISMO EFECTO que el campo de arriba: no son dos campos, es uno mostrado
+              // dos veces, asi que soltar el objetivo tiene que pasar tambien cambiandolo desde aqui.
+              control={
+                <PalSelect
+                  value={pal}
+                  onChange={(v) => {
+                    setPal(v);
+                    soltarElObjetivo();
+                  }}
+                  modelo={base.pal}
+                  compacto
+                />
+              }
             />
             <PrevRow op="=" resultado label="Gasto energético total (GET)" value={`${d0(cal.get)} kcal`} />
             {/* El deficit se muestra SIEMPRE, tambien cuando es 0, y es deliberado: es un eslabon de la
