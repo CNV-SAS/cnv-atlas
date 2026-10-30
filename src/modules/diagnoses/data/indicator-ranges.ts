@@ -387,11 +387,35 @@ export function indicatorRange(
       // Y COINCIDE CON LA REGLA DE DOS COLAS que dejamos registrada aquí mismo esperando este caso: el Δ
       // va contra el borde DEL LADO DEL SIGNO. La regla se escribió sin preguntar y su definición la
       // confirma; se conserva escrita porque el siguiente clasificador de dos colas la va a necesitar.
+      // ═══ Y DENTRO DE LA BANDA VUELVE A SER "—", NO "0,0" (Santiago, 2026-10-30) ═══
+      //
+      // Literal suyo: *"El Δ del IAE dice '0,0' cuando cae dentro de -5 a +5: se lee como si el IAE fuera
+      // cero. Dentro de la banda, '—'."* Tiene razon sobre lo que se lee: el IAE YA ES una diferencia, asi
+      // que en esa fila hay dos numeros con signo uno al lado del otro, y un "0,0" en la columna Δ junto a
+      // un "+3,5" en la columna Valor invita a leer que la diferencia es cero.
+      //
+      // PERO HAY QUE DECIR QUE ESTO CONTRADICE A GILDARDO, y conviene que se vea aqui y no solo en el
+      // documento de dudas: su entrega del 2026-09-01 §5 define el Δ del IAE como *"la distancia al limite
+      // del rango que se cruzo, y cero mientras este dentro de −5 a +5"*. El cero es SUYO. Esta celda ya
+      // habia ido en las dos direcciones: nacio en null por decision de Santiago del 2026-08-19, paso a
+      // cero con la entrega de Gildardo del 1 de septiembre, y vuelve a null ahora.
+      //
+      // Lo que NO cambia: la distancia cuando SI cruzo, que es la mitad util de su definicion, y el
+      // clasificador, el color y el valor, que no se tocan. Va a su mesa como pregunta.
+      //
+      // Y SE CAMBIA AQUI, EN EL UNICO SITIO QUE LAS DOS SUPERFICIES COMPARTEN: esta funcion es la que
+      // pinta la Δ de la pantalla y la de la tabla ANI-BIS-E de la historia clinica. Hacerlo en el
+      // componente dejaria la pantalla diciendo "—" y la historia clinica "0,0" sobre el mismo indicador,
+      // que es el hazard 4 de CLAUDE.md (dos partes del sistema contradiciendose porque leen dos fuentes).
       return ind.iae != null
         ? {
             reference: "−5 a +5 años",
-            // Dentro del rango, CERO y no null: cero dice "no ha cruzado", null diría "no se puede saber".
-            delta: f(ind.iae > 5 ? ind.iae - 5 : ind.iae < -5 ? ind.iae + 5 : 0, decimalesDe("IAE")),
+            delta:
+              ind.iae > 5
+                ? f(ind.iae - 5, decimalesDe("IAE"))
+                : ind.iae < -5
+                  ? f(ind.iae + 5, decimalesDe("IAE"))
+                  : null,
           }
         : null;
     case "EB":

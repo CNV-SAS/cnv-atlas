@@ -143,14 +143,28 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     expect(indicatorRange("IAE", ind, true)).toEqual({ reference: "−5 a +5 años", delta: "-12,6" });
   });
 
-  it("y dentro del rango el Δ es cero, no la distancia a un borde", () => {
-    // La otra mitad de su regla, que es la que distingue su criterio del de los demás indicadores: mientras
-    // el IAE está dentro de −5 a +5 no hay límite cruzado, así que el Δ es 0. Sin este caso, el candado de
-    // arriba pasaría verde también con una fórmula que midiera siempre contra el borde más cercano.
+  it("y dentro del rango el Δ es «—», no un cero que se lee como el IAE (Santiago, 2026-10-30)", () => {
+    // ═══ SEGUNDA VUELTA DE ESTA MISMA CELDA, Y HAY QUE SABER QUÉ SE CAMBIÓ CONTRA QUÉ ═══
+    //
+    // Esta aserción exigía "0,0" dentro de la banda, y el cero era de GILDARDO: su §5 del 2026-09-01 define
+    // el Δ del IAE como *"la distancia al límite del rango que se cruzó, y cero mientras esté dentro de −5
+    // a +5"*. Antes de eso había sido `null` por decisión de Santiago del 2026-08-19.
+    //
+    // Santiago lo devuelve a `null`, con un argumento de lectura: *"El Δ del IAE dice '0,0' cuando cae
+    // dentro de -5 a +5: se lee como si el IAE fuera cero. Dentro de la banda, '—'."* Y el argumento se
+    // sostiene sobre algo propio de ESTA fila y de ninguna otra: el IAE ya es una diferencia, así que la
+    // fila pone dos números con signo uno al lado del otro, y el "0,0" de la columna Δ queda junto a un
+    // "+3,5" en la columna Valor. En un indicador que no fuera ya una diferencia, el cero no confundiría.
+    //
+    // ESTO CONTRADICE A GILDARDO Y NO SE APLICA EN SILENCIO: va al documento de dudas, porque el cero es
+    // suyo y porque en septiembre ya movió esta decisión una vez. Lo que NO se toca es la otra mitad de su
+    // regla, la distancia cuando sí cruzó, que es la que el test de arriba fija.
     for (const iae of [-5, -2.4, 0, 3.1, 5]) {
-      expect(indicatorRange("IAE", { ...ind, iae }, true)?.delta).toBe("0,0");
+      expect(indicatorRange("IAE", { ...ind, iae }, true)?.delta).toBeNull();
     }
-    // Y por el otro lado cruza igual: +8,2 está 3,2 años por encima del límite superior.
+    // Y por el otro lado cruza igual: +8,2 está 3,2 años por encima del límite superior. ESTE CASO ES EL
+    // QUE IMPIDE QUE EL CAMBIO SE PASE DE LARGO: si alguien devolviera `null` siempre, la mitad útil de su
+    // definición desaparecería sin que nada fallara.
     expect(indicatorRange("IAE", { ...ind, iae: 8.2 }, true)?.delta).toBe("3,2");
   });
 });

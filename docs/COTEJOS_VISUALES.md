@@ -172,7 +172,7 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 | A6 | Nombre ICA-BIS | Índice de Coherencia Áurea (BIS) | ICA-BIS (PABU − φ) | candidato (no lo nombró §10) | menor; no urge |
 | A7 | Nombre ISCM | Índice de Susceptibilidad Cardiometabólica (BIS) | Score de susceptibilidad multicomponente | **RESUELTO** (§10: ISCM queda como está) | ninguna |
 | A8 | Nombre IEHH | Índice del **Estado** de Hidratación Humana | Índice del Estado de Hidratación Humana | **RESUELTO** (§10: "Estado", no "Espectro"; `registry-data.ts:42`) | ninguna (ojo: el comentario del frozen `engine.indices.js:23` aún dice "Espectro"; solo comentario) |
-| A9 | Nombre EB | Edad Bioeléctrica (EB-BIS) | Edad biológica (a) | **deliberada** (D-010/D-011) | ninguna; NO es "edad biológica" |
+| A9 | Nombre EB | Edad biológica estimada | Edad biológica (a) | **RESUELTO / divergencia RETIRADA** (su tabla 3 del 2026-10-26; aplicado 2026-10-30, migración 0232) | ninguna; ya coincide |
 | A10 | Nombre IR | Radio de impedancia | Radio de impedancia | **RESUELTO** (traducido; `registry-data.ts:48`) | ninguna (el inglés sobrevive solo como header del Excel de import, correcto) |
 | A11 | Escala IRC en pantalla | valor crudo, 2 dec, referencia cruda (`< 1.68`) | valor ×10, 3 dec | candidato → decisión | Atlas es coherente consigo mismo; el número no coincidirá con el HTML |
 | A12 | Decimales AF | 1 decimal | 1 decimal | **coincide** | ninguna (la fila "deliberada AF 2 dec" no aplica en esta tabla) |
