@@ -219,7 +219,8 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
   const severidades = engine ? (indicatorSeverities(engine) as Record<string, number>) : {};
   const indices = compuesta.indices.map((i) => ({
     codigo: i.codigo,
-    nombre: i.nombre ?? i.codigo,
+    // El ROTULO cuando no hay nombre (el PABU), no la clave del motor: en la EB son distintos.
+    nombre: i.nombre ?? i.sigla,
     valor: i.valor,
     clasificacion: i.clasificacion,
     referencia: engine ? (indicatorRange(i.codigo, engine.indicators, sexoM)?.reference ?? null) : null,

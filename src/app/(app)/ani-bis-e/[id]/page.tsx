@@ -1345,8 +1345,12 @@ export default async function ResultadosEvaluacionPage({
                       titulo: "ANI-BIS-E",
                       filas: hcAni.map((i) => ({
                         id: i.codigo,
-                        etiqueta: i.nombre ?? i.codigo,
-                        sigla: i.nombre ? i.codigo : null,
+                        // EL ROTULO, NO LA CLAVE DEL MOTOR (2026-10-30): la fila de la EB se pinta
+                        // "EB-BIS", como la pantalla de resultados y como su archivo, mientras
+                        // `i.codigo` sigue siendo "EB", que es con lo que se buscan su severidad y su
+                        // clasificacion.
+                        etiqueta: i.nombre ?? i.sigla,
+                        sigla: i.nombre ? i.sigla : null,
                         valor: i.valor,
                         referencia: i.referencia,
                         delta: i.delta,

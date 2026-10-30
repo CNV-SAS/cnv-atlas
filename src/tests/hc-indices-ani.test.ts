@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { HTML_VIGENTE } from "./fixtures/html-vigente";
 
+import { buildIndicatorDefs } from "@/clinical-engine/registry-data";
 import { indicatorBands } from "@/modules/diagnoses/data/indicator-ranges";
 import { INDICES_ANI, indicesAniAlterados } from "@/modules/reports/data/hc-indices-ani";
 
@@ -45,10 +46,37 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
     expect(INDICES_ANI.find((f) => f.codigo === "PABU")!.nombre).toBeNull();
   });
 
-  it("EB-BIS va SIN nombre: el suyo dice 'Edad Biológica' y nosotros NO la rotulamos como edad", () => {
-    // Divergencia deliberada ya registrada (D-010/D-011): la EB-BIS es un indice funcional bioelectrico,
-    // no la edad del cuerpo. Poner "Edad Biologica" en la historia clinica la contradiria.
-    expect(INDICES_ANI.find((f) => f.codigo === "EB")!.nombre).toBeNull();
+  // ═══ ESTE CASO ESTABA AL REVES HASTA EL 2026-10-30, Y LO DIO LA VUELTA EL (su tabla 3) ═══
+  //
+  // Exigia que la EB fuera SIN nombre, y era correcto mientras vivio la divergencia D-010/D-011: su
+  // tercera ronda del 2026-07-30 prohibio la expresion "edad biologica" en todo el sistema, asi que su
+  // rotulo ("Edad Biologica") no se podia escribir en un documento probatorio. Su tabla 3 del 2026-10-26
+  // vuelve a usarla como "Edad biologica ESTIMADA" (el matiz que su objecion pedia), asi que la fila deja
+  // de ser la unica que esconde su nombre. Santiago lo decidio asi para las DOS superficies el 30-oct.
+  it("la EB-BIS lleva su nombre completo, y su ROTULO no es la clave del motor", () => {
+    const eb = INDICES_ANI.find((f) => f.codigo === "EB")!;
+    expect(eb.nombre).toBe("Edad biológica estimada");
+    // La clave se queda en "EB" a proposito: con ella se buscan severidad, clasificacion y Δ. Lo que se
+    // pinta es la sigla, igual que en la pantalla de resultados (`code` "EB", `label` "EB-BIS").
+    expect(eb.sigla).toBe("EB-BIS");
+    const fila = indicesAniAlterados({ EB: 33.4 }, { EB: { label: "Acelerado" } }, { EB: 2 }, true)[0];
+    expect(fila.sigla).toBe("EB-BIS");
+    expect(fila.nombre).toBe("Edad biológica estimada");
+  });
+
+  it("y el nombre de la EB es EL MISMO que el del registro del motor, no una segunda copia", () => {
+    // Las dos superficies dicen la misma cosa de la misma fila: la pantalla lo lee de
+    // `indicator_definitions` (migracion 0232) y la HC de esta tabla. Si alguien cambia una, este caso
+    // nombra la otra en vez de dejar un documento clinico con otro rotulo que la pantalla.
+    const delRegistro = buildIndicatorDefs().find((d) => d.code === "EB")!.name;
+    expect(INDICES_ANI.find((f) => f.codigo === "EB")!.nombre).toBe(delRegistro);
+  });
+
+  it("las otras siete NO declaran sigla: su rotulo es su clave", () => {
+    // Repetirla ocho veces esconderia la unica fila donde las dos difieren.
+    for (const f of INDICES_ANI.filter((x) => x.codigo !== "EB")) {
+      expect(f.sigla, `${f.codigo} no deberia declarar sigla`).toBeUndefined();
+    }
   });
 
   // ═══ EL CANDADO QUE FALTABA, Y POR QUE EL QUE HABIA NO SERVIA (2026-09-10) ═══
@@ -92,8 +120,9 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
       return { h: textos[0], m: textos[0] };
     };
 
-    // SU CODIGO DE FILA NO ES SIEMPRE EL NUESTRO: el suyo rotula la fila de la EB como "EB-BIS" y el
-    // nuestro la llama "EB" (la sigla sola, por la divergencia deliberada de arriba).
+    // SU `idx` NO ES SIEMPRE NUESTRA CLAVE: el suyo rotula la fila de la EB como "EB-BIS" y la clave del
+    // motor es "EB". Desde el 2026-10-30 ese rotulo suyo es tambien el que PINTAMOS (`fila.sigla`), asi
+    // que este mapa solo traduce de la clave al rotulo, que es lo que `sigla` ya hace.
     const SU_IDX: Record<string, string> = { EB: "EB-BIS" };
 
     for (const fila of INDICES_ANI) {
