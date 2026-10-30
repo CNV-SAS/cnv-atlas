@@ -34,6 +34,7 @@ HAS_DB = Boolean(process.env.DATABASE_URL);
 
 const biody = biodyJson as Record<string, unknown>;
 const FM_HEADER = "Masa grasa bruta measurementDetails.VALEURCALCULEEEXPORT kg";
+const PESO_HEADER = "Peso kg";
 
 // Convierte una fila del Biody (headers exactos) a filas de bis_raw_values como las
 // guarda B8: variable_name = normalizeHeader(header), value = numero. Solo numericos.
@@ -275,7 +276,19 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
 
   it("aisla: dos BIS distintos dan diagnosticos distintos, cada uno el suyo", async () => {
     // Variante con FM bajo -> FMI derivado Normal -> fenotipo N_N_N_N (estado 41).
-    const bajoFM = { ...biody, [FM_HEADER]: 10 };
+    //
+    // ═══ Y EL PESO BAJA CON ELLA, PORQUE SI NO ESTE CUERPO NO EXISTE (2026-10-30) ═══
+    //
+    // La variante bajaba SOLO la masa grasa (20,635 -> 10) y dejaba el peso del donante en 89, asi que
+    // grasa + masa sin grasa daba 78,365 contra un peso de 89: once kilos que no son de nadie. El control
+    // de calidad biologico, al entrar al pipeline, lo atrapo y este test se cayo. Tenia razon: el fixture
+    // era un cuerpo imposible, y un test que afirma algo sobre una medicion que no puede existir no afirma
+    // nada sobre el sistema.
+    //
+    // Se baja el peso lo mismo que la grasa (89 - 10,635) y se deja la masa sin grasa del donante intacta,
+    // que es lo que mantiene el FFMI y por tanto las otras tres letras del fenotipo: lo unico que cambia
+    // entre A y B sigue siendo la grasa, que es lo que el test quiere aislar.
+    const bajoFM = { ...biody, [FM_HEADER]: 10, [PESO_HEADER]: 78.365 };
     const evalA = await makeEvaluation("ISOA", biody);
     const evalB = await makeEvaluation("ISOB", bajoFM);
 
