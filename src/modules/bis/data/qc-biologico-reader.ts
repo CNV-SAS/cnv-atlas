@@ -1,5 +1,7 @@
 import "server-only";
 
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+
 import { BIODY_COLUMNS } from "@/clinical-engine";
 import {
   huellaDeLosHallazgos,
@@ -7,7 +9,8 @@ import {
   type HallazgoQc,
   type InsumosQcBiologico,
 } from "@/clinical-engine/qc-biologico";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { db } from "@/db";
+import { bisMeasurements, bisRawValues } from "@/db/schema";
 
 import { normalizeHeader } from "../services/header-map";
 
@@ -33,7 +36,25 @@ import { leerVistoBueno } from "./visto-bueno-del-qc";
 // Igual que la vigencia de la emision y que los delta de los rangos: si el visto bueno guardara los
 // hallazgos y luego alguien vuelve a subir el Excel, lo guardado describiria una medicion que ya no esta.
 // Lo UNICO que se guarda es el visto bueno del profesional con la huella de LO QUE VIO (ver la migracion
-// 0233), y eso se compara contra lo que se computa hoy.
+// 0231), y eso se compara contra lo que se computa hoy.
+//
+// ═══ POR DRIZZLE OWNER (`db`) Y NO POR EL CLIENTE RLS, Y ESTO TAMBIEN ME MORDIO ═══
+//
+// Este lector es el UNICO que es las dos cosas a la vez: la fuente del panel (pantalla, dentro de un
+// request) y la fuente del gate del pipeline, que `getSealedValidityCaveats` ya dejaba escrito que corre
+// *"a veces fuera de un request scope (p. ej. el seed golden/tests), donde cookies() no aplica"*. Nacio
+// con `createSupabaseServerClient`, como su vecino de pantalla `edad-del-equipo-reader`, y en el momento
+// en que el gate entro al pipeline tumbo 18 tests de BD con "cookies was called outside a request scope".
+//
+// NO se arregla duplicando el lector, aunque sea la salida facil: el gate dice explicitamente que usa el
+// MISMO lector que pinta el panel para que la pantalla y el servidor no puedan contradecirse (hazard 4).
+// Dos lectores serian dos fuentes. Asi que va por el camino que sirve a los DOS llamadores, que es el
+// documentado para lo que el pipeline toca: drizzle owner, con la autorizacion ya verificada antes
+// (regla dura 3) por el action en el caso del pipeline, y por `getEvaluationResults` /
+// `getEvaluationHeaderForSession` bajo RLS, que dan 404, en el caso de la pagina.
+//
+// El candado `el-pipeline-corre-sin-request.test.ts` barre el grafo de imports del pipeline y prohibe
+// `cookies()` en cualquier archivo que alcance, que es la forma de que esto no vuelva por otro lector.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Los campos de `BIODY_COLUMNS` que entran en las identidades. */
@@ -87,31 +108,34 @@ export type QcBiologicoDeLaConsulta = {
 export async function qcBiologicoDeLaConsulta(
   evaluationId: string,
 ): Promise<QcBiologicoDeLaConsulta> {
-  const supabase = await createSupabaseServerClient();
-
   // LA MEDICION VIGENTE: la ultima, y nunca una marcada como de otro paciente (esa ya salio de la
   // consulta por la correccion, asi que comprobar su fisica seria frenar por un dato que ya se retiro).
-  const { data: medicion, error: mErr } = await supabase
-    .from("bis_measurements")
-    .select("id")
-    .eq("evaluation_id", evaluationId)
-    .is("no_es_del_paciente_at", null)
-    .order("measurement_date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (mErr) throw new Error(`qc-biologico-reader: bis_measurements: ${mErr.message}`);
+  const [medicion] = await db
+    .select({ id: bisMeasurements.id })
+    .from(bisMeasurements)
+    .where(
+      and(
+        eq(bisMeasurements.evaluationId, evaluationId),
+        isNull(bisMeasurements.noEsDelPacienteAt),
+      ),
+    )
+    .orderBy(desc(bisMeasurements.measurementDate))
+    .limit(1);
   if (!medicion) return { hallazgos: [], huella: "", visto: false, vistoEl: null };
 
-  const { data: crudos, error: cErr } = await supabase
-    .from("bis_raw_values")
-    .select("variable_name, value")
-    .eq("measurement_id", medicion.id)
-    .in("variable_name", [...CAMPO_POR_VARIABLE.keys()]);
-  if (cErr) throw new Error(`qc-biologico-reader: bis_raw_values: ${cErr.message}`);
+  const crudos = await db
+    .select({ variableName: bisRawValues.variableName, value: bisRawValues.value })
+    .from(bisRawValues)
+    .where(
+      and(
+        eq(bisRawValues.measurementId, medicion.id),
+        inArray(bisRawValues.variableName, [...CAMPO_POR_VARIABLE.keys()]),
+      ),
+    );
 
   const insumos: InsumosQcBiologico = {};
-  for (const fila of crudos ?? []) {
-    const campo = CAMPO_POR_VARIABLE.get(fila.variable_name as string);
+  for (const fila of crudos) {
+    const campo = CAMPO_POR_VARIABLE.get(fila.variableName);
     if (!campo) continue;
     // `numeric` llega como cadena: "43.95" no es un numero hasta que se convierte.
     const n = fila.value != null ? Number(fila.value) : null;
