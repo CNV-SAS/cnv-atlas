@@ -16,14 +16,34 @@ import type { EngineIndicators } from "@/clinical-engine/types";
 // interno marca varios de estos como "confirmar Gildardo", asi que escribir ahi un nombre nuestro seria
 // afirmar en un documento clinico algo que el no ha confirmado.
 //
-// DOS EXCEPCIONES deliberadas:
-//   - PABU: su archivo NO le da nombre en ninguna parte (solo lo describe como marcador direccional de
-//     desviacion de φ). Va la sigla sola antes que un nombre inventado.
-//   - EB-BIS: el suyo lo rotula "Edad Biologica" y NOSOTROS NO podemos (divergencia deliberada ya
-//     registrada: la EB-BIS es un indice funcional bioelectrico, no la edad del cuerpo, y no se rotula
-//     como edad; ver BACKLOG y D-010/D-011). Va la sigla sola.
+// UNA SOLA EXCEPCION, el PABU: su archivo NO le da nombre en ninguna parte (solo lo describe como
+// marcador direccional de desviacion de φ). Va la sigla sola antes que un nombre inventado.
+//
+// ═══ LA SEGUNDA EXCEPCION SE RETIRO EL 2026-10-30, Y LA RETIRO EL (su tabla 3 del 2026-10-26) ═══
+//
+// La EB-BIS iba TAMBIEN sin nombre, y no por falta de uno: el suyo la rotula "Edad Biologica" y nosotros
+// no podiamos, porque su tercera ronda del 2026-07-30 decidio que *"la expresion 'edad biologica' no se
+// usa en ningun contenido del sistema: ni en pantalla, ni en reportes"*. Era la divergencia deliberada
+// D-010/D-011, y en ESTE archivo pesaba el doble: una historia clinica es documento probatorio.
+//
+// Su tabla 3 vuelve a usar la expresion, ahora como "Edad biologica ESTIMADA", que es el matiz que su
+// objecion pedia. Retirada la divergencia, la fila se queda sin razon para ser la unica que esconde su
+// nombre, y esconderlo tenia un costo propio aqui: la HC la lee OTRO profesional, y "EB" a secas no se
+// entiende sin el modelo. Santiago, 2026-10-30: *"la tabla ANI-BIS-E de la HC muestra 'Edad biologica
+// estimada (EB-BIS)', igual que la pantalla"*.
 export type IndiceAniFila = {
+  /** Clave del MOTOR: con ella se buscan severidad, clasificacion y Δ. No es lo que se pinta. */
   codigo: string;
+  /**
+   * ROTULO que se pinta, separado de la clave del motor por la misma razon que en la pantalla de
+   * resultados: ahi `code` es "EB" y `label` es "EB-BIS", y tocar la clave habria dejado la fila sin
+   * veredicto sin que nada fallara. La EB es la unica que difiere, y su rotulo coincide con el `idx` de
+   * la fila en el archivo de Gildardo ("EB-BIS"), que es donde el candado de referencias la busca.
+   *
+   * Se omite cuando el rotulo ES la clave, que son las otras siete: repetirlo ocho veces esconde la
+   * unica fila donde los dos difieren.
+   */
+  sigla?: string;
   /** Nombre completo del propio archivo de Gildardo. null cuando el no le da uno (ver nota arriba). */
   nombre: string | null;
   referencia: (sexoM: boolean) => string;
@@ -68,7 +88,11 @@ export const INDICES_ANI: IndiceAniFila[] = [
   },
   { codigo: "ISCM", nombre: "Síndrome Celular", referencia: () => "ISCM-1 ≤ −1", formato: (v) => dec(v, "ISCM") },
   { codigo: "IEHH", nombre: "Hidro-Homeostasis", referencia: () => "≤0.0 óptimo", formato: (v) => dec(v, "IEHH") },
-  { codigo: "EB", nombre: null, referencia: () => "= Edad cronológica", formato: (v) => `${dec(v, "EB")} a` },
+  {
+    codigo: "EB", sigla: "EB-BIS", nombre: "Edad biológica estimada",
+    referencia: () => "= Edad cronológica",
+    formato: (v) => `${dec(v, "EB")} a`,
+  },
   {
     codigo: "IAE", nombre: "Aceleración del Envejecimiento",
     referencia: () => "−5 a +5 años",
@@ -84,6 +108,8 @@ export const INDICES_ANI: IndiceAniFila[] = [
 
 export type IndiceAniResuelto = {
   codigo: string;
+  /** El rotulo ya resuelto: la sigla de la fila, o su clave cuando son la misma. */
+  sigla: string;
   nombre: string | null;
   referencia: string;
   valor: string;
@@ -124,6 +150,7 @@ export function indicesAniAlterados(
     if (!label) continue; // sin clasificacion no se puede decir que esta alterado
     out.push({
       codigo: fila.codigo,
+      sigla: fila.sigla ?? fila.codigo,
       nombre: fila.nombre,
       referencia: fila.referencia(sexoM),
       valor: fila.formato(v),
