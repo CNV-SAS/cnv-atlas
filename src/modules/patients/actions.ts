@@ -22,7 +22,17 @@ import { completarSexoDelPaciente, corregirSexoDelPaciente } from "./data/patien
 import { contarDiagnosticosDelPaciente } from "./data/diagnosticos-del-paciente-reader";
 import { getPatientDetail } from "./data/patient-detail-reader";
 import { setPatientArchivado } from "./data/patients-archive-writer";
+import {
+  EliminacionDelPacienteError,
+  pedirLaEliminacionDelPaciente,
+  resolverLaEliminacion,
+  restituirAlPaciente,
+} from "./data/eliminacion-del-paciente-writer";
 import { canArchivePatient } from "./policies/can-archive-patient";
+import {
+  canConfirmPatientDeletion,
+  canProposePatientDeletion,
+} from "./policies/can-delete-patient";
 import {
   canCompletePatientBirthDate,
   canCompletePatientSex,
@@ -40,6 +50,8 @@ import type {
 } from "./types";
 import {
   archivarPacienteSchema,
+  peticionDeEliminacionSchema,
+  resolucionDeEliminacionSchema,
   contactoPacienteSchema,
   correccionDeSexoSchema,
   documentoSchema,
@@ -701,4 +713,121 @@ export async function reasignarPacientesEnLoteAction(
     success: `${pacientes}, con ${consultas}.` + yaEstaban + firma,
     warning: null,
   };
+}
+
+// ═══ ELIMINAR EL PERFIL DE UN PACIENTE (v12 §1.2, 0233) ═══
+//
+// TRES ACTOS Y DOS PERMISOS, igual que la marca de prueba y por la misma razon (ver
+// `can-delete-patient.ts` y `eliminacion-del-paciente-writer.ts`): el profesional PIDE, la direccion
+// EJECUTA o niega, y el paciente eliminado por error se RESTITUYE.
+
+export type EliminacionState = { error: string | null; success: string | null; warning: string | null };
+
+const sinEliminar = (error: string): EliminacionState => ({ error, success: null, warning: null });
+
+/** El profesional pide. No saca al paciente de ninguna parte: eso lo hace la direccion. */
+export async function pedirEliminacionDelPacienteAction(
+  _prev: EliminacionState,
+  form: FormData,
+): Promise<EliminacionState> {
+  const user = await requireUser();
+  if (!canProposePatientDeletion(user)) return sinEliminar("No autorizado.");
+
+  const datos = peticionDeEliminacionSchema.safeParse({
+    patientId: form.get("patientId"),
+    motivo: form.get("motivo"),
+  });
+  if (!datos.success) {
+    return sinEliminar(datos.error.issues[0]?.message ?? "Datos inválidos.");
+  }
+
+  try {
+    await pedirLaEliminacionDelPaciente({
+      ...datos.data,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+    return {
+      error: null,
+      success: null,
+      // ES UN AVISO Y NO UN EXITO, por lo mismo que en la propuesta de prueba: lo que dice es que TODAVIA
+      // NO PASO NADA. Sin esa frase, el profesional cree que el paciente ya salio de su lista.
+      warning:
+        "Pedido. Un administrador lo revisa; hasta entonces el paciente sigue en la lista y se le puede atender.",
+    };
+  } catch (e) {
+    if (e instanceof EliminacionDelPacienteError) return sinEliminar(e.message);
+    reportServerError("paciente.pedir-eliminacion", e);
+    return sinEliminar("No se pudo registrar la petición.");
+  }
+}
+
+/** La direccion ejecuta o niega. Ejecutar exige escribir el documento del paciente (v12). */
+export async function resolverEliminacionDelPacienteAction(
+  _prev: EliminacionState,
+  form: FormData,
+): Promise<EliminacionState> {
+  const user = await requireUser();
+  if (!canConfirmPatientDeletion(user)) {
+    return sinEliminar("Esto lo resuelve un administrador.");
+  }
+
+  const datos = resolucionDeEliminacionSchema.safeParse({
+    patientId: form.get("patientId"),
+    // EL BOTON LLEVA SU DATO EN `name`/`value`, y SOLO VIAJA porque `enviarSinReset` pasa el submitter
+    // (hazard 5 de CLAUDE.md). Con `new FormData(form)` a secas, el servidor no sabria si se ejecuto o
+    // se nego, y el valor por defecto decidiria por la persona.
+    confirmar: String(form.get("confirmar") ?? "") === "true",
+    documento: form.get("documento") ?? "",
+  });
+  if (!datos.success) return sinEliminar("Datos inválidos.");
+
+  try {
+    await resolverLaEliminacion({
+      ...datos.data,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+    return {
+      error: null,
+      warning: null,
+      success: datos.data.confirmar
+        ? "Perfil eliminado. Sale de todas las pantallas; su historia clínica se conserva y se puede restituir."
+        : "Petición negada. El paciente sigue como cualquier otro.",
+    };
+  } catch (e) {
+    if (e instanceof EliminacionDelPacienteError) return sinEliminar(e.message);
+    reportServerError("paciente.resolver-eliminacion", e);
+    return sinEliminar("No se pudo resolver la petición.");
+  }
+}
+
+/** Restituir: el eliminado por error vuelve a las listas. Mismo permiso que ejecutar, por simetria. */
+export async function restituirAlPacienteAction(
+  _prev: EliminacionState,
+  form: FormData,
+): Promise<EliminacionState> {
+  const user = await requireUser();
+  if (!canConfirmPatientDeletion(user)) {
+    return sinEliminar("Esto lo resuelve un administrador.");
+  }
+  try {
+    await restituirAlPaciente({
+      patientId: String(form.get("patientId") ?? ""),
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+    return {
+      error: null,
+      warning: null,
+      success: "Restituido. Vuelve a la lista de su profesional con su historia completa.",
+    };
+  } catch (e) {
+    if (e instanceof EliminacionDelPacienteError) return sinEliminar(e.message);
+    reportServerError("paciente.restituir", e);
+    return sinEliminar("No se pudo restituir al paciente.");
+  }
 }

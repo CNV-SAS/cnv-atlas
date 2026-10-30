@@ -212,7 +212,25 @@ diferencia es que no es un paso intermedio hasta decidir, es la respuesta.
 | **Inactivar al profesional** (0229, de ayer) | Ninguno arrastra al otro, y está bien: su profesional se va y el paciente sigue siendo de CNV. Lo que hay que mirar es el orden del aviso: un paciente borrado no debería contar en "lo que queda abierto" del integrante |
 | **El `clinical_audit_log`** | Es append-only e inmutable, y no se borra por una solicitud de supresión. Así que el rastro de quién borró sobrevive al borrado, que es lo que v12 pide. **Nada que construir** |
 | **Las facturas** | Una venta facturada es un **documento fiscal** con 10 años de retención propia. Borrar al paciente no puede tocarla, y v12 ya lo dice para Bodega. En Atlas las ventas viven en `transactions` y no cascadean desde `patients`: se cumple solo |
-| **El freno de la medición repetida** (0225/0230, y el aviso de hoy) | Este es el sutil: los dos filtran `deleted_at is null`, así que **borrar a un paciente libera la huella de su medición** y un duplicado podría volver a entrar. Hay que decidirlo: o la huella sigue contando (y entonces el freno mira también a los borrados), o se acepta |
+| **El freno de la medición repetida** (0225/0230, y el aviso de hoy) | ~~Este es el sutil: los dos filtran `deleted_at is null`, así que **borrar a un paciente libera la huella de su medición**~~. **CORREGIDO el 2026-10-30, al construirlo: esta fila estaba mal.** El que filtra `deleted_at` es el AVISO de la lista (`huellas-repetidas-reader`), no el FRENO del import (`buscarLaMismaMedicion`), que no lo mira en ninguna parte. Así que eliminar un perfil **no** libera la huella: la misma toma física sigue sin poder entrar dos veces, que es lo correcto, porque eliminar el perfil no desmide su cuerpo. Y el aviso sí debe filtrarlo: el chip es para el trabajo vivo. No había nada que decidir, y un candado lo deja escrito (`eliminar-el-perfil.test.ts`) |
+
+### CONSTRUIDO el 2026-10-30 (Santiago lo puso en la cadena) · migración 0233
+
+Quedó como lo recomendado abajo, con **dos diferencias que conviene leer**:
+
+1. **No es un acto de un solo clic, es la asimetría de la 0180:** el profesional **pide** con motivo y un
+   **administrador ejecuta** escribiendo el documento del paciente. La razón ya estaba escrita en esa
+   migración (*"es la misma asimetría que Santiago pidió para el borrado"*): eliminar saca al paciente de
+   las cifras y de la cohorte, así que quien se beneficia de la exclusión no puede autorizarla. Los dos
+   CHECK lo sostienen en la base (no hay `deleted_at` sin petición) y un trigger lo cierra a la clave
+   pública, donde `patients_update` sí dejaba escribir la fila propia.
+2. **Ejecuta `admin`, no el rol `direccion`**, aunque su frase diga "dirección científica": en Atlas ese
+   rol **no accede a datos de paciente** por diseño (está escrito en la navegación desde el principio y su
+   tablero se construyó sin PII), y la bandeja necesita nombre y documento. **Va al documento de dudas.**
+
+Y lo reversible es real, no teórico: un perfil eliminado no sale en ninguna pantalla (once lectores lo
+filtran), así que la pantalla de administración lista los eliminados para poder restituirlos. Sin esa
+lista, restituir exigiría conocer el id.
 
 ### Lo que recomendamos construir, cuando él lo diga
 

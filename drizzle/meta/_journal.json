@@ -1632,6 +1632,13 @@
       "when": 1792862144446,
       "tag": "0232_registro_del_motor",
       "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1792862145446,
+      "tag": "0233_el_perfil_se_elimina_con_rastro",
+      "breakpoints": true
     }
   ]
 }

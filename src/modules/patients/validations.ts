@@ -128,3 +128,31 @@ export const reasignacionDePacienteSchema = z.object({
     .min(5, { message: "Escribe por qué se reasigna (al menos 5 caracteres)." })
     .max(200),
 });
+
+// ═══ ELIMINAR EL PERFIL DE UN PACIENTE (v12 §1.2, 0233) ═══
+//
+// DOS SCHEMAS PORQUE SON DOS ACTOS con requisitos distintos (ver `can-delete-patient.ts`): el profesional
+// PIDE con motivo, y la direccion EJECUTA escribiendo el documento del paciente.
+//
+// EL MOTIVO LLEVA MINIMO, como la correccion de sexo y la reasignacion, y por la misma razon: es lo UNICO
+// con lo que la direccion puede decidir, y un espacio en blanco no explica nada dentro de un ano.
+export const peticionDeEliminacionSchema = z.object({
+  patientId: z.guid(),
+  motivo: z
+    .string()
+    .trim()
+    .min(5, { message: "Escribe por qué hay que eliminarlo (al menos 5 caracteres)." })
+    .max(300, { message: "El motivo es demasiado largo (máximo 300 caracteres)." }),
+});
+
+// EL DOCUMENTO NO SE VALIDA DE FORMA, SOLO DE PRESENCIA: lo que importa es si COINCIDE con el del
+// paciente, y eso solo lo sabe la base. Comprobarlo aqui con una expresion regular daria dos mensajes
+// distintos para el mismo error ("no parece un documento" y "no coincide"), y el primero es inutil.
+//
+// Y AL NEGAR NO SE PIDE: negar deja todo como estaba, asi que exigirlo seria poner un tramite en la
+// salida segura, que es como se consigue que la gente confirme por no escribir.
+export const resolucionDeEliminacionSchema = z.object({
+  patientId: z.guid(),
+  confirmar: z.boolean(),
+  documento: z.string().trim().max(40),
+});

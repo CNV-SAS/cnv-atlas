@@ -68,7 +68,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, test_proposed_reason, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, retirada_at, retirada_motivo, reason_for_visit, bis_measurements(measurement_date), survey_responses(id))",
+      "id, document_type, document_number, status, is_test, cuenta_como_de_prueba, test_proposed_at, test_proposed_reason, eliminacion_pedida_at, eliminacion_motivo, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, retirada_at, retirada_motivo, reason_for_visit, bis_measurements(measurement_date), survey_responses(id))",
     )
     .eq("id", patientId)
     .is("deleted_at", null)
@@ -112,6 +112,10 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
     esDePrueba: data.cuenta_como_de_prueba === true,
     propuestoDePrueba: data.cuenta_como_de_prueba !== true && data.test_proposed_at != null,
     motivoDePrueba: data.test_proposed_reason ?? null,
+    // LA PETICION DE ELIMINACION (0233). La ficha tiene que decirlo: sin esto, el profesional que ya la
+    // pidio vuelve a pedirla y recibe un error en vez de saber que esta esperando a la direccion.
+    eliminacionPedida: data.eliminacion_pedida_at != null,
+    motivoDeEliminacion: data.eliminacion_motivo ?? null,
     documentType: data.document_type as DocumentType,
     documentNumber: data.document_number,
     status: data.status,
