@@ -352,6 +352,95 @@ describe("el import BIS exige condiciones y encuesta completa, todo en un mensaj
 // pantalla podia afectar cero filas. El peso meta no vive en esa tabla (vive en `evaluations`, cuya fila
 // siempre existe) y la prensil esta detras de un orden que la app impone. Aun asi el writer lo comprueba
 // y falla en voz alta, que es lo que fija el ultimo caso de aqui.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// LAS CONDICIONES DE LA TOMA VIVEN EN ANTROPOMETRIA Y BIS, Y EN UN SOLO SITIO (v12 §3, 2026-10-30)
+//
+// EL MOVIMIENTO ES SUYO y su argumento es el mismo de la correccion del 25-oct: *"se verifica justo antes
+// de subir la bioimpedancia"*. Vivian al final de Encuesta.
+//
+// Y ESTE CANDADO EXISTE POR LO QUE PASO AL MOVERLAS: la suite entera siguio verde. Ningun caso decia EN
+// QUE PESTAÑA estaban, asi que el bloque se podia mudar (o duplicar) sin que nada lo dijera. Lo que se
+// afirma no es que exista, es que esta en UNA pestaña y es la de la medicion.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("las condiciones de la toma, en la pestaña de la medición y en un solo sitio", () => {
+  const SRC = sinComentarios(
+    readFileSync("src/modules/evaluations/components/entrada-evaluacion.tsx", "utf8"),
+  );
+  const encuesta = SRC.slice(
+    SRC.indexOf("const encuestaPanel = ("),
+    SRC.indexOf("const condicionesDeLaToma ="),
+  );
+  // ACOTADO AL PANEL, no "de aquí hasta el final": despues viven las HOJAS IMPRIMIBLES, que tambien
+  // montan las condiciones selladas, y un corte abierto haria que este candado las confundiera con la
+  // pantalla (y entonces pasaria verde con el bloque en el sitio equivocado).
+  const antropometria = SRC.slice(
+    SRC.indexOf("const antropometriaPanel = ("),
+    SRC.indexOf("const hojaDeLaEncuesta ="),
+  );
+
+  it("Encuesta ya NO monta el bloque de condiciones", () => {
+    expect(encuesta.length, "no se encontró el panel de Encuesta").toBeGreaterThan(500);
+    expect(encuesta, "las condiciones volvieron a Encuesta").not.toContain("<BisConditionsCapture");
+    expect(encuesta, "la captura sellada volvió a Encuesta").not.toContain("<BisConditionsReadonly");
+  });
+
+  it("y Antropometría y BIS lo monta ENCIMA del import", () => {
+    expect(antropometria).toContain("{condicionesDeLaToma}");
+    expect(
+      antropometria.indexOf("{condicionesDeLaToma}"),
+      "las condiciones quedaron debajo del import: dejan de ser la comprobación previa",
+    ).toBeLessThan(antropometria.indexOf("Medición BIS</h3>"));
+  });
+
+  it("y NO queda en las dos: una sola captura de las mismas respuestas", () => {
+    // Dos sitios que capturan lo mismo es el hazard 4 de CLAUDE.md, y con un formulario que SELLA, la
+    // segunda copia es la que se queda sin guardar. Se cuenta sobre el archivo entero: una sola montura.
+    expect((SRC.match(/<BisConditionsCapture/g) ?? []).length).toBe(1);
+    // LA DE SOLO LECTURA SALE DOS VECES, Y LA SEGUNDA ES EL PAPEL: la hoja imprimible de la encuesta
+    // lleva las condiciones SELLADAS junto a las respuestas, y eso es un documento, no una captura. Se
+    // afirma donde esta cada una, en vez de contar y quedarse con la duda.
+    expect((SRC.match(/<BisConditionsReadonly/g) ?? []).length).toBe(2);
+    // Una es la del bloque que monta la pestaña (`condicionesDeLaToma`) y la otra la del papel.
+    const bloque = SRC.slice(
+      SRC.indexOf("const condicionesDeLaToma ="),
+      SRC.indexOf("const antropometriaPanel = ("),
+    );
+    expect(bloque).toContain("<BisConditionsReadonly data={bisReadonly} />");
+    const papel = SRC.slice(SRC.indexOf("const hojaDeLaEncuesta ="));
+    expect(papel).toContain("<BisConditionsReadonly data={bisReadonly} />");
+  });
+
+  it("y los avisos que mandan a guardarlas nombran la pestaña NUEVA", () => {
+    // Un aviso que manda a la pestaña equivocada es peor que ninguno: el profesional va, no encuentra
+    // nada y concluye que el sistema se contradice. Son los tres sitios que la nombraban.
+    const g = evaluarRequisitosDelImport(null, [{ section: "Hábitos", missing: 1 }]);
+    if (g.allowed) throw new Error("dejó pasar sin condiciones");
+    expect(g.message).toContain("en esta misma pestaña, encima del import");
+    const d = condicionesParaDiagnosticar(null);
+    if (d.allowed) throw new Error("dejó generar sin condiciones");
+    expect(d.message).toContain("subpestaña Antropometría y BIS");
+    const PRENSIL = readFileSync(
+      "src/modules/bis-intake/data/medidas-profesional-writer.ts",
+      "utf8",
+    );
+    expect(PRENSIL).toContain("subpestaña Antropometría y BIS");
+    const SARCO = readFileSync("src/modules/diagnoses/components/sarcopenia-card.tsx", "utf8");
+    expect(SARCO).toContain("(subpestaña Antropometría y BIS)");
+  });
+
+  it("y ninguna superficie sigue mandando a la subpestaña Encuesta por las condiciones", () => {
+    for (const ruta of [
+      "src/modules/bis-intake/services/import-gate.ts",
+      "src/modules/bis-intake/data/medidas-profesional-writer.ts",
+      "src/modules/diagnoses/components/sarcopenia-card.tsx",
+    ]) {
+      expect(readFileSync(ruta, "utf8"), `${ruta} sigue nombrando Encuesta`).not.toContain(
+        "subpestaña Encuesta",
+      );
+    }
+  });
+});
+
 describe("las dos medidas del profesional se editan en Antropometría (punto 4)", () => {
   const ANTRO = readFileSync(
     "src/modules/bis-intake/components/antropometria-editable.tsx",
@@ -511,7 +600,7 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     // del aviso y ANTES de las medidas, o sea dentro del mismo bloque.
     const jsx = sinComentarios(ENTRADA);
     const iAviso = jsx.indexOf("Medición BIS importada");
-    const iReemplazo = jsx.indexOf("¿Importaste el archivo equivocado?");
+    const iReemplazo = jsx.indexOf("Reemplazar la toma de BIS");
     // EL ANCLA DE "las medidas" SE MUDO (2026-09-09): `AntropometriaEditable` ya no lo monta esta pagina
     // directamente, sino `MedidasConTabla`, el envoltorio cliente que une el campo con la tabla para que
     // recalcule al escribir. La asercion es la misma (el reemplazo va ANTES de las medidas); lo que cambia
@@ -525,6 +614,29 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     ).toBeLessThan(iMedidas);
     // Y el formulario tiene que RENDERIZARSE aunque ya haya medición cuando está en ese modo.
     expect(FORM).toContain("&& !modoReemplazo");
+  });
+
+  // ═══ EL ACTO TIENE NOMBRE, Y CUANDO ESTA CERRADO SE DICE DONDE ESTA (v12 §1.3, 2026-10-30) ═══
+  it("el reemplazo se llama por su nombre, no solo por el síntoma", () => {
+    // Decía solo "¿Importaste el archivo equivocado?". Quien viene buscando cómo quitar una toma mala (en
+    // su HTML hay un botón "Eliminar toma BIS") no reconoce esa pregunta como el sitio y concluye que en
+    // Atlas no se puede: un control que no se encuentra se reporta como que no existe. Van las DOS cosas,
+    // el nombre para encontrarlo y la pregunta para reconocerlo.
+    const jsx = sinComentarios(ENTRADA);
+    expect(jsx).toContain("Reemplazar la toma de BIS");
+    expect(jsx).toContain("¿importaste el archivo equivocado?");
+  });
+
+  it("y con diagnóstico generado la pantalla NOMBRA el camino en vez de callar", () => {
+    // Antes no mostraba nada: quien descubría la toma mala DESPUÉS de generar se quedaba sin pista. El
+    // reemplazo directo está cerrado a propósito (el diagnóstico está sellado sobre esa medición) y lo
+    // que corresponde es corregir, que emite una versión nueva.
+    const jsx = sinComentarios(ENTRADA);
+    expect(jsx).toContain("{diagnosticoGenerado ? (");
+    expect(jsx).toContain("La toma ya no se reemplaza aquí");
+    expect(jsx).toContain("se corrige la consulta desde el cierre del diagnóstico");
+    // Y NO PROMETE QUE SE BORRA: la versión anterior queda registrada, que es lo que de verdad pasa.
+    expect(jsx).toContain("queda registrada como reemplazada");
   });
 
   it("la tabla de Wang nace ABIERTA (punto 6 de su cotejo)", () => {

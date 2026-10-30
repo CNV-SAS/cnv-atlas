@@ -9,7 +9,7 @@ import { SEV_CLS } from "./risk-severity";
 // sexo-dependientes; fuerza EWGSOP2 M<27 / F<16 Kgf). Presentacion: LEE del motor, no lo toca.
 //
 // FUERZA PRENSIL (dinamometria, criterio PRIMARIO del EWGSOP2): se captura en las condiciones de la toma BIS
-// (campo gripStrengthKg, subpestaña Encuesta), la mide el profesional en consulta. Si no la registro, la card
+// (campo gripStrengthKg, subpestaña Antropometria y BIS), la mide el profesional en consulta. Si no la registro, la card
 // dice "Sin dato" y remite a capturarla, NO queda vacia ni se inventa. Su ausencia se hace visible.
 //
 // Y DESDE EL 2026-08-31 TAMBIEN ALIMENTA EL MOTOR (Gildardo §6 del 30). Antes esta card era el UNICO sitio
@@ -134,7 +134,7 @@ export function SarcopeniaCard({
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
             <span className="font-medium">Falta la dinamometría</span> (fuerza prensil), el criterio
-            primario del EWGSOP2. Regístrala en las condiciones de la toma BIS (subpestaña Encuesta): la
+            primario del EWGSOP2. Regístrala en las condiciones de la toma BIS (subpestaña Antropometría y BIS): la
             mide el profesional con dinamómetro, mano dominante, mejor de tres intentos.
           </span>
         </div>

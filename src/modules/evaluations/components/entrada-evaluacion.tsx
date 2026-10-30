@@ -254,24 +254,41 @@ export function EntradaEvaluacion({
         )}
       </section>
 
-      {/* Condiciones de la toma BIS: se responden ANTES del import. El sistema impone el orden; sin este
-          checklist guardado, el boton de importar (en Antropometría) no deja pasar. Se muestra tambien cuando ya hay
-          medicion (caso borde: registrar condiciones despues de un BIS previo). */}
-      {identityConfirmed && bisCatalog ? (
-        <BisConditionsCapture
-          evaluationId={evaluationId}
-          catalog={bisCatalog}
-          intake={bisIntake}
-          patientIsFemale={patientIsFemale}
-        />
-      ) : bisReadonly ? (
-        <BisConditionsReadonly data={bisReadonly} />
-      ) : null}
     </div>
   );
 
+  // ═══ LAS CONDICIONES DE LA TOMA SE MUDAN A ANTROPOMETRIA Y BIS (v12 §3, 2026-10-30) ═══
+  //
+  // VIVIAN AL FINAL DE ENCUESTA, y no por descuido: son parte de lo que se CAPTURA, y la secuencia de
+  // Atlas es Encuesta -> Antrop. & BIS, asi que entraban con el resto de lo que se pregunta al paciente.
+  //
+  // SU ARGUMENTO ES MEJOR Y ES EL MISMO DE SU CORRECCION DEL 25-OCT: *"se verifica justo antes de subir
+  // la bioimpedancia"*. Placas, protesis, marcapasos, ayuno, ejercicio, diuretico, embarazo y ciclo no se
+  // preguntan para el expediente: se preguntan porque CONDICIONAN ESA MEDICION, y el sitio donde eso se
+  // lee es la pantalla donde se sube el archivo. Preguntarlas una pestaña antes las vuelve un tramite; al
+  // lado del import son lo que son, la comprobacion previa.
+  //
+  // Y NO QUEDA EN LAS DOS, que es la unica forma de equivocarse aqui: dos sitios donde se capturan las
+  // mismas respuestas es el hazard 4 de CLAUDE.md (dos superficies leyendo o escribiendo fuentes
+  // distintas de lo mismo), y con un formulario que SELLA, la segunda copia es la que se queda sin
+  // guardar. El candado de `bis-conditions` lo vigila en los dos sentidos.
+  //
+  // EL GATE NO SE TOCA: el boton de importar sigue exigiendo las condiciones guardadas, y ahora el aviso
+  // que lo explica queda al lado del bloque que lo resuelve, no en otra pestaña.
+  const condicionesDeLaToma =
+    identityConfirmed && bisCatalog ? (
+      <BisConditionsCapture
+        evaluationId={evaluationId}
+        catalog={bisCatalog}
+        intake={bisIntake}
+        patientIsFemale={patientIsFemale}
+      />
+    ) : bisReadonly ? (
+      <BisConditionsReadonly data={bisReadonly} />
+    ) : null;
+
   // SUBPESTAÑA 2 · ANTROPOMETRIA Y BIS: import del archivo + composicion corporal. (La sarcopenia y las
-  // referencias entran en el siguiente paso.) Depende de la subpestaña Encuesta: el aviso lo hace explicito.
+  // referencias entran en el siguiente paso.) Las condiciones de la toma viven AQUI desde el 2026-10-30 (v12 §3); lo que sigue dependiendo de Encuesta es la encuesta misma, y el aviso del gate lo dice.
   const antropometriaPanel = (
     <div className="flex flex-col gap-8">
       {/* EL CONTROL DE CALIDAD BIOLOGICO, LO PRIMERO DE TODO. Los dos bloques de abajo preguntan DE QUIEN
@@ -287,6 +304,11 @@ export function EntradaEvaluacion({
           mismo: las dos son dudas sobre DE QUIEN es esta toma, y las dos se resuelven antes de leer las
           cifras. Esta no frena nada; avisa y dice donde mirar. */}
       {composition ? avisoDeEdadDelEquipo : null}
+      {/* LAS CONDICIONES DE LA TOMA, ENCIMA DEL IMPORT (v12 §3). Debajo de los tres avisos y no arriba:
+          esos tres hablan de una toma que YA ENTRO (si puede existir, de quien es, con que edad se
+          calculo), y este checklist es la comprobacion de la que va a entrar. Cuando no hay medicion los
+          tres son null, asi que en el estado en el que esto importa queda lo primero de la pestaña. */}
+      {condicionesDeLaToma}
       {/* Seccion Medicion BIS SIEMPRE presente (no aparece/desaparece: eso confunde). Con medicion,
           muestra un mensaje de exito PERSISTENTE + la composicion; sin medicion, el import GATEADO
           (boton deshabilitado con explicacion en gris). Mismo criterio de "estados vacios limpios". */}
@@ -314,16 +336,40 @@ export function EntradaEvaluacion({
                 aviso y el selector EN SU SITIO, sin mover al profesional de donde esta.
                 `details` nativo y no estado de cliente: este panel es de servidor, y un desplegable que no
                 guarda nada no necesita hidratacion. */}
+            {/* ═══ Y EL ROTULO NOMBRA EL ACTO, NO SOLO EL SINTOMA (v12 §1.3, 2026-10-30) ═══
+
+                Decia solo *"¿Importaste el archivo equivocado?"*, y eso deja el acto SIN NOMBRE: quien
+                viene buscando como quitar una toma mala (en su HTML hay un boton "Eliminar toma BIS") no
+                reconoce esa pregunta como el sitio, y concluye que en Atlas no se puede. Es el patron de
+                "un control que no se encuentra se reporta como que no existe".
+
+                SE QUEDAN LAS DOS COSAS, el nombre y la pregunta: el nombre lo hace encontrable y la
+                pregunta lo hace reconocible para quien llega por el sintoma. Y SIN SUBIRLE EL PESO
+                VISUAL, que es la otra mitad de la decision del 2026-09-05: importar el archivo
+                equivocado es un caso RARO, no una parte del flujo. */}
             {!diagnosticoGenerado && bisImportEval ? (
               <details className="no-print group -mt-1">
                 <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline [&::-webkit-details-marker]:hidden">
                   <ChevronDown className="size-3 transition-transform group-open:rotate-180" aria-hidden />
-                  ¿Importaste el archivo equivocado?
+                  Reemplazar la toma de BIS · ¿importaste el archivo equivocado?
                 </summary>
                 <div className="pt-2">
                   <BisImportForm evaluation={bisImportEval} modoReemplazo />
                 </div>
               </details>
+            ) : null}
+            {/* Y CUANDO YA HAY DIAGNOSTICO SE DICE DONDE ESTA EL CAMINO, en vez de no mostrar nada.
+                Hasta hoy, una consulta con diagnostico no ofrecia aqui NADA sobre la toma, asi que quien
+                descubria la toma mala despues de generar se quedaba sin pista: el reemplazo directo esta
+                cerrado a proposito (el diagnostico esta sellado sobre esa medicion) y lo que corresponde
+                es CORREGIR, que emite una version nueva y conserva la anterior. Una frase que nombra el
+                camino cuesta menos que un profesional escribiendo a soporte. */}
+            {diagnosticoGenerado ? (
+              <p className="no-print -mt-1 text-xs text-muted-foreground">
+                La toma ya no se reemplaza aquí: esta consulta tiene diagnóstico, y está sellado sobre esa
+                medición. Si la toma quedó mal, se corrige la consulta desde el cierre del diagnóstico
+                funcional: se emite una versión nueva y la actual queda registrada como reemplazada.
+              </p>
             ) : null}
             {/* LAS MEDIDAS Y LA TABLA VAN JUNTAS desde el 2026-09-09, para que la tabla se recalcule
                 MIENTRAS se escribe la meta y no al salir del campo. Los dos son componentes cliente pero

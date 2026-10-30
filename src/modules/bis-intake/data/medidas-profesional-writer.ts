@@ -93,7 +93,8 @@ export async function writeMedidasDelProfesional(input: MedidasProfesionalInput)
       // Ver la nota de arriba: sin fila, escribir afectaria cero filas y la prensil se perderia muda.
       if (!intake) {
         throw new BisCorrectionError(
-          "Primero guarda las condiciones de la toma (subpestaña Encuesta): la fuerza prensil se registra " +
+          "Primero guarda las condiciones de la toma (subpestaña Antropometría y BIS): la fuerza prensil se " +
+            "registra " +
             "sobre esa captura.",
         );
       }
