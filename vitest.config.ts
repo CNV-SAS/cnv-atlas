@@ -21,6 +21,7 @@ const DB_TESTS = [
   "src/tests/la-cohorte-de-investigacion-se-explica-db.test.ts",
   "src/tests/el-aviso-de-medicion-repetida-db.test.ts",
   "src/tests/eliminar-el-perfil-db.test.ts",
+  "src/tests/el-resumen-de-la-cohorte-db.test.ts",
   // NO es un candado: es la MEDICION del efecto de un bump de motor (imprime cifras, asegura que
   // hubo algo que recomputar). Vive en la suite de BD porque necesita datos reales; en la de unit haria
   // que `pnpm verify` dependiera de la base.
