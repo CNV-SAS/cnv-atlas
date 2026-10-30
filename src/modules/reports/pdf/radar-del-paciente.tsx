@@ -29,7 +29,9 @@ import type { DominioPaciente } from "@/clinical-engine";
 // lee variables CSS. Son los mismos que pinta la pantalla; si cambian allá, cambian aquí (el candado del
 // radar lo comprueba contra globals.css).
 
-const ANCHO = 420;
+/** Ancho del dibujo. EXPORTADO para que el candado de maquetacion calcule el centrado en vez de
+ *  escribir el numero: un 56 suelto en un test envejece el dia que el radar cambie de tamano. */
+export const ANCHO = 420;
 const ALTO = 272;
 const CX = 210;
 const CY = 144;
@@ -86,7 +88,12 @@ export function RadarDelPaciente({ dominios }: { dominios: DominioPaciente[] }) 
   const poligono = vertices.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 
   return (
-    <View wrap={false}>
+    // CENTRADO EN LA HOJA (Santiago, 2026-10-30). El SVG mide 420 puntos de ancho y la columna de texto
+    // de la hoja carta con sus margenes mide 532: colgaba del margen izquierdo con 112 puntos de aire a la
+    // derecha, y en una hoja cuyo unico contenido es la figura eso se ve como un error de maquetacion.
+    // Centra el `alignItems` del contenedor y no un margen calculado: si manana cambia ANCHO, sigue
+    // centrado sin que nadie se acuerde de recalcular nada.
+    <View wrap={false} style={{ alignItems: "center" }}>
       <Svg width={ANCHO} height={ALTO}>
         {/* Las bandas del borde al centro, para que cada una cubra a la de afuera. El trazo BLANCO es lo
             que las separa: sin él, dos colores sólidos contiguos se leen como uno solo. */}

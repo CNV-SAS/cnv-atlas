@@ -1,15 +1,15 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
+import { MarcaDeFondo } from "./marca-de-fondo";
 import { COLOR_SEVERIDAD, RadarDelPaciente } from "./radar-del-paciente";
 
 import { cambioDesdeLaAnterior } from "../cambio-desde-la-anterior";
 import { ebBisParaTodos, NOTA_DFI_SIN_ENCUESTA } from "@/clinical-engine/presentacion-eb-bis";
-import { BloqueEvitar, BloqueIntercambio, BloqueMenu } from "./bloques-del-plan";
 import { styles } from "./estilos-del-pdf";
 
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
-import type { InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
+import type { InformeDelPaciente } from "../data/reports-view-types";
 import { GraficaTrayectoria } from "./grafica-trayectoria";
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
@@ -77,7 +77,6 @@ export function ReportDocument({
   professionalNotes = null,
   bandText = null,
   bandAppointmentDate = null,
-  plan = null,
   informe = null,
   serie = [],
 }: {
@@ -92,14 +91,24 @@ export function ReportDocument({
   // APARTE, después del texto verbatim de Gildardo (no se edita su redacción). null = no se pinta.
   bandAppointmentDate?: string | null;
   /**
-   * EL PLAN QUE RECIBE EL PACIENTE (Gildardo §7.1). null = la evaluacion no tiene tratamiento con
-   * protocolo sellado, y entonces no hay plan que entregar: un plan a medias es peor que ninguno.
+   * ═══ EL PLAN YA NO ENTRA AQUI, Y LA PROP SE QUITA EN VEZ DE DEJARLA SIN USO ═══
    *
-   * EL ORDEN DE LOS BLOQUES ES EL SUYO, y es el que Santiago pidio conservar: primero se le explica al
-   * paciente QUE TIENE (el diagnostico, ya traducido arriba), y despues LA SOLUCION. Su §7.1 pone el
-   * diagnostico primero en la lista por esa misma razon.
+   * Santiago, 2026-10-30: *"[El informe] es transversal a todas las disciplinas: trata la salud
+   * bioelectrica, no la alimentacion. Salen tambien: la lista de intercambio; el ejemplo de menu para una
+   * semana; y 'Lo que debes evitar', si es de alimentacion. Todo eso ya va en la hoja del plan, que el
+   * correo adjunta cuando hay prescripcion."*
+   *
+   * Es el tercer recorte del mismo sitio y el que cierra el criterio: el 28 de octubre salieron la
+   * prescripcion, las porciones y las recomendaciones porque eran CIFRAS del profesional; estos tres se
+   * quedaron porque eran "lo que el paciente puede seguir". El criterio nuevo no es ese: es que este
+   * documento trata la salud bioelectrica, y la alimentacion es UNA disciplina de las que lo aplican. Un
+   * informe con el menu de la semana se lee como un informe de nutricion, y el mismo paciente puede ir a
+   * ejercicio o a psicologia.
+   *
+   * Y NO QUEDA UNA PROP MUERTA: un `plan` que nadie lee es el cable que alguien vuelve a conectar sin
+   * saber por que se desconecto. Los tres bloques siguen vivos, en una sola copia
+   * (`bloques-del-plan.tsx`), y los pinta el PDF del plan, que es el segundo adjunto del correo.
    */
-  plan?: PlanPaciente | null;
   /**
    * LO QUE HACE DE ESTO UN INFORME Y NO SOLO UN PLAN (Santiago, 2026-09-19): las rutas que va a trabajar,
    * sus suplementos (los que sugiere el modelo y los que le indico su profesional), a que otros
@@ -155,6 +164,8 @@ export function ReportDocument({
           impresa en carta deja margenes desiguales, y las dos medidas son las que Santiago necesita para
           la maqueta. */}
       <Page size="LETTER" style={styles.page}>
+        {/* LO PRIMERO DE LA PAGINA, para quedar DETRAS del contenido: @react-pdf pinta en orden. */}
+        <MarcaDeFondo />
         <Text style={styles.title}>Informe ANI-BIS-E del paciente</Text>
         <Text style={styles.subtitle}>Connected Nutrition Ventures</Text>
 
@@ -308,6 +319,39 @@ export function ReportDocument({
               <Text style={styles.bold}>{dfiPac.riesgo}. </Text>
               {dfiPac.enfoque}
             </Text>
+          </View>
+        ) : null}
+
+        {/* ═══ LA FIGURA Y LAS CINCO AREAS, EN SU PROPIA HOJA (Santiago, 2026-10-30) ═══
+
+            *"Despues del bloque 'Como estas' (el que termina en 'Requiere atencion...'), un salto de
+            pagina: el radar y la explicacion de los 5 dominios van en su propia hoja. El radar, centrado
+            en la hoja. Esa hoja con titulo propio."*
+
+            EL SALTO ARREGLA ALGO MAS QUE EL AIRE: la figura mide 272 puntos de alto y no se puede partir
+            (`wrap={false}`), asi que caia entera a la hoja siguiente cuando no cabia, dejando media hoja
+            en blanco encima y separandola de las cinco frases que explica. Con el salto, el sitio de la
+            figura deja de depender de cuanto texto haya salido antes, que es lo que lo hacia cambiar de un
+            paciente a otro.
+
+            ═══ EL TITULO: EL SUYO DICE "salud bioelectrica" Y PROPONGO OTRO ═══
+
+            Su propuesta era *"Tu salud bioelectrica en cinco dominios"*, y pidio decirlo si habia una
+            mejor. Hay dos razones para cambiarla, y las dos son del contenido de la hoja:
+
+              1 · DOS DE LAS CINCO AREAS NO SALEN DE LA MEDICION BIOELECTRICA. Conductual-Perceptual y
+                  Epigenetico-Contextual salen de lo que el paciente CONTO en la encuesta. Llamar
+                  "bioelectrica" al conjunto afirma de la figura algo que no es cierto de dos de sus cinco
+                  ejes, y precisamente el DFI se llama INTEGRAL porque junta las dos fuentes.
+              2 · EL DOCUMENTO YA LE DICE "AREA" AL PACIENTE, tres parrafos antes: *"debajo aparece cada
+                  area por separado"*. "Dominios" seria una segunda palabra para la misma cosa en la misma
+                  hoja, y es la palabra interna (el motor los llama dominios; el paciente no).
+
+            Asi que el titulo recoge el de la hoja anterior: "Como estas" y "Como estas, area por area".
+            El par dice solo lo que la hoja hace, sin terminologia nueva. ═══ */}
+        {showAtlas && dfiPac && dfi.complete ? (
+          <View style={styles.section} break>
+            <Text style={styles.sectionTitle}>Cómo estás, área por área</Text>
             {/* EL RADAR VA ANTES DEL DETALLE, no despues: es el vistazo, y lo que sigue es la
                 explicacion dominio por dominio. Al reves, quien lee las cinco frases ya no necesita la
                 figura. Se dibuja solo; si faltan dominios medidos, no aparece. */}
@@ -335,49 +379,51 @@ export function ReportDocument({
           </View>
         ) : null}
 
-        {/* ═══ EL PLAN, en su orden: meta, dieta, menu, distribucion, recomendaciones, lista por region ═══
-            El DIAGNOSTICO va ARRIBA, en el bloque "Cómo estás": primero que tiene, despues la solucion.
-            Los SIETE bloques de su §7.1 estan aqui desde el 2026-09-03, cuando llego su mapa de regiones
-            (decia "falta el septimo, bloqueado por P2"; el bloqueo se cerro con su respuesta §2). ═══ */}
-        {showAtlas && plan ? (
-          <>
-            {/* ═══ LA CIFRA DE LA PRESCRIPCION SALE DEL INFORME DEL PACIENTE (una nutricionista, via
-                Santiago, 2026-10-28) ═══
+        {/* ═══ EL PLAN YA NO VA EN ESTE DOCUMENTO (Santiago, 2026-10-30) ═══
 
-                *"Quitar el apartado que dice tu meta dieta X calórica, proteína X, Priorizar X y Vigilar X.
-                También quitar el apartado de 'cómo repartir tus porciones en el día' y 'recomendaciones
-                para tu caso'."*
+            Aqui iban los tres ultimos bloques del plan que habian sobrevivido al recorte del 28 de
+            octubre: "Lo que debes evitar", la lista de intercambio y el ejemplo de menu. Salen, y el
+            criterio que los saca es mas general que el que los dejo: *"es transversal a todas las
+            disciplinas: trata la salud bioelectrica, no la alimentacion"*.
 
-                ERAN CUATRO BLOQUES, no tres, y por eso se nombran los cuatro: lo que ella describe en una
-                frase estaba repartido entre "Tu meta" (el objetivo, el peso acordado y las calorías) y "Tu
-                plan de alimentación" (el tipo de dieta, la prescripción por macro y las notas del modelo,
-                que son las que empiezan por "Priorizar" y "Vigilar"). Los dos iban seguidos y se leen como
-                uno. Con ellos salen "Cómo repartir tus porciones en el día" y "Recomendaciones para tu
-                caso", que ella nombra aparte.
+            O SEA QUE EL CRITERIO DEL 28 ERA EL EQUIVOCADO, y conviene decirlo porque lo escribi yo aqui
+            mismo: entonces la linea se trazo entre la CIFRA del profesional (que sale) y lo que el
+            paciente puede seguir (que se queda). Con esa linea, el menu de la semana se quedaba. La linea
+            de verdad es otra: este informe trata la salud bioelectrica del paciente, y la alimentacion es
+            UNA de las disciplinas que la aplican. El mismo paciente puede ir a ejercicio o a psicologia,
+            y su informe no puede parecer un informe de nutricion.
 
-                POR QUE SE VAN DEL INFORME Y NO DEL PLAN: son el contenido del PLAN, y el plan ya existe
-                como documento aparte (`plan-imprimible`), que es el que el paciente se lleva con sus
-                porciones. Tenerlos en los dos hacía que el informe compitiera con el plan y, peor, que un
-                paciente con dos papeles en la mano no supiera cuál seguir.
+            NO SE PIERDE NADA, y esto es lo que hace que el recorte sea seguro: los tres bloques ya salen
+            en la hoja del plan, y el correo ADJUNTA esa hoja cuando hay prescripcion emitida
+            (`send-report`, segundo adjunto, desde el 28 de octubre). Si el adjunto no existiera, esto
+            seria quitarle al paciente su menu. El candado de la §7.1 exige las dos mitades juntas.
 
-                LO QUE SI SE QUEDA, y no es casualidad: "Lo que debes evitar", la lista de intercambio y el
-                menú de ejemplo. La diferencia no es de tema sino de LENGUAJE: "proteína 1,6 g/kg" es la
-                cifra con la que trabaja el profesional, y una lista de alimentos por grupo es lo que el
-                paciente puede usar. Sale la prescripción, se queda lo que se puede seguir.
+            "Lo que debes evitar" sale con los otros dos porque SI es de alimentacion, que era su
+            condicion (*"si es de alimentacion"*): el bloque pinta `plan.restricciones`, que el tipo
+            documenta como *"lo que el paciente no puede comer"* y que se precarga de las tres preguntas
+            de alergias e intolerancias de la encuesta. Comprobado, no supuesto.
 
-                Y LA DUDA QUE ESTO ABRIO SE CERRO EL MISMO DIA (Santiago): el correo adjuntaba SOLO este
-                informe, asi que la cifra de calorías y de proteína habría quedado únicamente en la hoja que
-                le imprime su profesional. Ahora el correo adjunta TAMBIEN el plan (`plan-document.tsx`)
-                cuando hay prescripción emitida, así que le llega por su canal. ═══ */}
+            ═══ LO QUE SI QUEDA EN SU SITIO: LA SEÑAL DE QUE EL PLAN EXISTE ═══
 
-            {/* LOS TRES QUE SE QUEDAN, compuestos desde `bloques-del-plan.tsx`: el JSX vive UNA vez y lo
-                comparten las tres superficies (esta, el PDF del plan y la hoja de pantalla). Tres copias
-                del mismo bloque es pedir la séptima divergencia, y de las seis anteriores salió el candado
-                que compara los canales. */}
-            <BloqueEvitar plan={plan} />
-            <BloqueIntercambio plan={plan} />
-            <BloqueMenu plan={plan} />
-          </>
+            `PLAN_DISENO_DOCUMENTOS.md` §3 defendia que el informe llevara el plan entero, y de su
+            argumento sobrevive una mitad que ahora hace falta mas que antes: *"lo que si conviene, y es
+            distinto: que el informe DIGA que el plan va dentro... Hoy no lo dice en ninguna parte"*.
+
+            Con los bloques fuera, un paciente que abre solo el informe no veria ni el plan ni una señal de
+            que existe, y este es el sitio donde lo buscaria: donde estaba. Asi que queda la linea, no los
+            bloques.
+
+            VA EN CONDICIONAL Y NO MIRA SI HAY PRESCRIPCION, a proposito: el informe dejo de recibir el
+            plan (y eso no se deshace por una frase), asi que no puede saberlo. Redactada asi es cierta en
+            los dos casos, y el que no tiene plan no lee que le mandaron uno que no esta. ═══ */}
+        {showAtlas ? (
+          <View style={styles.section}>
+            <Text style={styles.para}>
+              Si tu profesional te indicó un plan de alimentación, lo recibes en una hoja aparte, junto
+              con este informe: ahí están tu menú de ejemplo, la lista de intercambio y lo que conviene
+              evitar.
+            </Text>
+          </View>
         ) : null}
 
         {showAtlas && serie.length >= 2 ? (

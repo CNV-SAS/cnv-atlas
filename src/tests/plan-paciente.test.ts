@@ -51,11 +51,27 @@ const seccionesDelPdf = titulosDelInforme;
 // Y LOS TITULOS SE LEEN DE LOS TITULOS EXTRAIDOS, no con `toContain` sobre el archivo. Al quitarlos, el
 // `toContain("Tu meta")` siguio pasando: lo satisfacia el COMENTARIO que explica la retirada. Un candado
 // que un comentario puede contentar no vigila nada.
+// ── Y LOS TRES ULTIMOS SE LES UNEN EL 2026-10-30, CON UN CRITERIO MAS GENERAL ──────────────────────
+//
+// Santiago: *"[El informe] es transversal a todas las disciplinas: trata la salud bioeléctrica, no la
+// alimentación. Salen también: la lista de intercambio; el ejemplo de menú para una semana; y 'Lo que
+// debes evitar', si es de alimentación. Todo eso ya va en la hoja del plan, que el correo adjunta cuando
+// hay prescripción. Ajusta el candado de la §7.1 para que lo exija así."*
+//
+// EL CRITERIO DEL 28 ERA EL EQUIVOCADO, y lo dice este archivo mismo unas lineas arriba: entonces la linea
+// se trazo entre la CIFRA del profesional (que salia) y lo que el paciente puede seguir (que se quedaba).
+// Con esa linea, el menu de la semana se quedaba. La linea de verdad es otra: el informe trata la salud
+// bioelectrica del paciente, y la alimentacion es UNA de las disciplinas que la aplican.
+//
+// ASI QUE SON SIETE, Y LOS SIETE EN LA HOJA DEL PLAN. El informe queda sin una sola linea del plan.
 const SOLO_EN_LA_HOJA: Record<string, string> = {
   "Tu meta": "la prescripción se entrega en la hoja del plan, no en el informe (nutricionista, 2026-10-28)",
   "Tu plan de alimentación": "por lo mismo: el tipo de dieta, las kcal y los macros son del plan",
   "Cómo repartir tus porciones en el día": "la tabla de porciones es la hoja de la cocina",
   "Recomendaciones para tu caso": "las recomendaciones automáticas van con el plan",
+  "Lo que debes evitar": "es de alimentación: son las restricciones, lo que no puede comer (2026-10-30)",
+  "Tu lista de intercambio": "alimentación: va en la hoja del plan, no en un informe transversal",
+  "Ejemplo de menú para una semana": "lo mismo, y es el bloque más largo del plan",
 };
 
 describe("los bloques de su §7.1 siguen saliendo, y se sabe por cuál hoja", () => {
@@ -81,13 +97,81 @@ describe("los bloques de su §7.1 siguen saliendo, y se sabe por cuál hoja", ()
   it("el diagnóstico, que va PRIMERO", () => {
     // Su §7.1 lo pone primero en la lista, y la razón es la que dio Santiago: primero se le explica al
     // paciente qué tiene, y después la solución. Va traducido a su lenguaje (`dfiParaPaciente`).
-    // El ancla ya no es "Tu meta" (que salió del informe) sino el primer bloque del plan que SI se queda.
+    //
+    // EL ANCLA CAMBIA POR TERCERA VEZ, así que conviene decir cuál es la regla que no cambia. Fue "Tu
+    // meta" hasta el 28 de octubre y "Lo que debes evitar" hasta el 30; los dos salieron del informe. Lo
+    // que el informe conserva de "la solución" es lo que NO es del plan: lo que va a trabajar, sus
+    // suplementos, a quién más acudir y su seguimiento, que es lo que Santiago llamó "lo que hace de esto
+    // un informe y no solo un plan". Contra eso se ancla ahora.
     const titulos = seccionesDelPdf();
     const diagnostico = titulos.indexOf("Cómo estás");
-    const primeroDelPlan = titulos.indexOf("Lo que debes evitar");
+    const primeroDeLaSolucion = titulos.indexOf("Lo que vas a trabajar");
     expect(diagnostico, "el informe dejó de abrir con el diagnóstico").toBeGreaterThan(-1);
-    expect(primeroDelPlan).toBeGreaterThan(-1);
-    expect(diagnostico, "el diagnóstico quedó después del plan").toBeLessThan(primeroDelPlan);
+    expect(primeroDeLaSolucion).toBeGreaterThan(-1);
+    expect(diagnostico, "el diagnóstico quedó después de la solución").toBeLessThan(primeroDeLaSolucion);
+  });
+
+  it("pero el informe SI dice que el plan llega en una hoja aparte", () => {
+    // `PLAN_DISENO_DOCUMENTOS.md` §3 defendía que el informe llevara el plan entero, y de su argumento
+    // sobrevive una mitad que ahora hace falta más que antes: que el informe DIGA que el plan va con él.
+    // Sin esta línea, un paciente que abre solo el informe no vería ni el plan ni una señal de que existe.
+    expect(DOC, "el informe no dice que el plan llega aparte").toContain("en una hoja aparte");
+    // EN CONDICIONAL, porque el informe ya no recibe el plan y no puede saber si hay: así la frase es
+    // cierta en los dos casos y quien no tiene plan no lee que le mandaron uno que no está.
+    expect(DOC).toContain("Si tu profesional te indicó un plan de alimentación");
+  });
+
+  it("y el informe no compone NINGUN bloque del plan, ni uno", () => {
+    // La aserción de arriba va por TÍTULO y esta por COMPONENTE, y la diferencia importa: un bloque nuevo
+    // del módulo compartido que alguien compusiera en el informe no estaría en SOLO_EN_LA_HOJA y pasaría.
+    // Esto cubre también los que todavía no existen.
+    expect(
+      [...DOC.matchAll(/<(Bloque\w+)\s/g)].map((m) => m[1]),
+      "el informe volvió a componer un bloque del plan",
+    ).toEqual([]);
+  });
+
+  it("y tampoco RECIBE el plan: la prop se quitó, no se dejó sin usar", () => {
+    // Una prop que nadie lee es el cable que alguien vuelve a conectar sin saber por qué se desconectó. Si
+    // volviera, los tres bloques podrían reaparecer sin que este candado se enterara.
+    expect(DOC, "el informe volvió a recibir el plan").not.toMatch(/plan\?: PlanPaciente/);
+    expect(RENDER, "el render del informe volvió a pasarle el plan").not.toContain("plan={options.plan}");
+  });
+
+  it("LA OTRA MITAD, que es la que hace seguro el recorte: el correo ADJUNTA la hoja del plan", () => {
+    // Santiago pidió las dos juntas: *"Todo eso ya va en la hoja del plan, QUE EL CORREO ADJUNTA cuando
+    // hay prescripción. Ajusta el candado de la §7.1 para que lo exija así."*
+    //
+    // Sin el adjunto, quitar los tres bloques del informe sería quitarle al paciente su menú. Así que las
+    // dos mitades se exigen en el MISMO caso: si alguien retirara el adjunto, esto falla aquí, al lado de
+    // la aserción que lo justifica, y no en un archivo lejano.
+    expect(SEND, "el correo dejó de renderizar la hoja del plan").toContain("renderPlanPdf(");
+    expect(SEND, "el adjunto del plan dejó de viajar en el correo").toContain("extra: planAdjunto");
+    // Y SIN PRESCRIPCIÓN NO VA SEGUNDO ARCHIVO: un adjunto que el paciente abre y no dice nada es peor que
+    // no mandarlo, y el texto del correo se deriva de si existe (si dijera "tu informe y tu plan" fijo, el
+    // correo se contradiría con su propio contenido).
+    expect(SEND).toContain("textoDelCorreo(dispatch.patientName, planAdjunto != null)");
+  });
+
+  it("y el profesional puede VER ese segundo documento desde donde aprueba", () => {
+    // La ruta del preview afirma de sí misma que es "el mismo documento que sale". Con el plan fuera del
+    // informe enseñaba la mitad: el profesional aprobaba sin ver lo que el paciente recibe en el segundo
+    // adjunto. Un preview que enseña la mitad es peor que ninguno, porque parece completo.
+    expect(RUTA, "la ruta del preview no sirve la hoja del plan").toContain('=== "plan"');
+    expect(RUTA).toContain("renderPlanPdf(");
+    // Y LA RAMA DEL PLAN VA ANTES QUE LA DEL INFORME ENVIADO. Escrita después, un `?doc=plan` sobre un
+    // reporte ya enviado salía por la rama de Storage y devolvía el INFORME: el enlace que dice "Ver la
+    // hoja del plan enviada" abría el otro documento, y se abre bien, así que nadie lo nota.
+    expect(RUTA.indexOf("if (quierePlan)")).toBeLessThan(RUTA.indexOf("if (dispatch.storagePath)"));
+    // De un reporte enviado se sirven LOS BYTES QUE SALIERON, igual que el informe: re-renderizar el plan
+    // mostraría otro documento afirmando que es el que recibió el paciente.
+    expect(RUTA, "el preview del plan enviado no recupera los bytes que salieron").toContain(
+      "downloadPlanPdf(",
+    );
+    const TARJETA = readFileSync("src/modules/reports/components/report-card.tsx", "utf8");
+    expect(TARJETA, "la tarjeta no ofrece la hoja del plan").toContain("?doc=plan");
+    // SOLO CUANDO HAY PRESCRIPCIÓN: un enlace que lleva a "no hay plan" es una puerta cerrada.
+    expect(TARJETA).toContain("report.conPlan ?");
   });
 
   it("y las recomendaciones, solo las que aplican a su caso", () => {
@@ -99,26 +183,27 @@ describe("los bloques de su §7.1 siguen saliendo, y se sabe por cuál hoja", ()
 });
 
 describe("lo que el paciente NO puede comer va en el plan, y antes del menú", () => {
-  it("el bloque existe, y sale por las TRES superficies", () => {
+  it("el bloque existe, y sale por las DOS superficies del plan", () => {
     // Su §7.1 no lo nombra, y va igual, declarado (punto 10.6 de la ronda): el paciente recibe un menú, y
     // un menú sin las restricciones al lado es un plan que no puede seguir. Peor: puede contradecirlas.
-    // Es uno de los tres que el informe SI se queda, asi que tiene que estar en los tres papeles.
+    //
+    // ERAN TRES SUPERFICIES HASTA EL 2026-10-30, cuando salió del informe con los otros dos bloques de
+    // alimentación. Siguen siendo las dos que importan, y la razón de que sean dos y no una está unas
+    // líneas abajo: la hoja de pantalla depende de que alguien pulse imprimir, el adjunto del correo no.
     for (const [que, titulos] of [
       ["la hoja de pantalla", seccionesDelPlan()],
       ["el PDF del plan", titulosDelPlanPdf()],
-      ["el informe", seccionesDelPdf()],
     ] as const) {
       expect(titulos, `${que} no lleva las restricciones`).toContain("Lo que debes evitar");
     }
     expect(READER).toContain("restricciones: protocol.restricciones");
   });
 
-  it("y va ANTES del menú en los tres, no después", () => {
+  it("y va ANTES del menú en las dos, no después", () => {
     // Se lee el menú para saber qué comer, así que hay que llegar sabiendo qué evitar.
     for (const [que, titulos] of [
       ["la hoja de pantalla", seccionesDelPlan()],
       ["el PDF del plan", titulosDelPlanPdf()],
-      ["el informe", seccionesDelPdf()],
     ] as const) {
       const evitar = titulos.indexOf("Lo que debes evitar");
       const menu = titulos.indexOf("Ejemplo de menú para una semana");
@@ -152,13 +237,15 @@ describe("el séptimo bloque ya está: la lista de intercambio recortada por reg
     );
   });
 
-  it("y sale por las TRES caras: la pantalla, el PDF del plan y el informe", () => {
-    // Las tres leen el MISMO `plan.listaIntercambio`, que es la unica forma de que no puedan discrepar: la
-    // pantalla por su cuenta, y los dos PDF por el bloque compartido.
+  it("y sale por las DOS caras del plan: la pantalla y el PDF que adjunta el correo", () => {
+    // Las dos leen el MISMO `plan.listaIntercambio`, que es la unica forma de que no puedan discrepar: la
+    // pantalla por su cuenta, y el PDF por el bloque compartido.
+    //
+    // ERA LA TERCERA CARA HASTA EL 2026-10-30: el informe la pintaba, y salió con el menú y las
+    // restricciones por el mismo criterio (es alimentación, y el informe es transversal).
     for (const [que, titulos] of [
       ["el plan imprimible", seccionesDelPlan()],
       ["el PDF del plan", titulosDelPlanPdf()],
-      ["el informe", seccionesDelPdf()],
     ] as const) {
       expect(titulos, `${que} no pinta la lista`).toContain("Tu lista de intercambio");
     }
@@ -232,6 +319,10 @@ describe("los DOS canales son el mismo documento, no dos documentos", () => {
     "Lo que vas a trabajar": "son las rutas de atención: viven en su propia hoja imprimible y en el informe",
     "Otros profesionales que te pueden acompañar": "las remisiones, por lo mismo",
     "Tu seguimiento": "la observación de la consulta y la próxima cita: son del informe, no del plan",
+    // LA HOJA NUEVA DEL INFORME (2026-10-30): la figura y las cinco áreas pasaron a su propia página, con
+    // su título. Es diagnóstico, como "Cómo estás", del que se partió; la hoja de la cocina no lo lleva.
+    "Cómo estás, área por área":
+      "la figura del radar y las cinco áreas, en su propia hoja del informe: es diagnóstico, no plan",
   };
 
   it("CONTROL: la comparación encuentra secciones de verdad en los dos archivos", () => {
@@ -322,11 +413,20 @@ describe("el plan llega a los sitios que renderizan el documento", () => {
       (SEND.match(/getPlanPaciente\(/g) ?? []).length,
       "falta el plan en envío o reenvío",
     ).toBeGreaterThanOrEqual(2);
+    // ═══ Y VIAJA AL RENDER DEL PLAN, NO AL DEL INFORME (2026-10-30) ═══
+    //
+    // Hasta hoy esto contaba las veces que un `plan,` entraba en las OPCIONES DEL INFORME, porque el
+    // informe pintaba tres bloques del plan. Ya no pinta ninguno, así que esa cuenta vigilaría que vuelva
+    // justo lo que se quitó. Lo que hay que exigir ahora es que el plan llegue a SU PROPIO render, que es
+    // el que produce el segundo adjunto del correo.
     expect(
-      (SEND.match(/^\s+plan,$/gm) ?? []).length,
-      "el plan no viaja a los renders",
+      (SEND.match(/renderPlanPdf\(/g) ?? []).length,
+      "el plan no llega al render de su PDF en envío o reenvío",
     ).toBeGreaterThanOrEqual(2);
-    expect(RUTA, "el preview no lleva el plan").toContain("plan: await getPlanPaciente(");
+    // EL PREVIEW LO SIRVE POR SU PROPIA RAMA (`?doc=plan`): el profesional aprueba desde la tarjeta, que
+    // ofrece los dos documentos. Un preview que enseñara solo el informe le haría aprobar la mitad.
+    expect(RUTA, "el preview no sirve la hoja del plan").toContain("renderPlanPdf(");
+    expect(RUTA, "el preview no lee el plan").toContain("getPlanPaciente(");
   });
 
   it("y el PDF del plan se renderiza, se guarda y se adjunta", () => {
@@ -347,8 +447,15 @@ describe("el plan llega a los sitios que renderizan el documento", () => {
     expect(SEND).toContain("conPlan");
   });
 
-  it("y el renderizador lo acepta como parámetro propio", () => {
-    expect(RENDER).toContain("plan={options.plan}");
+  it("y el renderizador del plan es el suyo, no una opción del informe", () => {
+    // Era `plan={options.plan}` dentro del informe. Ahora el plan tiene su propio renderizador y su propia
+    // cabecera compartida, que es lo que impide que el preview y el adjunto del correo salgan con fechas o
+    // profesionales distintos en el encabezado del mismo documento.
+    expect(RENDER).toContain("export function renderPlanPdf(");
+    expect(RENDER, "la cabecera del plan no está en un solo sitio").toContain(
+      "export function metaDelPlan(",
+    );
+    expect(RENDER, "el informe volvió a recibir el plan").not.toContain("plan={options.plan}");
   });
 });
 
@@ -415,6 +522,10 @@ describe("lo que NO viaja al paciente, y es deliberado", () => {
 
   it("y el plan entero se omite si no hay protocolo, en vez de salir a medias", () => {
     expect(READER).toContain("if (!protocol || !snap) return null;");
-    expect(DOC).toContain("{showAtlas && plan ? (");
+    // LA RAMA SE MUDÓ AL DOCUMENTO DEL PLAN, que es el que ahora lo pinta: el informe ya no tiene qué
+    // omitir, porque no recibe el plan. Y el correo tampoco adjunta nada cuando el plan es null, que es la
+    // misma regla vista desde el otro lado.
+    const DOC_PLAN_PDF = readFileSync("src/modules/reports/pdf/plan-document.tsx", "utf8");
+    expect(DOC_PLAN_PDF, "el PDF del plan no se arma desde el plan").toContain("plan={plan}");
   });
 });

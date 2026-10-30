@@ -5,6 +5,8 @@ import type { EngineOutput } from "@/clinical-engine";
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { HistoriaClinicaDoc, InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
 import { HistoriaClinicaDocument } from "../pdf/hc-document";
+import { formatDate } from "@/lib/format/date";
+
 import { PlanDocument, type PlanMeta } from "../pdf/plan-document";
 import { ReportDocument, type ReportMeta, type SendMode } from "../pdf/report-document";
 
@@ -13,8 +15,6 @@ export type RenderReportOptions = {
   professionalNotes?: string | null;
   bandText?: string | null; // P0 Parte 2 (P5): texto de la banda de cambio para el paciente, o null
   bandAppointmentDate?: string | null;
-  /** El plan del paciente (Gildardo §7.1). null = la evaluacion no tiene tratamiento con protocolo. */
-  plan?: PlanPaciente | null; // §6: fecha de la próxima cita (solo para el "empeoró" confirmado)
   /** Rutas, suplementos, remisiones y seguimiento: lo que hace de esto un informe y no solo un plan. */
   informe?: InformeDelPaciente | null;
   /** La trayectoria del paciente, para la grafica. Vacia = no hay dos mediciones que comparar. */
@@ -37,11 +37,35 @@ export function renderReportPdf(
       professionalNotes={options.professionalNotes}
       bandText={options.bandText}
       bandAppointmentDate={options.bandAppointmentDate}
-      plan={options.plan}
       informe={options.informe}
       serie={options.serie}
     />,
   );
+}
+
+/**
+ * LA CABECERA DEL PDF DEL PLAN, en un solo sitio.
+ *
+ * Vivia dentro de `send-report` cuando el envio era el unico que renderizaba el plan. Desde que el
+ * preview tambien lo sirve (`/reportes/[id]/pdf?doc=plan`, 2026-10-30) son DOS llamadores, y dos copias
+ * de una cabecera divergen por donde nadie mira: el profesional aprobaria un documento con otra fecha o
+ * otro profesional en el encabezado que el que recibe el paciente. Es el mismo defecto que ya costo seis
+ * desfases entre el informe y la hoja del plan.
+ */
+export type DatosDelPlan = {
+  patientName: string;
+  documentLabel: string;
+  consultationDate: string;
+  profesional: { nombre: string; profesion: string | null } | null;
+};
+
+export function metaDelPlan(d: DatosDelPlan): PlanMeta {
+  return {
+    patientName: d.patientName || "Paciente",
+    documentLabel: d.documentLabel,
+    consultationDate: formatDate(d.consultationDate),
+    profesional: d.profesional,
+  };
 }
 
 /**

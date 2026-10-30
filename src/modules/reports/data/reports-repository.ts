@@ -130,13 +130,17 @@ export type { TrajectoryConfirmation } from "./reports-view-types";
 export type ReportCardData = ReportListItem & {
   trajectory: TrajectoryConfirmation | null;
   /**
-   * ¿La prescripcion de esta evaluacion esta aprobada? Gate de EMISION: el paciente recibe su plan en el
-   * reporte, y un plan emitido desde el borrador no es reconstruible.
+   * ¿ESTA CONSULTA TIENE PRESCRIPCION EMITIDA? O sea: ¿el correo al paciente lleva un SEGUNDO documento?
    *
-   * `undefined` = no se consulto (las LISTAS no lo traen, igual que `trajectory`: son N filas y seria una
-   * consulta por card). Ahi el boton no se explica de antemano, pero el servidor sigue frenando el envio
-   * con un mensaje que dice que hacer y donde. `null` = la evaluacion no tiene tratamiento todavia.
+   * NO ES EL GATE VIEJO, y conviene decirlo porque este comentario describia uno. Hasta el 2026-09-09 aqui
+   * habia un campo que preguntaba si la prescripcion estaba APROBADA, para frenar la emision; se retiro
+   * cuando dejo de haber nada que aprobar, y el comentario se quedo huerfano describiendo un campo que ya
+   * no existia. Esto no frena nada: solo decide si la tarjeta OFRECE el enlace de la hoja del plan.
+   *
+   * Hace falta desde el 2026-10-30, cuando el informe dejo de llevar nada del plan: el paciente recibe dos
+   * documentos y el profesional aprueba desde esa tarjeta.
    */
+  conPlan: boolean;
   // Cuantas veces salio el MISMO documento despues del primer envio. 0 = solo el envio original.
   resentCount: number;
 };
@@ -191,6 +195,27 @@ export async function getReportCardForEvaluation(
     };
   }
 
+  // ═══ SI HAY PRESCRIPCION EMITIDA, PARA OFRECER EL SEGUNDO DOCUMENTO (2026-10-30) ═══
+  //
+  // Desde que el informe no lleva nada del plan, el paciente recibe DOS documentos y el profesional
+  // aprueba desde esta tarjeta. Ofrecer el enlace del plan SIEMPRE seria ofrecer una puerta cerrada en las
+  // consultas sin prescripcion; no ofrecerlo nunca es esconder la mitad de lo que se envia.
+  //
+  // SE PREGUNTA POR EL PROTOCOLO SELLADO y no por el tratamiento, porque es la misma condicion exacta que
+  // usa `getPlanPaciente` para devolver null y la que usa el correo para adjuntar o no: si se preguntara
+  // por otra cosa, la tarjeta y el correo podrian discrepar sobre si hay plan.
+  //
+  // Y POR EL CAMINO DE LA EVALUACION, no por el diagnostico vigente: el tratamiento cuelga del diagnostico
+  // sobre el que se construyo, asi que tras una reemision buscarlo por el vigente no encuentra nada (es el
+  // defecto de los cinco lectores del 2026-10-29).
+  const { data: conProtocolo } = await supabase
+    .from("treatments")
+    .select("protocol_snapshot, diagnoses!inner(evaluation_id)")
+    .eq("diagnoses.evaluation_id", evaluationId)
+    .not("protocol_snapshot", "is", null)
+    .limit(1)
+    .maybeSingle();
+
   // SE RETIRO LA LECTURA DEL ESTADO DE LA PRESCRIPCION (2026-09-09). Servia para que el boton de enviar
   // dijera "falta aprobar la prescripcion" en vez de fallar; ya no hay nada que aprobar y enviar no se
   // bloquea por eso. Un aviso sobre un requisito que no existe es peor que ninguno: manda al profesional
@@ -205,6 +230,7 @@ export async function getReportCardForEvaluation(
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     trajectory,
+    conPlan: conProtocolo != null,
     resentCount: (row.resent_count as number | null) ?? 0,
   };
 }
