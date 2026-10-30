@@ -38,7 +38,7 @@ export function evaluarRequisitosDelImport(
     };
   }
   const faltan: string[] = [];
-  if (!intake) faltan.push("guardar las condiciones de la toma BIS (subpestaña Encuesta)");
+  if (!intake) faltan.push("guardar las condiciones de la toma BIS (en esta misma pestaña, encima del import)");
   if (surveyGaps == null) {
     faltan.push("que el paciente responda la encuesta");
   } else if (surveyGaps.length > 0) {
@@ -169,7 +169,8 @@ export function condicionesParaDiagnosticar(
   if (!condiciones || condiciones.registradas === false) {
     return {
       allowed: false,
-      message: "Para generar el diagnóstico falta guardar las condiciones de la toma BIS (subpestaña Encuesta).",
+      message:
+        "Para generar el diagnóstico falta guardar las condiciones de la toma BIS (subpestaña Antropometría y BIS).",
     };
   }
   if (condiciones.contraindicated) {
