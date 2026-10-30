@@ -127,7 +127,11 @@ describe("la cadena calórica va en DOS bloques, no en uno", () => {
     // LOS DOS bloques (arriba, entre los cuatro campos que su pantalla agrupa; abajo, dentro de la cuenta,
     // donde es el factor que multiplica), con un solo estado detrás. El `name` lo lleva la copia de
     // arriba, así que aquí el marcador es el componente, no el atributo.
-    for (const marca of ['name="adjGeb"', "<PalSelect value={pal}", 'name="adjProtGkg"', 'name="adjFatPct"']) {
+    // EL MARCADOR DEL PAL SE AFLOJA OTRA VEZ (2026-10-30), y por un cambio real: su `onChange` dejo de ser
+    // `setPal` pelado para soltar tambien el objetivo manual (v12 §6.2), asi que el literal con el handler
+    // pegado dejo de existir. Lo que se afirma sigue siendo lo mismo: que el espejo de la cuenta LEE el
+    // estado `pal`. Que lo ESCRIBA con la misma funcion lo comprueba el caso de abajo.
+    for (const marca of ['name="adjGeb"', "<PalSelect", "value={pal}", 'name="adjProtGkg"', 'name="adjFatPct"']) {
       expect(FORMULA()).toContain(marca);
     }
     expect(FORMULA()).toContain("Reparto de macronutrientes");
@@ -161,6 +165,52 @@ describe("los cuatro campos de la cadena se ven arriba, y son UN dato", () => {
   // "IGUALES" NO SE CONSIGUE SINCRONIZANDO, se consigue no teniendo dos: un solo `useState` leído desde
   // los dos sitios. Dos estados sincronizados es como se crean las discrepancias que esto viene a evitar.
 
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════
+  // LA CIFRA MANUAL DE CALORIAS SE SUELTA AL CAMBIAR LO QUE LA PRODUCE (v12 §6.2, 2026-10-30)
+  //
+  // EL DEFECTO ERA NUESTRO: un `adjKcalObj` escrito a mano dejaba el plan CLAVADO. El profesional cambiaba
+  // el peso meta o la actividad, el gasto se recalculaba en vivo delante suyo, y el objetivo seguia en la
+  // cifra vieja sin decir nada; los macros, el reparto y el menu colgaban de un numero que ya no salia de
+  // ningun insumo.
+  //
+  // LAS TRES PROPIEDADES, y cada una se puede perder sola: que se suelte desde los TRES insumos (y desde
+  // las dos copias del PAL, que son un campo mostrado dos veces), que se DIGA, y que se pueda DESHACER de
+  // un clic (porque soltar en silencio una cifra del profesional choca con su §5 del 27-ago: el motor
+  // propone, el profesional dispone).
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════
+  describe("al cambiar un insumo, el objetivo escrito a mano se suelta", () => {
+    const SECCION = () => bloque("function CadenaCaloricaSection", "export function TreatmentPanel");
+
+    it("se suelta desde el peso meta, el PAL y el déficit", () => {
+      const s = SECCION();
+      expect(s).toContain("const soltarElObjetivo = () =>");
+      // CUATRO LLAMADAS: peso meta, deficit y las DOS copias del PAL. La copia de abajo es el mismo campo
+      // mostrado dos veces, asi que si solo soltara la de arriba el comportamiento dependeria de por
+      // donde se cambie, que es peor que cualquiera de las dos salidas consistentes.
+      expect((s.match(/soltarElObjetivo\(\);/g) ?? []).length).toBe(4);
+      expect(META()).toContain("soltarElObjetivo();");
+      expect(FORMULA()).toContain("soltarElObjetivo();");
+    });
+
+    it("y recuerda la cifra para poder volver a ella de un clic", () => {
+      const meta = META();
+      // NO DESAPARECE EN SILENCIO: la pantalla nombra lo que paso, dice la cifra que habia y volver a
+      // ella es un boton. Sin esto, el objetivo cambiaria solo y nadie sabria por que.
+      expect(meta).toContain("El objetivo volvió a la cifra que sale de la cuenta");
+      expect(meta).toContain("Volver a {kcalSoltado} kcal");
+      expect(meta).toContain("setKcalObj(kcalSoltado)");
+      // Y SOLO MIENTRAS EL CAMPO SIGA VACIO: con otra cifra escrita, ofrecer volver a la vieja seria
+      // ofrecer pisar la nueva.
+      expect(meta).toContain('kcalSoltado != null && kcalObj === ""');
+    });
+
+    it("y la cifra recordada no se pisa en la segunda pulsación", () => {
+      // El campo queda vacio al soltarse, asi que la guarda del `if` impide que la siguiente tecla
+      // guarde "" como la cifra que habia, que dejaria el aviso ofreciendo volver a nada.
+      expect(SECCION()).toContain('if (actual.trim() !== "") setKcalSoltado(actual);');
+    });
+  });
+
   it("los cuatro están en el bloque de la meta", () => {
     const meta = META();
     for (const marca of ['name="pesoMeta"', 'name="adjKcalObj"', 'name="adjPal"', 'name="adjDeficit"']) {
@@ -172,7 +222,11 @@ describe("los cuatro campos de la cadena se ven arriba, y son UN dato", () => {
     // El espejo de la cuenta lee `pal` y `deficit` (el estado) y escribe con `setPal`/`setDeficit`. Si
     // alguna vez apareciera un segundo useState para lo mismo, aquí es donde se ve.
     const formula = FORMULA();
-    expect(formula).toContain("<PalSelect value={pal} onChange={setPal}");
+    // LEE `pal` Y ESCRIBE CON `setPal`, aunque desde el 2026-10-30 lo haga dentro de un handler que
+    // ademas suelta el objetivo manual (v12 §6.2). Lo que este caso persigue es la SEGUNDA COPIA del
+    // estado, no la forma del handler, y eso lo cierran los dos conteos de `useState` de abajo.
+    expect(formula).toContain("value={pal}");
+    expect(formula).toContain("setPal(v)");
     expect(formula).toContain("value={deficit}");
     expect(formula).toContain("onChange={(e) => setDeficit(e.target.value)}");
     const seccion = bloque("function CadenaCaloricaSection", "export function TreatmentPanel");
