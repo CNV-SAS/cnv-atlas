@@ -59,7 +59,23 @@ export const patients = pgTable(
      */
     cuentaComoDePrueba: boolean("cuenta_como_de_prueba").notNull().default(false),
     createdAt: createdAt(),
+    /**
+     * RETIRO LOGICO del paciente. La fila y su historia se conservan (15 anos, `DATA_GOVERNANCE.md`): lo
+     * que esta marca hace es sacarlo de todas las superficies de trabajo, y la filtran once lectores.
+     *
+     * Existe desde la 0000 y hasta la 0233 NO LA ESCRIBIA NADIE, que es la mitad de pieza que se lee como
+     * construida. Las tres columnas de al lado son las que la 0233 le puso: sin ellas, un paciente
+     * retirado no contestaba quien lo retiro ni por que.
+     */
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    /** La PETICION del profesional (0233). Nula = nadie ha pedido nada. */
+    eliminacionPedidaAt: timestamp("eliminacion_pedida_at", { withTimezone: true }),
+    /** Quien la pidio (profiles.id). Sin FK: ver la nota de la 0229 sobre los embeds de PostgREST. */
+    eliminacionPedidaPor: uuid("eliminacion_pedida_por"),
+    /** El motivo, UNO, que viaja de la peticion al acto. Amarrado por CHECK a la peticion. */
+    eliminacionMotivo: text("eliminacion_motivo"),
+    /** Quien EJECUTO el retiro (direccion o admin). Amarrado por CHECK a `deletedAt`. */
+    eliminadoPor: uuid("eliminado_por"),
   },
   (t) => [
     unique("patients_org_document_unique").on(

@@ -27,6 +27,8 @@ import {
 import { PanelAutorizaciones } from "@/modules/consent/components/panel-autorizaciones";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { DesmarcarDePrueba, ProponerDePrueba } from "@/modules/patients/components/propuestas-de-prueba";
+import { PedirEliminacionDelPerfil } from "@/modules/patients/components/eliminar-perfil";
+import { canProposePatientDeletion } from "@/modules/patients/policies/can-delete-patient";
 import { leyendaDePrueba } from "@/modules/patients/de-prueba";
 import { ConsentimientosOrigenHtml } from "@/modules/consent/components/consentimientos-origen-html";
 import {
@@ -264,6 +266,36 @@ export default async function HistoriaPacientePage({
           </p>
         ) : (
           <ProponerDePrueba patientId={patientId} />
+        )}
+      </Panel>
+
+      {/* ═══ ELIMINAR EL PERFIL (v12 §1.2, 0233) ═══
+
+          VA DESPUES DE "¿es de prueba?" Y NO EN LA LISTA, al contrario que en su HTML, donde cada fila
+          lleva su "Eliminar perfil" en una segunda linea. Dos razones:
+
+            1 · LA LISTA SE RECORRE CON PRISA. Es la pantalla de trabajo, y el acto que saca a un paciente
+                de todas las demas no puede estar en la fila que se repasa buscando a otro.
+            2 · AQUI YA SE CONFIRMO QUE ES ESTA PERSONA. La ficha dice su nombre, su documento y sus
+                consultas; en la lista, la fila de al lado es la de un homonimo.
+
+          Y ES EL ULTIMO PANEL A PROPOSITO: el orden de la ficha va de lo que se usa cada dia a lo que se
+          usa una vez. Debajo de el no hay nada que buscar. */}
+      <Panel titulo="Eliminar el perfil">
+        {paciente.eliminacionPedida ? (
+          <p className="text-sm text-muted-foreground">
+            Ya se pidió eliminar este perfil y un administrador lo está revisando. Mientras tanto el paciente
+            sigue aquí y se le puede atender.
+            {paciente.motivoDeEliminacion ? (
+              <span className="ml-1">Motivo: &ldquo;{paciente.motivoDeEliminacion}&rdquo;</span>
+            ) : null}
+          </p>
+        ) : canProposePatientDeletion(user) ? (
+          <PedirEliminacionDelPerfil patientId={patientId} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Esto lo pide el profesional que lo atiende.
+          </p>
         )}
       </Panel>
     </div>

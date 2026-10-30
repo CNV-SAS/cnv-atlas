@@ -142,7 +142,16 @@ create table public.patients (
   document_number text not null,
   status patient_status not null default 'active',
   created_at timestamptz not null default now(),
+  -- RETIRO LOGICO. Lo filtran once lectores; la fila y la historia se conservan (15 anos).
   deleted_at timestamptz,
+  -- Quien PIDIO eliminar el perfil, cuando y por que, y quien lo EJECUTO (migracion 0233, v12 §1.2).
+  -- Dos CHECK los amarran: no hay peticion sin motivo, ni `deleted_at` sin peticion (la asimetria de la
+  -- 0180: el profesional pide, un administrador ejecuta). Un trigger impide escribir `deleted_at` con la
+  -- clave publica, aunque la policy deje tocar la fila.
+  eliminacion_pedida_at timestamptz,
+  eliminacion_pedida_por uuid,
+  eliminacion_motivo text,
+  eliminado_por uuid,
   unique (organization_id, document_type, document_number)
 );
 

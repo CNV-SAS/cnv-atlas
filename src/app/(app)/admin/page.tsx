@@ -10,7 +10,15 @@ import { UserRowActions } from "@/modules/auth/components/user-row-actions";
 import { MarcaDeAvisos } from "@/modules/avisos/components/marca-de-avisos";
 import { listarUsuariosInternosConMarcas } from "@/modules/avisos/data/avisos-repository";
 import { ResolverPropuestas } from "@/modules/patients/components/propuestas-de-prueba";
+import {
+  PacientesEliminados,
+  ResolverEliminaciones,
+} from "@/modules/patients/components/eliminar-perfil";
 import { propuestasDePruebaPendientes } from "@/modules/patients/data/de-prueba-writer";
+import {
+  pacientesEliminados,
+  peticionesDeEliminacionPendientes,
+} from "@/modules/patients/data/eliminacion-del-paciente-writer";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { leyendaDeProfesionalDePrueba } from "@/modules/professionals/de-prueba";
 import { requireUser } from "@/modules/auth/session";
@@ -44,6 +52,12 @@ export default async function AdminPage() {
   const byProfile = new Map((profRows ?? []).map((p) => [p.profile_id, p]));
   const internos = await listarUsuariosInternosConMarcas();
   const propuestasDePrueba = await propuestasDePruebaPendientes();
+  // LAS DOS LISTAS DEL RETIRO DE PERFILES (0233), en paralelo con lo demas: son dos consultas pequenas y
+  // la pantalla ya hace varias.
+  const [peticionesDeEliminacion, eliminados] = await Promise.all([
+    peticionesDeEliminacionPendientes(),
+    pacientesEliminados(),
+  ]);
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -143,6 +157,38 @@ export default async function AdminPage() {
           <ResolverPropuestas propuestas={propuestasDePrueba} />
         </section>
       ) : null}
+      {/* ═══ PETICIONES DE ELIMINAR UN PERFIL (v12 §1.2, 0233) ═══
+          AQUI Y NO EN /direccion, aunque su instruccion diga "direccion cientifica": ese rol no accede a
+          datos de paciente por diseno, y esta bandeja necesita el nombre y el documento. La policy lo
+          explica y va al documento de dudas.
+          Y JUNTO A LA BANDEJA DE LA 0180 porque son el mismo acto en dos grados: las dos sacan al paciente
+          de algo, las dos las pide el profesional con motivo y las dos las resuelve quien no se beneficia. */}
+      {peticionesDeEliminacion.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-bold">Peticiones de eliminar un perfil</h2>
+          <p className="text-sm text-muted-foreground">
+            Eliminar el perfil lo saca de todas las pantallas: de la lista, de las cifras y de la cohorte de
+            investigación. No borra su historia clínica, que la ley obliga a conservar 15 años, y se puede
+            restituir. Para eliminarlo hay que escribir su documento.
+          </p>
+          <ResolverEliminaciones peticiones={peticionesDeEliminacion} />
+        </section>
+      ) : null}
+
+      {/* LOS YA ELIMINADOS, Y ESTA SECCION ES LA QUE HACE REVERSIBLE EL ACTO: un perfil eliminado no
+          aparece en ninguna otra pantalla (once lectores lo filtran), asi que sin esta lista restituirlo
+          exigiria conocer su id y un error seria irreversible en la practica. */}
+      {eliminados.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-bold">Perfiles eliminados</h2>
+          <p className="text-sm text-muted-foreground">
+            No salen en ninguna otra pantalla. Si alguno se eliminó por error, aquí vuelve con su historia
+            completa.
+          </p>
+          <PacientesEliminados eliminados={eliminados} />
+        </section>
+      ) : null}
+
       <section className="flex flex-col gap-2">
         <h2 className="font-bold">Crear usuario</h2>
         <CreateUserForm />

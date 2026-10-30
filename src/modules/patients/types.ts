@@ -181,6 +181,12 @@ export type PatientDetail = {
   /** Propuesto por el profesional y sin confirmar: TODAVIA cuenta en todo. Ver `de-prueba.ts`. */
   propuestoDePrueba: boolean;
   motivoDePrueba: string | null;
+  /**
+   * Hay una peticion de ELIMINAR el perfil esperando a la direccion (0233). El paciente sigue entero y
+   * se le puede atender: lo unico que cambia es que no se puede pedir dos veces.
+   */
+  eliminacionPedida: boolean;
+  motivoDeEliminacion: string | null;
   firstName: string;
   lastName: string;
   birthDate: string | null;
