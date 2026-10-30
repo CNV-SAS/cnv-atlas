@@ -19,6 +19,7 @@ import { type EngineIndicators, indicatorSeverities, isBisDerivedDomain } from "
 import { veredictoSev } from "@/clinical-engine/severity";
 import {
   cifraEbBis,
+  cifraIae,
   ebBisParaElProfesional,
   NOTA_DFI_SIN_ENCUESTA,
 } from "@/clinical-engine/presentacion-eb-bis";
@@ -108,6 +109,16 @@ const DOMAIN_ICON: Record<string, LucideIcon> = {
 // regla (los decimales los fija el corte) y el barrido de los doce indicadores viven alli y en BRAND.
 function fmtNum(v: number | null, code?: string): string {
   if (v == null) return "N/D";
+  // ═══ EL IAE SIEMPRE CON SIGNO, Y AQUI PARA LAS DOS SUPERFICIES (Santiago, 2026-10-30) ═══
+  //
+  // Literal suyo: *"El IAE sin signo: la tabla dice '3,5' y su tabla 3 pide 1 decimal con signo:
+  // '+3,5'"*. El signo no es adorno: es lo unico que dice si el envejecimiento va adelante o atras, y
+  // sin el un IAE de −3,5 y uno de +3,5 se imprimen igual.
+  //
+  // Va EN EL FORMATEADOR y no en la celda porque esta pantalla pinta el IAE DOS VECES: en la tabla de
+  // indicadores y en la tarjeta inline del dominio de envejecimiento. Arreglar solo la celda de la tabla
+  // habria dejado la tarjeta sin signo, que es la misma cifra sin la mitad de su informacion.
+  if (code === "IAE") return cifraIae(v);
   // Coma decimal (lib/format/decimal): las tarjetas del DFI de esta misma pantalla traen las cadenas del
   // motor, que ya vienen en español ("IFC 6,98"). Con toFixed crudo el mismo renglon mezclaba 6,98 y 6.68.
   return fmtDec(v, code ? decimalesDe(code) : DECIMALES_POR_DEFECTO);
@@ -391,9 +402,12 @@ export function EvaluationResults({
                     ? cifraEbBis(edadCronologica)
                     : "-"
                   : (range?.reference ?? "-");
+                // Y LA Δ DE LA FILA DEL EB ES EL IAE, asi que sale por el MISMO formateador con signo que
+                // la fila del IAE. Antes lo componia a mano aqui con su propio ternario, que es como el
+                // mismo numero llego a imprimirse de dos formas en la misma tabla.
                 const deltaText = isEb
                   ? indicators.iae != null
-                    ? `${indicators.iae >= 0 ? "+" : ""}${cifraEbBis(Math.abs(indicators.iae))}`
+                    ? cifraIae(indicators.iae)
                     : "-"
                   : (range?.delta ?? "-");
                 // EB toma la severidad y la etiqueta del IAE (comparten el veredicto de envejecimiento).

@@ -104,10 +104,23 @@ describe("(c) el diagnostico dice que se reemitio", () => {
     expect(MARCA, "la marca de reemision uso un color clinico").not.toMatch(/clinical-(critical|warning)/);
   });
 
-  it("deja ver la version anterior con los MISMOS textos que la vigente", () => {
-    // Comparar dos cifras es el punto; comparar dos vocabularios no.
-    expect(MARCA).toContain("bandaIae(reemision.anterior.iae)");
+  it("deja ver la version anterior con sus CIFRAS y SIN la frase de la v7 (Santiago, 2026-10-30)", () => {
+    // ═══ ESTE CANDADO SE DIO LA VUELTA AL DIA SIGUIENTE DE ESCRIBIRSE, Y CON RAZON ═══
+    //
+    // Nacio exigiendo que las cifras viejas salieran con los textos de la tabla 3, "los mismos que el
+    // documento vigente, para que la comparacion sea entre dos cifras y no entre dos vocabularios".
+    //
+    // Santiago: *"la cifra v5 sale con 'acorde con sus pares', que es texto de la v7: el documento viejo
+    // no decia eso. Que muestre la cifra sin la frase nueva."* El bloque se rotula "Lo que decia el
+    // documento anterior", asi que ponerle la frase de la v7 no homogeneiza un vocabulario: AFIRMA QUE UN
+    // DOCUMENTO CLINICO DIJO ALGO QUE NO DIJO, en el unico sitio de la pantalla que pretende citarlo. Y
+    // peor: la banda del IAE de la v7 tiene otros cortes que la vieja, asi que la frase puede contradecir
+    // la clasificacion que ese documento llevaba impresa.
+    //
+    // Es la misma regla que el freno de trayectoria: lo ya emitido no se re-rotula con la ciencia de hoy.
     expect(MARCA).toContain("cifraEbBis(reemision.anterior.eb)");
+    expect(MARCA).toContain("cifraIae(reemision.anterior.iae)");
+    expect(MARCA, "la cita del documento anterior lleva la banda de la v7").not.toContain("bandaIae");
   });
 
   it("y la marca se DERIVA, sin columna que acordarse de poner", () => {

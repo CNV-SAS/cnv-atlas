@@ -52,8 +52,24 @@ export function textoEbBis(eb: number): string {
  * dice "entre -5,0 y +5,0". Un IAE de exactamente +5,0 es acelerado, no intermedio.
  */
 export function textoIae(iae: number): string {
-  const conSigno = `${iae > 0 ? "+" : iae < 0 ? "-" : ""}${enEspanol(Math.abs(iae))} años`;
-  return `${conSigno}: ${bandaIae(iae)}`;
+  return `${cifraIae(iae)} años: ${bandaIae(iae)}`;
+}
+
+/**
+ * EL IAE SIEMPRE CON SU SIGNO, un decimal y coma. Su tabla 3 pide el formato *"1 decimal con signo"* y lo
+ * escribe asi en su propio ejemplo: *"+12,4 años"*.
+ *
+ * ESTA SEPARADO PORQUE EL SIGNO SE ESCRIBIA A MANO EN TRES SITIOS (Santiago, 2026-10-30: *"El IAE sin
+ * signo: la tabla dice '3,5' y su tabla 3 pide 1 decimal con signo: '+3,5'"*). La celda de Valor de la
+ * tabla de indicadores pasaba por el formateador general, que no sabe que esta cifra es una diferencia y
+ * la pintaba sin signo; las otras dos lo componian con su propio ternario. Un IAE sin signo no dice si el
+ * envejecimiento va adelante o atras, que es TODO lo que ese numero significa.
+ *
+ * EL CERO VA SIN SIGNO ("0,0"): ni "+0,0" ni "-0,0" son ciertos, y su ejemplo solo fija el caso positivo.
+ */
+export function cifraIae(iae: number): string {
+  const signo = iae > 0 ? "+" : iae < 0 ? "-" : "";
+  return `${signo}${enEspanol(Math.abs(iae))}`;
 }
 
 /**

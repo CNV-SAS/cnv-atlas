@@ -41,7 +41,23 @@ const INDICATOR_NAMES: Record<string, { name: string; unit: string | null }> = {
   ISCM: { name: "Índice de Susceptibilidad Cardiometabólica", unit: null },
   IEHH: { name: "Índice del Estado de Hidratación Humana", unit: null },
   IAE: { name: "Índice de Aceleración del Envejecimiento", unit: "años" },
-  EB: { name: "Edad Bioeléctrica (EB-BIS)", unit: "años" },
+  // ═══ SU TABLA 3 DEL 2026-10-26 RETIRA LA DIVERGENCIA D-010/D-011 (Santiago, 2026-10-30) ═══
+  //
+  // Decia "Edad Bioeléctrica (EB-BIS)", y eso NO era un rotulo nuestro: salia de su tercera ronda del
+  // 2026-07-30, donde decidio *"el indicador se llama EB-BIS, Edad Bioeléctrica"* y, mas fuerte, *"la
+  // expresion 'edad biologica' no se usa en ningun contenido del sistema: ni en pantalla, ni en reportes,
+  // ni en documentos cientificos"*, nombrando expresamente la pantalla de resultados de Atlas. Quedo
+  // registrado como divergencia deliberada (A9 de COTEJOS_VISUALES, D-010/D-011).
+  //
+  // SU TABLA 3 DEL 2026-10-26 LO REVIERTE, y lo revierte EL: las dos filas de la EB-BIS y del IAE dicen
+  // "Profesional y paciente" y la frase que escribe es *"Edad biologica estimada: 76,4 años"*. O sea que
+  // vuelve a usar la expresion, ahora con "estimada", que es justo el matiz que su objecion pedia (lo que
+  // le molestaba era afirmar la edad del cuerpo, no estimarla). Lo nuevo manda y es mas especifico, igual
+  // que la tabla 3 mando sobre el "Concordante" de su capa de display vieja el 29 de octubre.
+  //
+  // LA SIGLA NO SE PIERDE, que era el fondo de su decision del 30 de julio: la fila pinta "EB-BIS" como
+  // etiqueta y este nombre al lado, asi que se lee "EB-BIS · Edad biológica estimada".
+  EB: { name: "Edad biológica estimada", unit: "años" },
   FMI: { name: "Índice de Masa Grasa", unit: "kg/m2" },
   FFMI: { name: "Índice de Masa Libre de Grasa", unit: "kg/m2" },
   AF: { name: "Ángulo de Fase a 50 kHz", unit: "grados" },

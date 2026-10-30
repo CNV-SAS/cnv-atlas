@@ -1625,6 +1625,13 @@
       "when": 1792862143446,
       "tag": "0231_el_visto_bueno_del_control_biologico",
       "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1792862144446,
+      "tag": "0232_registro_del_motor",
+      "breakpoints": true
     }
   ]
 }
