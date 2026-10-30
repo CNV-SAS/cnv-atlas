@@ -321,7 +321,7 @@ describe("los DOS canales son el mismo documento, no dos documentos", () => {
     "Tu seguimiento": "la observación de la consulta y la próxima cita: son del informe, no del plan",
     // LA HOJA NUEVA DEL INFORME (2026-10-30): la figura y las cinco áreas pasaron a su propia página, con
     // su título. Es diagnóstico, como "Cómo estás", del que se partió; la hoja de la cocina no lo lleva.
-    "Cómo estás, área por área":
+    "Tu evaluación bioeléctrica integral, área por área":
       "la figura del radar y las cinco áreas, en su propia hoja del informe: es diagnóstico, no plan",
   };
 
