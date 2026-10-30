@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 
 import { formatDate } from "@/lib/format/date";
 
+import {
+  BarraDeProporcion,
+  BarrasDeLaCohorte,
+} from "@/modules/obbia/components/barras-de-la-cohorte";
 import { leerCohorteDeInvestigacion } from "@/modules/obbia/data/cohorte-reader";
 import { getResearchDatasets } from "@/modules/obbia/data/research-reader";
 import { canViewObbia } from "@/modules/obbia/policies/can-view-obbia";
@@ -123,6 +127,34 @@ export default async function ObbiaPage() {
           />
         </div>
 
+        {/* ═══ LOS PACIENTES DEL HTML: QUE SE PUEDE HACER CON ELLOS (Santiago, 2026-10-30) ═══
+
+            LA CIFRA SOLA NO LO DICE, y la diferencia es jurídica, no de conteo: el consentimiento que
+            esos pacientes firmaron (el del HTML) NO TENÍA CASILLA DE INVESTIGACIÓN, así que no hay nada
+            que autorice usar sus datos fila a fila. No es que hayan dicho que no: es que nadie les
+            preguntó.
+
+            POR ESO ENTRAN EN ESTAS CIFRAS Y NO EN UN DATASET. Las cuentas agregadas de esta pantalla no
+            necesitan su autorización (nadie es identificable en un conteo por cohorte, que es la regla 3
+            del uso agregado de `DATA_GOVERNANCE.md`); un dataset fila a fila sí, porque sería
+            seudonimizado y eso sigue siendo dato personal.
+
+            Y LA SALIDA EXISTE, que es lo que hay que decir en vez de dejarlo como una pérdida: si firman
+            el consentimiento de Atlas (la regularización que ya ofrece la ficha), entran. Por eso la
+            cifra de arriba cuenta "importadas Y autorizadas": las que ya lo hicieron. */}
+        {cohorte.importadasVigentes > 0 ? (
+          <p className="max-w-prose rounded border border-border bg-muted/30 p-2 text-xs text-foreground">
+            <strong>
+              De las {cohorte.importadasVigentes} consultas importadas del HTML, {cohorte.importadas}{" "}
+              {cohorte.importadas === 1 ? "entra" : "entran"} a un dataset
+            </strong>
+            . Las demás solo se pueden usar <strong>agregadas o anonimizadas</strong>, como las cifras de
+            esta pantalla: el consentimiento del HTML no tenía casilla de investigación, así que no hay
+            nada que autorice usar sus datos fila a fila. No dijeron que no, nadie les preguntó. Si firman
+            el consentimiento de Atlas, entran solas.
+          </p>
+        ) : null}
+
         {/* ═══ LA EXCLUSIÓN POR CALIDAD DE DATO (0230) ═══
 
             Va ARRIBA del desglose por consentimiento y separada de él, porque no es lo mismo: el paciente
@@ -159,6 +191,9 @@ export default async function ObbiaPage() {
                   <th className={th}>Por qué queda fuera</th>
                   <th className={th}>Consultas</th>
                   <th className={th}>Pacientes</th>
+                  {/* LA PROPORCIÓN, que es la pregunta que la tabla no contestaba: con tres razones y
+                      cifras de tres dígitos, cuál pesa más se calculaba a mano. */}
+                  <th className={th}>Peso</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,6 +202,12 @@ export default async function ObbiaPage() {
                     <td className="px-3 py-2 text-foreground">{r.razon}</td>
                     <td className="px-3 py-2 tabular-nums text-muted-foreground">{r.consultas}</td>
                     <td className="px-3 py-2 tabular-nums text-muted-foreground">{r.pacientes}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {/* SOBRE EL TOTAL DE EXCLUIDAS, no sobre las vigentes: lo que esta columna compara
+                          son las razones entre sí, y con el total de la cohorte los tres porcentajes
+                          saldrían pequeños y no se compararían. El rótulo "Peso" lo dice. */}
+                      <BarraDeProporcion valor={r.consultas} total={cohorte.sinAutorizacion} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -207,6 +248,24 @@ export default async function ObbiaPage() {
             nombre con el que se calculó.
           </p>
         ) : null}
+        {/* ═══ LA SERIE, EN BARRAS ANTES QUE EN TABLA (Santiago, 2026-10-30) ═══
+
+            La tabla contesta bien "cuántas hubo en junio" y muy mal la pregunta por la que alguien mira
+            una serie: cómo va. El escalón del mes en que entró el lote del HTML, o dos meses flojos
+            seguidos, se ven de un golpe. La tabla se queda debajo porque en un panel de investigación la
+            cifra exacta es lo que se cita. */}
+        {cohorte.porMes.length > 0 ? (
+          <div className="overflow-x-auto">
+            <BarrasDeLaCohorte
+              barras={cohorte.porMes.map((m) => ({ etiqueta: m.mes, valor: m.evaluaciones }))}
+              ariaLabel={
+                `Consultas autorizadas por mes de la medición: ` +
+                cohorte.porMes.map((m) => `${m.mes}, ${m.evaluaciones}`).join("; ") +
+                "."
+              }
+            />
+          </div>
+        ) : null}
         {cohorte.porMes.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[320px] text-left text-sm">
@@ -246,6 +305,28 @@ export default async function ObbiaPage() {
           El nivel no se escribe: se deriva de lo que el archivo lleva. Para producir uno anonimizado hay
           que quitar la llave del paciente, generalizar los cuasi-identificadores y verificar el
           k-anonimato, y esa verificación todavía no está construida.
+        </p>
+        {/* ═══ LO QUE SÍ SE PUEDE LLEVAR HOY, Y QUEDA REGISTRADO (Santiago, 2026-10-30) ═══
+
+            VA AQUÍ, debajo del párrafo que explica por qué el dataset fila a fila no se puede, y no
+            arriba junto a las cifras: el orden de lectura es "esto es lo que hay, esto es lo que no se
+            puede, y esto es lo que sí". Ofrecer la descarga antes de decir qué nivel tiene sería
+            ofrecerla sin su etiqueta.
+
+            ES UN ENLACE NORMAL, no un botón con JavaScript: la descarga la resuelve el navegador, así
+            que funciona igual en un teléfono y esta pantalla sigue siendo un Server Component sin una
+            sola línea de cliente. Y la descarga QUEDA REGISTRADA (`research_datasets` más el asiento de
+            auditoría), que es la mitad por la que esa tabla existía vacía. */}
+        <a
+          href="/obbia/cohorte/csv"
+          className="mt-3 inline-flex items-center rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+        >
+          Descargar el resumen (CSV)
+        </a>
+        <p className="mt-1 max-w-prose text-xs text-muted-foreground">
+          Lleva las cifras de esta pantalla y sus desgloses, no filas de paciente. Cada descarga queda
+          registrada abajo con su alcance y su nivel: un archivo de investigación que sale sin rastro es
+          lo que ese registro existe para impedir.
         </p>
       </div>
 
