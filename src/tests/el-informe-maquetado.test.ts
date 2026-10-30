@@ -146,7 +146,7 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
   it("(b) la figura y las cinco areas abren su PROPIA hoja", () => {
     // LA MEDICION QUE IMPORTA: el primer texto de la segunda pagina ES el título de esa hoja. Si el salto
     // no estuviera, la página empezaría por donde quedó cortado el bloque anterior.
-    expect(primerTexto(PAGINAS[1])).toContain("Cómo estás, área por área");
+    expect(primerTexto(PAGINAS[1])).toContain("Tu evaluación bioeléctrica integral, área por área");
   });
 
   it("(c) el radar entra CENTRADO, con la cifra derivada y no escrita", () => {

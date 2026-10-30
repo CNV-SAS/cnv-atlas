@@ -334,10 +334,10 @@ export function ReportDocument({
             figura deja de depender de cuanto texto haya salido antes, que es lo que lo hacia cambiar de un
             paciente a otro.
 
-            ═══ EL TITULO: EL SUYO DICE "salud bioelectrica" Y PROPONGO OTRO ═══
+            ═══ EL TITULO DE ESTA HOJA, EN TRES PASOS (cerrado por Santiago el 2026-10-30) ═══
 
             Su propuesta era *"Tu salud bioelectrica en cinco dominios"*, y pidio decirlo si habia una
-            mejor. Hay dos razones para cambiarla, y las dos son del contenido de la hoja:
+            mejor. Devolvi dos objeciones, las dos del contenido de la hoja:
 
               1 · DOS DE LAS CINCO AREAS NO SALEN DE LA MEDICION BIOELECTRICA. Conductual-Perceptual y
                   Epigenetico-Contextual salen de lo que el paciente CONTO en la encuesta. Llamar
@@ -347,11 +347,18 @@ export function ReportDocument({
                   area por separado"*. "Dominios" seria una segunda palabra para la misma cosa en la misma
                   hoja, y es la palabra interna (el motor los llama dominios; el paciente no).
 
-            Asi que el titulo recoge el de la hoja anterior: "Como estas" y "Como estas, area por area".
-            El par dice solo lo que la hoja hace, sin terminologia nueva. ═══ */}
+            Y EL CIERRE ES SUYO, con una razon que no estaba en la mesa: *"Santiago quiere 'bioelectrica'
+            en el titulo, para posicionar el sistema"*. Eso no es cosmetico, es de producto, y no lo
+            decide el contenido de la hoja. Su salida mete las dos cosas: *"Tu evaluacion bioelectrica
+            INTEGRAL, area por area"*, porque *"'integral' es la palabra que cubre los ejes de la
+            encuesta, y es la misma razon por la que el DFI se llama integral"*.
+
+            Asi que de mis dos objeciones sobrevive la segunda (el titulo dice "area", como el resto del
+            documento, y no introduce "dominios") y la primera queda CONTESTADA, no descartada: lo que
+            afirmaria de mas, lo corrige "integral". ═══ */}
         {showAtlas && dfiPac && dfi.complete ? (
           <View style={styles.section} break>
-            <Text style={styles.sectionTitle}>Cómo estás, área por área</Text>
+            <Text style={styles.sectionTitle}>Tu evaluación bioeléctrica integral, área por área</Text>
             {/* EL RADAR VA ANTES DEL DETALLE, no despues: es el vistazo, y lo que sigue es la
                 explicacion dominio por dominio. Al reves, quien lee las cinco frases ya no necesita la
                 figura. Se dibuja solo; si faltan dominios medidos, no aparece. */}
