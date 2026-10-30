@@ -8,7 +8,12 @@ import { formatDate } from "@/lib/format/date";
 
 import { AccionesPaciente } from "./acciones-paciente";
 import { ANCHO_NOMBRE, COLUMNAS_PACIENTES } from "../columnas";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import {
+  nombreVisibleDelRoster,
+  porEvaluacionReciente,
+  porNombreVisible,
+} from "../roster-fila";
+import { ArrowDown10, ArrowDownAZ, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { FilaLista, ListaFilas } from "@/components/shared/fila-lista";
 import { avisoDeHuellaRepetida } from "@/modules/bis/huella-repetida";
 
@@ -66,9 +71,24 @@ const POR_PAGINA = 20;
 // en un listado clinico y haria visible el orden viejo; se descarta porque cambia como se NOMBRA a cada
 // paciente en una pantalla que el equipo ya lee, y a cambio de un orden que el buscador vuelve secundario
 // (busca dentro del nombre completo, asi que encontrar por apellido sigue funcionando igual).
-const nombreVisible = (p: PatientListItem) => `${p.firstName} ${p.lastName}`.trim();
+//
+// Y DESDE EL 2026-10-30 EL NOMBRE Y LOS DOS COMPARADORES VIVEN EN `roster-fila`, con el lector: la
+// pantalla reordena al hidratar lo que el servidor ya ordeno, y dos escrituras del mismo orden se ven
+// como una lista que salta.
+const nombreVisible = nombreVisibleDelRoster;
 
 type Orden = "alfabetico" | "reciente";
+
+// ═══ EL ORDEN POR DEFECTO ES EL DE LA CONSULTA MAS RECIENTE (v12 §1.1, 2026-10-30) ═══
+//
+// Su cambio, literal: *"la lista salia en orden alfabetico. Ahora sale por la ultima consulta, la mas
+// reciente arriba; el nombre solo desempata"*. El conmutador ya existia desde el 2026-09-10, asi que lo
+// unico que cambia es con cual abre, y abre con el que responde la pregunta de quien abre la lista: a
+// quien atendi hoy. A-Z sigue a un clic, y el buscador hace innecesario recorrer el alfabeto.
+//
+// TIENE QUE SER EL MISMO QUE `ordenarElRoster`, que es el que manda el servidor. Si divergen, la lista se
+// pinta en un orden y salta al otro al hidratar.
+const ORDEN_INICIAL: Orden = "reciente";
 
 export function ListaPacientes({
   pacientes,
@@ -82,7 +102,7 @@ export function ListaPacientes({
   // no a la ficha del paciente (que es su padre declarado). Ver `volver-a-destino.ts`.
   const conOrigenActual = useConOrigen();
   const [busqueda, setBusqueda] = useState("");
-  const [orden, setOrden] = useState<Orden>("alfabetico");
+  const [orden, setOrden] = useState<Orden>(ORDEN_INICIAL);
   const [pagina, setPagina] = useState(1);
   // ═══ LOS ARCHIVADOS NO SALEN, SALVO QUE SE PIDAN (Santiago, 2026-09-10) ═══
   //
@@ -126,22 +146,8 @@ export function ListaPacientes({
           });
     // SIN MUTAR: `sort` ordena en sitio, y `pacientes` es la prop. Ordenarla ahi cambiaria el arreglo del
     // padre y el orden dependeria de cuantas veces se ha renderizado.
-    const orden_ = [...base];
-    if (orden === "alfabetico") {
-      orden_.sort((a, b) => nombreVisible(a).localeCompare(nombreVisible(b), "es"));
-    } else {
-      // MAS RECIENTE PRIMERO, y los que no tienen ninguna evaluacion AL FINAL: un paciente sin medir no es
-      // "el mas antiguo", es otra cosa, y colarlo entre las fechas haria leer una antiguedad que no existe.
-      orden_.sort((a, b) => {
-        if (a.lastEvaluationDate === b.lastEvaluationDate) {
-          return nombreVisible(a).localeCompare(nombreVisible(b), "es");
-        }
-        if (!a.lastEvaluationDate) return 1;
-        if (!b.lastEvaluationDate) return -1;
-        return b.lastEvaluationDate.localeCompare(a.lastEvaluationDate);
-      });
-    }
-    return orden_;
+    // LOS DOS COMPARADORES SON LOS DEL LECTOR (`roster-fila`), no copias de aqui: ver la nota de arriba.
+    return [...base].sort(orden === "alfabetico" ? porNombreVisible : porEvaluacionReciente);
   }, [pacientes, busqueda, orden, verArchivados]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA));
@@ -202,26 +208,50 @@ export function ListaPacientes({
         {buscador}
         {/* DOS BOTONES Y NO UN DESPLEGABLE: son dos opciones, y un desplegable de dos obliga a abrirlo
             para ver que hay dentro. Asi las dos estan a la vista y el estado se lee sin tocar nada.
-            `aria-pressed` y no `role="radiogroup"`: son dos conmutadores de vista, no un formulario. */}
+            `aria-pressed` y no `role="radiogroup"`: son dos conmutadores de vista, no un formulario.
+
+            ═══ LA FLECHA DICE HACIA DONDE CORRE CADA ORDEN (v12 §1.1, 2026-10-30) ═══
+
+            Los dos rotulos nombran el CRITERIO ("A-Z", "Evaluación reciente") y ninguno decia la
+            DIRECCION, que es lo que hay que saber para leer la primera fila: "Evaluación reciente" se
+            puede entender igual de bien como la mas nueva arriba o como la mas vieja. Con el orden
+            alfabetico por defecto la duda no aparecia (el alfabeto solo corre hacia un lado); desde que
+            abre por fecha, si.
+
+            VA EN LOS DOS Y NO SOLO EN EL ACTIVO: la flecha del inactivo es lo que deja ANTICIPAR como
+            quedaria la lista antes de pulsar, y una flecha que aparece y desaparece se lee como un
+            cambio de estado y no como la propiedad del orden que es. */}
         <div className="flex shrink-0 items-center gap-1 rounded-full border border-input p-0.5">
           {(
             [
-              ["alfabetico", "A-Z"],
-              ["reciente", "Evaluación reciente"],
+              ["alfabetico", "A-Z", ArrowDownAZ, "Ordenar por nombre, de la A a la Z"],
+              [
+                "reciente",
+                "Evaluación reciente",
+                ArrowDown10,
+                "Ordenar por última consulta, la más reciente arriba",
+              ],
             ] as const
-          ).map(([id, rotulo]) => (
+          ).map(([id, rotulo, Flecha, rotuloCompleto]) => (
             <button
               key={id}
               type="button"
               aria-pressed={orden === id}
+              // LA DIRECCION, TAMBIEN EN PALABRAS: la flecha la dice a quien la ve, y este rotulo a quien
+              // no (lector de pantalla) y a quien pasa el raton por encima sin saber que significa.
+              aria-label={rotuloCompleto}
+              title={rotuloCompleto}
               onClick={() => setOrden(id)}
               className={
-                "rounded-full px-3 py-1.5 text-xs font-medium transition-colors " +
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors " +
                 (orden === id
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground")
               }
             >
+              {/* DECORATIVO para quien usa lector de pantalla: la direccion ya va en el rotulo accesible
+                  del boton, y un icono anunciado aparte lo repetiria sin añadir nada. */}
+              <Flecha aria-hidden className="size-3.5" />
               {rotulo}
             </button>
           ))}

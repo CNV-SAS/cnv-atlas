@@ -190,15 +190,59 @@ export function filaDelRoster(
 }
 
 /**
+ * El nombre COMO SE MUESTRA en la fila.
+ *
+ * POR "nombre apellido" y no por apellido (2026-09-09): se ordenaba por algo que no esta a la vista, asi
+ * que la lista se veia desordenada. Vive aqui, con los comparadores, porque la pantalla tambien lo pinta:
+ * escrito dos veces es como se consigue que ordenar y mostrar se separen otra vez.
+ */
+export function nombreVisibleDelRoster(p: PatientListItem): string {
+  return `${p.firstName} ${p.lastName}`.trim();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS DOS ORDENES DE LA LISTA, UNA SOLA ESCRITURA  ·  (v12 §1.1, aplicado el 2026-10-30)
+//
+// EL SERVIDOR Y LA PANTALLA ORDENAN CON LA MISMA FUNCION, y eso no es limpieza: el lector ordena lo que
+// manda y el componente reordena al hidratar, asi que dos comparadores capaces de diferir se ven como una
+// lista que SALTA entre lo que se pinta primero y lo que queda. Antes el del servidor vivia aqui y el de
+// la pantalla dentro del componente, uno al lado del otro sin tocarse.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** A-Z por el nombre visible, en español (la ñ y las tildes no son caracteres sueltos). */
+export function porNombreVisible(a: PatientListItem, b: PatientListItem): number {
+  return nombreVisibleDelRoster(a).localeCompare(nombreVisibleDelRoster(b), "es");
+}
+
+/**
+ * La consulta MAS RECIENTE ARRIBA, y el nombre solo desempata (v12 §1.1 literal).
+ *
+ * LOS QUE NO TIENEN NINGUNA EVALUACION VAN AL FINAL, no al principio: un paciente sin medir no es "el mas
+ * antiguo", es otra cosa, y colarlo entre las fechas haria leer una antiguedad que no existe.
+ */
+export function porEvaluacionReciente(a: PatientListItem, b: PatientListItem): number {
+  if (a.lastEvaluationDate === b.lastEvaluationDate) return porNombreVisible(a, b);
+  if (!a.lastEvaluationDate) return 1;
+  if (!b.lastEvaluationDate) return -1;
+  return b.lastEvaluationDate.localeCompare(a.lastEvaluationDate);
+}
+
+/**
  * EL ORDEN BASE con el que la lista llega a la pantalla.
  *
- * POR EL NOMBRE COMO SE MUESTRA ("nombre apellido") y no por apellido (2026-09-09): ordenaba por algo que
- * no esta a la vista, asi que la lista se veia desordenada. La vista tiene ademas su propio conmutador
- * (A-Z / evaluacion reciente), y las dos capas tienen que decir lo mismo: dos ordenes distintos es como
- * se consigue que la lista salte al hidratar.
+ * ES EL DE LA CONSULTA MAS RECIENTE desde el 2026-10-30 (v12 §1.1: *"ahora sale por la ultima consulta,
+ * la mas reciente arriba; el nombre solo desempata"*), y tiene que ser el MISMO que el por defecto del
+ * conmutador de la pantalla. Era alfabetico, que es el que su propio archivo cambio.
+ *
+ * SOBRE SU OTRA FRASE (*"en produccion el orden debe venir de la consulta al servidor, no de ordenar en
+ * el navegador una lista ya descargada"*): lo que ese consejo previene es ordenar una pagina, que deja un
+ * orden que depende de que paginas se bajaron. Aqui no aplica, y conviene saber por que: la vista
+ * `pacientes_del_roster` devuelve el roster COMPLETO en una fila por paciente y la paginacion es de la
+ * pantalla, sobre el arreglo entero. Y la fecha por la que se ordena no es una columna de la vista: sale
+ * de `evaluaciones` (jsonb) despues de aplicar las reglas de este modulo, asi que un `order by` en la
+ * consulta ordenaria por otra cosa. El dia que la lista se pagine en el servidor, esa fecha tiene que
+ * subir a la vista como columna y el orden irse con ella.
  */
 export function ordenarElRoster(items: PatientListItem[]): PatientListItem[] {
-  return items.sort((a, b) =>
-    `${a.firstName} ${a.lastName}`.trim().localeCompare(`${b.firstName} ${b.lastName}`.trim(), "es"),
-  );
+  return items.sort(porEvaluacionReciente);
 }

@@ -26,26 +26,59 @@ describe("se ordena por lo que se ve", () => {
     // El ancla de todo lo demas: si algun dia la fila pasa a "Apellido, Nombre", los dos ordenes de abajo
     // dejan de ser los correctos y este caso obliga a mirarlo.
     expect(VISTA).toContain('titulo={nombreVisible(p) || "Sin nombre"}');
-    expect(VISTA).toContain("const nombreVisible = (p: PatientListItem) => `${p.firstName} ${p.lastName}`");
+    expect(READER).toContain("return `${p.firstName} ${p.lastName}`.trim();");
+    expect(READER, "el nombre visible volvió a armarse por apellido").not.toContain(
+      "`${p.lastName} ${p.firstName}`",
+    );
   });
 
-  it("y las DOS capas ordenan por esa misma cadena", () => {
-    // El reader (orden de llegada) y la vista (conmutador). Se comprueban los dos: arreglar uno solo deja
-    // el salto al hidratar.
-    expect(READER, "el reader volvió a ordenar por apellido").toContain(
-      "`${a.firstName} ${a.lastName}`.trim().localeCompare(`${b.firstName} ${b.lastName}`.trim(), \"es\")",
+  // ═══ LAS DOS CAPAS YA NO "COINCIDEN": COMPARTEN LA FUNCION (2026-10-30) ═══
+  //
+  // Antes este bloque comprobaba que el comparador del lector y el de la vista dijeran lo mismo, cada uno
+  // escrito en su archivo. Eso es comparar dos copias: pasa verde mientras las dos digan lo mismo, y el
+  // dia que una cambie el candado nombra el sintoma (el salto al hidratar) en vez de impedirlo. Ahora los
+  // dos ordenes viven una sola vez en `roster-fila` y lo que se prohibe es volver a escribirlos.
+  it("y las DOS capas ordenan con la MISMA funcion, no con dos copias", () => {
+    expect(READER).toContain("export function porNombreVisible");
+    expect(READER).toContain("export function porEvaluacionReciente");
+    expect(VISTA).toContain(
+      'sort(orden === "alfabetico" ? porNombreVisible : porEvaluacionReciente)',
     );
-    expect(READER, "el reader ordena por un campo que no se pinta").not.toContain(
-      "`${a.lastName} ${a.firstName}`",
+    // Y LA VISTA NO VUELVE A COMPARAR POR SU CUENTA: un `localeCompare` suyo seria la segunda copia.
+    expect(VISTA, "la vista volvió a escribir su propio orden").not.toContain("localeCompare");
+    expect(VISTA, "la vista volvió a mirar la fecha por su cuenta").not.toContain(
+      "lastEvaluationDate",
     );
-    expect(VISTA).toContain('nombreVisible(a).localeCompare(nombreVisible(b), "es")');
   });
 
   it("y el orden por evaluación reciente deja al final a quien no tiene ninguna", () => {
     // Un paciente sin medir no es "el mas antiguo": colarlo entre las fechas haria leer una antiguedad
     // que no existe.
-    expect(VISTA).toContain("if (!a.lastEvaluationDate) return 1;");
-    expect(VISTA).toContain("if (!b.lastEvaluationDate) return -1;");
+    expect(READER).toContain("if (!a.lastEvaluationDate) return 1;");
+    expect(READER).toContain("if (!b.lastEvaluationDate) return -1;");
+  });
+
+  // ═══ EL ORDEN POR DEFECTO, Y QUE SEA EL MISMO EN LAS DOS CAPAS (v12 §1.1, 2026-10-30) ═══
+  it("la lista abre por la consulta MAS RECIENTE, servidor y pantalla", () => {
+    // Su cambio: *"ahora sale por la ultima consulta, la mas reciente arriba; el nombre solo desempata"*.
+    expect(READER, "el orden base volvió a ser alfabético").toContain(
+      "return items.sort(porEvaluacionReciente);",
+    );
+    expect(VISTA).toContain('const ORDEN_INICIAL: Orden = "reciente";');
+    expect(VISTA).toContain("useState<Orden>(ORDEN_INICIAL)");
+  });
+
+  it("y cada orden dice con una flecha hacia donde corre", () => {
+    // "Evaluación reciente" se entiende igual de bien como la más nueva arriba o como la más vieja, y con
+    // el orden alfabético por defecto esa duda no existía. Las DOS flechas van, también la del inactivo:
+    // es lo que deja anticipar cómo quedaría la lista antes de pulsar.
+    expect(VISTA).toContain('["alfabetico", "A-Z", ArrowDownAZ,');
+    expect(VISTA).toContain("ArrowDown10,");
+    expect(VISTA).toContain('<Flecha aria-hidden className="size-3.5" />');
+    // Y EN PALABRAS, no solo en el icono: un icono sin rótulo accesible no dice nada a un lector de
+    // pantalla, y la dirección es justo lo que hay que saber para leer la primera fila.
+    expect(VISTA).toContain('"Ordenar por última consulta, la más reciente arriba"');
+    expect(VISTA).toContain("aria-label={rotuloCompleto}");
   });
 });
 
