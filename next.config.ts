@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+import { RUTA_DEL_TUNEL_DE_ERRORES } from "./src/core/http/tunel-de-errores";
+
 // Headers de seguridad (SECURITY.md). La CSP no se difiere: minimo del MVP.
 // El connect-src se arma desde las env publicas para no hardcodear origenes
 // (dev: Supabase local en 127.0.0.1:54321; prod: Supabase cloud).
@@ -203,6 +205,13 @@ console.log(
 );
 
 export default withSentryConfig(nextConfig, {
+  // ═══ EL TUNEL: LOS ERRORES DEL NAVEGADOR VIAJAN POR NUESTRO DOMINIO (2026-11-03) ═══
+  //
+  // Sin esto, el SDK del navegador hace POST directo al host de ingest de Sentry, que cualquier bloqueador
+  // de anuncios y muchas redes corporativas filtran: el evento se pierde EN SILENCIO, y la pantalla le
+  // promete al profesional que "ya registramos el problema". Es la causa de que una integrante viera un
+  // error en Antrop. & BIS y Sentry no tuviera nada. El porque completo, en `src/core/http/tunel-de-errores`.
+  tunnelRoute: RUTA_DEL_TUNEL_DE_ERRORES,
   // CALLADO SOLO CUANDO NO HAY NADA QUE SUBIR. Si va a subir, su salida (y sus errores) tienen que verse en
   // el log del build: es el unico sitio donde se puede comprobar que la subida ocurrio de verdad.
   silent: !subirSourcemaps,

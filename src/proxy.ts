@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isPublicPath } from "@/core/http/public-paths";
+import { esElTunelDeErrores } from "@/core/http/tunel-de-errores";
 import { fetchConTimeout } from "@/lib/supabase/fetch-con-timeout";
 
 // proxy.ts (Next 16, antes "middleware"). NO es capa de seguridad (SECURITY.md):
@@ -46,6 +47,12 @@ export async function proxy(request: NextRequest) {
   // sesion se protegen en su propio handler, no aqui. El refresco de sesion de
   // arriba ya corrio, asi que las cookies quedan frescas para esas rutas.
   if (path.startsWith("/api")) return response;
+
+  // EL TUNEL DE ERRORES PASA IGUAL, y por la misma razon: es transporte, no una pantalla. Si el proxy lo
+  // mandara a /login, los errores de las pantallas PUBLICAS (la encuesta del paciente, el consentimiento
+  // por QR, el checkout) se perderian todos, que son justo los que no podemos reproducir. Ver
+  // `tunel-de-errores`: no lee ni escribe la base, solo reenvia el evento.
+  if (esElTunelDeErrores(path)) return response;
 
   // Sin sesion en ruta protegida -> login.
   if (!user && !isPublicPath(path)) {

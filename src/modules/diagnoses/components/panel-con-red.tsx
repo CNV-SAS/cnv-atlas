@@ -45,14 +45,42 @@ import { Button } from "@/components/ui/button";
 // componente que cambia en cada render es una fuente REAL de remontajes en el sitio exacto donde el arbol
 // cambia de forma, y una pieza que se puede dejar quieta por diez lineas no deberia seguir moviendose
 // mientras se busca un bug de identidad de hooks.
-function AvisoDePanelCaido({ resetError }: { resetError: () => void }) {
+// ═══ EL CODIGO EN PANTALLA, Y POR QUE HACE FALTA (Santiago, 2026-11-03) ═══
+//
+// EL CASO: una integrante ve este aviso en Antrop. & BIS, admin entra a la MISMA consulta y la ve bien, y
+// Sentry no tiene ni un evento. Con eso no se puede diagnosticar nada: no hay forma de unir lo que ella ve
+// con ningun registro nuestro.
+//
+// DOS COSAS LO CAUSABAN. La primera, que el evento no llegaba (ver `tunel-de-errores`). La segunda es esta:
+// en produccion, un error del SERVIDOR llega al navegador SIN MENSAJE, reducido a un `digest`, que es la
+// clave con la que se encuentra en el registro del servidor. Este aviso lo tiraba.
+//
+// ASI QUE SE MUESTRA. Una captura de pantalla pasa a ser suficiente para encontrar el error, y eso cambia
+// el diagnostico de "esperar a que vuelva a pasar con alguien delante" a "mirarlo". No es un detalle
+// tecnico de mas: es un codigo corto, rotulado como lo que es, para pasarlo por WhatsApp.
+//
+// Y LA FRASE DEJA DE PROMETER LO QUE NO PUEDE: decia "ya registramos el problema" SIEMPRE, incluso cuando
+// el envio se perdia. Ahora el aviso pide el codigo, que es una accion que el profesional si puede hacer.
+function AvisoDePanelCaido({ error, resetError }: { error: unknown; resetError: () => void }) {
+  const digest =
+    error && typeof error === "object" && "digest" in error && typeof error.digest === "string"
+      ? error.digest
+      : null;
   return (
     <div className="rounded-xl border border-clinical-warning bg-clinical-warning-bg p-6">
       <p className="text-sm font-semibold text-clinical-warning">Esta pestaña no se pudo mostrar</p>
       <p className="mt-1 max-w-prose text-sm text-foreground">
-        Ya registramos el problema. Las demás pestañas siguen funcionando y{" "}
+        Las demás pestañas siguen funcionando y{" "}
         <strong>no se perdió nada de lo guardado</strong>.
       </p>
+      {digest ? (
+        <p className="mt-2 max-w-prose text-sm text-foreground">
+          Si vuelve a pasar, pásale este código a soporte:{" "}
+          <code className="rounded bg-background px-1.5 py-0.5 font-mono text-xs font-semibold">
+            {digest}
+          </code>
+        </p>
+      ) : null}
       <Button className="mt-3" size="sm" onClick={() => resetError()}>
         Volver a intentarlo
       </Button>
@@ -64,7 +92,18 @@ export function PanelConRed({ etapa, children }: { etapa: string; children: Reac
   return (
     <Sentry.ErrorBoundary
       // El nombre de la etapa viaja al evento: sin él, los seis paneles se agrupan en el mismo issue.
-      beforeCapture={(scope) => scope.setTag("etapa", etapa)}
+      //
+      // Y EL `digest` TAMBIEN, como etiqueta: es lo UNICO que une lo que el profesional ve en pantalla con
+      // el evento del servidor. Sin él, aunque los dos lleguen a Sentry, son dos registros sueltos y hay
+      // que adivinar cuál va con cuál.
+      beforeCapture={(scope, error) => {
+        scope.setTag("etapa", etapa);
+        const digest =
+          error && typeof error === "object" && "digest" in error && typeof error.digest === "string"
+            ? error.digest
+            : null;
+        if (digest) scope.setTag("digest", digest);
+      }}
       fallback={AvisoDePanelCaido}
     >
       {children}
