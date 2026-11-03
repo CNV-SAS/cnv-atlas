@@ -4,7 +4,7 @@ import { inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 
 import { type EngineInput, runEngine } from "@/clinical-engine";
-import { MARCA_AZUL, styles } from "@/modules/reports/pdf/estilos-del-pdf";
+import { MARCA_AZUL, MARCA_TINTA, styles } from "@/modules/reports/pdf/estilos-del-pdf";
 import { ANCHO as ANCHO_DEL_RADAR } from "@/modules/reports/pdf/radar-del-paciente";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
@@ -201,5 +201,56 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
     const pagina = PLAN_PDF.indexOf("<Page");
     expect(PLAN_PDF.indexOf("<MarcaDeFondo />")).toBeGreaterThan(pagina);
     expect(PLAN_PDF.indexOf("<MarcaDeFondo />")).toBeLessThan(PLAN_PDF.indexOf("styles.title"));
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS DOS AJUSTES DEL 2026-11-03, MEDIDOS SOBRE EL MISMO PDF
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("la franja y los rótulos del radar, medidos sobre el PDF", () => {
+  it("la franja de arriba va en el tinta de Atlas, y la forma de fondo sigue en azul de marca", () => {
+    // SU PEDIDO: *"la franja que hay arriba de cada hoja es un azul electrico algo chillon, prefiero
+    // mejor cambiarlo a un azul oscuro (puede ser el de las letras de Atlas #15161a) y dejamos la
+    // nubecita como está que quedó bien."*
+    //
+    // SON LAS DOS MITADES Y SE MIDEN LAS DOS: si alguien cambia el azul de la forma "para que combine",
+    // este caso lo dice. El mismo color a dos opacidades no se comporta igual, y eso es lo que su ojo vio.
+    expect(styles.bandaDeMarca.backgroundColor).toBe(MARCA_TINTA);
+    expect(styles.formaDeMarca.backgroundColor, "la forma de fondo también cambió de color").toBe(
+      MARCA_AZUL,
+    );
+    // Y QUE SALGA DE VERDAD en los bytes del documento, no solo en la hoja de estilo.
+    const tinta = comoPdf(MARCA_TINTA);
+    expect(
+      PAGINAS.some((p) => p.codigo.includes(tinta)),
+      "la franja no salió en el tinta de Atlas en ninguna hoja",
+    ).toBe(true);
+  });
+
+  it("y el nombre del dominio conserva su guion al partirse en dos líneas", () => {
+    // SU DUDA: *"Revisa tambien si «CelularElectrico» sale pegado en el PDF."*
+    //
+    // MEDIDO: no sale pegado. El rótulo se parte por el guion ("Celular-" / "Eléctrico") y los bytes del
+    // documento LLEVAN el guion. Lo que Santiago leyó es lo que hacen los lectores de PDF al COPIAR texto:
+    // des-hifenan los cortes de línea, así que "Celular-\nEléctrico" se pega como "CelularEléctrico".
+    //
+    // SE DEJA EL CASO porque la conclusión no es evidente y porque lo que sí rompería el rótulo es que el
+    // guion se perdiera de verdad (p. ej. si el nombre llegara con un guion que la fuente no dibuje).
+    // SE DECODIFICAN LOS RUNS, no se busca el hex del guion a pelo: "2d" aparece en cualquier stream
+    // hexadecimal por casualidad, y el caso habría pasado siempre.
+    const runs: string[] = [];
+    for (const p of PAGINAS) {
+      for (const tj of p.codigo.matchAll(/\[([^\]]*)\]\s*TJ/g)) {
+        for (const h of tj[1].matchAll(/<([0-9a-fA-F]+)>/g)) {
+          runs.push(Buffer.from(h[1], "hex").toString("latin1"));
+        }
+      }
+    }
+    const unido = runs.join("");
+    expect(unido, "el radar no dibujó el nombre del dominio").toContain("Celular");
+    expect(
+      unido,
+      "el guion del nombre del dominio no llegó al PDF: el rótulo sí sale pegado",
+    ).toContain("-Eléctrico");
   });
 });

@@ -1,4 +1,7 @@
-import { Document, Page, Text, View } from "@react-pdf/renderer";
+import { Document, Page, View } from "@react-pdf/renderer";
+
+// El `Text` que traduce los simbolos que la fuente del PDF no dibuja (ver `text-seguro`).
+import { Text } from "./text-seguro";
 
 import type { PlanPaciente } from "../data/reports-view-types";
 import {

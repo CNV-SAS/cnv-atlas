@@ -110,8 +110,7 @@ describe("nada de lo que el informe compone nombra un índice", () => {
     }
   });
 
-  it("traduce en vez de descartar: la acción se conserva", () => {
-    expect(paraElPaciente("Valoración médica si IAE > 10 años")).toBe("Valoración médica");
+  it("traduce en vez de descartar cuando la acción es del paciente", () => {
     expect(paraElPaciente("Manejo de estrés crónico — correlaciona con IRC elevado")).toBe(
       "Manejo de estrés crónico",
     );
@@ -121,19 +120,47 @@ describe("nada de lo que el informe compone nombra un índice", () => {
     expect(urgenciaParaElPaciente("recomendada si IAE > 10 años")).toBe("recomendada");
   });
 
-  it("y lo que el paciente ya entendía pasa entero", () => {
-    const linea = "Omega-3 dietario: ≥2 porciones pescado graso/semana";
-    expect(paraElPaciente(linea)).toBe(linea);
-    expect(paraElPaciente("Camina 30 minutos al día")).toBe("Camina 30 minutos al día");
+  it("pero una VALORACIÓN ya no sale como texto: sale como remisión", () => {
+    // ESTE CASO CAMBIÓ DE SIGNO (Santiago, 2026-11-03), y cambió a petición de quien lo había decidido.
+    // Decía que "Valoración médica si IAE > 10 años" tenía que llegar al paciente como "Valoración
+    // médica". Y era coherente entonces; lo que lo invalida es que el informe YA le dice a quién acudir y
+    // con qué urgencia, en su propio bloque de remisiones, desde el mismo derivador que la historia
+    // clínica. La línea de texto era la MISMA cosa dicha dos veces, y la versión recortada era la peor:
+    // "Valoración médica" sin a quién ni cuándo.
+    expect(paraElPaciente("Valoración médica si IAE > 10 años")).toBeNull();
+    // Y NO SE PIERDE NADA: el componente médico de una ruta nunca viajaba como texto (lo dice
+    // `indicacionesParaElPaciente`), y las remisiones salen de `remisionesExigidas`.
   });
 
-  it("el filtro no deja al paciente sin indicaciones de alimentación", () => {
-    // Un traductor que lo descartara todo cumpliría la regla y vaciaría la sección, que es la forma
-    // silenciosa de que un bloque deje de existir.
+  it("y el contenido de ALIMENTACIÓN ya no va en el informe: va en la hoja del plan", () => {
+    // EL OTRO CASO QUE CAMBIÓ DE SIGNO. Decía que "Omega-3 dietario: ≥2 porciones pescado graso/semana"
+    // pasaba entero, y que si el filtro vaciaba la sección nutricional era "la forma silenciosa de que un
+    // bloque deje de existir". Las dos cosas siguen siendo verdad sobre el mecanismo; lo que cambió es el
+    // DOCUMENTO: desde el 2026-10-30 el paciente recibe una hoja del plan aparte, con su menú, su lista de
+    // intercambio y lo que le conviene evitar, calculada PARA ÉL.
+    //
+    // Y ENTONCES ESTA LÍNEA PASÓ A SER UN PROBLEMA, no una ayuda: es una indicación GENERAL del modelo,
+    // junto a una hoja con las cantidades SUYAS. Dos fuentes de la misma cosa, y la general contradice a
+    // la propia. Santiago, 2026-11-03: *"sin contenido de alimentación (va en la hoja del plan)."*
+    expect(paraElPaciente("Omega-3 dietario: ≥2 porciones pescado graso/semana")).toBeNull();
+    expect(paraElPaciente("Antioxidantes: cúrcuma, jengibre, té verde")).toBeNull();
+    // LO QUE EL PACIENTE PUEDE HACER SIGUE PASANDO ENTERO, que es la mitad que no cambia.
+    expect(paraElPaciente("Camina 30 minutos al día")).toBe("Camina 30 minutos al día");
+    expect(paraElPaciente("Manejo de estrés crónico")).toBe("Manejo de estrés crónico");
+  });
+
+  it("y el informe no se queda mudo: lo que sobrevive está fijado ruta por ruta", () => {
+    // La garantía de que el filtro no lo quita todo NO se mide ya contando líneas del componente
+    // nutricional (que ahora es casi todo de la hoja del plan, por decisión): vive en
+    // `que-llega-al-paciente-de-las-rutas`, que FIJA la lista superviviente de cada una de las seis rutas
+    // y nombra la única que se queda sin nada, que es un pendiente de Gildardo y no un hueco del filtro.
     const utiles = Object.values(RUTAS_CONTENT).flatMap((r) =>
-      r.componentes.nutricional.indicaciones.map(paraElPaciente).filter(Boolean),
+      [r.componentes.nutricional, r.componentes.ejercicio, r.componentes.psicologico]
+        .flatMap((c) => c.indicaciones)
+        .map(paraElPaciente)
+        .filter(Boolean),
     );
-    expect(utiles.length).toBeGreaterThan(10);
+    expect(utiles.length, "el filtro dejó al informe sin nada que decirle al paciente").toBeGreaterThan(10);
   });
 });
 

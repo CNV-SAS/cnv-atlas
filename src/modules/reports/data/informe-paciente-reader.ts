@@ -76,6 +76,11 @@ const LENGUAJE_DEL_MODELO = [
   "DFI",
   "BIS",
   "CMO",
+  // MCCB: es el fenotipo estructural del modelo, y faltaba. Su linea de R6 ("Dieta de mantenimiento
+  // personalizada segun fenotipo MCCB") llegaba al paciente nombrandolo.
+  "MCCB",
+  // BSQ: un cuestionario que el PROFESIONAL aplica. Para el paciente es una sigla sin referente.
+  "BSQ",
   "HOMA-IR",
   "PCR",
   "HTA",
@@ -118,11 +123,90 @@ const CONDICION = /\s+si\s+|\s*[,;:]\s*|\s+por\s+|\s+con\s+|\s+cuando\s+/i;
 export function paraElPaciente(linea: string): string | null {
   const limpio = sinGuionLargo(linea).trim();
   if (!limpio) return null;
+  if (esDelProfesional(limpio)) return null;
   if (!nombraUnIndice(limpio)) return limpio;
 
   const accion = limpio.split(CONDICION)[0]?.trim() ?? "";
-  if (!accion || nombraUnIndice(accion)) return null;
+  if (!accion || nombraUnIndice(accion) || esDelProfesional(accion)) return null;
   return accion;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LAS CUATRO CATEGORIAS QUE NO VAN AL PACIENTE  ·  SU HOJA 3 (Santiago, 2026-11-03)
+//
+// ═══ LO QUE REPORTO ═══
+//
+// Leyendo "Lo que vas a trabajar" de un informe real: *"Aquí sí veo contenido que se repite con HC y
+// contenido muy técnico que no debería estar de cara al paciente."* Y su instruccion: *"por cada área,
+// dos o tres frases sencillas de qué va a trabajar y cada cuánto es el control. Sin dosis (g/kg), sin
+// contenido de alimentación (va en la hoja del plan), sin prescripción de ejercicio para el profesional
+// (1RM, series), sin mecanismos («Nrf2», «metilación»). Lo técnico vive en la HC."*
+//
+// ═══ SE SUPRIME, NO SE REESCRIBE, Y ESO NO ES UN ATAJO ═══
+//
+// La cabecera de `rutas-content` lo tiene escrito desde el primer dia: *"ATLAS NO edita, resume ni
+// reinterpreta este texto... si una indicacion clinica se lee mejor de otra forma, NO se toca aqui; se le
+// pide a Gildardo."* Es la regla dura 12 aplicada a CONTENIDO. Asi que el mecanismo es el MISMO que ya
+// usaba el filtro de indices: suprimir es representar menos, reescribir seria atribuirnos un cambio en su
+// contenido clinico.
+//
+// LO QUE QUEDA ABIERTO SIGUE ABIERTO, y es lo mismo que este archivo ya anotaba: no existe una version de
+// las rutas escrita para el paciente. Las "dos o tres frases sencillas" que Santiago describe no estan en
+// su contenido, y escribirlas nosotros seria autoria clinica. Van al documento de dudas como propuesta.
+//
+// ═══ POR QUE POR CATEGORIAS Y NO LINEA POR LINEA ═══
+//
+// Clasificar a mano las ~100 indicaciones de las seis rutas serian ~100 juicios nuestros sobre su
+// contenido, y cada uno invisible. Sus cuatro exclusiones son CATEGORIAS reconocibles por lo que la linea
+// NOMBRA (una unidad de dosis, un alimento, un parametro de entrenamiento, una via molecular), asi que el
+// filtro se escribe una vez y el candado imprime QUE SOBREVIVE en cada una de las seis rutas: las
+// decisiones quedan a la vista en el test, no enterradas en cien banderas.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * UNA DOSIS O UNA CIFRA DE PRESCRIPCION. El paciente recibe sus cifras en la hoja del plan, calculadas
+ * para el; una dosis general en el informe es la del modelo, no la suya, y las dos juntas se contradicen.
+ */
+const DOSIS =
+  /\bg\s*\/\s*kg|\bg\s*\/\s*d[ií]a|\bkcal\b|cal[óo]ric|\bmg\b|\bUI\b|\bml\s*\/\s*kg|\d\s*g\b|\d\s*%|≥\s*\d|\d\s*-\s*\d\s*g\b/i;
+
+/**
+ * CONTENIDO DE ALIMENTACION. Va en la hoja del plan, con su menu y su lista de intercambio: repetirlo
+ * aqui con otras palabras es el mismo dato en dos documentos, y el que manda es el plan.
+ */
+const ALIMENTOS =
+  /cúrcuma|curcuma|jengibre|té verde|te verde|bayas|berries|cacao|granada|crucíferas|cruciferas|avena|leguminosas|manzana|pescado|omega-3 dietario|harinas|azúcares|azucares|aceites refinados|grasas trans|ultraprocesados|fibra soluble|proteína preservada|proteina preservada|proteína alta|proteina alta|ayuno intermitente/i;
+
+/**
+ * PRESCRIPCION DE EJERCICIO PARA EL PROFESIONAL. No es "muevete": es la receta con la que un entrenador
+ * programa. El paciente la recibe de quien lo entrena, que es a quien la remision lo manda.
+ */
+const EJERCICIO_TECNICO =
+  /1RM|\bseries\b|repeticiones|multiarticular|sentadilla|peso muerto|\bpress\b|\bremo\b|resistencia progresiva|aerób|aerob/i;
+
+/**
+ * MECANISMOS. Explican POR QUE funciona, y eso es lo que §7.1 saca del documento del paciente: nombrar la
+ * via molecular es nombrar el modelo con otras palabras.
+ */
+const MECANISMOS =
+  /Nrf2|metilaci[óo]n|autofagia|epigenom|epigenétic|epigenetic|polifenol|sulforafano|anab[óo]lic|síntesis proteica|sintesis proteica|citocromo|disruptores endocrinos|leucina|cortisol|adiponectina|microambiente|membranas íntegras|homeostasis celular/i;
+
+/**
+ * UNA INSTRUCCION DIRIGIDA AL PROFESIONAL, no al paciente: "evaluar si...", "descartar...",
+ * "correlacionar...", "laboratorios:...". El paciente no evalua ni descarta nada.
+ */
+const PARA_EL_PROFESIONAL =
+  /^\s*(evaluar|evaluaci[óo]n|descartar|correlacionar|valorar|valoraci[óo]n|solicitar|laboratorios|documentar|coordinaci[óo]n obligatoria|electrocardiograma|perfil lip[íi]dico|seguimiento gluc[ée]mico|densitometr[íi]a|revisi[óo]n de polimedicaci[óo]n|remisi[óo]n a|remisi[óo]n m[ée]dica)\b/i;
+
+/** ¿Esta linea es de las que su contenido escribe para el profesional y no para el paciente? */
+export function esDelProfesional(texto: string): boolean {
+  return (
+    DOSIS.test(texto) ||
+    ALIMENTOS.test(texto) ||
+    EJERCICIO_TECNICO.test(texto) ||
+    MECANISMOS.test(texto) ||
+    PARA_EL_PROFESIONAL.test(texto)
+  );
 }
 
 /**
@@ -144,7 +228,7 @@ export function urgenciaParaElPaciente(urgencia: string | null): string | null {
 }
 
 /** Las tres partes de una ruta que el paciente puede ACCIONAR. La médica viaja como remisión. */
-function indicacionesParaElPaciente(ruta: RutaContent): string[] {
+export function indicacionesParaElPaciente(ruta: RutaContent): string[] {
   const componentes = [ruta.componentes.nutricional, ruta.componentes.ejercicio, ruta.componentes.psicologico];
   return componentes
     .filter((c) => c.aplica)

@@ -1,4 +1,7 @@
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Page, StyleSheet, View } from "@react-pdf/renderer";
+
+// El `Text` que traduce los simbolos que la fuente del PDF no dibuja (ver `text-seguro`).
+import { Text } from "./text-seguro";
 
 import { etiquetaDeVia } from "../vias-de-entrega";
 import {

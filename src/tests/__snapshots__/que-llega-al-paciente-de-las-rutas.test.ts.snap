@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`de las rutas al paciente llega lo que puede hacer, no la receta del profesional > y se ve exactamente qué sobrevive en cada ruta 1`] = `
+{
+  "R1": [
+    "Actividad física moderada 3-5 días/semana",
+    "Evitar sedentarismo prolongado >2h continuas",
+    "Respiración diafragmática 10 min/día",
+    "Manejo de estrés crónico",
+    "Técnicas de reducción de estrés: mindfulness, meditación",
+  ],
+  "R2": [
+    "Inicio progresivo: 3 días 20 min, aumentar 10 min/semana",
+  ],
+  "R3": [
+    "Normalización: 3 comidas + 2 colaciones regulares",
+    "Reintroducción progresiva de grupos alimentarios eliminados",
+    "Psicoeducación sobre imagen corporal y relación con alimentos",
+  ],
+  "R4": [],
+  "R5": [
+    "150 min/semana mínimo de actividad moderada",
+    "Técnicas de reducción de estrés sostenidas",
+  ],
+  "R6": [
+    "Mantener patrón alimentario variado, evaluación semestral",
+    "Ajustar proteína según actividad física y edad",
+    "Mantener actividad física: 150 min/semana mínimo",
+  ],
+}
+`;

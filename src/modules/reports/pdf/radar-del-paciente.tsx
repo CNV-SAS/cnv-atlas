@@ -1,4 +1,8 @@
-import { Circle, G, Line, Polygon, Svg, Text as SvgText, View, Text } from "@react-pdf/renderer";
+import { Circle, G, Line, Polygon, Svg, Text as SvgText, View } from "@react-pdf/renderer";
+
+// El `Text` que traduce los simbolos que la fuente del PDF no dibuja (ver `text-seguro`). `SvgText` SI
+// viene del paquete: dentro de un `<Svg>` el texto es otra primitiva y no acepta el envoltorio.
+import { Text } from "./text-seguro";
 
 import type { DominioPaciente } from "@/clinical-engine";
 

@@ -25,6 +25,19 @@ import { StyleSheet } from "@react-pdf/renderer";
 export const MARCA_AZUL = "#205dfd";
 /** El azul hondo de las portadas, extremo oscuro del degradado de marca. */
 export const MARCA_HONDA = "#071b4d";
+/**
+ * EL TINTA DE ATLAS (`--foreground` de globals.css, el "ink" de BRAND.md).
+ *
+ * ES EL COLOR DE LA FRANJA DESDE EL 2026-11-03 (Santiago): *"la franja que hay arriba de cada hoja es un
+ * azul electrico algo chillon, prefiero mejor cambiarlo a un azul oscuro (puede ser el de las letras de
+ * Atlas #15161a) y dejamos la nubecita como está que quedó bien."*
+ *
+ * Y LA FORMA DE FONDO SE QUEDA EN AZUL DE MARCA, que es la otra mitad de su frase. No es una
+ * inconsistencia: la franja es una LINEA SOLIDA de 5 puntos a sangre, donde el azul electrico pesa
+ * demasiado en un documento clinico; la forma es el MISMO azul al 7 %, donde ya no grita. El mismo color
+ * a dos opacidades no se comporta igual, y eso es lo que su ojo vio.
+ */
+export const MARCA_TINTA = "#15161a";
 
 export const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
@@ -119,7 +132,7 @@ export const styles = StyleSheet.create({
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
   /** La banda de marca del borde superior, a sangre. Fina, solida y en todas las paginas. */
-  bandaDeMarca: { position: "absolute", top: 0, left: 0, right: 0, height: 5, backgroundColor: MARCA_AZUL },
+  bandaDeMarca: { position: "absolute", top: 0, left: 0, right: 0, height: 5, backgroundColor: MARCA_TINTA },
   /**
    * La forma suave de la esquina: un circulo que sale de la hoja, al 7 %.
    *

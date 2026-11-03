@@ -1,4 +1,8 @@
-import { Document, Page, Text, View } from "@react-pdf/renderer";
+import { Document, Page, View } from "@react-pdf/renderer";
+
+// EL `Text` NO VIENE DEL PAQUETE: viene del envoltorio que traduce los simbolos que la fuente del PDF no
+// sabe dibujar (ver `text-seguro`). Un candado lo exige en toda esta carpeta.
+import { Text } from "./text-seguro";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
 import { MarcaDeFondo } from "./marca-de-fondo";
@@ -485,6 +489,25 @@ export function ReportDocument({
                     · {i}
                   </Text>
                 ))}
+                {/* ═══ UN AREA SIN NADA QUE EL PACIENTE PUEDA HACER LO DICE (2026-11-03) ═══
+
+                    Al sacar de este documento las dosis, el contenido de alimentacion, la receta de
+                    ejercicio y los mecanismos (su hoja 3), hay un area que se queda SIN NINGUNA linea:
+                    la de desaceleracion del envejecimiento, cuyas tres componentes son exactamente eso.
+                    Y no es un hueco del filtro: es que no existe una version de esas indicaciones escrita
+                    para el paciente, y escribirla seria autoria clinica nuestra (la cabecera de
+                    `rutas-content` lo prohibe desde el primer dia). Esta pendiente de Gildardo.
+
+                    MIENTRAS TANTO SE DICE, no se deja el titulo solo: un area nombrada y vacia se lee
+                    como un documento incompleto, y el paciente no sabe si le falta algo. La frase dice
+                    DONDE esta el detalle, que es verdad literal (su profesional lo tiene en pantalla y lo
+                    de alimentacion viaja en la hoja del plan). */}
+                {r.indicaciones.length === 0 ? (
+                  <Text style={styles.para}>
+                    Lo de esta área lo trabajas con tu profesional en la consulta, y lo de alimentación va
+                    en tu hoja del plan.
+                  </Text>
+                ) : null}
                 {r.frecuencia ? (
                   <Text style={styles.para}>Control: {r.frecuencia.toLowerCase()}.</Text>
                 ) : null}
