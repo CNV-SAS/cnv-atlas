@@ -5,7 +5,7 @@
 > **Este documento no identifica a ningún paciente.** Donde hace falta señalar un caso, va el id de
 > evaluación abreviado a ocho caracteres, el mismo que usted usa en su anexo A.
 
-**Cómo está armado.** Catorce preguntas, cada una con el contexto en dos líneas y **nuestra recomendación**.
+**Cómo está armado.** Diecisiete preguntas (las tres últimas se agregaron el **3 de noviembre**, al revisar con usted el informe y la historia clínica impresos), cada una con el contexto en dos líneas y **nuestra recomendación**.
 Las cinco primeras **frenan trabajo** (sin su respuesta no se construye ni se recalcula); las demás son
 decisiones que ya están aplicadas de una forma y conviene que usted las confirme o las corrija.
 
@@ -179,8 +179,11 @@ Su v12 §1.2 pide que eliminar un perfil tenga política, *"solo para el profesi
 para la dirección científica"*. Está construido, con la asimetría que Santiago ya había fijado para esta
 clase de acto: el profesional **pide** con motivo y otro **ejecuta**, escribiendo el documento del paciente.
 
-**Pero quien ejecuta es el ADMINISTRADOR, no el rol de dirección**, y es una traducción nuestra de su
-palabra: en Atlas `direccion` **no accede a datos de paciente** por diseño (su tablero se construyó sin
+**«Dirección científica» es SU palabra, no nuestra:** sale textual de su v12 §1.2, donde escribe que la
+política sea *"solo para el profesional dueño del paciente y para la dirección científica"*. Lo decimos
+porque la traducción que sigue es NUESTRA y conviene que se vea cuál es cuál.
+
+**Y quien ejecuta es el ADMINISTRADOR, no el rol de dirección**, y esa es la traducción: en Atlas `direccion` **no accede a datos de paciente** por diseño (su tablero se construyó sin
 PII), y esta bandeja necesita el nombre y el documento para poder decidir.
 
 **Nuestra recomendación:** dejarlo en administrador, que es quien ya resuelve esta clase de decisión y quien
@@ -219,6 +222,91 @@ ni edad biológica que estimar.
 fuera de rango de calibración**, con la razón escrita, en vez de emitir cifras que no significan nada. Y si
 CNV va a atender pediatría, hace falta decidir con qué ecuaciones, que es una decisión suya y no de software.
 
+
+---
+
+## D · Las que salieron al mirar el informe y la historia clínica impresos (2026-11-03)
+
+Santiago descargó los dos documentos de un paciente y los leyó línea por línea. De ahí salen estas tres, y
+las tres son sobre **cómo se le dicen sus índices y sus indicaciones a quien no es profesional**.
+
+### 15 · Los nombres llanos de tres de sus índices **[aplicado]**
+
+En la tabla ANI-BIS-E de la historia clínica, tres filas se nombraban con el rótulo técnico de su propia
+tabla de HC, y Santiago no los entiende como los entendería un paciente: *"se muestran «Hidro-Homeostasis
+IEHH», «PABU», «Desviación de φ ICA-BIS»... propongo que los cambiemos a definiciones que los pacientes
+puedan entender y justo debajo la sigla, así como tenemos «Aceleración del Envejecimiento IAE», que me
+parece muy bien hecho. **No estamos cambiando los indicadores**, solo la forma en como mostramos la info."*
+
+**Lo aplicado, en una sola fuente para la historia clínica y la pantalla:**
+
+| Código | Decía | Dice |
+|---|---|---|
+| IEHH | Hidro-Homeostasis | **Equilibrio hídrico** |
+| PABU | (sin nombre) | **Proporción bioeléctrica** |
+| ICA-BIS | Desviación de φ | **Desviación bioeléctrica** |
+
+Sus **nombres oficiales** (los que usted fijó en su §10 del 2026-08-09) no se tocan: siguen en el registro
+de indicadores y en la pantalla del profesional, al lado del llano. Las otras cinco filas no se mueven,
+porque sus nombres ya son llanos o los fijó su tabla 3.
+
+**Y en la tercera nos apartamos de lo que se nos pidió, con una razón que conviene que juzgue usted.** Se
+propuso *"Coherencia bioeléctrica"*, y pusimos *"Desviación bioeléctrica"*: el número que va al lado **es
+una desviación**, y su columna de referencia dice "0.00–0.15 Zona φ", o sea que cuanto más pequeño, mejor.
+Rotular "coherencia" encima de un valor donde lo bueno es lo bajo invierte la lectura: un 0,15 se leería
+como poca coherencia cuando es justo la zona buena.
+
+**Nuestra recomendación:** dejar "Desviación bioeléctrica". Si prefiere "Coherencia", habría que mostrar
+el complemento (1 − ICA-BIS) o la clasificación en vez de la cifra, y eso ya es una decisión suya sobre
+qué se muestra.
+
+### 16 · Los cinco textos de dominio del informe, en lenguaje sencillo **[propuesto, NO aplicado]**
+
+La hoja 2 del informe del paciente trae sus cinco lecturas del DFI tal cual. Un paciente lee esto:
+
+> *"Homeostasis celular: membranas íntegras y microambiente equilibrado."*
+> *"Carga contextual amplificada por antecedentes o entorno."*
+
+**No lo hemos tocado, y es a propósito:** son textos clínicos suyos, y la regla de esta casa es que no se
+editan, no se resumen ni se reinterpretan desde nuestro lado. Lo que sigue es una **propuesta**, no algo
+aplicado:
+
+| Dominio | Lo que dice hoy | Propuesta |
+|---|---|---|
+| Celular-Eléctrico | Homeostasis celular: membranas íntegras y microambiente equilibrado | Tus células están bien hidratadas y sus membranas en buen estado |
+| Metabólico-Estructural | Perfil metabólico-estructural favorable | Tu músculo y tu grasa están en una proporción favorable |
+| Envejecimiento | Envejecimiento biológico marcadamente acelerado | Tu cuerpo se está desgastando más rápido de lo que corresponde a tu edad |
+| Conductual-Perceptual | Relación con el cuerpo y la comida sin alertas | Tu relación con la comida y con tu cuerpo no muestra señales de alarma |
+| Epigenético-Contextual | Carga contextual amplificada por antecedentes o entorno | Tus antecedentes familiares y tu entorno te suman riesgo |
+
+**Nuestra recomendación:** que las escriba o las corrija usted, y entonces el informe lleva **las suyas**
+para el paciente y las de hoy para el profesional. Lo que no nos parece correcto es que las cambiemos
+nosotros: son la lectura clínica de cada dominio.
+
+### 17 · Las rutas no tienen una versión escrita para el paciente, y un área se queda muda
+
+Esta **frena una pieza**, así que si solo contesta una de las tres, que sea esta.
+
+Su contenido de rutas está escrito para el profesional, y así llega hoy al informe del paciente:
+*"Distribución proteica: ≥25g por comida"*, *"Carga: 65–75% de 1RM · 3 series × 8–12 repeticiones"*,
+*"Crucíferas: sulforafano → Nrf2 → protección epigenética"*.
+
+Santiago pidió que eso salga del documento del paciente (las dosis van calculadas para él en la hoja del
+plan, la receta de ejercicio la recibe de quien lo entrena, y el mecanismo molecular no le sirve). Lo
+hicimos **suprimiendo, no reescribiendo**, que es la única forma que esta casa admite con su contenido.
+
+**Y al suprimir, una de las seis rutas se queda sin UNA SOLA línea para el paciente: la R4,
+«Desaceleración del Envejecimiento».** Sus tres componentes son exactamente eso (proteína en g/kg,
+alimentos antioxidantes, resistencia progresiva). No es un hueco de nuestro filtro: **es que esa versión
+no existe**.
+
+Hoy el informe dice, en esa área, que se trabaja con el profesional en la consulta y que lo de
+alimentación va en la hoja del plan. Es verdad, pero es un parche.
+
+**Nuestra recomendación:** dos o tres frases por ruta, escritas por usted, de *qué va a trabajar* el
+paciente, sin dosis ni mecanismos. Con eso la hoja 3 deja de ser un parche y el informe dice lo que
+promete. Son dieciocho frases en total (tres por ruta), y las construimos el mismo día que lleguen.
+
 ---
 
 ## Qué pasa con cada respuesta
@@ -234,6 +322,9 @@ CNV va a atender pediatría, hace falta decidir con qué ecuaciones, que es una 
 | 10 y 11 | Dos piezas de una línea cada una, que hoy no se tocan porque son suyas |
 | 12 | Se confirma quién puede eliminar un perfil (hoy: el administrador) |
 | 13 y 14 | Nada que construir: es data que conviene que usted sepa antes de leer sus casos |
+| 15 | Se cierra cómo se nombran sus índices de cara a quien no es profesional |
+| 16 | El informe lleva SUS cinco lecturas en lenguaje de paciente, y las de hoy siguen para el profesional |
+| **17** | **La hoja 3 del informe deja de ser un parche: hoy un área entera se queda sin nada que decirle al paciente** |
 
 ---
 
