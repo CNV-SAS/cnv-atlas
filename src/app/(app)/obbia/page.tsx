@@ -1,4 +1,12 @@
 import { theadTr, th } from "@/components/shared/tabla";
+
+/** El rotulo de cada eje de consolidado. Una sola fuente: lo usan el titulo y el encabezado de columna. */
+const ROTULO_DEL_EJE: Record<"pais" | "ciudad" | "sexo" | "profesional", string> = {
+  pais: "Por país",
+  ciudad: "Por ciudad",
+  sexo: "Por sexo",
+  profesional: "Por profesional",
+};
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
@@ -124,6 +132,50 @@ export default async function ObbiaPage() {
             rotulo="Importadas del HTML"
             valor={cohorte.importadas}
             nota={`de ${cohorte.importadasVigentes} importadas en total`}
+          />
+        </div>
+
+        {/* ═══ LAS CUATRO CIFRAS DE SU CNVResearch QUE AQUÍ NO ESTABAN (cotejo 2026-11-03) ═══
+
+            Su panel tiene siete tarjetas y /obbia tenía cuatro. Las que faltaban no son adorno: son las
+            que dicen QUÉ SE PUEDE ANALIZAR con esta cohorte.
+
+              · CON ESPECTRO (Z5-Z500 crudos): es la variable que su propia v11 §5.1 rescató porque *"se
+                botaba al guardar"*. Sin saber cuántas la traen, no se puede plantear un análisis que la
+                use.
+              · CON ENCUESTA: lo que el paciente contó. Sin ella no hay DFI ni EB-BIS completa.
+              · CON PLAN NUTRICIONAL: las que llegaron hasta la prescripción, que es el desenlace.
+              · EDAD MEDIA CON SU RANGO: el rango va al lado a propósito, igual que en su archivo. Una
+                media de 41 años sobre un rango de 18 a 79 y una sobre uno de 39 a 43 son dos cohortes
+                completamente distintas, y la media sola no las distingue.
+
+            VAN EN UNA SEGUNDA FILA, debajo y en gris: las cuatro de arriba responden *"cuántas puedo
+            usar"*, que es la pregunta de gobierno; estas responden *"qué traen"*, que es la de análisis.
+            Mezclarlas en una sola rejilla de ocho borraría esa diferencia. */}
+        <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Cifra
+            rotulo="Con espectro"
+            valor={cohorte.cifrasDeLaCohorte.conEspectro}
+            nota="Z5–Z500 crudos"
+          />
+          <Cifra
+            rotulo="Con encuesta"
+            valor={cohorte.cifrasDeLaCohorte.conEncuestaCompleta}
+            nota="lo que el paciente contó"
+          />
+          <Cifra
+            rotulo="Con plan nutricional"
+            valor={cohorte.cifrasDeLaCohorte.conPlanNutricional}
+            nota="llegaron a la prescripción"
+          />
+          <Cifra
+            rotulo="Edad media"
+            valor={cohorte.cifrasDeLaCohorte.edadMedia ?? 0}
+            nota={
+              cohorte.cifrasDeLaCohorte.edadMinima == null
+                ? "sin fechas de nacimiento"
+                : `rango ${cohorte.cifrasDeLaCohorte.edadMinima}–${cohorte.cifrasDeLaCohorte.edadMaxima}, a la fecha de la medición`
+            }
           />
         </div>
 
@@ -255,7 +307,17 @@ export default async function ObbiaPage() {
             seguidos, se ven de un golpe. La tabla se queda debajo porque en un panel de investigación la
             cifra exacta es lo que se cita. */}
         {cohorte.porMes.length > 0 ? (
-          <div className="overflow-x-auto">
+          // ═══ UN TOPE DE ANCHO, Y NO ES COSMETICA (Santiago, 2026-11-03) ═══
+          //
+          // *"esas graficas tan inmensas se ven muy extrañas."* La causa de fondo estaba en el componente
+          // (su `viewBox` dependia del numero de barras, ver alli), pero hay una segunda mitad que es de
+          // la MAQUETA: un dibujo de proporcion 4:1 a todo el ancho de un panel de 1.400 px sigue midiendo
+          // 350 px de alto, y una serie de doce meses no necesita tanto. El tope lo acota sin fijar
+          // pixeles de alto, que es lo que volveria a atar el dibujo a una pantalla concreta.
+          //
+          // `overflow-x-auto` SE RETIRA: ya no hace falta (el dibujo cabe siempre, se reparte dentro de un
+          // ancho logico fijo) y en una grafica que ya cabe, un contenedor con scroll solo puede estorbar.
+          <div className="max-w-3xl">
             <BarrasDeLaCohorte
               barras={cohorte.porMes.map((m) => ({ etiqueta: m.mes, valor: m.evaluaciones }))}
               ariaLabel={
@@ -286,6 +348,77 @@ export default async function ObbiaPage() {
             </table>
           </div>
         ) : null}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════════════════════════
+          LOS CONSOLIDADOS: CÓMO SE REPARTE LA COHORTE  ·  el cotejo con su CNVResearch (2026-11-03)
+
+          ═══ POR QUÉ ESTABA ESTO Y NO LO TENÍAMOS ═══
+
+          Su módulo estratifica la cohorte por PAÍS, CIUDAD, SEXO y PROFESIONAL, cada eje con las mismas
+          cinco columnas. Era lo más grande que /obbia no tenía, y es lo que separa un panel de conteos
+          de uno de investigación: *"cuántas consultas hay"* es una cifra; *"cómo se reparten"* es lo que
+          decide si una cohorte sirve para un análisis, y lo primero que mira un revisor.
+
+          ═══ SUS CINCO COLUMNAS, TAL CUAL ═══
+
+          Consultas · Pacientes · Con BIS · Con espectro · Edad media. No se le añade ni se le quita
+          ninguna: son las que su archivo muestra y las que una tabla de caracterización lleva.
+
+          ═══ Y AQUÍ NO SALE NINGUNA FILA DE PACIENTE ═══
+
+          Son conteos por grupo. El único eje que nombra a una persona es el del PROFESIONAL, que es
+          quien atiende y no el sujeto de estudio; su propio módulo lo hace igual. La fila "Sin dato" se
+          muestra a propósito: omitirla haría que las columnas no sumaran el total y nadie sabría por qué.
+          ══════════════════════════════════════════════════════════════════════════════════════════ */}
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <h2 className="text-base font-semibold text-foreground">Cómo se reparte la cohorte</h2>
+        <p className="max-w-prose text-sm text-muted-foreground">
+          Las mismas cinco columnas por cada eje, sobre las consultas autorizadas. Es la caracterización
+          que un análisis necesita antes de mirar cualquier resultado.
+        </p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {cohorte.estratos
+            .filter((e) => e.filas.length > 0)
+            .map((e) => (
+              <div key={e.eje} className="flex flex-col gap-2">
+                <h3 className="text-sm font-semibold text-foreground">{ROTULO_DEL_EJE[e.eje]}</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[420px] text-left text-sm">
+                    <thead>
+                      <tr className={theadTr}>
+                        <th className={th}>{ROTULO_DEL_EJE[e.eje]}</th>
+                        <th className={th}>Consultas</th>
+                        <th className={th}>Pacientes</th>
+                        <th className={th}>Con BIS</th>
+                        <th className={th}>Con espectro</th>
+                        <th className={th}>Edad media</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {e.filas.map((f) => (
+                        <tr key={f.grupo} className="border-b border-border/60 last:border-0">
+                          <td className="px-3 py-2 font-medium text-foreground">{f.grupo}</td>
+                          <td className="px-3 py-2 tabular-nums text-foreground">{f.consultas}</td>
+                          <td className="px-3 py-2 tabular-nums text-muted-foreground">{f.pacientes}</td>
+                          <td className="px-3 py-2 tabular-nums text-muted-foreground">{f.conBis}</td>
+                          <td className="px-3 py-2 tabular-nums text-muted-foreground">
+                            {f.conEspectro}
+                          </td>
+                          <td className="px-3 py-2 tabular-nums text-muted-foreground">
+                            {/* SIN EDAD NO SE ESCRIBE UN CERO: un cero aquí sería un recién nacido, y
+                                "sin fecha de nacimiento" no es una edad de cero. Es la misma regla que
+                                cerró "una fecha ilegible que se vuelve edad cero". */}
+                            {f.edadMedia == null ? "—" : f.edadMedia.toFixed(1).replace(".", ",")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+        </div>
       </div>
 
       {/* ═══ QUE NIVEL SALDRIA SI HOY SE GENERARA UN DATASET DE ESTA COHORTE ═══

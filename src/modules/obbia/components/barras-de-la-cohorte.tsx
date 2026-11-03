@@ -25,12 +25,36 @@
 // documento deja libre para estructura y datos.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL TAMAÑO: POR QUE SALIAN INMENSAS  ·  (Santiago, 2026-11-03: "esas graficas tan inmensas se ven muy
+// extrañas")
+//
+// EL DEFECTO, Y ES DE LIBRO: el `viewBox` se calculaba del NUMERO DE BARRAS (`barras.length * 44 + 10`),
+// asi que con cinco meses medía 230 de ancho por 150 de alto. Y el SVG lleva `w-full`. Un SVG con
+// `viewBox` escala EL DIBUJO ENTERO para llenar el ancho que se le da: en un panel de 1.100 px, esas 230
+// unidades se estiran casi cinco veces, y el alto se va con ellas. La grafica salia de 700 px de alta con
+// barras del grosor de una columna.
+//
+// NO ES UN PROBLEMA DE "elegir un alto bonito": es que el ancho logico y el ancho real eran dos cosas
+// distintas y nadie las ataba. `h-auto` significa "el que salga del viewBox", y el que salia dependia de
+// cuantos meses tuviera la cohorte.
+//
+// EL ARREGLO: EL ANCHO LOGICO ES FIJO y las barras se reparten dentro. Asi la PROPORCION del dibujo
+// (4:1) no depende de los datos, el escalado es el mismo siempre y el alto en pantalla queda acotado por
+// el ancho del contenedor, que es lo unico que de verdad manda la maqueta. Con pocas barras salen anchas
+// y con muchas finas, que es el comportamiento que se espera de una serie.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** El ancho LOGICO del dibujo. Fijo a proposito: ver la nota de arriba. */
+const ANCHO = 600;
 const ALTO = 150;
 const PAD_T = 16;
 const PAD_B = 34;
-const ANCHO_BARRA = 34;
-// El hueco entre barras: una barra pegada a la siguiente se lee como un area, no como una serie.
-const HUECO = 10;
+// El hueco entre barras, en proporcion del hueco disponible: una barra pegada a la siguiente se lee como
+// un area, no como una serie. Y UN TOPE DE GROSOR, porque dos barras repartiendose 600 unidades serian
+// dos bloques de 280, que ya no se lee como grafica.
+const HUECO_RELATIVO = 0.26;
+const GROSOR_MAXIMO = 64;
 
 export type BarraDeLaCohorte = { etiqueta: string; valor: number };
 
@@ -44,7 +68,11 @@ export function BarrasDeLaCohorte({
 }) {
   if (barras.length === 0) return null;
 
-  const ancho = barras.length * (ANCHO_BARRA + HUECO) + HUECO;
+  // El paso es lo que le toca a cada barra, y de ahi salen el grosor y el hueco. Centrado cuando el tope
+  // de grosor deja sobras, para que pocas barras no queden pegadas al borde izquierdo.
+  const paso = ANCHO / barras.length;
+  const ANCHO_BARRA = Math.min(paso * (1 - HUECO_RELATIVO), GROSOR_MAXIMO);
+  const margen = (ANCHO - barras.length * paso) / 2;
   const maximo = Math.max(...barras.map((b) => b.valor));
   // ESCALA DESDE CERO, SIEMPRE. Arrancar el eje en el minimo exagera las diferencias, y en una serie de
   // conteos eso es decir algo falso: una barra el doble de alta tiene que ser el doble de consultas.
@@ -53,7 +81,7 @@ export function BarrasDeLaCohorte({
 
   return (
     <svg
-      viewBox={`0 0 ${ancho} ${ALTO}`}
+      viewBox={`0 0 ${ANCHO} ${ALTO}`}
       className="h-auto w-full max-w-full"
       role="img"
       aria-label={ariaLabel}
@@ -63,14 +91,14 @@ export function BarrasDeLaCohorte({
       <line
         x1={0}
         y1={ALTO - PAD_B}
-        x2={ancho}
+        x2={ANCHO}
         y2={ALTO - PAD_B}
         stroke="currentColor"
         strokeWidth={0.5}
         className="text-border"
       />
       {barras.map((b, i) => {
-        const x = HUECO + i * (ANCHO_BARRA + HUECO);
+        const x = margen + i * paso + (paso - ANCHO_BARRA) / 2;
         const h = alto(b.valor);
         const y = ALTO - PAD_B - h;
         return (

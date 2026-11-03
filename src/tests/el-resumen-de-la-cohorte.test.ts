@@ -51,6 +51,23 @@ const COHORTE: CohorteDeInvestigacion = {
     { mes: "2026-08", evaluaciones: 40 },
     { mes: "2026-09", evaluaciones: 120 },
   ],
+  // LOS CONSOLIDADOS DE SU CNVResearch (2026-11-03). Van en el fixture aunque el CSV no los lleve: el
+  // candado del export comprueba justamente que NO se cuelen en el archivo, y un fixture sin ellos haria
+  // que ese caso pasara por ausencia en vez de por decision.
+  estratos: [
+    { eje: "pais", filas: [{ grupo: "Colombia", consultas: 300, pacientes: 240, conBis: 300, conEspectro: 190, edadMedia: 41.2 }] },
+    { eje: "ciudad", filas: [{ grupo: "Medellín", consultas: 280, pacientes: 225, conBis: 280, conEspectro: 180, edadMedia: 41.0 }] },
+    { eje: "sexo", filas: [{ grupo: "Femenino", consultas: 210, pacientes: 170, conBis: 210, conEspectro: 140, edadMedia: 40.1 }] },
+    { eje: "profesional", filas: [{ grupo: "Profesional Demo", consultas: 90, pacientes: 70, conBis: 90, conEspectro: 60, edadMedia: 39.8 }] },
+  ],
+  cifrasDeLaCohorte: {
+    conEspectro: 190,
+    conEncuestaCompleta: 240,
+    conPlanNutricional: 180,
+    edadMedia: 41.2,
+    edadMinima: 18,
+    edadMaxima: 79,
+  },
 };
 
 const CSV = resumenDeLaCohorteACsv(COHORTE, {
@@ -177,6 +194,31 @@ describe("el resumen con gráficas", () => {
     expect(GRAFICA).toContain("<svg");
     expect(GRAFICA).toContain("viewBox");
     expect(GRAFICA, "la gráfica se volvió componente de cliente").not.toContain("use client");
+  });
+
+  it("y su proporción NO depende de cuántas barras haya", () => {
+    // EL DEFECTO (Santiago, 2026-11-03): *"esas gráficas tan inmensas se ven muy extrañas."*
+    //
+    // El `viewBox` se calculaba del NÚMERO DE BARRAS, así que con cinco meses medía 230 × 150. Y el SVG
+    // lleva `w-full`: un SVG con viewBox escala EL DIBUJO ENTERO para llenar el ancho que se le da, así
+    // que en un panel ancho esas 230 unidades se estiraban casi cinco veces y el alto se iba con ellas.
+    // El ancho lógico y el ancho real eran dos cosas distintas y nadie las ataba.
+    //
+    // SE AFIRMA LO CONTRARIO DE LO QUE HABÍA: el viewBox es una constante, y lo que se reparte dentro son
+    // las barras. Si alguien vuelve a derivarlo de los datos, el alto vuelve a depender de la cohorte.
+    expect(GRAFICA, "el viewBox volvió a depender de los datos").toContain(
+      "viewBox={`0 0 ${ANCHO} ${ALTO}`}",
+    );
+    expect(GRAFICA).toContain("const ANCHO = 600;");
+    expect(GRAFICA, "las barras dejaron de repartirse el ancho").toContain(
+      "const paso = ANCHO / barras.length;",
+    );
+    // Y UN TOPE DE GROSOR: dos barras repartiéndose 600 unidades serían dos bloques, no una serie.
+    expect(GRAFICA).toContain("GROSOR_MAXIMO");
+    // La otra mitad es de la maqueta: un dibujo 4:1 a todo el ancho de un panel sigue siendo alto.
+    expect(PAGINA, "la gráfica volvió a ocupar todo el ancho del panel").toContain(
+      '<div className="max-w-3xl">',
+    );
   });
 
   it("con escala desde CERO y su etiqueta accesible", () => {

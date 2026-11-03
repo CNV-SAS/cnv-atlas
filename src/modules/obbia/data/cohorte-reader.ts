@@ -103,6 +103,50 @@ export type CohorteDeInvestigacion = {
   mezclaFamilias: boolean;
   /** La cohorte autorizada por mes de la medicion (hora de Colombia), de lo mas reciente a lo mas viejo. */
   porMes: { mes: string; evaluaciones: number }[];
+  /**
+   * ═══ LOS CONSOLIDADOS DE SU CNVResearch (cotejo del 2026-11-03) ═══
+   *
+   * Su modulo estratifica la cohorte por PAIS, CIUDAD, SEXO y PROFESIONAL, cada uno con las mismas cinco
+   * columnas. Era lo mas grande que /obbia no tenia, y lo que convierte un panel de conteos en uno de
+   * investigacion: *"cuantas consultas hay"* es una cifra; *"como se reparten"* es lo que decide si una
+   * cohorte sirve para un analisis.
+   *
+   * SE AÑADEN LOS CUATRO EJES Y NADA MAS. Sus cinco columnas se respetan tal cual, porque son las que un
+   * revisor espera ver en una tabla de caracterizacion.
+   *
+   * Y AQUI SIGUE SIN SALIR UNA FILA DE PACIENTE: son conteos por grupo. El unico eje que nombra a una
+   * persona es el del PROFESIONAL, que es quien atiende y no el sujeto de estudio; su propio modulo lo
+   * hace igual.
+   */
+  estratos: {
+    eje: "pais" | "ciudad" | "sexo" | "profesional";
+    filas: EstratoDeLaCohorte[];
+  }[];
+  /**
+   * Las cifras que su panel muestra en tarjetas y /obbia no tenia: con espectro crudo (Z5-Z500), con
+   * encuesta completa, con plan nutricional, y la edad media con su rango.
+   *
+   * LA EDAD SE MIDE A LA FECHA DE LA MEDICION, no a hoy: es la misma regla que ya rige la HC y el motor.
+   * Una cohorte que envejece sola entre dos miradas no es una cohorte.
+   */
+  cifrasDeLaCohorte: {
+    conEspectro: number;
+    conEncuestaCompleta: number;
+    conPlanNutricional: number;
+    edadMedia: number | null;
+    edadMinima: number | null;
+    edadMaxima: number | null;
+  };
+};
+
+/** Una fila de consolidado, con las CINCO columnas de su CNVResearch. */
+export type EstratoDeLaCohorte = {
+  grupo: string;
+  consultas: number;
+  pacientes: number;
+  conBis: number;
+  conEspectro: number;
+  edadMedia: number | null;
 };
 
 export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigacion> {
@@ -186,6 +230,80 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
      order by 1 desc
   `);
 
+  // ═══ LOS CONSOLIDADOS, LOS CUATRO EN UNA SOLA IDA ═══
+  //
+  // UN `union all` SOBRE LA MISMA BASE y no cuatro consultas: son el mismo universo agrupado por cuatro
+  // columnas, y partirlo abriria la puerta a que dos ejes del mismo panel se midan en momentos distintos.
+  // Es el mismo criterio que ya rige los totales de arriba.
+  //
+  // LA EDAD SE CALCULA A LA FECHA DE LA MEDICION. `age()` sobre la fecha de nacimiento y el dia de la toma,
+  // no sobre hoy: una cohorte que envejece sola entre dos miradas no es una cohorte, y es la regla que ya
+  // cerro "una fecha ilegible que se vuelve edad cero".
+  //
+  // `coalesce(..., 'Sin dato')` EN LOS CUATRO EJES, que es lo que su modulo hace: una fila "Sin dato" dice
+  // cuantas no se pueden estratificar; omitirlas haria que las columnas no sumen el total y nadie sabria
+  // por que.
+  const base = sql`
+    from public.evaluaciones_para_investigacion v
+    left join patient_profiles pp on pp.patient_id = v.patient_id
+    left join professional_profiles prof on prof.id = v.professional_id
+    left join profiles perfil on perfil.id = prof.profile_id
+    left join lateral (
+      select 1 as tiene
+        from bis_raw_values r
+       where r.measurement_id = v.measurement_id
+         and r.variable_name in ('Z5 Ohm', 'Z500 Ohm')
+       limit 1
+    ) espectro on true
+   where v.es_consulta_hecha`;
+
+  const columnas = sql`
+      count(*)::int as consultas,
+      count(distinct v.patient_id)::int as pacientes,
+      count(*) filter (where v.measurement_id is not null)::int as con_bis,
+      count(*) filter (where espectro.tiene is not null)::int as con_espectro,
+      round(avg(
+        extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date))
+      )::numeric, 1) as edad_media`;
+
+  const estratos = await db.execute(sql`
+      select 'pais' as eje, coalesce(nullif(trim(pp.country), ''), 'Sin dato') as grupo, ${columnas} ${base} group by 1, 2
+    union all
+      select 'ciudad', coalesce(nullif(trim(pp.city), ''), 'Sin dato'), ${columnas} ${base} group by 1, 2
+    union all
+      select 'sexo',
+             case upper(coalesce(pp.sex, '')) when 'M' then 'Masculino' when 'F' then 'Femenino' else 'Sin dato' end,
+             ${columnas} ${base} group by 1, 2
+    union all
+      select 'profesional', coalesce(nullif(trim(perfil.full_name), ''), 'Sin dato'), ${columnas} ${base} group by 1, 2
+     order by 1, 3 desc
+  `);
+
+  // ═══ LAS CIFRAS DE TARJETA QUE SU PANEL TIENE Y /obbia NO TENIA ═══
+  //
+  // `conEncuestaCompleta` y `conPlanNutricional` NO se derivan de la vista (que no sabe de encuestas ni de
+  // protocolos): se preguntan por `exists`, que es lo que hace el roster y lo que evita traer las filas.
+  const [extras] = (await db.execute(sql`
+    select
+      count(*) filter (where exists (
+        select 1 from bis_raw_values r
+         where r.measurement_id = v.measurement_id and r.variable_name in ('Z5 Ohm', 'Z500 Ohm')))::int as con_espectro,
+      count(*) filter (where exists (
+        select 1 from survey_responses sr where sr.evaluation_id = v.id))::int as con_encuesta,
+      count(*) filter (where exists (
+        select 1 from treatments t
+          join diagnoses d on d.id = t.diagnosis_id
+         where d.evaluation_id = v.id))::int as con_plan,
+      round(avg(
+        extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date))
+      )::numeric, 1) as edad_media,
+      min(extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date)))::int as edad_min,
+      max(extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date)))::int as edad_max
+      from public.evaluaciones_para_investigacion v
+      left join patient_profiles pp on pp.patient_id = v.patient_id
+     where v.es_consulta_hecha
+  `)) as unknown as Record<string, number | null>[];
+
   // LA FAMILIA SE CALCULA EN TS CON LA FUNCION DE LA BANDA, no con un `split` en SQL. Si el criterio de
   // comparabilidad cambia, cambia en un sitio y las dos superficies lo siguen.
   const crudas = (versiones as unknown as { version: string; evaluaciones: number }[]).map((r) => ({
@@ -233,5 +351,26 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
       mes: r.mes,
       evaluaciones: Number(r.evaluaciones),
     })),
+    estratos: (["pais", "ciudad", "sexo", "profesional"] as const).map((eje) => ({
+      eje,
+      filas: (estratos as unknown as Record<string, string | number | null>[])
+        .filter((r) => r.eje === eje)
+        .map((r) => ({
+          grupo: String(r.grupo),
+          consultas: Number(r.consultas),
+          pacientes: Number(r.pacientes),
+          conBis: Number(r.con_bis),
+          conEspectro: Number(r.con_espectro),
+          edadMedia: r.edad_media == null ? null : Number(r.edad_media),
+        })),
+    })),
+    cifrasDeLaCohorte: {
+      conEspectro: Number(extras?.con_espectro ?? 0),
+      conEncuestaCompleta: Number(extras?.con_encuesta ?? 0),
+      conPlanNutricional: Number(extras?.con_plan ?? 0),
+      edadMedia: extras?.edad_media == null ? null : Number(extras.edad_media),
+      edadMinima: extras?.edad_min == null ? null : Number(extras.edad_min),
+      edadMaxima: extras?.edad_max == null ? null : Number(extras.edad_max),
+    },
   };
 }
