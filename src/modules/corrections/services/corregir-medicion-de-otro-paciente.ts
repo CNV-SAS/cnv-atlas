@@ -18,7 +18,29 @@ import { CONSENT_VERSION } from "@/modules/consent/versions";
 import { recordAudit } from "@/modules/audit/log";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// EL CASO 6: LA MEDICION ERA DE OTRA PERSONA  (Santiago, 2026-10-24)
+// RETIRAR LA MEDICION DE UNA CONSULTA YA DIAGNOSTICADA  ·  DOS MOTIVOS, UN SOLO CAMINO
+//
+// ═══ EL SEGUNDO MOTIVO (Gildardo v12 §1.3, construido el 2026-11-03) ═══
+//
+// Este servicio nacio para el caso 6 (la medicion es de OTRA persona) y el archivo conserva ese nombre.
+// Desde hoy atiende tambien *"la toma quedo mal, se borra y el profesional la vuelve a subir"*, que es la
+// otra mitad de su §1.3 y la que Atlas no cubria: Santiago buscaba un boton para reemplazar la medicion y
+// lo unico que habia nombraba el caso raro.
+//
+// ES EL MISMO CAMINO PORQUE ES EL MISMO ACTO: con un diagnostico sellado encima, retirar la toma es emitir
+// una version nueva SIN medicion, y la vieja queda reemplazada y legible. Partirlo en dos servicios
+// identicos es el patron del segundo constructor que este proyecto ya pago dos veces.
+//
+// ═══ LO QUE SI CAMBIA SEGUN EL MOTIVO, Y SON DOS COSAS ═══
+//
+//   · EL `trigger_type` (0235). Tres hechos clinicos distintos tienen que poder contarse por separado.
+//   · LA MARCA DE LA 0226 (`no_es_del_paciente_*`), que SOLO se pone en el caso 6. Es lo que deja al dueno
+//     de verdad importar su archivo pese al freno; en una toma mal hecha no hay otro dueno, y poner la
+//     marca afirmaria en la historia clinica que ese cuerpo es de otra persona, que es FALSO. Y no hace
+//     falta: la version nueva queda unida a la vieja en `clinical_corrections`, que es la PRIMERA excepcion
+//     del freno, asi que reimportar pasa igual (incluso el mismo archivo re-exportado del equipo).
+//
+// ═══ EL CASO 6: LA MEDICION ERA DE OTRA PERSONA  (Santiago, 2026-10-24) ═══
 //
 // `docs/PLAN_FLUJO_CORRECCION.md` lo aparto el primer dia: *"no es 'reimportar mi medicion', es 'esta
 // medicion es de OTRA persona' (contaminacion cruzada de PHI). Es un problema de integridad mas serio
@@ -67,9 +89,24 @@ import { recordAudit } from "@/modules/audit/log";
 
 type Actor = { actorId: string; actorEmail: string; ip: string | null };
 
+/**
+ * POR QUE SE RETIRA LA TOMA. Decide el `trigger_type` y si la medicion queda marcada (ver la cabecera).
+ *
+ * No tiene valor por defecto A PROPOSITO: quien llame tiene que decidirlo, porque de los dos valores sale
+ * si en la historia clinica queda escrito que ese cuerpo era de otra persona.
+ */
+export type CausaDeRetiro = "otro_paciente" | "toma_mal_hecha";
+
+const TRIGGER: Record<CausaDeRetiro, "medicion_de_otro_paciente" | "toma_mal_hecha"> = {
+  otro_paciente: "medicion_de_otro_paciente",
+  toma_mal_hecha: "toma_mal_hecha",
+};
+
 export type MedicionDeOtroPacienteInput = {
-  /** La evaluacion VIGENTE cuya medicion no es de este paciente. */
+  /** La evaluacion VIGENTE cuya medicion hay que retirar. */
   evaluationId: string;
+  /** Por que se retira. */
+  causa: CausaDeRetiro;
   /** Motivo obligatorio: dentro de un ano alguien va a preguntar por que esta historia cambio. */
   reason: string;
   /** Confirmacion explicita: el acto reemplaza una version sellada y no se deshace. */
@@ -156,10 +193,11 @@ export async function corregirMedicionDeOtroPaciente(
       ),
     );
   }
-  if (medicion.marcada) {
-    return err(
-      appError("conflict", "Esa medición ya está marcada como de otro paciente."),
-    );
+  // SOLO ES CONFLICTO EN EL CASO 6: la marca es la que se va a escribir, y escribirla dos veces la
+  // rechazaria el trigger write-once de la 0226. Una toma mal hecha no la escribe, asi que una medicion ya
+  // marcada no estorba (y de hecho no deberia llegar aqui: su consulta ya quedo reemplazada).
+  if (input.causa === "otro_paciente" && medicion.marcada) {
+    return err(appError("conflict", "Esa medición ya está marcada como de otro paciente."));
   }
 
   // La respuesta de encuesta vigente, que viaja TAL CUAL (no es lo que estaba mal).
@@ -255,21 +293,27 @@ export async function corregirMedicionDeOtroPaciente(
       // (iv) LA MARCA, y aqui esta la pieza que deja al dueno de verdad cargar su archivo. El `isNull`
       // en el WHERE no es decorativo: si dos personas pulsaran a la vez, la segunda escritura no pisa la
       // primera, y el trigger de la 0226 la rechazaria de todos modos.
-      const marcadas = await tx
-        .update(bisMeasurements)
-        .set({
-          noEsDelPacienteAt: new Date(),
-          noEsDelPacientePor: actor.actorId,
-          noEsDelPacienteMotivo: input.reason.trim(),
-        })
-        .where(
-          and(eq(bisMeasurements.id, medicion.id), isNull(bisMeasurements.noEsDelPacienteAt)),
-        )
-        .returning({ id: bisMeasurements.id });
-      if (marcadas.length !== 1) {
-        // Falla en voz alta y revierte: una correccion que no marco la medicion deja al freno armado
-        // contra el dueno de verdad, que es el defecto entero que esto viene a evitar.
-        throw new Error("Corrección abortada: la medición no quedó marcada como de otro paciente.");
+      //
+      // SOLO EN EL CASO 6 (ver la cabecera): en una toma mal hecha no hay otro dueno, y la marca es una
+      // afirmacion sobre DE QUIEN es ese cuerpo. Escribirla "por si acaso" meteria en la historia clinica
+      // un hecho que nadie comprobo, y ademas abriria el freno de la 0225 sin que haya nada que abrirle.
+      if (input.causa === "otro_paciente") {
+        const marcadas = await tx
+          .update(bisMeasurements)
+          .set({
+            noEsDelPacienteAt: new Date(),
+            noEsDelPacientePor: actor.actorId,
+            noEsDelPacienteMotivo: input.reason.trim(),
+          })
+          .where(
+            and(eq(bisMeasurements.id, medicion.id), isNull(bisMeasurements.noEsDelPacienteAt)),
+          )
+          .returning({ id: bisMeasurements.id });
+        if (marcadas.length !== 1) {
+          // Falla en voz alta y revierte: una correccion que no marco la medicion deja al freno armado
+          // contra el dueno de verdad, que es el defecto entero que esto viene a evitar.
+          throw new Error("Corrección abortada: la medición no quedó marcada como de otro paciente.");
+        }
       }
 
       // (v) la correccion: encadena vieja -> nueva. El trigger `apply` marca la vieja reemplazada DENTRO
@@ -279,14 +323,19 @@ export async function corregirMedicionDeOtroPaciente(
         newEvaluationId: newEval.id,
         correctedBy: actor.actorId,
         reason: input.reason.trim(),
-        triggerType: "medicion_de_otro_paciente",
+        triggerType: TRIGGER[input.causa],
       });
 
-      // (vi) auditoria inline, en la transaccion (regla dura 8). EVENTO PROPIO y no `evaluation.corrected`:
-      // esto es un incidente de datos de salud (un dato de una persona en la historia de otra) y tiene que
-      // poder contarse, buscarse y reportarse por separado.
+      // (vi) auditoria inline, en la transaccion (regla dura 8). EVENTO PROPIO POR MOTIVO y no
+      // `evaluation.corrected`: el caso 6 es un incidente de datos de salud (un dato de una persona en la
+      // historia de otra) y tiene que poder contarse, buscarse y reportarse por separado; la toma mal hecha
+      // es calidad de dato, y "cuantas tomas hubo que repetir" es su propia pregunta. Un solo evento con el
+      // motivo dentro del payload obligaria a leer el payload para distinguir un incidente de una repeticion.
       await recordAudit(tx, {
-        event: "evaluation.medicion_de_otro_paciente",
+        event:
+          input.causa === "otro_paciente"
+            ? "evaluation.medicion_de_otro_paciente"
+            : "evaluation.toma_mal_hecha",
         actorId: actor.actorId,
         actorEmail: actor.actorEmail,
         entityType: "evaluation",
@@ -297,7 +346,10 @@ export async function corregirMedicionDeOtroPaciente(
           measurement_id: medicion.id,
           patient_id: ev.patientId,
           reason: input.reason.trim(),
-          trigger_type: "medicion_de_otro_paciente",
+          trigger_type: TRIGGER[input.causa],
+          // SE DICE SI LA MEDICION QUEDO MARCADA, y no se deduce del motivo: dentro de un año, "no aparece
+          // la marca" no distingue entre "no se puso" y "nadie lo registro".
+          medicion_marcada_como_de_otro: input.causa === "otro_paciente",
         },
         ip: actor.ip,
       });

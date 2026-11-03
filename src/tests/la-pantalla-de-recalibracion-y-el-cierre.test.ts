@@ -80,7 +80,7 @@ describe("(3 bis) los motivos salen de donde ya viven, no de una copia", () => {
 });
 
 describe("(4) la correccion se cierra, se limpia y lleva a la version nueva", () => {
-  const COMP = readFileSync("src/modules/corrections/components/medicion-de-otro-paciente.tsx", "utf8");
+  const COMP = readFileSync("src/modules/corrections/components/reemplazar-la-medicion-bis.tsx", "utf8");
   const ACTION = readFileSync("src/modules/corrections/actions.ts", "utf8");
 
   it("la action DEVUELVE el id de la version nueva, que el servicio ya daba", () => {

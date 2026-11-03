@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -458,31 +457,27 @@ export function BisConditionsCapture({
                   ? "Actualizar condiciones"
                   : "Guardar condiciones"}
           </Button>
-          {/* Guardadas y sin contraindicacion: el import ya quedo habilitado, pero vive en la OTRA
-              subpestaña. Sin este puente el profesional guarda y no sabe adonde ir (Gildardo 2026-08-17, a). */}
+          {/* ═══ EL AVISO DICE QUE SIGUE, Y DESDE DONDE ESTA (Santiago, 2026-11-03) ═══
+
+              Decia *"Condiciones guardadas. Ya puedes ir al módulo de Antropometría y BIS"*, con enlace. Y
+              era cierto hasta el 2026-10-30: este bloque vivia en Encuesta y el import en la otra pestaña,
+              asi que sin ese puente el profesional guardaba y no sabia adonde ir (Gildardo, 2026-08-17, a).
+              Al mover las condiciones a Antrop. & BIS (su v12 §3), el puente quedo apuntando al sitio donde
+              ya estamos: *"este mensaje debe ser cambiado, ya que nos encontramos en dicho modulo jeje"*.
+
+              ES EL MISMO DEFECTO QUE EL PUENTE VINO A CERRAR, al reves: un aviso que describe un sitio en
+              vez de derivar del sitio donde se pinta. Ahora nombra el PASO y no el modulo, y el paso esta a
+              la vista unas lineas mas abajo, en la misma pestaña.
+
+              EL MOVIMIENTO NO BORRO EL ENLACE EN LA OTRA SUPERFICIE: la pantalla de corregir condiciones es
+              una ruta propia, pero ahi este aviso no se pinta (al corregir se NAVEGA a la version nueva),
+              asi que no queda ningun camino sin su puente. */}
           {saved && !liveContraindicated ? (
             <div className="flex items-start gap-2 rounded-lg border border-clinical-optimal/40 bg-clinical-optimal-bg px-3 py-2 text-sm text-clinical-optimal">
               <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
-                {/* "ir al modulo" y no "importar la medicion" (Santiago, 2026-09-09): ahora que Antrop. &
-                    BIS es pestaña propia, el enlace lleva a un SITIO, y describirlo por el paso que se hace
-                    alli dentro (importar) es nombrar otra cosa. Ademas importar no siempre es lo que toca:
-                    el archivo puede estar ya cargado y venirse a corregir medidas. */}
-                Condiciones guardadas. Ya puedes{" "}
-                <Link
-                  // UNA SOLA ETAPA desde que Antrop. & BIS es pestaña propia (2026-09-10). Antes eran
-                  // dos parametros (`?etapa=evaluacion&ev=antropometria`) porque era una subpestaña dentro
-                  // de Evaluacion, y en su momento faltaba el `?etapa`: la pagina caia a su default y el
-                  // profesional guardaba las condiciones, pulsaba "importar" y aterrizaba en Diagnostico.
-                  //
-                  // Va explicito y no confiado al default: un enlace que depende de un default se rompe en
-                  // silencio la proxima vez que alguien mueva el default.
-                  href={`/ani-bis-e/${evaluationId}?etapa=antro`}
-                  className="font-semibold underline underline-offset-2 hover:no-underline"
-                >
-                  ir al módulo de Antropometría y BIS
-                </Link>
-                .
+                Condiciones guardadas. El bloque <strong>Medición BIS</strong>, aquí abajo, ya acepta el
+                archivo del Biody.
               </span>
             </div>
           ) : null}

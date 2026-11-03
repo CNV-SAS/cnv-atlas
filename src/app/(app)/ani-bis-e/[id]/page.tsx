@@ -21,7 +21,6 @@ import { AvisoDeEdadDiscordante } from "@/modules/bis/components/aviso-de-edad-d
 import { PanelDeCalidadBiologica } from "@/modules/bis/components/panel-de-calidad-biologica";
 import { qcBiologicoDeLaConsulta } from "@/modules/bis/data/qc-biologico-reader";
 import { huellaRepetidaDeLaConsulta } from "@/modules/bis/data/huellas-repetidas-reader";
-import { MedicionDeOtroPaciente } from "@/modules/corrections/components/medicion-de-otro-paciente";
 import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
 import { SupersededBanner } from "@/modules/corrections/components/superseded-banner";
 import { getCorrectionAvailability } from "@/modules/corrections/data/correction-availability-reader";
@@ -370,6 +369,22 @@ export default async function ResultadosEvaluacionPage({
         )}
       />
     );
+    // ═══ EL AVISO DE LA HUELLA TAMBIEN EXISTE SIN DIAGNOSTICO (2026-11-03) ═══
+    //
+    // Hasta hoy esta rama NO lo leia, y eso dejaba DOS huecos: el camino para reemplazar la toma vivia
+    // plegado dentro de la seccion de la medicion (un `details` que Santiago no encontro), y el aviso de
+    // huella repetida no se pintaba, asi que una consulta sin diagnosticar con la toma de otro paciente no
+    // decia nada en la pestaña donde se trabaja.
+    //
+    // SOLO CON MEDICION: sin toma no hay huella que comparar, y la consulta se ahorra la ida a la base.
+    // Con `catch` por lo mismo que en la otra rama: un aviso que tumba la pantalla donde se trabaja es
+    // peor que un aviso que falta.
+    const medicionRepetidaSinDx = entryComposition
+      ? await huellaRepetidaDeLaConsulta(id).catch((e) => {
+          reportServerError("evaluacion.huella-repetida", e);
+          return null;
+        })
+      : null;
     const entradaSinDiagnostico = {
       evaluationId: id,
       diagnosticoGenerado: false,
@@ -383,6 +398,7 @@ export default async function ResultadosEvaluacionPage({
       patientIsFemale: entrySex === "F",
       bisReadonly: null,
       identityConfirmationSlot: identityNode,
+      medicionRepetida: medicionRepetidaSinDx,
     };
     return (
       <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-4">
@@ -975,9 +991,14 @@ export default async function ResultadosEvaluacionPage({
     bisReadonly: entryReadonly,
     diagnosticoGenerado: Boolean(results),
     // UN SOLO BLOQUE, ARRIBA DE Antrop. & BIS (Santiago, 2026-10-28). El aviso y su salida iban en dos
-    // bloques separados por media pantalla; ahora el aviso ENCABEZA el bloque de la correccion y los dos
+    // bloques separados por media pantalla; ahora el aviso ENCABEZA el bloque del reemplazo y los dos
     // suben al inicio de la pestaña. El porque, en el componente.
-    correccionDeLaMedicion: <MedicionDeOtroPaciente evaluationId={id} repetida={medicionRepetida} />,
+    //
+    // VA EL DATO Y NO EL BLOQUE (2026-11-03): la huella es lo unico que la pagina puede leer y la pestaña
+    // no. El resto (si se reimporta en sitio o se versiona) lo DERIVA la pestaña de dos props que ya
+    // recibe, y por eso el mismo bloque no queda montado dos veces con props escritas a mano en cada una
+    // de las dos ramas de esta pagina.
+    medicionRepetida,
     avisoDeEdadDelEquipo: <AvisoDeEdadDiscordante discordancia={edadDiscordante} />,
     // EL CONTROL DE CALIDAD BIOLOGICO (su v12). El panel decide solo si se pinta: sin hallazgos devuelve
     // null, que es el 99,5 % de las consultas.

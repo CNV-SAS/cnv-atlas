@@ -1,0 +1,43 @@
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+-- "LA TOMA QUEDO MAL" NO ES "LA MEDICION ES DE OTRO PACIENTE"  ·  0235
+--
+-- ═══ DE DONDE SALE ═══
+--
+-- Gildardo, v12 §1.3: *"El boton «Eliminar toma BIS» aparece solo en los pacientes cuya ultima consulta
+-- tiene bioimpedancia. Sirve para el caso del control: la toma quedo mal, se borra y el profesional la
+-- vuelve a subir. Solo se elimina la toma de BIS."*
+--
+-- Atlas tenia construido el camino, pero SOLO con el motivo del caso 6 (la medicion es de OTRA persona,
+-- 0226). Santiago, 2026-11-03: *"Lo que hay solo cubre 'es de OTRA persona', y no veo un boton para
+-- reemplazar... Para el caso de toma mal hecha, el trigger_type que corresponda (no
+-- medicion_de_otro_paciente)."*
+--
+-- ═══ POR QUE UN VALOR NUEVO Y NO `correccion_profesional` ═══
+--
+-- Por la misma razon que la 0226 escribio al apartar `medicion_de_otro_paciente`: *"no se reusa
+-- `correccion_profesional` porque esto no es un dato mal digitado... y al auditar la cadena hay que poder
+-- contarlo y reportarlo por separado."*
+--
+-- Y aqui los TRES son hechos clinicos distintos, con consecuencias distintas:
+--
+--   · `correccion_profesional`       un dato se digito mal. La toma fisica sirve y viaja a la version nueva.
+--   · `medicion_de_otro_paciente`    la toma es de OTRO cuerpo. Incidente de datos de salud: la medicion
+--                                    queda marcada (0226) para que el dueno de verdad pueda importar.
+--   · `toma_mal_hecha`               la toma ES de este paciente y NO SIRVE (no estaba en condiciones, los
+--                                    electrodos, el archivo salio corto). No hay incidente de PHI y NO se
+--                                    marca la medicion: marcarla afirmaria que el cuerpo es de otra
+--                                    persona, que es falso. Lo que hay es calidad de dato.
+--
+-- QUE SE CUENTE APARTE NO ES BUROCRACIA: "cuantas tomas hubo que repetir" es una pregunta de calidad del
+-- dato sobre el equipo y el procedimiento, y es exactamente la que el barrido de huellas del 24 de octubre
+-- no pudo contestar.
+--
+-- ═══ Y NO HACE FALTA NINGUNA EXCEPCION NUEVA EN EL FRENO ═══
+--
+-- Al reimportar, el freno de la 0225 compara la huella de los crudos contra las otras consultas, y ya
+-- exceptua la CADENA DE CORRECCION (`clinical_corrections` une vieja y nueva). La version nueva de una
+-- `toma_mal_hecha` esta en esa cadena, asi que incluso volver a subir el MISMO archivo pasa. La segunda
+-- excepcion (la marca de la 0226) sigue siendo solo del caso 6, que es donde hay otro dueno.
+-- ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+ALTER TYPE "public"."correction_trigger_type" ADD VALUE IF NOT EXISTS 'toma_mal_hecha';

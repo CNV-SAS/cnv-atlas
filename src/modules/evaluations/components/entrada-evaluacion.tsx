@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode } from "react";
 
@@ -7,6 +7,8 @@ import { conOrigen } from "@/components/shared/volver-a-destino";
 import { formatDateLong } from "@/lib/format/date";
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import type { BisImportEvaluation } from "@/modules/bis/data/bis-evaluations-reader";
+import type { HuellaRepetida } from "@/modules/bis/huella-repetida";
+import { ReemplazarLaMedicionBis } from "@/modules/corrections/components/reemplazar-la-medicion-bis";
 import { BisConditionsCapture } from "@/modules/bis-intake/components/bis-conditions-capture";
 import { BisConditionsReadonly } from "@/modules/bis-intake/components/bis-conditions-readonly";
 import type { BisConditionsReadonly as BisConditionsReadonlyData } from "@/modules/bis-intake/data/bis-conditions-reader";
@@ -47,7 +49,7 @@ export function EntradaEvaluacion({
   importada = false,
   identityConfirmationSlot = null,
   encabezado = null,
-  correccionDeLaMedicion = null,
+  medicionRepetida = null,
   avisoDeEdadDelEquipo = null,
   panelDeCalidadBiologica = null,
 }: {
@@ -67,17 +69,27 @@ export function EntradaEvaluacion({
    */
   encabezado?: EncabezadoDeHoja | null;
   /**
-   * LA CORRECCION "la medicion no es de este paciente", MOVIDA AQUI (Gildardo, 2026-10-26).
+   * ¿LA TOMA DE ESTA CONSULTA ESTA EN OTRA? El aviso de la huella repetida, como DATO y no como bloque.
    *
-   * *"La correccion va en Antropometria y BIS, que es donde vive la toma, no en Diagnostico funcional."*
-   * Y tiene razon: el acto es sobre la MEDICION. Quien se da cuenta de que el archivo era de otra persona
-   * lo ve mirando la medicion, no leyendo el diagnostico, y tenia que cambiar de pestaña para arreglarlo.
+   * ═══ POR QUE LLEGA EL DATO Y EL BLOQUE SE MONTA AQUI (2026-11-03) ═══
    *
-   * VA ARRIBA DE TODO (Santiago, 2026-10-28), no debajo de la medicion: estaba "abajo casi al final" y
-   * no se encontraba. Lleva el aviso de medicion repetida DENTRO, en el mismo bloque, porque un aviso que
-   * no trae su salida al lado obliga a buscarla.
+   * Era un `ReactNode` que armaba la pagina, y la pagina tiene DOS ramas (con diagnostico y sin el), asi
+   * que al unificar el reemplazo el mismo bloque habria quedado montado dos veces, con props distintas
+   * escritas a mano en cada rama. Es la forma exacta en que una rama se queda sin un arreglo que la otra
+   * si recibe, y encima habria vuelto a abrir el "se monta en dos sitios" que su candado prohibe.
+   *
+   * ASI QUE LA PAGINA MANDA LO QUE SOLO ELLA PUEDE LEER (la huella) y lo demas se DERIVA aqui: el camino
+   * sale de `diagnosticoGenerado` y el formulario de reimport de `bisImportEval`, que ya es null cuando hay
+   * diagnostico. Dos props que este componente ya recibia.
+   *
+   * ═══ Y SIGUE DONDE GILDARDO LO PUSO ═══
+   *
+   * *"La correccion va en Antropometria y BIS, que es donde vive la toma, no en Diagnostico funcional"*
+   * (2026-10-26): el acto es sobre la MEDICION. Y ARRIBA DE TODO (Santiago, 2026-10-28), no debajo de la
+   * medicion: estaba "abajo casi al final" y no se encontraba. El aviso va DENTRO del mismo bloque, porque
+   * un aviso que no trae su salida al lado obliga a buscarla.
    */
-  correccionDeLaMedicion?: ReactNode;
+  medicionRepetida?: HuellaRepetida | null;
   /**
    * EL AVISO DE SU ERROR 5: la edad de la ficha y la del equipo difieren en mas de un año.
    *
@@ -287,6 +299,21 @@ export function EntradaEvaluacion({
       <BisConditionsReadonly data={bisReadonly} />
     ) : null;
 
+  // ═══ "REEMPLAZAR LA MEDICION BIS": UN SOLO BLOQUE, Y LOS DOS CAMINOS DERIVADOS ═══
+  //
+  // El motivo lo pregunta el bloque; el CAMINO no se le pregunta a nadie, se deriva: con diagnostico
+  // sellado hay que versionar, y sin el se reimporta en sitio. `bisImportEval` ya es null cuando hay
+  // diagnostico (lo decide la pagina al leer), asi que `reimportar` se apaga solo y no hay una bandera mas
+  // que acordarse de bajar.
+  const correccionDeLaMedicion = (
+    <ReemplazarLaMedicionBis
+      evaluationId={evaluationId}
+      repetida={medicionRepetida}
+      diagnosticoGenerado={diagnosticoGenerado}
+      reimportar={bisImportEval ? <BisImportForm evaluation={bisImportEval} modoReemplazo /> : null}
+    />
+  );
+
   // SUBPESTAÑA 2 · ANTROPOMETRIA Y BIS: import del archivo + composicion corporal. (La sarcopenia y las
   // referencias entran en el siguiente paso.) Las condiciones de la toma viven AQUI desde el 2026-10-30 (v12 §3); lo que sigue dependiendo de Encuesta es la encuesta misma, y el aviso del gate lo dice.
   const antropometriaPanel = (
@@ -330,47 +357,19 @@ export function EntradaEvaluacion({
                 .
               </span>
             </div>
-            {/* EL REEMPLAZO, PEGADO AL AVISO Y COMO ENLACE (smoke de Santiago, 2026-09-05, segunda pasada).
-                La primera version fue una seccion propia abajo, y era desproporcionada: importar el archivo
-                equivocado es un caso RARO, no una parte del flujo. Aqui es un texto pulsable que abre el
-                aviso y el selector EN SU SITIO, sin mover al profesional de donde esta.
-                `details` nativo y no estado de cliente: este panel es de servidor, y un desplegable que no
-                guarda nada no necesita hidratacion. */}
-            {/* ═══ Y EL ROTULO NOMBRA EL ACTO, NO SOLO EL SINTOMA (v12 §1.3, 2026-10-30) ═══
+            {/* ═══ EL REEMPLAZO YA NO VIVE AQUI: SUBIO AL BLOQUE DE ARRIBA (v12 §1.3, 2026-11-03) ═══
 
-                Decia solo *"¿Importaste el archivo equivocado?"*, y eso deja el acto SIN NOMBRE: quien
-                viene buscando como quitar una toma mala (en su HTML hay un boton "Eliminar toma BIS") no
-                reconoce esa pregunta como el sitio, y concluye que en Atlas no se puede. Es el patron de
-                "un control que no se encuentra se reporta como que no existe".
+                Aqui habia un `details` plegado ("Reemplazar la toma de BIS · ¿importaste el archivo
+                equivocado?") y, con diagnostico, un parrafo que nombraba otro camino. O sea DOS entradas
+                parciales al mismo acto, y ninguna con el nombre que Santiago vino buscando: *"pensé que
+                iba a aparecer un botón que dijera Reemplazar medición BIS"*.
 
-                SE QUEDAN LAS DOS COSAS, el nombre y la pregunta: el nombre lo hace encontrable y la
-                pregunta lo hace reconocible para quien llega por el sintoma. Y SIN SUBIRLE EL PESO
-                VISUAL, que es la otra mitad de la decision del 2026-09-05: importar el archivo
-                equivocado es un caso RARO, no una parte del flujo. */}
-            {!diagnosticoGenerado && bisImportEval ? (
-              <details className="no-print group -mt-1">
-                <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline [&::-webkit-details-marker]:hidden">
-                  <ChevronDown className="size-3 transition-transform group-open:rotate-180" aria-hidden />
-                  Reemplazar la toma de BIS · ¿importaste el archivo equivocado?
-                </summary>
-                <div className="pt-2">
-                  <BisImportForm evaluation={bisImportEval} modoReemplazo />
-                </div>
-              </details>
-            ) : null}
-            {/* Y CUANDO YA HAY DIAGNOSTICO SE DICE DONDE ESTA EL CAMINO, en vez de no mostrar nada.
-                Hasta hoy, una consulta con diagnostico no ofrecia aqui NADA sobre la toma, asi que quien
-                descubria la toma mala despues de generar se quedaba sin pista: el reemplazo directo esta
-                cerrado a proposito (el diagnostico esta sellado sobre esa medicion) y lo que corresponde
-                es CORREGIR, que emite una version nueva y conserva la anterior. Una frase que nombra el
-                camino cuesta menos que un profesional escribiendo a soporte. */}
-            {diagnosticoGenerado ? (
-              <p className="no-print -mt-1 text-xs text-muted-foreground">
-                La toma ya no se reemplaza aquí: esta consulta tiene diagnóstico, y está sellado sobre esa
-                medición. Si la toma quedó mal, se corrige la consulta desde el cierre del diagnóstico
-                funcional: se emite una versión nueva y la actual queda registrada como reemplazada.
-              </p>
-            ) : null}
+                Ahora es UN SOLO BOTON, arriba de la pestaña, que pregunta el motivo (la toma quedó
+                mal / es de otra persona) y lleva al camino que corresponda. Va arriba y no aqui por la
+                misma razon por la que subio el aviso de la huella el 2026-10-28: es lo que hay que leer
+                antes de mirar las cifras, porque todo lo de abajo puede describir un cuerpo que no es el
+                del paciente. Una pista que apunte a un bloque que esta tres pantallas arriba, visible,
+                seria repetir el control en dos sitios. */}
             {/* LAS MEDIDAS Y LA TABLA VAN JUNTAS desde el 2026-09-09, para que la tabla se recalcule
                 MIENTRAS se escribe la meta y no al salir del campo. Los dos son componentes cliente pero
                 los montaba este archivo, que es de SERVIDOR, asi que no tenian estado en comun. Ver

@@ -1,8 +1,19 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { HTML_VIGENTE } from "./fixtures/html-vigente";
 import { sinComentarios } from "./helpers/sin-comentarios";
+
+/** Todos los .ts/.tsx bajo un directorio, recursivo. Mismo helper que `acciones-con-puerta`. */
+function fuentes(dir: string, acc: string[] = []): string[] {
+  for (const nombre of readdirSync(dir)) {
+    const ruta = join(dir, nombre);
+    if (statSync(ruta).isDirectory()) fuentes(ruta, acc);
+    else if (/\.(ts|tsx)$/.test(nombre)) acc.push(ruta);
+  }
+  return acc;
+}
 
 // CANDADO DE LAS ETAPAS DE LA EVALUACION · SON SEIS Y VAN EN SU ORDEN (2026-09-10).
 //
@@ -94,12 +105,21 @@ describe("los enlaces con la etapa vieja siguen llegando", () => {
   it("ningún enlace del repositorio apunta ya a la etapa vieja", () => {
     // El candado no se conforma con que la traduccion exista: barre que no quede ningun emisor apuntando a
     // una direccion que ya no es. Un enlace nuestro no deberia necesitar la compatibilidad.
-    // SIN COMENTARIOS: el comentario de ese enlace EXPLICA la direccion vieja, y una asercion sobre el
-    // texto crudo se ponia roja por la prosa y no por la regla.
-    const NUESTROS_ENLACES = sinComentarios(
-      readFileSync("src/modules/bis-intake/components/bis-conditions-capture.tsx", "utf8"),
-    );
-    expect(NUESTROS_ENLACES).toContain("?etapa=antro");
-    expect(NUESTROS_ENLACES, "sigue emitiendo la etapa vieja").not.toContain("etapa=evaluacion");
+    //
+    // BARRE EL REPOSITORIO Y NO UN ARCHIVO. La version anterior vigilaba SOLO
+    // `bis-conditions-capture.tsx`, que era el unico emisor que hubo, y exigia ademas que su enlace
+    // EXISTIERA. El 2026-11-03 ese enlace se retiro (mandaba al modulo donde el bloque ya vive), asi que
+    // la mitad positiva del candado pasó a exigir una pieza que no debe estar. La regla de fondo no era
+    // "ese archivo enlaza bien": es que NADIE emita la direccion vieja, y eso se barre.
+    //
+    // SIN COMENTARIOS: la prosa de esta clase de archivos NOMBRA la direccion vieja para explicar por que
+    // se retiro, y una asercion sobre el texto crudo se pondria roja por el comentario y no por la regla.
+    // EN WINDOWS LAS RUTAS VIENEN CON "\", asi que el filtro de los tests se normaliza: sin eso este
+    // mismo archivo (que NOMBRA la direccion vieja para explicarla) contaria como emisor.
+    const emisores = fuentes("src")
+      .map((r) => r.split("\\").join("/"))
+      .filter((r) => !r.includes("/tests/"))
+      .filter((r) => sinComentarios(readFileSync(r, "utf8")).includes("etapa=evaluacion"));
+    expect(emisores, "estos archivos siguen emitiendo la etapa vieja").toEqual([]);
   });
 });

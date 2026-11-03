@@ -185,7 +185,14 @@ describe("retirar las colas de lote no dejo nada sin camino", () => {
     expect(entrada).toContain("BisImportForm");
     // Y con las DOS guardas que la cola no tenia, que es lo que hace mejor al camino por evaluacion. La de la
     // contraindicacion vive desde el 2026-09-22 en el boton que importa (servidor), no en la pantalla.
+    //
+    // EL REEMPLAZO SIGUE AQUI, pero no como `details` plegado: desde el 2026-11-03 es el slot que la
+    // pestaña le pasa al bloque "Reemplazar la medicion BIS", y se apaga solo cuando no hay import
+    // posible. Lo que este caso protege no es la forma, es que el camino EXISTA.
     expect(entrada).toContain("modoReemplazo");
+    expect(entrada, "el reimport dejo de apagarse solo cuando no hay import posible").toContain(
+      "reimportar={bisImportEval ?",
+    );
     expect(readFileSync("src/modules/bis/actions.ts", "utf8")).toContain("evaluarRequisitosDelImport(");
     expect(readFileSync("src/modules/bis-intake/services/import-gate.ts", "utf8")).toContain('reason: "contraindicated"');
   });

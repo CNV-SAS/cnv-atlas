@@ -21,7 +21,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 const NEUTRO = "src/modules/bis/huella-repetida.ts";
 const LECTOR = "src/modules/bis/data/huellas-repetidas-reader.ts";
-const BLOQUE = "src/modules/corrections/components/medicion-de-otro-paciente.tsx";
+const BLOQUE = "src/modules/corrections/components/reemplazar-la-medicion-bis.tsx";
 const ENTRADA = "src/modules/evaluations/components/entrada-evaluacion.tsx";
 const PAGINA = "src/app/(app)/ani-bis-e/[id]/page.tsx";
 const LISTA = "src/modules/patients/components/lista-pacientes.tsx";
@@ -113,13 +113,23 @@ describe("donde aparece, y donde NO", () => {
     // ERAN DOS, separados por media pantalla: el aviso arriba y la salida casi al final (Santiago,
     // 2026-10-28). Un aviso que no lleva su salida al lado obliga a buscarla, y el que la busca y no la
     // encuentra deja el dato mal.
-    expect(leer(PAGINA)).toContain(
-      "<MedicionDeOtroPaciente evaluationId={id} repetida={medicionRepetida} />",
-    );
+    //
+    // ═══ EL BLOQUE SE MONTA EN LA PESTAÑA Y LA PAGINA LE MANDA EL DATO (2026-11-03) ═══
+    //
+    // La pagina montaba el bloque. Al unificar en el el reemplazo de la toma (v12 §1.3) eso lo habria
+    // dejado montado DOS veces, una por cada rama de la pagina (con diagnostico y sin el), con props
+    // escritas a mano en cada una: es como una rama se queda sin un arreglo que la otra si tiene. Asi que
+    // la pagina manda la huella, que es lo unico que solo ella puede leer, en sus DOS ramas.
+    const pagina = leer(PAGINA);
     expect(
-      leer(PAGINA),
-      "volvio a haber un bloque de aviso aparte",
-    ).not.toContain("<AvisoDeMedicionRepetida");
+      (pagina.match(/medicionRepetida/g) ?? []).length,
+      "una de las dos ramas de la pagina dejo de leer la huella",
+    ).toBeGreaterThanOrEqual(3);
+    expect(pagina, "volvio a haber un bloque de aviso aparte").not.toContain(
+      "<AvisoDeMedicionRepetida",
+    );
+    // Y EL BLOQUE SIGUE LLEVANDO EL AVISO DENTRO, que es la mitad que Santiago pidio unir.
+    expect(leer(BLOQUE)).toContain("avisoDeHuellaRepetida(repetida)");
   });
 
   it("y ese bloque es LO PRIMERO de Antrop. & BIS, no lo ultimo", () => {
@@ -165,8 +175,9 @@ describe("donde aparece, y donde NO", () => {
 
 describe("la correccion vive donde vive la toma", () => {
   it("se monta en Antrop. & BIS", () => {
-    expect(leer(ENTRADA)).toContain("{composition ? correccionDeLaMedicion : null}");
-    expect(leer(PAGINA)).toContain("correccionDeLaMedicion: <MedicionDeOtroPaciente");
+    const entrada = leer(ENTRADA);
+    expect(entrada).toContain("{composition ? correccionDeLaMedicion : null}");
+    expect(entrada, "la pestaña dejo de montar el bloque").toContain("<ReemplazarLaMedicionBis");
   });
 
   it("y en Diagnostico queda el PUNTERO, con el nombre derivado del mapa de etapas", () => {
@@ -176,11 +187,16 @@ describe("la correccion vive donde vive la toma", () => {
     const i = pagina.indexOf("Si la medición de esta consulta es de otra persona");
     expect(i, "el puntero desaparecio").toBeGreaterThan(0);
     expect(pagina.slice(i, i + 400)).toContain('etiquetaDeEtapa("antro")');
-    // Y el boton NO esta en los dos sitios: dos veces el mismo acto irreversible es una de mas.
+    // Y EL BLOQUE NO ESTA EN DOS SITIOS: dos veces el mismo acto irreversible es una de mas. Se cuenta en
+    // la PESTAÑA, que es quien lo monta desde el 2026-11-03, y la pagina no puede volver a montarlo.
     expect(
-      (pagina.match(/<MedicionDeOtroPaciente/g) ?? []).length,
-      "la correccion se monta en dos sitios",
+      (leer(ENTRADA).match(/<ReemplazarLaMedicionBis/g) ?? []).length,
+      "el bloque se monta en dos sitios dentro de la pestaña",
     ).toBe(1);
+    expect(
+      pagina,
+      "la pagina volvio a montar el bloque: entonces hay uno por rama, con props a mano",
+    ).not.toContain("<ReemplazarLaMedicionBis");
   });
 
   it("solo se ofrece si hay medicion: sin toma no hay nada que desligar", () => {

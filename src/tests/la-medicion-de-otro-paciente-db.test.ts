@@ -214,7 +214,7 @@ describe.skipIf(!HAS_DB)("la medicion era de otro paciente (BD real)", () => {
 
   it("sin motivo no corrige, y no escribe nada", async () => {
     const r = await servicio.corregirMedicionDeOtroPaciente(
-      { evaluationId: A.evaluationId, reason: "   ", confirmed: true },
+      { evaluationId: A.evaluationId, causa: "otro_paciente", reason: "   ", confirmed: true },
       { actorId, actorEmail: "x@y.z", ip: null },
     );
     expect(r.ok).toBe(false);
@@ -227,7 +227,7 @@ describe.skipIf(!HAS_DB)("la medicion era de otro paciente (BD real)", () => {
 
   it("sin confirmacion explicita tampoco", async () => {
     const r = await servicio.corregirMedicionDeOtroPaciente(
-      { evaluationId: A.evaluationId, reason: "el archivo era del paciente B del mismo dia", confirmed: false },
+      { evaluationId: A.evaluationId, causa: "otro_paciente", reason: "el archivo era del paciente B del mismo dia", confirmed: false },
       { actorId, actorEmail: "x@y.z", ip: null },
     );
     expect(r.ok).toBe(false);
@@ -236,7 +236,7 @@ describe.skipIf(!HAS_DB)("la medicion era de otro paciente (BD real)", () => {
   it("otro profesional no puede desligar esta medicion (es un acto del asignado)", async () => {
     if (!actorIdOtro || profProfileIdOtro === profProfileId) return;
     const r = await servicio.corregirMedicionDeOtroPaciente(
-      { evaluationId: A.evaluationId, reason: "el archivo era del paciente B del mismo dia", confirmed: true },
+      { evaluationId: A.evaluationId, causa: "otro_paciente", reason: "el archivo era del paciente B del mismo dia", confirmed: true },
       { actorId: actorIdOtro, actorEmail: "x@y.z", ip: null },
     );
     expect(r.ok).toBe(false);
@@ -247,6 +247,7 @@ describe.skipIf(!HAS_DB)("la medicion era de otro paciente (BD real)", () => {
     const r = await servicio.corregirMedicionDeOtroPaciente(
       {
         evaluationId: A.evaluationId,
+        causa: "otro_paciente",
         reason: "el archivo importado era del paciente B, atendido el mismo dia; la edad del equipo no cuadra",
         confirmed: true,
       },
@@ -370,7 +371,7 @@ describe.skipIf(!HAS_DB)("la medicion era de otro paciente (BD real)", () => {
 
   it("corregir dos veces la misma version no se puede: la cadena no se bifurca", async () => {
     const r = await servicio.corregirMedicionDeOtroPaciente(
-      { evaluationId: A.evaluationId, reason: "intento de bifurcar la cadena de versiones", confirmed: true },
+      { evaluationId: A.evaluationId, causa: "otro_paciente", reason: "intento de bifurcar la cadena de versiones", confirmed: true },
       { actorId, actorEmail: "x@y.z", ip: null },
     );
     expect(r.ok).toBe(false);
@@ -395,5 +396,159 @@ describe.skipIf(!HAS_DB)("la medicion era de otro paciente (BD real)", () => {
         .set({ noEsDelPacienteAt: new Date() })
         .where(eq(s.bisMeasurements.id, medB.id)),
     ).rejects.toThrow();
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // EL SEGUNDO MOTIVO: "LA TOMA QUEDO MAL" (su v12 §1.3, 0235)
+  //
+  // Es el MISMO camino (version nueva sin medicion) y por eso vive en el mismo servicio. Lo que cambia
+  // es lo que queda ESCRITO, y es la unica diferencia que importa: el disparador, el evento y, sobre
+  // todo, que la medicion NO queda marcada como de otra persona. Marcarla afirmaria en la historia
+  // clinica que ese cuerpo es de otro, que es falso, y abriria el freno de la 0225 sin que haya nada
+  // que abrirle.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  describe("la toma quedo mal: el mismo camino, otro registro", () => {
+    const C = { patientId: "", evaluationId: "" };
+    let medicionDeC = "";
+    let nuevaDeC = "";
+
+    beforeAll(async () => {
+      if (!HAS_DB) return;
+      Object.assign(C, await crearPaciente("C"));
+      const [med] = await db
+        .insert(s.bisMeasurements)
+        .values({ evaluationId: C.evaluationId, measurementDate: new Date("2026-10-20T14:00:00Z") })
+        .returning({ id: s.bisMeasurements.id });
+      medicionDeC = med.id;
+      // UNA HUELLA DISTINTA DE LA DE A: si fueran iguales, el freno de la 0225 entraria en escena y esta
+      // prueba fallaria por una razon que no es la suya.
+      await db.insert(s.bisRawValues).values(
+        CRUDOS.map((c, i) => ({
+          measurementId: med.id,
+          variableName: c.variableName,
+          value: String(Number(c.value) + 11 + i),
+        })),
+      );
+    });
+
+    afterAll(async () => {
+      if (!HAS_DB || !db) return;
+      await db.transaction(async (tx: any) => {
+        await tx.execute(sql`set local session_replication_role = 'replica'`);
+        for (const id of [C.evaluationId, nuevaDeC].filter(Boolean)) {
+          await tx.execute(sql`delete from clinical_audit_log where entity_id = ${id}`);
+          await tx.execute(
+            sql`delete from clinical_corrections where old_evaluation_id = ${id}::uuid or new_evaluation_id = ${id}::uuid`,
+          );
+          await tx.execute(
+            sql`delete from bis_raw_values where measurement_id in (select id from bis_measurements where evaluation_id = ${id}::uuid)`,
+          );
+          await tx.execute(sql`delete from bis_measurements where evaluation_id = ${id}::uuid`);
+          await tx.execute(sql`delete from evaluations where id = ${id}::uuid`);
+        }
+        if (C.patientId) {
+          await tx.execute(
+            sql`delete from patient_professional_relationships where patient_id = ${C.patientId}::uuid`,
+          );
+          await tx.execute(sql`delete from patient_profiles where patient_id = ${C.patientId}::uuid`);
+          await tx.execute(sql`delete from patients where id = ${C.patientId}::uuid`);
+        }
+      });
+    });
+
+    it("retira la toma igual: la vieja queda reemplazada y la nueva nace sin medicion", async () => {
+      const r = await servicio.corregirMedicionDeOtroPaciente(
+        {
+          evaluationId: C.evaluationId,
+          causa: "toma_mal_hecha",
+          reason: "el paciente venia de almorzar y la toma salio con agua extracelular imposible",
+          confirmed: true,
+        },
+        { actorId, actorEmail: "prueba@cnv.test", ip: "127.0.0.1" },
+      );
+      expect(r.ok, r.ok ? "" : r.error?.message).toBe(true);
+      nuevaDeC = r.value.newEvaluationId;
+
+      const [vieja] = await db
+        .select({ superseded: s.evaluations.supersededAt })
+        .from(s.evaluations)
+        .where(eq(s.evaluations.id, C.evaluationId));
+      expect(vieja.superseded).not.toBeNull();
+      const mediciones = await db
+        .select({ id: s.bisMeasurements.id })
+        .from(s.bisMeasurements)
+        .where(eq(s.bisMeasurements.evaluationId, nuevaDeC));
+      expect(mediciones.length, "la toma mala no viaja a la version nueva").toBe(0);
+    });
+
+    it("pero NO marca la medicion como de otra persona: ese cuerpo si es de este paciente", async () => {
+      const [m] = await db
+        .select({
+          at: s.bisMeasurements.noEsDelPacienteAt,
+          por: s.bisMeasurements.noEsDelPacientePor,
+          motivo: s.bisMeasurements.noEsDelPacienteMotivo,
+          evaluationId: s.bisMeasurements.evaluationId,
+        })
+        .from(s.bisMeasurements)
+        .where(eq(s.bisMeasurements.id, medicionDeC));
+      expect(m.evaluationId, "nada se borra: sigue colgada de la version reemplazada").toBe(
+        C.evaluationId,
+      );
+      expect(m.at, "marcarla afirmaria que ese cuerpo es de otra persona, y es falso").toBeNull();
+      expect(m.por).toBeNull();
+      expect(m.motivo).toBeNull();
+    });
+
+    it("y queda contada aparte: su disparador y su evento son propios", async () => {
+      const [corr] = await db
+        .select({ trigger: s.clinicalCorrections.triggerType })
+        .from(s.clinicalCorrections)
+        .where(eq(s.clinicalCorrections.newEvaluationId, nuevaDeC));
+      expect(corr.trigger, "'cuantas tomas hubo que repetir' es su propia pregunta").toBe(
+        "toma_mal_hecha",
+      );
+      const audit = await db
+        .select({ id: s.clinicalAuditLog.id })
+        .from(s.clinicalAuditLog)
+        .where(
+          and(
+            eq(s.clinicalAuditLog.entityId, nuevaDeC),
+            eq(s.clinicalAuditLog.event, "evaluation.toma_mal_hecha"),
+          ),
+        );
+      expect(audit.length).toBe(1);
+    });
+
+    it("el freno NO se abrio por este camino: la misma toma en otra historia sigue frenando", async () => {
+      // La excepcion de la marca es SOLO del caso 6. Aqui no hay marca, asi que si alguien importara esta
+      // misma toma en la historia de otro paciente, el freno tiene que seguir cerrado. Y lo que SI pasa es
+      // la cadena de correccion: la version nueva de C puede subir la toma buena (y hasta la misma, si el
+      // equipo la re-exporta), porque las dos versiones estan unidas en `clinical_corrections`.
+      const crudosDeC = await db
+        .select({ variableName: s.bisRawValues.variableName, value: s.bisRawValues.value })
+        .from(s.bisRawValues)
+        .where(eq(s.bisRawValues.measurementId, medicionDeC));
+
+      const contraOtro = await db.transaction((tx: any) =>
+        freno.buscarLaMismaMedicion(tx, {
+          evaluationId: B.evaluationId,
+          patientId: B.patientId,
+          valores: crudosDeC,
+        }),
+      );
+      expect(contraOtro, "sin marca, el freno sigue armado contra otra historia").not.toBeNull();
+
+      const enLaCadena = await db.transaction((tx: any) =>
+        freno.buscarLaMismaMedicion(tx, {
+          evaluationId: nuevaDeC,
+          patientId: C.patientId,
+          valores: crudosDeC,
+        }),
+      );
+      expect(
+        enLaCadena,
+        "la version nueva no puede quedar frenada por la toma que acaba de retirar",
+      ).toBeNull();
+    });
   });
 });

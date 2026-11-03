@@ -238,6 +238,7 @@ describe.skipIf(!HAS_DB)("el aviso de medicion repetida (BD real)", () => {
     const r = await servicio.corregirMedicionDeOtroPaciente(
       {
         evaluationId: C.evaluationId,
+        causa: "otro_paciente",
         reason: "segunda consulta con el mismo archivo importado por error, no es una toma nueva",
         confirmed: true,
       },
@@ -257,6 +258,7 @@ describe.skipIf(!HAS_DB)("el aviso de medicion repetida (BD real)", () => {
     const r2 = await servicio.corregirMedicionDeOtroPaciente(
       {
         evaluationId: A.evaluationId,
+        causa: "otro_paciente",
         reason: "el archivo importado era del otro paciente atendido el mismo dia",
         confirmed: true,
       },

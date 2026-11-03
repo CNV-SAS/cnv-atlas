@@ -439,6 +439,29 @@ describe("las condiciones de la toma, en la pestaña de la medición y en un sol
       );
     }
   });
+
+  it("y al guardarlas el aviso NO manda al módulo donde ya estamos", () => {
+    // EL DEFECTO (Santiago, 2026-11-03): *"cuando uno guarda las condiciones bis aparece «Condiciones
+    // guardadas. Ya puedes ir al módulo de Antropometría y BIS». Este mensaje debe ser cambiado, ya que
+    // nos encontramos en dicho modulo jeje."*
+    //
+    // Y ES EL MISMO DEFECTO QUE ESE PUENTE VINO A CERRAR, al reves: un aviso que describe un sitio en vez
+    // de derivar del sitio donde se pinta. Cuando el bloque vivia en Encuesta el enlace era correcto; al
+    // mudarlo (v12 §3) quedo apuntando a donde ya se esta, y un puente a ninguna parte se lee como un
+    // sistema que no sabe donde esta el profesional.
+    // SIN COMENTARIOS: el comentario del componente CITA el texto viejo para explicar por qué se retiró,
+    // así que una aserción sobre el archivo crudo se cazaría a sí misma. Ya nos pasó con `--clinical-*`.
+    const CAPTURA = sinComentarios(
+      readFileSync("src/modules/bis-intake/components/bis-conditions-capture.tsx", "utf8"),
+    );
+    expect(CAPTURA, "el aviso volvió a mandar al módulo donde ya estamos").not.toContain(
+      "ir al módulo de Antropometría y BIS",
+    );
+    expect(CAPTURA, "volvió a enlazar a una etapa desde dentro de esa etapa").not.toContain("etapa=");
+    // Y SIGUE DICIENDO QUE SIGUE: retirar el puente sin decir nada dejaria al profesional sin saber que
+    // el import ya quedo habilitado, que es la mitad util del aviso.
+    expect(CAPTURA).toContain("Condiciones guardadas. El bloque");
+  });
 });
 
 describe("las dos medidas del profesional se editan en Antropometría (punto 4)", () => {
@@ -581,62 +604,80 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     "utf8",
   );
 
+  // ═══ EL REEMPLAZO ES UN SOLO BOTON, Y LO MIDEN LOS TRES CASOS DE ABAJO (v12 §1.3, 2026-11-03) ═══
+  //
+  // LO QUE PROTEGIAN ANTES, Y SIGUEN PROTEGIENDO: que exista un camino alcanzable para reemplazar la toma
+  // en los DOS estados de la consulta, con nombre. Lo que cambia es la superficie: estaba partido en un
+  // `details` plegado (sin diagnostico) mas un parrafo que nombraba otro camino (con diagnostico), y
+  // Santiago, mirando la pestaña, reporto que no habia ningun boton. Ahora es un bloque, un boton y una
+  // pregunta de motivo.
+  //
+  // POR QUE LOS CASOS SE REESCRIBEN EN VEZ DE BORRARSE: la regla no caduco, se mudo. Un candado que se
+  // borra al mover la pieza deja la pieza sin candado justo cuando mas cambia.
+  const REEMPLAZO = readFileSync(
+    "src/modules/corrections/components/reemplazar-la-medicion-bis.tsx",
+    "utf8",
+  );
+  const PAGINA = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
+
   it("con medición y SIN diagnóstico hay por dónde reemplazar el archivo", () => {
-    // EL DEFECTO: el portón del reimport se movió a "¿ya hay diagnóstico?" y este panel seguía ocultando
-    // el formulario en cuanto había medición, que era correcto cuando reimportar era imposible. El guard
-    // quedó construido y sin superficie que llegara a él. Es la pieza sin su último cable, y esta vez en
-    // lo recién hecho: un guard que nadie puede ejercitar no es un guard, es código muerto que además
-    // hace creer que el caso está cubierto.
-    expect(ENTRADA, "no hay superficie de reemplazo").toContain("modoReemplazo");
-    expect(ENTRADA, "la superficie no está acotada a antes del diagnóstico").toContain(
-      "!diagnosticoGenerado && bisImportEval",
-    );
-    // Y VA PEGADA AL AVISO DE "MEDICION IMPORTADA", no como sección propia abajo: importar el archivo
-    // equivocado es un caso RARO, no una parte del flujo. La primera versión fue una sección y era
-    // desproporcionada.
+    // EL DEFECTO ORIGINAL: el portón del reimport se movió a "¿ya hay diagnóstico?" y el panel seguía
+    // ocultando el formulario en cuanto había medición. El guard quedó construido y sin superficie que
+    // llegara a él: un guard que nadie puede ejercitar no es un guard, es código muerto que además hace
+    // creer que el caso está cubierto.
     //
-    // SE VERIFICA POR ORDEN Y NO POR DISTANCIA: un umbral de caracteres se afina al valor de hoy y
-    // enseña a subirlo cuando estorba. Lo que de verdad se pide es que el desplegable vaya JUSTO DESPUÉS
-    // del aviso y ANTES de las medidas, o sea dentro del mismo bloque.
-    const jsx = sinComentarios(ENTRADA);
-    const iAviso = jsx.indexOf("Medición BIS importada");
-    const iReemplazo = jsx.indexOf("Reemplazar la toma de BIS");
-    // EL ANCLA DE "las medidas" SE MUDO (2026-09-09): `AntropometriaEditable` ya no lo monta esta pagina
-    // directamente, sino `MedidasConTabla`, el envoltorio cliente que une el campo con la tabla para que
-    // recalcule al escribir. La asercion es la misma (el reemplazo va ANTES de las medidas); lo que cambia
-    // es como se nombra el bloque de medidas.
-    const iMedidas = jsx.indexOf("<MedidasConTabla");
-    expect(iReemplazo, "el desplegable de reemplazo desapareció").toBeGreaterThan(-1);
-    expect(iReemplazo, "el reemplazo quedó ANTES del aviso de que hay medición").toBeGreaterThan(iAviso);
-    expect(
-      iReemplazo,
-      "el reemplazo se fue debajo de las medidas: vuelve a leerse como una sección del flujo",
-    ).toBeLessThan(iMedidas);
+    // SE MIDE LA CADENA COMPLETA, que es lo que hace que el camino exista de verdad: la pestaña le pasa
+    // el formulario de reemplazo al bloque, y se apaga SOLO cuando no hay import posible (con diagnóstico
+    // `bisImportEval` ya es null); el bloque lo recibe como slot y solo lo pinta sin diagnóstico.
+    expect(sinComentarios(ENTRADA), "la pestaña ya no monta el formulario de reemplazo").toContain(
+      "reimportar={bisImportEval ?",
+    );
+    const jsx = sinComentarios(REEMPLAZO);
+    expect(jsx, "el slot del reimport desapareció del bloque").toContain("{reimportar ?? (");
+    expect(jsx, "el reimport dejó de estar acotado a antes del diagnóstico").toContain(
+      "if (!diagnosticoGenerado) {",
+    );
     // Y el formulario tiene que RENDERIZARSE aunque ya haya medición cuando está en ese modo.
     expect(FORM).toContain("&& !modoReemplazo");
   });
 
-  // ═══ EL ACTO TIENE NOMBRE, Y CUANDO ESTA CERRADO SE DICE DONDE ESTA (v12 §1.3, 2026-10-30) ═══
-  it("el reemplazo se llama por su nombre, no solo por el síntoma", () => {
+  it("el reemplazo se llama por su nombre, y una sola vez", () => {
     // Decía solo "¿Importaste el archivo equivocado?". Quien viene buscando cómo quitar una toma mala (en
     // su HTML hay un botón "Eliminar toma BIS") no reconoce esa pregunta como el sitio y concluye que en
-    // Atlas no se puede: un control que no se encuentra se reporta como que no existe. Van las DOS cosas,
-    // el nombre para encontrarlo y la pregunta para reconocerlo.
-    const jsx = sinComentarios(ENTRADA);
-    expect(jsx).toContain("Reemplazar la toma de BIS");
-    expect(jsx).toContain("¿importaste el archivo equivocado?");
+    // Atlas no se puede: un control que no se encuentra se reporta como que no existe.
+    const jsx = sinComentarios(REEMPLAZO);
+    expect(jsx).toContain("Reemplazar la medición BIS");
+    // LOS DOS MOTIVOS, porque es la pregunta que decide el camino Y lo que queda escrito en la historia.
+    expect(jsx).toContain("La toma quedó mal");
+    expect(jsx).toContain("Importé el archivo de otra persona");
+    // Y UNA SOLA ENTRADA AL ACTO. Dos entradas parciales al mismo acto es exactamente lo que había (un
+    // `details` plegado junto a la medición y un párrafo que nombraba otro camino) y lo que lo volvía
+    // inencontrable. Se mide por las dos cosas que lo garantizan: el bloque se monta una vez, y el
+    // formulario de import en modo reemplazo solo se construye para dárselo a él.
+    const entrada = sinComentarios(ENTRADA);
+    expect((entrada.match(/<ReemplazarLaMedicionBis/g) ?? []).length).toBe(1);
+    expect(
+      (entrada.match(/modoReemplazo/g) ?? []).length,
+      "hay un segundo formulario de reemplazo fuera del bloque: son dos sitios otra vez",
+    ).toBe(1);
+    expect(entrada, "volvió el desplegable plegado de antes").not.toContain("<details");
   });
 
-  it("y con diagnóstico generado la pantalla NOMBRA el camino en vez de callar", () => {
+  it("y con diagnóstico generado el bloque NOMBRA el camino en vez de callar", () => {
     // Antes no mostraba nada: quien descubría la toma mala DESPUÉS de generar se quedaba sin pista. El
     // reemplazo directo está cerrado a propósito (el diagnóstico está sellado sobre esa medición) y lo
-    // que corresponde es corregir, que emite una versión nueva.
-    const jsx = sinComentarios(ENTRADA);
-    expect(jsx).toContain("{diagnosticoGenerado ? (");
-    expect(jsx).toContain("La toma ya no se reemplaza aquí");
-    expect(jsx).toContain("se corrige la consulta desde el cierre del diagnóstico");
+    // que corresponde es versionar.
+    const jsx = sinComentarios(REEMPLAZO);
+    expect(jsx).toContain("Esta consulta tiene diagnóstico, y está sellado sobre esa medición");
+    expect(jsx).toContain("versión nueva sin medición");
     // Y NO PROMETE QUE SE BORRA: la versión anterior queda registrada, que es lo que de verdad pasa.
-    expect(jsx).toContain("queda registrada como reemplazada");
+    expect(jsx).toContain("queda <strong>reemplazada</strong>");
+    // Y EL REIMPORT SE APAGA SOLO EN ESE ESTADO: con diagnóstico, la página deja `bisImportEval` en null
+    // y el slot queda vacío. Es una bandera DERIVADA y no una que haya que acordarse de bajar, que es la
+    // forma en que estas dos ramas se desincronizan.
+    expect(PAGINA, "la rama con diagnóstico volvió a ofrecer el import").toContain(
+      "bisImportEval: null",
+    );
   });
 
   it("la tabla de Wang nace ABIERTA (punto 6 de su cotejo)", () => {

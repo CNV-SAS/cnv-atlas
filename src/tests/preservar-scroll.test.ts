@@ -1,10 +1,22 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { preservarScroll } from "@/components/shared/preservar-scroll";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
+
+/** Las fuentes de la app (sin los tests, con las rutas normalizadas para Windows). */
+function fuentesDeLaApp(dir = "src", acc: string[] = []): string[] {
+  for (const nombre of readdirSync(dir)) {
+    const ruta = join(dir, nombre);
+    if (statSync(ruta).isDirectory()) fuentesDeLaApp(ruta, acc);
+    else if (/[.](ts|tsx)$/.test(nombre)) acc.push(ruta.split("\\").join("/"));
+  }
+  return acc.filter((r) => !r.includes("/tests/"));
+}
+
 
 // CANDADO DEL SALTO AL INICIO EN LA PRIMERA ACCION DE CADA RUTA (smoke de Santiago, 2026-09-02).
 //
@@ -365,7 +377,6 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
 describe("la etapa que se abre al entrar a una evaluación (cotejo 3 y 5)", () => {
   const TABS = readFileSync("src/modules/diagnoses/components/evaluation-tabs.tsx", "utf8");
   const PAGE_SRC = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
-  const BIS = readFileSync("src/modules/bis-intake/components/bis-conditions-capture.tsx", "utf8");
 
   // SU REGLA (Santiago, cotejo 2026-09-05): sin diagnóstico se abre en Evaluación, que es donde hay
   // trabajo por hacer; con diagnóstico se abre en Diagnóstico, que es lo que se viene a ver. Antes el
@@ -400,15 +411,25 @@ describe("la etapa que se abre al entrar a una evaluación (cotejo 3 y 5)", () =
     );
   });
 
-  it("el enlace de importar la medición lleva la ETAPA explícita", () => {
-    // El punto 5 era el 3: el enlace ponía `?ev=antropometria` sin `?etapa`, así que la página caía a su
-    // default y el profesional aterrizaba en Diagnóstico con la subpestaña correcta donde no la veía.
-    // Va explícito aunque el default ya esté bien: un enlace que depende de un default se rompe en
-    // silencio la próxima vez que alguien mueva el default.
+  it("ningún enlace a una etapa de la evaluación confía su destino al default", () => {
+    // El punto 5 era el 3: el enlace de las condiciones ponía `?ev=antropometria` sin `?etapa`, así que la
+    // página caía a su default y el profesional aterrizaba en Diagnóstico con la subpestaña correcta donde
+    // no la veía. La regla que salió de ahí: un enlace que depende de un default se rompe en silencio la
+    // próxima vez que alguien mueva el default.
     //
-    // ALCANCE AJUSTADO (2026-09-10): la dirección son ahora DOS caracteres menos porque Antrop. & BIS es
-    // pestaña propia (`?etapa=antro` en vez de `?etapa=evaluacion&ev=antropometria`). La asercion es la
-    // misma: el enlace nombra su destino en vez de confiarlo al default.
-    expect(sinComentarios(BIS)).toContain("?etapa=antro");
+    // ═══ EL CANDADO CAMBIA DE SUJETO, NO DE REGLA (2026-11-03) ═══
+    //
+    // Vigilaba que `bis-conditions-capture` contuviera `?etapa=antro`. Ese enlace SE RETIRÓ: al mover las
+    // condiciones a Antrop. & BIS (v12 §3), mandaba al módulo donde el bloque ya vive, y Santiago lo
+    // reportó. Así que la aserción positiva sobre un archivo había pasado a exigir una pieza que debe no
+    // estar, que es la forma en que un candado empieza a defender lo contrario de lo que protegía.
+    //
+    // LO QUE SE CONSERVA ES LA REGLA, BARRIDA: quien enlace a una evaluación con subpestaña (`?ev=`) tiene
+    // que nombrar también su etapa. Y vale para cualquier emisor futuro, no para el que existió.
+    const conSubpestana = fuentesDeLaApp().filter((r) => {
+      const codigo = sinComentarios(readFileSync(r, "utf8"));
+      return codigo.includes("?ev=") && !codigo.includes("etapa=");
+    });
+    expect(conSubpestana, "enlazan a una subpestaña sin nombrar la etapa").toEqual([]);
   });
 });

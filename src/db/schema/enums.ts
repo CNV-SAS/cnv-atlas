@@ -122,6 +122,11 @@ export const correctionTriggerType = pgEnum("correction_trigger_type", [
   // no es un dato mal digitado, es un dato de salud de alguien en la historia de otro, y al auditar la
   // cadena hay que poder contarlo y reportarlo por separado.
   "medicion_de_otro_paciente",
+  // LA TOMA ES DE ESTE PACIENTE Y NO SIRVE (0235, su v12 §1.3: "la toma quedo mal, se borra y el
+  // profesional la vuelve a subir"). Separado de los otros dos porque las consecuencias son distintas: no
+  // hay incidente de PHI, la medicion NO se marca como de otro (seria falso) y "cuantas tomas hubo que
+  // repetir" es una pregunta de calidad del dato que hay que poder contestar aparte.
+  "toma_mal_hecha",
 ]);
 
 export const transactionStatus = pgEnum("transaction_status", [

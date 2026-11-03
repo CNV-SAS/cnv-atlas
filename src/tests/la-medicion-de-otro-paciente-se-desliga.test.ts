@@ -36,7 +36,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 const SERVICIO = "src/modules/corrections/services/corregir-medicion-de-otro-paciente.ts";
 const FRENO = "src/modules/bis/data/medicion-duplicada-reader.ts";
-const PANTALLA = "src/modules/corrections/components/medicion-de-otro-paciente.tsx";
+const PANTALLA = "src/modules/corrections/components/reemplazar-la-medicion-bis.tsx";
 const ACCIONES = "src/modules/corrections/actions.ts";
 const PENDIENTES = "src/modules/patients/pendientes.ts";
 const MIGRACION = "drizzle/0226_la_medicion_de_otro_paciente.sql";
@@ -123,8 +123,29 @@ describe("la marca y la correccion van juntas o no van", () => {
     expect(/isNull\(bisMeasurements\.noEsDelPacienteAt\)/.test(src)).toBe(true);
   });
 
-  it("el disparador es el propio, no el de corregir un dato", () => {
-    expect(/triggerType: "medicion_de_otro_paciente"/.test(src)).toBe(true);
+  it("el disparador es el propio, no el de corregir un dato, y lo decide el MOTIVO", () => {
+    // ERA UN LITERAL (`triggerType: "medicion_de_otro_paciente"`). Desde la 0235 el servicio atiende los
+    // DOS motivos de su v12 §1.3, asi que el disparador sale de un mapa y no de una constante.
+    //
+    // LO QUE PROTEGE ES LO MISMO Y MAS: que ninguno de los dos caiga en `correccion_profesional`, que es
+    // el cajon donde un incidente de datos de salud se volveria "un dato mal digitado". Se afirma sobre el
+    // MAPA, que es la unica fuente, y que los tres valores sigan siendo tres cosas distintas.
+    expect(/triggerType: TRIGGER\[input\.causa\]/.test(src)).toBe(true);
+    expect(/otro_paciente: "medicion_de_otro_paciente"/.test(src)).toBe(true);
+    expect(/toma_mal_hecha: "toma_mal_hecha"/.test(src)).toBe(true);
+    expect(/"correccion_profesional"/.test(src), "cayo en el cajon generico").toBe(false);
+  });
+
+  it("y la MARCA de la 0226 solo se pone cuando hay otro dueño", () => {
+    // ES LA DIFERENCIA CLINICA ENTRE LOS DOS MOTIVOS, y no un detalle de implementacion: la marca afirma
+    // en la historia clinica que ese cuerpo es de OTRA persona. En una toma mal hecha eso es falso, y
+    // ademas abriria el freno de la 0225 sin que haya nada que abrirle.
+    //
+    // Se afirma por la GUARDA y por la ausencia de un `update` de la marca fuera de ella: si alguien la
+    // saca del `if`, el candado se pone rojo.
+    expect(/if \(input\.causa === "otro_paciente"\) \{/.test(src)).toBe(true);
+    const marcas = src.match(/noEsDelPacienteAt: new Date\(\)/g) ?? [];
+    expect(marcas.length, "la marca se escribe en mas de un sitio: uno quedaria sin la guarda").toBe(1);
   });
 
   it("superseded_at NO se escribe a mano: lo pone el trigger de la 0030", () => {
@@ -134,9 +155,16 @@ describe("la marca y la correccion van juntas o no van", () => {
     expect(/supersededAt: (new Date|sql|now)/.test(src)).toBe(false);
   });
 
-  it("la auditoria es un evento PROPIO y va inline (regla dura 8)", () => {
-    expect(/event: "evaluation\.medicion_de_otro_paciente"/.test(src)).toBe(true);
+  it("la auditoria es un evento PROPIO POR MOTIVO y va inline (regla dura 8)", () => {
+    // DOS EVENTOS Y NO UNO CON EL MOTIVO DENTRO DEL PAYLOAD: un incidente de datos de salud y una toma que
+    // hubo que repetir son dos preguntas distintas, y con un solo evento habria que leer el payload de
+    // cada fila para distinguirlas. Es la misma razon por la que la 0226 no reuso `evaluation.corrected`.
+    expect(/"evaluation\.medicion_de_otro_paciente"/.test(src)).toBe(true);
+    expect(/"evaluation\.toma_mal_hecha"/.test(src)).toBe(true);
     expect(/recordAudit\(tx,/.test(src)).toBe(true);
+    // Y EL PAYLOAD DICE SI LA MARCA SE PUSO, en vez de dejarlo deducir del motivo: dentro de un año, "no
+    // aparece la marca" no distingue entre "no se puso" y "nadie lo registro".
+    expect(/medicion_marcada_como_de_otro:/.test(src)).toBe(true);
   });
 });
 

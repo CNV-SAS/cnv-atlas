@@ -83,7 +83,7 @@ describe.skipIf(!HAS_DB)("la reemision no mueve las cuentas (BD real)", () => {
         // Una evaluacion que la vista ya cuenta Y que tiene diagnostico: es la unica que se puede reemitir.
         const [objetivo] = (await tx.execute(
           sql`select id, diagnosis_id from public.evaluaciones_vigentes
-               where diagnosis_id is not null limit 1`,
+               where diagnosis_id is not null order by id limit 1`,
         )) as unknown as { id: string; diagnosis_id: string }[];
         if (!objetivo) {
           throw new Error(
@@ -140,9 +140,11 @@ describe.skipIf(!HAS_DB)("la reemision no mueve las cuentas (BD real)", () => {
 
     await expect(
       db.transaction(async (tx: any) => {
+        // CON `order by`: sin el, Postgres puede devolver otra fila en cada corrida, y entonces el caso
+        // mide una evaluacion distinta cada vez. Ya nos costo 451 valores sobre 352 mediciones.
         const [objetivo] = (await tx.execute(
           sql`select id, measurement_id from public.evaluaciones_vigentes
-               where measurement_id is not null limit 1`,
+               where measurement_id is not null order by id limit 1`,
         )) as unknown as { id: string; measurement_id: string }[];
         if (!objetivo) {
           throw new Error("el seed no tiene ninguna evaluacion vigente con medicion: este caso no probo nada");
@@ -157,6 +159,16 @@ describe.skipIf(!HAS_DB)("la reemision no mueve las cuentas (BD real)", () => {
               returning id`,
         )) as unknown as { id: string }[];
         nuevoId = nuevo.id;
+        // Y SUS CRUDOS, que no es un adorno del fixture: la huella de la toma sale de las cuatro lecturas
+        // electricas, y `huella_repetida` decide si la consulta entra a la cohorte. Una copia SIN crudos
+        // dejaria a la evaluacion sin huella y podria devolverla a la cohorte, asi que el caso fallaria
+        // por lo que el fixture no copio y no por la vista. Reemplazar una toma con las mismas lecturas es
+        // el escenario que de verdad no debe mover nada.
+        await tx.execute(
+          sql`insert into bis_raw_values (measurement_id, variable_name, value, origin, derived_formula_version)
+              select ${nuevo.id}::uuid, variable_name, value, origin, derived_formula_version
+                from bis_raw_values where measurement_id = ${objetivo.measurement_id}`,
+        );
 
         despues = await cuentas(tx);
         const [fila] = (await tx.execute(

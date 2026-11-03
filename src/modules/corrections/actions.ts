@@ -77,7 +77,12 @@ export type MedicionDeOtroState = {
 
 const medicionDeOtroSchema = z.object({
   evaluationId: z.guid(),
-  motivo: z.string().trim().min(15, "Escribe en el motivo de quién era la medición y cómo se supo.").max(500),
+  // EL MOTIVO POR EL QUE SE RETIRA (0235). Sin valor por defecto: de los dos valores sale si en la
+  // historia clinica queda escrito que ese cuerpo era de otra persona, y eso no se asume.
+  causa: z.enum(["otro_paciente", "toma_mal_hecha"], {
+    message: "Elige por qué hay que reemplazar la medición.",
+  }),
+  motivo: z.string().trim().min(15, "Escribe en el motivo qué pasó con esta medición y cómo se supo.").max(500),
   confirmar: z.literal("si", {
     message: "Marca la confirmación: esta corrección reemplaza la versión sellada y no se deshace.",
   }),
@@ -89,6 +94,7 @@ export async function medicionDeOtroPacienteAction(
 ): Promise<MedicionDeOtroState> {
   const parsed = medicionDeOtroSchema.safeParse({
     evaluationId: formData.get("evaluationId"),
+    causa: formData.get("causa"),
     motivo: formData.get("motivo"),
     confirmar: formData.get("confirmar"),
   });
@@ -104,7 +110,12 @@ export async function medicionDeOtroPacienteAction(
   const user = await requireUser();
   const ip = await getClientIp();
   const result = await corregirMedicionDeOtroPaciente(
-    { evaluationId: parsed.data.evaluationId, reason: parsed.data.motivo, confirmed: true },
+    {
+      evaluationId: parsed.data.evaluationId,
+      causa: parsed.data.causa,
+      reason: parsed.data.motivo,
+      confirmed: true,
+    },
     { actorId: user.id, actorEmail: user.email, ip: ip === "unknown" ? null : ip },
   );
   if (!result.ok)
@@ -117,9 +128,15 @@ export async function medicionDeOtroPacienteAction(
   // Candados: `refresco-una-sola-vez.test.ts` y `la-pantalla-de-recalibracion-y-el-cierre.test.ts`.
   return {
     error: null,
+    // EL MENSAJE DICE LO QUE DE VERDAD PASO, y cambia con el motivo: solo el caso 6 marca la medicion, y
+    // decirle a quien repitio una toma que "quedo marcada como de otro paciente" seria afirmarle un hecho
+    // que no ocurrio en la historia clinica que acaba de firmar.
     success:
-      "Listo. La medición quedó marcada como de otro paciente y esta consulta tiene una versión nueva, " +
-      "sin medición, lista para montar la que sí es suya.",
+      parsed.data.causa === "otro_paciente"
+        ? "Listo. La medición quedó marcada como de otro paciente y esta consulta tiene una versión nueva, " +
+          "sin medición, lista para montar la que sí es suya."
+        : "Listo. La toma quedó registrada como repetida y esta consulta tiene una versión nueva, sin " +
+          "medición, lista para subir la toma buena.",
     warning: null,
     nuevaEvaluacionId: result.value.newEvaluationId,
   };

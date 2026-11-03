@@ -130,12 +130,25 @@ describe("el boton de imprimir esta en todas las subpestañas", () => {
     expect(resumen.slice(i, i + 300)).toContain('className="no-print"');
   });
 
-  it("la antropometria no imprime su formulario de import ni su desplegable de reemplazo", () => {
+  it("la antropometria no imprime su formulario de import ni el bloque de reemplazo", () => {
     const entrada = leer(ENTRADA);
-    // El cuerpo entero de la pestaña va `no-print` dentro de la hoja, y el `details` del reemplazo lleva
-    // el suyo: un desplegable impreso es justo el ejemplo que traia el aviso del dimensionado.
+    // El cuerpo entero de la pestaña va `no-print` dentro de la hoja.
     expect(entrada).toContain('<div className="no-print">{cuerpo}</div>');
-    expect(entrada).toContain('className="no-print group -mt-1"');
+    // Y EL BLOQUE DE REEMPLAZO LLEVA EL SUYO, en sus CUATRO estados (2026-11-03). Antes era el `details`
+    // plegado el que lo llevaba; el bloque que lo sustituyo es mas grande, no mas pequeño.
+    //
+    // POR QUE NO BASTA EL `no-print` DEL CUERPO: ese solo aplica DENTRO de la hoja imprimible, y la hoja
+    // solo se arma cuando hay encabezado (la linea del caso siguiente: sin firma no es un documento). Sin
+    // encabezado se devuelve el cuerpo crudo, y entonces el unico `no-print` que queda es el del bloque.
+    const bloque = leer("src/modules/corrections/components/reemplazar-la-medicion-bis.tsx");
+    // CADA ESTADO DEL BLOQUE ABRE SU PROPIA TARJETA, y hoy son cinco declaraciones: cerrado con el aviso
+    // de la huella, cerrado sin él, la pregunta del motivo, el reimport en sitio y el camino versionado.
+    // SE COMPARAN LAS DOS CUENTAS y no se fija un número: así, agregar un estado sin su `no-print` pone el
+    // candado rojo, y agregarlo CON su `no-print` no lo pone rojo por crecer.
+    const aperturas = (bloque.match(/rounded-xl border/g) ?? []).length;
+    const protegidas = (bloque.match(/no-print/g) ?? []).length;
+    expect(aperturas, "el bloque de reemplazo se quedó sin tarjetas: revisa este candado").toBeGreaterThan(0);
+    expect(protegidas, "un estado del bloque de reemplazo saldría impreso").toBe(aperturas);
   });
 
   it("y sin encabezado no se ofrece el boton: una hoja sin firma no es un documento", () => {
