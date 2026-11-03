@@ -1639,6 +1639,13 @@
       "when": 1792862145446,
       "tag": "0233_el_perfil_se_elimina_con_rastro",
       "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1792862146446,
+      "tag": "0234_una_fila_por_evaluacion_aunque_se_reemita",
+      "breakpoints": true
     }
   ]
 }

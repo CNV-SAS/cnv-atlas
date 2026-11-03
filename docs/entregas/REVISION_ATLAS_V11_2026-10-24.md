@@ -545,6 +545,14 @@ los que autorizaron investigación. Eso ya no depende de que cada consulta se ac
   es de lo comercial (la 0219 ya lo había dejado escrito, y la lectura de Santiago coincidía con ella).
 - **`evaluaciones_para_investigacion`**: lo anterior **más la autorización `investigacion` vigente**.
 
+> **Corrección del 2026-11-03 (migración 0234).** Tal como nacieron, las dos vistas hacían
+> `LEFT JOIN diagnoses` como si una evaluación solo pudiera tener uno, y reemitir **inserta** sin marcar el
+> anterior. Al correr las tandas de reemisión, la cohorte pasó a contar **927 filas sobre 569 evaluaciones**
+> y el panel llegó a avisar que mezclaba dos familias del motor con 229 filas en `1.0.0` que eran **una sola**
+> evaluación. Desde la 0234 cada vista da **una fila por evaluación**, con el diagnóstico y la medición
+> vigentes (la última de cada uno, la regla que ya usaban `results-reader` y `reports-repository`). Candado:
+> `la-reemision-no-mueve-las-cuentas-db`.
+
 Las dos con `security_invoker`, revocadas a `anon` y `authenticated`, con las columnas enumeradas una por una
 y **cero columnas que identifiquen a un paciente**: van los identificadores técnicos para poder unir, y la
 constelación de versiones del diagnóstico, que es lo que permite no mezclar motores en un mismo dataset.
