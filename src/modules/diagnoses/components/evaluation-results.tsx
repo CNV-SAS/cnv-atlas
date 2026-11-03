@@ -39,6 +39,7 @@ import {
   indicatorBands,
   indicatorRange,
 } from "../data/indicator-ranges";
+import { nombreLlanoDelIndice } from "../nombre-llano-del-indice";
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
@@ -439,7 +440,20 @@ export function EvaluationResults({
                         aria-label="Parámetro bioeléctrico"
                       />
                       <span className="font-medium text-foreground">{label ?? code}</span>
-                      {results.indicatorNames[code] ? (
+                      {/* ═══ EL NOMBRE LLANO, LA MISMA FUENTE QUE LA HC (Santiago, 2026-11-03) ═══
+
+                          Aqui salia SIEMPRE el nombre oficial de la BD ("Índice del Estado de Hidratación
+                          Humana") y en la HC el rotulo tecnico de su tabla ("Hidro-Homeostasis"): dos
+                          vocabularios para el mismo indice. Donde hay nombre llano manda el llano, y el
+                          oficial queda al lado entre parentesis: en la pantalla del profesional el nombre
+                          completo sigue siendo util, lo que no sirve es que no coincida con el documento. */}
+                      {nombreLlanoDelIndice(code) ? (
+                        <span className="text-muted-foreground">
+                          {" · "}
+                          {nombreLlanoDelIndice(code)}
+                          {results.indicatorNames[code] ? ` (${results.indicatorNames[code]})` : ""}
+                        </span>
+                      ) : results.indicatorNames[code] ? (
                         <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
                       ) : null}
                       {ebIaeProvisional && (code === "EB" || code === "IAE") ? (

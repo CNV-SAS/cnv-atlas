@@ -37,7 +37,7 @@ export function HcEntregar({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <Button type="submit" variant="outline" size="sm" disabled={pending}>
           <Mail className="size-4" aria-hidden />
-          {pending ? "Enviando..." : "Enviársela al paciente"}
+          {pending ? "Enviando..." : "Enviar copia de la HC al paciente"}
         </Button>
       </form>
       {ultimaEntrega ? (

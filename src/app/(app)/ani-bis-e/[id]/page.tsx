@@ -20,6 +20,7 @@ import { edadDiscordanteDeLaConsulta } from "@/modules/bis/data/edad-del-equipo-
 import { AvisoDeEdadDiscordante } from "@/modules/bis/components/aviso-de-edad-discordante";
 import { PanelDeCalidadBiologica } from "@/modules/bis/components/panel-de-calidad-biologica";
 import { qcBiologicoDeLaConsulta } from "@/modules/bis/data/qc-biologico-reader";
+import { etiquetaDeProfesion } from "@/modules/auth/admin-validations";
 import { huellaRepetidaDeLaConsulta } from "@/modules/bis/data/huellas-repetidas-reader";
 import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
 import { SupersededBanner } from "@/modules/corrections/components/superseded-banner";
@@ -1280,7 +1281,14 @@ export default async function ResultadosEvaluacionPage({
         <section className="flex flex-col gap-4">
           {reportCard ? (
             <div className="flex flex-col gap-3">
-              <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
+              {/* ═══ EL DOCUMENTO DEL PACIENTE SE LLAMA POR SU NOMBRE (Santiago, 2026-11-03) ═══
+
+                  Decia "Reporte", y en esta pantalla hay DOS documentos con dos destinatarios: el informe
+                  ANI-BIS-E, que es del paciente, y la historia clinica, que es el registro del profesional.
+                  Un titulo generico encima de uno de los dos no los distingue, y es la decision de fondo de
+                  este punto: la HC se queda con el plan, el ICN y las notas al pie PORQUE NO es un documento
+                  para el paciente. */}
+              <h2 className="text-lg font-semibold text-foreground">Informe ANI-BIS-E del paciente</h2>
               {/* P0 Parte 2 (P5): si el paciente NO verá un cambio (sin previa comparable o intervalo
                   corto), se explica al profesional junto al reporte, donde estaría la confirmación si la
                   hubiera. Recomputado en vivo; null si hay banda o es inicial. */}
@@ -1296,7 +1304,23 @@ export default async function ResultadosEvaluacionPage({
             // `imprimible`: al imprimir, esto es LO UNICO que sale en la hoja (ver globals.css). El
             // documento impreso es el mismo que el profesional tiene delante, sin una segunda
             // construccion que pueda desincronizarse.
-            <div className="imprimible flex flex-col gap-4">
+            // ═══ `hoja-larga`: LA HOJA 3 SALIA CON EL TITULO Y NADA MAS (Santiago, 2026-11-03) ═══
+            //
+            // *"en la hoja 3 aparece «COMPOSICIÓN CORPORAL · ÍNDICES ALTERADOS» pero de resto la hoja es
+            // totalmente vacía, no sé si es que debía haber contenido y no se está mostrando."*
+            //
+            // NO FALTABA CONTENIDO: estaba en la hoja siguiente. La causa es la regla de impresion
+            // `section { break-inside: avoid }`, que existe porque una tabla partida es ilegible en un
+            // documento probatorio, pero que se vuelve en contra cuando la seccion NO CABE: el navegador
+            // la parte igual (ignora `avoid` si es imposible) y el corte cae justo despues del titulo.
+            //
+            // `hoja-larga` es la clase que ya resolvio esto MISMO en el SOAP el 2026-09-20 (*"salia con
+            // saltos de pagina y texto en blanco"*), y la historia clinica es el otro documento largo de la
+            // casa: quince bloques, uno de ellos la tabla de Wang entera. Lo que hace son dos cosas: sus
+            // secciones SI pueden partirse, y sus titulos quedan PEGADOS a lo que encabezan
+            // (`break-after: avoid`), que es exactamente el sintoma que reporto. No se escribio una regla
+            // nueva: faltaba aplicar la que ya existia.
+            <div className="imprimible hoja-larga flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-foreground">Historia clínica</h2>
                 <div className="flex flex-wrap items-start gap-3">
@@ -1311,7 +1335,7 @@ export default async function ResultadosEvaluacionPage({
                     href={`/ani-bis-e/${id}/soap`}
                     className="no-print group inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
-                    Ver en formato SOAP
+                    Ver HC en formato SOAP
                     <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
                       →
                     </span>
@@ -1486,7 +1510,11 @@ export default async function ResultadosEvaluacionPage({
                 autorizaciones={hcAutorizaciones}
                 versionDeLaConsulta={hcHeader.consentVersion}
               />
-              <HcFirmaYFecha profesional={hcHeader.profesional} fecha={formatDate(hcHeader.fechaConsulta)} />
+              <HcFirmaYFecha
+                profesional={hcHeader.profesional}
+                profesion={etiquetaDeProfesion(hcHeader.profesion)}
+                fecha={formatDate(hcHeader.fechaConsulta)}
+              />
             </div>
           ) : null}
           {hcHeader ? (

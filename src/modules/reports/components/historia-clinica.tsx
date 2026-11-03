@@ -468,20 +468,44 @@ export function HcEntregas({
   );
 }
 
-export function HcFirmaYFecha({ profesional, fecha }: { profesional: string; fecha: string }) {
+export function HcFirmaYFecha({
+  profesional,
+  profesion,
+  fecha,
+}: {
+  profesional: string;
+  /** La profesion con la que atendio, para el pie. null si no se conoce. */
+  profesion?: string | null;
+  fecha: string;
+}) {
   return (
     <Tarjeta>
+      {/* ═══ FUERA LA RAYA EN BLANCO (Santiago, 2026-11-03) ═══
+
+          *"Hay una raya que nunca se llena con la firma. Entonces para que dejarla ahi vacia siempre?"*
+
+          Y TIENE RAZON, PORQUE EL DOCUMENTO NO SE FIRMA A MANO. Se porto de su HC como el pie de una hoja
+          que alguien imprime y rubrica, pero en Atlas este documento nace de una consulta con actor
+          autenticado: el diagnostico lleva `confirmed_by` y `confirmed_at`, y la entrega al paciente queda
+          en `hc_deliveries`. Una raya vacia junto a eso no es un sitio para firmar, es un hueco que hace
+          dudar de si el documento esta completo.
+
+          ASI QUE EL PIE DICE QUE ES, Y QUIEN LO GENERO: "Documento generado en Atlas por <nombre>,
+          <profesion>, el <fecha>". Es mas fuerte que la raya, no menos: nombra el sistema, la persona y el
+          dia, que es lo que un tercero necesita para saber de donde sale esta hoja.
+
+          Y SE PUEDE SEGUIR FIRMANDO A MANO: quien quiera rubricar el papel lo rubrica, como en cualquier
+          documento impreso. Lo que se retira es la promesa de un campo que nadie llena. */}
       <TituloSeccion>Firma y fecha</TituloSeccion>
-      {/* Linea EN BLANCO para firmar en papel, como en su HC: no es firma grafica ni acto de firma con
-          marca de tiempo, es el pie de un documento que se imprime. */}
-      <div className="h-8 border-b border-border" />
-      <div className="flex flex-col">
-        <span className="text-sm text-muted-foreground">{profesional || "Profesional de salud"}</span>
+      <p className="text-sm text-muted-foreground">
+        Documento generado en Atlas por{" "}
+        <span className="font-medium text-foreground">{profesional || "Profesional de salud"}</span>
+        {profesion ? `, ${profesion}` : ""}
         {/* DIVERGENCIA deliberada: su archivo usa la fecha de IMPRESION (new Date()). Una historia clinica
             impresa tres meses despues quedaria fechada tres meses tarde, junto a datos de otra consulta.
             Aqui va la fecha de la EVALUACION. */}
-        <span className="text-xs text-muted-foreground">{fecha}</span>
-      </div>
+        , el {fecha}.
+      </p>
     </Tarjeta>
   );
 }

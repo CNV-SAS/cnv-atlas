@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { HTML_VIGENTE } from "./fixtures/html-vigente";
 
 import { buildIndicatorDefs } from "@/clinical-engine/registry-data";
-import { indicatorBands } from "@/modules/diagnoses/data/indicator-ranges";
+import { indicatorBands, rotuloDisplayDeIndice } from "@/modules/diagnoses/data/indicator-ranges";
 import { INDICES_ANI, indicesAniAlterados } from "@/modules/reports/data/hc-indices-ani";
 
 // CANDADO DEL BLOQUE ANI-BIS-E DE LA HISTORIA CLINICA (2026-08-24).
@@ -149,11 +149,57 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
     // "≥6,68 óptimo" (coma) y el valor "0.89" (punto), porque la referencia es nuestra y el formato del
     // valor venia copiado del suyo. Es el "sistema mezclado" que la regla de ortografia por superficie
     // nombra, y en un documento clinico en español. Los DECIMALES tambien salen ahora de `decimalesDe`.
+    // ═══ Y LA CLASIFICACION ES LA DEL DIAGNOSTICO, NO LA SELLADA EN CRUDO (2026-11-03) ═══
+    //
+    // Este caso decia "IEHH 0,89 Leve" / "IAE +12,3 a Acelerado", que es el `label` del clasificador
+    // SELLADO. La pantalla de Diagnostico no dice eso: aplica `rotuloDisplayDeIndice` (su capa de display
+    // del 2026-09-09, y para el IAE su tabla 3 del 26-oct). Asi que la MISMA cifra de la MISMA consulta
+    // salia con dos veredictos distintos, y el documento que se quedaba con la palabra vieja era el
+    // PROBATORIO. Santiago lo preguntó y tenia razon.
+    //
+    // EL COLOR NO SE UNIFICA Y NO ES UN OLVIDO: `sev` sigue saliendo del sellado, aqui y en la pantalla.
     const r = indicesAniAlterados({ IEHH: 0.89, IAE: 12.3 }, clas, { IEHH: 2, IAE: 3 }, true);
     expect(r.map((x) => `${x.codigo} ${x.valor} ${x.clasificacion}`)).toEqual([
-      "IEHH 0,89 Leve",
-      "IAE +12,3 a Acelerado",
+      "IEHH 0,89 Desequilibrio leve",
+      "IAE +12,3 a envejecimiento acelerado estimado",
     ]);
+    // La severidad es la que se paso, o sea la sellada: el color no se movio.
+    expect(r.map((x) => x.sev)).toEqual([2, 3]);
+  });
+
+  it("y la clasificación de la HC coincide EXACTAMENTE con la del Diagnóstico", () => {
+    // EL CANDADO DE FONDO, y por eso no repite los textos: compara las dos superficies sobre las mismas
+    // cifras. Si alguien vuelve a pintar aqui el rotulo sellado, o cambia el de la pantalla sin barrer
+    // esta, las dos listas dejan de coincidir y el caso cae. Es lo que no existia hasta hoy.
+    const valores: Record<string, number> = {
+      IFC: 2.11,
+      IEHH: 1.4,
+      IAE: 12.3,
+      PABU: 1.2023,
+    };
+    const clasesSelladas: Record<string, { label: string }> = {
+      IFC: { label: "Disfunción celular" },
+      IEHH: { label: "Moderado" },
+      IAE: { label: "Acelerado" },
+      PABU: { label: "Desviación por exceso" },
+    };
+    const filas = indicesAniAlterados(
+      valores,
+      clasesSelladas,
+      { IFC: 2, IEHH: 2, IAE: 3, PABU: 2 },
+      false,
+    );
+    for (const f of filas) {
+      const comoEnLaPantalla =
+        rotuloDisplayDeIndice(f.codigo, valores[f.codigo], clasesSelladas[f.codigo]?.label) ??
+        clasesSelladas[f.codigo]?.label;
+      expect(
+        f.clasificacion,
+        `la HC y el Diagnóstico dicen cosas distintas del ${f.codigo}`,
+      ).toBe(comoEnLaPantalla);
+    }
+    // Y que el caso no pase en vacio: tiene que haber traido las cuatro filas.
+    expect(filas.map((f) => f.codigo)).toEqual(["IFC", "IEHH", "IAE", "PABU"]);
   });
 
   it("el IAE positivo lleva su signo, como en su tabla", () => {

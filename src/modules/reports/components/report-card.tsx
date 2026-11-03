@@ -184,9 +184,19 @@ export function ReportCard({ report }: { report: ReportCardView }) {
         {!enviado ? (
           <form onSubmit={enviarSinReset(send)} className="flex w-full flex-col gap-2">
             <input type="hidden" name="reportId" value={report.reportId} />
+            {/* ═══ EL TEXTO DICE QUE SON DOS DOCUMENTOS, NO UNO CON TODO DENTRO (Santiago, 2026-11-03) ═══
+
+                Decia *"su informe: el diagnostico en lenguaje claro, su plan, lo que va a trabajar..."*,
+                como si el plan fuera un capitulo del informe. Y no lo es: desde el 2026-10-30 el correo
+                adjunta la HOJA DEL PLAN aparte cuando hay prescripcion emitida, con su menu, su lista de
+                intercambio y lo que conviene evitar. Son dos documentos con dos trabajos, y la frase tiene
+                que decirlo para que el profesional sepa que el paciente va a recibir dos archivos.
+
+                Y SIN PRESCRIPCION NO VA EL SEGUNDO, asi que la frase lo condiciona en vez de prometerlo. */}
             <span className="text-xs text-muted-foreground">
-              Se le envía por correo su informe: el diagnóstico en lenguaje claro, su plan, lo que va a
-              trabajar, sus suplementos y su próxima consulta. El envío queda registrado.
+              Se le envía por correo su informe ANI-BIS-E: el diagnóstico en lenguaje claro, lo que va a
+              trabajar, sus suplementos y su próxima consulta. Si tiene prescripción emitida, la hoja del
+              plan va adjunta aparte, con su menú y su lista de intercambio. El envío queda registrado.
             </span>
             {confirmandoEnvio ? (
               <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/30 p-2">

@@ -448,6 +448,60 @@
     widows: 2;
   }
 
+  /* ═══ EL PAPEL ES BLANCO (Santiago, 2026-11-03) ═══
+   *
+   * SU REPORTE, sobre la HC descargada: *"Se ve muy raro el fondo como gris azulado y encima las cards
+   * blancas, ya que se ve todo pegado... en la hoja 3 no aparece ese layout carretera gris azulado."*
+   *
+   * DE DONDE SALE: `<main>` lleva `bg-surface-sunken` (#f8f9fb), que es el gris azulado del lienzo de la
+   * aplicacion, y la regla de `print-color-adjust: exact` de arriba (que existe porque el color SI es
+   * informacion clinica en los veredictos) hace que el navegador lo imprima tal cual. Los ancestros se
+   * conservan para no romper la cadena de `:has()`, asi que ese fondo viaja al papel con ellos. Y la hoja
+   * 3 no lo tenia porque la caja de `main` ya habia terminado: el mismo documento con dos fondos.
+   *
+   * POR QUE LOS ANCESTROS Y NO `body`: el fondo lo pinta `main`, no el cuerpo. Se apaga en la MISMA cadena
+   * que la regla de arriba ya selecciona, para que no haya una segunda lista de selectores que mantener.
+   *
+   * Y NO TOCA LOS COLORES CLINICOS: esto es `background` de las cajas que CONTIENEN la hoja. Las tarjetas,
+   * las franjas de nivel y los veredictos pintan el suyo y siguen saliendo exactos. */
+  html,
+  body,
+  body :has(.imprimible) {
+    background: #fff !important;
+    background-image: none !important;
+  }
+
+  /* ═══ UN CONTENEDOR CON SCROLL NO SIGNIFICA NADA EN PAPEL (Santiago, 2026-11-03) ═══
+   *
+   * *"aparece la flecha/deslizable para uno desplazarse en la tabla (cosa que no es funcional ya que la
+   * flecha solo aparece en atlas web y no es funcional en el PDF)."*
+   *
+   * La tabla de Wang vive en un `overflow-x-auto` con `min-w-[38rem]`, que es lo correcto en pantalla
+   * estrecha. Al imprimir, ese contenedor sigue siendo una caja con scroll: el navegador dibuja su borde
+   * de desplazamiento y RECORTA lo que no entra, asi que ademas de la flecha inutil se puede perder una
+   * columna sin que nada avise.
+   *
+   * SE APAGA EL SCROLL Y SE SUELTA EL ANCHO MINIMO, los dos: quitar solo el scroll dejaria la tabla
+   * desbordando la hoja, y quitar solo el minimo dejaria la flecha. Con los dos, la tabla reflowa al ancho
+   * del papel, que es lo que `@page` ya define. */
+  .imprimible [class*="overflow-x-auto"],
+  .imprimible [class*="overflow-auto"] {
+    overflow: visible !important;
+  }
+
+  .imprimible table {
+    min-width: 0 !important;
+    width: 100% !important;
+    table-layout: auto;
+  }
+
+  /* Y SI UNA TABLA NO CABE EN UNA HOJA, su encabezado se repite en la siguiente. `break-inside: avoid`
+   * (arriba) sigue siendo la preferencia, pero el navegador la IGNORA cuando la tabla es mas alta que la
+   * pagina, y entonces las filas de la segunda hoja quedan sin decir de que columna son. */
+  .imprimible thead {
+    display: table-header-group;
+  }
+
   @page {
     size: letter;
     margin: 1.6cm 1.8cm;

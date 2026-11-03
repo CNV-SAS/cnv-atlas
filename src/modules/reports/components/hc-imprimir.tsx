@@ -35,7 +35,7 @@ export function HcImprimir() {
       onClick={(e) => imprimirHoja(e.currentTarget)}
     >
       <Printer className="size-4" aria-hidden />
-      Imprimir o guardar PDF
+      Imprimir o guardar la HC en PDF
     </Button>
   );
 }

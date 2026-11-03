@@ -29,8 +29,42 @@ describe("se imprime lo que se ve, sin una segunda construcción del documento",
   });
 
   it("la historia lleva la marca de impresión, y el botón no sale en el papel", () => {
-    expect(PAGE).toContain('<div className="imprimible flex flex-col gap-4">');
+    expect(PAGE).toContain('className="imprimible hoja-larga flex flex-col gap-4"');
     expect(BOTON).toContain("no-print");
+  });
+
+  it("y se declara HOJA LARGA, que es lo que evita las páginas con solo el título", () => {
+    // EL DEFECTO (Santiago, 2026-11-03): *"en la hoja 3 aparece «COMPOSICIÓN CORPORAL · ÍNDICES
+    // ALTERADOS» pero de resto la hoja es totalmente vacía."* No faltaba contenido: la regla de impresión
+    // `section { break-inside: avoid }` no puede cumplirse cuando la sección es más alta que la página, el
+    // navegador la parte igual y el corte cae justo después del título.
+    //
+    // `hoja-larga` es la clase que ya resolvió esto mismo en el SOAP (2026-09-20) y lo que hace son dos
+    // cosas: las secciones pueden partirse y los títulos quedan pegados a lo que encabezan. Se afirma
+    // sobre las DOS, porque con una sola el síntoma vuelve: sin `break-after` el título se queda solo, y
+    // sin `break-inside: auto` la sección entera salta y deja el hueco.
+    expect(PAGE, "la historia clínica dejó de declararse hoja larga").toContain("hoja-larga");
+    expect(GLOBALS).toContain(".hoja-larga section {");
+    expect(GLOBALS).toContain("break-inside: auto;");
+    expect(GLOBALS).toContain("break-after: avoid;");
+  });
+
+  it("en papel no queda el fondo del lienzo ni un contenedor con scroll", () => {
+    // LOS DOS REPORTES DE LA HC DESCARGADA (Santiago, 2026-11-03):
+    //
+    //   · *"Se ve muy raro el fondo como gris azulado y encima las cards blancas."* Lo pinta `<main>` con
+    //     `bg-surface-sunken`, y `print-color-adjust: exact` (que existe porque el color SÍ es información
+    //     clínica en los veredictos) lo manda al papel tal cual.
+    //   · *"aparece la flecha/deslizable para uno desplazarse en la tabla, cosa que no es funcional en el
+    //     PDF."* La tabla de Wang vive en un `overflow-x-auto` con ancho mínimo, correcto en pantalla
+    //     estrecha y sin sentido en una hoja: además de la flecha, el contenedor RECORTA lo que no entra.
+    expect(GLOBALS, "el fondo del lienzo volvió al papel").toContain("background: #fff !important;");
+    expect(GLOBALS, "un contenedor con scroll volvió a recortar la tabla impresa").toContain(
+      "overflow: visible !important;",
+    );
+    expect(GLOBALS, "una tabla partida volvería a quedar sin encabezado").toContain(
+      "display: table-header-group;",
+    );
   });
 
   it("al imprimir sale la hoja y SOLO la hoja, sin páginas en blanco", () => {
@@ -116,5 +150,66 @@ describe("la historia clínica SÍ lleva lo técnico (al revés que el reporte d
     expect(sello).toBeGreaterThan(-1);
     expect(firma).toBeGreaterThan(-1);
     expect(sello, "el sello quedó después de la firma").toBeLessThan(firma);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS DOS DOCUMENTOS SE LLAMAN DISTINTO, Y LA FIRMA NO PIDE UNA RAYA  ·  LA DECISION DE FONDO
+//
+// ═══ DE DONDE SALE (Santiago, 2026-11-03) ═══
+//
+// Mirando la pantalla de Reporte: *"A dia de hoy tenemos un bloque que se llama «Reporte»... y justo
+// debajo hay 3 botones «Ver en formato SOAP», «Imprimir o guardar en PDF» y «Enviársela al paciente»...
+// Al menos ser mas especificos. Y en cuanto al bloque de arriba, pienso que en vez de reporte seria
+// mejor de una vez «Informe ANI-BIS-E»."*
+//
+// Y LA DECISION DE FONDO QUE LO ORDENA: la HC es el REGISTRO CLINICO DEL PROFESIONAL, no un documento
+// para el paciente (su §7.1). Por eso se queda con el plan, el ICN y las notas al pie, y por eso el
+// documento del paciente es el informe ANI-BIS-E con su hoja del plan. En una pantalla con los dos, un
+// rotulo generico encima de uno de ellos no los distingue, y los tres botones sueltos no decian de que
+// documento eran.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("los dos documentos de la consulta se nombran por separado", () => {
+  const TARJETA = readFileSync("src/modules/reports/components/report-card.tsx", "utf8");
+  const ENTREGAR = readFileSync("src/modules/reports/components/hc-entregar.tsx", "utf8");
+  const HC = readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8");
+
+  it("el bloque del paciente se llama por su nombre, no «Reporte»", () => {
+    expect(PAGE).toContain("Informe ANI-BIS-E del paciente");
+    expect(PAGE, "volvió el título genérico sobre uno de los dos documentos").not.toContain(
+      '>Reporte</h2>',
+    );
+  });
+
+  it("los tres controles de la HC dicen que son de la HC", () => {
+    expect(PAGE).toContain("Ver HC en formato SOAP");
+    expect(BOTON).toContain("Imprimir o guardar la HC en PDF");
+    expect(ENTREGAR).toContain("Enviar copia de la HC al paciente");
+    // Y NINGUNO SE QUEDA CON EL ROTULO AMBIGUO, que es lo que de verdad confundía: "Enviársela" no dice
+    // qué, y en una pantalla con dos documentos el pronombre apunta a los dos.
+    expect(ENTREGAR, "volvió el pronombre sin antecedente").not.toContain("Enviársela al paciente");
+  });
+
+  it("el texto del envío dice que el plan va APARTE, no dentro del informe", () => {
+    // Decía *"su informe: el diagnóstico en lenguaje claro, su plan, lo que va a trabajar..."*, como si el
+    // plan fuera un capítulo. Desde el 2026-10-30 el correo lleva la hoja del plan como SEGUNDO adjunto
+    // cuando hay prescripción emitida, y el profesional tiene que saber que el paciente recibe dos
+    // archivos. Y si no hay prescripción no va el segundo, así que la frase lo condiciona.
+    // Se afirma un trozo de UNA linea: el JSX reparte la frase en varias y un literal largo se cazaria
+    // con el salto de linea, que es un falso rojo por el formateo.
+    expect(TARJETA).toContain("plan va adjunta aparte");
+    expect(TARJETA).toContain("Si tiene prescripción emitida");
+    expect(TARJETA, "volvió a prometer el plan dentro del informe").not.toContain(
+      "su informe: el diagnóstico en lenguaje claro, su plan",
+    );
+  });
+
+  it("la firma no deja una raya que nadie llena", () => {
+    // *"Hay una raya que nunca se llena con la firma. Entonces para que dejarla ahi vacia siempre?"* Y es
+    // cierto: este documento no se firma a mano, nace de una consulta con actor autenticado (el
+    // diagnóstico lleva `confirmed_by`/`confirmed_at` y la entrega queda en `hc_deliveries`). El pie dice
+    // qué es y quién lo generó, que es más fuerte que la raya, no menos.
+    expect(HC).toContain("Documento generado en Atlas por");
+    expect(HC, "volvió la línea en blanco del pie").not.toContain('<div className="h-8 border-b border-border" />');
   });
 });

@@ -1,4 +1,5 @@
-import { indicatorRange, decimalesDe } from "@/modules/diagnoses/data/indicator-ranges";
+import { indicatorRange, decimalesDe, rotuloDisplayDeIndice } from "@/modules/diagnoses/data/indicator-ranges";
+import { nombreLlanoDelIndice } from "@/modules/diagnoses/nombre-llano-del-indice";
 import type { EngineIndicators } from "@/clinical-engine/types";
 
 // Indices ANI-BIS-E para la tabla de la historia clinica (porte 2026-08-24). Modulo NEUTRO y PURO.
@@ -151,10 +152,34 @@ export function indicesAniAlterados(
     out.push({
       codigo: fila.codigo,
       sigla: fila.sigla ?? fila.codigo,
-      nombre: fila.nombre,
+      // EL NOMBRE LLANO MANDA CUANDO EXISTE (Santiago, 2026-11-03). Tres filas se nombraban con el rotulo
+      // tecnico de su tabla de HC ("Hidro-Homeostasis", "Desviación de φ") o con nada (PABU), y la HC la
+      // puede leer el paciente cuando la pide. La traduccion vive en UN modulo y no aqui, porque la misma
+      // tiene que usar la pantalla de resultados: dos vocabularios para el mismo indice es lo que hace que
+      // un profesional y un paciente crean que hablan de lo mismo. Sin traduccion, el nombre de su archivo.
+      nombre: nombreLlanoDelIndice(fila.codigo) ?? fila.nombre,
       referencia: fila.referencia(sexoM),
       valor: fila.formato(v),
-      clasificacion: label,
+      // ═══ LA MISMA CLASIFICACION QUE EL DIAGNOSTICO, Y NO LA SELLADA EN CRUDO (Santiago, 2026-11-03) ═══
+      //
+      // SU SOSPECHA, Y ERA CIERTA: *"sé que había cambiado la forma en cómo evaluar los indicadores en el
+      // diagnóstico, pero por favor que revise si eso también cambia en HC. Por ejemplo, indicadores con
+      // resultado PABU «Desviación por exceso» o IAE «Acelerado»."*
+      //
+      // NO CAMBIABA. `rotuloDisplayDeIndice` (el barrido del 2026-09-09, mas la tabla 3 del 26-oct para el
+      // IAE y la traduccion del IFC del 21-sep) lo usaba SOLO la pantalla de Diagnostico, y esta tabla
+      // pintaba el `label` del clasificador sellado. O sea que la MISMA cifra de la MISMA consulta salia
+      // "Acelerado" en la historia clinica y "envejecimiento acelerado estimado" en la pantalla, y el IFC
+      // "Disfunción celular" contra "Disfunción celular establecida".
+      //
+      // Y EL DOCUMENTO QUE SE QUEDABA CON LA PALABRA VIEJA ES EL PROBATORIO, que es lo que lo hace grave:
+      // la HC la lee otro profesional y se le puede entregar al paciente. Dos veredictos distintos sobre
+      // el mismo numero es de la familia de "si dos partes de la pantalla dicen cosas opuestas, es que
+      // LEEN FUENTES DISTINTAS": el arreglo no es corregir un texto, es unir las fuentes.
+      //
+      // EL COLOR NO SE TOCA, igual que en la pantalla: la severidad sigue saliendo del clasificador
+      // SELLADO. Lo que se unifica es la palabra.
+      clasificacion: rotuloDisplayDeIndice(fila.codigo, v, label) ?? label,
       sev,
       // LA MISMA FUENTE QUE EL DIAGNOSTICO. El EB no la tiene (su fila toma el veredicto del IAE y su
       // referencia es la edad cronologica), asi que ahi la raya es correcta.
