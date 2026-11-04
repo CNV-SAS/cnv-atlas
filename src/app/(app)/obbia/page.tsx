@@ -27,6 +27,12 @@ import {
   sigueSiendoDatoPersonal,
 } from "@/modules/obbia/services/nivel-de-anonimizacion";
 import { requireUser } from "@/modules/auth/session";
+import {
+  ROTULO_DE_LA_VISTA,
+  VISTAS_DEL_PANEL,
+  type VistaDelPanel,
+  vistaPedida,
+} from "@/modules/obbia/services/vistas-del-panel";
 
 // ═══ EL NIVEL SE DICE EN ESPAÑOL, Y EL CRUDO AL LADO ═══
 //
@@ -61,13 +67,56 @@ function Cifra({ rotulo, valor, nota }: { rotulo: string; valor: number; nota: s
   );
 }
 
+// ═══ LAS TRES VISTAS, COMO SU CNVResearch (cotejo del 2026-11-03) ═══
+//
+// Su modulo abre en Resumen · Datos · Exportar, y las tres pestanas son TRES PERMISOS: dicen que se puede
+// hacer antes de ensenar nada. /obbia era un rollo que habia que recorrer entero para enterarse de que el
+// fila a fila no se puede.
+//
+// SON ENLACES, no botones: la vista viaja en la URL, asi que el panel sigue sin una linea de JavaScript de
+// cliente y una pestana concreta se puede compartir por enlace. Y la cerrada EXISTE (ver
+// `vistas-del-panel`): una ausencia no explica nada, una puerta cerrada con su razon si.
+function NavDeVistas({ vista }: { vista: VistaDelPanel }) {
+  return (
+    <nav aria-label="Vistas del panel" className="flex flex-wrap gap-1 border-b border-border">
+      {VISTAS_DEL_PANEL.map((v) => {
+        const activa = v === vista;
+        return (
+          <a
+            key={v}
+            href={`/obbia?vista=${v}`}
+            aria-current={activa ? "page" : undefined}
+            className={
+              "-mb-px rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition-colors " +
+              (activa
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground")
+            }
+          >
+            {ROTULO_DE_LA_VISTA[v]}
+            {/* EL CANDADO SE VE EN LA PESTANA, no solo al entrar: asi se sabe que no se puede antes de
+                pulsarla, que es la mitad del valor de que la pestana exista. */}
+            {v === "datos" ? <span className="ml-1 text-xs">(cerrada)</span> : null}
+          </a>
+        );
+      })}
+    </nav>
+  );
+}
+
 // Panel de obbia (B14): datasets de investigacion gobernados, data agregada sin PII. La
 // autorizacion va por policy (regla 3); la lectura, por RLS (obbia solo lee research_datasets).
-export default async function ObbiaPage() {
+export default async function ObbiaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ vista?: string }>;
+}) {
   const user = await requireUser();
   if (!canViewObbia(user)) {
     redirect("/no-autorizado");
   }
+
+  const vista = vistaPedida((await searchParams).vista);
 
   const [datasets, cohorte] = await Promise.all([
     getResearchDatasets(),
@@ -102,6 +151,10 @@ export default async function ObbiaPage() {
         />
       </div>
 
+      <NavDeVistas vista={vista} />
+
+      {vista === "resumen" ? (
+       <>
       {/* ═══ LA COHORTE, EN CIFRAS ═══
 
           La vista `evaluaciones_para_investigacion` existia desde la 0224 sin ninguna pantalla, así que
@@ -308,11 +361,25 @@ export default async function ObbiaPage() {
             entera, y es peor que no avisar. Ahora la alarma solo salta si hay dos familias MAYORES
             distintas, que es lo único que de verdad hace incomparables dos cifras, y en el caso normal se
             dice en voz baja cuántas grafías hay, que es un dato de calidad y no una alarma. */}
+        {/* ═══ EL MISMO HECHO, DOS VOCES (2026-11-04) ═══
+
+            En ámbar cuando la mezcla pesa; en voz baja, con la cifra, cuando la minoría es marginal (ver
+            `mezclaMarginal` en el lector). El hecho no cambia y las dos familias se nombran igual: lo que
+            cambia es el color, porque un aviso que exagera se aprende a ignorar. */}
         {cohorte.mezclaFamilias ? (
-          <p className="max-w-prose text-xs font-medium text-clinical-warning">
+          <p
+            className={
+              "max-w-prose text-xs " +
+              (cohorte.mezclaMarginal
+                ? "text-muted-foreground"
+                : "font-medium text-clinical-warning")
+            }
+          >
             La cohorte mezcla {cohorte.porFamiliaDelMotor.length} familias mayores del motor (
-            {cohorte.porFamiliaDelMotor.map((f) => `${f.mayor}.x: ${f.evaluaciones}`).join(" · ")}). Las
-            cifras de una familia no son comparables con las de otra y el dataset tiene que decirlo.
+            {cohorte.porFamiliaDelMotor.map((f) => `${f.mayor}.x: ${f.evaluaciones}`).join(" · ")}).{" "}
+            {cohorte.mezclaMarginal
+              ? "Son menos del 5 % de la cohorte con diagnóstico: lo decimos porque un dataset tiene que decirlo, no porque las cifras dejen de servir."
+              : "Las cifras de una familia no son comparables con las de otra y el dataset tiene que decirlo."}
           </p>
         ) : cohorte.porVersionDelMotor.length > 1 ? (
           <p className="max-w-prose text-xs text-muted-foreground">
@@ -402,7 +469,9 @@ export default async function ObbiaPage() {
           Las mismas cinco columnas por cada eje, sobre las consultas autorizadas. Es la caracterización
           que un análisis necesita antes de mirar cualquier resultado.
         </p>
-        <div className="grid gap-4 lg:grid-cols-2">
+        {/* A ANCHO COMPLETO, UNA DEBAJO DE OTRA (cotejo del 2026-11-03). A dos columnas, cada tabla tiene
+            seis columnas apretadas; las suyas van a ancho completo y se leen mejor. */}
+        <div className="grid gap-4">
           {cohorte.estratos
             .filter((e) => e.filas.length > 0)
             .map((e) => (
@@ -446,6 +515,31 @@ export default async function ObbiaPage() {
         </div>
       </div>
 
+       </>
+      ) : null}
+
+      {vista === "datos" ? (
+       <>
+      {/* ═══ LA PESTANA CERRADA: POR QUE NO HAY FILAS (2026-11-04) ═══
+
+          Es la *Datos* de su CNVResearch, y esta cerrada. Lo que se muestra es exactamente la razon, que
+          ya estaba calculada por `nivelDeAnonimizacion`: la vista lleva `patient_id` a proposito (es lo
+          que permite el analisis longitudinal), asi que un export fila a fila seria SEUDONIMIZADO. */}
+      <div className="rounded-xl border border-clinical-warning/40 bg-clinical-warning-bg p-4 text-sm">
+        <p className="font-semibold text-foreground">Esta vista no se puede abrir todavía</p>
+        <p className="mt-1 max-w-prose text-foreground">
+          Las filas de esta cohorte no son anónimas: llevan la llave del paciente, que es lo que permite
+          seguir a una misma persona a lo largo del tiempo. Mientras eso sea así, mostrarlas o entregarlas
+          es tratar datos personales, y para eso hacen falta dos cosas que todavía no están: la
+          verificación del k-anonimato <strong>fila a fila</strong> y la <strong>custodia de la llave</strong>{" "}
+          fuera del entorno de análisis. Las dos son condición antes de la primera venta.
+        </p>
+        <p className="mt-2 max-w-prose text-xs text-muted-foreground">
+          Lo que sí se puede llevar hoy está en <strong>Exportar</strong>: el resumen agregado, con las
+          categorías de menos de cinco pacientes ya suprimidas.
+        </p>
+      </div>
+
       {/* ═══ QUE NIVEL SALDRIA SI HOY SE GENERARA UN DATASET DE ESTA COHORTE ═══
 
           Lo CALCULA la misma función que rotularía el dataset (`nivelDeAnonimizacion`), no un texto
@@ -466,6 +560,30 @@ export default async function ObbiaPage() {
           pacientes se reúnen en una fila y el archivo dice cuántas suprimió); lo que falta, y es condición
           antes de la primera venta, es esa verificación <strong>fila a fila</strong> y la custodia de la
           llave de seudonimización.
+        </p>
+      </div>
+       </>
+      ) : null}
+
+      {vista === "exportar" ? (
+       <>
+      {/* ═══ LA VISTA DE EXPORTAR ═══
+
+          EL NIVEL SE REPITE AQUI, EN UNA LINEA, y no es redundancia: el principio que ya regia este
+          bloque era *"ofrecer la descarga antes de decir que nivel tiene seria ofrecerla sin su
+          etiqueta"*. Al partir la pagina en tres, la etiqueta se habria quedado en la otra pestana. Sale
+          de la MISMA funcion, asi que no puede divergir de la de Datos. */}
+      <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
+        <p className="font-semibold text-foreground">
+          Lo que se descarga es el resumen agregado de esta cohorte
+        </p>
+        <p className="mt-1 max-w-prose text-muted-foreground">
+          No lleva filas de paciente. El dataset fila a fila sería{" "}
+          {ROTULO_DEL_NIVEL[nivelDelExport.nivel].toLowerCase()} y por eso{" "}
+          <a href="/obbia?vista=datos" className="underline underline-offset-4">
+            esa vista está cerrada
+          </a>
+          .
         </p>
         {/* ═══ LO QUE SÍ SE PUEDE LLEVAR HOY, Y QUEDA REGISTRADO (Santiago, 2026-10-30) ═══
 
@@ -526,6 +644,8 @@ export default async function ObbiaPage() {
           </table>
         </div>
       )}
+       </>
+      ) : null}
     </div>
   );
 }

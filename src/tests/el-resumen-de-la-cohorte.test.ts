@@ -53,6 +53,7 @@ const COHORTE: CohorteDeInvestigacion = {
   ],
   porFamiliaDelMotor: [{ mayor: "1", evaluaciones: 212, grafias: ["1.0.0", "anibise-1.4.0"] }],
   mezclaFamilias: false,
+  mezclaMarginal: false,
   porMes: [
     { mes: "2026-08", evaluaciones: 40 },
     { mes: "2026-09", evaluaciones: 120 },

@@ -102,6 +102,22 @@ export type CohorteDeInvestigacion = {
   porFamiliaDelMotor: { mayor: string; evaluaciones: number; grafias: string[] }[];
   /** `true` solo si de verdad hay dos familias MAYORES. Es lo unico que hace incomparables dos cifras. */
   mezclaFamilias: boolean;
+  /**
+   * ═══ LA MEZCLA ES MARGINAL: UN AVISO QUE EXAGERA ENSEÑA A IGNORARLO (2026-11-04) ═══
+   *
+   * La pantalla decia "2.x: 257 · 1.x: 1" EN AMBAR, y el aviso ("las cifras no son comparables") pesa
+   * mucho mas de lo que el hecho merece: es UNA consulta de 258, la unica que quedo sellada con el motor
+   * viejo y que no se puede reemitir. El aviso es cierto y la proporcion lo vuelve enganoso.
+   *
+   * ASI QUE POR DEBAJO DE UN UMBRAL SE DICE EN VOZ BAJA, nombrando la cifra, en vez de en ambar. Es la
+   * misma leccion que cerro el aviso de anibise-1.4.0: un aviso que exagera se aprende a ignorar, y
+   * entonces no avisa de nada el dia que importa.
+   *
+   * EL UMBRAL ES EL 5 % de la cohorte con diagnostico, y es NUESTRO, de presentacion: no decide sobre
+   * ningun paciente ni cambia ninguna cifra (las dos familias siguen contadas y dichas). Lo unico que
+   * decide es el color del aviso.
+   */
+  mezclaMarginal: boolean;
   /** La cohorte autorizada por mes de la medicion (hora de Colombia), de lo mas reciente a lo mas viejo. */
   porMes: { mes: string; evaluaciones: number }[];
   /**
@@ -360,6 +376,14 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
     },
     porFamiliaDelMotor,
     mezclaFamilias: porFamiliaDelMotor.length > 1,
+    // La minoria se mide contra la suma de las familias (no contra `conAutorizacion`): las consultas sin
+    // diagnostico no tienen motor, asi que meterlas en el denominador diluiria la proporcion a conveniencia.
+    mezclaMarginal: (() => {
+      if (porFamiliaDelMotor.length < 2) return false;
+      const total = porFamiliaDelMotor.reduce((n, f) => n + f.evaluaciones, 0);
+      const minoria = Math.min(...porFamiliaDelMotor.map((f) => f.evaluaciones));
+      return total > 0 && minoria / total < 0.05;
+    })(),
     pacientesAutorizados: Number(t.pacientes_autorizados ?? 0),
     conDiagnostico: Number(t.con_diagnostico ?? 0),
     importadas: Number(t.importadas ?? 0),
