@@ -76,15 +76,26 @@ const inicial: MedicionDeOtroState = {
 type Causa = "toma_mal_hecha" | "otro_paciente";
 
 /** Lo que cada motivo dice en pantalla. Una sola fuente: el boton, el titulo y el texto salen de aqui. */
-const MOTIVOS: { causa: Causa; titulo: string; detalle: string }[] = [
+/**
+ * Los dos motivos, con sus dos rotulos.
+ *
+ * ═══ POR QUE SON DOS ROTULOS Y NO UNO (2026-11-03) ═══
+ *
+ * `boton` es lo que se PULSA, asi que empieza por el VERBO: lo que se va a hacer. `titulo` encabeza la
+ * pantalla a la que se llega, asi que describe el HECHO: lo que paso. Son dos frases para dos trabajos, y
+ * mezclarlas deja un boton que no dice que hace o un titulo que suena a orden.
+ */
+const MOTIVOS: { causa: Causa; boton: string; titulo: string; detalle: string }[] = [
   {
     causa: "toma_mal_hecha",
+    boton: "Repetir la toma (salió mal)",
     titulo: "La toma quedó mal",
     detalle:
       "El paciente no estaba en condiciones, los electrodos no hicieron contacto o el archivo del equipo salió incompleto. La medición es de este paciente, pero no sirve.",
   },
   {
     causa: "otro_paciente",
+    boton: "El archivo es de otra persona",
     titulo: "Importé el archivo de otra persona",
     detalle:
       "Lo que está cargado es la bioimpedancia de otro paciente. No es un dato mal digitado: el diagnóstico de esta consulta se calculó con el cuerpo de alguien más.",
@@ -184,20 +195,48 @@ export function ReemplazarLaMedicionBis({
             ¿Hay que reemplazar la medición BIS de esta consulta?
           </h3>
         )}
+        {/* ═══ LAS DOS SALIDAS A LA VISTA, SIN UN PASO QUE LAS ESCONDA (Santiago, 2026-11-03) ═══
+
+            SU DUDA: *"no sé si para el profesional le quede clara esta ruta solo con darle a un botón que
+            diga reemplazar BIS y la explicación corta."*
+
+            Y ES LA DUDA CORRECTA. Un botón que abre una pregunta esconde la decisión detrás de un clic a
+            ciegas: para saber qué se le va a preguntar hay que pulsarlo, y el que no sabe si es su caso
+            no pulsa. Es el mismo defecto que ya costó que este control no se encontrara cuando era un
+            desplegable plegado: lo que no se ve, no existe.
+
+            AHORA LOS DOS CAMINOS SON DOS BOTONES, cada uno con la línea que dice cuándo es el suyo. El
+            profesional LEE antes de pulsar, y pulsa sabiendo a qué va. Lo que se gana no es un clic menos:
+            es que la decisión (que es clínica, y decide qué queda escrito en la historia) se tome mirando
+            las dos opciones, no descubriéndolas. */}
         <p className="max-w-prose text-sm text-muted-foreground">
-          Sirve para los dos casos: la toma quedó mal y hay que repetirla, o el archivo importado era de
-          otra persona. Al pulsar se pregunta cuál de los dos es, porque no se resuelven igual.
+          Las dos cosas quedan escritas en la historia clínica y no dicen lo mismo, así que se elige antes:
         </p>
-        <div>
-          <Button type="button" variant="outline" size="sm" onClick={() => setAbierto(true)}>
-            Reemplazar la medición BIS
-          </Button>
+        <div className="flex flex-col gap-2">
+          {MOTIVOS.map((m) => (
+            <button
+              key={m.causa}
+              type="button"
+              onClick={() => {
+                setCausa(m.causa);
+                setAbierto(true);
+              }}
+              className="flex max-w-prose flex-col gap-1 rounded-lg border border-input bg-background px-3 py-2 text-left outline-none transition-colors hover:border-ring focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <span className="text-sm font-semibold text-foreground">{m.boton}</span>
+              <span className="text-xs text-muted-foreground">{m.detalle}</span>
+            </button>
+          ))}
         </div>
       </section>
     );
   }
 
-  // ── ABIERTO Y SIN MOTIVO: LA PREGUNTA QUE DECIDE ─────────────────────────────────────────────────
+  // ── ABIERTO Y SIN MOTIVO: LA PANTALLA DE CAMBIAR DE OPINION ──────────────────────────────────────
+  //
+  // DESDE EL 2026-11-03 YA NO SE LLEGA AQUI AL ABRIR: los dos motivos son dos botones del estado cerrado,
+  // asi que el camino normal entra directo al que se eligio. Esta pantalla es a donde lleva "Cambiar el
+  // motivo", y se queda por eso: volver atras tiene que ofrecer las dos, no devolver al bloque cerrado.
   if (!causa) {
     return (
       <section className="no-print flex flex-col gap-3 rounded-xl border border-clinical-warning/40 bg-clinical-warning-bg p-4">

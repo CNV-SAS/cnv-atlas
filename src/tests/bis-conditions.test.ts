@@ -641,13 +641,28 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     expect(FORM).toContain("&& !modoReemplazo");
   });
 
-  it("el reemplazo se llama por su nombre, y una sola vez", () => {
+  it("los dos caminos se VEN, sin un paso que los esconda, y una sola vez", () => {
     // Decía solo "¿Importaste el archivo equivocado?". Quien viene buscando cómo quitar una toma mala (en
     // su HTML hay un botón "Eliminar toma BIS") no reconoce esa pregunta como el sitio y concluye que en
     // Atlas no se puede: un control que no se encuentra se reporta como que no existe.
+    //
+    // ═══ Y UN BOTÓN QUE ABRE UNA PREGUNTA TAMPOCO SIRVE (Santiago, 2026-11-03) ═══
+    //
+    // *"No sé si para el profesional le quede clara esta ruta solo con darle a un botón que diga
+    // reemplazar BIS y la explicación corta."* Es la duda correcta: para saber qué se le va a preguntar
+    // hay que pulsar a ciegas, y el que no sabe si es su caso no pulsa. Es el mismo defecto que cuando
+    // era un desplegable plegado, con otra forma.
+    //
+    // ASÍ QUE SE AFIRMAN LOS DOS BOTONES, no el genérico: cada camino se lee antes de pulsarlo.
     const jsx = sinComentarios(REEMPLAZO);
-    expect(jsx).toContain("Reemplazar la medición BIS");
-    // LOS DOS MOTIVOS, porque es la pregunta que decide el camino Y lo que queda escrito en la historia.
+    expect(jsx).toContain("Repetir la toma (salió mal)");
+    expect(jsx).toContain("El archivo es de otra persona");
+    // Y QUE LOS PINTE EL ESTADO CERRADO, que es lo que de verdad los hace visibles: si volvieran a vivir
+    // solo tras el clic, los dos literales seguirían estando y el candado pasaría en verde.
+    const cerrado = jsx.slice(jsx.indexOf("if (!abierto) {"), jsx.indexOf("if (!causa) {"));
+    expect(cerrado, "los dos motivos dejaron de verse sin pulsar nada").toContain("MOTIVOS.map");
+    expect(cerrado).toContain("{m.boton}");
+    // LOS DOS MOTIVOS SIGUEN SIENDO LO QUE DECIDE lo que queda escrito en la historia.
     expect(jsx).toContain("La toma quedó mal");
     expect(jsx).toContain("Importé el archivo de otra persona");
     // Y UNA SOLA ENTRADA AL ACTO. Dos entradas parciales al mismo acto es exactamente lo que había (un
