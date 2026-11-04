@@ -202,10 +202,18 @@ export default async function ObbiaPage() {
             que autorice usar sus datos fila a fila. No es que hayan dicho que no: es que nadie les
             preguntó.
 
-            POR ESO ENTRAN EN ESTAS CIFRAS Y NO EN UN DATASET. Las cuentas agregadas de esta pantalla no
-            necesitan su autorización (nadie es identificable en un conteo por cohorte, que es la regla 3
-            del uso agregado de `DATA_GOVERNANCE.md`); un dataset fila a fila sí, porque sería
-            seudonimizado y eso sigue siendo dato personal.
+            EL LIMITE ES LO SEUDONIMIZADO, NO LO ANONIMIZADO, y la distincion la fijo la consulta legal
+            del 2026-11-03. Las cuentas agregadas de esta pantalla no necesitan su autorizacion (nadie es
+            identificable en un conteo por cohorte, que es la regla 3 del uso agregado de
+            `DATA_GOVERNANCE.md`), y TAMPOCO la necesita un conjunto ANONIMIZADO comercializable: su
+            propia finalidad (c) cubre el acto de anonimizar, y lo anonimizado deja de ser dato personal.
+            Lo que su consentimiento NO cubre es nada SEUDONIMIZADO (investigacion ObBIA-Latam y control
+            de calidad), que es justo lo que seria un dataset fila a fila con la llave del paciente.
+
+            Y LA CONDICION ES UNICA PARA TODOS, sin filtro por origen: k-anonimato con k >= 5 y supresion
+            de celdas pequenas, aplicados TECNICAMENTE en toda salida comercializable, antes de la primera
+            venta. O sea que no hay una regla para los del HTML y otra para los de Atlas: hay una, y es
+            tecnica.
 
             Y LA SALIDA EXISTE, que es lo que hay que decir en vez de dejarlo como una pérdida: si firman
             el consentimiento de Atlas (la regularización que ya ofrece la ficha), entran. Por eso la
@@ -214,12 +222,13 @@ export default async function ObbiaPage() {
           <p className="max-w-prose rounded border border-border bg-muted/30 p-2 text-xs text-foreground">
             <strong>
               De las {cohorte.importadasVigentes} consultas importadas del HTML, {cohorte.importadas}{" "}
-              {cohorte.importadas === 1 ? "entra" : "entran"} a un dataset
+              {cohorte.importadas === 1 ? "entra" : "entran"} a un dataset fila a fila
             </strong>
-            . Las demás solo se pueden usar <strong>agregadas o anonimizadas</strong>, como las cifras de
-            esta pantalla: el consentimiento del HTML no tenía casilla de investigación, así que no hay
-            nada que autorice usar sus datos fila a fila. No dijeron que no, nadie les preguntó. Si firman
-            el consentimiento de Atlas, entran solas.
+            . Las demás sí entran en lo <strong>agregado y en lo anonimizado</strong>, como las
+            cifras de esta pantalla: lo que su consentimiento no cubre es el uso{" "}
+            <strong>seudonimizado</strong>, que es el del dataset con la llave del paciente. No dijeron
+            que no, nadie les preguntó: el consentimiento del HTML no tenía casilla de investigación. Si
+            firman el de Atlas, entran solas.
           </p>
         ) : null}
 
@@ -453,7 +462,10 @@ export default async function ObbiaPage() {
         <p className="mt-1 max-w-prose text-xs text-muted-foreground">
           El nivel no se escribe: se deriva de lo que el archivo lleva. Para producir uno anonimizado hay
           que quitar la llave del paciente, generalizar los cuasi-identificadores y verificar el
-          k-anonimato, y esa verificación todavía no está construida.
+          k-anonimato. <strong>El resumen de abajo ya lo cumple</strong> (sus categorías con menos de cinco
+          pacientes se reúnen en una fila y el archivo dice cuántas suprimió); lo que falta, y es condición
+          antes de la primera venta, es esa verificación <strong>fila a fila</strong> y la custodia de la
+          llave de seudonimización.
         </p>
         {/* ═══ LO QUE SÍ SE PUEDE LLEVAR HOY, Y QUEDA REGISTRADO (Santiago, 2026-10-30) ═══
 

@@ -255,18 +255,29 @@ describe("el resumen con gráficas", () => {
 describe("los pacientes del HTML: qué se puede hacer con ellos", () => {
   const PAGINA = readFileSync("src/app/(app)/obbia/page.tsx", "utf8");
 
-  it("la pantalla dice que solo se pueden usar agregados o anonimizados", () => {
-    // LA CIFRA SOLA NO LO DICE, y la diferencia es jurídica: el consentimiento del HTML no tenía casilla
-    // de investigación, así que no hay nada que autorice usar sus datos fila a fila.
-    expect(PAGINA).toContain("agregadas o anonimizadas");
+  // ═══ EL LIMITE ES LO SEUDONIMIZADO, NO LO ANONIMIZADO (consulta legal, 2026-11-03) ═══
+  //
+  // La primera version de este candado exigia la frase "agregadas o anonimizadas", que era correcta pero
+  // se quedaba corta del lado que importa: deja creer que lo anonimizado es una concesion del mismo rango
+  // que lo agregado. La consulta legal lo fijo al reves: lo ANONIMIZADO es libre (su finalidad (c) cubre
+  // el acto de anonimizar y lo anonimizado deja de ser dato personal), y lo que su consentimiento NO
+  // cubre es lo SEUDONIMIZADO. Asi que lo que se vigila es que la pantalla nombre esa frontera, que es la
+  // que decide si una venta es licita.
+  it("la pantalla dice que el limite es lo SEUDONIMIZADO, no lo anonimizado", () => {
+    expect(PAGINA).toContain("agregado y en lo anonimizado");
+    expect(PAGINA).toContain("<strong>seudonimizado</strong>");
     expect(PAGINA).toContain("el consentimiento del HTML no tenía casilla de investigación");
+    // Y que la condicion es UNICA para todos, sin filtro por origen: es la mitad que evita construir una
+    // regla distinta para los 150 del HTML.
+    expect(PAGINA).toContain("k-anonimato con k >= 5");
+    expect(PAGINA).toContain("no hay una regla para los del HTML y otra para los de Atlas");
   });
 
   it("y NO los da por perdidos: dice la salida", () => {
     // "No dijeron que no, nadie les preguntó" y la regularización que ya existe. Un dato que se presenta
     // como perdido no se recupera; uno que se presenta como pendiente, sí.
-    expect(PAGINA).toContain("No dijeron que no, nadie les preguntó");
-    expect(PAGINA).toContain("Si firman\n            el consentimiento de Atlas, entran solas");
+    expect(PAGINA).toContain("nadie les preguntó");
+    expect(PAGINA).toContain("Si\n            firman el de Atlas, entran solas");
   });
 });
 
