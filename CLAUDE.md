@@ -240,7 +240,22 @@ NUNCA uses em-dash en ningún lugar: ni en código, ni en copy, ni en docs, ni e
      Candado: `la-salida-se-puede-elegir.test.ts`, que prohíbe el `required` inerte en el bloque y exige el
      gate en los TRES formularios que lo usan.
 
-  **Lo que las OCHO tienen en común: son defectos que solo se ven en un navegador real.** Por eso, en superficies de formulario sensibles (el intake del paciente sobre todo), **el smoke humano en navegador NO es opcional**: es la única verificación que atrapa esta clase de bug. Si tocas uno de estos componentes, pruébalo en un navegador real antes de darlo por hecho.
+  9. **Un `catch` alrededor de una server action SE COME EL ÉXITO, porque en Next un redirect se señaliza
+     LANZANDO.** El envío que sale bien termina con un `redirect()`, y eso llega al mismo `catch` que un
+     fallo de red. Así que un envoltorio escrito para que *"se cayó la conexión"* no quede mudo acaba
+     reportando a Sentry, y diciéndole al paciente, que **no se pudo enviar lo que SÍ se envió**. Caso real
+     (2026-11-03, 14 eventos, iPhone): la encuesta llegaba, el breadcrumb mostraba `NEXT_REDIRECT ...
+     /encuesta/gracias` seguido de `POST /encuesta/gracias [200]`, y encima salía el aviso de conexión
+     caída; lo razonable al leerlo es volver a pulsar Enviar sobre una encuesta ya entregada. **Y el daño
+     es de los dos lados: también llena Sentry de fallos que no existen, que es lo que esconde los que
+     sí.** PRESERVAR: `unstable_rethrow(e)` como **primera línea** del catch, antes de cualquier manejo
+     (es la API de Next para esto: relanza sus errores de control de flujo y no toca los demás). Y un
+     autoguardado diferido **se cancela al enviar**, o dispara contra la página de destino, que no tiene
+     esa acción. Candado: `el-exito-no-se-reporta-como-fallo.test.ts`, que vigila la FORMA en todo `src/`
+     (cada `reportClientError` de un catch lleva el relanzamiento delante), porque estos envoltorios
+     nacen de a varios y van a volver a nacer.
+
+  **Lo que las NUEVE tienen en común: son defectos que solo se ven en un navegador real.** Por eso, en superficies de formulario sensibles (el intake del paciente sobre todo), **el smoke humano en navegador NO es opcional**: es la única verificación que atrapa esta clase de bug. Si tocas uno de estos componentes, pruébalo en un navegador real antes de darlo por hecho.
 
 ### Supabase y Drizzle
 
