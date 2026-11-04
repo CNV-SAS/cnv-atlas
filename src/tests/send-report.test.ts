@@ -40,6 +40,11 @@ vi.mock("@/modules/treatment/services/treatment-service", () => ({
 }));
 // EL FRENO DEL CAMBIO DESFAVORABLE y LA OBSERVACION DE LA CONSULTA: dos lecturas de BD que el servicio
 // hace ahora (2026-09-18). Por defecto no frena y no hay observacion; cada caso propio los cambia.
+vi.mock("@/modules/reports/data/freno-de-la-contradiccion", () => ({
+  // EL SEGUNDO FRENO (2026-11-03): aqui se deja PASANDO, porque lo que estos casos miden es otra cosa.
+  // Su propio comportamiento lo prueba `la-contradiccion-del-envejecimiento`.
+  frenoDeLaContradiccion: vi.fn(async () => null),
+}));
 vi.mock("@/modules/reports/data/freno-de-trayectoria", () => ({
   frenoDeTrayectoria: vi.fn(async () => null),
   ultimaObservacionDeLaConsulta: vi.fn(async () => null),

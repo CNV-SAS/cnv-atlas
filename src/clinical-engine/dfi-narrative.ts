@@ -210,7 +210,19 @@ export function dfiNarrative(i: DfiNarrativeInput): DfiNarrative {
       : i.aeL === "Enlentecido"
         ? "su ritmo de envejecimiento es más lento que su edad cronológica"
         : sv(d3) >= 2
-          ? "su envejecimiento biológico está acelerado (" + Math.round(Math.abs(iae)) + " años por encima de lo esperado)"
+          ? // ═══ "1 años" NO ES ESPAÑOL (Santiago, 2026-11-03) ═══
+            //
+            // Con un IAE de 1,0 la frase salia *"acelerado (1 años por encima de lo esperado)"*, en un
+            // documento clinico que lee otro profesional. La concordancia no es un detalle de estilo aqui:
+            // es la regla de ortografia por superficie de CLAUDE.md, y media correccion deja el sistema
+            // leyendose como mal hecho.
+            //
+            // SE REDONDEA IGUAL QUE ANTES: lo que cambia es el singular, no la cifra. Un `Math.round` de
+            // 0,6 da 1, y "1 año" es lo que corresponde.
+            "su envejecimiento biológico está acelerado (" +
+            Math.round(Math.abs(iae)) +
+            (Math.round(Math.abs(iae)) === 1 ? " año" : " años") +
+            " por encima de lo esperado)"
           : "su ritmo de envejecimiento es acorde con su edad cronológica";
 
   const seg4 =

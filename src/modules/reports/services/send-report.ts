@@ -6,6 +6,7 @@ import { sendReportEmail, type Adjunto } from "@/lib/email/resend";
 import { formatDate } from "@/lib/format/date";
 import { emitirPrescripcion } from "@/modules/treatment/services/treatment-service";
 
+import { frenoDeLaContradiccion } from "../data/freno-de-la-contradiccion";
 import { frenoDeTrayectoria, ultimaObservacionDeLaConsulta } from "../data/freno-de-trayectoria";
 import { writeHcDelivery } from "../data/hc-entregas-writer";
 import { getReportDispatch } from "../data/reports-repository";
@@ -79,6 +80,11 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   // alcanza a la impresion, que se lo saltaba. Ver `freno-de-trayectoria`.
   const freno = await frenoDeTrayectoria(dispatch.evaluationId, "reporte");
   if (freno) return err(appError("conflict", freno));
+  // Y EL SEGUNDO FRENO (2026-11-03): ver . Los 60 documentos medidos que se
+  // contradicen sobre el envejecimiento NO se habian enviado todavia; este freno es lo que aprovecha esa
+  // ventana.
+  const contradiccion = await frenoDeLaContradiccion(dispatch.evaluationId, "reporte");
+  if (contradiccion) return err(appError("conflict", contradiccion));
   if (!dispatch.email) {
     return err(appError("validation", "El paciente no tiene un correo registrado."));
   }

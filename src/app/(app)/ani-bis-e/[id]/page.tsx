@@ -100,6 +100,8 @@ import { getSerieSeguimiento } from "@/modules/followups/data/serie-reader";
 import { TrajectoryNotice } from "@/modules/followups/components/trajectory-notice";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
 import { getTrajectoryNotice } from "@/modules/followups/data/trajectory-notice-reader";
+import { AvisoDeContradiccion } from "@/modules/reports/components/aviso-de-contradiccion";
+import { lasDosLecturasDeEnvejecimiento, seContradicen } from "@/modules/reports/data/freno-de-la-contradiccion";
 import { EtapaReporte } from "@/modules/reports/components/etapa-reporte";
 import {
   HcAntecedentes,
@@ -456,6 +458,7 @@ export default async function ResultadosEvaluacionPage({
     entryReadonly,
     actorProfession,
     trajectoryNotice,
+    lecturasCrudas,
     correctionAvailability,
     characterization,
     profileHasCharacterization,
@@ -483,6 +486,13 @@ export default async function ResultadosEvaluacionPage({
     getActorProfession(user.id),
     // P0 Parte 2 (P5): por que el paciente no ve un cambio (recomputado en vivo). null si hay banda o inicial.
     getTrajectoryNotice(id),
+    // LAS DOS LECTURAS DEL ENVEJECIMIENTO (2026-11-03): si no coinciden, el documento no se entrega y hay
+    // que decirlo ANTES de que el profesional pulse enviar. Se lee aqui, con el resto, y no dentro del
+    // componente, para que la pestaña siga siendo presentacion.
+    lasDosLecturasDeEnvejecimiento(id).catch((e) => {
+      reportServerError("evaluacion.dos-lecturas", e);
+      return null;
+    }),
     // CP3: si la evaluacion es de una version anterior de la encuesta, el boton "Corregir" se deshabilita.
     getCorrectionAvailability(id),
     // (m) Caracterizacion sociodemografica versionada de ESTA evaluacion, para el bloque de D8.
@@ -950,6 +960,11 @@ export default async function ResultadosEvaluacionPage({
       alertas={alertasDisponibles(encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []))}
     />
   );
+  // EL AVISO SOLO SI DE VERDAD SE CONTRADICEN: el lector trae las dos lecturas siempre que se puedan
+  // comparar, y quien decide si hay contradiccion es la MISMA funcion que usa el freno del servicio. Dos
+  // criterios para lo mismo es como la pantalla y el servicio acaban diciendo cosas distintas.
+  const dosLecturas = seContradicen(lecturasCrudas) ? lecturasCrudas : null;
+
   // ═══ ¿LA MEDICION DE ESTA CONSULTA ESTA EN OTRA? (Gildardo, 2026-10-26) ═══
   //
   // Se lee aqui y no dentro del componente para que la pestaña siga siendo presentacion pura, y se
@@ -1293,6 +1308,16 @@ export default async function ResultadosEvaluacionPage({
                   corto), se explica al profesional junto al reporte, donde estaría la confirmación si la
                   hubiera. Recomputado en vivo; null si hay banda o es inicial. */}
               <TrajectoryNotice notice={trajectoryNotice} />
+              {/* ═══ EL FRENO NO PUEDE SER MUDO (2026-11-03) ═══
+
+                  El freno vive en el SERVICIO de entrega, que es donde no se puede saltar. Pero si la
+                  pantalla no dice nada, el profesional pulsa "Enviar al paciente" y recibe un error que
+                  no esperaba, con el paciente delante. Es el mismo criterio que el aviso de trayectoria
+                  de la línea de arriba: se explica DONDE estaría la acción.
+
+                  Y LO QUE DICE ES LO QUE PASA, con las dos cifras: nombrar el defecto sin mostrar en qué
+                  se contradicen deja al profesional sin poder juzgar si lo que tiene delante sirve. */}
+              {dosLecturas ? <AvisoDeContradiccion lecturas={dosLecturas} /> : null}
               <ReportCard report={{ ...reportCard, ultimaEntrega: ultimaEntregaReporte }} />
             </div>
           ) : (

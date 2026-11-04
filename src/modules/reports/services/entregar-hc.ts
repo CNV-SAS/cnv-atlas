@@ -4,6 +4,7 @@ import { appError, err, ok, type Result } from "@/core/errors";
 import { sendReportEmail } from "@/lib/email/resend";
 
 import { getHistoriaClinicaDoc } from "../data/hc-documento-reader";
+import { frenoDeLaContradiccion } from "../data/freno-de-la-contradiccion";
 import { frenoDeTrayectoria } from "../data/freno-de-trayectoria";
 import { getPatientContactForEvaluation, writeHcDelivery } from "../data/hc-entregas-writer";
 import { renderHistoriaClinicaPdf } from "./render-report";
@@ -51,6 +52,12 @@ export async function entregarHistoriaClinica(
   // frenan: dicen que hacer, no que le pasa a su cuerpo.
   const freno = await frenoDeTrayectoria(input.evaluationId, "hc");
   if (freno) return err(appError("conflict", freno));
+
+  // Y EL SEGUNDO FRENO (2026-11-03): un documento que se contradice sobre el envejecimiento del paciente no
+  // sale. Ver `freno-de-la-contradiccion`: no decide nada clinico, impide que una consulta afirme dos
+  // cosas opuestas sobre el mismo cuerpo mientras la Direccion Cientifica define que criterio rige.
+  const contradiccion = await frenoDeLaContradiccion(input.evaluationId, "hc");
+  if (contradiccion) return err(appError("conflict", contradiccion));
 
   const hc = await getHistoriaClinicaDoc(input.evaluationId);
   if (!hc) return err(appError("not_found", "Esta evaluación no tiene historia clínica."));
