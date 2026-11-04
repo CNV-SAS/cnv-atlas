@@ -1,62 +1,249 @@
 # Lo que queda abierto con usted, Gildardo
 
-**Connected Nutrition Ventures · Atlas · 3 de noviembre de 2026**
+**Connected Nutrition Ventures · Atlas · 4 de noviembre de 2026**
 **De:** Santiago (equipo técnico de Atlas) · **Para:** Gildardo de Jesús Uribe Gil
 
 > **Este documento no identifica a ningún paciente.** Donde hace falta señalar un caso va el id de
 > evaluación abreviado a ocho caracteres, el mismo que usted usa en su anexo A.
 
+**Es el único documento de dudas.** Hasta ayer eran dos (esta cola, del cotejo visual de septiembre, y las
+*Dudas de EB-BIS v7 y ATLAS v12* del 30 de octubre); tener dos hacía que algo se quedara sin llegarle, y ya
+había pasado antes. Al unirlos se quitó lo repetido y lo que usted ya respondió, y se verificó pregunta por
+pregunta contra sus entregas de octubre (v10, v11, v12 y los parámetros 7.1.0): ninguna de las de septiembre
+quedó contestada por ellas.
+
+**Cómo leerlo.** Primero están **las preguntas**, todas, en dos o tres líneas cada una: qué se decide y qué
+recomendamos. Si con eso puede contestar, no necesita el resto. Debajo está **el detalle** de cada una, con
+el mismo número, para las que quiera mirar despacio.
+
+**Nada de esto frena a Atlas**, salvo las cinco de abajo. Todo lo demás está construido y funcionando con
+la decisión que tomamos en cada caso; lo que le preguntamos es si fue la que usted habría tomado. Lo
+marcado **[aplicado]** ya está hecho: si su respuesta es otra, se cambia. Donde dice *"se cambia en una
+línea"* es literal.
+
 ---
 
-## Qué es este documento, y por qué cambió de forma
+## Si solo responde cinco, que sean estas
 
-Hasta hoy lo abierto de su lado vivía en **dos** documentos: esta cola (abierta el 6 de septiembre, tras el
-cotejo visual de Atlas contra su HTML) y las **Dudas de EB-BIS v7 y ATLAS v12** del 30 de octubre. Tener dos
-hace que algo se quede sin llegarle, y ya pasó antes: fue la razón por la que en septiembre se retiró la cola
-anterior (`GILDARDO_QUERIES.md`) y se refundió aquí.
+Son las que **frenan trabajo**: no se construyen sin su respuesta porque construirlas exige elegir por
+usted.
 
-**Así que vuelven a ser uno.** Este archivo es el único; el del 30 de octubre queda como registro de lo que
-se le envió ese día y apunta aquí. Al unirlos se barrió lo repetido y lo ya respondido:
-
-| Qué pasó al unir | Cuántas |
-|---|---|
-| **Salieron porque usted ya las respondió** en la especificación 7.1.0 del 26 de octubre (el parámetro `escalaAniosPorDE` y si la EB-BIS se calcula sin encuesta) | 2 |
-| **Salieron porque ya no aplican** (el PABU con dos veredictos, que respondía lo mismo que la pregunta de la fila PABU, ya cerrada) | 1 |
-| **Se fundieron en una** (las rutas escritas para el profesional: estaba preguntada el 19 de septiembre y otra vez el 3 de noviembre) | 2 → 1 |
-| **Entró nueva** (cómo deben leer el DFI y las rutas el IAE de la v7) | 1 |
-| **Reescrita** (los colores de la Diana, con una objeción que no estaba) | 1 |
-| **Actualizadas con las cifras de hoy** (las consultas que el recálculo no puede tocar, y los ids de prueba de su anexo) | 2 |
-
-Al final hay una tabla que dice de dónde sale cada pregunta, para que pueda cruzarla con el documento del 30
-de octubre si ya empezó a responderlo.
-
-**Cómo está ordenado:** por lo que le cuesta responder, y dentro de eso por lo que frena.
-
-| | Qué es | Cuántas |
+| | Qué se decide | Qué se desbloquea |
 |---|---|---|
-| **PRIMERO** | Un aviso de **datos personales** que no podíamos guardarnos | 1 |
-| **A** | Las que **frenan trabajo**: sin su respuesta no se construye ni se recalcula | 5 |
-| **B** | Las que ya están **aplicadas** de una forma y necesitan su confirmación | 8 |
-| **C** | Los **textos y los colores** que solo puede escribir usted | 4 |
-| **D** | Dos reglas suyas para lo mismo: **necesita mirar su archivo** | 7 |
-| **E** | El **instrumento y el prompt** | 6 |
-| **F** | **Data** que conviene que sepa antes de leer sus propios casos | 2 |
-| **Y aparte** | Lo que **decidimos nosotros** y solo le declaramos | no pide nada |
-
-**Lo marcado [aplicado] ya está construido:** Atlas hoy hace lo que dice la pregunta, así que si su
-respuesta es otra, se cambia. Donde dice *"se cambia en una línea"* es literal.
-
-> **Nota de alcance.** Aquí solo va lo que decide usted: fórmulas, umbrales, clasificaciones, redacción de
-> lo clínico, contenido de la encuesta y de las rutas. Lo de producto (una pantalla que falta, un botón sin
-> superficie, una redacción de interfaz) va a nuestro propio backlog, aunque toque algo clínico. Mezclarlas
-> hace que esto deje de ser una lista de decisiones suyas y se vuelva un inventario de trabajo nuestro, y
-> entonces nadie sabe qué espera a quién.
+| **4** | Si el DFI y las rutas pasan a leer el IAE de la v7, o si el dominio 3 tiene su propia escala | Que el informe deje de contradecirse. **Hoy 60 de 389 informes no se pueden entregar** |
+| **1** | Cuál Harris-Benedict manda (1919 o 1984) y sobre qué se aplica el 10 % | El motor calórico nuevo, y con él el flujo guiado del nutricionista |
+| **5** | Si las rutas van al paciente y con qué palabras | La hoja 3 del informe. Hoy un área entera no tiene nada que decirle al paciente |
+| **2** | Los rangos del control de calidad biológico | El control de calidad entra (sus once identidades imposibles ya están) |
+| **3** | Qué pasa con las consultas que el recálculo no puede tocar | Se cierra el recálculo del histórico con la v7 |
 
 ---
 
-# PRIMERO · El ejemplo de su prompt lleva el nombre de una persona, y viaja al proveedor de IA
+## Las 33 preguntas
 
-**Esto no es una duda, es un aviso, y por eso va antes que todo.**
+> **0 · Un aviso, antes de las preguntas.** El ejemplo de formato de su prompt de IA lleva **el nombre de
+> una persona y su edad**, y viaja al proveedor del modelo en cada llamada. En Atlas no se envía (usted ya
+> nos dijo que no fuera). Lo que falta es saber **si es una persona real**; si lo es, hay un dato personal
+> suyo saliendo de su archivo cada vez que alguien lo usa. *Recomendamos reemplazarlo por `[NOMBRE]` en su
+> copia: es un cambio de una palabra.*
+
+### A · Las que frenan trabajo
+
+**1 · ¿Cuál Harris-Benedict manda, y sobre qué se aplica el 10 %?** Su v12 pide Harris-Benedict sobre el
+peso meta más 10 % de termogénesis, y hay dos juegos de coeficientes posibles (1919 y 1984). Atlas ya tiene
+el de 1919 portado para otra cosa, así que adoptar el de 1984 deja dos vivos, cada uno en su sitio.
+*Recomendamos el de 1984 para la prescripción y el 10 % sobre TMB × actividad. Mueve el objetivo calórico
+de toda la cohorte (+301 kcal/día en su propio ejemplo), así que entra con bump de motor o no entra.*
+
+**2 · Los cortes del control de calidad biológico.** Sus once identidades imposibles están construidas.
+Faltan los rangos, y sus límites provisionales rechazarían **cinco mediciones reales** (un peso de 22 kg,
+una capacitancia de 16,22 nF, una Fo de 4,84 kHz y dos grasas negativas). *Recomendamos que el corte que
+FRENA caiga fuera del mínimo y del máximo observados, y que la banda de percentiles sirva solo para decir
+"mire esta medición". Y añadir a sus imposibles: masa grasa o porcentaje de grasa ≤ 0.*
+
+**3 · Las consultas que el recálculo no puede tocar, ¿se quedan desfasadas para siempre?** Veinte
+consultas tienen la medición compartida (y cuatro de esos grupos son entre pacientes distintos), así que no
+se pueden recalcular hasta corregir de quién es cada toma. *Recomendamos marcarlas con su motivo y
+recalcularlas cuando se resuelva. Díganos si eso es aceptable como estado permanente para las que nunca se
+resuelvan.*
+
+**4 · ¿Cómo deben leer el DFI y las rutas el IAE de la v7?** En el mismo informe, arriba dice *"−1,3 años:
+acorde con sus pares"* y tres líneas abajo *"envejecimiento acelerado"*. La cifra que ve el paciente ya es
+v7; la que alimenta el dominio 3, el riesgo y **las rutas** quedó en la v5. Coinciden 326 de 389 informes;
+los 60 que no, no se entregan. *Recomendamos que lo decida usted entre tres salidas (el DFI lee el IAE de
+la v7 · el dominio 3 tiene su propia escala y entonces hay que decirlo en el documento · otra cosa).
+Y la segunda mitad: sus tres textos por banda, ¿sustituyen al texto de trayectoria o conviven?*
+
+**5 · Las rutas no tienen una versión escrita para el paciente, y un área se queda muda.** Su contenido de
+rutas está escrito para el profesional (*"≥25 g por comida"*, *"65-75 % de 1RM"*, *"sulforafano → Nrf2"*).
+Lo filtramos suprimiendo, nunca reescribiendo, y al suprimir la R4 (Desaceleración del Envejecimiento) se
+queda **sin una sola línea** para el paciente. *Recomendamos una de dos: que las rutas no vayan al paciente
+y se retire el bloque, o su redacción de dos o tres frases por ruta. Son dieciocho frases y se ponen
+verbatim el mismo día.*
+
+### B · Están aplicadas y necesitan su confirmación
+
+**6 · "Edad biológica estimada" [aplicado].** Su tabla 3 vuelve a usar la expresión que usted había
+retirado en julio, ahora con el matiz "estimada". *Recomendamos que lo nuevo manda, y así está. Confirme,
+porque cambia el rótulo de un documento clínico que ya salió once veces con el otro nombre.*
+
+**7 · El Δ del IAE dentro de la banda [aplicado].** Su regla del 1 de septiembre dice **cero** mientras el
+IAE esté entre −5 y +5; lo cambiamos a una raya porque el IAE ya es una diferencia y el "0,0" al lado del
+valor se leía como si el IAE fuera cero. *Recomendamos dejar la raya, pero es preferencia nuestra contra su
+regla escrita: dígalo.*
+
+**8 · El borde exacto de ±5,0 del IAE.** Su tabla 3 usa cortes cerrados y su capa de display anterior los
+usaba abiertos; en ±5,0 exacto las dos columnas de la misma fila se contradicen. *Recomendamos alinear el Δ
+a su corte cerrado. No lo cambiamos todavía porque reintroduce un "0,0" que la 7 acaba de retirar.*
+
+**9 · Los tres cortes de la Diana, y una objeción de estética.** Su v12 corrige bien un defecto real (los
+estados leves caían en verde lima y se leían como "está bien"), pero pasar a **tres colores sólidos** parte
+la Diana en anillos y le quita la superficie continua, que es lo que la hace legible. *Recomendamos que
+considere correr el gradiente hacia el rojo, quitándole el verde lima a la zona leve, sin cortes duros. Y
+con la respuesta hace falta saber si el radar y las tarjetas del DFI se igualan a la Diana.*
+
+**10 · Los nombres llanos de tres de sus índices [aplicado].** En la historia clínica, IEHH pasó a
+"Equilibrio hídrico", PABU a "Proporción bioeléctrica" e ICA-BIS a "Desviación bioeléctrica", con su sigla
+al lado. Sus nombres oficiales no se tocan. *En la tercera nos apartamos de lo que se nos pidió
+("Coherencia"): el número de al lado es una desviación y lo bueno es lo bajo, así que "coherencia" invierte
+la lectura. Júzguelo usted.*
+
+**11 · "La dirección científica" que elimina un perfil [aplicado].** Su v12 pide que la política sea
+*"solo para el profesional dueño del paciente y para la dirección científica"*. En Atlas ejecuta el
+**administrador**, porque el rol de dirección no accede a datos de paciente por diseño y esta bandeja
+necesita el nombre. *Recomendamos dejarlo en administrador.*
+
+**12 · El aviso de síndrome de realimentación sale del motor viejo.** Usted lo anotó en su v12 §8.2 y no lo
+corrigió; en Atlas está idéntico, porque es porte fiel. *Recomendamos que diga si la condición se queda tal
+cual o si el aviso pasa al motor nuevo. Cuando lo decida, es una línea.*
+
+**13 · La fuerza prensil obligatoria, con salida.** Es el criterio primario del EWGSOP2 y hoy Atlas la pide
+sin alternativa, pero muchas consultas no tienen dinamómetro. *Recomendamos obligatoria con una salida
+registrada ("no se midió" más el motivo). Lo tiene que aprobar usted porque cambia la captura.*
+
+### C · Textos y colores que solo puede escribir usted
+
+**14 · Los cinco textos de dominio del informe [propuesto, NO aplicado].** El paciente lee hoy
+*"Homeostasis celular: membranas íntegras y microambiente equilibrado"*. Hay una propuesta en lenguaje
+sencillo para las cinco, sin aplicar. *Recomendamos que las escriba o las corrija usted: el informe
+llevaría las suyas para el paciente y las de hoy para el profesional.*
+
+**15 · Su banda media del IFC y del IRC tiene tres nombres, y uno dice «normal».** Sus clasificadores la
+llaman "Alerta funcional" y "Riesgo moderado"; su `idx` del DFI la llama "Normal"; y su párrafo del DFI
+escribe *"en rango normal"*. Un profesional leyó las dos cosas y entendió que el sistema se contradecía.
+*La pregunta: para la banda media, ¿qué debe decir su párrafo? Y de paso, el criterio de egreso de la R1
+(IFC ≥ 4,5) es un corte sin sexo con el que una mujer no sale nunca de la ruta.*
+
+**16 · Su clasificador del IAE pinta "Concordante" en ámbar.** Lo preguntó usted, y la respuesta es que el
+ámbar sale de su archivo: el IAE es su único clasificador de dos colas, lo bueno está en el centro, y sobre
+una rampa verde-ámbar-rojo al centro le tocó el color de en medio. *Es una línea suya. Conviene cerrarla
+junto con la 4.*
+
+**17 · La casilla 3_3 de su matriz IFC×IRC lleva un cian.** "Función normal con riesgo" (la peor de su
+fila) tiene el color que nuestra regla lee como óptimo. En Atlas no se pinta mal porque el motor descarta
+ese color, pero en su archivo sí se ve. *La pregunta: ¿lo cambia, o el cian significa algo que no estamos
+leyendo?*
+
+### D · Dos reglas suyas para lo mismo (necesita mirar su archivo)
+
+Las siete de aquí no son diferencias entre su archivo y Atlas: son diferencias **entre dos sitios de su
+propio archivo**. En cada una portamos una de las dos y le decimos cuál.
+
+**18 · La fila ICA-BIS tiene dos reglas, una por superficie.** En Composición gradúa la magnitud en cinco
+escalones; en la historia clínica hace `icaBisClf = cPABU(t_pabu)`, con su nota *"cICABIS eliminado, usar
+cPABU global"*. *La pregunta: ¿es deliberado (la historia resume, la pantalla detalla) o esa nota iba
+también para la tabla de Composición?*
+
+**19 · El % de grasa con dos cortes.** Su tabla de la HC y su tabla de composición dan **veredictos
+distintos para el mismo número** (22,4 % en un hombre: "Límite" en una, "Sobrepeso adiposo" en la otra).
+Atlas usa hoy el segundo, el que nos confirmó en agosto. *La pregunta: ¿cuál manda en la historia clínica?*
+
+**20 · Dos clasificadores del índice cintura-cadera.** Mismos cortes, distinta redacción (`dICC`:
+"Normal"/"Riesgo cardiovascular"; `clasifICC`: "Riesgo bajo"/"Riesgo alto, distribución central"). Atlas
+porta el primero. *La pregunta: ¿cuál manda? El segundo dice más, así que puede que el nuestro se quede
+corto.*
+
+**21 · `clasifLancet` está declarado y nadie lo llama, ni usted.** Un clasificador completo de cuatro
+niveles, rotulado "Propuesta The Lancet 2025", que aparece una sola vez en su archivo: la declaración. No lo
+portamos, porque conectar lo que su archivo no conecta sería estrenar una clasificación clínica por nuestra
+cuenta. *La pregunta: ¿es un resto, o algo que piensa usar?*
+
+**22 · Las badges del Nivel III, y el ECM/BCM que se quedó sin sitio.** Su `celBadges` se llena y ningún
+render la lee. Nosotros sí las mostrábamos, y ahí salió el choque que le chirrió (su tabla decía
+"hidratación adecuada" y la badge "deficiente": son dos indicadores suyos distintos). Están retiradas. *Lo
+que se pierde es el ECM/BCM > 1,4, el único sin fila propia. ¿Debe verse? ¿Con qué corte y en qué fila?*
+
+**23 · El estado PBI: su HC lo imprime y nosotros lo retiramos.** Por dos razones: la taxonomía real tomó
+autoridad sobre `F1-F12 / PBI / EIEC`, y su `estadoPBI` usa un **tercer umbral de ángulo de fase**
+(6,80/6,30) que contradice el `cAF` (6,5) que Atlas ya muestra en la misma pantalla. *La pregunta previa, si
+el PBI vuelve: cuál de los dos umbrales de AF manda, porque no pueden convivir.*
+
+**24 · La fórmula sintética: sus doce campos están todos, la disposición es otra.** Usted los presenta como
+lista plana; nosotros como una cuenta (GEB × PAL = GET, menos el déficit, igual al objetivo). *La pregunta:
+cuál quiere. Y una nueva: su v12 retira la tabla vieja, y con ella se va el ORIGEN del rótulo "Fórmula
+sintética", que adoptamos por ser el suyo. ¿Cómo debe llamarse ese bloque?*
+
+### E · El instrumento y el prompt
+
+**25 · Diez de sus quince alertas clínicas no pueden salir nunca.** Leen el consumo de nutrientes en
+porciones, y ese dato no lo captura ninguna encuesta, ni la suya ni la nuestra. **No es una pregunta nueva:
+es la consecuencia de dos respuestas suyas** (*"ninguno es la traducción de otro"*, 30-ago; *"no va, y no
+es que falte: es que no debe existir"*, 3-sep). Mientras tanto Atlas lo dice en pantalla. *La pregunta: ¿se
+queda así, se retiran las diez del modelo, o la encuesta captura porciones?*
+
+**26 · ¿Qué MÁS debería alimentar al generador de menús?** Hoy viajan el objetivo calórico, la proteína, las
+restricciones del modelo y del profesional, el patrón alimentario, el fenotipo y las rutas. No viajan el
+contexto de acceso ni la distribución por tiempos de comida. *La pregunta: de esos dos, ¿alguno debería
+entrar? Las alergias no están en la pregunta, porque eso ya lo respondió.*
+
+**27 · Sus pasos 1 a 3 del Análisis IA no llegan al paso 4.** Su Análisis hace cuatro llamadas al modelo, y
+la validación **no la lee nadie**: el paso 4 solo recibe sus instrucciones, el bloque DFI y los datos
+crudos. Portamos el paso 4; portar los otros tres sería copiar el corte y pagarlo tres veces. *La pregunta:
+¿debían alimentar al cuarto? Si sí, lo cableamos.*
+
+**28 · En la historia clínica, ¿van todas las observaciones o solo la vigente?** No se pueden borrar ni
+editar, así que un profesional que se corrige deja dos. En pantalla la última se marca vigente; en el
+documento salen todas. *Lo defendemos porque la historia clínica es probatoria y esconder la corrección es
+justo lo que una auditoría querría ver, pero la objeción es nuestra también: una corrección de una palabra
+deja dos párrafos casi iguales. Su archivo no lo resuelve: guarda una sola.*
+
+**29 · ¿En qué dominio van los síntomas digestivos?** Su DFI no los lee en ninguno de los cinco y su paso 4
+los manda en su propio bloque; el modelo, por su cuenta, los metió en el Epigenético-Contextual. *Por ahora
+se le pide que no los use como evidencia de ningún dominio. Si prefiere que se lean en alguno, díganos en
+cuál.*
+
+**30 · El ICC y el ICT: usted los recalcula, Atlas los lee del equipo.** Su HTML los recalcula de lo que
+teclea el profesional; Atlas los toma del export del Biody. Coinciden si la cintura se teclea antes de
+medir; si se teclea después, solo el suyo se corrige. *La decisión es de Santiago, con su criterio si quiere
+darlo. Verificado: la cintura y la cadera no entran en ninguna otra fórmula del modelo.*
+
+**31 · La pregunta de amputación se queda, y usted no la nombró.** Nos dijo que quitáramos las preguntas
+que no había puesto y nombró dos (edema y fiebre): las dos están fuera. La tercera del mismo lote,
+*"¿Tiene amputación de algún segmento corporal?"*, tampoco está en su archivo, y la dejamos porque retirarla
+sin que la señale sería tratar su silencio como una instrucción. *Y hay una razón para separarla: el edema
+y la fiebre son transitorios, una amputación es permanente, y lo que compromete no es el estado del
+paciente sino la ecuación, que estima sobre un cuerpo completo. ¿La retiramos también?*
+
+### F · Data que conviene que sepa antes de leer sus propios casos
+
+**32 · Dos de los ids de su anexo A son data de PRUEBA.** El grupo de tres (`5441fd96` / `b3e367cc` /
+`6256b921`, el que la columna `Edad` no le cuadra a ninguno) son pacientes que creó el equipo para probar
+el sistema. *O sea que el caso que describe ahí no es de un paciente. Y una corrección nuestra: le dijimos
+cinco grupos entre pacientes distintos y son cuatro; usted tenía razón al dudar de la cifra.*
+
+**33 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre.** En la cohorte hay
+cuerpos de 22 kg y 29 kg; el Biody aplica ecuaciones de adulto y devuelve masa grasa negativa, y la EB-BIS
+v7 está calibrada 18-100 años. *Recomendamos marcar esas consultas como fuera de rango de calibración y no
+calcular. Si CNV va a atender pediatría, con qué ecuaciones es decisión suya.*
+
+---
+
+# EL DETALLE DE CADA PREGUNTA
+
+Con el mismo número de arriba. No hace falta leerlo para contestar: está para las que quiera mirar despacio.
+
+---
+
+## 0 · El ejemplo de su prompt lleva el nombre de una persona, y viaja al proveedor de IA
 
 En el prompt del Análisis IA de su archivo, el ejemplo de formato de salida lleva un nombre propio y una
 edad. El ejemplo viaja al proveedor del modelo **en cada llamada**, junto a los datos del paciente que se
@@ -701,9 +888,24 @@ través de ellos, en el predicado de la ruta R2.
 
 ---
 
+## 31 · La pregunta de amputación se queda, y usted no la nombró
+
+En el punto 3 nos dijo que quitáramos las preguntas que no había puesto, y nombró dos: el edema/anasarca y
+el estado febril. **Las dos están fuera.** Pero entraron en el mismo lote de tres, y la tercera es *"¿Tiene
+amputación de algún segmento corporal?"*, que tampoco está en su archivo. **La dejamos, porque retirarla sin
+que la señale sería tratar su silencio como una instrucción.**
+
+**Y hay una razón para separarla de las otras dos:** el edema y la fiebre son **transitorios** (la medición
+se repite otro día), y una amputación es **permanente**. Lo que compromete no es el estado del paciente: es
+la ecuación, que estima sobre un cuerpo completo.
+
+**¿La retiramos también?** Es la única del bloque de declaraciones que pedía respuesta, y por eso sube aquí.
+
+---
+
 # F · DATA QUE CONVIENE QUE SEPA ANTES DE LEER SUS PROPIOS CASOS
 
-## 31 · Dos de los ids de su anexo A son data de PRUEBA
+## 32 · Dos de los ids de su anexo A son data de PRUEBA
 
 El grupo de tres evaluaciones de su anexo (`5441fd96` / `b3e367cc` / `6256b921`, el que la columna `Edad` del
 equipo no le cuadra a ninguno de los tres) es el **grupo de smoke**: pacientes creados por el equipo para
@@ -721,7 +923,7 @@ contar sin separar lo de prueba. Los diez grupos sí son diez.
 caso documentado. Nosotros mantenemos su anexo citado tal cual en nuestros documentos, con esta nota al
 lado, para que las dos versiones se puedan cruzar.
 
-## 32 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre
+## 33 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre
 
 En la cohorte hay cuerpos de **22 kg y 29 kg**. El Biody aplica ecuaciones de adulto, y en esos cuerpos
 devuelve **masa grasa negativa** (las dos grasas negativas de la tabla de la pregunta 2 vienen de ahí). No es
@@ -737,163 +939,109 @@ software.
 
 ---
 
-# Y APARTE · LO QUE DECIDIMOS NOSOTROS Y SOLO LE DECLARAMOS
+---
 
-**No pide nada.** Son las divergencias que tomamos por nuestra cuenta para no dejarle preguntas abiertas que
-frenaran el cotejo. Cada una lleva su razón y **su puerta de salida: si prefiere otra cosa, se cambia.**
+# ANEXO · LO QUE DECIDIMOS NOSOTROS Y SOLO LE DECLARAMOS
 
-## Del INSTRUMENTO, que es suyo y por eso va primero
+**No pide nada, y por eso está al final y en una línea cada una.** Son las divergencias que tomamos por
+nuestra cuenta para no dejarle preguntas abiertas que frenaran el cotejo. Cada una tiene **su puerta de
+salida: si prefiere otra cosa, se cambia.** (La pregunta de amputación salió de aquí a la lista, como la
+**31**: esa sí pide respuesta.)
 
-**La pregunta de amputación se queda, y usted no la nombró.** En el punto 3 nos dijo que quitáramos las
-preguntas que no había puesto, y nombró dos: el edema/anasarca y el estado febril. **Las dos están fuera.**
-Pero entraron en el mismo lote de tres, y la tercera es *"¿Tiene amputación de algún segmento corporal?"*,
-que tampoco está en su archivo. **La dejamos, porque retirarla sin que la señale sería tratar su silencio
-como una instrucción.** Y hay una razón para separarla de las otras dos: el edema y la fiebre son
-**transitorios** (la medición se repite otro día), y una amputación es **permanente**: lo que compromete no
-es el estado del paciente, es la ecuación, que estima sobre un cuerpo completo. **¿La retiramos también?**
+### Del instrumento, que es suyo
 
 | Qué hicimos | Por qué | Revertir cuesta |
 |---|---|---|
-| La **P43 (alergias)** dice **"Otra"**; su archivo dice "Otras" | Las opciones de esa pregunta son alimentos en singular, las otras ocho preguntas ya dicen "Otra", y en la base hay cinco respuestas *"Otra: ..."* con su texto libre | Un bump de encuesta. **No es gratis** |
-| La **P29 (estrés)** añade **"(1 = sin estrés, 10 = máximo)"** | Una escala de 1 a 10 sin sus extremos no se puede responder bien, y ese valor alimenta el motor. No cambia lo que se pregunta, solo cómo se entiende la escala | Un bump de encuesta |
-| La **lista de intercambio imprime la medida** además de los gramos | Es la **(a)** de las tres salidas que planteó para las doce medias porciones de Leguminosas, y la única que **no pierde información** | **Una línea** |
-| El texto libre de **"otros medicamentos"** viaja dentro de la respuesta, no como campo aparte | Usted manda `d5_40_otro` por separado; en Atlas `d5_40` es una sola pregunta de opción múltiple y el texto libre viaja **dentro**. No falta el dato: vive en otro sitio, y el modelo lee lo mismo | **Una línea**, si prefiere que vaya como línea propia |
+| La **P43 (alergias)** dice "Otra"; su archivo dice "Otras" | Sus opciones son alimentos en singular, las otras ocho preguntas ya dicen "Otra", y en la base hay cinco respuestas *"Otra: ..."* | Un bump de encuesta. **No es gratis** |
+| La **P29 (estrés)** añade "(1 = sin estrés, 10 = máximo)" | Una escala de 1 a 10 sin sus extremos no se puede responder bien, y ese valor alimenta el motor | Un bump de encuesta |
+| La **lista de intercambio imprime la medida** además de los gramos | Es la (a) de las tres salidas que usted planteó para las doce medias porciones, y la única que no pierde información | Una línea |
+| El texto libre de **"otros medicamentos"** viaja dentro de la respuesta, no como campo aparte | En Atlas `d5_40` es una sola pregunta de opción múltiple. No falta el dato: vive en otro sitio, y el modelo lee lo mismo | Una línea |
 
-## De la PRESENTACIÓN, que es nuestra, pero conviene que la sepa
+### De la presentación, que es nuestra
 
-| Qué hicimos |
-|---|
-| El administrador no ve las cuatro pestañas de tratamiento por profesión |
-| El diagnóstico de encuesta usa colapsables, no sub-pestañas |
-| El patrón alimentario no muestra el puntaje ni el nivel |
-| El radar usa cuatro colores con ancla azul, no su paleta |
-| El diagnóstico abre en Funcional, con franja de veredicto persistente |
-| La tabla de composición junta lo bioeléctrico crudo en un bloque |
-| La tabla conserva GEB y GET, que su HTML no lista |
+El administrador no ve las cuatro pestañas de tratamiento por profesión · el diagnóstico de encuesta usa
+colapsables, no sub-pestañas · el patrón alimentario no muestra el puntaje ni el nivel · el radar usa
+cuatro colores con ancla azul, no su paleta · el diagnóstico abre en Funcional, con franja de veredicto
+persistente · la tabla de composición junta lo bioeléctrico crudo en un bloque · la tabla conserva GEB y
+GET, que su HTML no lista.
 
-**Y una que merece su párrafo:** la tabla de la historia clínica muestra **más índices que la suya**. Su HC
-lista **veinte** índices concretos (doce de composición y los ocho ANI-BIS-E). La nuestra parte de las ~30
-filas de la tabla de Wang y les aplica **su** regla de filtrado (mostrar lo alterado, ocultar lo normal y lo
-sin clasificar), así que puede salir un índice alterado que la suya no lista. **El filtro es suyo; el
-inventario de filas es nuestro.** No lo recortamos a sus veinte porque son datos medidos con su clasificador,
-y quitarlos de un documento clínico sería esconder algo que el profesional midió. **Si prefiere las veinte
-exactas, se acota.**
+**Y una que merece su línea:** la tabla de la historia clínica muestra **más índices que la suya**. Su HC
+lista veinte; la nuestra parte de las ~30 filas de la tabla de Wang y les aplica **su** regla de filtrado
+(mostrar lo alterado, ocultar lo normal), así que puede salir un índice alterado que la suya no lista. **El
+filtro es suyo; el inventario de filas es nuestro.** Si prefiere las veinte exactas, se acota.
 
-## Del PROMPT del resumen de IA: los límites que le pusimos
+### Del prompt del resumen de IA: los límites que le pusimos
 
-Su estructura pide *"redactar clínicamente conectando causas entre dominios"*, y eso se conserva tal cual. En
-las pruebas, el modelo usó esa instrucción para escribir cosas que ningún dato respalda (*"falta de
-nutrientes esenciales"*, *"deterioro celular"*, *"exposición crónica a factores de riesgo"*). Le añadimos el
-límite: **cada causa y cada efecto que conecte tiene que estar en los datos que se le dan**, y tampoco puede
-introducirlos como hipótesis ("sugiere", "podría", "a largo plazo"), ni **anticipar consecuencias**. Es la
-misma familia que la regla del laboratorio que ya le declaramos: todo lo que escriba tiene que poder
-señalarse en los datos.
+Su estructura pide *"redactar clínicamente conectando causas entre dominios"*, y eso se conserva tal cual.
+En las pruebas el modelo usó esa instrucción para escribir cosas que ningún dato respalda (*"falta de
+nutrientes esenciales"*, *"deterioro celular"*). Le añadimos el límite: **cada causa y cada efecto que
+conecte tiene que estar en los datos que se le dan**, sin hipótesis ("sugiere", "podría") y sin anticipar
+consecuencias.
 
-**Y lo que el modelo rompía tantas veces que dejó de escribirlo:**
+Y lo que el modelo rompía tantas veces que dejó de escribirlo, y ahora lo compone Atlas: el párrafo de
+**alertas y respuestas en rojo** (dejaba fuera la alerta crítica de TCA) y el **cierre de rutas y
+prioridades** (volvía a poner los códigos y a recomendar conductas, con su misma frase `_prW`). Además le
+llegan ya resueltas tres lecturas que confundía: la composición contra su tabla, el ICEC con su escala (en
+LE8 más alto es mejor; lo leía al revés) y la PABU con su dirección respecto de φ. Y su regla *"si el IFC y
+el ángulo de fase discrepan, prevalece el IFC"* ahora llega **solo cuando discrepan**. *Si prefiere otro
+criterio en cualquiera de estas, díganos cuál.*
 
-| Qué | Por qué lo compone Atlas |
-|---|---|
-| El párrafo de **alertas y respuestas en rojo** | Tras tres versiones del prompt seguía dejando fuera la alerta crítica de TCA y metiendo respuestas que no estaban en rojo. Lo compone Atlas con la misma lista que alimenta el SOAP, y va donde usted lo pidió |
-| El **cierre de rutas y prioridades** | Volvía a poner los códigos de las rutas y a recomendar conductas. Lo compone Atlas con su misma frase (`_prW`: crítica, prioritaria, complementaria) y, si hay veto, con su instrucción del paso 4 |
-| Tres **lecturas que confundía** | La composición con la clasificación de su tabla, el ICEC con su escala (en LE8 más alto es mejor; lo leía al revés) y la PABU con su dirección respecto de φ. Le llegan ya resueltas |
-| Su regla *"si el IFC y el ángulo de fase discrepan, prevalece el IFC"* | Iba siempre y el modelo la aplicaba siempre, también con un AF normal. Ahora llega **solo cuando discrepan**, y discrepan cuando sus clasificadores dan colores opuestos. El ámbar no discrepa con nada. **Si prefiere otro criterio, díganos cuál** |
-| **Una alerta se nombra como alerta, no como diagnóstico** | Su regla dice *"TCA activo detectado"*: es una bandera de la encuesta. El modelo escribió *"el paciente presenta un TCA activo"*, que ya es un diagnóstico que nadie hizo |
+### Donde Atlas va por delante de su archivo
 
-Y lo que el modelo seguía rompiendo lo corrige Atlas después de generar: quita comillas y cadenas internas, y
-si el texto trae una hipótesis o una recomendación, lo genera otra vez; si vuelve, lo guarda y le avisa al
-profesional.
-
-## Donde Atlas va POR DELANTE de su archivo
-
-| Qué hicimos | Por qué |
-|---|---|
-| Señalamos cuando un **grupo nuclear queda en 0 porciones** | Su HTML lo muestra en 0 sin avisar |
-| **No pisamos** la lista guardada al cambiar el objetivo: avisamos | En su HTML las porciones viven en el navegador y pisarlas es inofensivo; **nosotros las persistimos**, así que copiarlo borraría el trabajo del profesional en silencio |
-| La cadena calórica **cuadra macros**, distingue calculado de ajustado, avisa el borde y lleva candado de concurrencia | Cuatro cosas que su HTML no hace y que no tocan la ciencia del reparto |
-| La distribución por tiempos **exige al menos un tiempo activo** | Su HTML permite dejarlos todos apagados, y eso reparte cero |
-| Un documento que **se contradice consigo mismo no se entrega** | La pregunta 4. Es un freno, no un criterio: no decide nada clínico |
-
----
-
-# QUÉ SE DESBLOQUEA CON CADA RESPUESTA
-
-| Pregunta | Qué se desbloquea |
-|---|---|
-| **4** | **Lo más grande: el DFI, el riesgo integrado y las rutas pasan a hablar de la misma edad biológica que el informe.** Hoy 60 de 389 informes no se pueden entregar |
-| 1 | Entra el motor calórico nuevo, con bump de versión, y con él el flujo guiado del nutricionista |
-| 2 | Entran los rangos del control de calidad biológico (las once identidades ya están) |
-| 3 | Se cierra qué pasa con las consultas que el recálculo no puede tocar |
-| **5** | **La hoja 3 del informe deja de ser un parche: hoy un área entera se queda sin nada que decirle al paciente** |
-| 6, 7 y 8 | Se cierra el rótulo y el formato de la fila de la EB-BIS, que ya se movió tres veces |
-| 9 | Entran los colores de la Diana, y con ellos si el radar y las tarjetas se igualan |
-| 10 | Se cierra cómo se nombran sus índices de cara a quien no es profesional |
-| 11 | Se confirma quién puede eliminar un perfil (hoy: el administrador) |
-| 12 y 13 | Dos piezas de una línea cada una, que hoy no se tocan porque son suyas |
-| 14 | El informe lleva SUS cinco lecturas en lenguaje de paciente, y las de hoy siguen para el profesional |
-| 15, 16 y 17 | Dejan de convivir dos palabras suyas para la misma banda, y dos colores para el mismo estado |
-| 18 a 24 | Cada una cierra una divergencia interna de su archivo que hoy Atlas porta por duplicado |
-| 25 | Se cierra qué pasa con las diez alertas sin insumo (hoy: aviso permanente en pantalla) |
-| 26 a 30 | Precisiones del prompt y del instrumento; ninguna frena |
-| 31 y 32 | Nada que construir: es data que conviene que sepa antes de leer sus casos |
+Señalamos cuando un grupo nuclear queda en 0 porciones · no pisamos la lista guardada al cambiar el
+objetivo, avisamos (en su HTML las porciones viven en el navegador; nosotros las persistimos) · la cadena
+calórica cuadra macros, distingue calculado de ajustado y lleva candado de concurrencia · la distribución
+por tiempos exige al menos un tiempo activo · y **un documento que se contradice consigo mismo no se
+entrega** (la pregunta 4; es un freno, no un criterio: no decide nada clínico).
 
 ---
 
 # LO QUE YA ESTÁ CERRADO Y NO VUELVE A APARECER AQUÍ
 
-Para que no lo busque. **Cerradas por sus respuestas de septiembre:** la apertura del párrafo de IA, el
-criterio del profesional en la HC (*"de momento no"*), las tres
-entradas de Leche semidescremada (*"queda señalado, sin tocar"*), la revisión ortográfica de la tabla de
-intercambio (hecha, dieciséis nombres, portada), las dos preguntas de encuesta que no llegaron en la entrega
-del 4 (*"no importa, ya lo tienen bien en Atlas"*), los dos guiones de ANI-BIS-E y el comentario encima del
-interruptor del LE8.
+Para que no lo busque.
+
+**Por sus respuestas de septiembre:** la apertura del párrafo de IA · el criterio del profesional en la HC
+(*"de momento no"*) · las tres entradas de Leche semidescremada (*"queda señalado, sin tocar"*) · la
+revisión ortográfica de la tabla de intercambio (hecha, dieciséis nombres, portada) · las dos preguntas de
+encuesta que no llegaron en la entrega del 4 (*"no importa, ya lo tienen bien en Atlas"*) · los dos guiones
+de ANI-BIS-E · el comentario encima del interruptor del LE8.
 
 **La fila PABU, con su respuesta textual, porque un barrido nuestro ya la reabrió una vez.** El 7 de
 septiembre respondió: *"Ya revisé ATLAS y está bien como lo tienen"*, con la tabla mostrando `cPABU`. Un
 barrido de rótulos nuestro, el 9, la cambió a `dPABU` sin instrucción suya; se restituyó el 21 y hoy lleva
-candado, para que el siguiente barrido no la vuelva a abrir.
+candado.
 
-**Cerradas por la especificación 7.1.0 del 26 de octubre:** el parámetro `escalaAniosPorDE` y si la EB-BIS se
+**Por la especificación 7.1.0 del 26 de octubre:** el parámetro `escalaAniosPorDE` y si la EB-BIS se
 calcula sin encuesta completa.
 
-**Cerradas antes:** el interruptor del LE8 (encendido, el ICEC coincide con su archivo), los tres colores de
-los clasificadores, las opciones de ejercicio, las cuatro erratas de la tabla de intercambio, los seis
-rótulos de los sectores, Tumaco y Cartago, el núcleo de 66 alimentos, la caída campo por campo de `getDX` y
-la referencia del IFC.
+**Antes:** el interruptor del LE8 · los tres colores de los clasificadores · las opciones de ejercicio ·
+las cuatro erratas de la tabla de intercambio · los seis rótulos de los sectores · Tumaco y Cartago · el
+núcleo de 66 alimentos · la caída campo por campo de `getDX` · la referencia del IFC.
 
 **Y, con su fecha y su número para que no vuelva: las ALERGIAS.** Lo decidió el 27 de agosto, lo ejecutamos
-el 28, y aun así le llegó una tercera vez.
+el 28, y aun así le llegó una tercera vez. Las tablas de alérgenos, equivalencias y filtros están
+retiradas (y las cinco equivalencias borradas de la base el 11-sep); no hay regla de «avena implica
+gluten»; leche y lactosa son dos preguntas del paciente que no se cruzan con productos; P43 y P44 quedan
+como están; «Otra» con texto se muestra sin confirmación; LUVIA está habilitada con el alérgeno de su
+ficha; y el bloqueo activo con confirmación y registro **no se construye**.
 
-| Qué | Desde | Estado en Atlas |
-|---|---|---|
-| Tablas de alérgenos, equivalencias y filtros | 27-ago §10 | Retiradas. Las cinco equivalencias borradas de la base el 11-sep |
-| «Avena implica gluten» | 11-sep §2.1 | **No hay regla.** Ni directa ni con certificación |
-| Leche contra lactosa | 11-sep §2.2 | Dos preguntas del paciente. No se cruzan con productos |
-| P43 y P44 | 11-sep §2.3 | **Quedan como están** |
-| «Otra» con texto | 11-sep §3 | Es un dato dado. Se muestra; **no va confirmación** |
-| LUVIA | 11-sep §4 | **Habilitada**, con el alérgeno que declara su ficha |
-| Bloqueo activo con confirmación y registro | 27-ago / 11-sep | **No se construye** |
-
-**Cómo cerró el asunto del asesor legal, porque el resultado es el suyo.** El asesor rectificó su propia
-recomendación: advirtió que su principio confundía **usar** el dato con **bloquear** con el dato, y que un
-Atlas que bloquea sobre una inferencia clínica contradice el consentimiento que los pacientes ya firmaron,
-donde dice que Atlas no diagnostica y el profesional interpreta. **Sin bloqueo, sin confirmación y sin
-registro**, como dijo usted. Lo que sí se construye es poner las dos declaraciones **juntas en pantalla** (lo
-que el paciente declaró, textual, y la lista completa de lo que el producto declara), sin clasificar ninguna
-ni deducir nada entre ellas. **No es un cruce: es mostrar dos hechos.**
-
-**Y el error nuestro que le tocó a usted:** esa nota se escribió como *pendiente de Gildardo*, y no lo era.
-Era un conflicto entre su instrucción y un dictamen legal, o sea una decisión de CNV. Escrita como pendiente
-suyo, viajó sola hasta su bandeja tres veces.
+**Cómo cerró el asunto del asesor legal, porque el resultado es el suyo.** Rectificó su propia
+recomendación: su principio confundía **usar** el dato con **bloquear** con el dato, y un Atlas que bloquea
+sobre una inferencia clínica contradice el consentimiento que los pacientes ya firmaron, donde dice que
+Atlas no diagnostica y el profesional interpreta. **Sin bloqueo, sin confirmación y sin registro**, como
+dijo usted. Lo único que se construye es poner las dos declaraciones juntas en pantalla, sin clasificar
+ninguna ni deducir nada entre ellas. *(Y el error fue nuestro: esa nota se escribió como pendiente suyo
+cuando era una decisión de CNV, y así viajó tres veces hasta su bandeja.)*
 
 ---
 
 # DE DÓNDE SALE CADA PREGUNTA
 
-Para cruzar este documento con los dos que lo precedieron.
+Para cruzar este documento con los dos que lo precedieron, por si empezó a responder alguno.
 
 | Aquí | Venía de |
 |---|---|
-| PRIMERO | Cola del 6 de septiembre, "PRIMERO". Respondida a medias: el nombre no se envía, pero sigue sin saberse si es una persona real |
+| 0 (el aviso) | Cola del 6 de septiembre, "PRIMERO". Respondida a medias: el nombre no se envía, pero sigue sin saberse si es una persona real |
 | 1, 2, 3 | Dudas del 30 de octubre, 3, 4 y 5. La 3 con las cifras de hoy |
 | **4** | **Nueva del 3 de noviembre.** Sale del informe que leyó Santiago y de la nota del 24 de octubre sobre los tres textos de banda |
 | 5 | Dudas del 30 de octubre, 17, **fundida** con la "Nueva (2026-09-19)" de la cola de septiembre: era la misma |
@@ -908,10 +1056,17 @@ Para cruzar este documento con los dos que lo precedieron.
 | 22, 23 | Cola de septiembre, 17 y 13 |
 | 24 | Cola de septiembre, 12, **más** el §6.4 de su v12 (el rótulo se queda sin origen) |
 | 25, 26, 27, 28 | Cola de septiembre, 21, 14, 19 y 20 |
-| 29 | Cola de septiembre, dentro de la declaración del prompt del 22 de septiembre: era una pregunta y estaba escondida en una declaración |
+| 29 | Cola de septiembre, dentro de una declaración del prompt: era una pregunta y estaba escondida |
 | 30 | Cola de septiembre, "Nueva (2026-09-22)" |
-| 31, 32 | Dudas del 30 de octubre, 13 y 14. La 31 con la corrección de cinco a cuatro |
-| **Salieron** | Dudas 1 y 2 (respondidas en la 7.1.0) · Cola 22 (ya no aplica) · Cola 18 (era una declaración, está en el bloque de declaraciones) |
+| **31** | Cola de septiembre, bloque de declaraciones. **Sube a pregunta**: pedía respuesta y estaba donde no se pide ninguna |
+| 32, 33 | Dudas del 30 de octubre, 13 y 14. La 32 con la corrección de cinco a cuatro |
+| **Salieron** | Dudas 1 y 2 (respondidas en la 7.1.0) · Cola 22 (ya no aplica: preguntaba lo que respondía la fila PABU) |
+
+**Verificado el 4 de noviembre, pregunta por pregunta:** ninguna de las de septiembre quedó contestada por
+sus entregas de octubre (revisiones de v10, v11 y v12, y los parámetros 7.1.0). Se buscó cada tema en las
+cuatro: ICA-BIS, cPABU, clasifLancet, PBI, celBadges, ECM/BCM, las quince alertas, las observaciones de la
+HC, los síntomas digestivos, el `cIAE`, la matriz IFC×IRC y los cortes del % de grasa no aparecen en
+ninguna. Las que sí movieron sus entregas de octubre están arriba, en lo cerrado.
 
 ---
 

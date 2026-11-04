@@ -41,7 +41,8 @@ describe("la cola de dudas de Gildardo es UNA, y las retiradas apuntan a ella", 
   it("el documento vivo dice que es el unico y cruza la numeracion de los anteriores", () => {
     const t = leer(VIVO);
     // Que se declare unico es lo que hace que el siguiente lector no abra otro.
-    expect(t).toMatch(/documento (es el )?ÚNICO|Este archivo es el único/);
+    // Se acepta cualquier forma de decirlo, no una frase exacta: lo que importa es que lo DIGA.
+    expect(t).toMatch(/el único documento|documento único|este archivo es el único/i);
     // Y la tabla de procedencia: sin ella, unir dos documentos PIERDE las respuestas a medio escribir.
     expect(t).toContain("DE DÓNDE SALE CADA PREGUNTA");
   });
