@@ -3,7 +3,9 @@
 **Para:** chat desarrollador (Atlas)
 **De:** chat legal, vía Santiago
 **Fecha de la decisión:** 20 de octubre de 2026
-**Estado:** decidido. Pendiente solo la ratificación escrita del asesor legal (no bloquea la implementación del texto).
+**Estado:** **IMPLEMENTADO el 2026-11-03.** El texto nuevo es el consentimiento **v1.1**, vigente (`src/modules/consent/text/consent-v1.1.ts`), registrado como cambio NO sustantivo en `src/modules/consent/versions.ts`. Sigue pendiente solo la ratificación escrita del asesor legal, que no bloqueaba la implementación.
+
+> **Qué quedó construido, y qué no.** D1 a D5: hechas (texto, versionado no sustantivo, ninguna casilla nueva, nadie re-firma). D6: corregida en `DATA_GOVERNANCE.md` (principio 7) y en `DECISIONES_LEGALES.md`. §5.1 (umbral de anonimización): **construido** en el CSV de /obbia, `obbia/services/supresion-de-celdas.ts`, k ≥ 5 con supresión de celdas pequeñas. §5.2 (custodia de la llave): **dimensionada, sin construir**, en `DATA_GOVERNANCE.md`, sección «La llave y su custodia»; es lo único de este documento que sigue siendo condición abierta antes de la primera venta.
 
 ---
 
@@ -49,11 +51,14 @@ Se evaluó volver la estadística comercializable una autorización opcional (un
 
 Ningún otro punto del consentimiento cambia. Las casillas quedan idénticas.
 
+> **Implementado así (2026-11-03):** el archivo `consent-v1.1.ts` se generó DESDE `consent-v1.0.ts` reemplazando ese único punto, no transcribiendo el texto a mano, para que no pudiera colarse otra diferencia. Y el candado `consent-hash.test.ts` lo prueba como hecho: comparadas línea a línea, la única diferencia entre las dos versiones es ese punto. De ese hecho depende el "no sustantivo" de D4 y el "nadie re-firma" de D5, así que se verifica, no se afirma.
+
 ### 4.2 Versionado
 
 - Se crea una versión nueva del texto (regla vigente: una versión, un texto, para siempre), con su hash congelado como las demás.
 - Debe marcarse como **cambio no sustantivo**. La regla del enlace de seguimiento ("solo omite el consentimiento si el paciente tiene un consentimiento de Atlas vigente") **no debe tratar la v1.0 como reemplazada**: quien firmó la v1.0 conserva su consentimiento vigente y el enlace de seguimiento le sigue omitiendo el consentimiento.
 - Si hoy el sistema no distingue entre versión sustantiva y no sustantiva, hay que agregar esa distinción: es la condición para que este cambio no fuerce la re-firma de toda la base.
+  - **Ya la distinguía** (dictamen legal 2026-08-20 §3, `versions.ts`): `requiresReconsent` recorre la cadena de versiones y solo exige re-firma si en el camino hubo una sustantiva. La v1.1 entra con `substantive: false` y el candado comprueba que `requiresReconsent("1.0", "1.1")` es falso.
 - Los pacientes nuevos firman la versión nueva, y la copia que reciben es la de la versión nueva.
 
 ### 4.3 Lo que NO se construye

@@ -24,7 +24,7 @@ import {
 } from "@/modules/consent/consent-copy-service";
 import type { ConsentInstanceData } from "@/modules/consent/consent-instance";
 import type { ConsentType } from "@/modules/consent/validations";
-import { CONSENT_TEXT_V1_0, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.0";
+import { CONSENT_TEXT_V1_1, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.1";
 import {
   getProfessionalIdForPatient,
   getProfessionalProfileIdByUser,
@@ -264,7 +264,7 @@ async function dispatchConsentCopy(args: {
     acceptedAt: args.acceptedAt,
     granted: grantedForCopy,
     consentVersion: CONSENT_VERSION,
-    consentTemplate: CONSENT_TEXT_V1_0,
+    consentTemplate: CONSENT_TEXT_V1_1,
     instance,
     recipients,
     resumeUrl: args.resumeUrl,

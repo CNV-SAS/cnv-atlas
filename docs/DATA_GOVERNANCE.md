@@ -33,6 +33,7 @@ Reporte al paciente — vista interna vs. documento final. El motor puede asocia
 5. **Trazabilidad y evidencia.** Todo registro clínico lleva su constelación de versiones y su snapshot; el log clínico es inmutable.
 6. **La propiedad del hardware no da propiedad del dato del paciente.** El derecho a procesar y conservar nace del consentimiento y de un propósito lícito.
 7. **CNV no es propietaria de datos personales.** Solo es propietaria de datos efectivamente anonimizados y de derivados no personales (agregados, estadísticas, modelos, algoritmos). Los datos personales pertenecen a sus titulares.
+   - **Ser propietaria de lo anonimizado no es lo único que CNV hace con el dato, y el resumen corto se lee mal (corregido el 2026-11-03, D6).** CNV es además **Responsable autónomo sobre datos SEUDONIMIZADOS**: control de calidad del modelo e investigación ObBIA-Latam, con la autorización opcional del paciente. O sea: no es dueña de ellos, pero sí decide sobre ellos. Cualquier frase interna que diga que CNV trata "solo anonimizados" está desactualizada; el detalle está en `DECISION_CONSENTIMIENTO_ANONIMIZACION_Y_LLAVE.md` (D6).
 
 ---
 
@@ -49,6 +50,11 @@ Esta arquitectura fue definida deliberadamente para que CNV no quede configurada
 - **Responsable del Tratamiento:** CNV, de forma autónoma, con base en la autorización que el paciente otorga directamente a CNV en el consentimiento de ATLAS (casilla opcional).
 - Investigación con datos **seudonimizados** (nunca identificables): requiere la casilla opt-in del paciente.
 - Estadística anonimizada: no requiere consentimiento adicional (ya no es dato personal); se informa como finalidad en las casillas necesarias.
+- **Y desde el 2026-11-03 esa frase lleva su condición técnica al lado (consulta legal).** "Anonimizada" no es "sin nombre": una salida comercializable exige **k-anonimato con k ≥ 5 y supresión de celdas pequeñas, aplicados TÉCNICAMENTE**, antes de la primera venta. Sin eso, el derivado sigue siendo dato personal por reidentificación y la finalidad no lo cubre.
+  - **La condición es ÚNICA e igual para todos los pacientes, sin filtro por origen.** Los 150 del HTML también entran en conjuntos anonimizados comercializables: su propia finalidad (c) cubre el acto de anonimizar, y la promesa de no vender "sus datos" se lee referida a datos **personales**, igual que la frase de Atlas.
+  - **Lo que el consentimiento del HTML NO cubre es nada seudonimizado:** investigación ObBIA-Latam y control de calidad quedan fuera hasta que firmen el de Atlas. Eso ya ocurre solo, porque no tienen esas autorizaciones (ver la cifra en /obbia).
+  - **Construido el 2026-11-03** en el CSV del resumen de /obbia (`obbia/services/supresion-de-celdas.ts`): las categorías con menos de cinco pacientes se reúnen en una fila, el archivo dice cuántas suprimió y el registro de la entrega lo afirma. Era necesario, no preventivo: el archivo traía celdas de **un** paciente, con su ciudad y su edad media al lado.
+  - **Lo que todavía NO está, y es condición antes de la primera venta:** la custodia de la llave de seudonimización (ver «La llave y su custodia», más abajo).
 
 ### Datos del Integrante CNV (profesional)
 - **Responsable del Tratamiento:** CNV.
@@ -120,6 +126,41 @@ El consentimiento opera por capas y se presenta antes de la encuesta. El texto c
 **Investigación interna (CNV Research / ObBIA):** trabajan sobre data seudonimizada bajo gobernanza y consentimiento (pueden usar un `research_id` estable para análisis longitudinal, sin ruta de vuelta a la persona).
 
 **Alcance limitado a datos estructurados.** La capa de investigación accede únicamente a datos clínicos y funcionales **estructurados**: mediciones de bioimpedancia, indicadores calculados, respuestas de la encuesta, protocolo de tratamiento aplicado y resultados de seguimiento. **No incluye** el contenido narrativo u observaciones clínicas en texto libre registradas por el profesional, salvo que exista una autorización adicional, específica y expresa del titular para dicho fin. Nunca incluye identificadores directos.
+
+### La llave y su custodia (dimensionado el 2026-11-03, SIN CONSTRUIR)
+
+La consulta legal del 3 de noviembre pone la custodia de la llave como **condición antes de la primera
+venta**, junto al k ≥ 5. Esto es el dimensionado, no la construcción.
+
+**Qué es la llave.** Lo que permite volver de un registro seudonimizado a la persona. Hoy en Atlas eso es
+directamente `patients.id`: la vista `evaluaciones_para_investigacion` lo lleva a propósito, porque es lo
+que permite el análisis longitudinal (unir las consultas de un mismo paciente a lo largo del tiempo).
+
+**Por qué eso hoy no es un problema y mañana sí.** Mientras nada salga fila a fila, el `patient_id` no
+cruza ninguna frontera: el panel agrega y el CSV lo construye un módulo puro que no lo recibe. El día que
+salga un dataset fila a fila, ese identificador viaja con él, y entonces quien tenga la base puede
+reidentificar a todos. Eso es exactamente lo que la seudonimización bien hecha evita: **la llave no viaja
+con el dato**.
+
+**Las cuatro piezas, con su tamaño:**
+
+| Pieza | Qué es | Tamaño |
+|---|---|---|
+| **Un `research_id` por paciente, distinto del `patients.id`** | Un identificador sin significado, estable en el tiempo (el mismo paciente da siempre el mismo), que es el que viaja en el dataset | media tanda: columna, backfill y el cambio en la vista |
+| **La tabla de correspondencia, separada** | `research_id ↔ patient_id`, en su propio esquema, sin acceso desde la aplicación: solo dirección con un acto registrado | pequeña, pero exige decidir **quién** la puede abrir |
+| **Rotación por dataset** | Un `research_id` distinto por entrega, derivado de la llave y del id del dataset. Así, dos datasets entregados a terceros distintos no se pueden cruzar entre sí | pequeña una vez existe la llave |
+| **El acto de reidentificar** | Cuándo se permite (una queja, un hallazgo que obliga a avisar al paciente), quién lo aprueba y dónde queda | cabe en el mecanismo de grants que ya existe |
+
+**Y una decisión que hay que tomar antes de construir nada, porque cambia las cuatro:** si la
+correspondencia se guarda (seudonimización reversible, que es lo que `DATA_GOVERNANCE` describe hoy y lo
+que permite contestarle a un titular que pregunta) o si se destruye por dataset (anonimización
+irreversible, que es lo que permite vender sin más condiciones y lo que impide volver atrás si hay que
+avisar a alguien de un hallazgo). **No son dos grados de lo mismo: son dos decisiones opuestas**, y la
+segunda renuncia al deber de avisar.
+
+**Lo que NO hace falta para la primera venta:** nada de esto, si lo que se vende son cifras agregadas. La
+condición de la llave es para una salida **fila a fila**, y esa está cerrada hoy por otra razón (el
+k-anonimato no verificado). Las dos puertas se abren juntas o no se abre ninguna.
 
 **Investigación externa / publicación:** anonimización real:
 - Quitar identificadores directos, **más**
@@ -455,3 +496,4 @@ Los documentos de gobernanza y consentimiento de CNV tienen una **fuente de verd
 | 18 | 2026-08 | **Para ENTREGAR un nutracéutico al paciente hay que tenerlo PRESCRITO.** La superficie de entrega (despacho, T3b-2) solo ofrece los productos prescritos en el protocolo que además son `en_consultorio`; no permite despachar un producto suelto. Se entrega lo que se indicó clínicamente. | Impide que el inventario en consignación se use como punto de venta suelto. La entrega es un acto clínico derivado de la prescripción, no una transacción comercial libre; separa la dispensación (clínica, ligada al tratamiento) de la venta. |
 | 19 | 2026-08 | **El conteo físico se hace A CIEGAS: la superficie de conteo (T3b-3) NO le muestra al integrante el saldo del sistema mientras cuenta.** Captura lo contado; el diff lo computa el servidor. NO "mejorar" la captura mostrando el número esperado. | Si el integrante ve el esperado, la tentación de ajustar lo contado es inmediata y el conteo deja de ser evidencia para volverse una confirmación. Mostrar el esperado "para facilitar la captura" destruiría el propósito del conteo. |
 | 20 | 2026-08 | **En la clasificación de un faltante, DIRECCIÓN puede RECHAZAR la propuesta de injustificado, no solo confirmarla** (T3b-3 ST4). Confirmar materializa el cargo; rechazar cierra el caso sin cargo. | Si dirección solo pudiera confirmar, no sería un segundo par de ojos: sería un trámite. Poder decir que no es lo que hace real el control de dos personas sobre una deuda a cargo de una persona. |
+| 21 | 2026-11-03 | **"Anonimizada" lleva su condición técnica al lado: k-anonimato con k ≥ 5 y supresión de celdas pequeñas, aplicados técnicamente en TODA salida comercializable, antes de la primera venta.** Condición ÚNICA e igual para todos los pacientes, sin filtro por origen (los del HTML también entran en conjuntos anonimizados; lo que no les cubre su consentimiento es nada seudonimizado). Ratifica y vuelve exigible la decisión #6, que estaba "sujeta a ratificación jurídica". **Construido** en el CSV de /obbia (`obbia/services/supresion-de-celdas.ts`); **pendiente** la custodia de la llave (dimensionada, sin construir). | Consulta legal del 2026-11-03. Sin la condición técnica, el derivado sigue siendo dato personal por reidentificación y la finalidad declarada no lo cubre. Era necesario, no preventivo: el CSV traía celdas de un paciente, con su ciudad y su edad al lado. |

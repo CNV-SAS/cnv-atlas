@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
+import { CONSENT_TEXT_V1_1 } from "@/modules/consent/text/consent-v1.1";
 import { ConsentimientoQr } from "@/modules/consent/components/consentimiento-qr";
 import { resolverSesionPorToken } from "@/modules/consent/data/sesion-presencial";
 import { getProfessionalForConsent } from "@/modules/evaluations/data/survey-links-reader";
@@ -92,7 +92,7 @@ export default async function ConsentimientoQrPage({
           elegible por quien tiene el teléfono, que es justo lo que no puede ser. */}
       <ConsentimientoQr
         token={token}
-        consentText={CONSENT_TEXT_V1_0}
+        consentText={CONSENT_TEXT_V1_1}
         esDeMenor={sesion.esDeMenor}
         pideAsentimiento={sesion.pideAsentimiento}
       />

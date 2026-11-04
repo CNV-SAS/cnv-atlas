@@ -8,7 +8,7 @@ import {
   getProfessionalForConsent,
   resolveSurveyLinkByToken,
 } from "@/modules/evaluations/data/survey-links-reader";
-import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
+import { CONSENT_TEXT_V1_1 } from "@/modules/consent/text/consent-v1.1";
 import { CONSENT_VERSION, modoDelSeguimiento } from "@/modules/consent/versions";
 
 export const metadata = { title: "Encuesta - Atlas Pacientes" };
@@ -132,7 +132,7 @@ export default async function EncuestaPage({
         isFollowup={link.type === "seguimiento"}
         prefill={signPrefill}
         questions={survey.questions}
-        consentText={CONSENT_TEXT_V1_0}
+        consentText={CONSENT_TEXT_V1_1}
         professional={professional}
         followupMode={followupMode}
         substantiveBump={substantiveBump}

@@ -2,7 +2,7 @@ import { ChevronDown, FileCheck } from "lucide-react";
 
 import { ConsentDocument } from "@/modules/consent/components/consent-document";
 import { buildConsentFullPreview } from "@/modules/consent/consent-instance";
-import { CONSENT_TEXT_V1_0, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.0";
+import { CONSENT_TEXT_V1_1, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.1";
 
 // ═══ EL CONSENTIMIENTO SE MUDA AQUI (Santiago, 2026-09-10) ═══
 //
@@ -62,7 +62,7 @@ export function ConsentimientoVigente() {
           {/* Vista COMPLETA de la plantilla vigente: AMBAS ramas (mayor y menor) con los campos como
               rotulos. NO una instancia de un paciente (esa filtra la rama menor). Asi se lee el texto
               entero, incluido el bloque de menores, sin marcadores crudos. */}
-          <ConsentDocument text={buildConsentFullPreview(CONSENT_TEXT_V1_0)} />
+          <ConsentDocument text={buildConsentFullPreview(CONSENT_TEXT_V1_1)} />
           <p className="text-xs text-muted-foreground">
             Según la edad del paciente, en el documento que firma se muestra solo la rama que aplica
             (mayor de edad o representante legal del menor).

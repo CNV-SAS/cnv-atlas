@@ -7,6 +7,7 @@ import {
   normalizeConsentText,
 } from "@/modules/consent/consent-hash";
 import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
+import { CONSENT_TEXT_V1_1 } from "@/modules/consent/text/consent-v1.1";
 import { CONSENT_TEXT_V1_2 } from "@/modules/consent/text/consent-v1.2";
 import { CONSENT_TEXT_V1_5 } from "@/modules/consent/text/consent-v1.5";
 import { CONSENT_TEXT_V1_7 } from "@/modules/consent/text/consent-v1.7";
@@ -20,7 +21,12 @@ import {
 // Hashes de referencia capturados al vendorizar cada texto desde CONSENT_ATLAS.md.
 // Si un valor cambia, el texto legal cambio: hay que subir la version, no editar el
 // texto a mano (protege la trazabilidad del consentimiento).
-// Hash VIGENTE (v1.0, bump de lanzamiento). Anclado para que cualquier cambio del texto legal rompa la prueba.
+// Hash VIGENTE (v1.1, 2026-11-03: el numeral 4 declara ANONIMIZAR en vez de comercializar). Anclado para
+// que cualquier cambio del texto legal rompa la prueba.
+const EXPECTED_HASH_V1_1 =
+  "67ee2648292bec2fc3ea1945dfc5106d3cdc40b4edf86cf3c63e9fb20f8c7dfa";
+// v1.0 paso a RETENIDA al publicarse la v1.1, y es la que la mayoria de los pacientes tiene firmada: su
+// hash se ancla igual que los demas retenidos.
 const EXPECTED_HASH_V1_0 =
   "dfdcaccb699313edce6ce60e693c14ae02a00debb96b75e27c1945ec0937f3ae";
 // v1.7, v1.5 y v1.2 se conservan por retencion (DATA_GOVERNANCE): pacientes que firmaron esas versiones
@@ -34,22 +40,62 @@ const EXPECTED_HASH_V1_2 =
   "790c89d388ef532c0b84e778e4713bc2cbb7a1b7084c307198af781129704ff0";
 
 describe("consent document_hash (regla C1)", () => {
-  it("ancla el hash del texto canonico vigente v1.0", () => {
-    expect(CONSENT_VERSION).toBe("1.0");
-    expect(CONSENT_DOCUMENT_HASH).toBe(EXPECTED_HASH_V1_0);
-    expect(computeConsentHash(CONSENT_TEXT_V1_0)).toBe(EXPECTED_HASH_V1_0);
+  it("ancla el hash del texto canonico vigente v1.1", () => {
+    expect(CONSENT_VERSION).toBe("1.1");
+    expect(CONSENT_DOCUMENT_HASH).toBe(EXPECTED_HASH_V1_1);
+    expect(computeConsentHash(CONSENT_TEXT_V1_1)).toBe(EXPECTED_HASH_V1_1);
   });
 
-  it("conserva anclados los hashes de los textos retenidos v1.7, v1.5 y v1.2 (distintos al vigente)", () => {
+  // ═══ EL CANDADO DEL QUE DEPENDE QUE NADIE RE-FIRME ═══
+  //
+  // La v1.1 se publica como NO sustantiva (decision legal 2026-10-20, D4/D5), y de eso depende que los
+  // consentimientos firmados bajo la v1.0 sigan vigentes: nadie vuelve a firmar. Ese "no sustantivo" es una
+  // AFIRMACION SOBRE EL TEXTO, asi que aqui se verifica como tal: comparadas linea a linea, la unica
+  // diferencia entre las dos versiones es el cuarto punto del numeral 4.
+  //
+  // Si alguien aprovecha la v1.1 para colar otro cambio (una finalidad, una categoria de dato, un
+  // destinatario), este caso cae, y cae ANTES de que el cambio llegue a un paciente que no lo firmo.
+  it("la v1.1 difiere de la v1.0 en UNA sola linea: el cuarto punto del numeral 4", () => {
+    const a = CONSENT_TEXT_V1_0.split("\n");
+    const b = CONSENT_TEXT_V1_1.split("\n");
+    expect(b.length).toBe(a.length);
+    const distintas = a.map((l, i) => [i, l, b[i]] as const).filter(([, l, m]) => l !== m);
+    expect(distintas.length).toBe(1);
+    const [, vieja, nueva] = distintas[0];
+    expect(vieja).toContain("Generar y comercializar información estadística anonimizada");
+    expect(nueva).toContain("Anonimizar sus datos");
+    expect(nueva).toContain("incluida su comercialización");
+    expect(nueva).toContain("Sus datos personales nunca se venden.");
+    // Y la finalidad nueva NO vuelve a declarar la venta como necesaria para el servicio.
+    expect(nueva).not.toContain("Generar y comercializar");
+  });
+
+  it("el texto vigente v1.1 conserva las 13 secciones, los marcadores y las casillas; sin em-dash", () => {
+    for (let n = 1; n <= 13; n++) {
+      expect(CONSENT_TEXT_V1_1).toContain(`## ${n}.`);
+    }
+    expect(CONSENT_TEXT_V1_1).toContain("{{bloque_profesional}}");
+    expect(CONSENT_TEXT_V1_1).toContain("{{firma_nombre}}");
+    expect(CONSENT_TEXT_V1_1).toContain("<!--RAMA_MAYOR-->");
+    expect(CONSENT_TEXT_V1_1).toContain("<!--RAMA_MENOR-->");
+    // D3: el control de calidad sobre datos seudonimizados SE QUEDA entre las necesarias.
+    expect(CONSENT_TEXT_V1_1).toContain("Verificar, sobre datos seudonimizados");
+    // D2: ninguna casilla nueva.
+    expect(CONSENT_TEXT_V1_1).not.toContain("{{casilla_anonimizacion}}");
+    expect(CONSENT_TEXT_V1_1).not.toMatch(/[—–]/);
+  });
+
+  it("conserva anclados los hashes de los textos retenidos v1.0, v1.7, v1.5 y v1.2 (distintos al vigente)", () => {
+    expect(computeConsentHash(CONSENT_TEXT_V1_0)).toBe(EXPECTED_HASH_V1_0);
     expect(computeConsentHash(CONSENT_TEXT_V1_7)).toBe(EXPECTED_HASH_V1_7);
     expect(computeConsentHash(CONSENT_TEXT_V1_5)).toBe(EXPECTED_HASH_V1_5);
     expect(computeConsentHash(CONSENT_TEXT_V1_2)).toBe(EXPECTED_HASH_V1_2);
-    for (const h of [EXPECTED_HASH_V1_7, EXPECTED_HASH_V1_5, EXPECTED_HASH_V1_2]) {
-      expect(EXPECTED_HASH_V1_0).not.toBe(h);
+    for (const h of [EXPECTED_HASH_V1_0, EXPECTED_HASH_V1_7, EXPECTED_HASH_V1_5, EXPECTED_HASH_V1_2]) {
+      expect(EXPECTED_HASH_V1_1).not.toBe(h);
     }
   });
 
-  it("el texto vigente v1.0 incluye las 13 secciones, los marcadores y la etnia; sin em-dash", () => {
+  it("el texto retenido v1.0 incluye las 13 secciones, los marcadores y la etnia; sin em-dash", () => {
     for (let n = 1; n <= 13; n++) {
       expect(CONSENT_TEXT_V1_0).toContain(`## ${n}.`);
     }
@@ -87,16 +133,16 @@ describe("consent document_hash (regla C1)", () => {
     const messy = "a  \r\nb\t\r  \nc   ";
     expect(normalizeConsentText(messy)).toBe("a\nb\n\nc");
     // El texto vendorizado ya esta normalizado: normalizar de nuevo no lo cambia.
-    expect(normalizeConsentText(CONSENT_TEXT_V1_0)).toBe(CONSENT_TEXT_V1_0);
+    expect(normalizeConsentText(CONSENT_TEXT_V1_1)).toBe(CONSENT_TEXT_V1_1);
   });
 
   it("CRLF y LF producen el mismo hash (la normalizacion lo garantiza)", () => {
-    const asCrlf = CONSENT_TEXT_V1_0.replace(/\n/g, "\r\n");
-    expect(computeConsentHash(asCrlf)).toBe(EXPECTED_HASH_V1_0);
+    const asCrlf = CONSENT_TEXT_V1_1.replace(/\n/g, "\r\n");
+    expect(computeConsentHash(asCrlf)).toBe(EXPECTED_HASH_V1_1);
   });
 });
 
-describe("consentSchema rama mayor (v1.0: 3 casillas necesarias + mayoria de edad)", () => {
+describe("consentSchema rama mayor (v1.1: 3 casillas necesarias + mayoria de edad)", () => {
   const necessary = {
     servicio: true,
     datos_sensibles: true,

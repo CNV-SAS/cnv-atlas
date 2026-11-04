@@ -45,7 +45,7 @@ Los siguientes usos son necesarios para prestarle el servicio que solicitó; sin
 - Realizar su evaluación funcional y elaborar su plan personalizado en el modelo ANI-BIS-E.
 - Calcular indicadores y clasificaciones del estado funcional y de riesgo. El profesional interpreta y decide; ATLAS no diagnostica enfermedades.
 - Generar su reporte y dar continuidad y seguimiento a su atención.
-- **Generar y comercializar información estadística anonimizada que no permite identificarle.** Los datos personales no serán vendidos; solo se comercializan derivados que son irreversiblemente disociados de su identidad.
+- Anonimizar sus datos, es decir, disociarlos de forma irreversible de su identidad, para proteger su información y construir y actualizar las referencias poblacionales con las que se interpretan sus propios resultados en el modelo ANI-BIS-E. La información resultante deja de ser un dato personal y no permite identificarle directa ni indirectamente; CNV podrá utilizarla para cualquier fin lícito, incluida su comercialización, que contribuye a sostener el desarrollo del modelo. Sus datos personales nunca se venden.
 - Verificar, sobre datos seudonimizados y sin conocer su identidad, que el modelo ANI-BIS-E se aplica correctamente por el profesional que le atiende, como parte del control de calidad del servicio.
 - En circunstancias excepcionales (como la atención de una queja o la verificación de una posible desviación grave del protocolo), acceder de forma minimizada y registrada a su historia clínica identificada, con fines de control de calidad y cumplimiento del modelo.
 

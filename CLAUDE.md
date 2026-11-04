@@ -50,7 +50,7 @@ Viven en `ARCHITECTURE.md`. No se rompen sin actualizar el doc primero.
 12. El `clinical-engine` no importa nada de la app (ni Next, ni React, ni Supabase). Es TypeScript puro.
 13. Ningún tipo global monstruoso. Tipos viven en su módulo.
 14. Ninguna cuenta clínica se recicla. Offboarding = desactivar y reasignar.
-15. Ninguna evaluación sin las autorizaciones de consentimiento necesarias vigentes (`servicio`, `datos_sensibles`; `revoked_at IS NULL`). Se verifica en la policy `evaluations/can-create-evaluation`, también en el flujo de seguimiento. (Consent v1.0, revisión legal 2026-08-11: `internacional_ia` dejó de ser autorización, se absorbió en `servicio`. La aceptación del medio electrónico, necesaria para FIRMAR, la exige `consentSchema` en el servidor y se persiste aparte; no es del gate clínico.)
+15. Ninguna evaluación sin las autorizaciones de consentimiento necesarias vigentes (`servicio`, `datos_sensibles`; `revoked_at IS NULL`). Se verifica en la policy `evaluations/can-create-evaluation`, también en el flujo de seguimiento. (Consent v1.1, vigente desde 2026-11-03; las casillas son las de la revisión legal 2026-08-11: `internacional_ia` dejó de ser autorización, se absorbió en `servicio`. La v1.1 no cambió ninguna casilla: solo el cuarto punto del numeral 4, que pasó de comercializar estadística a ANONIMIZAR. La aceptación del medio electrónico, necesaria para FIRMAR, la exige `consentSchema` en el servidor y se persiste aparte; no es del gate clínico.)
 
 ---
 

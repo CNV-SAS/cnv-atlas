@@ -58,8 +58,8 @@ Todo lo demás es contexto ya decidido. Esto es lo abierto.
 
 ## 1. Roles de tratamiento (quién es responsable de qué)
 
-- **CNV no es el prestador de salud; es quien provee la plataforma.** El profesional que atiende es el responsable de la historia clínica; CNV la aloja por encargo suyo mientras dura el contrato. En investigación, CNV sí decide por su cuenta, sobre datos ya sin identidad. *Ratificada por el dictamen de acceso (2026-08-06), que confirma que CNV no integra el equipo tratante.* Detalle: `DATA_GOVERNANCE.md` (mapa de roles), decisión de registro #1.
-- **Los datos personales del paciente son suyos, no de CNV.** CNV solo es dueña de lo anonimizado y de lo no personal. *Decidida 2026-06.* Detalle: `DATA_GOVERNANCE.md` registro #2.
+- **CNV no es el prestador de salud; es quien provee la plataforma.** El profesional que atiende es el responsable de la historia clínica; CNV la aloja por encargo suyo mientras dura el contrato. En investigación, CNV sí decide por su cuenta, sobre datos **seudonimizados** (sin nombre, pero reversibles con la llave: no son datos sin identidad, y por eso siguen siendo datos personales con su deber de cuidado). *Corregido el 2026-11-03: la frase anterior decía "datos ya sin identidad", que describía el objetivo y no lo que hay.* *Ratificada por el dictamen de acceso (2026-08-06), que confirma que CNV no integra el equipo tratante.* Detalle: `DATA_GOVERNANCE.md` (mapa de roles), decisión de registro #1.
+- **Los datos personales del paciente son suyos, no de CNV.** CNV solo es dueña de lo anonimizado y de lo no personal. **Dueña no es lo mismo que decidir sobre:** CNV decide además sobre los datos seudonimizados del paciente que lo autoriza (control de calidad e investigación), sin ser dueña de ellos. *Decidida 2026-06; el matiz, el 2026-11-03.* Detalle: `DATA_GOVERNANCE.md` registro #2.
 - **CNV no dice "diagnostica" ni habla de enfermedad.** El sistema calcula, clasifica y estima; el profesional diagnostica; el equipo mide composición corporal y bienestar, no enfermedad. *Decidida 2026-06.* Detalle: `DATA_GOVERNANCE.md` registro #8, `ARCHITECTURE.md`.
 
 ## 2. Consentimiento

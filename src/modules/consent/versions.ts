@@ -1,4 +1,4 @@
-import { CONSENT_VERSION } from "./text/consent-v1.0";
+import { CONSENT_VERSION } from "./text/consent-v1.1";
 
 export { CONSENT_VERSION };
 
@@ -21,6 +21,15 @@ export const CONSENT_VERSIONS: readonly ConsentVersionEntry[] = [
     version: "1.0",
     substantive: true,
     note: "LANZAMIENTO (2026-08-12): consolida v1.2-v1.7 + revision legal del 11. SUSTANTIVA respecto de v1.7 (la etnia entro como finalidad de investigacion; 'internacional_ia' se absorbio en 'servicio'). Primera version que un paciente firma.",
+  },
+  {
+    version: "1.1",
+    substantive: false,
+    // POR QUE NO ES SUSTANTIVA, dicho con lo que la define: no entra ninguna finalidad, categoria de dato
+    // ni destinatario nuevo. Cambia UN punto del numeral 4, que pasa de declarar la VENTA de estadistica
+    // anonimizada a declarar el acto de ANONIMIZAR, informando que lo anonimizado puede comercializarse.
+    // La diferencia exacta la prueba el candado del hash, y de eso depende que nadie re-firme (D5).
+    note: "2026-11-03. Numeral 4, cuarto punto: la finalidad necesaria pasa de 'generar y comercializar estadistica anonimizada' al acto de ANONIMIZAR, con la comercializacion informada. Decision legal 2026-10-20 (DECISION_CONSENTIMIENTO_ANONIMIZACION_Y_LLAVE.md, D1-D5). NO sustantiva: quien firmo la v1.0 conserva su consentimiento vigente y el enlace de seguimiento le sigue omitiendo el consentimiento.",
   },
 ];
 
