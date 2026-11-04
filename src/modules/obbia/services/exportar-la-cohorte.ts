@@ -204,8 +204,10 @@ export function resumenDeLaCohorteACsv(
 }
 
 /** El nombre del archivo, con la fecha: dos exportaciones del mismo dia se distinguen por su contenido. */
-export function nombreDelResumen(generadoEl: string): string {
-  return `atlas-cohorte-investigacion-${generadoEl}.csv`;
+export function nombreDelResumen(generadoEl: string, filtrado = false): string {
+  // EL NOMBRE DICE SI ES UN RECORTE: dos archivos del mismo dia en la misma carpeta, uno completo y otro
+  // filtrado, son indistinguibles por el nombre, y el que se cite en un analisis sera el que este arriba.
+  return `atlas-cohorte-investigacion${filtrado ? "-filtrada" : ""}-${generadoEl}.csv`;
 }
 
 /**
@@ -214,11 +216,22 @@ export function nombreDelResumen(generadoEl: string): string {
  * SE DERIVA DE LAS CIFRAS, no es un texto fijo: el registro tiene que poder contestar QUE se entrego sin
  * tener el archivo delante. Dos entregas del mismo dia con cohortes distintas se distinguen aqui.
  */
-export function alcanceDelResumen(cohorte: CohorteDeInvestigacion, generadoEl: string): string {
+export function alcanceDelResumen(
+  cohorte: CohorteDeInvestigacion,
+  generadoEl: string,
+  // ═══ EL RECORTE VA EN EL ALCANCE, Y ES LA MITAD DEL REGISTRO (2026-11-04) ═══
+  //
+  // Desde que la pantalla filtra, el mismo archivo puede ser la cohorte entera o un recorte, y las dos
+  // salidas se ven igual. Un registro que dice "resumen agregado de la cohorte" sobre un recorte de
+  // mujeres de 40 a 60 de Medellin AFIRMA algo falso sobre lo que salio, y el registro existe
+  // precisamente para poder responder que salio.
+  filtro: string[] = [],
+): string {
   return (
     `Resumen agregado de la cohorte al ${generadoEl}: ${cohorte.conAutorizacion} consultas autorizadas ` +
     `de ${cohorte.pacientesAutorizados} pacientes, ${cohorte.conDiagnostico} con diagnóstico sellado, ` +
     `sobre ${cohorte.vigentes} consultas vigentes. Sin filas de paciente. ` +
+    (filtro.length > 0 ? `Cohorte FILTRADA por ${filtro.join(" · ")}. ` : "Cohorte completa, sin filtros. ") +
     // EL REGISTRO TIENE QUE PODER AFIRMAR EL CONTROL, no solo el contenido (2026-11-03). La condicion
     // juridica es que la supresion este aplicada TECNICAMENTE en toda salida; un registro que no la
     // nombra obliga a abrir el archivo para saber si se aplico, y de eso se trata justamente el registro.

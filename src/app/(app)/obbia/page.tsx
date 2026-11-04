@@ -16,7 +16,16 @@ import {
   BarraDeProporcion,
   BarrasDeLaCohorte,
 } from "@/modules/obbia/components/barras-de-la-cohorte";
-import { leerCohorteDeInvestigacion } from "@/modules/obbia/data/cohorte-reader";
+import {
+  leerCohorteDeInvestigacion,
+  leerOpcionesDelFiltro,
+} from "@/modules/obbia/data/cohorte-reader";
+import { FiltrosDeLaCohorte } from "@/modules/obbia/components/filtros-de-la-cohorte";
+import {
+  descripcionDelFiltro,
+  filtroPedido,
+  hayFiltro,
+} from "@/modules/obbia/services/filtro-de-la-cohorte";
 import { getResearchDatasets } from "@/modules/obbia/data/research-reader";
 import { canViewObbia } from "@/modules/obbia/policies/can-view-obbia";
 import {
@@ -109,19 +118,41 @@ function NavDeVistas({ vista }: { vista: VistaDelPanel }) {
 export default async function ObbiaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vista?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireUser();
   if (!canViewObbia(user)) {
     redirect("/no-autorizado");
   }
 
-  const vista = vistaPedida((await searchParams).vista);
+  const sp = await searchParams;
+  const vista = vistaPedida(sp.vista);
+  // EL FILTRO SE LEE AQUI Y VIAJA ENTERO AL LECTOR, que lo aplica una sola vez por una CTE. Ver el motivo
+  // en `cohorte-reader`: repartido por consulta, basta olvidarlo en una para que la pantalla muestre dos
+  // cohortes distintas a la vez.
+  const filtro = filtroPedido(sp);
 
-  const [datasets, cohorte] = await Promise.all([
+  const [datasets, cohorte, opciones] = await Promise.all([
     getResearchDatasets(),
-    leerCohorteDeInvestigacion(),
+    leerCohorteDeInvestigacion(filtro),
+    leerOpcionesDelFiltro(),
   ]);
+  // El nombre del profesional elegido, para que la descripcion del filtro diga un nombre y no un uuid.
+  const nombreDelProfesional =
+    opciones.profesionales.find((x) => x.id === filtro.profesional)?.nombre ?? null;
+  const descripcion = descripcionDelFiltro(filtro, nombreDelProfesional);
+  // LOS PARAMETROS DEL FILTRO VIAJAN A LA DESCARGA: un archivo que sale de una pantalla filtrada tiene
+  // que llevar ESA cohorte, y su registro tiene que decirlo. Si la descarga ignorara el filtro, el
+  // archivo describiria otra poblacion que la pantalla desde la que se pidio.
+  const parametrosDelCsv = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (k === "vista") continue;
+    const s = Array.isArray(v) ? v[0] : v;
+    if (s) parametrosDelCsv.set(k, s);
+  }
+  const urlDelCsv = parametrosDelCsv.size
+    ? `/obbia/cohorte/csv?${parametrosDelCsv.toString()}`
+    : "/obbia/cohorte/csv";
   const nivelDelExport = nivelDeAnonimizacion(EXPORT_FILA_A_FILA_DE_LA_VISTA);
   const nivelDeLaPantalla = nivelDeAnonimizacion(CIFRAS_DEL_PANEL);
 
@@ -152,6 +183,21 @@ export default async function ObbiaPage({
       </div>
 
       <NavDeVistas vista={vista} />
+
+      {/* ═══ LOS FILTROS: LA PIEZA QUE CONVIERTE EL PANEL EN UNA HERRAMIENTA (cotejo del 2026-11-03) ═══
+
+          /obbia contestaba "cómo es la cohorte"; con filtros contesta "cómo es ESTA cohorte", que es la
+          pregunta con la que se plantea un análisis. Son los ocho de su CNVResearch.
+
+          VA EN LAS TRES VISTAS, y no solo en el Resumen: el archivo que se descarga en Exportar lleva la
+          cohorte filtrada, así que esconder el filtro ahí dejaría a alguien descargando un recorte sin
+          verlo. */}
+      <FiltrosDeLaCohorte
+        filtro={filtro}
+        opciones={opciones}
+        vista={vista}
+        descripcion={descripcion}
+      />
 
       {vista === "resumen" ? (
        <>
@@ -597,7 +643,7 @@ export default async function ObbiaPage({
             sola línea de cliente. Y la descarga QUEDA REGISTRADA (`research_datasets` más el asiento de
             auditoría), que es la mitad por la que esa tabla existía vacía. */}
         <a
-          href="/obbia/cohorte/csv"
+          href={urlDelCsv}
           className="mt-3 inline-flex items-center rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
         >
           Descargar el resumen (CSV)
@@ -606,6 +652,14 @@ export default async function ObbiaPage({
           Lleva las cifras de esta pantalla y sus desgloses, no filas de paciente. Cada descarga queda
           registrada abajo con su alcance y su nivel: un archivo de investigación que sale sin rastro es
           lo que ese registro existe para impedir.
+          {hayFiltro(filtro) ? (
+            <>
+              {" "}
+              <strong className="text-foreground">
+                Este archivo lleva la cohorte filtrada ({descripcion.join(" · ")}), y su registro lo dice.
+              </strong>
+            </>
+          ) : null}
         </p>
       </div>
 

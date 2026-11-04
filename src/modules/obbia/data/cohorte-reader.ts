@@ -5,6 +5,11 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { mayorDelMotor } from "@/modules/followups/services/eb-trajectory";
 import { ciudadesUnificadas } from "../services/ciudades-de-la-cohorte";
+import {
+  FILTRO_VACIO,
+  type FiltroDeCohorte,
+  formaDeLaCiudadElegida,
+} from "../services/filtro-de-la-cohorte";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // LA COHORTE DE INVESTIGACION, EN CIFRAS  ·  LA PANTALLA DE LA VISTA evaluaciones_para_investigacion
@@ -168,44 +173,113 @@ export type EstratoDeLaCohorte = {
   edadMedia: number | null;
 };
 
-export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigacion> {
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL FILTRO ENTRA UNA VEZ, POR UNA CTE, Y TODAS LAS CONSULTAS LO HEREDAN
+//
+// ═══ EL DEFECTO QUE ESTO EVITA, Y ES EL UNICO QUE IMPORTA AQUI ═══
+//
+// Este lector hace CINCO idas a la base (totales, versiones, excluidas, meses, consolidados, extras). Si el
+// predicado del filtro se escribiera en cada una, bastaria olvidarlo en una para que el panel mostrara
+// cifras de DOS COHORTES DISTINTAS en la misma pantalla: la tarjeta diria 120 consultas y el consolidado
+// sumaria 316, y las dos pareceran ciertas. Eso es peor que no filtrar, porque nadie puede notarlo.
+//
+// ASI QUE EL FILTRO NO SE REPARTE: se aplica UNA vez, al construir dos CTE (`cohorte` para la vista de
+// investigacion y `universo` para la de vigentes), y las consultas dejan de nombrar las vistas. Que no
+// puedan nombrarlas es lo que hace imposible el defecto, y es lo que vigila el candado.
+//
+// LAS CTE LLEVAN SOLO LAS COLUMNAS DE LA VISTA (`v.*`): el join a `patient_profiles` se hace aqui para
+// poder filtrar por pais, ciudad, sexo y edad, pero no se exporta, para que las consultas de abajo sigan
+// haciendo sus propios joins como antes y este cambio no tenga que tocarlas por dentro.
+//
+// LA CIUDAD SE COMPARA POR FORMA COMPARABLE, no por texto crudo: la tabla de ciudades funde "Guarne" con
+// "Guarne, Antioquia" (ver `ciudades-de-la-cohorte`), asi que un filtro que comparara el crudo devolveria
+// menos consultas de las que la propia fila dice tener. Se acepta la forma exacta o la forma mas un sufijo
+// (el departamento pegado), que es la misma regla con la que la tabla funde.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+function predicadoDelFiltro(f: FiltroDeCohorte) {
+  const partes = [];
+  if (f.pais) partes.push(sql` and trim(pp.country) = ${f.pais}`);
+  if (f.ciudad) {
+    const forma = formaDeLaCiudadElegida(f.ciudad);
+    const comparable = sql`regexp_replace(lower(translate(trim(pp.city), 'áéíóúÁÉÍÓÚüÜñÑ.,', 'aeiouAEIOUuUnN  ')), '\\s+', ' ', 'g')`;
+    partes.push(sql` and (${comparable} = ${forma} or ${comparable} like ${forma + " %"})`);
+  }
+  if (f.sexo) partes.push(sql` and upper(coalesce(pp.sex, '')) = ${f.sexo}`);
+  if (f.profesional) partes.push(sql` and v.professional_id = ${f.profesional}::uuid`);
+  // LA EDAD, A LA FECHA DE LA MEDICION, igual que en los consolidados: una cohorte que envejece sola entre
+  // dos miradas no es una cohorte.
+  const edad = sql`extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date))`;
+  if (f.edadDesde != null) partes.push(sql` and ${edad} >= ${f.edadDesde}`);
+  if (f.edadHasta != null) partes.push(sql` and ${edad} <= ${f.edadHasta}`);
+  const dia = sql`coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date)`;
+  if (f.desde) partes.push(sql` and ${dia} >= ${f.desde}::date`);
+  if (f.hasta) partes.push(sql` and ${dia} <= ${f.hasta}::date`);
+  if (f.soloConBis) partes.push(sql` and v.measurement_id is not null`);
+  if (f.soloConEspectro) {
+    partes.push(sql` and exists (
+      select 1 from bis_raw_values r
+       where r.measurement_id = v.measurement_id
+         and r.variable_name in ('Z5 Ohm', 'Z500 Ohm'))`);
+  }
+  return partes.length === 0 ? sql`` : sql.join(partes, sql``);
+}
+
+export async function leerCohorteDeInvestigacion(
+  filtro: FiltroDeCohorte = FILTRO_VACIO,
+): Promise<CohorteDeInvestigacion> {
+  const pred = predicadoDelFiltro(filtro);
+  // LAS DOS CTE, que es lo unico que las consultas de abajo pueden nombrar. `es_consulta_hecha` entra aqui
+  // tambien, asi que el `where es_consulta_hecha` que queda abajo es redundante y se deja: quita una
+  // forma de romper esto por descuido al editar una consulta suelta.
+  const CON = sql`
+    with cohorte as (
+      select v.*
+        from public.evaluaciones_para_investigacion v
+        left join patient_profiles pp on pp.patient_id = v.patient_id
+       where v.es_consulta_hecha${pred}
+    ), universo as (
+      select v.*
+        from public.evaluaciones_vigentes v
+        left join patient_profiles pp on pp.patient_id = v.patient_id
+       where v.es_consulta_hecha${pred}
+    )`;
   // UNA SOLA IDA A LA BASE para los totales: son cuentas sobre las mismas dos vistas, y partirlas en cinco
   // consultas abriria la puerta a que dos cifras del mismo panel se midan en momentos distintos.
-  const totales = await db.execute(sql`
+  const totales = await db.execute(sql`${CON}
     select
-      (select count(*)::int from public.evaluaciones_vigentes where es_consulta_hecha) as vigentes,
-      (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha) as con_autorizacion,
-      (select count(distinct patient_id)::int from public.evaluaciones_para_investigacion where es_consulta_hecha) as pacientes_autorizados,
-      (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha and diagnosis_id is not null) as con_diagnostico,
-      (select count(*)::int from public.evaluaciones_para_investigacion where es_consulta_hecha and importada) as importadas,
-      (select count(*)::int from public.evaluaciones_vigentes where es_consulta_hecha and importada) as importadas_vigentes,
+      (select count(*)::int from universo where es_consulta_hecha) as vigentes,
+      (select count(*)::int from cohorte where es_consulta_hecha) as con_autorizacion,
+      (select count(distinct patient_id)::int from cohorte where es_consulta_hecha) as pacientes_autorizados,
+      (select count(*)::int from cohorte where es_consulta_hecha and diagnosis_id is not null) as con_diagnostico,
+      (select count(*)::int from cohorte where es_consulta_hecha and importada) as importadas,
+      (select count(*)::int from universo where es_consulta_hecha and importada) as importadas_vigentes,
       -- SIN AUTORIZACION, CONTADO DIRECTO (ver la nota del tipo: por resta heredaria la exclusion de
       -- calidad de dato y el rotulo diria que alguien no autorizo cuando si lo hizo).
-      (select count(*)::int from public.evaluaciones_vigentes v
+      (select count(*)::int from universo v
         where v.es_consulta_hecha
           and not exists (select 1 from patient_consents c
                            where c.patient_id = v.patient_id
                              and c.consent_type = 'investigacion'
                              and c.revoked_at is null)) as sin_autorizacion,
       -- Y LAS QUE SALEN POR CALIDAD DE DATO: autorizadas, pero con la huella en otra consulta vigente.
-      (select count(*)::int from public.evaluaciones_vigentes v
+      (select count(*)::int from universo v
         where v.es_consulta_hecha and v.huella_repetida
           and exists (select 1 from patient_consents c
                        where c.patient_id = v.patient_id
                          and c.consent_type = 'investigacion'
                          and c.revoked_at is null)) as fuera_por_huella,
-      (select count(distinct v.huella)::int from public.evaluaciones_vigentes v
+      (select count(distinct v.huella)::int from universo v
         where v.es_consulta_hecha and v.huella_repetida) as grupos_de_huella,
-      (select count(distinct v.patient_id)::int from public.evaluaciones_vigentes v
+      (select count(distinct v.patient_id)::int from universo v
         where v.es_consulta_hecha and v.huella_repetida) as pacientes_de_huella
   `);
   const t = (totales as unknown as Record<string, number>[])[0] ?? {};
   const vigentes = Number(t.vigentes ?? 0);
   const conAutorizacion = Number(t.con_autorizacion ?? 0);
 
-  const versiones = await db.execute(sql`
+  const versiones = await db.execute(sql`${CON}
     select coalesce(engine_version, 'sin diagnóstico') as version, count(*)::int as evaluaciones
-      from public.evaluaciones_para_investigacion
+      from cohorte
      where es_consulta_hecha
      group by 1
      order by 2 desc
@@ -218,7 +292,7 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
   // reves, un paciente que nunca firmo en Atlas se contaria como "firmo y no marco la casilla", y eso le
   // atribuiria una decision que nunca tomo. Es la misma regla que el orden de `nivelDeAnonimizacion`: el
   // error de omision tiene que caer del lado que NO afirma nada sobre la persona.
-  const excluidas = await db.execute(sql`
+  const excluidas = await db.execute(sql`${CON}
     select
       case
         when exists (select 1 from patient_consents c
@@ -230,7 +304,7 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
       end as razon,
       count(*)::int as consultas,
       count(distinct v.patient_id)::int as pacientes
-      from public.evaluaciones_vigentes v
+      from universo v
      where v.es_consulta_hecha
        and not exists (select 1 from patient_consents c
                         where c.patient_id = v.patient_id
@@ -240,10 +314,10 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
      order by 2 desc
   `);
 
-  const meses = await db.execute(sql`
+  const meses = await db.execute(sql`${CON}
     select to_char(coalesce(dia, (created_at at time zone 'America/Bogota')::date), 'YYYY-MM') as mes,
            count(*)::int as evaluaciones
-      from public.evaluaciones_para_investigacion
+      from cohorte
      where es_consulta_hecha
      group by 1
      order by 1 desc
@@ -263,7 +337,7 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
   // cuantas no se pueden estratificar; omitirlas haria que las columnas no sumen el total y nadie sabria
   // por que.
   const base = sql`
-    from public.evaluaciones_para_investigacion v
+    from cohorte v
     left join patient_profiles pp on pp.patient_id = v.patient_id
     left join professional_profiles prof on prof.id = v.professional_id
     left join profiles perfil on perfil.id = prof.profile_id
@@ -285,7 +359,7 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
         extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date))
       )::numeric, 1) as edad_media`;
 
-  const estratos = await db.execute(sql`
+  const estratos = await db.execute(sql`${CON}
       select 'pais' as eje, coalesce(nullif(trim(pp.country), ''), 'Sin dato') as grupo, ${columnas} ${base} group by 1, 2
     union all
       select 'ciudad', coalesce(nullif(trim(pp.city), ''), 'Sin dato'), ${columnas} ${base} group by 1, 2
@@ -302,7 +376,7 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
   //
   // `conEncuestaCompleta` y `conPlanNutricional` NO se derivan de la vista (que no sabe de encuestas ni de
   // protocolos): se preguntan por `exists`, que es lo que hace el roster y lo que evita traer las filas.
-  const [extras] = (await db.execute(sql`
+  const [extras] = (await db.execute(sql`${CON}
     select
       count(*) filter (where exists (
         select 1 from bis_raw_values r
@@ -339,7 +413,7 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
                  coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date),
                  pp.birth_date
                )) as edad
-          from public.evaluaciones_para_investigacion v
+          from cohorte v
           left join patient_profiles pp on pp.patient_id = v.patient_id
          where v.es_consulta_hecha
       ) v
@@ -425,5 +499,68 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
       edadMaxima: extras?.edad_max == null ? null : Number(extras.edad_max),
       edadImposible: Number(extras?.edad_imposible ?? 0),
     },
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LAS OPCIONES DE LOS DESPLEGABLES  ·  SIN FILTRAR, A PROPOSITO
+//
+// Si se construyeran con la cohorte YA filtrada, elegir "Medellin" dejaria el desplegable de ciudades con
+// una sola opcion y no habria forma de cambiar de ciudad sin editar la URL a mano. El filtro cambia las
+// CIFRAS, no las salidas.
+//
+// LAS CIUDADES SE FUNDEN con la misma regla que la tabla (`ciudadesUnificadas`), porque es lo que la
+// pantalla muestra: ofrecer "Guarne" y "Guarne, Antioquia" como dos opciones distintas, cuando la tabla
+// las cuenta juntas, haria que elegir una devolviera menos consultas de las que su fila dice.
+//
+// Y EL PROFESIONAL VA POR ID: dos profesionales pueden llamarse igual, y el nombre es lo que se muestra.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+export async function leerOpcionesDelFiltro(): Promise<{
+  paises: string[];
+  ciudades: string[];
+  profesionales: { id: string; nombre: string }[];
+}> {
+  const filas = await db.execute(sql`
+    select 'pais' as eje, coalesce(nullif(trim(pp.country), ''), '') as valor, '' as id
+      from public.evaluaciones_para_investigacion v
+      left join patient_profiles pp on pp.patient_id = v.patient_id
+     where v.es_consulta_hecha and nullif(trim(pp.country), '') is not null
+     group by 2
+    union all
+    select 'ciudad', coalesce(nullif(trim(pp.city), ''), ''), ''
+      from public.evaluaciones_para_investigacion v
+      left join patient_profiles pp on pp.patient_id = v.patient_id
+     where v.es_consulta_hecha and nullif(trim(pp.city), '') is not null
+     group by 2
+    union all
+    select 'profesional', coalesce(nullif(trim(perfil.full_name), ''), ''), prof.id::text
+      from public.evaluaciones_para_investigacion v
+      join professional_profiles prof on prof.id = v.professional_id
+      left join profiles perfil on perfil.id = prof.profile_id
+     where v.es_consulta_hecha and nullif(trim(perfil.full_name), '') is not null
+     group by 2, 3
+     order by 1, 2
+  `);
+  const lista = filas as unknown as { eje: string; valor: string; id: string }[];
+  const de = (eje: string) => lista.filter((f) => f.eje === eje).map((f) => f.valor);
+  // Las ciudades pasan por la misma union que la tabla: se reusa `ciudadesUnificadas` con filas minimas,
+  // para no escribir la regla dos veces (es la unica forma de que no puedan divergir).
+  const ciudades = ciudadesUnificadas(
+    de("ciudad").map((grupo) => ({
+      grupo,
+      consultas: 1,
+      pacientes: 1,
+      conBis: 0,
+      conEspectro: 0,
+      edadMedia: null,
+    })),
+  ).map((f) => f.grupo);
+  return {
+    paises: [...new Set(de("pais"))].sort((a, b) => a.localeCompare(b, "es")),
+    ciudades: ciudades.sort((a, b) => a.localeCompare(b, "es")),
+    profesionales: lista
+      .filter((f) => f.eje === "profesional")
+      .map((f) => ({ id: f.id, nombre: f.valor }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
   };
 }

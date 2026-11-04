@@ -77,7 +77,11 @@ describe("la pantalla monta las tres vistas de su CNVResearch", () => {
   it("la vista de Exportar lleva su etiqueta de nivel, derivada y no escrita a mano", () => {
     const exportar = PAGINA.slice(PAGINA.indexOf('vista === "exportar"'));
     expect(exportar).toContain("ROTULO_DEL_NIVEL[nivelDelExport.nivel]");
-    expect(exportar).toContain("/obbia/cohorte/csv");
+    // LA DESCARGA LLEVA EL FILTRO PUESTO: la URL se arma con los parametros de la pantalla, asi que
+    // el archivo describe la MISMA cohorte que se esta mirando. Un `href` literal aqui seria la cohorte
+    // entera saliendo de una pantalla filtrada, sin que nada falle.
+    expect(exportar).toContain("href={urlDelCsv}");
+    expect(PAGINA).toContain("/obbia/cohorte/csv?");
   });
 
   it("los cuatro consolidados van a ancho completo, uno debajo de otro", () => {
