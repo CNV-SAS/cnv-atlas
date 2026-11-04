@@ -1,5 +1,19 @@
 # Dudas para Gildardo · EB-BIS v7 y ATLAS v12
 
+> **RETIRADO COMO COLA VIVA (2026-11-03). Lo abierto vive en `docs/PENDIENTES_CIENTIFICOS.md`, que es
+> el documento ÚNICO.** Santiago pidió uno solo y al día: tener las dudas aquí y la cola de septiembre
+> allá hacía que algo se quedara sin llegarle, que es la misma razón por la que en septiembre se retiró
+> `GILDARDO_QUERIES.md`. Este archivo se conserva como **registro de lo que se le envió el 30 de octubre
+> y el 3 de noviembre**, con su numeración, para poder cruzarlo con sus respuestas si ya empezó a
+> contestarlo. **No se le agregan preguntas nuevas ni se consulta para saber qué está abierto.**
+>
+> **Qué pasó con cada una al unir:** las 1 y 2 salieron (las respondió la especificación 7.1.0 del 26 de
+> octubre); la 17 se fundió con la "Nueva (2026-09-19)" de la cola de septiembre, que era la misma; la 9
+> se reescribió con la objeción de estética y simetría de la Diana; la 5 y la 13 llevan las cifras de hoy
+> (veinte consultas, cuatro grupos entre pacientes distintos); y entró una nueva, sobre cómo deben leer el
+> DFI y las rutas el IAE de la v7. La tabla "De dónde sale cada pregunta" del documento único dice en qué
+> número quedó cada una.
+
 **Fecha:** 2026-10-30 · **De:** Santiago (equipo técnico de Atlas) · **Para:** Gildardo de Jesús Uribe Gil
 
 > **Este documento no identifica a ningún paciente.** Donde hace falta señalar un caso, va el id de
