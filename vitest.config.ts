@@ -111,6 +111,7 @@ const DB_TESTS = [
   "src/tests/intake-publico-db.test.ts",
   "src/tests/sesion-presencial-db.test.ts",
   "src/tests/diagnosis-confirmation-immutability.test.ts",
+  "src/tests/el-tratamiento-se-busca-por-indice-db.test.ts",
   "src/tests/hc-antecedentes-encuesta.test.ts",
   "src/tests/faltante-case.test.ts",
   "src/tests/faltante-settle-sobrante.test.ts",

@@ -39,6 +39,13 @@ export type ReportCardView = {
    * el defecto que la tarjeta ya evito al retirar el aviso de aprobar la prescripcion.
    */
   conPlan?: boolean;
+  /**
+   * NO SE PUDO AVERIGUAR si hay hoja del plan (la consulta fallo). Es distinto de las otras dos
+   * respuestas, y por eso no se puede colapsar en `conPlan: false`: eso AFIRMA que no hay plan, y con la
+   * consulta caida esa afirmacion puede ser falsa. Caso real: la consulta devolvia 400 por statement
+   * timeout y la tarjeta escondia el enlace de un plan que si existia, sin decir nada.
+   */
+  planIndeterminado?: boolean;
   // La ultima vez que este reporte salio hacia el paciente, del registro de entregas (0148). undefined =
   // no se consulto (las listas no lo traen).
   ultimaEntrega?: { fecha: string; enviadaA: string } | null;
@@ -147,6 +154,20 @@ export function ReportCard({ report }: { report: ReportCardView }) {
               className="text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               {enviado ? "Ver la hoja del plan enviada" : "Ver o imprimir la hoja del plan"}
+            </a>
+          ) : null}
+          {/* SI NO SE PUDO AVERIGUAR, SE DICE. Esconder el enlace en silencio deja al profesional
+              creyendo que esta consulta no tiene plan, que es una afirmacion que aqui no se puede
+              sostener. Y el enlace se ofrece igual, porque el que SI existe se abre y el que no, avisa:
+              el dano de ofrecerlo es menor que el de esconder el bueno. */}
+          {report.planIndeterminado ? (
+            <a
+              href={`/reportes/${report.reportId}/pdf?doc=plan`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-clinical-warning underline-offset-4 hover:underline"
+            >
+              No se pudo comprobar si hay hoja del plan. Abrirla para ver
             </a>
           ) : null}
         </div>

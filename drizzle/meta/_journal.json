@@ -1653,6 +1653,13 @@
       "when": 1792862147446,
       "tag": "0235_la_toma_quedo_mal_es_otro_motivo",
       "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1793800370491,
+      "tag": "0236_el_tratamiento_se_busca_por_indice",
+      "breakpoints": true
     }
   ]
 }

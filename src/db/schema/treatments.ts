@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { date, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { date, index, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk } from "./_columns";
 import { diagnoses } from "./diagnoses";
@@ -182,7 +182,13 @@ export const treatments = pgTable("treatments", {
   // esta implicita en created_by. Si algun dia hay agenda, se migra.
   proximaCita: date("proxima_cita"),
   createdAt: createdAt(),
-});
+},
+  // EL TRATAMIENTO DE UNA CONSULTA SE BUSCA POR AQUI (0236). Postgres no indexa las FK por su cuenta, y sin
+  // este indice el barrido era la tabla entera con cada fila pagando `treatments_select` (que hace
+  // diagnoses -> evaluations -> is_patient_professional): /ani-bis-e?etapa=tratamiento se caia por
+  // statement timeout. Medido con rol authenticated: 121,2 ms -> 3,2 ms.
+  (t) => [index("treatments_diagnosis_idx").on(t.diagnosisId)],
+);
 
 // NATURALEZA SEGUN EL ESTADO (no asumir que siempre es lo mismo): en borrador (status='draft') estas
 // filas SON la prescripcion autoritativa; al aprobar, lo autoritativo pasa a ser el jsonb sellado
@@ -198,7 +204,10 @@ export const treatmentNutraceuticals = pgTable("treatment_nutraceuticals", {
     .references(() => nutraceuticals.id),
   dosage: text("dosage"),
   durationDays: integer("duration_days"),
-});
+},
+  // Se lee por treatment_id en cada carga de la pestaña (0236). Misma familia que el de arriba.
+  (t) => [index("treatment_nutraceuticals_treatment_idx").on(t.treatmentId)],
+);
 
 export const treatmentDietGuidelines = pgTable("treatment_diet_guidelines", {
   id: pk(),
@@ -206,7 +215,10 @@ export const treatmentDietGuidelines = pgTable("treatment_diet_guidelines", {
     .notNull()
     .references(() => treatments.id, { onDelete: "cascade" }),
   guidelineText: text("guideline_text").notNull(),
-});
+},
+  // Se lee por treatment_id en cada carga de la pestaña (0236). Misma familia que el de arriba.
+  (t) => [index("treatment_diet_guidelines_treatment_idx").on(t.treatmentId)],
+);
 
 export const treatmentNotes = pgTable("treatment_notes", {
   id: pk(),

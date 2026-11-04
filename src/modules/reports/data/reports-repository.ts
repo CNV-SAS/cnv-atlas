@@ -1,5 +1,7 @@
 import "server-only";
 
+import { captureException } from "@sentry/nextjs";
+
 import type { EngineOutput } from "@/clinical-engine";
 import { etiquetaDeProfesion } from "@/modules/auth/admin-validations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -141,6 +143,16 @@ export type ReportCardData = ReportListItem & {
    * documentos y el profesional aprueba desde esa tarjeta.
    */
   conPlan: boolean;
+  /**
+   * NO SE PUDO AVERIGUAR si hay hoja del plan. Tercer estado, y hace falta porque los otros dos son
+   * afirmaciones: `conPlan: false` dice "no hay plan", y eso con la consulta fallida es MENTIRA.
+   *
+   * EL CASO QUE LO TRAE (Sentry, 2026-11-03): esa consulta devolvia 400 por statement timeout (la FK sin
+   * indice de la 0236) y su error se descartaba, asi que la tarjeta escondia el enlace de un plan que SI
+   * existia y no se quejaba. El profesional no tenia como notarlo: una tarjeta sin enlace se lee igual
+   * que una consulta sin prescripcion.
+   */
+  planIndeterminado: boolean;
   // Cuantas veces salio el MISMO documento despues del primer envio. 0 = solo el envio original.
   resentCount: number;
 };
@@ -208,13 +220,25 @@ export async function getReportCardForEvaluation(
   // Y POR EL CAMINO DE LA EVALUACION, no por el diagnostico vigente: el tratamiento cuelga del diagnostico
   // sobre el que se construyo, asi que tras una reemision buscarlo por el vigente no encuentra nada (es el
   // defecto de los cinco lectores del 2026-10-29).
-  const { data: conProtocolo } = await supabase
+  //
+  // Y SU ERROR SE LEE (2026-11-03). Antes se descartaba con un `const { data } =`, asi que un fallo
+  // quedaba indistinguible de "no hay plan" y la tarjeta escondia el enlace en silencio. No se lanza,
+  // porque un fallo aqui no debe tumbar la tarjeta entera: se devuelve el tercer estado y la tarjeta lo
+  // dice. Misma familia que el freno que se abria por un error de PostgREST no leido.
+  const { data: conProtocolo, error: errProtocolo } = await supabase
     .from("treatments")
     .select("protocol_snapshot, diagnoses!inner(evaluation_id)")
     .eq("diagnoses.evaluation_id", evaluationId)
     .not("protocol_snapshot", "is", null)
     .limit(1)
     .maybeSingle();
+  if (errProtocolo) {
+    // El mensaje va a Sentry con su contexto; no lleva PHI (es el error de Postgres, no el dato).
+    captureException(
+      new Error(`reports-repository: conPlan: ${errProtocolo.message}`),
+      { tags: { lector: "reports-repository.conPlan" } },
+    );
+  }
 
   // SE RETIRO LA LECTURA DEL ESTADO DE LA PRESCRIPCION (2026-09-09). Servia para que el boton de enviar
   // dijera "falta aprobar la prescripcion" en vez de fallar; ya no hay nada que aprobar y enviar no se
@@ -230,7 +254,8 @@ export async function getReportCardForEvaluation(
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     trajectory,
-    conPlan: conProtocolo != null,
+    conPlan: errProtocolo == null && conProtocolo != null,
+    planIndeterminado: errProtocolo != null,
     resentCount: (row.resent_count as number | null) ?? 0,
   };
 }

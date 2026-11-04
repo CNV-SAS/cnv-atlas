@@ -22,6 +22,11 @@ const CONGELADOS = new Set([
   // descuido: si apuntara a `HTML_VIGENTE` no compararia nada. Si manana el absorbe la v7 en su HTML,
   // este candado se re-ancla por nombre y sale de la lista, como ya hizo `frozen-protocolo-diff`.
   "eb-bis-v7.golden.test.ts",
+  // ANCLA A UN DOCUMENTO RETIRADO, Y ESO ES LO QUE AFIRMA (2026-11-04). No es un porte ni una paridad:
+  // comprueba que el documento de dudas del 30 de octubre diga que esta retirado y apunte al vivo
+  // (`PENDIENTES_CIENTIFICOS.md`), para que la cola no se vuelva a partir en dos. La ruta literal es el
+  // sujeto de la prueba; derivarla seria dejar de probar ese archivo.
+  "un-solo-documento-de-dudas.test.ts",
 ]);
 
 // CANDADO SOBRE EL SITIO DE LLAMADA, no sobre la funcion, porque el defecto es una OMISION: nadie
