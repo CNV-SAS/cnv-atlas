@@ -140,9 +140,30 @@ export function ListaPacientes({
         ? activos
         : // Por NOMBRE o por DOCUMENTO, que son las dos formas en que un profesional busca a alguien: se
           // acuerda del nombre, o tiene la cedula delante.
+          //
+          // ═══ Y POR ID DE CONSULTA, O SU PREFIJO (Santiago, 2026-11-03) ═══
+          //
+          // *"No me acuerdo qué paciente tenía este ID. Sería bueno que al buscar por esos ids en la barra
+          // de búsqueda de pacientes también apareciera: «ed83ff97»."*
+          //
+          // Y ESE ID ABREVIADO NO ES CAPRICHOSO: es el formato con el que Gildardo nombra los casos en sus
+          // anexos y con el que nosotros contestamos, precisamente para no escribir nombres de pacientes en
+          // documentos que circulan. O sea que la abreviatura ya es el vocabulario comun de los dos lados,
+          // y hasta hoy el unico camino para volver de ella a una persona era consultar la base.
+          //
+          // SE BUSCA POR PREFIJO, no por igualdad: ocho caracteres es lo que se cita, y exigir el UUID
+          // entero dejaria fuera justo el caso que lo motiva.
+          //
+          // NO HACE FALTA LIMITARLO A ADMIN: la lista YA es la de los pacientes que esta sesion puede ver
+          // (la RLS la filtro antes de llegar aqui), asi que buscar por id no alcanza ni una fila mas que
+          // buscar por nombre. Un filtro por rol aqui daria una sensacion de control que no aporta nada.
           activos.filter((p) => {
             const nombre = nombreVisible(p).toLowerCase();
-            return nombre.includes(q) || p.documentNumber.toLowerCase().includes(q);
+            if (nombre.includes(q) || p.documentNumber.toLowerCase().includes(q)) return true;
+            // Solo cuando lo escrito PARECE un id: sin esto, teclear "a" haria coincidir medio listado por
+            // los ids y la busqueda por nombre dejaria de servir.
+            if (q.length < 6 || !/^[0-9a-f-]+$/.test(q)) return false;
+            return p.ultimasEvaluaciones.some((e) => e.evaluationId.toLowerCase().startsWith(q));
           });
     // SIN MUTAR: `sort` ordena en sitio, y `pacientes` es la prop. Ordenarla ahi cambiaria el arreglo del
     // padre y el orden dependeria de cuantas veces se ha renderizado.
@@ -187,10 +208,10 @@ export function ListaPacientes({
       <input
         id="buscar-paciente"
         type="search"
-        aria-label="Buscar paciente por nombre o número de documento"
+        aria-label="Buscar paciente por nombre, número de documento o id de consulta"
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
-        placeholder="Buscar por nombre o número de documento"
+        placeholder="Buscar por nombre, documento o id de consulta"
         className="w-full rounded-full border border-input bg-background py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
     </div>
