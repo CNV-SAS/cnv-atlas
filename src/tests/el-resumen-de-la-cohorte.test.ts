@@ -73,6 +73,7 @@ const COHORTE: CohorteDeInvestigacion = {
     edadMedia: 41.2,
     edadMinima: 18,
     edadMaxima: 79,
+    edadImposible: 0,
   },
 };
 

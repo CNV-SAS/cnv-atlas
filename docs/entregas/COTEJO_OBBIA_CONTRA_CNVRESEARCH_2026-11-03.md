@@ -1,13 +1,11 @@
 # /obbia contra su CNVResearch: qué falta, qué se queda y qué se construyó hoy
 
-**Fecha:** 2026-11-03 · **Para:** Santiago · **Fuentes:** sus dos capturas de CNVResearch
-(`cotejo-visual/html/cnv research/`) contra el código de `/obbia`.
+**Fecha:** 2026-11-03 (ampliado la misma tarde) · **Para:** Santiago
+**Fuentes:** sus capturas de CNVResearch (`cotejo-visual/html/cnv research/`, dos vistas) y las de /obbia
+(`cotejo-visual/atlas-web/obbia/`, cuatro vistas de las 18:00).
 
-> **Una nota antes de empezar: la carpeta `cotejo-visual/atlas-web/obbia/` está VACÍA.** Se creó hoy a
-> las 07:22 y no tiene ningún archivo, así que las capturas de /obbia que usted dice haber actualizado no
-> llegaron. El cotejo de abajo se hace contra el CÓDIGO de la pantalla, que para la lista de piezas es
-> igual de exacto; lo único que no se puede juzgar sin las imágenes es el aspecto, y para eso basta su
-> propio reporte (*"esas gráficas tan inmensas se ven muy extrañas"*), que ya está arreglado.
+> **Las capturas de /obbia ya están.** La primera versión de este documento se escribió contra el código,
+> porque esa carpeta estaba vacía; lo de abajo ya está cotejado contra las dos pantallas, lado a lado.
 
 ---
 
@@ -94,6 +92,78 @@ Con pocas barras salen anchas y con muchas finas, que es lo que se espera de una
 `el-resumen-de-la-cohorte`, que prohíbe volver a derivar el `viewBox` de los datos.
 
 ---
+
+---
+
+## 6 · Lo que se ve al poner las dos pantallas lado a lado (2026-11-03, tarde)
+
+Con las capturas de /obbia delante, el cotejo deja de ser una lista de piezas y se puede decir lo que de
+verdad separa a los dos paneles. Son **tres cosas, y solo una es una pieza que falte**.
+
+### 6.1 · La estructura: él tiene tres pestañas, nosotros un rollo
+
+Su CNVResearch abre en **Resumen · Datos · Exportar**, con las dos últimas bajo candado. /obbia es una
+sola página que se recorre entera: cohorte, exclusiones, familias del motor, serie por mes, los cuatro
+consolidados, el nivel de anonimización, la descarga y los datasets entregados.
+
+**Y la diferencia no es estética: es que su panel dice QUÉ SE PUEDE HACER antes de enseñar nada.** Las
+tres pestañas son tres permisos. En /obbia el permiso está escrito (el párrafo de arriba y el bloque del
+nivel), pero disuelto en el recorrido: hay que leer hasta el final para saber que el fila a fila no se
+puede.
+
+**Propuesta:** adoptar sus tres pestañas, con nuestro contenido. *Resumen* lo que hoy se ve; *Datos*
+existe y está cerrada, diciendo **por qué** (sería seudonimizado, falta el k-anonimato); *Exportar* es la
+descarga registrada. Que la pestaña cerrada EXISTA es lo que vale: una ausencia no explica nada, una
+puerta cerrada con su razón sí.
+
+### 6.2 · Los filtros: la única pieza que de verdad falta
+
+Es lo que convierte el panel en una herramienta. Hoy /obbia contesta "cómo es la cohorte"; con filtros
+contesta "cómo es **esta** cohorte", que es la pregunta con la que se plantea un análisis.
+
+**Se puede construir sin romper lo que el panel es hoy** (un Server Component puro, sin una línea de
+JavaScript de cliente): los filtros viajan en la URL y un `<form method="get">` los manda. Se pierde el
+"en vivo" de su módulo y se gana que la pantalla se pueda compartir por enlace con el filtro puesto, que
+en investigación vale más.
+
+Sus ocho, y lo que cuesta cada uno en Atlas:
+
+| Filtro | En Atlas |
+|---|---|
+| País, ciudad, sexo, profesional | Ya están como ejes de consolidado: el mismo dato, ahora como predicado |
+| Edad desde / hasta | La edad ya se calcula a la fecha de la medición |
+| Consulta desde / hasta | `dia` de la vista |
+| Solo con bioimpedancia | `measurement_id is not null` |
+| Solo con espectro Z5–Z500 | El mismo `exists` que ya cuenta la tarjeta |
+
+**Tamaño: media tanda.** Lo que la hace media y no un cuarto es que el predicado tiene que entrar en las
+**cinco** consultas del lector a la vez; si entra en unas y no en otras, el panel muestra cifras de dos
+cohortes distintas en la misma pantalla, que es peor que no filtrar.
+
+### 6.3 · El botón de imprimir el resumen
+
+Él lo tiene flotando abajo a la derecha. Es pequeño y va con los filtros: un resumen **filtrado** que se
+puede guardar es lo que alguien lleva a una reunión. Suelto, sin filtros, es un PDF de lo que ya se ve.
+
+---
+
+## 7 · Y tres cosas de las capturas de /obbia que no estaban en su lista
+
+Mirando nuestras propias pantallas con las suyas al lado:
+
+1. **Los cuatro consolidados van en dos columnas**, y a ese ancho cada tabla tiene seis columnas
+   apretadas. Las suyas van a ancho completo, una debajo de otra, y se leen mejor. Es un cambio de una
+   línea y va con las pestañas.
+2. **La serie por mes trae solo cuatro barras** (2026-08 a 2026-11), que es toda la historia de la
+   cohorte. Con una serie tan corta, la gráfica y la tabla de debajo dicen exactamente lo mismo. No se
+   retira ninguna: cuando haya doce meses la gráfica empieza a contestar lo que la tabla no.
+3. **El aviso de familias del motor dice "2.x: 257 · 1.x: 1"**, y ese 1 es la única consulta que queda
+   sellada con el motor viejo y que no se puede reemitir. El aviso es cierto, pero con un caso de 258 lo
+   que comunica ("las cifras no son comparables") pesa más de lo que el hecho merece. **Propuesta:** por
+   debajo de un umbral (digamos el 5 % de la cohorte), decirlo en voz baja, nombrando la cifra, en vez de
+   en ámbar. Es la misma lección que cerró el aviso de `anibise-1.4.0`: un aviso que exagera enseña a
+   ignorarlo.
+
 
 ## 5 · Lo que recomiendo, en orden
 

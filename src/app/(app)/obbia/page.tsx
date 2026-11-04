@@ -48,10 +48,14 @@ function fmt(iso: string): string {
 // Una cifra con su rotulo y su nota. La nota NO es decoracion: dice de que es la cifra, para que el numero
 // no quede mudo (mismo criterio que la lectura del delta en la comparacion de seguimiento).
 function Cifra({ rotulo, valor, nota }: { rotulo: string; valor: number; nota: string }) {
+  // COMA DECIMAL (Santiago, 2026-11-03): la edad media salia "43.5" con punto, en una pantalla que
+  // escribe la coma en todas las demas cifras. Media correccion deja el sistema leyendose como mal hecho,
+  // que es la regla de ortografia por superficie de CLAUDE.md. Los enteros no cambian.
+  const texto = Number.isInteger(valor) ? String(valor) : String(valor).replace(".", ",");
   return (
     <div className="flex flex-col gap-0.5 rounded-xl border border-border bg-background p-3">
       <span className="text-xs text-muted-foreground">{rotulo}</span>
-      <span className="text-2xl font-semibold tabular-nums text-foreground">{valor}</span>
+      <span className="text-2xl font-semibold tabular-nums text-foreground">{texto}</span>
       <span className="text-xs text-muted-foreground">{nota}</span>
     </div>
   );
@@ -168,13 +172,25 @@ export default async function ObbiaPage() {
             valor={cohorte.cifrasDeLaCohorte.conPlanNutricional}
             nota="llegaron a la prescripción"
           />
+          {/* ═══ COMA DECIMAL, Y SIN EL CERO DE UNA FECHA IMPOSIBLE (Santiago, 2026-11-03) ═══
+
+              Decía "43.5" con punto, en una pantalla que escribe "43,5" en todas las demás cifras, y
+              "rango 0–78". Ese 0 no es un paciente: es una fecha de nacimiento con el año 2026 en una
+              consulta medida en 2026. Un recién nacido no se puede medir en un Biody.
+
+              LO EXCLUIDO SE DICE, en la propia nota: un rango que empieza en 1 sin explicar por qué
+              invita a preguntarse si falta alguien. Es la misma regla que gobierna la cifra de excluidos
+              del panel y la de celdas suprimidas del archivo. */}
           <Cifra
             rotulo="Edad media"
             valor={cohorte.cifrasDeLaCohorte.edadMedia ?? 0}
             nota={
               cohorte.cifrasDeLaCohorte.edadMinima == null
                 ? "sin fechas de nacimiento"
-                : `rango ${cohorte.cifrasDeLaCohorte.edadMinima}–${cohorte.cifrasDeLaCohorte.edadMaxima}, a la fecha de la medición`
+                : `rango ${cohorte.cifrasDeLaCohorte.edadMinima}–${cohorte.cifrasDeLaCohorte.edadMaxima}, a la fecha de la medición` +
+                  (cohorte.cifrasDeLaCohorte.edadImposible > 0
+                    ? ` · ${cohorte.cifrasDeLaCohorte.edadImposible} fuera por fecha de nacimiento imposible`
+                    : "")
             }
           />
         </div>

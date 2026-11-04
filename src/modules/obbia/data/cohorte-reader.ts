@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { mayorDelMotor } from "@/modules/followups/services/eb-trajectory";
+import { ciudadesUnificadas } from "../services/ciudades-de-la-cohorte";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // LA COHORTE DE INVESTIGACION, EN CIFRAS  ·  LA PANTALLA DE LA VISTA evaluaciones_para_investigacion
@@ -136,6 +137,8 @@ export type CohorteDeInvestigacion = {
     edadMedia: number | null;
     edadMinima: number | null;
     edadMaxima: number | null;
+    /** Consultas cuya fecha de nacimiento da una edad imposible (menor de un año). Se cuentan, no se callan. */
+    edadImposible: number;
   };
 };
 
@@ -294,14 +297,36 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
         select 1 from treatments t
           join diagnoses d on d.id = t.diagnosis_id
          where d.evaluation_id = v.id))::int as con_plan,
-      round(avg(
-        extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date))
-      )::numeric, 1) as edad_media,
-      min(extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date)))::int as edad_min,
-      max(extract(year from age(coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date), pp.birth_date)))::int as edad_max
-      from public.evaluaciones_para_investigacion v
-      left join patient_profiles pp on pp.patient_id = v.patient_id
-     where v.es_consulta_hecha
+      -- ═══ LA EDAD, SIN LAS FECHAS IMPOSIBLES (Santiago, 2026-11-03) ═══
+      --
+      -- El panel decia "Edad media 43.5 · rango 0-78", y ese 0 no es un paciente: es UNA fecha de
+      -- nacimiento con el año 2026 en una consulta medida en 2026. Un recien nacido no se puede medir en
+      -- un Biody: hay que estar de pie sobre los electrodos.
+      --
+      -- EL CORTE ES 1 AÑO Y SOLO ATRAPA LO IMPOSIBLE, que es la regla de CLAUDE.md para un cinturon sin
+      -- fuente ("tan ancho que solo atrape lo imposible, nunca lo improbable"). Los pacientes de 7 años
+      -- (nacidos en 2018 y 2019) SI entran: son reales, son los mismos de la pregunta 14 del documento de
+      -- dudas, y excluirlos seria esconder la cohorte pediatrica en vez de contarla.
+      --
+      -- Y LO EXCLUIDO SE CUENTA, no se quita en silencio: edad_imposible va a la pantalla.
+      --
+      -- LA EDAD SE CALCULA UNA VEZ, en la subconsulta de abajo. Escrita cuatro veces en linea, la formula
+      -- ocupaba mas que todo lo demas junto y cualquier ajuste habria que hacerlo en cuatro sitios.
+      round(avg(edad) filter (where edad >= 1)::numeric, 1) as edad_media,
+      min(edad) filter (where edad >= 1)::int as edad_min,
+      max(edad) filter (where edad >= 1)::int as edad_max,
+      count(*) filter (where edad < 1)::int as edad_imposible
+      from (
+        select v.id,
+               v.measurement_id,
+               extract(year from age(
+                 coalesce(v.dia, (v.created_at at time zone 'America/Bogota')::date),
+                 pp.birth_date
+               )) as edad
+          from public.evaluaciones_para_investigacion v
+          left join patient_profiles pp on pp.patient_id = v.patient_id
+         where v.es_consulta_hecha
+      ) v
   `)) as unknown as Record<string, number | null>[];
 
   // LA FAMILIA SE CALCULA EN TS CON LA FUNCION DE LA BANDA, no con un `split` en SQL. Si el criterio de
@@ -351,9 +376,8 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
       mes: r.mes,
       evaluaciones: Number(r.evaluaciones),
     })),
-    estratos: (["pais", "ciudad", "sexo", "profesional"] as const).map((eje) => ({
-      eje,
-      filas: (estratos as unknown as Record<string, string | number | null>[])
+    estratos: (["pais", "ciudad", "sexo", "profesional"] as const).map((eje) => {
+      const filas = (estratos as unknown as Record<string, string | number | null>[])
         .filter((r) => r.eje === eje)
         .map((r) => ({
           grupo: String(r.grupo),
@@ -362,8 +386,12 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
           conBis: Number(r.con_bis),
           conEspectro: Number(r.con_espectro),
           edadMedia: r.edad_media == null ? null : Number(r.edad_media),
-        })),
-    })),
+        }));
+      // LA CIUDAD ES TEXTO LIBRE, y la misma salia en tres filas ("Guarne" / "Guarne, Antioquia", tres
+      // "San Carlos"). Se unifica SOLO donde la forma corta ya existe por si sola, que es conservador a
+      // proposito: hay municipios homonimos en departamentos distintos. Ver `ciudades-de-la-cohorte`.
+      return { eje, filas: eje === "ciudad" ? ciudadesUnificadas(filas) : filas };
+    }),
     cifrasDeLaCohorte: {
       conEspectro: Number(extras?.con_espectro ?? 0),
       conEncuestaCompleta: Number(extras?.con_encuesta ?? 0),
@@ -371,6 +399,7 @@ export async function leerCohorteDeInvestigacion(): Promise<CohorteDeInvestigaci
       edadMedia: extras?.edad_media == null ? null : Number(extras.edad_media),
       edadMinima: extras?.edad_min == null ? null : Number(extras.edad_min),
       edadMaxima: extras?.edad_max == null ? null : Number(extras.edad_max),
+      edadImposible: Number(extras?.edad_imposible ?? 0),
     },
   };
 }
