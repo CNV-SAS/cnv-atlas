@@ -55,6 +55,29 @@ describe("una etapa que se cae no se lleva la consulta entera", () => {
       "resetError()",
     );
   });
+
+  // ═══ LA SALIDA QUE DE VERDAD RESUELVE LOS DOS CASOS (2026-11-04) ═══
+  //
+  // `resetError()` vuelve a rendir el mismo subarbol DEL DESPLIEGUE YA CARGADO. Para un fallo pasajero
+  // sirve; para un desfase de despliegue (la pestaña abierta desde antes de un despliegue, con un trozo de
+  // JavaScript que ya no existe) no puede servir, y falla igual las veces que se pulse. El limite de la
+  // raiz ya habia aprendido esta leccion y este no: la misma regla en dos sitios, aplicada en uno.
+  it("ofrece RECARGAR, que es lo unico que resuelve un desfase de despliegue", () => {
+    expect(red, "recargar es la salida que resuelve los dos casos").toContain(
+      "window.location.reload()",
+    );
+    // Y el desfase se NOMBRA: un aviso generico sobre un trozo que no se pudo cargar manda a buscar un
+    // defecto que no existe.
+    expect(red).toMatch(/ChunkLoadError/);
+    expect(red).toContain("versión anterior de Atlas");
+  });
+
+  it("y los DOS limites ofrecen la misma salida, para que no vuelvan a divergir", () => {
+    const raiz = readFileSync("src/app/(app)/error.tsx", "utf8");
+    for (const limite of [raiz, red]) {
+      expect(limite).toContain("window.location.reload()");
+    }
+  });
 });
 
 describe("el build dice si sube los sourcemaps", () => {
