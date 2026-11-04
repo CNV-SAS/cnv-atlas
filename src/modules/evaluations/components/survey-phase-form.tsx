@@ -1,5 +1,6 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,22 @@ const initialSave: SaveProgressState = { saved: false, error: null };
 //
 // SE REPORTA A SENTRY AL ATRAPARLO (`reportClientError`): atrapar el error lo saca del camino que lo
 // reportaba solo, y arreglar lo que ve el paciente no puede costarnos la visibilidad.
+//
+// ═══ Y UN CATCH QUE ATRAPA TODO SE COME EL EXITO (Sentry, 2026-11-03, 14 eventos, iPhone) ═══
+//
+// El envio que SALE BIEN termina con un `redirect("/encuesta/gracias")`, y en Next un redirect se
+// SENALIZA LANZANDO (`NEXT_REDIRECT`). O sea que el camino feliz pasa por el mismo `catch` que el fallo
+// de red: la encuesta se habia enviado, y el envoltorio reportaba a Sentry "enviar-sin-red fallo" y
+// devolvia "No pudimos enviar tu encuesta: parece que se cayo la conexion". El breadcrumb del evento lo
+// dice entero: `NEXT_REDIRECT ... /encuesta/gracias` y DESPUES `POST /encuesta/gracias [200]`.
+//
+// EL DANO ES DE LOS DOS LADOS. Al paciente, en un telefono lento, le puede aparecer el aviso de "se cayo
+// la conexion" encima de una encuesta que YA entrego, y lo razonable entonces es volver a pulsar Enviar.
+// Y a nosotros nos llena Sentry de fallos que no existen, que es lo que esconde los que si.
+//
+// `unstable_rethrow` ES LA API DE NEXT PARA ESTO: relanza sus errores de control de flujo (redirect,
+// notFound) y no hace nada con los demas. Va PRIMERO en el catch, antes de cualquier manejo, que es como
+// su documentacion lo pide. Sin el, cualquier envoltorio de este tipo se come la navegacion.
 const SIN_RED_AL_ENVIAR =
   "No pudimos enviar tu encuesta: parece que se cayó la conexión. No se perdió nada de lo que respondiste. Revisa tu internet y vuelve a pulsar Enviar.";
 
@@ -103,6 +120,7 @@ function envioConRed(
     try {
       return await accion(prev, form);
     } catch (e) {
+      unstable_rethrow(e); // el redirect del exito NO es un fallo
       reportClientError("encuesta.enviar-sin-red", e);
       return { error: SIN_RED_AL_ENVIAR, fields: null, done: false };
     }
@@ -116,6 +134,7 @@ function guardadoConRed(
     try {
       return await accion(prev, form);
     } catch (e) {
+      unstable_rethrow(e); // el redirect del exito NO es un fallo
       reportClientError("encuesta.guardar-sin-red", e);
       // El indicador de abajo solo mira si HAY error, no cual: ya dice "No se pudo guardar el avance" con
       // su reintento, que es exactamente lo que toca aqui. El texto queda por si alguien lo lee en un log.
@@ -404,6 +423,17 @@ export function SurveyPhaseForm({
   const doSubmit = () => {
     const form = formRef.current;
     if (!form) return;
+    // ═══ EL AUTOGUARDADO EN ESPERA SE CANCELA AL ENVIAR (2026-11-03) ═══
+    //
+    // El guardado va con 1,2 s de espera. Si el paciente pulsa Enviar dentro de esa ventana, el envio
+    // navega a /encuesta/gracias y el guardado pendiente dispara DESPUES, contra una pagina que no tiene
+    // esa accion: "An unexpected response was received from the server", que es el segundo error del
+    // evento del 3 de noviembre. Y no se pierde nada al cancelarlo, porque el envio manda el formulario
+    // COMPLETO: lo que el guardado iba a escribir ya viaja en el envio.
+    if (guardadoPendiente.current) {
+      clearTimeout(guardadoPendiente.current);
+      guardadoPendiente.current = null;
+    }
     setConfirmMissing(null);
     startTransition(() => submit(new FormData(form)));
   };

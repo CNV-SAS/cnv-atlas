@@ -1,5 +1,7 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
+
 import { startTransition, useActionState, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -50,6 +52,7 @@ const FIRMAR_CON_RED = async (prev: SignSurveyState, form: FormData): Promise<Si
   try {
     return await signSurveyAction(prev, form);
   } catch (e) {
+    unstable_rethrow(e); // el redirect del exito NO es un fallo (ver survey-phase-form)
     reportClientError("consentimiento.firmar-sin-red", e);
     return { ...initialSign, error: SIN_RED };
   }
@@ -59,6 +62,7 @@ const ENVIAR_CODIGO_CON_RED = async (prev: OtpSendState, form: FormData): Promis
   try {
     return await sendConsentOtpAction(prev, form);
   } catch (e) {
+    unstable_rethrow(e); // el redirect del exito NO es un fallo (ver survey-phase-form)
     reportClientError("consentimiento.enviar-codigo-sin-red", e);
     return { ...initialOtp, error: SIN_RED };
   }
@@ -71,6 +75,7 @@ const COMPROBAR_CODIGO_CON_RED = async (
   try {
     return await checkConsentOtpAction(prev, form);
   } catch (e) {
+    unstable_rethrow(e); // el redirect del exito NO es un fallo (ver survey-phase-form)
     reportClientError("consentimiento.comprobar-codigo-sin-red", e);
     // `retryable` es exactamente esto: no es un codigo equivocado, asi que NO gasta intento y el mismo
     // codigo se puede volver a comprobar (el efecto de abajo limpia `otpChecked` cuando lo ve).

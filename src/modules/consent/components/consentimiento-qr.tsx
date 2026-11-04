@@ -1,5 +1,7 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
+
 import { useActionState, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,7 @@ const CONFIRMAR_CON_RED = async (
   try {
     return await confirmarSesionQrAction(prev, form);
   } catch (e) {
+    unstable_rethrow(e); // el redirect del exito NO es un fallo (ver survey-phase-form)
     reportClientError("consentimiento-qr.confirmar-sin-red", e);
     return {
       error:
