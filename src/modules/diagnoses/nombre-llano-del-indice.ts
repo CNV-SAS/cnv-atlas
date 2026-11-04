@@ -45,7 +45,7 @@
 //          llano y la direccion del numero. Va al documento de dudas con las dos opciones.
 //
 // Las otras cinco filas NO SE TOCAN: sus nombres de la HC ya son llanos y son los de su archivo ("Función
-// Celular", "Riesgo Celular", "Síndrome Celular", "Aceleración del Envejecimiento") o los fijo su tabla 3
+// Celular", "Riesgo Celular", "Aceleración del Envejecimiento") o los fijo su tabla 3
 // ("Edad biológica estimada"). Cambiarlos seria mover lo que ya se entiende.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -57,6 +57,19 @@ const NOMBRE_LLANO: Record<string, string> = {
   IEHH: "Equilibrio hídrico",
   PABU: "Proporción bioeléctrica",
   "ICA-BIS": "Desviación bioeléctrica",
+  // ═══ EL ISCM: "Síndrome Celular" NO ES LO QUE MIDE (Santiago, 2026-11-03) ═══
+  //
+  // *"Cambiar el nombre del indicador «Síndrome Celular» a «Susceptibilidad Cardiometabólica». Ya que
+  // Síndrome Celular no se entiende."*
+  //
+  // Y AQUI NO HACE FALTA NINGUNA TRADUCCION NUESTRA, porque el nombre que pide ES EL OFICIAL DE GILDARDO:
+  // su registro de indicadores dice "Índice de Susceptibilidad Cardiometabólica" (§10 del 2026-08-09).
+  // "Síndrome Celular" es el rotulo corto de su tabla de HC, y las dos cosas conviven en su archivo.
+  //
+  // ASI QUE ESTA FILA ES LA MENOS DISCUTIBLE DE LAS CUATRO: no se le pone un nombre llano encima de su
+  // nombre, se usa SU nombre en vez de su abreviatura. Y lo que mide no es "celular": es el riesgo
+  // cardiometabolico, que es justo lo que el rotulo corto escondia.
+  ISCM: "Susceptibilidad Cardiometabólica",
 };
 
 /**

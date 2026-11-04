@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 // CANDADO DE LA HISTORIA CLINICA IMPRIMIBLE (2026-09-01).
 //
 // POR QUE EXISTE ESTA PIEZA: el paciente tiene derecho a su historia clinica completa (Resolucion 1995,
@@ -19,13 +21,38 @@ const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 const SELLO = readFileSync("src/modules/reports/components/hc-consentimiento.tsx", "utf8");
 const BOTON = readFileSync("src/modules/reports/components/hc-imprimir.tsx", "utf8");
 
-describe("se imprime lo que se ve, sin una segunda construcción del documento", () => {
-  it("el botón imprime la pantalla, no genera un documento aparte", () => {
-    // La decision de fondo. Generar la historia otra vez en el servidor exigiria una SEGUNDA construccion
-    // del mismo documento (con @react-pdf, que no entiende este HTML), y dos construcciones del mismo
-    // insumo es el defecto que llevamos una semana cerrando: la segunda hereda los huecos de la primera y
-    // se desincronizan sin que nada avise. Con `print()` lo impreso ES lo que se ve, por construccion.
-    expect(BOTON).toContain("window.print()");
+describe("el documento de la historia clínica sale del servidor, y la pantalla sigue siendo imprimible", () => {
+  it("el botón descarga el PDF del servidor, no imprime la pantalla", () => {
+    // ═══ ESTE CASO CAMBIÓ DE SIGNO, Y CONVIENE LEER POR QUÉ (2026-11-03) ═══
+    //
+    // Exigía `window.print()`, con esta razón: *"generar la historia otra vez en el servidor exigiría una
+    // SEGUNDA construcción del mismo documento, y dos construcciones del mismo insumo se desincronizan
+    // sin que nada avise"*. El argumento era bueno y sigue siéndolo.
+    //
+    // LO QUE CAMBIÓ ES EL HECHO: esa segunda construcción YA EXISTE (`HistoriaClinicaDocument`) y es la
+    // que se le ENVÍA al paciente cuando la pide. O sea que no se elegía entre una y dos: había dos, y el
+    // botón usaba la que mete la URL completa de la consulta, la fecha y el "5/9" en cada hoja, porque
+    // eso lo pone el NAVEGADOR y no hay CSS que lo quite.
+    //
+    // SE AFIRMA SOBRE EL CÓDIGO SIN COMENTARIOS, y no es un detalle: la primera versión de este caso pasó
+    // en verde porque el comentario del componente CITA `window.print()` para explicar por qué se retiró.
+    // El candado se cazaba a sí mismo, que es la forma en que uno deja de proteger nada.
+    const codigo = sinComentarios(BOTON);
+    expect(codigo, "volvió a imprimir la pantalla, con la URL en cada hoja").not.toContain("print()");
+    expect(codigo).toContain("/hc/pdf");
+  });
+
+  it("y la ruta del PDF reusa la MISMA composición que la pantalla", () => {
+    // Es la condición que hizo aceptable el cambio: el documento llega COMPUESTO, no se compone en la
+    // ruta. Lo arma `getHistoriaClinicaDoc`, que llama a los mismos lectores que la pantalla. Si algún
+    // día la ruta compusiera lo suyo, volveríamos a tener dos historias clínicas distintas.
+    const RUTA = sinComentarios(readFileSync("src/app/(app)/ani-bis-e/[id]/hc/pdf/route.ts", "utf8"));
+    expect(RUTA).toContain("getHistoriaClinicaDoc(id)");
+    expect(RUTA).toContain("renderHistoriaClinicaPdf(hc)");
+    // Y LA AUTORIZACIÓN ES LA DE SIEMPRE: sesión más RLS, sin una segunda regla de acceso escrita aquí.
+    expect(RUTA).toContain("requireUser()");
+    // NUNCA CACHEADO: una copia cacheada sería un documento clínico desactualizado circulando.
+    expect(RUTA).toContain('"Cache-Control": "no-store"');
   });
 
   it("la historia lleva la marca de impresión, y el botón no sale en el papel", () => {
@@ -181,13 +208,28 @@ describe("los dos documentos de la consulta se nombran por separado", () => {
     );
   });
 
-  it("los tres controles de la HC dicen que son de la HC", () => {
-    expect(PAGE).toContain("Ver HC en formato SOAP");
-    expect(BOTON).toContain("Imprimir o guardar la HC en PDF");
-    expect(ENTREGAR).toContain("Enviar copia de la HC al paciente");
+  it("los tres controles de la HC dicen que son de la HC, y en pocas palabras", () => {
+    // ═══ CORTOS (Santiago, 2026-11-03) ═══
+    //
+    // *"Los 3 botones de HC quedaron bien, el problema es que siento que quedaron muy largos con mucho
+    // texto."* Tres botones seguidos de siete palabras cada uno se leen como un párrafo, no como
+    // acciones. Se conserva el "HC", que es lo que los distingue del informe del paciente, y se va lo
+    // que el icono o la línea de al lado ya dicen.
+    expect(PAGE).toContain("Ver HC (SOAP)");
+    expect(BOTON).toContain("Imprimir HC");
+    expect(ENTREGAR).toContain("Enviar HC");
     // Y NINGUNO SE QUEDA CON EL ROTULO AMBIGUO, que es lo que de verdad confundía: "Enviársela" no dice
     // qué, y en una pantalla con dos documentos el pronombre apunta a los dos.
     expect(ENTREGAR, "volvió el pronombre sin antecedente").not.toContain("Enviársela al paciente");
+    // LOS TRES SIGUEN DICIENDO "HC": acortar no puede costar la distinción, que es para lo que se
+    // alargaron en primer lugar.
+    for (const [nombre, src] of [
+      ["SOAP", PAGE],
+      ["imprimir", BOTON],
+      ["enviar", ENTREGAR],
+    ] as const) {
+      expect(src, `el botón de ${nombre} dejó de nombrar la HC`).toMatch(/\bHC\b/);
+    }
   });
 
   it("el texto del envío dice que el plan va APARTE, no dentro del informe", () => {

@@ -323,6 +323,26 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
 //
 // PURO: no lee BD. Lo llaman la pantalla y el lector del PDF con lo que cada uno ya tiene.
 
+/**
+ * ═══ LAS LINEAS CONDICIONALES NO SON LO QUE EL MODELO EXIGIO PARA ESTE PACIENTE (2026-11-03) ═══
+ *
+ * Santiago, leyendo el bloque "LO QUE EL MODELO EXIGIÓ" de una historia clinica real: diecisiete lineas,
+ * entre ellas *"Valoración médica si IRC > 5.0"* en una paciente con IRC 2,89, *"Valoración médica si IAE
+ * > 10 años"* con un IAE de −1,3, y *"Laboratorios: metales pesados si exposición ocupacional"*.
+ *
+ * ESAS LINEAS NO SON EXIGENCIAS: SON EL CATALOGO. El titulo del bloque dice que el modelo las exigio, y
+ * para este paciente no exigio ninguna de las tres. Un documento que afirma una exigencia que no existe
+ * es peor que uno que la omite: el que lo lea dentro de un año creera que se ignoraron.
+ *
+ * SE SUPRIME, NO SE REESCRIBE, que es la unica forma que esta casa admite con su contenido: la linea
+ * entera se va, no se le quita la condicion. Quitarle el "si IRC > 5.0" dejaria "Valoración médica" como
+ * si el modelo la hubiera exigido, que es exactamente la afirmacion falsa que se quiere evitar.
+ *
+ * LA REMISION EN SI NO SE TOCA: a quien acudir y con que urgencia se queda entero, con su estado. Lo que
+ * sale son las indicaciones condicionales que cuelgan de ella.
+ */
+const LINEA_CONDICIONAL = /\bsi\s/i;
+
 export function remisionesExigidas(
   rutas: RutaContent[],
   registradas: { referredTo: string }[],
@@ -331,7 +351,7 @@ export function remisionesExigidas(
   return consolidateRemisiones(buildRemisiones(rutas)).map((r) => ({
     destino: r.profesional,
     urgencia: r.urgencia,
-    indicaciones: r.indicaciones,
+    indicaciones: r.indicaciones.filter((i) => !LINEA_CONDICIONAL.test(i)),
     registrada: hechas.has(r.referralTarget),
   }));
 }

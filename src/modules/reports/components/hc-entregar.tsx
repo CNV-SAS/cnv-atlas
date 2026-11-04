@@ -37,7 +37,9 @@ export function HcEntregar({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <Button type="submit" variant="outline" size="sm" disabled={pending}>
           <Mail className="size-4" aria-hidden />
-          {pending ? "Enviando..." : "Enviar copia de la HC al paciente"}
+          {/* CORTO, conservando el "HC" (Santiago, 2026-11-03). A quien se envia ya lo dice la linea de abajo
+              ("Se envia cuando el paciente la pide"), asi que repetirlo en el boton era decirlo dos veces. */}
+          {pending ? "Enviando..." : "Enviar HC"}
         </Button>
       </form>
       {ultimaEntrega ? (

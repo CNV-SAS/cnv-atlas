@@ -448,6 +448,47 @@
     widows: 2;
   }
 
+  /* ═══ UNA TABLA LARGA SE PARTE, CON SU ENCABEZADO  ·  (Santiago, 2026-11-03, segunda vez) ═══
+   *
+   * EL SINTOMA, repetido: *"en la hoja 2 quedó «COMPOSICIÓN CORPORAL · ÍNDICES ALTERADOS» nuevamente
+   * solo, en blanco ocupando casi toda la hoja. Y luego aparece «Composición corporal - Niveles de
+   * Wang»."* El 30 de octubre se declaró la HC como `hoja-larga`, lo que dejó partirse a sus secciones y
+   * pegó los títulos a lo que encabezan. No bastó, y la razón es que el que no se podía partir era la
+   * TABLA: `table { break-inside: avoid }` la empuja ENTERA a la hoja siguiente, y el título se queda
+   * atrás por mucho `break-after: avoid` que lleve.
+   *
+   * POR QUE SE REVIERTE AQUI UNA DECISION DELIBERADA. La regla nació con su razón escrita: *"una tabla
+   * partida a la mitad entre dos hojas es ilegible en un documento probatorio"*. Sigue siendo cierto de
+   * una tabla partida A SECAS. Deja de serlo con `thead` repetido, que es lo que ya se añadió: las filas
+   * de la segunda hoja llevan su encabezado y se leen igual.
+   *
+   * Y LA ALTERNATIVA ERA PEOR, que es lo que decide: la tabla de Wang es MAS ALTA QUE UNA PAGINA, así que
+   * el navegador la parte igual (ignora `avoid` cuando es imposible). O sea que no estábamos eligiendo
+   * entre partirla y no partirla: estábamos eligiendo entre partirla con una hoja en blanco delante y un
+   * título huérfano, o partirla limpia. Una regla que no se puede cumplir no protege nada.
+   *
+   * SOLO EN `hoja-larga`: en una hoja corta (el plan del paciente) la tabla sí cabe, y ahí la regla
+   * original se cumple y se queda. */
+  .hoja-larga table {
+    break-inside: auto;
+  }
+
+  /* ═══ EL RECUADRO DE DATOS DEL PACIENTE NO SE PARTE  ·  (Santiago, 2026-11-03) ═══
+   *
+   * *"En la hoja 1 y 2 se ve cómo queda cortado (a medias) el cuadro del panel que inicia en datos del
+   * paciente y termina en intolerancias."*
+   *
+   * Es el efecto colateral de `hoja-larga`: al dejar que las secciones se partan para que no dejen hojas
+   * en blanco, también se dejó que se partan las que SI CABEN. Y un recuadro cortado a mitad de borde se
+   * lee como un documento roto, no como una página que sigue.
+   *
+   * LA DISTINCION QUE LO RESUELVE no la puede hacer el CSS (no sabe qué cabe), así que la declara quien
+   * conoce el bloque: `no-partir` es para las tarjetas CORTAS, las que de verdad caben enteras. Ponerlo
+   * en una larga devolvería el hueco, así que no se reparte a voleo. */
+  .hoja-larga .no-partir {
+    break-inside: avoid;
+  }
+
   /* ═══ EL PAPEL ES BLANCO (Santiago, 2026-11-03) ═══
    *
    * SU REPORTE, sobre la HC descargada: *"Se ve muy raro el fondo como gris azulado y encima las cards

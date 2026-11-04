@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -82,7 +82,22 @@ describe("el boton de imprimir esta en todas las subpestañas", () => {
     const funcional = leer("src/modules/diagnoses/components/hoja-diagnostico-funcional.tsx");
     expect(funcional).toContain("<BarraDeImpresion");
     expect(funcional, "el documento del paciente dejo de existir solo en papel").toContain("solo-impresion");
-    expect(leer("src/modules/reports/components/hc-imprimir.tsx")).toContain("imprimirHoja");
+    // ═══ LA HC YA NO IMPRIME LA PANTALLA: DESCARGA SU PDF (2026-11-03) ═══
+    //
+    // Pedía `imprimirHoja`, o sea `window.print()` sobre el bloque marcado. Eso se cambió porque el
+    // NAVEGADOR mete la URL completa de la consulta, la fecha y el "5/9" en cada hoja de un documento
+    // clínico que se puede entregar a un paciente, y no hay CSS que lo quite.
+    //
+    // Y NO ES UNA SEGUNDA CONSTRUCCIÓN NUEVA: `HistoriaClinicaDocument` ya existía (es la que se le ENVÍA
+    // al paciente cuando la pide). O sea que había dos, y el botón usaba la peor de las dos.
+    //
+    // LO QUE SE EXIGE AHORA es que apunte a la ruta del PDF, y que esa ruta exista: un botón que enlaza a
+    // un 404 es peor que uno que imprime mal.
+    expect(leer("src/modules/reports/components/hc-imprimir.tsx")).toContain("/hc/pdf");
+    expect(
+      existsSync("src/app/(app)/ani-bis-e/[id]/hc/pdf/route.ts"),
+      "el botón enlaza a una ruta que no existe",
+    ).toBe(true);
   });
 
   it("TODA hoja de un taller lleva su documento aparte y su taller apagado", () => {

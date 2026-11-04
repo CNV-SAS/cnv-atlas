@@ -164,7 +164,25 @@ export function recomendacionesDe(ctx: RecomendacionesContexto): RecomendacionBl
   for (const p of PENDIENTES) {
     if (p.activa(ctx)) out.push({ titulo: p.titulo, items: [], pendiente: true });
   }
-  // El generico va SIEMPRE y al final, como en su archivo.
-  out.push(general(ctx.pesoKg ?? null, ctx.voz ?? "paciente"));
+  // ═══ EL GENERICO VA AL PACIENTE, NO A LA HISTORIA CLINICA (Santiago, 2026-11-03) ═══
+  //
+  // Su pregunta sobre el bloque "Alimentación saludable general" en la HC: *"¿para qué le sirve al
+  // profesional o al paciente que eso esté ahí?"*
+  //
+  // Y LA RESPUESTA ES DISTINTA PARA CADA UNO, que es justo lo que lo decide. "Frutas y verduras de varios
+  // colores en cada comida" es util para QUIEN VA A COMER: va en la hoja del plan, que es lo que el
+  // paciente se lleva, y ahi se queda entero. En la historia clinica no dice nada de ESTE paciente: es el
+  // mismo parrafo en las 569 consultas, y un documento clinico que repite lo mismo en todas enseña a
+  // saltarselo, incluido lo que si es de esta persona.
+  //
+  // LOS CONDICIONALES SE QUEDAN EN LAS DOS, y la diferencia no es de longitud: "Dieta DASH y control de
+  // sodio" sale porque ESTE paciente tiene hipertension, y la preservacion de masa muscular porque tiene
+  // sarcopenia. Eso es un hecho de la consulta y consta.
+  //
+  // SE DECIDE POR LA VOZ, que es el dato que ya distingue los dos documentos: `clinica` es la historia.
+  // Una bandera nueva ("incluirGenerico") seria un segundo interruptor para lo mismo.
+  if ((ctx.voz ?? "paciente") !== "clinica") {
+    out.push(general(ctx.pesoKg ?? null, ctx.voz ?? "paciente"));
+  }
   return out;
 }

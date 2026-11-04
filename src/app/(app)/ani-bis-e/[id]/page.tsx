@@ -1360,12 +1360,12 @@ export default async function ResultadosEvaluacionPage({
                     href={`/ani-bis-e/${id}/soap`}
                     className="no-print group inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
-                    Ver HC en formato SOAP
+                    Ver HC (SOAP)
                     <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
                       →
                     </span>
                   </Link>
-                  <HcImprimir />
+                  <HcImprimir evaluationId={id} />
                   <HcEntregar evaluationId={id} ultimaEntrega={ultimaEntregaHc} />
                 </div>
               </div>

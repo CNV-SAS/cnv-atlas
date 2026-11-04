@@ -2,13 +2,9 @@
 // renderiza la page server. Porte de la HC del v8 (capturas 2026-08-24), con las divergencias anotadas
 // donde ocurren.
 
-import {
-  CLASE_DEL_NIVEL,
-  DEFINICION_DEL_ICN,
-  nivelDeCubrimiento,
-  nivelDelIcn,
-  POR_QUE_DISCREPAN,
-} from "@/modules/treatment/validacion-presentacion";
+// SOLO LA DEFINICION DEL ICN (2026-11-03). Los colores, los niveles y la nota de por que discrepan las
+// dos columnas se fueron con la tabla: viven donde vive la tabla, que es la pantalla de Tratamiento.
+import { DEFINICION_DEL_ICN } from "@/modules/treatment/validacion-presentacion";
 
 import type { HcAntecedenteResuelto } from "../data/hc-antecedentes-map";
 import { etiquetaDeVia } from "../vias-de-entrega";
@@ -26,9 +22,27 @@ function TituloSeccion({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Tarjeta({ children }: { children: React.ReactNode }) {
+/**
+ * Una tarjeta de la historia clinica.
+ *
+ * `noPartir` MARCA LAS QUE CABEN ENTERAS EN UNA HOJA (Santiago, 2026-11-03): *"se ve cómo queda cortado
+ * (a medias) el cuadro del panel que inicia en datos del paciente y termina en intolerancias"*. Un
+ * recuadro cortado a mitad de borde se lee como un documento roto, no como una pagina que sigue.
+ *
+ * NO SE PONE A TODAS, y esa es la parte delicada: al declarar la HC como `hoja-larga` se dejo que las
+ * secciones se partan justamente para que una que NO cabe no empuje una hoja entera en blanco. Marcar una
+ * tarjeta larga devolveria ese hueco. Asi que lo declara quien conoce el bloque, no una regla general.
+ */
+function Tarjeta({ children, noPartir = false }: { children: React.ReactNode; noPartir?: boolean }) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">{children}</section>
+    <section
+      className={
+        "flex flex-col gap-3 rounded-xl border border-border bg-card p-4" +
+        (noPartir ? " no-partir" : "")
+      }
+    >
+      {children}
+    </section>
   );
 }
 
@@ -65,7 +79,10 @@ const NO_APLICA = "No aplica";
 
 export function HcDatosDelPaciente({ datos }: { datos: HcDatosPaciente }) {
   const edadSexo = [
-    datos.edad != null ? `${datos.edad}a` : null,
+    // "26 años", no "26a" (Santiago, 2026-11-03): *"no queda bien ese 26a"*. Es un documento clinico en
+    // español que lee otro profesional, no una etiqueta de tabla, y la abreviatura ahorra tres caracteres
+    // a cambio de parecer una errata. Con su concordancia, que un "1 años" es el mismo defecto de al lado.
+    datos.edad != null ? `${datos.edad} ${datos.edad === 1 ? "año" : "años"}` : null,
     datos.sexo === "F" ? "Femenino" : datos.sexo === "M" ? "Masculino" : null,
   ]
     .filter(Boolean)
@@ -77,13 +94,16 @@ export function HcDatosDelPaciente({ datos }: { datos: HcDatosPaciente }) {
     .filter(Boolean)
     .join(" · ");
   return (
-    <Tarjeta>
+    // ENTERA: son nueve celdas de etiqueta y valor, caben siempre, y es la primera hoja del documento.
+    <Tarjeta noPartir>
       <TituloSeccion>Datos del paciente</TituloSeccion>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <Dato etiqueta="Paciente" valor={datos.paciente || SIN_DATO} />
         <Dato etiqueta="Edad / Sexo" valor={edadSexo || SIN_DATO} />
         <Dato etiqueta="Peso / Talla" valor={pesoTalla || SIN_DATO} />
-        <Dato etiqueta="Fecha" valor={datos.fecha} />
+        {/* "Fecha de la consulta" y no "Fecha" (Santiago, 2026-11-03): en una hoja que ademas lleva la
+            fecha de la MEDICION y la de impresion, una "Fecha" a secas no dice cual de las tres es. */}
+        <Dato etiqueta="Fecha de la consulta" valor={datos.fecha} />
         <Dato etiqueta="Profesional" valor={datos.profesional || SIN_DATO} />
         {/* SOLO CUANDO NO LA RESPONDIO EL PACIENTE (0172). En el caso normal no aparece: un documento no
             necesita decir que pasó lo que suele pasar. */}
@@ -98,7 +118,8 @@ export function HcDatosDelPaciente({ datos }: { datos: HcDatosPaciente }) {
 
 export function HcMotivoDeConsulta({ motivos }: { motivos: string[] }) {
   return (
-    <Tarjeta>
+    // ENTERA: una linea o dos.
+    <Tarjeta noPartir>
       <TituloSeccion>Motivo de consulta</TituloSeccion>
       {motivos.length > 0 ? (
         // DIVERGENCIA deliberada: su HTML concatena las opciones SIN separador ("Control de
@@ -214,6 +235,19 @@ export function HcResumenDiagnostico({
   texto: string | null;
   motivo: string | null;
 }) {
+  // ═══ SIN RESUMEN, NO HAY BLOQUE (Santiago, 2026-11-03) ═══
+  //
+  // En la HC descargada salia un apartado entero con un titulo y, debajo, *"Este resumen es del
+  // profesional que atiende al paciente; tu rol no tiene uno."* Su reporte: *"¿Esto qué? El profesional
+  // lo pone. Si no pone nada, no debería de aparecer."*
+  //
+  // Y TIENE RAZON POR UNA RAZON QUE NO ES DE ESTETICA: ese texto le habla a QUIEN MIRA LA PANTALLA ("tu
+  // rol"), y la historia clinica es un DOCUMENTO. Impreso, le explica al lector de dentro de un año por
+  // que el que lo descargo no veia una seccion, que no es un hecho de la consulta.
+  //
+  // ASI QUE EL MOTIVO SE QUEDA EN PANTALLA Y NO EN EL DOCUMENTO. Aqui, sin texto, el bloque entero no se
+  // rinde: una seccion vacia en un documento clinico se lee como un dato que falta.
+  if (!texto) return null;
   return (
     <Tarjeta>
       {/* La PROFESION va en el titulo, como en su HC: el resumen es del profesional que atiende, no uno
@@ -666,66 +700,47 @@ export function HcValidacionNutricional({ validacion }: { validacion: HcValidaci
       </Tarjeta>
     );
   }
-  const fmt = (v: number, d: number) => v.toFixed(d);
+  // ═══ LA TABLA ENTERA NO, LA CIFRA SI (Santiago, 2026-11-03) ═══
+  //
+  // Su pregunta, y es la correcta: *"¿realmente esa información es necesaria? ¿Para qué le sirve al
+  // profesional o al paciente que eso esté ahí?"* Son dieciséis filas de nutrientes con cuatro columnas
+  // cada una, en un documento de nueve hojas.
+  //
+  // LO QUE LA TABLA CONTESTA es "¿este plan está balanceado?", y eso es una cifra: el porcentaje de
+  // nutrientes con ICN aceptable. El detalle fila por fila es la HERRAMIENTA con la que el nutricionista
+  // AJUSTA el plan, y esa herramienta vive donde se ajusta, que es la pantalla de Tratamiento. En la
+  // historia clínica es el resultado lo que consta, no el taller.
+  //
+  // NO SE PIERDE NADA QUE NO ESTE EN OTRO SITIO: la tabla completa sigue entera en Tratamiento, con sus
+  // colores y su detalle. Lo que sale del documento es la copia.
+  //
+  // Y NO ES REVERTIR LA DECISION DEL 25-OCT, que era *"el ICN va a la historia clínica. Constrúyelo"*: el
+  // ICN sigue yendo, con su definición y su cifra. Lo que se retira son las dieciséis filas.
   return (
     <Tarjeta>
       <TituloSeccion>Tratamiento · validación del plan (meta ICN ≈ 1)</TituloSeccion>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[26rem] text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-[11px] text-muted-foreground">
-              <th className="px-2 py-1 font-medium">Nutriente</th>
-              <th className="px-2 py-1 text-right font-medium">Obtenido</th>
-              <th className="px-2 py-1 text-right font-medium">Necesidad</th>
-              <th className="px-2 py-1 text-right font-medium">% Cubrim.</th>
-              <th className="px-2 py-1 text-right font-medium">ICN</th>
-            </tr>
-          </thead>
-          <tbody>
-            {validacion.nutrientes.map((n) => (
-              <tr key={n.k} className="border-b border-border/60 last:border-0">
-                <td className="px-2 py-1.5 font-medium text-foreground">
-                  {n.l} <span className="text-[11px] text-muted-foreground">({n.u})</span>
-                  {n.lim ? (
-                    <span className="ml-1 text-[11px] text-muted-foreground">· a limitar</span>
-                  ) : null}
-                </td>
-                <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
-                  {fmt(n.obtenido, n.d)}
-                </td>
-                <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
-                  {fmt(n.requerido, n.d)}
-                </td>
-                <td
-                  className={
-                    "px-2 py-1.5 text-right font-medium tabular-nums " +
-                    CLASE_DEL_NIVEL[nivelDeCubrimiento(n)]
-                  }
-                >
-                  {Math.round(n.cob)}%
-                </td>
-                {/* El COLOR del ICN va incluso en el sodio (fiel al v8): un sodio denso da ICN alto y
-                    rojo, que refuerza el "te pasas". La energia no tiene ICN y queda en guion. */}
-                <td
-                  className={
-                    "px-2 py-1.5 text-right font-medium tabular-nums " + CLASE_DEL_NIVEL[nivelDelIcn(n.icn)]
-                  }
-                >
-                  {n.lim ? "límite" : n.k === "kcal" ? "-" : n.icn == null ? "-" : n.icn.toFixed(2)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        {DEFINICION_DEL_ICN} Nutrientes con ICN ≥ 0,9:{" "}
-        <span className="font-semibold text-foreground">{validacion.icnPctOk}%</span>.
+      <p className="max-w-prose text-sm text-foreground">
+        Nutrientes con ICN ≥ 0,9:{" "}
+        <span className="font-semibold">{validacion.icnPctOk}%</span> de los{" "}
+        {validacion.nutrientes.length} evaluados.
       </p>
-      <p className="text-xs text-muted-foreground">{POR_QUE_DISCREPAN}</p>
+      <p className="text-xs text-muted-foreground">{DEFINICION_DEL_ICN}</p>
+      <p className="text-xs text-muted-foreground">
+        El detalle nutriente por nutriente está en Tratamiento, que es donde se ajusta el plan.
+      </p>
     </Tarjeta>
   );
 }
+
+// ═══ Y NO SE EXTRAE UNA SEGUNDA TABLA PARA TRATAMIENTO: YA TIENE LA SUYA ═══
+//
+// Al retirar las dieciseis filas de aqui, lo primero que hice fue extraerlas a un componente para la
+// pantalla de Tratamiento. Estaba mal: Tratamiento YA tiene su propia tabla de validacion
+// ("Validación del plan · % de cubrimiento e ICN", en `treatment-panel`), y ademas mejor, porque la
+// DERIVA en vivo mientras el nutricionista mueve las porciones, en vez de leer lo sellado.
+//
+// O sea que el componente extraido habria sido la TERCERA copia de la misma tabla, y la tercera copia
+// es la que se desincroniza sin que nadie mire. Se borro antes de llegar a existir.
 
 // Bloque 11: RECOMENDACIONES. Bloques condicionales por diagnostico; el que todavia no se puede emitir
 // aparece CON SU TITULO diciendo que espera. La seccion existe y se ve que le falta algo, en vez de

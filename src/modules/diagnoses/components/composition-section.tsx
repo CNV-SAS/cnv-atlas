@@ -557,7 +557,23 @@ export function CompositionSection({
             </tbody>
           </table>
         </div>
-        {composition.hasDerivedValues ? (
+        {/* ═══ LAS NOTAS AL PIE NO VAN EN LA HISTORIA CLINICA (Santiago, 2026-11-03) ═══
+
+            Su reporte: *"sigue saliendo este texto en la tabla... Considero mejor quitarlo de la HC y
+            solo dejarlo en la tabla de diagnóstico, que se supone ya está allá."*
+
+            Y EL ARGUMENTO ES EL MISMO QUE ORDENO TODO LO DEMAS: estas dos notas explican COMO FUNCIONA EL
+            SISTEMA (que algunas variables se reconstruyen, que el IMC usa umbrales de la OMS y no del
+            motor). Eso es contexto para quien LEE LA PANTALLA mientras trabaja, no un hecho de la
+            consulta. En la pantalla de Diagnóstico se quedan enteras; en el documento sobran.
+
+            LA DEL ASTERISCO SE QUEDA EN LAS DOS, y no es una excepción caprichosa: marca filas CONCRETAS
+            de ESTA tabla con una referencia en validación. Sin ella, el asterisco queda huérfano y el
+            lector no sabe qué significa en la fila que tiene delante.
+
+            `soloAlterados` ES la historia clínica: es la única superficie que filtra la tabla a lo
+            alterado (su regla de HC). Gatearlo por ahí evita una bandera nueva que diga lo mismo. */}
+        {composition.hasDerivedValues && !soloAlterados ? (
           <p className="text-xs text-muted-foreground">
             Algunos valores de composición se reconstruyen a partir de la medición cuando el equipo no
             los exporta, siguiendo el modelo ANI-BIS-E. Por eso puedes ver variables que no aparecían
@@ -573,7 +589,7 @@ export function CompositionSection({
             significa que el dato esté mal: espera confirmación.
           </p>
         ) : null}
-        {showDiagnosis ? (
+        {showDiagnosis && !soloAlterados ? (
           <p className="text-xs text-muted-foreground">
             IMC, cintura, índice cintura-cadera (ICC) e índice cintura-talla (ICT) usan umbrales de
             referencia médica estándar (OMS), no un resultado del motor ANI-BIS-E.
