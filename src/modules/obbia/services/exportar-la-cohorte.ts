@@ -1,4 +1,19 @@
 import type { CohorteDeInvestigacion } from "../data/cohorte-reader";
+import {
+  type CeldaConPacientes,
+  conCeldasSuprimidas,
+  K_ANONIMATO,
+  ROTULO_SUPRIMIDO,
+} from "./supresion-de-celdas";
+
+/** El rotulo de cada eje de consolidado. Una sola fuente con la pantalla seria mejor, pero la pantalla es
+ *  un Server Component y este modulo es PURO: el candado compara las dos listas. */
+const ROTULO_DEL_EJE: Record<"pais" | "ciudad" | "sexo" | "profesional", string> = {
+  pais: "Por país",
+  ciudad: "Por ciudad",
+  sexo: "Por sexo",
+  profesional: "Por profesional",
+};
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // EL CSV DEL RESUMEN DE LA COHORTE  ·  (Santiago, 2026-10-30: "la exportacion registrada")
@@ -102,26 +117,88 @@ export function resumenDeLaCohorteACsv(
     ...filas.map((f) => f.map(campo).join(",")),
   ];
 
-  if (cohorte.sinAutorizacionPorRazon.length > 0) {
-    lineas.push("", ["Por qué queda fuera", "Consultas", "Pacientes"].join(","));
-    for (const r of cohorte.sinAutorizacionPorRazon) {
-      lineas.push([r.razon, r.consultas, r.pacientes].map(campo).join(","));
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // DESDE AQUI, TODA TABLA PASA POR LA SUPRESION DE CELDAS  ·  k >= 5 (2026-11-03)
+  //
+  // Santiago, mirando el archivo: *"hoy trae celdas de 1 paciente (Maracaibo, 51 años). Eso no se puede
+  // descargar así."* Y tiene razon: una fila que dice "Maracaibo · 1 consulta · 1 paciente · edad media
+  // 51,0" no es una cifra agregada, es UNA PERSONA descrita por su ciudad y su edad. El rotulo del
+  // archivo dice "agregado"; esa fila lo desmiente.
+  //
+  // Y DESDE EL 2026-11-03 ES CONDICION JURIDICA, no solo politica interna: k >= 5 y supresion de celdas
+  // pequeñas aplicados TECNICAMENTE en toda salida comercializable, antes de la primera venta.
+  //
+  // LO SUPRIMIDO SE REUNE, NO SE BORRA (ver `supresion-de-celdas`): las columnas tienen que seguir
+  // sumando el total, o un revisor no sabe si falta una categoria o si el dato esta mal.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  const bloques: { titulo: [string, string, string]; filas: CeldaConPacientes[] }[] = [
+    {
+      titulo: ["Por qué queda fuera", "Consultas", "Pacientes"],
+      filas: cohorte.sinAutorizacionPorRazon.map((r) => ({
+        grupo: r.razon,
+        consultas: r.consultas,
+        pacientes: r.pacientes,
+      })),
+    },
+    // EL MES Y LA VERSION NO TRAEN CUENTA DE PACIENTES, asi que se mide sobre las CONSULTAS, y eso es
+    // conservador por construccion: una consulta es de un paciente como mucho, asi que menos de k
+    // consultas implica menos de k pacientes. Nunca deja pasar una celda pequeña; como mucho suprime una
+    // que no hacia falta, y ese es el lado correcto del error.
+    {
+      titulo: ["Mes de la medición", "Consultas autorizadas", "Pacientes"],
+      filas: cohorte.porMes.map((m) => ({
+        grupo: m.mes,
+        consultas: m.evaluaciones,
+        pacientes: m.evaluaciones,
+      })),
+    },
+    {
+      titulo: ["Versión del motor sellada", "Consultas", "Pacientes"],
+      filas: cohorte.porVersionDelMotor.map((v) => ({
+        grupo: v.version,
+        consultas: v.evaluaciones,
+        pacientes: v.evaluaciones,
+      })),
+    },
+    // LOS CONSOLIDADOS, que son los que de verdad reidentifican: ciudad, sexo, profesional y pais son
+    // CUASI-IDENTIFICADORES, y combinados con la edad media de la fila describen a una persona.
+    ...cohorte.estratos.map((e) => ({
+      titulo: [ROTULO_DEL_EJE[e.eje], "Consultas", "Pacientes"] as [string, string, string],
+      filas: e.filas.map((f) => ({
+        grupo: f.grupo,
+        consultas: f.consultas,
+        pacientes: f.pacientes,
+      })),
+    })),
+  ];
+
+  let celdasSuprimidas = 0;
+  for (const bloque of bloques) {
+    if (bloque.filas.length === 0) continue;
+    const { visibles, suprimida, cuantasSeSuprimieron } = conCeldasSuprimidas(bloque.filas);
+    celdasSuprimidas += cuantasSeSuprimieron;
+    if (visibles.length === 0 && !suprimida) continue;
+    lineas.push("", bloque.titulo.join(","));
+    for (const f of visibles) lineas.push([f.grupo, f.consultas, f.pacientes].map(campo).join(","));
+    if (suprimida) {
+      lineas.push([suprimida.grupo, suprimida.consultas, suprimida.pacientes].map(campo).join(","));
     }
   }
 
-  if (cohorte.porMes.length > 0) {
-    lineas.push("", ["Mes de la medición", "Consultas autorizadas", ""].join(","));
-    for (const m of cohorte.porMes) {
-      lineas.push([m.mes, m.evaluaciones, ""].map(campo).join(","));
-    }
-  }
-
-  if (cohorte.porVersionDelMotor.length > 0) {
-    lineas.push("", ["Versión del motor sellada", "Consultas", ""].join(","));
-    for (const v of cohorte.porVersionDelMotor) {
-      lineas.push([v.version, v.evaluaciones, ""].map(campo).join(","));
-    }
-  }
+  // Y SE DICE CUANTAS SE SUPRIMIERON, arriba, junto al nivel: un archivo que calla lo que le falta se lee
+  // como completo. Es la misma regla que el diccionario de su CNVResearch ("dice qué se retiró, no solo
+  // qué queda") y la misma que gobierna la cifra de excluidos del panel.
+  lineas.splice(
+    3,
+    0,
+    [
+      "Celdas suprimidas por k-anonimato",
+      celdasSuprimidas,
+      `k >= ${K_ANONIMATO}: las categorías con menos de ${K_ANONIMATO} pacientes se reúnen en "${ROTULO_SUPRIMIDO}"`,
+    ]
+      .map(campo)
+      .join(","),
+  );
 
   return `﻿${lineas.join("\r\n")}\r\n`;
 }
@@ -141,6 +218,10 @@ export function alcanceDelResumen(cohorte: CohorteDeInvestigacion, generadoEl: s
   return (
     `Resumen agregado de la cohorte al ${generadoEl}: ${cohorte.conAutorizacion} consultas autorizadas ` +
     `de ${cohorte.pacientesAutorizados} pacientes, ${cohorte.conDiagnostico} con diagnóstico sellado, ` +
-    `sobre ${cohorte.vigentes} consultas vigentes. Sin filas de paciente.`
+    `sobre ${cohorte.vigentes} consultas vigentes. Sin filas de paciente. ` +
+    // EL REGISTRO TIENE QUE PODER AFIRMAR EL CONTROL, no solo el contenido (2026-11-03). La condicion
+    // juridica es que la supresion este aplicada TECNICAMENTE en toda salida; un registro que no la
+    // nombra obliga a abrir el archivo para saber si se aplico, y de eso se trata justamente el registro.
+    `Celdas suprimidas con k >= ${K_ANONIMATO}.`
   );
 }

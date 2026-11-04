@@ -11,6 +11,12 @@ import {
   resumenDeLaCohorteACsv,
 } from "@/modules/obbia/services/exportar-la-cohorte";
 import {
+  conCeldasSuprimidas,
+  cumpleElUmbral,
+  K_ANONIMATO,
+  ROTULO_SUPRIMIDO,
+} from "@/modules/obbia/services/supresion-de-celdas";
+import {
   CIFRAS_DEL_PANEL,
   EXPORT_FILA_A_FILA_DE_LA_VISTA,
   nivelDeAnonimizacion,
@@ -260,5 +266,101 @@ describe("los pacientes del HTML: qué se puede hacer con ellos", () => {
     // como perdido no se recupera; uno que se presenta como pendiente, sí.
     expect(PAGINA).toContain("No dijeron que no, nadie les preguntó");
     expect(PAGINA).toContain("Si firman\n            el consentimiento de Atlas, entran solas");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// CANDADO: NINGUNA CELDA DEL ARCHIVO DESCRIBE A MENOS DE CINCO PERSONAS  ·  k >= 5 (2026-11-03)
+//
+// ═══ DE DONDE SALE ═══
+//
+// Santiago, mirando el CSV: *"hoy trae celdas de 1 paciente (Maracaibo, 51 años). Eso no se puede
+// descargar así."* Una fila que dice "Maracaibo · 1 consulta · 1 paciente · edad media 51,0" no es una
+// cifra agregada: es UNA PERSONA descrita por su ciudad y su edad.
+//
+// Y desde el 2026-11-03 la condición jurídica lo exige para TODA salida comercializable, antes de la
+// primera venta: k >= 5 y supresión de celdas pequeñas, aplicados técnicamente.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("ninguna celda del archivo describe a menos de cinco personas", () => {
+  const conCeldasPequenas: CohorteDeInvestigacion = {
+    ...COHORTE,
+    estratos: [
+      {
+        eje: "ciudad",
+        filas: [
+          { grupo: "Medellín", consultas: 280, pacientes: 225, conBis: 280, conEspectro: 180, edadMedia: 41 },
+          // Las tres que Santiago vio: una persona cada una.
+          { grupo: "Maracaibo", consultas: 1, pacientes: 1, conBis: 0, conEspectro: 0, edadMedia: 51 },
+          { grupo: "Yarumal", consultas: 1, pacientes: 1, conBis: 0, conEspectro: 0, edadMedia: 42 },
+          { grupo: "Bello", consultas: 1, pacientes: 1, conBis: 1, conEspectro: 1, edadMedia: 65 },
+        ],
+      },
+    ],
+  };
+  const CSV_PEQUENAS = resumenDeLaCohorteACsv(conCeldasPequenas, {
+    generadoEl: "03/11/2026",
+    generadoPor: "Quien Sea",
+  });
+
+  it("las celdas de una persona no salen con su nombre de categoría", () => {
+    expect(CSV_PEQUENAS, "una ciudad con un solo paciente identifica a esa persona").not.toContain(
+      "Maracaibo",
+    );
+    expect(CSV_PEQUENAS).not.toContain("Yarumal");
+    expect(CSV_PEQUENAS).not.toContain("Bello");
+    // Y la que sí supera el umbral se queda: suprimir de más también estropea la tabla.
+    expect(CSV_PEQUENAS).toContain("Medellín");
+  });
+
+  it("pero sus cifras SÍ, reunidas, para que las columnas sigan sumando", () => {
+    // Borrarlas rompe la propiedad que hace útil una tabla de caracterización: que sume el total. Un
+    // revisor que no cuadra una tabla no sabe si falta una categoría o si el dato está mal.
+    expect(CSV_PEQUENAS).toContain(ROTULO_SUPRIMIDO);
+    // SE BUSCA LA LINEA QUE EMPIEZA POR EL ROTULO, no una que lo contenga: la cabecera que dice cuántas
+    // se suprimieron lo CITA en su nota, y buscar por contenido se cazaba con ella.
+    const linea = CSV_PEQUENAS.split("\r\n").find((l) => l.startsWith(ROTULO_SUPRIMIDO));
+    expect(linea, "las tres de una persona suman 3 consultas y 3 pacientes").toContain(",3,3");
+  });
+
+  it("y el archivo DICE cuántas suprimió, en vez de callarlo", () => {
+    // Un archivo que calla lo que le falta se lee como completo. Es la misma regla que el diccionario de
+    // su CNVResearch ("dice qué se retiró, no solo qué queda").
+    expect(CSV_PEQUENAS).toContain("Celdas suprimidas por k-anonimato");
+    expect(CSV_PEQUENAS).toContain(`k >= ${K_ANONIMATO}`);
+  });
+
+  it("el umbral se mide sobre PACIENTES, no sobre consultas", () => {
+    // Una persona con cinco consultas es UNA persona: contar cinco la daría por protegida cuando está
+    // sola en su celda. El k-anonimato habla de individuos.
+    const { visibles, suprimida } = conCeldasSuprimidas([
+      { grupo: "uno con muchas visitas", consultas: 9, pacientes: 1 },
+      { grupo: "cinco personas", consultas: 5, pacientes: 5 },
+    ]);
+    expect(visibles.map((f) => f.grupo)).toEqual(["cinco personas"]);
+    expect(suprimida?.pacientes).toBe(1);
+  });
+
+  it("y la fila reunida cuenta como cualquier otra para el umbral", () => {
+    // Si al juntar tres celdas de uno quedan tres personas, sigue por debajo del umbral.
+    const { suprimida } = conCeldasSuprimidas([
+      { grupo: "a", consultas: 1, pacientes: 1 },
+      { grupo: "b", consultas: 1, pacientes: 1 },
+      { grupo: "c", consultas: 1, pacientes: 1 },
+    ]);
+    expect(cumpleElUmbral(suprimida ? [suprimida] : []), "tres personas siguen siendo menos de cinco").toBe(
+      false,
+    );
+  });
+
+  it("los rótulos de los ejes del CSV son los MISMOS de la pantalla", () => {
+    // El CSV es un módulo PURO y la pantalla un Server Component, así que el mapa está escrito dos veces
+    // a propósito. Lo que no puede es divergir: un archivo que llama "Por ciudad" a lo que la pantalla
+    // llama de otra forma obliga a adivinar si son la misma tabla.
+    const PAGINA = readFileSync("src/app/(app)/obbia/page.tsx", "utf8");
+    const EXPORT = readFileSync("src/modules/obbia/services/exportar-la-cohorte.ts", "utf8");
+    for (const rotulo of ["Por país", "Por ciudad", "Por sexo", "Por profesional"]) {
+      expect(PAGINA, `la pantalla dejó de rotular ${rotulo}`).toContain(`"${rotulo}"`);
+      expect(EXPORT, `el CSV dejó de rotular ${rotulo}`).toContain(`"${rotulo}"`);
+    }
   });
 });
