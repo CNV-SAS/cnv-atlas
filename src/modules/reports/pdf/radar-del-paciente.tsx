@@ -68,9 +68,23 @@ function anillo(n: number, r: number): string {
 
 // EL NOMBRE SE PARTE POR EL GUION, que es donde ya trae la juntura ("Celular-Eléctrico"). Mismo criterio que
 // el radar del profesional, y por la misma razón: "Epigenético-Contextual" entero se sale de la hoja.
+// ═══ Y SIN ARRASTRAR EL GUION AL FINAL DE LA PRIMERA LINEA (Santiago, 2026-11-03, segunda vez) ═══
+//
+// Lo reporto dos dias seguidos: *"CelularElectrico"*, pegado. La primera vez se MIDIO sobre los bytes del
+// PDF y el guion ESTABA: el rotulo salia "Celular-" / "Eléctrico" en dos lineas, correcto. Lo que pasa es
+// que los lectores de PDF DES-HIFENAN al copiar (es lo que hacen con cualquier palabra partida al final
+// de una linea), asi que al pegarlo sale "CelularEléctrico".
+//
+// O SEA QUE EL DIBUJO ESTABA BIEN Y LA LECTURA NO, y eso ya es un defecto: si el documento se lee mal al
+// copiarlo, se lee mal. No se le puede pedir a un profesional que sepa que su visor miente.
+//
+// EL ARREGLO ES TIPOGRAFICO Y NO PIERDE NADA: el guion no se dibuja al final de la primera linea. Un
+// guion al final de linea solo hace falta cuando se parte UNA PALABRA; "Celular-Eléctrico" son dos
+// unidas, y en un rotulo de eje el propio salto ya dice que van juntas. El nombre COMPLETO, con su guion,
+// esta tres lineas mas abajo en el detalle por dominio de la misma hoja.
 function lineas(nombre: string): string[] {
   const i = nombre.indexOf("-");
-  return i < 0 ? [nombre] : [nombre.slice(0, i + 1), nombre.slice(i + 1)];
+  return i < 0 ? [nombre] : [nombre.slice(0, i), nombre.slice(i + 1)];
 }
 
 /** La severidad acotada a la escala (0 a 3). */

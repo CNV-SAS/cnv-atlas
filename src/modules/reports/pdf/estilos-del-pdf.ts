@@ -26,18 +26,40 @@ export const MARCA_AZUL = "#205dfd";
 /** El azul hondo de las portadas, extremo oscuro del degradado de marca. */
 export const MARCA_HONDA = "#071b4d";
 /**
- * EL TINTA DE ATLAS (`--foreground` de globals.css, el "ink" de BRAND.md).
- *
- * ES EL COLOR DE LA FRANJA DESDE EL 2026-11-03 (Santiago): *"la franja que hay arriba de cada hoja es un
- * azul electrico algo chillon, prefiero mejor cambiarlo a un azul oscuro (puede ser el de las letras de
- * Atlas #15161a) y dejamos la nubecita como está que quedó bien."*
- *
- * Y LA FORMA DE FONDO SE QUEDA EN AZUL DE MARCA, que es la otra mitad de su frase. No es una
- * inconsistencia: la franja es una LINEA SOLIDA de 5 puntos a sangre, donde el azul electrico pesa
- * demasiado en un documento clinico; la forma es el MISMO azul al 7 %, donde ya no grita. El mismo color
- * a dos opacidades no se comporta igual, y eso es lo que su ojo vio.
+ * EL TINTA DE ATLAS (`--foreground` de globals.css, el "ink" de BRAND.md). Lo usa el texto, no la franja.
  */
 export const MARCA_TINTA = "#15161a";
+
+/**
+ * EL AZUL DE LA FRANJA: el de marca, llevado hacia el azul hondo.
+ *
+ * ═══ DOS INTENTOS, Y EL SEGUNDO ES SUYO TAMBIEN ═══
+ *
+ * El 2026-11-03 por la mañana: *"la franja es un azul electrico algo chillon, prefiero cambiarlo a un
+ * azul oscuro (puede ser el de las letras de Atlas #15161a)"*. Se puso el tinta, y al verlo impreso:
+ * *"se ve muy extraño... volver al azul electrico pero un poquito mas oscuro, que no quede tan chillon y
+ * que tampoco quede gris como este color, ya que ahora se mezcla con el gris del fondo del PDF"*.
+ *
+ * Y LAS DOS OBSERVACIONES SON CORRECTAS, lo que pasa es que el problema no era la claridad: era el TONO.
+ * El tinta de Atlas es un gris azulado casi negro, y sobre el gris del visor de PDF deja de leerse como
+ * una franja de marca: parece un borde de la hoja. El azul electrico si se lee como marca y pesa
+ * demasiado. Lo que faltaba era el azul de marca MAS OSCURO, que es lo que pidio en la segunda.
+ *
+ * ═══ Y NO ES UN HEXADECIMAL INVENTADO ═══
+ *
+ * Es el punto medio entre los DOS anclas de marca que este archivo ya declara: el azul de accion
+ * (#205dfd) y el azul hondo de las portadas (#071b4d), al 45 % hacia el hondo. Asi que sigue siendo el
+ * azul de Atlas, en el escalon que faltaba entre los dos, y no un color nuevo que nadie sabria de donde
+ * salio. Si manana cambia cualquiera de los dos anclas, este se recalcula de ellos.
+ */
+export const MARCA_FRANJA = mezclar(MARCA_AZUL, MARCA_HONDA, 0.45);
+
+/** Mezcla dos hexadecimales. `t` = cuanto del segundo (0 = todo el primero, 1 = todo el segundo). */
+function mezclar(a: string, b: string, t: number): string {
+  const canal = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const mezcla = (i: number) => Math.round(canal(a, i) + (canal(b, i) - canal(a, i)) * t);
+  return `#${[0, 1, 2].map((i) => mezcla(i).toString(16).padStart(2, "0")).join("")}`;
+}
 
 export const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
@@ -132,7 +154,7 @@ export const styles = StyleSheet.create({
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
   /** La banda de marca del borde superior, a sangre. Fina, solida y en todas las paginas. */
-  bandaDeMarca: { position: "absolute", top: 0, left: 0, right: 0, height: 5, backgroundColor: MARCA_TINTA },
+  bandaDeMarca: { position: "absolute", top: 0, left: 0, right: 0, height: 5, backgroundColor: MARCA_FRANJA },
   /**
    * La forma suave de la esquina: un circulo que sale de la hoja, al 7 %.
    *

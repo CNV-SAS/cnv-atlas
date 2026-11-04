@@ -395,11 +395,24 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
   };
 }
 
-// Fecha de la CONSULTA (`evaluations.created_at`), del mismo embed. Va aparte de la de MEDICION porque
-// son dos fechas distintas y el paciente no tiene como saber cual esta viendo si el rotulo dice "Fecha".
+// ═══ LA FECHA DE LA CONSULTA ES EL DIA DE LA ATENCION, NO EL DIA QUE SE ABRIO LA FICHA ═══
+//
+// EL DEFECTO (Santiago, 2026-11-03), en un informe real: *"Fecha de la medición 3/11/2026 · Fecha de la
+// consulta 30/10/2026"*. La consulta sale ANTERIOR a la medicion, que leido por el paciente es absurdo:
+// lo midieron en una consulta que, segun el papel, ya habia terminado cuatro dias antes.
+//
+// Y NO ES UN DATO MALO: es `evaluations.created_at`, el instante en que el profesional ABRIO la ficha.
+// Abrirla antes de la cita es normal (se prepara, se manda el enlace de la encuesta, el paciente la
+// responde en casa). Lo que no es cierto es llamar a eso "la fecha de la consulta".
+//
+// LA ATENCION OCURRIO EL DIA DE LA MEDICION, que es cuando el paciente estuvo delante del equipo. Asi que
+// manda esa, y `created_at` queda de respaldo para las consultas que todavia no tienen toma.
+//
+// Y ES LA MISMA REGLA QUE YA RIGE EN LA BASE: `evaluaciones_vigentes` agrupa por
+// `coalesce(dia, created_at)`, o sea la fecha de la medicion con el mismo respaldo. Una consulta no podia
+// contarse en octubre para la cohorte y en noviembre para el paciente.
 function fechaDeConsulta(ev: unknown): string | null {
-  const uno = (Array.isArray(ev) ? ev[0] : ev) as { created_at?: string | null } | undefined;
-  return uno?.created_at ?? null;
+  return fechaDeMedicion(ev) ?? (Array.isArray(ev) ? ev[0] : (ev as { created_at?: string | null } | undefined))?.created_at ?? null;
 }
 
 // Fecha de MEDICION de la evaluacion del reporte; null si aun no se midio.

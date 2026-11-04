@@ -3,8 +3,16 @@ import { inflateSync } from "node:zlib";
 
 import { describe, expect, it } from "vitest";
 
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 import { type EngineInput, runEngine } from "@/clinical-engine";
-import { MARCA_AZUL, MARCA_TINTA, styles } from "@/modules/reports/pdf/estilos-del-pdf";
+import {
+  MARCA_AZUL,
+  MARCA_FRANJA,
+  MARCA_HONDA,
+  MARCA_TINTA,
+  styles,
+} from "@/modules/reports/pdf/estilos-del-pdf";
 import { ANCHO as ANCHO_DEL_RADAR } from "@/modules/reports/pdf/radar-del-paciente";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
@@ -208,36 +216,62 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
 // LOS DOS AJUSTES DEL 2026-11-03, MEDIDOS SOBRE EL MISMO PDF
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 describe("la franja y los rótulos del radar, medidos sobre el PDF", () => {
-  it("la franja de arriba va en el tinta de Atlas, y la forma de fondo sigue en azul de marca", () => {
-    // SU PEDIDO: *"la franja que hay arriba de cada hoja es un azul electrico algo chillon, prefiero
-    // mejor cambiarlo a un azul oscuro (puede ser el de las letras de Atlas #15161a) y dejamos la
-    // nubecita como está que quedó bien."*
+  it("la franja va en el azul de marca oscurecido, y la forma de fondo sigue en el claro", () => {
+    // ═══ DOS INTENTOS, Y LOS DOS SUYOS (2026-11-03) ═══
     //
-    // SON LAS DOS MITADES Y SE MIDEN LAS DOS: si alguien cambia el azul de la forma "para que combine",
-    // este caso lo dice. El mismo color a dos opacidades no se comporta igual, y eso es lo que su ojo vio.
-    expect(styles.bandaDeMarca.backgroundColor).toBe(MARCA_TINTA);
+    // Por la mañana: *"la franja es un azul electrico algo chillón, prefiero cambiarlo a un azul oscuro
+    // (puede ser el de las letras de Atlas #15161a)"*. Se puso, y al verlo impreso: *"se ve muy extraño...
+    // volver al azul eléctrico pero un poquito más oscuro, que no quede tan chillón y que tampoco quede
+    // gris como este color, ya que ahora se mezcla con el gris del fondo del PDF"*.
+    //
+    // LAS DOS OBSERVACIONES SON CORRECTAS, y lo que falló fue el diagnóstico: el problema no era la
+    // claridad, era el TONO. El tinta de Atlas es un gris azulado casi negro y sobre el gris del visor
+    // deja de leerse como marca: parece un borde de la hoja.
+    //
+    // Y NO ES UN HEXADECIMAL INVENTADO: es el punto medio entre los DOS anclas de marca que el módulo ya
+    // declaraba. Se afirma así, derivándolo, y no con el hex escrito aquí: un número suelto en un test no
+    // dice de dónde salió, que es la misma regla que gobierna los umbrales clínicos.
+    expect(styles.bandaDeMarca.backgroundColor).toBe(MARCA_FRANJA);
+    expect(MARCA_FRANJA, "la franja dejó de derivarse de los dos azules de marca").not.toBe(MARCA_AZUL);
+    expect(MARCA_FRANJA).not.toBe(MARCA_HONDA);
+    expect(MARCA_FRANJA, "volvió al gris, que es lo que se mezclaba con el fondo del visor").not.toBe(
+      MARCA_TINTA,
+    );
+    // Y LA FORMA DE FONDO SE QUEDA EN EL AZUL CLARO, que es la otra mitad de su frase ("dejamos la
+    // nubecita como está"): si alguien la cambia "para que combine", este caso lo dice.
     expect(styles.formaDeMarca.backgroundColor, "la forma de fondo también cambió de color").toBe(
       MARCA_AZUL,
     );
     // Y QUE SALGA DE VERDAD en los bytes del documento, no solo en la hoja de estilo.
-    const tinta = comoPdf(MARCA_TINTA);
     expect(
-      PAGINAS.some((p) => p.codigo.includes(tinta)),
-      "la franja no salió en el tinta de Atlas en ninguna hoja",
+      PAGINAS.some((p) => p.codigo.includes(comoPdf(MARCA_FRANJA))),
+      "la franja no salió con ese color en ninguna hoja",
     ).toBe(true);
   });
 
-  it("y el nombre del dominio conserva su guion al partirse en dos líneas", () => {
-    // SU DUDA: *"Revisa tambien si «CelularElectrico» sale pegado en el PDF."*
+  it("el rótulo del radar se parte SIN arrastrar el guion, y el nombre completo sigue en la hoja", () => {
+    // ═══ SANTIAGO LO REPORTO DOS DIAS SEGUIDOS ═══
     //
-    // MEDIDO: no sale pegado. El rótulo se parte por el guion ("Celular-" / "Eléctrico") y los bytes del
-    // documento LLEVAN el guion. Lo que Santiago leyó es lo que hacen los lectores de PDF al COPIAR texto:
-    // des-hifenan los cortes de línea, así que "Celular-\nEléctrico" se pega como "CelularEléctrico".
+    // *"CelularElectrico"*, pegado. La primera vez se midió sobre los bytes y el guion ESTABA: salía
+    // "Celular-" / "Eléctrico", que es correcto. Lo que pasa es que los lectores de PDF DES-HIFENAN al
+    // copiar, así que al pegarlo sale pegado. El dibujo estaba bien y la lectura no, **y eso ya es un
+    // defecto**: no se le puede pedir a un profesional que sepa que su visor miente.
     //
-    // SE DEJA EL CASO porque la conclusión no es evidente y porque lo que sí rompería el rótulo es que el
-    // guion se perdiera de verdad (p. ej. si el nombre llegara con un guion que la fuente no dibuje).
-    // SE DECODIFICAN LOS RUNS, no se busca el hex del guion a pelo: "2d" aparece en cualquier stream
-    // hexadecimal por casualidad, y el caso habría pasado siempre.
+    // ═══ Y EL CANDADO ANTERIOR PASABA POR LA RAZON EQUIVOCADA ═══
+    //
+    // Exigía "-Eléctrico" en los bytes, y eso lo cumple la LISTA DE DETALLE de debajo del radar, que pinta
+    // el nombre entero. O sea que medía otra cosa y habría seguido verde con el radar roto. Por eso aquí
+    // se mira el RADAR, acotando por su `fontSize`, y no el documento entero.
+    //
+    // LO QUE SE AFIRMA: el eje se parte en dos palabras sin guion colgando, y el nombre COMPLETO sigue
+    // estando en la hoja (en el detalle), que es lo que hace que no se pierda nada.
+    const RADAR = sinComentarios(
+      readFileSync("src/modules/reports/pdf/radar-del-paciente.tsx", "utf8"),
+    );
+    expect(RADAR, "el rótulo volvió a arrastrar el guion al final de la primera línea").toContain(
+      "[nombre.slice(0, i), nombre.slice(i + 1)]",
+    );
+
     const runs: string[] = [];
     for (const p of PAGINAS) {
       for (const tj of p.codigo.matchAll(/\[([^\]]*)\]\s*TJ/g)) {
@@ -250,7 +284,43 @@ describe("la franja y los rótulos del radar, medidos sobre el PDF", () => {
     expect(unido, "el radar no dibujó el nombre del dominio").toContain("Celular");
     expect(
       unido,
-      "el guion del nombre del dominio no llegó al PDF: el rótulo sí sale pegado",
-    ).toContain("-Eléctrico");
+      "el nombre completo con su guion desapareció del documento: estaba en el detalle por dominio",
+    ).toContain("Celular-Eléctrico");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA FECHA DE LA CONSULTA ES EL DIA DE LA ATENCION  ·  2026-11-03
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("la fecha de la consulta no puede ser anterior a la medición", () => {
+  it("manda la fecha de la MEDICIÓN, con `created_at` de respaldo", () => {
+    // EL DEFECTO, en un informe real (Santiago): *"Fecha de la medición 3/11/2026 · Fecha de la consulta
+    // 30/10/2026"*. Leído por el paciente es absurdo: lo midieron en una consulta que, según el papel, ya
+    // había terminado cuatro días antes.
+    //
+    // Y NO ERA UN DATO MALO: `evaluations.created_at` es cuando el profesional ABRIÓ la ficha, y abrirla
+    // antes de la cita es normal (se manda el enlace de la encuesta, el paciente la responde en casa).
+    // Lo que no es cierto es llamar a eso "la fecha de la consulta".
+    //
+    // ES LA MISMA REGLA QUE YA RIGE EN LA BASE: `evaluaciones_vigentes` agrupa por
+    // `coalesce(dia, created_at)`. Una consulta no podía contarse en octubre para la cohorte y en
+    // noviembre para el paciente.
+    const REPO = sinComentarios(
+      readFileSync("src/modules/reports/data/reports-repository.ts", "utf8"),
+    );
+    expect(REPO, "la fecha de la consulta volvió a ser la de apertura de la ficha").toContain(
+      "return fechaDeMedicion(ev) ??",
+    );
+    // Y EL RESPALDO SE QUEDA: una consulta sin toma todavía tiene que decir una fecha.
+    expect(REPO).toContain("created_at ?? null");
+  });
+
+  it("y las dos fechas siguen siendo DOS en el documento", () => {
+    // Unificarlas sería la otra forma de "arreglarlo", y sería peor: el paciente no tendría cómo saber
+    // cuál está viendo. La medición y la consulta pueden ser días distintos con toda legitimidad (una
+    // consulta retroactiva sobre un archivo de hace un mes).
+    const DOC = sinComentarios(readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8"));
+    expect(DOC).toContain("Fecha de la medición");
+    expect(DOC).toContain("Fecha de la consulta");
   });
 });
