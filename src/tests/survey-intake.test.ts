@@ -67,6 +67,7 @@ import * as intakeReads from "@/modules/patients/data/patients-intake";
 import * as writer from "@/modules/evaluations/data/intake-writer";
 import * as otp from "@/modules/consent/otp/otp-service";
 import * as enlace from "@/modules/patients/data/paciente-del-enlace";
+import { CONSENT_VERSION, CONSENT_VERSIONS } from "@/modules/consent/versions";
 import {
   INTAKE_ENLACE_QUE_NO_CORRESPONDE,
   signSurveyIntake,
@@ -159,8 +160,12 @@ describe("signSurveyIntake", () => {
       "datos_sensibles",
       "aceptacion_medio_electronico",
     ]);
-    // sella version y hash canonicos vigentes
-    expect(call.consents[0].consentVersion).toBe("1.0");
+    // SELLA LA VERSION VIGENTE, Y SE COMPRUEBA CONTRA EL REGISTRO, NO CONTRA UN LITERAL. Un "1.0" escrito
+    // aqui envejece con el siguiente bump (paso con la v1.1) y falla por la razon equivocada. Y que este
+    // en CONSENT_VERSIONS no es adorno: una version sin registrar deja a `requiresReconsent` devolviendo
+    // true para siempre, o sea re-firma eterna.
+    expect(call.consents[0].consentVersion).toBe(CONSENT_VERSION);
+    expect(CONSENT_VERSIONS.map((v) => v.version)).toContain(call.consents[0].consentVersion);
     expect(call.consents[0].documentHash).toHaveLength(64);
   });
 
