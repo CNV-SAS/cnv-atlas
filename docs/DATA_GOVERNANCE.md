@@ -55,6 +55,7 @@ Esta arquitectura fue definida deliberadamente para que CNV no quede configurada
   - **Lo que el consentimiento del HTML NO cubre es nada seudonimizado:** investigación ObBIA-Latam y control de calidad quedan fuera hasta que firmen el de Atlas. Eso ya ocurre solo, porque no tienen esas autorizaciones (ver la cifra en /obbia).
   - **Construido el 2026-11-03** en el CSV del resumen de /obbia (`obbia/services/supresion-de-celdas.ts`): las categorías con menos de cinco pacientes se reúnen en una fila, el archivo dice cuántas suprimió y el registro de la entrega lo afirma. Era necesario, no preventivo: el archivo traía celdas de **un** paciente, con su ciudad y su edad media al lado.
   - **Lo que todavía NO está, y es condición antes de la primera venta:** la custodia de la llave de seudonimización (ver «La llave y su custodia», más abajo).
+  - **Y la guía de diseño se pidió a un chat dedicado (2026-11-05):**  recoge lo que hay, las condiciones legales que ya tenemos y las decisiones abiertas de las tres piezas (k-anonimato fila a fila, supresión de celdas, custodia de la llave). **El k-anonimato fila a fila y la llave no se construyen hasta que esa guía llegue:** elegir mal el diseño de la llave condiciona qué se puede entregar y qué se le puede responder después a un paciente que pregunta.
 
 ### Datos del Integrante CNV (profesional)
 - **Responsable del Tratamiento:** CNV.
