@@ -78,6 +78,23 @@ docs/entregas/**/*.xlsx
 docs/entregas/**/*.xls
 docs/entregas/**/*.csv
 
+# Y LOS PDF TAMPOCO (2026-11-05), por la misma razon y por un caso que ya ocurrio.
+#
+# EL CASO: Santiago dejo `cotejo-visual/SUGERENCIA_INFORME_ANBISE.pdf` para que lo revisaramos, y ese
+# archivo es un INFORME DE PACIENTE de ejemplo: lleva nombre completo, numero de documento, fecha de
+# medicion y cifras clinicas. Un `git add -A` de una tanda de trabajo lo metio en un commit (b893efe3),
+# que es exactamente el camino que esta seccion existe para cerrar. No llego a GitHub porque el push lo
+# hace el al final, pero por un pelo y por suerte, no por el sistema.
+#
+# Y LA CARPETA YA HABIA DADO AVISO: hay un commit anterior titulado "drop the report PDFs of the previous
+# round". O sea que los PDF de informe pasan por aqui con regularidad y la regla seguia sin cubrirlos
+# mientras cubria los xlsx, los csv y los docx.
+#
+# UN PDF DE ESTA CARPETA ES, POR DEFECTO, UN DOCUMENTO CLINICO: un informe, una HC o una propuesta hecha
+# sobre un paciente real. Si alguna vez hace falta versionar uno que de verdad no lleve PII, se exceptua
+# por nombre con su razon, que es mas barato que descubrir el que si la llevaba.
+docs/entregas/**/*.pdf
+
 # LOS .DOCX DE GILDARDO TAMPOCO (Santiago, 2026-10-28): "el .docx y el Excel de cohorte quedan fuera por
 # .gitignore, por archivo, como los HTML". De su entrega entra lo que es CODIGO (su funcion del motor y sus
 # casos de prueba, que no llevan nombres ni documentos); el documento que los explica se lee en local.
