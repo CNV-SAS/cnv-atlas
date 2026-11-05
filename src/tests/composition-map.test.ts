@@ -261,3 +261,60 @@ describe("la fila de la reactancia a 50 kHz", () => {
     expect(fila?.value).toBe(52.1);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL ICC Y EL ICT CON LO TECLEADO  ·  2026-11-05  ·  el COMPORTAMIENTO, no la forma
+//
+// El candado de `bis-conditions` comprueba que la regla este escrita; este comprueba que el numero salga.
+// Hacen falta los dos: una formula correcta conectada a la condicion equivocada pasa el primero.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("el ICC y el ICT siguen a la cintura que se tecleo", () => {
+  // La cintura y la cadera MEDIDAS entran por su header plano; el ICC y el ICT del equipo por el suyo.
+  const crudo = (cintura: number, cadera: number, talla: number, icc: number, ict: number) => ({
+    [normalizeHeader("Waist Size cm")]: cintura,
+    [normalizeHeader("Hips Size cm")]: cadera,
+    [normalizeHeader(BIODY_COLUMNS["talla"].header)]: talla,
+    [normalizeHeader(BIODY_COLUMNS["icc"].header)]: icc,
+    [normalizeHeader(BIODY_COLUMNS["ict"].header)]: ict,
+  });
+
+  it("sin teclear nada, manda el indice del equipo", () => {
+    // Y el del equipo NO coincide con el calculo (90/100 = 0,900): asi el caso no pasa por casualidad.
+    const c = buildComposition(crudo(90, 100, 170, 0.777, 0.44), null);
+    expect(c.icc).toBe(0.777);
+    expect(c.ict).toBe(0.44);
+  });
+
+  it("tecleada la cintura, se recalculan los dos", () => {
+    const c = buildComposition(
+      crudo(90, 100, 170, 0.777, 0.44),
+      null,
+      false,
+      new Set([normalizeHeader("Waist Size cm")]),
+    );
+    expect(c.icc).toBe(0.9); // 90 / 100
+    expect(c.ict).toBe(0.53); // 90 / 170, a dos decimales
+  });
+
+  it("tecleada SOLO la cadera, el ICC se recalcula y el ICT no", () => {
+    // El ICT no lleva la cadera en su formula: recalcularlo por teclearla seria mover un numero sin razon.
+    const c = buildComposition(
+      crudo(90, 100, 170, 0.777, 0.44),
+      null,
+      false,
+      new Set([normalizeHeader("Hips Size cm")]),
+    );
+    expect(c.icc).toBe(0.9);
+    expect(c.ict).toBe(0.44);
+  });
+
+  it("si falta la medida con la que habria que recalcular, se queda el del equipo", () => {
+    // Una division sin denominador no es "0": es que no se puede calcular, y entonces el dato del equipo
+    // es mejor que ninguno. Es la misma regla que el resto de los derivados de esta tabla.
+    const sinCadera = { ...crudo(90, 100, 170, 0.777, 0.44) };
+    delete sinCadera[normalizeHeader("Hips Size cm")];
+    const c = buildComposition(sinCadera, null, false, new Set([normalizeHeader("Waist Size cm")]));
+    expect(c.icc).toBe(0.777);
+    expect(c.ict).toBe(0.53);
+  });
+});

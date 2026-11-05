@@ -913,3 +913,56 @@ describe("lo que espera en /admin se ve desde cualquier pantalla", () => {
     }
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL ICC Y EL ICT SIGUEN A LA CINTURA QUE SE TECLEO  ·  2026-11-05
+//
+// ═══ LA DECISION (Santiago, y era suya, no de Gildardo) ═══
+//
+// *"Si el profesional teclea cintura o cadera, Atlas recalcula ICC e ICT con lo tecleado, como el HTML; si
+// no, usa lo del equipo."*
+//
+// ═══ EL DEFECTO QUE CIERRA ═══
+//
+// El equipo exporta su ICC y su ICT calculados con la cintura que tenia AL MEDIR. Atlas deja corregir esa
+// cintura despues (0089/0090: el valor corregido pasa a ser el vigente y el del equipo queda como
+// evidencia), y el indice no se movia. O sea que la pantalla se contradecia consigo misma: la fila de la
+// cintura mostraba el valor corregido y la del ICC un indice que sale de la cintura ANTERIOR, sin decirlo.
+//
+// Y EL ICC ENTRA EN EL PREDICADO DE LA RUTA R2, asi que no era solo una fila que se lee mal.
+//
+// ═══ POR QUE SOLO CUANDO SE TECLEA ═══
+//
+// Con la cintura del equipo, el indice del equipo es el correcto; recalcular siempre moveria el indice de
+// TODAS las consultas por una diferencia de redondeo que nadie pidio. La regla es la conservadora.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("el ICC y el ICT se recalculan con lo que se teclea", () => {
+  const MAPA = readFileSync("src/modules/diagnoses/data/composition-map.ts", "utf8");
+  const LECTOR = readFileSync("src/modules/diagnoses/data/composition-reader.ts", "utf8");
+
+  it("la condicion se DERIVA de una correccion registrada, no de una bandera", () => {
+    // Las claves de `corrections` son las medidas que el profesional corrigio: un hecho que ya esta en la
+    // base (`bis_value_corrections`), no algo que alguien tenga que acordarse de pasar.
+    expect(LECTOR).toContain("const tecleadas = new Set(Object.keys(corrections));");
+    expect(LECTOR).toContain("buildComposition(raw, meas.measurement_date, hasDerived, tecleadas)");
+  });
+
+  it("recalcula con las formulas de su HTML, y solo cuando corresponde", () => {
+    const codigo = sinComentarios(MAPA);
+    // ICC = cintura / cadera; ICT = cintura / talla (v9, L7154-7155).
+    expect(codigo).toContain("(cintura / cadera).toFixed(3)");
+    expect(codigo).toContain("(cintura / _talla).toFixed(2)");
+    // SIN TECLEAR, el del equipo: es la mitad conservadora de la regla.
+    expect(codigo).toContain("iccDelEquipo");
+    expect(codigo).toContain("ictDelEquipo");
+  });
+
+  it("el ICT depende de la CINTURA, no de la cadera: la cadera no entra en su formula", () => {
+    // Es el error facil de cometer al escribir las dos condiciones juntas, y daria un ICT recalculado por
+    // teclear una medida que no aparece en su formula.
+    const codigo = sinComentarios(MAPA);
+    const bloqueIct = codigo.slice(codigo.indexOf("  const ict ="), codigo.indexOf("  const ict =") + 240);
+    expect(bloqueIct).toContain("seTecleoLaCintura");
+    expect(bloqueIct).not.toContain("seTecleoLaCadera");
+  });
+});

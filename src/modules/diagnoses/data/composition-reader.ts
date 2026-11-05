@@ -66,5 +66,13 @@ export async function getCompositionForEvaluation(
     };
   }
 
-  return { ...buildComposition(raw, meas.measurement_date, hasDerived), corrections };
+  // LO QUE SE TECLEO: las claves de `corrections` son los nombres crudos de las medidas corregidas por el
+  // profesional. Con ellas, `buildComposition` recalcula el ICC y el ICT si la cintura o la cadera estan
+  // entre ellas (decision de Santiago, 2026-11-05). El dato ya se leia aqui para poder decir cual valor es
+  // cual en la pantalla; lo unico nuevo es que ahora tambien decide el indice.
+  const tecleadas = new Set(Object.keys(corrections));
+  return {
+    ...buildComposition(raw, meas.measurement_date, hasDerived, tecleadas),
+    corrections,
+  };
 }

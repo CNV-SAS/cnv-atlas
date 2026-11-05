@@ -282,6 +282,17 @@ export function buildComposition(
   raw: Record<string, number>,
   measurementDate: string | null,
   hasDerivedValues = false,
+  /**
+   * LOS NOMBRES CRUDOS DE LAS MEDIDAS QUE EL PROFESIONAL TECLEO (2026-11-05).
+   *
+   * Si entre ellas esta la cintura o la cadera, el ICC y el ICT se recalculan con lo tecleado en vez de
+   * usar el indice que exporto el equipo, que salio de la cintura ANTERIOR. Ver el bloque del ICC abajo.
+   *
+   * Se recibe la LISTA y no una bandera por medida: quien la tiene es el lector (lee
+   * `bis_value_corrections`), y pasarla entera evita que este modulo tenga que saber como se llama cada
+   * medida en esa tabla.
+   */
+  tecleadas: ReadonlySet<string> = new Set(),
 ): Composition {
   const num = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -306,8 +317,31 @@ export function buildComposition(
   const _ffw = get("FFW");
   const _ffwDif = get("FFW_dif");
   const ffwRef = _ffw != null && _ffwDif != null ? _ffw - _ffwDif : null;
-  const icc = get("icc");
-  const ict = get("ict");
+  // ═══ EL ICC Y EL ICT, RECALCULADOS SI SE TECLEO LA CINTURA O LA CADERA (Santiago, 2026-11-05) ═══
+  //
+  // El equipo exporta su ICC y su ICT con la cintura que tenia al medir. Atlas deja corregir esa cintura
+  // despues, y el indice se quedaba con la vieja: la fila de la cintura mostraba el valor corregido y la
+  // del ICC un indice que sale de otro. Y el ICC entra en el predicado de la ruta R2, asi que no es solo
+  // una fila que se lee mal.
+  //
+  // SOLO CUANDO SE TECLEO: con la cintura del equipo, el indice del equipo es el correcto, y recalcular
+  // siempre moveria el indice de todas las consultas por una diferencia de redondeo que nadie pidio.
+  //
+  // LAS FORMULAS SON LAS DE SU HTML: ICC = cintura / cadera, ICT = cintura / talla (v9, L7154-7155). Tres
+  // decimales el ICC y dos el ICT, que es como los muestra la tabla.
+  const seTecleoLaCintura = tecleadas.has(normalizeHeader(MEASURED_WAIST_HEADER));
+  const seTecleoLaCadera = tecleadas.has(normalizeHeader(MEASURED_HIPS_HEADER));
+  const _talla = get("talla");
+  const iccDelEquipo = get("icc");
+  const ictDelEquipo = get("ict");
+  const icc =
+    (seTecleoLaCintura || seTecleoLaCadera) && cintura != null && cadera != null && cadera > 0
+      ? parseFloat((cintura / cadera).toFixed(3))
+      : iccDelEquipo;
+  const ict =
+    seTecleoLaCintura && cintura != null && _talla != null && _talla > 0
+      ? parseFloat((cintura / _talla).toFixed(2))
+      : ictDelEquipo;
   // FMI = FM / talla^2 (DERIVADO, ATLAS_v7 L5650). Valor PURO (sin sexo); su rango/clasificacion las
   // resuelve composition-section. talla en cm -> m.
   const _fm = get("FM");

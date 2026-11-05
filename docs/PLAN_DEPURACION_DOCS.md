@@ -101,7 +101,7 @@ No se tocan hasta entonces: son la evidencia de las preguntas abiertas.
 
 | Archivo | Qué espera |
 |---|---|
-| `docs/entregas/DUDAS_PARA_GILDARDO_EBBIS_V7_Y_V12_2026-10-30.md` | Ya está retirado y apunta al vivo; se archiva cuando las 33 estén respondidas |
+| `docs/entregas/DUDAS_PARA_GILDARDO_EBBIS_V7_Y_V12_2026-10-30.md` | Ya está retirado y apunta al vivo; se archiva cuando las 32 estén respondidas |
 | `docs/entregas/REVISION_ATLAS_V10/V11/V12_*.md` | Son el cotejo contra sus entregas de octubre; las preguntas 1, 2, 9, 12 y 13 salen de ahí |
 | `docs/entregas/BARRIDO_V11_V12_2026-11-03.md` | Idem |
 | `docs/entregas/EB_BIS_V7_LO_QUE_TOCA_ANTES_DE_CONSTRUIR_2026-10-24.md` | La v7 está a medias (pregunta 4) |

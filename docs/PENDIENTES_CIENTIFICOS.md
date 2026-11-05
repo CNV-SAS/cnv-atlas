@@ -38,7 +38,10 @@ usted.
 
 ---
 
-## Las 33 preguntas
+## Las 32 preguntas
+
+> **Puede responder por número en un solo mensaje** (por ejemplo: *"4: opción 1 · 9: sí, el degradado hacia
+> rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
 
 > **0 · Un aviso, antes de las preguntas.** El ejemplo de formato de su prompt de IA lleva **el nombre de
 > una persona y su edad**, y viaja al proveedor del modelo en cada llamada. En Atlas no se envía (usted ya
@@ -168,7 +171,7 @@ portamos, porque conectar lo que su archivo no conecta sería estrenar una clasi
 cuenta. *La pregunta: ¿es un resto, o algo que piensa usar?*
 
 **22 · Las badges del Nivel III, y el ECM/BCM que se quedó sin sitio.** Su `celBadges` se llena y ningún
-render la lee. Nosotros sí las mostrábamos, y ahí salió el choque que le chirrió (su tabla decía
+render la lee. Nosotros sí las mostrábamos, y ahí salió el choque que usted notó (su tabla decía
 "hidratación adecuada" y la badge "deficiente": son dos indicadores suyos distintos). Están retiradas. *Lo
 que se pierde es el ECM/BCM > 1,4, el único sin fila propia. ¿Debe verse? ¿Con qué corte y en qué fila?*
 
@@ -211,12 +214,7 @@ los manda en su propio bloque; el modelo, por su cuenta, los metió en el Epigen
 se le pide que no los use como evidencia de ningún dominio. Si prefiere que se lean en alguno, díganos en
 cuál.*
 
-**30 · El ICC y el ICT: usted los recalcula, Atlas los lee del equipo.** Su HTML los recalcula de lo que
-teclea el profesional; Atlas los toma del export del Biody. Coinciden si la cintura se teclea antes de
-medir; si se teclea después, solo el suyo se corrige. *La decisión es de Santiago, con su criterio si quiere
-darlo. Verificado: la cintura y la cadera no entran en ninguna otra fórmula del modelo.*
-
-**31 · La pregunta de amputación se queda, y usted no la nombró.** Nos dijo que quitáramos las preguntas
+**30 · La pregunta de amputación se queda, y usted no la nombró.** Nos dijo que quitáramos las preguntas
 que no había puesto y nombró dos (edema y fiebre): las dos están fuera. La tercera del mismo lote,
 *"¿Tiene amputación de algún segmento corporal?"*, tampoco está en su archivo, y la dejamos porque retirarla
 sin que la señale sería tratar su silencio como una instrucción. *Y hay una razón para separarla: el edema
@@ -225,12 +223,12 @@ paciente sino la ecuación, que estima sobre un cuerpo completo. ¿La retiramos 
 
 ### F · Data que conviene que sepa antes de leer sus propios casos
 
-**32 · Dos de los ids de su anexo A son data de PRUEBA.** El grupo de tres (`5441fd96` / `b3e367cc` /
+**31 · Dos de los ids de su anexo A son data de PRUEBA.** El grupo de tres (`5441fd96` / `b3e367cc` /
 `6256b921`, el que la columna `Edad` no le cuadra a ninguno) son pacientes que creó el equipo para probar
 el sistema. *O sea que el caso que describe ahí no es de un paciente. Y una corrección nuestra: le dijimos
 cinco grupos entre pacientes distintos y son cuatro; usted tenía razón al dudar de la cifra.*
 
-**33 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre.** En la cohorte hay
+**32 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre.** En la cohorte hay
 cuerpos de 22 kg y 29 kg; el Biody aplica ecuaciones de adulto y devuelve masa grasa negativa, y la EB-BIS
 v7 está calibrada 18-100 años. *Recomendamos marcar esas consultas como fuera de rango de calibración y no
 calcular. Si CNV va a atender pediatría, con qué ecuaciones es decisión suya.*
@@ -341,6 +339,17 @@ del 26 de octubre es literal: *"La EB-BIS v5 se retira del motor de ATLAS y se s
 El camino que calcula la cifra que el paciente lee **sí** se migró a la v7. El camino que alimenta el
 **dominio 3 del DFI, el riesgo integrado y las rutas** quedó en la v5. Así que en la misma consulta conviven
 dos edades biológicas: **la que se le dice al paciente y la que decide lo que se le prescribe.**
+
+**Y hay un caso que usted puede comprobar, porque es suyo: la evaluación `ed83ff97`** (la mujer de 64
+años de su anexo). En el mismo documento, leído hoy:
+
+| Dónde | Qué dice |
+|---|---|
+| La cifra que ve el paciente (EB-BIS v7, parámetros 7.1.0) | **76,4 años · IAE +12,4** |
+| El dominio 3 del DFI, que alimenta el riesgo y las rutas | **31,4 años · IAE −32,6 · "Enlentecido"** |
+
+**Cuarenta y cinco años de diferencia en la misma consulta**, y las dos cifras salen del mismo sistema:
+la de arriba del motor nuevo, la de abajo del que su §2 retiró.
 
 **Cuánto, medido sobre los 389 informes vigentes:**
 
@@ -716,7 +725,7 @@ llena y nunca se muestra.** En su entrega del 4 de septiembre aparece cinco vece
 cuatro `push`, y ningún render la lee. Lo mismo `alimentBadges`. (Y no es que las badges se pinten de otro
 modo: `condBadges`, en el mismo archivo, **sí** se pinta.) **Es la misma situación que el `clasifLancet`.**
 
-**Nosotros la habíamos portado y sí la mostrábamos**, y ahí salió lo que a usted le chirrió: para el mismo
+**Nosotros la habíamos portado y sí la mostrábamos**, y ahí salió el choque que usted notó: para el mismo
 paciente, su tabla de Wang decía *"Hidratación celular adecuada"* en tres filas y la badge decía
 *"Hidratación celular deficiente"*. **No es un error de cálculo: son dos indicadores suyos distintos con
 nombres que chocan.** Las filas son el AIC como porcentaje (referencia 60-65 %) y la badge es la hidratación
@@ -871,24 +880,7 @@ Epigenético-Contextual por su cuenta.
 Por ahora le pedimos al modelo que no los use como evidencia de ningún dominio: ya salen en el párrafo de
 respuestas en rojo. **Si prefiere que se lean en alguno, díganos en cuál.**
 
-## 30 · El ICC y el ICT: usted los recalcula, Atlas los lee del equipo
-
-**No pide respuesta urgente, pero conviene que la sepa.** Su HTML **recalcula** los dos índices desde lo que
-el profesional teclea: `ICC = cintura / cadera` y `ICT = cintura / talla`. Atlas, en cambio, los **lee del
-export del Biody** (las columnas que calcula el equipo). Mientras la cintura y la cadera se tecleen en el
-Biody antes de medir, los dos caminos coinciden; si se teclean después, solo el suyo se corrige.
-
-**Lo que hicimos por ahora:** en las consultas que se importan del HTML se guarda **su** valor, el que su
-archivo calculó, no el del equipo. Y el diagnóstico ahora exige cintura y cadera por cualquier camino.
-
-**Lo que queda por decidir (es de Santiago, con su criterio si quiere darlo):** si Atlas debe recalcularlos
-como usted. Verificamos que la cintura y la cadera **no entran en ninguna otra fórmula del modelo**: ni en el
-ISCM (que sale de IFC, MCA, E/I, FMI y FFW), ni en los índices bioeléctricos. Solo en el ICC, el ICT y, a
-través de ellos, en el predicado de la ruta R2.
-
----
-
-## 31 · La pregunta de amputación se queda, y usted no la nombró
+## 30 · La pregunta de amputación se queda, y usted no la nombró
 
 En el punto 3 nos dijo que quitáramos las preguntas que no había puesto, y nombró dos: el edema/anasarca y
 el estado febril. **Las dos están fuera.** Pero entraron en el mismo lote de tres, y la tercera es *"¿Tiene
@@ -905,7 +897,7 @@ la ecuación, que estima sobre un cuerpo completo.
 
 # F · DATA QUE CONVIENE QUE SEPA ANTES DE LEER SUS PROPIOS CASOS
 
-## 32 · Dos de los ids de su anexo A son data de PRUEBA
+## 31 · Dos de los ids de su anexo A son data de PRUEBA
 
 El grupo de tres evaluaciones de su anexo (`5441fd96` / `b3e367cc` / `6256b921`, el que la columna `Edad` del
 equipo no le cuadra a ninguno de los tres) es el **grupo de smoke**: pacientes creados por el equipo para
@@ -923,7 +915,7 @@ contar sin separar lo de prueba. Los diez grupos sí son diez.
 caso documentado. Nosotros mantenemos su anexo citado tal cual en nuestros documentos, con esta nota al
 lado, para que las dos versiones se puedan cruzar.
 
-## 33 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre
+## 32 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre
 
 En la cohorte hay cuerpos de **22 kg y 29 kg**. El Biody aplica ecuaciones de adulto, y en esos cuerpos
 devuelve **masa grasa negativa** (las dos grasas negativas de la tabla de la pregunta 2 vienen de ahí). No es
@@ -946,7 +938,7 @@ software.
 **No pide nada, y por eso está al final y en una línea cada una.** Son las divergencias que tomamos por
 nuestra cuenta para no dejarle preguntas abiertas que frenaran el cotejo. Cada una tiene **su puerta de
 salida: si prefiere otra cosa, se cambia.** (La pregunta de amputación salió de aquí a la lista, como la
-**31**: esa sí pide respuesta.)
+**30**: esa sí pide respuesta.)
 
 ### Del instrumento, que es suyo
 
@@ -1011,6 +1003,12 @@ septiembre respondió: *"Ya revisé ATLAS y está bien como lo tienen"*, con la 
 barrido de rótulos nuestro, el 9, la cambió a `dPABU` sin instrucción suya; se restituyó el 21 y hoy lleva
 candado.
 
+**Y una que salió de esta lista porque la decidimos nosotros (2026-11-05):** el ICC y el ICT. Su archivo
+los recalcula desde lo que teclea el profesional; Atlas los leía del export del Biody, así que al corregir
+una cintura el índice se quedaba con la anterior. **Decidido por Santiago y ya construido:** si se teclea la
+cintura o la cadera, Atlas recalcula los dos con sus fórmulas (ICC = cintura / cadera, ICT = cintura /
+talla); si no se teclea nada, manda el del equipo. Se lo decimos, no se lo preguntamos.
+
 **Por la especificación 7.1.0 del 26 de octubre:** el parámetro `escalaAniosPorDE` y si la EB-BIS se
 calcula sin encuesta completa.
 
@@ -1057,10 +1055,9 @@ Para cruzar este documento con los dos que lo precedieron, por si empezó a resp
 | 24 | Cola de septiembre, 12, **más** el §6.4 de su v12 (el rótulo se queda sin origen) |
 | 25, 26, 27, 28 | Cola de septiembre, 21, 14, 19 y 20 |
 | 29 | Cola de septiembre, dentro de una declaración del prompt: era una pregunta y estaba escondida |
-| 30 | Cola de septiembre, "Nueva (2026-09-22)" |
-| **31** | Cola de septiembre, bloque de declaraciones. **Sube a pregunta**: pedía respuesta y estaba donde no se pide ninguna |
-| 32, 33 | Dudas del 30 de octubre, 13 y 14. La 32 con la corrección de cinco a cuatro |
-| **Salieron** | Dudas 1 y 2 (respondidas en la 7.1.0) · Cola 22 (ya no aplica: preguntaba lo que respondía la fila PABU) |
+| **30** | Cola de septiembre, bloque de declaraciones. **Sube a pregunta**: pedía respuesta y estaba donde no se pide ninguna |
+| 31, 32 | Dudas del 30 de octubre, 13 y 14. La 31 con la corrección de cinco a cuatro |
+| **Salieron** | Dudas 1 y 2 (respondidas en la 7.1.0) · Cola 22 (ya no aplica: preguntaba lo que respondía la fila PABU) · **la del ICC y el ICT** (su propio texto decía que la decisión era de Santiago: la tomó él y ya está construida, ver abajo) |
 
 **Verificado el 4 de noviembre, pregunta por pregunta:** ninguna de las de septiembre quedó contestada por
 sus entregas de octubre (revisiones de v10, v11 y v12, y los parámetros 7.1.0). Se buscó cada tema en las
