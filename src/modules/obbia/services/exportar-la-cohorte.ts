@@ -172,7 +172,13 @@ export function resumenDeLaCohorteACsv(
     })),
   ];
 
-  let celdasSuprimidas = 0;
+  // LAS DE LOS CONSOLIDADOS YA VIENEN SUPRIMIDAS DESDE EL LECTOR (2026-11-05), asi que el bucle de abajo
+  // no encuentra nada que suprimir ahi y su cuenta daria cero. Si no se sumaran, el archivo diria "0
+  // celdas suprimidas" habiendo suprimido, que es peor que no decirlo: afirma que no hizo falta.
+  //
+  // EL BUCLE NO SE RETIRA: cubre los otros bloques (meses y versiones del motor) y es el cinturon de la
+  // salida. Sobre los consolidados queda IDEMPOTENTE, que es exactamente lo que se quiere de un cinturon.
+  let celdasSuprimidas = cohorte.estratos.reduce((n, x) => n + x.suprimidas, 0);
   for (const bloque of bloques) {
     if (bloque.filas.length === 0) continue;
     const { visibles, suprimida, cuantasSeSuprimieron } = conCeldasSuprimidas(bloque.filas);

@@ -52,6 +52,23 @@ export async function GET(request: Request) {
     Object.fromEntries(new URL(request.url).searchParams.entries()),
   );
   const cohorte = await leerCohorteDeInvestigacion(filtro);
+
+  // ═══ UNA COHORTE DE MENOS DE CINCO PERSONAS NO SE DESCARGA (2026-11-05) ═══
+  //
+  // No es el mismo control que la supresion de celdas: alli se protegen las CATEGORIAS de una tabla; aqui
+  // el problema es que la cohorte ENTERA es la categoria. Un archivo de una cohorte de una persona
+  // describe a esa persona por mucho que diga "agregado" en el encabezado, y ademas quedaria REGISTRADO
+  // como entrega, que es peor: el registro afirmaria que salio un agregado.
+  //
+  // Y SE FRENA AQUI, EN LA RUTA, no en la pantalla: la URL del CSV se puede escribir a mano con los
+  // parametros del filtro, asi que un aviso en la pantalla no es un control.
+  if (cohorte.cohorteBajoElUmbral) {
+    return new NextResponse(
+      "El filtro deja menos de cinco pacientes y el resumen no se puede generar: con tan pocas personas, cada cifra describe a alguien. Ensancha el filtro.",
+      { status: 422, headers: { "Content-Type": "text/plain; charset=utf-8" } },
+    );
+  }
+
   const generadoEl = new Date().toISOString().slice(0, 10);
   const csv = resumenDeLaCohorteACsv(cohorte, {
     generadoEl: formatDate(generadoEl),

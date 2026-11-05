@@ -103,3 +103,47 @@ describe("el aviso de familias del motor tiene dos voces", () => {
     expect(PAGINA).toContain("familias mayores del motor");
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA SUPRESION SE DICE EN LA PANTALLA, Y EL UMBRAL DE COHORTE TIENE SU FRENO  ·  2026-11-05
+//
+// Santiago: *"el archivo ya se puede descargar con celdas de una persona (Maracaibo, 51 años)... toda
+// celda con menos de 5 pacientes se suprime, en la pantalla y en el CSV"*.
+//
+// El dato ya no sale del lector (eso lo prueba `el-filtro-entra-en-todas-las-consultas-db`). Lo que se
+// comprueba aqui es lo otro: que la pantalla DIGA la regla y el freno, porque un hueco sin explicacion se
+// lee como un defecto, y un eje que desaparece deja tres tablas donde habia cuatro sin que nadie sepa si
+// falta un dato o un control.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("la pantalla dice la supresion y el umbral de la cohorte", () => {
+  it("explica por que una categoria pequena no se ve por separado", () => {
+    expect(PAGINA).toContain("menos de <strong>cinco pacientes</strong>");
+    // Y cuantas se reunieron, por eje: sin el numero, la fila reunida no dice si junto dos o veinte.
+    expect(PAGINA).toContain("e.suprimidas");
+  });
+
+  it("avisa cuando el filtro deja la cohorte bajo el umbral, y dice la salida", () => {
+    expect(PAGINA).toContain("cohorte.cohorteBajoElUmbral");
+    expect(PAGINA).toContain("El filtro deja menos de cinco pacientes");
+    // LA SALIDA: un freno sin salida no es un guard. Aqui la salida es ensanchar el filtro.
+    expect(PAGINA).toContain("Ensancha el filtro");
+  });
+
+  it("un eje que no se puede publicar lo DICE, en vez de desaparecer", () => {
+    expect(PAGINA).toContain("e.noPublicable");
+    expect(PAGINA).toContain("Esta tabla no se puede mostrar");
+  });
+
+  it("y el CSV lo frena en la RUTA, no en la pantalla", () => {
+    // La URL del CSV se puede escribir a mano con los parametros del filtro, asi que un aviso en la
+    // pantalla no es un control. Y el 422 importa: un 200 con un archivo vacio quedaria registrado como
+    // entrega.
+    const ruta = readFileSync("src/app/(app)/obbia/cohorte/csv/route.ts", "utf8");
+    expect(ruta).toContain("cohorte.cohorteBajoElUmbral");
+    expect(ruta).toContain("422");
+    // Y el freno va ANTES de registrar la entrega: al reves, quedaria el asiento de un archivo que no sale.
+    expect(ruta.indexOf("cohorte.cohorteBajoElUmbral")).toBeLessThan(
+      ruta.indexOf("registrarLaEntregaDelResumen("),
+    );
+  });
+});

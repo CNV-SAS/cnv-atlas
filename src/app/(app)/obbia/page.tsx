@@ -199,6 +199,24 @@ export default async function ObbiaPage({
         descripcion={descripcion}
       />
 
+      {/* ═══ UN FILTRO QUE DEJA MENOS DE CINCO PERSONAS NO TIENE CIFRAS QUE MOSTRAR (2026-11-05) ═══
+
+          La supresión de celdas protege las CATEGORÍAS de una tabla; esto protege de lo otro: un filtro
+          estrecho (sexo más rango de edad más ciudad) deja la cohorte ENTERA en una persona, y entonces no
+          hay categoría que suprimir porque la cohorte entera es la categoría. "1 consulta autorizada ·
+          edad media 64,0" ES esa persona.
+
+          VA DEBAJO DEL FILTRO, que es lo que lo provoca, y dice la salida (ensanchar el filtro). Las
+          cifras de edad ya vienen en blanco del lector; esto explica por qué, porque un hueco sin
+          explicación se lee como un defecto. */}
+      {cohorte.cohorteBajoElUmbral ? (
+        <p className="max-w-prose rounded-xl border border-clinical-warning/40 bg-clinical-warning-bg p-3 text-sm text-foreground">
+          <strong>El filtro deja menos de cinco pacientes.</strong> Los conteos se siguen mostrando, pero
+          las cifras de edad y los consolidados no: con tan pocas personas, cada cifra describe a alguien.
+          Ensancha el filtro para volver a ver la caracterización.
+        </p>
+      ) : null}
+
       {vista === "resumen" ? (
        <>
       {/* ═══ LA COHORTE, EN CIFRAS ═══
@@ -515,14 +533,45 @@ export default async function ObbiaPage({
           Las mismas cinco columnas por cada eje, sobre las consultas autorizadas. Es la caracterización
           que un análisis necesita antes de mirar cualquier resultado.
         </p>
+        {/* ═══ LA REGLA SE DICE EN LA PANTALLA, NO SOLO EN EL ARCHIVO (2026-11-05) ═══
+
+            Hasta hoy la supresión era solo del CSV, así que aquí salía la fila que el archivo ya no deja
+            salir: "Maracaibo · 1 consulta · 1 paciente · edad media 51,0", que no es una cifra agregada,
+            es UNA PERSONA descrita por su ciudad y su edad. Y una captura de pantalla viaja igual que un
+            archivo. Ahora suprime el LECTOR, así que la pantalla y el archivo no pueden divergir. */}
+        <p className="max-w-prose text-xs text-muted-foreground">
+          Las categorías con menos de <strong>cinco pacientes</strong> no se muestran por separado: se
+          reúnen en una fila, con sus cifras, para que las columnas sigan sumando el total. Una categoría
+          con pocas personas identifica a la persona por la categoría sola, y eso vale igual en la
+          pantalla que en el archivo.
+        </p>
         {/* A ANCHO COMPLETO, UNA DEBAJO DE OTRA (cotejo del 2026-11-03). A dos columnas, cada tabla tiene
             seis columnas apretadas; las suyas van a ancho completo y se leen mejor. */}
         <div className="grid gap-4">
+          {/* UN EJE SIN FILAS YA NO SE OCULTA SIN MAS: si no se puede publicar, se dice. Ocultarlo deja
+              una pantalla con tres tablas donde había cuatro y nadie sabe si falta un dato o un control. */}
           {cohorte.estratos
-            .filter((e) => e.filas.length > 0)
+            .filter((e) => e.filas.length > 0 || e.noPublicable)
             .map((e) => (
               <div key={e.eje} className="flex flex-col gap-2">
-                <h3 className="text-sm font-semibold text-foreground">{ROTULO_DEL_EJE[e.eje]}</h3>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {ROTULO_DEL_EJE[e.eje]}
+                  {/* CUANTAS SE REUNIERON, EN SU EJE: el total no sirve para leer una tabla concreta, y
+                      sin el numero la fila reunida no dice si junto dos categorias o veinte. */}
+                  {e.suprimidas > 0 ? (
+                    <span className="ml-2 font-normal text-xs text-muted-foreground">
+                      {e.suprimidas}{" "}
+                      {e.suprimidas === 1 ? "categoría reunida" : "categorías reunidas"} por tener menos
+                      de cinco pacientes
+                    </span>
+                  ) : null}
+                </h3>
+                {e.noPublicable ? (
+                  <p className="max-w-prose rounded border border-border bg-muted/30 p-2 text-xs text-foreground">
+                    Esta tabla no se puede mostrar: ni reuniendo todas sus categorías se llega a cinco
+                    pacientes. {e.suprimidas > 0 ? `Son ${e.suprimidas} categorías.` : null}
+                  </p>
+                ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[420px] text-left text-sm">
                     <thead>
@@ -556,6 +605,7 @@ export default async function ObbiaPage({
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
             ))}
         </div>

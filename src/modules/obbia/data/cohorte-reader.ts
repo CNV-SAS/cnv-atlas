@@ -6,6 +6,12 @@ import { db } from "@/db";
 import { mayorDelMotor } from "@/modules/followups/services/eb-trajectory";
 import { ciudadesUnificadas } from "../services/ciudades-de-la-cohorte";
 import {
+  cohorteBajoElUmbral,
+  K_ANONIMATO,
+  ROTULO_SUPRIMIDO,
+  tablaConSupresion,
+} from "../services/supresion-de-celdas";
+import {
   FILTRO_VACIO,
   type FiltroDeCohorte,
   formaDeLaCiudadElegida,
@@ -142,8 +148,38 @@ export type CohorteDeInvestigacion = {
    */
   estratos: {
     eje: "pais" | "ciudad" | "sexo" | "profesional";
+    /**
+     * YA VIENEN CON LA SUPRESION APLICADA (k >= 5, 2026-11-05). Las categorias con menos de cinco
+     * pacientes no salen de aqui: se reunen en una sola fila rotulada.
+     *
+     * ═══ POR QUE SE SUPRIME EN EL LECTOR Y NO EN CADA SUPERFICIE ═══
+     *
+     * Hasta hoy lo hacia solo el CSV, asi que la PANTALLA mostraba la fila que el archivo ya no deja
+     * salir: *"Maracaibo · 1 consulta · 1 paciente · edad media 51,0"*, que no es una cifra agregada, es
+     * UNA PERSONA descrita por su ciudad y su edad. Y una captura de pantalla viaja igual que un
+     * archivo: acaba en un articulo, en un correo o en un chat.
+     *
+     * Suprimir en el lector es lo unico que hace imposible que una superficie nueva lo olvide. Es la
+     * misma regla que el filtro por CTE: el control entra UNA vez, donde nace el dato.
+     */
     filas: EstratoDeLaCohorte[];
+    /** Cuantas categorias se reunieron. SE DICE: un hueco mudo se lee como tabla completa. */
+    suprimidas: number;
+    /**
+     * LA TABLA ENTERA NO SE PUEDE PUBLICAR: ni reuniendo todas sus categorias se llega a cinco pacientes.
+     * Pasa con un filtro estrecho, y entonces no se muestra "lo mejor que se pueda": se dice que no se
+     * puede y por que.
+     */
+    noPublicable: boolean;
   }[];
+  /**
+   * LA COHORTE ENTERA TIENE MENOS DE CINCO PACIENTES, asi que cualquier cifra suya describe a alguien.
+   *
+   * ES EL AGUJERO QUE ABRIERON LOS FILTROS (2026-11-05): un filtro estrecho deja la cohorte en una
+   * persona, y la tarjeta "1 consulta autorizada · edad media 64,0" ES esa persona. No hay categoria que
+   * suprimir porque la cohorte entera es la categoria.
+   */
+  cohorteBajoElUmbral: boolean;
   /**
    * Las cifras que su panel muestra en tarjetas y /obbia no tenia: con espectro crudo (Z5-Z500), con
    * encuesta completa, con plan nutricional, y la edad media con su rango.
@@ -439,6 +475,10 @@ export async function leerCohorteDeInvestigacion(
     .map(([mayor, f]) => ({ mayor, evaluaciones: f.evaluaciones, grafias: f.grafias.sort() }))
     .sort((a, b) => b.evaluaciones - a.evaluaciones);
 
+  // ¿La cohorte entera (filtrada o no) tiene menos de cinco pacientes? Con tan pocas personas no hay
+  // categoria que suprimir: la cohorte ENTERA es la categoria, y sus cifras de edad describen a alguien.
+  const bajoElUmbral = cohorteBajoElUmbral(Number(t.pacientes_autorizados ?? 0), K_ANONIMATO);
+
   return {
     vigentes,
     conAutorizacion,
@@ -488,15 +528,44 @@ export async function leerCohorteDeInvestigacion(
       // LA CIUDAD ES TEXTO LIBRE, y la misma salia en tres filas ("Guarne" / "Guarne, Antioquia", tres
       // "San Carlos"). Se unifica SOLO donde la forma corta ya existe por si sola, que es conservador a
       // proposito: hay municipios homonimos en departamentos distintos. Ver `ciudades-de-la-cohorte`.
-      return { eje, filas: eje === "ciudad" ? ciudadesUnificadas(filas) : filas };
+      const unificadas = eje === "ciudad" ? ciudadesUnificadas(filas) : filas;
+      // ═══ LA SUPRESION, DESPUES DE UNIFICAR Y NO ANTES ═══
+      //
+      // El orden decide el resultado: tres filas de un paciente que son la MISMA ciudad escrita distinto
+      // suman tres al unificarse, y tres sigue por debajo del umbral, pero "Guarne" con cuatro mas
+      // "Guarne, Antioquia" con dos son SEIS y se puede mostrar. Suprimir primero habria escondido una
+      // categoria que si cumple, y de paso habria dejado la tabla sin la ciudad.
+      const tabla = tablaConSupresion(unificadas, (idas) => ({
+        grupo: ROTULO_SUPRIMIDO,
+        // LOS CONTEOS SE SUMAN (son cuentas, y asi las columnas siguen cuadrando con el total); LA EDAD
+        // MEDIA NO: promediar promedios de grupos distintos da un numero que no describe a nadie, y aqui
+        // seria encima un numero sobre las personas que se estan protegiendo.
+        consultas: idas.reduce((n, f) => n + f.consultas, 0),
+        pacientes: idas.reduce((n, f) => n + f.pacientes, 0),
+        conBis: idas.reduce((n, f) => n + f.conBis, 0),
+        conEspectro: idas.reduce((n, f) => n + f.conEspectro, 0),
+        edadMedia: null,
+      }));
+      return {
+        eje,
+        filas: tabla.filas ?? [],
+        suprimidas: tabla.suprimidas,
+        noPublicable: tabla.filas === null,
+      };
     }),
+    cohorteBajoElUmbral: bajoElUmbral,
     cifrasDeLaCohorte: {
       conEspectro: Number(extras?.con_espectro ?? 0),
       conEncuestaCompleta: Number(extras?.con_encuesta ?? 0),
       conPlanNutricional: Number(extras?.con_plan ?? 0),
-      edadMedia: extras?.edad_media == null ? null : Number(extras.edad_media),
-      edadMinima: extras?.edad_min == null ? null : Number(extras.edad_min),
-      edadMaxima: extras?.edad_max == null ? null : Number(extras.edad_max),
+      // ═══ LAS CIFRAS DE EDAD SE ANULAN CON LA COHORTE BAJO EL UMBRAL (2026-11-05) ═══
+      //
+      // Los CONTEOS se pueden decir (cuantas consultas hay no describe a nadie), pero la edad media de
+      // una cohorte de una persona ES LA EDAD DE ESA PERSONA, y su minimo y su maximo tambien. Se anulan
+      // en el LECTOR, no en la pantalla: asi no hay superficie que pueda ensenarlas.
+      edadMedia: bajoElUmbral || extras?.edad_media == null ? null : Number(extras.edad_media),
+      edadMinima: bajoElUmbral || extras?.edad_min == null ? null : Number(extras.edad_min),
+      edadMaxima: bajoElUmbral || extras?.edad_max == null ? null : Number(extras.edad_max),
       edadImposible: Number(extras?.edad_imposible ?? 0),
     },
   };

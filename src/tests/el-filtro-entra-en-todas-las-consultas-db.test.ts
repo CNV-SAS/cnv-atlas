@@ -71,6 +71,13 @@ describe("el filtro de la cohorte entra en todas las consultas del lector", () =
     expect(c.estratos.map((e) => e.eje).sort()).toEqual(["ciudad", "pais", "profesional", "sexo"]);
 
     for (const eje of c.estratos) {
+      // UN EJE NO PUBLICABLE NO SUMA, Y ESO ES CORRECTO: ni reuniendo todas sus categorias llega a cinco
+      // pacientes, asi que no se publica ninguna (ver `tablaConSupresion`). La invariante de particion
+      // solo se le puede exigir a una tabla que si se publica.
+      if (eje.noPublicable) {
+        expect(eje.filas, `el eje ${eje.eje} no es publicable y aun asi trae filas`).toEqual([]);
+        continue;
+      }
       const consultas = eje.filas.reduce((n, f) => n + f.consultas, 0);
       expect(
         consultas,
@@ -153,5 +160,137 @@ describe("el filtro de la cohorte entra en todas las consultas del lector", () =
 
     expect(nombreDelResumen("2026-11-04", true)).toContain("-filtrada-");
     expect(nombreDelResumen("2026-11-04", false)).not.toContain("filtrada");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// NINGUNA CELDA QUE SALGA DEL LECTOR DESCRIBE A MENOS DE CINCO PERSONAS  ·  2026-11-05
+//
+// ═══ EL CASO ═══
+//
+// Santiago, mirando /obbia: *"el archivo ya se puede descargar con celdas de una persona (Maracaibo, 51
+// años)"*. El CSV ya las suprimia desde el 2026-11-03; la PANTALLA no, porque la supresion vivia en el
+// modulo del export. Asi que la fila que el archivo no deja salir se veia en pantalla, y una captura
+// viaja igual que un archivo: acaba en un articulo, en un correo o en un chat.
+//
+// ═══ POR QUE EL CANDADO VA SOBRE EL LECTOR Y NO SOBRE LA PANTALLA ═══
+//
+// Comprobar el texto de la pantalla probaria LA PANTALLA DE HOY. Lo que de verdad protege es que el dato
+// no exista: si el lector no entrega celdas pequeñas, ninguna superficie futura puede ensenarlas, ni la
+// pantalla, ni el CSV, ni una que no se haya escrito. El control entra una vez, donde nace el dato, igual
+// que el filtro por CTE.
+//
+// Y SE CORRE CON FILTROS PUESTOS, que es cuando aparecen de verdad: la cohorte entera tiene ciudades con
+// decenas de pacientes, y al filtrar por sexo o por rango de edad esas mismas ciudades bajan de cinco.
+// Filtrar FABRICA celdas pequenas, asi que un candado que solo mirara la cohorte entera pasaria verde
+// sobre el caso que importa.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("el lector no entrega celdas de menos de cinco pacientes", () => {
+  it.each(FILTROS)("con %s, ninguna fila de ningun eje baja del umbral", async (_nombre, filtro) => {
+    const { K_ANONIMATO, ROTULO_SUPRIMIDO } = await import(
+      "@/modules/obbia/services/supresion-de-celdas"
+    );
+    const c = await leerCohorteDeInvestigacion(filtro);
+    for (const eje of c.estratos) {
+      for (const fila of eje.filas) {
+        expect(
+          fila.pacientes,
+          `el eje ${eje.eje} entrega "${fila.grupo}" con ${fila.pacientes} paciente(s)`,
+        ).toBeGreaterThanOrEqual(K_ANONIMATO);
+      }
+      // Y si hubo supresion, se DICE cuantas y la fila reunida esta rotulada: un hueco mudo se lee como
+      // tabla completa.
+      const reunida = eje.filas.find((f) => f.grupo === ROTULO_SUPRIMIDO);
+      if (eje.noPublicable) {
+        // Sin tabla no hay fila reunida que mirar, y `suprimidas` dice cuantas se intentaron reunir.
+        expect(eje.filas).toEqual([]);
+        continue;
+      }
+      if (eje.suprimidas > 0) {
+        expect(reunida, `el eje ${eje.eje} dice ${eje.suprimidas} suprimidas y no trae la fila`).toBeDefined();
+        // La edad media de la reunida NO se calcula: seria un promedio de promedios sobre las personas
+        // que precisamente se estan protegiendo.
+        expect(reunida?.edadMedia).toBeNull();
+      } else {
+        expect(reunida, `el eje ${eje.eje} trae la fila reunida sin haber suprimido nada`).toBeUndefined();
+      }
+    }
+  });
+
+  it("la fila reunida conserva las cifras: las columnas siguen sumando el total", async () => {
+    // Es la propiedad que hace util una tabla de caracterizacion. Si al suprimir se perdieran consultas,
+    // un revisor que no cuadra la tabla no sabria si falta una categoria o si el dato esta mal.
+    const c = await leerCohorteDeInvestigacion({ ...FILTRO_VACIO, sexo: "F" });
+    for (const eje of c.estratos.filter((e) => !e.noPublicable)) {
+      const consultas = eje.filas.reduce((n, f) => n + f.consultas, 0);
+      expect(consultas, `el eje ${eje.eje} perdio consultas al suprimir`).toBe(c.conAutorizacion);
+    }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// UNA COHORTE DE UNA PERSONA NO TIENE CIFRAS QUE MOSTRAR  ·  2026-11-05
+//
+// ═══ EL AGUJERO QUE ABRIMOS NOSOTROS AL CONSTRUIR LOS FILTROS (2026-11-04) ═══
+//
+// La supresion de celdas protege las CATEGORIAS de una tabla. Pero un filtro estrecho (sexo mas rango de
+// edad mas ciudad) deja la COHORTE ENTERA en una persona, y entonces no hay categoria que suprimir: la
+// tarjeta "1 consulta autorizada · edad media 64,0" ES esa persona. Es la forma clasica del ataque por
+// consultas sucesivas, y la abrimos al construir los filtros, no antes.
+//
+// LOS CONTEOS SE PUEDEN DECIR (cuantas consultas hay no describe a nadie); LAS CIFRAS DE EDAD NO: la edad
+// media de una cohorte de una persona es la edad de esa persona, y su minimo y su maximo tambien. Se
+// anulan en el LECTOR, asi que no hay superficie que pueda ensenarlas.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("una cohorte bajo el umbral no entrega cifras que describan a una persona", () => {
+  it("con una cohorte de menos de cinco pacientes, la edad no sale", async () => {
+    const { K_ANONIMATO } = await import("@/modules/obbia/services/supresion-de-celdas");
+    // Se busca un filtro que de verdad deje pocos: el eje de edad es el que mas estrecha.
+    let estrecha = null;
+    for (const [desde, hasta] of [[64, 64], [63, 65], [20, 21], [70, 72]]) {
+      const c = await leerCohorteDeInvestigacion({ ...FILTRO_VACIO, edadDesde: desde, edadHasta: hasta });
+      if (c.pacientesAutorizados > 0 && c.pacientesAutorizados < K_ANONIMATO) {
+        estrecha = c;
+        break;
+      }
+    }
+    if (estrecha === null) return; // la base de pruebas no tiene un rango asi; no se inventa uno
+
+    expect(estrecha.cohorteBajoElUmbral).toBe(true);
+    expect(estrecha.cifrasDeLaCohorte.edadMedia, "la edad media ES la edad de esa persona").toBeNull();
+    expect(estrecha.cifrasDeLaCohorte.edadMinima).toBeNull();
+    expect(estrecha.cifrasDeLaCohorte.edadMaxima).toBeNull();
+    // Y ninguna tabla de esa cohorte se publica.
+    for (const eje of estrecha.estratos) {
+      expect(eje.noPublicable, `el eje ${eje.eje} se publica con una cohorte de ${estrecha.pacientesAutorizados}`).toBe(true);
+    }
+  });
+
+  it("una cohorte VACIA no esta bajo el umbral: cero personas no identifica a nadie", async () => {
+    const c = await leerCohorteDeInvestigacion({ ...FILTRO_VACIO, pais: "Narnia" });
+    expect(c.pacientesAutorizados).toBe(0);
+    expect(c.cohorteBajoElUmbral, "'sin resultados' es una respuesta legitima, no un dato a esconder").toBe(
+      false,
+    );
+  });
+
+  // LA REGLA, SIN DEPENDER DEL VOLUMEN DE LA BASE. La base de pruebas local tiene UN paciente
+  // autorizado, asi que ahi la cohorte completa ya esta bajo el umbral: un caso que afirmara "la cohorte
+  // entera si entrega su edad" seria rojo en local y verde en produccion por el tamaño del seed, que es
+  // justo la clase de candado que envejece. Se afirma la REGLA (la funcion pura) y, aparte, que el lector
+  // la aplica en la direccion que le toque.
+  it("la regla del umbral es la misma en los dos sentidos", async () => {
+    const { cohorteBajoElUmbral, K_ANONIMATO } = await import(
+      "@/modules/obbia/services/supresion-de-celdas"
+    );
+    expect(cohorteBajoElUmbral(0), "cero personas no identifica a nadie").toBe(false);
+    expect(cohorteBajoElUmbral(1)).toBe(true);
+    expect(cohorteBajoElUmbral(K_ANONIMATO - 1)).toBe(true);
+    expect(cohorteBajoElUmbral(K_ANONIMATO), "en el umbral ya se puede").toBe(false);
+
+    const c = await leerCohorteDeInvestigacion();
+    expect(c.cohorteBajoElUmbral).toBe(cohorteBajoElUmbral(c.pacientesAutorizados));
+    // Y la consecuencia: con la cohorte bajo el umbral la edad no sale; por encima, si (cuando hay dato).
+    if (c.cohorteBajoElUmbral) expect(c.cifrasDeLaCohorte.edadMedia).toBeNull();
   });
 });

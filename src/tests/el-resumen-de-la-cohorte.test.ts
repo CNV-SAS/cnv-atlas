@@ -54,6 +54,7 @@ const COHORTE: CohorteDeInvestigacion = {
   porFamiliaDelMotor: [{ mayor: "1", evaluaciones: 212, grafias: ["1.0.0", "anibise-1.4.0"] }],
   mezclaFamilias: false,
   mezclaMarginal: false,
+  cohorteBajoElUmbral: false,
   porMes: [
     { mes: "2026-08", evaluaciones: 40 },
     { mes: "2026-09", evaluaciones: 120 },
@@ -62,10 +63,10 @@ const COHORTE: CohorteDeInvestigacion = {
   // candado del export comprueba justamente que NO se cuelen en el archivo, y un fixture sin ellos haria
   // que ese caso pasara por ausencia en vez de por decision.
   estratos: [
-    { eje: "pais", filas: [{ grupo: "Colombia", consultas: 300, pacientes: 240, conBis: 300, conEspectro: 190, edadMedia: 41.2 }] },
-    { eje: "ciudad", filas: [{ grupo: "Medellín", consultas: 280, pacientes: 225, conBis: 280, conEspectro: 180, edadMedia: 41.0 }] },
-    { eje: "sexo", filas: [{ grupo: "Femenino", consultas: 210, pacientes: 170, conBis: 210, conEspectro: 140, edadMedia: 40.1 }] },
-    { eje: "profesional", filas: [{ grupo: "Profesional Demo", consultas: 90, pacientes: 70, conBis: 90, conEspectro: 60, edadMedia: 39.8 }] },
+    { eje: "pais", filas: [{ grupo: "Colombia", consultas: 300, pacientes: 240, conBis: 300, conEspectro: 190, edadMedia: 41.2 }], suprimidas: 0, noPublicable: false },
+    { eje: "ciudad", filas: [{ grupo: "Medellín", consultas: 280, pacientes: 225, conBis: 280, conEspectro: 180, edadMedia: 41.0 }], suprimidas: 0, noPublicable: false },
+    { eje: "sexo", filas: [{ grupo: "Femenino", consultas: 210, pacientes: 170, conBis: 210, conEspectro: 140, edadMedia: 40.1 }], suprimidas: 0, noPublicable: false },
+    { eje: "profesional", filas: [{ grupo: "Profesional Demo", consultas: 90, pacientes: 70, conBis: 90, conEspectro: 60, edadMedia: 39.8 }], suprimidas: 0, noPublicable: false },
   ],
   cifrasDeLaCohorte: {
     conEspectro: 190,
@@ -307,6 +308,11 @@ describe("ninguna celda del archivo describe a menos de cinco personas", () => {
           { grupo: "Yarumal", consultas: 1, pacientes: 1, conBis: 0, conEspectro: 0, edadMedia: 42 },
           { grupo: "Bello", consultas: 1, pacientes: 1, conBis: 1, conEspectro: 1, edadMedia: 65 },
         ],
+        // EL FIXTURE LLEGA SIN SUPRIMIR A PROPOSITO: este candado prueba el CINTURON del CSV, o sea
+        // que el archivo no deja salir una celda pequeña ni cuando le llega una. Lo normal hoy es que el
+        // lector ya las haya suprimido, pero un cinturon se prueba con lo que no deberia llegarle.
+        suprimidas: 0,
+        noPublicable: false,
       },
     ],
   };
