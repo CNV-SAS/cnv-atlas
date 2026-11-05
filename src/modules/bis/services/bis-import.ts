@@ -6,8 +6,10 @@ import {
   BisAlreadyImportedError,
   logBisImportFailure,
   MedicionDuplicadaError,
+  MotivoDeLaHuellaFaltaError,
   writeBisMeasurement,
 } from "../data/bis-writer";
+import type { MedicionYaRegistrada } from "../data/medicion-duplicada-reader";
 import { validateBisMeasurement } from "../validations/import-schema";
 import {
   DERIVED_FORMULA_VERSION,
@@ -38,6 +40,8 @@ export type ImportBisInput = {
    * retroactiva la que corresponde es la de la fecha de ESA consulta, no la ultima.
    */
   fechaElegida?: string;
+  /** El motivo con el que se confirma importar una medicion que ya esta en otra historia (2026-11-05). */
+  motivoDeLaHuella?: string | null;
 };
 
 export type ImportBisOutput = {
@@ -50,6 +54,11 @@ export type ImportBisOutput = {
   filasEnElArchivo: number;
   /** Las fechas de todas las del archivo, de la mas reciente a la mas vieja. */
   fechasDisponibles: string[];
+  /**
+   * EL CHOQUE DE HUELLA QUE SE DEJO PASAR, si hubo. Viaja aunque el import saliera bien: con un paciente
+   * de prueba entra sin preguntar nada, y quien importa tiene que enterarse igual.
+   */
+  choqueAceptado: MedicionYaRegistrada | null;
 };
 
 // Deriva la composicion faltante a partir de lo MEDIDO. La derivacion es un EXTRA: la medicion ya es
@@ -124,6 +133,7 @@ export async function importBisMeasurement(
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       ip: input.ip,
+      motivoDeLaHuella: input.motivoDeLaHuella ?? null,
     });
     return ok({
       ...written,
@@ -152,8 +162,25 @@ export async function importBisMeasurement(
     // reimport sobre un diagnostico ya emitido): el archivo parseo y valido bien. El mensaje lo escribe el
     // lector del choque, porque solo el sabe si esa toma esta en este paciente o en otra historia clinica,
     // y de eso depende que tiene que hacer quien esta importando.
+    // ═══ YA NO ES UN RECHAZO: ES UNA PETICION DE CONFIRMACION (2026-11-05) ═══
+    //
+    // El tipo del error se conserva (`conflict`) porque sigue siendo un choque y no un fallo de archivo,
+    // pero viaja el CHOQUE entero en `fields`, y de ahi la pantalla saca que tiene que pedir el motivo en
+    // vez de solo mostrar un error rojo. Sin esto, la superficie tendria que deducir del TEXTO del mensaje
+    // que hace falta una confirmacion, que es la clase de acoplamiento que se rompe al reescribir una
+    // frase.
     if (e instanceof MedicionDuplicadaError) {
-      return err(appError("conflict", e.message));
+      return err(
+        appError("conflict", e.message, {
+          huella_repetida: "si",
+          otra_consulta: e.choque.evaluationId,
+          del_mismo_paciente: e.choque.esDelMismoPaciente ? "si" : "no",
+        }),
+      );
+    }
+    // El motivo escrito demasiado corto: es un fallo de la confirmacion, no del archivo.
+    if (e instanceof MotivoDeLaHuellaFaltaError) {
+      return err(appError("validation", e.message, { huella_repetida: "si" }));
     }
     throw e; // error inesperado: que suba (lo captura el action / Sentry)
   }

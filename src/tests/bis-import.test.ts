@@ -64,8 +64,7 @@ describe("importBisMeasurement (orquestacion)", () => {
     vi.mocked(writer.writeBisMeasurement).mockResolvedValue({
       measurementId: "meas-1",
       valueCount: 120,
-      derivedCount: 0,
-    });
+      derivedCount: 0, choqueAceptado: null });
     const buffer = await readFile(FIXTURE);
     const res = await importBisMeasurement({ ...baseInput, buffer });
     expect(res.ok).toBe(true);
@@ -83,8 +82,7 @@ describe("importBisMeasurement (orquestacion)", () => {
     vi.mocked(writer.writeBisMeasurement).mockResolvedValue({
       measurementId: "meas-2",
       valueCount: 90,
-      derivedCount: 10,
-    });
+      derivedCount: 10, choqueAceptado: null });
     const buffer = await readFile(SHORT_FIXTURE);
     const res = await importBisMeasurement({ ...baseInput, buffer });
     expect(res.ok).toBe(true);

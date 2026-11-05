@@ -15,6 +15,7 @@ import { requireUser } from "@/modules/auth/session";
 import { CircunferenciasNoEditablesError, guardarCircunferenciasTecleadas } from "./data/circunferencias-writer";
 import { canImportBis } from "./policies/can-import-bis";
 import { circunferenciasSchema } from "./validations/circunferencias";
+import { mensajeDeLaMedicionDuplicada } from "./data/medicion-duplicada-reader";
 import { importBisMeasurement } from "./services/bis-import";
 
 // Estado del formulario de import (useActionState). Incluye la forma de
@@ -37,6 +38,17 @@ export type ImportBisState = {
    * editar el archivo a mano, que es justo lo que este cambio vino a quitar.
    */
   fechasDisponibles?: string[];
+  /**
+   * ═══ EL CHOQUE DE HUELLA PIDE CONFIRMACION (2026-11-05) ═══
+   *
+   * `true` cuando esta medicion ya esta en otra historia clinica REAL y hace falta el motivo. La pantalla
+   * lo usa para pintar el campo del motivo y su boton, en vez de un error rojo y nada mas.
+   *
+   * NO SE DEDUCE DEL TEXTO del mensaje: una frase se reescribe y el acoplamiento se rompe en silencio.
+   */
+  pideMotivoDeHuella?: boolean;
+  /** El motivo que se escribio, para que no se pierda si el envio vuelve con otro error. */
+  motivoDeHuella?: string;
 };
 
 // Tope de tamano y MIME aceptados (SECURITY.md: allowlist + tope). El export real
@@ -59,13 +71,23 @@ export async function importBisAction(
   _prev: ImportBisState,
   form: FormData,
 ): Promise<ImportBisState> {
-  const fail = (error: string, fields: Record<string, string> | null = null): ImportBisState => ({
+  // EL MOTIVO ESCRITO SOBREVIVE A UN FALLO: si el envio vuelve con otro error (el archivo, la fecha), se
+  // perderia lo que el profesional ya habia escrito y tendria que redactarlo otra vez. Es la misma razon
+  // por la que el archivo elegido se conserva (`enviarSinReset`).
+  const motivoEscrito = ((form.get("motivoDeHuella") as string | null) ?? "").trim();
+  const fail = (
+    error: string,
+    fields: Record<string, string> | null = null,
+    pideMotivo = false,
+  ): ImportBisState => ({
     error,
     success: null,
     warning: null,
     fields,
     imported: false,
     valueCount: null,
+    pideMotivoDeHuella: pideMotivo,
+    motivoDeHuella: motivoEscrito,
   });
 
   const user = await requireUser();
@@ -122,9 +144,18 @@ export async function importBisAction(
     patientSex,
     // CUAL MEDICION, cuando el archivo trae varias. Vacio = la mas reciente, que es el camino normal.
     fechaElegida: ((form.get("fechaDeLaMedicion") as string | null) ?? "").trim() || undefined,
+    // EL MOTIVO VIAJA EN UN CAMPO, NO EN EL BOTON (hazard 5 de CLAUDE.md): el `name`/`value` del boton de
+    // envio NO va en `new FormData(form)`, y este formulario se envia con `enviarSinReset`. Un dato en el
+    // boton se habria perdido sin error.
+    motivoDeLaHuella: motivoEscrito || null,
   });
 
-  if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
+  if (!result.ok) {
+    // LA PETICION DE CONFIRMACION SE RECONOCE POR SU MARCA, no por el texto: el servicio la pone en
+    // `fields.huella_repetida` justamente para que la pantalla no tenga que leer la frase.
+    const esHuella = result.error.fields?.huella_repetida === "si";
+    return fail(result.error.message, result.error.fields ?? null, esHuella);
+  }
 
   revalidatePath("/ani-bis-e");
   // Tambien la vista de la evaluacion: al importar desde la pestana Evaluacion, la composicion
@@ -145,7 +176,15 @@ export async function importBisAction(
     success: varias
       ? `Medición BIS importada. Se cargó la más reciente; puedes cambiarla en el selector.`
       : `Medición BIS importada (${result.value.valueCount} variables).`,
-    warning: null,
+    // ═══ EL CHOQUE QUE SE DEJO PASAR SE DICE, AUNQUE EL IMPORT SALIERA BIEN (2026-11-05) ═══
+    //
+    // Con un paciente de PRUEBA entra sin preguntar nada, y aun asi quien importa tiene que enterarse de
+    // que ese archivo ya estaba en otra consulta: si esperaba que fuera de un paciente real, acaba de
+    // importar el archivo equivocado. Un exito mudo sobre un choque conocido es el sistema callandose algo
+    // que sabe.
+    warning: result.value.choqueAceptado
+      ? mensajeDeLaMedicionDuplicada(result.value.choqueAceptado)
+      : null,
     fields: null,
     imported: true,
     valueCount: result.value.valueCount,

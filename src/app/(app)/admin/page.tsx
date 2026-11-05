@@ -8,6 +8,7 @@ import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { CreateUserForm } from "@/modules/auth/components/create-user-form";
 import { UserRowActions } from "@/modules/auth/components/user-row-actions";
 import { MarcaDeAvisos } from "@/modules/avisos/components/marca-de-avisos";
+import { leerHuellasConfirmadas } from "@/modules/bis/data/huellas-confirmadas-reader";
 import { listarUsuariosInternosConMarcas } from "@/modules/avisos/data/avisos-repository";
 import { ResolverPropuestas } from "@/modules/patients/components/propuestas-de-prueba";
 import {
@@ -54,9 +55,15 @@ export default async function AdminPage() {
   const propuestasDePrueba = await propuestasDePruebaPendientes();
   // LAS DOS LISTAS DEL RETIRO DE PERFILES (0233), en paralelo con lo demas: son dos consultas pequenas y
   // la pantalla ya hace varias.
-  const [peticionesDeEliminacion, eliminados] = await Promise.all([
+  const [peticionesDeEliminacion, eliminados, huellasConfirmadas] = await Promise.all([
     peticionesDeEliminacionPendientes(),
     pacientesEliminados(),
+    // ═══ EL AVISO QUE HACE ACEPTABLE QUE EL FRENO DE LA HUELLA SE ABRA (2026-11-05) ═══
+    //
+    // El freno dejo de bloquear: con un paciente real se avisa, se pide motivo y se deja seguir. La mitad
+    // que lo hace aceptable es que la administracion se entere sin que nadie se lo cuente. Un freno que se
+    // abre con confirmacion y sin aviso es un freno que no existe.
+    leerHuellasConfirmadas(),
   ]);
 
   return (
@@ -172,6 +179,61 @@ export default async function AdminPage() {
             restituir. Para eliminarlo hay que escribir su documento.
           </p>
           <ResolverEliminaciones peticiones={peticionesDeEliminacion} />
+        </section>
+      ) : null}
+
+      {/* ═══ MEDICIONES IMPORTADAS SOBRE OTRA HISTORIA CLINICA, CON MOTIVO (2026-11-05) ═══
+
+          El freno de la huella dejo de bloquear, porque un freno sin salida detiene a una persona (y
+          detenia justo a quien prueba el sistema). Lo que lo hace aceptable es esto: el acto queda con
+          nombre, motivo y fecha, y aparece aqui sin que nadie tenga que contarlo.
+
+          NI UN NOMBRE DE PACIENTE: ids de consulta, la fecha de la otra toma y el motivo que escribio
+          quien importo. Los enlaces llevan a las dos consultas, donde la pantalla ya decide que se ve.
+
+          SOLO APARECE CUANDO HAY ALGO, igual que las otras dos bandejas: una seccion vacia permanente
+          entrena a no mirarla. */}
+      {huellasConfirmadas.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-bold">
+            Mediciones importadas sobre otra historia clínica ({huellasConfirmadas.length})
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Son tomas que ya estaban registradas en otra consulta y que un profesional importó de todos
+            modos, con su motivo. Puede ser correcto (dos tomas idénticas hasta el último decimal son
+            improbables, no imposibles) o puede ser el archivo del paciente equivocado: hay que mirar las
+            dos consultas. El aviso de medición repetida sigue apareciendo en ellas hasta que se corrija.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {huellasConfirmadas.map((h) => (
+              <li key={h.id} className="rounded-lg border border-border p-3 text-sm">
+                <p className="text-foreground">
+                  <span className="font-semibold">{h.quien}</span> importó una medición que ya estaba{" "}
+                  {h.delMismoPaciente ? "en otra consulta del mismo paciente" : "en la historia de OTRO paciente"}
+                  {h.otraFecha ? `, del ${h.otraFecha}` : null}.
+                </p>
+                {h.motivo ? (
+                  <p className="mt-1 text-muted-foreground">
+                    Motivo: <span className="italic text-foreground">{h.motivo}</span>
+                  </p>
+                ) : null}
+                <p className="mt-1 flex flex-wrap gap-3 text-xs">
+                  <Link href={`/ani-bis-e/${h.evaluationId}`} className="underline underline-offset-4">
+                    Ver la consulta donde se importó
+                  </Link>
+                  {h.otraEvaluacionId ? (
+                    <Link
+                      href={`/ani-bis-e/${h.otraEvaluacionId}`}
+                      className="underline underline-offset-4"
+                    >
+                      Ver la otra consulta
+                    </Link>
+                  ) : null}
+                  <span className="text-muted-foreground">{h.cuando.slice(0, 10)}</span>
+                </p>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 

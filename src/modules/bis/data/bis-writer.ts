@@ -13,6 +13,7 @@ import {
   buscarLaMismaMedicion,
   mensajeDeLaMedicionDuplicada,
   type MedicionYaRegistrada,
+  pideConfirmacion,
 } from "./medicion-duplicada-reader";
 
 // Escritura del import BIS en UNA transaccion de BD. Drizzle conecta como owner para
@@ -44,6 +45,23 @@ export class MedicionDuplicadaError extends Error {
   }
 }
 
+// ═══ EL MOTIVO DE LA CONFIRMACION, Y POR QUE TIENE LARGO MINIMO (2026-11-05) ═══
+//
+// Una confirmacion sin motivo es un boton de "da igual": se pulsa sin leer y el registro queda con el acto
+// y sin la razon, que es la mitad que sirve para revisarlo despues. El minimo no busca prosa, busca que
+// quien confirma tenga que escribir algo propio: "ok" o "si" no explican nada a quien lo lea en marzo.
+export const MOTIVO_MINIMO = 10;
+export const MOTIVO_MAXIMO = 500;
+
+export class MotivoDeLaHuellaFaltaError extends Error {
+  constructor() {
+    super(
+      `Para importar una medición que ya está en otra historia clínica hace falta el motivo (al menos ${MOTIVO_MINIMO} caracteres): queda registrado con tu nombre.`,
+    );
+    this.name = "MotivoDeLaHuellaFaltaError";
+  }
+}
+
 export type BisWriteInput = {
   evaluationId: string;
   deviceId: string | null;
@@ -57,12 +75,24 @@ export type BisWriteInput = {
   actorId: string;
   actorEmail: string;
   ip: string | null;
+  /**
+   * EL MOTIVO CON EL QUE SE CONFIRMA UNA MEDICION QUE YA ESTA EN OTRA HISTORIA (2026-11-05).
+   *
+   * Sin esto, el choque con un paciente real frena y se devuelve la peticion de confirmacion. Con esto,
+   * entra y queda registrado: quien, cuando, con que motivo, y contra que otra consulta choca.
+   */
+  motivoDeLaHuella?: string | null;
 };
 
 export type BisWriteResult = {
   measurementId: string;
   valueCount: number;
   derivedCount: number;
+  /**
+   * EL CHOQUE QUE SE DEJO PASAR, si hubo. La superficie lo necesita para avisar: con un paciente de prueba
+   * entra sin preguntar nada, y aun asi quien importa tiene que enterarse de que ese archivo ya estaba.
+   */
+  choqueAceptado: MedicionYaRegistrada | null;
 };
 
 export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWriteResult> {
@@ -98,13 +128,27 @@ export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWrit
       .from(evaluations)
       .where(eq(evaluations.id, input.evaluationId))
       .limit(1);
+    //
+    // ═══ Y DESDE EL 2026-11-05 NO FRENA: PIDE CONFIRMACION (ver la cabecera del lector) ═══
+    //
+    // Con un paciente de PRUEBA entra sin preguntar (no hay historia clinica que proteger) y se avisa.
+    // Con uno REAL hace falta el motivo; sin el, se devuelve la peticion de confirmacion, que NO es un
+    // rechazo: la pantalla la convierte en el campo del motivo y su boton.
+    let choqueAceptado: MedicionYaRegistrada | null = null;
     if (laEvaluacion) {
       const choque = await buscarLaMismaMedicion(tx, {
         evaluationId: input.evaluationId,
         patientId: laEvaluacion.patientId,
         valores: input.values,
       });
-      if (choque) throw new MedicionDuplicadaError(choque);
+      if (choque) {
+        const motivo = (input.motivoDeLaHuella ?? "").trim();
+        if (pideConfirmacion(choque)) {
+          if (motivo === "") throw new MedicionDuplicadaError(choque);
+          if (motivo.length < MOTIVO_MINIMO) throw new MotivoDeLaHuellaFaltaError();
+        }
+        choqueAceptado = choque;
+      }
     }
 
     // Y LA VIEJA SE REEMPLAZA DE VERDAD: se borra ANTES de insertar, en la misma transaccion. Dejarla
@@ -178,10 +222,49 @@ export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWrit
       ip: input.ip,
     });
 
+    // ═══ EL ACTO DE IMPORTAR SOBRE UNA MEDICION QUE YA ESTABA, CON SU MOTIVO (2026-11-05) ═══
+    //
+    // VA EN SU PROPIO EVENTO y no como un campo de `bis.imported`: es un acto distinto, con su propia
+    // gravedad, y la bandeja de administracion lo lee por el nombre del evento. Mezclado dentro del
+    // import normal habria que recorrer todos los imports para encontrar los pocos que importan.
+    //
+    // INLINE, en la MISMA transaccion (regla dura 8 y 16): si el import se revierte, el acto no existio.
+    // Un rastro escrito por fuera podria quedar afirmando una confirmacion que nunca se aplico.
+    //
+    // SIN PII, como todo el rastro: ids, la fecha de la otra toma y el motivo que escribio el profesional.
+    // El motivo lo escribe una persona, asi que podria traer un nombre: se acota el largo y se deja
+    // constancia de que es texto libre suyo, igual que los demas motivos del sistema.
+    if (choqueAceptado) {
+      await recordAudit(tx, {
+        event: "bis.huella_repetida_confirmada",
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        entityType: "bis_measurement",
+        entityId: measurement.id,
+        payload: {
+          evaluation_id: input.evaluationId,
+          // CONTRA QUE CHOCA: la otra consulta y su medicion, para poder mirar las dos.
+          otra_evaluacion_id: choqueAceptado.evaluationId,
+          otra_medicion_id: choqueAceptado.measurementId,
+          otra_fecha: choqueAceptado.fechaDeLaMedicion,
+          del_mismo_paciente: choqueAceptado.esDelMismoPaciente,
+          otro_paciente_es_de_prueba: choqueAceptado.esDePrueba,
+          // Con un paciente de prueba no se pide motivo, y entonces no hay motivo que registrar: se dice
+          // que no se pidio, en vez de dejar un hueco que se lea como "no lo escribio".
+          motivo: choqueAceptado.esDePrueba
+            ? null
+            : (input.motivoDeLaHuella ?? "").trim().slice(0, MOTIVO_MAXIMO),
+          confirmacion_requerida: !choqueAceptado.esDePrueba,
+        },
+        ip: input.ip,
+      });
+    }
+
     return {
       measurementId: measurement.id,
       valueCount: input.values.length,
       derivedCount: input.derivedValues.length,
+      choqueAceptado,
     };
   });
 }

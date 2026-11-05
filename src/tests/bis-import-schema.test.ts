@@ -387,8 +387,27 @@ describe("EL PORTON: un archivo con mediciones de VARIOS pacientes se rechaza", 
 // verificado") ya estaba escrita y la volvi a pisar. Un candado no depende de que yo me acuerde.
 //
 // LO QUE MIRA: que cada plantilla de mensaje de este archivo que prometa una cifra la INTERPOLE de verdad.
+/**
+ * El codigo sin sus comentarios.
+ *
+ * ES LA SEGUNDA VEZ QUE ESTA CASA TROPIEZA CON LO MISMO: un comentario que cita un acento grave abre y
+ * cierra pares que no son plantillas, y el candado acaba leyendo un trozo de CODIGO como si fuera un
+ * mensaje (paso el 2026-11-05 al documentar el motivo de la huella repetida). Lo que este candado mira son
+ * los MENSAJES que le llegan al profesional; un comentario no es uno.
+ */
+function sinComentarios(src: string): string {
+  return src
+    .split("\n")
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+    .join("\n");
+}
+
 describe("los mensajes del import llevan sus cifras", () => {
-  const ACCIONES = readFileSync("src/modules/bis/actions.ts", "utf8");
+  // SIN COMENTARIOS, y es la segunda vez que esta casa tropieza con lo mismo: un comentario que cita un
+  // acento grave abre y cierra pares que no son plantillas, y el candado acaba leyendo un trozo de CODIGO
+  // como si fuera un mensaje. Paso el 2026-11-05 al documentar el motivo de la huella. Lo que este candado
+  // mira son los MENSAJES que le llegan al profesional; un comentario no es uno.
+  const ACCIONES = sinComentarios(readFileSync("src/modules/bis/actions.ts", "utf8"));
 
   it("ninguna plantilla de mensaje quedo con un hueco donde iba una cifra", () => {
     // SE MIRA DENTRO DE LAS PLANTILLAS, no la linea entera: una linea indentada tiene espacios de sobra y

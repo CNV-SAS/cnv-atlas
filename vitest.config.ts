@@ -113,6 +113,7 @@ const DB_TESTS = [
   "src/tests/diagnosis-confirmation-immutability.test.ts",
   "src/tests/el-tratamiento-se-busca-por-indice-db.test.ts",
   "src/tests/el-filtro-entra-en-todas-las-consultas-db.test.ts",
+  "src/tests/la-huella-avisa-no-bloquea-db.test.ts",
   "src/tests/hc-antecedentes-encuesta.test.ts",
   "src/tests/faltante-case.test.ts",
   "src/tests/faltante-settle-sobrante.test.ts",

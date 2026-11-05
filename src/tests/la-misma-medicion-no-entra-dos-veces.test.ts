@@ -202,9 +202,22 @@ describe("el mensaje del freno", () => {
     }
   });
 
-  it("prioriza el choque de OTRO paciente cuando hay varios", () => {
+  // ═══ EL ORDEN DEL DESENLACE, Y AHORA SON DOS CRITERIOS (2026-11-05) ═══
+  //
+  // Antes bastaba con preferir el choque de OTRO paciente. Desde que el freno distingue a los pacientes
+  // de PRUEBA (con ellos avisa y sigue; con uno real pide motivo), el orden tiene que mirar primero si el
+  // choque es con alguien REAL: si el archivo choca con uno de prueba Y con uno real, reportar el de
+  // prueba dejaria pasar el import SIN confirmacion sobre un choque que si toca una historia clinica.
+  //
+  // El desenlace lo decide el choque MAS GRAVE, no el primero que aparezca.
+  it("prioriza el choque con un paciente REAL, y entre esos el de OTRO paciente", () => {
     const codigo = sinComentarios(src);
-    expect(/deVerdad\.find\(\(\[, x\]\) => x\.patientId !== input\.patientId\)/.test(codigo)).toBe(true);
+    // Primero se separan los reales...
+    expect(/const reales = deVerdad\.filter\(\(\[, x\]\) => !x\.esDePrueba\)/.test(codigo)).toBe(true);
+    // ...y dentro de esos, el de otro paciente manda.
+    expect(/reales\.find\(\(\[, x\]\) => x\.patientId !== input\.patientId\)/.test(codigo)).toBe(true);
+    // Y el de prueba es el ULTIMO recurso, nunca el primero.
+    expect(codigo.indexOf("reales[0]")).toBeLessThan(codigo.indexOf("deVerdad[0]"));
   });
 });
 

@@ -41,8 +41,7 @@ describe("EA1 aceptacion: import corto -> composicion derivada -> Wang + IEHH + 
     vi.mocked(writer.writeBisMeasurement).mockResolvedValue({
       measurementId: "m",
       valueCount: 0,
-      derivedCount: 0,
-    });
+      derivedCount: 0, choqueAceptado: null });
     const buffer = await readFile(SHORT_FIXTURE);
     const res = await importBisMeasurement({
       buffer,

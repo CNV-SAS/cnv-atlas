@@ -196,6 +196,14 @@ export function BisImportForm({
 
             {/* YA NO HAY ESTADO DESHABILITADO (2026-09-22): lo que falte lo dice el boton al pulsarlo, en el
                 recuadro de error de abajo, y el archivo elegido se conserva (`enviarSinReset`). */}
+            {/* EL CHOQUE QUE SE DEJO PASAR, cuando el import SALIO BIEN (paciente de prueba): no es un
+                error, asi que no va en rojo, pero no puede quedarse callado. */}
+            {state.warning ? (
+              <div className="rounded-lg border border-attention bg-attention-bg p-3">
+                <span className="text-sm text-foreground">{state.warning}</span>
+              </div>
+            ) : null}
+
             {state.error ? (
               <div className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
                 <span className="text-sm font-medium text-destructive">{state.error}</span>
@@ -211,11 +219,55 @@ export function BisImportForm({
               </div>
             ) : null}
 
+            {/* ═══ LA MEDICION YA ESTA EN OTRA HISTORIA: EL MOTIVO, Y NO UN BLOQUEO (2026-11-05) ═══
+
+                Antes decía "No se importa" y ahí terminaba. Un freno sin salida no es un guard: detiene a
+                una persona, y detenía justo a quien está probando el sistema (Santiago no pudo terminar el
+                smoke porque su archivo de pruebas coincide con un paciente del 13 de julio).
+
+                EL CAMPO ES UN `textarea` NORMAL, dentro del MISMO formulario: no se abre otro `<form>`
+                (hazard 7) y no se deshabilita nada que tenga que viajar (hazard 4). Y el motivo va en el
+                campo, no en el `name` del botón (hazard 5): este formulario se envía con
+                `enviarSinReset`, y el dato del botón no viajaría.
+
+                SE MUESTRA SOLO CUANDO EL SERVIDOR LO PIDE (`pideMotivoDeHuella`), no cuando el texto del
+                error "parece" de huella: una frase se reescribe y el acoplamiento se rompe en silencio. */}
+            {state.pideMotivoDeHuella ? (
+              <div className="flex flex-col gap-2 rounded-lg border border-attention bg-attention-bg p-3">
+                <label
+                  htmlFor="motivoDeHuella"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Por qué es correcto importarla aquí
+                </label>
+                <textarea
+                  id="motivoDeHuella"
+                  name="motivoDeHuella"
+                  rows={2}
+                  minLength={10}
+                  maxLength={500}
+                  defaultValue={state.motivoDeHuella ?? ""}
+                  placeholder="Ej: la toma es de este paciente; la otra consulta quedó con el archivo equivocado y ya se reportó."
+                  className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Queda registrado con tu nombre y la administración recibe el aviso. El aviso de medición
+                  repetida va a seguir apareciendo en la consulta hasta que se corrija.
+                </p>
+              </div>
+            ) : null}
+
             {/* `key` DISTINTA según el estado del bloque (hazard 1 de CLAUDE.md): cuando el aviso de varias
                 mediciones aparece, este botón pasa de importar a importar la elegida, y React reutilizaría el
                 mismo nodo del DOM. Con la clave, el viejo se desmonta y el nuevo se monta. */}
             <Button
-              key={variasMediciones ? "reimportar-otra-medicion" : "importar-medicion"}
+              key={
+                state.pideMotivoDeHuella
+                  ? "confirmar-huella-repetida"
+                  : variasMediciones
+                    ? "reimportar-otra-medicion"
+                    : "importar-medicion"
+              }
               type="submit"
               disabled={pending}
               className="w-fit"
@@ -224,11 +276,13 @@ export function BisImportForm({
                 ? modoReemplazo
                   ? "Reemplazando..."
                   : "Importando..."
-                : variasMediciones
-                  ? "Importar la medición elegida"
-                  : modoReemplazo
-                    ? "Reemplazar la medición"
-                    : "Importar medición BIS"}
+                : state.pideMotivoDeHuella
+                  ? "Importar de todos modos"
+                  : variasMediciones
+                    ? "Importar la medición elegida"
+                    : modoReemplazo
+                      ? "Reemplazar la medición"
+                      : "Importar medición BIS"}
             </Button>
           </form>
         )}
