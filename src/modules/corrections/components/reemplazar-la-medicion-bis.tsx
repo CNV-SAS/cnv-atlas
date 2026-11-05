@@ -1,6 +1,7 @@
 "use client";
 
 import { TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, type ReactNode } from "react";
 
@@ -107,6 +108,8 @@ export function ReemplazarLaMedicionBis({
   repetida = null,
   diagnosticoGenerado,
   reimportar = null,
+  versionReemplazada = false,
+  versionVigenteId = null,
 }: {
   evaluationId: string;
   /**
@@ -124,6 +127,13 @@ export function ReemplazarLaMedicionBis({
    * exactamente cuando ya hay diagnostico.
    */
   reimportar?: ReactNode | null;
+  /**
+   * ESTA VERSION YA FUE REEMPLAZADA por una correccion (2026-11-05). Entonces el acto NO se ofrece: el
+   * servicio lo frena igual, y un boton que solo puede fallar se siente roto.
+   */
+  versionReemplazada?: boolean;
+  /** A donde ir. Un aviso sin su enlace obliga a buscar la version vigente a mano. */
+  versionVigenteId?: string | null;
 }) {
   const [state, action, pending] = useActionState(medicionDeOtroPacienteAction, inicial);
   // EL TOAST SIN REFRESCO: al terminar se NAVEGA a la version nueva (ver abajo). Un `router.refresh()`
@@ -131,6 +141,18 @@ export function ReemplazarLaMedicionBis({
   useFormToast(state);
   const router = useRouter();
   const [abiertoPorElUsuario, setAbierto] = useState(false);
+  // ═══ PLEGADO POR DEFECTO CUANDO NO HAY NADA QUE AVISAR (Santiago, 2026-11-05) ═══
+  //
+  // *"Hoy al abrir Antrop. & BIS sale el recuadro entero. Que quede plegado detras de un boton
+  // «Reemplazar medicion BIS», y que se abra solo al pulsarlo."*
+  //
+  // Y NO CONTRADICE SU PETICION DEL 3 DE NOVIEMBRE ("las dos salidas a la vista, sin un paso que las
+  // esconda"): lo que el boton abre son LAS DOS OPCIONES JUNTAS, cada una con su linea. El paso que se
+  // quito entonces era el que escondia la DECISION detras de una pregunta ciega; el que se pone ahora es
+  // la entrada al bloque, que es otra cosa. Se lee antes de elegir, igual que entonces.
+  //
+  // CON AVISO NO SE PLIEGA NUNCA (ver abajo): una alerta plegada no es una alerta.
+  const [desplegado, setDesplegado] = useState(false);
   const [causaElegida, setCausa] = useState<Causa | null>(null);
   const [motivoEscrito, setMotivo] = useState("");
   const [confirmadoPorElUsuario, setConfirmado] = useState(false);
@@ -163,10 +185,69 @@ export function ReemplazarLaMedicionBis({
 
   const cerrar = () => {
     setAbierto(false);
+    setDesplegado(false);
     setCausa(null);
     setMotivo("");
     setConfirmado(false);
   };
+
+  // ── VERSION REEMPLAZADA: NINGUN ACTO, Y EL CAMINO (2026-11-05) ──────────────────────────────────
+  //
+  // VA ANTES QUE TODO, incluso que el aviso de la huella repetida: en una version reemplazada no hay nada
+  // que hacer aqui ni con aviso ni sin el, y lo que hay que hacer (ir a la vigente) es lo unico que se
+  // dice. El aviso de la huella, si aplica, sale en la version vigente, que es donde se puede arreglar.
+  if (versionReemplazada) {
+    return (
+      <section className="no-print flex flex-col gap-2 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+        <h3 className="text-sm font-semibold text-foreground">Versión reemplazada</h3>
+        <p className="max-w-prose text-sm text-muted-foreground">
+          La medición se cambia en la versión vigente de esta consulta, no aquí: esta se conserva como
+          registro de lo que se emitió.
+          {versionVigenteId ? (
+            <>
+              {" "}
+              <Link
+                href={`/ani-bis-e/${versionVigenteId}`}
+                className="font-semibold text-foreground underline underline-offset-4"
+              >
+                Ir a la versión vigente
+              </Link>
+              .
+            </>
+          ) : null}
+        </p>
+      </section>
+    );
+  }
+
+  // ── PLEGADO: SOLO EL BOTON (2026-11-05) ─────────────────────────────────────────────────────────
+  //
+  // Es el estado por defecto del 99 % de las consultas: no hay nada que avisar y el bloque no tiene por
+  // que ocupar la cabecera de la pestaña. Pulsar lo despliega con las dos opciones a la vista.
+  //
+  // SOLO CUANDO NO HAY AVISO. Con una huella repetida el bloque se pinta entero y abierto, porque ahi no
+  // es una herramienta que se ofrece: es una alerta sobre un dato de salud que esta en dos historias, y
+  // una alerta plegada detras de un boton no avisa a nadie.
+  if (!abierto && !desplegado && !repetida) {
+    return (
+      <section className="no-print flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-fit"
+          onClick={() => setDesplegado(true)}
+        >
+          Reemplazar medición BIS
+        </Button>
+        {/* LA LINEA DE DEBAJO DICE PARA QUE ES, y por eso el boton no queda mudo: sin ella, "reemplazar"
+            se puede leer como corregir las condiciones de la toma, que es otro boton y otra cosa. */}
+        <p className="max-w-prose text-xs text-muted-foreground">
+          Para cuando la toma quedó mal y hay que repetirla, o cuando el archivo es de otra persona.
+        </p>
+      </section>
+    );
+  }
 
   // ── CERRADO: EL AVISO (si lo hay) Y EL BOTON ─────────────────────────────────────────────────────
   if (!abierto) {
@@ -228,6 +309,15 @@ export function ReemplazarLaMedicionBis({
             </button>
           ))}
         </div>
+        {/* VOLVER A PLEGARLO, y solo cuando el bloque se desplego a mano: con un aviso no hay nada que
+            cerrar, porque el aviso no se puede esconder. */}
+        {desplegado && !repetida ? (
+          <div>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setDesplegado(false)}>
+              Cancelar
+            </Button>
+          </div>
+        ) : null}
       </section>
     );
   }

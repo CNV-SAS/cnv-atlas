@@ -189,9 +189,13 @@ describe("retirar las colas de lote no dejo nada sin camino", () => {
     // EL REEMPLAZO SIGUE AQUI, pero no como `details` plegado: desde el 2026-11-03 es el slot que la
     // pestaña le pasa al bloque "Reemplazar la medicion BIS", y se apaga solo cuando no hay import
     // posible. Lo que este caso protege no es la forma, es que el camino EXISTA.
-    expect(entrada).toContain("modoReemplazo");
-    expect(entrada, "el reimport dejo de apagarse solo cuando no hay import posible").toContain(
-      "reimportar={bisImportEval ?",
+    expect(entrada).toMatch("modoReemplazo");
+    expect(entrada, "el reimport dejo de apagarse solo cuando no hay import posible").toMatch(
+      // LA CONDICION GANO UNA MITAD (2026-11-05): en una version REEMPLAZADA el reimport tampoco se
+      // monta, porque cambiaria la medicion de una version que ya no es la vigente, o sea escribiria
+      // sobre el registro de lo que se emitio. Lo que el candado protege no cambia: que el reimport se
+      // apague SOLO, por derivacion, y no por una bandera que alguien tenga que acordarse de bajar.
+      /reimportar=\{\s*bisImportEval && !versionReemplazada/,
     );
     expect(readFileSync("src/modules/bis/actions.ts", "utf8")).toContain("evaluarRequisitosDelImport(");
     expect(readFileSync("src/modules/bis-intake/services/import-gate.ts", "utf8")).toContain('reason: "contraindicated"');

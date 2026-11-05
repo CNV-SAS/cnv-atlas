@@ -50,6 +50,8 @@ export function EntradaEvaluacion({
   identityConfirmationSlot = null,
   encabezado = null,
   medicionRepetida = null,
+  versionReemplazada = false,
+  versionVigenteId = null,
   avisoDeEdadDelEquipo = null,
   panelDeCalidadBiologica = null,
 }: {
@@ -90,6 +92,13 @@ export function EntradaEvaluacion({
    * un aviso que no trae su salida al lado obliga a buscarla.
    */
   medicionRepetida?: HuellaRepetida | null;
+  /**
+   * ESTA VERSION YA FUE REEMPLAZADA por una correccion (2026-11-05). La pestaña deja de ofrecer los actos
+   * que crean version: el servicio los frena igual, y un boton que solo puede fallar se siente roto.
+   */
+  versionReemplazada?: boolean;
+  /** A donde ir cuando esta reemplazada. */
+  versionVigenteId?: string | null;
   /**
    * EL AVISO DE SU ERROR 5: la edad de la ficha y la del equipo difieren en mas de un año.
    *
@@ -310,7 +319,15 @@ export function EntradaEvaluacion({
       evaluationId={evaluationId}
       repetida={medicionRepetida}
       diagnosticoGenerado={diagnosticoGenerado}
-      reimportar={bisImportEval ? <BisImportForm evaluation={bisImportEval} modoReemplazo /> : null}
+      versionReemplazada={versionReemplazada}
+      versionVigenteId={versionVigenteId}
+      // Y EL REIMPORT TAMPOCO SE MONTA EN UNA VERSION REEMPLAZADA: cambia la medicion de una version que
+      // ya no es la vigente, o sea escribe sobre el registro de lo que se emitio.
+      reimportar={
+        bisImportEval && !versionReemplazada ? (
+          <BisImportForm evaluation={bisImportEval} modoReemplazo />
+        ) : null
+      }
     />
   );
 

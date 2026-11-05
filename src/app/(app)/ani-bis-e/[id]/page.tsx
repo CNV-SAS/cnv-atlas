@@ -515,6 +515,10 @@ export default async function ResultadosEvaluacionPage({
     paciente: hcHeader?.paciente ?? "Paciente",
     documento: hcHeader?.documento ?? null,
     fecha: formatDate(hcHeader?.fechaConsulta ?? new Date().toISOString()),
+    // La misma bandera en la rama sin diagnostico: una version reemplazada puede no tener diagnostico
+    // (se corrigio antes de emitirlo) y el acto tampoco se ofrece ahi.
+    versionReemplazada: supersession.superseded,
+    versionVigenteId: supersession.newEvaluationId,
   };
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -1015,6 +1019,17 @@ export default async function ResultadosEvaluacionPage({
     // recibe, y por eso el mismo bloque no queda montado dos veces con props escritas a mano en cada una
     // de las dos ramas de esta pagina.
     medicionRepetida,
+    // ═══ EN UNA VERSION REEMPLAZADA NO SE OFRECE NINGUN ACTO QUE CREE VERSION (2026-11-05) ═══
+    //
+    // Santiago: *"al abrir la version antigua todavia se ofrecen «Reemplazar medicion BIS», «Corregir
+    // evaluacion» y lo demas, y al usarlos responde «Esta evaluacion ya fue corregida». El freno esta
+    // bien, pero ofrecer botones que llevan a un error se siente roto."*
+    //
+    // El freno del servicio se queda (es la cerradura); lo que cambia es que la superficie deje de
+    // ofrecer el acto. Y VIAJA LA BANDERA, no la decision de cada boton: asi un acto nuevo que se monte
+    // en esta pestaña la recibe sin que nadie se acuerde de pasarla.
+    versionReemplazada: supersession.superseded,
+    versionVigenteId: supersession.newEvaluationId,
     avisoDeEdadDelEquipo: <AvisoDeEdadDiscordante discordancia={edadDiscordante} />,
     // EL CONTROL DE CALIDAD BIOLOGICO (su v12). El panel decide solo si se pinta: sin hallazgos devuelve
     // null, que es el 99,5 % de las consultas.

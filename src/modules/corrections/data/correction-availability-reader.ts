@@ -17,6 +17,29 @@ export type CorrectionAvailability = {
 
 export async function getCorrectionAvailability(evaluationId: string): Promise<CorrectionAvailability> {
   const supabase = await createSupabaseServerClient();
+
+  // ═══ UNA VERSION YA REEMPLAZADA NO SE CORRIGE (2026-11-05) ═══
+  //
+  // El servicio ya lo frena ("Esta evaluación ya fue corregida; corrige la versión vigente"), pero la
+  // pantalla seguia ofreciendo el boton, y un boton que solo puede fallar se siente roto. Aqui no se
+  // inventa un mecanismo: este lector YA tiene el camino de "no disponible con su razon", que es el que
+  // usa la version vieja de encuesta. Esta es otra razon de la misma clase.
+  //
+  // VA PRIMERO, antes de leer la version de la encuesta: es la razon que manda (da igual con que version
+  // se hizo una evaluacion que ya no es la vigente) y ahorra la consulta.
+  const { data: reemplazada } = await supabase
+    .from("clinical_corrections")
+    .select("new_evaluation_id")
+    .eq("old_evaluation_id", evaluationId)
+    .limit(1)
+    .maybeSingle();
+  if (reemplazada) {
+    return {
+      available: false,
+      blockedReason:
+        "Esta versión ya fue reemplazada por una corrección. Lo que haya que corregir se corrige en la versión vigente.",
+    };
+  }
   // Version de encuesta con que se hizo esta evaluacion (la respuesta mas reciente). RLS: el profesional
   // lee las respuestas de su propio paciente.
   const { data: resp, error } = await supabase

@@ -156,14 +156,23 @@ describe("el boton de imprimir esta en todas las subpestañas", () => {
     // solo se arma cuando hay encabezado (la linea del caso siguiente: sin firma no es un documento). Sin
     // encabezado se devuelve el cuerpo crudo, y entonces el unico `no-print` que queda es el del bloque.
     const bloque = leer("src/modules/corrections/components/reemplazar-la-medicion-bis.tsx");
-    // CADA ESTADO DEL BLOQUE ABRE SU PROPIA TARJETA, y hoy son cinco declaraciones: cerrado con el aviso
-    // de la huella, cerrado sin él, la pregunta del motivo, el reimport en sitio y el camino versionado.
-    // SE COMPARAN LAS DOS CUENTAS y no se fija un número: así, agregar un estado sin su `no-print` pone el
-    // candado rojo, y agregarlo CON su `no-print` no lo pone rojo por crecer.
-    const aperturas = (bloque.match(/rounded-xl border/g) ?? []).length;
-    const protegidas = (bloque.match(/no-print/g) ?? []).length;
-    expect(aperturas, "el bloque de reemplazo se quedó sin tarjetas: revisa este candado").toBeGreaterThan(0);
-    expect(protegidas, "un estado del bloque de reemplazo saldría impreso").toBe(aperturas);
+    // CADA ESTADO DEL BLOQUE DEVUELVE SU PROPIO `<section>`, Y SE MIRA UNO POR UNO.
+    //
+    // DOS INTENTOS ANTERIORES Y LOS DOS ERAN CUENTAS: contra `rounded-xl border` (y el estado PLEGADO del
+    // 2026-11-05 es solo un boton, sin tarjeta) y contra el numero de `no-print` (y el estado cerrado lleva
+    // DOS, uno por rama de su ternario). Las dos veces el candado se puso rojo sobre codigo correcto.
+    //
+    // Una cuenta total no puede expresar "cada uno lleva el suyo". Se mira el className de cada `<section>`:
+    // asi un estado nuevo sin `no-print` cae, y uno con `no-print` no cae por ser de otra forma.
+    const estados = bloque.split("<section").slice(1);
+    expect(estados.length, "el bloque de reemplazo se quedó sin estados: revisa este candado").toBeGreaterThan(
+      0,
+    );
+    const sinProteger = estados
+      .map((s, i) => [i, s.slice(0, s.indexOf(">"))] as const)
+      .filter(([, cabecera]) => !cabecera.includes("no-print"))
+      .map(([i]) => i);
+    expect(sinProteger, "un estado del bloque de reemplazo saldría impreso").toEqual([]);
   });
 
   it("y sin encabezado no se ofrece el boton: una hoja sin firma no es un documento", () => {

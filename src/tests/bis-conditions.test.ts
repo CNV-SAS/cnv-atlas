@@ -629,8 +629,12 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     // SE MIDE LA CADENA COMPLETA, que es lo que hace que el camino exista de verdad: la pestaña le pasa
     // el formulario de reemplazo al bloque, y se apaga SOLO cuando no hay import posible (con diagnóstico
     // `bisImportEval` ya es null); el bloque lo recibe como slot y solo lo pinta sin diagnóstico.
-    expect(sinComentarios(ENTRADA), "la pestaña ya no monta el formulario de reemplazo").toContain(
-      "reimportar={bisImportEval ?",
+    expect(sinComentarios(ENTRADA), "la pestaña ya no monta el formulario de reemplazo").toMatch(
+      // LA CONDICION GANO UNA MITAD (2026-11-05): en una version REEMPLAZADA el reimport tampoco se
+      // monta, porque cambiaria la medicion de una version que ya no es la vigente, o sea escribiria
+      // sobre el registro de lo que se emitio. Lo que el candado protege no cambia: que el reimport se
+      // apague SOLO, por derivacion, y no por una bandera que alguien tenga que acordarse de bajar.
+      /reimportar=\{\s*bisImportEval && !versionReemplazada/,
     );
     const jsx = sinComentarios(REEMPLAZO);
     expect(jsx, "el slot del reimport desapareció del bloque").toContain("{reimportar ?? (");
@@ -805,5 +809,57 @@ describe("lo que se le ofrece al profesional depende del camino", () => {
     }
     const deAtlas = circunferenciasParaDiagnosticar({ cintura: 84, cadera: null }, false);
     if (!deAtlas.allowed) expect(deAtlas.message).toContain("Vuelve a tomar la medida en Biody Manager");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// UNA VERSION REEMPLAZADA NO OFRECE NINGUN ACTO QUE CREE VERSION  ·  2026-11-05
+//
+// Santiago: *"al abrir la version antigua todavia se ofrecen «Reemplazar medicion BIS», «Corregir
+// evaluacion» y lo demas, y al usarlos responde «Esta evaluacion ya fue corregida». El freno esta bien,
+// pero ofrecer botones que llevan a un error se siente roto."*
+//
+// ═══ LAS DOS CAPAS, Y LAS DOS HACEN FALTA ═══
+//
+// El FRENO del servicio se queda: es la cerradura, y una superficie no es un control (la URL del acto se
+// puede escribir a mano). Lo que cambia es que la SUPERFICIE deje de ofrecerlo. Un boton que solo puede
+// fallar no es una salida: gasta el tiempo de alguien y le hace dudar del sistema entero.
+//
+// Y LO QUE SE VIGILA ES QUE LA BANDERA VIAJE, no el texto de cada aviso: la pagina la calcula una vez
+// (`supersession.superseded`) y la pasa en sus DOS ramas; cada superficie la recibe. Asi un acto nuevo que
+// se monte en esa pestaña la tiene sin que nadie se acuerde de pasarla.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("en una version reemplazada no se ofrece ningun acto que cree version", () => {
+  const PAGINA = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
+  const BLOQUE = readFileSync(
+    "src/modules/corrections/components/reemplazar-la-medicion-bis.tsx",
+    "utf8",
+  );
+
+  it("la pagina pasa la bandera en sus DOS ramas, con y sin diagnostico", () => {
+    const veces = (PAGINA.match(/versionReemplazada: supersession\.superseded/g) ?? []).length;
+    expect(veces, "la bandera no llega a las dos ramas de la pagina").toBe(2);
+    // Y con su destino: un aviso sin enlace obliga a buscar la version vigente a mano.
+    expect((PAGINA.match(/versionVigenteId: supersession\.newEvaluationId/g) ?? []).length).toBe(2);
+  });
+
+  it("el bloque de reemplazar la medicion no pinta ningun acto cuando esta reemplazada", () => {
+    const bloque = sinComentarios(BLOQUE);
+    expect(bloque).toContain("if (versionReemplazada) {");
+    // El estado va ANTES que todos los demas: en una version reemplazada no hay nada que hacer ahi, ni
+    // con aviso de huella ni sin el.
+    expect(bloque.indexOf("if (versionReemplazada)")).toBeLessThan(bloque.indexOf("if (!abierto"));
+    // Y dice a donde ir.
+    expect(bloque).toContain("Ir a la versión vigente");
+  });
+
+  it("y la correccion de la encuesta se bloquea con su razon, no con un boton que falla", () => {
+    const lector = readFileSync("src/modules/corrections/data/correction-availability-reader.ts", "utf8");
+    expect(lector).toContain("clinical_corrections");
+    expect(lector).toContain("Esta versión ya fue reemplazada");
+    // VA PRIMERO: es la razon que manda, y de paso ahorra la consulta de la version de encuesta.
+    expect(lector.indexOf("Esta versión ya fue reemplazada")).toBeLessThan(
+      lector.indexOf("survey_responses"),
+    );
   });
 });
