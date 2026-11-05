@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { AvisoDeFase } from "@/components/layout/aviso-de-fase";
 import { AvisoDePendientes } from "@/modules/avisos/components/aviso-de-pendientes";
+import { AvisoDeBandejasDeAdmin } from "@/modules/patients/components/aviso-de-bandejas-de-admin";
 import { navGroupsForRoles } from "@/components/layout/nav-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MFA_REQUIRED_ROLES, mfaRequirement } from "@/modules/auth/mfa-policy";
@@ -48,6 +49,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AvisoDeFase fase={fase} />
       {/* Bloque A: lo que pide accion de ventas, en cualquier pantalla, para quien tiene la marca. */}
       <AvisoDePendientes user={user} />
+      {/* Y lo que pide accion de ADMINISTRACION (2026-11-05): las tres bandejas de /admin solo se pintan
+          cuando tienen algo y estan al pie de una pagina larga, asi que quien pedia una eliminacion no
+          tenia como enterarse de que habia quedado esperando. */}
+      <AvisoDeBandejasDeAdmin user={user} />
       <AppShell
         user={{ fullName: user.fullName, email: user.email }}
         grupos={navGroupsForRoles(user.roles)}

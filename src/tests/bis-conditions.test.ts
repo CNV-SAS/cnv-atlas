@@ -863,3 +863,53 @@ describe("en una version reemplazada no se ofrece ningun acto que cree version",
     );
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LAS BANDEJAS DE ADMINISTRACION AVISAN DE QUE EXISTEN  ·  2026-11-05
+//
+// Santiago: *"Pedí una eliminación y no la encuentro."* Y la peticion SI estaba (verificado en
+// produccion: una pendiente del 5 de noviembre). El defecto no era el registro, era que no habia forma de
+// enterarse: las tres bandejas de /admin solo se pintan cuando tienen algo (correcto: una seccion vacia
+// permanente entrena a no mirarla) y estan al pie de una pagina larga.
+//
+// Es la forma de la "pieza terminada sin el ultimo cable": el acto se registra, la bandeja existe, la
+// resolucion funciona, y nadie se entera de que hay algo que resolver.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("lo que espera en /admin se ve desde cualquier pantalla", () => {
+  const FRANJA = readFileSync(
+    "src/modules/patients/components/aviso-de-bandejas-de-admin.tsx",
+    "utf8",
+  );
+  const LAYOUT = readFileSync("src/app/(app)/layout.tsx", "utf8");
+
+  it("la franja va montada en el layout, no en una pantalla", () => {
+    // Si viviera en /admin no serviria de nada: quien no sabe que hay algo no entra a mirar.
+    expect(LAYOUT).toContain("<AvisoDeBandejasDeAdmin user={user} />");
+  });
+
+  it("cuenta las TRES bandejas y las distingue", () => {
+    // Un aviso que no las distingue obliga a entrar para saber si corre prisa.
+    expect(FRANJA).toContain("peticionesDeEliminacionPendientes");
+    expect(FRANJA).toContain("propuestasDePruebaPendientes");
+    expect(FRANJA).toContain("leerHuellasConfirmadas");
+    expect(FRANJA).toContain("petición");
+    expect(FRANJA).toContain("como de prueba");
+    expect(FRANJA).toContain("sobre otra historia");
+  });
+
+  it("no se pinta cuando no hay nada, y la autorizacion va por policy", () => {
+    expect(FRANJA).toContain("if (partes.length === 0) return null;");
+    expect(FRANJA, "la franja tiene que respetar la policy de admin").toContain("canAccessAdmin(user)");
+  });
+
+  it("y NO lleva ni un nombre de paciente: solo conteos y el enlace", () => {
+    // La franja sale en cualquier pantalla y la puede ver quien comparte el escritorio. El nombre y el
+    // documento viven en /admin, donde el acto se resuelve.
+    for (const pii of ["nombre", "documento", "first_name", "documentNumber"]) {
+      expect(
+        sinComentarios(FRANJA).includes(pii),
+        `${pii} no puede aparecer en una franja que sale en toda la app`,
+      ).toBe(false);
+    }
+  });
+});
