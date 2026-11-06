@@ -91,6 +91,22 @@ En Vercel se cargan en Production, Preview y Development. **Regla crítica:** lo
 ### 1. Repositorio
 `cnv-atlas`, privado, `.gitignore` Node.
 
+**Y una línea por clon, que no se versiona porque no se puede** (2026-11-05):
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+Activa el gancho de pre-commit (`.githooks/pre-commit`), que corre `scripts/check-entregas.mjs`: ese
+control frena que entre a `docs/entregas/` cualquier archivo que no sea texto revisable (`.md`, `.sql`,
+`.js`, `.json`). Existe porque once PDF con nombre, documento y cifras de pacientes reales llegaron al
+historial publicado por un `git add -A`, y hubo que reescribir la historia (`docs/incidents/2026-11-05-pdf-de-paciente-en-el-historial.md`).
+
+`.git/hooks` no se versiona, así que el gancho vive en `.githooks/` (versionado) y lo único que queda
+fuera del repositorio es esta línea. **Sin ella el control no corre**, por eso `pnpm check:entregas`
+(incluido en `pnpm verify`) barre además todo lo versionado: si alguien clona y no configura el gancho,
+la verificación del bloque lo atrapa igual.
+
 ### 2. Bootstrap Next.js (con pnpm)
 Verifica pnpm (`pnpm --version`; si falta, `corepack enable && corepack prepare pnpm@latest --activate`).
 ```bash

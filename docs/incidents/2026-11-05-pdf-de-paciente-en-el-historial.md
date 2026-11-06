@@ -1,8 +1,10 @@
 # PDF de informes de paciente en el historial de git (y en GitHub)
 
 **Connected Nutrition Ventures · Atlas · 5 de noviembre de 2026**
-**Estado:** ABIERTO. La limpieza del historial está preparada y no se ha ejecutado: la decide Santiago.
+**Estado:** LIMPIEZA EJECUTADA EN LOCAL el 5 de noviembre. Falta **un solo paso, y es de Santiago**: el
+push forzado del punto 4.5. Hasta que lo haga, el remoto sigue teniendo los once PDF.
 **Responsable de respuesta:** Santiago (SECURITY.md, "Respuesta a incidentes").
+**Decisiones tomadas:** sección 6.
 
 ---
 
@@ -138,11 +140,22 @@ Los identificadores de los commits cambian. El contenido, no.
 ### 4.5 · El push forzado
 
 ```powershell
-git push --force-with-lease origin main
+git push --force-with-lease=main:21622f2d38bc215c2ffe83681163eaf8f5bd2285 origin main
 ```
 
-`--force-with-lease` en vez de `--force` porque falla, en vez de pisar, si alguien empujó algo desde el
-último `fetch`. Es la diferencia entre reescribir el historial y borrar el trabajo de otra persona.
+**Dos avisos, y los dos salieron de ejecutar la limpieza de verdad (no estaban en la versión preparada):**
+
+1. **El `--force-with-lease` a secas ya no sirve, y no por un detalle.** La reescritura corrió contra
+   `-- --all`, que incluye las ramas de seguimiento, así que `origin/main` **local** quedó reescrito
+   (de `21622f2d` a `79492075`). Un `--force-with-lease` sin argumento compara el remoto contra ese
+   valor local y fallaría siempre. La forma explícita de arriba dice *"el remoto tiene que estar
+   exactamente en `21622f2d`"*, que es el valor **verificado hoy** con `git ls-remote`, y es un freno
+   mejor: no depende de cuándo se hizo el último fetch.
+2. **NO hacer `git fetch` antes del push.** Un fetch traería de vuelta el `origin/main` real, y con él
+   **los once PDF volverían al clon local**, que es justo lo que se acabó de limpiar. Después del push
+   el fetch es inofensivo.
+
+Si el push falla con *"stale info"*, es que algo se movió en el remoto: no forzar, mirar qué fue.
 
 ### 4.6 · Lo que el push forzado NO arregla, y hay que hacer aparte
 
@@ -161,9 +174,88 @@ git push --force-with-lease origin main
 - La regla de `.gitignore` ya cubre los PDF de `docs/entregas/`, que es por donde llegaron las dos veces
   (hay un commit anterior titulado *"drop the report PDFs of the previous round"*: la carpeta ya había
   dado el aviso y la regla seguía sin cubrirlos).
-- Pendiente de decidir: un control que falle el commit cuando entre un binario bajo `docs/entregas/`,
-  en vez de depender de que la lista de extensiones esté completa. Hoy la regla es por extensión, y la
-  lección de las dos veces es que la extensión siguiente siempre es otra.
+- **CONSTRUIDO (5 de noviembre): `scripts/check-entregas.mjs`, con lista de lo PERMITIDO.** A
+  `docs/entregas/` solo entra `.md`, `.sql`, `.js` y `.json`, que es lo que se revisa en un diff; todo lo
+  demás se rechaza, incluido el formato que nadie ha previsto todavía. Corre en el gancho
+  `.githooks/pre-commit` (se activa con `git config core.hooksPath .githooks`, en `DEPLOY.md` punto 1) y
+  además sobre todo lo versionado con `pnpm check:entregas`, que entró a `pnpm verify`.
+  - Lo que ya estaba versionado (siete `.docx`, doce HTML, un CSV) queda excepcionado **por nombre**,
+    porque sacarlos es otra decisión y tiene su consecuencia (un clon nuevo se queda sin las
+    especificaciones de Gildardo). Los veinte se barrieron antes de excepcionarlos: ninguno lleva
+    identidad de paciente (sección 6.1).
+  - Candado: `src/tests/el-control-de-entregas-muerde.test.ts`, 9 casos, que **ejecuta** la decisión
+    (no lee el archivo) y además afirma que el gancho sigue llamando al control y que ningún `.pdf`
+    aparece en la lista de excepciones.
+- **Por qué una lista de lo permitido y no una de lo prohibido.** La de prohibidos se escribió tres
+  veces, cada una después del archivo que la estrenó: los Excel el 2 de octubre, los HTML el 22 de
+  octubre, los PDF hoy. Una lista de prohibidos va siempre un formato por detrás del siguiente archivo
+  que llega, y `git add -A` no pregunta.
+
+---
+
+## 6 · Las decisiones, tomadas el 5 de noviembre
+
+### 6.1 · Se barrió el historial buscando OTROS archivos con datos de paciente, no solo PDF
+
+Antes de reescribir se miró **todo el historial**, no la carpeta de hoy, porque una sola reescritura es
+barata y dos no. Todos los blobs de riesgo que existen en los 2.002 commits:
+
+| Formato | Cuántos | Veredicto |
+|---|---|---|
+| `.pdf` | **11** | Documentos clínicos. **Salen** (sección 2). |
+| `.docx` | 7 | Documentos de Gildardo. Texto extraído y medido: **cero** rótulos de identidad, **cero** números de 7 a 11 dígitos. El único número largo del de la especificación v7 es un fragmento de UUID junto a dos edades, que es seudónimo. Se quedan. |
+| `.html` | 20 | Sus prototipos y nuestro exportador. Medidos: los únicos números largos son el id de un modelo de IA, un `z-index` y los milisegundos de un día. Las 14 apariciones de "cédula" son **los rótulos del formulario**, no datos. Se quedan. |
+| `.csv` | 1 | `cohorte_AEC_ACT_2026-08-18.csv`: 5.885 filas, columnas `n, sexo, edad, ACT_L, AEC_L, AEC_pct_ACT, Re_ohm, Rinf_ohm`. **Seudonimizada, sin un solo identificador.** Se queda. |
+| `.xlsx` | 2 | `src/tests/fixtures/biody_synthetic.xlsx` y `biody-bis-male-synthetic.xlsx`: sintéticos. Se quedan. |
+| `.png` | 4 | Logos de marca y el icono de la app. Se quedan. |
+
+**Nada de esto se verificó imprimiendo datos de paciente:** se contaron rótulos y patrones, y los
+contextos que se miraron salieron con los dígitos enmascarados.
+
+### 6.2 · No se notifica a la SIC (decisión de Santiago)
+
+**Su razón:** el repositorio es privado, nadie más tiene acceso, y los datos expuestos son nombre y
+documento, que en Colombia no son reservados.
+
+**Lo que queda dicho, para que la decisión esté completa:** lo que hace sensible al conjunto no es el
+nombre ni la cédula por separado, es que van **unidos a datos de salud** (edad biológica, composición
+corporal, diagnóstico), y eso sí es dato sensible del artículo 5 de la Ley 1581. La decisión se sostiene
+igualmente sobre la otra pata, que es la que importa aquí: **no hubo acceso de un tercero**. Si Santiago
+quiere certeza y no criterio, la consulta es de quince minutos con el asesor jurídico, y el plazo de los
+15 días hábiles corre desde hoy.
+
+### 6.3 · No se abre ticket a GitHub (decisión de Santiago)
+
+**Su razón:** a los objetos inalcanzables solo llega quien tenga acceso al repositorio, y ese es él.
+
+**Lo que eso deja en pie, dicho sin adornos:** los once blobs seguirán recuperables por su identificador
+en los servidores de GitHub hasta que GitHub recoja la basura por su cuenta, y eso no tiene fecha. Es un
+riesgo acotado a quien ya tiene acceso al repositorio privado, que es exactamente el mismo conjunto de
+personas que podía verlos antes. **La decisión no cambia quién puede ver qué**; solo deja de cerrar la
+puerta del todo.
+
+### 6.4 · Se limpió el historial, y esto es lo que pasó
+
+- **Respaldo**, fuera del repositorio, verificado (`git bundle verify`: *"records a complete history"*):
+  `C:\Users\sarro\respaldo-atlas-antes-de-limpiar-2026-11-05.bundle` (13,5 MB). **Contiene los once PDF.**
+  Se borra cuando el push esté hecho y comprobado:
+  ```powershell
+  Remove-Item "C:\Users\sarro\respaldo-atlas-antes-de-limpiar-2026-11-05.bundle"
+  ```
+- **La reescritura** corrió `git filter-branch --index-filter` contra `-- --all`: 2.002 commits en
+  16 minutos.
+- **`main` pasó de `f5de2c2b` a `4b6ddf5a`**, y `origin/main` local de `21622f2d` a `79492075`.
+- **Un commit desapareció, y es correcto:** `a59ff328` *("chore(cotejo): drop the report PDFs of the
+  previous round")* no hacía más que borrar PDF, así que al sacarlos del historial quedó vacío y
+  `--prune-empty` lo retiró. 2.002 commits pasaron a 2.001.
+- **El contenido actual no cambió en nada:** `git diff f5de2c2b 4b6ddf5a` sale **vacío**. Era de esperar
+  (en `HEAD` no quedaba ningún PDF rastreado), y comprobarlo es lo que distingue "limpié el historial" de
+  "perdí algo sin saberlo".
+- **Las tres comprobaciones, después del `gc`:**
+  1. `git log --all --oneline -- "docs/entregas/*.pdf"` → vacío.
+  2. `git rev-list --objects --all | Select-String "\.pdf$"` → vacío.
+  3. `git cat-file -t f5de2c2b` y `git cat-file -t 21622f2d` → *"Not a valid object name"*: los commits
+     viejos ya no existen ni como objeto suelto.
 
 ---
 

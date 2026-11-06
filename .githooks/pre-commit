@@ -1,0 +1,8 @@
+#!/bin/sh
+# Gancho de pre-commit. Se activa una vez por clon con:
+#   git config core.hooksPath .githooks
+#
+# Por que vive VERSIONADO y no en .git/hooks: .git/hooks no se versiona, asi que un control que viva solo
+# ahi no existe para nadie mas y se pierde al clonar de nuevo. Lo unico que queda fuera del repo es la
+# linea de `git config`, que es una sola y esta en DEPLOY.md.
+node scripts/check-entregas.mjs || exit 1
