@@ -1,10 +1,10 @@
 import "server-only";
 
-import { captureException } from "@sentry/nextjs";
-
 import type { EngineOutput } from "@/clinical-engine";
+import { reportServerError } from "@/lib/observability/report-error";
 import { etiquetaDeProfesion } from "@/modules/auth/admin-validations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hayProtocoloSellado } from "@/modules/treatment/data/treatment-reader";
 import { BAND_TEXT, type EbBand } from "@/modules/followups/services/eb-trajectory";
 
 // TrajectoryConfirmation (usado en anotaciones del reader) vive en el modulo neutro; ver reexport abajo.
@@ -225,19 +225,24 @@ export async function getReportCardForEvaluation(
   // quedaba indistinguible de "no hay plan" y la tarjeta escondia el enlace en silencio. No se lanza,
   // porque un fallo aqui no debe tumbar la tarjeta entera: se devuelve el tercer estado y la tarjeta lo
   // dice. Misma familia que el freno que se abria por un error de PostgREST no leido.
-  const { data: conProtocolo, error: errProtocolo } = await supabase
-    .from("treatments")
-    .select("protocol_snapshot, diagnoses!inner(evaluation_id)")
-    .eq("diagnoses.evaluation_id", evaluationId)
-    .not("protocol_snapshot", "is", null)
-    .limit(1)
-    .maybeSingle();
-  if (errProtocolo) {
-    // El mensaje va a Sentry con su contexto; no lleva PHI (es el error de Postgres, no el dato).
-    captureException(
-      new Error(`reports-repository: conPlan: ${errProtocolo.message}`),
-      { tags: { lector: "reports-repository.conPlan" } },
-    );
+  //
+  // LA PREGUNTA NO SE ESCRIBE AQUI (2026-11-06). Esta consulta vivia en este archivo, preguntaba por una
+  // columna que NUNCA existio (`protocol_snapshot`; las reales son `protocol_suggested` y
+  // `protocol_approved`) y ademas sin `order by`. Resultado: fallaba en las 139 cargas que Sentry registro,
+  // y antes del 2026-11-03 fallaba en silencio. Leer el error estaba bien; tener una SEGUNDA copia de la
+  // condicion era el defecto. Ahora la resuelve `hayProtocoloSellado`, que vive junto al protocolo.
+  let conPlan = false;
+  let errProtocolo: unknown = null;
+  try {
+    conPlan = await hayProtocoloSellado(evaluationId);
+  } catch (e) {
+    errProtocolo = e;
+    // POR `reportServerError` Y NO POR UN MENSAJE ARMADO A MANO: el codigo anterior interpolaba
+    // `error.message` de Postgres con el comentario "no lleva PHI (es el error de Postgres, no el dato)",
+    // y eso es falso justo donde importa. Un mensaje de Postgres SI trae el valor de la fila: el segundo
+    // error de esta misma ronda era `invalid input syntax for type uuid: "<el valor>"`. El camino estandar
+    // pasa por el scrub de Sentry y manda la cadena de causas.
+    reportServerError("reports-repository.conPlan", e);
   }
 
   // SE RETIRO LA LECTURA DEL ESTADO DE LA PRESCRIPCION (2026-09-09). Servia para que el boton de enviar
@@ -254,7 +259,7 @@ export async function getReportCardForEvaluation(
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     trajectory,
-    conPlan: errProtocolo == null && conProtocolo != null,
+    conPlan,
     planIndeterminado: errProtocolo != null,
     resentCount: (row.resent_count as number | null) ?? 0,
   };

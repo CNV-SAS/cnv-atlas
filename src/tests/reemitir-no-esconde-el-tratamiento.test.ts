@@ -91,10 +91,13 @@ describe("ningun lector del tratamiento depende del diagnostico VIGENTE", () => 
       expect(f, `no se encontro ${ruta}`).toBeDefined();
       expect(f!.codigo, `${ruta} dejo de buscar por la evaluacion`).toMatch(patron);
     }
-    // El lector del tratamiento tiene DOS consultas (el protocolo y la aprobacion) y las dos tienen que
-    // ir por la evaluacion: arreglar una sola fue el error original.
+    // El lector del tratamiento tiene TRES consultas y las tres tienen que ir por la evaluacion: arreglar
+    // una sola fue el error original. Eran dos (el protocolo y la aprobacion); la tercera es
+    // `hayProtocoloSellado`, del 2026-11-06, y entra aqui por su propio motivo: nacio porque la tarjeta
+    // del informe tenia su propia copia de esa condicion, escrita a mano y contra una columna inexistente.
+    // Una condicion duplicada se desincroniza; una contada aqui, no.
     const tr = FUENTES.find((x) => x.ruta === "src/modules/treatment/data/treatment-reader.ts")!;
-    expect(tr.codigo.match(/\.eq\("diagnoses\.evaluation_id", evaluationId\)/g) ?? []).toHaveLength(2);
+    expect(tr.codigo.match(/\.eq\("diagnoses\.evaluation_id", evaluationId\)/g) ?? []).toHaveLength(3);
   });
 
   it("las notas de criterio se LEEN por la evaluacion pero se ESCRIBEN en el vigente", () => {

@@ -27,6 +27,48 @@
 
 ---
 
+## PENDIENTE (2026-11-06) · DOS COSAS QUE ENCONTRÓ EL CANDADO DE COLUMNAS · DECIDE SANTIAGO
+
+El incidente está cerrado y documentado en
+`docs/incidents/2026-11-06-columna-inexistente-en-la-tarjeta-del-informe.md`. Lo que sigue son dos cosas
+que el candado nuevo (`las-columnas-de-las-consultas-existen.test.ts`) encontró **de paso** y que no son
+suyas.
+
+### 1. `sale_reversals` es una tabla real que el esquema Drizzle no declara
+
+Se creó con `CREATE TABLE` en SQL crudo (migración 0147, reversas de venta) y el barrel de
+`src/db/schema/` nunca la incluyó. Consecuencias:
+
+- **Sus columnas no las vigila nada.** El candado de columnas tiene que declararla como exención, así que
+  una consulta contra `sale_reversals` con una columna mal escrita sigue siendo invisible hasta producción,
+  que es exactamente el defecto de esta ronda.
+- Tampoco entra en la generación de migraciones de Drizzle, así que un cambio futuro en esa tabla se
+  escribe a mano por fuerza.
+
+**Trabajo:** declararla en `src/db/schema/` con los tipos exactos de la 0147 (más la 0175, la 0176, la 0194
+y la 0200, que la modifican), verificar con `drizzle-kit generate` que **no** produce ninguna migración
+nueva (si la produce, un tipo no coincide), y borrar su exención del candado. Es de ventas, área que está
+en pausa desde el 18 de septiembre, así que no corre prisa; lo que no puede es quedar sin registrar.
+
+### 2. `conPlanNutricional` del panel de investigación cuenta otra cosa
+
+En `cohorte-reader.ts` la cifra sale de `exists (select 1 from treatments t join diagnoses d ... where
+d.evaluation_id = v.id)`: o sea **"tiene una fila de tratamiento"**, que es cierto en toda consulta
+diagnosticada, porque el pipeline la crea al generar el diagnóstico. No cuenta si hay un protocolo sellado
+ni si el profesional prescribió.
+
+O sea que es una **tercera** definición de "con plan", distinta de la de la tarjeta y de la del correo (las
+dos ahora unificadas en `hayProtocoloSellado`). En la cohorte de hoy las tres coinciden por casualidad: las
+483 consultas con tratamiento tienen protocolo sellado. Pero la cifra se llama "con plan nutricional" y lo
+que mide es "con diagnóstico", y eso lo lee dirección.
+
+**Decisión:** o la cifra pasa a mirar `protocol_suggested` (y entonces mide lo que su rótulo dice), o el
+rótulo cambia a lo que de verdad cuenta. **No lo toco porque es del panel de investigación**, y una cifra
+que dirección ya está leyendo no se cambia de significado sin avisar: es la lección de la cifra por resta
+que empieza a mentir sin que nada falle.
+
+---
+
 ## PENDIENTE (2026-11-06) · `una-venta-sabe-si-es-de-prueba-db` cruzó su techo, y su propio comentario lo predijo · DECIDE SANTIAGO SI SE ARREGLA YA
 
 **La suite de BD corrida sola da 751 pasadas y UNA roja**, y la roja es un `Test timed out in 30000ms` en

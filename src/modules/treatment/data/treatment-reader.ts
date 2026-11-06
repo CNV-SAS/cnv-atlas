@@ -76,6 +76,44 @@ function patientIdFrom(evaluations: unknown): string {
   return (e as { patient_id?: string } | null)?.patient_id ?? "";
 }
 
+/**
+ * ¿La consulta tiene un tratamiento con protocolo SELLADO? Es la condición con la que `getPlanPaciente`
+ * devuelve `null` (y por tanto con la que el correo adjunta o no la hoja del plan, y con la que la tarjeta
+ * del informe ofrece o no el enlace).
+ *
+ * VIVE AQUI, Y NO EN EL LECTOR DE LA TARJETA, por lo que pasó el 2026-10-30: la tarjeta escribió su propia
+ * copia de la condición, y la copia preguntaba por una columna inexistente (`protocol_snapshot`) sin
+ * `order by`. Una condición duplicada no se mantiene sincronizada por buena voluntad; esta se resuelve
+ * donde se resuelve el protocolo, así que las dos leen lo mismo o ninguna compila.
+ *
+ * LA RESOLUCION ES LA DE `getTreatmentProtocol`, PASO POR PASO: el tratamiento MAS RECIENTE de la consulta
+ * (por la evaluación, no por el diagnóstico vigente, que tras una reemisión no encuentra nada), y de ESE se
+ * mira si tiene `protocol_suggested`. No se filtra por `not.is.null` en la base a propósito: eso
+ * contestaría "existe ALGUN tratamiento con protocolo", que es otra pregunta y la que el defecto hacía.
+ * Hoy no se distinguen (483 tratamientos en 483 consultas, medido el 2026-11-06), pero el bloque de
+ * corrección crea un tratamiento nuevo para cambiar una prescripción aprobada: el día que exista el
+ * segundo, "alguno" y "el vigente" dejan de ser lo mismo.
+ *
+ * SE TRAE EL JSONB para preguntar por su ausencia, que parece desperdicio y no lo es: medido en producción
+ * pesa 2.521 B de mediana (p90 2.670 B, máximo 3.222 B), y la alternativa son dos viajes a la base en un
+ * camino que ya se cayó por tiempo una vez (0236). PostgREST no sabe devolver "este jsonb no es nulo".
+ *
+ * LANZA si la lectura falla, como el resto del lector. Quien necesite el tercer estado ("no se pudo
+ * averiguar") lo construye atrapando: un `false` por error afirmaría que no hay plan.
+ */
+export async function hayProtocoloSellado(evaluationId: string): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("treatments")
+    .select("protocol_suggested, diagnoses!inner(evaluation_id)")
+    .eq("diagnoses.evaluation_id", evaluationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`treatment-reader(protocolo-sellado): treatments: ${error.message}`);
+  return data?.protocol_suggested != null;
+}
+
 export async function getTreatmentProtocol(
   evaluationId: string,
   // QUIEN MIRA decide si se le ofrecen los productos de prueba (2026-10-04). Por DEFECTO no: los lectores de

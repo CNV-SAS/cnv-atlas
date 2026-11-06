@@ -226,6 +226,44 @@ describe("los bloques de su §7.1 siguen saliendo, y se sabe por cuál hoja", ()
     expect(TARJETA).toContain("report.conPlan ?");
   });
 
+  it("y la tarjeta y el correo resuelven esa condición en el MISMO sitio", () => {
+    // ═══ LO QUE ESTE CASO EXISTE PARA QUE NO VUELVA A PASAR (Sentry, 139 eventos) ═══
+    //
+    // La tarjeta tenía su propia COPIA de la condición, escrita a mano en `reports-repository`, y la copia
+    // preguntaba por `treatments.protocol_snapshot`: una columna que no existe. Falló en todas las cargas
+    // durante siete días. Las aserciones de arriba pasaban verdes porque comprueban EL CABLE (que la
+    // tarjeta use `conPlan`) y no EL VALOR, y el valor venía de una consulta que fallaba siempre.
+    //
+    // Así que lo que se exige aquí no es un nombre de columna, que es lo que ya vigila
+    // `las-columnas-de-las-consultas-existen.test.ts`: es que no haya DOS fuentes. Una condición duplicada
+    // no se mantiene sincronizada por buena voluntad.
+    const REPO = readFileSync("src/modules/reports/data/reports-repository.ts", "utf8");
+    expect(REPO, "la tarjeta volvió a resolver la condición por su cuenta").toContain(
+      "await hayProtocoloSellado(evaluationId)",
+    );
+    // NO que no consulte `treatments` (lo hace por otra cosa, la próxima cita del freno de "empeoró"),
+    // sino que no PIDA una columna de protocolo. Se mira la forma de la consulta y no la prosa, porque el
+    // comentario de este archivo nombra las tres columnas a propósito, para contar lo que pasó.
+    expect(REPO, "la tarjeta volvió a resolver el protocolo por su cuenta").not.toMatch(
+      /\.(select|not|eq)\(\s*"protocol_/,
+    );
+    // Y EL TERCER ESTADO SIGUE VIVO: si la lectura falla, no se afirma que no hay plan.
+    expect(REPO).toContain("planIndeterminado: errProtocolo != null");
+
+    // LA CONDICION, DONDE SE RESUELVE: el tratamiento MÁS RECIENTE de la consulta (el `order by`, que la
+    // copia no tenía) y `protocol_suggested`, que es exactamente lo que mira `getPlanPaciente` para
+    // devolver null. Si una de las dos cambiara sin la otra, la tarjeta y el correo se contradirían sobre
+    // si hay plan, que es el daño que todo este bloque evita.
+    const LECTOR = readFileSync("src/modules/treatment/data/treatment-reader.ts", "utf8");
+    const gate = LECTOR.slice(LECTOR.indexOf("export async function hayProtocoloSellado"));
+    const cuerpo = gate.slice(0, gate.indexOf("export async function getTreatmentProtocol"));
+    expect(cuerpo).toContain('.select("protocol_suggested, diagnoses!inner(evaluation_id)")');
+    expect(cuerpo).toContain('.order("created_at", { ascending: false })');
+    expect(cuerpo).toContain("data?.protocol_suggested != null");
+    // La condición de `getPlanPaciente`, en su propio archivo, por la MISMA columna.
+    expect(READER).toContain("const snap = protocol?.protocolSuggested;");
+  });
+
   it("y las recomendaciones, solo las que aplican a su caso", () => {
     expect(DOC_PLAN).toContain("plan.recomendaciones.map");
     // Los bloques PENDIENTES son avisos PARA EL PROFESIONAL ("esto se emitirá cuando..."). En el

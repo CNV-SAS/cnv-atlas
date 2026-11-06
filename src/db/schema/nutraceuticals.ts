@@ -31,6 +31,13 @@ export const nutraceuticals = pgTable("nutraceuticals", {
   composition: text("composition"), // ingredientes
   presentation: text("presentation"), // linea: liquida | polvo
   servingSize: text("serving_size"), // porcion: "30 mL", "25 g"...
+  // LAS DOS DE LA 0184, que existian en la base y no en este esquema (las encontro el candado de columnas
+  // el 2026-11-06, al revisar las consultas que ya las leian).
+  // El FABRICANTE (maquilador). Distinto de `brandOwner` (titular de marca) a proposito: el modelo
+  // comercial separa fabricante, titular de marca y titular del registro, y pide no confundirlos.
+  manufacturer: text("manufacturer"),
+  // La FRECUENCIA de su tabla: "1 vez al dia · linea liquida", "Con una comida · linea en polvo"...
+  doseFrequency: text("dose_frequency"),
   sanitaryRegistration: text("sanitary_registration"), // RSA-.../NSA-...
   commercialAvailability: nutraceuticalAvailability("commercial_availability")
     .notNull()

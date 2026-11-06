@@ -54,10 +54,28 @@ export const patients = pgTable(
      * LA QUE FILTRAN LAS CIFRAS (0202). DERIVADA por trigger, nunca por la aplicacion: marcado explicito, o
      * todos sus profesionales activos de prueba. Un paciente atendido por alguien real es real.
      *
-     *  sigue siendo la DECISION de una persona; esta es su consecuencia. Filtrar por  deja
-     * fuera la derivacion, y es justo el error que el candado del barrido vigila.
+     * `is_test` sigue siendo la DECISION de una persona; esta es su consecuencia. Filtrar por `is_test`
+     * deja fuera la derivacion, y es justo el error que el candado del barrido vigila.
      */
     cuentaComoDePrueba: boolean("cuenta_como_de_prueba").notNull().default(false),
+    /**
+     * EL RASTRO DE LA MARCA DE PRUEBA (0180). Las cinco columnas existian en la base desde el 2026-10-18 y
+     * NO estaban en este esquema: las agrego el candado de columnas el 2026-11-06, que las encontro al
+     * revisar las consultas que ya las leian. Dos dias de deriva entre la base y su definicion.
+     *
+     * La PROPUESTA del profesional (nula = nadie propuso nada), con motivo obligatorio por CHECK: "es de
+     * prueba" sin decir por que no se puede evaluar, y quien confirma tendria que adivinar.
+     */
+    testProposedAt: timestamp("test_proposed_at", { withTimezone: true }),
+    testProposedBy: uuid("test_proposed_by").references(() => profiles.id),
+    testProposedReason: text("test_proposed_reason"),
+    /**
+     * Y QUIEN LO CONFIRMO. Separado de `is_test` a proposito: el booleano dice el ESTADO y estas dicen el
+     * ACTO. Sin ellas, un paciente marcado no se distingue de uno que nacio de prueba (los importados, las
+     * semillas), que es justo la pregunta que hay abierta sobre los 63 pacientes de Gildardo.
+     */
+    testMarkedAt: timestamp("test_marked_at", { withTimezone: true }),
+    testMarkedBy: uuid("test_marked_by").references(() => profiles.id),
     createdAt: createdAt(),
     /**
      * RETIRO LOGICO del paciente. La fila y su historia se conservan (15 anos, `DATA_GOVERNANCE.md`): lo
