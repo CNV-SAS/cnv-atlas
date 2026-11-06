@@ -71,9 +71,12 @@ resuelvan.*
 **4 · ¿Cómo deben leer el DFI y las rutas el IAE de la v7?** En el mismo informe, arriba dice *"−1,3 años:
 acorde con sus pares"* y tres líneas abajo *"envejecimiento acelerado"*. La cifra que ve el paciente ya es
 v7; la que alimenta el dominio 3, el riesgo y **las rutas** quedó en la v5. Coinciden 326 de 389 informes;
-los 60 que no, no se entregan. *Recomendamos que lo decida usted entre tres salidas (el DFI lee el IAE de
-la v7 · el dominio 3 tiene su propia escala y entonces hay que decirlo en el documento · otra cosa).
-Y la segunda mitad: sus tres textos por banda, ¿sustituyen al texto de trayectoria o conviven?*
+los 60 que no, no se entregan. **En su propio caso del anexo (`ed83ff97`): arriba 76,4 años con IAE +12,4,
+el dominio 3 dice 31,4 años con IAE −32,6 y "Enlentecido", y en Tratamiento 0 rutas activas.** Cuarenta y
+cinco años de diferencia dentro de una consulta, y a la paciente no se le prescribió nada para el
+envejecimiento. *Recomendamos que lo decida usted entre tres salidas (el DFI lee el IAE de la v7 · el
+dominio 3 tiene su propia escala y entonces hay que decirlo en el documento · otra cosa). Y la segunda
+mitad: sus tres textos por banda, ¿sustituyen al texto de trayectoria o conviven?*
 
 ### B · Están aplicadas y necesitan su confirmación
 
@@ -339,9 +342,18 @@ años de su anexo). En el mismo documento, leído hoy:
 |---|---|
 | La cifra que ve el paciente (EB-BIS v7, parámetros 7.1.0) | **76,4 años · IAE +12,4** |
 | El dominio 3 del DFI, que alimenta el riesgo y las rutas | **31,4 años · IAE −32,6 · "Enlentecido"** |
+| La pestaña de Tratamiento de esa misma consulta | **0 rutas activas** |
 
 **Cuarenta y cinco años de diferencia en la misma consulta**, y las dos cifras salen del mismo sistema:
 la de arriba del motor nuevo, la de abajo del que su §2 retiró.
+
+**La tercera fila es la que cierra el caso, y Santiago la comprobó en pantalla el 5 de noviembre.** No es
+una contradicción de texto: es que a esa paciente **no se le prescribió nada** para el envejecimiento. La
+ruta de desaceleración no se activó porque el DFI lee el −32,6 de la v5, que dice que su envejecimiento va
+*enlentecido*. Arriba, en el documento que ella recibe, dice que lleva doce años de más.
+
+Es exactamente el caso de los 43 de la tabla de abajo, con nombre: **el documento le nombra el problema y
+no trae nada que hacer con él.**
 
 **Cuánto, medido sobre los 389 informes vigentes:**
 

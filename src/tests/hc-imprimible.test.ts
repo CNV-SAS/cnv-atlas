@@ -208,16 +208,23 @@ describe("los dos documentos de la consulta se nombran por separado", () => {
     );
   });
 
-  it("los tres controles de la HC dicen que son de la HC, y en pocas palabras", () => {
-    // ═══ CORTOS (Santiago, 2026-11-03) ═══
+  it("los tres controles de la HC dicen que son de la HC, con los rótulos que fijó Santiago", () => {
+    // ═══ CORTOS (Santiago, 2026-11-03) Y LUEGO LOS TRES EXACTOS (2026-11-05) ═══
     //
-    // *"Los 3 botones de HC quedaron bien, el problema es que siento que quedaron muy largos con mucho
-    // texto."* Tres botones seguidos de siete palabras cada uno se leen como un párrafo, no como
-    // acciones. Se conserva el "HC", que es lo que los distingue del informe del paciente, y se va lo
-    // que el icono o la línea de al lado ya dicen.
+    // El 3 de noviembre: *"Los 3 botones de HC quedaron bien, el problema es que siento que quedaron muy
+    // largos con mucho texto."* Tres botones seguidos de siete palabras cada uno se leen como un párrafo.
+    //
+    // El 5 de noviembre los fijó uno por uno: *"Los botones: 'Ver HC (SOAP)', 'Imprimir/descargar HC',
+    // 'Enviar HC al paciente'."* Los dos cambios respecto a lo corto tienen su razón, y las dos están en
+    // sus componentes: "imprimir" a secas describía el `window.print()` que se retiró el 3 de noviembre
+    // (ahora abre un PDF, que además se guarda), y de las tres acciones sobre el mismo documento la única
+    // que SALE de Atlas es la que tiene que decir a dónde va.
+    //
+    // SE AFIRMAN LOS TRES LITERALES, que es lo que pidió. Lo que sigue sin poder perderse es el "HC" de
+    // los tres, que es lo que los distingue del informe del paciente, y eso lo mide el bucle de abajo.
     expect(PAGE).toContain("Ver HC (SOAP)");
-    expect(BOTON).toContain("Imprimir HC");
-    expect(ENTREGAR).toContain("Enviar HC");
+    expect(BOTON).toContain("Imprimir/descargar HC");
+    expect(ENTREGAR).toContain("Enviar HC al paciente");
     // Y NINGUNO SE QUEDA CON EL ROTULO AMBIGUO, que es lo que de verdad confundía: "Enviársela" no dice
     // qué, y en una pantalla con dos documentos el pronombre apunta a los dos.
     expect(ENTREGAR, "volvió el pronombre sin antecedente").not.toContain("Enviársela al paciente");

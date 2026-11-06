@@ -47,7 +47,16 @@ export function HcImprimir({ evaluationId }: { evaluationId: string }) {
       className="no-print inline-flex h-8 items-center gap-1.5 self-start rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
       <Printer className="size-4" aria-hidden />
-      Imprimir HC
+      {/* ═══ "IMPRIMIR/DESCARGAR", NO SOLO "IMPRIMIR" (Santiago, 2026-11-05) ═══
+
+          El boton dejo de ser `window.print()` el 3 de noviembre y paso a abrir el PDF del servidor, y el
+          rotulo se quedo con la palabra de antes. Lo que hace ahora es ABRIR UN PDF: imprimirlo es una de
+          las dos cosas que se pueden hacer con el, y la otra (guardarlo) es la que un profesional necesita
+          cuando el paciente le pide su historia por otro canal.
+
+          "Imprimir" a secas hacia pensar que se iba al dialogo del navegador, que es justo lo que se quito
+          para que la URL de la consulta dejara de salir en el papel. */}
+      Imprimir/descargar HC
     </a>
   );
 }

@@ -37,9 +37,20 @@ export function HcEntregar({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <Button type="submit" variant="outline" size="sm" disabled={pending}>
           <Mail className="size-4" aria-hidden />
-          {/* CORTO, conservando el "HC" (Santiago, 2026-11-03). A quien se envia ya lo dice la linea de abajo
-              ("Se envia cuando el paciente la pide"), asi que repetirlo en el boton era decirlo dos veces. */}
-          {pending ? "Enviando..." : "Enviar HC"}
+          {/* ═══ VUELVE "AL PACIENTE", Y ES UN CAMBIO DE SU PROPIA DECISION DE HACE DOS DIAS ═══
+
+              El 3 de noviembre pidio el rotulo CORTO, y la razon escrita aqui era razonable: a quien se
+              envia ya lo dice la linea de abajo ("se envia cuando el paciente la pide"), asi que
+              repetirlo era decirlo dos veces.
+
+              El 5 de noviembre pide los tres rotulos juntos: *"Ver HC (SOAP)", "Imprimir/descargar HC",
+              "Enviar HC al paciente"*. Y leidos EN FILA se entiende por que: los tres botones estan uno
+              al lado del otro, y los dos primeros no mandan nada a nadie. Entre tres acciones sobre el
+              mismo documento, la unica que SALE de Atlas es la que tiene que decir a donde va. La linea
+              de abajo explica CUANDO se envia, no a quien.
+
+              Lo nuevo manda, y queda escrito que la razon de antes no estaba mal: cambio el contexto. */}
+          {pending ? "Enviando..." : "Enviar HC al paciente"}
         </Button>
       </form>
       {ultimaEntrega ? (
