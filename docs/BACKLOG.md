@@ -27,6 +27,39 @@
 
 ---
 
+## PENDIENTE (2026-11-06) · `una-venta-sabe-si-es-de-prueba-db` cruzó su techo, y su propio comentario lo predijo · DECIDE SANTIAGO SI SE ARREGLA YA
+
+**La suite de BD corrida sola da 751 pasadas y UNA roja**, y la roja es un `Test timed out in 30000ms` en
+`src/tests/una-venta-sabe-si-es-de-prueba-db.test.ts`, en el caso *"y el PROFESIONAL de prueba marca las
+suyas"*. **Corrido solo, el archivo pasa sus 6 casos en 47,9 s.**
+
+**No es intermitente, y el archivo ya lo había avisado** (su comentario del 2026-10-07, verbatim):
+
+> *"Aquí no se notó antes porque estaba en el límite (85 s el archivo) y la base creció hasta pasarlo, que
+> es la peor forma de descubrirlo: una roja que parece intermitente y no lo es."*
+
+**La causa, medida:** ese caso marca al profesional como de prueba, y el trigger de la 0203 recalcula
+**todas sus ventas**. El archivo ya elige *el profesional con MENOS ventas* (ese arreglo está aplicado),
+pero corre en serie después de los otros 114 archivos de BD, que crean ventas: cuando le llega el turno,
+**el mínimo ya no es pequeño**. Solo, el mínimo sí lo es, y por eso pasa.
+
+**No tiene nada que ver con el trabajo del 6 de noviembre:** el archivo trata de ventas y devoluciones, y
+lo de ese día fue informe, BIS y clasificación de D1. Y no es una aserción que no cuadre: es tiempo.
+
+### Las tres salidas, y mi recomendación
+
+| | Qué | Qué cuesta | Qué deja |
+|---|---|---|---|
+| **A** *(recomendada)* | Que el caso **cree su propio profesional** (con su `profiles` y su usuario), en vez de reusar el que menos ventas tenga. Con cero ventas, el trigger no barre nada | Un fixture nuevo: el profesional necesita su fila en `profiles`, y eso ya se hace en `el-acceso-del-integrante-se-quita-y-se-devuelve-db` y en `integrante-nace-con-vitrina-db`, de donde se copia el patrón | La suite verde y el caso independiente del tamaño de la base |
+| **B** | Subir el timeout de ese caso | Una línea | **Esconde el problema otra vez**, que es justo lo que su comentario dice que pasó la vez anterior |
+| **C** | Dejarlo rojo | Cero | Una roja permanente en la suite, que es como se entrena a la gente a ignorar las rojas |
+
+**No lo arreglé** porque es infraestructura de pruebas de otra área y pide un fixture nuevo, no una línea:
+es su propia pieza de trabajo. Pero **queda registrado para que nadie la descarte como intermitente**, que
+es exactamente contra lo que su comentario avisa.
+
+---
+
 ## PENDIENTE (2026-11-06) · LO QUE QUEDA ABIERTO DE LA RONDA DEL INFORME, DEL BIS Y DE LOS CANDADOS · DECIDE SANTIAGO
 
 **Lo construido de esta ronda está cerrado en su commit.** Aquí solo lo que espera una palabra, para que
