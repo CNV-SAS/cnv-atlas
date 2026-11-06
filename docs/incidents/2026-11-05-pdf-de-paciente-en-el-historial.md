@@ -1,8 +1,15 @@
 # PDF de informes de paciente en el historial de git (y en GitHub)
 
 **Connected Nutrition Ventures · Atlas · 5 de noviembre de 2026**
-**Estado:** LIMPIEZA EJECUTADA EN LOCAL el 5 de noviembre. Falta **un solo paso, y es de Santiago**: el
-push forzado del punto 4.5. Hasta que lo haga, el remoto sigue teniendo los once PDF.
+**Estado:** **CERRADO el 6 de noviembre de 2026.** Santiago hizo el push forzado y borró el respaldo.
+Verificado ese día, sin red: `origin/main` apunta a `0cd892f9` (el HEAD reescrito), el barrido
+`git rev-list --objects --all` devuelve **cero** rutas `.pdf` en todo el historial, y el bundle
+`C:\Users\sarro\respaldo-atlas-antes-de-limpiar-2026-11-05.bundle` ya no está en disco.
+
+> Lo que queda vivo de este documento no es el incidente, es la **mitigación**: el control de entregas
+> (`scripts/check-entregas.mjs`, lista de lo PERMITIDO) y su hook. Y la advertencia del punto 4.5 sigue
+> valiendo para cualquier limpieza futura: **`check-migrations.mjs` hace `git fetch`**, así que una
+> limpieza de historial va al final, después de todo lo que pueda tocar la red.
 **Responsable de respuesta:** Santiago (SECURITY.md, "Respuesta a incidentes").
 **Decisiones tomadas:** sección 6.
 
