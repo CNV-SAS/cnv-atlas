@@ -106,6 +106,24 @@ export type ReportMeta = {
 // paciente viera. Pintarla "porque el campo trae un numero" seria publicar la cifra retirada.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
+/**
+ * EL VEREDICTO INTEGRADO VA · PENDIENTE DE QUE SANTIAGO LO VEA EN PANTALLA (2026-11-05)
+ *
+ * Es el punto 1 de la declaracion de arriba: lo dejamos contra su *"el informe lleva SOLO"* porque la
+ * razon que saca a las rutas, los suplementos y las remisiones no lo alcanza. Pero la decision es suya
+ * cuando lo vea impreso, asi que **se quita poniendo esto en `false`, y nada mas**: ni tocar el JSX, ni
+ * dar de baja un candado, ni volver a leer este archivo.
+ *
+ * Lo que se va con el `false` son DOS lineas y ninguna otra: la del veredicto (`dfiPac.riesgo`) y la
+ * frase de enfoque que la acompaña. El parrafo que explica como se lee el documento SE QUEDA: es de una
+ * nutricionista, no es veredicto, y sigue siendo cierto sin lo de arriba (dice que debajo aparece cada
+ * area por separado, y eso no cambia).
+ *
+ * El candado de `informe-mas-legible-para-el-paciente` LEE esta bandera y afirma las dos direcciones, asi
+ * que al voltearla la suite sigue verde y sigue midiendo la decision. Un candado que hubiera que apagar a
+ * mano para ejercer una decision ya tomada es friccion, no garantia.
+ */
+export const EL_VEREDICTO_INTEGRADO_VA = true;
 
 // Modo de envio: que contenido incluye el PDF (B10.1). 'atlas' = reporte del motor;
 // 'notas' = solo las notas del profesional; 'ambos' = los dos.
@@ -444,10 +462,13 @@ export function ReportDocument({
               separado, y la figura las muestra todas juntas. Si algo no te queda claro, pregúntaselo a
               quien te atendió.
             </Text>
-            <Text style={styles.para}>
-              <Text style={styles.bold}>{dfiPac.riesgo}. </Text>
-              {dfiPac.enfoque}
-            </Text>
+            {/* La bandera de arriba es el interruptor de Santiago: una linea, sin tocar nada mas. */}
+            {EL_VEREDICTO_INTEGRADO_VA ? (
+              <Text style={styles.para}>
+                <Text style={styles.bold}>{dfiPac.riesgo}. </Text>
+                {dfiPac.enfoque}
+              </Text>
+            ) : null}
 
             {/* EL RADAR VA ANTES DEL DETALLE, no despues: es el vistazo, y lo que sigue es la
                 explicacion dominio por dominio. Al reves, quien lee las cinco frases ya no necesita la

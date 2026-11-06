@@ -6,6 +6,7 @@ import {
   CAMBIO_MINIMO_KG,
   cambioDesdeLaAnterior,
 } from "@/modules/reports/cambio-desde-la-anterior";
+import { EL_VEREDICTO_INTEGRADO_VA } from "@/modules/reports/pdf/report-document";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
@@ -228,5 +229,45 @@ describe("la pequeña explicacion del resumen", () => {
     const resumen = doc.indexOf("{dfiPac.riesgo}");
     expect(resumen).toBeGreaterThan(0);
     expect(explicacion, "la explicación quedó después de lo que explica").toBeLessThan(resumen);
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════════════════════════
+  // EL VEREDICTO INTEGRADO ESTA BAJO UN INTERRUPTOR, Y EL CANDADO MIDE LAS DOS POSICIONES
+  //
+  // Santiago dejo el informe en cinco cosas y el veredicto integrado no es ninguna; se conservo con la
+  // razon escrita (no recomienda nada: es la lectura del modelo sobre la medicion) y queda a que el lo
+  // vea impreso. Para que su decision cueste UNA linea, vive tras `EL_VEREDICTO_INTEGRADO_VA`.
+  //
+  // POR QUE EL CANDADO LEE LA BANDERA EN VEZ DE AFIRMAR QUE EL VEREDICTO ESTA: un candado que hubiera
+  // que apagar a mano para ejercer una decision ya tomada no es una garantia, es friccion, y entrena a
+  // apagar candados. Asi la suite sigue verde al voltearla y sigue midiendo lo que importa, que es
+  // DISTINTO en cada posicion: con la bandera en true, que el veredicto vaya donde se explica; con la
+  // bandera en false, que el parrafo de la nutricionista NO se vaya con el (es lo que se llevaria por
+  // arrastre quien borre el bloque entero en vez de voltear la bandera).
+  // ════════════════════════════════════════════════════════════════════════════════════════════════
+
+  it("el veredicto esta GATEADO por la bandera, no suelto en el JSX", () => {
+    const doc = sinComentarios(DOC);
+    const gate = doc.indexOf("EL_VEREDICTO_INTEGRADO_VA ?");
+    const resumen = doc.indexOf("{dfiPac.riesgo}");
+    expect(gate, "el interruptor desaparecio: quitarlo volveria a costar editar el JSX").toBeGreaterThan(0);
+    expect(gate, "el interruptor no envuelve al veredicto").toBeLessThan(resumen);
+    // Y entre los dos no cabe otra cosa: el gate tiene que ser el de ESTE bloque, no uno de mas arriba.
+    expect(resumen - gate, "el interruptor quedo lejos del veredicto que gobierna").toBeLessThan(400);
+  });
+
+  it("con la bandera en true, el veredicto va en la hoja que lo explica; en false, la explicación se queda", () => {
+    const doc = sinComentarios(DOC);
+    if (EL_VEREDICTO_INTEGRADO_VA) {
+      expect(doc).toContain("{dfiPac.riesgo}");
+      expect(doc.indexOf("Este es el resumen de tu valoración")).toBeLessThan(doc.indexOf("{dfiPac.riesgo}"));
+    } else {
+      // El parrafo de la nutricionista no es veredicto y sigue siendo cierto sin el: dice que debajo
+      // aparece cada area por separado, y las cinco filas no se van con la bandera.
+      expect(doc, "al apagar el veredicto se fue la explicación de la nutricionista").toContain(
+        "Este es el resumen de tu valoración",
+      );
+      expect(doc, "y las cinco áreas tienen que seguir ahí").toContain("dfiPac.dominios.map");
+    }
   });
 });
