@@ -1,6 +1,6 @@
 # Lo que queda abierto con usted, Gildardo
 
-**Connected Nutrition Ventures · Atlas · 4 de noviembre de 2026**
+**Connected Nutrition Ventures · Atlas · 5 de noviembre de 2026** (las 31 del 4 de noviembre, más las cinco de la v15 y la v16)
 **De:** Santiago (equipo técnico de Atlas) · **Para:** Gildardo de Jesús Uribe Gil
 
 > **Este documento no identifica a ningún paciente.** Donde hace falta señalar un caso va el id de
@@ -37,7 +37,35 @@ usted.
 
 ---
 
-## Las 31 preguntas
+## Lo que sus dos entregas nuevas ya contestan (revisado el 5 de noviembre)
+
+La v15 del 30 de octubre y la v16 del 2 de noviembre llegaron después de escribir esta lista, y las cotejamos
+pregunta por pregunta. **Esto es lo que ya no necesita contestar, con la línea de su archivo que lo decide.**
+Las preguntas siguen abajo con su número y su texto, para que pueda corregirnos si leímos mal.
+
+| # | Qué contesta su entrega | Dónde |
+|---|---|---|
+| **4** | **Su primera mitad, y era la más importante: el DFI y las rutas leen el IAE de la v7.** En v15 hay un solo IAE por consulta, el de la v7, y el dominio 3 lee ese mismo. Es nuestra salida 1 | `computeDFIFromData` L11834 · `atlasMigrarEbV7` L4458 · dominio 3 L13965 · §1.4 |
+| **3** | **Contestada entera**, y en la dirección que recomendábamos: *"Si una consulta no tiene los datos crudos, queda «pendiente»: nunca se muestra el v5"* | §1.4 de su documento de v15 |
+| **31** | **Su primera mitad:** menor de 18 o edad no válida devuelve "pendiente" y no se calcula. Queda la segunda: si CNV atiende pediatría, con qué ecuaciones | Error 7 de su especificación · rango 18 a 100 |
+| **5** | Vale como confirmación: su tabla 3 usa "edad biológica estimada" y v15 la mantiene | Tabla 3 |
+| **12** | **A medias:** la quiere obligatoria y no dice nada de la salida registrada. Y el dato refuerza la salida: hoy la traen **92 de 492** consultas (18,7 %) | Error 8 |
+| **7** | **No se cierra, se mueve:** `cIAE` pasó a cortes cerrados, pero el Δ de al lado sigue abierto. **Pasa a ser la 36** | L4487 contra L15628 |
+| **15** | **Cambia de forma:** su `dIAE` nuevo ya pinta la banda central en azul, y el `cIAE` sigue en ámbar. **Pasa a ser la 35** | L15443 contra L4487 |
+| **2** | **Aporta un ejemplo del criterio, no los rangos:** PSSG/peso fuera de 0,05 a 0,40 devuelve "revisar", con su fuente. Los nueve rangos del cinturón siguen sin fuente, y entre tanto frenaron **una medición más**: un ángulo de fase de 0,6°, el 19 de octubre, dos veces | §1.2 |
+| **6** | **No la contesta, y su regla queda reafirmada sin decirlo:** la línea 15628 sigue imprimiendo "0,0" dentro de la banda. Nuestra raya sigue siendo preferencia nuestra contra su regla escrita | L15628 |
+| **24** | **La confirma por el otro lado:** el Módulo S de la CNV-S no captura porciones, así que las diez alertas siguen sin poder salir | §2.3 |
+| **28** | **No la contesta, y ahora se ve más:** v15 añade el filtro digestivo y la regla de salto, y sigue sin decir en qué dominio se leen esos síntomas | §7.2 |
+
+Las otras 20 siguen esperándolo. **Y dos cosas que le decimos, no se las preguntamos:** la §6 de su v16 pide
+separar carnes rojas de embutidos y migrar el instrumento, y **en Atlas ya están los 15 grupos con sus
+textos, en las cinco versiones publicadas de la encuesta** (633 de 634 encuestas traen el grupo 15); y su §7
+acierta de pleno: el componente Alimentación del ICEC **vale 30 para todos**, porque la fórmula lee dos
+claves que la encuesta no guarda, y eso ya estaba anotado de nuestro lado desde el 28 de julio.
+
+---
+
+## Las 36 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"4: opción 1 · 9: sí, el degradado hacia
 > rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -227,6 +255,50 @@ cinco grupos entre pacientes distintos y son cuatro; usted tenía razón al duda
 cuerpos de 22 kg y 29 kg; el Biody aplica ecuaciones de adulto y devuelve masa grasa negativa, y la EB-BIS
 v7 está calibrada 18-100 años. *Recomendamos marcar esas consultas como fuera de rango de calibración y no
 calcular. Si CNV va a atender pediatría, con qué ecuaciones es decisión suya.*
+
+### G · Las cinco que salieron de leer la v15 y la v16
+
+Las añadimos el 5 de noviembre, al revisar sus dos entregas nuevas. **Las cuatro primeras se contestan con
+una letra.**
+
+**32 · ¿Qué pasó con las versiones 13 y 14 del HTML?** Nosotros nos quedamos en la v12 del 12 de octubre, y
+las dos siguientes que nos llegaron son la v15 y la v16. Entendemos que la 13 y la 14 fueron adelantos que
+terminaron recogidos en estas dos. *No es una pregunta abierta, es una confirmación.*
+ · **A)** Sí, v15 y v16 recogen todo lo de v13 y v14. · **B)** No, falta algo (díganos qué).
+*Recomendamos A: su v15 declara su base en `ATLAS_v12.html` y su v16 en `ATLAS_v15.html`, sin mencionar las
+otras dos.*
+
+**33 · La reconfirmación al cierre de una ruta**, que su §5.5 del 30 de octubre dejó pendiente. Hoy solo
+aplica la regla anual.
+ · **A)** Solo la anual. · **B)** El cierre de una ruta dispara la reconfirmación completa. · **C)** Solo
+ los ítems de esa ruta.
+*Recomendamos A: B añade un bloque de confirmación largo justo en la consulta de cierre, que es cuando el
+profesional tiene menos tiempo. Si después se ve que hace falta, se añade.*
+
+**34 · El S1 del Módulo S cuando no hay nutracéuticos indicados.** El S1 sale de los nutracéuticos de la
+consulta anterior, y **de los 30 pacientes que hoy tienen dos o más consultas, 18 no tienen ninguno en la
+anterior**: a esos el Módulo S les nace con su primera pregunta vacía.
+ · **A)** Si no hay ninguno indicado, S1 y S2 no se presentan y la adherencia se calcula con el S3 (plan de
+ alimentación) solo. · **B)** Se presenta S1 con una línea que diga "no se le indicó ninguno", para que
+ quede registrado. · **C)** Otra cosa.
+*Recomendamos A: una pregunta sobre un producto que nadie le indicó no tiene respuesta correcta, y
+`cnvsAdherenciaAdecuada` ya se resuelve con el S3.*
+
+**35 · En la v15, "Acorde con sus pares" tiene dos colores en su propio archivo.** Su `cIAE` (línea 4487)
+la pinta en ámbar (`#f59e0b`) y el `dIAE` nuevo (línea 15443) en azul (`#3b82f6`). Es la misma banda.
+ · **A)** Manda el azul: la banda central es lo esperado, no una alerta. · **B)** Manda el ámbar.
+ · **C)** Son distintos a propósito (una superficie avisa, la otra informa), y díganos cuál va en cuál.
+*Recomendamos A, que es lo que ya proponíamos en la 15: en una rampa de dos colas, pintar de ámbar lo que
+está bien invierte la lectura. Su `dIAE` nuevo ya lo hace.* **Esta sustituye a la 15 si contesta A.**
+
+**36 · El Δ del IAE en el borde exacto de ±5,0, en la v15.** Su documento dice que los cortes pasan a ser
+inclusivos, y su `cIAE` lo cumple; pero el Δ de la línea 15628 sigue con el corte abierto
+(`iae_d > 5 ? ... : iae_d < -5 ? ... : '0,0'`). Con un IAE de **exactamente +5,0**, la misma fila dice
+*"Envejecimiento acelerado estimado"* y un Δ de **"0,0"**. Es la pregunta 7, dos líneas más abajo.
+ · **A)** El Δ también pasa a cerrado, y en +5,0 muestra "+0,0". · **B)** El Δ se queda abierto y en el
+ borde muestra la raya, no el cero. · **C)** Otra cosa.
+*Recomendamos B, que junta esta con la 6: el IAE ya es una diferencia, y un "0,0" al lado del valor se lee
+como si el IAE fuera cero.*
 
 ---
 
@@ -1035,7 +1107,15 @@ Para cruzar este documento con los dos que lo precedieron, por si empezó a resp
 | 28 | Cola de septiembre, dentro de una declaración del prompt: era una pregunta y estaba escondida |
 | **29** | Cola de septiembre, bloque de declaraciones. **Sube a pregunta**: pedía respuesta y estaba donde no se pide ninguna |
 | 30, 31 | Dudas del 30 de octubre, 13 y 14. La 30 con la corrección de cinco a cuatro |
+| **32, 33, 34** | **Nuevas del 5 de noviembre**, de leer la v15: las versiones 13 y 14 que no nos llegaron · la reconfirmación al cierre de ruta que su §5.5 dejó pendiente · el S1 sin nutracéuticos indicados |
+| **35, 36** | **Nuevas del 5 de noviembre**, y son la 15 y la 7 **con la evidencia de su v15**: el doble color de la banda central (`dIAE` azul contra `cIAE` ámbar) y el Δ en el borde exacto de ±5,0. Las dos viejas se quedan por su número; si contesta 35 y 36, aquellas quedan cerradas |
 | **Salieron** | Dudas 1 y 2 (respondidas en la 7.1.0) · Cola 22 (ya no aplica: preguntaba lo que respondía la fila PABU) · **la de las rutas al paciente** (Dudas 17 fundida con la Nueva del 19-sep: la respondió Santiago el 5 de noviembre, ver abajo) · **la del ICC y el ICT** (su propio texto decía que la decisión era de Santiago: la tomó él y ya está construida, ver abajo) |
+
+**Verificado otra vez el 5 de noviembre contra la v15 y la v16**, pregunta por pregunta y citando la línea
+de su archivo: el resultado está arriba, en "Lo que sus dos entregas nuevas ya contestan". De las 31, sus
+dos entregas cierran una y media, confirman dos, contestan a medias dos y aportan a una; 20 siguen abiertas
+sin que ninguna de las dos las toque. El cotejo completo, con lo que toca construir de cada punto suyo,
+está en `docs/entregas/PLAN_V15_V16_2026-11-05.md`.
 
 **Verificado el 4 de noviembre, pregunta por pregunta:** ninguna de las de septiembre quedó contestada por
 sus entregas de octubre (revisiones de v10, v11 y v12, y los parámetros 7.1.0). Se buscó cada tema en las
