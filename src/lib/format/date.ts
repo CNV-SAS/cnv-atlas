@@ -112,3 +112,52 @@ export function formatDateOnlyShort(iso: string | null | undefined): string {
   if (!mes) return iso;
   return `${Number(m[3])} ${mes} ${m[1]}`;
 }
+
+const MESES = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+/**
+ * "25 de agosto de 2026" de una fecha PURA. Sin conversion de zona, por la misma razon que las dos de
+ * arriba: una columna `date` no es un instante y convertirla la corre un dia.
+ *
+ * POR QUE EXISTE, teniendo `formatDateLong`: aquella construye un `Date` y fija la zona, que es lo
+ * CORRECTO para un timestamp y lo que rompe una fecha pura. Y hace falta en letras porque las fechas que
+ * lee un PACIENTE van en letras (Santiago, 2026-11-06): "25/8/2026" en un documento que se lee una vez
+ * se confunde con 8 de mayo segun de donde venga quien lo lea.
+ */
+export function formatDateOnlyLong(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso; // no es una fecha pura: se devuelve tal cual antes que mentir
+  const mes = MESES[Number(m[2]) - 1];
+  if (!mes) return iso;
+  return `${Number(m[3])} de ${mes} de ${m[1]}`;
+}
+
+/**
+ * LA FECHA COMO LA LEE UN PACIENTE: "25 de agosto de 2026" (Santiago, 2026-11-06).
+ *
+ * Y AGUANTA LAS DOS FORMAS, que es la razon de que exista en vez de llamar a una de las dos de arriba:
+ * las fechas de este documento vienen unas de una columna `date` (la medicion) y otras de un timestamp
+ * (la creacion de la consulta). Una fecha pura NO se convierte de zona, porque convertirla la corre un
+ * dia; un instante SI, porque sin zona se corre igual. Elegir mal una de las dos muestra el dia anterior,
+ * que ya paso una vez con la proxima cita de la historia clinica.
+ */
+export function fechaParaElPaciente(iso: string | number | Date | null | undefined): string {
+  if (iso == null) return "";
+  return typeof iso === "string" && /^\d{4}-\d{2}-\d{2}$/.test(iso.slice(0, 10)) && iso.length <= 10
+    ? formatDateOnlyLong(iso)
+    : formatDateLong(iso);
+}

@@ -255,10 +255,39 @@ export type EmitirPrescripcionInput = z.infer<typeof emitirPrescripcionSchema>;
 // caracteres, y ese minimo era el precio del CIERRE: sin cierre no hay nada que reabrir. La constancia que
 // el motivo aportaba la da ahora la copia de cada emision, que no depende de que nadie escriba nada.
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL LARGO DE LA OBSERVACION, Y DE DONDE SALE ESE NUMERO  ·  2026-11-06
+//
+// La ULTIMA observacion de la consulta es lo que el informe del paciente lleva al final, y Santiago pidio
+// que el informe inicial quepa en UNA hoja y que la observacion se quede: *"con limite de caracteres
+// visible al escribirla, el que mantenga el inicial en una hoja con el nombre mas largo que mediste"*.
+//
+// ASI QUE EL NUMERO ESTA MEDIDO, NO ELEGIDO. Renderizando el PDF con el nombre mas largo de la cohorte
+// (47 caracteres), las cinco areas en el nivel peor y la proxima cita puesta: **210 caracteres caben en
+// una hoja y 220 ya son dos**. Se deja en 200 para que quepa tambien si manana una frase del informe
+// crece un renglon. El candado `el-informe-maquetado` lo comprueba renderizando.
+//
+// ═══ LO QUE HAY QUE SABER ANTES DE SUBIRLO O BAJARLO ═══
+//
+// ESTE CAMPO ES LA NOTA CLINICA, no un campo de maquetacion: sale en la historia clinica y lo leen los
+// otros profesionales. Topar un registro clinico por una razon de papel es una decision incomoda, y se
+// toma con una medicion detras: en produccion hay CINCO notas escritas y la mas larga tiene 116
+// caracteres (medido el 2026-11-06), asi que hoy el tope no recorta nada de lo que nadie escribio. Si
+// algun dia estorba, la salida NO es subir el tope hasta que el informe se parta: es separar la
+// observacion PARA EL PACIENTE de la nota clinica, que son dos cosas distintas. Queda en BACKLOG.
+export const MAXIMO_DE_LA_OBSERVACION = 200;
+
 // Nota clinica del tratamiento: append-only (treatment_notes lleva su timestamp).
 export const addNoteSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
-  note: z.string().trim().min(1, "La nota no puede estar vacía.").max(2000, "La nota es demasiado larga."),
+  note: z
+    .string()
+    .trim()
+    .min(1, "La nota no puede estar vacía.")
+    .max(
+      MAXIMO_DE_LA_OBSERVACION,
+      `La observación no puede pasar de ${MAXIMO_DE_LA_OBSERVACION} caracteres: el informe del paciente la lleva al final y tiene que caber en una hoja.`,
+    ),
 });
 
 export type AddNoteInput = z.infer<typeof addNoteSchema>;

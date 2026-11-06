@@ -80,8 +80,18 @@ const estilos = StyleSheet.create({
   titulo: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 8 },
   // CON SUBTITULO EL TITULO NO DEJA AIRE DEBAJO: los dos son un solo bloque, y 8 puntos en medio los
   // leeria como dos cosas distintas.
-  tituloConSubtitulo: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 1 },
-  subtitulo: { fontSize: 9, color: "#4b5563", marginBottom: 10 },
+  // EL `lineHeight` ES LO QUE EVITA QUE EL SUBTITULO SE LE MONTE. Medido sobre el PDF (2026-11-06): el
+  // titulo de 18 puntos caia en y=31,8 y el subtitulo en y=44,9, solapandose 4,9 puntos a lo ancho de
+  // 306. Una linea grande sin altura declarada no reserva su espacio, y el `marginBottom: 1` de aqui
+  // (que es correcto: son un solo bloque) no alcanzaba a separarlos.
+  tituloConSubtitulo: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: MARCA_HONDA,
+    lineHeight: 1.2,
+    marginBottom: 1,
+  },
+  subtitulo: { fontSize: 9, color: "#4b5563", lineHeight: 1.3, marginBottom: 8 },
   firma: {
     fontSize: 9,
     color: MARCA_AZUL,
@@ -96,13 +106,41 @@ const estilos = StyleSheet.create({
   cuadroConFilete: { borderLeftWidth: 0.75, borderLeftColor: BORDE },
   rotulo: { fontSize: 7, color: ROTULO, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 },
   valor: { fontSize: 10 },
+  // ═══ UN NOMBRE LARGO SE ENCOGE EN VEZ DE PARTIRSE (2026-11-06) ═══
+  //
+  // La caja mide unos 165 puntos de ancho util, asi que a 10 puntos caben unos 33 caracteres. Un nombre
+  // con dos nombres y dos apellidos pasa de ahi, se parte en DOS LINEAS y la caja entera crece trece
+  // puntos. Esos trece puntos son exactamente los que hacian que en el informe de un paciente con nombre
+  // largo NO CUPIERA la observacion de su profesional: medido el 2026-11-06, con el nombre mas largo de
+  // la cohorte no cabia ni un caracter, y con un nombre normal si.
+  //
+  // Que la hoja de un paciente lleve o no las palabras de su profesional no puede depender de cuantos
+  // apellidos tenga. Asi que el nombre baja de cuerpo hasta donde entre en una linea, con un piso: por
+  // debajo de 7,5 puntos deja de leerse, y entonces se parte, que es preferible a no poder leerlo.
+  valorLargo: { fontSize: 8.5 },
+  valorMuyLargo: { fontSize: 7.5 },
   // LA LINEA DE DEBAJO: quien atendio a la izquierda y la otra fecha a la derecha, en el mismo renglon.
-  pie: { flexDirection: "row", justifyContent: "space-between", marginTop: 5, marginBottom: 9 },
+  pie: { flexDirection: "row", justifyContent: "space-between", marginTop: 4, marginBottom: 5 },
   pieTexto: { fontSize: 9, color: "#374151" },
 });
 
 /** Lo que dice una caja cuyo dato no se pudo resolver. No se deja en blanco: un hueco se lee como olvido. */
 const NO_CONSTA = "No consta";
+
+/**
+ * CUANTOS CARACTERES ENTRAN EN UNA LINEA de la caja, por cuerpo de letra. Medido sobre el PDF: la caja
+ * tiene unos 165 puntos utiles y la fuente gasta algo menos de medio punto de ancho por caracter.
+ * Los dos cortes son los que hacen que el nombre mas largo de la cohorte (47 caracteres) entre en UNA
+ * linea; ver la nota de `valorLargo`.
+ */
+const CABEN_A_10 = 33;
+const CABEN_A_85 = 39;
+
+function estiloDelValor(valor: string) {
+  if (valor.length <= CABEN_A_10) return estilos.valor;
+  if (valor.length <= CABEN_A_85) return estilos.valorLargo;
+  return estilos.valorMuyLargo;
+}
 
 export function EncabezadoEnCuadros({ datos }: { datos: DatosDelEncabezado }) {
   const cuadros: CuadroDelEncabezado[] = [
@@ -121,7 +159,9 @@ export function EncabezadoEnCuadros({ datos }: { datos: DatosDelEncabezado }) {
         {cuadros.map((c, i) => (
           <View key={c.rotulo} style={i === 0 ? estilos.cuadro : [estilos.cuadro, estilos.cuadroConFilete]}>
             <Text style={estilos.rotulo}>{c.rotulo}</Text>
-            <Text style={estilos.valor}>{c.valor.trim() || NO_CONSTA}</Text>
+            <Text style={estiloDelValor(c.valor.trim() || NO_CONSTA)}>
+              {c.valor.trim() || NO_CONSTA}
+            </Text>
           </View>
         ))}
       </View>

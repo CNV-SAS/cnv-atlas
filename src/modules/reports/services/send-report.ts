@@ -3,7 +3,7 @@ import "server-only";
 import { appError, err, ok, type Result } from "@/core/errors";
 import { sendReportEmail, type Adjunto } from "@/lib/email/resend";
 
-import { formatDate } from "@/lib/format/date";
+import { fechaParaElPaciente } from "@/lib/format/date";
 import { emitirPrescripcion } from "@/modules/treatment/services/treatment-service";
 
 import { frenoDeLaContradiccion } from "../data/freno-de-la-contradiccion";
@@ -167,8 +167,8 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
     {
       patientName: dispatch.patientName || "Paciente",
       documentLabel: dispatch.documentLabel,
-      evaluationDate: formatDate(dispatch.evaluationDate),
-      consultationDate: formatDate(dispatch.consultationDate),
+      evaluationDate: fechaParaElPaciente(dispatch.evaluationDate),
+      consultationDate: fechaParaElPaciente(dispatch.consultationDate),
       profesional: dispatch.profesional,
       reportId: dispatch.reportId,
     },
@@ -298,8 +298,8 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
       {
         patientName: dispatch.patientName || "Paciente",
         documentLabel: dispatch.documentLabel,
-        evaluationDate: formatDate(dispatch.evaluationDate),
-        consultationDate: formatDate(dispatch.consultationDate),
+        evaluationDate: fechaParaElPaciente(dispatch.evaluationDate),
+        consultationDate: fechaParaElPaciente(dispatch.consultationDate),
         profesional: dispatch.profesional,
         reportId: dispatch.reportId,
       },

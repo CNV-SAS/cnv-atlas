@@ -35,11 +35,24 @@ import type { DominioPaciente } from "@/clinical-engine";
 
 /** Ancho del dibujo. EXPORTADO para que el candado de maquetacion calcule el centrado en vez de
  *  escribir el numero: un 56 suelto en un test envejece el dia que el radar cambie de tamano. */
-export const ANCHO = 420;
-const ALTO = 272;
-const CX = 210;
-const CY = 144;
-const RMAX = 84;
+// ═══ EL DIBUJO BAJO UN 8 % EL 2026-11-06, Y CONVIENE SABER POR QUE ═══
+//
+// Santiago pidio tres cosas que tienen que caber en la MISMA hoja: la figura con sus cinco areas, la
+// observacion de la profesional ("se queda") y la nota de interpretacion. Medido sobre el PDF: faltaban
+// unos veintidos puntos. Las salidas eran achicar la letra del paciente, quitarle sitio a lo que escribe
+// la profesional, o achicar el dibujo. Se eligio el dibujo porque es la unica de las tres que no quita
+// NADA: las proporciones, los anillos, los colores y los rotulos son los mismos, solo que un 8 % mas
+// pequeños, y sigue ocupando un tercio de la hoja.
+//
+// SE ESCALA TODO JUNTO (ancho, alto, centro y radio) y NO solo el alto: escalar un eje convertiria los
+// anillos en elipses, y la Diana es una figura clinica, no un adorno. Los ROTULOS no escalan, por eso
+// `SEPARACION_ROTULO` y `ALTO_LINEA` se quedan como estan: achicar la letra seria volver a lo que esta
+// decision evita.
+export const ANCHO = 388;
+const ALTO = 250;
+const CX = 194;
+const CY = 132;
+const RMAX = 77;
 const BANDAS = 4;
 /** Alto de línea del rótulo, del que se CALCULA el anclaje del bloque. Una constante, no un número suelto. */
 const ALTO_LINEA = 11;

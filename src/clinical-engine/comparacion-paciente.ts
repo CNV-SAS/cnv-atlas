@@ -70,12 +70,27 @@ export type CambioDeArea = {
   frase: string;
 };
 
-/** Frases FIJAS por resultado. Nuestras, provisionales: ver la cabecera. */
+/**
+ * Frases FIJAS por resultado. Nuestras, provisionales: ver la cabecera.
+ *
+ * ═══ "PRIMERO" ERA UNA PALABRA PARA UNA SOLA AREA, Y SALIA EN LAS CINCO (Santiago, 2026-11-06) ═══
+ *
+ * Decia *"Es la que conviene trabajar primero."* en cada area que retrocedio. Cuando retroceden las
+ * cinco, el informe dice cinco veces que una es la primera, que ademas de absurdo deja al paciente sin
+ * saber por donde empezar, que es justo lo que esa frase venia a resolver.
+ *
+ * Asi que la frase de cada area dice SU CAMBIO y nada mas, y lo de "primero" se reserva para UNA, la que
+ * mas retrocedio (ver `conPrioridad`). Textual suyo: *"Tiene que decir el CAMBIO de cada area (mejoro /
+ * se mantuvo / necesita mas atencion). 'Primero', como mucho, para una sola."*
+ */
 const FRASE_DE_AREA: Record<Exclude<CambioDeArea["cambio"], "sin_comparacion">, string> = {
   mejoro: "Mejoró desde tu consulta anterior.",
-  sin_cambio: "Está igual que en tu consulta anterior.",
-  retrocedio: "Es la que conviene trabajar primero.",
+  sin_cambio: "Se mantuvo igual que en tu consulta anterior.",
+  retrocedio: "Necesita más atención que en tu consulta anterior.",
 };
+
+/** La frase de la UNICA area que se señala como prioritaria. */
+const FRASE_PRIORITARIA = "Necesita más atención: es la que conviene trabajar primero.";
 
 const FRASE_SIN_COMPARACION = "No se puede comparar con tu consulta anterior.";
 
@@ -95,16 +110,42 @@ export function compararAreas(
   actuales: readonly DominioPaciente[],
   anteriores: Readonly<Record<string, number>>,
 ): CambioDeArea[] {
-  return actuales.map((d) => {
+  const salida: (CambioDeArea & { delta: number })[] = actuales.map((d) => {
     const antes = anteriores[d.id];
     if (d.sev == null || antes == null) {
-      return { area: d.dominio, cambio: "sin_comparacion", frase: FRASE_SIN_COMPARACION };
+      return { area: d.dominio, cambio: "sin_comparacion", frase: FRASE_SIN_COMPARACION, delta: 0 };
     }
     const delta = d.sev - antes;
     const cambio: CambioDeArea["cambio"] =
       delta <= -CAMBIO_MINIMO_AREA ? "mejoro" : delta >= CAMBIO_MINIMO_AREA ? "retrocedio" : "sin_cambio";
-    return { area: d.dominio, cambio, frase: FRASE_DE_AREA[cambio] };
+    return { area: d.dominio, cambio, frase: FRASE_DE_AREA[cambio], delta };
   });
+
+  // ═══ UNA SOLA AREA LLEVA EL "PRIMERO" ═══
+  //
+  // La que MAS retrocedio; si empatan, la de severidad actual peor, y si siguen empatadas, la primera en
+  // el orden de los dominios, que es el suyo. Un criterio escrito y no un "la que salga": dos consultas
+  // con los mismos numeros tienen que señalar la misma area.
+  //
+  // Y SI NINGUNA RETROCEDIO, NINGUNA LA LLEVA. Decirle a alguien que ha mejorado en todo que hay un area
+  // "para trabajar primero" es inventarle una prioridad que la comparacion no encontro.
+  let prioritaria = -1;
+  for (let i = 0; i < salida.length; i += 1) {
+    if (salida[i].cambio !== "retrocedio") continue;
+    if (prioritaria === -1) {
+      prioritaria = i;
+      continue;
+    }
+    const mejor = salida[prioritaria];
+    const sevAhora = actuales[i].sev ?? 0;
+    const sevMejor = actuales[prioritaria].sev ?? 0;
+    if (salida[i].delta > mejor.delta || (salida[i].delta === mejor.delta && sevAhora > sevMejor)) {
+      prioritaria = i;
+    }
+  }
+  if (prioritaria !== -1) salida[prioritaria].frase = FRASE_PRIORITARIA;
+
+  return salida.map(({ area, cambio, frase }) => ({ area, cambio, frase }));
 }
 
 /** Cuantas areas mejoraron, se mantuvieron y retrocedieron. Para el parrafo de animo. */
@@ -161,7 +202,11 @@ export function comparacionDeLaEdad(input: {
   if (input.ebHoy == null) {
     return {
       estado: "sin_comparacion",
-      porque: "Esta consulta todavía no tiene la estimación, así que no hay con qué comparar.",
+      // SU TEXTO, LITERAL (Santiago, 2026-11-06): *"Sin estimacion: 'Todavia no tenemos tu edad
+      // biologica estimada de esta consulta para compararla.'"* El que habia decia "la estimacion", en
+      // tercera persona y sin nombrar QUE falta; el paciente no tiene por que saber que "la estimacion"
+      // es su edad biologica.
+      porque: "Todavía no tenemos tu edad biológica estimada de esta consulta para compararla.",
     };
   }
   if (input.ebAnterior == null) {
@@ -256,8 +301,11 @@ export function parrafoDeAnimo(
       `Mejoraste en ${mejoraron === 1 ? "un área" : `${mejoraron} áreas`} y ${retrocedieron === 1 ? "hay una" : `hay ${retrocedieron}`} que conviene trabajar. Lo que ya lograste cuenta.`,
     );
   } else if (retrocedieron > 0) {
+    // SU TEXTO, LITERAL (Santiago, 2026-11-06). El que habia decia lo mismo y terminaba en "ajustar el
+    // plan con quien te atiende", que repetia la frase de cierre tres lineas mas abajo: el paciente leia
+    // "con quien te atiende" dos veces en el mismo parrafo.
     partes.push(
-      "Esta vez el avance no se ve en las áreas que se pudieron comparar. No empiezas de cero: lo que viene es ajustar el plan con quien te atiende.",
+      "Esta vez no vemos avance en las áreas que comparamos. No empiezas de cero: en tu próxima consulta, tu profesional ajustará el plan contigo.",
     );
   } else {
     partes.push(
@@ -265,8 +313,18 @@ export function parrafoDeAnimo(
     );
   }
 
+  // LA FRASE DE LA META VA ANTES DEL CIERRE, que es donde se lee como consecuencia y no como anexo.
   const frase = fraseDeLaMeta(meta);
   if (frase) partes.push(frase);
-  partes.push("Lo que sigue lo defines con quien te atiende en tu próxima consulta.");
+
+  // ═══ EL CIERRE NO SE AÑADE CUANDO LA PRIMERA FRASE YA CIERRA ═══
+  //
+  // La rama de "no hubo avance" lleva el cierre dentro, porque es el texto que Santiago escribio entero.
+  // Añadirle ademas el cierre general dejaba dos veces la misma idea en cuatro lineas. Se decide por el
+  // CASO y no buscando la palabra en el texto: buscarla haria que reescribir una frase apagara el cierre
+  // de otra sin que nadie lo note.
+  if (!(retrocedieron > 0 && mejoraron === 0 && comparadas > 0)) {
+    partes.push("Lo que sigue lo defines con quien te atiende en tu próxima consulta.");
+  }
   return partes.join(" ");
 }

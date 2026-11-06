@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { NotebookPen } from "lucide-react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MAXIMO_DE_LA_OBSERVACION } from "@/modules/treatment/validations";
 import { addNoteAction } from "@/modules/treatment/actions";
 import {
   observacionesVigentes,
@@ -188,13 +189,7 @@ export function ObservacionesConsulta({
                 se vacia cuando la nota EXISTE, no cuando la accion vuelve, y si el servidor rechaza el
                 texto se queda donde estaba. Es el mismo patron que usan las medidas de Antropometria, y
                 NO reabre el hazard 2: un remonte por dato nuevo no es un `form.reset()`. */}
-            <Textarea
-              key={`nota-${notas.length}`}
-              name="note"
-              rows={4}
-              required
-              placeholder="Qué observaste en esta consulta, qué acordaste con el paciente, qué vigilar en el próximo control"
-            />
+            <CampoDeObservacion key={`nota-${notas.length}`} />
             <div className="flex flex-wrap items-center gap-3">
               {/* `required` en el campo y no un `disabled` calculado: sin estado controlado, deshabilitar
                   por vacio exigiria volver a controlarlo. El navegador ya impide enviar vacio. */}
@@ -217,5 +212,50 @@ export function ObservacionesConsulta({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * El campo de la observacion, con su contador.
+ *
+ * ═══ POR QUE HAY UN TOPE, Y POR QUE SE VE MIENTRAS SE ESCRIBE (Santiago, 2026-11-06) ═══
+ *
+ * La ULTIMA observacion de la consulta es lo que cierra el informe del paciente, y el informe inicial
+ * tiene que caber en UNA hoja. El numero esta MEDIDO renderizando el PDF con el nombre mas largo de la
+ * cohorte y las cinco areas en el nivel peor (ver `MAXIMO_DE_LA_OBSERVACION`).
+ *
+ * SE VE AL ESCRIBIR Y NO AL ENVIAR, que es lo que Santiago pidio: un tope que solo aparece cuando el
+ * servidor rechaza obliga a reescribir lo que ya se penso, y en una pantalla de consulta eso se traduce
+ * en que la observacion se recorta a lo bruto o no se escribe.
+ *
+ * EL ESTADO VIVE AQUI DENTRO a proposito: el padre remonta este componente con una `key` derivada del
+ * numero de notas guardadas, asi que al guardar se vacian el campo Y el contador. Si el contador viviera
+ * arriba, se quedaria marcando los caracteres de la nota anterior sobre un campo vacio.
+ */
+function CampoDeObservacion() {
+  const [largo, setLargo] = useState(0);
+  const quedan = MAXIMO_DE_LA_OBSERVACION - largo;
+  return (
+    <div className="flex flex-col gap-1">
+      <Textarea
+        name="note"
+        rows={4}
+        required
+        maxLength={MAXIMO_DE_LA_OBSERVACION}
+        onChange={(e) => setLargo(e.currentTarget.value.length)}
+        placeholder="Qué observaste en esta consulta, qué acordaste con el paciente, qué vigilar en el próximo control"
+      />
+      {/* EL AVISO SOLO CAMBIA DE TONO CERCA DEL TOPE: un contador en rojo desde el primer caracter se
+          vuelve ruido y se deja de mirar justo cuando empieza a importar. */}
+      <span
+        className={`self-end text-xs ${quedan <= 20 ? "text-clinical-warning" : "text-muted-foreground"}`}
+      >
+        {quedan >= 0
+          ? `Quedan ${quedan} caracteres de ${MAXIMO_DE_LA_OBSERVACION}`
+          : `Te pasaste por ${-quedan} caracteres`}
+        {" · "}
+        esta observación cierra el informe del paciente
+      </span>
+    </div>
   );
 }

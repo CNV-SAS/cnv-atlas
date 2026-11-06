@@ -14,10 +14,16 @@ import {
   parrafoDeAnimo,
   type MetaDePeso,
 } from "@/clinical-engine/comparacion-paciente";
+import {
+  CONTRA_QUIEN_SE_COMPARA,
+  edadParaElPaciente,
+} from "@/clinical-engine/edad-para-el-paciente";
+import { lecturaSencilla } from "@/clinical-engine/lectura-sencilla-provisional";
 import { sonComparables } from "@/modules/followups/services/eb-trajectory";
 import { ebBisEnPiezas, NOTA_DFI_SIN_ENCUESTA } from "@/clinical-engine/presentacion-eb-bis";
-import { styles } from "./estilos-del-pdf";
-import { formatDateOnly } from "@/lib/format/date";
+import { RELLENO_DEL_INFORME, styles } from "./estilos-del-pdf";
+import { FranjaDeMarca, PieDeLaPlantilla } from "./marca-de-la-plantilla";
+import { formatDateOnlyLong } from "@/lib/format/date";
 
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { DominiosAnteriores, InformeDelPaciente } from "../data/reports-view-types";
@@ -319,6 +325,16 @@ export function ReportDocument({
     snapshot.ebBis?.estado === "ok"
       ? ebBisEnPiezas(snapshot.ebBis.eb, snapshot.ebBis.iae)
       : null;
+  // ═══ Y LA MISMA CIFRA, CONTADA (Santiago, 2026-11-06) ═══
+  //
+  // `ebBisEnPiezas` da la cifra y el IAE con su banda, que es lo que su tabla 3 define. Lo que el informe
+  // necesita ademas es la EDAD REAL debajo y la frase que explica que significa la diferencia, y eso es
+  // redaccion para el paciente, no contenido clinico: vive en `edad-para-el-paciente.ts`, que compone
+  // sobre las mismas piezas del motor y mete su banda verbatim.
+  const edadPac =
+    snapshot.ebBis?.estado === "ok"
+      ? edadParaElPaciente(snapshot.ebBis.eb, snapshot.ebBis.iae)
+      : null;
 
   // ═══ LA HOJA 2 EXISTE CUANDO HAY CONSULTA ANTERIOR CON QUE COMPARAR ═══
   //
@@ -326,6 +342,13 @@ export function ReportDocument({
   // cuya consulta anterior no llego a sellar sus areas no tiene nada que comparar, y una hoja 2 con cinco
   // "no se puede comparar" es peor que no tenerla. El tipo lo decide el dato, no el rotulo.
   const esSeguimiento = showAtlas && Boolean(dominiosAnteriores) && dfi.complete && Boolean(dfiPac);
+  // ¿La lectura del dominio conductual YA trae la frase de acompañamiento? Se pregunta por el HECHO (la
+  // sustitucion que hace su mapa cuando `d4` tiene severidad alta) y no comparando textos: dos frases que
+  // hoy dicen lo mismo pueden dejar de parecerse con un retoque suyo, y entonces una comparacion de
+  // cadenas apagaria el aviso sin que nadie lo note.
+  const yaDijoElAcompanamiento = (dfiPac?.dominios ?? []).some(
+    (d) => d.id === "d4" && d.sev != null && d.sev >= 2,
+  );
   // LA COMPARACION DE LA EDAD la decide el motor, que recibe las dos cifras y las dos versiones. La
   // comparabilidad por version MAYOR sale de `sonComparables`, que es donde ya vive ese criterio.
   const edad = dominiosAnteriores
@@ -364,7 +387,7 @@ export function ReportDocument({
    */
   const bloqueDeSeguimiento =
     showAtlas && informe && (informe.seguimiento.observacion || informe.seguimiento.proximaCita) ? (
-      <View style={{ marginTop: 5 }}>
+      <View style={{ marginTop: 3 }}>
         {informe.seguimiento.observacion ? (
           <Text style={styles.para}>
             <Text style={styles.bold}>Observaciones de tu profesional: </Text>
@@ -374,7 +397,12 @@ export function ReportDocument({
         {informe.seguimiento.proximaCita ? (
           <Text style={styles.para}>
             <Text style={styles.bold}>Tu próxima consulta: </Text>
-            {informe.seguimiento.proximaCita}
+            {/* EN LETRAS, Y ADEMAS ESTABA SALIENDO CRUDA. `proxima_cita` es una columna `date` y el
+                lector la devuelve tal cual, asi que aqui se imprimia "2026-07-12": una fecha en el
+                formato de la base, en el documento de un paciente. `formatDateOnlyLong` no convierte
+                zona (una fecha pura no es un instante) y devuelve lo que recibe si no reconoce la
+                forma, asi que no puede empeorar lo que ya estuviera formateado. */}
+            {formatDateOnlyLong(informe.seguimiento.proximaCita)}
           </Text>
         ) : null}
       </View>
@@ -391,11 +419,16 @@ export function ReportDocument({
    * EL IDENTIFICADOR SE QUEDA porque es lo unico del pie que el paciente puede USAR: es como nombra su
    * documento si llama a preguntar, y desde el se llega a las tres versiones selladas.
    */
-  const pie = (
-    <Text style={styles.footer} fixed>
-      Connected Nutrition Ventures SAS · Informe {meta.reportId}
-    </Text>
-  );
+  // ═══ Y DESDE EL 2026-11-06 EL PIE ES EL DE LA PLANTILLA (Santiago) ═══
+  //
+  // *"Te adjunto una plantilla que ya esta decorada y tiene footer. Para que en el footer vaya tal cual
+  // esos datos."* La plantilla vive fuera del repositorio; de ella salieron los datos verbatim, la franja
+  // de colores de arriba y la barra degradada de abajo. Ver `marca-de-la-plantilla.tsx`.
+  //
+  // EL IDENTIFICADOR BAJA A SU PROPIA LINEA. En el PDF de la paciente real salia pegado a la razon social
+  // ("Connected Nutrition Ventures SAS · Informe f4fa4e7c-...") y se leia como parte del nombre de la
+  // empresa. Sigue estando porque es lo unico del pie que el paciente puede USAR.
+  const pie = <PieDeLaPlantilla lado={RELLENO_DEL_INFORME.lado} identificador={meta.reportId} />;
   return (
     <Document
       title={`${TITULO_DEL_INFORME} ${meta.documentLabel}`}
@@ -408,6 +441,9 @@ export function ReportDocument({
           impresa en carta deja margenes desiguales, y las dos medidas son las que Santiago necesita para
           la maqueta. */}
       <Page size="LETTER" style={styles.pageInforme}>
+        {/* LA FRANJA DE LA PLANTILLA, sangrada hasta el borde y en todas las hojas (`fixed`). Es lo que
+            hace que el documento se vea de la casa sin gastar media hoja en un membrete. */}
+        <FranjaDeMarca />
         {/* ═══ EL ENCABEZADO EN CUADROS, COMPARTIDO CON LA HOJA DEL PLAN Y LA HISTORIA CLINICA ═══
 
             Era un titulo, una firma y cinco filas etiqueta-valor. La caja de tres columnas pone la
@@ -516,13 +552,24 @@ export function ReportDocument({
             parametros 7.1.0. Atribuirlo al equipo seria decir que la cifra viene de un aparato cuando
             viene de un MODELO, y a un paciente que luego pregunte "¿esto lo midio la maquina?" habria que
             decirle que no. Su frase, que es la que Santiago aprobo, dice lo que de verdad pasa. */}
-        {showAtlas && ebBis ? (
+        {showAtlas && edadPac ? (
           <View style={styles.cifraBloque} wrap={false}>
             <Text style={styles.cifraRotulo}>Edad biológica estimada</Text>
-            <Text style={styles.cifraGrande}>{ebBis.cifra}</Text>
-            {/* EL IAE CON SU BANDA, verbatim del motor: la cifra con signo y su veredicto son de su
-                tabla 3, y la banda ("envejecimiento acelerado estimado") es lectura clinica suya. */}
-            <Text style={styles.cifraDelta}>{ebBis.iae}</Text>
+            {/* ═══ LA CIFRA, CON SU ALTURA DECLARADA (2026-11-06) ═══
+
+                El `lineHeight` no es decoracion: sin el, esta linea de 30 puntos y la de abajo se
+                montaban una sobre otra en el PDF de verdad. Medido sobre el informe de la paciente real
+                que mando Santiago: el "76,4 años" caia en y=610,5 y el texto del IAE en y=612,6, o sea
+                DOS PUNTOS por encima y cruzandose en horizontal (x 237-340 contra x 182-393). En pantalla
+                el bloque es una columna y parece correcto; en el papel se solapaban. */}
+            <Text style={styles.cifraGrande}>{edadPac.cifra}</Text>
+            {/* LA EDAD REAL, DEBAJO (Santiago, 2026-11-06). Sin ella la cifra grande no significa nada:
+                "76,4 años" solo se puede leer sabiendo cuantos años tiene la persona. Sale de su propia
+                formula (`EB = edad + IAE`), no de un dato nuevo. */}
+            {edadPac.edadReal ? <Text style={styles.cifraEdadReal}>{edadPac.edadReal}</Text> : null}
+            {/* LA FRASE, con la banda de Gildardo verbatim al final. Sustituye al IAE suelto
+                ("+12,4 años: envejecimiento acelerado estimado"), que es cierto y no se entiende. */}
+            <Text style={styles.cifraDelta}>{edadPac.frase}</Text>
             {/* EL PIE DE LA CIFRA SE FUSIONO CON LA EXPLICACION DE DEBAJO (2026-11-06): decian la misma
                 cosa en dos bloques ("sale de tu medicion" / "estimada por el modelo sobre tu medicion"),
                 y los dos bloques costaban una hoja. El hecho que aporta cada uno se conserva en la frase
@@ -532,18 +579,19 @@ export function ReportDocument({
 
         {/* LA EXPLICACION VA PEGADA A LA CIFRA, sin el margen de una seccion propia: son una sola pieza
             (el cuadro de la edad estimada de su maqueta), y 12 puntos en medio las separaba en dos. */}
-        {showAtlas && ebBis ? (
+        {showAtlas && edadPac ? (
           <View>
             {/* QUE ES, EN UNA LINEA. Su tabla da la cifra y su banda, no una explicación; sin ella la
                 frase "acorde con sus pares" deja al paciente sin saber con quién se lo compara. Esto
                 describe de dónde sale el número, no lo interpreta: el veredicto es el de su banda. */}
-            {/* SE ACORTO A DOS LINEAS el 2026-11-06 para que la hoja 1 no se parta, y lo que se quito es
-                la mitad que el pie de la cifra ya dice ("sale de tu medicion"). Lo que NO se quita es que
-                no es una enfermedad ni un pronostico: eso es lo que evita que el paciente lea la cifra
-                como un diagnostico. */}
+            {/* CONTRA QUIEN SE COMPARA SALE DEL MOTOR, NO DE AQUÍ (2026-11-06). Decía "personas de tu
+                misma edad y composición", que deja fuera el sexo, y Santiago pidió "de tu mismo sexo y
+                edad", que deja fuera la composición. El valor esperado de la v7 usa LOS TRES (sexo, edad
+                y FMI), así que la frase los nombra los tres y vive al lado de la fórmula que los decide:
+                ver el porqué completo en `edad-para-el-paciente.ts`. */}
             <Text style={[styles.para, { textAlign: "center" }]}>
-              Estimada por el modelo ANI-BIS-E al comparar tu medición con personas de tu misma edad y
-              composición. No es una enfermedad ni un pronóstico.
+              Estimada por el modelo ANI-BIS-E al comparar tu medición con {CONTRA_QUIEN_SE_COMPARA}. No
+              es una enfermedad ni un pronóstico.
             </Text>
             {/* SU NOTA, cuando la encuesta no está completa (tabla 3): la edad biológica sale sola y el
                 diagnóstico integrado queda pendiente. Es lo que explica que el bloque siguiente falte. */}
@@ -675,11 +723,38 @@ export function ReportDocument({
                       <Text style={{ color, fontFamily: "Helvetica-Bold" }}>{`  ·  ${d.nivel}`}</Text>
                     ) : null}
                   </Text>
-                  <Text style={styles.dominioLectura}>{d.lectura}</Text>
+                  {/* ═══ LA LECTURA, EN LENGUAJE DE PACIENTE (Santiago, 2026-11-06) ═══
+
+                      *"Los cinco textos de dominio son jerga ('microambiente hostil', 'fenotipo de
+                      riesgo', 'carga contextual amplificada'). Aplica ya la propuesta en lenguaje
+                      sencillo de la pregunta 13, marcada como provisional."*
+
+                      El `?? d.lectura` no es defensivo por costumbre: es la salida. Esa capa es NUESTRA y
+                      provisional (ver su archivo), y calla donde manda Gildardo: en el dominio conductual
+                      con severidad alta, donde su frase de acompañamiento ya sustituyo la lectura, y en un
+                      dominio sin medir. Si la capa se borra el dia que el conteste, el informe vuelve solo
+                      a su texto clinico sin dejar un hueco. */}
+                  <Text style={styles.dominioLectura}>
+                    {lecturaSencilla(d.id, d.sev) ?? d.lectura}
+                  </Text>
                 </View>
               );
             })}
-            {dfiPac.acompanamiento ? (
+            {/* ═══ EL ACOMPAÑAMIENTO NO SE DICE DOS VECES (Santiago, 2026-11-06) ═══
+
+                *"La frase del bienestar emocional sale dos veces en el seguimiento."*
+
+                Y es cierto, y son DOS textos distintos de Gildardo que dicen lo mismo: la lectura del
+                dominio conductual con severidad alta (*"Te acompañaremos de cerca en tu relación con la
+                alimentación y la imagen corporal; tu bienestar emocional es la prioridad"*) y la frase
+                del veto (*"Tu profesional te acompañará de cerca; priorizaremos tu bienestar emocional
+                antes que cualquier cambio en la alimentación"*). Cuando el veto se activa, casi siempre
+                el dominio conductual ya esta alto, asi que salian las dos seguidas.
+
+                NO SE REESCRIBE NINGUNA, que es lo que la Regla 0 prohibe: se deja de pintar la SEGUNDA
+                cuando la primera ya esta en la hoja. El paciente recibe la misma idea, una vez, con las
+                palabras de el. */}
+            {dfiPac.acompanamiento && !yaDijoElAcompanamiento ? (
               <Text style={styles.para}>{dfiPac.acompanamiento}</Text>
             ) : null}
           </View>
@@ -863,10 +938,20 @@ export function ReportDocument({
             tratamiento y CNV el encargado (Anexo 3, clausula 13). Mandarlo a CNV lo mandaria a quien no
             puede entregarsela.
 
-            La entrega es GRATUITA y no se dice aqui porque decirlo invita a pensar que podria no serlo. */}
-        <Text style={styles.derechoHc}>
-          Puedes solicitar tu historia clínica completa a tu profesional tratante.
-        </Text>
+            La entrega es GRATUITA y no se dice aqui porque decirlo invita a pensar que podria no serlo.
+
+            ═══ Y VA UNA SOLA VEZ, EN LA ULTIMA HOJA (Santiago, 2026-11-06) ═══
+
+            *"'Puedes solicitar tu historia clinica', en las dos hojas: va una sola vez, al final."* En un
+            informe inicial esta ES la ultima hoja, asi que sale aqui; en uno de seguimiento se calla aqui
+            y sale al cierre de la hoja 2. Una frase que se repite en un documento de dos hojas se lee
+            como un documento descuidado, y ademas gasta el sitio que necesita lo que solo se dice una
+            vez. */}
+        {esSeguimiento ? null : (
+          <Text style={styles.derechoHc}>
+            Puedes solicitar tu historia clínica completa a tu profesional tratante.
+          </Text>
+        )}
 
         {/* EL PIE: la firma de CNV y el identificador (ver el comentario de `pie`). Llevaba tambien
             "Motor anibise-1.2.0 · Modelo ANI-BIS-E 1.0 · Reglas 1.0", que se retiro en el smoke del
@@ -888,9 +973,10 @@ export function ReportDocument({
           ══════════════════════════════════════════════════════════════════════════════════════════ */}
       {esSeguimiento && dfiPac && dominiosAnteriores ? (
         <Page size="LETTER" style={styles.pageInforme}>
+          <FranjaDeMarca />
           <Text style={styles.tituloDeHoja}>Seguimiento de la evaluación</Text>
           <Text style={styles.subtituloDeHoja}>
-            Cómo has cambiado desde tu consulta del {formatDateOnly(dominiosAnteriores.fecha)}
+            Cómo has cambiado desde tu consulta del {formatDateOnlyLong(dominiosAnteriores.fecha)}
           </Text>
 
           {/* ═══ LA COMPARACION DE LA EDAD ESTIMADA ═══
@@ -929,7 +1015,9 @@ export function ReportDocument({
                 {showBand ? <Text style={[styles.para, { marginTop: 6 }]}>{bandText}</Text> : null}
                 {showBand && bandAppointmentDate ? (
                   <Text style={styles.para}>
-                    Tu próxima cita está agendada para el {bandAppointmentDate}.
+                    {/* En letras y sin convertir zona: `patient_band_appointment_date` tambien sale de
+                        una columna `date`, y llegaba aqui sin formatear. */}
+                    Tu próxima cita está agendada para el {formatDateOnlyLong(bandAppointmentDate)}.
                   </Text>
                 ) : null}
               </>
@@ -948,7 +1036,7 @@ export function ReportDocument({
               dentro. Aqui esta al lado de lo que compara, y no en la hoja del retrato de hoy. */}
           <RadarDelPaciente
             dominios={dfiPac.dominios}
-            anteriores={{ ...dominiosAnteriores, fecha: formatDateOnly(dominiosAnteriores.fecha) }}
+            anteriores={{ ...dominiosAnteriores, fecha: formatDateOnlyLong(dominiosAnteriores.fecha) }}
           />
 
           {/* ═══ LAS CINCO AREAS, CON SU CAMBIO ═══

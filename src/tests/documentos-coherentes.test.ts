@@ -116,12 +116,20 @@ describe("el reporte del paciente ya no se contradice consigo mismo", () => {
   it("el pie lleva el identificador y no las tres versiones del motor", () => {
     // Las versiones son la constelación de la regla dura 7 y NO se pierden: viven selladas en el snapshot
     // y en el diagnóstico. En el documento del paciente no informan a nadie.
-    const pie = DOC.slice(DOC.indexOf("styles.footer"));
+    // EL PIE SE MUDO AL COMPONENTE DE LA PLANTILLA (2026-11-06): desde que Santiago mando su .docx
+    // decorado, el pie lleva ademas los datos de contacto de CNV y la barra de marca, y eso es una pieza
+    // propia. Asi que el candado sigue al pie a donde vive, en vez de relajarse: lo que blinda no ha
+    // cambiado nunca, que el identificador este y que las versiones del motor NO.
+    const PLANTILLA = readFileSync("src/modules/reports/pdf/marca-de-la-plantilla.tsx", "utf8");
+    expect(DOC, "el informe dejo de usar el pie de la plantilla").toContain("<PieDeLaPlantilla");
+    expect(DOC, "el identificador dejo de viajar al pie").toContain("identificador={meta.reportId}");
     // "Informe" desde el 2026-09-19: el documento del paciente tomo el nombre que usa el archivo de
     // Gildardo ("informe al paciente"). Lo que se blinda no cambia: el pie lleva el identificador y nada mas.
-    expect(pie).toContain("Informe {meta.reportId}");
-    expect(pie).not.toContain("versions.engine");
-    expect(pie).not.toContain("versions.model");
+    expect(PLANTILLA).toContain("Informe ${identificador}");
+    for (const doc of [DOC, PLANTILLA]) {
+      expect(doc).not.toContain("versions.engine");
+      expect(doc).not.toContain("versions.model");
+    }
   });
 });
 

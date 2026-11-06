@@ -21,6 +21,18 @@ import { StyleSheet } from "@react-pdf/renderer";
 // encabezados de seccion"*. Un informe decorado en azul no insinua ninguna severidad.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
+/**
+ * El margen de la hoja del informe, en un solo sitio. Lo usa `pageInforme` y lo usan, EN NEGATIVO, la
+ * franja de marca y el pie de la plantilla, que sangran hasta el borde del papel. Si los dos numeros se
+ * escribieran por separado, ajustar el margen dejaria la franja flotando sin que nadie supiera por que.
+ *
+ * EL LATERAL SE QUEDA EN 32 y no sube con la plantilla (que usa 72): la plantilla es de documentos de
+ * texto corrido, y esta hoja lleva una figura de 272 puntos de ancho y cinco areas que tienen que caber
+ * en UNA hoja. Ochenta puntos menos de ancho parten el informe en dos, que es justo lo que Santiago
+ * pidio evitar. El de ARRIBA y el de ABAJO si son los que piden la franja y el pie.
+ */
+export const RELLENO_DEL_INFORME = { arriba: 28, abajo: 32, lado: 32 } as const;
+
 /** Azul de marca (accion, CNV Data). El "azul electrico" de Santiago. */
 export const MARCA_AZUL = "#205dfd";
 /** El azul hondo de las portadas, extremo oscuro del degradado de marca. */
@@ -57,11 +69,29 @@ export const styles = StyleSheet.create({
   // Y ES UN ESTILO PROPIO, NO un cambio en `page`, porque `page` lo comparte la HOJA DEL PLAN, que no
   // tiene este problema (no lleva figura) y que Santiago ya reviso con su densidad. Apretar las dos por
   // arreglar una seria cambiarle la maqueta a un documento que nadie pidio tocar.
-  pageInforme: { padding: 32, fontSize: 10, color: "#1a1a2e", lineHeight: 1.3 },
+  //
+  // ═══ Y DESDE EL 2026-11-06 LOS CUATRO MARGENES SON DISTINTOS, POR LA PLANTILLA DE SANTIAGO ═══
+  //
+  // La franja de colores sangra por el borde de ARRIBA y el pie de la plantilla (dos lineas de datos mas
+  // la barra degradada) ocupa el de ABAJO. Las dos piezas se dibujan en absoluto desde fuera del margen,
+  // asi que el margen es justo el hueco que tienen que dejarles: 30 arriba (9 de franja y 21 de aire) y
+  // 42 abajo (tres lineas pequeñas, la barra y su aire).
+  //
+  // LOS NUMEROS SE EXPORTAN (`RELLENO_DEL_INFORME`) porque la franja y el pie se posicionan con su
+  // NEGATIVO. Escritos dos veces, el dia que alguien ajuste el margen la franja se queda flotando a
+  // medio centimetro del borde y nadie sabe por que.
+  pageInforme: {
+    paddingTop: RELLENO_DEL_INFORME.arriba,
+    paddingBottom: RELLENO_DEL_INFORME.abajo,
+    paddingHorizontal: RELLENO_DEL_INFORME.lado,
+    fontSize: 10,
+    color: "#1a1a2e",
+    lineHeight: 1.3,
+  },
   // Discreta: mismo gris del pie, sin negrita y sin caja. Informa, no invita ni disuade.
-  derechoHc: { marginTop: 5, fontSize: 8, color: "#6b7280" },
+  derechoHc: { marginTop: 2, fontSize: 8, color: "#6b7280" },
   // La nota de interpretacion del informe: letra pequeña, al cierre de la hoja, como en su maqueta.
-  notaAlPie: { marginTop: 4, fontSize: 8, color: "#4b5563", lineHeight: 1.3 },
+  notaAlPie: { marginTop: 2, fontSize: 8, color: "#4b5563", lineHeight: 1.3 },
   // Cada dia del menu junto: un dia partido entre dos hojas obliga a pasar pagina a media comida.
   diaMenu: { marginTop: 6 },
   // ═══ EL TITULO, LA FIRMA Y LAS FILAS DEL ENCABEZADO SE FUERON AL COMPONENTE (2026-11-05) ═══
@@ -102,10 +132,12 @@ export const styles = StyleSheet.create({
   },
   // EL TITULO Y EL SUBTITULO DE LA HOJA 2 (seguimiento, 2026-11-06). Mismo tamaño que el titulo del
   // encabezado y mismo subtitulo pequeño: las dos hojas tienen que leerse como el mismo documento.
-  tituloDeHoja: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 1 },
-  subtituloDeHoja: { fontSize: 9, color: "#4b5563", marginBottom: 14 },
+  // CON SU ALTURA DECLARADA, por lo mismo que el titulo del encabezado: sin ella el subtitulo se le
+  // montaba encima (medido el 2026-11-06, 4,9 puntos de solape).
+  tituloDeHoja: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, lineHeight: 1.2, marginBottom: 1 },
+  subtituloDeHoja: { fontSize: 9, color: "#4b5563", lineHeight: 1.3, marginBottom: 14 },
   section: { marginBottom: 12 },
-  sectionTitle: { fontSize: 12, fontWeight: "bold", marginBottom: 4, color: MARCA_HONDA },
+  sectionTitle: { fontSize: 12, fontWeight: "bold", lineHeight: 1.2, marginBottom: 3, color: MARCA_HONDA },
   tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderColor: "#ddd", paddingVertical: 2 },
   cellLabel: { width: 90 },
   cellValue: { flex: 1, textAlign: "right" },
@@ -127,7 +159,7 @@ export const styles = StyleSheet.create({
   // SIN CAJA NI FONDO DE COLOR, a proposito: una caja la convertiria en un aviso, y un aviso se lee como
   // alerta. La cifra no alerta de nada, informa; el veredicto es la banda del IAE que va debajo.
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
-  cifraBloque: { alignItems: "center", marginTop: 2, marginBottom: 8 },
+  cifraBloque: { alignItems: "center", marginTop: 1, marginBottom: 3 },
   cifraRotulo: {
     fontSize: 8,
     color: "#6b7280",
@@ -135,14 +167,29 @@ export const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 2,
   },
-  cifraGrande: { fontSize: 30, fontWeight: "bold", color: MARCA_HONDA },
-  /** El IAE con su banda: la unica linea de este bloque que lleva un veredicto, asi que va destacada. */
-  cifraDelta: { fontSize: 11, fontWeight: "bold", color: MARCA_TINTA, marginTop: 2 },
+  // ═══ EL `lineHeight` DE ESTA LINEA NO ES DECORACION: SIN EL, SE MONTABA SOBRE LA DE ABAJO ═══
+  //
+  // Medido sobre el PDF de una paciente real (2026-11-06): el "76,4 años" salia en y=610,5 y la linea
+  // siguiente en y=612,6, o sea DOS PUNTOS por encima y cruzandose en horizontal. En el arbol de vistas
+  // esto es una columna y parece imposible; en el papel se solapaban, porque sin altura declarada la
+  // linea de 30 puntos no reserva su espacio. Las tres lineas del bloque la llevan ahora.
+  cifraGrande: { fontSize: 30, fontWeight: "bold", color: MARCA_HONDA, lineHeight: 1.15 },
+  /** La edad cronologica, debajo de la cifra: es lo que le da sentido al numero grande. */
+  cifraEdadReal: { fontSize: 9, color: "#6b7280", lineHeight: 1.3, marginTop: 1 },
+  /** La frase con la banda al final: la unica linea con veredicto, asi que va destacada y centrada. */
+  cifraDelta: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: MARCA_TINTA,
+    lineHeight: 1.3,
+    marginTop: 3,
+    textAlign: "center",
+  },
   cifraPie: { fontSize: 8, color: "#6b7280", marginTop: 4, textAlign: "center" },
   // CADA DOMINIO, UN BLOQUE (Santiago, 2026-09-21): el nombre en negrita, su etiqueta con su color y la
   // frase debajo. En parrafo corrido las cinco se leian como un solo texto y no se veia cual pedia trabajo.
   // La barra de la izquierda repite el color de la etiqueta: refuerza, no sustituye a la palabra.
-  dominio: { marginTop: 2, paddingLeft: 7, borderLeftWidth: 2.5 },
+  dominio: { marginTop: 0.5, paddingLeft: 7, borderLeftWidth: 2.5 },
   dominioLectura: { marginTop: 1, color: "#374151" },
   bold: { fontWeight: "bold" },
   footer: {

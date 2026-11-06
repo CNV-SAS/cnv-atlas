@@ -3,11 +3,13 @@ import { inflateSync } from "node:zlib";
 
 import { describe, expect, it } from "vitest";
 
+import { choquesDe, describir, piezasDe } from "./helpers/geometria-del-pdf";
 import { sinComentarios } from "./helpers/sin-comentarios";
 
 import { ENGINE_VERSION, type EngineInput, runEngine } from "@/clinical-engine";
 import { BORDE_DEL_ENCABEZADO } from "@/modules/reports/pdf/encabezado-en-cuadros";
-import { styles } from "@/modules/reports/pdf/estilos-del-pdf";
+import { RELLENO_DEL_INFORME, styles } from "@/modules/reports/pdf/estilos-del-pdf";
+import { MAXIMO_DE_LA_OBSERVACION } from "@/modules/treatment/validations";
 import { ANCHO as ANCHO_DEL_RADAR } from "@/modules/reports/pdf/radar-del-paciente";
 import { TITULO_DEL_INFORME } from "@/modules/reports/pdf/report-document";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
@@ -266,7 +268,9 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
     expect(TEXTO, "la figura y las cinco areas desaparecieron del documento").toContain(
       "Tu evaluación bioeléctrica integral, área por área",
     );
-    const anchoDeContenido = ANCHO_CARTA - 2 * (styles.pageInforme.padding as number);
+    // EL MARGEN LATERAL SALE DE LA CONSTANTE, no de `styles`: desde que la franja de la plantilla sangra
+    // por los bordes, la hoja tiene los cuatro margenes distintos y `padding` ya no existe.
+    const anchoDeContenido = ANCHO_CARTA - 2 * RELLENO_DEL_INFORME.lado;
     const centrado = (anchoDeContenido - ANCHO_DEL_RADAR) / 2;
     expect(centrado, "el radar ya no cabe en la hoja: revisa ANCHO").toBeGreaterThan(0);
     expect(
@@ -386,12 +390,15 @@ describe("el radar dibuja la consulta anterior cuando la hay", () => {
     // Y DICE QUE SIGNIFICA ESTAR POR DENTRO, que es la unica frase que le dice como leerlo.
     expect(texto, "la leyenda no explica que significa quedar por dentro").toContain("esa parte mejoró");
     // CON SU FECHA, FORMATEADA: el lector entrega yyyy-MM-dd y el documento no puede mostrar eso.
-    // CON `formatDateOnly`, NO CON `formatDate`, y el candado lo fija porque el defecto aparecio aqui:
-    // la fecha de la medicion es una fecha PURA (yyyy-MM-dd), y `formatDate` la pasa por `new Date()`,
-    // que la interpreta en UTC y la corre un dia hacia atras en Bogota. El informe habria dicho que la
-    // consulta anterior fue el 14 de enero.
+    // SIN CONVERSION DE ZONA, y el candado lo fija porque el defecto aparecio aqui: la fecha de la
+    // medicion es una fecha PURA (yyyy-MM-dd), y `formatDate` la pasa por `new Date()`, que la
+    // interpreta en UTC y la corre un dia hacia atras en Bogota. El informe habria dicho que la consulta
+    // anterior fue el 14 de enero.
+    //
+    // Y EN LETRAS DESDE EL 2026-11-06 (Santiago: *"Fechas para el paciente en letras: '25 de agosto de
+    // 2026'"*). El candado sigue midiendo lo mismo, el dia 15, con el formato que el paciente recibe.
     expect(texto, "la fecha de la consulta anterior sale sin formatear o corrida un dia").toContain(
-      "15/1/2026",
+      "15 de enero de 2026",
     );
     expect(texto, "la fecha de la consulta anterior salio en formato ISO").not.toContain("2026-01-15");
   });
@@ -644,5 +651,169 @@ describe("el informe inicial cabe en UNA hoja y el de seguimiento en DOS", () =>
     const texto = textoDe(paginasDe(pdf));
     expect(texto, "la hoja 2 comparo dos escalas distintas del motor").not.toContain("Consulta anterior");
     expect(texto, "la hoja 2 no dice por que no compara").toContain("versión distinta del modelo");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// NINGUN TEXTO SE PISA CON OTRO  ·  2026-11-06
+//
+// EL CASO: Santiago mando el informe de una paciente real y la cifra de la edad biologica salia ENCIMA
+// del texto de al lado. Medido sobre ese PDF: el "76,4 años" (30 puntos) caia en y=610,5 y el
+// "+12,4 años: envejecimiento acelerado estimado" en y=612,6, o sea DOS PUNTOS por encima, cruzandose en
+// horizontal (x 237-340 contra x 182-393). La causa: una linea de 30 puntos SIN `lineHeight` declarado no
+// reserva su espacio, asi que la siguiente se le monta. En el arbol de vistas es una columna y parece
+// imposible.
+//
+// POR QUE NINGUN CANDADO DE ESTE ARCHIVO PODIA VERLO: todos miran el TEXTO del PDF o cuentan sus hojas, y
+// un texto solapado contiene exactamente las mismas letras que uno bien puesto. Hacia falta leer la
+// GEOMETRIA, que es lo que hace `helpers/geometria-del-pdf`.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("ningun texto del informe se pisa con otro", () => {
+  it("CONTROL: el detector encuentra piezas de verdad, y sabe acusar un solape", () => {
+    // Sin esto, un detector que no encuentre nada pasaria verde sobre un PDF roto.
+    const piezas = piezasDe(PDF);
+    expect(piezas.length, "no se leyo ninguna hoja").toBeGreaterThan(0);
+    // EL TOTAL Y NO EL DE LA PRIMERA HOJA: el pie fijo sale en su propio stream, asi que la primera
+    // entrada puede ser esa, con siete piezas. Contarlas todas mide lo que se quiere medir.
+    const total = piezas.reduce((n, p) => n + p.length, 0);
+    expect(total, "no se leyeron piezas de texto suficientes").toBeGreaterThan(40);
+    // Y QUE SABE ACUSAR: dos cajas que se cruzan en los dos ejes tienen que salir. Se comprueba con el
+    // caso REAL, con las cifras medidas sobre el PDF de la paciente.
+    const a = { x: 237, y: 100, ancho: 103, alto: 30, tam: 30, texto: "76,4 años" };
+    const b = { x: 182, y: 110, ancho: 211, alto: 11, tam: 11, texto: "+12,4 años: acelerado" };
+    const solapeY = Math.min(a.y + a.alto, b.y + b.alto) - Math.max(a.y, b.y);
+    const solapeX = Math.min(a.x + a.ancho, b.x + b.ancho) - Math.max(a.x, b.x);
+    expect(solapeY, "el detector no veria el solape vertical del caso real").toBeGreaterThan(2);
+    expect(solapeX, "el detector no veria el solape horizontal del caso real").toBeGreaterThan(2);
+  });
+
+  it("el inicial: ni un texto encima de otro", () => {
+    const choques = choquesDe(PDF);
+    expect(choques.map(describir), "hay textos superpuestos en el informe inicial").toEqual([]);
+  });
+
+  it("el de seguimiento, con el nombre mas largo: ni un texto encima de otro", async () => {
+    const pdf = await renderReportPdf(snapshotConLecturasLargas(), META_LARGO, {
+      informe: INFORME_COMPLETO,
+      dominiosAnteriores: ANTERIOR_PARA_COMPARAR,
+      metaDePesoKg: 72,
+      serie: [
+        { fecha: "2026-01-15", pesoKg: 90, grasaKg: 30, magraKg: 60 },
+        { fecha: "2026-04-12", pesoKg: 85, grasaKg: 26, magraKg: 59 },
+      ],
+      bandText: "Los indicadores de tu evaluación muestran una evolución favorable.",
+    });
+    const choques = choquesDe(pdf);
+    expect(choques.map(describir), "hay textos superpuestos en el seguimiento").toEqual([]);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL TOPE DE LA OBSERVACION ES EL QUE MANTIENE EL INFORME EN UNA HOJA  ·  2026-11-06
+//
+// Santiago: *"La observacion de la profesional se queda, con limite de caracteres visible al escribirla,
+// el que mantenga el inicial en una hoja con el nombre mas largo que mediste."*
+//
+// Asi que `MAXIMO_DE_LA_OBSERVACION` no es un numero elegido: es el resultado de esta medicion, y este
+// candado es el que lo sostiene. Si manana una frase del informe crece un renglon, esto se pone rojo y
+// obliga a decidir (bajar el tope o recuperar el espacio), en vez de que el informe se parta en silencio
+// en la consulta de un paciente.
+//
+// SE MIDE EL PEOR CASO COMPLETO: el nombre mas largo de la cohorte, las CINCO areas en el nivel peor (que
+// es donde las frases del paciente son mas largas), la proxima cita puesta y la observacion en su tope.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** Las cinco areas en el nivel peor: ahi es donde las frases para el paciente son mas largas. */
+function snapshotEnLoPeor() {
+  const snap = snapshotConDfiCompleto();
+  const dfi = snap.dfi as unknown as { domains?: { sev?: number }[] };
+  for (const d of dfi.domains ?? []) d.sev = 3;
+  return snap;
+}
+
+const INFORME_CON_OBSERVACION = (largo: number) =>
+  ({
+    rutas: [],
+    suplementos: { delModelo: null, delProfesional: [] },
+    remisiones: { delModelo: [], delProfesional: [] },
+    seguimiento: {
+      // Palabras de verdad, no una tira de letras: una cadena sin espacios no se puede partir y mediria
+      // un caso que no existe.
+      observacion: "palabra ".repeat(Math.ceil(largo / 8)).slice(0, largo),
+      proximaCita: "12/07/2026",
+    },
+  }) as unknown as Parameters<typeof renderReportPdf>[2] extends { informe?: infer I }
+    ? NonNullable<I>
+    : never;
+
+describe("el tope de la observacion mantiene el informe inicial en una hoja", () => {
+  it(`con el nombre mas largo y las cinco areas en lo peor, ${MAXIMO_DE_LA_OBSERVACION} caracteres caben en UNA hoja`, async () => {
+    const pdf = await renderReportPdf(snapshotEnLoPeor(), META_LARGO, {
+      informe: INFORME_CON_OBSERVACION(MAXIMO_DE_LA_OBSERVACION),
+    });
+    expect(
+      hojasDe(pdf),
+      "el tope de la observacion ya no cabe en una hoja: o se baja el tope, o se recupera el espacio",
+    ).toBe(1);
+  });
+
+  it("CONTROL: el caso mide algo, porque el doble del tope SI parte la hoja", async () => {
+    // Sin esto, un informe que cupiera siempre (por ejemplo si la observacion dejara de salir) haria
+    // pasar el caso de arriba sin comprobar nada.
+    const pdf = await renderReportPdf(snapshotEnLoPeor(), META_LARGO, {
+      informe: INFORME_CON_OBSERVACION(MAXIMO_DE_LA_OBSERVACION * 2),
+    });
+    expect(hojasDe(pdf), "la observacion dejo de salir en el informe").toBe(2);
+  });
+
+  it("y el tope del servidor es el MISMO numero que mide este candado", () => {
+    // Dos numeros para la misma regla es como se desincronizan: el campo deja pasar lo que el papel no
+    // aguanta, y el informe se parte en la consulta de un paciente.
+    const VALIDACIONES = readFileSync("src/modules/treatment/validations.ts", "utf8");
+    expect(VALIDACIONES).toContain("export const MAXIMO_DE_LA_OBSERVACION = 200;");
+    expect(VALIDACIONES, "el esquema dejo de topar la nota con esa constante").toContain(
+      "MAXIMO_DE_LA_OBSERVACION,\n      `La observación no puede pasar de",
+    );
+    // Y LA PANTALLA LO ENSEÑA MIENTRAS SE ESCRIBE, que es la mitad que Santiago pidio: un tope que solo
+    // aparece al enviar obliga a reescribir lo ya pensado.
+    const CAMPO = readFileSync("src/modules/followups/components/observaciones-consulta.tsx", "utf8");
+    expect(CAMPO, "el campo dejo de topar").toContain("maxLength={MAXIMO_DE_LA_OBSERVACION}");
+    expect(CAMPO, "el contador dejo de verse al escribir").toContain("Quedan ${quedan} caracteres");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA DECORACION DE LA PLANTILLA SALE DE VERDAD  ·  2026-11-06
+//
+// La franja de arriba y la barra del pie son dibujos, no texto: ninguna asercion sobre el texto del PDF
+// las ve, y si un dia dejaran de pintarse el documento saldria limpio y en blanco sin que nada fallara.
+// Es la misma familia del valor arbitrario que Tailwind no parsea: no da error, deja de verse.
+//
+// Se comprueban por sus COLORES, que son los que se leyeron del .docx de Santiago pixel a pixel.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("la decoracion de la plantilla sale en el PDF", () => {
+  it("los cinco tramos de la franja de marca se pintan", () => {
+    const bytes = PAGINAS.map((p) => p.codigo).join("\n");
+    for (const hex of ["#102545", "#205dfd", "#0a76a4", "#12a990", "#78be34"]) {
+      expect(bytes, `falta el tramo ${hex} de la franja de la plantilla`).toContain(`${canales(hex)} scn`);
+    }
+  });
+
+  it("y la barra degradada del pie, con sus dos extremos", () => {
+    const bytes = PAGINAS.map((p) => p.codigo).join("\n");
+    // Los extremos exactos del `gradFill` de su plantilla. El degradado se dibuja por tramos (ver
+    // `marca-de-la-plantilla`), asi que los dos extremos tienen que estar como colores de relleno.
+    expect(bytes, "falta el arranque azul de la barra del pie").toContain(`${canales("#205dfd")} scn`);
+    expect(bytes, "falta el final verde de la barra del pie").toContain(`${canales("#00a388")} scn`);
+  });
+
+  it("y el pie lleva los datos de contacto que mando Santiago, verbatim", () => {
+    expect(TEXTO).toContain("Connected Nutrition Ventures S.A.S.");
+    expect(TEXTO).toContain("NIT: 902045562-3");
+    expect(TEXTO).toContain("contacto@cnvsystem.com");
+    // Y EL NUMERO DE HOJA, que es lo que hace util un pie en un documento de dos hojas.
+    expect(TEXTO).toMatch(/\d+ de \d+/);
   });
 });

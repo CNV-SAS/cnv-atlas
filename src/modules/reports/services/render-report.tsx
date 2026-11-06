@@ -10,7 +10,7 @@ import type {
   PlanPaciente,
 } from "../data/reports-view-types";
 import { HistoriaClinicaDocument } from "../pdf/hc-document";
-import { formatDate } from "@/lib/format/date";
+import { fechaParaElPaciente } from "@/lib/format/date";
 
 import { PlanDocument, type PlanMeta } from "../pdf/plan-document";
 import { ReportDocument, type ReportMeta, type SendMode } from "../pdf/report-document";
@@ -74,7 +74,7 @@ export function metaDelPlan(d: DatosDelPlan): PlanMeta {
   return {
     patientName: d.patientName || "Paciente",
     documentLabel: d.documentLabel,
-    consultationDate: formatDate(d.consultationDate),
+    consultationDate: fechaParaElPaciente(d.consultationDate),
     profesional: d.profesional,
   };
 }

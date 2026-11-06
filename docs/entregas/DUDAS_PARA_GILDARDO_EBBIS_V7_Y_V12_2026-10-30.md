@@ -274,7 +274,7 @@ como poca coherencia cuando es justo la zona buena.
 el complemento (1 − ICA-BIS) o la clasificación en vez de la cifra, y eso ya es una decisión suya sobre
 qué se muestra.
 
-### 16 · Los cinco textos de dominio del informe, en lenguaje sencillo **[propuesto, NO aplicado]**
+### 16 · Los cinco textos de dominio del informe, en lenguaje sencillo **[aplicado, PROVISIONAL]**
 
 La hoja 2 del informe del paciente trae sus cinco lecturas del DFI tal cual. Un paciente lee esto:
 
@@ -296,6 +296,24 @@ aplicado:
 **Nuestra recomendación:** que las escriba o las corrija usted, y entonces el informe lleva **las suyas**
 para el paciente y las de hoy para el profesional. Lo que no nos parece correcto es que las cambiemos
 nosotros: son la lectura clínica de cada dominio.
+
+> **APLICADO COMO PROVISIONAL el 2026-11-06, por decisión de Santiago.** Textual suya: *"Los cinco textos
+> de dominio son jerga. Aplica ya la propuesta en lenguaje sencillo, marcada como provisional."* El
+> argumento es que un informe que el paciente no entiende no cumple su función tampoco mientras espera.
+>
+> **Lo que esto NO toca, que es lo que lo hace reversible en una línea:** el motor sigue intacto con sus
+> veinte lecturas y su candado de diferencia byte a byte; **el profesional sigue leyendo las suyas** (esta
+> capa es solo del documento del paciente); y el mapa de paciente que usted ya tenía escrito
+> (`_dfiPac`) tampoco se tocó. Lo nuestro vive en un archivo aparte
+> (`clinical-engine/lectura-sencilla-provisional.ts`) que se borra de una pieza el día que usted conteste.
+>
+> **Y son VEINTE y no cinco.** Su clasificador tiene cuatro niveles por dominio y la propuesta de arriba
+> traía un ejemplo de cada dominio, cada uno de un nivel distinto. Aplicar solo esos cinco habría dejado
+> quince lecturas en jerga y cinco en castellano, que se lee peor que las veinte iguales. Las quince que
+> faltaban las escribimos con las mismas reglas: una por nivel, ni un término técnico, **sin suavizar la
+> gravedad** (un nivel 3 sigue diciendo que hace falta atención) y sin agregar nada que su lectura no
+> diga. **Su regla del dominio conductual con severidad alta manda sobre esta capa:** ahí sigue saliendo
+> su frase de acompañamiento, y nuestra capa calla.
 
 ### 17 · Las rutas no tienen una versión escrita para el paciente, y un área se queda muda
 

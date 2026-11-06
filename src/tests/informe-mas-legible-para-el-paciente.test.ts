@@ -96,7 +96,12 @@ describe("la comparacion con la consulta anterior, en el lenguaje del paciente",
     const p = parrafoDeAnimo(areasDe([2, 2, 2, 2, 2], [1, 1, 1, 1, 1]), null);
     expect(p).not.toContain("Mejoraste");
     expect(p).not.toContain("mejoraron");
-    expect(p).toContain("el avance no se ve");
+    // SU TEXTO DESDE EL 2026-11-06, literal de Santiago. La regla que el candado protege es la misma
+    // (no decir "mejoraste" cuando nada mejoro); lo que cambio es la frase con la que se dice.
+    expect(p).toContain("Esta vez no vemos avance en las áreas que comparamos");
+    // Y NO REPITE "con quien te atiende": su texto ya cierra con la proxima consulta, asi que el cierre
+    // general no se le añade. Esa repeticion es justo la que Santiago vio en el informe impreso.
+    expect(p.match(/con quien te atiende/g) ?? []).toHaveLength(0);
   });
 
   it("y cuando si mejoro, lo dice, y no esconde lo que retrocedio", () => {
@@ -273,7 +278,12 @@ describe("el informe tiene DOS tipos: inicial de una hoja, seguimiento de dos", 
 
   it("la firma de CNV no desaparece: baja del encabezado al pie", () => {
     expect(doc).toContain("sinFirma: true");
-    expect(doc).toContain("Connected Nutrition Ventures SAS · Informe");
+    // LA FIRMA BAJO AL PIE DE LA PLANTILLA (2026-11-06), con los datos de contacto que mando Santiago.
+    // El candado sigue a donde vive: lo que protege es que la firma no DESAPAREZCA del documento al
+    // quitarla de arriba, no en que linea de que archivo esta escrita.
+    expect(doc).toContain("<PieDeLaPlantilla");
+    const PLANTILLA = readFileSync("src/modules/reports/pdf/marca-de-la-plantilla.tsx", "utf8");
+    expect(PLANTILLA).toContain("Connected Nutrition Ventures S.A.S.");
   });
 
   it("la nota de interpretacion es la suya, verbatim", () => {

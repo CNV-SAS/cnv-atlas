@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/modules/auth/session";
 import { getReportDispatch } from "@/modules/reports/data/reports-repository";
-import { formatDate } from "@/lib/format/date";
+import { fechaParaElPaciente } from "@/lib/format/date";
 import { esUnId } from "@/lib/routing/id-de-ruta";
 import { downloadPlanPdf, downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -111,8 +111,8 @@ export async function GET(
     {
       patientName: dispatch.patientName || "Paciente",
       documentLabel: dispatch.documentLabel,
-      evaluationDate: formatDate(dispatch.evaluationDate),
-      consultationDate: formatDate(dispatch.consultationDate),
+      evaluationDate: fechaParaElPaciente(dispatch.evaluationDate),
+      consultationDate: fechaParaElPaciente(dispatch.consultationDate),
       profesional: dispatch.profesional,
       reportId: dispatch.reportId,
     },
