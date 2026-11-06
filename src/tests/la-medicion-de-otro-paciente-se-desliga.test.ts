@@ -232,6 +232,81 @@ describe("quien lo decide, y que se lee antes de pulsar", () => {
     ).toBe(true);
   });
 
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // LOS TRES AJUSTES DEL BOTON PLEGADO  ·  Santiago, 2026-11-05
+  //
+  // *"Mas cerca, justo encima de las condiciones de la toma, sin el margen de hoy. Fuera la linea
+  // 'Para cuando la toma quedo mal...'. Con borde en azul electrico. Rojo no: reemplazar no borra nada,
+  // crea una version."*
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+
+  it("el boton plegado NO es rojo: reemplazar no borra nada, crea una version", () => {
+    // ES EL UNICO DE LOS TRES AJUSTES QUE NO ES DE MAQUETA, y por eso tiene su caso propio. El rojo de
+    // `destructive` significa en Atlas un acto que QUITA algo. Aqui no se quita: la version vieja queda
+    // legible como registro de lo que se emitio. Un rojo le diria al profesional que esta a punto de
+    // perder datos, y le haria dudar de un acto que es seguro.
+    //
+    // SE MIRA EL BOTON PLEGADO, acotando por su rotulo, y no el archivo entero: dentro del bloque abierto
+    // SI hay rojo legitimo (el acto final, que versiona, lleva su aviso).
+    const src = leer(PANTALLA);
+    const i = src.indexOf("Reemplazar medición BIS");
+    expect(i, "desaparecio el boton plegado").toBeGreaterThan(-1);
+    const boton = src.slice(src.lastIndexOf("<Button", i), i);
+    expect(boton, "el boton de reemplazar volvio a ser rojo").not.toMatch(/destructive|border-red|text-red/);
+    expect(boton, "el boton perdio el azul de accion").toContain("border-primary");
+  });
+
+  it("y no repite debajo la explicacion que el bloque ya trae dentro", () => {
+    // La linea se puso ayer para que el boton no quedara mudo, y sobraba: el bloque que el boton ABRE ya
+    // trae las dos opciones con su linea cada una. Estaba dicho dos veces, a un clic de distancia.
+    const crudo = readFileSync(PANTALLA, "utf8");
+    const enCodigo = leer(PANTALLA);
+    expect(
+      enCodigo,
+      "volvio la linea de debajo del boton: lo mismo ya se dice dentro del bloque",
+    ).not.toContain("Para cuando la toma quedó mal");
+    // Y LAS DOS OPCIONES SIGUEN EXPLICADAS DENTRO, que es lo que hace aceptable quitar la de fuera.
+    expect(crudo, "las dos opciones del bloque se quedaron sin su linea").toMatch(/otra persona/);
+  });
+
+  it("el boton va pegado encima de las condiciones de la toma, no suelto en la pestaña", () => {
+    // *"Mas cerca, justo encima de las condiciones de la toma, sin el margen de hoy."* Estaba lo primero
+    // de la pestaña, con el `gap-8` del contenedor separandolo de todo; plegado es un boton solo, y un
+    // boton solo con dos centimetros de aire arriba y abajo parece huerfano.
+    //
+    // SE MIDE EL ORDEN Y EL AGRUPAMIENTO, que es lo que se pidio: los dos bloques van en el MISMO
+    // contenedor (asi comparten su propio hueco, mas corto que el de la pestaña) y el boton va primero.
+    const entrada = leer("src/modules/evaluations/components/entrada-evaluacion.tsx");
+    const correccion = entrada.indexOf("correccionDeLaMedicion : null");
+    const condiciones = entrada.indexOf("{condicionesDeLaToma}");
+    expect(correccion, "no se monta el bloque de reemplazo").toBeGreaterThan(-1);
+    expect(condiciones, "no se montan las condiciones de la toma").toBeGreaterThan(-1);
+    expect(correccion, "el reemplazo quedo DEBAJO de las condiciones").toBeLessThan(condiciones);
+    // En el mismo grupo: entre los dos no puede haber otro bloque de la pestaña.
+    const entre = entrada.slice(correccion, condiciones);
+    expect(
+      entre,
+      "entre el boton y las condiciones se colo otro bloque: dejan de leerse seguidos",
+    ).not.toMatch(/panelDeCalidadBiologica|avisoDeEdadDelEquipo|<section/);
+    // Y SU HUECO ES MAS CORTO QUE EL DE LA PESTAÑA (gap-8), que es la mitad literal del pedido.
+    const grupo = entrada.slice(entrada.lastIndexOf("<div className=", correccion), correccion);
+    expect(grupo, "el grupo del boton y las condiciones no tiene su propio hueco").toMatch(/gap-[123]\b/);
+  });
+
+  it("y despues de reemplazar, las condiciones se vuelven a pedir: una toma nueva tiene sus condiciones", () => {
+    // SANTIAGO LO CONFIRMO EXPLICITAMENTE (2026-11-05): *"Volver a guardar las condiciones despues de
+    // reemplazar se queda: una toma nueva tiene sus condiciones."*
+    //
+    // SE DEJA ESCRITO COMO CASO porque es lo que alguien "arreglaria" el dia que lo lea como una molestia:
+    // la version nueva nace SIN la medicion (eso ya lo mide el primer describe de este archivo), asi que
+    // lo que entra es una toma distinta, hecha en otro momento y quiza en otras condiciones. Copiarlas de
+    // la version anterior seria afirmar de la toma nueva algo que nadie comprobo.
+    //
+    // LO QUE SE AFIRMA: las condiciones viven POR EVALUACION, asi que la version nueva no las hereda.
+    const captura = leer("src/modules/bis-intake/components/bis-conditions-capture.tsx");
+    expect(captura, "la captura de condiciones dejo de ir por evaluacion").toContain("evaluationId");
+  });
+
   it("el bloque de corregir ya no manda a soporte por la medicion", () => {
     const entry = readFileSync("src/modules/corrections/components/correction-entry.tsx", "utf8");
     expect(

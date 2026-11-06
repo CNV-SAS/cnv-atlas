@@ -42,7 +42,6 @@ import {
 import { nombreLlanoDelIndice } from "../nombre-llano-del-indice";
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-severity";
-import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
 import { MarcaDeReemision } from "./marca-de-reemision";
 import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
@@ -588,17 +587,29 @@ export function EvaluationResults({
         </div>
       ) : null}
 
-      {/* Franja de veredicto PERSISTENTE: la conclusion (estado EFR + riesgo + ruta) siempre visible por
-          encima de las subpestañas, para que ninguna no la esconda (care a). Ruta prioritaria = la primera
-          de las autoritativas del DFI, como PUNTERO a Tratamiento (no se duplica su contenido). */}
-      <VerdictStrip
-        stateNumber={efrPhenotype.stateNumber}
-        efrName={patientContent.diagnosisName}
-        riskLevel={dfi.riesgo.nivel}
-        riskScore={dfi.riesgo.score}
-        dfiComplete={dfi.complete}
-        rutaPrioritaria={dfi.rutas[0] ?? null}
-      />
+      {/* ═══ LA FRANJA DE VEREDICTO SALE  ·  pedido de GILDARDO, via Santiago, 2026-11-05 ═══
+
+          *"Fuera, por pedido de Gildardo, el bloque que sale en las cuatro subpestañas: 'Estado EFR: X de
+          81 · ... · Riesgo integrado · Ruta prioritaria (ver en Tratamiento)'."*
+
+          Se puso para que la conclusion no la escondiera ninguna subpestaña, y el argumento era razonable.
+          Es su archivo el que manda en lo clinico, y esto es lo que el profesional lee primero sobre un
+          paciente: si el dice que no va, no va.
+
+          ═══ Y NO SE PIERDE NINGUNO DE LOS TRES DATOS, que es lo que habia que comprobar antes de quitarla
+          (una franja que fuera el UNICO sitio de una cifra no se puede retirar sin mas) ═══
+
+            · ESTADO EFR con su "N de 81" vive en la subpestaña Mapas (`maps-section`), en la tabla del
+              detalle, y ahi ademas lleva el color de su celda.
+            · RIESGO INTEGRADO vive en la subpestaña Funcional, unas lineas mas abajo en este mismo
+              archivo, y con MAS de lo que traia la franja: su insignia con el nivel y el score, el rotulo
+              "indice 0-100", el veto si esta activo, y la descripcion del nivel.
+            · LA RUTA PRIORITARIA no era contenido, era un PUNTERO ("ver en Tratamiento"). Las rutas viven
+              en Tratamiento, enteras.
+
+          Asi que lo que desaparece es la repeticion, no el dato. El componente se borra en vez de quedarse
+          sin llamadores, y su candado se da vuelta: ahora vigila que la franja NO vuelva y que los tres
+          datos sigan en su sitio. */}
 
       {/* Procedencia del documento: se emitió con una versión anterior del modelo. Va DEBAJO del
           veredicto y ARRIBA de las subpestañas, para que se vea sin tener que abrir ninguna, pero

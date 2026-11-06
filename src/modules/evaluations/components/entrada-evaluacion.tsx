@@ -340,19 +340,38 @@ export function EntradaEvaluacion({
           tambien el unico de los tres que FRENA: mientras haya un hallazgo sin revisar, la composicion y el
           diagnostico de esta consulta describen un cuerpo que no existe. */}
       {composition ? panelDeCalidadBiologica : null}
-      {/* EL AVISO Y SU SALIDA, LO PRIMERO DE LA PESTAÑA (Santiago, 2026-10-28). Si la toma de esta consulta
-          puede no ser de este paciente, eso se lee ANTES de mirar sus cifras: todo lo de abajo describe un
-          cuerpo que quizas no es el suyo. Solo con medicion: sin toma no hay nada que desligar. */}
-      {composition ? correccionDeLaMedicion : null}
-      {/* LA EDAD DE LA FICHA CONTRA LA DEL EQUIPO (su error 5), al lado del bloque anterior y por lo
-          mismo: las dos son dudas sobre DE QUIEN es esta toma, y las dos se resuelven antes de leer las
-          cifras. Esta no frena nada; avisa y dice donde mirar. */}
+      {/* LA EDAD DE LA FICHA CONTRA LA DEL EQUIPO (su error 5): es una duda sobre DE QUIEN es esta toma, y
+          se resuelve antes de leer las cifras. No frena nada; avisa y dice donde mirar. */}
       {composition ? avisoDeEdadDelEquipo : null}
-      {/* LAS CONDICIONES DE LA TOMA, ENCIMA DEL IMPORT (v12 §3). Debajo de los tres avisos y no arriba:
-          esos tres hablan de una toma que YA ENTRO (si puede existir, de quien es, con que edad se
-          calculo), y este checklist es la comprobacion de la que va a entrar. Cuando no hay medicion los
-          tres son null, asi que en el estado en el que esto importa queda lo primero de la pestaña. */}
-      {condicionesDeLaToma}
+      {/* ═══ EL BOTON DE REEMPLAZAR, PEGADO ENCIMA DE LAS CONDICIONES  ·  Santiago, 2026-11-05 ═══
+
+          *"Mas cerca, justo encima de las condiciones de la toma, sin el margen de hoy."*
+
+          Estaba lo PRIMERO de la pestaña, con el `gap-8` del contenedor separandolo de todo. Ayer era un
+          recuadro entero (de ahi su sitio: un aviso se lee antes de las cifras); hoy, plegado, es un boton
+          solo, y un boton solo con dos centimetros de aire arriba y abajo parece huerfano.
+
+          BAJAN JUNTOS EN SU PROPIO GRUPO, con `gap-3` en vez del `gap-8` de la pestaña: son las dos cosas
+          que se hacen sobre la TOMA (cambiarla, o decir en que condiciones se hizo), y leerlas seguidas es
+          mas cierto que leerlas separadas.
+
+          Y SIGUE CUMPLIENDO LO QUE LO PUSO ARRIBA el 2026-10-28: queda por encima de "Medicion BIS" y de
+          la composicion, o sea ANTES de las cifras. Los dos bloques que ahora van delante (el control de
+          calidad biologico y la edad del equipo) hablan de lo mismo y tambien van antes de las cifras, asi
+          que el orden de lectura no se rompe: lo que cambia es que el boton deja de abrir la pestaña.
+
+          CON AVISO DE HUELLA el bloque se pinta entero y abierto (lo decide el componente), y en ese caso
+          esto es una alerta, no un boton. Sigue estando encima de todas las cifras. */}
+      {composition || condicionesDeLaToma ? (
+        <div className="flex flex-col gap-3">
+          {composition ? correccionDeLaMedicion : null}
+          {/* LAS CONDICIONES DE LA TOMA, ENCIMA DEL IMPORT (v12 §3). Debajo de los avisos y no arriba:
+              esos hablan de una toma que YA ENTRO (si puede existir, de quien es, con que edad se
+              calculo), y este checklist es la comprobacion de la que va a entrar. Cuando no hay medicion
+              los avisos son null, asi que en el estado en el que esto importa queda lo primero. */}
+          {condicionesDeLaToma}
+        </div>
+      ) : null}
       {/* Seccion Medicion BIS SIEMPRE presente (no aparece/desaparece: eso confunde). Con medicion,
           muestra un mensaje de exito PERSISTENTE + la composicion; sin medicion, el import GATEADO
           (boton deshabilitado con explicacion en gris). Mismo criterio de "estados vacios limpios". */}

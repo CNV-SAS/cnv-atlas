@@ -230,21 +230,39 @@ export function ReemplazarLaMedicionBis({
   // una alerta plegada detras de un boton no avisa a nadie.
   if (!abierto && !desplegado && !repetida) {
     return (
-      <section className="no-print flex flex-col gap-2">
+      <section className="no-print">
+        {/* ═══ EL BOTON SOLO, CON BORDE AZUL  ·  Santiago, 2026-11-05 ═══
+
+            *"Mas cerca, justo encima de las condiciones de la toma, sin el margen de hoy. Fuera la linea
+            'Para cuando la toma quedo mal y hay que repetirla, o cuando el archivo es de otra persona'.
+            Con borde en azul electrico. Rojo no: reemplazar no borra nada, crea una version."*
+
+            ═══ LA LINEA DE DEBAJO SALE, Y SE PERDIO POCO ═══
+
+            Se puso ayer con el plegado, para que el boton no quedara mudo ("reemplazar" se puede leer como
+            corregir las condiciones de la toma, que es otro boton). Lo que paso es que el bloque que el
+            boton ABRE ya trae las dos opciones con su linea cada una, asi que la explicacion estaba dos
+            veces: una fuera y otra dentro, a un clic de distancia.
+
+            ═══ EL AZUL NO ES COSMETICA, Y ES LA PARTE QUE IMPORTA DE SU MENSAJE ═══
+
+            Su razon es la que decide el color: *"reemplazar no borra nada, crea una version"*. El rojo de
+            `destructive` significa en Atlas un acto que QUITA algo, y aqui no se quita: la version vieja
+            se conserva legible como registro de lo que se emitio, y el paciente conserva su historia. Un
+            rojo le diria al profesional que esta a punto de perder datos, y dudaria de un acto que es
+            seguro; es la misma clase de error que pintar de clinico un estado de proceso.
+
+            El azul es `--primary` (#205dfd), el de accion de BRAND.md, que es la capa de INTERFAZ y no la
+            clinica: no insinua ninguna severidad sobre el paciente. */}
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="w-fit"
+          className="w-fit border-primary text-primary hover:border-primary hover:bg-primary/10 hover:text-primary"
           onClick={() => setDesplegado(true)}
         >
           Reemplazar medición BIS
         </Button>
-        {/* LA LINEA DE DEBAJO DICE PARA QUE ES, y por eso el boton no queda mudo: sin ella, "reemplazar"
-            se puede leer como corregir las condiciones de la toma, que es otro boton y otra cosa. */}
-        <p className="max-w-prose text-xs text-muted-foreground">
-          Para cuando la toma quedó mal y hay que repetirla, o cuando el archivo es de otra persona.
-        </p>
       </section>
     );
   }

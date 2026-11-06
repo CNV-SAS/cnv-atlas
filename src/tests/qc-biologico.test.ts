@@ -257,12 +257,25 @@ describe("el panel esta CABLEADO, y el freno vive donde no se puede saltar", () 
   it("y se pinta LO PRIMERO de Antrop. & BIS, antes de los dos avisos de a quien pertenece", () => {
     // El orden es el argumento: los otros dos preguntan DE QUIEN es la toma; este pregunta si la toma
     // puede existir, y si no puede, de quien sea da igual.
+    //
+    // ═══ LO QUE SE AFIRMA SE ACOTO EL 2026-11-05, Y NO SE RELAJO ═══
+    //
+    // Exigia el orden de los TRES (qc, luego el reemplazo, luego la edad), y el reemplazo bajo a pegarse
+    // encima de las condiciones de la toma por pedido de Santiago (*"mas cerca, justo encima de las
+    // condiciones de la toma, sin el margen de hoy"*): plegado es un boton, no un recuadro, y un boton
+    // solo abriendo la pestaña parecia huerfano.
+    //
+    // LA DECISION DE ESTE CASO ES "EL QC VA PRIMERO", no el orden de los otros dos entre si. Asi que se
+    // afirma eso contra los DOS, que es lo que su argumento sostiene, y el sitio relativo del reemplazo lo
+    // vigila su propio candado (`la-medicion-de-otro-paciente-se-desliga`), donde esta su razon.
     const qc = ENTRADA.indexOf("{composition ? panelDeCalidadBiologica : null}");
-    const correccion = ENTRADA.indexOf("{composition ? correccionDeLaMedicion : null}");
+    const correccion = ENTRADA.indexOf("correccionDeLaMedicion : null");
     const edad = ENTRADA.indexOf("{composition ? avisoDeEdadDelEquipo : null}");
     expect(qc, "el panel del QC no se renderiza").toBeGreaterThan(-1);
-    expect(qc).toBeLessThan(correccion);
-    expect(correccion).toBeLessThan(edad);
+    expect(correccion, "no se monta el bloque de reemplazo").toBeGreaterThan(-1);
+    expect(edad, "no se monta el aviso de la edad del equipo").toBeGreaterThan(-1);
+    expect(qc, "el QC quedo despues del bloque de reemplazo").toBeLessThan(correccion);
+    expect(qc, "el QC quedo despues del aviso de la edad").toBeLessThan(edad);
   });
 
   it("el freno esta en el PIPELINE, no en una pestaña", () => {

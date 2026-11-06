@@ -118,7 +118,19 @@ export function ResumenDiagnostico({
           {visible}
         </div>
       ) : (
-        <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
+        /* ═══ EL VACIO TAMBIEN ES TARJETA  ·  Santiago, 2026-11-05 ═══
+
+           *"El resumen de IA ('Todavia no se ha generado...') sale sobre el gris del layout: dale su
+           tarjeta blanca."*
+
+           Era un recuadro `w-fit` con borde discontinuo y SIN fondo, asi que el gris de la pagina se veia
+           a traves y el bloque no se leia como una pieza del documento, sino como un texto suelto.
+
+           TOMA LA MISMA CAJA QUE EL RESUMEN GENERADO (radio, borde, fondo y relleno) y no una parecida:
+           son los DOS ESTADOS DEL MISMO SITIO, y con cajas distintas la pantalla da un salto al generar.
+           Lo unico que se conserva del vacio es el borde DISCONTINUO, que es lo que dice que ahi todavia
+           no hay nada. */
+        <p className="rounded-xl border border-dashed border-border bg-card p-6 text-sm italic text-muted-foreground">
           Todavía no se ha generado. El resumen aparece aquí cuando lo pidas.
         </p>
       )}
