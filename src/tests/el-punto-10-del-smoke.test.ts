@@ -230,12 +230,23 @@ describe("la prescripcion no se puede cerrar en blanco sin decirlo", () => {
 
   it("el retiro va como icono, no como un renglon que estira la tabla", () => {
     const form = leer("src/modules/evaluations/components/retirar-consulta-form.tsx");
-    // EL ICONO NO ES UN BOTE DE BASURA, y es deliberado: esto registra que la consulta NO OCURRIO, no que se
+    // EL ICONO NO ES UN BOTE DE BASURA, y es deliberado: esto registra que la consulta se RETIRA, no que se
     // borre algo, y el bloque que abre dice "no se borra nada". Un icono de borrar prometeria lo contrario.
     expect(form).toContain("CalendarX");
+    // EL ROTULO ES EL DE LA ACCION, NO EL DE UN MOTIVO (Santiago, 2026-11-06). Decia "Esta consulta no
+    // ocurrió", que es UNO de los dos motivos: con el otro ("ocurrió, pero la medición no se subió") el
+    // boton afirmaba algo falso sobre un acto que si paso, y por eso las 26 consultas de María Camila no
+    // se podian cerrar sin mentir en la historia clinica.
     expect(form, "un icono sin nombre accesible es un boton sin nombre para teclado y lector").toContain(
-      'aria-label="Esta consulta no ocurrió"',
+      'aria-label="Retirar esta consulta"',
     );
+    // Y LOS DOS MOTIVOS EXISTEN como opciones, que es lo que distingue los dos hechos en la historia
+    // clinica sin depender de como redacte cada quien el texto libre.
+    expect(form).toContain('etiqueta: "No ocurrió"');
+    expect(form).toContain('etiqueta: "Ocurrió, pero la medición no se subió"');
+    // EL DETALLE ES OPCIONAL y la OPCION no: exigir cinco caracteres libres es lo que hace que alguien
+    // escriba "xxxxx" para poder enviar.
+    expect(form).toContain("disabled={pending || !elegido}");
     // Y LA FILA NO SE ESTIRA: el control va en la misma linea que "Ver resultados".
     const tabla = leer("src/modules/patients/components/historial-evaluaciones.tsx");
     expect(tabla).toContain("flex flex-wrap items-center justify-end gap-2");

@@ -339,6 +339,26 @@ alimentación va en la hoja del plan. Es verdad, pero es un parche.
 paciente, sin dosis ni mecanismos. Con eso la hoja 3 deja de ser un parche y el informe dice lo que
 promete. Son dieciocho frases en total (tres por ruta), y las construimos el mismo día que lleguen.
 
+### 18 · Sus pacientes: cuáles son de prueba, porque desde fuera no se distinguen
+
+**Esta es suya y solo suya, y es corta de contestar.**
+
+En Atlas tiene **95 pacientes asignados** y **70 distintos en sus 80 consultas**. De esas 80, ninguna está
+cerrada: 53 en borrador, 14 en curso y 13 esperando encuesta. Mientras no se sepa cuáles son pruebas
+suyas, esos pacientes y esas consultas entran en las cifras de la cohorte y en el export de investigación.
+
+**Lo que hicimos antes de preguntarle:** buscar los obvios por la FORMA del dato, con un criterio escrito
+y estrecho a propósito (atrapa lo imposible, nunca lo improbable): documento de menos de 6 cifras, de una
+sola cifra repetida o en secuencia; nombre con una palabra de una letra repetida, con una sola letra, con
+un teclazo, o que se diga a sí mismo "prueba/test/demo".
+
+**Resultado: UNO de 95.** Los otros 94 tienen documentos de 7 a 10 dígitos y nombres de 2 a 5 palabras,
+o sea que **por su forma son indistinguibles de un paciente real**. No podemos señalarlos sin inventar.
+
+**Lo que le pedimos:** la lista con nombres y documentos se la pasa Santiago aparte (no va al repositorio).
+Marque cuáles son suyos de prueba. El marcado lo hace el sistema por su flujo, con su motivo y su rastro;
+nadie va a tocar la base por detrás.
+
 ---
 
 ## Qué pasa con cada respuesta
