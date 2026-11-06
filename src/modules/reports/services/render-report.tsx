@@ -3,7 +3,12 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import type { EngineOutput } from "@/clinical-engine";
 
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
-import type { HistoriaClinicaDoc, InformeDelPaciente, PlanPaciente } from "../data/reports-view-types";
+import type {
+  DominiosAnteriores,
+  HistoriaClinicaDoc,
+  InformeDelPaciente,
+  PlanPaciente,
+} from "../data/reports-view-types";
 import { HistoriaClinicaDocument } from "../pdf/hc-document";
 import { formatDate } from "@/lib/format/date";
 
@@ -19,6 +24,8 @@ export type RenderReportOptions = {
   informe?: InformeDelPaciente | null;
   /** La trayectoria del paciente, para la grafica. Vacia = no hay dos mediciones que comparar. */
   serie?: PuntoDelPaciente[];
+  /** Las cinco areas de la consulta ANTERIOR, para el radar de evolucion. null = consulta inicial. */
+  dominiosAnteriores?: DominiosAnteriores | null;
 };
 
 // Renderiza el reporte a un Buffer PDF en el servidor (Node). Puro respecto a BD y
@@ -39,6 +46,7 @@ export function renderReportPdf(
       bandAppointmentDate={options.bandAppointmentDate}
       informe={options.informe}
       serie={options.serie}
+      dominiosAnteriores={options.dominiosAnteriores}
     />,
   );
 }

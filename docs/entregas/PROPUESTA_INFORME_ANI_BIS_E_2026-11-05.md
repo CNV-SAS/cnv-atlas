@@ -60,7 +60,7 @@ Más de lo que parece. El informe actual ya lleva:
 | Edad biológica estimada, con su delta | **Sí**, desde que su tabla 3 la devolvió al paciente. Y gateada: solo sale si el diagnóstico se selló con la v7 |
 | Los cinco dominios con su veredicto | **Sí**, y con **las mismas cuatro palabras** (En equilibrio · A vigilar · A trabajar · Prioritario). No son de la sugerencia: son el porte de su clasificador |
 | El radar de cinco dominios | **Sí** |
-| Una frase de lectura por dominio | **Sí**, son las lecturas del DFI (y están en la pregunta 14 del documento de dudas: las queremos en lenguaje de paciente, escritas por él) |
+| Una frase de lectura por dominio | **Sí**, son las lecturas del DFI (y están en la pregunta 13 del documento de dudas: las queremos en lenguaje de paciente, escritas por él) |
 | Nota de que no es un diagnóstico por sí solo | **Parcialmente**, y hay historia: el informe tuvo una frase así y **se retiró** el 1 de septiembre, porque contradecía su §7.1 (el diagnóstico es lo primero que el paciente recibe) y al bloque de al lado, que le dice que su envejecimiento está acelerado |
 
 ---
@@ -101,10 +101,10 @@ documento que se contradice consigo mismo.
 
 ## 4 · Lo que queda esperando, y no lo decidimos nosotros
 
-### 4.1 · Los colores de los anillos son la pregunta 9, que está abierta
+### 4.1 · Los colores de los anillos son la pregunta 8, que está abierta
 
 La sugerencia pinta **tres bandas sólidas** (verde, amarillo, rojo). Eso es exactamente lo que la pregunta
-9 del documento de dudas le plantea a Gildardo, y con una objeción de Santiago encima: los colores sólidos
+8 del documento de dudas le plantea a Gildardo, y con una objeción de Santiago encima: los colores sólidos
 parten la Diana en anillos y le quitan la superficie continua.
 
 **Así que la maqueta se adopta con la escala de color de hoy**, y el día que él responda se cambia en un
@@ -112,10 +112,10 @@ sitio: los colores de la Diana, del radar y de las tarjetas del DFI salen de los
 Construir ahora con los tres sólidos sería adelantarnos a su respuesta en lo único de esta página que es
 clínico.
 
-### 4.2 · Las cinco frases de dominio son la pregunta 14
+### 4.2 · Las cinco frases de dominio son la pregunta 13
 
 La sugerencia trae las frases de hoy, que son las lecturas clínicas de su archivo (*"Función celular
-comprometida con microambiente hostil"*). En lenguaje de paciente no se entienden, y la pregunta 14 le pide
+comprometida con microambiente hostil"*). En lenguaje de paciente no se entienden, y la pregunta 13 le pide
 a él las suyas. La maqueta no cambia eso: cuando lleguen, se sustituyen.
 
 ---

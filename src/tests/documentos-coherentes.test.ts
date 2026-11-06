@@ -103,7 +103,13 @@ describe("el reporte del paciente ya no se contradice consigo mismo", () => {
   it("distingue la fecha de la MEDICIÓN de la de la CONSULTA", () => {
     // "Fecha" a secas era la de la medición, y el paciente no tenía cómo saberlo. Con el tamizaje en casa
     // las dos se van a separar siempre.
-    expect(DOC).toContain("Fecha de la medición");
+    //
+    // EL ROTULO DE LA MEDICION PERDIO EL ARTICULO el 2026-11-05: en la caja de tres columnas el rotulo va
+    // en versalitas y corto ("FECHA DE MEDICIÓN"), mientras la de la consulta sigue en la línea de debajo
+    // con su frase entera. Lo que este caso vigila no es la redacción, es que sigan siendo DOS fechas
+    // rotuladas: unificarlas sería la otra forma de "arreglar" el defecto y sería peor, porque el paciente
+    // no tendría cómo saber cuál está viendo.
+    expect(DOC).toContain("Fecha de medición");
     expect(DOC).toContain("Fecha de la consulta");
   });
 

@@ -31,35 +31,16 @@ export const MARCA_HONDA = "#071b4d";
 export const MARCA_TINTA = "#15161a";
 
 /**
- * EL AZUL DE LA FRANJA: el de marca, llevado hacia el azul hondo.
+ * AQUI VIVIA `MARCA_FRANJA`, el azul de la franja del borde superior, y el `mezclar()` que lo derivaba de
+ * los dos anclas. Salieron el 2026-11-05 con la franja (Santiago: *"Fuera la franja y la nube."*).
  *
- * ═══ DOS INTENTOS, Y EL SEGUNDO ES SUYO TAMBIEN ═══
- *
- * El 2026-11-03 por la mañana: *"la franja es un azul electrico algo chillon, prefiero cambiarlo a un
- * azul oscuro (puede ser el de las letras de Atlas #15161a)"*. Se puso el tinta, y al verlo impreso:
- * *"se ve muy extraño... volver al azul electrico pero un poquito mas oscuro, que no quede tan chillon y
- * que tampoco quede gris como este color, ya que ahora se mezcla con el gris del fondo del PDF"*.
- *
- * Y LAS DOS OBSERVACIONES SON CORRECTAS, lo que pasa es que el problema no era la claridad: era el TONO.
- * El tinta de Atlas es un gris azulado casi negro, y sobre el gris del visor de PDF deja de leerse como
- * una franja de marca: parece un borde de la hoja. El azul electrico si se lee como marca y pesa
- * demasiado. Lo que faltaba era el azul de marca MAS OSCURO, que es lo que pidio en la segunda.
- *
- * ═══ Y NO ES UN HEXADECIMAL INVENTADO ═══
- *
- * Es el punto medio entre los DOS anclas de marca que este archivo ya declara: el azul de accion
- * (#205dfd) y el azul hondo de las portadas (#071b4d), al 45 % hacia el hondo. Asi que sigue siendo el
- * azul de Atlas, en el escalon que faltaba entre los dos, y no un color nuevo que nadie sabria de donde
- * salio. Si manana cambia cualquiera de los dos anclas, este se recalcula de ellos.
+ * SE DEJA LA NOTA PORQUE EL COLOR COSTO DOS RONDAS y la leccion no es del color: el 3 de noviembre dijo
+ * primero que la franja era *"un azul electrico algo chillon"* y se puso el tinta de Atlas; al verla
+ * impresa, *"se ve muy extraño... que tampoco quede gris como este color, ya que ahora se mezcla con el
+ * gris del fondo del PDF"*. Las dos observaciones eran correctas y el diagnostico de la primera no: el
+ * problema no era la claridad, era el TONO. Si manana vuelve una decoracion de marca a un documento
+ * impreso, el tinta casi negro sobre el gris del visor no se lee como marca, se lee como borde de la hoja.
  */
-export const MARCA_FRANJA = mezclar(MARCA_AZUL, MARCA_HONDA, 0.45);
-
-/** Mezcla dos hexadecimales. `t` = cuanto del segundo (0 = todo el primero, 1 = todo el segundo). */
-function mezclar(a: string, b: string, t: number): string {
-  const canal = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
-  const mezcla = (i: number) => Math.round(canal(a, i) + (canal(b, i) - canal(a, i)) * t);
-  return `#${[0, 1, 2].map((i) => mezcla(i).toString(16).padStart(2, "0")).join("")}`;
-}
 
 export const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
@@ -67,25 +48,19 @@ export const styles = StyleSheet.create({
   derechoHc: { marginTop: 18, fontSize: 8, color: "#6b7280" },
   // Cada dia del menu junto: un dia partido entre dos hojas obliga a pasar pagina a media comida.
   diaMenu: { marginTop: 6 },
-  // ═══ AIRE ENTRE EL TITULO Y LA FIRMA (Santiago, 2026-10-30: *"hoy estan pegadas"*) ═══
+  // ═══ EL TITULO, LA FIRMA Y LAS FILAS DEL ENCABEZADO SE FUERON AL COMPONENTE (2026-11-05) ═══
   //
-  // Eran 2 puntos de separacion con un titulo de 18: la firma quedaba colgando del titulo en vez de
-  // debajo de el, y las dos se leian como una sola linea partida. Y como estos estilos los comparten el
-  // informe y la hoja del plan, la cabecera de los dos documentos que recibe el paciente se corrige a la
-  // vez, que es justo la razon por la que salieron de dentro del informe.
-  title: { fontSize: 18, fontWeight: "bold", marginBottom: 8, color: MARCA_HONDA },
-  // La firma, en el azul de marca y en versalitas: deja de parecer un subtitulo del informe y pasa a ser
-  // lo que es, quien lo emite.
-  subtitle: {
-    fontSize: 9,
-    color: MARCA_AZUL,
-    marginBottom: 14,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  meta: { marginBottom: 12 },
-  metaRow: { flexDirection: "row", marginBottom: 1 },
-  metaLabel: { width: 110, color: "#555" },
+  // Vivian aqui `title`, `subtitle`, `meta`, `metaRow` y `metaLabel`: el titulo del documento, la firma
+  // de CNV y las filas etiqueta-valor del encabezado. Los tres documentos pintan ahora el MISMO
+  // encabezado en cuadros (`encabezado-en-cuadros.tsx`), que trae sus propios estilos porque la historia
+  // clinica tiene otra hoja de estilo y "el mismo encabezado" habrian sido tres encabezados parecidos.
+  //
+  // SE BORRAN EN VEZ DE QUEDARSE SIN USO, por lo mismo que la marca de fondo: un estilo huerfano invita a
+  // montar una segunda cabecera con el, y volveriamos a tener dos.
+  //
+  // (`notice` y `disclaimer` tambien estan sin uso, y son de ANTES de este cambio: el aviso naranja y el
+  // rotulo de advertencia permanente que se retiro el 2026-09-01. No se tocan aqui para no mezclar dos
+  // limpiezas en el mismo commit.)
   notice: {
     backgroundColor: "#fff4e5",
     borderColor: "#d99a2b",
@@ -115,6 +90,35 @@ export const styles = StyleSheet.create({
   cellLabel: { width: 90 },
   cellValue: { flex: 1, textAlign: "right" },
   para: { marginBottom: 2 },
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════════
+  // LA CIFRA GRANDE Y SOLA  ·  Santiago, 2026-11-05
+  //
+  // *"La edad biologica estimada, grande, 'estimada por el modelo ANI-BIS-E'."*
+  //
+  // Era una fila mas entre bloques, con la cifra en negrita dentro de un parrafo de 10 puntos. Ahora es la
+  // pieza que sostiene la primera hoja. CENTRADA y con aire arriba y abajo: es lo unico de esa hoja que se
+  // lee de un vistazo, y centrada deja de competir con el encabezado.
+  //
+  // LOS 34 PUNTOS NO SON UN GUSTO, son la unica medida que hace que la cifra se lea ANTES que el texto que
+  // la rodea: a 24 todavia parece un titulo de seccion, y por encima de 40 no cabe con su delta al lado en
+  // una hoja carta con estos margenes.
+  //
+  // SIN CAJA NI FONDO DE COLOR, a proposito: una caja la convertiria en un aviso, y un aviso se lee como
+  // alerta. La cifra no alerta de nada, informa; el veredicto es la banda del IAE que va debajo.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════════
+  cifraBloque: { alignItems: "center", marginTop: 8, marginBottom: 16 },
+  cifraRotulo: {
+    fontSize: 8,
+    color: "#6b7280",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  cifraGrande: { fontSize: 34, fontWeight: "bold", color: MARCA_HONDA },
+  /** El IAE con su banda: la unica linea de este bloque que lleva un veredicto, asi que va destacada. */
+  cifraDelta: { fontSize: 11, fontWeight: "bold", color: MARCA_TINTA, marginTop: 2 },
+  cifraPie: { fontSize: 8, color: "#6b7280", marginTop: 4, textAlign: "center" },
   // CADA DOMINIO, UN BLOQUE (Santiago, 2026-09-21): el nombre en negrita, su etiqueta con su color y la
   // frase debajo. En parrafo corrido las cinco se leian como un solo texto y no se veia cual pedia trabajo.
   // La barra de la izquierda repite el color de la etiqueta: refuerza, no sustituye a la palabra.
@@ -134,56 +138,23 @@ export const styles = StyleSheet.create({
   },
 
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
-  // LA DECORACION DE MARCA  ·  Santiago, 2026-10-30
+  // LA DECORACION DE MARCA SALIO EL 2026-11-05  ·  Santiago: *"Fuera la franja y la nube."*
   //
-  // Su encargo, literal: *"Decorarlo un poco, con el brand de Atlas: el azul electrico y formas de fondo
-  // simples. Suaves y claras: el informe se imprime y a veces se fotocopia, asi que nada que tape el texto
-  // ni que gaste tinta."*
+  // Vivian aqui dos estilos, `bandaDeMarca` (la franja solida del borde superior) y `formaDeMarca` (el
+  // arco azul al 7 % que entraba por la esquina), y un componente que los pintaba en los dos documentos
+  // del paciente. Se pusieron el 30 de octubre por un encargo suyo (*"decorarlo un poco, con el brand de
+  // Atlas"*) y su geometria se ajusto dos veces mas, el 3 de noviembre, por el tono de la franja.
   //
-  // LAS DOS CONDICIONES (fotocopia y tinta) SON LAS QUE DECIDEN LA FORMA, y descartan lo primero que uno
-  // haria, que es un fondo tramado o un degradado a toda pagina:
+  // ═══ POR QUE SE VAN, Y NO ES QUE ESTUVIERAN MAL HECHAS ═══
   //
-  //   · Una BANDA SOLIDA Y FINA gasta casi nada y fotocopia limpia: el toner reproduce bien un borde
-  //     definido. Un tono claro al 7 % es lo contrario: la fotocopiadora lo tira a gris sucio o lo borra,
-  //     y no se puede predecir cual de las dos.
-  //   · Asi que el peso de la decoracion lo lleva la banda, y la forma suave se queda en la ESQUINA, en el
-  //     margen, donde si la fotocopia la ensucia no estorba a ninguna palabra.
+  // La maqueta nueva consigue lo que la decoracion buscaba (que el documento se vea de la casa) con
+  // JERARQUIA TIPOGRAFICA: el encabezado en cuadros y la cifra grande. Y lo consigue mejor en las dos
+  // condiciones que el propio encargo imponia, que eran *"nada que tape el texto ni que gaste tinta"*: un
+  // encabezado no gasta tinta y no puede quedar detras de una palabra.
   //
-  // NADA DE ESTO ENTRA EN EL AREA DE TEXTO: la banda vive en los 40 puntos de margen superior y el circulo
-  // sale de la hoja por la esquina. No hay texto detras que pueda quedar tapado.
+  // SE BORRAN EN VEZ DE QUEDARSE SIN LLAMADORES, igual que el `plan` del informe el 30 de octubre: una
+  // pieza muerta es el cable que alguien vuelve a conectar sin saber por que se desconecto. Los DOS AZULES
+  // de marca se quedan arriba, porque los usa el encabezado; `MARCA_FRANJA`, que solo existia para la
+  // franja, se va con ella.
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
-
-  /** La banda de marca del borde superior, a sangre. Fina, solida y en todas las paginas. */
-  bandaDeMarca: { position: "absolute", top: 0, left: 0, right: 0, height: 5, backgroundColor: MARCA_FRANJA },
-  /**
-   * La forma suave de la esquina: un circulo que sale de la hoja, al 7 %.
-   *
-   * SALE DE LA HOJA A PROPOSITO (top y right negativos): un circulo completo dentro de la pagina se lee
-   * como una figura y pide ser interpretada; un arco que entra por la esquina se lee como lo que es,
-   * decoracion.
-   */
-  formaDeMarca: {
-    position: "absolute",
-    // ═══ LA GEOMETRIA LA FIJA SU CONDICION, NO EL GUSTO (y el candado la midio) ═══
-    //
-    // La primera version era un circulo de 230 con top y right de -96. Dibujaba bien y SE METIA EN LA
-    // COLUMNA DE TEXTO: su borde izquierdo caia en 478 y el texto llega hasta 572, asi que entre y=40 y
-    // y=134 habia forma detras de las lineas. Al 7 % no tapa nada legible, pero su condicion no era "que
-    // no moleste", era *"nada que tape el texto"*, y eso se puede cumplir de verdad.
-    //
-    // ASI QUE EL BORDE INFERIOR COINCIDE CON EL MARGEN SUPERIOR: -90 + 130 = 40, que es el `padding` de la
-    // pagina. Por debajo de esa linea no hay forma, y encima de ella no hay texto. Cumplida la condicion,
-    // el ancho queda libre, asi que en vez de un circulo pequeño en la esquina cabe un arco ANCHO que
-    // cruza el borde superior, que es mas cerca de las *"formas de fondo simples"* que pidio.
-    //
-    // Si manana cambia el `padding` de la pagina, el candado falla y hay que recalcular `top`. Es
-    // deliberado: es la unica forma de que la condicion no se pierda en un ajuste de margenes.
-    top: -90,
-    right: -40,
-    width: 320,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: MARCA_AZUL,
-    opacity: 0.07,
-  },
 });

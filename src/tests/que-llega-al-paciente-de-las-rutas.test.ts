@@ -59,12 +59,28 @@ describe("de las rutas al paciente llega lo que puede hacer, no la receta del pr
     expect(vacias, "una ruta nueva se quedó muda: mira si es el filtro o su contenido").toEqual(["R4"]);
   });
 
-  it("y el informe DICE que esa área se trabaja en consulta, en vez de dejar el título solo", () => {
-    // Es la mitad que cierra el hallazgo de arriba: el documento no puede nombrar un área y no decir nada
-    // debajo. La frase no inventa contenido clínico, dice dónde está el detalle.
+  it("y el informe del paciente ya no nombra ninguna de esas áreas", () => {
+    // ═══ ESTE CASO SE DIO VUELTA EL 2026-11-05, Y CONVIENE LEER POR QUE ═══
+    //
+    // Afirmaba que el informe, al nombrar un área sin ninguna línea en lenguaje de paciente (R4), DIJERA
+    // dónde está el detalle, en vez de dejar el título solo. Era la mitad que cerraba el hallazgo de
+    // arriba.
+    //
+    // SANTIAGO SACO LAS RUTAS DEL INFORME: *"SALEN las rutas, los suplementos y las remisiones: la razón es
+    // que el informe no puede recomendar algo que la profesional no recomendó."* Así que el documento ya no
+    // nombra ningún área, y un título solo dejó de ser posible.
+    //
+    // LO QUE SE VIGILA AHORA ES LO CONTRARIO, y es más fuerte: que NINGUNA indicación de ruta vuelva al
+    // informe. El hallazgo de R4 sigue vivo donde importa (el filtro y su pendiente con Gildardo, que
+    // miden los dos casos de arriba); lo que cambió es que el documento del paciente dejó de ser el sitio
+    // donde ese hueco podía verse.
     const PDF = readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8");
-    expect(PDF).toContain("r.indicaciones.length === 0");
-    expect(PDF).toContain("Lo de esta área lo trabajas con tu profesional");
+    expect(PDF, "volvió el bloque de rutas al informe del paciente").not.toContain(
+      "informe.rutas.map(",
+    );
+    expect(PDF, "el informe volvió a leer las indicaciones de una ruta").not.toContain(
+      "r.indicaciones",
+    );
   });
 
   it("y se ve exactamente qué sobrevive en cada ruta", () => {

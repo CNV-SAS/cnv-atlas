@@ -17,6 +17,8 @@ import {
   ROTULO_DEL_NIVEL,
 } from "@/modules/treatment/validacion-presentacion";
 
+import { EncabezadoEnCuadros } from "./encabezado-en-cuadros";
+
 import type { HistoriaClinicaDoc } from "../data/reports-view-types";
 
 // LA HISTORIA CLINICA EN PDF, para adjuntarla al correo del paciente.
@@ -94,10 +96,32 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
   return (
     <Document>
       <Page size="LETTER" style={styles.page}>
-        <Text style={styles.titulo}>Historia clínica</Text>
-        <Text style={styles.sub}>
-          {hc.paciente} · Consulta del {hc.fechaConsulta}
-        </Text>
+        {/* ═══ EL MISMO ENCABEZADO QUE EL INFORME Y LA HOJA DEL PLAN (Santiago, 2026-11-05) ═══
+
+            *"El encabezado nuevo va a los tres documentos (informe, hoja del plan y HC)."*
+
+            Y ADEMAS ARREGLA UN HUECO DE ESTE DOCUMENTO EN PARTICULAR: la historia clinica se identificaba
+            solo por el NOMBRE del paciente ("Nombre y apellido · Consulta del 12/04/2026"). El numero de
+            documento ya lo traia el lector y lo mostraba la pantalla, pero el PDF no, asi que un papel
+            suelto no distinguia entre dos pacientes homonimos. En un documento probatorio que se conserva
+            quince años eso no es un detalle de maqueta.
+
+            EL ROTULO DEL PROFESIONAL DICE "Profesional", no "Te atendió": este documento no tutea al
+            paciente, es la historia clinica. Cambiar el encabezado no es razon para cambiarle el tono.
+
+            LA FILA "Profesional" SALE DE LOS DATOS DEL PACIENTE, porque ahora esta en el encabezado y
+            porque nunca fue un dato del paciente: era de la consulta. */}
+        <EncabezadoEnCuadros
+          datos={{
+            titulo: "Historia clínica",
+            paciente: hc.paciente,
+            documento: hc.documento ?? "",
+            tercera: { rotulo: "Fecha de la consulta", valor: hc.fechaConsulta },
+            profesional: { nombre: hc.profesional, profesion: null },
+            rotuloDelProfesional: "Profesional",
+            otraFecha: null,
+          }}
+        />
 
         <Seccion titulo="Datos del paciente">
           <Dato etiqueta="Nombre" valor={hc.paciente} />
@@ -105,7 +129,6 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
           <Dato etiqueta="Sexo" valor={noRegistrado(hc.sexo)} />
           <Dato etiqueta="Peso" valor={noRegistrado(hc.pesoKg, " kg")} />
           <Dato etiqueta="Talla" valor={noRegistrado(hc.tallaCm, " cm")} />
-          <Dato etiqueta="Profesional" valor={hc.profesional} />
         </Seccion>
 
         <Seccion titulo="Motivo de consulta">

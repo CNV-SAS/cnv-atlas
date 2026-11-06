@@ -116,6 +116,8 @@ export type HcIndiceDoc = {
 
 export type HistoriaClinicaDoc = {
   paciente: string;
+  /** Tipo y numero de documento ("CC 1.020.304"), para la caja del encabezado. null = no consta. */
+  documento: string | null;
   /** Resumen diagnostico del NUTRICIONISTA (su §11c). null si el DFI no esta completo. */
   resumenProfesional: string | null;
   /** El DFI redactado como parrafo. null si el DFI no esta completo. */
@@ -333,4 +335,20 @@ export type HistoriaClinicaSoap = {
   };
   /** Igual que en la HC: si las cifras son las VIVAS y no las de una emision, el documento lo dice. */
   prescripcionSinEmitir: boolean;
+};
+
+/**
+ * LOS CINCO DOMINIOS DE LA CONSULTA ANTERIOR, para el radar de evolucion del informe (Santiago,
+ * 2026-11-05). Vive aqui, en el modulo NEUTRO, y no junto a su lector: ese es `server-only`, y un tipo
+ * compartido que viva ahi es la arista latente de siempre.
+ *
+ * ES UN MAPA POR ID Y NO UNA LISTA a proposito: el snapshot anterior es de otro sellado y nada garantiza
+ * que traiga los dominios en el mismo orden ni todos presentes. Alinear por posicion compararia un area
+ * con otra, y el dibujo saldria creible.
+ */
+export type DominiosAnteriores = {
+  /** yyyy-MM-dd de la MEDICION de esa consulta. La vista la formatea. */
+  fecha: string;
+  /** La severidad (0 a 3) por id de dominio. */
+  porDominio: Record<string, number>;
 };

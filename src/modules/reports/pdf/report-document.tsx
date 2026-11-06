@@ -5,15 +5,16 @@ import { Document, Page, View } from "@react-pdf/renderer";
 import { Text } from "./text-seguro";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
-import { MarcaDeFondo } from "./marca-de-fondo";
+import { EncabezadoEnCuadros } from "./encabezado-en-cuadros";
 import { COLOR_SEVERIDAD, RadarDelPaciente } from "./radar-del-paciente";
 
 import { cambioDesdeLaAnterior } from "../cambio-desde-la-anterior";
-import { ebBisParaTodos, NOTA_DFI_SIN_ENCUESTA } from "@/clinical-engine/presentacion-eb-bis";
+import { ebBisEnPiezas, NOTA_DFI_SIN_ENCUESTA } from "@/clinical-engine/presentacion-eb-bis";
 import { styles } from "./estilos-del-pdf";
+import { formatDateOnly } from "@/lib/format/date";
 
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
-import type { InformeDelPaciente } from "../data/reports-view-types";
+import type { DominiosAnteriores, InformeDelPaciente } from "../data/reports-view-types";
 import { GraficaTrayectoria } from "./grafica-trayectoria";
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
@@ -44,7 +45,44 @@ export type ReportMeta = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// INDICADORES EN EL REPORTE DEL PACIENTE
+// EL INFORME SE QUEDA EN EL MINIMO  ·  Santiago, 2026-11-05
+//
+// SU DECISION, literal: *"el informe lleva SOLO el encabezado en cuadros; la edad biologica estimada,
+// grande; el radar con los anillos, la leyenda llana y las cinco filas con barra, veredicto y frase; la
+// comparacion con la consulta anterior, si es seguimiento; y la proxima cita. SALEN las rutas, los
+// suplementos y las remisiones: la razon es que el informe no puede recomendar algo que la profesional no
+// recomendo. Viven en la HC y en la hoja del plan."*
+//
+// ═══ LA RAZON ES MAS FUERTE QUE LAS ANTERIORES, Y CONVIENE VERLO ═══
+//
+// Los recortes del 28 y del 30 de octubre se argumentaron por DISCIPLINA: que una cifra es del
+// profesional, que este documento trata la salud bioelectrica y no la alimentacion. Este se argumenta por
+// lo que el documento AFIRMA: los tres bloques que salen pintaban, uno al lado del otro, lo que sugirio
+// el MODELO y lo que indico la PROFESIONAL. Rotulados, pero en el mismo papel y con el mismo peso. Un
+// paciente que lee "Nutraceuticos recomendados" en el documento que le entrego su nutricionista lee una
+// indicacion suya, no la salida de un clasificador.
+//
+// Y ESO NO SE ARREGLA ROTULANDO MEJOR: mientras la sugerencia del modelo este en el documento del
+// paciente, la distincion depende de que el la lea con cuidado. Fuera del documento, no depende de nada.
+//
+// ═══ LO QUE NO ESTA EN SU LISTA Y SE QUEDA, declarado para que lo pueda cortar en una linea ═══
+//
+//   1 · EL VEREDICTO INTEGRADO Y SU PARRAFO DE ORIENTACION. No estan entre los tres que nombra, y la
+//       razon que saca a esos tres no los alcanza: no recomiendan nada, son la lectura del modelo sobre
+//       la medicion, que es lo que el documento viene a decir. Dejan de ser bloque propio ("Como estas")
+//       y pasan a encabezar la hoja de la figura, que es donde se explican. Asi la hoja queda con su
+//       resumen arriba y el detalle debajo, y el documento no gana un bloque mas.
+//   2 · LA OBSERVACION DE LA PROFESIONAL, junto a la proxima cita. Por su propia razon: es lo UNICO del
+//       documento que escribio ella para este paciente. Si algo no puede sobrar por "recomendar lo que
+//       ella no recomendo", es justo esto.
+//   3 · LA LINEA QUE DICE DONDE ESTA EL RESTO. El lo dice en su mensaje: *"viven en la HC y en la hoja
+//       del plan"*. El paciente tambien tiene que saberlo, o un informe sin rutas ni suplementos se lee
+//       como un informe al que le falta algo.
+//   4 · EL DERECHO A PEDIR LA HISTORIA CLINICA y el identificador del pie. Lo primero es una obligacion
+//       legal (asesoria del 2026-09-01) y no contenido clinico; lo segundo es como el paciente nombra su
+//       documento si llama a preguntar.
+//
+// ═══ INDICADORES EN EL REPORTE DEL PACIENTE ═══
 //
 // ═══ LA EDAD BIOLOGICA ESTIMADA SI VA, DESDE EL 2026-10-26 ═══
 //
@@ -83,6 +121,7 @@ export function ReportDocument({
   bandAppointmentDate = null,
   informe = null,
   serie = [],
+  dominiosAnteriores = null,
 }: {
   snapshot: EngineOutput;
   meta: ReportMeta;
@@ -114,10 +153,20 @@ export function ReportDocument({
    * (`bloques-del-plan.tsx`), y los pinta el PDF del plan, que es el segundo adjunto del correo.
    */
   /**
-   * LO QUE HACE DE ESTO UN INFORME Y NO SOLO UN PLAN (Santiago, 2026-09-19): las rutas que va a trabajar,
-   * sus suplementos (los que sugiere el modelo y los que le indico su profesional), a que otros
-   * profesionales acudir, y su seguimiento. null = no se pudo reunir, y el documento sale sin esa parte
-   * en vez de no salir.
+   * ═══ DE AQUI YA SOLO SE LEE EL SEGUIMIENTO (Santiago, 2026-11-05) ═══
+   *
+   * Traia cuatro cosas: las rutas, los suplementos, las remisiones y el seguimiento. Las tres primeras
+   * salieron del documento (ver la cabecera), y queda el seguimiento: la observacion de la profesional y
+   * la proxima cita, que es lo ultimo de su lista.
+   *
+   * LA PROP NO SE AFINA A `{ seguimiento }` a proposito, y es la decision contraria a la que se tomo con
+   * el `plan` el 30 de octubre: aquello se quito entero porque no quedaba ni un uso, y una prop muerta es
+   * el cable que alguien vuelve a conectar. Aqui el objeto SIGUE VIVO y lo arma un lector que tambien
+   * alimenta otras superficies; recortar el tipo en este documento obligaria a construir un segundo tipo
+   * para la misma lectura. Lo que impide el descuido es que este documento no toque los otros tres
+   * campos, y de eso hay candado.
+   *
+   * null = no se pudo reunir, y el documento sale sin esa parte en vez de no salir.
    */
   informe?: InformeDelPaciente | null;
   /**
@@ -125,11 +174,20 @@ export function ReportDocument({
    * mediciones que comparar, y entonces el bloque no se pinta: una trayectoria de un punto no lo es.
    */
   serie?: PuntoDelPaciente[];
+  /**
+   * LAS CINCO AREAS DE LA CONSULTA ANTERIOR, para que el radar dibuje las dos figuras (Santiago,
+   * 2026-11-05). null = consulta inicial, y el radar sale como siempre.
+   */
+  dominiosAnteriores?: DominiosAnteriores | null;
 }) {
   // SOLO SE DESESTRUCTURA LO QUE ESTE DOCUMENTO PUEDE IMPRIMIR. `indicators`, `efrPhenotype`,
   // `structural`, `frSector` y `versions` se retiraron con sus bloques (§7.1): un documento que no tiene
   // el dato no puede filtrarlo por descuido. `dfi` se conserva SOLO por `dfi.complete`, que gatea la banda.
-  const { dfi, nutraceuticos } = snapshot;
+  //
+  // Y DESDE EL 2026-11-05 TAMPOCO `nutraceuticos`: salia en el bloque de suplementos, que ya no existe.
+  // Dejarlo desestructurado y sin usar seria tener a mano, en el documento del paciente, justo la cadena
+  // que la decision de hoy saca de el.
+  const { dfi } = snapshot;
   // EL DFI EN SU LENGUAJE, no en el del modelo. Porte de su mapa (`dfiParaPaciente`): CRITICO pasa a
   // Prioritario, el dominio conductual con severidad alta se reemplaza por una frase que no menciona TCA,
   // y el veto se reformula como acompañamiento. Ver el porqué en `clinical-engine/dfi-paciente.ts`.
@@ -152,9 +210,21 @@ export function ReportDocument({
   // SE ARMA SOLO CON `snapshot.ebBis`, que lleva sus dos cifras: este documento NO puede tocar
   // `snapshot.indicators` (un candado lo prohibe, y con razon: ahi estan los doce indicadores y §7.1 dice
   // que ninguno va al paciente). Ver el porque de la copia en `ResultadoEbBis`.
-  const ebBisPaciente =
+  //
+  // ═══ Y DESDE HOY SE PARTE EN DOS PIEZAS, PORQUE LA CIFRA VA GRANDE Y SOLA (Santiago, 2026-11-05) ═══
+  //
+  // `ebBisParaTodos` devuelve las dos frases enteras de su tabla 3 ("Edad biologica estimada: 76,4 años" y
+  // "+12,4 años: envejecimiento acelerado estimado"). Para la pieza grande hace falta la CIFRA sin su
+  // rotulo, porque el rotulo pasa a ser el titulo del bloque.
+  //
+  // NO SE RECORTA SU FRASE AQUI, NI SE COMPONE CON LOS FORMATEADORES A MANO: el motor gano una tercera
+  // salida, `ebBisEnPiezas`, por la misma razon por la que existen las otras dos. La frontera de su §5 es
+  // de TIPO (una funcion para lo del paciente, otra para lo del profesional), y si este documento armara
+  // la cifra por su cuenta esa garantia dejaria de estar en el tipo y pasaria a depender de que cada
+  // documento se acuerde. Es el precedente de `bandaIae`, que se separo por lo mismo.
+  const ebBis =
     snapshot.ebBis?.estado === "ok"
-      ? ebBisParaTodos(snapshot.ebBis.eb, snapshot.ebBis.iae)
+      ? ebBisEnPiezas(snapshot.ebBis.eb, snapshot.ebBis.iae)
       : null;
   return (
     <Document
@@ -168,48 +238,34 @@ export function ReportDocument({
           impresa en carta deja margenes desiguales, y las dos medidas son las que Santiago necesita para
           la maqueta. */}
       <Page size="LETTER" style={styles.page}>
-        {/* LO PRIMERO DE LA PAGINA, para quedar DETRAS del contenido: @react-pdf pinta en orden. */}
-        <MarcaDeFondo />
-        <Text style={styles.title}>Informe ANI-BIS-E del paciente</Text>
-        <Text style={styles.subtitle}>Connected Nutrition Ventures</Text>
+        {/* ═══ EL ENCABEZADO EN CUADROS, COMPARTIDO CON LA HOJA DEL PLAN Y LA HISTORIA CLINICA ═══
 
-        <View style={styles.meta}>
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Paciente</Text>
-            <Text>{meta.patientName}</Text>
-          </View>
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Documento</Text>
-            <Text>{meta.documentLabel}</Text>
-          </View>
-          {/* DOS FECHAS, no una (smoke 2026-09-01). "Fecha" a secas era la de la MEDICION, y el paciente no
-              tiene como saberlo: puede haberse medido un dia y haber sido atendido otro, y con el tamizaje
-              en casa las dos se van a separar siempre. Rotularlas es lo que las distingue.
-              La de consulta esta preguntada a Gildardo (punto 2 de la ronda del 31: su archivo la CAPTURA y
-              Atlas la deduce). Mostrarla no se adelanta a esa respuesta: si dice que debe capturarse,
-              cambia de DONDE sale, no si se muestra. */}
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Fecha de la medición</Text>
-            <Text>{meta.evaluationDate}</Text>
-          </View>
-          {meta.consultationDate ? (
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Fecha de la consulta</Text>
-              <Text>{meta.consultationDate}</Text>
-            </View>
-          ) : null}
-          {/* QUIEN LO ATENDIO, al final del encabezado: la ultima linea del bloque es la que se lee como
-              firma. Si no se pudo resolver el nombre, la fila no sale. */}
-          {meta.profesional ? (
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Te atendió</Text>
-              <Text>
-                {meta.profesional.nombre}
-                {meta.profesional.profesion ? ` · ${meta.profesional.profesion}` : ""}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+            Era un titulo, una firma y cinco filas etiqueta-valor. La caja de tres columnas pone la
+            identidad del paciente donde la vista cae primero, que es la mitad de la sugerencia que Santiago
+            pidio adoptar, y el mismo bloque lo pintan ahora los tres documentos.
+
+            LAS DOS FECHAS SIGUEN SIENDO DOS (smoke 2026-09-01): la de la MEDICION va en la caja, porque es
+            la que fecha este documento, y la de la CONSULTA en la linea de debajo. "Fecha" a secas era la
+            de la medicion y el paciente no tenia como saberlo: puede haberse medido un dia y haber sido
+            atendido otro, y con el tamizaje en casa las dos se van a separar siempre.
+
+            Y LA FRANJA Y LA NUBE SALEN (Santiago, 2026-11-05): *"Fuera la franja y la nube."* Se habian
+            puesto el 30 de octubre para que el documento se viera de la casa; la jerarquia tipografica de
+            la maqueta nueva consigue lo mismo, fotocopia limpio y no gasta tinta. El componente
+            `MarcaDeFondo` se borra en vez de quedarse sin llamadores, por la razon de siempre: una pieza
+            muerta es el cable que alguien vuelve a conectar sin saber por que se desconecto. */}
+        <EncabezadoEnCuadros
+          datos={{
+            titulo: "Informe ANI-BIS-E",
+            paciente: meta.patientName,
+            documento: meta.documentLabel,
+            tercera: { rotulo: "Fecha de medición", valor: meta.evaluationDate },
+            profesional: meta.profesional ?? null,
+            otraFecha: meta.consultationDate
+              ? { rotulo: "Fecha de la consulta", valor: meta.consultationDate }
+              : null,
+          }}
+        />
 
         {/* AQUI IBA "Patrones asociados a valorar clínicamente, no constituye diagnóstico", y se retiro el
             2026-09-01. Era NUESTRA (no aparece ni una vez en su archivo) y contradecia dos cosas a la vez:
@@ -218,18 +274,17 @@ export function ReportDocument({
             Un documento que diagnostica y ademas declara que no diagnostica no protege a nadie: confunde
             al paciente sobre que tiene en la mano. */}
 
-        {showBand ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cambio respecto a tu medición anterior</Text>
-            <Text>{bandText}</Text>
-            {/* §6: la fecha va como frase aparte, sin tocar el verbatim de Gildardo de arriba. */}
-            {bandAppointmentDate ? (
-              <Text style={{ marginTop: 4 }}>
-                Tu próxima cita está agendada para el {bandAppointmentDate}.
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+        {/* ═══ LA BANDA DE CAMBIO SE MUDO ABAJO, CON EL RESTO DE LA COMPARACION (2026-11-05) ═══
+
+            Estaba aqui, en la primera hoja, desde antes de que el informe tuviera grafica de trayectoria.
+            Su lista de hoy pide *"la comparacion con la consulta anterior, si es seguimiento"* como UNA
+            cosa, y hoy eran tres repartidas por el documento: esta banda arriba, el radar de evolucion en
+            la hoja de la figura y la grafica con sus frases al final.
+
+            Asi que la banda baja a juntarse con la grafica. No cambia ni su texto (verbatim de Gildardo) ni
+            su gateo (sigue dependiendo de `dfi.complete` y de que el profesional confirmara un
+            "empeoro"): cambia de SITIO, para que el paciente lea su evolucion de una sola vez en vez de
+            encontrarsela en tres puntos del papel. */}
 
         {/* El aviso de incompletitud del diagnóstico NO va al reporte del paciente (decisión 2026-08-08): es
             jerga técnica (DFI, "faltan 10 de 13 respuestas") y, peor, le informa al paciente sobre la calidad
@@ -272,13 +327,36 @@ export function ReportDocument({
             LAS DOS FRASES SON SUYAS, del motor (`presentacion-eb-bis`), no escritas aquí: la misma cifra
             sale por la pantalla del profesional y por este informe, y dos redacciones del mismo hecho
             acaban diciendo cosas distintas. */}
-        {showAtlas && ebBisPaciente ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tu edad biológica estimada</Text>
-            <Text style={styles.para}>
-              <Text style={styles.bold}>{ebBisPaciente.eb}</Text>
+        {/* ═══ LA CIFRA GRANDE Y SOLA (Santiago, 2026-11-05) ═══
+
+            *"La edad biologica estimada, grande, 'estimada por el modelo ANI-BIS-E'."*
+
+            Era una fila mas entre los bloques, con la cifra en negrita dentro de un parrafo. Ahora es la
+            pieza que sostiene la primera hoja: el rotulo pequeño en versalitas, el numero en 34 puntos y
+            el IAE con su banda al lado.
+
+            ═══ EL PIE ES EL UNICO SITIO DONDE NO SE ADOPTO LA SUGERENCIA, Y ES IMPORTANTE ═══
+
+            La sugerencia pone bajo la cifra *"Diferencia estimada reportada por el equipo"*. En Atlas eso
+            es FALSO: el delta no lo reporta el Biody, lo calcula la EB-BIS v7 de Gildardo con sus
+            parametros 7.1.0. Atribuirlo al equipo seria decir que la cifra viene de un aparato cuando
+            viene de un MODELO, y a un paciente que luego pregunte "¿esto lo midio la maquina?" habria que
+            decirle que no. Su frase, que es la que Santiago aprobo, dice lo que de verdad pasa. */}
+        {showAtlas && ebBis ? (
+          <View style={styles.cifraBloque} wrap={false}>
+            <Text style={styles.cifraRotulo}>Edad biológica estimada</Text>
+            <Text style={styles.cifraGrande}>{ebBis.cifra}</Text>
+            {/* EL IAE CON SU BANDA, verbatim del motor: la cifra con signo y su veredicto son de su
+                tabla 3, y la banda ("envejecimiento acelerado estimado") es lectura clinica suya. */}
+            <Text style={styles.cifraDelta}>{ebBis.iae}</Text>
+            <Text style={styles.cifraPie}>
+              Estimada por el modelo ANI-BIS-E sobre tu medición de bioimpedancia.
             </Text>
-            <Text style={styles.para}>{ebBisPaciente.iae}</Text>
+          </View>
+        ) : null}
+
+        {showAtlas && ebBis ? (
+          <View style={styles.section}>
             {/* QUE ES, EN UNA LINEA. Su tabla da la cifra y su banda, no una explicación; sin ella la
                 frase "acorde con sus pares" deja al paciente sin saber con quién se lo compara. Esto
                 describe de dónde sale el número, no lo interpreta: el veredicto es el de su banda. */}
@@ -295,34 +373,6 @@ export function ReportDocument({
                 lectura por áreas.
               </Text>
             ) : null}
-          </View>
-        ) : null}
-
-        {showAtlas && dfiPac && dfi.complete ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cómo estás</Text>
-            {/* ═══ LA PEQUEÑA EXPLICACION DEL RESUMEN (una nutricionista, via Santiago, 2026-10-28) ═══
-
-                *"Nombre del profesional, junto a una pequeña explicacion del resumen del diagnostico. Algo
-                simple que el paciente pueda entender."*
-
-                EXPLICA EL DOCUMENTO, NO AL PACIENTE: dice de donde salen las cifras y como se lee lo que
-                sigue. Ni una palabra sobre que significa clinicamente, porque ese lenguaje es el de
-                Gildardo (`dfiParaPaciente` es su mapa portado) y escribirlo nosotros seria inventar
-                contenido clinico, que es justo lo que prohibe la Regla 0.
-
-                Y NO VUELVE EL "no constituye diagnostico" que se retiro el 2026-09-01: ese negaba lo que el
-                bloque afirma. Esto no niega nada; orienta la lectura. */}
-            <Text style={styles.para}>
-              Este es el resumen de tu valoración: cómo está tu cuerpo hoy, según las medidas que te tomamos
-              y lo que nos contaste. La primera frase es el resumen general; debajo aparece cada área por
-              separado, y la figura las muestra todas juntas. Si algo no te queda claro, pregúntaselo a
-              quien te atendió.
-            </Text>
-            <Text style={styles.para}>
-              <Text style={styles.bold}>{dfiPac.riesgo}. </Text>
-              {dfiPac.enfoque}
-            </Text>
           </View>
         ) : null}
 
@@ -363,10 +413,57 @@ export function ReportDocument({
         {showAtlas && dfiPac && dfi.complete ? (
           <View style={styles.section} break>
             <Text style={styles.sectionTitle}>Tu evaluación bioeléctrica integral, área por área</Text>
+
+            {/* ═══ EL VEREDICTO INTEGRADO Y SU ORIENTACION, QUE ERAN EL BLOQUE "COMO ESTAS" (2026-11-05) ═══
+
+                Su lista de hoy dice que el informe lleva SOLO cinco cosas, y "Como estas" no es ninguna de
+                las cinco. Pero tampoco es ninguno de los tres que manda sacar, y la razon que saca a esos
+                tres no lo alcanza: esto no recomienda nada, es la lectura del modelo sobre la medicion.
+
+                ASI QUE NO SE PIERDE Y DEJA DE SER BLOQUE: encabeza la hoja de la figura, que es donde se
+                explica. El documento no gana un bloque mas (que es lo que su "SOLO" quiere evitar) y el
+                paciente no pierde la unica frase que le dice como esta en conjunto.
+
+                ═══ LA PEQUEÑA EXPLICACION ES DE UNA NUTRICIONISTA (via Santiago, 2026-10-28) ═══
+
+                *"Nombre del profesional, junto a una pequeña explicacion del resumen del diagnostico. Algo
+                simple que el paciente pueda entender."*
+
+                EXPLICA EL DOCUMENTO, NO AL PACIENTE: dice de donde salen las cifras y como se lee lo que
+                sigue. Ni una palabra sobre que significa clinicamente, porque ese lenguaje es el de
+                Gildardo (`dfiParaPaciente` es su mapa portado) y escribirlo nosotros seria inventar
+                contenido clinico, que es justo lo que prohibe la Regla 0.
+
+                Y SU TEXTO SIGUE SIENDO CIERTO EN EL SITIO NUEVO, que es lo que permite moverlo sin
+                reescribirlo: dice *"la primera frase es el resumen general; debajo aparece cada area por
+                separado, y la figura las muestra todas juntas"*, y aqui las tres cosas estan a la vista en
+                esa misma hoja. Antes la figura quedaba en la hoja siguiente. */}
+            <Text style={styles.para}>
+              Este es el resumen de tu valoración: cómo está tu cuerpo hoy, según las medidas que te tomamos
+              y lo que nos contaste. La primera frase es el resumen general; debajo aparece cada área por
+              separado, y la figura las muestra todas juntas. Si algo no te queda claro, pregúntaselo a
+              quien te atendió.
+            </Text>
+            <Text style={styles.para}>
+              <Text style={styles.bold}>{dfiPac.riesgo}. </Text>
+              {dfiPac.enfoque}
+            </Text>
+
             {/* EL RADAR VA ANTES DEL DETALLE, no despues: es el vistazo, y lo que sigue es la
                 explicacion dominio por dominio. Al reves, quien lee las cinco frases ya no necesita la
-                figura. Se dibuja solo; si faltan dominios medidos, no aparece. */}
-            <RadarDelPaciente dominios={dfiPac.dominios} />
+                figura. Se dibuja solo; si faltan dominios medidos, no aparece.
+
+                Y DIBUJA LAS DOS CONSULTAS cuando hay una anterior (Santiago, 2026-11-05): la de hoy en
+                linea gruesa y la de entonces en contorno fino, con su leyenda. Si es inicial,
+                `dominiosAnteriores` llega en null y sale como siempre. */}
+            <RadarDelPaciente
+              dominios={dfiPac.dominios}
+              anteriores={
+                dominiosAnteriores
+                  ? { ...dominiosAnteriores, fecha: formatDateOnly(dominiosAnteriores.fecha) }
+                  : null
+              }
+            />
             {dfiPac.dominios.map((d) => {
               // SIN COLOR cuando el dominio no se midio: pintarlo de verde seria la lectura favorable de
               // un vacio, que su punto 4 del 30-ago prohibe. Y SIN ETIQUETA, porque su mapa no cubre ese
@@ -426,14 +523,35 @@ export function ReportDocument({
 
             VA EN CONDICIONAL Y NO MIRA SI HAY PRESCRIPCION, a proposito: el informe dejo de recibir el
             plan (y eso no se deshace por una frase), asi que no puede saberlo. Redactada asi es cierta en
-            los dos casos, y el que no tiene plan no lee que le mandaron uno que no esta. ═══ */}
-        {showAtlas ? (
+            los dos casos, y el que no tiene plan no lee que le mandaron uno que no esta.
+
+            ═══ Y LA LINEA BAJO AL FINAL EL 2026-11-05, porque ya no señala solo al plan ═══
+
+            Con las rutas, los suplementos y las remisiones fuera, lo que vive en otro papel dejo de ser
+            una cosa y pasaron a ser cuatro. La linea los cubre a todos y se mudo a donde estaban ellos,
+            justo antes del seguimiento, por el mismo argumento con que se escribio: el paciente la busca
+            donde estaba lo que falta. ═══ */}
+
+        {/* ═══ LA COMPARACION CON LA CONSULTA ANTERIOR, TODA JUNTA (Santiago, 2026-11-05) ═══
+
+            La banda de cambio bajo de la primera hoja hasta aqui, para que la evolucion se lea de una
+            sola vez: esta banda (el texto que redacto Gildardo), la grafica de las tres medidas con sus
+            frases, y el radar de las dos consultas, que esta en la hoja anterior porque es la misma
+            figura.
+
+            NI SU TEXTO NI SU GATEO CAMBIAN. Sigue dependiendo de `dfi.complete` (la banda es cambio de
+            EB-BIS, salida que DEPENDE de la encuesta: con la encuesta a medias la EB se infla, D-007) y de
+            que el profesional CONFIRMARA comunicar un "empeoro", que es un acto aparte de aprobar. */}
+        {showBand ? (
           <View style={styles.section}>
-            <Text style={styles.para}>
-              Si tu profesional te indicó un plan de alimentación, lo recibes en una hoja aparte, junto
-              con este informe: ahí están tu menú de ejemplo, la lista de intercambio y lo que conviene
-              evitar.
-            </Text>
+            <Text style={styles.sectionTitle}>Cambio respecto a tu medición anterior</Text>
+            <Text>{bandText}</Text>
+            {/* §6: la fecha va como frase aparte, sin tocar el verbatim de Gildardo de arriba. */}
+            {bandAppointmentDate ? (
+              <Text style={{ marginTop: 4 }}>
+                Tu próxima cita está agendada para el {bandAppointmentDate}.
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -466,122 +584,52 @@ export function ReportDocument({
           </View>
         ) : null}
 
-        {/* ═══ LO QUE VA DESPUES DEL PLAN ═══
+        {/* ═══ LAS RUTAS, LOS SUPLEMENTOS Y LAS REMISIONES SALEN DEL INFORME  ·  Santiago, 2026-11-05 ═══
 
-            EL ORDEN es el de la consulta: que tienes (arriba), que vas a comer (el plan), que vas a
-            trabajar (las rutas), que vas a tomar (los suplementos), a quien mas acudir (las remisiones) y
-            cuando te vuelven a ver (el seguimiento).
+            Aqui iban tres bloques: "Lo que vas a trabajar", "Tus suplementos" y "Otros profesionales que
+            te pueden acompañar". Su razon, literal: *"el informe no puede recomendar algo que la
+            profesional no recomendo. Viven en la HC y en la hoja del plan."*
 
-            LO DEL MODELO Y LO DEL PROFESIONAL VAN SEPARADOS Y ROTULADOS (Santiago): no es lo mismo lo que
-            sugiere el modelo que lo que su profesional decidio para el. Y si el profesional no indico
-            nada, no se pinta un bloque vacio: sale solo lo del modelo.
+            ═══ POR QUE ESTA RAZON ES MAS FUERTE QUE LAS DOS ANTERIORES ═══
 
-            LAS INDICACIONES SON VERBATIM DE GILDARDO, filtradas de lenguaje del modelo en el lector
-            (`informe-paciente-reader`): aqui no se reescribe ninguna. */}
-        {showAtlas && informe && informe.rutas.length ? (
-          <View style={styles.section} break>
-            <Text style={styles.sectionTitle}>Lo que vas a trabajar</Text>
-            {informe.rutas.map((r) => (
-              <View key={r.titulo} style={styles.diaMenu}>
-                <Text style={styles.bold}>{r.titulo}</Text>
-                {r.indicaciones.map((i) => (
-                  <Text key={i} style={styles.para}>
-                    · {i}
-                  </Text>
-                ))}
-                {/* ═══ UN AREA SIN NADA QUE EL PACIENTE PUEDA HACER LO DICE (2026-11-03) ═══
+            Los tres bloques pintaban, uno al lado del otro y rotulados, lo que sugirio el MODELO y lo que
+            indico la PROFESIONAL. El rotulo era correcto y no bastaba: en el papel que le entrega su
+            nutricionista, "Nutraceuticos recomendados" se lee como una indicacion suya, no como la salida
+            de un clasificador. Y mientras la sugerencia del modelo este en el documento, la distincion
+            depende de que el paciente lea con cuidado; fuera, no depende de nada.
 
-                    Al sacar de este documento las dosis, el contenido de alimentacion, la receta de
-                    ejercicio y los mecanismos (su hoja 3), hay un area que se queda SIN NINGUNA linea:
-                    la de desaceleracion del envejecimiento, cuyas tres componentes son exactamente eso.
-                    Y no es un hueco del filtro: es que no existe una version de esas indicaciones escrita
-                    para el paciente, y escribirla seria autoria clinica nuestra (la cabecera de
-                    `rutas-content` lo prohibe desde el primer dia). Esta pendiente de Gildardo.
+            ═══ NO SE PIERDE NADA, Y ES LA CONDICION QUE HACE SEGURO EL RECORTE ═══
 
-                    MIENTRAS TANTO SE DICE, no se deja el titulo solo: un area nombrada y vacia se lee
-                    como un documento incompleto, y el paciente no sabe si le falta algo. La frase dice
-                    DONDE esta el detalle, que es verdad literal (su profesional lo tiene en pantalla y lo
-                    de alimentacion viaja en la hoja del plan). */}
-                {r.indicaciones.length === 0 ? (
-                  <Text style={styles.para}>
-                    Lo de esta área lo trabajas con tu profesional en la consulta, y lo de alimentación va
-                    en tu hoja del plan.
-                  </Text>
-                ) : null}
-                {r.frecuencia ? (
-                  <Text style={styles.para}>Control: {r.frecuencia.toLowerCase()}.</Text>
-                ) : null}
-              </View>
-            ))}
-          </View>
-        ) : null}
+            Las tres cosas siguen existiendo donde SI son del profesional: en la historia clinica (que es
+            su documento) y en la hoja del plan (que el correo adjunta cuando hay prescripcion emitida).
+            Lo que el paciente pierde es verlas atribuidas a quien no las decidio.
 
+            LO QUE SE VA CON ELLAS, y conviene decirlo porque fue trabajo de dos rondas: la frase para un
+            area sin ninguna linea en lenguaje de paciente (2026-11-03) y la linea de procedencia de los
+            suplementos (2026-09-20). Las dos existian para que esos bloques no engañaran; sin los bloques
+            no tienen a quien proteger.
+
+            Y EL LECTOR NO SE TOCA: `informe-paciente-reader` sigue armando las rutas, los suplementos y
+            las remisiones, porque los lee la pantalla del profesional. Lo que cambia es que este documento
+            no los pinte. ═══ */}
+
+        {/* ═══ DONDE ESTA EL RESTO, EN UNA LINEA (ver el comentario del plan, mas arriba) ═══
+
+            Un informe que no lleva ni rutas, ni suplementos, ni remisiones, ni plan se lee como un informe
+            al que le falta algo, y el paciente no tiene como saber que eso vive en otro papel. Santiago lo
+            dice en su mensaje (*"viven en la HC y en la hoja del plan"*); esta linea es lo que se lo dice
+            a el.
+
+            VA EN CONDICIONAL Y NO MIRA SI HAY PRESCRIPCION NI REMISIONES, a proposito: el documento dejo
+            de recibir esos datos, asi que no puede saberlo. Redactada asi es cierta en los dos casos, y
+            quien no tiene plan no lee que le mandaron uno que no esta. */}
         {showAtlas ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tus suplementos</Text>
-            {/* ═══ DE DONDE SALEN, EN UNA LINEA (Santiago, 2026-09-20) ═══
-
-                SU PEDIDO: que el paciente entienda por que le recomiendan justo esos.
-
-                LO QUE SE DICE es la PROCEDENCIA: que salen de su medicion y que pueden cambiar. Eso es
-                verdad literal (la sugerencia del modelo se resuelve con los clasificadores de esta
-                consulta) y no nombra nada del modelo.
-
-                LO QUE NO SE DICE, y es deliberado: POR QUE ESOS Y NO OTROS. La respuesta honesta nombraria
-                los cuatro clasificadores de los que sale la sugerencia, y §7.1 prohibe el CONCEPTO, no
-                solo la sigla (Gildardo retiro hasta "Sector funcional (FyR)"). Una version en lenguaje
-                llano ("por tu funcion celular") seria el mismo indice con otro nombre. Santiago decidio
-                (2026-09-21) que la procedencia basta y que no se le pregunta a Gildardo. */}
             <Text style={styles.para}>
-              Estos suplementos no son una recomendación general: salen de tu propia medición de esta
-              consulta y de lo que tu profesional decidió para ti. Si en el próximo control tus resultados
-              cambian, la recomendación puede cambiar contigo.
+              Lo que vas a trabajar, los suplementos y las remisiones a otros profesionales los decide
+              quien te atendió, y van en los documentos que ella te entrega: tu hoja del plan, que llega
+              junto con este informe cuando hay plan de alimentación, y tu historia clínica.
             </Text>
-            {/* LA CADENA DEL MODELO se conserva aunque haya prescripcion: son dos cosas distintas, y el
-                paciente tiene derecho a saber que sugirio el modelo y que decidio su profesional. */}
-            <Text style={styles.para}>
-              <Text style={styles.bold}>Nutracéuticos recomendados: </Text>
-              {informe?.suplementos.delModelo ?? nutraceuticos}
-            </Text>
-            {informe?.suplementos.delProfesional.length ? (
-              <>
-                <Text style={[styles.para, styles.bold]}>Lo que te indicó tu profesional:</Text>
-                {informe.suplementos.delProfesional.map((s) => (
-                  <Text key={s.nombre} style={styles.para}>
-                    · {s.nombre}
-                    {s.dosis ? `: ${s.dosis}` : ""}
-                    {s.duracionDias ? ` durante ${s.duracionDias} días` : ""}
-                  </Text>
-                ))}
-              </>
-            ) : null}
-          </View>
-        ) : null}
-
-        {showAtlas && informe && (informe.remisiones.delModelo.length || informe.remisiones.delProfesional.length) ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Otros profesionales que te pueden acompañar</Text>
-            {informe.remisiones.delModelo.length ? (
-              <>
-                <Text style={[styles.para, styles.bold]}>Remisiones recomendadas:</Text>
-                {informe.remisiones.delModelo.map((r) => (
-                  <Text key={r.destino} style={styles.para}>
-                    · {r.destino}
-                    {r.urgencia ? ` (valoración ${r.urgencia.toLowerCase()})` : ""}
-                  </Text>
-                ))}
-              </>
-            ) : null}
-            {informe.remisiones.delProfesional.length ? (
-              <>
-                <Text style={[styles.para, styles.bold]}>A quién te remitió tu profesional:</Text>
-                {informe.remisiones.delProfesional.map((r) => (
-                  <Text key={`${r.destino}-${r.fecha}`} style={styles.para}>
-                    · {r.destino}
-                  </Text>
-                ))}
-              </>
-            ) : null}
           </View>
         ) : null}
 

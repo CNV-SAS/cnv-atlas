@@ -161,10 +161,16 @@ describe("la v7 en el informe del PACIENTE (su tabla 3 lo revierte)", () => {
     // Hasta el 2026-10-26 su decision era la contraria (P0, 2026-08-01: "la cifra de EB-BIS nunca va al
     // paciente"). Su tabla 3 la revierte: las dos filas dicen "Profesional y paciente". Santiago lo
     // confirmo el 28.
-    expect(INFORME).toContain("ebBisParaTodos(");
-    expect(INFORME).toContain("Tu edad biológica estimada");
+    // DESDE EL 2026-11-05 LAS TOMA EN PIEZAS, no en una frase: la cifra va GRANDE y sola, con su rotulo
+    // como titulo del bloque, asi que la frase entera de su tabla no cabe en esa forma. La garantia que
+    // importa no cambia y es la de la linea siguiente: el documento NO redacta nada por su cuenta.
+    expect(INFORME).toContain("ebBisEnPiezas(");
+    expect(INFORME).toContain("Edad biológica estimada");
     // Y NO redacta la frase por su cuenta: la misma cifra sale por la pantalla del profesional y por aqui.
     expect(INFORME, "el informe escribe la frase a mano").not.toContain("Edad biológica estimada:");
+    // NI COMPONE LA CIFRA CON LOS FORMATEADORES A MANO, que es como se perderia la frontera de tipo de su
+    // §5 sin que ninguna pantalla cambiara de aspecto.
+    expect(INFORME, "el informe compone la cifra por su cuenta").not.toContain("cifraEbBis(");
   });
 
   it("SOLO de la v7: un snapshot viejo no publica su cifra v5", () => {
@@ -193,8 +199,13 @@ describe("la v7 en el informe del PACIENTE (su tabla 3 lo revierte)", () => {
   it("va ANTES del diagnostico, porque es el bloque que sobrevive a la encuesta incompleta", () => {
     // Por el orden de su §7.1 (primero que tiene, despues la solucion) y por una razon practica: si
     // fuera debajo, un paciente sin encuesta completa abriria su informe con un hueco.
-    const eb = INFORME.indexOf("Tu edad biológica estimada");
-    const dfi = INFORME.indexOf("Cómo estás");
+    // EL BLOQUE "Cómo estás" DEJO DE SER UN BLOQUE el 2026-11-05: Santiago dejo el informe en el minimo y
+    // el veredicto integrado paso a encabezar la hoja de la figura. Asi que el orden se mide contra ESA
+    // hoja, que es donde esta ahora el diagnostico. Lo que se afirma es lo mismo: la edad biologica va
+    // antes, porque es el bloque que sobrevive a la encuesta incompleta y un paciente sin encuesta
+    // completa no puede abrir su informe con un hueco.
+    const eb = INFORME.indexOf("Edad biológica estimada");
+    const dfi = INFORME.indexOf("Tu evaluación bioeléctrica integral");
     expect(eb).toBeGreaterThan(0);
     expect(dfi).toBeGreaterThan(0);
     expect(eb, "la edad biologica quedo despues del diagnostico").toBeLessThan(dfi);

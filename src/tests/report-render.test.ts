@@ -126,11 +126,21 @@ describe("renderReportPdf", () => {
       expect(CODIGO).not.toContain('"iae"');
     });
 
-    it("y SÍ lleva lo que es del paciente: el cambio, los nutracéuticos, las notas y su derecho", () => {
+    it("y SÍ lleva lo que es del paciente: el cambio, su edad biológica, las notas y su derecho", () => {
       // CONTROL. Sin esto, todo lo de arriba pasaría verde también con el documento vacío, que sería
       // haberlo roto en vez de haber retirado lo que sobraba.
+      //
+      // ═══ AQUI EXIGIA `nutraceuticos`, Y SE RETIRA PORQUE LA DECISION CAMBIO (Santiago, 2026-11-05) ═══
+      //
+      // *"SALEN las rutas, los suplementos y las remisiones: la razon es que el informe no puede recomendar
+      // algo que la profesional no recomendo."* La cadena de nutracéuticos del modelo era justo eso.
+      //
+      // Y EL CONTROL NO SE DEBILITA, que es lo que importa de un caso de control: en su lugar entra la
+      // EDAD BIOLÓGICA, que es la pieza central del documento desde hoy. Si el informe se vaciara, este
+      // caso seguiría fallando. Que los tres bloques retirados NO vuelvan lo mide
+      // `el-informe-maquetado.test.ts`, que renderiza el PDF con esos datos puestos a propósito.
       expect(CODIGO).toContain("bandText");
-      expect(CODIGO).toContain("nutraceuticos");
+      expect(CODIGO).toContain("snapshot.ebBis");
       expect(CODIGO).toContain("professionalNotes");
       expect(DOC).toContain("Puedes solicitar tu historia clínica completa a tu profesional tratante.");
     });

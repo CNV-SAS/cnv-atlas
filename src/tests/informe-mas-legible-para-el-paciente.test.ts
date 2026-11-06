@@ -171,15 +171,30 @@ describe("quien lo atendio sale en el informe", () => {
       (SEND.match(/profesional: dispatch\.profesional/g) ?? []).length,
       "un documento del correo se quedó sin el profesional",
     ).toBeGreaterThanOrEqual(4);
-    // Y el PDF del plan lo pinta, no solo lo recibe.
+    // Y LOS DOCUMENTOS LO PINTAN, no solo lo reciben. Desde el 2026-11-05 lo pintan a traves del
+    // ENCABEZADO COMPARTIDO, asi que la frase vive en un sitio y los documentos le pasan el dato: se
+    // comprueban las dos mitades, porque cualquiera de las dos puede faltar.
     expect(
-      sinComentarios(readFileSync("src/modules/reports/pdf/plan-document.tsx", "utf8")),
+      sinComentarios(readFileSync("src/modules/reports/pdf/encabezado-en-cuadros.tsx", "utf8")),
+      "el encabezado compartido dejo de decir quien atendio",
     ).toContain("Te atendió");
-    expect(sinComentarios(DOC)).toContain("Te atendió");
+    for (const doc of ["report-document", "plan-document", "hc-document"]) {
+      expect(
+        sinComentarios(readFileSync(`src/modules/reports/pdf/${doc}.tsx`, "utf8")),
+        `${doc} no le pasa el profesional al encabezado`,
+      ).toContain("profesional:");
+    }
   });
 
   it("si no se pudo resolver, la linea NO sale: no se inventa un autor", () => {
-    expect(sinComentarios(DOC)).toContain("meta.profesional ? (");
+    // LA GUARDA SE MUDO AL ENCABEZADO COMPARTIDO con el resto de la cabecera (2026-11-05), y esto es lo
+    // que GANA el cambio: antes cada documento tenia que acordarse de su propio condicional, y ahora no
+    // hay forma de que uno de los tres se olvide. El informe pasa `meta.profesional ?? null` y el
+    // componente decide; si el dato es null, la linea sale vacia y no se inventa un autor.
+    expect(
+      sinComentarios(readFileSync("src/modules/reports/pdf/encabezado-en-cuadros.tsx", "utf8")),
+      "el encabezado dejo de guardar el caso sin profesional",
+    ).toContain("datos.profesional");
     expect(REPO).toContain('nombreProfesional !== ""');
   });
 });

@@ -7,6 +7,7 @@ import { downloadPlanPdf, downloadReportPdf } from "@/modules/reports/data/repor
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { ultimaObservacionDeLaConsulta } from "@/modules/reports/data/freno-de-trayectoria";
 import { getInformeDelPaciente } from "@/modules/reports/data/informe-paciente-reader";
+import { getDominiosAnteriores } from "@/modules/reports/data/dominios-anteriores-reader";
 import { getSerieDelPaciente } from "@/modules/reports/data/serie-del-paciente";
 import { getPlanPaciente } from "@/modules/reports/data/plan-paciente-reader";
 import { metaDelPlan, renderPlanPdf, renderReportPdf } from "@/modules/reports/services/render-report";
@@ -120,6 +121,8 @@ export async function GET(
       // sale. Un preview al que le falta la mitad ensena un documento que el paciente no va a recibir.
       informe: await getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot),
       serie: await getSerieDelPaciente(dispatch.evaluationId),
+      // LAS CINCO AREAS DE LA CONSULTA ANTERIOR, para que el radar dibuje las dos figuras.
+      dominiosAnteriores: await getDominiosAnteriores(dispatch.evaluationId),
     },
   );
   return new NextResponse(new Uint8Array(pdf), {

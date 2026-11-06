@@ -103,22 +103,43 @@ describe("los bloques de su §7.1 siguen saliendo, y se sabe por cuál hoja", ()
     // que el informe conserva de "la solución" es lo que NO es del plan: lo que va a trabajar, sus
     // suplementos, a quién más acudir y su seguimiento, que es lo que Santiago llamó "lo que hace de esto
     // un informe y no solo un plan". Contra eso se ancla ahora.
+    // ═══ EL ANCLA CAMBIA POR CUARTA VEZ (2026-11-05), Y AHORA POR LOS DOS LADOS ═══
+    //
+    // Santiago dejo el informe en el minimo: *"SALEN las rutas, los suplementos y las remisiones... viven
+    // en la HC y en la hoja del plan."* Y con ellas salio "Lo que vas a trabajar", que era el ancla de "la
+    // solucion". Ademas el bloque "Cómo estás" dejo de ser bloque: el veredicto integrado paso a encabezar
+    // la hoja de la figura, que es el diagnostico.
+    //
+    // LA REGLA QUE NO CAMBIA, cuatro anclas despues, es la de su §7.1: primero se le explica al paciente
+    // QUE TIENE y despues QUE SIGUE. Lo que queda del "despues" en este documento es su seguimiento (la
+    // observacion de su profesional y la proxima cita), que es lo ultimo de la lista de Santiago.
     const titulos = seccionesDelPdf();
-    const diagnostico = titulos.indexOf("Cómo estás");
-    const primeroDeLaSolucion = titulos.indexOf("Lo que vas a trabajar");
+    const diagnostico = titulos.indexOf("Tu evaluación bioeléctrica integral, área por área");
+    const loQueSigue = titulos.indexOf("Tu seguimiento");
     expect(diagnostico, "el informe dejó de abrir con el diagnóstico").toBeGreaterThan(-1);
-    expect(primeroDeLaSolucion).toBeGreaterThan(-1);
-    expect(diagnostico, "el diagnóstico quedó después de la solución").toBeLessThan(primeroDeLaSolucion);
+    expect(loQueSigue, "el informe se quedó sin el seguimiento, que SÍ está en su lista").toBeGreaterThan(
+      -1,
+    );
+    expect(diagnostico, "el diagnóstico quedó después de lo que sigue").toBeLessThan(loQueSigue);
   });
 
-  it("pero el informe SI dice que el plan llega en una hoja aparte", () => {
+  it("pero el informe SI dice dónde vive lo que no lleva", () => {
     // `PLAN_DISENO_DOCUMENTOS.md` §3 defendía que el informe llevara el plan entero, y de su argumento
-    // sobrevive una mitad que ahora hace falta más que antes: que el informe DIGA que el plan va con él.
-    // Sin esta línea, un paciente que abre solo el informe no vería ni el plan ni una señal de que existe.
-    expect(DOC, "el informe no dice que el plan llega aparte").toContain("en una hoja aparte");
+    // sobrevive una mitad que ahora hace falta más que antes: que el informe DIGA dónde está lo que no
+    // trae. Sin esta línea, un paciente que abre solo el informe no vería ni el plan ni una señal de que
+    // existe.
+    //
+    // Y DESDE EL 2026-11-05 LA LINEA CUBRE CUATRO COSAS, no una: con las rutas, los suplementos y las
+    // remisiones fuera, lo que vive en otro papel dejó de ser solo el plan. Santiago lo dice en su
+    // mensaje (*"viven en la HC y en la hoja del plan"*); esta línea es lo que se lo dice al paciente.
+    expect(DOC, "el informe no dice dónde está su hoja del plan").toContain("tu hoja del plan");
+    expect(DOC, "el informe no menciona su historia clínica").toContain("tu historia clínica");
     // EN CONDICIONAL, porque el informe ya no recibe el plan y no puede saber si hay: así la frase es
-    // cierta en los dos casos y quien no tiene plan no lee que le mandaron uno que no está.
-    expect(DOC).toContain("Si tu profesional te indicó un plan de alimentación");
+    // cierta en los dos casos y quien no tiene plan no lee que le mandaron uno que no está. Lo que se
+    // vigila es la CONDICION, no su redacción, que ya cambió dos veces.
+    expect(DOC, "la línea afirma un plan que puede no existir").toContain(
+      "cuando hay plan de alimentación",
+    );
   });
 
   it("y el informe no compone NINGUN bloque del plan, ni uno", () => {
@@ -329,12 +350,18 @@ describe("los DOS canales son el mismo documento, no dos documentos", () => {
     // Sin esto, todo lo de abajo pasaría verde el día que un cambio de formato rompa la extracción: dos
     // listas vacías coinciden perfectamente. Una afirmación de igualdad necesita saber que comparó algo.
     expect(seccionesDelPlan().length, "no se extrajo ninguna sección de la hoja impresa").toBeGreaterThan(5);
-    expect(seccionesDelPdf().length, "no se extrajo ninguna sección del PDF").toBeGreaterThan(
-      seccionesDelPlan().length,
-    );
+    // ═══ LA CUENTA SE DIO VUELTA EL 2026-11-05, Y ESO NO ES UN FALLO DEL CONTROL ═══
+    //
+    // Exigia que el informe tuviera MAS secciones que la hoja del plan, y era cierto hasta hoy. Con el
+    // informe en el minimo (fuera las rutas, los suplementos y las remisiones) tiene MENOS, y eso es
+    // exactamente lo que Santiago decidio. Asi que el control deja de comparar las dos cuentas (una
+    // comparacion que el proximo recorte volveria a romper sin que nada este mal) y afirma lo unico que
+    // de verdad necesita: que la extraccion encontro secciones en los DOS archivos. Dos listas vacias
+    // coinciden perfectamente, y es de eso de lo que este caso protege.
+    expect(seccionesDelPdf().length, "no se extrajo ninguna sección del PDF").toBeGreaterThan(3);
     // Y que sean las de verdad, no cualquier cadena: dos anclas de las que el paciente lee.
     expect(seccionesDelPlan()).toContain("Tu meta");
-    expect(seccionesDelPdf()).toContain("Cómo estás");
+    expect(seccionesDelPdf()).toContain("Tu evaluación bioeléctrica integral, área por área");
   });
 
   it("cada sección de la hoja impresa existe en el PDF con el MISMO título, o está declarada", () => {

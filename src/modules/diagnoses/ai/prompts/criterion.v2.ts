@@ -11,7 +11,7 @@ import { CRITERION_SYSTEM_PROMPT } from "./criterion.system";
 // SOLO EL PASO 4. Su pipeline hace cuatro llamadas (patrones, hipotesis, validacion, sintesis) y la
 // cadena SE CORTA: `validacion` no la lee nadie, y el paso 4 no recibe ninguno de los tres. Portar los
 // otros tres serian tres llamadas al modelo cuyo resultado su propio archivo descarta. Va declarado en
-// PENDIENTES_CIENTIFICOS (pregunta 19) por si la intencion era otra.
+// PENDIENTES_CIENTIFICOS (pregunta 18) por si la intencion era otra.
 //
 // ───────────────────────────────────────────────────────────────────────────────────────────────────
 // LA BARRERA PII ES LA LISTA BLANCA DE ABAJO, y esa es la decision de diseño mas importante del archivo.
@@ -53,7 +53,7 @@ export { CRITERION_SYSTEM_PROMPT };
  * secciones y el orden de SU bloque de datos crudos.
  *
  * Son los 58 campos que su prompt manda, menos `d5_40_otro` (que en Atlas no es campo propio: el texto
- * libre de "Otros" viaja DENTRO de la respuesta de `d5_40`). Ver PENDIENTES_CIENTIFICOS, pregunta 18.
+ * libre de "Otros" viaja DENTRO de la respuesta de `d5_40`). Ver PENDIENTES_CIENTIFICOS, pregunta 17.
  */
 export const CAMPOS: { seccion: string; claves: string[] }[] = [
   {

@@ -19,6 +19,7 @@ import {
 import { markReportResent, markReportSent, ReportStateError } from "../data/reports-writer";
 import type { SendMode } from "../pdf/report-document";
 import { getInformeDelPaciente } from "../data/informe-paciente-reader";
+import { getDominiosAnteriores } from "../data/dominios-anteriores-reader";
 import { getSerieDelPaciente } from "../data/serie-del-paciente";
 import { getPlanPaciente } from "../data/plan-paciente-reader";
 import { metaDelPlan, renderPlanPdf, renderReportPdf } from "./render-report";
@@ -150,11 +151,14 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   // Y LO QUE LO CONVIERTE EN INFORME: rutas, suplementos, remisiones y seguimiento. En paralelo con el
   // plan porque son lecturas independientes; si fallara, fallaria el envio entero, que es lo correcto:
   // mandar medio documento sin avisar es peor que no mandarlo.
-  const [plan, informe, serie] = await Promise.all([
+  const [plan, informe, serie, dominiosAnteriores] = await Promise.all([
     getPlanPaciente(dispatch.evaluationId, dispatch.snapshot),
     getInformeDelPaciente(dispatch.evaluationId, dispatch.snapshot),
     // LA TRAYECTORIA, para la grafica. Una consulta contra el crudo del equipo, no una por evaluacion.
     getSerieDelPaciente(dispatch.evaluationId),
+    // LAS CINCO AREAS DE LA CONSULTA ANTERIOR, para el radar de evolucion. Entra en el mismo paralelo:
+    // es otra lectura independiente, y reusa la serie de seguimiento en vez de consultar la BD aparte.
+    getDominiosAnteriores(dispatch.evaluationId),
   ]);
 
   // 1. Render del PDF desde el snapshot inmutable, segun el modo elegido.
@@ -177,6 +181,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       // adjunto (mas abajo), no dentro de este documento.
       informe,
       serie,
+      dominiosAnteriores,
     },
   );
 

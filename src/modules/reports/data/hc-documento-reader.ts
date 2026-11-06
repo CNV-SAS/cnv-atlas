@@ -229,6 +229,10 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
 
   return {
     paciente: header.paciente,
+    // EL DOCUMENTO DE IDENTIDAD, para la caja del encabezado nuevo (2026-11-05). El lector ya lo traia
+    // (`HcHeader.documento`) y la pantalla lo mostraba; el PDF de la historia clinica no, asi que un papel
+    // suelto no decia a quien pertenece mas que por el nombre.
+    documento: header.documento,
     resumenProfesional,
     dfiParrafo: narrativa?.parrafo ?? null,
     metaTerapeutica: narrativa?.metas.nutricion ?? null,

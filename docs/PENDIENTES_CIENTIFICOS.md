@@ -16,14 +16,14 @@ quedó contestada por ellas.
 recomendamos. Si con eso puede contestar, no necesita el resto. Debajo está **el detalle** de cada una, con
 el mismo número, para las que quiera mirar despacio.
 
-**Nada de esto frena a Atlas**, salvo las cinco de abajo. Todo lo demás está construido y funcionando con
+**Nada de esto frena a Atlas**, salvo las cuatro de abajo. Todo lo demás está construido y funcionando con
 la decisión que tomamos en cada caso; lo que le preguntamos es si fue la que usted habría tomado. Lo
 marcado **[aplicado]** ya está hecho: si su respuesta es otra, se cambia. Donde dice *"se cambia en una
 línea"* es literal.
 
 ---
 
-## Si solo responde cinco, que sean estas
+## Si solo responde cuatro, que sean estas
 
 Son las que **frenan trabajo**: no se construyen sin su respuesta porque construirlas exige elegir por
 usted.
@@ -32,13 +32,12 @@ usted.
 |---|---|---|
 | **4** | Si el DFI y las rutas pasan a leer el IAE de la v7, o si el dominio 3 tiene su propia escala | Que el informe deje de contradecirse. **Hoy 60 de 389 informes no se pueden entregar** |
 | **1** | Cuál Harris-Benedict manda (1919 o 1984) y sobre qué se aplica el 10 % | El motor calórico nuevo, y con él el flujo guiado del nutricionista |
-| **5** | Si las rutas van al paciente y con qué palabras | La hoja 3 del informe. Hoy un área entera no tiene nada que decirle al paciente |
 | **2** | Los rangos del control de calidad biológico | El control de calidad entra (sus once identidades imposibles ya están) |
 | **3** | Qué pasa con las consultas que el recálculo no puede tocar | Se cierra el recálculo del histórico con la v7 |
 
 ---
 
-## Las 32 preguntas
+## Las 31 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"4: opción 1 · 9: sí, el degradado hacia
 > rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -76,72 +75,65 @@ los 60 que no, no se entregan. *Recomendamos que lo decida usted entre tres sali
 la v7 · el dominio 3 tiene su propia escala y entonces hay que decirlo en el documento · otra cosa).
 Y la segunda mitad: sus tres textos por banda, ¿sustituyen al texto de trayectoria o conviven?*
 
-**5 · Las rutas no tienen una versión escrita para el paciente, y un área se queda muda.** Su contenido de
-rutas está escrito para el profesional (*"≥25 g por comida"*, *"65-75 % de 1RM"*, *"sulforafano → Nrf2"*).
-Lo filtramos suprimiendo, nunca reescribiendo, y al suprimir la R4 (Desaceleración del Envejecimiento) se
-queda **sin una sola línea** para el paciente. *Recomendamos una de dos: que las rutas no vayan al paciente
-y se retire el bloque, o su redacción de dos o tres frases por ruta. Son dieciocho frases y se ponen
-verbatim el mismo día.*
-
 ### B · Están aplicadas y necesitan su confirmación
 
-**6 · "Edad biológica estimada" [aplicado].** Su tabla 3 vuelve a usar la expresión que usted había
+**5 · "Edad biológica estimada" [aplicado].** Su tabla 3 vuelve a usar la expresión que usted había
 retirado en julio, ahora con el matiz "estimada". *Recomendamos que lo nuevo manda, y así está. Confirme,
 porque cambia el rótulo de un documento clínico que ya salió once veces con el otro nombre.*
 
-**7 · El Δ del IAE dentro de la banda [aplicado].** Su regla del 1 de septiembre dice **cero** mientras el
+**6 · El Δ del IAE dentro de la banda [aplicado].** Su regla del 1 de septiembre dice **cero** mientras el
 IAE esté entre −5 y +5; lo cambiamos a una raya porque el IAE ya es una diferencia y el "0,0" al lado del
 valor se leía como si el IAE fuera cero. *Recomendamos dejar la raya, pero es preferencia nuestra contra su
 regla escrita: dígalo.*
 
-**8 · El borde exacto de ±5,0 del IAE.** Su tabla 3 usa cortes cerrados y su capa de display anterior los
+**7 · El borde exacto de ±5,0 del IAE.** Su tabla 3 usa cortes cerrados y su capa de display anterior los
 usaba abiertos; en ±5,0 exacto las dos columnas de la misma fila se contradicen. *Recomendamos alinear el Δ
-a su corte cerrado. No lo cambiamos todavía porque reintroduce un "0,0" que la 7 acaba de retirar.*
+a su corte cerrado. No lo cambiamos todavía porque reintroduce un "0,0" que la 6 acaba de retirar.*
 
-**9 · Los tres cortes de la Diana, y una objeción de estética.** Su v12 corrige bien un defecto real (los
+**8 · Los tres cortes de la Diana, y una objeción de estética.** Su v12 corrige bien un defecto real (los
 estados leves caían en verde lima y se leían como "está bien"), pero pasar a **tres colores sólidos** parte
 la Diana en anillos y le quita la superficie continua, que es lo que la hace legible. *Recomendamos que
 considere correr el gradiente hacia el rojo, quitándole el verde lima a la zona leve, sin cortes duros. Y
 con la respuesta hace falta saber si el radar y las tarjetas del DFI se igualan a la Diana.*
 
-**10 · Los nombres llanos de tres de sus índices [aplicado].** En la historia clínica, IEHH pasó a
+**9 · Los nombres llanos de tres de sus índices [aplicado].** En la historia clínica, IEHH pasó a
 "Equilibrio hídrico", PABU a "Proporción bioeléctrica" e ICA-BIS a "Desviación bioeléctrica", con su sigla
 al lado. Sus nombres oficiales no se tocan. *En la tercera nos apartamos de lo que se nos pidió
 ("Coherencia"): el número de al lado es una desviación y lo bueno es lo bajo, así que "coherencia" invierte
 la lectura. Júzguelo usted.*
 
-**11 · "La dirección científica" que elimina un perfil [aplicado].** Su v12 pide que la política sea
+**10 · "La dirección científica" que elimina un perfil [aplicado].** Su v12 pide que la política sea
 *"solo para el profesional dueño del paciente y para la dirección científica"*. En Atlas ejecuta el
 **administrador**, porque el rol de dirección no accede a datos de paciente por diseño y esta bandeja
 necesita el nombre. *Recomendamos dejarlo en administrador.*
 
-**12 · El aviso de síndrome de realimentación sale del motor viejo.** Usted lo anotó en su v12 §8.2 y no lo
+**11 · El aviso de síndrome de realimentación sale del motor viejo.** Usted lo anotó en su v12 §8.2 y no lo
 corrigió; en Atlas está idéntico, porque es porte fiel. *Recomendamos que diga si la condición se queda tal
 cual o si el aviso pasa al motor nuevo. Cuando lo decida, es una línea.*
 
-**13 · La fuerza prensil obligatoria, con salida.** Es el criterio primario del EWGSOP2 y hoy Atlas la pide
+**12 · La fuerza prensil obligatoria, con salida.** Es el criterio primario del EWGSOP2 y hoy Atlas la pide
 sin alternativa, pero muchas consultas no tienen dinamómetro. *Recomendamos obligatoria con una salida
 registrada ("no se midió" más el motivo). Lo tiene que aprobar usted porque cambia la captura.*
 
 ### C · Textos y colores que solo puede escribir usted
 
-**14 · Los cinco textos de dominio del informe [propuesto, NO aplicado].** El paciente lee hoy
+**13 · Los cinco textos de dominio del informe [propuesto, NO aplicado].** El paciente lee hoy
 *"Homeostasis celular: membranas íntegras y microambiente equilibrado"*. Hay una propuesta en lenguaje
 sencillo para las cinco, sin aplicar. *Recomendamos que las escriba o las corrija usted: el informe
 llevaría las suyas para el paciente y las de hoy para el profesional.*
 
-**15 · Su banda media del IFC y del IRC tiene tres nombres, y uno dice «normal».** Sus clasificadores la
+**14 · Su banda media del IFC y del IRC tiene tres nombres, y uno dice «normal».** Sus clasificadores la
 llaman "Alerta funcional" y "Riesgo moderado"; su `idx` del DFI la llama "Normal"; y su párrafo del DFI
 escribe *"en rango normal"*. Un profesional leyó las dos cosas y entendió que el sistema se contradecía.
 *La pregunta: para la banda media, ¿qué debe decir su párrafo? Y de paso, el criterio de egreso de la R1
 (IFC ≥ 4,5) es un corte sin sexo con el que una mujer no sale nunca de la ruta.*
 
-**16 · Su clasificador del IAE pinta "Concordante" en ámbar.** Lo preguntó usted, y la respuesta es que el
+**15 · Su clasificador del IAE pinta "Concordante" en ámbar.** Lo preguntó usted, y la respuesta es que el
 ámbar sale de su archivo: el IAE es su único clasificador de dos colas, lo bueno está en el centro, y sobre
 una rampa verde-ámbar-rojo al centro le tocó el color de en medio. *Es una línea suya. Conviene cerrarla
 junto con la 4.*
 
-**17 · La casilla 3_3 de su matriz IFC×IRC lleva un cian.** "Función normal con riesgo" (la peor de su
+**16 · La casilla 3_3 de su matriz IFC×IRC lleva un cian.** "Función normal con riesgo" (la peor de su
 fila) tiene el color que nuestra regla lee como óptimo. En Atlas no se pinta mal porque el motor descarta
 ese color, pero en su archivo sí se ve. *La pregunta: ¿lo cambia, o el cian significa algo que no estamos
 leyendo?*
@@ -151,70 +143,70 @@ leyendo?*
 Las siete de aquí no son diferencias entre su archivo y Atlas: son diferencias **entre dos sitios de su
 propio archivo**. En cada una portamos una de las dos y le decimos cuál.
 
-**18 · La fila ICA-BIS tiene dos reglas, una por superficie.** En Composición gradúa la magnitud en cinco
+**17 · La fila ICA-BIS tiene dos reglas, una por superficie.** En Composición gradúa la magnitud en cinco
 escalones; en la historia clínica hace `icaBisClf = cPABU(t_pabu)`, con su nota *"cICABIS eliminado, usar
 cPABU global"*. *La pregunta: ¿es deliberado (la historia resume, la pantalla detalla) o esa nota iba
 también para la tabla de Composición?*
 
-**19 · El % de grasa con dos cortes.** Su tabla de la HC y su tabla de composición dan **veredictos
+**18 · El % de grasa con dos cortes.** Su tabla de la HC y su tabla de composición dan **veredictos
 distintos para el mismo número** (22,4 % en un hombre: "Límite" en una, "Sobrepeso adiposo" en la otra).
 Atlas usa hoy el segundo, el que nos confirmó en agosto. *La pregunta: ¿cuál manda en la historia clínica?*
 
-**20 · Dos clasificadores del índice cintura-cadera.** Mismos cortes, distinta redacción (`dICC`:
+**19 · Dos clasificadores del índice cintura-cadera.** Mismos cortes, distinta redacción (`dICC`:
 "Normal"/"Riesgo cardiovascular"; `clasifICC`: "Riesgo bajo"/"Riesgo alto, distribución central"). Atlas
 porta el primero. *La pregunta: ¿cuál manda? El segundo dice más, así que puede que el nuestro se quede
 corto.*
 
-**21 · `clasifLancet` está declarado y nadie lo llama, ni usted.** Un clasificador completo de cuatro
+**20 · `clasifLancet` está declarado y nadie lo llama, ni usted.** Un clasificador completo de cuatro
 niveles, rotulado "Propuesta The Lancet 2025", que aparece una sola vez en su archivo: la declaración. No lo
 portamos, porque conectar lo que su archivo no conecta sería estrenar una clasificación clínica por nuestra
 cuenta. *La pregunta: ¿es un resto, o algo que piensa usar?*
 
-**22 · Las badges del Nivel III, y el ECM/BCM que se quedó sin sitio.** Su `celBadges` se llena y ningún
+**21 · Las badges del Nivel III, y el ECM/BCM que se quedó sin sitio.** Su `celBadges` se llena y ningún
 render la lee. Nosotros sí las mostrábamos, y ahí salió el choque que usted notó (su tabla decía
 "hidratación adecuada" y la badge "deficiente": son dos indicadores suyos distintos). Están retiradas. *Lo
 que se pierde es el ECM/BCM > 1,4, el único sin fila propia. ¿Debe verse? ¿Con qué corte y en qué fila?*
 
-**23 · El estado PBI: su HC lo imprime y nosotros lo retiramos.** Por dos razones: la taxonomía real tomó
+**22 · El estado PBI: su HC lo imprime y nosotros lo retiramos.** Por dos razones: la taxonomía real tomó
 autoridad sobre `F1-F12 / PBI / EIEC`, y su `estadoPBI` usa un **tercer umbral de ángulo de fase**
 (6,80/6,30) que contradice el `cAF` (6,5) que Atlas ya muestra en la misma pantalla. *La pregunta previa, si
 el PBI vuelve: cuál de los dos umbrales de AF manda, porque no pueden convivir.*
 
-**24 · La fórmula sintética: sus doce campos están todos, la disposición es otra.** Usted los presenta como
+**23 · La fórmula sintética: sus doce campos están todos, la disposición es otra.** Usted los presenta como
 lista plana; nosotros como una cuenta (GEB × PAL = GET, menos el déficit, igual al objetivo). *La pregunta:
 cuál quiere. Y una nueva: su v12 retira la tabla vieja, y con ella se va el ORIGEN del rótulo "Fórmula
 sintética", que adoptamos por ser el suyo. ¿Cómo debe llamarse ese bloque?*
 
 ### E · El instrumento y el prompt
 
-**25 · Diez de sus quince alertas clínicas no pueden salir nunca.** Leen el consumo de nutrientes en
+**24 · Diez de sus quince alertas clínicas no pueden salir nunca.** Leen el consumo de nutrientes en
 porciones, y ese dato no lo captura ninguna encuesta, ni la suya ni la nuestra. **No es una pregunta nueva:
 es la consecuencia de dos respuestas suyas** (*"ninguno es la traducción de otro"*, 30-ago; *"no va, y no
 es que falte: es que no debe existir"*, 3-sep). Mientras tanto Atlas lo dice en pantalla. *La pregunta: ¿se
 queda así, se retiran las diez del modelo, o la encuesta captura porciones?*
 
-**26 · ¿Qué MÁS debería alimentar al generador de menús?** Hoy viajan el objetivo calórico, la proteína, las
+**25 · ¿Qué MÁS debería alimentar al generador de menús?** Hoy viajan el objetivo calórico, la proteína, las
 restricciones del modelo y del profesional, el patrón alimentario, el fenotipo y las rutas. No viajan el
 contexto de acceso ni la distribución por tiempos de comida. *La pregunta: de esos dos, ¿alguno debería
 entrar? Las alergias no están en la pregunta, porque eso ya lo respondió.*
 
-**27 · Sus pasos 1 a 3 del Análisis IA no llegan al paso 4.** Su Análisis hace cuatro llamadas al modelo, y
+**26 · Sus pasos 1 a 3 del Análisis IA no llegan al paso 4.** Su Análisis hace cuatro llamadas al modelo, y
 la validación **no la lee nadie**: el paso 4 solo recibe sus instrucciones, el bloque DFI y los datos
 crudos. Portamos el paso 4; portar los otros tres sería copiar el corte y pagarlo tres veces. *La pregunta:
 ¿debían alimentar al cuarto? Si sí, lo cableamos.*
 
-**28 · En la historia clínica, ¿van todas las observaciones o solo la vigente?** No se pueden borrar ni
+**27 · En la historia clínica, ¿van todas las observaciones o solo la vigente?** No se pueden borrar ni
 editar, así que un profesional que se corrige deja dos. En pantalla la última se marca vigente; en el
 documento salen todas. *Lo defendemos porque la historia clínica es probatoria y esconder la corrección es
 justo lo que una auditoría querría ver, pero la objeción es nuestra también: una corrección de una palabra
 deja dos párrafos casi iguales. Su archivo no lo resuelve: guarda una sola.*
 
-**29 · ¿En qué dominio van los síntomas digestivos?** Su DFI no los lee en ninguno de los cinco y su paso 4
+**28 · ¿En qué dominio van los síntomas digestivos?** Su DFI no los lee en ninguno de los cinco y su paso 4
 los manda en su propio bloque; el modelo, por su cuenta, los metió en el Epigenético-Contextual. *Por ahora
 se le pide que no los use como evidencia de ningún dominio. Si prefiere que se lean en alguno, díganos en
 cuál.*
 
-**30 · La pregunta de amputación se queda, y usted no la nombró.** Nos dijo que quitáramos las preguntas
+**29 · La pregunta de amputación se queda, y usted no la nombró.** Nos dijo que quitáramos las preguntas
 que no había puesto y nombró dos (edema y fiebre): las dos están fuera. La tercera del mismo lote,
 *"¿Tiene amputación de algún segmento corporal?"*, tampoco está en su archivo, y la dejamos porque retirarla
 sin que la señale sería tratar su silencio como una instrucción. *Y hay una razón para separarla: el edema
@@ -223,12 +215,12 @@ paciente sino la ecuación, que estima sobre un cuerpo completo. ¿La retiramos 
 
 ### F · Data que conviene que sepa antes de leer sus propios casos
 
-**31 · Dos de los ids de su anexo A son data de PRUEBA.** El grupo de tres (`5441fd96` / `b3e367cc` /
+**30 · Dos de los ids de su anexo A son data de PRUEBA.** El grupo de tres (`5441fd96` / `b3e367cc` /
 `6256b921`, el que la columna `Edad` no le cuadra a ninguno) son pacientes que creó el equipo para probar
 el sistema. *O sea que el caso que describe ahí no es de un paciente. Y una corrección nuestra: le dijimos
 cinco grupos entre pacientes distintos y son cuatro; usted tenía razón al dudar de la cifra.*
 
-**32 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre.** En la cohorte hay
+**31 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre.** En la cohorte hay
 cuerpos de 22 kg y 29 kg; el Biody aplica ecuaciones de adulto y devuelve masa grasa negativa, y la EB-BIS
 v7 está calibrada 18-100 años. *Recomendamos marcar esas consultas como fuera de rango de calibración y no
 calcular. Si CNV va a atender pediatría, con qué ecuaciones es decisión suya.*
@@ -385,42 +377,9 @@ las dos son suyas.** Si conviven, el paciente puede leer *"acorde con sus pares"
 favorable"*, que no se contradicen pero tampoco se explican solos. ¿El texto de banda **sustituye** al de
 trayectoria, o **conviven**, y en ese caso en qué orden?
 
-## 5 · Las rutas no tienen una versión escrita para el paciente, y un área se queda muda
-
-**Preguntada el 19 de septiembre y otra vez el 3 de noviembre; es la misma y va una sola vez.** De las tres
-que salieron al revisar los documentos impresos, si solo contesta una, que sea esta.
-
-Su contenido de rutas está escrito para el profesional, y así llegaba al informe del paciente:
-*"Distribución proteica: ≥25g por comida"*, *"Carga: 65-75% de 1RM · 3 series × 8-12 repeticiones"*,
-*"Crucíferas: sulforafano → Nrf2 → protección epigenética"*. Y en la R1 conviven *"Omega-3 dietario: ≥2
-porciones pescado graso/semana"*, que cualquier paciente entiende, con *"Valoración médica si IRC > 5.0,
-descartar patología inflamatoria subyacente"*, que es para el profesional y además nombra un índice del
-modelo, lo que su propia instrucción §7.1 prohíbe mandarle al paciente.
-
-**Lo hicimos suprimiendo, no reescribiendo**, que es la única forma que esta casa admite con su contenido:
-al informe del paciente viajan las indicaciones de alimentación, actividad física y manejo del estrés que no
-nombran ningún índice, y el componente médico no viaja como texto sino como **remisión** (a quién acudir y
-con qué urgencia).
-
-**Y al suprimir, una de las seis rutas se queda sin UNA SOLA línea para el paciente: la R4,
-«Desaceleración del Envejecimiento».** Sus tres componentes son exactamente eso (proteína en g/kg,
-alimentos antioxidantes, resistencia progresiva). No es un hueco de nuestro filtro: **es que esa versión no
-existe.** Hoy el informe dice, en esa área, que se trabaja con el profesional en la consulta y que lo de
-alimentación va en la hoja del plan. Es verdad, pero es un parche.
-
-**La pregunta que manda la Regla 0 es por qué no está**, y puede ser deliberado (las rutas son del
-profesional y al paciente le basta el plan) o puede ser un hueco. **Lo que necesitamos, una de dos:**
-
-1. **Que las rutas no vayan al paciente**, y entonces el informe lleva solo plan, suplementos, remisiones y
-   seguimiento. Se retira el bloque y no queda nada a medias.
-2. **Su redacción de las rutas para el paciente**: dos o tres frases por ruta, de *qué va a trabajar*, sin
-   dosis ni mecanismos. Son dieciocho frases, y las ponemos verbatim el mismo día que lleguen.
-
----
-
 # B · LAS QUE ESTÁN APLICADAS Y NECESITAN SU CONFIRMACIÓN
 
-## 6 · "Edad biológica estimada": adoptamos su tabla 3, que retira una decisión suya **[aplicado]**
+## 5 · "Edad biológica estimada": adoptamos su tabla 3, que retira una decisión suya **[aplicado]**
 
 Su tercera ronda del 30 de julio decidió que *"la expresión 'edad biológica' no se usa en ningún contenido
 del sistema: ni en pantalla, ni en reportes"*, y el indicador se llamó "Edad Bioeléctrica (EB-BIS)". Quedó
@@ -434,7 +393,7 @@ pedía: le molestaba afirmar la edad del cuerpo, no estimarla.
 resultados y en la historia clínica, con su sigla al lado. **Confirme**, porque cambia el rótulo de un
 documento clínico que ya salió once veces con el otro nombre. Los informes ya enviados **no** se tocan.
 
-## 7 · El Δ del IAE dentro de la banda: lo cambiamos **nosotros**, contra su regla **[aplicado]**
+## 6 · El Δ del IAE dentro de la banda: lo cambiamos **nosotros**, contra su regla **[aplicado]**
 
 Su entrega del **1 de septiembre §5** define el Δ del IAE como *"la distancia al límite del rango que se
 cruzó, y **cero** mientras esté dentro de −5 a +5"*. El cero es suyo.
@@ -447,7 +406,7 @@ sí cruzó, el Δ da la distancia al límite.
 **Nuestra recomendación:** dejar la raya. **Pero es preferencia nuestra contra su regla escrita, así que
 dígalo:** ¿está de acuerdo, o vuelve el cero? Es una celda que ya se movió tres veces y conviene cerrarla.
 
-## 8 · El borde exacto de ±5,0 del IAE, donde hoy Atlas se contradice consigo mismo
+## 7 · El borde exacto de ±5,0 del IAE, donde hoy Atlas se contradice consigo mismo
 
 Su tabla 3 usa cortes **cerrados** (`≥ +5` acelerado, `≤ −5` desacelerado), y su capa de display anterior
 (`dIAE`) los usaba **abiertos**. Atlas adoptó los cerrados de la tabla 3 para la banda.
@@ -458,9 +417,9 @@ la misma fila se contradicen.
 
 **Nuestra recomendación:** alinear el Δ a **su** corte cerrado, y entonces un IAE de exactamente +5,0
 saldría con banda "acelerado" y Δ "+0,0 años" (está justo en el límite, a cero de distancia). **No lo
-cambiamos todavía** porque es su corte y porque reintroduce un "0,0" que la pregunta 7 acaba de retirar.
+cambiamos todavía** porque es su corte y porque reintroduce un "0,0" que la pregunta 6 acaba de retirar.
 
-## 9 · Los tres cortes de la Diana, y una objeción de estética que no habíamos dicho
+## 8 · Los tres cortes de la Diana, y una objeción de estética que no habíamos dicho
 
 **REESCRITA.** La versión anterior de esta pregunta le pedía solo los tres números. Falta la objeción.
 
@@ -489,7 +448,7 @@ en Atlas son los mismos tokens clínicos, así que si se igualan, se igualan en 
 vez. Lo que no podemos es elegir los números: el color de un veredicto clínico sale de su clasificador, no
 de nuestro criterio.
 
-## 10 · Los nombres llanos de tres de sus índices **[aplicado]**
+## 9 · Los nombres llanos de tres de sus índices **[aplicado]**
 
 En la tabla ANI-BIS-E de la historia clínica, tres filas se nombraban con el rótulo técnico de su propia
 tabla, y Santiago no los entiende como los entendería un paciente: *"se muestran «Hidro-Homeostasis IEHH»,
@@ -517,7 +476,7 @@ como poca coherencia cuando es justo la zona buena.
 complemento (1 − ICA-BIS) o la clasificación en vez de la cifra, y eso ya es una decisión suya sobre qué se
 muestra.
 
-## 11 · "La dirección científica" que elimina un perfil: en Atlas ese rol no ve pacientes **[aplicado]**
+## 10 · "La dirección científica" que elimina un perfil: en Atlas ese rol no ve pacientes **[aplicado]**
 
 Su v12 §1.2 pide que eliminar un perfil tenga política, *"solo para el profesional dueño del paciente y para
 la dirección científica"*. Está construido, con la asimetría que Santiago ya había fijado para esta clase de
@@ -532,7 +491,7 @@ construyó sin datos personales) y esta bandeja necesita el nombre y el document
 ya ve esos datos. Si quiere que sea literalmente la dirección científica, lo primero que hay que decidir es
 si ese rol pasa a ver datos de paciente, que es un cambio de alcance mucho mayor.
 
-## 12 · El aviso de síndrome de realimentación sale del motor viejo
+## 11 · El aviso de síndrome de realimentación sale del motor viejo
 
 Usted lo anotó en su v12 §8.2 y no lo corrigió: *"el aviso lo emite `motorProtocolo`, el motor viejo, no
 `motorTratNutri`. Dos motores opinando sobre el mismo paciente."*
@@ -544,7 +503,7 @@ fiel, así que el defecto viajó con él.
 **Nuestra recomendación:** díganos si la condición se queda tal cual (y entonces no hay nada que hacer, solo
 dejarlo escrito) o si el aviso pasa al motor nuevo con otra condición. Cuando lo decida, es una línea.
 
-## 13 · La fuerza prensil obligatoria, **con salida**
+## 12 · La fuerza prensil obligatoria, **con salida**
 
 La dinamometría es el criterio **primario** del EWGSOP2 y hoy Atlas la pide sin ofrecer alternativa: si no
 está, la tarjeta de sarcopenia avisa de que falta y ahí termina. En la práctica, muchas consultas no tienen
@@ -559,7 +518,7 @@ midió" con motivo es un dato clínico, no un campo administrativo.
 
 # C · LOS TEXTOS Y LOS COLORES QUE SOLO PUEDE ESCRIBIR USTED
 
-## 14 · Los cinco textos de dominio del informe, en lenguaje sencillo **[propuesto, NO aplicado]**
+## 13 · Los cinco textos de dominio del informe, en lenguaje sencillo **[propuesto, NO aplicado]**
 
 La hoja 2 del informe del paciente trae sus cinco lecturas del DFI tal cual. Un paciente lee esto:
 
@@ -581,7 +540,7 @@ editan, no se resumen ni se reinterpretan desde nuestro lado. Lo que sigue es un
 para el paciente y las de hoy para el profesional. Lo que no nos parece correcto es que las cambiemos
 nosotros: son la lectura clínica de cada dominio.
 
-## 15 · Su banda media del IFC y del IRC tiene tres nombres, y uno dice «normal»
+## 14 · Su banda media del IFC y del IRC tiene tres nombres, y uno dice «normal»
 
 **Qué pasó.** Una integrante vio, en la misma paciente (mujer, IFC 2,11, IRC 2,79), que el diagnóstico y el
 SOAP se contradecían: la tabla decía «Disfunción celular establecida» y el párrafo del análisis decía
@@ -620,7 +579,7 @@ sostenido 2 controles»*. Son cortes únicos, sin sexo. Para una mujer, su corte
 ese criterio **no sale nunca** de la ruta, aunque su función celular sea óptima. ¿Es a propósito, o se quedó
 con los cortes viejos?
 
-## 16 · Su clasificador del IAE pinta "Concordante" en ámbar, y lo bueno está en el medio
+## 15 · Su clasificador del IAE pinta "Concordante" en ámbar, y lo bueno está en el medio
 
 **Lo preguntó usted**, en el punto 14 de su revisión: *"si es concordante, ¿no debería estar en verde?"*
 
@@ -642,7 +601,7 @@ está en el CENTRO, no en un extremo. Sobre una rampa de tres pasos verde-ámbar
 **No lo tocamos nosotros** (su archivo manda en lo clínico). **Es una línea suya.** Y conviene resolverla
 junto con la pregunta 4: su tabla 3 ya le pone **texto** a las tres bandas del IAE, pero no color.
 
-## 17 · Y hay una casilla más de su matriz IFC×IRC con el mismo problema de color
+## 16 · Y hay una casilla más de su matriz IFC×IRC con el mismo problema de color
 
 Barriendo sus quince clasificadores por lo del punto anterior, apareció esta. En `FYR_LABELS`, la casilla
 **3_3** (IFC alto, IRC alto) se llama **"Función normal con riesgo"** y lleva el color `#22d3ee`, un cian.
@@ -662,7 +621,7 @@ se pinta mal. Se lo decimos porque **en su archivo sí es el color que se ve**, 
 Las siete de este bloque tienen la misma forma: **no son diferencias entre su archivo y Atlas, sino entre
 dos sitios de su propio archivo.** En cada una portamos una de las dos y le decimos cuál.
 
-## 18 · La fila ICA-BIS tiene DOS reglas, una por superficie. ¿Es a propósito?
+## 17 · La fila ICA-BIS tiene DOS reglas, una por superficie. ¿Es a propósito?
 
 **En Diagnóstico → Composición Corporal**, la fila ICA-BIS usa un clasificador que **gradúa la magnitud** en
 cinco escalones (Zona φ / Desviación leve / moderada / severa / Zona crítica).
@@ -677,7 +636,7 @@ aplicarse también a la tabla de Composición y quedó a medias.**
 Y de paso, algo que sí era nuestro y ya corregimos: el escalón **"Desviación leve"** va en **ámbar** en su
 archivo y nosotros lo teníamos en **verde**. Un ICA-BIS desviado se pintaba como si estuviera bien.
 
-## 19 · Su historia clínica y su tabla de composición clasifican el % de grasa con cortes distintos
+## 18 · Su historia clínica y su tabla de composición clasifican el % de grasa con cortes distintos
 
 | Dónde | Referencia | Con 22,4 % en un hombre |
 |---|---|---|
@@ -690,7 +649,7 @@ confirmó el 18 de agosto.
 **¿Cuál manda en la historia clínica?** Si es el de su tabla de la HC, lo portamos tal cual; si es el que
 nos dio en agosto, su HC es la que quedó con el criterio viejo.
 
-## 20 · Tiene dos clasificadores del índice cintura-cadera, con etiquetas distintas
+## 19 · Tiene dos clasificadores del índice cintura-cadera, con etiquetas distintas
 
 Los mismos cortes (0,90 en hombre, 0,85 en mujer) y **distinta redacción**:
 
@@ -706,7 +665,7 @@ mismo de dos maneras. **En Atlas no tiene consecuencia visible:** portamos solo 
 **¿Cuál manda?** La segunda dice más (*"distribución central"* explica **por qué** es riesgo), así que puede
 que la nuestra se quede corta.
 
-## 21 · `clasifLancet` está declarado en su archivo y nadie lo llama, ni usted
+## 20 · `clasifLancet` está declarado en su archivo y nadie lo llama, ni usted
 
 Es un clasificador de cuatro niveles que cruza IMC con masa grasa y masa magra, rotulado *"Propuesta The
 Lancet 2025"*. Está completo, con sus etiquetas y sus colores. **Y en su archivo aparece una sola vez: la
@@ -718,7 +677,7 @@ borrarse, no para conectarse"*), **con una diferencia: esta nunca la ha menciona
 **No lo portamos**, y no por pereza: conectar una pieza que su propio archivo no conecta sería estrenar una
 clasificación clínica por nuestra cuenta. **¿Es un resto, o algo que piensa usar?**
 
-## 22 · Las badges de "Nivel III · Salud celular", y el ECM/BCM que se quedó sin sitio
+## 21 · Las badges de "Nivel III · Salud celular", y el ECM/BCM que se quedó sin sitio
 
 **Lo pidió usted**, en el punto 10 de su revisión, y al ir a moverlas encontramos esto: **su `celBadges` se
 llena y nunca se muestra.** En su entrega del 4 de septiembre aparece cinco veces, la declaración y los
@@ -739,7 +698,7 @@ con su fila y su clasificador. Lo que se fue era el duplicado.
 **sin fila propia** en la tabla, así que ya no se ve en ninguna parte. Su archivo tampoco lo muestra.
 **¿El ECM/BCM debe verse? Si sí, ¿con qué corte y en qué fila?**
 
-## 23 · El estado PBI: su HC lo imprime y nosotros lo retiramos
+## 22 · El estado PBI: su HC lo imprime y nosotros lo retiramos
 
 La cabecera de su tabla de la historia clínica imprime, junto al fenotipo MCCB, una segunda línea: **"PBI:
 Riesgo celular"**. **Atlas no lo calcula ni lo muestra**, y hay dos razones independientes:
@@ -759,7 +718,7 @@ manda**, porque no pueden convivir.
 Nosotros no lo calculamos, así que **esa línea no la podemos enviar**. Es el único dato de su prompt que nos
 falta por decisión declarada, no por descuido.
 
-## 24 · La fórmula sintética: sus doce campos están todos, pero la disposición es otra
+## 23 · La fórmula sintética: sus doce campos están todos, pero la disposición es otra
 
 Los cotejamos uno por uno: **los doce campos de su fórmula sintética están en Atlas, ninguna cifra cambia.**
 Lo que cambia es la forma:
@@ -780,7 +739,7 @@ rótulo desaparece de su archivo, ¿cómo debe llamarse ese bloque en Atlas?
 
 # E · EL INSTRUMENTO Y EL PROMPT
 
-## 25 · Diez de sus quince alertas clínicas no pueden salir nunca, y es consecuencia de dos respuestas suyas
+## 24 · Diez de sus quince alertas clínicas no pueden salir nunca, y es consecuencia de dos respuestas suyas
 
 Su `generarAlertas` tiene **quince reglas**. En Atlas corren **cinco**: TCA activo detectado (crítico),
 riesgo glucémico crítico (crítico), deshidratación probable (alto), estrés alto con azúcares elevados
@@ -811,7 +770,7 @@ cuenta: **(1)** se queda como está, con el aviso permanente; **(2)** las diez s
 aviso desaparece porque las alertas pasan a ser cinco; **(3)** la encuesta captura porciones (un instrumento
 nuevo, suyo) y las diez se encienden. La 2 borra reglas suyas y la 3 toca el instrumento, que está congelado.
 
-## 26 · ¿Qué MÁS debería alimentar al generador de menús?
+## 25 · ¿Qué MÁS debería alimentar al generador de menús?
 
 **Lo que HOY viaja de verdad al modelo**, verificado línea por línea en el prompt:
 
@@ -828,7 +787,7 @@ los dos candidatos**, y ninguno es un cruce de seguridad: el primero cambia qué
 segundo cómo se reparte el día. **Las alergias no están en la pregunta**, porque eso ya lo respondió (27 de
 agosto §10 y 11 de septiembre §1).
 
-## 27 · Sus pasos 1 a 3 del Análisis IA no llegan al paso 4
+## 26 · Sus pasos 1 a 3 del Análisis IA no llegan al paso 4
 
 **Esto probablemente no lo sabe, y por eso se lo decimos antes de portar nada.** Su Análisis IA hace
 **cuatro** llamadas al modelo: patrones, hipótesis causal, validación y síntesis. Al trazarlas para
@@ -850,7 +809,7 @@ los datos. Portar los otros tres sería copiar el corte y pagarlo tres veces en 
 **Si los tres primeros debían alimentar al cuarto, díganoslo y lo cableamos.** Es su diseño y puede que la
 intención fuera que la validación entrara en la síntesis; hoy no entra.
 
-## 28 · En la historia clínica, ¿van TODAS las observaciones o solo la vigente?
+## 27 · En la historia clínica, ¿van TODAS las observaciones o solo la vigente?
 
 Usted pidió que las observaciones del profesional aparezcan en la historia clínica y **por consulta** (§8.3,
 26 de agosto), y que cada profesión escriba la suya sin pisar la de otra (§8, 30 de agosto). Las dos cosas
@@ -871,7 +830,7 @@ la historia del paciente.
 **¿Van todas, o solo la vigente?** Su archivo no lo resuelve: su campo de observaciones guarda una sola
 (cada control sobrescribe la anterior) y no se muestra en ningún documento.
 
-## 29 · ¿En qué dominio van los síntomas digestivos?
+## 28 · ¿En qué dominio van los síntomas digestivos?
 
 **Sin urgencia.** Su DFI no los lee en ninguno de los cinco dominios (sus ítems no usan `d6_45` a `d6_51`),
 y su paso 4 los manda en el bloque "D6 · Síntomas digestivos". En una prueba, el modelo los metió en el
@@ -880,7 +839,7 @@ Epigenético-Contextual por su cuenta.
 Por ahora le pedimos al modelo que no los use como evidencia de ningún dominio: ya salen en el párrafo de
 respuestas en rojo. **Si prefiere que se lean en alguno, díganos en cuál.**
 
-## 30 · La pregunta de amputación se queda, y usted no la nombró
+## 29 · La pregunta de amputación se queda, y usted no la nombró
 
 En el punto 3 nos dijo que quitáramos las preguntas que no había puesto, y nombró dos: el edema/anasarca y
 el estado febril. **Las dos están fuera.** Pero entraron en el mismo lote de tres, y la tercera es *"¿Tiene
@@ -897,7 +856,7 @@ la ecuación, que estima sobre un cuerpo completo.
 
 # F · DATA QUE CONVIENE QUE SEPA ANTES DE LEER SUS PROPIOS CASOS
 
-## 31 · Dos de los ids de su anexo A son data de PRUEBA
+## 30 · Dos de los ids de su anexo A son data de PRUEBA
 
 El grupo de tres evaluaciones de su anexo (`5441fd96` / `b3e367cc` / `6256b921`, el que la columna `Edad` del
 equipo no le cuadra a ninguno de los tres) es el **grupo de smoke**: pacientes creados por el equipo para
@@ -915,7 +874,7 @@ contar sin separar lo de prueba. Los diez grupos sí son diez.
 caso documentado. Nosotros mantenemos su anexo citado tal cual en nuestros documentos, con esta nota al
 lado, para que las dos versiones se puedan cruzar.
 
-## 32 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre
+## 31 · Los pacientes pediátricos: el equipo da grasa negativa y la v7 no los cubre
 
 En la cohorte hay cuerpos de **22 kg y 29 kg**. El Biody aplica ecuaciones de adulto, y en esos cuerpos
 devuelve **masa grasa negativa** (las dos grasas negativas de la tabla de la pregunta 2 vienen de ahí). No es
@@ -1003,6 +962,14 @@ septiembre respondió: *"Ya revisé ATLAS y está bien como lo tienen"*, con la 
 barrido de rótulos nuestro, el 9, la cambió a `dPABU` sin instrucción suya; se restituyó el 21 y hoy lleva
 candado.
 
+**Y las rutas al paciente, que respondió Santiago (2026-11-05).** Era la que decía *"si solo contesta una,
+que sea esta"*, y se cerró por la primera de las dos salidas que le planteamos: **las rutas no van al
+paciente.** Su razón es más general que la nuestra: *"el informe no puede recomendar algo que la profesional
+no recomendó"*, y por eso salen también los suplementos y las remisiones. Las tres siguen donde sí son del
+profesional: en la historia clínica y en la hoja del plan. **Ya está construido.** Así que la R4 deja de
+estar muda, no porque le hayamos escrito sus frases, sino porque el documento del paciente ya no nombra
+ningún área; si algún día quiere su redacción para el paciente, la pregunta vuelve a abrirse entera.
+
 **Y una que salió de esta lista porque la decidimos nosotros (2026-11-05):** el ICC y el ICT. Su archivo
 los recalcula desde lo que teclea el profesional; Atlas los leía del export del Biody, así que al corregir
 una cintura el índice se quedaba con la anterior. **Decidido por Santiago y ya construido:** si se teclea la
@@ -1042,22 +1009,21 @@ Para cruzar este documento con los dos que lo precedieron, por si empezó a resp
 | 0 (el aviso) | Cola del 6 de septiembre, "PRIMERO". Respondida a medias: el nombre no se envía, pero sigue sin saberse si es una persona real |
 | 1, 2, 3 | Dudas del 30 de octubre, 3, 4 y 5. La 3 con las cifras de hoy |
 | **4** | **Nueva del 3 de noviembre.** Sale del informe que leyó Santiago y de la nota del 24 de octubre sobre los tres textos de banda |
-| 5 | Dudas del 30 de octubre, 17, **fundida** con la "Nueva (2026-09-19)" de la cola de septiembre: era la misma |
-| 6, 7, 8 | Dudas del 30 de octubre, 6, 7 y 8 |
-| **9** | Dudas del 30 de octubre, 9, **reescrita** con la objeción de estética y simetría de la Diana |
-| 10 | Dudas del 30 de octubre, 15 |
-| 11, 12, 13 | Dudas del 30 de octubre, 12, 10 y 11 |
-| 14 | Dudas del 30 de octubre, 16 |
-| 15 | Cola de septiembre, "Nueva (2026-09-21)" |
-| 16, 17 | Cola de septiembre, 15 y 16 |
-| 18, 19, 20, 21 | Cola de septiembre, 8, 9, 10 y 11 |
-| 22, 23 | Cola de septiembre, 17 y 13 |
-| 24 | Cola de septiembre, 12, **más** el §6.4 de su v12 (el rótulo se queda sin origen) |
-| 25, 26, 27, 28 | Cola de septiembre, 21, 14, 19 y 20 |
-| 29 | Cola de septiembre, dentro de una declaración del prompt: era una pregunta y estaba escondida |
-| **30** | Cola de septiembre, bloque de declaraciones. **Sube a pregunta**: pedía respuesta y estaba donde no se pide ninguna |
-| 31, 32 | Dudas del 30 de octubre, 13 y 14. La 31 con la corrección de cinco a cuatro |
-| **Salieron** | Dudas 1 y 2 (respondidas en la 7.1.0) · Cola 22 (ya no aplica: preguntaba lo que respondía la fila PABU) · **la del ICC y el ICT** (su propio texto decía que la decisión era de Santiago: la tomó él y ya está construida, ver abajo) |
+| 5, 6, 7 | Dudas del 30 de octubre, 6, 7 y 8 |
+| **8** | Dudas del 30 de octubre, 9, **reescrita** con la objeción de estética y simetría de la Diana |
+| 9 | Dudas del 30 de octubre, 15 |
+| 10, 11, 12 | Dudas del 30 de octubre, 12, 10 y 11 |
+| 13 | Dudas del 30 de octubre, 16 |
+| 14 | Cola de septiembre, "Nueva (2026-09-21)" |
+| 15, 16 | Cola de septiembre, 15 y 16 |
+| 17, 18, 19, 20 | Cola de septiembre, 8, 9, 10 y 11 |
+| 21, 22 | Cola de septiembre, 17 y 13 |
+| 23 | Cola de septiembre, 12, **más** el §6.4 de su v12 (el rótulo se queda sin origen) |
+| 24, 25, 26, 27 | Cola de septiembre, 21, 14, 19 y 20 |
+| 28 | Cola de septiembre, dentro de una declaración del prompt: era una pregunta y estaba escondida |
+| **29** | Cola de septiembre, bloque de declaraciones. **Sube a pregunta**: pedía respuesta y estaba donde no se pide ninguna |
+| 30, 31 | Dudas del 30 de octubre, 13 y 14. La 30 con la corrección de cinco a cuatro |
+| **Salieron** | Dudas 1 y 2 (respondidas en la 7.1.0) · Cola 22 (ya no aplica: preguntaba lo que respondía la fila PABU) · **la de las rutas al paciente** (Dudas 17 fundida con la Nueva del 19-sep: la respondió Santiago el 5 de noviembre, ver abajo) · **la del ICC y el ICT** (su propio texto decía que la decisión era de Santiago: la tomó él y ya está construida, ver abajo) |
 
 **Verificado el 4 de noviembre, pregunta por pregunta:** ninguna de las de septiembre quedó contestada por
 sus entregas de octubre (revisiones de v10, v11 y v12, y los parámetros 7.1.0). Se buscó cada tema en las

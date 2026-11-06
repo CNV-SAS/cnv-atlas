@@ -104,6 +104,35 @@ export function ebBisParaTodos(eb: number | null, iae: number | null): EbBisPara
   return { eb: textoEbBis(eb), iae: textoIae(iae) };
 }
 
+/**
+ * LO MISMO, EN PIEZAS: la cifra SIN su rotulo, para cuando el rotulo es el titulo del bloque.
+ *
+ * ═══ DE DONDE SALE (Santiago, 2026-11-05) ═══
+ *
+ * *"La edad biologica estimada, grande, 'estimada por el modelo ANI-BIS-E'."* En la maqueta nueva del
+ * informe el rotulo va arriba en versalitas y el numero va solo, en 34 puntos; la frase entera de su tabla
+ * ("Edad biologica estimada: 76,4 años") no cabe en esa forma.
+ *
+ * ═══ POR QUE ES UNA FUNCION DEL MOTOR Y NO UN `split(": ")` EN EL DOCUMENTO ═══
+ *
+ * Porque la frontera de su §5 es de TIPO, no de plantilla: hay una funcion para lo que ve el paciente y
+ * otra para lo que ve el profesional, y asi la pantalla que llama no puede equivocarse. Si el informe
+ * recortara la frase por su cuenta, o compusiera la cifra con los formateadores a mano, esa garantia
+ * dejaria de estar en el tipo y pasaria a depender de que cada documento se acuerde.
+ *
+ * Y ES EL MISMO PRECEDENTE QUE `bandaIae`, que se separo de `textoIae` el 2026-10-29 porque una pantalla
+ * necesitaba el rotulo sin la cifra: las piezas se reparten aqui, no en quien las pinta.
+ *
+ * LAS DOS CIFRAS SIGUEN SIENDO LAS SUYAS: `cifraEbBis` es su formato de un decimal con coma y `textoIae`
+ * es su frase entera, con su banda sin tocar.
+ */
+export type EbBisEnPiezas = { cifra: string; iae: string } | null;
+
+export function ebBisEnPiezas(eb: number | null, iae: number | null): EbBisEnPiezas {
+  if (eb == null || iae == null) return null;
+  return { cifra: `${cifraEbBis(eb)} años`, iae: textoIae(iae) };
+}
+
 /** Lo que su §5 deja SOLO para el profesional. */
 export type EbBisParaElProfesional = {
   /** "EB-BIS pendiente: " mas su motivo. null cuando si se calculo. */

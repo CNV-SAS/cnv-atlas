@@ -90,20 +90,74 @@ function lineas(nombre: string): string[] {
 /** La severidad acotada a la escala (0 a 3). */
 const acotar = (s: number): number => Math.min(3, Math.max(0, s));
 
-export function RadarDelPaciente({ dominios }: { dominios: DominioPaciente[] }) {
+/** El radio del vértice de una severidad: al CENTRO de su banda, como el del profesional. */
+const radioDe = (sev: number): number => ((acotar(sev) + 0.5) / BANDAS) * RMAX;
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL RADAR DE EVOLUCION: LA CONSULTA ANTERIOR DEBAJO DE LA DE HOY  ·  Santiago, 2026-11-05
+//
+// *"Mostrar el radar de evolucion/seguimiento si el paciente tiene una consulta anterior para que compare
+// ambas."*
+//
+// ═══ UNA FIGURA CON DOS POLIGONOS, NO DOS FIGURAS ═══
+//
+// Dos radares uno al lado del otro obligan a ir y venir entre dos dibujos para ver si una punta se movio,
+// que es precisamente lo que el paciente no va a hacer. Superpuestos, el movimiento SE VE: donde la linea
+// de hoy esta por dentro de la de antes, mejoro.
+//
+// ═══ Y SE DISTINGUEN SIN COLOR, porque este documento se fotocopia ═══
+//
+// La de hoy es la de siempre (tinta gruesa con relleno tenue y vertices rellenos); la anterior es un
+// contorno GRIS FINO sin relleno, con vertices huecos. La diferencia es de GROSOR y de RELLENO, no de
+// color: impreso en blanco y negro sigue diciendo cual es cual, que es la misma razon por la que las cinco
+// filas de debajo repiten el veredicto en texto.
+//
+// NO SE USA UN TRAZO DISCONTINUO, que seria lo primero que uno haria: el soporte de `strokeDasharray` en
+// el SVG de @react-pdf no es algo que convenga dar por hecho en un documento clinico, y un trazo que no
+// se dibuje dejaria dos lineas solidas indistinguibles. Grosor y relleno son primitivas que ya usa este
+// mismo dibujo.
+//
+// ═══ LA LEYENDA NO ES OPCIONAL CUANDO HAY DOS FIGURAS ═══
+//
+// Con un solo poligono la frase llana basta ("cuanto mas cerca del centro, mejor"). Con dos, un paciente
+// que no sepa cual es cual puede leer una mejora como un empeoramiento. Asi que la leyenda dice las dos,
+// con su fecha, y solo sale cuando de verdad hay dos.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+export function RadarDelPaciente({
+  dominios,
+  anteriores = null,
+}: {
+  dominios: DominioPaciente[];
+  /**
+   * La severidad por id de dominio de la consulta ANTERIOR, con su fecha ya formateada. null = consulta
+   * inicial, y entonces el dibujo es el de siempre.
+   */
+  anteriores?: { fecha: string; porDominio: Record<string, number> } | null;
+}) {
   // UN DOMINIO SIN DATO NO DIBUJA VERTICE (Gildardo, 2026-08-30 §4). Y si quedan menos de tres medidos no
   // hay figura posible: dos puntos son una raya, y una raya no dice nada de la forma.
   const medidos = dominios.filter((d) => d.sev != null);
   if (dominios.length < 3 || medidos.length < 3) return null;
 
   const n = dominios.length;
-  // El vértice al CENTRO de su banda, como el del profesional: "En equilibrio" no cae en el centro exacto
-  // (invisible) ni "Prioritario" sobre el borde.
   const vertices = dominios
     .map((d, i) => ({ d, i }))
     .filter(({ d }) => d.sev != null)
-    .map(({ d, i }) => punto(i, n, ((acotar(d.sev as number) + 0.5) / BANDAS) * RMAX));
+    .map(({ d, i }) => punto(i, n, radioDe(d.sev as number)));
   const poligono = vertices.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+
+  // LA FIGURA DE ANTES SOLO SE DIBUJA SI LA ANTERIOR TIENE AL MENOS TRES AREAS, por la misma razon que la
+  // de hoy: con dos la "figura" es una raya. Y se alinea POR ID, no por posicion (ver la cabecera del
+  // lector): un dominio que entonces no se midio no pone vertice ahora.
+  const verticesAntes = anteriores
+    ? dominios
+        .map((d, i) => ({ sev: anteriores.porDominio[d.id], i }))
+        .filter((v): v is { sev: number; i: number } => typeof v.sev === "number")
+        .map(({ sev, i }) => punto(i, n, radioDe(sev)))
+    : [];
+  const hayAntes = anteriores != null && verticesAntes.length >= 3;
+  const poligonoAntes = verticesAntes.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 
   return (
     // CENTRADO EN LA HOJA (Santiago, 2026-10-30). El SVG mide 420 puntos de ancho y la columna de texto
@@ -130,6 +184,25 @@ export function RadarDelPaciente({ dominios }: { dominios: DominioPaciente[] }) 
           const [x, y] = punto(i, n, RMAX);
           return <Line key={`radio-${d.id}`} x1={CX} y1={CY} x2={x} y2={y} stroke={BORDE} strokeWidth={1} />;
         })}
+
+        {/* LA FIGURA DE LA CONSULTA ANTERIOR VA DEBAJO de la de hoy: la de hoy es la que el paciente tiene
+            que leer, y si quedara tapada por un contorno la comparación habría cambiado de protagonista. */}
+        {hayAntes ? (
+          <>
+            <Polygon points={poligonoAntes} fill="none" stroke={GRIS} strokeWidth={1.25} />
+            {verticesAntes.map(([x, y], k) => (
+              <Circle
+                key={`antes${k}`}
+                cx={x}
+                cy={y}
+                r={2.5}
+                fill={BLANCO}
+                stroke={GRIS}
+                strokeWidth={1.25}
+              />
+            ))}
+          </>
+        ) : null}
 
         {/* La figura del paciente: línea oscura con relleno tenue, encima de los anillos. */}
         <Polygon points={poligono} fill={TINTA} fillOpacity={0.12} stroke={TINTA} strokeWidth={2} />
@@ -190,6 +263,15 @@ export function RadarDelPaciente({ dominios }: { dominios: DominioPaciente[] }) 
         Cada punta es una parte de tu salud. Cuanto más cerca del centro, mejor estás en esa parte: la figura
         pequeña es la que buscamos.
       </Text>
+      {/* LA LEYENDA DE LAS DOS FIGURAS, solo cuando hay dos. Y DICE QUE SIGNIFICA ESTAR POR DENTRO, que es
+          lo único que convierte el dibujo en una comparación: sin esa frase, el paciente ve dos formas y no
+          sabe cuál de las dos es la buena noticia. */}
+      {hayAntes && anteriores ? (
+        <Text style={{ fontSize: 8, color: GRIS, marginTop: 2, textAlign: "center" }}>
+          La figura de línea gruesa es tu medición de ahora; la de línea delgada es la de tu consulta del{" "}
+          {anteriores.fecha}. Donde la de ahora quedó por dentro de la otra, esa parte mejoró.
+        </Text>
+      ) : null}
     </View>
   );
 }

@@ -32,7 +32,7 @@ import { Bloque } from "@/components/shared/bloque";
 //
 // Habia un pie que decia que de las quince reglas del modelo diez necesitan el consumo de nutrientes. Es
 // verdad, pero es informacion NUESTRA: le habla al que construye Atlas, no al profesional que atiende. Y
-// era larga, y salia en cada pantalla. Vive donde le toca, en PENDIENTES_CIENTIFICOS (punto 21), esperando
+// era larga, y salia en cada pantalla. Vive donde le toca, en PENDIENTES_CIENTIFICOS (punto 20), esperando
 // la decision de Gildardo: el puente frecuencia -> porciones lo cerro el mismo dos veces (P-70 y P-83).
 //
 // Y SIN NADA QUE MOSTRAR, EL BLOQUE NO SALE. La alternativa era dejarlo diciendo "sin banderas", y eso es

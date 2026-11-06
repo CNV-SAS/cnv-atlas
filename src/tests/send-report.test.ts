@@ -23,6 +23,11 @@ vi.mock("@/modules/reports/data/plan-paciente-reader", () => ({
 vi.mock("@/modules/reports/data/serie-del-paciente", () => ({
   getSerieDelPaciente: vi.fn(async () => []),
 }));
+// LAS AREAS DE LA CONSULTA ANTERIOR, para el radar de evolucion (2026-11-05): mismo trato, y `null` por
+// defecto, que es el caso de una consulta inicial (sin anterior no hay dos figuras que comparar).
+vi.mock("@/modules/reports/data/dominios-anteriores-reader", () => ({
+  getDominiosAnteriores: vi.fn(async () => null),
+}));
 vi.mock("@/modules/reports/data/informe-paciente-reader", () => ({
   getInformeDelPaciente: vi.fn(async () => ({
     rutas: [],

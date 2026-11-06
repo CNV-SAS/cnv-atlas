@@ -1,0 +1,127 @@
+import { StyleSheet, View } from "@react-pdf/renderer";
+
+// El `Text` que traduce los simbolos que la fuente del PDF no dibuja (ver `text-seguro`).
+import { Text } from "./text-seguro";
+
+import { MARCA_AZUL, MARCA_HONDA } from "./estilos-del-pdf";
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL ENCABEZADO EN CUADROS  ·  EL MISMO EN LOS TRES DOCUMENTOS  ·  Santiago, 2026-11-05
+//
+// ═══ DE DONDE SALE ═══
+//
+// De la jerarquia de la sugerencia que dejo para revisar: una CAJA DE TRES COLUMNAS rotuladas, en vez de
+// la lista de filas etiqueta-valor que tenian los tres documentos. Es mas legible y pone la identidad del
+// paciente donde la vista cae primero.
+//
+// Y SU DECISION DE HOY: *"El encabezado nuevo va a los tres documentos (informe, hoja del plan y HC),
+// como recomendaste."* La razon por la que se recomendo: un paciente que recibe dos documentos el mismo
+// dia no deberia tener que descubrir que son del mismo sistema.
+//
+// ═══ POR QUE ESTE COMPONENTE TRAE SUS PROPIOS ESTILOS ═══
+//
+// El informe y la hoja del plan comparten `estilos-del-pdf`; la historia clinica tiene su PROPIA hoja de
+// estilo (nacio aparte, con otra escala tipografica). Si el encabezado se compusiera con estilos de la
+// hoja de cada documento, "el mismo encabezado" serian tres encabezados parecidos, que es exactamente lo
+// que este cambio viene a cerrar. Asi que el bloque es autonomo y de los modulos de marca solo toma los
+// dos azules, que es lo unico que debe seguir al brand.
+//
+// ═══ LA TERCERA CAJA NO ES LA MISMA FECHA EN LOS TRES, Y SE DECLARA ═══
+//
+// El informe sale de una MEDICION y se fecha por ella; la hoja del plan y la historia clinica salen de la
+// CONSULTA. Un rotulo fijo ("FECHA DE MEDICION") obligaria a la hoja del plan a mentir o a dejar la caja
+// vacia, asi que el rotulo entra como dato. Lo que NO es opcional es que cada fecha diga CUAL es: el
+// informe ya llevaba dos fechas rotuladas desde el smoke del 2026-09-01, porque el paciente puede haberse
+// medido un dia y haber sido atendido otro.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** Una caja del encabezado: su rotulo en versalitas y su valor debajo. */
+export type CuadroDelEncabezado = { rotulo: string; valor: string };
+
+export type DatosDelEncabezado = {
+  /** El titulo del documento ("Informe ANI-BIS-E"). */
+  titulo: string;
+  paciente: string;
+  /** "CC 1.020.304". Vacio = no se pudo resolver, y la caja dice que no consta en vez de quedar en blanco. */
+  documento: string;
+  /** La tercera caja: la fecha que FECHA a este documento, con su rotulo. */
+  tercera: CuadroDelEncabezado;
+  /** Quien atendio. null = no se pudo resolver, y la linea no sale: no se inventa un autor. */
+  profesional?: { nombre: string; profesion: string | null } | null;
+  /**
+   * EL ROTULO DE ESA LINEA, porque los tres documentos no hablan en el mismo registro. El informe y la
+   * hoja del plan se dirigen al paciente y tutean ("Te atendió"); la HISTORIA CLINICA es un documento
+   * probatorio que se lee tambien de aqui a quince años, y ahi la linea dice "Profesional". Cambiar el
+   * encabezado no es razon para cambiarle el tono a la historia clinica.
+   */
+  rotuloDelProfesional?: string;
+  /** La otra fecha, a la derecha de la linea del profesional. null = este documento solo tiene una. */
+  otraFecha?: CuadroDelEncabezado | null;
+};
+
+/** El filete de la caja. EXPORTADO para que el candado mida que la caja se dibuja, y no solo que su
+ *  texto salga: tres rotulos sueltos se leerian igual en el texto del PDF y no serian una caja. */
+export const BORDE_DEL_ENCABEZADO = "#d1d5db";
+const BORDE = BORDE_DEL_ENCABEZADO;
+const ROTULO = "#6b7280";
+
+const estilos = StyleSheet.create({
+  titulo: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 8 },
+  firma: {
+    fontSize: 9,
+    color: MARCA_AZUL,
+    marginBottom: 10,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  cuadros: { flexDirection: "row", borderWidth: 0.75, borderColor: BORDE, borderRadius: 3 },
+  // LAS TRES COLUMNAS SE REPARTEN A PARTES IGUALES y la separacion es un borde interior, no un hueco: con
+  // hueco, tres cajas suenan a tres bloques; con un filete, se leen como una sola caja de tres columnas.
+  cuadro: { flex: 1, paddingVertical: 6, paddingHorizontal: 8 },
+  cuadroConFilete: { borderLeftWidth: 0.75, borderLeftColor: BORDE },
+  rotulo: { fontSize: 7, color: ROTULO, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 },
+  valor: { fontSize: 10 },
+  // LA LINEA DE DEBAJO: quien atendio a la izquierda y la otra fecha a la derecha, en el mismo renglon.
+  pie: { flexDirection: "row", justifyContent: "space-between", marginTop: 5, marginBottom: 14 },
+  pieTexto: { fontSize: 9, color: "#374151" },
+});
+
+/** Lo que dice una caja cuyo dato no se pudo resolver. No se deja en blanco: un hueco se lee como olvido. */
+const NO_CONSTA = "No consta";
+
+export function EncabezadoEnCuadros({ datos }: { datos: DatosDelEncabezado }) {
+  const cuadros: CuadroDelEncabezado[] = [
+    { rotulo: "Paciente", valor: datos.paciente.trim() || NO_CONSTA },
+    { rotulo: "Documento", valor: datos.documento.trim() || NO_CONSTA },
+    datos.tercera,
+  ];
+  return (
+    <>
+      <Text style={estilos.titulo}>{datos.titulo}</Text>
+      <Text style={estilos.firma}>Connected Nutrition Ventures</Text>
+
+      {/* LA CAJA NO SE PARTE ENTRE DOS HOJAS: media caja de identidad no identifica a nadie. */}
+      <View style={estilos.cuadros} wrap={false}>
+        {cuadros.map((c, i) => (
+          <View key={c.rotulo} style={i === 0 ? estilos.cuadro : [estilos.cuadro, estilos.cuadroConFilete]}>
+            <Text style={estilos.rotulo}>{c.rotulo}</Text>
+            <Text style={estilos.valor}>{c.valor.trim() || NO_CONSTA}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={estilos.pie}>
+        <Text style={estilos.pieTexto}>
+          {datos.profesional
+            ? `${datos.rotuloDelProfesional ?? "Te atendió"}: ${datos.profesional.nombre}${
+                datos.profesional.profesion ? ` · ${datos.profesional.profesion}` : ""
+              }`
+            : ""}
+        </Text>
+        <Text style={estilos.pieTexto}>
+          {datos.otraFecha ? `${datos.otraFecha.rotulo}: ${datos.otraFecha.valor}` : ""}
+        </Text>
+      </View>
+    </>
+  );
+}

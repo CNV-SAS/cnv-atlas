@@ -431,7 +431,7 @@ export async function leerCohorteDeInvestigacion(
       --
       -- EL CORTE ES 1 AÑO Y SOLO ATRAPA LO IMPOSIBLE, que es la regla de CLAUDE.md para un cinturon sin
       -- fuente ("tan ancho que solo atrape lo imposible, nunca lo improbable"). Los pacientes de 7 años
-      -- (nacidos en 2018 y 2019) SI entran: son reales, son los mismos de la pregunta 14 del documento de
+      -- (nacidos en 2018 y 2019) SI entran: son reales, son los mismos de la pregunta 13 del documento de
       -- dudas, y excluirlos seria esconder la cohorte pediatrica en vez de contarla.
       --
       -- Y LO EXCLUIDO SE CUENTA, no se quita en silencio: edad_imposible va a la pantalla.

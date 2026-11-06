@@ -1,4 +1,4 @@
-import { Document, Page, View } from "@react-pdf/renderer";
+import { Document, Page } from "@react-pdf/renderer";
 
 // El `Text` que traduce los simbolos que la fuente del PDF no dibuja (ver `text-seguro`).
 import { Text } from "./text-seguro";
@@ -13,7 +13,7 @@ import {
   BloqueMeta,
   BloqueRecomendaciones,
 } from "./bloques-del-plan";
-import { MarcaDeFondo } from "./marca-de-fondo";
+import { EncabezadoEnCuadros } from "./encabezado-en-cuadros";
 import { styles } from "./estilos-del-pdf";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -57,38 +57,29 @@ export function PlanDocument({ plan, meta }: { plan: PlanPaciente; meta: PlanMet
       {/* CARTA, como todo lo que se imprime en Atlas: en Colombia el papel es carta, y A4 impresa en carta
           deja margenes desiguales (Santiago, 2026-09-20). */}
       <Page size="LETTER" style={styles.page}>
-        {/* LA MISMA MARCA QUE EL INFORME, y por eso es un componente: los dos llegan en el mismo correo,
-            y uno decorado junto a otro sin decorar se lee como dos sistemas distintos. Va LO PRIMERO para
-            quedar detras del contenido. */}
-        <MarcaDeFondo />
-        <Text style={styles.title}>Tu plan de alimentación</Text>
-        <Text style={styles.subtitle}>Connected Nutrition Ventures</Text>
+        {/* ═══ EL MISMO ENCABEZADO QUE EL INFORME Y QUE LA HISTORIA CLINICA (Santiago, 2026-11-05) ═══
 
-        <View style={styles.meta}>
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Paciente</Text>
-            <Text>{meta.patientName}</Text>
-          </View>
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Documento</Text>
-            <Text>{meta.documentLabel}</Text>
-          </View>
-          {meta.consultationDate ? (
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Fecha de la consulta</Text>
-              <Text>{meta.consultationDate}</Text>
-            </View>
-          ) : null}
-          {meta.profesional ? (
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Te atendió</Text>
-              <Text>
-                {meta.profesional.nombre}
-                {meta.profesional.profesion ? ` · ${meta.profesional.profesion}` : ""}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+            *"El encabezado nuevo va a los tres documentos (informe, hoja del plan y HC)."*
+
+            Y es la misma razon por la que estos dos documentos ya compartian la hoja de estilo: el paciente
+            los recibe en el mismo correo, y dos cabeceras distintas se leen como dos sistemas.
+
+            LA TERCERA CAJA AQUI ES LA FECHA DE LA CONSULTA, no la de la medicion: una prescripcion la fecha
+            la consulta en que se emitio. El informe pone la de la medicion porque es lo que ese documento
+            describe. Las dos son ciertas de su documento, y cada caja dice cual es.
+
+            Y LA MARCA DE FONDO SALIO con la del informe (*"Fuera la franja y la nube"*), por lo mismo:
+            decorado uno y no el otro seria el defecto que el componente compartido existia para evitar. */}
+        <EncabezadoEnCuadros
+          datos={{
+            titulo: "Tu plan de alimentación",
+            paciente: meta.patientName,
+            documento: meta.documentLabel,
+            tercera: { rotulo: "Fecha de la consulta", valor: meta.consultationDate ?? "" },
+            profesional: meta.profesional ?? null,
+            otraFecha: null,
+          }}
+        />
 
         <BloqueMeta plan={plan} />
         <BloqueAlimentacion plan={plan} />
