@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { idDeRuta } from "@/lib/routing/id-de-ruta";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { formatDate } from "@/lib/format/date";
@@ -27,7 +28,9 @@ export const metadata = { title: "Historia clínica (SOAP) - Atlas" };
 // LA POLICY ES LA MISMA que la de la historia clínica (`canManageReports`): es el mismo documento, con
 // otro orden. Y el alcance fino lo pone la RLS de los lectores: una evaluación ajena no existe para ellos.
 export default async function SoapPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  // LA FORMA DEL ID, ANTES DE PREGUNTARLE A LA BASE: un texto que no es un id da 404, no un 500
+  // (`lib/routing/id-de-ruta.ts`, caso de Sentry del 2026-11-05).
+  const id = idDeRuta((await params).id);
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 

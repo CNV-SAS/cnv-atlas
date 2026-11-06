@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/modules/auth/session";
 import { getReportDispatch } from "@/modules/reports/data/reports-repository";
 import { formatDate } from "@/lib/format/date";
+import { esUnId } from "@/lib/routing/id-de-ruta";
 import { downloadPlanPdf, downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { ultimaObservacionDeLaConsulta } from "@/modules/reports/data/freno-de-trayectoria";
@@ -24,6 +25,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  // UN TEXTO QUE NO ES UN ID se contesta como un reporte que no existe (404) y no con un 500 desde el
+  // primer lector (`lib/routing/id-de-ruta.ts`).
+  if (!esUnId(id)) return new NextResponse("Reporte no encontrado", { status: 404 });
   // ═══ ?doc=plan: LA HOJA DEL PLAN, QUE ES EL SEGUNDO DOCUMENTO QUE RECIBE EL PACIENTE ═══
   //
   // Desde el 2026-10-30 el informe NO lleva nada del plan (es transversal a las disciplinas), y desde el

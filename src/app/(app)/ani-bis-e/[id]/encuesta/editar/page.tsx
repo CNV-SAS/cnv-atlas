@@ -1,3 +1,4 @@
+import { idDeRuta } from "@/lib/routing/id-de-ruta";
 import { Panel } from "@/components/shared/panel";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
@@ -18,7 +19,9 @@ export const metadata = { title: "Completar encuesta - Atlas" };
 // evaluacion YA tiene diagnostico, editar una respuesta sellada es el flujo de CORRECCION (versionado):
 // se redirige alli, no se edita directo. La RLS del reader impone que sea su paciente (404).
 export default async function EditarEncuestaPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  // LA FORMA DEL ID, ANTES DE PREGUNTARLE A LA BASE: un texto que no es un id da 404, no un 500
+  // (`lib/routing/id-de-ruta.ts`, caso de Sentry del 2026-11-05).
+  const id = idDeRuta((await params).id);
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 

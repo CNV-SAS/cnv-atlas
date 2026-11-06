@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { esUnId } from "@/lib/routing/id-de-ruta";
 import { requireUser } from "@/modules/auth/session";
 import { getHistoriaClinicaDoc } from "@/modules/reports/data/hc-documento-reader";
 import { renderHistoriaClinicaPdf } from "@/modules/reports/services/render-report";
@@ -46,6 +47,10 @@ export const runtime = "nodejs";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // UN TEXTO QUE NO ES UN ID se contesta igual que un documento que no existe (404), y no con el 500 que
+  // sale cuando viaja hasta Postgres (`lib/routing/id-de-ruta.ts`). Aqui no va `notFound()`: este archivo
+  // responde con sus propias respuestas, como las tres lineas de abajo.
+  if (!esUnId(id)) return new NextResponse("Historia clínica no encontrada", { status: 404 });
   await requireUser();
 
   const hc = await getHistoriaClinicaDoc(id);

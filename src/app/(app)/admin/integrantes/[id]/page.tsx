@@ -1,4 +1,5 @@
 import { Boxes, Receipt, TriangleAlert, Users, Wallet } from "lucide-react";
+import { idDeRuta } from "@/lib/routing/id-de-ruta";
 import { PedirConteoForm } from "@/modules/nutraceuticals/components/pedir-conteo-form";
 import { AccesoDelIntegrante } from "@/modules/professionals/components/acceso-del-integrante";
 import { MarcaDePruebaForm } from "@/modules/professionals/components/marca-de-prueba-form";
@@ -72,7 +73,9 @@ export default async function IntegrantePage({ params }: { params: Promise<{ id:
   // tenerlo, y el bloque que lo acompaña (lo que queda abierto) tampoco se lee entonces.
   const puedeQuitarElAcceso = canDeactivateProfessional(user);
 
-  const { id } = await params;
+  // LA FORMA DEL ID, ANTES DE PREGUNTARLE A LA BASE: un texto que no es un id da 404, no un 500
+  // (`lib/routing/id-de-ruta.ts`, caso de Sentry del 2026-11-05).
+  const id = idDeRuta((await params).id);
   const [integrante, modalidad] = await Promise.all([leerIntegrante(id), leerModalidad(id)]);
   if (!integrante) redirect("/admin");
 

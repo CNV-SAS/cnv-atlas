@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { idDeRuta } from "@/lib/routing/id-de-ruta";
 import { elQueMiraEsProfesionalDePrueba } from "@/modules/payments/data/payments-repository";
 import { notFound, redirect } from "next/navigation";
 import { Banda } from "@/components/shared/banda";
@@ -276,7 +277,9 @@ export default async function ResultadosEvaluacionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  // LA FORMA DEL ID, ANTES DE PREGUNTARLE A LA BASE: un texto que no es un id da 404, no un 500
+  // (`lib/routing/id-de-ruta.ts`, caso de Sentry del 2026-11-05).
+  const id = idDeRuta((await params).id);
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 

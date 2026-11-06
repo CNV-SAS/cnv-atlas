@@ -1,3 +1,4 @@
+import { idDeRuta } from "@/lib/routing/id-de-ruta";
 import { theadTr, th } from "@/components/shared/tabla";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
@@ -37,7 +38,9 @@ export default async function IdentifiedAccessPage({
     redirect("/no-autorizado");
   }
 
-  const { patientId } = await params;
+  // LA FORMA DEL ID, ANTES DE PREGUNTARLE A LA BASE: un texto que no es un id da 404, no un 500
+  // (`lib/routing/id-de-ruta.ts`, caso de Sentry del 2026-11-05).
+  const patientId = idDeRuta((await params).patientId);
   const ip = await getClientIp();
   const result = await accessIdentifiedNotes({
     userId: user.id,

@@ -1,3 +1,4 @@
+import { idDeRuta } from "@/lib/routing/id-de-ruta";
 import { Panel } from "@/components/shared/panel";
 import { Banda } from "@/components/shared/banda";
 import { VolverA } from "@/components/shared/volver-a";
@@ -56,7 +57,9 @@ export default async function HistoriaPacientePage({
 }: {
   params: Promise<{ patientId: string }>;
 }) {
-  const { patientId } = await params;
+  // LA FORMA DEL ID, ANTES DE PREGUNTARLE A LA BASE: un texto que no es un id da 404, no un 500
+  // (`lib/routing/id-de-ruta.ts`, caso de Sentry del 2026-11-05).
+  const patientId = idDeRuta((await params).patientId);
   const user = await requireUser();
   const puedeArchivar = canArchivePatient(user);
   if (!canViewPatients(user)) redirect("/no-autorizado");

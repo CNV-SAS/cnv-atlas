@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { formatDate } from "@/lib/format/date";
+import { esUnId } from "@/lib/routing/id-de-ruta";
 import { recordAudit } from "@/modules/audit/log";
 import { requireUser } from "@/modules/auth/session";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
@@ -30,6 +31,9 @@ export const runtime = "nodejs";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // UN TEXTO QUE NO ES UN ID se contesta como lo que no existe (404) y no con un 500 desde el primer
+  // lector (`lib/routing/id-de-ruta.ts`).
+  if (!esUnId(id)) return new NextResponse("Evaluación no disponible", { status: 404 });
   const user = await requireUser();
   if (!canViewPatients(user)) return new NextResponse("No autorizado", { status: 403 });
 

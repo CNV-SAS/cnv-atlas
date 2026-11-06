@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { idDeRuta } from "@/lib/routing/id-de-ruta";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { requireUser } from "@/modules/auth/session";
@@ -30,7 +31,9 @@ export const metadata = { title: "Corregir las condiciones de la toma - Atlas" }
 // clínicas (qué advertencias hay que reconocer, qué condiciones son obligatorias según el sexo, que una
 // contraindicación bloquea el import), y un segundo formulario se separaría del primero en el siguiente cambio.
 export default async function CorregirCondicionesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  // LA FORMA DEL ID, ANTES DE PREGUNTARLE A LA BASE: un texto que no es un id da 404, no un 500
+  // (`lib/routing/id-de-ruta.ts`, caso de Sentry del 2026-11-05).
+  const id = idDeRuta((await params).id);
   const user = await requireUser();
   // MISMA POLICY QUE CAPTURAR: quien responde las condiciones las corrige. La autoridad fina (profesional
   // asignado, evaluación vigente) la impone el servicio de corrección, como en la corrección de encuesta.
