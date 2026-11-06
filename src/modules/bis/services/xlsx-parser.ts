@@ -83,7 +83,18 @@ export async function parseBisXlsx(input: Buffer | ArrayBuffer): Promise<Result<
     // el Buffer empacado de exceljs no coincide con el generico de @types/node.
     await workbook.xlsx.load(input as Parameters<typeof workbook.xlsx.load>[0]);
   } catch {
-    return err(appError("validation", "El archivo no se pudo leer como un XLSX válido."));
+    // CADA MENSAJE DICE EL SIGUIENTE PASO, NO SOLO EL DIAGNOSTICO (2026-11-06). Medido sobre los 82
+    // intentos fallidos de la nube: 61 de ellos son el archivo equivocado o incompleto, y los unicos
+    // mensajes que nombraban el export correcto eran el de "datos del paciente" y el de los rangos. Un
+    // mensaje que solo dice que esta mal deja al profesional probando archivos.
+    return err(
+      appError(
+        "validation",
+        "El archivo no se pudo abrir como XLSX. Si lo guardaste como CSV o le cambiaste la extensión, " +
+          "vuelve al Biody Manager y expórtalo de nuevo con “Exportar medidas”: el que sirve es el XLSX " +
+          "tal como sale del programa, sin abrirlo ni volverlo a guardar.",
+      ),
+    );
   }
 
   // Primero por nombre (el caso normal y el mas barato), y si no, por huella.
@@ -100,7 +111,9 @@ export async function parseBisXlsx(input: Buffer | ArrayBuffer): Promise<Result<
         "validation",
         soloPacientes
           ? "Este archivo es el de “Exportar datos del paciente”, y no trae ninguna medición. Vuelve al Biody Manager y exporta con “Exportar medidas” marcada (sola o junto con los datos del paciente); ese archivo sí sirve."
-          : "El archivo no trae una hoja con mediciones de bioimpedancia. Tiene que ser un export de medidas del Biody Manager.",
+          : "El archivo no trae ninguna hoja con mediciones de bioimpedancia. En el Biody Manager, abre la " +
+            "medición del paciente y exporta con “Exportar medidas” marcada (sola o junto con los datos del " +
+            "paciente); ese archivo sí sirve.",
       ),
     );
   }
@@ -113,7 +126,13 @@ export async function parseBisXlsx(input: Buffer | ArrayBuffer): Promise<Result<
     headers.push(cellToHeader(headerValues[i]));
   }
   if (headers.length === 0 || headers.every((h) => h === "")) {
-    return err(appError("validation", "El archivo no tiene fila de encabezados."));
+    return err(
+      appError(
+        "validation",
+        "El archivo no trae la fila de encabezados de las columnas. Vuelve al Biody Manager y exporta de " +
+          "nuevo con “Exportar medidas”, sin editar el archivo antes de subirlo.",
+      ),
+    );
   }
 
   const dataRows: ParsedRow[] = [];
@@ -127,7 +146,13 @@ export async function parseBisXlsx(input: Buffer | ArrayBuffer): Promise<Result<
     dataRows.push({ rowNumber: r, cells });
   }
   if (dataRows.length === 0) {
-    return err(appError("validation", "El archivo no contiene filas de datos."));
+    return err(
+      appError(
+        "validation",
+        "El archivo trae las columnas pero ninguna medición: el export salió vacío. En el Biody Manager, " +
+          "selecciona la medición del paciente antes de exportar con “Exportar medidas”.",
+      ),
+    );
   }
 
   return ok({ sheetName: worksheet.name, headers, dataRows });
