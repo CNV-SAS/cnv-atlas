@@ -68,6 +68,10 @@ describe("parseBisXlsx", () => {
     const res = await parseBisXlsx(buf);
     expect(res.ok).toBe(false);
     if (res.ok) return;
-    expect(res.error.message).toContain("filas de datos");
+    // EL MENSAJE CAMBIO EL 2026-11-06 para decir QUE hacer y no solo que esta mal (medido: 61 de 82
+    // intentos fallidos eran el archivo equivocado o incompleto). Se ancla a lo que el mensaje tiene que
+    // CONSEGUIR, no a su redaccion: que el profesional sepa que el export salio vacio y como repetirlo.
+    expect(res.error.message).toContain("ninguna medición");
+    expect(res.error.message).toContain("Exportar medidas");
   });
 });

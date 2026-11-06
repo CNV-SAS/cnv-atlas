@@ -90,6 +90,7 @@ function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
     evaluationId: "ev-1",
     patientId: "pat-1",
     status: "draft",
+    metaDePesoKg: null,
     profesional: { nombre: "Profesional de prueba", profesion: "Nutricionista" },
     // snapshot parcial: sendReport solo se lo pasa a renderReportPdf, que esta mockeado.
     snapshot: { versions: { engine: "anibise-1.0.0" } } as unknown as ReportDispatch["snapshot"],

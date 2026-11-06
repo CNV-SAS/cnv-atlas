@@ -20,6 +20,22 @@ export type PuntoSerie = {
   icaBis: number | null;
   /** Dominios del DFI (5), para el radar comparativo. */
   dominios: { id: string; nombre: string; sev: number }[] | null;
+  /**
+   * La EB-BIS v7 SELLADA en ese reporte (edad biologica estimada y su IAE), o null.
+   *
+   * SE LEE DEL SELLO, NO SE RECALCULA: es la cifra que ese dia se le dijo al paciente. null en los
+   * reportes sellados antes del 2026-10-29, que llevan la v5 en `indicators.eb` y no esta: esa es la
+   * cifra que la decision de agosto no queria mostrar.
+   */
+  eb: { eb: number; iae: number } | null;
+  /**
+   * La version del motor con la que se sello este punto (`snapshot.versions.engine`).
+   *
+   * HACE FALTA PARA NO RESTAR ENTRE DOS ESCALAS: `sonComparables` compara la version MAYOR, y dos mayores
+   * distintas no se comparan (criterio de `docs/VERSIONES.md`, cableado el 2026-10-24). null = no se pudo
+   * leer, y entonces tampoco se compara.
+   */
+  engineVersion: string | null;
 };
 
 /**

@@ -351,4 +351,14 @@ export type DominiosAnteriores = {
   fecha: string;
   /** La severidad (0 a 3) por id de dominio. */
   porDominio: Record<string, number>;
+  /**
+   * La edad biologica estimada SELLADA en esa consulta y su IAE, tal cual. null = ese sello no trae la v7
+   * (todos los anteriores al 2026-10-29): lleva la v5 en `indicators.eb`, que es la cifra retirada.
+   */
+  edad: { eb: number; iae: number } | null;
+  /**
+   * La version del motor con la que se sello esa consulta. La necesita `comparacionDeLaEdad` para saber
+   * si la resta es entre la misma escala; null = no se pudo leer, y entonces no se compara.
+   */
+  engineVersion: string | null;
 };

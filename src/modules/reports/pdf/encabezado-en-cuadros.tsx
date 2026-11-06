@@ -39,8 +39,19 @@ import { MARCA_AZUL, MARCA_HONDA } from "./estilos-del-pdf";
 export type CuadroDelEncabezado = { rotulo: string; valor: string };
 
 export type DatosDelEncabezado = {
-  /** El titulo del documento ("Informe ANI-BIS-E"). */
+  /** El titulo del documento ("Informe de evaluación bioeléctrica"). */
   titulo: string;
+  /**
+   * El subtitulo, pequeño, debajo del titulo. Solo el informe lo lleva (Santiago, 2026-11-06): posiciona
+   * el modelo sin meter su nombre en el titulo, que es lo que el paciente lee primero.
+   */
+  subtitulo?: string;
+  /**
+   * Apaga la firma de CNV de ARRIBA. El informe la baja al pie, donde la pone su maqueta; la hoja del
+   * plan y la historia clinica la siguen llevando aqui. La firma no desaparece del documento: cambia de
+   * sitio, y por eso esto es una bandera y no un borrado.
+   */
+  sinFirma?: boolean;
   paciente: string;
   /** "CC 1.020.304". Vacio = no se pudo resolver, y la caja dice que no consta en vez de quedar en blanco. */
   documento: string;
@@ -67,6 +78,10 @@ const ROTULO = "#6b7280";
 
 const estilos = StyleSheet.create({
   titulo: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 8 },
+  // CON SUBTITULO EL TITULO NO DEJA AIRE DEBAJO: los dos son un solo bloque, y 8 puntos en medio los
+  // leeria como dos cosas distintas.
+  tituloConSubtitulo: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 1 },
+  subtitulo: { fontSize: 9, color: "#4b5563", marginBottom: 10 },
   firma: {
     fontSize: 9,
     color: MARCA_AZUL,
@@ -82,7 +97,7 @@ const estilos = StyleSheet.create({
   rotulo: { fontSize: 7, color: ROTULO, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 },
   valor: { fontSize: 10 },
   // LA LINEA DE DEBAJO: quien atendio a la izquierda y la otra fecha a la derecha, en el mismo renglon.
-  pie: { flexDirection: "row", justifyContent: "space-between", marginTop: 5, marginBottom: 14 },
+  pie: { flexDirection: "row", justifyContent: "space-between", marginTop: 5, marginBottom: 9 },
   pieTexto: { fontSize: 9, color: "#374151" },
 });
 
@@ -97,8 +112,9 @@ export function EncabezadoEnCuadros({ datos }: { datos: DatosDelEncabezado }) {
   ];
   return (
     <>
-      <Text style={estilos.titulo}>{datos.titulo}</Text>
-      <Text style={estilos.firma}>Connected Nutrition Ventures</Text>
+      <Text style={datos.subtitulo ? estilos.tituloConSubtitulo : estilos.titulo}>{datos.titulo}</Text>
+      {datos.subtitulo ? <Text style={estilos.subtitulo}>{datos.subtitulo}</Text> : null}
+      {datos.sinFirma ? null : <Text style={estilos.firma}>Connected Nutrition Ventures</Text>}
 
       {/* LA CAJA NO SE PARTE ENTRE DOS HOJAS: media caja de identidad no identifica a nadie. */}
       <View style={estilos.cuadros} wrap={false}>

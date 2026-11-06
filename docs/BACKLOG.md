@@ -27,6 +27,82 @@
 
 ---
 
+## PENDIENTE (2026-11-06) · LO QUE QUEDA ABIERTO DE LA RONDA DEL INFORME, DEL BIS Y DE LOS CANDADOS · DECIDE SANTIAGO
+
+**Lo construido de esta ronda está cerrado en su commit.** Aquí solo lo que espera una palabra, para que
+esta lista no envejezca.
+
+### 1 · El informe en dos tipos: lo que se decidió y las tres cosas que faltan
+
+| pieza | estado |
+|---|---|
+| Título "Informe de evaluación bioeléctrica" + subtítulo con el modelo, firma de CNV al pie | **HECHO** |
+| Hoja 1 completa (encabezado, cifra, figura, cinco áreas, nota de interpretación), **una sola hoja** | **HECHO y medido renderizando**: 1 hoja con la lectura más larga del mapa y el párrafo de acompañamiento |
+| Hoja 2 de seguimiento (comparación de la edad, radar de dos figuras, áreas con su cambio, párrafo que anima) | **HECHO**: 2 hojas medidas |
+| Fuera el veredicto integrado, el párrafo de "cómo se lee", la gráfica de kilos y la línea de dónde vive el resto | **HECHO** (`EL_VEREDICTO_INTEGRADO_VA = false`; las dos piezas de la gráfica se borraron, no quedaron huérfanas) |
+| **La plantilla .docx de Santiago** | **ESPERA QUE LA DEJE FUERA DE GIT.** Carpeta propuesta: `C:\Users\sarro\plantillas-cnv\` (no bajo el repositorio). De ella salen el encabezado decorado y el pie como **assets y código**; el .docx no entra al repositorio (`docs/entregas/**/*.docx` está en `.gitignore` y `check-entregas` lo rechaza) |
+| **El límite medido de la hoja 1** | Con un nombre de 47 caracteres **y** la observación de la profesional, pasa a dos hojas. La observación NO está en su maqueta y se conservó por decisión nuestra. **O sale del informe inicial, o un inicial con nombre muy largo puede llevar dos hojas.** Apretar más sería encoger la figura clínica o bajar a 8 puntos lo que escribió una persona |
+| **El PDF de Valentina como referencia del profesional en gris** | No está en el disco de esta sesión. Si lo quiere aplicado, va por la misma carpeta fuera de git |
+
+**Y lo que de esta ronda entra a `PENDIENTES_CIENTIFICOS.md` cuando se le mande** (ver §3 de abajo): las
+tres frases del cambio por área ("Mejoró desde tu consulta anterior", "Está igual", "Es la que conviene
+trabajar primero"), el párrafo que anima en sus cinco caminos, y que el cambio mínimo por área es **una
+categoría de severidad** (`CAMBIO_MINIMO_AREA`). Los textos son nuestros; la escala es la suya.
+
+### 2 · El BIS y las consultas sin medición
+
+**El informe completo, con las cifras, está en `docs/entregas/CONSULTAS_SIN_BIS_2026-11-06.md`.**
+
+| pieza | de quién es la decisión | estado |
+|---|---|---|
+| Los cuatro mensajes del parser dicen qué archivo exportar y cómo | nuestra | **HECHO**, con candado (`el-error-de-importacion-dice-que-hacer`) |
+| La guía de una página para los profesionales | Santiago la manda | **HECHA**: `docs/GUIA_PROFESIONALES_SUBIR_BIS.md` |
+| La tarjeta "Medición BIS importada · tomada el ..." en las dos pestañas, con el verde de éxito | nuestra | **HECHO**, con un token de interfaz propio (`--exito`), no el verde clínico |
+| **Los 63 pacientes de Gildardo sin marca** | **Gildardo** | 72 consultas vivas sin medición, **ninguna marcada como prueba y ninguna confirmada como real**. Cuáles son pruebas suyas no lo dice el dato. Al marcar el PACIENTE (`patients.is_test`), sus consultas salen de las cifras y de investigación |
+| **El rótulo del botón de retirar** | **Santiago** | Dice "Esta consulta no ocurrió", y las 26 de María Camila SÍ ocurrieron (las 26 tienen encuesta respondida). Recomendación: cambiarlo a uno que cubra los dos casos y que el motivo diga cuál es. Una línea de copy |
+| **El ángulo de fase de 0,6°** | **Gildardo** (pregunta 2) | Entra como argumento para **revisar en vez de rechazar**, no como error del rango. El freno acertó: 0,6° no es una medición plausible. Lo que sigue abierto es que el rango `[1, 30]` no tiene fuente |
+| **La medición del archivo de prueba, en 23 pacientes** | **Santiago** | 29 de 490 mediciones son idénticas al XLSX de prueba (80,4 kg / 177 cm / 18,043 kg de grasa), en 29 consultas de 23 pacientes. Es lo que hizo que el ejemplo de seguimiento comparara dos cuerpos distintos (+18 kg y −13 cm de talla en dos meses). Es **el único salto de ese tamaño** en toda la cohorte |
+
+### 3 · `PENDIENTES_CIENTIFICOS.md`: no se toca hasta que v15 y v16 estén cerradas
+
+**Se manda al terminar v15 y v16, con lo que salga en el camino.** Las ediciones se acumulan aquí para
+hacerlas en UNA pasada: escribir el documento dos veces es como dos sitios con el mismo texto acaban
+diciendo cosas distintas.
+
+1. Se **mantienen los números** (nadie renumera).
+2. La **35 se mete dentro de la 15** y la **36 dentro de la 7**: que no conteste dos veces lo mismo.
+3. La **3** y la **5** pasan a "ya contestado".
+4. La **4** queda solo con su segunda mitad (banda contra trayectoria); su primera mitad la respondió su v15.
+5. Se rehace la **tabla de las bloqueantes**: hoy lista la 3 y la 4, que ya están contestadas.
+6. La **2** gana el caso del 19 de octubre (el ángulo de fase de 0,6°) **como argumento para revisar en
+   vez de rechazar**, no como error del rango.
+7. Entran los textos del informe de seguimiento que son nuestros (ver §1).
+8. El **.docx se genera al final**, con el documento ya cerrado.
+
+### 4 · El candado de deriva apunta a una entrega de hace seis semanas
+
+`HTML_VIGENTE` se deriva de las carpetas `html actualizado <día> <mes>`, y desde el 27 de septiembre
+Gildardo entrega en `Nuevos cambios html/<día> <mes>`. Así que "la entrega de hoy", para
+`frozen-deriva-vigente`, es el `ATLAS_v9.html` del 21 de septiembre y su archivo de hoy es el
+`ATLAS_v16.html` del 4 de noviembre.
+
+**Medido el 2026-11-06, y no hay sorpresas:** el frozen difiere del v16 en **ocho líneas** y las copias de
+`fixtures/reference` en **diez**, y las dieciocho son trabajo ya registrado:
+
+| cuántas | qué | dónde está registrado |
+|---|---|---|
+| 2 | `calcPatron` (el puntaje de Alimentación del ICEC) | v16 §4.2, paso 3 del plan |
+| 3 | `cIAE` y los pesos z del IFC y del PABU | la EB-BIS v7 de v15, paso 3 |
+| 3 | el motor calórico: Harris-Benedict sobre peso meta + 10 % | v12 §6, y es la **pregunta 1**, que frena |
+| 10 | el párrafo de dieta leyendo `d1Clasificar` | v16 §4.3, paso 5 |
+
+**El re-anclaje va al final del paso 5**, cuando entra con **cero tolerancias**. Hacerlo hoy obligaría a
+escribir dieciocho excepciones con su razón para borrarlas una por una en los pasos 3 y 5. Mientras tanto
+queda declarado en `fixtures/html-vigente.ts` y en `frozen-deriva-vigente.test.ts`, y el módulo nuevo
+(`engine.d1-clasificacion.js`) tiene su propio candado byte a byte contra el v16.
+
+---
+
 ## PENDIENTE (2026-11-05) · v15 Y v16 DE GILDARDO: EL PLAN ESTÁ, NO SE CONSTRUYÓ NADA · DECIDE SANTIAGO EL ORDEN, Y GILDARDO LA PREGUNTA 4
 
 **El plan entero, con tres columnas por punto (qué quiere, qué tiene Atlas verificado, qué toca), está en
@@ -35,7 +111,7 @@
 | pieza | de quién es la decisión | estado |
 |---|---|---|
 | **La pregunta 4: el DFI y las rutas leen el IAE de la v7** | **Gildardo**, y su v15 ya la responde (salida 1). Falta que lo confirme | **NO SE CONSTRUYÓ A PROPÓSITO.** Es un bump que recalcula las rutas activas de toda la cohorte. Libera los 60 informes frenados |
-| **v16 §4.4: la vista D1 por el peor grupo, no por el promedio** | nuestra | sin construir, **y es lo primero de la lista**: 11 pacientes de 631 ven "Adecuado" en verde con harina blanca diaria. Diez líneas en un componente, sin motor ni base |
+| **v16 §4.4: la vista D1 por el peor grupo, no por el promedio** | nuestra | **HECHO el 2026-11-06, y no como parche**: se portó `d1Clasificar` COMPLETO (frozen nuevo, `engine.d1-clasificacion.js`, con su diff byte a byte contra el v16 y los SIETE casos A-G de su §5). La tarjeta y la vista D1 lo leen; los otros cuatro lectores entran en el paso 5. Arreglar solo la tarjeta habría dejado DOS fuentes de la misma clasificación, que es el defecto que su v16 corrige |
 | **Los cortes ±5 inclusivos en rutas, protocolo y síntesis** | **Gildardo** (es la pregunta 7, y su v15 no la cierra: pasa a ser la 36) | sin construir. Tres personas están exactamente en el borde, medido sobre los valores v5 |
 | **v16 §7 + §2: el ICEC con `calcPatron`** (el interruptor `LE8_MAPEO_CORREGIDO`) | nuestra, y **la v7 la desbloquea**: si el ICEC no entra a la EB-BIS, la pregunta de μ y σ desaparece | sin construir. **Va en el MISMO bump y el MISMO recálculo** que el IAE de la v7 |
 | **v15 §1.3: la alerta contextual** (ICEC < 50 e IAE ≥ +5) | nuestra | sin construir, **y va DESPUÉS del ICEC**: hoy se dispararía sobre un ICEC que no mide la alimentación |

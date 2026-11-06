@@ -134,7 +134,9 @@ describe("ningún símbolo llega roto al PDF del paciente", () => {
     expect(TEXTO.length, "no se pudo leer el texto del PDF: lo de abajo no probaría nada").toBeGreaterThan(
       500,
     );
-    expect(TEXTO).toContain("Informe ANI-BIS-E");
+    // EL TITULO CAMBIO EL 2026-11-06 (Santiago): "Informe de evaluacion bioelectrica", con el modelo en
+    // el subtitulo. Lo que este control necesita es un ancla que exista; se usa el titulo de hoy.
+    expect(TEXTO).toContain("Informe de evaluación bioeléctrica");
   });
 
   it("la frase de control sale LEGIBLE del PDF, compuesta con el `Text` de la casa", async () => {

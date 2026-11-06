@@ -200,7 +200,15 @@ describe("el tamaño de la pastilla sigue a su contexto", () => {
 
   it("en D1, un escalón más que antes, grupo y pastilla juntos", () => {
     expect(SECCION).toContain('"rounded-full px-2 py-0.5 text-xs"');
-    expect(SECCION).toContain('<span className="text-sm text-foreground">{g.label}</span>');
-    expect(SECCION).not.toContain("text-[10px]");
+    // ═══ EL NOMBRE DEL GRUPO YA NO ES UN `span` SUELTO (v16, 2026-11-06) ═══
+    //
+    // Ahora lleva al lado su CATEGORIA (Protector / Moderar / Limitar / Riesgo), que es la causa 4 de la
+    // v16 de Gildardo: el verde significaba "frecuencia adecuada para su grupo", y "Carnes rojas: Nunca"
+    // en verde se leia como "la carne roja es protectora". Asi que el `span` del nombre ahora envuelve
+    // tambien la etiqueta, y la asercion se ancla al TAMAÑO, que es lo que este candado mide.
+    expect(SECCION, "el nombre del grupo dejo de ir en 14 px").toContain('className="text-sm text-foreground"');
+    // Y LA CATEGORIA VA MAS PEQUEÑA QUE EL NOMBRE, a proposito: es una aclaracion, no un rotulo nuevo.
+    expect(SECCION, "la categoria del grupo desaparecio de la grilla").toContain("{cat.texto}");
+    expect(SECCION, "la categoria quedo del mismo tamaño que el nombre").toContain("text-[10px]");
   });
 });

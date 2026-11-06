@@ -84,9 +84,23 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     const fecha = fechas.reduce((max, d) => (d > max ? d : max), fechas[0]);
     // Lo posterior a esta evaluacion no es parte de SU trayectoria.
     if (!dentroDelCorte(fecha, corte)) continue;
-    const snap = row.snapshot as { indicators?: Record<string, unknown>; dfi?: { domains?: unknown } } | null;
+    const snap = row.snapshot as {
+      indicators?: Record<string, unknown>;
+      dfi?: { domains?: unknown };
+      ebBis?: { estado?: string; eb?: unknown; iae?: unknown } | null;
+      versions?: { engine?: unknown } | null;
+    } | null;
     const ind = snap?.indicators ?? {};
     const dom = snap?.dfi?.domains;
+    // LA EB-BIS SOLO SI EL SELLO LA TRAE EN ESTADO "ok", por la misma razon por la que el informe la
+    // gatea asi: un sello anterior al 2026-10-29 lleva la v5 en `indicators.eb`, y esa es justo la cifra
+    // que la decision de agosto no queria que el paciente viera. Tomarla "porque el campo trae un
+    // numero" publicaria la cifra retirada y restaria entre dos escalas.
+    const ebSellada =
+      snap?.ebBis?.estado === "ok" && num(snap.ebBis.eb) !== null && num(snap.ebBis.iae) !== null
+        ? { eb: num(snap.ebBis.eb) as number, iae: num(snap.ebBis.iae) as number }
+        : null;
+    const engineVersion = typeof snap?.versions?.engine === "string" ? snap.versions.engine : null;
     puntos.push({
       evaluationId: row.evaluation_id,
       fecha,
@@ -101,6 +115,8 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
             sev: Number(d.sev ?? 0),
           }))
         : null,
+      eb: ebSellada,
+      engineVersion,
     });
   }
 

@@ -123,6 +123,7 @@ export async function GET(
       serie: await getSerieDelPaciente(dispatch.evaluationId),
       // LAS CINCO AREAS DE LA CONSULTA ANTERIOR, para que el radar dibuje las dos figuras.
       dominiosAnteriores: await getDominiosAnteriores(dispatch.evaluationId),
+      metaDePesoKg: dispatch.metaDePesoKg,
     },
   );
   return new NextResponse(new Uint8Array(pdf), {

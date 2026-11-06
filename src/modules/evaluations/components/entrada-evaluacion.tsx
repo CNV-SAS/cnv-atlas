@@ -379,12 +379,21 @@ export function EntradaEvaluacion({
         <h3 className="text-base font-semibold text-foreground">Medición BIS</h3>
         {composition ? (
           <div className="flex flex-col gap-3">
-            {/* NEUTRO, NO VERDE CLINICO (2026-09-05). Que la medicion se haya importado es un estado de
-                PROCESO; el verde de `clinical-optimal` significa un veredicto optimo SOBRE EL PACIENTE.
-                Ya se corrigio dentro del formulario del import, y dejarlo aqui seria tener el criterio
-                aplicado a medias en la misma pantalla. */}
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-              <CheckCircle2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            {/* ═══ VERDE DE EXITO, QUE NO ES EL VERDE CLINICO (Santiago, 2026-11-06) ═══
+
+                *"'Medicion BIS importada · tomada el ...' en Antropometria y en BIS: fondo blanco con
+                borde verde de exito, como el resto de tarjetas."*
+
+                AQUI DECIA "NEUTRO, NO VERDE CLINICO" (2026-09-05), y esa razon SIGUE EN PIE: el verde de
+                `clinical-optimal` es un veredicto OPTIMO SOBRE EL PACIENTE, y gastarlo en "el archivo se
+                importo" afirma de alguien algo que nadie midio. Lo que estaba mal era la conclusion: para
+                quitarle el verde clinico se dejo GRIS, y el gris no distingue lo que salio bien de lo que
+                esta a medias en una pantalla donde casi todo esta a medias.
+                La salida es un token propio de la capa de INTERFAZ, `--exito`, de otra familia de verde
+                (green-700 frente al emerald clinico). Y solo en el BORDE, con el fondo de la tarjeta: un
+                relleno verde a lo ancho vuelve a leerse como un juicio. Ver globals.css. */}
+            <div className="flex items-center gap-2 rounded-lg border border-exito/40 bg-card px-3 py-2">
+              <CheckCircle2 className="size-4 shrink-0 text-exito" aria-hidden />
               <span className="text-sm font-medium text-foreground">
                 Medición BIS importada
                 {composition.measurementDate

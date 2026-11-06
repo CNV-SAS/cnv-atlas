@@ -44,8 +44,24 @@ export const MARCA_TINTA = "#15161a";
 
 export const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
+  // ═══ LA HOJA DEL INFORME VA MAS APRETADA QUE LA DEL PLAN, Y ES MEDIDO (2026-11-06) ═══
+  //
+  // Santiago pidio que la hoja 1 del informe no se parta: *"que no haga espacio a otra hoja, ya que queda
+  // toda una hoja casi limpia"*. Con `page` a 40 puntos de margen y 1,4 de interlinea, el contenido
+  // medido (encabezado, cifra, figura de 272 puntos, cinco areas y la nota de interpretacion) daba 2
+  // hojas: se iban el quinto dominio y la nota.
+  //
+  // SE APRIETA LA TIPOGRAFIA, NO SE QUITA CONTENIDO: 32 puntos de margen y 1,3 de interlinea ganan los
+  // 110 puntos que faltaban. Verificado renderizando con un nombre de 47 caracteres y los cinco dominios.
+  //
+  // Y ES UN ESTILO PROPIO, NO un cambio en `page`, porque `page` lo comparte la HOJA DEL PLAN, que no
+  // tiene este problema (no lleva figura) y que Santiago ya reviso con su densidad. Apretar las dos por
+  // arreglar una seria cambiarle la maqueta a un documento que nadie pidio tocar.
+  pageInforme: { padding: 32, fontSize: 10, color: "#1a1a2e", lineHeight: 1.3 },
   // Discreta: mismo gris del pie, sin negrita y sin caja. Informa, no invita ni disuade.
-  derechoHc: { marginTop: 18, fontSize: 8, color: "#6b7280" },
+  derechoHc: { marginTop: 5, fontSize: 8, color: "#6b7280" },
+  // La nota de interpretacion del informe: letra pequeña, al cierre de la hoja, como en su maqueta.
+  notaAlPie: { marginTop: 4, fontSize: 8, color: "#4b5563", lineHeight: 1.3 },
   // Cada dia del menu junto: un dia partido entre dos hojas obliga a pasar pagina a media comida.
   diaMenu: { marginTop: 6 },
   // ═══ EL TITULO, LA FIRMA Y LAS FILAS DEL ENCABEZADO SE FUERON AL COMPONENTE (2026-11-05) ═══
@@ -84,6 +100,10 @@ export const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "bold",
   },
+  // EL TITULO Y EL SUBTITULO DE LA HOJA 2 (seguimiento, 2026-11-06). Mismo tamaño que el titulo del
+  // encabezado y mismo subtitulo pequeño: las dos hojas tienen que leerse como el mismo documento.
+  tituloDeHoja: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 1 },
+  subtituloDeHoja: { fontSize: 9, color: "#4b5563", marginBottom: 14 },
   section: { marginBottom: 12 },
   sectionTitle: { fontSize: 12, fontWeight: "bold", marginBottom: 4, color: MARCA_HONDA },
   tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderColor: "#ddd", paddingVertical: 2 },
@@ -107,7 +127,7 @@ export const styles = StyleSheet.create({
   // SIN CAJA NI FONDO DE COLOR, a proposito: una caja la convertiria en un aviso, y un aviso se lee como
   // alerta. La cifra no alerta de nada, informa; el veredicto es la banda del IAE que va debajo.
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
-  cifraBloque: { alignItems: "center", marginTop: 8, marginBottom: 16 },
+  cifraBloque: { alignItems: "center", marginTop: 2, marginBottom: 8 },
   cifraRotulo: {
     fontSize: 8,
     color: "#6b7280",
@@ -115,14 +135,14 @@ export const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 2,
   },
-  cifraGrande: { fontSize: 34, fontWeight: "bold", color: MARCA_HONDA },
+  cifraGrande: { fontSize: 30, fontWeight: "bold", color: MARCA_HONDA },
   /** El IAE con su banda: la unica linea de este bloque que lleva un veredicto, asi que va destacada. */
   cifraDelta: { fontSize: 11, fontWeight: "bold", color: MARCA_TINTA, marginTop: 2 },
   cifraPie: { fontSize: 8, color: "#6b7280", marginTop: 4, textAlign: "center" },
   // CADA DOMINIO, UN BLOQUE (Santiago, 2026-09-21): el nombre en negrita, su etiqueta con su color y la
   // frase debajo. En parrafo corrido las cinco se leian como un solo texto y no se veia cual pedia trabajo.
   // La barra de la izquierda repite el color de la etiqueta: refuerza, no sustituye a la palabra.
-  dominio: { marginTop: 5, paddingLeft: 7, borderLeftWidth: 2.5 },
+  dominio: { marginTop: 2, paddingLeft: 7, borderLeftWidth: 2.5 },
   dominioLectura: { marginTop: 1, color: "#374151" },
   bold: { fontWeight: "bold" },
   footer: {

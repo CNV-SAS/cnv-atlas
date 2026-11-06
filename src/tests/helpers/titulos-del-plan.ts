@@ -56,6 +56,13 @@ export const titulosDelInforme = (): string[] => {
   for (const m of INFORME.matchAll(/styles\.sectionTitle\}>([^<{][^<]*)</g)) {
     marcas.push({ i: m.index ?? 0, titulo: m[1].trim() });
   }
+  // EL TITULO DE LA HOJA 2 NO ES UN `sectionTitle`, y sin esto el barrido no lo veria (2026-11-06). El
+  // informe gano una hoja propia de seguimiento con su titulo grande, del mismo peso que el del documento;
+  // un extractor que solo mira los titulos de seccion diria que esa hoja no tiene ninguno, y el candado
+  // del orden compararia menos bloques de los que hay.
+  for (const m of INFORME.matchAll(/styles\.tituloDeHoja\}>([^<{][^<]*)</g)) {
+    marcas.push({ i: m.index ?? 0, titulo: m[1].trim() });
+  }
   for (const m of INFORME.matchAll(/<(Bloque\w+)\s/g)) {
     const titulo = TITULO_DEL_BLOQUE[m[1]];
     if (titulo) marcas.push({ i: m.index ?? 0, titulo });

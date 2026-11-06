@@ -182,6 +182,9 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       informe,
       serie,
       dominiosAnteriores,
+      // LA META DE PESO, para la frase de la hoja de seguimiento. Viene del mismo dispatch: su embed de
+      // `evaluations` ya se consultaba, asi que no agrega ninguna consulta.
+      metaDePesoKg: dispatch.metaDePesoKg,
     },
   );
 

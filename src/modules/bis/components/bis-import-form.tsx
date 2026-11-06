@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { formatDate } from "@/lib/format/date";
+import { CheckCircle2 } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +23,8 @@ export type BisImportEvaluationView = {
   firstName: string;
   lastName: string;
   alreadyImported: boolean;
+  /** Fecha ISO de la toma vigente, para decirla en la tarjeta. null = no hay o no se pudo resolver. */
+  measurementDate: string | null;
 };
 
 const initialState: ImportBisState = {
@@ -72,6 +76,14 @@ export function BisImportForm({
   // Ya importado (en la carga de la pagina o tras un envio exitoso): no se reimporta.
   const done = (evaluation.alreadyImported || state.imported) && !modoReemplazo && !variasMediciones;
 
+  // LA FECHA DE LA TOMA, de las DOS fuentes posibles: `state.fechaImportada` cuando acaba de entrar (el
+  // servidor la devuelve ya formateada) y la del lector cuando la medicion ya estaba. Se prefiere la
+  // recien importada, que es la que el profesional acaba de elegir. null = no se pudo resolver, y la
+  // frase sale sin ella: no se inventa una fecha de medicion.
+  const fechaDeLaToma =
+    state.fechaImportada ??
+    (evaluation.measurementDate ? formatDate(evaluation.measurementDate) : null);
+
   return (
     <Card>
       <CardHeader>
@@ -91,13 +103,29 @@ export function BisImportForm({
       <CardContent className="flex flex-col gap-4">
         {done ? (
           <div className="flex flex-col gap-1">
-            {/* NEUTRO, NO VERDE CLINICO (2026-09-05). Decia "importada" en `clinical-optimal`, y ese verde
-                significa un veredicto OPTIMO SOBRE EL PACIENTE, no que un archivo se cargo. Es la misma
-                confusion de capas que venimos cerrando en otras pantallas; aqui llevaba desde que se
-                escribio y el candado de capa clinica no lo veia porque no barre `modules/bis`. */}
-            <Badge variant="outline" className="w-fit">
-              Medición BIS importada
-            </Badge>
+            {/* ═══ LA MISMA TARJETA QUE EN ANTROPOMETRIA, Y CON SU FECHA (Santiago, 2026-11-06) ═══
+
+                *"'Medicion BIS importada · tomada el ...' en Antropometria y en BIS: fondo blanco con
+                borde verde de exito, como el resto de tarjetas."*
+
+                ERAN DOS FORMAS DISTINTAS DEL MISMO ESTADO: aqui una pastilla gris sin fecha, en
+                Antropometria un bloque gris con la fecha. El mismo hecho dicho de dos maneras en dos
+                pestañas de la misma consulta se lee como dos cosas distintas.
+
+                EL VERDE ES EL DE INTERFAZ (`--exito`), NO el clinico: la razon que en 2026-09-05 quito de
+                aqui el `clinical-optimal` sigue en pie (ese verde es un veredicto OPTIMO SOBRE EL
+                PACIENTE). Lo que estaba mal era quedarse en gris, que no distingue lo que salio bien.
+                Ver globals.css.
+
+                LA FECHA SALE DEL LECTOR cuando ya habia medicion, y de la importacion recien hecha
+                cuando acaba de entrar. Si no se puede resolver, la frase sale sin ella: no se inventa. */}
+            <div className="flex items-center gap-2 rounded-lg border border-exito/40 bg-card px-3 py-2">
+              <CheckCircle2 className="size-4 shrink-0 text-exito" aria-hidden />
+              <span className="text-sm font-medium text-foreground">
+                Medición BIS importada
+                {fechaDeLaToma ? ` · tomada el ${fechaDeLaToma}` : ""}.
+              </span>
+            </div>
             {state.valueCount !== null ? (
               <span className="text-xs text-muted-foreground">
                 Se guardaron {state.valueCount} variables de la medicion.

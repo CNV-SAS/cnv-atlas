@@ -8,14 +8,19 @@ import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
 import { EncabezadoEnCuadros } from "./encabezado-en-cuadros";
 import { COLOR_SEVERIDAD, RadarDelPaciente } from "./radar-del-paciente";
 
-import { cambioDesdeLaAnterior } from "../cambio-desde-la-anterior";
+import {
+  comparacionDeLaEdad,
+  compararAreas,
+  parrafoDeAnimo,
+  type MetaDePeso,
+} from "@/clinical-engine/comparacion-paciente";
+import { sonComparables } from "@/modules/followups/services/eb-trajectory";
 import { ebBisEnPiezas, NOTA_DFI_SIN_ENCUESTA } from "@/clinical-engine/presentacion-eb-bis";
 import { styles } from "./estilos-del-pdf";
 import { formatDateOnly } from "@/lib/format/date";
 
 import type { PuntoDelPaciente } from "../data/serie-del-paciente";
 import type { DominiosAnteriores, InformeDelPaciente } from "../data/reports-view-types";
-import { GraficaTrayectoria } from "./grafica-trayectoria";
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
 // EngineOutput que la propagacion dejo en reports). NO es un componente de Next: lo
@@ -123,7 +128,70 @@ export type ReportMeta = {
  * que al voltearla la suite sigue verde y sigue midiendo la decision. Un candado que hubiera que apagar a
  * mano para ejercer una decision ya tomada es friccion, no garantia.
  */
-export const EL_VEREDICTO_INTEGRADO_VA = true;
+export const EL_VEREDICTO_INTEGRADO_VA = false;
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// DOS TIPOS DE INFORME: INICIAL (UNA HOJA) Y SEGUIMIENTO (DOS)  ·  Santiago, 2026-11-06
+//
+// Lo reviso impreso y escribio la maqueta hoja por hoja. Lo que cambia:
+//
+//   1 · EL TITULO. *"En vez de Informe ANIBISE, algo tipo 'Informe de evaluacion bioelectrica' y en un
+//       subtitulo pequeño 'bajo el modelo de atencion en salud ANI-BIS-E', ya que asi es como esta
+//       formalizado en CNV. Esto posiciona el modelo y se adapta a lo que el paciente entiende por
+//       informe."* La firma de CNV baja al pie, que es donde la pone su maqueta.
+//
+//   2 · LA HOJA 1 NO SE PARTE. *"Me gustaria que toda la hoja 'Tu evaluacion bioelectrica integral, area
+//       por area' aparezca en la primera junto al cuadro y no haga espacio a otra hoja, ya que queda toda
+//       una hoja casi limpia."* Se quita el salto de pagina que la separaba; verificado renderizando que
+//       cabe con un nombre largo y los cinco dominios.
+//
+//   3 · SALEN TRES BLOQUES, y los tres por la misma razon: le hablan al paciente en medidas o le repiten
+//       lo que ya sabe.
+//         · el parrafo de "Este es el resumen de tu valoracion...", que explicaba como leer el documento;
+//         · el veredicto integrado (la bandera de arriba, ahora en `false`);
+//         · la grafica de peso, masa grasa y masa sin grasa con sus tres frases. Textual suyo: *"El
+//           paciente no quiere saber eso... No utilizar terminos asi como masa grasa, etc. Simplemente,
+//           cosas como 'estuviste mas cerca de alcanzar la meta de peso X'."*
+//         · y la linea de donde vive el resto (plan, suplementos, remisiones).
+//
+//   4 · ENTRA LA NOTA DE INTERPRETACION. *"Los resultados corresponden a la medicion realizada en la fecha
+//       indicada y deben interpretarse junto con la historia clinica y la valoracion profesional. No
+//       constituyen por si solos un diagnostico."*
+//
+//       Y HAY QUE DECIR POR QUE AHORA SI, porque una frase parecida se RETIRO el 2026-09-01: entonces
+//       contradecia al documento, que en el bloque "Como estas" le decia al paciente que su
+//       envejecimiento estaba acelerado. Con el veredicto integrado fuera, esa contradiccion ya no existe:
+//       el documento muestra la cifra y las cinco areas con su etiqueta, y no emite un juicio de conjunto.
+//       Por eso la nota ya no afirma lo contrario de lo que el papel hace.
+//
+//   5 · LA HOJA 2, SOLO EN SEGUIMIENTO: la comparacion de la edad estimada, el radar de las dos consultas
+//       con su leyenda, las cinco areas con si mejoraron o conviene trabajarlas, y un parrafo que anima
+//       sin mentir. Las reglas de ese parrafo (frases fijas, nunca IA, sin terminos tecnicos, la meta de
+//       peso solo si esta registrada) viven en `clinical-engine/comparacion-paciente.ts`.
+//
+// ═══ LO QUE SE QUEDA Y NO ESTA EN SU MAQUETA, declarado para que lo pueda cortar ═══
+//
+//   · LA OBSERVACION DE LA PROFESIONAL Y LA PROXIMA CITA. Es lo UNICO del documento que una persona
+//     escribio para este paciente, y la ronda anterior la dejo por eso mismo. Va al final de la ULTIMA
+//     hoja: la primera en un inicial, la segunda en un seguimiento.
+//   · EL DERECHO A PEDIR LA HISTORIA CLINICA (obligacion legal, asesoria del 2026-09-01) y el
+//     identificador del pie.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** El titulo que el paciente lee, y el subtitulo que posiciona el modelo. Los dos son de Santiago. */
+export const TITULO_DEL_INFORME = "Informe de evaluación bioeléctrica";
+export const SUBTITULO_DEL_INFORME =
+  "Resultados de medición bajo el modelo de atención en salud ANI-BIS-E";
+
+/**
+ * LA NOTA DE INTERPRETACION, al cierre de la hoja 1. Verbatim de Santiago.
+ *
+ * NO ES UN DESCARGO QUE CONTRADIGA AL DOCUMENTO (ver el punto 4 de arriba): dice que la lectura se hace
+ * con la historia clinica y con el profesional, que es cierto, y ya no convive con un veredicto de riesgo.
+ */
+export const NOTA_DE_INTERPRETACION =
+  "Los resultados corresponden a la medición realizada en la fecha indicada y deben interpretarse junto " +
+  "con la historia clínica y la valoración profesional. No constituyen por sí solos un diagnóstico.";
 
 // Modo de envio: que contenido incluye el PDF (B10.1). 'atlas' = reporte del motor;
 // 'notas' = solo las notas del profesional; 'ambos' = los dos.
@@ -140,6 +208,7 @@ export function ReportDocument({
   informe = null,
   serie = [],
   dominiosAnteriores = null,
+  metaDePesoKg = null,
 }: {
   snapshot: EngineOutput;
   meta: ReportMeta;
@@ -197,6 +266,15 @@ export function ReportDocument({
    * 2026-11-05). null = consulta inicial, y el radar sale como siempre.
    */
   dominiosAnteriores?: DominiosAnteriores | null;
+  /**
+   * LA META DE PESO REGISTRADA por el profesional (`evaluations.weight_goal_kg`), en kg.
+   *
+   * null = no hay meta registrada, y entonces el parrafo de la hoja 2 sale SIN frase de meta. No se cae al
+   * default de Lorentz a proposito: la frase va en la DIRECCION de la meta, y una meta que nadie fijo no
+   * tiene direccion (bajar es acercarse para unos y alejarse para otros). Es la regla 4 de
+   * `comparacion-paciente.ts`.
+   */
+  metaDePesoKg?: number | null;
 }) {
   // SOLO SE DESESTRUCTURA LO QUE ESTE DOCUMENTO PUEDE IMPRIMIR. `indicators`, `efrPhenotype`,
   // `structural`, `frSector` y `versions` se retiraron con sus bloques (§7.1): un documento que no tiene
@@ -220,9 +298,6 @@ export function ReportDocument({
   // para que valga también en reportes YA SELLADOS con encuesta incompleta (no se reescriben, pero dejan de
   // mostrar la banda). El sellado (computeTrajectoryToSeal) ya no sella banda para incompletos de aquí en más.
   const showBand = showAtlas && Boolean(bandText) && dfi.complete;
-  // El cambio desde la consulta anterior, en frases. Vacio cuando no hay dos mediciones que comparar, y
-  // entonces el bloque de seguimiento sale solo con su grafica, como estaba.
-  const cambios = showAtlas ? cambioDesdeLaAnterior(serie) : [];
   // LA EDAD BIOLOGICA ESTIMADA, solo de la v7 (ver la cabecera: un snapshot viejo lleva la cifra v5 en
   // `indicators.eb`, que es justo la que su decision de agosto no queria que el paciente viera).
   // SE ARMA SOLO CON `snapshot.ebBis`, que lleva sus dos cifras: este documento NO puede tocar
@@ -244,9 +319,86 @@ export function ReportDocument({
     snapshot.ebBis?.estado === "ok"
       ? ebBisEnPiezas(snapshot.ebBis.eb, snapshot.ebBis.iae)
       : null;
+
+  // ═══ LA HOJA 2 EXISTE CUANDO HAY CONSULTA ANTERIOR CON QUE COMPARAR ═══
+  //
+  // La condicion es `dominiosAnteriores`, no el TIPO de la evaluacion, y es a proposito: un seguimiento
+  // cuya consulta anterior no llego a sellar sus areas no tiene nada que comparar, y una hoja 2 con cinco
+  // "no se puede comparar" es peor que no tenerla. El tipo lo decide el dato, no el rotulo.
+  const esSeguimiento = showAtlas && Boolean(dominiosAnteriores) && dfi.complete && Boolean(dfiPac);
+  // LA COMPARACION DE LA EDAD la decide el motor, que recibe las dos cifras y las dos versiones. La
+  // comparabilidad por version MAYOR sale de `sonComparables`, que es donde ya vive ese criterio.
+  const edad = dominiosAnteriores
+    ? comparacionDeLaEdad({
+        ebHoy: snapshot.ebBis?.estado === "ok" ? snapshot.ebBis.eb : null,
+        ebAnterior: dominiosAnteriores.edad?.eb ?? null,
+        mismaEscala: sonComparables(snapshot.versions?.engine, dominiosAnteriores.engineVersion),
+      })
+    : null;
+  const ebAnteriorEnPiezas =
+    dominiosAnteriores?.edad && edad?.estado === "comparable"
+      ? ebBisEnPiezas(dominiosAnteriores.edad.eb, dominiosAnteriores.edad.iae)
+      : null;
+  const areas = dominiosAnteriores && dfiPac ? compararAreas(dfiPac.dominios, dominiosAnteriores.porDominio) : [];
+  // LA META DE PESO sale de la serie que ya viaja al documento (las dos ultimas mediciones) y de la meta
+  // REGISTRADA. Sin los tres datos no hay frase: no se rellena ninguno.
+  const pesoHoy = serie.length >= 2 ? serie[serie.length - 1].pesoKg : null;
+  const pesoAntes = serie.length >= 2 ? serie[serie.length - 2].pesoKg : null;
+  const metaPeso: MetaDePeso | null =
+    metaDePesoKg != null && metaDePesoKg > 0 && pesoHoy != null && pesoAntes != null
+      ? { metaKg: metaDePesoKg, pesoHoyKg: pesoHoy, pesoAnteriorKg: pesoAntes }
+      : null;
+
+  /**
+   * La observacion de la profesional y la proxima cita: van al final de la ULTIMA hoja.
+   *
+   * ═══ COMPACTO DESDE EL 2026-11-06, Y ES POR LA HOJA 1 ═══
+   *
+   * Era un bloque con titulo propio ("Tu seguimiento"), el rotulo de la observacion en su propia linea y
+   * la cita en otra: unos 55 puntos. En la maqueta nueva de Santiago la hoja 1 no tiene ese aire, y la
+   * medicion con las cinco lecturas mas largas lo confirmo: la empujaba a una segunda hoja.
+   *
+   * Asi que el titulo sale y el rotulo pasa a ir EN LINEA con el texto. Lo que NO cambia es que la
+   * observacion diga de QUIEN es (Santiago, 2026-09-19): suelta se leia como un texto del sistema, y
+   * decir que la escribio su profesional cambia como se lee. El rotulo se conserva; su renglon, no.
+   */
+  const bloqueDeSeguimiento =
+    showAtlas && informe && (informe.seguimiento.observacion || informe.seguimiento.proximaCita) ? (
+      <View style={{ marginTop: 5 }}>
+        {informe.seguimiento.observacion ? (
+          <Text style={styles.para}>
+            <Text style={styles.bold}>Observaciones de tu profesional: </Text>
+            {informe.seguimiento.observacion}
+          </Text>
+        ) : null}
+        {informe.seguimiento.proximaCita ? (
+          <Text style={styles.para}>
+            <Text style={styles.bold}>Tu próxima consulta: </Text>
+            {informe.seguimiento.proximaCita}
+          </Text>
+        ) : null}
+      </View>
+    ) : null;
+
+  /**
+   * El pie, fijo en las dos hojas.
+   *
+   * LLEVA LA FIRMA DE CNV, que BAJO del encabezado (Santiago: *"En vez de dejar CONNECTED NUTRITION
+   * VENTURES arriba... en el footer vaya tal cual esos datos"*). Cuando llegue su plantilla .docx, el pie
+   * gana su decoracion y sus datos de contacto; hasta entonces la firma no desaparece del documento, que
+   * es lo que pasaria si se quitara de arriba sin ponerla abajo.
+   *
+   * EL IDENTIFICADOR SE QUEDA porque es lo unico del pie que el paciente puede USAR: es como nombra su
+   * documento si llama a preguntar, y desde el se llega a las tres versiones selladas.
+   */
+  const pie = (
+    <Text style={styles.footer} fixed>
+      Connected Nutrition Ventures SAS · Informe {meta.reportId}
+    </Text>
+  );
   return (
     <Document
-      title={`Informe ANI-BIS-E ${meta.documentLabel}`}
+      title={`${TITULO_DEL_INFORME} ${meta.documentLabel}`}
       author="Connected Nutrition Ventures"
     >
       {/* CARTA, NO A4 (Santiago, 2026-09-20). Salia en A4 mientras la historia clinica (`hc-document`) y
@@ -255,7 +407,7 @@ export function ReportDocument({
           angosta y mas alta (210x297 mm contra 216x279), asi que no es la misma hoja con otro nombre:
           impresa en carta deja margenes desiguales, y las dos medidas son las que Santiago necesita para
           la maqueta. */}
-      <Page size="LETTER" style={styles.page}>
+      <Page size="LETTER" style={styles.pageInforme}>
         {/* ═══ EL ENCABEZADO EN CUADROS, COMPARTIDO CON LA HOJA DEL PLAN Y LA HISTORIA CLINICA ═══
 
             Era un titulo, una firma y cinco filas etiqueta-valor. La caja de tres columnas pone la
@@ -274,7 +426,11 @@ export function ReportDocument({
             muerta es el cable que alguien vuelve a conectar sin saber por que se desconecto. */}
         <EncabezadoEnCuadros
           datos={{
-            titulo: "Informe ANI-BIS-E",
+            titulo: TITULO_DEL_INFORME,
+            subtitulo: SUBTITULO_DEL_INFORME,
+            // LA FIRMA BAJA AL PIE (ver el comentario de `pie`): aqui se apaga, no se borra del
+            // componente, porque la hoja del plan y la historia clinica la siguen llevando arriba.
+            sinFirma: true,
             paciente: meta.patientName,
             documento: meta.documentLabel,
             tercera: { rotulo: "Fecha de medición", valor: meta.evaluationDate },
@@ -367,21 +523,27 @@ export function ReportDocument({
             {/* EL IAE CON SU BANDA, verbatim del motor: la cifra con signo y su veredicto son de su
                 tabla 3, y la banda ("envejecimiento acelerado estimado") es lectura clinica suya. */}
             <Text style={styles.cifraDelta}>{ebBis.iae}</Text>
-            <Text style={styles.cifraPie}>
-              Estimada por el modelo ANI-BIS-E sobre tu medición de bioimpedancia.
-            </Text>
+            {/* EL PIE DE LA CIFRA SE FUSIONO CON LA EXPLICACION DE DEBAJO (2026-11-06): decian la misma
+                cosa en dos bloques ("sale de tu medicion" / "estimada por el modelo sobre tu medicion"),
+                y los dos bloques costaban una hoja. El hecho que aporta cada uno se conserva en la frase
+                de abajo: QUIEN la estima (el modelo, no el equipo) y CONTRA QUE se compara. */}
           </View>
         ) : null}
 
+        {/* LA EXPLICACION VA PEGADA A LA CIFRA, sin el margen de una seccion propia: son una sola pieza
+            (el cuadro de la edad estimada de su maqueta), y 12 puntos en medio las separaba en dos. */}
         {showAtlas && ebBis ? (
-          <View style={styles.section}>
+          <View>
             {/* QUE ES, EN UNA LINEA. Su tabla da la cifra y su banda, no una explicación; sin ella la
                 frase "acorde con sus pares" deja al paciente sin saber con quién se lo compara. Esto
                 describe de dónde sale el número, no lo interpreta: el veredicto es el de su banda. */}
-            <Text style={styles.para}>
-              Es una estimación que sale de tu medición corporal, comparada con personas de tu misma edad
-              y composición. No es una enfermedad ni un pronóstico: es un punto de partida para lo que
-              vas a trabajar con tu profesional.
+            {/* SE ACORTO A DOS LINEAS el 2026-11-06 para que la hoja 1 no se parta, y lo que se quito es
+                la mitad que el pie de la cifra ya dice ("sale de tu medicion"). Lo que NO se quita es que
+                no es una enfermedad ni un pronostico: eso es lo que evita que el paciente lea la cifra
+                como un diagnostico. */}
+            <Text style={[styles.para, { textAlign: "center" }]}>
+              Estimada por el modelo ANI-BIS-E al comparar tu medición con personas de tu misma edad y
+              composición. No es una enfermedad ni un pronóstico.
             </Text>
             {/* SU NOTA, cuando la encuesta no está completa (tabla 3): la edad biológica sale sola y el
                 diagnóstico integrado queda pendiente. Es lo que explica que el bloque siguiente falte. */}
@@ -428,8 +590,19 @@ export function ReportDocument({
             Asi que de mis dos objeciones sobrevive la segunda (el titulo dice "area", como el resto del
             documento, y no introduce "dominios") y la primera queda CONTESTADA, no descartada: lo que
             afirmaria de mas, lo corrige "integral". ═══ */}
+        {/* ═══ Y DESDE EL 2026-11-06 YA NO HAY SALTO DE PAGINA ═══
+
+            Santiago: *"Me gustaria que toda la hoja 'Tu evaluacion bioelectrica integral, area por area'
+            aparezca en la primera junto al cuadro y no haga espacio a otra hoja, ya que queda toda una
+            hoja casi limpia."*
+
+            Lo que el salto arreglaba (que la figura de 272 puntos no se partiera y no cayera sola a la
+            hoja siguiente) sigue resuelto por otro lado: con los tres bloques que salieron hoy, encima de
+            la figura ya no queda texto variable que la empuje. El `wrap={false}` de la figura se queda,
+            que es lo que impide partirla. Verificado renderizando con un nombre largo y los cinco
+            dominios: una sola hoja. */}
         {showAtlas && dfiPac && dfi.complete ? (
-          <View style={styles.section} break>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tu evaluación bioeléctrica integral, área por área</Text>
 
             {/* ═══ EL VEREDICTO INTEGRADO Y SU ORIENTACION, QUE ERAN EL BLOQUE "COMO ESTAS" (2026-11-05) ═══
@@ -456,12 +629,16 @@ export function ReportDocument({
                 reescribirlo: dice *"la primera frase es el resumen general; debajo aparece cada area por
                 separado, y la figura las muestra todas juntas"*, y aqui las tres cosas estan a la vista en
                 esa misma hoja. Antes la figura quedaba en la hoja siguiente. */}
-            <Text style={styles.para}>
-              Este es el resumen de tu valoración: cómo está tu cuerpo hoy, según las medidas que te tomamos
-              y lo que nos contaste. La primera frase es el resumen general; debajo aparece cada área por
-              separado, y la figura las muestra todas juntas. Si algo no te queda claro, pregúntaselo a
-              quien te atendió.
-            </Text>
+            {/* ═══ AQUI IBA EL PARRAFO QUE EXPLICABA COMO LEER EL DOCUMENTO, Y SALE (Santiago, 2026-11-06) ═══
+
+                Decia *"Este es el resumen de tu valoracion... La primera frase es el resumen general;
+                debajo aparece cada area por separado, y la figura las muestra todas juntas."* Santiago lo
+                marco como texto que sobra, y su primera mitad ADEMAS dejo de ser cierta hoy: con el
+                veredicto integrado apagado ya no hay "primera frase" que resuma nada, asi que el parrafo
+                anunciaba un bloque que no esta.
+
+                Lo que hacia falta de el sigue dicho por la propia figura: su leyenda explica que cuanto
+                mas cerca del centro, mejor. */}
             {/* La bandera de arriba es el interruptor de Santiago: una linea, sin tocar nada mas. */}
             {EL_VEREDICTO_INTEGRADO_VA ? (
               <Text style={styles.para}>
@@ -477,14 +654,14 @@ export function ReportDocument({
                 Y DIBUJA LAS DOS CONSULTAS cuando hay una anterior (Santiago, 2026-11-05): la de hoy en
                 linea gruesa y la de entonces en contorno fino, con su leyenda. Si es inicial,
                 `dominiosAnteriores` llega en null y sale como siempre. */}
-            <RadarDelPaciente
-              dominios={dfiPac.dominios}
-              anteriores={
-                dominiosAnteriores
-                  ? { ...dominiosAnteriores, fecha: formatDateOnly(dominiosAnteriores.fecha) }
-                  : null
-              }
-            />
+            {/* ═══ EN LA HOJA 1 EL RADAR DIBUJA SOLO LA CONSULTA DE HOY (Santiago, 2026-11-06) ═══
+
+                *"La hoja 1 muestra exactamente lo mismo, solo que el radar solo se muestra el de la
+                evaluacion actual. Y no muestra el radar de seguimiento (2 evaluaciones)."*
+
+                Las dos figuras pasan a la hoja 2, que es la hoja de la comparacion: ahi la leyenda de las
+                dos lineas esta al lado de lo que explica, en vez de en la hoja del retrato de hoy. */}
+            <RadarDelPaciente dominios={dfiPac.dominios} anteriores={null} />
             {dfiPac.dominios.map((d) => {
               // SIN COLOR cuando el dominio no se midio: pintarlo de verde seria la lectura favorable de
               // un vacio, que su punto 4 del 30-ago prohibe. Y SIN ETIQUETA, porque su mapa no cubre ese
@@ -563,47 +740,28 @@ export function ReportDocument({
             NI SU TEXTO NI SU GATEO CAMBIAN. Sigue dependiendo de `dfi.complete` (la banda es cambio de
             EB-BIS, salida que DEPENDE de la encuesta: con la encuesta a medias la EB se infla, D-007) y de
             que el profesional CONFIRMARA comunicar un "empeoro", que es un acto aparte de aprobar. */}
-        {showBand ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cambio respecto a tu medición anterior</Text>
-            <Text>{bandText}</Text>
-            {/* §6: la fecha va como frase aparte, sin tocar el verbatim de Gildardo de arriba. */}
-            {bandAppointmentDate ? (
-              <Text style={{ marginTop: 4 }}>
-                Tu próxima cita está agendada para el {bandAppointmentDate}.
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+        {/* ═══ LA BANDA Y LA GRAFICA SE MUDARON, Y LA GRAFICA SALIO (Santiago, 2026-11-06) ═══
 
-        {showAtlas && serie.length >= 2 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cómo has cambiado</Text>
-            <Text style={styles.para}>
-              Tus medidas en las últimas consultas. Son las mismas que te toma el equipo cada vez.
-            </Text>
-            <GraficaTrayectoria puntos={serie} />
-            {/* ═══ EL CAMBIO EN PALABRAS, NO SOLO EN LA GRAFICA (una nutricionista, via Santiago,
-                2026-10-28) ═══
+            LA BANDA DE CAMBIO (el texto verbatim de Gildardo) pasa a la hoja 2, que es la hoja de la
+            comparacion. No cambia ni su redaccion ni su gateo: sigue dependiendo de `dfi.complete` y de
+            que el profesional CONFIRMARA comunicar un "empeoro".
 
-                *"Si el paciente va para seguimiento, animarlo comparando el seguimiento con la consulta
-                anterior."*
+            LA GRAFICA DE PESO, MASA GRASA Y MASA SIN GRASA SALE DEL DOCUMENTO, con sus tres frases.
+            Textual suyo: *"Peso: 98.4 kg / Masa grasa: 43.5 kg / Masa sin grasa: 54.9 kg... este texto y
+            grafica tambien sobra. El paciente no quiere saber eso, simplemente un resumen de que mejoro y
+            que debe seguir mejorando en terminos simples. No utilizar terminos asi como masa grasa, etc."*
 
-                La gráfica ya estaba; una gráfica de tres líneas no es una frase. Las reglas de qué se
-                puede decir y por qué no hay umbral están en `cambio-desde-la-anterior.ts`. Va DESPUES de la
-                figura: la figura es el recorrido completo y esto es el último tramo. */}
-            {cambios.length ? (
-              <>
-                <Text style={[styles.para, styles.bold]}>Desde tu consulta anterior</Text>
-                {cambios.map((c) => (
-                  <Text key={c.medida} style={styles.para}>
-                    {c.texto}
-                  </Text>
-                ))}
-              </>
-            ) : null}
-          </View>
-        ) : null}
+            Y SE BORRAN LAS DOS PIEZAS QUE LA PINTABAN (`grafica-trayectoria.tsx` y
+            `cambio-desde-la-anterior.ts`) en vez de dejarlas sin llamadores, por la razon de siempre: una
+            pieza muerta es el cable que alguien vuelve a conectar sin saber por que se desconecto. Lo
+            unico que se conserva de ellas es `CAMBIO_MINIMO_KG`, con su razon entera, porque la frase de la
+            meta de peso sigue necesitando un piso: vive en `comparacion-paciente.ts`.
+
+            EL EJEMPLO QUE SANTIAGO VIO EN ESA GRAFICA (+18 kg de peso y +25,5 kg de grasa en dos meses)
+            NO ERA UN DEFECTO DE LA GRAFICA: medido el 2026-11-06, la toma del 13 de julio de ese paciente
+            es la del XLSX de prueba (80,4 kg y 177 cm, la misma en 29 mediciones de 23 pacientes) y la del
+            14 de septiembre mide 164 cm. Son dos cuerpos distintos, y en toda la cohorte es el UNICO salto
+            de ese tamaño. Queda anotado donde se decide que hacer con la data de prueba. */}
 
         {/* ═══ LAS RUTAS, LOS SUPLEMENTOS Y LAS REMISIONES SALEN DEL INFORME  ·  Santiago, 2026-11-05 ═══
 
@@ -644,36 +802,37 @@ export function ReportDocument({
             VA EN CONDICIONAL Y NO MIRA SI HAY PRESCRIPCION NI REMISIONES, a proposito: el documento dejo
             de recibir esos datos, asi que no puede saberlo. Redactada asi es cierta en los dos casos, y
             quien no tiene plan no lee que le mandaron uno que no esta. */}
+        {/* ═══ Y LA LINEA SALE EL 2026-11-06, POR DECISION DE SANTIAGO ═══
+
+            *"Creo que este texto sobra: 'Lo que vas a trabajar, los suplementos y las remisiones a otros
+            profesionales los decide quien te atendió...'"*
+
+            El argumento con que se escribio era que un informe sin rutas ni suplementos se lee como un
+            informe al que le falta algo. Su respuesta, implicita en la maqueta que mando, es que la hoja
+            ya no se lee asi: con el titulo nuevo ("Informe de evaluacion bioelectrica") el documento
+            ANUNCIA de que es, y entonces no promete nada que no traiga. La hoja del plan sigue viajando
+            adjunta al mismo correo cuando hay prescripcion. */}
+
+        {/* ═══ LA NOTA DE INTERPRETACION, AL CIERRE DE LA HOJA 1 (Santiago, 2026-11-06) ═══
+
+            Su texto, verbatim. Por que ahora si, cuando una frase parecida se retiro el 2026-09-01: ver el
+            punto 4 de la cabecera del archivo. En una linea: entonces convivia con un veredicto de riesgo
+            que la contradecia, y ese veredicto ya no esta. */}
+        {/* VA EN LETRA PEQUEÑA, como el derecho a la historia clinica, y por la misma razon: es una nota
+            sobre COMO se lee el documento, no contenido clinico, y en el cuerpo del texto competia con
+            las cinco areas. Es ademas lo que su maqueta dibuja (la nota al cierre de la hoja) y lo que
+            hace que la hoja 1 quepa entera. El rotulo va en negrita dentro de la misma linea. */}
         {showAtlas ? (
-          <View style={styles.section}>
-            <Text style={styles.para}>
-              Lo que vas a trabajar, los suplementos y las remisiones a otros profesionales los decide
-              quien te atendió, y van en los documentos que ella te entrega: tu hoja del plan, que llega
-              junto con este informe cuando hay plan de alimentación, y tu historia clínica.
-            </Text>
-          </View>
+          <Text style={styles.notaAlPie}>
+            <Text style={styles.bold}>Interpretación. </Text>
+            {NOTA_DE_INTERPRETACION}
+          </Text>
         ) : null}
 
-        {showAtlas && informe && (informe.seguimiento.observacion || informe.seguimiento.proximaCita) ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tu seguimiento</Text>
-            {/* LA OBSERVACION LLEVA SU ROTULO (Santiago, 2026-09-19): suelta debajo del titulo parecia un
-                texto del sistema. Decir de quien es cambia como se lee: no es una nota automatica, es lo
-                que su profesional escribio sobre ESTA consulta. */}
-            {informe.seguimiento.observacion ? (
-              <>
-                <Text style={[styles.para, styles.bold]}>Observaciones de tu profesional:</Text>
-                <Text style={styles.para}>{informe.seguimiento.observacion}</Text>
-              </>
-            ) : null}
-            {informe.seguimiento.proximaCita ? (
-              <Text style={styles.para}>
-                <Text style={styles.bold}>Tu próxima consulta: </Text>
-                {informe.seguimiento.proximaCita}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+        {/* EN UN INFORME INICIAL ESTA ES LA ULTIMA HOJA, asi que la observacion de la profesional va
+            aqui. En un seguimiento va al final de la hoja 2, que es la ultima: el paciente la busca al
+            final del documento, no al final de la primera hoja. */}
+        {esSeguimiento ? null : bloqueDeSeguimiento}
 
         {/* "NOTAS DEL PROFESIONAL" SE RETIRO (smoke de Santiago, 2026-09-19): salia DOS VECES lo mismo.
             La observacion de la consulta ya viaja arriba, en "Tu seguimiento", que es su sitio (va con la
@@ -709,17 +868,141 @@ export function ReportDocument({
           Puedes solicitar tu historia clínica completa a tu profesional tratante.
         </Text>
 
-        {/* EL PIE: SOLO EL IDENTIFICADOR (decision del smoke 2026-09-01).
-            Llevaba tambien "Motor anibise-1.2.0 · Modelo ANI-BIS-E 1.0 · Reglas 1.0". Esas tres versiones
-            son la CONSTELACION de la regla dura 7 y NO se pierden: viven selladas en el snapshot y en el
-            diagnostico, que es donde se piden si alguien reconstruye un caso. En el documento del paciente
-            no informan a nadie y suman jerga a un pie de pagina.
-            El ID SE QUEDA porque es lo unico del pie que el paciente puede USAR: es como se identifica su
-            documento si llama a preguntar. Y desde el se llega a las tres versiones. */}
-        <Text style={styles.footer} fixed>
-          Informe {meta.reportId}
-        </Text>
+        {/* EL PIE: la firma de CNV y el identificador (ver el comentario de `pie`). Llevaba tambien
+            "Motor anibise-1.2.0 · Modelo ANI-BIS-E 1.0 · Reglas 1.0", que se retiro en el smoke del
+            2026-09-01: esas tres versiones son la CONSTELACION de la regla dura 7 y NO se pierden, viven
+            selladas en el snapshot, que es donde se piden si alguien reconstruye un caso. */}
+        {pie}
       </Page>
+
+      {/* ══════════════════════════════════════════════════════════════════════════════════════════
+          HOJA 2 · SEGUIMIENTO  ·  Santiago, 2026-11-06
+
+          Su maqueta, en orden: el titulo y su subtitulo; el cuadro de comparacion de la edad estimada;
+          el radar con las dos lineas y su leyenda; las cinco areas con si mejoraron o conviene
+          trabajarlas; y un resumen corto que motive, en un parrafo, sin pasar a una tercera hoja.
+
+          SOLO SALE CON CONSULTA ANTERIOR COMPARABLE: ver `esSeguimiento` arriba. Un informe inicial
+          termina en la hoja 1, que es lo que el pidio ("El primero solo tiene 1 hoja y el segundo tiene
+          2 hojas").
+          ══════════════════════════════════════════════════════════════════════════════════════════ */}
+      {esSeguimiento && dfiPac && dominiosAnteriores ? (
+        <Page size="LETTER" style={styles.pageInforme}>
+          <Text style={styles.tituloDeHoja}>Seguimiento de la evaluación</Text>
+          <Text style={styles.subtituloDeHoja}>
+            Cómo has cambiado desde tu consulta del {formatDateOnly(dominiosAnteriores.fecha)}
+          </Text>
+
+          {/* ═══ LA COMPARACION DE LA EDAD ESTIMADA ═══
+
+              *"Tabla/cuadro de EBBIS e IAE con comparacion de la consulta actual vs la anterior. Si
+              mejoro o debe seguir trabajandose."*
+
+              DOS DECISIONES QUE CONVIENE VER:
+
+              1 · EL VEREDICTO NO LO ESCRIBIMOS NOSOTROS. Debajo del cuadro va el texto de Gildardo (la
+                  banda de trayectoria), que es verbatim suyo y ya trae su propio gate: el "empeoro" no
+                  llega al paciente sin que el profesional lo confirme. Un segundo juicio nuestro sobre la
+                  misma resta seria dos fuentes del mismo veredicto, y una sin ese gate.
+
+              2 · SE COMPARA LA EDAD ESTIMADA, Y EL IAE DE HOY VA AL LADO SIN COMPARARSE. El IAE es la
+                  edad estimada menos la cronologica, y entre dos consultas la cronologica tambien cambio:
+                  restar dos IAE mezcla las dos cosas en una sola cifra que no significa nada simple. Si
+                  Gildardo quiere la comparacion del IAE, es una fila mas y su texto. */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tu edad biológica estimada</Text>
+            {edad?.estado === "comparable" && ebBis && ebAnteriorEnPiezas ? (
+              <>
+                <View style={styles.tableRow}>
+                  <Text style={[styles.cellLabel, { width: 130 }]}>Ahora</Text>
+                  <Text style={[styles.cellValue, styles.bold]}>{ebBis.cifra}</Text>
+                </View>
+                <View style={styles.tableRow}>
+                  <Text style={[styles.cellLabel, { width: 130 }]}>Consulta anterior</Text>
+                  <Text style={styles.cellValue}>{ebAnteriorEnPiezas.cifra}</Text>
+                </View>
+                <View style={styles.tableRow}>
+                  <Text style={[styles.cellLabel, { width: 130 }]}>Diferencia</Text>
+                  <Text style={[styles.cellValue, styles.bold]}>{edad.frase}</Text>
+                </View>
+                {/* EL VEREDICTO, SUYO Y VERBATIM, con su gate intacto. */}
+                {showBand ? <Text style={[styles.para, { marginTop: 6 }]}>{bandText}</Text> : null}
+                {showBand && bandAppointmentDate ? (
+                  <Text style={styles.para}>
+                    Tu próxima cita está agendada para el {bandAppointmentDate}.
+                  </Text>
+                ) : null}
+              </>
+            ) : (
+              /* LO NO COMPARABLE SE DICE, no se deja en blanco ni se compara a medias. El motivo lo
+                 redacta el motor (`comparacionDeLaEdad`), en lenguaje de paciente. */
+              <Text style={styles.para}>
+                {edad && edad.estado === "sin_comparacion"
+                  ? edad.porque
+                  : "Todavía no se puede comparar esta cifra."}
+              </Text>
+            )}
+          </View>
+
+          {/* EL RADAR CON LAS DOS FIGURAS Y SU LEYENDA, que es la que explica que significa estar por
+              dentro. Aqui esta al lado de lo que compara, y no en la hoja del retrato de hoy. */}
+          <RadarDelPaciente
+            dominios={dfiPac.dominios}
+            anteriores={{ ...dominiosAnteriores, fecha: formatDateOnly(dominiosAnteriores.fecha) }}
+          />
+
+          {/* ═══ LAS CINCO AREAS, CON SU CAMBIO ═══
+
+              *"Me gustaria mostrar nuevamente los 5 dominios y cada uno si mejoro o empeoro con la
+              explicacion."*
+
+              LA ESCALA ES LA QUE YA EXISTE: la severidad por area (0 a 3) de su clasificador. El cambio
+              mas pequeño posible es pasar de un nivel al siguiente, asi que no hace falta inventar un
+              umbral; queda en `CAMBIO_MINIMO_AREA` por si el decide que hacen falta dos.
+
+              LAS TRES FRASES SON NUESTRAS Y PROVISIONALES, y entran a PENDIENTES para que el las apruebe
+              o las reescriba: no hay texto suyo para "esta area mejoro". El NOMBRE y la LECTURA de cada
+              area si son suyos, del mapa de paciente. */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Área por área</Text>
+            {dfiPac.dominios.map((d, i) => {
+              const cambio = areas[i];
+              const color = d.sev == null ? "#d1d5db" : COLOR_SEVERIDAD[Math.min(3, Math.max(0, d.sev))];
+              return (
+                <View key={d.id} style={[styles.dominio, { borderColor: color }]} wrap={false}>
+                  <Text>
+                    <Text style={styles.bold}>{d.dominio}</Text>
+                    {cambio ? <Text style={styles.dominioLectura}>{`  ·  ${cambio.frase}`}</Text> : null}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* ═══ EL PARRAFO QUE ANIMA, SIN MENTIR ═══
+
+              *"Resumen corto de como va respecto a la meta de peso, de mejoras/cosas a mejorar. Algo como
+              que motive en un parrafo. Que no se extienda a la tercera hoja. En un lenguaje que el
+              paciente entienda."*
+
+              FRASES FIJAS, NUNCA GENERADAS POR IA, y la primera la elige el CONTEO de areas, asi que no
+              puede decir "mejoraste" cuando ninguna mejoro. La meta de peso solo si esta registrada y
+              siempre en la direccion de esa meta. Las cuatro reglas estan en
+              `clinical-engine/comparacion-paciente.ts`. */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Lo que dice tu seguimiento</Text>
+            <Text style={styles.para}>{parrafoDeAnimo(areas, metaPeso)}</Text>
+          </View>
+
+          {/* LA OBSERVACION DE LA PROFESIONAL CIERRA LA ULTIMA HOJA. */}
+          {bloqueDeSeguimiento}
+
+          <Text style={styles.derechoHc}>
+            Puedes solicitar tu historia clínica completa a tu profesional tratante.
+          </Text>
+          {pie}
+        </Page>
+      ) : null}
     </Document>
   );
 }

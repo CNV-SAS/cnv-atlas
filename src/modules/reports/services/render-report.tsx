@@ -26,6 +26,8 @@ export type RenderReportOptions = {
   serie?: PuntoDelPaciente[];
   /** Las cinco areas de la consulta ANTERIOR, para el radar de evolucion. null = consulta inicial. */
   dominiosAnteriores?: DominiosAnteriores | null;
+  /** La meta de peso REGISTRADA (kg), para la frase de la hoja de seguimiento. null = no hay meta. */
+  metaDePesoKg?: number | null;
 };
 
 // Renderiza el reporte a un Buffer PDF en el servidor (Node). Puro respecto a BD y
@@ -47,6 +49,7 @@ export function renderReportPdf(
       informe={options.informe}
       serie={options.serie}
       dominiosAnteriores={options.dominiosAnteriores}
+      metaDePesoKg={options.metaDePesoKg}
     />,
   );
 }

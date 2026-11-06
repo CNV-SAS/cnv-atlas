@@ -17,7 +17,24 @@ export type BisImportEvaluation = {
   firstName: string;
   lastName: string;
   alreadyImported: boolean;
+  /**
+   * FECHA DE LA TOMA vigente, para poder decirla en la tarjeta de "Medicion BIS importada" (Santiago,
+   * 2026-11-06). null = no hay medicion, o todas estan desligadas del paciente.
+   *
+   * NO CAMBIA `alreadyImported`, que cuenta las mediciones SIN mirar si estan desligadas: ese criterio
+   * es anterior y tocarlo aqui cambiaria quien ve el formulario de import, que es otra decision.
+   */
+  measurementDate: string | null;
 };
+
+type MedicionEmbed = { id: string; measurement_date: string | null; no_es_del_paciente_at: string | null };
+
+/** La fecha de la toma mas reciente que SIGUE colgada de este paciente. */
+function fechaDeLaToma(ms: MedicionEmbed[]): string | null {
+  const vigentes = ms.filter((m) => !m.no_es_del_paciente_at && m.measurement_date);
+  if (vigentes.length === 0) return null;
+  return vigentes.map((m) => m.measurement_date as string).sort().at(-1) ?? null;
+}
 
 type PatientEmbed = {
   document_type: string;
@@ -37,7 +54,7 @@ export async function listEvaluationsForBisImport(): Promise<BisImportEvaluation
   const { data, error } = await supabase
     .from("evaluations")
     .select(
-      "id, type, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), bis_measurements(id)",
+      "id, type, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), bis_measurements(id, measurement_date, no_es_del_paciente_at)",
     )
     .eq("status", "in_progress")
     // LA QUE NO OCURRIO SALE DE LA COLA (0212), y este es el caso REAL que lo motivo: la evaluacion del 21
@@ -51,7 +68,7 @@ export async function listEvaluationsForBisImport(): Promise<BisImportEvaluation
   return (data ?? []).map((row) => {
     const patient = one<PatientEmbed>(row.patients as PatientEmbed | PatientEmbed[] | null);
     const profile = one(patient?.patient_profiles ?? null);
-    const measurements = (row.bis_measurements as { id: string }[] | null) ?? [];
+    const measurements = (row.bis_measurements as MedicionEmbed[] | null) ?? [];
     return {
       evaluationId: row.id,
       patientId: row.patient_id,
@@ -62,6 +79,7 @@ export async function listEvaluationsForBisImport(): Promise<BisImportEvaluation
       firstName: profile?.first_name ?? "",
       lastName: profile?.last_name ?? "",
       alreadyImported: measurements.length > 0,
+      measurementDate: fechaDeLaToma(measurements),
     };
   });
 }
@@ -76,7 +94,7 @@ export async function getBisImportEvaluationForId(
   const { data, error } = await supabase
     .from("evaluations")
     .select(
-      "id, type, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), bis_measurements(id)",
+      "id, type, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), bis_measurements(id, measurement_date, no_es_del_paciente_at)",
     )
     .eq("id", evaluationId)
     .eq("status", "in_progress")
@@ -88,7 +106,7 @@ export async function getBisImportEvaluationForId(
 
   const patient = one<PatientEmbed>(data.patients as PatientEmbed | PatientEmbed[] | null);
   const profile = one(patient?.patient_profiles ?? null);
-  const measurements = (data.bis_measurements as { id: string }[] | null) ?? [];
+  const measurements = (data.bis_measurements as MedicionEmbed[] | null) ?? [];
   return {
     evaluationId: data.id,
     patientId: data.patient_id,
@@ -99,5 +117,6 @@ export async function getBisImportEvaluationForId(
     firstName: profile?.first_name ?? "",
     lastName: profile?.last_name ?? "",
     alreadyImported: measurements.length > 0,
+    measurementDate: fechaDeLaToma(measurements),
   };
 }

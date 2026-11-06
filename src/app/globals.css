@@ -34,6 +34,7 @@
   --color-attention-bg: var(--attention-bg);
   --color-delta-favorable: var(--delta-favorable);
   --color-delta-adversa: var(--delta-adversa);
+  --color-exito: var(--exito);
   --color-franja-nivel: var(--franja-nivel);
   --color-franja-nivel-texto: var(--franja-nivel-texto);
   /*
@@ -197,6 +198,24 @@
   --delta-favorable: #047857;
   --delta-adversa: #b91c1c;
 
+
+  /*
+   * UNA ACCION QUE SE COMPLETO: "esto que hiciste quedo bien".
+   *
+   * CUARTO EJE, y nace por la misma razon que `--attention` y las dos de la Δ: el verde de la escala
+   * clinica (`--clinical-optimal`, #10b981) es un VEREDICTO OPTIMO SOBRE UNA PERSONA, y gastarlo en
+   * "el archivo se importo" dice de un paciente algo que nadie midio. Eso ya paso: la tarjeta de la
+   * medicion importada llevaba el verde clinico y el 2026-09-05 se dejo NEUTRA para quitarselo. Lo
+   * neutro, en cambio, no distingue lo que salio bien de lo que esta a medias, y Santiago lo pidio
+   * verde el 2026-11-06. Con su propio token se consiguen las dos cosas.
+   *
+   * EL TONO ES DE OTRA FAMILIA A PROPOSITO (green-700 frente al emerald de la escala clinica y al
+   * emerald-700 de la Δ favorable): en pantalla no se confunde con un badge de veredicto ni con una Δ.
+   *
+   * Y VA SOLO EN EL BORDE, con el fondo de la tarjeta: un relleno verde a lo ancho de un bloque vuelve a
+   * leerse como un juicio, que es lo que este eje existe para evitar.
+   */
+  --exito: #15803d;
   /* LA FRANJA DE LOS NIVELES DE WANG (Santiago, 2026-09-21, variante 3 de tres vistas lado a lado): tinte
    * claro con la letra en azul y un filo de marca a la izquierda. El azul pleno saturaba la tabla; el tinte
    * separa niveles sin gritar. Capa de INTERFAZ: no insinua severidad. El filo es `--primary`. */
@@ -282,6 +301,7 @@
   --marca-honda: #050f2c;
   --attention: #fbbf24;
   --attention-bg: oklch(0.269 0 0);
+  --exito: #4ade80;
 }
 
 @layer base {

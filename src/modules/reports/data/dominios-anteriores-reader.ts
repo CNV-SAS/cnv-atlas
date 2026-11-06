@@ -62,5 +62,19 @@ export async function getDominiosAnteriores(
   }
   if (Object.keys(porDominio).length === 0) return null;
 
-  return { fecha: previa.fecha, porDominio };
+  // ═══ LA EDAD SELLADA DE ESA CONSULTA VIAJA TAL CUAL; SI SE PUEDE COMPARAR SE DECIDE AL PINTAR ═══
+  //
+  // No se decide aqui a proposito. La comparabilidad depende de la version MAYOR del motor de las DOS
+  // consultas, y la actual puede no estar en la serie: el preview del informe se pide ANTES de aprobar, y
+  // entonces esta evaluacion todavia no tiene reporte sellado del que leer su version. Decidirlo aqui
+  // daria "comparable" por no poder mirar la otra mitad, que es la peor forma de equivocarse.
+  //
+  // La decision la toma `comparacionDeLaEdad` (motor, puro), que recibe las dos versiones y devuelve la
+  // razon en lenguaje de paciente. Una sola funcion, y la usa quien tenga las dos mitades.
+  return {
+    fecha: previa.fecha,
+    porDominio,
+    edad: previa.eb,
+    engineVersion: previa.engineVersion,
+  };
 }

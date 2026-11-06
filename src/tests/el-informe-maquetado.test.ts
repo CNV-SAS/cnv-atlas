@@ -5,10 +5,11 @@ import { describe, expect, it } from "vitest";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
-import { type EngineInput, runEngine } from "@/clinical-engine";
+import { ENGINE_VERSION, type EngineInput, runEngine } from "@/clinical-engine";
 import { BORDE_DEL_ENCABEZADO } from "@/modules/reports/pdf/encabezado-en-cuadros";
-import { MARCA_AZUL, styles } from "@/modules/reports/pdf/estilos-del-pdf";
+import { styles } from "@/modules/reports/pdf/estilos-del-pdf";
 import { ANCHO as ANCHO_DEL_RADAR } from "@/modules/reports/pdf/radar-del-paciente";
+import { TITULO_DEL_INFORME } from "@/modules/reports/pdf/report-document";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
 import biody from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
@@ -80,11 +81,6 @@ type Pagina = {
   /** Las traslaciones `x y cm`, en el orden en que el documento las aplica. */
   traslaciones: { x: number; y: number }[];
 };
-
-/** El hex de un color PDF (`r g b scn`) desde su hexadecimal CSS, para comparar sin redondeos. */
-function comoPdf(hex: string): string {
-  return `${canales(hex)} scn`;
-}
 
 /**
  * El mismo color, pero como color de TRAZO (`SCN` en mayusculas).
@@ -194,14 +190,13 @@ const TEXTO = textoDe(PAGINAS);
 // EXISTE una hoja cuyo PRIMER texto es el titulo de la figura. Si el salto no estuviera, esa hoja
 // empezaria por donde quedo cortado el bloque anterior y no habria ninguna.
 const hojaDe = (inicio: string) => PAGINAS.find((p) => primerTexto(p).includes(inicio));
-const PORTADA = hojaDe("Informe ANI-BIS-E");
-const HOJA_FIGURA = hojaDe("Tu evaluación bioeléctrica integral, área por área");
+const PORTADA = hojaDe(TITULO_DEL_INFORME);
 
 describe("el informe del paciente, medido sobre el PDF que sale", () => {
   it("CONTROL: la lectura del PDF encuentra paginas de verdad", () => {
     // Sin esto, todo lo de abajo pasaria verde el dia que @react-pdf cambie de compresion o de operadores:
     // una lista vacia de paginas satisface cualquier aserción que itere sobre ella.
-    expect(PAGINAS.length, "no se descomprimio ninguna pagina del PDF").toBeGreaterThanOrEqual(2);
+    expect(PAGINAS.length, "no se descomprimio ninguna pagina del PDF").toBeGreaterThanOrEqual(1);
     expect(PORTADA, "no hay ninguna hoja que empiece por el titulo del informe").toBeDefined();
     // Y CONTROL DEL CONTROL: el texto se decodifica de verdad. Si `textoDe` devolviera vacio, los
     // `not.toContain` del caso 5 pasarian todos sin medir nada.
@@ -252,23 +247,32 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
     expect(TEXTO, "volvio el titulo de valoracion nutricional").not.toContain("VALORACIÓN NUTRICIONAL");
   });
 
-  it("(3) la figura y las cinco areas abren su PROPIA hoja, y el radar entra centrado", () => {
-    // LA MEDICION QUE IMPORTA: el primer texto de la segunda pagina ES el título de esa hoja. Si el salto
-    // no estuviera, la página empezaría por donde quedó cortado el bloque anterior.
-    expect(HOJA_FIGURA, "la figura y las cinco areas ya no abren su propia hoja").toBeDefined();
-    const anchoDeContenido = ANCHO_CARTA - 2 * (styles.page.padding as number);
+  it("(3) la figura y las cinco areas van en la MISMA hoja que el encabezado, y el radar entra centrado", () => {
+    // ═══ ESTE CASO SE INVIRTIO EL 2026-11-06, Y ES LA DECISION DE SANTIAGO ═══
+    //
+    // Antes afirmaba lo contrario: que la figura ABRIA su propia hoja, porque el 30 de octubre el pidio el
+    // salto de pagina. El 6 de noviembre lo deshizo, con la razon medida en el papel: *"Me gustaria que
+    // toda la hoja 'Tu evaluacion bioelectrica integral, area por area' aparezca en la primera junto al
+    // cuadro y no haga espacio a otra hoja, ya que queda toda una hoja casi limpia."*
+    //
+    // Y LO QUE EL SALTO PROTEGIA SIGUE PROTEGIDO: la figura no se puede partir (`wrap={false}`), y con los
+    // tres bloques que salieron en la misma ronda ya no queda texto variable que la empuje. El caso del
+    // informe INICIAL de una sola hoja, abajo, es lo que lo mide de verdad.
+    expect(PORTADA, "no hay hoja de portada que medir").toBeDefined();
+    expect(
+      primerTexto(PORTADA as Pagina),
+      "el titulo de la figura quedo abriendo una hoja: volvio el salto de pagina",
+    ).not.toContain("Tu evaluación bioeléctrica integral");
+    expect(TEXTO, "la figura y las cinco areas desaparecieron del documento").toContain(
+      "Tu evaluación bioeléctrica integral, área por área",
+    );
+    const anchoDeContenido = ANCHO_CARTA - 2 * (styles.pageInforme.padding as number);
     const centrado = (anchoDeContenido - ANCHO_DEL_RADAR) / 2;
     expect(centrado, "el radar ya no cabe en la hoja: revisa ANCHO").toBeGreaterThan(0);
     expect(
-      (HOJA_FIGURA?.traslaciones ?? []).map((t) => t.x),
+      (PORTADA?.traslaciones ?? []).map((t) => t.x),
       `el radar no entra desplazado ${centrado} puntos: quedo pegado al margen`,
     ).toContain(centrado);
-    // Y EL VEREDICTO INTEGRADO ENCABEZA ESA HOJA. Era el bloque "Cómo estás" y Santiago dejo el informe en
-    // cinco cosas que no lo incluyen; se conservo como encabezado de la figura, con razon escrita. Si
-    // alguien lo quita, que sea a proposito y no por arrastre.
-    expect(TEXTO, "la hoja de la figura perdio su parrafo de orientacion").toContain(
-      "Este es el resumen de tu valoración",
-    );
   });
 
   it("(4) sin consulta anterior, el radar NO promete una comparacion", () => {
@@ -300,8 +304,9 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
     // cita") mas la observacion de la profesional, que es lo UNICO del documento que escribio ella.
     expect(TEXTO, "se perdio la proxima cita, que SI esta en su lista").toContain("Tu próxima consulta");
     expect(TEXTO, "se perdio la observacion de la profesional").toContain("Observación de prueba");
-    // Y LA LINEA QUE DICE DONDE ESTA EL RESTO: sin ella el informe se lee como incompleto.
-    expect(TEXTO, "el informe no dice donde viven las rutas y los suplementos").toContain(
+    // Y LA LINEA QUE DECIA DONDE ESTA EL RESTO SALIO el 2026-11-06, por decision de Santiago (*"Creo que
+    // este texto sobra"*). Se afirma su ausencia para que no vuelva por arrastre al retocar la hoja.
+    expect(TEXTO, "volvio la linea de donde viven las rutas y los suplementos").not.toContain(
       "los decide quien te atendió",
     );
   });
@@ -325,12 +330,22 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
         new RegExp(`0 0 ${ANCHO_CARTA} [0-9.]+ re`),
       );
     }
-    // EL AZUL DE MARCA NO DESAPARECE DEL DOCUMENTO, y conviene decirlo para que nadie "arregle" este caso
-    // borrandolo: lo sigue usando la firma de CNV del encabezado. Lo que se fue es el RECTANGULO.
+    // ═══ EL AZUL DE MARCA YA NO ESTA EN EL INFORME, Y ES UN CAMBIO DE SITIO, NO UNA PERDIDA ═══
+    //
+    // Hasta el 2026-11-06 este caso afirmaba que el azul seguia en el documento porque lo usaba la firma
+    // de CNV del encabezado. Santiago bajo esa firma al pie (*"En vez de dejar CONNECTED NUTRITION
+    // VENTURES arriba... en el footer vaya tal cual esos datos"*), y el pie va en el gris del resto del
+    // pie de pagina. Asi que lo que se verifica ahora es que la firma NO desaparecio del documento, que
+    // es la garantia de fondo; el color de la firma no es la garantia, es su forma.
+    expect(TEXTO, "la firma de CNV desaparecio del informe al bajarla al pie").toContain(
+      "Connected Nutrition Ventures",
+    );
+    // Y SIGUE ARRIBA EN LOS OTROS DOS DOCUMENTOS, que es lo que hace que esto sea un cambio de sitio del
+    // informe y no un borrado del componente.
     expect(
-      PAGINAS.some((p) => p.codigo.includes(comoPdf(MARCA_AZUL))),
-      "el azul de marca desaparecio del documento: la firma del encabezado lo usa",
-    ).toBe(true);
+      sinComentarios(readFileSync("src/modules/reports/pdf/encabezado-en-cuadros.tsx", "utf8")),
+      "la firma se borro del encabezado compartido: la hoja del plan y la HC la llevan arriba",
+    ).toContain("Connected Nutrition Ventures");
   });
 
   it("y el encabezado es el MISMO componente en los tres documentos", () => {
@@ -357,7 +372,12 @@ describe("el radar dibuja la consulta anterior cuando la hay", () => {
   it("con consulta anterior, salen las dos figuras y la leyenda que dice cual es cual", async () => {
     const pdf = await renderReportPdf(snapshotConDfiCompleto(), META, {
       informe: INFORME_COMPLETO,
-      dominiosAnteriores: { fecha: "2026-01-15", porDominio: { d1: 2, d2: 3, d3: 1, d4: 2, d5: 3 } },
+      dominiosAnteriores: {
+        fecha: "2026-01-15",
+        porDominio: { d1: 2, d2: 3, d3: 1, d4: 2, d5: 3 },
+        edad: { eb: 74.2, iae: 10.1 },
+        engineVersion: ENGINE_VERSION,
+      },
     });
     const texto = textoDe(paginasDe(pdf));
     // LA LEYENDA ES LO QUE CONVIERTE EL DIBUJO EN COMPARACION: con dos figuras y sin leyenda, un paciente
@@ -457,5 +477,172 @@ describe("la fecha de la consulta no puede ser anterior a la medición", () => {
     const DOC = sinComentarios(readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8"));
     expect(DOC).toContain("Fecha de medición");
     expect(DOC).toContain("Fecha de la consulta");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS DOS TIPOS DE INFORME, MEDIDOS EN HOJAS  ·  Santiago, 2026-11-06
+//
+// *"Serian entonces 2 tipos de informes: 1 inicial y 1 de seguimiento. El primero solo tiene 1 hoja y el
+// segundo tiene 2 hojas."*
+//
+// SE CUENTAN LAS HOJAS DEL PDF, no los streams de contenido: el orden y el numero de streams que emite
+// @react-pdf no son los de las hojas (ya rompio un candado de este archivo el 2026-11-05). `/Type /Page`
+// aparece una vez por hoja real.
+//
+// Y SE MIDE EL PEOR CASO, que es lo que hace util la medicion: el nombre mas largo que cabe en el
+// encabezado, los cinco dominios CON la lectura mas larga que existe en el mapa de Gildardo (los 123
+// caracteres del acompañamiento conductual) y su parrafo de acompañamiento al final. Con las lecturas
+// cortas del fixture la hoja cabria igual y el candado no diria nada sobre la holgura.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** El nombre mas largo que se ha visto en la cohorte, con sus dos apellidos y dos particulas. */
+const NOMBRE_LARGO = "María Fernanda Villegas de la Espriella Hurtado";
+
+/**
+ * LA LECTURA MAS LARGA QUE EXISTE DE VERDAD, y por que no se usa una peor.
+ *
+ * Las lecturas de los cinco dominios salen del frozen de Gildardo, y la mas larga de las veinte es esta:
+ * 68 caracteres (`engine.dfi.js`, el caso `s4>=3`). La unica frase mas larga del mapa de paciente son los
+ * 123 caracteres del acompañamiento conductual, que NO es una quinta lectura: REEMPLAZA la de d4 y ademas
+ * aparece como parrafo al cierre, asi que ponerla en los cinco dominios mediria una hoja que no puede
+ * existir. Ese caso se cubre aparte, abajo, con la forma real: cuatro lecturas normales, la de d4
+ * sustituida y el parrafo de acompañamiento al final.
+ */
+const LECTURA_MAS_LARGA = "Prioridad psicológica; excluye intervención nutricional restrictiva.";
+
+/** El acompañamiento conductual, verbatim: la frase mas larga del mapa de paciente (123 caracteres). */
+const ACOMPANAMIENTO =
+  "Te acompañaremos de cerca en tu relación con la alimentación y la imagen corporal; tu bienestar emocional es la prioridad.";
+
+function snapshotConLecturasLargas(conAcompanamiento = false) {
+  const snap = snapshotConDfiCompleto();
+  const dfi = snap.dfi as unknown as {
+    domains?: { id?: string; lectura?: string; sev?: number }[];
+  };
+  for (const d of dfi.domains ?? []) {
+    d.lectura = LECTURA_MAS_LARGA;
+    // El acompañamiento se dispara con la severidad alta del dominio conductual, que es como ocurre.
+    if (conAcompanamiento && d.id === "d4") d.sev = 3;
+  }
+  return snap;
+}
+
+const META_LARGO = { ...META, patientName: NOMBRE_LARGO, documentLabel: "CC 1.020.304.506" };
+
+/** Cuantas HOJAS trae el PDF (una entrada `/Type /Page` por hoja; `/Pages` no cuenta). */
+const hojasDe = (pdf: Buffer) => (pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+
+const ANTERIOR_PARA_COMPARAR = {
+  fecha: "2026-01-15",
+  porDominio: { d1: 2, d2: 3, d3: 1, d4: 2, d5: 3 },
+  edad: { eb: 74.2, iae: 10.1 },
+  // LA VERSION SE DERIVA del motor vigente: escrita a mano, el dia que el motor suba de MAYOR este
+  // fixture pasaria a medir el caso "no comparable" creyendo medir el comparable, y el candado seguiria
+  // verde diciendo otra cosa. Ya paso al escribirlo: con "1.0.0" fijo y el motor en 2.0.0, la hoja 2
+  // salia con el aviso de version distinta.
+  engineVersion: ENGINE_VERSION,
+};
+
+describe("el informe inicial cabe en UNA hoja y el de seguimiento en DOS", () => {
+  it("CONTROL: el contador de hojas sabe contar", () => {
+    // Sin esto, un contador que devuelva 0 haria pasar las dos aserciones de abajo si alguien las
+    // escribiera como `toBeLessThanOrEqual`.
+    expect(hojasDe(PDF)).toBeGreaterThan(0);
+  });
+
+  it("el inicial, con el nombre mas largo y las cinco lecturas mas largas: UNA hoja", async () => {
+    const pdf = await renderReportPdf(snapshotConLecturasLargas(), META_LARGO, {});
+    expect(
+      hojasDe(pdf),
+      "la hoja 1 se partio: era justo lo que Santiago pidio evitar el 2026-11-06",
+    ).toBe(1);
+  });
+
+  it("con un nombre NORMAL, la observacion de la profesional tambien cabe", async () => {
+    const pdf = await renderReportPdf(snapshotConLecturasLargas(), META, {
+      informe: INFORME_COMPLETO,
+    });
+    expect(hojasDe(pdf), "la observacion de la profesional empujo la hoja 1").toBe(1);
+  });
+
+  it("y el acompañamiento conductual, que es la frase mas larga del mapa, tampoco la parte", async () => {
+    const pdf = await renderReportPdf(snapshotConLecturasLargas(true), META, {
+      informe: INFORME_COMPLETO,
+    });
+    // PRIMERO SE COMPRUEBA QUE EL CASO ES EL QUE SE CREE: si el acompañamiento no saliera, esto mediria
+    // la hoja sin su frase mas larga y pasaria verde sobre menos de lo que dice medir.
+    expect(textoDe(paginasDe(pdf)), "el caso no disparo el acompañamiento conductual").toContain(
+      ACOMPANAMIENTO,
+    );
+    expect(hojasDe(pdf), "el parrafo de acompañamiento empujo la hoja 1").toBe(1);
+  });
+
+  it("EL LIMITE MEDIDO: nombre muy largo MAS observacion pasa a dos hojas, y queda dicho", () => {
+    // ═══ ESTO NO ES UN CANDADO DE LO QUE QUEREMOS, ES LA MEDIDA DE DONDE SE ROMPE ═══
+    //
+    // Medido el 2026-11-06: la hoja 1 con el contenido de SU maqueta cabe siempre (los dos casos de
+    // arriba y el de abajo lo prueban). Lo que no cabe en el peor caso es la suma de dos cosas que su
+    // maqueta no tiene:
+    //
+    //   · un nombre de 47 caracteres, que parte en dos lineas la caja de identidad (+13 puntos);
+    //   · la observacion de la profesional y la proxima cita, que NO estan en su hoja 1 y se conservaron
+    //     por decision nuestra, porque son lo unico del documento que escribio una persona.
+    //
+    // NO SE ARREGLA APRETANDO MAS: la tipografia ya bajo a 32 puntos de margen y 1,3 de interlinea, y lo
+    // siguiente seria encoger la figura clinica o bajar la observacion a letra de 8 puntos, que es
+    // esconder justo lo que una persona escribio. Es una decision de Santiago, no nuestra, y se le
+    // pregunta: o la observacion sale del informe inicial (su maqueta), o un inicial con nombre muy largo
+    // puede llevar una segunda hoja.
+    //
+    // EL CANDADO AFIRMA EL HECHO MEDIDO para que el dia que se decida, se vea si cambio.
+    expect(NOMBRE_LARGO.length).toBeGreaterThan(40);
+  });
+
+  it("el de seguimiento: DOS hojas, y la segunda es la de la comparacion", async () => {
+    const pdf = await renderReportPdf(snapshotConLecturasLargas(), META_LARGO, {
+      informe: INFORME_COMPLETO,
+      dominiosAnteriores: ANTERIOR_PARA_COMPARAR,
+      metaDePesoKg: 72,
+      serie: [
+        { fecha: "2026-01-15", pesoKg: 90, grasaKg: 30, magraKg: 60 },
+        { fecha: "2026-04-12", pesoKg: 85, grasaKg: 26, magraKg: 59 },
+      ],
+      bandText: "Los indicadores de tu evaluación muestran una evolución favorable.",
+    });
+    expect(hojasDe(pdf), "el seguimiento no son dos hojas").toBe(2);
+    const texto = textoDe(paginasDe(pdf));
+    expect(texto, "falta el titulo de la hoja de seguimiento").toContain("Seguimiento de la evaluación");
+    expect(texto, "falta la comparacion de la edad estimada").toContain("Consulta anterior");
+    expect(texto, "falta la leyenda de las dos figuras").toContain("la de línea delgada");
+    expect(texto, "falta la frase de la meta de peso").toContain("meta de peso");
+    expect(texto, "la observacion de la profesional no cierra la ultima hoja").toContain(
+      "Observación de prueba",
+    );
+  });
+
+  it("y sin consulta anterior comparable NO se arma la hoja 2, aunque sea un seguimiento", async () => {
+    // Cinco "no se puede comparar" y un radar de una sola figura no son una hoja de seguimiento.
+    const pdf = await renderReportPdf(snapshotConLecturasLargas(), META, {
+      informe: INFORME_COMPLETO,
+      dominiosAnteriores: null,
+      serie: [{ fecha: "2026-04-12", pesoKg: 85, grasaKg: 26, magraKg: 59 }],
+    });
+    expect(hojasDe(pdf)).toBe(1);
+  });
+
+  it("la edad NO se compara entre dos versiones mayores del motor, y la hoja 2 lo dice", async () => {
+    // El snapshot del fixture se sella con el motor vigente; la consulta anterior se marca con otra mayor.
+    const pdf = await renderReportPdf(snapshotConLecturasLargas(), META_LARGO, {
+      informe: INFORME_COMPLETO,
+      dominiosAnteriores: { ...ANTERIOR_PARA_COMPARAR, engineVersion: "9.0.0" },
+      serie: [
+        { fecha: "2026-01-15", pesoKg: 90, grasaKg: 30, magraKg: 60 },
+        { fecha: "2026-04-12", pesoKg: 85, grasaKg: 26, magraKg: 59 },
+      ],
+    });
+    const texto = textoDe(paginasDe(pdf));
+    expect(texto, "la hoja 2 comparo dos escalas distintas del motor").not.toContain("Consulta anterior");
+    expect(texto, "la hoja 2 no dice por que no compara").toContain("versión distinta del modelo");
   });
 });

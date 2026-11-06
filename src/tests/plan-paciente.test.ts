@@ -113,13 +113,20 @@ describe("los bloques de su §7.1 siguen saliendo, y se sabe por cuál hoja", ()
     // LA REGLA QUE NO CAMBIA, cuatro anclas despues, es la de su §7.1: primero se le explica al paciente
     // QUE TIENE y despues QUE SIGUE. Lo que queda del "despues" en este documento es su seguimiento (la
     // observacion de su profesional y la proxima cita), que es lo ultimo de la lista de Santiago.
+    // ═══ EL ANCLA CAMBIA POR QUINTA VEZ (2026-11-06), Y AHORA EL "DESPUES" ES UNA HOJA ═══
+    //
+    // El bloque "Tu seguimiento" dejo de tener titulo: la observacion de la profesional y la proxima cita
+    // van compactas al cierre de la ultima hoja, porque con titulo propio empujaban la hoja 1 a una
+    // segunda (medido). Y el "despues" de su §7.1 pasa a ser la HOJA 2 completa, que es donde esta la
+    // comparacion con la consulta anterior.
+    //
+    // LA REGLA QUE NO CAMBIA, cinco anclas despues, sigue siendo la misma: primero se le explica al
+    // paciente QUE TIENE y despues QUE SIGUE.
     const titulos = seccionesDelPdf();
     const diagnostico = titulos.indexOf("Tu evaluación bioeléctrica integral, área por área");
-    const loQueSigue = titulos.indexOf("Tu seguimiento");
+    const loQueSigue = titulos.indexOf("Seguimiento de la evaluación");
     expect(diagnostico, "el informe dejó de abrir con el diagnóstico").toBeGreaterThan(-1);
-    expect(loQueSigue, "el informe se quedó sin el seguimiento, que SÍ está en su lista").toBeGreaterThan(
-      -1,
-    );
+    expect(loQueSigue, "el informe se quedó sin la hoja de seguimiento").toBeGreaterThan(-1);
     expect(diagnostico, "el diagnóstico quedó después de lo que sigue").toBeLessThan(loQueSigue);
   });
 
@@ -132,14 +139,38 @@ describe("los bloques de su §7.1 siguen saliendo, y se sabe por cuál hoja", ()
     // Y DESDE EL 2026-11-05 LA LINEA CUBRE CUATRO COSAS, no una: con las rutas, los suplementos y las
     // remisiones fuera, lo que vive en otro papel dejó de ser solo el plan. Santiago lo dice en su
     // mensaje (*"viven en la HC y en la hoja del plan"*); esta línea es lo que se lo dice al paciente.
-    expect(DOC, "el informe no dice dónde está su hoja del plan").toContain("tu hoja del plan");
-    expect(DOC, "el informe no menciona su historia clínica").toContain("tu historia clínica");
-    // EN CONDICIONAL, porque el informe ya no recibe el plan y no puede saber si hay: así la frase es
-    // cierta en los dos casos y quien no tiene plan no lee que le mandaron uno que no está. Lo que se
-    // vigila es la CONDICION, no su redacción, que ya cambió dos veces.
-    expect(DOC, "la línea afirma un plan que puede no existir").toContain(
-      "cuando hay plan de alimentación",
+    // ═══ Y LA LINEA SALIO EL 2026-11-06, POR DECISION DE SANTIAGO ═══
+    //
+    // *"Creo que este texto sobra: 'Lo que vas a trabajar, los suplementos y las remisiones a otros
+    // profesionales los decide quien te atendió...'"*
+    //
+    // El argumento con que se escribio era que un informe sin rutas ni suplementos se lee como un informe
+    // al que le falta algo. Lo que cambio es el TITULO: desde hoy el documento se llama "Informe de
+    // evaluacion bioelectrica", asi que ANUNCIA de que es y no promete un plan que no trae. La hoja del
+    // plan sigue viajando adjunta al mismo correo cuando hay prescripcion (`send-report`, segundo
+    // adjunto), que es la mitad que de verdad sostiene el recorte.
+    //
+    // SE AFIRMA SU AUSENCIA, no se borra el caso: asi no vuelve por arrastre al retocar la hoja, y queda
+    // escrito a cambio de que la condicion que la hacia necesaria (el titulo) se mantenga.
+    expect(DOC, "volvió la línea de dónde vive lo que el informe no lleva").not.toContain(
+      "tu hoja del plan",
     );
+    expect(
+      DOC,
+      "el título dejó de anunciar de qué es el documento, y entonces la línea hace falta otra vez",
+    ).toContain('TITULO_DEL_INFORME = "Informe de evaluación bioeléctrica"');
+    // ═══ Y LO QUE SE VIGILA EN LUGAR DE LA LINEA: QUE LA HOJA DEL PLAN SIGA VIAJANDO ═══
+    //
+    // Las dos aserciones que estaban aqui ("tu historia clínica" y "cuando hay plan de alimentación")
+    // eran partes de esa misma linea, asi que se van con ella. Lo que las hacia necesarias era que el
+    // paciente supiera que el plan existe; eso ya no depende de una frase del informe, depende de que el
+    // correo ADJUNTE la hoja del plan cuando hay prescripcion. Esa es la mitad que de verdad sostiene el
+    // recorte, y es la que se mide ahora.
+    const envio = readFileSync("src/modules/reports/services/send-report.ts", "utf8");
+    expect(
+      envio,
+      "el correo dejo de adjuntar la hoja del plan: sin ese adjunto, quitar la línea le quita el plan al paciente",
+    ).toContain("renderPlanPdf");
   });
 
   it("y el informe no compone NINGUN bloque del plan, ni uno", () => {
@@ -343,7 +374,14 @@ describe("los DOS canales son el mismo documento, no dos documentos", () => {
     // LA HOJA NUEVA DEL INFORME (2026-10-30): la figura y las cinco áreas pasaron a su propia página, con
     // su título. Es diagnóstico, como "Cómo estás", del que se partió; la hoja de la cocina no lo lleva.
     "Tu evaluación bioeléctrica integral, área por área":
-      "la figura del radar y las cinco áreas, en su propia hoja del informe: es diagnóstico, no plan",
+      "la figura del radar y las cinco áreas, en la hoja 1 del informe: es diagnóstico, no plan",
+    // LA HOJA 2 DEL INFORME (2026-11-06): el seguimiento pasa a ser una hoja propia, con cuatro bloques.
+    // Ninguno es del plan: comparan esta consulta con la anterior, y la hoja de la cocina es de UNA.
+    "Seguimiento de la evaluación": "el título de la hoja 2 del informe, que solo existe en seguimiento",
+    "Tu edad biológica estimada ": "duplicado del rótulo en la hoja 2; la cifra no es parte del plan",
+    "Área por área": "las cinco áreas con su cambio desde la consulta anterior: comparación, no plan",
+    "Lo que dice tu seguimiento":
+      "el párrafo que resume el cambio y la meta de peso: compara dos consultas, y la hoja del plan es de una",
   };
 
   it("CONTROL: la comparación encuentra secciones de verdad en los dos archivos", () => {

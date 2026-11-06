@@ -295,6 +295,14 @@ export type ReportDispatch = {
   // la próxima cita vive en el tratamiento (proxima_cita), se lee EN VIVO (no se sella: es la cita
   // vigente) y ya formateada. null salvo que la sección del "empeoró" confirmado se vaya a mostrar.
   patientBandAppointmentDate: string | null;
+  /**
+   * LA META DE PESO REGISTRADA por el profesional (`evaluations.weight_goal_kg`), en kg. null = no hay.
+   *
+   * Es la REGISTRADA, nunca el default de Lorentz: la frase de la hoja de seguimiento va en la DIRECCION
+   * de la meta, y una meta que nadie fijo no tiene direccion (bajar es acercarse para unos y alejarse
+   * para otros). Viaja en el MISMO embed de `evaluations` que ya se consulta: cero consultas nuevas.
+   */
+  metaDePesoKg: number | null;
 };
 
 // Formatea una fecha ISO (YYYY-MM-DD) a "10 de agosto de 2026", de cara al paciente. Se parsea POR
@@ -333,7 +341,7 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
       // EL NOMBRE DEL PROFESIONAL (nutricionista, 2026-10-28): el informe que recibe el paciente no decia
       // quien lo atendio. Va con el HINT `profiles!profile_id` porque `professional_profiles` tiene TRES
       // relaciones a `profiles`; sin el, PostgREST no sabe por cual resolver y falla en runtime.
-      "id, evaluation_id, patient_id, status, snapshot, professional_notes, send_mode, storage_path, created_at, trajectory, trajectory_communicated_at, evaluations!inner(created_at, bis_measurements(measurement_date), professional_profiles(profession, profiles!profile_id(full_name))), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
+      "id, evaluation_id, patient_id, status, snapshot, professional_notes, send_mode, storage_path, created_at, trajectory, trajectory_communicated_at, evaluations!inner(created_at, weight_goal_kg, bis_measurements(measurement_date), professional_profiles(profession, profiles!profile_id(full_name))), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
     )
     .eq("id", reportId)
     .maybeSingle();
@@ -368,6 +376,7 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
   // segun la cardinalidad que deduzca, y asumir una de las dos es el defecto del embed to-one.
   const evaluacion = one<{
     professional_profiles?: unknown;
+    weight_goal_kg?: string | number | null;
   }>(data.evaluations as never);
   const perfilProfesional = one<{ profession: string | null; profiles: unknown }>(
     (evaluacion?.professional_profiles ?? null) as never,
@@ -399,6 +408,12 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     email: contact?.email ?? null,
+    // LA META DE PESO, del mismo embed. `numeric` llega como cadena, asi que se convierte aqui; un cero o
+    // un valor ilegible se tratan como "sin meta", porque una meta de cero kilos no es una meta.
+    metaDePesoKg: (() => {
+      const n = Number(evaluacion?.weight_goal_kg);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })(),
     // DEFECTO CORREGIDO (2026-08-29), y era mas grave de lo que parecia: el campo se llama
     // `evaluationDate` y llevaba `data.created_at`, que en esta consulta es el `created_at` del REPORTE.
     // O sea que el PDF y el correo del paciente imprimian, bajo el rotulo de la fecha de la evaluacion, el
