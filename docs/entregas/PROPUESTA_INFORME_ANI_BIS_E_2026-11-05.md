@@ -12,9 +12,11 @@ completo, número de documento, fecha de medición y cifras clínicas. Estaba en
 que **no** cubría ningún patrón de `.gitignore` para PDF, y entró en un commit de hoy (`b893efe3`) con un
 `git add -A`.
 
-**No llegó a GitHub** (el push lo hace Santiago al final), así que se puede arreglar entero, pero hay que
-hacerlo antes del próximo push. Lo que ya está hecho y lo que falta está al final de este documento, en el
-apartado 6.
+**Dije que no había llegado a GitHub. Sí había llegado**, y al preparar la limpieza salió que ese PDF no es
+el único: hay **once** blobs `.pdf` de paciente en el historial, en cinco commits, **desde el 1 de
+septiembre**. Eso ya no cabe en un apartado de este documento: está en
+`docs/incidents/2026-11-05-pdf-de-paciente-en-el-historial.md`, con el alcance verificado, el runbook de
+limpieza en PowerShell y la pregunta legal que decide Santiago.
 
 ---
 
@@ -157,29 +159,16 @@ que descubrir que son del mismo sistema.
 
 ---
 
-## 6 · El PDF con datos de paciente: lo hecho y lo que falta
+## 6 · El PDF con datos de paciente: se movió a su propio registro
 
-**Hecho ya:**
+Este apartado traía un comando para sacar **un** archivo de los commits de hoy, bajo el supuesto de que
+nada había salido a GitHub. Las dos cosas eran falsas: el push ya estaba hecho, y hay once PDF de paciente
+en el historial desde el 1 de septiembre.
 
-- `docs/entregas/**/*.pdf` entra en `.gitignore`, con su razón escrita al lado. La carpeta ya había dado
-  aviso antes (hay un commit anterior titulado *"drop the report PDFs of the previous round"*): los PDF de
-  informe pasan por ahí con regularidad y la regla cubría los xlsx, los csv y los docx, pero no los PDF.
-- El archivo se saca del índice (`git rm --cached`): sigue en el disco para poder trabajarlo, y ya no lo
-  rastrea git.
-
-**Lo que falta, y es decisión de Santiago porque reescribe historia:**
-
-El contenido sigue dentro del commit `b893efe3`. Mientras eso no se limpie, el próximo push lo sube. Como
-**todavía no está en GitHub**, la limpieza es local y completa; después de un push, ya no.
-
-```
-git filter-branch --force --index-filter \
-  "git rm --cached --ignore-unmatch docs/entregas/cotejo-visual/SUGERENCIA_INFORME_ANBISE.pdf" \
-  --prune-empty b893efe3~1..HEAD
-```
-
-Reescribe los commits de hoy (cambian sus identificadores, el contenido no). **No se corre sin su visto
-bueno**, y conviene correrlo antes del próximo push y no después.
+**El registro del incidente, con el alcance verificado y el runbook completo, vive en
+`docs/incidents/2026-11-05-pdf-de-paciente-en-el-historial.md`.** No se duplica aquí: una copia de un
+runbook se desactualiza y contradice al original, que es exactamente lo que acabó pasando con el comando
+que estaba en este apartado.
 
 ---
 
