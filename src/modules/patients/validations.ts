@@ -151,8 +151,12 @@ export const peticionDeEliminacionSchema = z.object({
 //
 // Y AL NEGAR NO SE PIDE: negar deja todo como estaba, asi que exigirlo seria poner un tramite en la
 // salida segura, que es como se consigue que la gente confirme por no escribir.
+/**
+ * SIN `documento` desde el 2026-11-05 (Santiago): *"Fuera la cedula tecleada: era para un acto
+ * irreversible, y este se deshace."* El esquema lo pedia porque la pantalla lo enviaba; al dejar de
+ * pedirlo, mantener el campo aqui seria aceptar un dato que nadie usa y que es PII.
+ */
 export const resolucionDeEliminacionSchema = z.object({
   patientId: z.guid(),
   confirmar: z.boolean(),
-  documento: z.string().trim().max(40),
 });

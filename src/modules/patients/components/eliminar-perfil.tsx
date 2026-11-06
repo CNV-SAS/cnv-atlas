@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
@@ -31,7 +31,6 @@ const INICIAL: EliminacionState = { error: null, success: null, warning: null };
 
 export type PeticionEnPantalla = {
   patientId: string;
-  documento: string;
   nombre: string;
   motivo: string;
   pedidoEn: string;
@@ -71,24 +70,23 @@ export function PedirEliminacionDelPerfil({ patientId }: { patientId: string }) 
 }
 
 /**
- * Un administrador resuelve. Ejecutar pide ESCRIBIR EL DOCUMENTO del paciente (v12: *"no basta un «Aceptar»"*).
+ * Un administrador resuelve: dos botones, Aprobar y Rechazar.
  *
- * EL CAMPO DEL DOCUMENTO VIVE EN EL ESTADO DE ESTA PANTALLA y el boton de ejecutar se queda apagado
- * mientras no se haya escrito nada. No es la validacion de verdad (esa compara contra la base, dentro de
- * la transaccion): es para que no se pueda pulsar el boton peligroso sin haber escrito, que es justo lo
- * que el "Aceptar" no distinguia. Un boton apagado DICE POR QUE lo esta en el texto de al lado, porque un
- * boton muerto sin explicacion es peor que un error claro.
+ * ═══ EL DOCUMENTO TECLEADO SALIO EL 2026-11-05 (Santiago) ═══
  *
- * Y EL DOCUMENTO NO SE MUESTRA EN ESTA FILA. Es la unica decision de diseno que puede sorprender, y es
- * deliberada: si el numero estuviera al lado del campo, escribirlo seria copiarlo, y el paso dejaria de
- * comprobar nada. Quien ejecuta tiene la ficha del paciente a un clic.
+ * *"Fuera la cedula tecleada: era para un acto irreversible, y este se deshace. La bandeja queda con dos
+ * botones: Aprobar y Rechazar."*
+ *
+ * La pieza venia de v12 (*"no basta un «Aceptar»: hay que escribir el numero de documento"*) y su
+ * argumento tenia un supuesto que en Atlas es falso: aqui eliminar no borra nada y `restituirAlPaciente`
+ * lo deshace. El porque entero esta en el writer, que es donde vivia la comprobacion.
+ *
+ * LO QUE SE VA CON EL CAMPO: el estado por peticion, el boton apagado y su linea de explicacion. Con dos
+ * botones simetricos no hay boton apagado que explicar, que es la forma mas simple de cumplir el hazard 8.
  */
 export function ResolverEliminaciones({ peticiones }: { peticiones: PeticionEnPantalla[] }) {
   const [state, action, pending] = useActionState(resolverEliminacionDelPacienteAction, INICIAL);
   useFormToastAndRefresh(state);
-  // UNO POR PETICION: con un solo campo compartido, escribir el documento de una fila dejaria el de la
-  // otra a medio llenar y se podria ejecutar la equivocada.
-  const [documentos, setDocumentos] = useState<Record<string, string>>({});
 
   if (peticiones.length === 0) {
     return <p className="text-sm text-muted-foreground">No hay peticiones esperando.</p>;
@@ -96,66 +94,41 @@ export function ResolverEliminaciones({ peticiones }: { peticiones: PeticionEnPa
 
   return (
     <ul className="flex flex-col gap-4 text-sm">
-      {peticiones.map((p) => {
-        const escrito = (documentos[p.patientId] ?? "").trim();
-        return (
-          <li key={p.patientId} className="flex flex-col gap-2 border-b pb-4">
-            <span className="font-medium text-foreground">{p.nombre}</span>
-            {/* EL MOTIVO COMPLETO: es lo unico con lo que se puede decidir, y por eso la base lo exige. */}
-            <span className="text-muted-foreground">
-              &ldquo;{p.motivo}&rdquo; · lo pidió {p.pedidoPor ?? "alguien"} el {enBogota(p.pedidoEn)}
+      {peticiones.map((p) => (
+        <li key={p.patientId} className="flex flex-col gap-2 border-b pb-4">
+          <span className="font-medium text-foreground">{p.nombre}</span>
+          {/* EL MOTIVO COMPLETO: es lo unico con lo que se puede decidir, y por eso la base lo exige. */}
+          <span className="text-muted-foreground">
+            &ldquo;{p.motivo}&rdquo; · lo pidió {p.pedidoPor ?? "alguien"} el {enBogota(p.pedidoEn)}
+          </span>
+          <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="patientId" value={p.patientId} />
+            {/* DOS BOTONES CON `key` DISTINTA (hazard 1) y su dato en `name`/`value`, que SOLO viaja
+                porque `enviarSinReset` pasa el submitter (hazard 5). */}
+            {/* APROBAR NO ES `destructive`: lo que hace es sacar el perfil de las pantallas, y la historia
+                clinica se conserva por ley. El rojo diria que algo se pierde. Es el mismo criterio con el
+                que el boton de reemplazar la medicion dejo de ser rojo el mismo dia. */}
+            <Button key="aprobar" type="submit" name="confirmar" value="true" disabled={pending}>
+              Aprobar
+            </Button>
+            <Button
+              key="rechazar"
+              type="submit"
+              name="confirmar"
+              value="false"
+              variant="outline"
+              disabled={pending}
+            >
+              Rechazar
+            </Button>
+            {/* QUE HACE CADA UNO, en una linea: "Aprobar" y "Rechazar" solos no dicen sobre que. */}
+            <span className="text-xs text-muted-foreground">
+              Aprobar lo saca de todas las pantallas; su historia clínica se conserva y se puede
+              restituir. Rechazar deja todo como está.
             </span>
-            <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-2">
-              <input type="hidden" name="patientId" value={p.patientId} />
-              <div className="flex flex-col gap-1">
-                <Label htmlFor={`doc-${p.patientId}`} className="text-xs">
-                  Escribe el documento del paciente para eliminarlo
-                </Label>
-                <Input
-                  id={`doc-${p.patientId}`}
-                  name="documento"
-                  value={documentos[p.patientId] ?? ""}
-                  onChange={(e) =>
-                    setDocumentos((d) => ({ ...d, [p.patientId]: e.target.value }))
-                  }
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className="h-9 max-w-56"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {/* DOS BOTONES CON `key` DISTINTA (hazard 1) y su dato en `name`/`value`, que SOLO viaja
-                    porque `enviarSinReset` pasa el submitter (hazard 5). */}
-                <Button
-                  key="eliminar"
-                  type="submit"
-                  name="confirmar"
-                  value="true"
-                  variant="destructive"
-                  disabled={pending || escrito === ""}
-                >
-                  Eliminar el perfil
-                </Button>
-                <Button
-                  key="negar"
-                  type="submit"
-                  name="confirmar"
-                  value="false"
-                  variant="ghost"
-                  disabled={pending}
-                >
-                  No eliminarlo
-                </Button>
-                {escrito === "" ? (
-                  <span className="text-xs text-muted-foreground">
-                    Escribe el documento para poder eliminar. Negarlo no lo pide.
-                  </span>
-                ) : null}
-              </div>
-            </form>
-          </li>
-        );
-      })}
+          </form>
+        </li>
+      ))}
     </ul>
   );
 }

@@ -8,7 +8,9 @@ vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(), captureMessage: vi
 //
 // CUATRO COSAS QUE SOLO LA BASE PUEDE CONTESTAR, y ninguna se puede comprobar leyendo el codigo:
 //
-//   1 · que el documento equivocado NO elimine a nadie (y que el bueno si);
+//   1 · que SIN PETICION no se pueda eliminar, y que el CHECK lo sostenga tambien contra SQL a mano
+//       (hasta el 2026-11-05 esto era "que el documento equivocado no elimine a nadie": ese paso salio,
+//       y en su lugar se mide lo que de verdad frena el acto);
 //   2 · que un paciente eliminado DESAPAREZCA de la vista del roster, que es de donde sale la lista;
 //   3 · que los dos CHECK rechacen los estados imposibles (eliminado sin peticion, peticion sin motivo);
 //   4 · y que con el rol `authenticated` (la anon key) el trigger frene la escritura, aunque la policy
@@ -24,17 +26,16 @@ HAS_DB = Boolean(process.env.DATABASE_URL);
 
 let patientId = "";
 let actorId = "";
-let documento = "";
 let adminId = "";
 
 describe.skipIf(!HAS_DB)("eliminar el perfil de un paciente (BD real)", () => {
   beforeAll(async () => {
     const { db } = await import("@/db");
-    const [pac] = await db.execute<{ id: string; documento: string }>(dsql`
-      select id, document_number as documento from patients where deleted_at is null
-       order by created_at limit 1`);
+    // SIN EL DOCUMENTO: el fixture lo traia para teclearlo, y ese paso salio el 2026-11-05. Una
+    // consulta de prueba que trae el documento de un paciente real es PII que nadie usa.
+    const [pac] = await db.execute<{ id: string }>(dsql`
+      select id from patients where deleted_at is null order by created_at limit 1`);
     patientId = pac.id;
-    documento = pac.documento;
     const [prof] = await db.execute<{ id: string }>(dsql`
       select id from profiles order by created_at limit 1`);
     actorId = prof.id;
@@ -86,27 +87,54 @@ describe.skipIf(!HAS_DB)("eliminar el perfil de un paciente (BD real)", () => {
     expect(enRoster.n).toBe(1);
   }, 30_000);
 
-  it("el documento equivocado no elimina a nadie", async () => {
+  // ═══ AQUI SE MEDIA "el documento equivocado no elimina a nadie", Y EL PASO SALIO (2026-11-05) ═══
+  //
+  // Santiago: *"Fuera la cedula tecleada: era para un acto irreversible, y este se deshace."* El caso no
+  // se puede conservar porque la comprobacion no existe, y borrarlo sin mas dejaria sin medir lo que de
+  // verdad protege este acto. Asi que se sustituye por los DOS casos que sostienen la decision, que son
+  // los que habia que comprobar antes de quitar el tramite.
+
+  it("un paciente SIN peticion no se puede eliminar, aunque lo pida un administrador", async () => {
+    // ES LA ASIMETRIA, Y AHORA ES LO UNICO QUE FRENA: el profesional pide, un administrador resuelve.
+    // Sin el campo del documento, este es el guard que impide que un administrador saque a un paciente de
+    // las listas por su cuenta, sin que nadie lo haya pedido ni dejado un motivo.
     const { db } = await import("@/db");
     const { resolverLaEliminacion, EliminacionDelPacienteError } = await import(
       "@/modules/patients/data/eliminacion-del-paciente-writer"
     );
+    // Se limpia la peticion para dejar al paciente sin ella, y se intenta eliminar.
+    await db.execute(dsql`
+      update patients
+         set eliminacion_pedida_at = null, eliminacion_pedida_por = null, eliminacion_motivo = null
+       where id = ${patientId}::uuid`);
     await expect(
-      resolverLaEliminacion({
-        patientId,
-        confirmar: true,
-        documento: `${documento}9`,
-        actorId,
-        actorEmail: "admin@cnv",
-        ip: null,
-      }),
+      resolverLaEliminacion({ patientId, confirmar: true, actorId, actorEmail: "admin@cnv", ip: null }),
     ).rejects.toBeInstanceOf(EliminacionDelPacienteError);
     const [p] = await db.execute<{ retirado: string | null }>(dsql`
       select deleted_at::text as retirado from patients where id = ${patientId}::uuid`);
     expect(p.retirado).toBeNull();
+    // Y SE DEJA COMO ESTABA para los casos de abajo, que esperan la peticion viva.
+    await db.execute(dsql`
+      update patients
+         set eliminacion_pedida_at = now(), eliminacion_pedida_por = ${actorId}::uuid,
+             eliminacion_motivo = 'se repitio el perfil por un error al escribir el documento'
+       where id = ${patientId}::uuid`);
   }, 30_000);
 
-  it("con el documento bueno se elimina, y desaparece de la vista del roster", async () => {
+  it("y el CHECK de la base no deja una eliminacion sin peticion ni escribiendo SQL a mano", async () => {
+    // LA SEGUNDA MITAD, y la que no depende de nuestro codigo: `patients_eliminacion_coherente`. Con el
+    // campo del documento fuera, conviene que quede medido que la asimetria vive tambien en la base.
+    const { db } = await import("@/db");
+    await expect(
+      db.execute(dsql`
+        update patients
+           set deleted_at = now(), eliminado_por = ${actorId}::uuid,
+               eliminacion_pedida_at = null, eliminacion_pedida_por = null, eliminacion_motivo = null
+         where id = ${patientId}::uuid`),
+    ).rejects.toThrow();
+  }, 30_000);
+
+  it("con la peticion viva se elimina, y desaparece de la vista del roster", async () => {
     const { db } = await import("@/db");
     const { resolverLaEliminacion } = await import(
       "@/modules/patients/data/eliminacion-del-paciente-writer"
@@ -114,7 +142,6 @@ describe.skipIf(!HAS_DB)("eliminar el perfil de un paciente (BD real)", () => {
     await resolverLaEliminacion({
       patientId,
       confirmar: true,
-      documento,
       actorId,
       actorEmail: "admin@cnv",
       ip: null,

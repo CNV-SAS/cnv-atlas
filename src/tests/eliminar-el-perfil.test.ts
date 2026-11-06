@@ -100,49 +100,108 @@ describe("1 · la asimetria: quien pide no ejecuta", () => {
   });
 });
 
-describe("2 · el documento se escribe, y se compara en el servidor", () => {
-  it("la comparacion vive en la transaccion, contra la fila", () => {
-    // v12: *"no basta un «Aceptar»: hay que escribir el numero de documento"*. Comparado en la pantalla se
-    // salta llamando a la accion; comparado aqui, no.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// 2 · LA BANDEJA SON DOS BOTONES, Y NO SE TECLEA NINGUNA CEDULA  ·  Santiago, 2026-11-05
+//
+// *"Fuera la cedula tecleada: era para un acto irreversible, y este se deshace. La bandeja queda con dos
+// botones: Aprobar y Rechazar."*
+//
+// ═══ ESTE BLOQUE MEDIA LO CONTRARIO, Y SE DA VUELTA ═══
+//
+// Afirmaba que la cedula se escribia y se comparaba dentro de la transaccion, con su orden y su boton
+// apagado. Era un porte fiel de v12 (*"no basta un «Aceptar»: hay que escribir el numero de documento"*) y
+// EL SUPUESTO DE ESA FRASE ES FALSO EN ATLAS: eliminar escribe `deleted_at`, no borra ninguna fila, y
+// `restituirAlPaciente` lo deshace.
+//
+// LO QUE SE AFIRMA AHORA son las dos mitades de la decision: que el tramite no vuelva, y que lo que de
+// verdad protege este acto siga en pie. Lo segundo es lo que importa: quitar un freno obliga a comprobar
+// que el acto no se quedo sin ninguno.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("2 · la bandeja son dos botones, y no se teclea ninguna cedula", () => {
+  it("el writer ya no compara ningun documento, ni lo lee de la fila", () => {
     const resolver = WRITER.slice(
       WRITER.indexOf("export async function resolverLaEliminacion"),
       WRITER.indexOf("export async function restituirAlPaciente"),
     );
-    expect(resolver).toContain("input.documento.trim() !== p.documento");
-    expect(resolver).toContain("document_number as documento");
-    // Y EL ORDEN IMPORTA: la comparacion va ANTES del update, no despues.
-    expect(resolver.indexOf("input.documento.trim() !== p.documento")).toBeLessThan(
-      resolver.indexOf("set deleted_at = now()"),
-    );
+    expect(resolver, "volvio la comparacion del documento tecleado").not.toContain("input.documento");
+    expect(
+      resolver,
+      "el resolver vuelve a leer el documento del paciente, que es PII que nadie usa",
+    ).not.toContain("document_number");
   });
 
-  it("solo al EJECUTAR, no al negar", () => {
-    // Negar deja todo como estaba: pedir el documento ahi seria un tramite sobre la salida segura, y eso
-    // empuja a confirmar por no escribir.
-    const resolver = WRITER.slice(
-      WRITER.indexOf("export async function resolverLaEliminacion"),
-      WRITER.indexOf("export async function restituirAlPaciente"),
-    );
-    expect(resolver.indexOf("if (input.confirmar)")).toBeLessThan(
-      resolver.indexOf("input.documento.trim() !== p.documento"),
-    );
-  });
-
-  it("y el boton de eliminar esta apagado mientras no se haya escrito", () => {
-    expect(PANTALLA).toContain('disabled={pending || escrito === ""}');
-    // UN BOTON APAGADO DICE POR QUE lo esta: uno muerto sin explicación es peor que un error claro.
-    expect(PANTALLA).toContain("Escribe el documento para poder eliminar");
-  });
-
-  it("el documento NO se muestra junto al campo donde se escribe", () => {
-    // Si estuviera al lado, escribirlo seria copiarlo y el paso dejaria de comprobar nada. La bandeja
-    // muestra el nombre y el motivo, que es con lo que se decide.
+  it("y la bandeja ofrece Aprobar y Rechazar, con su dato en el boton (hazard 5)", () => {
     const bandeja = PANTALLA.slice(
       PANTALLA.indexOf("export function ResolverEliminaciones"),
       PANTALLA.indexOf("export function PacientesEliminados"),
     );
-    expect(bandeja).toContain("{p.nombre}");
-    expect(bandeja, "la bandeja pinta el documento al lado del campo").not.toContain("{p.documento}");
+    expect(bandeja, "la bandeja perdio el boton de aprobar").toContain("Aprobar");
+    expect(bandeja, "la bandeja perdio el boton de rechazar").toContain("Rechazar");
+    // SIN CAMPO DE TEXTO: ni el input ni su estado por peticion.
+    expect(bandeja, "volvio el campo del documento").not.toContain('name="documento"');
+    expect(bandeja, "volvio el estado del documento por peticion").not.toContain("setDocumentos");
+    // LOS DOS BOTONES CON `key` DISTINTA (hazard 1) y su valor en `name`/`value` (hazard 5, que solo
+    // viaja porque `enviarSinReset` pasa el submitter). Las dos cosas valen igual con dos botones que con
+    // tres, y son las que dejarian al servidor decidiendo por la persona.
+    expect(bandeja).toContain('key="aprobar"');
+    expect(bandeja).toContain('key="rechazar"');
+    expect(bandeja).toContain('name="confirmar"');
+    expect(bandeja).toContain("enviarSinReset(action)");
+  });
+
+  it("aprobar NO es rojo: lo que hace es sacarlo de las pantallas, no perder su historia", () => {
+    // Mismo criterio que el boton de reemplazar la medicion BIS, el mismo dia: el rojo de `destructive`
+    // significa un acto que QUITA algo, y aqui la historia clinica se conserva por ley.
+    const bandeja = PANTALLA.slice(
+      PANTALLA.indexOf("export function ResolverEliminaciones"),
+      PANTALLA.indexOf("export function PacientesEliminados"),
+    );
+    const aprobar = bandeja.slice(bandeja.indexOf('key="aprobar"'), bandeja.indexOf("Aprobar"));
+    expect(aprobar, "el boton de aprobar volvio a ser rojo").not.toContain("destructive");
+  });
+
+  it("y los dos botones DICEN que hacen: 'Aprobar' solo no dice sobre que", () => {
+    const bandeja = PANTALLA.slice(
+      PANTALLA.indexOf("export function ResolverEliminaciones"),
+      PANTALLA.indexOf("export function PacientesEliminados"),
+    );
+    expect(bandeja, "la bandeja no dice que hace aprobar").toContain("lo saca de todas las pantallas");
+    expect(bandeja, "la bandeja no dice que hace rechazar").toContain("deja todo como está");
+  });
+
+  it("CONTROL · lo que de verdad frena este acto sigue en pie", () => {
+    // ES EL CASO QUE JUSTIFICA HABER QUITADO EL TRAMITE. Sin esto, el bloque de arriba solo diria que un
+    // freno desaparecio.
+    const resolver = WRITER.slice(
+      WRITER.indexOf("export async function resolverLaEliminacion"),
+      WRITER.indexOf("export async function restituirAlPaciente"),
+    );
+    // 1 · SIN PETICION NO SE ELIMINA: es la asimetria (quien se beneficia de la exclusion no la autoriza).
+    expect(resolver, "se puede eliminar sin que nadie lo haya pedido").toContain("p.pedido == null");
+    // 2 · NO SE ELIMINA DOS VECES.
+    expect(resolver).toContain("p.eliminado != null");
+    // 3 · Y EL ACTO QUEDA EN EL AUDIT, con su evento y su actor.
+    expect(resolver).toContain("paciente.eliminado");
+    expect(resolver).toContain("paciente.eliminacion_negada");
+  });
+
+  it("el asiento dice el motivo Y QUIEN LO PIDIO (Santiago, 2026-11-05)", () => {
+    // *"La auditoria dice motivoPedido. Que diga tambien quien lo pidio y, si se rechaza, quien lo
+    // rechazo."*
+    //
+    // QUIEN LO PIDIO ERA EL HUECO: al RECHAZAR se limpia la peticion entera de la fila, asi que despues de
+    // un rechazo ese nombre no estaba junto al rechazo en ningun sitio legible.
+    //
+    // QUIEN LO RESOLVIO YA ESTABA, y es el ACTOR del evento (`actorId` / `actorEmail` de esta misma fila
+    // del log). Se afirma aqui para que nadie lo anada otra vez al payload: seria el mismo dato en dos
+    // campos que pueden divergir, y el de la columna es el que no se puede falsear.
+    const resolver = WRITER.slice(
+      WRITER.indexOf("export async function resolverLaEliminacion"),
+      WRITER.indexOf("export async function restituirAlPaciente"),
+    );
+    expect(resolver, "el asiento dejo de decir por que se pidio").toContain("motivoPedido: p.motivo");
+    expect(resolver, "el asiento no dice quien lo pidio").toContain("pedidoPor: p.pedido_por");
+    expect(resolver, "se dejo de registrar quien resolvio").toContain("actorId: input.actorId");
   });
 });
 
@@ -221,8 +280,14 @@ describe("y las reglas de la casa que estos formularios tienen que cumplir", () 
     // Los TRES formularios del archivo: pedir, resolver y restituir.
     expect((PANTALLA.match(/onSubmit=\{enviarSinReset\(action\)\}/g) ?? []).length).toBe(3);
     expect(PANTALLA).toContain('name="confirmar"');
-    expect(PANTALLA).toContain('key="eliminar"');
-    expect(PANTALLA).toContain('key="negar"');
+    // LAS `key` DISTINTAS son el hazard 1: con la misma, React reutiliza el nodo DOM y el botón cambia de
+    // papel bajo el dedo. Se renombraron el 2026-11-05 con los botones ("Aprobar" y "Rechazar"), y lo que
+    // se vigila no es el nombre: es que sean DOS y DISTINTAS.
+    const claves = [...PANTALLA.matchAll(/key="([a-z]+)"/g)].map((m) => m[1]);
+    expect(claves.length, "los dos botones de la bandeja perdieron su `key`").toBeGreaterThanOrEqual(2);
+    expect(new Set(claves).size, "dos botones de envío comparten su `key` (hazard 1)").toBe(
+      claves.length,
+    );
   });
 
   it("y ningun `<form>` de este archivo contiene otro", () => {

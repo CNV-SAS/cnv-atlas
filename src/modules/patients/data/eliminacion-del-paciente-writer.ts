@@ -30,21 +30,36 @@ import { recordAudit } from "@/modules/audit/log";
 // autorizarla"*. El CHECK `patients_eliminacion_coherente` lo sostiene en la base: no hay `deleted_at`
 // sin peticion, asi que la asimetria no se puede saltar ni escribiendo SQL a mano.
 //
-// ── EL DOCUMENTO SE ESCRIBE, Y ESO ES DE v12 ──────────────────────────────────────────────────────
+// ── EL DOCUMENTO TECLEADO SALIO EL 2026-11-05, Y LA RAZON ES DE SANTIAGO ──────────────────────────
 //
-// Su pieza que vale la pena portar tal cual: *"es irreversible, asi que no basta un «Aceptar»: hay que
-// escribir el numero de documento del paciente"*. Se compara aqui, dentro de la transaccion, contra el
-// documento de la fila: un `confirm()` en el navegador no distingue un clic de una decision, y una
-// comparacion en la pantalla se salta llamando a la accion.
+// *"Fuera la cedula tecleada: era para un acto irreversible, y este se deshace. La bandeja queda con dos
+// botones: Aprobar y Rechazar."*
 //
-// LA ELIMINACION SI ES REVERSIBLE (`restituirAlPaciente`), y aun asi se pide el documento: lo que no es
-// reversible es el tiempo que el paciente paso fuera de las listas, que es tiempo sin atender.
+// LA PIEZA VENIA DE v12 (*"es irreversible, asi que no basta un «Aceptar»: hay que escribir el numero de
+// documento del paciente"*) y se porto con su argumento entero. EL ARGUMENTO TENIA UN SUPUESTO FALSO EN
+// ATLAS: aqui eliminar NO es irreversible. Escribe `deleted_at`, no borra ninguna fila, y
+// `restituirAlPaciente` lo deshace. Su frase describe un borrado de verdad, y este no lo es.
+//
+// Y LO QUE ESTABA ESCRITO AQUI PARA DEFENDERLO ERA JUSTO LO QUE LO DESMONTABA: decia que se pedia el
+// documento porque *"lo que no es reversible es el tiempo que el paciente paso fuera de las listas"*. Eso
+// es cierto y NO es lo que v12 justificaba: un tramite de copiar un numero no acorta ese tiempo, lo
+// alarga. Y su coste real era el de cualquier freno de esta clase: empuja a quien tiene prisa a pulsar la
+// salida que no lo pide.
+//
+// LO QUE SOSTIENE LA DECISION SIGUE EN PIE, y no es un campo de texto: la ASIMETRIA (el profesional pide,
+// un administrador resuelve), el CHECK de la base, el motivo obligatorio, el audit con nombre y fecha, y
+// que se pueda restituir.
 
 export class EliminacionDelPacienteError extends Error {}
 
+/**
+ * SIN `documento` desde el 2026-11-05. Lo traia para poder TECLEARLO al ejecutar, y ninguna pantalla lo
+ * mostraba (a proposito: con el numero al lado del campo, escribirlo seria copiarlo). Al salir ese paso,
+ * el campo quedaba viajando del servidor al cliente sin que nada lo leyera, y es el documento de un
+ * paciente.
+ */
 export type PeticionDeEliminacion = {
   patientId: string;
-  documento: string;
   nombre: string;
   motivo: string;
   pedidoEn: string;
@@ -105,31 +120,28 @@ export async function pedirLaEliminacionDelPaciente(
  * con otro motivo si se equivoco al escribirlo.
  */
 export async function resolverLaEliminacion(
-  input: { patientId: string; confirmar: boolean; documento: string } & Actor,
+  input: { patientId: string; confirmar: boolean } & Actor,
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    // SE LEE QUIEN LO PIDIO, no su documento: lo primero va al asiento de auditoria (ver abajo) y lo
+    // segundo ya no hace falta para nada. Una consulta que trae PII que nadie usa es PII de mas.
     const filas = await tx.execute<{
       pedido: string | null;
       motivo: string | null;
       eliminado: string | null;
-      documento: string;
+      pedido_por: string | null;
     }>(sql`
-      select eliminacion_pedida_at::text as pedido, eliminacion_motivo as motivo,
-             deleted_at::text as eliminado, document_number as documento
-        from patients where id = ${input.patientId}::uuid`);
+      select p.eliminacion_pedida_at::text as pedido, p.eliminacion_motivo as motivo,
+             p.deleted_at::text as eliminado, pedidor.full_name as pedido_por
+        from patients p
+        left join profiles pedidor on pedidor.id = p.eliminacion_pedida_por
+       where p.id = ${input.patientId}::uuid`);
     const p = filas[0];
     if (!p) throw new EliminacionDelPacienteError("Ese paciente no existe.");
     if (p.pedido == null) throw new EliminacionDelPacienteError("Ese paciente no tiene una petición de eliminación.");
     if (p.eliminado != null) throw new EliminacionDelPacienteError("Ese paciente ya está eliminado.");
 
     if (input.confirmar) {
-      // EL DOCUMENTO, SOLO AL EJECUTAR. Negar deja todo como estaba, asi que pedirselo seria un tramite
-      // sobre la salida segura, y eso empuja a confirmar por no escribir.
-      if (input.documento.trim() !== p.documento) {
-        throw new EliminacionDelPacienteError(
-          "El documento no coincide con el del paciente. No se retiró a nadie.",
-        );
-      }
       await tx.execute(sql`
         update patients
            set deleted_at = now(), eliminado_por = ${input.actorId}::uuid
@@ -148,9 +160,22 @@ export async function resolverLaEliminacion(
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       ip: input.ip,
-      // EL MOTIVO PEDIDO VIAJA AL ASIENTO. Al limpiarlo de la fila, el audit es el unico sitio donde
-      // queda por que se pidio, y "se nego" sin saber que se habia pedido no se puede leer despues.
-      payload: { motivoPedido: p.motivo },
+      // ═══ EL ASIENTO LLEVA EL MOTIVO Y QUIEN LO PIDIO (Santiago, 2026-11-05) ═══
+      //
+      // *"La auditoria dice motivoPedido. Que diga tambien quien lo pidio y, si se rechaza, quien lo
+      // rechazo."*
+      //
+      // QUIEN LO PIDIO ERA EL HUECO DE VERDAD, y por una razon que no se ve: al RECHAZAR se limpia la
+      // peticion entera de la fila (`eliminacion_pedida_por` incluido, porque el CHECK exige que la
+      // peticion este completa o no exista). Asi que despues de un rechazo el nombre de quien lo pidio no
+      // estaba en ningun sitio legible junto al rechazo: habia que ir a buscar el evento
+      // `paciente.eliminacion_pedida` de antes y cruzarlo por el id del paciente.
+      //
+      // QUIEN LO RESOLVIO YA ESTABA, y conviene decirlo para que nadie lo anada dos veces: es el ACTOR
+      // del evento (`actor_id` y `actor_email` de esta misma fila del log). Repetirlo en el payload
+      // seria el mismo dato en dos campos que pueden divergir, y el de la columna es el que no se puede
+      // falsear. El evento dice lo que paso (`eliminado` o `eliminacion_negada`) y la columna dice quien.
+      payload: { motivoPedido: p.motivo, pedidoPor: p.pedido_por },
     });
   });
 }
@@ -198,20 +223,18 @@ export async function restituirAlPaciente(
 /**
  * Las peticiones que esperan a un administrador. Para la bandeja: sin esto, una peticion no la ve nadie.
  *
- * TRAE EL DOCUMENTO COMPLETO porque es lo que hay que escribir para ejecutar, y el NOMBRE porque la
- * decision es sobre una persona. Es la misma consulta que la bandeja de la 0180, con su misma forma.
+ * TRAE EL NOMBRE porque la decision es sobre una persona, y el MOTIVO porque es lo unico con lo que se
+ * puede decidir. Es la misma consulta que la bandeja de la 0180, con su misma forma.
  */
 export async function peticionesDeEliminacionPendientes(): Promise<PeticionDeEliminacion[]> {
   const filas = await db.execute<{
     patient_id: string;
-    documento: string;
     nombre: string;
     motivo: string;
     pedido_en: string;
     pedido_por: string | null;
   }>(sql`
     select p.id as patient_id,
-           p.document_number as documento,
            coalesce(pp.first_name || ' ' || pp.last_name, '(sin nombre)') as nombre,
            p.eliminacion_motivo as motivo,
            p.eliminacion_pedida_at::text as pedido_en,
@@ -223,7 +246,6 @@ export async function peticionesDeEliminacionPendientes(): Promise<PeticionDeEli
      order by p.eliminacion_pedida_at asc`);
   return filas.map((f) => ({
     patientId: f.patient_id,
-    documento: f.documento,
     nombre: f.nombre,
     motivo: f.motivo,
     pedidoEn: f.pedido_en,
@@ -243,7 +265,6 @@ export async function pacientesEliminados(): Promise<
 > {
   const filas = await db.execute<{
     patient_id: string;
-    documento: string;
     nombre: string;
     motivo: string;
     pedido_en: string;
@@ -252,7 +273,6 @@ export async function pacientesEliminados(): Promise<
     eliminado_por: string | null;
   }>(sql`
     select p.id as patient_id,
-           p.document_number as documento,
            coalesce(pp.first_name || ' ' || pp.last_name, '(sin nombre)') as nombre,
            p.eliminacion_motivo as motivo,
            p.eliminacion_pedida_at::text as pedido_en,
@@ -267,7 +287,6 @@ export async function pacientesEliminados(): Promise<
      order by p.deleted_at desc`);
   return filas.map((f) => ({
     patientId: f.patient_id,
-    documento: f.documento,
     nombre: f.nombre,
     motivo: f.motivo,
     pedidoEn: f.pedido_en,

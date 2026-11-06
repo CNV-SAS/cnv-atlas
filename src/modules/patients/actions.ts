@@ -763,7 +763,7 @@ export async function pedirEliminacionDelPacienteAction(
   }
 }
 
-/** La direccion ejecuta o niega. Ejecutar exige escribir el documento del paciente (v12). */
+/** La direccion aprueba o rechaza. Sin documento tecleado desde el 2026-11-05: ver el writer. */
 export async function resolverEliminacionDelPacienteAction(
   _prev: EliminacionState,
   form: FormData,
@@ -779,7 +779,6 @@ export async function resolverEliminacionDelPacienteAction(
     // (hazard 5 de CLAUDE.md). Con `new FormData(form)` a secas, el servidor no sabria si se ejecuto o
     // se nego, y el valor por defecto decidiria por la persona.
     confirmar: String(form.get("confirmar") ?? "") === "true",
-    documento: form.get("documento") ?? "",
   });
   if (!datos.success) return sinEliminar("Datos inválidos.");
 
