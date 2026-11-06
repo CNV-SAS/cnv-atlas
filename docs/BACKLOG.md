@@ -101,6 +101,36 @@ escribir dieciocho excepciones con su razón para borrarlas una por una en los p
 queda declarado en `fixtures/html-vigente.ts` y en `frozen-deriva-vigente.test.ts`, y el módulo nuevo
 (`engine.d1-clasificacion.js`) tiene su propio candado byte a byte contra el v16.
 
+### 5 · El ORDEN dentro del bump, verificado en el código (no se puede invertir)
+
+**Los pasos 3 y 4 del plan van en un solo bump, un solo recálculo y un solo juego de goldens**, como
+pidió la ronda. Pero dentro de ese bump hay un orden que no es de gusto, y conviene que esté escrito
+antes de empezar:
+
+**1 · Primero `analizarDFI` pasa a leer el IAE de la v7. 2 · Solo después entra el ICEC con
+`calcPatron`.**
+
+| lo verificado | dónde |
+|---|---|
+| `analizarDesdeBiody` **ya está migrada**: su `IAE` sale de `ebBisV7`, y es la cifra que el informe pinta arriba | `analysis.ts` L138-159 y L206 |
+| `analizarDFI` **no lo está**: calcula `EB_BIS = ix.computeEBBIS(IFC, PABU, le8.total)` y `IAE = computeIAE(EB_BIS, edad)`, o sea la v5 | `analysis.ts` L275-276 |
+| Ese IAE de la v5 es el que alimenta el dominio 3, el riesgo integrado y las rutas R1 y R4 | `engine.dfi.js` L159-163 · `engine.indices.js` L54 y L63 |
+| La v7 **no mete el ICEC en el cálculo**: solo en la alerta de discordancia | `eb-bis-v7.js` L33 contra L39 |
+| La v5 **sí lo mete**, por `le8.total` | `analysis.ts` L275 |
+
+**Lo que eso implica, y es la razón del orden:** mientras `analizarDFI` siga en la v5, encender
+`LE8_MAPEO_CORREGIDO` mueve `le8.total`, que mueve la EB-BIS v5, que mueve el IAE que decide el dominio
+3 y las rutas. **Eso es exactamente el bloqueo de julio** (su propio comentario: encenderlo baja la edad
+biológica de todos entre 1 y 8 años, y antes hay que recalibrar μ y σ). Con `analizarDFI` ya en la v7,
+`le8.total` deja de alimentar ninguna edad biológica: el ICEC solo afecta al dominio 5
+(Epigenético-Contextual) y a la alerta de discordancia de la v7. **Ahí el interruptor sale barato, y es
+lo que el plan quiso decir con "v15 es lo que hace barato a v16".**
+
+**Y la medición que hay que repetir después:** la del borde de ±5 ya está hecha con la cifra de la v7
+(cuatro consultas exactamente en ±5,0, acelerados 50 → 52, `scripts/QUE_MUEVE_EL_IAE_DE_LA_V7_2026-11-06.mjs`).
+La que falta es la del ICEC, que no se puede medir sin encender el interruptor: va dentro de la
+simulación, antes de ejecutar nada en la nube.
+
 ---
 
 ## PENDIENTE (2026-11-05) · v15 Y v16 DE GILDARDO: EL PLAN ESTÁ, NO SE CONSTRUYÓ NADA · DECIDE SANTIAGO EL ORDEN, Y GILDARDO LA PREGUNTA 4
