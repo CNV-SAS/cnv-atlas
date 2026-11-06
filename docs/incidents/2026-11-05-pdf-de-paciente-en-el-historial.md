@@ -155,6 +155,27 @@ git push --force-with-lease=main:21622f2d38bc215c2ffe83681163eaf8f5bd2285 origin
    **los once PDF volverían al clon local**, que es justo lo que se acabó de limpiar. Después del push
    el fetch es inofensivo.
 
+   **Y esto no es hipotético: pasó el mismo 5 de noviembre, una hora después de limpiar.**
+   `scripts/check-migrations.mjs` hace `git fetch --quiet origin` en su línea 73, como mejora para poder
+   avisar si el árbol está atrasado. Correrlo como paso normal de verificación del bloque devolvió
+   `origin/main` a `21622f2d` y los once blobs al clon. Se rehízo la limpieza (ver abajo) y se verificó
+   otra vez.
+
+   **Mientras el push no esté hecho, cualquier cosa que haga `fetch` reintroduce los objetos**, incluido
+   un comando propio que lo hace por conveniencia. Los conocidos: `pnpm db:check` / `db:check:cloud` (vía
+   `check-migrations.mjs`) y, obviamente, `git pull`. Después del push forzado el riesgo desaparece,
+   porque lo que trae el fetch ya es el historial limpio.
+
+   Si vuelve a pasar antes del push, la reparación es esta y no hace falta reescribir nada otra vez:
+
+   ```powershell
+   git update-ref refs/remotes/origin/main 79492075
+   git update-ref refs/remotes/origin/HEAD 79492075
+   git reflog expire --expire=now --all
+   git gc --prune=now
+   git rev-list --objects --all | Select-String "\.pdf$"   # debe salir vacio
+   ```
+
 Si el push falla con *"stale info"*, es que algo se movió en el remoto: no forzar, mirar qué fue.
 
 ### 4.6 · Lo que el push forzado NO arregla, y hay que hacer aparte
