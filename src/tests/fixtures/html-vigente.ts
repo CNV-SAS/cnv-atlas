@@ -66,6 +66,64 @@ export function htmlDeEntrega(carpeta: string): string {
 }
 
 
+// ═══ LA SEGUNDA CONVENCION DE CARPETA, Y EL HUECO QUE DEJA ABIERTO (2026-11-06) ═══
+//
+// Desde el 27 de septiembre Gildardo no entrega en `html actualizado <dia> <mes>`, sino en
+// `Nuevos cambios html/<dia> <mes>`. La derivacion de arriba solo reconoce la primera, asi que
+// `HTML_VIGENTE` resuelve al `ATLAS_v9.html` del 21 de septiembre mientras su archivo de hoy es el
+// `ATLAS_v16.html` del 4 de noviembre: SEIS entregas despues. Es el mismo defecto que la cabecera de este
+// archivo describe, una convencion mas abajo.
+//
+// POR QUE NO SE RE-APUNTA HOY, y queda escrito para que no parezca un descuido. Medido el 2026-11-06, el
+// frozen difiere del v16 en OCHO lineas y las copias de `fixtures/reference` en DIEZ, y las dieciocho
+// estan ya registradas como trabajo pendiente: dos son `calcPatron` (v16 §4.2, paso 3 del plan), tres son
+// la EB-BIS v7 (`cIAE` y los pesos z del IFC y del PABU, v15, paso 3), tres son el motor calorico
+// Harris-Benedict + 10 % (v12, y es la pregunta 1 de PENDIENTES, que FRENA) y diez son el parrafo de dieta
+// leyendo `d1Clasificar` (v16 §4.3, paso 5). Re-apuntar ahora obligaria a escribir dieciocho tolerancias
+// con su razon para borrarlas una por una en los pasos 3 y 5. **El re-anclaje va al final del paso 5, y
+// ahi entra con CERO tolerancias**, que es lo que de verdad prueba que el porte esta al dia.
+//
+// Mientras tanto la ruta de las entregas nuevas tambien se DERIVA aqui, para que ningun candado la escriba
+// a mano: es la regla que vigila `html-vigente-lock.test.ts`, y vale igual para la convencion nueva.
+const DIR_NUEVOS = `${DIR}/Nuevos cambios html`;
+
+/** Las entregas de la convencion nueva, ordenadas por fecha. Mismo criterio que `ENTREGAS`. */
+function cambiosNuevosOrdenados(): string[] {
+  const MESES: Record<string, number> = {
+    enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
+    julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+  };
+  return readdirSync(DIR_NUEVOS, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => {
+      const m = /^(\d+) (\p{L}+)$/u.exec(d.name);
+      if (!m) return null; // la carpeta trae tambien documentos suyos, no solo entregas
+      const mes = MESES[m[2].toLowerCase()];
+      return mes ? { name: d.name, orden: mes * 100 + Number(m[1]) } : null;
+    })
+    .filter((e): e is { name: string; orden: number } => e !== null)
+    .sort((a, b) => a.orden - b.orden)
+    .map((e) => e.name);
+}
+
+export const CAMBIOS_NUEVOS = cambiosNuevosOrdenados();
+
+/**
+ * Ruta del HTML de una entrega de la convencion NUEVA (`Nuevos cambios html/<dia> <mes>`).
+ *
+ * OJO: estos HTML estan en `.gitignore` (pesan 1,5 MB cada uno y uno trae una publishable key), asi que
+ * viven solo en la maquina de Santiago. Un candado anclado aqui falla RUIDOSO en un clon que no los tenga,
+ * y eso es lo correcto: lo contrario seria pasar verde sin comparar nada.
+ */
+export function htmlDeCambioNuevo(carpeta: string): string {
+  if (!CAMBIOS_NUEVOS.includes(carpeta)) throw new Error(`no existe la entrega nueva ${carpeta}`);
+  const htmls = readdirSync(`${DIR_NUEVOS}/${carpeta}`).filter((f) => /^ATLAS_v\d+\.html$/.test(f));
+  if (htmls.length !== 1) {
+    throw new Error(`la entrega ${carpeta} trae ${htmls.length} HTML de ATLAS; se esperaba exactamente uno`);
+  }
+  return `${DIR_NUEVOS}/${carpeta}/${htmls[0]}`;
+}
+
 /**
  * Extrae una funcion COMPLETA del HTML por su NOMBRE, contando llaves hasta cerrar.
  *

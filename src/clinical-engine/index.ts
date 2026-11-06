@@ -51,6 +51,23 @@ export {
 } from "./patron";
 export type { PatronResult, PatronCat, PatronGroup } from "./frozen/engine.patron.js";
 export { FREQ_GROUPS, catLabel, catColor } from "./frozen/engine.patron.js";
+// Clasificacion del patron usual por GRUPO (v16, 4 de noviembre): la fuente UNICA de si un grupo esta
+// en exceso, a moderar o en deficit, y del patron global. Sustituye el promedio de los cuatro grupos de
+// riesgo, que diluia un grupo frecuente y pintaba "Adecuado" en verde. Ver d1-clasificacion.ts.
+export {
+  clasificarD1,
+  textoPatronDeGrupos,
+  d1TextoPatron,
+  tarjetaD1,
+  categoriaDeGrupoD1,
+  colorDeGrupoD1,
+  NOTA_AL_PIE_D1,
+  type D1Clasificacion,
+  type D1Estado,
+  type D1Grupo,
+  type D1Patron,
+  type EtiquetaTarjetaD1,
+} from "./d1-clasificacion";
 // Normalizador canonico de sexo (M/F, fail-loud): el MISMO borde que usa el motor. La UI lo reusa
 // para no comparar sexo crudo (Biody exporta "Male", el motor clasifica con "M/Masculino").
 export { normalizeSexo } from "./edge/normalize";

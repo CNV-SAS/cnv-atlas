@@ -1,4 +1,11 @@
-import type { PatronGrupoView, PatronResolution } from "@/clinical-engine";
+import type { EtiquetaTarjetaD1, PatronGrupoView, PatronResolution } from "@/clinical-engine";
+import {
+  categoriaDeGrupoD1,
+  colorDeGrupoD1,
+  NOTA_AL_PIE_D1,
+  tarjetaD1,
+  textoPatronDeGrupos,
+} from "@/clinical-engine";
 import { COLOR_DE_NIVEL, nivelDeRespuesta, type ValorEncuesta } from "@/clinical-engine/encuesta-colores";
 import { DOMINIOS_ENCUESTA } from "@/clinical-engine/dominios-encuesta";
 import type { EvaluationCharacterization, SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
@@ -44,38 +51,36 @@ const CAT_CARDS = [
   { cat: "riesgo", label: "⚠️ De riesgo", color: "#dc2626", grupos: [11, 12, 13, 14] },
 ] as const;
 
-// Estado de una tarjeta de categoria a partir del promedio de sus grupos (13-ago L13895-13899, verbatim).
-// Tres logicas: riesgo (menos es mejor), moderados/neutro (el medio es lo optimo), protectores (mas es mejor).
-function catEstado(
-  avg: number | null,
-  cat: "protector" | "neutro" | "riesgo",
-): { label: string; color: string } {
-  if (avg === null) return { label: "Sin datos", color: "#94a3b8" };
-  const isR = cat === "riesgo";
-  const isMod = cat === "neutro";
-  const label = isR
-    ? avg <= 1 ? "Adecuado" : avg <= 2 ? "Moderado" : "Elevado"
-    : isMod
-      ? avg <= 2 ? "Adecuado" : avg <= 3 ? "Moderado" : "Elevado"
-      : avg >= 3 ? "Adecuado" : avg >= 2 ? "Moderado" : "Bajo";
-  const color = label === "Adecuado" ? "#059669" : label === "Moderado" ? "#d97706" : "#dc2626";
-  return { label, color };
-}
+// ═══ EL ESTADO DE LA TARJETA SALE DEL CLASIFICADOR, NO DE UN PROMEDIO (v16, 2026-11-06) ═══
+//
+// Antes aqui vivia `catEstado(avg, cat)`, porte verbatim del 13 de agosto, y promediaba los cuatro grupos
+// de la tarjeta. Esa es la causa 1 de su v16: embutidos 5 a 6 dias por semana con los otros tres en
+// "nunca" da 0,75, por debajo del corte de 1, y la tarjeta decia **"Adecuado" en verde**. Medido en la
+// nube el 2026-11-05: le pasaba a 11 pacientes de 631, y en los once lo escondia el grupo 11 (harina
+// blanca diaria), no los embutidos.
+//
+// Ahora la etiqueta la decide `tarjetaD1` en el motor, que lee grupo por grupo con `d1EstadoGrupo`. El
+// color se sigue decidiendo aqui porque es forma: son los mismos tres hexadecimales suyos.
+const COLOR_DE_ETIQUETA: Record<EtiquetaTarjetaD1, string> = {
+  "Sin datos": "#94a3b8",
+  Adecuado: "#059669",
+  Moderado: "#d97706",
+  Elevado: "#dc2626",
+  Bajo: "#dc2626",
+};
 
 function CategoryCards({ grupos }: { grupos: PatronGrupoView[] }) {
-  const byN = new Map(grupos.map((g) => [g.n, g.ordinal]));
   return (
     <div className="grid grid-cols-3 gap-2">
       {CAT_CARDS.map((c) => {
-        const vals = c.grupos.map((n) => byN.get(n) ?? null).filter((v): v is number => v !== null);
-        const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-        const est = catEstado(avg, c.cat);
+        const { etiqueta, fraccionBarra } = tarjetaD1(c.cat, c.grupos, grupos);
+        const color = COLOR_DE_ETIQUETA[etiqueta];
         return (
           <div key={c.cat} className="rounded-xl border p-3" style={{ borderColor: c.color + "33" }}>
             <div className="text-[11px] font-extrabold" style={{ color: c.color }}>{c.label}</div>
-            <div className="my-1 text-base font-black" style={{ color: est.color }}>{est.label}</div>
+            <div className="my-1 text-base font-black" style={{ color }}>{etiqueta}</div>
             <div className="h-1 overflow-hidden rounded bg-muted">
-              <div className="h-full rounded" style={{ width: avg !== null ? `${Math.round((avg / 4) * 100)}%` : "0%", background: est.color }} />
+              <div className="h-full rounded" style={{ width: `${Math.round(fraccionBarra * 100)}%`, background: color }} />
             </div>
           </div>
         );
@@ -116,22 +121,33 @@ function PastillaDeColor({
   );
 }
 
-// Grilla de los 15 grupos con su frecuencia (v8 L13847-13859, verbatim en logica de color).
+// Grilla de los 15 grupos con su frecuencia y su CATEGORIA (v16 §4.4, L15329-15345).
+//
+// EL COLOR YA NO LO DECIDE ESTA PANTALLA en los grupos de riesgo ni en las carnes rojas: sale de
+// `colorDeGrupoD1`, que lee el mismo `d1EstadoGrupo` que las tarjetas. Asi "embutidos: 1 a 2 dias" deja
+// de pintarse verde, porque su estado es "moderar".
+//
+// Y CADA GRUPO LLEVA SU CATEGORIA AL LADO, que es la causa 4 de su v16: el verde significaba "frecuencia
+// adecuada para su grupo", y "Carnes rojas: Nunca" en verde se leia como "la carne roja es protectora".
+// La etiqueta dice de que grupo se trata; el color, si la frecuencia es la que le corresponde.
 function GrupoGrid({ grupos }: { grupos: PatronGrupoView[] }) {
   return (
     <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
       {grupos.map((g) => {
-        const isR = g.cat === "riesgo";
-        const isMod = g.cat === "neutro";
         const v = g.ordinal;
-        // Tres logicas de color (13-ago L13907-13909): riesgo (poco=verde), moderados (medio=verde,
-        // mucho=rojo), protectores (mucho=verde). Antes moderados usaba la de protectores (pintaba mal).
-        const ok = v !== null && (isR ? v <= 1 : isMod ? v <= 2 : v >= 3);
-        const al = v !== null && (isR ? v >= 3 : isMod ? v >= 4 : v <= 1);
-        const col = v === null ? "#94a3b8" : ok ? "#059669" : al ? "#dc2626" : "#d97706";
+        const col = colorDeGrupoD1(g);
+        const cat = categoriaDeGrupoD1(g);
         return (
-          <div key={g.n} className="flex items-center justify-between rounded-lg border px-2 py-1" style={{ borderColor: col + "22", background: col + "0d" }}>
-            <span className="text-sm text-foreground">{g.label}</span>
+          <div key={g.n} className="flex items-center justify-between gap-2 rounded-lg border px-2 py-1" style={{ borderColor: col + "22", background: col + "0d" }}>
+            <span className="text-sm text-foreground">
+              {g.label}
+              <span
+                className="ml-1.5 whitespace-nowrap rounded-md border px-1 align-[1px] text-[10px] font-bold"
+                style={{ color: cat.color, borderColor: cat.color + "55" }}
+              >
+                {cat.texto}
+              </span>
+            </span>
             <PastillaDeColor color={col}>{v !== null ? FREQ_LABELS[v] : "-"}</PastillaDeColor>
           </div>
         );
@@ -174,7 +190,13 @@ function PatronD1({ patron }: { patron: PatronResolution }) {
   return (
     <div className="flex flex-col gap-4">
       <CategoryCards grupos={patron.grupos} />
-      <GrupoGrid grupos={patron.grupos} />
+      <div className="flex flex-col gap-2">
+        <GrupoGrid grupos={patron.grupos} />
+        {/* La nota al pie y la frase del patron son de su v16 (L15346-15350), y van juntas a proposito:
+            la nota explica que significa el color, la frase dice que patron resulto. */}
+        <p className="text-xs text-muted-foreground">{NOTA_AL_PIE_D1}</p>
+        <p className="text-sm font-semibold text-foreground">{textoPatronDeGrupos(patron.grupos)}</p>
+      </div>
     </div>
   );
 }

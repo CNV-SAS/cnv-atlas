@@ -200,6 +200,30 @@ const FUERA_DEL_HTML: Record<string, { razon: string; anclaEn: string }> = {
   },
 };
 
+/**
+ * LOS QUE VIENEN DE UNA ENTREGA MAS NUEVA QUE `HTML_VIGENTE`, que es cosa distinta de no venir del HTML.
+ *
+ * EL HUECO QUE DECLARA. `HTML_VIGENTE` se deriva de las carpetas `html actualizado <dia> <mes>`, y desde
+ * el 27 de septiembre Gildardo entrega en `Nuevos cambios html/<dia> <mes>`. Asi que "la entrega de hoy",
+ * para este candado, es el `ATLAS_v9.html` del 21 de septiembre mientras su archivo de hoy es el
+ * `ATLAS_v16.html` del 4 de noviembre. Un modulo portado del v16 no puede compararse contra el v9: sus
+ * lineas no estan ahi porque no existian.
+ *
+ * NO SE TAPA: esta medido y fechado en `fixtures/html-vigente.ts`, con las dieciocho lineas que difieren y
+ * el paso del plan al que pertenece cada una. El re-anclaje va al final del paso 5, cuando entra con cero
+ * tolerancias. Mientras tanto, igual que las exenciones de abajo, cada modulo declarado EXIGE nombrar el
+ * candado que si lo vigila byte a byte contra su propia entrega.
+ */
+const DE_ENTREGA_MAS_NUEVA: Record<string, { razon: string; anclaEn: string }> = {
+  "engine.d1-clasificacion.js": {
+    razon:
+      "Portado del ATLAS_v16.html del 4 de noviembre de 2026 (L1401-1455), SEIS entregas despues de la " +
+      "que HTML_VIGENTE resuelve. Su clasificacion del patron usual por grupo no existe en el v9: nace " +
+      "con la v16, que corrige el promedio de los cuatro grupos de riesgo.",
+    anclaEn: "src/tests/frozen-d1-clasificacion-diff.test.ts",
+  },
+};
+
 const MODULOS = [
   "engine.patron.js",
   "engine.dfi.js",
@@ -229,8 +253,9 @@ describe("el frozen no derivó de la entrega vigente de Gildardo", () => {
             f,
           ),
       )
-      // Y los que Gildardo entrego APARTE del HTML, declarados arriba con su razon.
-      .filter((f) => !(f in FUERA_DEL_HTML));
+      // Y los que Gildardo entrego APARTE del HTML, o de una entrega mas nueva que la que HTML_VIGENTE
+      // resuelve, declarados arriba uno por uno con su razon.
+      .filter((f) => !(f in FUERA_DEL_HTML) && !(f in DE_ENTREGA_MAS_NUEVA));
     expect([...enDisco].sort()).toEqual([...MODULOS].sort());
   });
 
@@ -238,7 +263,7 @@ describe("el frozen no derivó de la entrega vigente de Gildardo", () => {
     // El riesgo de una exencion es que se convierta en un agujero: un modulo del frozen que ningun
     // candado mira, con una razon escrita que suena bien. Asi que la razon no basta; hay que apuntar al
     // reemplazo, y el reemplazo tiene que existir en disco.
-    for (const [modulo, d] of Object.entries(FUERA_DEL_HTML)) {
+    for (const [modulo, d] of Object.entries({ ...FUERA_DEL_HTML, ...DE_ENTREGA_MAS_NUEVA })) {
       expect(existsSync(`src/clinical-engine/frozen/${modulo}`), `${modulo} ya no existe`).toBe(true);
       expect(d.razon.length, `${modulo}: la exencion no dice por que`).toBeGreaterThan(40);
       expect(existsSync(d.anclaEn), `${modulo}: su candado (${d.anclaEn}) no existe`).toBe(true);
