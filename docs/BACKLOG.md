@@ -27,6 +27,26 @@
 
 ---
 
+## PENDIENTE (2026-11-05) · v15 Y v16 DE GILDARDO: EL PLAN ESTÁ, NO SE CONSTRUYÓ NADA · DECIDE SANTIAGO EL ORDEN, Y GILDARDO LA PREGUNTA 4
+
+**El plan entero, con tres columnas por punto (qué quiere, qué tiene Atlas verificado, qué toca), está en
+`docs/entregas/PLAN_V15_V16_2026-11-05.md`.** Aquí solo el estado, para que esta lista no envejezca.
+
+| pieza | de quién es la decisión | estado |
+|---|---|---|
+| **La pregunta 4: el DFI y las rutas leen el IAE de la v7** | **Gildardo**, y su v15 ya la responde (salida 1). Falta que lo confirme | **NO SE CONSTRUYÓ A PROPÓSITO.** Es un bump que recalcula las rutas activas de toda la cohorte. Libera los 60 informes frenados |
+| **v16 §4.4: la vista D1 por el peor grupo, no por el promedio** | nuestra | sin construir, **y es lo primero de la lista**: 11 pacientes de 631 ven "Adecuado" en verde con harina blanca diaria. Diez líneas en un componente, sin motor ni base |
+| **Los cortes ±5 inclusivos en rutas, protocolo y síntesis** | **Gildardo** (es la pregunta 7, y su v15 no la cierra: pasa a ser la 36) | sin construir. Tres personas están exactamente en el borde, medido sobre los valores v5 |
+| **v16 §7 + §2: el ICEC con `calcPatron`** (el interruptor `LE8_MAPEO_CORREGIDO`) | nuestra, y **la v7 la desbloquea**: si el ICEC no entra a la EB-BIS, la pregunta de μ y σ desaparece | sin construir. **Va en el MISMO bump y el MISMO recálculo** que el IAE de la v7 |
+| **v15 §1.3: la alerta contextual** (ICEC < 50 e IAE ≥ +5) | nuestra | sin construir, **y va DESPUÉS del ICEC**: hoy se dispararía sobre un ICEC que no mide la alimentación |
+| **El error 8: fuerza prensil obligatoria** | **Gildardo** (es la pregunta 12; su v15 la quiere obligatoria y no menciona la salida) | sin construir. Hoy la traen **92 de 492** consultas (18,7 %): sin salida registrada produce cifras inventadas (hazard 6) |
+| **v15 §2: la Encuesta CNV-S completa** | nuestra, con las preguntas 33 y 34 abiertas con él | sin construir. Es el bloque más grande; hoy aplica a **30 pacientes** |
+| **v15 §3: la tarjeta de seguimiento y el export con `instrumentoEncuesta`** | nuestra | sin construir, depende de la CNV-S |
+| **v16 §6: separar carnes rojas de embutidos y migrar el instrumento** | — | **NO APLICA.** Atlas ya tiene los 15 grupos con los textos de v16, en las cinco versiones publicadas; 633 de 634 encuestas traen el grupo 15 |
+| **v15 §1.1 y §1.3 (salvo la alerta) y los errores 1 a 7** | — | **YA ESTABAN.** El motor v7 es byte a byte el suyo, con sus 7 casos y sus 4 pruebas de borde: `npx vitest run --project unit src/tests/eb-bis-v7.golden.test.ts` |
+
+---
+
 ## PENDIENTE (2026-10-24, noche) · LAS MEDICIONES REPETIDAS: EL FRENO YA ESTÁ, LA CORRECCIÓN NO · DECIDE ANGELA LO CLÍNICO
 
 **El informe completo, con el inventario grupo por grupo y la propuesta de corrección, está en
