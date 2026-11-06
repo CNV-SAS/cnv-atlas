@@ -106,7 +106,10 @@ export function BisImportForm({
             {/* ═══ LA MISMA TARJETA QUE EN ANTROPOMETRIA, Y CON SU FECHA (Santiago, 2026-11-06) ═══
 
                 *"'Medicion BIS importada · tomada el ...' en Antropometria y en BIS: fondo blanco con
-                borde verde de exito, como el resto de tarjetas."*
+                borde verde de exito, como el resto de tarjetas."* Y en la vuelta siguiente, al verlo:
+                *"como era antes: fondo verde claro y letra verde oscuro; tu token de interfaz esta bien,
+                cambia solo los tonos"*. Asi que el par es `bg-exito-bg` + `text-exito`, que es la misma
+                FORMA que tenia con el verde clinico antes del 2026-09-05, con otro verde.
 
                 ERAN DOS FORMAS DISTINTAS DEL MISMO ESTADO: aqui una pastilla gris sin fecha, en
                 Antropometria un bloque gris con la fecha. El mismo hecho dicho de dos maneras en dos
@@ -119,9 +122,9 @@ export function BisImportForm({
 
                 LA FECHA SALE DEL LECTOR cuando ya habia medicion, y de la importacion recien hecha
                 cuando acaba de entrar. Si no se puede resolver, la frase sale sin ella: no se inventa. */}
-            <div className="flex items-center gap-2 rounded-lg border border-exito/40 bg-card px-3 py-2">
+            <div className="flex items-center gap-2 rounded-lg border border-exito/40 bg-exito-bg px-3 py-2">
               <CheckCircle2 className="size-4 shrink-0 text-exito" aria-hidden />
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-exito">
                 Medición BIS importada
                 {fechaDeLaToma ? ` · tomada el ${fechaDeLaToma}` : ""}.
               </span>

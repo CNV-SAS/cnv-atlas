@@ -35,6 +35,7 @@
   --color-delta-favorable: var(--delta-favorable);
   --color-delta-adversa: var(--delta-adversa);
   --color-exito: var(--exito);
+  --color-exito-bg: var(--exito-bg);
   --color-franja-nivel: var(--franja-nivel);
   --color-franja-nivel-texto: var(--franja-nivel-texto);
   /*
@@ -212,10 +213,18 @@
    * EL TONO ES DE OTRA FAMILIA A PROPOSITO (green-700 frente al emerald de la escala clinica y al
    * emerald-700 de la Δ favorable): en pantalla no se confunde con un badge de veredicto ni con una Δ.
    *
-   * Y VA SOLO EN EL BORDE, con el fondo de la tarjeta: un relleno verde a lo ancho de un bloque vuelve a
-   * leerse como un juicio, que es lo que este eje existe para evitar.
+   * IBA SOLO EN EL BORDE, y Santiago lo corrigio el mismo dia: "como era antes, fondo verde claro y letra
+   * verde oscuro; tu token de interfaz esta bien, cambia solo los tonos". Mi razon para dejarlo al borde
+   * era que un relleno verde se vuelve a leer como un juicio; la suya es que asi no se distingue de
+   * cualquier otra tarjeta, y manda la suya: lo que hacia clinico a ese aviso era el HEX del veredicto
+   * (`--clinical-optimal`), no el hecho de tener fondo. Con un tono propio se recupera el aspecto que tenia
+   * antes del 2026-09-05 sin gastar el verde de la escala clinica.
+   *
+   * EL PAR, con la misma forma que los clinicos (color de letra + fondo claro), y de otra familia que
+   * ellos: green-700 sobre green-50, frente al emerald-500 sobre emerald-50 de `--clinical-optimal`.
    */
   --exito: #15803d;
+  --exito-bg: #f0fdf4;
   /* LA FRANJA DE LOS NIVELES DE WANG (Santiago, 2026-09-21, variante 3 de tres vistas lado a lado): tinte
    * claro con la letra en azul y un filo de marca a la izquierda. El azul pleno saturaba la tabla; el tinte
    * separa niveles sin gritar. Capa de INTERFAZ: no insinua severidad. El filo es `--primary`. */
@@ -302,6 +311,9 @@
   --attention: #fbbf24;
   --attention-bg: oklch(0.269 0 0);
   --exito: #4ade80;
+  /* En oscuro el fondo es un gris hundido, no un verde: el mismo trato que `--attention-bg`, porque un
+   * verde claro sobre un tema oscuro deja de ser un tinte y pasa a ser un bloque de color. */
+  --exito-bg: oklch(0.269 0 0);
 }
 
 @layer base {

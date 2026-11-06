@@ -390,11 +390,16 @@ export function EntradaEvaluacion({
                 quitarle el verde clinico se dejo GRIS, y el gris no distingue lo que salio bien de lo que
                 esta a medias en una pantalla donde casi todo esta a medias.
                 La salida es un token propio de la capa de INTERFAZ, `--exito`, de otra familia de verde
-                (green-700 frente al emerald clinico). Y solo en el BORDE, con el fondo de la tarjeta: un
-                relleno verde a lo ancho vuelve a leerse como un juicio. Ver globals.css. */}
-            <div className="flex items-center gap-2 rounded-lg border border-exito/40 bg-card px-3 py-2">
+                (green-700 frente al emerald clinico). Ver globals.css.
+
+                Y EL PAR COMPLETO, NO SOLO EL BORDE (segunda vuelta de Santiago el mismo dia): *"como era
+                antes: fondo verde claro y letra verde oscuro; tu token de interfaz esta bien, cambia solo
+                los tonos"*. Mi razon para dejarlo al borde era que un relleno verde se vuelve a leer como
+                un juicio; la suya es que al borde no se distingue de cualquier otra tarjeta. Lo que hacia
+                clinico a este aviso era el HEX del veredicto, no el tener fondo. */}
+            <div className="flex items-center gap-2 rounded-lg border border-exito/40 bg-exito-bg px-3 py-2">
               <CheckCircle2 className="size-4 shrink-0 text-exito" aria-hidden />
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-exito">
                 Medición BIS importada
                 {composition.measurementDate
                   ? ` · tomada el ${formatDateLong(composition.measurementDate)}`
