@@ -40,7 +40,24 @@ function leerLiteral(lit: string): string {
 /** Todos los textos del componente, en orden, incluidos los de las casillas (que van como `label:`). */
 function textosDelComponente(html: string, soloConLetras = true): string[] {
   const i = html.indexOf("function ConsentimientoScreen(");
-  const j = html.indexOf("\nfunction ", i + 10);
+  // ═══ EL FINAL DEL COMPONENTE, Y POR QUE NO ES "EL SIGUIENTE `function`" (2026-11-05) ═══
+  //
+  // Antes el corte era `html.indexOf("\nfunction ", i + 10)`, y **pasaba por casualidad**: a
+  // `ConsentimientoScreen` no le sigue una `function`, le sigue `const TAB_ORDER`, asi que el trozo se
+  // pasaba de largo hasta la siguiente `function` del archivo y arrastraba todo lo que hubiera en medio.
+  // Mientras ahi no hubo cadenas que pasaran los filtros de abajo, nadie lo noto.
+  //
+  // La v15 lo destapo: metio el bloque de la encuesta CNV-S en esa tierra de nadie, con sus `label:` y sus
+  // listas de opciones, y el candado dijo *"el texto del consentimiento cambio en ATLAS_v15.html"*
+  // listando "No lo tomo", "Lo suspendio" y veintitantas mas. **El texto del consentimiento no habia
+  // cambiado: el corte si.** Es el sintoma peor que hay: el candado en rojo contra un archivo correcto.
+  //
+  // El corte de verdad es la siguiente DECLARACION en la columna 0, porque el cuerpo del componente va
+  // indentado. Medido sobre v10, v12, v15 y v16: el componente da **312 lineas en las cuatro** y el limite
+  // cae en `const TAB_ORDER` en las cuatro, que es justo lo que sigue.
+  const resto = html.slice(i + 30);
+  const m = /\n(?:function |const |let |var |class |window\.|export )/.exec(resto);
+  const j = m ? i + 30 + m.index : html.length;
   const src = html.slice(i, j);
   const out: string[] = [];
   for (const m of src.matchAll(/"((?:[^"\\]|\\.)*)"/g)) {

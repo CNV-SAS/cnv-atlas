@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-// @ts-expect-error -- script .mjs sin tipos: se importa la DECISION para ejecutarla, no para tiparla.
 import { entraAEntregas, LO_PERMITIDO } from "../../scripts/check-entregas.mjs";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════

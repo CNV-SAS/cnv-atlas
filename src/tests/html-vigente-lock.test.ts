@@ -89,7 +89,19 @@ describe("anclajes a una entrega de Gildardo", () => {
     for (const f of archivosDeTests()) {
       // `fixtures/html-vigente.ts` es la FUENTE de la que sale la ruta derivada: es el unico sitio donde
       // la carpeta se escribe, y por eso existe. Exento por la misma razon que este archivo.
-      if (CONGELADOS.has(f) || f === "html-vigente-lock.test.ts" || f === "fixtures/html-vigente.ts") {
+      //
+      // TERCERA EXENCION (2026-11-05): `el-control-de-entregas-muerde.test.ts`. No ancla a ninguna
+      // entrega: su sujeto es LA CARPETA, y las rutas que escribe son ENTRADAS de una funcion pura
+      // (`entraAEntregas`), no archivos que lea. Dos de ellas ni existen (`ATLAS_v17.html`,
+      // `dudas/una/dos/tres/informe.pdf`): son el caso que el control tiene que rechazar. Y por eso NO va
+      // en CONGELADOS, que significa otra cosa (anclado a una entrega congelada a proposito); meterlo ahi
+      // seria rotularlo mal y, de paso, ponerlo a esperar una deriva que no puede tener.
+      if (
+        CONGELADOS.has(f) ||
+        f === "html-vigente-lock.test.ts" ||
+        f === "fixtures/html-vigente.ts" ||
+        f === "el-control-de-entregas-muerde.test.ts"
+      ) {
         continue;
       }
       const src = readFileSync(`src/tests/${f}`, "utf8");
