@@ -1,81 +1,102 @@
 # Lo que queda abierto con usted, Gildardo
 
-**Connected Nutrition Ventures · Atlas · 6 de noviembre de 2026** (las 31 del 4 de noviembre, más las cinco de la v15 y la v16, más la cadera mal tecleada del 6)
+**Connected Nutrition Ventures · Atlas · 7 de noviembre de 2026**
 **De:** Santiago (equipo técnico de Atlas) · **Para:** Gildardo de Jesús Uribe Gil
 
 > **Este documento no identifica a ningún paciente.** Donde hace falta señalar un caso va el id de
 > evaluación abreviado a ocho caracteres, el mismo que usted usa en su anexo A.
 
-**Es el único documento de dudas.** Hasta ayer eran dos (esta cola, del cotejo visual de septiembre, y las
-*Dudas de EB-BIS v7 y ATLAS v12* del 30 de octubre); tener dos hacía que algo se quedara sin llegarle, y ya
-había pasado antes. Al unirlos se quitó lo repetido y lo que usted ya respondió, y se verificó pregunta por
-pregunta contra sus entregas de octubre (v10, v11, v12 y los parámetros 7.1.0): ninguna de las de septiembre
-quedó contestada por ellas.
+**Es el único documento de dudas.** Hasta el 5 de noviembre eran dos (esta cola, del cotejo visual de
+septiembre, y las *Dudas de EB-BIS v7 y ATLAS v12* del 30 de octubre); tener dos hacía que algo se quedara
+sin llegarle, y ya había pasado antes. Al unirlos se quitó lo repetido y lo que usted ya respondió, y se
+verificó pregunta por pregunta contra sus entregas.
 
 **Cómo leerlo.** Primero están **las preguntas**, todas, en dos o tres líneas cada una: qué se decide y qué
 recomendamos. Si con eso puede contestar, no necesita el resto. Debajo está **el detalle** de cada una, con
 el mismo número, para las que quiera mirar despacio.
 
-**Nada de esto frena a Atlas**, salvo las cuatro de abajo (y una de ellas, la **37**, ya dejó a una
-paciente real sin diagnóstico). Todo lo demás está construido y funcionando con
-la decisión que tomamos en cada caso; lo que le preguntamos es si fue la que usted habría tomado. Lo
-marcado **[aplicado]** ya está hecho: si su respuesta es otra, se cambia. Donde dice *"se cambia en una
-línea"* es literal.
+**Nada de esto frena a Atlas**, salvo las tres de abajo (y una de ellas, la **37**, ya dejó a una paciente
+real sin diagnóstico). Todo lo demás está construido y funcionando con la decisión que tomamos en cada
+caso; lo que le preguntamos es si fue la que usted habría tomado. Lo marcado **[aplicado]** ya está hecho:
+si su respuesta es otra, se cambia. Donde dice *"se cambia en una línea"* es literal.
+
+**Los números no se reciclan.** Una pregunta contestada se marca y se queda con su número; una que se
+absorbe en otra lo dice. Así, si usted responde *"la 15"* dos semanas después, sigue siendo la misma.
 
 ---
 
-## Si solo responde cuatro, que sean estas
+## Si solo responde tres, que sean estas
 
 Son las que **frenan trabajo**: no se construyen sin su respuesta porque construirlas exige elegir por
 usted.
 
 | | Qué se decide | Qué se desbloquea |
 |---|---|---|
-| **37** | Si una cintura o una cadera mal tecleada se puede corregir en Atlas, o se repite la toma | **Hay una consulta de una paciente real sin diagnóstico por esto**, de hoy |
+| **37** | Si una cintura o una cadera mal tecleada se puede corregir, y **qué datos** (solo cintura y cadera, o también el peso) | **Hay una consulta de una paciente real sin diagnóstico por esto.** Y con su respuesta se escribe la guía para las profesionales |
 | **1** | Cuál Harris-Benedict manda (1919 o 1984) y sobre qué se aplica el 10 % | El motor calórico nuevo, y con él el flujo guiado del nutricionista |
 | **2** | Los rangos del control de calidad biológico | El control de calidad entra (sus once identidades imposibles ya están) |
-| **3** | Qué pasa con las consultas que el recálculo no puede tocar | Se cierra el recálculo del histórico con la v7 |
 
-**Y la 4 salió de esta lista el 6 de noviembre, porque su v15 ya la contestó.** Era la más importante de
-las cuatro y pedía decidir si el DFI y las rutas pasaban a leer el IAE de la v7. Su archivo dice que sí
-(`computeDFIFromData` L11834 · `atlasMigrarEbV7` L4458 · dominio 3 L13965 · §1.4), así que **ya está
-aplicado**: ver el anexo, al final. Lo que queda de la 4 es su segunda mitad, que no frena nada.
-**Medido el 6 de noviembre, con la cifra al día: eran 60 de 389 informes frenados y hoy son 70 de 422.**
+**Y dos salieron de esta lista:**
+
+- **La 4** salió el 6 de noviembre, porque su v15 la contestó: el DFI y las rutas pasan a leer el IAE de la
+  v7. **Ya está aplicado** y el recálculo de las 422 consultas corrió el 7 de noviembre. Lo que queda de
+  la 4 es su segunda mitad, que no frena nada.
+- **La 3** salió el 7 de noviembre, porque el recálculo ya se ejecutó: las que no se pudieron tocar quedan
+  **dentro** de la cohorte y **marcadas con su versión de motor**, que es lo que recomendábamos. Pasa a
+  confirmación.
 
 ---
 
-## Lo que sus dos entregas nuevas ya contestan (revisado el 5 de noviembre)
+## Un pedido, no una pregunta: sus 94 pacientes
 
-La v15 del 30 de octubre y la v16 del 2 de noviembre llegaron después de escribir esta lista, y las cotejamos
-pregunta por pregunta. **Esto es lo que ya no necesita contestar, con la línea de su archivo que lo decide.**
-Las preguntas siguen abajo con su número y su texto, para que pueda corregirnos si leímos mal.
+En su lista de Atlas hay **95 pacientes suyos sin marcar como de prueba**. El criterio automático (un
+documento imposible, o un nombre que se dice de prueba) señala **uno** solo. Los otros **94** no se pueden
+distinguir desde aquí: tienen nombre y documento verosímiles, y varios son familiares suyos.
 
-| # | Qué contesta su entrega | Dónde |
+**Lo que le pedimos:** entre a su lista de pacientes en Atlas y díganos **cuáles son suyos de prueba**. No
+hace falta que los marque usted: con la lista, el marcado se hace por el flujo con auditoría.
+
+**Por qué importa y no es burocracia:** un paciente de prueba sin marcar entra en la cohorte de
+investigación, cuenta en los conteos de /obbia y recibe los mismos avisos que uno real. Hoy hay **30
+avisos ámbar** que son de pacientes de prueba, y ocupan el sitio de los que sí hay que mirar.
+
+*La lista con nombres y documentos está en `dudas/`, fuera del repositorio: aquí solo van los conteos.*
+
+---
+
+## Lo que ya está contestado, y por qué (al 7 de noviembre)
+
+Dos cosas distintas en una tabla: lo que contestaron **sus entregas** v15 y v16 (cotejado pregunta por
+pregunta el 5 de noviembre) y lo que contestaron **los hechos** desde entonces. Las preguntas siguen abajo
+con su número y su texto, para que pueda corregirnos si leímos mal.
+
+| # | Qué la contesta | Dónde |
 |---|---|---|
-| **4** | **Su primera mitad, y era la más importante: el DFI y las rutas leen el IAE de la v7.** En v15 hay un solo IAE por consulta, el de la v7, y el dominio 3 lee ese mismo. Es nuestra salida 1 | `computeDFIFromData` L11834 · `atlasMigrarEbV7` L4458 · dominio 3 L13965 · §1.4 |
-| **3** | **Contestada entera**, y en la dirección que recomendábamos: *"Si una consulta no tiene los datos crudos, queda «pendiente»: nunca se muestra el v5"* | §1.4 de su documento de v15 |
+| **3** | **CONTESTADA, por los hechos.** El recálculo de las 422 consultas corrió el 7 de noviembre. Las que no se pudieron tocar (medición compartida, sin fecha de nacimiento, fuera de 18 a 100) quedan **dentro** de la cohorte de investigación y **marcadas con su versión de motor sellada**, que es lo que recomendábamos. Confirme que le sirve como estado permanente para las que nunca se resuelvan | la vista `evaluaciones_para_investigacion` las trae con su `engine_version`; /obbia las agrupa por familia mayor y avisa de la mezcla |
+| **4** | **Su primera mitad, y era la más importante: el DFI y las rutas leen el IAE de la v7.** En v15 hay un solo IAE por consulta, el de la v7, y el dominio 3 lee ese mismo. Es nuestra salida 1. **Aplicado, y el histórico recalculado** | `computeDFIFromData` L11834 · `atlasMigrarEbV7` L4458 · dominio 3 L13965 · §1.4 |
+| **5** | **CONTESTADA.** Su tabla 3 usa "edad biológica estimada" y la v15 la mantiene, que es exactamente lo que Atlas ya aplicó. No hace falta nada más | Tabla 3 |
 | **31** | **Su primera mitad:** menor de 18 o edad no válida devuelve "pendiente" y no se calcula. Queda la segunda: si CNV atiende pediatría, con qué ecuaciones | Error 7 de su especificación · rango 18 a 100 |
-| **5** | Vale como confirmación: su tabla 3 usa "edad biológica estimada" y v15 la mantiene | Tabla 3 |
 | **12** | **A medias:** la quiere obligatoria y no dice nada de la salida registrada. Y el dato refuerza la salida: hoy la traen **92 de 492** consultas (18,7 %) | Error 8 |
-| **7** | **No se cierra, se mueve:** `cIAE` pasó a cortes cerrados, pero el Δ de al lado sigue abierto. **Pasa a ser la 36** | L4487 contra L15628 |
-| **15** | **Cambia de forma:** su `dIAE` nuevo ya pinta la banda central en azul, y el `cIAE` sigue en ámbar. **Pasa a ser la 35** | L15443 contra L4487 |
+| **7** | **No se cierra, se mueve, y ahora vuelve con un segundo sitio.** `cIAE` pasó a cortes cerrados, el Δ de al lado sigue abierto, y al cerrar el borde en Atlas apareció un TERCER sitio suyo con el corte abierto. **La 36 se absorbe aquí** | L4487 contra L15628, y el `iae > 5` del nutracéutico y del protocolo de telómeros |
+| **15** | **Cambia de forma:** su `dIAE` nuevo ya pinta la banda central en azul, y el `cIAE` sigue en ámbar. **La 35 se absorbe aquí** | L15443 contra L4487 |
 | **2** | **Aporta un ejemplo del criterio, no los rangos:** PSSG/peso fuera de 0,05 a 0,40 devuelve "revisar", con su fuente. Los nueve rangos del cinturón siguen sin fuente, y entre tanto frenaron **una medición más**: un ángulo de fase de 0,6°, el 19 de octubre, dos veces | §1.2 |
 | **6** | **No la contesta, y su regla queda reafirmada sin decirlo:** la línea 15628 sigue imprimiendo "0,0" dentro de la banda. Nuestra raya sigue siendo preferencia nuestra contra su regla escrita | L15628 |
 | **24** | **La confirma por el otro lado:** el Módulo S de la CNV-S no captura porciones, así que las diez alertas siguen sin poder salir | §2.3 |
 | **28** | **No la contesta, y ahora se ve más:** v15 añade el filtro digestivo y la regla de salto, y sigue sin decir en qué dominio se leen esos síntomas | §7.2 |
 
-Las otras 20 siguen esperándolo. **Y dos cosas que le decimos, no se las preguntamos:** la §6 de su v16 pide
-separar carnes rojas de embutidos y migrar el instrumento, y **en Atlas ya están los 15 grupos con sus
-textos, en las cinco versiones publicadas de la encuesta** (633 de 634 encuestas traen el grupo 15); y su §7
-acierta de pleno: el componente Alimentación del ICEC **vale 30 para todos**, porque la fórmula lee dos
-claves que la encuesta no guarda, y eso ya estaba anotado de nuestro lado desde el 28 de julio.
+**Y dos cosas que le decimos, no se las preguntamos:** la §6 de su v16 pide separar carnes rojas de
+embutidos y migrar el instrumento, y **en Atlas ya están los 15 grupos con sus textos, en las cinco
+versiones publicadas de la encuesta** (633 de 634 encuestas traen el grupo 15); y su §7 acierta en el
+diagnóstico pero ya no en el estado: el componente Alimentación del ICEC **valía 30 para todos** porque la
+fórmula leía dos claves que la encuesta no guarda, y eso **se corrigió el 6 de septiembre** por su propia
+instrucción (el interruptor del mapeo, con su adaptador de ordinales). Hoy la Alimentación varía.
 
 ---
 
-## Las 37 preguntas
+## Las 38 preguntas
 
-> **Puede responder por número en un solo mensaje** (por ejemplo: *"4: opción 1 · 9: sí, el degradado hacia
-> rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
+> **Puede responder por número en un solo mensaje** (por ejemplo: *"37: C, solo cintura y cadera · 9: sí,
+> el degradado hacia rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
 
 > **0 · Un aviso, antes de las preguntas.** El ejemplo de formato de su prompt de IA lleva **el nombre de
 > una persona y su edad**, y viaja al proveedor del modelo en cada llamada. En Atlas no se envía (usted ya
@@ -85,17 +106,33 @@ claves que la encuesta no guarda, y eso ya estaba anotado de nuestro lado desde 
 
 ### A · Las que frenan trabajo
 
-**37 · Una cadera mal tecleada: ¿se repite la toma, o Atlas deja corregirla?** Una profesional escribió
-**1020** en la cadera (un dedo de más en el teclado), Atlas frenó la importación, y no hay forma de
-corregir ese número sin volver a tomar la bioimpedancia: **la paciente ya se había ido y la consulta quedó
-sin diagnóstico.** En el archivo del equipo no hay nada derivado de esas dos medidas, pero en Atlas sí: el
-ICC es uno de los seis disparadores de la ruta R2, y con 1020 el disparador se apagaría sin que nadie lo
-note. · **A)** Siempre se repite la toma. · **B)** Atlas deja corregir o completar cintura y cadera después
-de importar, con motivo y guardando el valor original. · **C)** Se corrige en el Biody Manager, se
+**37 · Una cadera mal tecleada: ¿se repite la toma, o Atlas deja corregirla, y con qué datos?** Una
+profesional escribió **1020** en la cadera (un dedo de más en el teclado), Atlas frenó la importación, y no
+había forma de corregir ese número sin volver a tomar la bioimpedancia: **la paciente ya se había ido y la
+consulta quedó sin diagnóstico.** En el archivo del equipo no hay nada derivado de esas dos medidas, pero
+en Atlas sí: el ICC es uno de los seis disparadores de la ruta R2, y con 1020 el disparador se apagaría sin
+que nadie lo note. · **A)** Siempre se repite la toma. · **B)** Atlas deja corregir cintura y cadera
+después de importar, con motivo y guardando el valor original. · **C)** Se corrige en el Biody Manager, se
 reexporta, y en Atlas se reemplaza la medición con motivo.
-*Recomendamos C si el Biody Manager deja editar y reexportar sin volver a medir; si no deja, B. **La C ya
-está construida** y no cuesta nada: desde el 5 de noviembre el freno de huella repetida avisa, pide motivo
-y deja seguir.*
+
+*Recomendamos **C**: Santiago verificó el 7 de noviembre que el Biody Manager **sí deja editar cintura,
+cadera, peso y otros datos** de una medición ya tomada, sin volver a medir. Así que la C es viable, la B
+deja de hacer falta, y **la C ya está construida**: desde el 5 de noviembre el freno de huella repetida
+avisa, pide motivo y deja seguir.*
+
+**Y ese dato abre dos preguntas que son suyas, no técnicas:**
+
+**37a · Al editar en el Biody Manager, ¿el programa recalcula algo?** Desde Atlas no se puede saber: las
+117 columnas del export no traen nada derivado de la cintura ni de la cadera, pero lo que el programa haga
+por dentro (su informe, su interpretación, un índice que usted lea allá) es suyo. No cambia la C; cambia
+**qué se le dice a la profesional** sobre lo que acaba de hacer.
+
+**37b · ¿Qué datos se pueden editar sin repetir la toma: solo cintura y cadera, o también el peso?** El
+programa deja editar los tres. *Recomendamos **solo cintura y cadera**: esas dos se teclean a mano con una
+cinta métrica, así que corregirlas devuelve el dato que se midió. **El peso entra en la composición** (masa
+grasa, masa libre de grasa, FMI, FFMI, el fenotipo estructural, el dominio 2 del DFI y toda la cadena
+calórica), así que cambiarlo después de la toma no corrige un número: **recalcula la medición entera**, y
+ya no se sabe si lo que queda es lo que el equipo midió ese día.*
 
 **1 · ¿Cuál Harris-Benedict manda, y sobre qué se aplica el 10 %?** Su v12 pide Harris-Benedict sobre el
 peso meta más 10 % de termogénesis, y hay dos juegos de coeficientes posibles (1919 y 1984). Atlas ya tiene
@@ -109,36 +146,42 @@ una capacitancia de 16,22 nF, una Fo de 4,84 kHz y dos grasas negativas). *Recom
 FRENA caiga fuera del mínimo y del máximo observados, y que la banda de percentiles sirva solo para decir
 "mire esta medición". Y añadir a sus imposibles: masa grasa o porcentaje de grasa ≤ 0.*
 
-**3 · Las consultas que el recálculo no puede tocar, ¿se quedan desfasadas para siempre?** Veinte
-consultas tienen la medición compartida (y cuatro de esos grupos son entre pacientes distintos), así que no
-se pueden recalcular hasta corregir de quién es cada toma. *Recomendamos marcarlas con su motivo y
-recalcularlas cuando se resuelva. Díganos si eso es aceptable como estado permanente para las que nunca se
-resuelvan.*
-
-**4 · ¿Cómo deben leer el DFI y las rutas el IAE de la v7?** En el mismo informe, arriba dice *"−1,3 años:
-acorde con sus pares"* y tres líneas abajo *"envejecimiento acelerado"*. La cifra que ve el paciente ya es
-v7; la que alimenta el dominio 3, el riesgo y **las rutas** quedó en la v5. Coinciden 326 de 389 informes;
-los 60 que no, no se entregan. **En su propio caso del anexo (`ed83ff97`): arriba 76,4 años con IAE +12,4,
-el dominio 3 dice 31,4 años con IAE −32,6 y "Enlentecido", y en Tratamiento 0 rutas activas.** Cuarenta y
-cinco años de diferencia dentro de una consulta, y a la paciente no se le prescribió nada para el
-envejecimiento. *Recomendamos que lo decida usted entre tres salidas (el DFI lee el IAE de la v7 · el
-dominio 3 tiene su propia escala y entonces hay que decirlo en el documento · otra cosa). Y la segunda
-mitad: sus tres textos por banda, ¿sustituyen al texto de trayectoria o conviven?*
-
 ### B · Están aplicadas y necesitan su confirmación
 
-**5 · "Edad biológica estimada" [aplicado].** Su tabla 3 vuelve a usar la expresión que usted había
-retirado en julio, ahora con el matiz "estimada". *Recomendamos que lo nuevo manda, y así está. Confirme,
-porque cambia el rótulo de un documento clínico que ya salió once veces con el otro nombre.*
+**3 · Las consultas que el recálculo no puede tocar [contestada por los hechos].** El recálculo corrió el 7
+de noviembre y tocó 422 consultas. Las que no se pudieron tocar quedan **dentro** de la cohorte y
+**marcadas con su versión de motor**: veinte por medición compartida (cuatro de esos grupos entre pacientes
+distintos), catorce sin fecha de nacimiento legible y cuatro de pacientes que al medirse estaban fuera del
+rango de 18 a 100. *Es lo que recomendábamos, y así quedó. Lo único que confirmamos con usted es que le
+sirve como estado **permanente** para las que nunca se resuelvan.*
+
+**4 · Su segunda mitad: sus tres textos por banda del IAE, ¿sustituyen al texto de trayectoria o
+conviven?** La primera mitad la contestó su v15 y ya está aplicada (el DFI y las rutas leen el IAE de la
+v7, con el histórico recalculado). Queda esto: hoy el documento del paciente lleva la banda de su tabla 3
+("envejecimiento acelerado estimado") y, en seguimiento, la frase de trayectoria entre dos consultas. *No
+frena nada: las dos conviven hoy. Recomendamos que convivan, porque dicen cosas distintas (una es el estado
+de esta consulta y la otra el cambio entre dos), pero el rótulo es suyo.*
 
 **6 · El Δ del IAE dentro de la banda [aplicado].** Su regla del 1 de septiembre dice **cero** mientras el
 IAE esté entre −5 y +5; lo cambiamos a una raya porque el IAE ya es una diferencia y el "0,0" al lado del
 valor se leía como si el IAE fuera cero. *Recomendamos dejar la raya, pero es preferencia nuestra contra su
 regla escrita: dígalo.*
 
-**7 · El borde exacto de ±5,0 del IAE.** Su tabla 3 usa cortes cerrados y su capa de display anterior los
-usaba abiertos; en ±5,0 exacto las dos columnas de la misma fila se contradicen. *Recomendamos alinear el Δ
-a su corte cerrado. No lo cambiamos todavía porque reintroduce un "0,0" que la 6 acaba de retirar.*
+**7 · El borde exacto de ±5,0 del IAE, en TRES sitios de su archivo** *(absorbe la 36 del 5 de noviembre,
+que era este mismo caso visto en la v15)*. Su tabla 3 usa cortes **cerrados** y su `cIAE` lo cumple; pero el
+Δ de la línea 15628 sigue **abierto**, y al cerrar el borde en Atlas apareció un **tercer** sitio: la
+sugerencia del nutracéutico y el protocolo de telómeros, las dos con `iae > 5`.
+
+Así que con un IAE de **exactamente +5,0** su archivo activa la ruta R4 (cerrado), llama al envejecimiento
+acelerado en la banda (cerrado), imprime un Δ de "0,0" (abierto) y **no** sugiere la Coenzima Q10
+(abierto): el mismo documento nombra el problema, prescribe la ruta y deja fuera el nutracéutico que esa
+ruta justifica. En Atlas está portado byte a byte, así que hace exactamente lo mismo. **Hoy son dos
+consultas reales**, las dos en +5,0 exacto.
+ · **A)** Todo pasa a cerrado (`>= 5`), incluidos el Δ y el nutracéutico. · **B)** El Δ se queda abierto y
+ en el borde muestra la raya, no el cero, y el nutracéutico también pasa a cerrado. · **C)** Otra cosa.
+*Recomendamos **B**: en la misma consulta no pueden regir dos cortes para la misma cifra, así que el
+nutracéutico y el protocolo se cierran; y el Δ se queda con la raya porque el IAE ya es una diferencia y un
+"0,0" al lado del valor se lee como si el IAE fuera cero (es la 6, y las dos se contestan juntas).*
 
 **8 · Los tres cortes de la Diana, y una objeción de estética.** Su v12 corrige bien un defecto real (los
 estados leves caían en verde lima y se leían como "está bien"), pero pasar a **tres colores sólidos** parte
@@ -178,10 +221,15 @@ escribe *"en rango normal"*. Un profesional leyó las dos cosas y entendió que 
 *La pregunta: para la banda media, ¿qué debe decir su párrafo? Y de paso, el criterio de egreso de la R1
 (IFC ≥ 4,5) es un corte sin sexo con el que una mujer no sale nunca de la ruta.*
 
-**15 · Su clasificador del IAE pinta "Concordante" en ámbar.** Lo preguntó usted, y la respuesta es que el
-ámbar sale de su archivo: el IAE es su único clasificador de dos colas, lo bueno está en el centro, y sobre
-una rampa verde-ámbar-rojo al centro le tocó el color de en medio. *Es una línea suya. Conviene cerrarla
-junto con la 4.*
+**15 · Su clasificador del IAE pinta "Concordante" en ámbar, y su propio archivo ya se corrige** *(absorbe
+la 35 del 5 de noviembre)*. El ámbar sale de su archivo: el IAE es su único clasificador de dos colas, lo
+bueno está en el centro, y sobre una rampa verde-ámbar-rojo al centro le tocó el color de en medio. **Y en
+la v15 la misma banda tiene DOS colores suyos:** `cIAE` (L4487) la pinta en ámbar y el `dIAE` nuevo (L15443)
+en azul.
+ · **A)** Manda el azul: la banda central es lo esperado, no una alerta. · **B)** Manda el ámbar.
+ · **C)** Son distintos a propósito (una superficie avisa, la otra informa), y díganos cuál va en cuál.
+*Recomendamos **A**, que es lo que ya proponíamos y lo que su `dIAE` nuevo hace: en una rampa de dos colas,
+pintar de ámbar lo que está bien invierte la lectura.*
 
 **16 · La casilla 3_3 de su matriz IFC×IRC lleva un cian.** "Función normal con riesgo" (la peor de su
 fila) tiene el color que nuestra regla lee como óptimo. En Atlas no se pinta mal porque el motor descarta
@@ -275,10 +323,12 @@ cuerpos de 22 kg y 29 kg; el Biody aplica ecuaciones de adulto y devuelve masa g
 v7 está calibrada 18-100 años. *Recomendamos marcar esas consultas como fuera de rango de calibración y no
 calcular. Si CNV va a atender pediatría, con qué ecuaciones es decisión suya.*
 
-### G · Las cinco que salieron de leer la v15 y la v16
+### G · Las que salieron de leer la v15 y la v16
 
-Las añadimos el 5 de noviembre, al revisar sus dos entregas nuevas. **Las cuatro primeras se contestan con
-una letra.**
+Las primeras se añadieron el 5 de noviembre, al revisar sus dos entregas nuevas; la **38** salió el 7, al
+portar su §4.5. **Dos de las de noviembre se absorbieron en preguntas que ya existían, y no se renumera
+nada:** la **35** (los dos colores de "Acorde con sus pares") vive ahora dentro de la **15**, y la **36**
+(el Δ en el borde de ±5,0) dentro de la **7**, que es donde estaba la misma pregunta.
 
 **32 · ¿Qué pasó con las versiones 13 y 14 del HTML?** Nosotros nos quedamos en la v12 del 12 de octubre, y
 las dos siguientes que nos llegaron son la v15 y la v16. Entendemos que la 13 y la 14 fueron adelantos que
@@ -287,48 +337,63 @@ terminaron recogidos en estas dos. *No es una pregunta abierta, es una confirmac
 *Recomendamos A: su v15 declara su base en `ATLAS_v12.html` y su v16 en `ATLAS_v15.html`, sin mencionar las
 otras dos.*
 
-**33 · La reconfirmación al cierre de una ruta**, que su §5.5 del 30 de octubre dejó pendiente. Hoy solo
-aplica la regla anual.
+**33 · La reconfirmación al cierre de una ruta** *(su §5.5 del 30 de octubre)* **[aplicado: solo la
+anual]**. Hoy aplica la regla anual, y así se queda mientras usted no diga otra cosa.
  · **A)** Solo la anual. · **B)** El cierre de una ruta dispara la reconfirmación completa. · **C)** Solo
  los ítems de esa ruta.
-*Recomendamos A: B añade un bloque de confirmación largo justo en la consulta de cierre, que es cuando el
-profesional tiene menos tiempo. Si después se ve que hace falta, se añade.*
+*Recomendamos A, y es lo que hay: B añade un bloque de confirmación largo justo en la consulta de cierre,
+que es cuando el profesional tiene menos tiempo. Si después se ve que hace falta, se añade. **Marcada
+[aplicado] porque la A no exige construir nada**: es el estado de hoy, no una promesa.*
 
-**34 · El S1 del Módulo S cuando no hay nutracéuticos indicados.** El S1 sale de los nutracéuticos de la
-consulta anterior, y **de los 30 pacientes que hoy tienen dos o más consultas, 18 no tienen ninguno en la
-anterior**: a esos el Módulo S les nace con su primera pregunta vacía.
+**34 · El S1 del Módulo S cuando no hay nutracéuticos indicados** **[decidido: A, entra con el Módulo S]**.
+El S1 sale de los nutracéuticos de la consulta anterior, y **de los 30 pacientes que hoy tienen dos o más
+consultas, 18 no tienen ninguno en la anterior**: a esos el Módulo S les nacería con su primera pregunta
+vacía.
  · **A)** Si no hay ninguno indicado, S1 y S2 no se presentan y la adherencia se calcula con el S3 (plan de
  alimentación) solo. · **B)** Se presenta S1 con una línea que diga "no se le indicó ninguno", para que
  quede registrado. · **C)** Otra cosa.
 *Recomendamos A: una pregunta sobre un producto que nadie le indicó no tiene respuesta correcta, y
-`cnvsAdherenciaAdecuada` ya se resuelve con el S3.*
+`cnvsAdherenciaAdecuada` ya se resuelve con el S3. **No dice [aplicado] y la diferencia importa:** el
+Módulo S todavía no existe en Atlas, así que la regla está DECIDIDA y entra con él. Marcarla como aplicada
+diría que ya corre, y no corre.*
 
-**35 · En la v15, "Acorde con sus pares" tiene dos colores en su propio archivo.** Su `cIAE` (línea 4487)
-la pinta en ámbar (`#f59e0b`) y el `dIAE` nuevo (línea 15443) en azul (`#3b82f6`). Es la misma banda.
- · **A)** Manda el azul: la banda central es lo esperado, no una alerta. · **B)** Manda el ámbar.
- · **C)** Son distintos a propósito (una superficie avisa, la otra informa), y díganos cuál va en cuál.
-*Recomendamos A, que es lo que ya proponíamos en la 15: en una rampa de dos colas, pintar de ámbar lo que
-está bien invierte la lectura. Su `dIAE` nuevo ya lo hace.* **Esta sustituye a la 15 si contesta A.**
+**38 · La R1 se activa por un criterio y su tarjeta anuncia otro, y las dos reglas son suyas.** *(Salió del
+smoke del 7 de noviembre sobre su propio caso del anexo, `ed83ff97`.)*
 
-**36 · El Δ del IAE en el borde exacto de ±5,0, en la v15.** Su documento dice que los cortes pasan a ser
-inclusivos, y su `cIAE` lo cumple; pero el Δ de la línea 15628 sigue con el corte abierto
-(`iae_d > 5 ? ... : iae_d < -5 ? ... : '0,0'`). Con un IAE de **exactamente +5,0**, la misma fila dice
-*"Envejecimiento acelerado estimado"* y un Δ de **"0,0"**. Es la pregunta 7, dos líneas más abajo.
- · **A)** El Δ también pasa a cerrado, y en +5,0 muestra "+0,0". · **B)** El Δ se queda abierto y en el
- borde muestra la raya, no el cero. · **C)** Otra cosa.
-*Recomendamos B, que junta esta con la 6: el IAE ya es una diferencia, y un "0,0" al lado del valor se lee
-como si el IAE fuera cero.*
+La tarjeta de la R1 dice **"Activación: IFC bajo + IRC alto + IAE acelerado"** y esa paciente tiene un IRC
+de **2,71**, que su propio clasificador llama **Normal**. No es un error del porte: su archivo tiene **dos
+reglas para la R1** y las dos están portadas verbatim.
 
-**Y hay un SEGUNDO sitio con el corte abierto en su v16** (medido el 7 de noviembre, al cerrar el borde en
-Atlas): la sugerencia del nutracéutico y la del protocolo de telómeros, las dos con `iae > 5`. Así que con
-un IAE de **exactamente +5,0** su archivo activa la ruta R4 (corte cerrado), llama al envejecimiento
-acelerado en la banda (corte cerrado) y **no** sugiere la Coenzima Q10 (corte abierto): el documento nombra
-el problema, prescribe la ruta y deja fuera el nutracéutico que esa misma ruta justifica. En Atlas está
-portado byte a byte, así que hace exactamente lo mismo. **Hoy son dos consultas reales** (las dos en +5,0
-exacto, de la simulación del recálculo).
- · **D)** El corte del nutracéutico y del protocolo de telómeros también pasa a `>= 5`. · **E)** Se queda
- abierto a propósito, porque la sugerencia pide más margen que la banda. · **F)** Otra cosa.
-*Recomendamos D: en la misma consulta no pueden regir dos cortes para la misma cifra.*
+| | Qué dice | Dónde, en su v16 |
+|---|---|---|
+| El **rótulo** y su predicado `condicion` | Un **Y de tres**: `ifc < 4,5` **y** `irc >= 3,5` **y** `iae >= 5` | L11685 y L11686 |
+| La **activación de verdad** | `dom1.sev >= 2`, del DFI | L14095 |
+
+Y su archivo declara cuál manda, con ese título: **"DFI como ÚNICA fuente de rutas"**. Así que su predicado
+`condicion` está **muerto** en su propio archivo (solo lo llama `activar`, que no se usa) y en el nuestro.
+
+**Lo que eso produce, medido.** El dominio 1 sale de su matriz **D1** sobre las etiquetas de IFC e IRC
+(L14023), donde **`"Normal|Normal"` vale 2**. De sus nueve celdas, **seis valen 2 o 3**, así que la R1 queda
+apagada solo con **IFC Alto**, o con IFC Normal e IRC Bajo. El IAE no entra en el dominio 1: vive en el 3,
+que es el que activa la R4.
+
+En la cohorte local, **346 de 364 consultas** llevan la R1 activa sin cumplir las tres del rótulo, y
+**todas** caen en la misma celda ("IFC Normal · IRC Normal"); **ninguna** cumple las tres sin llevarla. La
+cifra de la nube va en la corrida de la simulación.
+
+ · **A)** Manda el DFI (como dice su archivo) y el **rótulo** de la R1 se reescribe para que describa lo
+ que de verdad la activa. · **B)** Manda el predicado (`ifc < 4,5` y `irc >= 3,5` y `iae >= 5`) y entonces
+ el DFI deja de ser la fuente de las rutas. · **C)** Otra cosa.
+
+*Recomendamos **A**. Y mientras conteste, no tocamos ninguna de las dos: su rótulo es contenido clínico
+suyo y su DFI es su cálculo. Lo que sí hicimos es **añadir el dato sellado al lado**, que es lo que la
+regla de la casa permite: la tarjeta dice ahora, debajo de su rótulo, "En esta consulta la activó el
+dominio 1 (Celular-Eléctrico), severidad 2 de 3: IFC Normal · IRC Normal". Así el profesional ve por qué
+entró esa ruta sin que nosotros reescribamos nada suyo.*
+
+*Y una consecuencia de fondo que conviene que mire aunque conteste A: con la matriz de hoy, la R1
+(Restauración Celular) se activa en casi toda la cohorte. Una ruta que entra en el 95 % de las consultas
+deja de ordenar la atención, que es para lo que las seis rutas existen.*
 
 ---
 
@@ -390,13 +455,36 @@ O sea que la cadera **no es un dato de adorno en Atlas**, y por eso el freno ace
 | **B** | Atlas deja corregir o completar cintura y cadera después de importar, con motivo y guardando el valor original. | **Con el dato viejo.** Para investigación, la fuente pasa a ser Atlas. |
 | **C** | Se corrige en el Biody Manager y se reexporta; en Atlas se reemplaza la medición con motivo. | Igual que Atlas. |
 
-**Nuestra recomendación: C**, si el Biody Manager deja editar y reexportar sin volver a medir (Santiago lo
-verifica en el programa). Si no deja, **B**.
+**Nuestra recomendación: C.** Santiago lo verificó en el programa el **7 de noviembre**: el Biody Manager
+**sí deja editar cintura, cadera, peso y otros datos de una medición ya tomada**, sin volver a medir. Así
+que la C es viable y la B deja de hacer falta.
 
 **Y la C ya está construida**, que es lo que la hace barata: un archivo reexportado trae las mismas
 lecturas eléctricas, así que el freno de huella repetida lo reconocería. Desde el 5 de noviembre ese freno
 **avisa, pide un motivo y deja seguir**, y el acto queda en el rastro clínico donde dirección lo ve. No
 hay que construir nada para la C: solo decir que se puede usar así.
+
+**Pero ese dato abre dos preguntas que solo usted puede contestar, y las dos son suyas, no técnicas:**
+
+**37a · Al editar en el Biody Manager, ¿el programa recalcula algo?** Si al corregir la cadera el programa
+rehace algún indicador propio (su informe, su interpretación, un índice que usted lea allá), entonces el
+archivo reexportado no es el mismo archivo con un número cambiado: es otra medición. Eso no cambia la C,
+pero sí cambia **qué se le dice al profesional** sobre lo que acaba de hacer. Desde Atlas no se puede
+saber: las 117 columnas del export no traen nada derivado de esas dos, pero lo que el programa haga por
+dentro es suyo.
+
+**37b · ¿Qué datos se pueden editar sin repetir la toma: solo cintura y cadera, o también el peso?** El
+programa deja editar los tres. **Nuestra recomendación: solo cintura y cadera.**
+
+La razón es que no son lo mismo. La cintura y la cadera se **teclean a mano** con una cinta métrica, así
+que un error ahí es un error de teclado y corregirlo devuelve el dato que se midió. **El peso entra en la
+composición**: el equipo lo usa para derivar masa grasa, masa libre de grasa, FMI, FFMI y, por ellos, el
+fenotipo estructural, el dominio 2 del DFI y toda la cadena calórica de la prescripción. Cambiar el peso
+después de la toma no corrige un número: **recalcula la medición entera**, y ya no se sabe si lo que queda
+es lo que el equipo midió ese día.
+
+Si usted decide que el peso también se puede editar, hace falta su criterio sobre qué hacer con lo
+derivado: reexportar y reemplazar la medición entera (que es la C), o algo más.
 
 **Mientras tanto** la consulta de esa paciente queda como está, y la guía de profesionales no se toca
 hasta que usted responda.
@@ -444,97 +532,78 @@ aplica desde el caso de la capacitancia de 16,22 nF, que con su rango 0,3-10 vol
 dejó una vez a una paciente sin diagnóstico. Y una propuesta para su lista de imposibles: **"masa grasa o
 porcentaje de grasa ≤ 0"**, que es el único que atrapa las dos grasas negativas.
 
-## 3 · Las consultas que quedan fuera del recálculo, ¿se quedan desfasadas para siempre?
+## 3 · Las consultas que quedan fuera del recálculo **[contestada por los hechos el 2026-11-07]**
 
-Su §5 pide recalcular el histórico con la v7, y la lista no puede ser "todas".
+Su §5 pedía recalcular el histórico con la v7, y la lista no podía ser "todas". **El recálculo se ejecutó el
+7 de noviembre: 422 consultas, en nueve tandas, sin fallos.** Así que esta pregunta ya no decide nada que
+esté por construir; lo que queda es confirmar el estado en que quedaron las que no se pudieron tocar.
 
-**Las cifras de hoy, 3 de noviembre, ya depuradas:** quedan **diez** grupos de mediciones repetidas, que
-afectan a **veinte** consultas, y **cuatro** de esos grupos son entre **pacientes distintos** (los otros seis
-son del mismo paciente, que es un problema menor: la toma es suya, solo está colgada de la consulta
-equivocada). Las de pacientes distintos no se pueden recalcular hasta que se corrija de quién es cada toma.
-Y las que no tienen encuesta completa no emiten diagnóstico por su propio gate.
+**Cuáles quedaron fuera, y por qué** (medido en la corrida posterior a la ejecución):
 
-**La pregunta es qué pasa con ellas después.** Si se recalcula el resto, esas quedan con la EB-BIS de la v5
-y las demás con la v7, y la banda de trayectoria no compara entre versiones mayores del motor, así que el
-seguimiento de esos pacientes queda partido en dos.
+| Motivo | Cuántas | ¿Tiene salida? |
+|---|---|---|
+| Medición compartida con otra consulta vigente | 20 (diez grupos, **cuatro entre pacientes distintos**) | **Sí**: resolver de quién es la toma, y entran solas |
+| Sin fecha de nacimiento legible | 14 | **Sí**: registrarla, y se reemiten por el flujo normal |
+| Fuera de 18 a 100 años al medirse | 4 | **No**: la v7 no se calibró ahí |
+| Paciente de prueba | 30 | No hace falta: no se reemiten a propósito |
 
-**Nuestra recomendación:** que queden **marcadas con su motivo** y entren al recálculo en cuanto se resuelva
-lo que las frena, en vez de recalcularlas a la fuerza con un dato que sabemos que no es del paciente. Pero
-díganos si eso es aceptable como estado **permanente** para las que nunca se resuelvan: son pacientes que
-quizá no vuelven, y su historia se queda en la v5.
+**Y en qué estado quedaron, que es lo que se confirma:** **dentro** de la cohorte de investigación y
+**marcadas con su versión de motor sellada**. No quedan fuera por la versión (la vista no filtra por motor);
+las que sí quedan fuera de la cohorte salen por **otra** razón: paciente de prueba o medición compartida, y
+esa última es calidad de dato, no versión. /obbia las agrupa por familia mayor del motor y avisa cuando la
+cohorte mezcla dos, con la proporción al lado.
 
-## 4 · NUEVA · ¿Cómo deben leer el DFI y las rutas el IAE de la v7?
+**Lo que confirmamos con usted** es solo esto: que le sirve como estado **permanente** para las que nunca se
+resuelvan. Son pacientes que quizá no vuelven, y su historia se queda con el motor de su día. La alternativa
+sería recalcularlas a la fuerza con un dato que sabemos que puede no ser del paciente, y eso no lo hacemos
+sin que usted lo diga.
 
-**Esta es la más importante del documento, y salió de un informe real suyo.** Santiago leyó el informe de
-una paciente y encontró esto, en la misma hoja:
+## 4 · Su segunda mitad: los tres textos por banda del IAE **[la primera mitad, aplicada]**
 
-> Arriba: *"Edad biológica estimada: 24,7 años · **−1,3 años: acorde con sus pares**."*
-> Tres líneas más abajo: *"Envejecimiento · A trabajar. **Envejecimiento acelerado**: intervenir sobre
-> función y masa."*
+**La primera mitad está contestada y aplicada, y el histórico recalculado.** Era la más importante del
+documento: el camino que calculaba la cifra del paciente se había migrado a la v7 y el que alimentaba el
+**dominio 3, el riesgo integrado y las rutas** se había quedado en la v5, así que en la misma consulta
+convivían dos edades biológicas: la que se le dice al paciente y la que decide lo que se le prescribe.
 
-**La causa es un porte a medias nuestro, y lo decimos primero para que no se busque en su archivo.** Su §2
-del 26 de octubre es literal: *"La EB-BIS v5 se retira del motor de ATLAS y se sustituye por la EB-BIS v7."*
-El camino que calcula la cifra que el paciente lee **sí** se migró a la v7. El camino que alimenta el
-**dominio 3 del DFI, el riesgo integrado y las rutas** quedó en la v5. Así que en la misma consulta conviven
-dos edades biológicas: **la que se le dice al paciente y la que decide lo que se le prescribe.**
+Su v15 lo decide (`computeDFIFromData` **L11834** · `atlasMigrarEbV7` **L4458** · dominio 3 **L13965** ·
+**§1.4**), se aplicó el 6 de noviembre como **CA-3** y el 7 se recalcularon las **422** consultas del
+histórico. El registro completo, con lo que no se hizo y por qué, está en
+`docs/entregas/CAMBIOS_AUTORIZADOS.md`.
 
-**Y hay un caso que usted puede comprobar, porque es suyo: la evaluación `ed83ff97`** (la mujer de 64
-años de su anexo). En el mismo documento, leído hoy:
+**El caso que lo hizo visible era suyo, y así quedó.** La evaluación `ed83ff97` (la mujer de 64 años de su
+anexo A):
 
-| Dónde | Qué dice |
-|---|---|
-| La cifra que ve el paciente (EB-BIS v7, parámetros 7.1.0) | **76,4 años · IAE +12,4** |
-| El dominio 3 del DFI, que alimenta el riesgo y las rutas | **31,4 años · IAE −32,6 · "Enlentecido"** |
-| La pestaña de Tratamiento de esa misma consulta | **0 rutas activas** |
+| Dónde | Antes | Hoy |
+|---|---|---|
+| La cifra que ve la paciente | 76,4 años · IAE +12,4 | **igual**: la cifra nunca estuvo mal |
+| El dominio 3 del DFI | 31,4 años · IAE −32,6 · "Enlentecido" | **lee el mismo IAE de arriba** |
+| Su pestaña de Tratamiento | **0 rutas activas** | **R1, R2 y R4 con sus indicaciones** |
 
-**Cuarenta y cinco años de diferencia en la misma consulta**, y las dos cifras salen del mismo sistema:
-la de arriba del motor nuevo, la de abajo del que su §2 retiró.
+Cuarenta y cinco años de diferencia dentro de una consulta, y a esa paciente **no se le había prescrito
+nada** para el envejecimiento. Eran **43 informes** en ese caso (nombrar el problema y no traer nada que
+hacer con él) y **17** en el contrario, de 389; ninguno de los 60 se había enviado, porque el freno de la
+contradicción los retenía.
 
-**La tercera fila es la que cierra el caso, y Santiago la comprobó en pantalla el 5 de noviembre.** No es
-una contradicción de texto: es que a esa paciente **no se le prescribió nada** para el envejecimiento. La
-ruta de desaceleración no se activó porque el DFI lee el −32,6 de la v5, que dice que su envejecimiento va
-*enlentecido*. Arriba, en el documento que ella recibe, dice que lleva doce años de más.
+---
 
-Es exactamente el caso de los 43 de la tabla de abajo, con nombre: **el documento le nombra el problema y
-no trae nada que hacer con él.**
+**LO QUE SIGUE ABIERTO ES LA SEGUNDA MITAD, y no frena nada.** Su tabla 3 define **tres textos por banda de
+±5**, y el texto que el paciente lee en seguimiento va por la **trayectoria** (mejoró / sin cambio /
+empeoró, con corte de dos años), no por el nivel del IAE. **Son dos cosas distintas y las dos son suyas.**
 
-**Cuánto, medido sobre los 389 informes vigentes:**
+Hoy **conviven**: el documento lleva la banda de su tabla 3 ("envejecimiento acelerado estimado") junto a la
+cifra, y la frase de trayectoria aparece solo en un seguimiento, comparando con la consulta anterior. Así
+que un paciente puede leer *"acorde con sus pares"* junto a *"evolución favorable"*, que no se contradicen
+pero tampoco se explican solos.
 
-| | |
-|---|---|
-| Coinciden | **326** (84 %) |
-| Dicen "acorde con sus pares" arriba y **activan** la ruta de desaceleración del envejecimiento | **17** |
-| Dicen **acelerado** arriba y **no activan** esa ruta | **43** |
-| De esos 60, enviados al paciente | **ninguno** |
+**¿El texto de banda sustituye al de trayectoria, o conviven, y en ese caso en qué orden?**
 
-Los 43 son el peor de los dos casos: al paciente se le nombra el problema y el documento no prescribe nada
-para él.
-
-**Lo que hicimos mientras usted decide, y lo que NO hicimos.** Un documento que se contradice **ya no se
-entrega**: el servicio de entrega lo frena y le dice al profesional por qué, igual que el freno del cambio
-desfavorable. Lo que **no** tocamos es el motor, y es deliberado: arreglar el camino del DFI cambia el
-dominio 3, el riesgo integrado y **las rutas activas de toda la cohorte**. Eso es un bump del motor, con sus
-goldens y un recálculo nuevo, y **cuál criterio debe regir es suyo.**
-
-**Las tres salidas que vemos:**
-
-1. **El DFI pasa a leer el IAE de la v7**, y entonces el dominio 3, el riesgo y las rutas se recalculan con
-   la escala nueva. Es lo que su §2 parece pedir si se lee entero.
-2. **El dominio 3 tiene su propia escala**, distinta de la banda de ±5 que lee el paciente, y entonces no
-   hay contradicción que arreglar: hay dos lecturas con dos propósitos, y lo que falta es **decirlo** en el
-   documento.
-3. **Otra cosa que usted vea** y nosotros no.
-
-**Y una segunda mitad de la misma pregunta, que ya estaba apuntada desde el 24 de octubre:** su tabla 3
-define **tres textos por banda de ±5**, y hoy el texto que el paciente lee va por la **trayectoria**
-(mejoró / sin cambio / empeoró, con corte de dos años), no por el nivel del IAE. **Son dos cosas distintas y
-las dos son suyas.** Si conviven, el paciente puede leer *"acorde con sus pares"* junto a *"evolución
-favorable"*, que no se contradicen pero tampoco se explican solos. ¿El texto de banda **sustituye** al de
-trayectoria, o **conviven**, y en ese caso en qué orden?
+*Recomendamos que **convivan**, porque dicen cosas distintas: una es el **estado** de esta consulta y la
+otra el **cambio** entre dos. Pero si conviven conviene que el documento lo diga en media línea, y esa media
+línea es texto suyo.*
 
 # B · LAS QUE ESTÁN APLICADAS Y NECESITAN SU CONFIRMACIÓN
 
-## 5 · "Edad biológica estimada": adoptamos su tabla 3, que retira una decisión suya **[aplicado]**
+## 5 · "Edad biológica estimada" **[contestada: su v15 la mantiene]**
 
 Su tercera ronda del 30 de julio decidió que *"la expresión 'edad biológica' no se usa en ningún contenido
 del sistema: ni en pantalla, ni en reportes"*, y el indicador se llamó "Edad Bioeléctrica (EB-BIS)". Quedó
@@ -544,9 +613,10 @@ Su **tabla 3 del 26 de octubre** vuelve a usar la expresión, ahora como *"Edad 
 la fila como "Profesional y paciente". Entendemos que ese matiz ("estimada") es justo lo que su objeción
 pedía: le molestaba afirmar la edad del cuerpo, no estimarla.
 
-**Nuestra recomendación:** lo nuevo manda, y así está aplicado, en el registro del motor, en la pantalla de
-resultados y en la historia clínica, con su sigla al lado. **Confirme**, porque cambia el rótulo de un
-documento clínico que ya salió once veces con el otro nombre. Los informes ya enviados **no** se tocan.
+**Y su v15 la mantiene**, así que esto deja de ser una pregunta: lo nuevo manda, y así está aplicado en el
+registro del motor, en la pantalla de resultados y en la historia clínica, con su sigla al lado. Los
+informes ya enviados **no** se tocan. Queda escrito aquí porque cambió el rótulo de un documento clínico
+que ya había salido once veces con el otro nombre, y eso tiene que poder reconstruirse.
 
 ## 6 · El Δ del IAE dentro de la banda: lo cambiamos **nosotros**, contra su regla **[aplicado]**
 
@@ -561,7 +631,7 @@ sí cruzó, el Δ da la distancia al límite.
 **Nuestra recomendación:** dejar la raya. **Pero es preferencia nuestra contra su regla escrita, así que
 dígalo:** ¿está de acuerdo, o vuelve el cero? Es una celda que ya se movió tres veces y conviene cerrarla.
 
-## 7 · El borde exacto de ±5,0 del IAE, donde hoy Atlas se contradice consigo mismo
+## 7 · El borde exacto de ±5,0 del IAE, en TRES sitios de su archivo *(absorbe la 36)*
 
 Su tabla 3 usa cortes **cerrados** (`≥ +5` acelerado, `≤ −5` desacelerado), y su capa de display anterior
 (`dIAE`) los usaba **abiertos**. Atlas adoptó los cerrados de la tabla 3 para la banda.
@@ -734,7 +804,7 @@ sostenido 2 controles»*. Son cortes únicos, sin sexo. Para una mujer, su corte
 ese criterio **no sale nunca** de la ruta, aunque su función celular sea óptima. ¿Es a propósito, o se quedó
 con los cortes viejos?
 
-## 15 · Su clasificador del IAE pinta "Concordante" en ámbar, y lo bueno está en el medio
+## 15 · Su clasificador del IAE pinta "Concordante" en ámbar *(absorbe la 35)*
 
 **Lo preguntó usted**, en el punto 14 de su revisión: *"si es concordante, ¿no debería estar en verde?"*
 
@@ -1045,7 +1115,63 @@ software.
 
 ---
 
+## 38 · La R1 se activa por un criterio y su tarjeta anuncia otro **[medido, nada tocado]**
+
+**De dónde salió.** Del smoke del 7 de noviembre sobre su propio caso del anexo A, `ed83ff97`. Su tarjeta de
+la R1 dice *"Activación: IFC bajo + IRC alto + IAE acelerado"* y su IRC es **2,71**, que su `cIRC` llama
+**Normal** para una mujer (el corte femenino de riesgo bajo es < 2,3). Las tres condiciones del rótulo no se
+cumplen, y la ruta está activa.
+
+**No es un error del porte.** Su archivo tiene dos reglas para la R1, y las dos están en Atlas verbatim:
+
+| | Qué dice | Su v16 |
+|---|---|---|
+| `RUTAS.R1.activacion` (el rótulo) | "IFC bajo + IRC alto + IAE acelerado" | L11685 |
+| `RUTAS.R1.condicion` (su predicado) | `ifc < 4.5 && ifc > 0 && irc >= 3.5 && iae >= 5` | L11686 |
+| `computeDFI` (la que decide) | `if(dom1.sev>=2) rutas.push("R1 · Restauración Celular")` | L14095 |
+
+El rótulo describe el **predicado**, no el DFI. Y el predicado está muerto en su archivo: lo llama `activar`
+(L11892), y `activar` no se usa en ninguna pantalla suya. Lo que su archivo usa es `rutasActivasDFI`, y
+encima lo declara con un título: **"DFI como ÚNICA fuente de rutas"** (L11968).
+
+**Por qué la R1 entra casi siempre.** El dominio 1 sale de su matriz **D1** (L14023), que mapea las
+etiquetas de IFC e IRC a una severidad de 0 a 3:
+
+| | IRC Bajo | IRC Normal | IRC Alto |
+|---|---|---|---|
+| **IFC Alto** | 0 | 1 | **2** |
+| **IFC Normal** | 1 | **2** | **2** |
+| **IFC Bajo** | **3** | **3** | **3** |
+
+Seis de las nueve celdas valen 2 o más, y una de ellas es **`Normal|Normal`**, que es la combinación más
+frecuente. Así que la R1 queda apagada solo con **IFC Alto** (y además IRC no alto), o con IFC Normal e IRC
+Bajo. Y hay un matiz más que empuja hacia arriba: un IEHH **Moderado** o **Alto** suma +1 a la severidad
+(L14032), así que una celda de valor 1 también puede activar la ruta.
+
+**El IAE no entra en el dominio 1.** Vive en el dominio 3, que es el que activa la **R4**. O sea que la
+tercera condición del rótulo no participa de la activación de la R1 por ninguna vía.
+
+**Medido** (cohorte local, 364 consultas con informe; la cifra de la nube va en la corrida de la
+simulación): **346** llevan la R1 activa sin cumplir las tres del rótulo, y **las 346** caen en la misma
+celda, `IFC Normal · IRC Normal`. **Ninguna** cumple las tres sin llevar la ruta. Las 18 que no la llevan
+tienen **IFC Alto**.
+
+**Lo que NO hicimos, y por qué.** No tocamos el rótulo (es contenido clínico suyo) ni la activación (es su
+cálculo). La regla de la casa es que lo que parece raro en su archivo se le reporta, no se corrige.
+
+**Lo que sí hicimos**, porque es mostrar un dato capturado y no construir contenido: la tarjeta añade,
+debajo de su rótulo, **el dominio sellado que la activó con su severidad y su clasificación**. En el caso de
+`ed83ff97` dice *"En esta consulta la activó el dominio 1 (Celular-Eléctrico), severidad 2 de 3: IFC Normal
+· IRC Normal"*. Así el profesional ve por qué entró la ruta sin que nadie reescriba nada suyo.
+
+**Y la consecuencia de fondo, que es la que de verdad le pedimos mirar:** con la matriz de hoy, la
+**Restauración Celular** se activa en casi toda la cohorte. Una ruta que entra en el 95 % de las consultas
+deja de ordenar la atención, que es para lo que las seis existen. Puede ser exactamente lo que usted
+quiere (que casi todo el mundo necesite restauración celular es una afirmación clínica defendible), y en ese
+caso lo único que sobra es el rótulo. Pero conviene que sea una decisión y no un efecto.
+
 ---
+
 
 # ANEXO · LO QUE DECIDIMOS NOSOTROS Y SOLO LE DECLARAMOS
 
