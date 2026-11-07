@@ -86,7 +86,7 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     if (!dentroDelCorte(fecha, corte)) continue;
     const snap = row.snapshot as {
       indicators?: Record<string, unknown>;
-      dfi?: { domains?: unknown };
+      dfi?: { domains?: unknown; riesgo?: { score?: unknown } | null };
       ebBis?: { estado?: string; eb?: unknown; iae?: unknown } | null;
       versions?: { engine?: unknown } | null;
     } | null;
@@ -116,6 +116,9 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
           }))
         : null,
       eb: ebSellada,
+      // EL RIESGO INTEGRADO, del sello. Se lee con el mismo `num` que el resto: un campo ausente da null
+      // y la tarjeta no compara, en vez de restar contra un cero que nadie midio.
+      riesgoScore: num(snap?.dfi?.riesgo?.score),
       engineVersion,
     });
   }

@@ -21,6 +21,16 @@ export type PuntoSerie = {
   /** Dominios del DFI (5), para el radar comparativo. */
   dominios: { id: string; nombre: string; sev: number }[] | null;
   /**
+   * EL RIESGO INTEGRADO PONDERADO del DFI, de 0 a 100, sellado en ese informe. MENOR ES MEJOR.
+   *
+   * Entra el 2026-11-07 para la tarjeta de respuesta a la intervencion de su v15 §3, que compara el delta
+   * de esta cifra contra la ultima consulta comparable. Es la MISMA que la pantalla del diagnostico pinta,
+   * leida del sello: recalcularla aqui daria una segunda definicion del riesgo de esa consulta.
+   *
+   * null cuando el sello no la trae (informes de eras anteriores del motor).
+   */
+  riesgoScore: number | null;
+  /**
    * La EB-BIS v7 SELLADA en ese reporte (edad biologica estimada y su IAE), o null.
    *
    * SE LEE DEL SELLO, NO SE RECALCULA: es la cifra que ese dia se le dijo al paciente. null en los

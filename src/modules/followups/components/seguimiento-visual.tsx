@@ -3,6 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateOnlyShort } from "@/lib/format/date";
 import { DfiRadar } from "@/modules/diagnoses/components/dfi-radar";
 
+import {
+  respuestaALaIntervencion,
+  type Direccion,
+  type DeltaSeguimiento,
+  type RespuestaALaIntervencion,
+} from "../respuesta-a-la-intervencion";
 import type { SerieSeguimiento } from "../data/serie-types";
 import { SerieLinea } from "./serie-linea";
 
@@ -146,6 +152,98 @@ export function SeguimientoSinPrevia({
     </Card>
   );
 }
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// RESPUESTA A LA INTERVENCION  ·  v15 §3, 2026-11-07
+//
+// Su tarjeta compara contra la ULTIMA CONSULTA COMPARABLE y muestra el delta del riesgo integrado del DFI,
+// de la capacitancia y de la PABU. La interpretacion (si cada delta es mejoria) la resuelve
+// `respuesta-a-la-intervencion`, y aqui solo se pinta: las tres cifras NO mejoran en la misma direccion, y
+// una tarjeta que decidiera eso por su cuenta seria la segunda definicion de "mejoro".
+//
+// LO QUE FALTA SE DICE, no se calla: su tarjeta lleva ademas la adherencia (S1 a S6) y el escenario de su
+// tabla 6, y las dos dependen del Modulo S de la encuesta CNV-S, que todavia no existe en Atlas. Su tabla
+// 6 cruza el delta del DFI con la adherencia, asi que sin el Modulo S falta una de sus dos columnas. Media
+// tabla de decision diria "respuesta compatible con la ruta" sobre un paciente del que no se sabe si
+// siguio la ruta.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** El color y la palabra de una direccion. `null` = no se afirma si mejoro. */
+function lecturaDeDireccion(d: Direccion): { texto: string; clase: string } | null {
+  if (d === "mejora") return { texto: "mejora", clase: "text-clinical-optimal" };
+  if (d === "empeora") return { texto: "empeora", clase: "text-clinical-warning" };
+  if (d === "sin-cambio") return { texto: "sin cambio", clase: "text-muted-foreground" };
+  return null;
+}
+
+/** Una cifra con su delta y, si se puede decir, su lectura. */
+function FilaDelta({
+  rotulo,
+  dato,
+  decimales,
+  unidad,
+  nota,
+}: {
+  rotulo: string;
+  dato: DeltaSeguimiento | null;
+  decimales: number;
+  unidad?: string;
+  /** Por que no se afirma la direccion, cuando no se afirma. */
+  nota?: string;
+}) {
+  if (!dato) return null;
+  const n = (v: number) => v.toFixed(decimales).replace(".", ",");
+  const signo = dato.delta > 0 ? "+" : "";
+  const lectura = lecturaDeDireccion(dato.direccion);
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="text-sm text-foreground">
+        <span className="font-medium">{rotulo}:</span> {n(dato.antes)} → {n(dato.ahora)}
+        {unidad ? ` ${unidad}` : ""}{" "}
+        <span className="tabular-nums text-muted-foreground">
+          ({signo}
+          {n(dato.delta)})
+        </span>
+        {lectura ? <span className={`ml-1 font-medium ${lectura.clase}`}>{lectura.texto}</span> : null}
+      </p>
+      {/* SIN REFERENCIA NO SE DICE SI MEJORO, y se dice POR QUE: la capacitancia es bidireccional, asi que
+          "subio" no significa nada sin saber de que lado de la mediana de su grupo estaba. */}
+      {!lectura && nota ? <p className="text-xs text-muted-foreground">{nota}</p> : null}
+    </div>
+  );
+}
+
+function RespuestaCard({ r }: { r: RespuestaALaIntervencion }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Respuesta a la intervención</CardTitle>
+        <span className="text-xs text-muted-foreground">
+          Comparado con la consulta del {formatDateOnlyShort(r.anterior.fecha)}, que es la última de la
+          misma versión del modelo. El riesgo integrado va de 0 a 100 y menor es mejor; la capacitancia y la
+          proporción bioeléctrica son bidireccionales, así que mejorar es acercarse a su referencia.
+        </span>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <FilaDelta rotulo="Riesgo integrado (DFI)" dato={r.riesgo} decimales={0} />
+        <FilaDelta
+          rotulo="Capacitancia de membrana"
+          dato={r.capacitancia}
+          decimales={3}
+          unidad="nF"
+          nota="No hay referencia poblacional de su grupo (falta sexo o fecha de nacimiento), así que se dice cuánto se movió y no si eso es mejoría: acercarse a la mediana es mejorar, y alejarse en cualquier dirección, no."
+        />
+        <FilaDelta rotulo="Proporción bioeléctrica (PABU)" dato={r.pabu} decimales={3} />
+        {/* LO QUE FALTA DE SU TARJETA, DICHO. Ver la nota del bloque. */}
+        <p className="mt-1 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          La adherencia y el escenario de respuesta de la tabla 6 llegan con la encuesta de seguimiento
+          (CNV-S): su Módulo S es el que pregunta si el paciente siguió la ruta, y sin esa mitad el
+          escenario no se puede decidir.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
   const puntosC = serie.puntos
     .filter((p) => p.c != null)
@@ -156,6 +254,11 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
   const puntosIca = serie.puntos
     .filter((p) => p.icaBis != null)
     .map((p) => ({ fecha: p.fecha, valor: p.icaBis as number }));
+
+  // LA RESPUESTA A LA INTERVENCION (su v15 §3): null con una sola consulta o sin ninguna anterior de la
+  // MISMA escala del motor, y entonces la tarjeta no sale. No se pinta vacia: con una medicion no hay
+  // respuesta a nada.
+  const respuesta = respuestaALaIntervencion(serie.puntos, serie.refC);
 
   const conDominios = serie.puntos.filter((p) => p.dominios && p.dominios.length > 0);
   // LA DIANA SALE CON UNA SOLA MEDICION desde el 2026-09-07 (punto 13 de su cotejo). Antes exigia dos y
@@ -188,6 +291,11 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
           {serie.omitidas === 1 ? "Una anterior no se grafica" : `${serie.omitidas} anteriores no se grafican`}.
         </p>
       ) : null}
+
+      {/* VA PRIMERA, antes de la capacitancia y del radar: es la lectura de CONJUNTO de si el paciente
+          respondio a la intervencion, y lo que sigue es el detalle indicador por indicador. Al reves,
+          quien lee las tres cifras ya no necesita la tarjeta. */}
+      {respuesta ? <RespuestaCard r={respuesta} /> : null}
 
       <CapacitanciaCard refC={serie.refC} puntos={puntosC} />
       {ultima ? (
