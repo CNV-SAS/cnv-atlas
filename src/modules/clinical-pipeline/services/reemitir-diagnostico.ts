@@ -252,9 +252,13 @@ export async function reemitirDiagnostico(
         // Y lo que del tratamiento SI dependia de la cifra vieja, caso por caso: es la respuesta a (a), y
         // va en el rastro para que un tratamiento apoyado en una EB-BIS v5 sea buscable.
         depende_de_la_eb_bis: [
-          "rutas R1 y R4 (iae > 5)",
+          // LOS DOS CORTES, dichos como son: su v16 cerro el de las rutas y el de la banda, y dejo ABIERTO
+          // el de la sugerencia del nutraceutico. En +5,0 exacto su archivo activa R4 y no sugiere la Q10;
+          // esta portado byte a byte y es su pregunta 36. Escribirlo aqui importa porque este payload es
+          // lo que alguien va a leer dentro de un año para saber de que dependia este tratamiento.
+          "rutas R1 y R4 (iae >= 5 desde la 3.2.0, el corte cerrado de su v16)",
           "dominio 3 del DFI (envejecimiento) y, por el, el riesgo integrado",
-          "nutraceutico Coenzima Q10 sugerido (iae > 5), sellado en protocol_suggested",
+          "nutraceutico Coenzima Q10 sugerido (iae > 5: su v16 deja ESTE corte abierto, pregunta 36), sellado en protocol_suggested",
           "metas de nutricion y ejercicio que citan la reduccion del IAE",
         ],
         no_depende_de_la_eb_bis: [

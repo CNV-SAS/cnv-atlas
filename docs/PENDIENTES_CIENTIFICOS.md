@@ -319,6 +319,17 @@ inclusivos, y su `cIAE` lo cumple; pero el Δ de la línea 15628 sigue con el co
 *Recomendamos B, que junta esta con la 6: el IAE ya es una diferencia, y un "0,0" al lado del valor se lee
 como si el IAE fuera cero.*
 
+**Y hay un SEGUNDO sitio con el corte abierto en su v16** (medido el 7 de noviembre, al cerrar el borde en
+Atlas): la sugerencia del nutracéutico y la del protocolo de telómeros, las dos con `iae > 5`. Así que con
+un IAE de **exactamente +5,0** su archivo activa la ruta R4 (corte cerrado), llama al envejecimiento
+acelerado en la banda (corte cerrado) y **no** sugiere la Coenzima Q10 (corte abierto): el documento nombra
+el problema, prescribe la ruta y deja fuera el nutracéutico que esa misma ruta justifica. En Atlas está
+portado byte a byte, así que hace exactamente lo mismo. **Hoy son dos consultas reales** (las dos en +5,0
+exacto, de la simulación del recálculo).
+ · **D)** El corte del nutracéutico y del protocolo de telómeros también pasa a `>= 5`. · **E)** Se queda
+ abierto a propósito, porque la sugerencia pide más margen que la banda. · **F)** Otra cosa.
+*Recomendamos D: en la misma consulta no pueden regir dos cortes para la misma cifra.*
+
 ---
 
 # EL DETALLE DE CADA PREGUNTA

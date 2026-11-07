@@ -9,13 +9,16 @@
 // ═══ LO QUE SE MIDIO, CASO POR CASO ═══
 //
 // SI DEPENDE de la EB-BIS / el IAE:
-//   1. Las rutas R1 y R4. `R1` exige `iae > 5` junto con IFC bajo e IRC alto; `R4` (Desaceleracion del
-//      Envejecimiento) se activa con `iae > 5`, o por FFMI bajo, o por obesidad sarcopenica
-//      (`engine.indices.js`). Van selladas en el diagnostico.
+//   1. Las rutas R1 y R4. `R1` exige `iae >= 5` junto con IFC bajo e IRC alto; `R4` (Desaceleracion del
+//      Envejecimiento) se activa con `iae >= 5`, o por FFMI bajo, o por obesidad sarcopenica
+//      (`engine.indices.js`). Van selladas en el diagnostico. EL CORTE SE CERRO EN LA 3.2.0, re-portado de
+//      su v16: antes decia `> 5` y en +5,0 exacto la banda llamaba acelerado al paciente sin activar nada.
 //   2. El dominio 3 del DFI (Envejecimiento): su severidad sale de `iaeCl` y del valor del IAE, y con
 //      ella se mueve el RIESGO INTEGRADO, que es la lectura de conjunto.
 //   3. El nutraceutico Coenzima Q10, que `atlas-protocolo` sugiere cuando `iae > 5`, con el texto
-//      "Envejecimiento acelerado IAE +X,X". Queda sellado en `protocol_suggested`.
+//      "Envejecimiento acelerado IAE +X,X". Queda sellado en `protocol_suggested`. ESTE CORTE SIGUE
+//      ABIERTO, y no por descuido nuestro: su v16 lo deja asi (es su pregunta 36). O sea que en +5,0
+//      exacto R4 se activa y la Q10 no se sugiere, y lo decide el.
 //   4. Las metas de nutricion y de ejercicio que citan "reduccion del IAE" (`dfi-narrative`).
 //
 // NO DEPENDE, y es lo que hace viable no rehacer nada: las kcal, la proteina, la grasa, la distribucion
