@@ -1114,7 +1114,7 @@ export default async function ResultadosEvaluacionPage({
                   etiquetaBoton="Imprimir las rutas"
                   queSale="Las rutas que activó el diagnóstico, con sus indicaciones, más los suplementos y las remisiones. Es la hoja que el paciente se lleva para saber a dónde va."
                 >
-                  <RutasSection rutas={rutas} />
+                  <RutasSection rutas={rutas} ausente={results.rutasContentAusente} />
                   {/* Y LO QUE PIDIO SANTIAGO QUE LLEVARA ADEMAS (2026-09-19): los suplementos y las
                       remisiones, diciendo que sugiere el modelo y que indico el profesional. Sale del
                       MISMO lector que el informe del correo, para que el papel y el correo no puedan

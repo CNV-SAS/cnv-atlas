@@ -58,6 +58,20 @@ export type EvaluationResults = {
   // Contenido de las rutas de atencion activas, congelado en el snapshot (T1). [] si no hay o si el
   // snapshot es previo a este bloque.
   rutasContent: RutaContent[];
+  /**
+   * `true` cuando el snapshot es 3.x y la capa `rutasContent` NO ESTA (la clave falta, que no es lo mismo
+   * que estar vacia).
+   *
+   * TRES ESTADOS Y NO DOS, que es la regla de la casa: "sin rutas activas para este estado" es un
+   * resultado clinico, y "no se escribio la capa" es un defecto nuestro. La reemision del 7 de noviembre
+   * dejo 422 informes en el segundo caso, y la pantalla los mostraba como el primero: "0 rutas activas"
+   * junto a un riesgo integrado CRITICO. Un vacio que se lee como resultado es exactamente lo que este
+   * proyecto no deja pasar.
+   *
+   * Solo 3.x: en los snapshots de eras anteriores la clave tampoco esta, y ahi SI es un documento de
+   * cuando la capa no existia. Es el mismo filtro que usa la reparacion.
+   */
+  rutasContentAusente: boolean;
   evaluationId: string; // para la superficie de confirmacion (B-0)
   confirmed: boolean;
   confirmedAt: string | null;
@@ -263,6 +277,8 @@ export async function getEvaluationResults(
       efrState: null,
       validityCaveats: [],
       rutasContent: [],
+      // El camino degradado es por definicion un snapshot de otra era: ahi la capa no falta, no existia.
+      rutasContentAusente: false,
       evaluationId,
       confirmed: false,
       confirmedAt: null,
@@ -291,6 +307,10 @@ export async function getEvaluationResults(
   const validityCaveats: ValidityCaveat[] = (rawSnapshot as StoredSnapshot).validityCaveats ?? [];
   // Contenido de las rutas activas congelado (T1). Ausente en snapshots previos -> [].
   const rutasContent: RutaContent[] = (rawSnapshot as StoredSnapshot).rutasContent ?? [];
+  // LA CLAVE FALTA, que no es lo mismo que estar vacia. Ver el comentario del tipo: solo 3.x, porque en
+  // los snapshots anteriores la capa no existia.
+  const rutasContentAusente =
+    (rawSnapshot as StoredSnapshot).rutasContent == null && (engineVersion ?? "").startsWith("3.");
 
   // Del registry solo quedan dos lecturas, ninguna por state_number ni evidencia clinica: el
   // estado de confirmacion del diagnostico, y los NOMBRES de indicadores (rotulos, por
@@ -337,6 +357,7 @@ export async function getEvaluationResults(
     efrState,
     validityCaveats,
     rutasContent,
+    rutasContentAusente,
     evaluationId,
     confirmed: Boolean(diag?.confirmed_at),
     confirmedAt: diag?.confirmed_at ?? null,

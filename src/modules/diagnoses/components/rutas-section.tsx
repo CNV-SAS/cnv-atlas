@@ -113,19 +113,52 @@ function RutaCard({ ruta }: { ruta: RutaContent }) {
   );
 }
 
-export function RutasSection({ rutas }: { rutas: RutaContent[] }) {
+// ═══ TRES ESTADOS, NO DOS  ·  2026-11-07 ═══
+//
+// "Sin rutas activas para este estado" es un RESULTADO CLINICO; que la capa del snapshot no se haya
+// escrito es un DEFECTO NUESTRO, y los dos se veian igual. La reemision del 7 de noviembre dejo 422
+// informes sin esa capa, y esta tarjeta decia "0 rutas activas" al lado de un riesgo integrado CRITICO:
+// un vacio leido como resultado. Es la misma distincion que ya estaba en las tarjetas de dominio ("Sin
+// dato" no es "Óptimo") y en el clamp del radar.
+export function RutasSection({
+  rutas,
+  ausente = false,
+}: {
+  rutas: RutaContent[];
+  /** La capa no se escribio (no que no haya rutas). Ver `results-reader.rutasContentAusente`. */
+  ausente?: boolean;
+}) {
   const n = rutas.length;
   return (
     <Card>
       <CardHeader>
         <CardTitle>Rutas de atención activadas</CardTitle>
         <span className="text-sm text-muted-foreground">
-          Derivadas automáticamente del Diagnóstico Funcional Integrado (DFI). {n} ruta
-          {n === 1 ? "" : "s"} activa{n === 1 ? "" : "s"}.
+          {ausente ? (
+            "Derivadas automáticamente del Diagnóstico Funcional Integrado (DFI)."
+          ) : (
+            <>
+              Derivadas automáticamente del Diagnóstico Funcional Integrado (DFI). {n} ruta
+              {n === 1 ? "" : "s"} activa{n === 1 ? "" : "s"}.
+            </>
+          )}
         </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {n === 0 ? (
+        {ausente ? (
+          // NO SE AFIRMA CUANTAS SON. El diagnóstico de esta consulta se volvió a emitir y el contenido de
+          // sus rutas está pendiente de completarse; decir "0" sería afirmar un resultado que no se midió.
+          <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3">
+            <p className="text-sm text-muted-foreground">
+              <strong className="font-medium text-foreground">
+                Las rutas de esta consulta se están completando.
+              </strong>{" "}
+              El diagnóstico se reemitió con la versión nueva del modelo y el contenido de sus rutas queda
+              pendiente de un paso que corre la Dirección Científica. No es que no haya rutas: es que
+              todavía no se pueden mostrar. El resto del diagnóstico y el plan no dependen de esto.
+            </p>
+          </div>
+        ) : n === 0 ? (
           <p className="text-sm text-muted-foreground">Sin rutas activas para este estado.</p>
         ) : (
           rutas.map((r) => <RutaCard key={r.id} ruta={r} />)
