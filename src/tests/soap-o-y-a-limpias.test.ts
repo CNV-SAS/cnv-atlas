@@ -62,9 +62,19 @@ describe("la A", () => {
     expect(siglasEnMayuscula("consumo elevado de ultraprocesados (pcbu)")).toBe(
       "consumo elevado de ultraprocesados (PCBU)",
     );
-    // Su función, que tiene golden, no se toca: se corrige al mostrar.
+    // ═══ LA MINUSCULA LA PRODUCE AHORA SU `d1Lista`, Y SIGUE SIENDO SUYA (2026-11-07) ═══
+    //
+    // Este caso miraba `defic.push(g.label.toLowerCase())` en `resumen-dieta`, el bucle propio que el
+    // parrafo tenia. Su v16 §4.3 lo sustituye por `d1Clasificar` + `d1Lista`, y la minuscula la hace
+    // `d1Lista` dentro del frozen. La propiedad que este caso defiende no cambia: la funcion de Gildardo
+    // NO se toca, y la sigla se corrige AL MOSTRAR.
+    //
+    // Y SE MIRA EL FROZEN, que es donde vive: ahi ademas se ve que el ya repone "(PCBU)" en su propia
+    // lista, asi que `siglasEnMayuscula` cubre lo que llega por otros caminos.
     const SU_FUNCION = readFileSync("src/clinical-engine/resumen-dieta.ts", "utf8");
-    expect(SU_FUNCION).toContain("defic.push(g.label.toLowerCase())");
+    expect(SU_FUNCION).toContain("d1Lista(c.deficit)");
+    const EL_FROZEN = readFileSync("src/clinical-engine/frozen/engine.d1-clasificacion.js", "utf8");
+    expect(EL_FROZEN).toContain("g.label.toLowerCase()");
   });
 });
 

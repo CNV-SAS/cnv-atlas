@@ -3,6 +3,7 @@ import "server-only";
 
 import { isEngineOutput, type EngineOutput } from "@/clinical-engine";
 import { dfiNarrativeFromOutput } from "@/clinical-engine/dfi-narrative";
+import { patronParaLaIa } from "@/clinical-engine/patron-para-la-ia";
 import { edadEnFecha } from "@/lib/format/edad";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
@@ -272,5 +273,13 @@ export async function buildCriterionInput(
     // EL CIERRE LO ESCRIBE ATLAS (v10): las rutas con su prioridad salen de la MISMA narrativa del DFI que
     // cierra la A del SOAP. Sin DFI completo no hay narrativa, y entonces no se escribe cierre.
     rutasActivadas: snap.dfi.complete ? dfiNarrativeFromOutput(snap).rutasActivadas : null,
+    // EL PATRON USUAL YA CLASIFICADO (v15, su v16 §4.5). Se arma sobre la encuesta CRUDA, que es donde
+    // estan los textos de opcion tal como se guardaron: la "legible" despliega las de opcion multiple y
+    // para las de frecuencia da lo mismo, pero la cruda es la fuente y no una derivada.
+    patronD1: patronParaLaIa(
+      Object.fromEntries(
+        encuestaCruda.filter((r) => r.fieldKey).map((r) => [r.fieldKey as string, r.valor]),
+      ),
+    ),
   };
 }

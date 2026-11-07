@@ -451,12 +451,34 @@ describe("las copias de su código en fixtures tampoco derivaron", () => {
   const vigente = sinEspacio(readFileSync(HTML_VIGENTE, "utf8"));
   const DIR = "src/tests/fixtures/reference";
 
+  // ═══ LAS COPIAS QUE VIENEN DE UNA ENTREGA MAS NUEVA QUE `HTML_VIGENTE`  ·  2026-11-07 ═══
+  //
+  // Es el mismo hueco que `DE_ENTREGA_MAS_NUEVA` declara para los modulos del frozen: `HTML_VIGENTE` se
+  // deriva de las carpetas `html actualizado <dia> <mes>` y resuelve al `ATLAS_v9.html` del 21 de
+  // septiembre, mientras su archivo de hoy es el `ATLAS_v16.html` del 4 de noviembre.
+  //
+  // NO SE EXIME, SE RE-APUNTA: la copia se compara contra SU PROPIA entrega, que es una comparacion mas
+  // fuerte que la de antes y no una tolerancia. La cabecera de `fixtures/html-vigente.ts` anotaba estas
+  // diez lineas como "del paso 5"; ya estan, asi que aqui entran con su ancla de verdad.
+  const DE_ENTREGA_NUEVA: Record<string, { carpeta: string; razon: string }> = {
+    "resumen-dieta-vigente.js": {
+      carpeta: "4 noviembre",
+      razon:
+        "el parrafo de dieta se RE-PORTO del ATLAS_v16.html (su §4.3): clasifica con d1Clasificar en vez " +
+        "de dos reglas propias, y sus cuatro lineas nuevas no estan en el v9 porque no existian.",
+    },
+  };
+
   // Andamiaje NUESTRO, que en su HTML no existe porque allá todo vive en un solo archivo.
   const ANDAMIAJE =
     /^(import |export |function computeValidacionRef|return INTER_NUTS\.map)/;
 
   for (const f of readdirSync(DIR).filter((f) => f.endsWith(".js"))) {
     it(`${f} sigue siendo el de su archivo de hoy`, () => {
+      const deOtraEntrega = DE_ENTREGA_NUEVA[f];
+      const contra = deOtraEntrega
+        ? sinEspacio(readFileSync(htmlDeCambioNuevo(deOtraEntrega.carpeta), "utf8"))
+        : vigente;
       const src = readFileSync(`${DIR}/${f}`, "utf8")
         .replace(/\r\n/g, "\n")
         .replace(/\/\*[\s\S]*?\*\//g, "");
@@ -472,14 +494,23 @@ describe("las copias de su código en fixtures tampoco derivaron", () => {
             !l.startsWith("//") &&
             !ANDAMIAJE.test(l),
         )
-        .filter((l) => !vigente.includes(sinEspacio(sinDeclaracion(l))));
+        .filter((l) => !contra.includes(sinEspacio(sinDeclaracion(l))));
       expect(
         faltan,
-        `${f}: estas líneas ya no están en su archivo vigente. Re-extrae el bloque:\n  ` +
+        `${f}: estas líneas ya no están en ${deOtraEntrega ? `su entrega del ${deOtraEntrega.carpeta}` : "su archivo vigente"}. Re-extrae el bloque:\n  ` +
           faltan.map((l) => l.slice(0, 120)).join("\n  "),
       ).toEqual([]);
     });
   }
+
+  it("y cada copia declarada de otra entrega nombra la carpeta y existe", () => {
+    // Sin esto, una declaracion con una carpeta mal escrita dejaria la copia sin comparar contra nada.
+    for (const [f, d] of Object.entries(DE_ENTREGA_NUEVA)) {
+      expect(existsSync(`${DIR}/${f}`), `declarada una copia que no existe: ${f}`).toBe(true);
+      expect(existsSync(htmlDeCambioNuevo(d.carpeta)), `no existe la entrega ${d.carpeta}`).toBe(true);
+      expect(d.razon.length, `la exencion de ${f} no dice por que`).toBeGreaterThan(60);
+    }
+  });
 });
 
 describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone rojo", () => {

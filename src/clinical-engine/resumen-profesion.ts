@@ -18,8 +18,8 @@
 // Texto USER-FACING (lo lee el profesional): tildes y eñes correctas, verbatim de la fuente.
 
 // Módulos congelados en JS; `allowJs` los resuelve.
+import { d1Clasificar } from "./frozen/engine.d1-clasificacion.js";
 import { cFFMI, cFMI } from "./frozen/engine.core.derived.js";
-import { FREQ_GROUPS } from "./frozen/engine.patron.js";
 
 type Enc = Record<string, unknown>;
 type Bis = Record<string, unknown>;
@@ -66,18 +66,28 @@ function fmiCat(enc: Enc, bis: Bis): number | null {
   return (cFMI as (v: number, s: string) => { k: number })(FMI, sexoM(enc, bis)).k;
 }
 
-/** Lectura GRUESA del patrón alimentario, la que usan los tres párrafos (`_resDietaCoarse`). */
+/**
+ * Lectura GRUESA del patrón alimentario, la que usan los tres párrafos (`_resDietaCoarse`).
+ *
+ * ═══ CUENTA LOS DEFICITS Y LOS EXCESOS DEL CLASIFICADOR  ·  v16 §4.3, 2026-11-07 ═══
+ *
+ * Era un bucle propio con dos reglas a mano (protector <= 1, riesgo >= 3), una de las TRES fuentes que
+ * clasificaban el mismo patron de formas distintas. Ahora cuenta `deficit` + `exceso` de `d1Clasificar`,
+ * que es la misma clasificacion que ve el profesional en la vista D1 y la que lleva el parrafo de dieta.
+ *
+ * LO QUE SE MUEVE: los embutidos cuentan desde 2 (no desde 3) y las carnes rojas desde 3 con su propia
+ * escala, asi que un paciente puede pasar de "alimentación adecuada" a "con aspectos por mejorar" sin que
+ * haya cambiado ninguna respuesta suya. Es el efecto buscado: antes la frase decia "adecuada" sobre un
+ * patron que la vista D1 pintaba en rojo, y eso es un documento contradiciendose consigo mismo.
+ *
+ * LOS "A MODERAR" NO CUENTAN, y es de su archivo: su `_resDietaCoarse` suma `deficit.length +
+ * exceso.length` y nada mas. Tiene sentido con lo que la frase hace (es la lectura gruesa de tres
+ * parrafos, no el detalle), y aqui no se mejora por cuenta propia.
+ */
 function dietaCoarse(enc: Enc): string {
-  let probs = 0;
-  let any = false;
-  for (const g of FREQ_GROUPS as { n: number; cat: string }[]) {
-    const v = num(enc[`d1_${g.n}_i`]);
-    if (v === null) continue;
-    any = true;
-    if (g.cat === "protector" && v <= 1) probs++;
-    else if (g.cat === "riesgo" && v >= 3) probs++;
-  }
-  if (!any) return "";
+  const c = d1Clasificar(enc as Record<string, number | string | null | undefined>, false);
+  if (!c.respondidos) return "";
+  const probs = c.deficit.length + c.exceso.length;
   return probs === 0
     ? "una alimentación adecuada"
     : probs <= 2

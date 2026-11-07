@@ -85,8 +85,17 @@ export function htmlDeEntrega(carpeta: string): string {
 //
 // AVANCE, MISMO DIA: las DOS de `calcPatron` ya estan, y `engine.patron.js` salio de `MODULOS` en
 // `frozen-deriva-vigente` para entrar en `DE_ENTREGA_MAS_NUEVA`, con su candado propio contra el v16
-// (`frozen-patron-diff`). Quedan DIECISEIS. Las tres de la EB-BIS v7 son del mismo paso 3; las tres del
-// motor calorico esperan su pregunta 1; las diez del parrafo de dieta son del paso 5.
+// (`frozen-patron-diff`).
+//
+// Y EL 2026-11-07 ENTRARON LAS DIEZ DEL PARRAFO DE DIETA (el paso 5): `resumen-dieta` y
+// `resumen-profesion` leen `d1Clasificar`, y la copia de `fixtures/reference/resumen-dieta-vigente.js` se
+// re-extrajo del v16 y se compara CONTRA SU PROPIA ENTREGA en `frozen-deriva-vigente`, no contra el v9.
+// No es una tolerancia: es un ancla mejor que la de antes.
+//
+// QUEDAN SEIS: tres de la EB-BIS v7 (`cIAE` y los pesos z del IFC y del PABU, del mismo paso 3) y tres
+// del motor calorico Harris-Benedict + 10 % (v12), que esperan la pregunta 1 de PENDIENTES, la que FRENA.
+// Cuando esas seis cierren, `HTML_VIGENTE` se re-apunta a la convencion nueva con CERO tolerancias, que
+// es lo que de verdad prueba que el porte esta al dia.
 //
 // Mientras tanto la ruta de las entregas nuevas tambien se DERIVA aqui, para que ningun candado la escriba
 // a mano: es la regla que vigila `html-vigente-lock.test.ts`, y vale igual para la convencion nueva.

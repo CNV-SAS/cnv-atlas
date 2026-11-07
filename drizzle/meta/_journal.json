@@ -1667,6 +1667,13 @@
       "when": 1793800371491,
       "tag": "0237_el_mensaje_para_el_paciente",
       "breakpoints": true
+    },
+    {
+      "idx": 238,
+      "version": "7",
+      "when": 1793800372491,
+      "tag": "0238_prompt_criterio_v15",
+      "breakpoints": true
     }
   ]
 }

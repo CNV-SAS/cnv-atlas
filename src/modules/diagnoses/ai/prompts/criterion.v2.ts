@@ -223,6 +223,15 @@ export type CriterionPromptInput = {
   ifcYAfDiscrepan?: boolean;
   /** Las rutas activadas con su prioridad, de la narrativa del DFI (v10). El cierre lo escribe Atlas con esto. */
   rutasActivadas?: string | null;
+  /**
+   * EL PATRON USUAL YA CLASIFICADO (v15, su v16 §4.5): la frase del patron y la categoria de cada grupo.
+   *
+   * Su documento nombra el defecto: *"listaba las 15 frecuencias sin categorías, y la IA podía describir
+   * la carne roja como protectora"*. Llega RESUELTO por la misma razon que la direccion de la PABU y el
+   * ICEC: la clasificacion ya existe y es la que ve el profesional, asi que pedirsela al modelo abriria
+   * una segunda fuente de la misma clasificacion. null cuando no se respondio ningun grupo.
+   */
+  patronD1?: { frase: string; porGrupo: string[] } | null;
 };
 
 // NO HAY `biomarcadores`, y su ausencia es el arreglo del punto 9 (2026-09-07): el campo `bio` de su
@@ -366,6 +375,20 @@ export function buildCriterionPrompt(
   // SU REGLA, TAL CUAL, Y SOLO CUANDO APLICA (v14).
   if (input.ifcYAfDiscrepan) {
     L.push("EL IFC Y EL ÁNGULO DE FASE DISCREPAN EN ESTE PACIENTE. Si el IFC y el ángulo de fase discrepan, prevalece el IFC y explica por qué: mide las propiedades primarias de membrana en lugar de estimarlas a una sola frecuencia, y es estable con la edad, mientras que el AF desciende con los años y exige referencia etaria.", "");
+  }
+
+  // ═══ EL PATRON USUAL, YA CLASIFICADO (v15) ═══
+  //
+  // VA DESPUES de las frecuencias crudas y no en su lugar: las frecuencias siguen siendo el insumo del
+  // dominio Metabolico-Estructural y del LE8, y quitarlas dejaria al modelo sin el dato. Lo que se añade
+  // es la LECTURA, que es lo que faltaba.
+  if (input.patronD1) {
+    L.push(
+      "PATRÓN USUAL DE CONSUMO, YA CLASIFICADO (cita esta lectura; no la recalcules):",
+      input.patronD1.frase,
+      ...input.patronD1.porGrupo,
+      "",
+    );
   }
 
   if (input.direccionPabu) {

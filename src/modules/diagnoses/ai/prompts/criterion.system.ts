@@ -1,4 +1,4 @@
-import promptV14 from "./criterion.system.v14.json";
+import promptV15 from "./criterion.system.v15.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -113,4 +113,22 @@ import promptV14 from "./criterion.system.v14.json";
 // no va en el texto fijo: el modelo la aplicaba siempre, tambien con un AF normal. Llega en los datos solo
 // cuando discrepan (`ifcYAfDiscrepan`). Lo demas del resumen lo resuelve el paso determinista
 // (`pulir-resumen`), no el prompt. LA V13 NO SE RETIRA.
-export const CRITERION_SYSTEM_PROMPT: string = promptV14.system;
+//
+// V15 (2026-11-07): EL PATRON USUAL LE LLEGA CLASIFICADO, Y SE LE PROHIBE LLAMAR PROTECTORA A LA CARNE.
+// Es su v16 §4.5, y su documento nombra el defecto: *"El texto que se envía para el diagnóstico integral
+// listaba las 15 frecuencias sin categorías, y la IA podía describir la carne roja como protectora."*
+//
+// NO BASTABA MANDARLE LA CLASIFICACION. "Carnes rojas: nunca" es un dato cierto, y un modelo que lo lee
+// junto a catorce frecuencias mas concluye lo razonable, que aqui es lo equivocado: una frecuencia baja en
+// un grupo de riesgo es una frecuencia ACEPTABLE, no un factor protector. Asi que la regla lo dice en los
+// dos sentidos, porque el error simetrico (un grupo protector con frecuencia baja leido como acierto) es
+// igual de facil.
+//
+// Y LOS DATOS LE LLEGAN RESUELTOS (`patron-para-la-ia`): la frase del patron y la categoria de cada grupo,
+// de la MISMA funcion que pinta la vista D1 del profesional. Es la decision que ya se tomo cinco veces con
+// este prompt (la PABU, el ICEC, la composicion, el parrafo de alertas y el cierre): cuando una lectura se
+// puede resolver de forma determinista, se resuelve y se entrega, porque un prompt baja la frecuencia del
+// error y no la lleva a cero.
+//
+// LA V14 NO SE RETIRA: los resumenes generados con ella apuntan a esa version en su procedencia.
+export const CRITERION_SYSTEM_PROMPT: string = promptV15.system;

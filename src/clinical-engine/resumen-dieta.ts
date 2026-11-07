@@ -14,18 +14,11 @@
 //
 // Texto USER-FACING (lo lee el profesional): tildes y enes correctas, verbatim de la fuente.
 
-import { FREQ_GROUPS } from "./frozen/engine.patron.js";
-
-type FreqGroup = { n: number | string; cat: string; label: string };
+import { d1Clasificar, d1Lista } from "./frozen/engine.d1-clasificacion.js";
 
 function toNum(v: unknown): number | null {
   const n = Number(v);
   return v != null && v !== "" && !isNaN(n) ? n : null;
-}
-
-function listar(a: string[]): string {
-  if (a.length <= 1) return a[0] || "";
-  return a.slice(0, -1).join(", ") + " y " + a[a.length - 1];
 }
 
 const PREP_MAP: Record<string, string> = {
@@ -65,18 +58,29 @@ export const DIET_CONTEXT_TEXTS: Record<string, string[]> = {
 // el parrafo en ese caso (mejor omitirlo que mostrar uno vacio/roto).
 export function resumenDietaParrafo(enc: Record<string, unknown>): string {
   const suj = String(enc.sexo ?? "").toLowerCase().charAt(0) === "f" ? "La paciente" : "El paciente";
-  const defic: string[] = [];
-  const riesgo: string[] = [];
-  for (const g of FREQ_GROUPS as FreqGroup[]) {
-    const val = toNum(enc["d1_" + g.n + "_i"]);
-    if (val === null) continue;
-    if (g.cat === "protector" && val <= 1) defic.push(g.label.toLowerCase());
-    else if (g.cat === "riesgo" && val >= 3) riesgo.push(g.label.toLowerCase());
-  }
-  const dietParts: string[] = [];
-  if (defic.length) dietParts.push("bajo consumo de " + listar(defic));
-  if (riesgo.length) dietParts.push("consumo elevado de " + listar(riesgo));
 
+  // ═══ LA CLASIFICACION LA HACE `d1Clasificar`, NO ESTE PARRAFO  ·  v16 §4.3, 2026-11-07 ═══
+  //
+  // Esto era un bucle propio sobre los 15 grupos con dos reglas escritas a mano: protector con frecuencia
+  // <= 1 era deficit, y riesgo con frecuencia >= 3 era exceso. Era UNA DE LAS TRES FUENTES que clasificaban
+  // el mismo patron de formas distintas (las otras dos: la tarjeta de categoria, por promedio, y
+  // `calcPatron`, por puntaje), y su §4.1 las unifica en una.
+  //
+  // LO QUE CAMBIA DE VERDAD, y por eso no es un refactor:
+  //
+  //   · LAS CARNES PROCESADAS entran en exceso desde 2 (no desde 3) y en "a moderar" con 1. Con la regla
+  //     vieja, embutidos 1 a 2 dias por semana no aparecia en el parrafo.
+  //   · LAS CARNES ROJAS (grupo 15) tienen su propia escala (exceso >= 3, moderar 2) y ya no se leen con
+  //     la regla general de riesgo.
+  //   · APARECE "consumo a moderar", que es una tercera categoria que el parrafo no tenia: antes un grupo
+  //     en zona intermedia simplemente no se nombraba.
+  //   · Y CADA GRUPO VA CON SU FRECUENCIA EN PALABRAS (`d1Lista`), no solo con su nombre: "carnes
+  //     procesadas (1 a 2 días por semana)" dice algo que "carnes procesadas" no dice.
+  const c = d1Clasificar(enc as Record<string, number | string | null | undefined>, false);
+  const dietParts: string[] = [];
+  if (c.deficit.length) dietParts.push("bajo consumo de " + d1Lista(c.deficit));
+  if (c.exceso.length) dietParts.push("consumo elevado de " + d1Lista(c.exceso));
+  if (c.moderar.length) dietParts.push("consumo a moderar de " + d1Lista(c.moderar));
   const prep = String(enc.d8_59 ?? "");
   const cf = String(enc.d8_60 ?? "");
   const des = toNum(enc.d1f_des_i);
