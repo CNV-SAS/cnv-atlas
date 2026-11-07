@@ -38,18 +38,31 @@ import { bandaIae, cifraEbBis, cifraIae } from "./presentacion-eb-bis";
 // (el FMI es indice de masa grasa). El sexo SI faltaba, y la composicion NO sobra: esta en la regresion.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
-/** La segunda mitad de la seguridad, sin el "Es una estimación" delante. Una sola redaccion para las dos. */
-const SIN_ENFERMEDAD = "no es una enfermedad ni un pronóstico.";
-/** La media linea de seguridad completa, que llega de su punto c y viaja pegada a la cifra. */
-const SEGURIDAD = `Es una estimación: ${SIN_ENFERMEDAD}`;
+/**
+ * LA MEDIA LINEA DE SEGURIDAD, QUE AHORA ES SU PROPIA PIEZA (Santiago, 2026-11-07).
+ *
+ * Hasta hoy viajaba pegada al final de `frase`, asi que se imprimia al mismo cuerpo y en la misma negrita
+ * que el veredicto. Su cuadro nuevo la pide *"en letra pequeña"*, debajo y aparte: es una advertencia
+ * sobre como leer la cifra, no parte del veredicto, y al mismo tamaño las dos cosas compiten.
+ *
+ * EL ORIGEN ("a partir de tu medición") VIAJA AQUI PARA LAS TRES VARIANTES, y eso resuelve de paso la
+ * excepcion que habia: hasta hoy se pegaba a la banda cuando la banda terminaba en "estimado" y a la
+ * seguridad cuando no, porque *"acorde con sus pares a partir de tu medición"* no es castellano. Con el
+ * origen siempre en esta linea, las tres variantes se componen igual y la banda de Gildardo entra
+ * verbatim y se cierra con su punto, sin cola.
+ */
+const SEGURIDAD =
+  "Es una estimación a partir de tu medición; no es una enfermedad ni un pronóstico.";
 
 export type EdadParaElPaciente = {
   /** "76,4 años": su cifra, para la pieza grande. */
   cifra: string;
   /** "Tu edad: 64 años". null si no se pudo derivar. */
   edadReal: string | null;
-  /** La frase completa, con su banda verbatim al final. */
+  /** El veredicto en una linea, con su banda verbatim al final. */
   frase: string;
+  /** La media linea de seguridad, que va debajo y en letra pequeña. */
+  seguridad: string;
 };
 
 /**
@@ -64,46 +77,39 @@ export function edadParaElPaciente(eb: number | null, iae: number | null): EdadP
   const edadReal = edad >= 18 && edad <= 100 ? `Tu edad: ${edad} años` : null;
 
   const anios = Math.abs(iae);
-  // ═══ LA FRASE, TAL COMO SANTIAGO LA ESCRIBIO EL 2026-11-07 ═══
+  // ═══ LA FRASE, TAL COMO SANTIAGO LA ESCRIBIO EL 2026-11-07 (SEGUNDA VUELTA) ═══
   //
-  //     "Tu cuerpo se comporta como el de una persona 12,4 años mayor: envejecimiento acelerado
-  //      estimado a partir de tu medición. Es una estimación: no es una enfermedad ni un pronóstico."
+  //     "12,4 años más de lo esperado para tu edad: envejecimiento acelerado estimado."
   //
-  // DOS COSAS CAMBIARON, Y LAS DOS SON SUYAS:
+  // SUSTITUYE A *"Tu cuerpo se comporta como el de una persona 12,4 años mayor: ..."*, de esta misma
+  // manana. El cambio no es de gusto: la frase vieja afirmaba algo sobre el CUERPO del paciente ("se
+  // comporta como el de") y la nueva afirma lo que el modelo de verdad calcula, que es una DISTANCIA
+  // contra el valor esperado de su grupo. La v7 estima `Sesp` por sexo, edad y FMI y el IAE es la
+  // diferencia contra ese esperado: "mas de lo esperado para tu edad" es exactamente esa resta dicha en
+  // castellano, y ademas cabe en una linea del cuadro nuevo.
   //
-  //   1 · "una persona" en vez de "alguien ... que las personas de tu edad". La cola sobraba y ademas
-  //       dejo de tener respaldo: el parrafo que explicaba el grupo de comparacion salio del informe el
-  //       mismo dia, asi que la frase ya no puede remitir a el.
-  //   2 · LA MEDIA LINEA DE SEGURIDAD SE MUDA AQUI. Vivia en el parrafo que explicaba el modelo, y ese
-  //       parrafo SALE del informe (su punto c). Lo que no podia salir con el es que esto es una
-  //       ESTIMACION y no un diagnostico: es la frase que evita que un paciente lea "envejecimiento
-  //       acelerado" como una enfermedad que tiene. Asi que viaja con la cifra, que es donde se lee.
+  // LAS TRES VARIANTES, y por que la tercera no se compone igual:
   //
-  // Y EL ORIGEN TAMBIEN SE MUDA ("a partir de tu medición"), porque era la otra mitad util del parrafo
-  // que sale: sin ella, la frase afirma algo sobre el cuerpo del paciente sin decir de donde sale.
+  //   · IAE positivo: "12,4 años más de lo esperado para tu edad: <banda>."
+  //   · IAE negativo: "12,4 años menos de lo esperado para tu edad: <banda>."
+  //   · IAE en cero:  "Lo esperado para tu edad: <banda>." Con la forma general saldria *"0,0 años más
+  //     de lo esperado"*, que es una diferencia de cero contada como diferencia.
   //
-  // ═══ POR QUE EL ORIGEN SE PEGA A LA BANDA EN DOS CASOS Y A LA SEGURIDAD EN EL TERCERO ═══
-  //
-  // Las bandas de Gildardo son tres y entran VERBATIM: "envejecimiento acelerado estimado",
-  // "envejecimiento desacelerado estimado" y "acorde con sus pares". Las dos primeras terminan en
-  // "estimado", asi que "a partir de tu medición" las continua y sale la frase exacta que Santiago
-  // escribio. La tercera no, y pegarselo daria *"acorde con sus pares a partir de tu medición"*, que no
-  // es castellano. Ahi el origen viaja en la media linea de seguridad, que dice lo mismo y se lee bien.
-  //
-  // No es una excepcion escondida: es la unica forma de conservar su texto SIN tocarlo y que las tres
-  // variantes se lean. El candado fija las tres.
-  const comparacion =
+  // Y OJO CON LA BANDA: "más de lo esperado" NO quiere decir "acelerado". La banda de Gildardo es acorde
+  // entre -5 y +5, asi que un IAE de +2,1 compone *"2,1 años más de lo esperado para tu edad: acorde con
+  // sus pares."*, que es correcto en las dos mitades: la cifra es la distancia y la banda es el veredicto.
+  // Las dos son suyas y ninguna se recorta para que concuerden.
+  const distancia =
     anios < 0.05
-      ? "Tu cuerpo se comporta como el de las personas de tu edad"
-      : `Tu cuerpo se comporta como el de una persona ${cifraIae(iae).replace(/^[+-]/, "")} años ${
-          iae > 0 ? "mayor" : "menor"
-        }`;
+      ? "Lo esperado para tu edad"
+      : `${cifraIae(iae).replace(/^[+-]/, "")} años ${
+          iae > 0 ? "más" : "menos"
+        } de lo esperado para tu edad`;
 
-  const banda = bandaIae(iae);
-  const seEncadena = banda.endsWith("estimado");
-  const frase = seEncadena
-    ? `${comparacion}: ${banda} a partir de tu medición. ${SEGURIDAD}`
-    : `${comparacion}: ${banda}. Es una estimación a partir de tu medición: ${SIN_ENFERMEDAD}`;
-
-  return { cifra: `${cifraEbBis(eb)} años`, edadReal, frase };
+  return {
+    cifra: `${cifraEbBis(eb)} años`,
+    edadReal,
+    frase: `${distancia}: ${bandaIae(iae)}.`,
+    seguridad: SEGURIDAD,
+  };
 }

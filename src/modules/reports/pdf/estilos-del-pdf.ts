@@ -64,6 +64,22 @@ export const MARCA_TINTA = "#15161a";
  */
 export const CUERPO_DEL_TITULO = 18;
 
+/**
+ * EL FILETE DE LOS CUADROS DEL INFORME, EN UN SOLO SITIO (2026-11-07).
+ *
+ * Nacio dentro de `encabezado-en-cuadros` para la caja de identidad (gris 400, que es el que se ve
+ * impreso; el gris 300 de antes desaparecia en el papel). Sube aqui el dia que el cuadro de la edad
+ * biologica adopta el MISMO filete: dos cuadros a diez puntos uno del otro con dos grises distintos es
+ * justo lo que Santiago llamo *"no cuadra"*, y escrito dos veces se separan en cuanto alguien ajuste uno.
+ *
+ * El encabezado lo sigue exportando con su nombre (`BORDE_DEL_ENCABEZADO`) porque sus lectores lo piden
+ * asi; lo que ya no hace es tener su propia copia del color.
+ */
+export const BORDE_DEL_CUADRO = "#9ca3af";
+
+/** El gris de los rotulos en versalitas, el mismo en los cuadros del encabezado y en el de la edad. */
+export const ROTULO_DEL_CUADRO = "#6b7280";
+
 export const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
   // ═══ LA HOJA DEL INFORME VA MAS APRETADA QUE LA DEL PLAN, Y ES MEDIDO (2026-11-06) ═══
@@ -154,26 +170,62 @@ export const styles = StyleSheet.create({
   para: { marginBottom: 2 },
 
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
-  // LA CIFRA GRANDE Y SOLA  ·  Santiago, 2026-11-05
+  // EL CUADRO DE LA EDAD BIOLOGICA  ·  Santiago, 2026-11-07 (segunda vuelta)
   //
-  // *"La edad biologica estimada, grande, 'estimada por el modelo ANI-BIS-E'."*
+  // ═══ QUE ESTABA MAL, EN SUS PALABRAS ═══
   //
-  // Era una fila mas entre bloques, con la cifra en negrita dentro de un parrafo de 10 puntos. Ahora es la
-  // pieza que sostiene la primera hoja. CENTRADA y con aire arriba y abajo: es lo unico de esa hoja que se
-  // lee de un vistazo, y centrada deja de competir con el encabezado.
+  // *"El cuadro de la edad biologica: hoy esta centrado, en negrita, mezcla gris y azul, y no cuadra."*
   //
-  // LOS 34 PUNTOS NO SON UN GUSTO, son la unica medida que hace que la cifra se lea ANTES que el texto que
-  // la rodea: a 24 todavia parece un titulo de seccion, y por encima de 40 no cabe con su delta al lado en
-  // una hoja carta con estos margenes.
+  // Las cuatro observaciones son UNA sola: el bloque no era un cuadro, era una pila de cuatro lineas
+  // centradas, cada una con su color y su peso. Centrado, nada se alinea con nada (la hoja entera va a la
+  // izquierda), y sin un filete que lo cierre las cuatro lineas flotan entre el encabezado y lo que sigue.
+  // "No cuadra" es literal: no tenia cuadro.
   //
-  // SIN CAJA NI FONDO DE COLOR, a proposito: una caja la convertiria en un aviso, y un aviso se lee como
-  // alerta. La cifra no alerta de nada, informa; el veredicto es la banda del IAE que va debajo.
+  // ═══ LA FORMA SALE DE SU REFERENCIA, EL CONTENIDO ES EL QUE EL ESCRIBIO ═══
+  //
+  // La referencia (`Informe_BiodyBis_diseno_revisado`) resuelve el mismo problema en su lista de areas:
+  // todo contra el margen izquierdo, un rotulo, el dato destacado y la explicacion debajo en gris pequeño,
+  // dentro de un bloque con su filete. Se adopta ESO. Lo que no se adopta es su paleta por severidad en
+  // este cuadro: la cifra informa, no alerta (ver abajo).
+  //
+  // Y EL FILETE ES EL MISMO DE LA CAJA DE IDENTIDAD (`BORDE_DEL_CUADRO`), no uno parecido. Dos cuadros a
+  // diez puntos de distancia con dos grises distintos se leen como dos piezas de documentos distintos.
+  //
+  // ═══ LO QUE NO CAMBIO, Y ES DELIBERADO ═══
+  //
+  // SIN FONDO DE COLOR: un fondo convertiria el cuadro en un aviso, y un aviso se lee como alerta. La
+  // cifra no alerta de nada; el veredicto es la banda del IAE, que va en palabras.
+  //
+  // Y LA CIFRA SIGUE AL CUERPO DEL TITULO (18), que es su decision de esta manana: una cifra mas grande
+  // que el titulo de la hoja se lee como el titulo.
   // ══════════════════════════════════════════════════════════════════════════════════════════════════
-  cifraBloque: { alignItems: "center", marginTop: 1, marginBottom: 3 },
+  cifraBloque: {
+    borderWidth: 1.1,
+    borderColor: BORDE_DEL_CUADRO,
+    borderRadius: 3,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    marginTop: 1,
+    marginBottom: 4,
+  },
+  // ═══ LA CIFRA Y LA EDAD REAL, EN EL MISMO RENGLON ═══
+  //
+  // Y la razon es MEDIDA, no de gusto. El filete y el relleno del cuadro cuestan doce puntos de alto, y
+  // el informe inicial tiene que caber en UNA hoja con el nombre mas largo de la cohorte, las cinco areas
+  // en el nivel peor y el mensaje al paciente en su tope: con la edad real en su propia linea se iba a
+  // la hoja 2 el derecho a pedir la historia clinica. Este renglon devuelve justo esos doce puntos.
+  //
+  // Y ademas se lee mejor: "58,0 años" y "Tu edad: 54 años" uno al lado del otro SON la comparacion, que
+  // es para lo que existe la segunda. En dos lineas hay que hacerla con la vista.
+  cifraLinea: { flexDirection: "row", alignItems: "baseline" },
+  // EL ROTULO ES EL MISMO QUE EL DE LAS TRES CAJAS DE ARRIBA: mismo cuerpo, mismo gris, mismo espaciado y
+  // la misma negrita que Santiago pidio hoy para PACIENTE, DOCUMENTO y FECHA DE MEDICION. Si este se
+  // quedara fino, el unico rotulo distinto de la hoja seria justo el del bloque principal.
   cifraRotulo: {
-    fontSize: 8,
-    color: "#6b7280",
-    letterSpacing: 0.8,
+    fontSize: 7,
+    fontWeight: "bold",
+    color: ROTULO_DEL_CUADRO,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
     marginBottom: 2,
   },
@@ -193,18 +245,30 @@ export const styles = StyleSheet.create({
   // EL 18 NO ES UN NUMERO SUELTO: es el del titulo (`encabezado-en-cuadros`, `titulo.fontSize`), y el
   // candado los compara para que no puedan separarse sin que se vea.
   cifraGrande: { fontSize: CUERPO_DEL_TITULO, fontWeight: "bold", color: MARCA_HONDA, lineHeight: 1.15 },
-  /** La edad cronologica, debajo de la cifra: es lo que le da sentido al numero grande. */
-  cifraEdadReal: { fontSize: 9, color: "#6b7280", lineHeight: 1.3, marginTop: 1 },
-  /** La frase con la banda al final: la unica linea con veredicto, asi que va destacada y centrada. */
+  /** La edad cronologica, AL LADO de la cifra: es lo que le da sentido al numero grande. */
+  cifraEdadReal: { fontSize: 9, color: ROTULO_DEL_CUADRO, lineHeight: 1.3, marginLeft: 10 },
+  /**
+   * La frase con la banda al final: la unica linea con veredicto, asi que va destacada.
+   *
+   * YA NO VA CENTRADA (Santiago, 2026-11-07): el cuadro entero se alinea a la izquierda, con el resto de
+   * la hoja. Una sola linea centrada dentro de un bloque alineado es lo que hacia que el bloque no
+   * "cuadrara" aunque cada pieza por separado estuviera bien.
+   */
   cifraDelta: {
     fontSize: 10,
     fontWeight: "bold",
     color: MARCA_TINTA,
     lineHeight: 1.3,
-    marginTop: 3,
-    textAlign: "center",
+    marginTop: 5,
   },
-  cifraPie: { fontSize: 8, color: "#6b7280", marginTop: 4, textAlign: "center" },
+  /**
+   * LA MEDIA LINEA DE SEGURIDAD, en letra pequeña y debajo del veredicto (Santiago, 2026-11-07).
+   *
+   * Viajaba DENTRO de la frase, asi que salia en negrita de 10 puntos, igual que el veredicto. Una
+   * advertencia sobre como leer la cifra y el veredicto sobre el paciente no pueden pesar lo mismo: al
+   * mismo cuerpo, la advertencia se lee como parte del diagnostico.
+   */
+  cifraSeguridad: { fontSize: 7.5, color: ROTULO_DEL_CUADRO, lineHeight: 1.3, marginTop: 3 },
   // CADA DOMINIO, UN BLOQUE (Santiago, 2026-09-21): el nombre en negrita, su etiqueta con su color y la
   // frase debajo. En parrafo corrido las cinco se leian como un solo texto y no se veia cual pedia trabajo.
   // La barra de la izquierda repite el color de la etiqueta: refuerza, no sustituye a la palabra.

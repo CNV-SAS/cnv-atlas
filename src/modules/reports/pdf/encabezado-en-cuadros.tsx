@@ -3,7 +3,13 @@ import { StyleSheet, View } from "@react-pdf/renderer";
 // El `Text` que traduce los simbolos que la fuente del PDF no dibuja (ver `text-seguro`).
 import { Text } from "./text-seguro";
 
-import { CUERPO_DEL_TITULO, MARCA_AZUL, MARCA_HONDA } from "./estilos-del-pdf";
+import {
+  BORDE_DEL_CUADRO,
+  CUERPO_DEL_TITULO,
+  MARCA_AZUL,
+  MARCA_HONDA,
+  ROTULO_DEL_CUADRO,
+} from "./estilos-del-pdf";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // EL ENCABEZADO EN CUADROS  ·  EL MISMO EN LOS TRES DOCUMENTOS  ·  Santiago, 2026-11-05
@@ -78,9 +84,15 @@ export type DatosDelEncabezado = {
 // 0,75 puntos en gris claro se pierde en el papel y el bloque que sostiene la hoja dejaba de leerse como
 // un bloque. Sube al gris 400 (`#9ca3af`) y el filete a 1,1 puntos. No es decoracion: esa caja es lo
 // primero que el paciente mira para saber que el documento es suyo.
-export const BORDE_DEL_ENCABEZADO = "#9ca3af";
+//
+// ═══ Y EL COLOR SE MUDO A `estilos-del-pdf` EL 2026-11-07 ═══
+//
+// El cuadro de la edad biologica adopta el mismo filete, y dos cuadros a diez puntos de distancia con dos
+// grises "iguales" escritos por separado se separan en cuanto alguien ajuste uno. Este nombre se queda
+// porque sus lectores (el candado de maquetacion) lo piden asi; lo que ya no hay es una segunda copia.
+export const BORDE_DEL_ENCABEZADO = BORDE_DEL_CUADRO;
 const BORDE = BORDE_DEL_ENCABEZADO;
-const ROTULO = "#6b7280";
+const ROTULO = ROTULO_DEL_CUADRO;
 
 
 const estilos = StyleSheet.create({
@@ -111,7 +123,23 @@ const estilos = StyleSheet.create({
   // hueco, tres cajas suenan a tres bloques; con un filete, se leen como una sola caja de tres columnas.
   cuadro: { flex: 1, paddingVertical: 6, paddingHorizontal: 8 },
   cuadroConFilete: { borderLeftWidth: 1.1, borderLeftColor: BORDE },
-  rotulo: { fontSize: 7, color: ROTULO, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 },
+  // ═══ LOS TRES ROTULOS, EN NEGRITA (Santiago, 2026-11-07) ═══
+  //
+  // *"PACIENTE, DOCUMENTO y FECHA DE MEDICION en negrita."* Son los rotulos, no los valores: en el papel
+  // esas tres palabras solo aparecen en versalitas sobre cada caja.
+  //
+  // A siete puntos y en gris medio, un rotulo fino casi no se imprime, y entonces la caja de identidad se
+  // lee como tres datos sueltos en vez de como tres campos rotulados. La negrita devuelve la estructura
+  // sin subir el cuerpo, que es lo que no se puede hacer: el espacio de la caja lo necesita el NOMBRE,
+  // que ya se encoge cuando es largo.
+  rotulo: {
+    fontSize: 7,
+    fontWeight: "bold",
+    color: ROTULO,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
   valor: { fontSize: 10 },
   // ═══ UN NOMBRE LARGO SE ENCOGE EN VEZ DE PARTIRSE (2026-11-06) ═══
   //

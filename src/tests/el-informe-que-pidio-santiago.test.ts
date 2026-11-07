@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { edadParaElPaciente } from "@/clinical-engine/edad-para-el-paciente";
 import { lecturaSencilla } from "@/clinical-engine/lectura-sencilla-provisional";
 import { ALTO_FRANJA } from "@/modules/reports/pdf/marca-de-la-plantilla";
+import { styles } from "@/modules/reports/pdf/estilos-del-pdf";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
@@ -58,58 +59,75 @@ describe("(b) la cifra de la edad biologica sale al tamaño del titulo", () => {
 });
 
 describe("(c) y (d) la frase de la edad, tal como la escribio", () => {
-  // Su texto, literal: "Tu cuerpo se comporta como el de una persona 12,4 años mayor: envejecimiento
-  // acelerado estimado a partir de tu medición. Es una estimación: no es una enfermedad ni un pronóstico."
+  // ═══ RE-ANCLADO EL 2026-11-07, SEGUNDA VUELTA, Y LA RAZON SE ESCRIBE ═══
+  //
+  // Por la manana la frase era *"Tu cuerpo se comporta como el de una persona 12,4 años mayor: ..."*.
+  // Al ver el cuadro impreso Santiago la cambio a *"12,4 años más de lo esperado para tu edad:
+  // envejecimiento acelerado estimado."*, con la seguridad fuera, en letra pequeña.
+  //
+  // NO ES UN AJUSTE DE GUSTO: la frase vieja afirmaba algo sobre el CUERPO del paciente y la nueva dice
+  // lo que el modelo calcula, que es la distancia contra el valor esperado de su grupo (la v7 estima
+  // `Sesp` por sexo, edad y FMI, y el IAE es esa resta). Se re-ancla porque cambio la FUENTE, no porque
+  // el candado estorbara.
   it("la variante MAYOR es exactamente la que mando", () => {
     expect(edadParaElPaciente(76.4, 12.4)?.frase).toBe(
-      "Tu cuerpo se comporta como el de una persona 12,4 años mayor: envejecimiento acelerado estimado a partir de tu medición. Es una estimación: no es una enfermedad ni un pronóstico.",
+      "12,4 años más de lo esperado para tu edad: envejecimiento acelerado estimado.",
     );
   });
 
-  it("la variante MENOR dice menor y usa la banda de desacelerado", () => {
+  it("la variante MENOR dice menos y usa la banda de desacelerado", () => {
     expect(edadParaElPaciente(45.6, -12.4)?.frase).toBe(
-      "Tu cuerpo se comporta como el de una persona 12,4 años menor: envejecimiento desacelerado estimado a partir de tu medición. Es una estimación: no es una enfermedad ni un pronóstico.",
+      "12,4 años menos de lo esperado para tu edad: envejecimiento desacelerado estimado.",
     );
   });
 
-  it("y la variante ACORDE no pega el origen a la banda, porque no seria castellano", () => {
-    // "acorde con sus pares" es texto de Gildardo y entra verbatim; pegarle "a partir de tu medición"
-    // daria *"acorde con sus pares a partir de tu medición"*. Ahi el origen viaja en la seguridad.
-    const r = edadParaElPaciente(60, 2.1);
-    expect(r?.frase).toBe(
-      "Tu cuerpo se comporta como el de una persona 2,1 años mayor: acorde con sus pares. Es una estimación a partir de tu medición: no es una enfermedad ni un pronóstico.",
+  it("y la variante ACORDE compone la distancia con SU banda, sin recortar ninguna de las dos", () => {
+    // "mas de lo esperado" NO quiere decir "acelerado": su banda es acorde entre -5 y +5. Un IAE de +2,1
+    // es a la vez una distancia de 2,1 años y un veredicto de acorde, y las dos cosas son suyas. El error
+    // facil aqui es "arreglar" la frase para que concuerde, que seria cambiarle el corte a su banda.
+    expect(edadParaElPaciente(60, 2.1)?.frase).toBe(
+      "2,1 años más de lo esperado para tu edad: acorde con sus pares.",
     );
-    expect(r?.frase).not.toContain("pares a partir");
   });
 
   it("el cero no se cuenta como una diferencia de cero años", () => {
     const r = edadParaElPaciente(60, 0);
-    expect(r?.frase).toContain("como el de las personas de tu edad");
+    expect(r?.frase).toBe("Lo esperado para tu edad: acorde con sus pares.");
     expect(r?.frase).not.toContain("0,0 años");
   });
 
-  it("y las tres variantes llevan SIEMPRE la media linea de seguridad y el origen", () => {
+  it("y las cuatro variantes llevan SIEMPRE la media linea de seguridad, con su origen", () => {
+    // Ahora va en su propio campo, asi que lo que se vigila es que NINGUNA variante salga sin ella: es
+    // la frase que evita que un paciente lea "envejecimiento acelerado" como una enfermedad que tiene.
     for (const iae of [12.4, -12.4, 2.1, 0, -2.1]) {
-      const frase = edadParaElPaciente(60 + iae, iae)?.frase;
-      expect(frase, `la seguridad falta con iae ${iae}`).toContain(
-        "no es una enfermedad ni un pronóstico.",
+      expect(edadParaElPaciente(60 + iae, iae)?.seguridad).toBe(
+        "Es una estimación a partir de tu medición; no es una enfermedad ni un pronóstico.",
       );
-      expect(frase, `el origen falta con iae ${iae}`).toContain("a partir de tu medición");
     }
   });
 
-  it("y NO dice por el equipo: en Atlas lo estima el MODELO", () => {
-    // Su punto d lo dice aparte, y es una afirmacion sobre de donde viene la cifra: el delta lo calcula
-    // la EB-BIS v7 con sus parametros, no lo reporta el aparato.
+  it("y la seguridad SALE de la frase: al mismo cuerpo, la advertencia se lee como diagnostico", () => {
     for (const iae of [12.4, -12.4, 0]) {
-      expect(edadParaElPaciente(60 + iae, iae)?.frase).not.toContain("equipo");
+      const r = edadParaElPaciente(60 + iae, iae);
+      expect(r?.frase, "la seguridad volvio a viajar dentro del veredicto").not.toContain(
+        "Es una estimación",
+      );
+      // Su punto d: en Atlas la estima el MODELO, no el aparato.
+      expect(r?.frase).not.toContain("equipo");
+      expect(r?.seguridad).not.toContain("equipo");
     }
   });
 });
 
 describe("(e) el cuadro del paciente se ve en el papel", () => {
   it("el filete es mas grueso y el gris mas oscuro que el gris 300 de antes", () => {
-    expect(ENCABEZADO).toContain('export const BORDE_DEL_ENCABEZADO = "#9ca3af";');
+    // EL COLOR SE MUDO a `estilos-del-pdf` el 2026-11-07, cuando el cuadro de la edad adopto el mismo
+    // filete: lo que se vigila es que siga habiendo UNA sola definicion y que el encabezado la lea.
+    expect(ESTILOS).toContain('export const BORDE_DEL_CUADRO = "#9ca3af";');
+    expect(ENCABEZADO).toContain("export const BORDE_DEL_ENCABEZADO = BORDE_DEL_CUADRO;");
+    expect(ENCABEZADO, "el encabezado volvio a tener su propia copia del color").not.toMatch(
+      /BORDE_DEL_ENCABEZADO = "#/,
+    );
     expect(ENCABEZADO).toContain("borderWidth: 1.1");
     expect(ENCABEZADO).toContain("borderLeftWidth: 1.1");
   });
@@ -196,5 +214,83 @@ describe("(i) el mensaje para el paciente es el unico texto de la profesional qu
     // seria mandarle al paciente un texto que no se escribio para el.
     expect(SQL).not.toMatch(/mensaje_para_el_paciente[^;]*not null/i);
     expect(SQL).not.toMatch(/mensaje_para_el_paciente[^;]*default/i);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS TRES AJUSTES DE LA SEGUNDA VUELTA  ·  Santiago, 2026-11-07, tarde
+//
+// Reviso el informe ya con los nueve cambios puestos y mando tres mas. Van en este mismo archivo y no en
+// uno nuevo: son del mismo documento y del mismo dia, y repartir los candados de una superficie por fecha
+// es como se acaba con tres archivos que miden lo mismo sin saberlo.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("(j) PACIENTE, DOCUMENTO y FECHA DE MEDICION, en negrita", () => {
+  it("el rotulo de las tres cajas lleva negrita, y es UN estilo para las tres", () => {
+    // Un `fontWeight` por caja serian tres sitios donde se puede olvidar uno, y el que se olvide es el
+    // que se lee como caja de otra clase.
+    expect(ENCABEZADO).toContain("  rotulo: {\n    fontSize: 7,\n    fontWeight: \"bold\",");
+  });
+
+  it("y los tres rotulos salen de la MISMA lista, asi que ninguno se puede quedar fuera", () => {
+    expect(ENCABEZADO).toContain('{ rotulo: "Paciente", valor:');
+    expect(ENCABEZADO).toContain('{ rotulo: "Documento", valor:');
+    // La tercera entra como dato porque no es la misma fecha en los tres documentos (el informe se fecha
+    // por la MEDICION; la hoja del plan y la HC, por la consulta).
+    expect(ENCABEZADO).toContain("datos.tercera,");
+    expect(ENCABEZADO).toContain("<Text style={estilos.rotulo}>{c.rotulo}</Text>");
+  });
+});
+
+describe("(k) el cuadro de la edad biologica: un cuadro, y alineado a la izquierda", () => {
+  const INFORME = readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8");
+
+  it("tiene filete, y es EL MISMO de la caja de identidad", () => {
+    // *"hoy esta centrado, en negrita, mezcla gris y azul, y no cuadra."* No cuadraba porque no habia
+    // cuadro: eran cuatro lineas centradas flotando entre el encabezado y lo que sigue.
+    expect(ESTILOS).toContain("cifraBloque: {\n    borderWidth: 1.1,\n    borderColor: BORDE_DEL_CUADRO,");
+  });
+
+  it("y YA NO va centrado: ni el bloque ni el veredicto", () => {
+    const limpio = sinComentarios(ESTILOS);
+    expect(limpio, "el bloque volvio a centrar su contenido").not.toContain(
+      'cifraBloque: { alignItems: "center"',
+    );
+    const delta = limpio.slice(limpio.indexOf("cifraDelta:"), limpio.indexOf("cifraSeguridad:"));
+    expect(delta, "el veredicto volvio a ir centrado dentro de un cuadro alineado").not.toContain(
+      "textAlign",
+    );
+  });
+
+  it("lleva las cinco piezas que pidio, en su orden", () => {
+    const i = (s: string) => INFORME.indexOf(s);
+    expect(i("styles.cifraRotulo")).toBeGreaterThan(-1);
+    expect(i("styles.cifraRotulo")).toBeLessThan(i("styles.cifraGrande"));
+    expect(i("styles.cifraGrande")).toBeLessThan(i("styles.cifraEdadReal"));
+    expect(i("styles.cifraEdadReal")).toBeLessThan(i("styles.cifraDelta"));
+    expect(i("styles.cifraDelta")).toBeLessThan(i("styles.cifraSeguridad"));
+  });
+
+  it("y la seguridad va en letra PEQUEÑA, mas chica que el veredicto", () => {
+    // Si pesaran lo mismo, la advertencia sobre como leer la cifra se leeria como parte del veredicto.
+    expect(styles.cifraSeguridad.fontSize as number).toBeLessThan(
+      styles.cifraDelta.fontSize as number,
+    );
+  });
+});
+
+describe("(l) el derecho a la historia clinica cierra con punto", () => {
+  const INFORME = readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8");
+
+  it("la frase lleva su punto final en los DOS cierres, el del inicial y el del seguimiento", () => {
+    // NO HUBO QUE CAMBIAR NADA: el punto estaba en el codigo, en el PDF renderizado y en todo el
+    // historial de la frase (verificado contra `git log -S` el 2026-11-07). Se deja el candado porque la
+    // frase es de las que se copian de una hoja a la otra, y un punto es lo que primero se pierde al
+    // copiar; y porque sin el, "ya estaba" es una afirmacion que envejece.
+    const cierres = INFORME.match(
+      /Puedes solicitar tu historia clínica completa a tu profesional tratante\./g,
+    );
+    expect(cierres, "la frase cambio de forma o perdio su punto").toHaveLength(2);
+    expect(INFORME).not.toMatch(/profesional tratante\s*\n\s*<\/Text>/);
   });
 });

@@ -265,6 +265,58 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
     expect(TEXTO, "volvio el titulo de valoracion nutricional").not.toContain("VALORACIÓN NUTRICIONAL");
   });
 
+  it("(2bis) el cuadro de la edad va ALINEADO A LA IZQUIERDA, medido sobre el papel", () => {
+    // ═══ POR QUE ESTO SE MIDE Y NO SE AFIRMA SOBRE EL ESTILO ═══
+    //
+    // Santiago: *"hoy esta centrado, en negrita, mezcla gris y azul, y no cuadra."* Un `not.toContain
+    // ("center")` sobre la hoja de estilos comprueba que alguien borro una palabra; lo que se quiere
+    // afirmar es que en el PAPEL las piezas del cuadro arrancan todas en la misma vertical, que es lo
+    // unico que hace que el bloque "cuadre". Centrado, cada linea empieza donde la deja su propio ancho.
+    const hoja = piezasDe(PDF).find((p) => p.some((x) => x.texto.includes("EDAD BIOLÓGICA")));
+    expect(hoja, "no hay hoja con el cuadro de la edad que medir").toBeDefined();
+    const buscar = (t: string) => {
+      const p = (hoja ?? []).find((x) => x.texto.includes(t));
+      expect(p, `no salio la pieza "${t}"`).toBeDefined();
+      return p as NonNullable<typeof p>;
+    };
+    // EL COMIENZO DE LA LINEA, no la pieza que lleva el texto buscado: @react-pdf parte un renglon en
+    // varias piezas (la cifra "4,0 " y el resto de la frase van en dos), asi que preguntar por la pieza
+    // que contiene "de lo esperado" devuelve la SEGUNDA y la alineacion se mediria contra la mitad de la
+    // linea. Lo que cuenta es donde ARRANCA el renglon.
+    const inicioDeLaLinea = (p: { y: number }) =>
+      (hoja ?? [])
+        .filter((x) => Math.abs(x.y - p.y) < 1)
+        .reduce((a, b) => (b.x < a.x ? b : a));
+    const rotulo = buscar("EDAD BIOLÓGICA ESTIMADA");
+    const veredicto = inicioDeLaLinea(buscar("de lo esperado para tu edad"));
+    const seguridad = buscar("no es una enfermedad ni un pronóstico");
+
+    // LAS TRES EN LA MISMA VERTICAL (medio punto de tolerancia, que es ruido de redondeo del PDF).
+    expect(Math.abs(veredicto.x - rotulo.x), "el veredicto volvio a centrarse").toBeLessThan(0.5);
+    expect(Math.abs(seguridad.x - rotulo.x), "la seguridad volvio a centrarse").toBeLessThan(0.5);
+
+    // Y LA SEGURIDAD, DEBAJO DEL VEREDICTO Y MAS PEQUEÑA. Al mismo cuerpo, la advertencia sobre como leer
+    // la cifra se lee como parte del diagnostico.
+    expect(seguridad.y).toBeGreaterThan(veredicto.y);
+    expect(seguridad.tam).toBeLessThan(veredicto.tam);
+
+    // LA EDAD REAL VA AL LADO DE LA CIFRA, no debajo: es lo que devuelve los doce puntos que cuesta el
+    // filete del cuadro, y sin ellos el informe inicial se va a dos hojas en el caso peor.
+    const edadReal = buscar("Tu edad:");
+    expect(
+      edadReal.y - rotulo.y,
+      "la edad real volvio a su propia linea: el informe inicial se parte en dos hojas",
+    ).toBeLessThan(30);
+    expect(edadReal.x, "la edad real quedo debajo, no al lado").toBeGreaterThan(rotulo.x + 50);
+
+    // Y EL CUADRO DIBUJA SU FILETE, que es lo que lo convierte en cuadro: sin el son cuatro lineas
+    // sueltas entre el encabezado y la figura, que es lo que Santiago llamo "no cuadra".
+    expect(
+      PORTADA?.codigo,
+      "el cuadro de la edad no pinta filete, o no el de la caja de identidad",
+    ).toContain(comoPdfTrazo(BORDE_DEL_ENCABEZADO));
+  });
+
   it("(3) la figura y las cinco areas van en la MISMA hoja que el encabezado, y el radar entra centrado", () => {
     // ═══ ESTE CASO SE INVIRTIO EL 2026-11-06, Y ES LA DECISION DE SANTIAGO ═══
     //

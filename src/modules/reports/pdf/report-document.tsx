@@ -540,6 +540,15 @@ export function ReportDocument({
             LAS DOS FRASES SON SUYAS, del motor (`presentacion-eb-bis`), no escritas aquí: la misma cifra
             sale por la pantalla del profesional y por este informe, y dos redacciones del mismo hecho
             acaban diciendo cosas distintas. */}
+        {/* ═══ Y EL 2026-11-07 EL BLOQUE SE VUELVE UN CUADRO (Santiago, segunda vuelta) ═══
+
+            *"El cuadro de la edad biologica: hoy esta centrado, en negrita, mezcla gris y azul, y no
+            cuadra."* Con la forma de su referencia (`Informe_BiodyBis_diseno_revisado`): todo contra el
+            margen izquierdo, dentro de un bloque con el MISMO filete que la caja de identidad.
+
+            Y el contenido en cuatro piezas, que son las que el listo: el rotulo, la cifra grande, la edad
+            real, el veredicto en una linea y la seguridad en letra pequeña. La seguridad SALE de la frase
+            (antes viajaba pegada a ella, y por tanto en negrita de 10 puntos): ver `cifraSeguridad`. */}
         {/* ═══ LA CIFRA GRANDE Y SOLA (Santiago, 2026-11-05) ═══
 
             *"La edad biologica estimada, grande, 'estimada por el modelo ANI-BIS-E'."*
@@ -565,14 +574,21 @@ export function ReportDocument({
                 que mando Santiago: el "76,4 años" caia en y=610,5 y el texto del IAE en y=612,6, o sea
                 DOS PUNTOS por encima y cruzandose en horizontal (x 237-340 contra x 182-393). En pantalla
                 el bloque es una columna y parece correcto; en el papel se solapaban. */}
-            <Text style={styles.cifraGrande}>{edadPac.cifra}</Text>
-            {/* LA EDAD REAL, DEBAJO (Santiago, 2026-11-06). Sin ella la cifra grande no significa nada:
-                "76,4 años" solo se puede leer sabiendo cuantos años tiene la persona. Sale de su propia
-                formula (`EB = edad + IAE`), no de un dato nuevo. */}
-            {edadPac.edadReal ? <Text style={styles.cifraEdadReal}>{edadPac.edadReal}</Text> : null}
+            {/* LA EDAD REAL, AL LADO (Santiago, 2026-11-06; al lado y no debajo desde el 2026-11-07, ver
+                `cifraLinea`). Sin ella la cifra grande no significa nada: "76,4 años" solo se puede leer
+                sabiendo cuantos años tiene la persona. Sale de su propia formula (`EB = edad + IAE`), no
+                de un dato nuevo. */}
+            <View style={styles.cifraLinea}>
+              <Text style={styles.cifraGrande}>{edadPac.cifra}</Text>
+              {edadPac.edadReal ? <Text style={styles.cifraEdadReal}>{edadPac.edadReal}</Text> : null}
+            </View>
             {/* LA FRASE, con la banda de Gildardo verbatim al final. Sustituye al IAE suelto
                 ("+12,4 años: envejecimiento acelerado estimado"), que es cierto y no se entiende. */}
             <Text style={styles.cifraDelta}>{edadPac.frase}</Text>
+            {/* LA SEGURIDAD, EN LETRA PEQUEÑA Y APARTE. No es una nota al pie que se pueda perder: es lo
+                que evita que un paciente lea "envejecimiento acelerado" como una enfermedad que tiene.
+                Por eso vive dentro del cuadro, pegada al veredicto, y no al final de la hoja. */}
+            <Text style={styles.cifraSeguridad}>{edadPac.seguridad}</Text>
             {/* EL PIE DE LA CIFRA SE FUSIONO CON LA EXPLICACION DE DEBAJO (2026-11-06): decian la misma
                 cosa en dos bloques ("sale de tu medicion" / "estimada por el modelo sobre tu medicion"),
                 y los dos bloques costaban una hoja. El hecho que aporta cada uno se conserva en la frase
