@@ -2,6 +2,12 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import {
+  EDAD_MAXIMA_EB_BIS,
+  EDAD_MINIMA_EB_BIS,
+  motivoParaNoReemitir,
+} from "@/modules/clinical-pipeline/motivo-para-no-reemitir";
+
 import { sinComentarios } from "./helpers/sin-comentarios";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -16,6 +22,8 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 const PANEL = readFileSync("src/app/(app)/admin/recalibracion/panel-de-recalibracion.tsx", "utf8");
 const LECTOR = readFileSync("src/modules/clinical-pipeline/data/desfasadas-reader.ts", "utf8");
+const PUERTA = readFileSync("src/modules/clinical-pipeline/motivo-para-no-reemitir.ts", "utf8");
+const SIMULACION = readFileSync("src/tests/simulacion-del-recalculo-db.test.ts", "utf8");
 
 describe("(3) la pantalla de recalibracion separa lo que no se puede reemitir", () => {
   it("los tres grupos salen del MISMO total, asi que la suma cuadra", () => {
@@ -62,14 +70,73 @@ describe("(3 bis) los motivos salen de donde ya viven, no de una copia", () => {
   it("la edad, de la MISMA lectura de la fecha que el motor y el consentimiento", () => {
     // `edadSiSePuede` devuelve null ante una fecha ausente, ilegible o imposible, que es justo la
     // distincion que hace falta aqui. Una lectura propia volveria a convertir una fecha mala en edad cero.
-    expect(LECTOR).toContain("edadSiSePuede(");
+    expect(PUERTA).toContain("edadSiSePuede(");
   });
 
-  it("y el corte de 18 anos es el del FROZEN de la v7, no un numero de la pantalla", () => {
+  it("y los DOS cortes son los del FROZEN de la v7, no numeros de la pantalla", () => {
     const motor = readFileSync("src/clinical-engine/frozen/eb-bis-v7.js", "utf8");
     expect(motor, "el frozen cambio su rango de edad").toContain("edad < 18 || edad > 100");
-    expect(LECTOR).toContain("EDAD_MINIMA_EB_BIS = 18");
+    expect(EDAD_MINIMA_EB_BIS).toBe(18);
+    expect(EDAD_MAXIMA_EB_BIS).toBe(100);
   });
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════════
+  // LOS DOS CORTES, Y EL DE ARRIBA FALTABA  ·  2026-11-07
+  //
+  // Salio de la simulacion del recalculo contra la nube: cinco consultas pierden el dominio 3 al
+  // recomputar, todas con "edad no valida", y NINGUNA esta entre las que el motor no puede correr (su
+  // fecha si se lee). O sea que su edad al medirse cae fuera de 18 a 100.
+  //
+  // La puerta excluia solo a los menores, asi que una consulta de mas de 100 anos se habria OFRECIDO para
+  // reemitir y habria vuelto con la EB-BIS en "pendiente" y el dominio 3 en blanco. No es un caso teorico
+  // sobre una tabla: es lo que la pantalla iba a dejar hacer.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════════
+  describe("y la puerta excluye por los DOS lados, no solo a los menores", () => {
+    // Una fecha fija y una toma fija, para que la edad no dependa del dia en que corra la prueba.
+    const alMedirse = (nacimiento: string) =>
+      motivoParaNoReemitir({ huellaRepetida: false, nacimiento, hasta: new Date("2026-06-15") });
+
+    it("un menor de 18 no entra, y lo dice con su edad", () => {
+      expect(alMedirse("2009-01-01")).toContain("Tenía 17 años");
+    });
+
+    it("mayor de 100 TAMPOCO entra, que es lo que faltaba", () => {
+      expect(alMedirse("1920-01-01")).toContain("Tenía 106 años");
+    });
+
+    it("y los dos bordes exactos SI entran: el rango de la v7 es cerrado", () => {
+      expect(alMedirse("2008-01-01"), "18 cumplidos tiene que entrar").toBeNull();
+      expect(alMedirse("1926-01-01"), "100 cumplidos tiene que entrar").toBeNull();
+    });
+
+    it("sin fecha legible, el motivo nombra la fecha y no la edad", () => {
+      expect(alMedirse("")).toContain("Sin fecha de nacimiento legible");
+      expect(
+        motivoParaNoReemitir({ huellaRepetida: false, nacimiento: null, hasta: new Date() }),
+      ).toContain("Sin fecha de nacimiento legible");
+    });
+
+    it("la huella repetida se nombra PRIMERO, porque es lo unico que se puede resolver", () => {
+      expect(
+        motivoParaNoReemitir({ huellaRepetida: true, nacimiento: "2009-01-01", hasta: new Date() }),
+      ).toContain("repetida en otra consulta");
+    });
+  });
+
+  it("UNA SOLA PUERTA: la pantalla y la simulacion llaman a la MISMA funcion", () => {
+    // Era el defecto que ya aparecio con la guarda de "sin dominio 3" del freno: escrita dos veces, y las
+    // dos copias ya discrepaban. Aqui la consecuencia seria que la simulacion midiera un conjunto y la
+    // pantalla ofreciera otro, justo en la cifra que autoriza la ejecucion.
+    expect(LECTOR).toContain("motivoParaNoReemitir");
+    expect(SIMULACION, "la simulacion dejo de usar la puerta de la pantalla").toContain(
+      "motivoParaNoReemitir",
+    );
+    expect(
+      sinComentarios(LECTOR),
+      "el lector volvio a escribir el corte de edad en vez de leerlo de la puerta",
+    ).not.toContain("EDAD_MINIMA_EB_BIS =");
+  });
+
 
   it("la edad se mide A LA FECHA DE LA TOMA, no a hoy", () => {
     // Un paciente que se midio con 17 y hoy tiene 19 no entra: la EB-BIS se calcula sobre la medicion.

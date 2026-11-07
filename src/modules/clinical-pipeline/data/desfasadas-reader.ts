@@ -2,7 +2,7 @@ import "server-only";
 
 import { ENGINE_VERSION } from "@/clinical-engine";
 import { huellasRepetidasEnVigentes } from "@/modules/bis/data/huellas-repetidas-reader";
-import { edadSiSePuede } from "@/modules/clinical-pipeline/services/build-engine-input";
+import { motivoParaNoReemitir } from "@/modules/clinical-pipeline/motivo-para-no-reemitir";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -32,17 +32,17 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // LOS TRES MOTIVOS SALEN DE DONDE YA VIVEN, no de una copia:
 //   · la huella repetida, de `huellasRepetidasEnVigentes` (el MISMO conjunto que el aviso del profesional,
 //     que es el que cuadra pieza por pieza con el anexo A de Gildardo);
-//   · la edad, de `edadSiSePuede` (la misma lectura de la fecha que usan el consentimiento y el motor);
-//   · el corte de 18 anos, del FROZEN de la v7 (`eb-bis-v7.js`: `edad < 18 || edad > 100` deja la EB-BIS
-//     en "pendiente: edad no valida"), no de un numero escrito aqui.
+//   · la edad y sus dos cortes, de `motivo-para-no-reemitir` (modulo NEUTRO), que lee la fecha con
+//     `edadSiSePuede` (la misma del consentimiento y del motor) y los cortes 18 y 100 del FROZEN de la v7.
+//
+// Y ESA PUERTA SE SACO DE AQUI EL 2026-11-07, por una razon medida: la simulacion del recalculo tiene que
+// decir cuantas consultas va a OFRECER esta pantalla, y escribirlo dos veces es como la simulacion acaba
+// midiendo un conjunto distinto del que la pantalla ofrece.
 //
 // LO QUE ESTO NO DECIDE, y por eso va al documento de dudas: estas evaluaciones quedan marcadas como
 // desfasadas PARA SIEMPRE, porque nadie las va a reemitir nunca. La alternativa seria sellarles la version
 // nueva con la EB-BIS en "pendiente", que es lo que el motor haria. Es una pregunta suya.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-
-/** El corte de la v7, leido del frozen y no escrito aqui. Ver `eb-bis-v7.js`. */
-const EDAD_MINIMA_EB_BIS = 18;
 
 export type EvaluacionDesfasada = {
   evaluationId: string;
@@ -111,7 +111,7 @@ export async function evaluacionesDesfasadas(): Promise<EvaluacionDesfasada[]> {
       selladaCon: (fila.engine_version as string) ?? "(sin version)",
       fecha: String(fila.created_at).slice(0, 10),
       esDePrueba: ev?.patients?.cuenta_como_de_prueba === true,
-      motivoSinReemitir: porQueNoSePuede({
+      motivoSinReemitir: motivoParaNoReemitir({
         huellaRepetida: huellas.has(id),
         nacimiento,
         // Sin medicion no hay fecha de toma; se mide a la del diagnostico, que es lo mas cercano al acto.
@@ -129,27 +129,3 @@ export async function evaluacionesDesfasadas(): Promise<EvaluacionDesfasada[]> {
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
-/**
- * El motivo por el que una evaluacion desfasada NO entra al recalculo, o `null` si entra.
- *
- * EL ORDEN IMPORTA Y NO ES ARBITRARIO: se nombra primero lo que hay que RESOLVER (la huella repetida, que
- * es un dato posiblemente del paciente equivocado) y despues lo que es una condicion del paciente (la
- * edad, que no se resuelve). Si una fila tiene las dos cosas, la que hay que mirar es la primera.
- */
-function porQueNoSePuede(a: {
-  huellaRepetida: boolean;
-  nacimiento: string | null;
-  hasta: Date;
-}): string | null {
-  if (a.huellaRepetida) {
-    return "Su medición está repetida en otra consulta: hay que resolver a quién pertenece antes de recalcular.";
-  }
-  const edad = edadSiSePuede(a.nacimiento, a.hasta);
-  if (edad === null) {
-    return "Sin fecha de nacimiento legible: la edad entra en la EB-BIS, así que no se puede recalcular.";
-  }
-  if (edad < EDAD_MINIMA_EB_BIS) {
-    return `Tenía ${edad} años al medirse: la EB-BIS v7 se calibró desde los ${EDAD_MINIMA_EB_BIS}.`;
-  }
-  return null;
-}
