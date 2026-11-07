@@ -121,7 +121,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
   it("mide a cuantos toca, que se mueve, y cuantos frenados se liberan", async () => {
     const { db } = await import("@/db");
     const schema = await import("@/db/schema");
-    const { eq } = await import("drizzle-orm");
+    const { eq, sql } = await import("drizzle-orm");
     const { simularConCienciaDeHoy } = await import(
       "@/modules/clinical-pipeline/data/simular-con-ciencia-de-hoy"
     );
@@ -683,6 +683,46 @@ describe("simulacion del recalculo del motor 3.x", () => {
       if (lasTres && !tieneR1) lasTresSinR1.push(evaluationId);
     }
 
+    // ══ FASE 6 · LA COHORTE DE INVESTIGACION: QUE VERSION LLEVA, Y QUE PASA CON LAS NO REEMITIDAS ══
+    //
+    // ═══ LAS DOS PREGUNTAS, Y POR QUE SE MIDEN CONTRA LA VISTA Y NO CONTRA `reports` ═══
+    //
+    // 1. ¿Se cuenta doble despues de las sucesiones de hoy? Las dos vistas toman el diagnostico y la
+    //    medicion VIGENTES con `LEFT JOIN LATERAL ... ORDER BY created_at DESC LIMIT 1` (0234) y NO miran
+    //    `reports`, asi que una fila sucesora no puede multiplicarlas. Eso esta amarrado por acto en
+    //    `la-reemision-no-mueve-las-cuentas-db`; aqui se MIDE que la propiedad se cumple con los datos de
+    //    verdad (filas == evaluaciones distintas), que es lo que no se puede afirmar desde el codigo.
+    //
+    // 2. ¿Las que no se reemitieron quedan FUERA o MARCADAS? La vista no filtra por version del motor, asi
+    //    que quedan DENTRO y marcadas con su `engine_version` sellado, que es lo que /obbia agrupa y lo que
+    //    dispara su aviso de mezcla de familias. Las que quedan fuera lo hacen por OTRA razon (paciente de
+    //    prueba, huella repetida), no por la version. Esto cuenta las dos cosas por separado.
+    const vistas = (await db.execute(sql.raw(`
+      select
+        (select count(*)::int from public.evaluaciones_vigentes) as vigentes_filas,
+        (select count(distinct id)::int from public.evaluaciones_vigentes) as vigentes_evaluaciones,
+        (select count(*)::int from public.evaluaciones_para_investigacion) as cohorte_filas,
+        (select count(distinct id)::int from public.evaluaciones_para_investigacion) as cohorte_evaluaciones
+    `))) as unknown as Record<string, number>[];
+    const porVersionEnLaCohorte = (await db.execute(sql.raw(`
+      select coalesce(engine_version, 'sin diagnóstico') as version, count(*)::int as n
+        from public.evaluaciones_para_investigacion
+       group by 1 order by 2 desc
+    `))) as unknown as { version: string; n: number }[];
+    // LAS QUE SIGUEN EN LA COHORTE CON UN MOTOR VIEJO, con el motivo por el que no se reemitieron. Es la
+    // lista que contesta "¿quedan fuera o marcadas?" con nombre y apellido del motivo.
+    const viejasEnLaCohorte = (await db.execute(sql.raw(`
+      select id from public.evaluaciones_para_investigacion
+       where engine_version is not null and engine_version not like '3.%'
+    `))) as unknown as { id: string }[];
+    const viejasPorMotivo: Record<string, number> = {};
+    for (const { id } of viejasEnLaCohorte) {
+      const m = motivoDeCadaUna.has(id)
+        ? (motivoDeCadaUna.get(id) ?? "la pantalla SI la ofrece: se puede reemitir por el flujo normal")
+        : "sin informe: la simulacion no la mira, la pantalla si";
+      viejasPorMotivo[m] = (viejasPorMotivo[m] ?? 0) + 1;
+    }
+
     // LAS FRENADAS QUE EL RECALCULO NO PUEDE TOCAR. Es la cifra que faltaba y la que decide si hace falta
     // una salida aparte: una consulta frenada que no se puede recomputar se queda frenada PARA SIEMPRE.
     const frenadasSinSalida = [...frenadasHoy].filter((id) => recomputado.get(id) == null);
@@ -763,6 +803,17 @@ describe("simulacion del recalculo del motor 3.x", () => {
                   reemitidas: sinValidityCaveats.filter((id) => anteriorDeOtroMotor.has(id)).length,
                 },
               },
+            },
+            // ══ LA COHORTE DE INVESTIGACION (fase 6) ══
+            //
+            // `filas` tiene que ser IGUAL a `evaluaciones` en las dos vistas: si se separan, alguna volvio a
+            // multiplicar. `porVersion` es la marca que lleva cada fila, y `conMotorViejoPorMotivo` dice por
+            // que esas siguen con el motor de antes.
+            laCohorteDeInvestigacion: {
+              ...vistas[0],
+              porVersion: Object.fromEntries(porVersionEnLaCohorte.map((r) => [r.version, r.n])),
+              conMotorViejo: viejasEnLaCohorte.length,
+              conMotorViejoPorMotivo: viejasPorMotivo,
             },
             // ══ EL DESCUADRE DE LA R1: SU ROTULO CONTRA SU ACTIVACION (fase 5b) ══
             //

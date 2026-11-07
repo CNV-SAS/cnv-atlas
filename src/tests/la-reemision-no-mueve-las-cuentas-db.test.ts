@@ -132,6 +132,77 @@ describe.skipIf(!HAS_DB)("la reemision no mueve las cuentas (BD real)", () => {
     );
   });
 
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // EL TERCER LADO, QUE SE ABRIO EL 2026-11-07: UNA FILA SUCESORA DE `reports`
+  //
+  // La reparacion de las capas congeladas no reescribe el informe sellado: INSERTA uno que lo sucede (el
+  // trigger `prevent_report_snapshot_mutation` rechaza lo otro, y con razon). Asi que desde ese dia una
+  // consulta reemitida tiene TRES informes, y cualquier cuenta que recorra `reports` sin quedarse con el
+  // ultimo por evaluacion empieza a contar de mas, igual que paso con `diagnoses` en la 0234.
+  //
+  // LAS VISTAS NO MIRAN `reports` (toman el diagnostico por LATERAL), asi que esto no deberia moverlas. Es
+  // justamente lo que hay que poder AFIRMAR: el candado de la 0234 fijo el acto para los otros dos lados y
+  // este cierra el que faltaba, para que la proxima reparacion por sucesion no tenga que ir a mano.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("una fila SUCESORA de reports (la reparacion por sucesion) no cambia ninguna cuenta", async () => {
+    let antes: Record<string, number> | undefined;
+    let despues: Record<string, number> | undefined;
+    let nuevoId: string | null = null;
+    let informeVigente: string | null = null;
+
+    await expect(
+      db.transaction(async (tx: any) => {
+        // CON JOIN A `patients`: en la base local hay informes cuyo paciente ya no existe, y la clave ajena
+        // tumbaria el caso por una razon que no dice nada sobre lo que se mide.
+        const [objetivo] = (await tx.execute(sql`
+          select r.id, r.evaluation_id
+            from reports r
+            join patients p on p.id = r.patient_id
+            join public.evaluaciones_vigentes v on v.id = r.evaluation_id
+           where r.type = 'paciente'
+           order by r.created_at desc
+           limit 1`)) as unknown as { id: string; evaluation_id: string }[];
+        if (!objetivo) {
+          throw new Error("el seed no tiene informes de paciente en la cohorte: este caso no probo nada");
+        }
+
+        antes = await cuentas(tx);
+
+        const [nuevo] = (await tx.execute(sql`
+          insert into reports (evaluation_id, patient_id, type, status, snapshot, professional_notes,
+                               trajectory, trajectory_communicated_at, trajectory_communicated_by,
+                               created_at)
+          select r.evaluation_id, r.patient_id, r.type, 'draft',
+                 r.snapshot || '{"rutasContent":[]}'::jsonb,
+                 r.professional_notes, r.trajectory, r.trajectory_communicated_at,
+                 r.trajectory_communicated_by, now() + interval '1 second'
+            from reports r where r.id = ${objetivo.id}
+          returning id`)) as unknown as { id: string }[];
+        nuevoId = nuevo.id;
+
+        despues = await cuentas(tx);
+        const [vig] = (await tx.execute(sql`
+          select id from reports
+           where evaluation_id = ${objetivo.evaluation_id} and type = 'paciente'
+           order by created_at desc limit 1`)) as unknown as { id: string }[];
+        informeVigente = vig?.id ?? null;
+
+        throw new Error("rollback a proposito");
+      }),
+    ).rejects.toThrow("rollback a proposito");
+
+    expect(antes).toBeDefined();
+    expect(despues, "la transaccion no llego a medir despues de insertar").toBeDefined();
+    expect(
+      despues,
+      "una fila sucesora de reports movio una cuenta de evaluaciones: alguna vista empezo a mirar reports",
+    ).toEqual(antes);
+    // Y LO QUE SI TIENE QUE CAMBIAR, por la misma razon que en el caso del diagnostico: el informe
+    // vigente de esa consulta pasa a ser el nuevo. Sin esto, el caso pasaria con una base que ignore la
+    // insercion, que es el error contrario.
+    expect(informeVigente, "la sucesora tiene que ser el informe vigente de su consulta").toBe(nuevoId);
+  });
+
   it("una SEGUNDA toma de BIS en la misma evaluacion no cambia ninguna cuenta", async () => {
     let antes: Record<string, number> | undefined;
     let despues: Record<string, number> | undefined;
