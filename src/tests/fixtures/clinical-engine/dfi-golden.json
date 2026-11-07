@@ -1,7 +1,7 @@
 {
  "le8": 80,
- "EB": 29.9,
- "IAE": -24.7,
+ "EB": 58,
+ "IAE": 4,
  "dominios": [
   {
    "id": "d1",
@@ -13,7 +13,7 @@
   },
   {
    "id": "d3",
-   "sev": 0
+   "sev": 1
   },
   {
    "id": "d4",
@@ -26,7 +26,7 @@
  ],
  "riesgo": {
   "l": "MEDIO",
-  "score": 25
+  "score": 30
  },
  "veto": false,
  "rutas": [

@@ -28,6 +28,9 @@ const biody = biodyJson as Record<string, unknown>;
 const enc = encJson as Record<string, unknown>;
 const golden = goldenJson as {
   le8: number;
+  /** La EB-BIS y el IAE del donante, informativos: los asserta el caso de CA-3 (ver abajo). */
+  EB: number;
+  IAE: number;
   dominios: Array<{ id: string; sev: number }>;
   riesgo: { l: string; score: number };
   veto: boolean;
@@ -178,8 +181,40 @@ describe("ANI-BIS-E fase 2 · condiciones de ruta (predicados)", () => {
   });
 });
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL GOLDEN DEL DFI SE REANCLO EL 2026-11-06, Y ESTO ES LO QUE SE MOVIO Y POR QUE
+//
+// Un golden no se toca para que pase: se reancla cuando la CIENCIA cambia, con su razon escrita. Esta
+// esta registrada en `docs/entregas/CAMBIOS_AUTORIZADOS.md` como **CA-3**, con la instruccion de Gildardo
+// verificada en su propio archivo (`ATLAS_v15.html` lineas 11834, 4458 y 13965, y su §1.4).
+//
+// QUE CAMBIO: `analizarDFI` calculaba por dentro la EB-BIS de la **v5** y con ella resolvia el dominio 3,
+// el riesgo integrado y la R4, mientras la pantalla y el informe mostraban la **v7**. En su v15 no hay dos
+// edades biologicas en la misma consulta: hay una, y es la v7.
+//
+// LO QUE SE MOVIO EN ESTE CASO DE REFERENCIA, medido y no estimado:
+//
+//   EB-BIS   29,9  ->  58      (el paciente tiene 54 anos)
+//   IAE     -24,7  ->  +4
+//   d3 (envejecimiento)  sev 0 -> 1
+//   riesgo integrado     25 -> 30  (el NIVEL sigue siendo MEDIO)
+//   los otros cuatro dominios, el veto y las rutas: IGUALES
+//
+// Y ESA PRIMERA LINEA ES EL ARGUMENTO ENTERO: la v5 decia que el cuerpo de una persona de 54 anos se
+// comporta como el de una de 30. La v7 dice 58. El golden viejo bloqueaba una cifra que no era creible.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
 describe("ANI-BIS-E fase 2b · DFI (BIS real + encuesta sintetica)", () => {
   const r = analizarDFI(biody, enc);
+
+  it("el DFI lee la EB-BIS de la v7, no la v5 (CA-3)", () => {
+    // EL CONTROL POSITIVO DEL REANCLAJE: sin esto, el golden de abajo podria volver a pasar con la v5 si
+    // alguien revirtiera el cambio y reajustara los numeros. Esto afirma el HECHO, no el resultado.
+    //
+    // La v5 para este donante daba EB 29,9 (una persona de 54 anos "comportandose" como una de 30). Si la
+    // cifra volviera a estar por debajo de la edad real por veinte anos, es que volvio la v5.
+    expect(golden.EB).toBeGreaterThan(50);
+    expect(golden.IAE).toBeLessThan(10);
+  });
 
   it("LE8/ICEC reproduce el golden", () => {
     expect(r.le8.total).toBe(golden.le8);

@@ -126,7 +126,32 @@
 // LOS VALORES v5 YA CALCULADOS SE CONSERVAN, que es lo que pide su §6: viven en los snapshots sellados y
 // no se reescriben nunca (regla 7). No hace falta un "campo historico" nuevo; el campo historico es el
 // snapshot. Lo que si hay que hacer, y va aparte, es el RECALCULO de las evaluaciones limpias.
-export const ENGINE_VERSION = "2.0.0";
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// 3.0.0 (2026-11-06) · EL DFI LEE LA EB-BIS DE LA v7 (CA-3)
+//
+// La 2.0.0 trajo la v7 al motor, PERO `analizarDFI` seguia calculando por dentro la EB-BIS de la **v5** y
+// con ella resolvia el dominio 3, el riesgo integrado y la ruta R4. O sea que la 2.0.0 dejo la casa a
+// medias: la pantalla y el informe en la v7, el diagnostico en la v5. Medido sobre las 422 consultas
+// selladas con la v7, **70 se contradicen** y el freno de la contradiccion (0229) no las deja entregar.
+//
+// POR QUE ES MAYOR Y NO MENOR, que es la pregunta que decide: `docs/VERSIONES.md` dice *"Mayor = la
+// ciencia cambia y lo emitido antes no es comparable"*. Aqui cambian LAS SEVERIDADES POR DOMINIO, el
+// RIESGO INTEGRADO y las RUTAS ACTIVAS. Un seguimiento que restara un dominio 3 calculado con la v5
+// contra uno calculado con la v7 le mostraria al paciente el salto de MODELO como si fuera su cambio, que
+// es exactamente lo que `sonComparables` existe para impedir.
+//
+// QUE SE MUEVE, medido en el caso de referencia (el donante golden, 54 años):
+//  · la EB-BIS que alimenta el DFI pasa de 29,9 a 58 y su IAE de -24,7 a +4;
+//  · el dominio 3 sube de severidad 0 a 1 y el riesgo integrado de 25 a 30 (el NIVEL sigue MEDIO);
+//  · los otros cuatro dominios, el veto y las rutas no se mueven.
+//
+// Y ALGO QUE NO ES UN MOVIMIENTO SINO UNA RECUPERACION: la v5 necesitaba el ICEC, asi que en una consulta
+// con la encuesta a medias el dominio 3 se quedaba SIN PUNTUAR. La v7 no lo necesita. Esas consultas
+// pasan a tener su dominio de envejecimiento, coincidiendo con el archivo de Gildardo.
+//
+// LO EMITIDO ANTES NO SE REESCRIBE (regla 7): vive en su snapshot con su version. El RECALCULO de las
+// evaluaciones limpias va aparte, con su simulacion previa.
+export const ENGINE_VERSION = "3.0.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada

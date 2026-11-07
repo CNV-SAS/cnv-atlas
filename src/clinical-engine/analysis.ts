@@ -272,8 +272,47 @@ export function analizarDFI(
   // calculado con otro. Lo destapo el golden (d5 se movio de 0 a 1 con el total intacto en 80).
   const encLe8 = { ...enc, ...ordinalesPatron(enc) };
   const le8 = dfi.calcLE8(encLe8);
-  const EB_BIS = le8.total != null ? ix.computeEBBIS(IFC, PABU, le8.total) : null;
-  const IAE = ix.computeIAE(EB_BIS, (enc.edad as number) ?? null);
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // EL DFI LEE LA EB-BIS DE LA v7  ·  2026-11-06  ·  LA RESPUESTA DE SU v15
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  //
+  // ═══ QUE HABIA, Y POR QUE ERA UN DEFECTO Y NO UNA ELECCION ═══
+  //
+  // Aqui se calculaba la EB-BIS de la **v5** (`computeEBBIS(IFC, PABU, le8.total)`) y su IAE, y con esas
+  // dos cifras el frozen resolvia el DOMINIO 3 del DFI (envejecimiento), su severidad, el riesgo integrado
+  // y la ruta R4. Mientras tanto `analizarDesdeBiody` ya devolvia la EB-BIS de la **v7**, que es la que ve
+  // el paciente en su informe y el profesional en su tabla.
+  //
+  // O SEA QUE EL MISMO DOCUMENTO LLEVABA DOS LECTURAS DEL MISMO HECHO, calculadas con dos modelos
+  // distintos. No es una diferencia de redondeo: la v5 sale de IFC, PABU y el ICEC, y la v7 de una
+  // regresion por sexo sobre edad, edad² y FMI. Pueden decir cosas opuestas sobre el mismo paciente, y lo
+  // dicen: medido el 2026-11-06 sobre las 422 consultas selladas con la v7, **70 se contradicen** (45 de
+  // ellas del tipo peor: la cifra de arriba dice "envejecimiento acelerado" y el DFI no trata nada).
+  //
+  // Esas 70 son exactamente las que el freno de la contradiccion (0229) no deja entregar, y por eso esto
+  // no es una mejora: es lo que desbloquea a profesionales que hoy no pueden mandar un informe.
+  //
+  // ═══ POR QUE SE RESUELVE ASI Y NO DE OTRA FORMA ═══
+  //
+  // Gildardo lo respondio en su v15: manda el IAE de la v7. No es decision nuestra, y por eso no se
+  // inventa una tercera escala ni se le pone al dominio 3 un criterio propio: se le entrega al frozen el
+  // MISMO insumo que ya recibe, calculado con el modelo vigente.
+  //
+  // SE REUSA `calcularEbBis`, que es la puerta que ya usa `analizarDesdeBiody`. Si este archivo llamara a
+  // `ebBisV7` por su cuenta serian dos sitios armando el mismo input, y la primera vez que uno de los dos
+  // cambie (un campo mas, una validacion) volvemos a tener dos lecturas. Una sola puerta, como el LE8.
+  //
+  // CUANDO LA v7 NO SE PUEDE CALCULAR (falta la edad, falta el ACT, el sexo no es valido) devuelve `null`,
+  // y el frozen recibe `null` exactamente igual que cuando la v5 no tenia ICEC. Ese camino ya existia y no
+  // se toca: el dominio 3 queda sin puntuar, que es lo correcto y lo que su punto 4 del 30-ago pide.
+  // NO SE CAE A LA v5 EN ESE CASO, y es deliberado: volver a la vieja cuando la nueva no puede es
+  // reintroducir la contradiccion justo donde nadie la va a mirar.
+  //
+  // EL ICEC VIAJA PERO NO CALCULA: en la v7 solo decide la alerta de discordancia (`eb-bis-v7.js` L39),
+  // nunca la cifra (L33-38). Por eso este paso es independiente del siguiente (el ICEC con `calcPatron`) y
+  // se puede hacer primero, que es el orden verificado.
+  const { EB_BIS, IAE } = calcularEbBis(sexo, { edad: enc.edad as number | null, icec: le8.total }, imp);
 
   // `bis` con indices PRECALCULADOS (evita el bug TDZ del prototipo, que no toca la
   // ciencia congelada: computeDFIFromData corta en num("PABU") antes de usar sexoM).

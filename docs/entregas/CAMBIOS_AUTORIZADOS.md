@@ -62,3 +62,51 @@ Hasta ahora la garantía era **mecánica**: byte-identidad del frozen + golden c
 - **Divergencia:** `INVENTARIO.md` 0ter, fila "Delta".
 
 <!-- Próximas entradas conforme se implementen de opción B: cáncer-remisión (C, 3.2), y los C1-C13 que apliquemos de nuestro lado con su instrucción. Cada una con su fila de divergencia en INVENTARIO 0ter. -->
+
+### CA-3 · El DFI lee la EB-BIS de la v7 (y deja de calcular la v5 por dentro)
+
+- **Instrucción de Gildardo, verificada EN SU ARCHIVO `ATLAS_v15.html` (no deducida de su documento de
+  cambios):**
+  - `computeDFIFromData`, línea 11834: el IAE del DFI sale de `num("IAE", "iae")`, o sea **el valor
+    guardado en el registro, uno solo**.
+  - `atlasMigrarEbV7`, línea 4458: al leer el historial, ese valor guardado **se recalcula con la v7**; el
+    v5 se mueve a `EB_BIS_v5` / `IAE_v5`.
+  - Dominio 3, línea 13965: lee `idx.iae`, **el mismo valor que ve el paciente**.
+  - §1.4 de su documento, verbatim: «El valor v5 pasa a `EB_BIS_v5` / `IAE_v5`, que no se muestran en
+    ninguna pantalla.»
+
+  **En su v15 no hay dos edades biológicas en la misma consulta: hay una, y es la v7.**
+
+- **Qué implementamos (2026-11-06):** `analizarDFI` (`src/clinical-engine/analysis.ts`) calculaba por
+  dentro la EB-BIS de la **v5** (`computeEBBIS(IFC, PABU, le8.total)`) y su IAE, y con esas dos cifras el
+  frozen resolvía el **dominio 3**, el **riesgo integrado** y la **ruta R4**. Ahora llama a
+  `calcularEbBis`, que es la MISMA puerta que ya usaba `analizarDesdeBiody`, así que el DFI recibe el IAE
+  de la **v7**. No se toca el frozen: se le entrega otro insumo al mismo código.
+
+- **Por qué esto no es una mejora sino un desbloqueo:** mientras el DFI usaba la v5 y la pantalla la v7, el
+  mismo documento llevaba **dos lecturas del mismo hecho**. Medido el 2026-11-06 sobre las 422 consultas
+  selladas con la v7: **70 se contradicen**, y 45 de ellas del tipo peor (la cifra de arriba dice
+  "envejecimiento acelerado" y el DFI no trata nada). Esas 70 son exactamente las que el freno de la
+  contradicción (migración 0229) no deja entregar: **hay profesionales que hoy no pueden enviar informes**.
+
+- **Efecto medido sobre el caso de referencia (el donante golden):** el dominio 3 pasa de **severidad 0 a
+  severidad 1** y el riesgo integrado de **25 a 30**. Los otros cuatro dominios no se mueven. Es el único
+  golden que cambia, y cambia porque tiene que cambiar.
+
+- **Lo que NO se hizo, y es deliberado:** cuando la v7 no se puede calcular (falta la edad, falta el ACT o
+  el sexo no es válido) el dominio 3 queda **sin puntuar**, y NO se cae a la v5. Volver a la cifra vieja
+  justo donde nadie la va a mirar es reintroducir la contradicción en el sitio peor. Ese camino de "sin
+  puntuar" ya existía (antes se daba cuando faltaba el ICEC) y el frozen lo trata igual.
+
+- **Descripción devuelta a Gildardo:** «El diagnóstico funcional usaba por dentro la edad biológica de la
+  v5 mientras la pantalla y el informe mostraban la de la v7, así que el mismo documento decía dos cosas
+  sobre el envejecimiento del mismo paciente: en 70 de 422 consultas no coincidían. Como su v15 deja una
+  sola edad biológica, la v7, hicimos que el diagnóstico lea esa. En el caso de referencia el dominio de
+  envejecimiento sube de 0 a 1 y el riesgo integrado de 25 a 30. Cuando la v7 no se puede calcular, ese
+  dominio queda sin puntuar en vez de volver a la cifra vieja.»
+
+- **Estado:** **implementado, pendiente de aprobación.** No llega a producción (definición de arriba) sin
+  su visto bueno registrado aquí.
+
+- **Divergencia:** no la hay. Esto ACERCA Atlas a su archivo: era Atlas el que se había quedado con la v5
+  por dentro.

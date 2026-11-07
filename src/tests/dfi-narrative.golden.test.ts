@@ -129,6 +129,16 @@ describe("DFI narrativa: golden diferencial contra la funcion vigente de Gildard
     // 2 ("envejecimiento acelerado"). Hasta CA-7 esa rama era inalcanzable, porque el adaptador fabricaba
     // un IAE de 0 y lo clasificaba "Concordante" (severidad 0, lectura favorable). O sea que el defecto
     // vivo era el 0, y aplicar CA-7 SOLO lo habría convertido en el 2. CA-6 corta los dos.
+    // ═══ Y DESDE CA-3 (2026-11-06) EL d3 YA NO SE ANULA, QUE ES LA BUENA NOTICIA ═══
+    //
+    // Este fixture no tiene ICEC. La EB-BIS de la **v5** lo necesitaba (`computeEBBIS(IFC, PABU, icec)`),
+    // asi que sin el no habia cifra y el dominio 3 quedaba SIN PUNTUAR. La **v7** no lo necesita: su
+    // formula es una regresion sobre edad, edad² y FMI, y el ICEC solo decide la alerta de discordancia.
+    //
+    // O sea que el bump no solo MUEVE severidades: RECUPERA el dominio de envejecimiento en las consultas
+    // con la encuesta a medias, que antes se quedaban sin el. Y lo recupera COINCIDIENDO con el reference
+    // de Gildardo (los dos dan 2), que es lo que la rama `else` de abajo comprueba: esto acerca Atlas a su
+    // archivo, no lo separa.
     const CA6_SUSTITUYE: Record<string, number> = { d1: 1, d2: 1, d3: 2, d5: 1 };
     const refSev = new Map(ref.domains.map((d) => [d.id, d.sev]));
     let anulados = 0;
@@ -145,7 +155,10 @@ describe("DFI narrativa: golden diferencial contra la funcion vigente de Gildard
     }
     // CONTROL: si la anulacion dejara de ocurrir, el bucle de arriba pasaria verde comparando cinco
     // numeros y nadie notaria que CA-6 dejo de aplicarse en el unico fixture que la ejercita.
-    expect(anulados, "este fixture ya no ejercita CA-6 en los dos dominios que la ejercitaban").toBe(2);
+    // ERAN DOS HASTA CA-3 (d3 y d5) Y AHORA ES UNO (d5). El d3 dejo de anularse porque la v7 no necesita
+    // el ICEC para calcularse; ver el bloque de arriba. El control sigue sirviendo para lo mismo: si
+    // bajara a CERO, CA-6 habria dejado de ejercitarse en el unico fixture que la prueba.
+    expect(anulados, "este fixture ya no ejercita CA-6 en el dominio que la ejercitaba").toBe(1);
 
     // (2) el porte reproduce byte-a-byte el parrafo y las cuatro metas del reference, CON la misma
     // excepcion de CA-6 y ninguna mas: el segmento del dominio que no se midio.
@@ -184,29 +197,44 @@ describe("DFI narrativa: golden diferencial contra la funcion vigente de Gildard
     // direcciones para que ninguna de las dos pueda cambiar sin que esto truene.
     const colaRef = ref.parrafo.slice(ref.parrafo.indexOf(COLA));
     const colaMia = mine.parrafo.slice(mine.parrafo.indexOf(COLA));
-    expect(colaRef, "el reference dejo de activar R4 sobre el vacio").toContain("Ruta 4");
+    // ═══ CA-3 CERRO ESTA DIVERGENCIA (2026-11-06), Y ERA LA MAS CARA DE LAS DOS ═══
+    //
+    // Hasta aqui el reference activaba la "Ruta 4 (Desaceleración del Envejecimiento)" y nosotros no: su
+    // d3 sin dato valia 2 y el nuestro era `null`, porque la EB-BIS de la v5 necesitaba un ICEC que este
+    // fixture no tiene. Lo correcto era no activarla (no se prescribe desacelerar el envejecimiento de
+    // alguien a quien nadie se la calculo), pero el precio era que el dominio se quedaba mudo.
+    //
+    // Con la v7 la cifra SE CALCULA sin encuesta, asi que el dominio se puntua y los dos coinciden: ni el
+    // reference ni nosotros activamos la R4, y la cola es byte a byte la misma. Se afirma en las DOS
+    // direcciones, que es lo que impide que esto pase verde por el motivo equivocado.
+    expect(colaRef, "el reference volvio a activar R4: el d3 dejo de puntuarse").not.toContain("Ruta 4");
     expect(colaMia, "activamos una ruta sobre un dominio no medido").not.toContain("Ruta 4");
-    // Y quitando esa ruta, el resto de la cola es byte a byte la suya (mismo nivel de riesgo incluido).
-    expect(colaMia).toBe(colaRef.replace("; Ruta 4 (Desaceleración del Envejecimiento), complementaria", ""));
-    // Y lo que su prosa afirma sobre los dos vacios, para que quede escrito lo que se corrigio:
-    expect(ref.parrafo).toContain("su envejecimiento biológico está acelerado");
-    expect(ref.parrafo).toContain("la carga contextual y de estilo de vida es moderada");
-    // ═══ EL CERO DESAPARECIO CON LA EB-BIS v7 (2026-10-28), Y VALE DEJAR DICHO POR QUE ═══
+    expect(colaMia, "la cola dejo de coincidir con la suya").toBe(colaRef);
+    // ═══ LO QUE SU PROSA AFIRMA SOBRE EL VACIO QUE QUEDA (uno, no dos) ═══
     //
-    // Hasta aqui esta linea exigia el texto literal "acelerado (0 años por encima de lo esperado)": con la
-    // v5, un paciente sin encuesta no tenia IAE, y su prosa rellenaba el hueco con un cero y lo llamaba
-    // acelerado igual. Ahora la v7 calcula el IAE SIN la encuesta (su §2), asi que la cifra que entra es
-    // real y el parrafo dice los años que son.
+    // CA-6 nacio porque su prosa afirmaba sobre dominios que el DFI no midio. De sus DOS manifestaciones
+    // en este fixture ya solo queda UNA, la del dominio 5 (carga contextual), que depende del ICEC y
+    // sigue sin dato. La del dominio 3 se fue con CA-3: ahora hay cifra y los dos dicen lo mismo.
+    expect(ref.parrafo, "el reference dejo de afirmar sobre el d5 sin dato").toContain(
+      "la carga contextual y de estilo de vida es moderada",
+    );
+    // ═══ Y EL ENVEJECIMIENTO YA NO SE AFIRMA ACELERADO SOBRE UN HUECO (2026-11-06) ═══
     //
-    // LO QUE NO CAMBIO, y es lo que este golden vigila: su prosa SIGUE afirmando sobre un dominio que el
-    // DFI no midio, y nosotros seguimos diciendo "no se evaluó". CA-6 sigue en pie; lo que se fue es una
-    // de sus dos manifestaciones. Si alguien vuelve a ver un cero aqui, es que el IAE dejo de llegar.
-    const aniosEnLaProsa = /acelerado \((\d+) años/.exec(ref.parrafo);
-    expect(aniosEnLaProsa, "cambio la forma de la frase del envejecimiento").toBeTruthy();
-    expect(
-      Number(aniosEnLaProsa![1]),
-      "volvio el cero fabricado: el IAE no esta llegando a la narrativa",
-    ).toBeGreaterThan(0);
+    // Esta linea tuvo tres vidas, y las tres cuentan la misma historia desde mas lejos:
+    //   1 · con la v5 sin encuesta no habia IAE, y su prosa rellenaba el hueco con un CERO y lo llamaba
+    //       acelerado igual ("acelerado (0 años por encima de lo esperado)");
+    //   2 · con la v7 (2026-10-28) la cifra entraba de verdad, asi que el cero se fue y el parrafo decia
+    //       los años que eran, pero NUESTRO d3 seguia sin puntuar porque el DFI aun usaba la v5 por dentro;
+    //   3 · con CA-3 el DFI lee la v7, el d3 se puntua, y el IAE de este donante es **+4**: dentro de la
+    //       banda de ±5. O sea que ya NO es un envejecimiento acelerado, y la prosa no lo llama asi.
+    //
+    // Lo que se vigila ahora es que la frase salga de la CIFRA y no de un hueco: el segmento del dominio 3
+    // tiene que ser el MISMO en las dos prosas (lo comprueba el bucle de arriba, rama `else`) y no puede
+    // volver el cero fabricado.
+    expect(ref.parrafo, "volvio el cero fabricado: el IAE no esta llegando a la narrativa").not.toContain(
+      "(0 años",
+    );
+    expect(sevMia.get("d3"), "el d3 volvio a quedarse sin puntuar: se revirtio CA-3").not.toBeNull();
     // LAS METAS heredan la misma consecuencia, y aqui es donde mas pesa: la R4 fabricada le ponia a las
     // CUATRO profesiones un objetivo de envejecimiento, y a nutricion y ejercicio ademas una meta medible
     // a 24 semanas ("reducción del IAE de al menos 2 años") sobre un IAE que no existe. Se le estaba
@@ -220,14 +248,20 @@ describe("DFI narrativa: golden diferencial contra la funcion vigente de Gildard
       // puntuación, no de contenido.
       const prim = (t: string) => t.split(";")[0].replace(/\.$/, "");
       expect(prim(mia), `${rol}: divergimos en la meta que si corresponde`).toBe(prim(suya));
-      // Y la meta MEDIBLE a 24 semanas, que era la peor: "reducción del IAE de al menos 2 años" sobre un
-      // IAE que no existe. Solo la llevan nutricion y ejercicio.
+      // ═══ Y LA SEGUNDA CLAUSULA DESAPARECIO DE LAS DOS (CA-3, 2026-11-06) ═══
+      //
+      // Era la peor consecuencia de la divergencia: la R4 fabricada sobre un d3 sin medir le ponia a las
+      // CUATRO profesiones un objetivo de envejecimiento, y a nutricion y ejercicio ademas una meta
+      // medible a 24 semanas ("reducción del IAE de al menos 2 años") sobre un indice que no existia. Se
+      // le estaba prescribiendo trabajo clinico contra un hueco.
+      //
+      // Ahora el d3 SE MIDE (la v7 no necesita la encuesta), la R4 no se activa en ninguno de los dos, y
+      // las metas coinciden: UNA clausula cada una. Se sigue afirmando que no hay meta a 24 semanas,
+      // porque esa es la que de verdad manda a trabajar contra una cifra inventada.
       expect(mia, `${rol}: seguimos poniendo una meta medible sobre el IAE`).not.toContain("24 semanas");
-      // Y la nuestra trae UNA clausula donde la suya trae DOS: la segunda es la de la R4 fabricada, y
-      // cada profesion la redacta distinto ("derivación a geriatría", "sostener hábitos"), asi que se
-      // cuenta en vez de buscar una palabra, que dejaria fuera a medicina y psicologia.
-      expect(mia.split(";").length, `${rol}: arrastramos la meta del dominio no medido`).toBe(1);
-      expect(suya.split(";").length, `${rol}: el reference dejo de prescribir sobre el vacio`).toBe(2);
+      expect(suya, `${rol}: el reference volvio a prescribir sobre el vacio`).not.toContain("24 semanas");
+      expect(mia.split(";").length, `${rol}: arrastramos una meta de mas`).toBe(1);
+      expect(suya.split(";").length, `${rol}: el reference volvio a prescribir de mas`).toBe(1);
     }
   });
 

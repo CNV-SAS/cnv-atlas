@@ -1,7 +1,7 @@
 {
   "_meta": "FIXTURE SINTÉTICO para golden del DFI — respuestas de ejemplo (NO paciente real). Revisar coherencia clínica con Gildardo. Perfil: hombre 54a, IMC 27.5, sobrepeso leve, sedentario moderado, sin TCA, 1 antecedente familiar.",
   "sexo": "M",
-  "edad": 54.628,
+  "edad": 54,
   "d2_19": "Sobrepeso",
   "d2_20": "Insatisfecho/a",
   "d2_21": [],

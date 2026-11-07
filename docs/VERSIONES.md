@@ -20,14 +20,28 @@ tabla dice qué significaba.
 
 | Artefacto | Formato | Hoy | Dónde vive |
 |---|---|---|---|
-| Motor clínico | **semver de tres** | `2.0.0` | `ENGINE_VERSION` (`src/clinical-engine/version.ts`) |
+| Motor clínico | **semver de tres** | `3.0.0` | `ENGINE_VERSION` (`src/clinical-engine/version.ts`) |
 | Conjunto de protocolo | **semver de tres** | `1.0.0` | `PROTOCOL_ENGINE_VERSION` (mismo archivo) |
 | Modelo | **semver de tres** | `1.0.0` | fila de `model_versions` (`version_name`) |
 | Reglas | **semver de tres** | `1.0.0` | fila de `model_versions` (`rules_version`) |
 | Encuesta | **entero** | `6` | fila de `survey_versions` (`version_number`) |
 | Prompt del resumen de IA | **entero** | `14` | fila de `ai_prompts` (`criterio.generate`, `version`) y su JSON en `src/modules/diagnoses/ai/prompts/` |
 
-**El motor subió a 2.0.0 el 2026-10-28, y es el primer MAYOR.** Entró la EB-BIS v7 (parámetros 7.1.0,
+**El motor subió a 3.0.0 el 2026-11-06, y es el segundo MAYOR.** La 2.0.0 trajo la EB-BIS v7 a la
+pantalla y al informe, pero `analizarDFI` siguió calculando por dentro la **v5** y con ella resolvía el
+dominio de envejecimiento, el riesgo integrado y la ruta R4. O sea que la casa quedó a medias: el mismo
+documento llevaba dos lecturas del mismo hecho. Medido sobre las 422 consultas selladas con la v7, **70 se
+contradecían**, y el freno de la contradicción (migración 0229) no las deja entregar: hay profesionales que
+hoy no pueden enviar un informe.
+
+Es MAYOR porque cambian las **severidades por dominio**, el **riesgo integrado** y las **rutas activas**: lo
+emitido antes no es comparable con lo nuevo, que es la definición de este documento. En el caso de
+referencia el dominio 3 sube de 0 a 1 y el riesgo de 25 a 30. Y hay una recuperación además del cambio: la
+v5 necesitaba el ICEC, así que una consulta con la encuesta a medias se quedaba **sin** dominio de
+envejecimiento; la v7 no lo necesita. El detalle está en `version.ts` y la autorización en
+`CAMBIOS_AUTORIZADOS.md` **CA-3**. **El recálculo de lo ya emitido va aparte, con su simulación previa.**
+
+**El motor subió a 2.0.0 el 2026-10-28, y fue el primer MAYOR.** Entró la EB-BIS v7 (parámetros 7.1.0,
 entrega de Gildardo del 26 de octubre) y la v5 se retiró del motor. Cumple la definición de mayor de este
 documento, y la segunda mitad es la que obliga: `sonComparables` (`followups/eb-trajectory`) se niega a
 restar dos EB-BIS de mayores distintos, y esa resta es la que el paciente ve como "mejoró" o "empeoró".
