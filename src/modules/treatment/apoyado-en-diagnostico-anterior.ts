@@ -83,7 +83,14 @@ export function avisoDeApoyoAnterior(): string {
     "El diagnóstico de esta consulta se volvió a emitir con la versión nueva del modelo. " +
     `Esta prescripción se construyó con la anterior, así que ${LO_QUE_DEPENDE_DE_LA_EB_BIS.join(", ")} ` +
     `pueden haber cambiado; ${LO_QUE_NO_DEPENDE_DE_LA_EB_BIS.join(", ")} no dependen de esa cifra. ` +
+    // LAS DOS COSAS QUE LA PANTALLA MUESTRA DE DISTINTOS MOMENTOS, dichas aqui para que no haya que
+    // deducirlo: las rutas de arriba ya son las del diagnostico de hoy, y la sugerencia sellada del motor
+    // es la de antes y no se reescribe (`protocol_suggested` es write-once: regla dura 7).
+    "Las rutas de atención que ves arriba ya son las del diagnóstico nuevo. " +
+    "La sugerencia que el motor selló con esta prescripción, incluida la de nutracéuticos, es la anterior " +
+    "y no se reescribe: queda como registro de lo que se sugirió ese día. " +
     "No tienes que rehacer nada: la prescripción que indicaste se conserva tal cual. " +
-    "Si quieres que refleje el diagnóstico nuevo, ajústala tú."
+    "Si quieres que refleje el diagnóstico nuevo, ajústala y guárdala: está abierta. " +
+    "Si el paciente ya tiene una versión en la mano y cambias lo que come, cuéntaselo."
   );
 }

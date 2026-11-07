@@ -11,7 +11,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { RotateCcw, Sparkles } from "lucide-react";
+import { History, RotateCcw, Sparkles } from "lucide-react";
+
+import { avisoDeApoyoAnterior } from "../apoyado-en-diagnostico-anterior";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { NIVELES_FA, nivelFaLabel, PROFESION_NOTA } from "../data/treatment-view-types";
@@ -1416,6 +1418,21 @@ export function TreatmentPanel({
             Lo que si importaba clinicamente (que el paciente ya tiene una version y hay que avisarle si
             cambia lo que come, §12c) no dependia del candado, sino de que alguien hubiera recibido algo.
             Eso es lo que dice ahora `EntregasRegistradas`. */}
+        {/* ESTA PRESCRIPCION ES DE ANTES DE LA REEMISION DEL DIAGNOSTICO (2026-11-07).
+            Va ARRIBA de todo lo editable y en tono NEUTRO, no clinico: no hay riesgo del paciente, hay
+            dos momentos distintos en la misma pantalla. El modulo con el predicado y el texto existia
+            desde el 29 de octubre y no lo renderizaba nadie; se vio al reemitir las 424 en produccion. */}
+        {protocol.apoyadoEnDiagnosticoAnterior ? (
+          <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3">
+            <History className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-medium text-foreground">
+                El diagnóstico se reemitió después de esta prescripción
+              </p>
+              <p className="text-xs text-muted-foreground">{avisoDeApoyoAnterior()}</p>
+            </div>
+          </div>
+        ) : null}
         <EntregasRegistradas emisiones={protocol.emisiones} />
         {/* AGRUPACION (2026-08-22): dos bloques SEGUIDOS, sin nivel de navegacion nuevo (el orden natural es
             leer el caso y bajar a construir; no son dos modos alternativos, son dos momentos). Arriba LECTURA

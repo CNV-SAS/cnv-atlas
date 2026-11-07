@@ -150,6 +150,63 @@ describe("el rastro (pregunta (c) de Santiago)", () => {
   });
 });
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL SNAPSHOT DE LA REEMISION LLEVA LAS TRES CAPAS QUE EL PIPELINE CONGELA  ·  2026-11-07
+//
+// ═══ EL DEFECTO, Y PASO EN PRODUCCION SOBRE 424 CONSULTAS ═══
+//
+// El `snapshot` de la reemision era `{ ...output, surveyVersionId }`, y el comentario de al lado afirmaba
+// que "se conserva lo que el pipeline congela junto al EngineOutput". No se conservaba nada. Los tres
+// lectores leen esas capas con `?? []` / `?? null`, asi que nada fallo y todo quedo vacio:
+//
+//   · `rutasContent` -> Tratamiento decia "0 rutas activas" con un diagnostico de riesgo CRITICO, la hoja
+//     de rutas del paciente salia vacia y las remisiones EXIGIDAS de la HC desaparecian.
+//   · `efrContent`   -> la evidencia del estado EFR degradada en la vista de resultados.
+//   · `validityCaveats` -> la reserva de validez de la medicion, perdida.
+//
+// Lo detecto Santiago abriendo `ed83ff97` despues del recalculo. NO lo detecto ningun test, y eso es lo
+// que este bloque arregla: la forma del snapshot no estaba vigilada en el segundo camino que lo escribe.
+//
+// ═══ SE RESUELVEN, NO SE COPIAN ═══
+//
+// Con las MISMAS tres funciones que `run-pipeline` y en el mismo orden. Copiarlas del snapshot anterior
+// (que es lo que aquel comentario proponia) pondria el contenido de las rutas VIEJAS al lado de los ids
+// de las nuevas: la contradiccion de la que salio todo este recalculo.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("el snapshot de la reemision lleva las tres capas", () => {
+  const PIPELINE = sinComentarios(
+    readFileSync("src/modules/clinical-pipeline/services/run-pipeline.ts", "utf8"),
+  );
+
+  it("congela las tres: rutasContent, efrContent y validityCaveats", () => {
+    expect(SERVICIO).toContain("rutasContent,");
+    expect(SERVICIO).toContain("efrContent,");
+    expect(SERVICIO).toContain("validityCaveats,");
+  });
+
+  it("y las resuelve con las MISMAS funciones que el pipeline, no con una copia", () => {
+    for (const fn of [
+      "resolveRutasContent(output.dfi.rutas)",
+      "getSealedValidityCaveats(",
+      "readEfrContent(",
+    ]) {
+      expect(SERVICIO, `la reemision dejo de usar ${fn}`).toContain(fn);
+      expect(PIPELINE, `el pipeline dejo de usar ${fn}`).toContain(fn);
+    }
+  });
+
+  it("falla fuerte si el registry no tiene el contenido del estado EFR, igual que el pipeline", () => {
+    // Un snapshot a medias es lo que dejo 424 consultas sin rutas. Mejor no sellar nada.
+    expect(SERVICIO).toContain("El registry no tiene el contenido del estado EFR diagnosticado.");
+    expect(PIPELINE).toContain("El registry no tiene el contenido del estado EFR diagnosticado.");
+  });
+
+  it("CONTROL: el snapshot ya no es solo el output con el id de la encuesta", () => {
+    // La forma exacta que produjo el defecto. Si alguien la restaura, esto se pone rojo.
+    expect(SERVICIO).not.toMatch(/snapshot:\s*\{\s*\.\.\.output,\s*surveyVersionId: inputs\.surveyVersionId,\s*\}/);
+  });
+});
+
 describe("la marca del tratamiento: derivada, sin columna", () => {
   it("se apoya en el anterior cuando su diagnostico no es el vigente", () => {
     expect(
@@ -158,6 +215,33 @@ describe("la marca del tratamiento: derivada, sin columna", () => {
     expect(
       seApoyaEnUnDiagnosticoAnterior({ diagnosisIdDelTratamiento: "a", diagnosisIdVigente: "a" }),
     ).toBe(false);
+  });
+
+  it("Y TIENE SUPERFICIE: el lector la expone y el panel la pinta", () => {
+    // ERA UN GUARD SIN SUPERFICIE. El modulo con el predicado y el aviso existia desde el 29 de octubre y
+    // NO LO RENDERIZABA NADIE: `grep` solo lo encontraba en este test. O sea que la pantalla ponia el
+    // diagnostico de hoy al lado de la prescripcion de agosto sin decir que eran de dos momentos, y el
+    // modulo hacia creer que eso estaba resuelto. Se vio al reemitir las 424 en produccion.
+    const lector = sinComentarios(
+      readFileSync("src/modules/treatment/data/treatment-reader.ts", "utf8"),
+    );
+    expect(lector).toContain("seApoyaEnUnDiagnosticoAnterior({");
+    expect(lector, "el lector dejo de pedir el diagnostico del tratamiento").toContain("diagnosis_id");
+    const panel = sinComentarios(
+      readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8"),
+    );
+    expect(panel).toContain("protocol.apoyadoEnDiagnosticoAnterior");
+    expect(panel, "el panel dejo de pintar el aviso").toContain("avisoDeApoyoAnterior()");
+  });
+
+  it("y el aviso dice las dos cosas que la pantalla mezcla de momentos distintos", () => {
+    const aviso = avisoDeApoyoAnterior();
+    // Las rutas de arriba son de HOY; la sugerencia sellada del motor es de ANTES y no se reescribe.
+    expect(aviso).toContain("ya son las del diagnóstico nuevo");
+    expect(aviso).toContain("no se reescribe");
+    // Y la accion, que es la que existe de verdad: la prescripcion esta abierta (la aprobacion y la
+    // reapertura se retiraron en la 0116, asi que no hay "flujo de version nueva" que inventar).
+    expect(aviso).toContain("está abierta");
   });
 
   it("y NO hay columna ni bandera que acordarse de apagar", () => {

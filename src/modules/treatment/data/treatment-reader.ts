@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { getDeclaracionesDelPaciente } from "@/modules/evaluations/data/declaraciones-paciente-reader";
 
+import { seApoyaEnUnDiagnosticoAnterior } from "../apoyado-en-diagnostico-anterior";
 import { filtroCatalogoPrescribible } from "../catalogo-prescribible";
 
 // TreatmentProtocol (anotacion del reader) vive en el modulo neutro; ver el reexport abajo.
@@ -147,7 +148,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, sin_prescripcion_motivo, sin_prescripcion_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit, diagnoses!inner(evaluation_id)",
+      "id, diagnosis_id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, sin_prescripcion_motivo, sin_prescripcion_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit, diagnoses!inner(evaluation_id)",
     )
     .eq("diagnoses.evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
@@ -288,6 +289,17 @@ export async function getTreatmentProtocol(
   return {
     treatmentId,
     diagnosisConfirmed: Boolean(diag.confirmed_at),
+    // ═══ ESTA PRESCRIPCION SE CONSTRUYO SOBRE UN DIAGNOSTICO QUE YA FUE REEMITIDO  ·  2026-11-07 ═══
+    //
+    // Se DERIVA comparando el diagnostico del tratamiento con el vigente, sin columna que apagar. El
+    // modulo con el predicado y el aviso existia desde el 29 de octubre y NO LO RENDERIZABA NADIE: un
+    // guard sin superficie que lo alcance hace creer que se aplico. Salio al reemitir las 424 en
+    // produccion, cuando `ed83ff97` mostro el diagnostico nuevo y la prescripcion anterior sin que la
+    // pantalla dijera que eran de dos momentos distintos.
+    apoyadoEnDiagnosticoAnterior: seApoyaEnUnDiagnosticoAnterior({
+      diagnosisIdDelTratamiento: treatment.diagnosis_id as string,
+      diagnosisIdVigente: diag.id as string,
+    }),
     // SE DERIVA DE LA HISTORIA, no de un flag: un flag aparte seria un segundo estado que puede
     // desincronizarse del real. Es la misma razon por la que `aprobacionesPrevias` se contaba y no se
     // guardaba, aplicada a lo que ahora importa.

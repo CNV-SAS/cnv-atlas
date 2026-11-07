@@ -172,6 +172,16 @@ export type TreatmentProtocol = {
   treatmentId: string;
   diagnosisConfirmed: boolean;
   /**
+   * `true` cuando el diagnostico de esta consulta se reemitio DESPUES de que se construyera esta
+   * prescripcion (`treatments.diagnosis_id` ya no es el diagnostico vigente).
+   *
+   * NO ES UN ERROR: su §6 ordena recalcular el diagnostico y no tocar el tratamiento, asi que es la
+   * consecuencia esperada de cumplir la instruccion. Lo que hace falta es DECIRLO, porque si no la
+   * pantalla pone una cosa de hoy al lado de otra de agosto sin avisar. El texto vive en
+   * `avisoDeApoyoAnterior`.
+   */
+  apoyadoEnDiagnosticoAnterior: boolean;
+  /**
    * QUE SE LE HA ENTREGADO AL PACIENTE, de lo mas reciente a lo mas antiguo (2026-09-09).
    *
    * SUSTITUYE A `approved` Y A LOS SELLOS DE REAPERTURA. La prescripcion ya no se bloquea al sellarse:

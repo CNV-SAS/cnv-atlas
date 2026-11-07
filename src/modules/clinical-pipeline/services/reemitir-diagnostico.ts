@@ -11,7 +11,10 @@ import { ENGINE_VERSION } from "@/clinical-engine";
 
 import { buildEmissionVersions } from "../emission-versions";
 import { getDiagnosisEmissionVersions } from "@/modules/diagnoses/data/results-reader";
-import { readActiveModel, readPipelineInputs } from "../data/pipeline-reader";
+import { resolveRutasContent } from "@/clinical-engine/rutas-content";
+import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
+
+import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { simularConCienciaDeHoy } from "../data/simular-con-ciencia-de-hoy";
 import { vigenciaEmision } from "../emision-vigencia";
 
@@ -134,6 +137,19 @@ export async function reemitirDiagnostico(
     return err(appError("internal", "No se pudieron leer los insumos de la evaluación."));
   }
 
+  // ── 2bis. LAS TRES CAPAS QUE SE CONGELAN JUNTO AL EngineOutput ───────────────────────────────────
+  //
+  // Las mismas tres funciones que `run-pipeline`, en el mismo orden y con la misma falla fuerte: un
+  // snapshot a medias es lo que dejo 424 consultas con "0 rutas activas". Ver la nota del `snapshot`.
+  const efrContent = await readEfrContent(model.id, output.efrPhenotype.bands);
+  if (!efrContent) {
+    return err(
+      appError("internal", "El registry no tiene el contenido del estado EFR diagnosticado."),
+    );
+  }
+  const validityCaveats = await getSealedValidityCaveats(input.evaluationId);
+  const rutasContent = resolveRutasContent(output.dfi.rutas);
+
   // ── 3. UNA TRANSACCION: diagnostico nuevo + snapshot nuevo + audit INLINE ────────────────────────
   return await db.transaction(async (tx: DbTransaction) => {
     // El diagnostico VIGENTE de hoy, que pasa a ser el anterior. Se lee DENTRO de la transaccion: entre
@@ -215,12 +231,35 @@ export async function reemitirDiagnostico(
         // nuevos se emiten con la v7, y este es uno nuevo. El ENVIADO es una fila anterior y se queda
         // como esta, con su `sent_at` y su PDF en Storage: no se reenvia (decision de Santiago).
         status: "draft",
+        // ═══ EL SNAPSHOT LLEVA LAS TRES CAPAS QUE EL PIPELINE CONGELA, Y ANTES NO  ·  2026-11-07 ═══
+        //
+        // EL DEFECTO, Y SALIO EN PRODUCCION SOBRE 424 CONSULTAS. Aqui habia un comentario que decia que
+        // "se conserva lo que el pipeline congela junto al EngineOutput"... y el codigo no lo hacia: solo
+        // esparcia `output` y añadia `surveyVersionId`. O sea que el informe nuevo nacia SIN `rutasContent`,
+        // SIN `efrContent` y SIN `validityCaveats`, y los tres lectores los leen con `?? []` / `?? null`.
+        // El resultado en pantalla: "0 rutas activas" en Tratamiento con un diagnostico de riesgo CRITICO,
+        // la hoja de rutas del paciente vacia, las remisiones exigidas de la HC vacias, la evidencia del
+        // estado EFR degradada y la reserva de validez de la medicion desaparecida. Un comentario que
+        // afirma lo que el codigo no hace es peor que no tenerlo: se lee como verificado.
+        //
+        // Y SE RESUELVEN PARA EL DIAGNOSTICO NUEVO, NO SE COPIAN DEL ANTERIOR, que es lo que aquel
+        // comentario proponia. `rutasContent` es el contenido de las rutas ACTIVAS: si se copiara, una
+        // consulta que ahora activa la R4 mostraria el contenido de las rutas viejas al lado de los ids
+        // nuevos, que es la contradiccion de la que salio todo este recalculo. Lo mismo `efrContent`, que
+        // va por las bandas del estado diagnosticado hoy.
+        //
+        // LOS CAVEATS SI SON DEL DIA DE LA TOMA, y por eso se leen de su propia fuente sellada
+        // (`getSealedValidityCaveats`, las condiciones de la medicion BIS), no del snapshot anterior ni
+        // del intake vivo: la reserva del resultado tiene que sobrevivir a la reemision.
+        //
+        // SE LLAMAN LAS MISMAS TRES FUNCIONES QUE `run-pipeline`, en el mismo orden. Dos caminos que
+        // escriben el MISMO snapshot y resuelven sus capas distinto es como se llega aqui.
         snapshot: {
           ...output,
-          // Se conserva lo que el pipeline congela junto al EngineOutput, leido del sellado anterior: el
-          // contenido de las rutas y los caveats de validez son el acto clinico de ESE dia y no se
-          // recalculan aqui. Lo que cambia es la ciencia, no lo que se prescribio.
           surveyVersionId: inputs.surveyVersionId,
+          efrContent,
+          validityCaveats,
+          rutasContent,
         },
         // La banda sellada y su acuse viajan con la version nueva: ver la nota de arriba.
         trajectory: (informeAnterior?.trajectory ?? null) as object | null,
