@@ -600,3 +600,76 @@
   -webkit-mask-image: linear-gradient(to left, #000 0%, transparent 62%);
   mask-image: linear-gradient(to left, #000 0%, transparent 62%);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
+ * LOS TINTES, EN UN NAVEGADOR QUE NO SABE MEZCLAR COLORES  ·  2026-11-06
+ *
+ * ═══ EL CASO (Maria Teresa, Mac) ═══
+ *
+ * Importo un archivo con un valor fuera de rango y el aviso salio como un BLOQUE ROJO SOLIDO con la letra
+ * encima, ilegible. En Windows el mismo aviso es rosa claro con letra roja. Mismo estado, mismo mensaje,
+ * mal pintado.
+ *
+ * ═══ LA CAUSA, LEIDA EN EL CSS COMPILADO ═══
+ *
+ * Tailwind 4 compila una clase con opacidad (`bg-destructive/5`) a DOS reglas:
+ *
+ *     .bg-destructive\/5 { background-color: var(--destructive); }            <- el respaldo, SOLIDO
+ *     @supports (color: color-mix(in lab, red, red)) {
+ *       .bg-destructive\/5 { background-color: color-mix(in oklab, var(--destructive) 5%, transparent); }
+ *     }
+ *
+ * O sea que en un navegador SIN `color-mix()` el respaldo pinta el color ENTERO. Un tinte del 5 % sale
+ * veinte veces mas fuerte de lo que se diseño. `color-mix()` llego en Safari 16.2 y en Chrome 111, asi
+ * que cualquier Mac que no haya actualizado lo ve asi.
+ *
+ * LA PRUEBA ESTA EN SU PROPIA CAPTURA: el aviso verde de al lado ("Condiciones guardadas") se ve bien, y
+ * usa `bg-clinical-optimal-bg`, que es un color SOLIDO sin opacidad. El que se rompe es el que la lleva.
+ *
+ * ═══ POR QUE UN REMEDIO AQUI Y NO 64 EDICIONES ═══
+ *
+ * No es un aviso: son unas 64 superficies con texto encima, y DOS de ellas son graves de verdad:
+ *   · `bg-black/10` es el fondo de TODOS los dialogos: solido tapa la pantalla entera en negro;
+ *   · `bg-white/15` es una etiqueta dentro de una banda oscura: solido deja letra blanca sobre blanco.
+ *
+ * Este bloque solo existe para los navegadores que no saben mezclar (`@supports not`), asi que en uno
+ * moderno NO SE APLICA NUNCA y no puede romper nada. Va SIN `@layer` a proposito: lo no estratificado
+ * gana a lo estratificado, y las utilidades de Tailwind viven en `@layer utilities`.
+ *
+ * LO QUE NO SE TOCA, Y POR QUE: `bg-muted/*` e `bg-input/*` tiñen con grises que ya son casi blancos, y
+ * las opacidades altas (80 y 90 %) se parecen a su solido. Ahi la diferencia no se ve; aqui solo entra lo
+ * que deja un texto ilegible.
+ *
+ * EL CANDADO `los-tintes-aguantan-un-navegador-viejo` exige que toda clase de FONDO con opacidad baja que
+ * se use en la app este cubierta aqui: una nueva sin cubrir vuelve a romper la misma pantalla.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════════ */
+@supports not (color: color-mix(in lab, red, red)) {
+  /* Los dos overlays puros se arreglan con `rgba()`, que entiende cualquier navegador. */
+  .bg-black\/10 {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+  .bg-white\/15 {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+  /* Y los tintes semanticos caen a su fondo claro, que es el color que la mezcla pretendia dar. */
+  .bg-destructive\/5,
+  .bg-destructive\/10,
+  .bg-destructive\/20,
+  .bg-destructive\/30 {
+    background-color: var(--clinical-critical-bg);
+  }
+  .bg-clinical-optimal\/10 {
+    background-color: var(--clinical-optimal-bg);
+  }
+  .bg-primary\/5,
+  .bg-primary\/8,
+  .bg-primary\/10,
+  .bg-primary\/15,
+  .bg-nav-accent\/5 {
+    background-color: var(--franja-nivel);
+  }
+  .bg-clinical-warning\/10,
+  .bg-attention\/15 {
+    background-color: var(--attention-bg);
+  }
+}

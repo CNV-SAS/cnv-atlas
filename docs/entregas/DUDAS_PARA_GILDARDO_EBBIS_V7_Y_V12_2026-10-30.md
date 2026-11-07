@@ -30,6 +30,47 @@ hoy hace lo que dice la pregunta, así que si su respuesta es otra, se cambia.
 
 ## A · Las que frenan trabajo
 
+### 19 · Una cadera mal tecleada: ¿se repite la toma, o Atlas deja corregirla? **[FRENA UNA CONSULTA REAL]**
+
+**El caso, de hoy.** Una profesional escribió **1020** en la cadera (un dedo de más en el teclado). Atlas
+frenó la importación, que es lo correcto. Pero no hay forma de corregir ese número sin volver a tomar la
+bioimpedancia, y **la paciente ya se había ido**. La consulta quedó sin diagnóstico.
+
+**Lo que medimos antes de preguntarle, para que decida con datos:**
+
+**1 · En el ARCHIVO del Biody Manager no hay nada derivado de cintura ni de cadera.** Revisamos las 117
+columnas del export de esa paciente: `Hips Size cm` y `Waist Size cm` son datos hoja. No existe una
+columna de índice cintura-cadera, ni ninguna otra que cambie si se corrige una de las dos. (Las tres
+columnas con la palabra *ratio* son bioeléctricas: impedancia, ECW/ICW y ECM/BCM.)
+
+**Lo que no podemos saber desde aquí es si el Biody Manager las usa por dentro** para algo que no exporta:
+su propio informe, su interpretación, o un indicador que usted lea allá. Esa mitad es suya.
+
+**2 · En ATLAS sí dependen dos razones, y una es clínica.** Atlas calcula `ICC = cintura/cadera` y
+`ICT = cintura/talla`. **El ICC es uno de los seis disparadores de la ruta R2** (corte 0,90 en hombres y
+0,85 en mujeres). Con la cadera en 1020 el ICC da 0,08: ese disparador quedaría apagado y nadie lo notaría.
+O sea que la cadera **no es un dato de adorno en Atlas**, y por eso el freno acertó.
+
+**Las tres salidas:**
+
+| | Qué pasa | Qué queda en el Biody Manager |
+|---|---|---|
+| **A** | Siempre se repite la toma. | Igual que Atlas. |
+| **B** | Atlas deja corregir o completar cintura y cadera después de importar, con motivo y guardando el valor original. | **Con el dato viejo.** Para investigación, la fuente pasa a ser Atlas. |
+| **C** | Se corrige en el Biody Manager y se reexporta; en Atlas se reemplaza la medición con motivo. | Igual que Atlas. |
+
+**Nuestra recomendación: C**, si el Biody Manager deja editar y reexportar sin volver a medir (Santiago lo
+verifica en el programa). Si no deja, **B**.
+
+**Y la C ya está construida**, que es lo que la hace barata: un archivo reexportado trae las mismas
+lecturas eléctricas, así que el freno de huella repetida lo reconocería. Desde el 5 de noviembre ese freno
+**avisa, pide un motivo y deja seguir**, y el acto queda en el rastro clínico donde dirección lo ve. No
+hay que construir nada para la C: solo decir que se puede usar así.
+
+**Mientras tanto** la consulta de esa paciente queda como está, y la guía de profesionales no se toca
+hasta que usted responda.
+
+
 ### 1 · ¿`escalaAniosPorDE = 5` es definitivo?
 
 Su propio código lo marca `// provisional`, y es el factor que convierte desviaciones estándar en años, o
