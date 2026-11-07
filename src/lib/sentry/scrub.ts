@@ -95,11 +95,27 @@ export function scrubPhiFromEvent(event: ErrorEvent): ErrorEvent {
     }
   }
 
-  // 5. breadcrumbs: redactar su data (los mensajes no deben construirse con PHI).
+  // 5. BREADCRUMBS: su data POR CLAVE, y ademas todo texto por si trae un error de consulta.
+  //
+  // AQUI SE ESCAPO UNO, Y SE VIO EN PRODUCCION (2026-11-07). El evento del trigger de `reports` llego con
+  // el titulo bien redactado (`params: [redacted-phi]`, que lo hace el punto 6) y con un breadcrumb de
+  // CONSOLA que llevaba la consulta completa con sus parametros: el contenido de las cuatro rutas de
+  // atencion, entero. Esa vez era contenido clinico generico, no de un paciente; con otro `update` habria
+  // sido el dato de una persona.
+  //
+  // El supuesto que fallo esta escrito en la linea que habia aqui: *"los mensajes no deben construirse con
+  // PHI"*. Es verdad para los breadcrumbs que escribimos nosotros, y FALSO para los que escribe el SDK: la
+  // integracion de consola copia el texto del error tal cual, y Drizzle pone los parametros en ese texto.
+  // Asi que el mensaje se redacta con la misma funcion que las excepciones, y los valores de texto de la
+  // data tambien (un `console.error(err)` deja el mensaje crudo en `data.arguments`, y "arguments" no
+  // parece PHI por su nombre).
   if (event.breadcrumbs) {
-    event.breadcrumbs = event.breadcrumbs.map((b) =>
-      b.data ? { ...b, data: redactDeep(b.data) as typeof b.data } : b,
-    );
+    event.breadcrumbs = event.breadcrumbs.map((b) => {
+      const limpio = { ...b };
+      if (typeof b.message === "string") limpio.message = redactarTextoDeError(b.message);
+      if (b.data) limpio.data = redactarTextos(redactDeep(b.data)) as typeof b.data;
+      return limpio;
+    });
   }
 
   // 6. EL TEXTO DE LAS EXCEPCIONES (2026-09-15). Aqui no se miraba, y una consulta que falla lo llena de datos:
@@ -116,7 +132,32 @@ export function scrubPhiFromEvent(event: ErrorEvent): ErrorEvent {
 }
 
 export function redactarTextoDeError(texto: string): string {
-  return texto
-    .replace(/(\nparams: )[\s\S]*$/, `$1${REDACTED}`)
-    .replace(/(invalid input (?:syntax|value) for [^:\n]*: )"[^"\n]*"/g, `$1"${REDACTED}"`);
+  return (
+    texto
+      // `\b` Y NO `\n` (2026-11-07): el breadcrumb de consola trae el mismo texto pero no siempre con el
+      // salto de linea delante, asi que el ancla estricta lo dejaba pasar entero. Si un error legitimo
+      // menciona "params: " pierde su cola, y es el intercambio correcto: ante la duda se redacta.
+      .replace(/(\bparams:\s)[\s\S]*$/, `$1${REDACTED}`)
+      .replace(/(invalid input (?:syntax|value) for [^:\n]*: )"[^"\n]*"/g, `$1"${REDACTED}"`)
+  );
+}
+
+/**
+ * Pasa `redactarTextoDeError` por CADA cadena de una estructura, sin mirar su clave.
+ *
+ * Es el complemento de `redactDeep`, que redacta por NOMBRE de clave: un error de consulta viaja en
+ * valores cuya clave es benigna (`arguments`, `message`, `0`), asi que el nombre no lo atrapa nunca.
+ */
+function redactarTextos(valor: unknown, depth = 0): unknown {
+  if (valor == null || depth > 6) return valor;
+  if (typeof valor === "string") return redactarTextoDeError(valor);
+  if (Array.isArray(valor)) return valor.map((v) => redactarTextos(v, depth + 1));
+  if (typeof valor === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(valor as Record<string, unknown>)) {
+      out[k] = redactarTextos(v, depth + 1);
+    }
+    return out;
+  }
+  return valor;
 }

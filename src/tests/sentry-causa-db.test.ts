@@ -51,4 +51,33 @@ describe.skipIf(!HAS_DB)("la causa de un fallo de consulta (BD real)", () => {
     expect(textos).toContain("invalid input syntax for type uuid");
     expect(textos, "el documento viajo a Sentry").not.toContain(DOCUMENTO);
   });
+
+  // ═══ Y TAMPOCO POR EL BREADCRUMB DE CONSOLA (2026-11-07) ═══
+  //
+  // El evento del trigger de `reports` llego con el titulo bien redactado y con un breadcrumb de CONSOLA
+  // que llevaba la consulta COMPLETA con sus parametros. El supuesto que fallo estaba escrito en el
+  // scrubber: "los mensajes no deben construirse con PHI". Es verdad para los nuestros y falso para los
+  // del SDK, que copian el texto del error, y Drizzle pone los parametros en ese texto.
+  it("ni por el breadcrumb de consola, que copia el texto del error tal cual", async () => {
+    const { db } = await import("@/db");
+    const error = (await db.execute(sql`select ${DOCUMENTO}::uuid`).then(
+      () => null,
+      (e: unknown) => e,
+    )) as Error;
+    const crudo = error.message;
+    expect(crudo, "CONTROL: el texto crudo SI trae el parametro").toContain(DOCUMENTO);
+
+    const evento = scrubPhiFromEvent({
+      breadcrumbs: [
+        // La forma que manda la integracion de consola de Sentry: el texto en `message` y los argumentos
+        // crudos en `data.arguments`, cuya clave no parece PHI por su nombre.
+        { category: "console", level: "error", message: crudo, data: { arguments: [crudo] } },
+      ],
+    } as unknown as ErrorEvent);
+
+    const todo = JSON.stringify(evento.breadcrumbs);
+    expect(todo, "el breadcrumb de consola llevo el parametro a Sentry").not.toContain(DOCUMENTO);
+    // Y lo que SI se conserva, que es lo que sirve para diagnosticar: la consulta.
+    expect(todo).toContain("Failed query:");
+  });
 });
