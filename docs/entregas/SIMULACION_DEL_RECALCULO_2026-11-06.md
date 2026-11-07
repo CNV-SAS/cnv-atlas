@@ -152,13 +152,23 @@ con el directorio de ocho caracteres a nombre que **no va a git**. Son 174 segun
 
 ---
 
-## 2 · Los 106 con rutas que cambian: el tratamiento prescrito no se puede tocar
+## 2 · Los 106 con rutas que cambian: la prescripción no se toca
 
-**No es una convención nuestra, lo impide la base de datos.** El trigger `treatments_immutability`
-(migración 0026) lanza excepción ante cualquier intento de cambiar `protocol_approved`, `kcal_objetivo`,
-`proteina_g`, los ajustes o `approved_by/at` de un tratamiento en estado `approved`. Y `protocol_suggested`
-es **write-once** incluso en borrador. Textual del trigger: *"La prescripción de un protocolo aprobado es
-inmutable: se corrige por versión nueva."*
+**Corrijo una cosa que escribí en la ronda anterior.** Dije que una prescripción aprobada es *"inmutable a
+nivel de base (trigger de la 0026)"*. Eso **dejó de ser cierto el 9 de septiembre**: la migración 0116
+retiró la rama del congelado (y la de la reapertura con motivo) porque la prescripción pasó a estar
+**siempre abierta** y lo que conserva lo entregado es la copia de cada emisión, no que nadie edite. Lo que
+sí sigue en pie del trigger: **`protocol_suggested` es write-once** (es la salida del motor, regla dura 7)
+y **no se borra** un protocolo que ya salió hacia un paciente.
+
+**Lo que de verdad protege la prescripción en el recálculo es que la reemisión no la toca.** No escribe en
+`treatments`, y eso es lo que está con candado.
+
+**Y tiene una consecuencia que hay que decir:** como `protocol_suggested` es write-once, la **sugerencia
+sellada del motor** (incluida la de nutracéuticos) sigue siendo la que se calculó con la cifra anterior, y
+no se reescribe. Queda como registro de lo que se sugirió ese día. Si la profesional quiere que la
+prescripción refleje el diagnóstico nuevo, la ajusta y la guarda: está abierta. Eso es lo que dice el aviso
+nuevo de Tratamiento.
 
 **Y la reemisión no lo intenta siquiera:** no toca `treatments`, y el `diagnosis_id` del tratamiento sigue
 apuntando al diagnóstico anterior a propósito. De ahí se **deriva** la marca de "este tratamiento está
@@ -177,6 +187,13 @@ banda, así que todas disparan el aviso. **No hay nada que preguntarle a Gildard
 **Lo que falta, y es tuyo:** abrir en el navegador una de las 47 que pasan a acelerado y ver el banner con
 la ruta R4 nueva. Los ids están en `envejecimiento.pasaAAcelerado.cuales`. El smoke humano es la única
 verificación que atrapa lo que ni tsc ni los tests ven.
+
+> **Y lo atrapó.** Al abrir `ed83ff97` después de ejecutar, Tratamiento decía **"0 rutas activas"** con un
+> diagnóstico de riesgo CRÍTICO. La causa no era el `diagnosis_id` del tratamiento: el snapshot de la
+> reemisión se escribía **sin las tres capas que el pipeline congela** (`rutasContent`, `efrContent`,
+> `validityCaveats`), y los lectores las toman con `?? []`, así que nada falló y cinco superficies
+> quedaron vacías. Arreglado el servicio, con candado, y hay una reparación para los 424 informes que ya
+> se escribieron: el bloque de arriba de `/admin/recalibración`. No cambia ninguna cifra.
 
 ---
 
