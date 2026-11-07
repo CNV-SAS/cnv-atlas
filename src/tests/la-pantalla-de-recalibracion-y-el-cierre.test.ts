@@ -123,6 +123,25 @@ describe("(3 bis) los motivos salen de donde ya viven, no de una copia", () => {
     });
   });
 
+  it("y la pantalla ofrece EXACTAMENTE lo que el guard de la reemision acepta", () => {
+    // ERAN DOS PUERTAS, Y YA HABIAN DIVERGIDO (2026-11-07). La pantalla filtraba por MAYOR distinto y
+    // `reemitirDiagnostico` decide con `vigenciaEmision` (la cadena entera del motor mas las claves de
+    // emision). En la nube hay una consulta sellada con 3.1.0 teniendo 3.2.0 vigente: mismo mayor, asi que
+    // la pantalla NO la ofrecia, y su aviso de "emitido con una version anterior" no se podia quitar nunca.
+    const codigo = sinComentarios(LECTOR);
+    expect(codigo).toContain("vigenciaEmision(");
+    expect(codigo).toContain("!e.vigencia.alDia");
+    expect(codigo, "la pantalla volvio a filtrar por el mayor").not.toContain("mayor(e.selladaCon)");
+    // Y el guard sigue decidiendo con la misma funcion, no con una copia.
+    const servicio = readFileSync(
+      "src/modules/clinical-pipeline/services/reemitir-diagnostico.ts",
+      "utf8",
+    );
+    expect(servicio).toContain("vigenciaEmision(");
+    // La simulacion tambien, para que su cifra cuadre con lo que la pantalla lista.
+    expect(SIMULACION).toContain("vigenciaEmision(");
+  });
+
   it("UNA SOLA PUERTA: la pantalla y la simulacion llaman a la MISMA funcion", () => {
     // Era el defecto que ya aparecio con la guarda de "sin dominio 3" del freno: escrita dos veces, y las
     // dos copias ya discrepaban. Aqui la consecuencia seria que la simulacion midiera un conjunto y la

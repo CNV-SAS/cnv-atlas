@@ -1,7 +1,10 @@
 import "server-only";
 
-import { ENGINE_VERSION } from "@/clinical-engine";
 import { huellasRepetidasEnVigentes } from "@/modules/bis/data/huellas-repetidas-reader";
+import {
+  vigenciaEmision,
+  type VigenciaEmision,
+} from "@/modules/clinical-pipeline/emision-vigencia";
 import { motivoParaNoReemitir } from "@/modules/clinical-pipeline/motivo-para-no-reemitir";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -48,6 +51,8 @@ export type EvaluacionDesfasada = {
   evaluationId: string;
   /** La version del motor con la que esta sellado su diagnostico vigente. */
   selladaCon: string;
+  /** Qué dimensiones se movieron desde que se emitió. Es lo que decide si la fila sale en la pantalla. */
+  vigencia: VigenciaEmision;
   /** Fecha del diagnostico vigente, para ordenar y para que se vea de cuando es. */
   fecha: string;
   /** Si su paciente cuenta como de prueba: se muestran, plegadas en una linea, y NO se reemiten. */
@@ -73,7 +78,7 @@ export async function evaluacionesDesfasadas(): Promise<EvaluacionDesfasada[]> {
     // la vuelve un string cualquiera: entonces las filas pasan a GenericStringError y tsc se queja de
     // cada campo. Partirla para que quepa en la linea cuesta la verificacion de tipos entera.
     .select(
-      "evaluation_id, engine_version, created_at, evaluations!inner(patients!inner(cuenta_como_de_prueba, patient_profiles(birth_date)), bis_measurements(measurement_date))",
+      "evaluation_id, engine_version, emission_versions, created_at, evaluations!inner(patients!inner(cuenta_como_de_prueba, patient_profiles(birth_date)), bis_measurements(measurement_date))",
     )
     .order("created_at", { ascending: false })
     .limit(2000);
@@ -109,6 +114,10 @@ export async function evaluacionesDesfasadas(): Promise<EvaluacionDesfasada[]> {
     vigentePorEvaluacion.set(id, {
       evaluationId: id,
       selladaCon: (fila.engine_version as string) ?? "(sin version)",
+      vigencia: vigenciaEmision({
+        engineVersion: (fila.engine_version as string) ?? null,
+        emissionVersions: (fila.emission_versions as Record<string, unknown> | null) ?? null,
+      }),
       fecha: String(fila.created_at).slice(0, 10),
       esDePrueba: ev?.patients?.cuenta_como_de_prueba === true,
       motivoSinReemitir: motivoParaNoReemitir({
@@ -120,12 +129,19 @@ export async function evaluacionesDesfasadas(): Promise<EvaluacionDesfasada[]> {
     });
   }
 
-  // DESFASADA = su MAYOR no es el de hoy. Se compara el mayor y no la cadena entera porque es el criterio
-  // que ya rige la comparabilidad (`docs/VERSIONES.md`): 1.x y 2.x no se comparan, 2.0.0 y 2.1.0 si.
-  const mayor = (v: string) => /(\d+)\./.exec(v)?.[1] ?? null;
-  const hoy = mayor(ENGINE_VERSION);
+  // ═══ DESFASADA = LO MISMO QUE DICE EL GUARD DE LA REEMISION, Y ANTES ERAN DOS COSAS  ·  2026-11-07 ═══
+  //
+  // Esto filtraba por MAYOR distinto, y `reemitirDiagnostico` decide con `vigenciaEmision` (la cadena
+  // entera del motor mas las claves de `emission_versions`). Dos puertas para la misma pregunta, y ya
+  // divergieron: en la nube hay una consulta sellada con **3.1.0** teniendo 3.2.0 vigente. Su mayor es el
+  // mismo, asi que la pantalla NO la ofrecia; su version si cambio, asi que el aviso de "emitido con una
+  // version anterior" se le queda para siempre y nadie puede quitarlo. El guard la habria aceptado.
+  //
+  // Ahora la pantalla ofrece exactamente lo que el guard acepta. El mayor sigue decidiendo la
+  // COMPARABILIDAD (`docs/VERSIONES.md`, `sonComparables`), que es otra pregunta: si dos emisiones se
+  // pueden poner una al lado de la otra. Reemitir no compara nada.
   return [...vigentePorEvaluacion.values()]
-    .filter((e) => mayor(e.selladaCon) !== hoy)
+    .filter((e) => !e.vigencia.alDia)
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
