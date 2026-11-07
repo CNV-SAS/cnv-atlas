@@ -103,7 +103,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
       "@/modules/clinical-pipeline/data/pipeline-reader"
     );
     const { buildEngineInput } = await import("@/modules/clinical-pipeline/services/build-engine-input");
-    const { lecturaDelDfi, lecturaDeLaEbBis, seContradicen } = await import(
+    const { hayDosLecturas, lecturaDelDfi, lecturaDeLaEbBis, seContradicen } = await import(
       "@/modules/reports/data/freno-de-la-contradiccion"
     );
     const { veredictoDeReemision } = await import("@/modules/clinical-pipeline/reemision");
@@ -147,6 +147,11 @@ describe("simulacion del recalculo del motor 3.x", () => {
       // 3.x hay una sola. Es el MISMO criterio del freno de verdad, leido de su modulo.
       const iae = sellado.indicators?.iae ?? null;
       if (!motor.startsWith("2.") || iae == null) continue;
+      // SIN DOMINIO 3 NO HAY DOS LECTURAS, y por eso el freno de verdad deja pasar esa consulta. La
+      // guarda se lee de SU modulo: escrita aqui a mano, la simulacion contaba de mas (un `sev` nulo lo
+      // lee `lecturaDelDfi` como "no acelerado") y el numero habria dicho que el freno retiene consultas
+      // que no retiene.
+      if (!hayDosLecturas(sev(sellado, "d3"), lect(sellado, "d3"))) continue;
       const frenada = seContradicen({
         iae,
         segunLaEbBis: lecturaDeLaEbBis(iae),

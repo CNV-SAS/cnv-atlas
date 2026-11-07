@@ -6,7 +6,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 vi.mock("server-only", () => ({}));
 
-const { seContradicen } = await import("@/modules/reports/data/freno-de-la-contradiccion");
+const { hayDosLecturas, seContradicen } = await import("@/modules/reports/data/freno-de-la-contradiccion");
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // CANDADO: UN DOCUMENTO QUE SE CONTRADICE SOBRE EL ENVEJECIMIENTO NO SALE  ·  2026-11-03
@@ -54,6 +54,16 @@ describe("las dos lecturas del envejecimiento", () => {
     ).toBe(false);
   });
 
+  it("la guarda de 'sin dominio 3' vive en una sola puerta, y los dos lectores la usan", () => {
+    // ENCONTRADO EL 2026-11-07 comparando la medicion a mano con la simulacion. Sin dominio 3 no hay
+    // segunda lectura, y el freno deja pasar la consulta. La simulacion escribia esa guarda por su cuenta
+    // y le faltaba, asi que contaba como frenada una consulta que el freno no retiene (`lecturaDelDfi` lee
+    // un `sev` nulo como 0, o sea "no acelerado"). Tres lineas escritas dos veces y ya divergian.
+    expect(hayDosLecturas(null, null)).toBe(false);
+    expect(hayDosLecturas(0, null)).toBe(true);
+    expect(hayDosLecturas(null, "envejecimiento acelerado")).toBe(true);
+  });
+
   it("sin dos lecturas que comparar no se frena nada", () => {
     // Un documento sellado con un motor anterior a la v7 no puede tener esta contradicción: las dos
     // lecturas salían del MISMO cálculo. Frenarlo sería frenar por un defecto que no tiene.
@@ -87,6 +97,10 @@ describe("el freno vive donde no se puede saltar, y la pantalla lo dice antes", 
     // podrían divergir y el freno compararía contra un corte que la pantalla ya no usa.
     expect(FRENO).toContain("BANDA_IAE_ANIOS");
     expect(FRENO, "el corte se escribió a mano").not.toMatch(/>=\s*5\b/);
+  });
+
+  it("y el freno USA esa puerta, no su propia copia de la guarda", () => {
+    expect(FRENO).toContain("if (!hayDosLecturas(fila.sev_d3, fila.lectura_d3)) return null;");
   });
 
   it("solo mira los documentos sellados con la v7", () => {

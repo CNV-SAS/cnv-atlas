@@ -93,6 +93,19 @@ export function lecturaDelDfi(
 }
 
 /**
+ * ¿HAY DOS LECTURAS QUE COMPARAR? Sin dominio 3 en el DFI no la hay, y entonces el freno no aplica.
+ *
+ * SE EXPORTA POR LA MISMA RAZON QUE LAS DOS DE ABAJO (2026-11-07), y esta la encontre comparando mi propia
+ * medicion con la simulacion: la simulacion contaba como "frenada" una consulta SIN dominio 3 (porque
+ * `lecturaDelDfi` lee un `sev` nulo como 0, o sea "no acelerado"), y el freno de verdad la deja pasar. O
+ * sea que la simulacion habria contado de MAS, y el numero se habria leido como si el freno retuviera
+ * consultas que no retiene. Tres lineas de guarda escritas dos veces y ya divergian.
+ */
+export function hayDosLecturas(sevD3: number | null, lecturaD3: string | null): boolean {
+  return sevD3 != null || lecturaD3 != null;
+}
+
+/**
  * LO QUE LA EB-BIS DICE, en la banda de su tabla 3.
  *
  * EL CORTE SALE DEL MOTOR (`BANDA_IAE_ANIOS`) y no se escribe aqui: es el mismo que decide el texto que el
@@ -168,8 +181,7 @@ export async function lasDosLecturasDeEnvejecimiento(
 
   const iae = Number(fila.iae);
   if (!Number.isFinite(iae)) return null;
-  // Sin dominio 3 no hay segunda lectura que comparar.
-  if (fila.sev_d3 == null && fila.lectura_d3 == null) return null;
+  if (!hayDosLecturas(fila.sev_d3, fila.lectura_d3)) return null;
 
   return {
     iae,
