@@ -99,10 +99,18 @@ const QUE_ES_ESTA_VERSION: Record<string, { texto: string; fecha: string }> = {
   "3.0.0": {
     texto:
       "El diagnóstico integrado ahora usa la misma edad biológica que ves en el informe, así que ya no " +
-      "pueden decir cosas distintas sobre el envejecimiento del paciente, y el área de envejecimiento " +
-      "aparece también cuando la encuesta está a medias. Y el puntaje de alimentación cambió: las carnes " +
-      "rojas y los embutidos ya no suman, los huevos sí, y un consumo frecuente de embutidos no puede " +
-      "quedar en Adecuado.",
+      "pueden decir cosas distintas sobre el envejecimiento del paciente. Además, el área de " +
+      "envejecimiento aparece también cuando la encuesta está a medias.",
+    fecha: "2026-11-06",
+  },
+  // LA 3.1.0 SE SEPARO DE LA 3.0.0 PORQUE LA 3.0.0 YA SE HABIA EMPUJADO (ver `version.ts`): dejarlas
+  // juntas habría hecho que una misma versión cubriera dos cálculos del ICEC. Para el profesional son dos
+  // avisos distintos y eso también es correcto: el de arriba habla del envejecimiento, este de la comida.
+  "3.1.0": {
+    texto:
+      "El puntaje de alimentación cambió, por decisión de la Dirección Científica: las carnes rojas y los " +
+      "embutidos ya no suman, los huevos sí, y un consumo frecuente de embutidos no puede quedar en " +
+      "Adecuado. Afecta al índice de estilo de vida, no a la edad biológica.",
     fecha: "2026-11-06",
   },
 };

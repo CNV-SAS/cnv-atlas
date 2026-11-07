@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 process.loadEnvFile(".env.local");
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// SIMULACION DEL RECALCULO DEL MOTOR 3.0.0  ·  SOLO LECTURA  ·  2026-11-06
+// SIMULACION DEL RECALCULO DEL MOTOR 3.0.0 + 3.1.0  ·  SOLO LECTURA  ·  2026-11-06
 //
 // NO ES UN CANDADO: no afirma que una cifra sea correcta. MIDE cuanto se movera la cohorte si se ejecuta
 // el recalculo, para que Santiago pueda aprobarlo (o no) con las cifras delante. Es el mismo genero que
@@ -13,10 +13,13 @@ process.loadEnvFile(".env.local");
 //
 // ═══ QUE HAY QUE DECIDIR, Y POR ESO QUE SE MIDE ESTO ═══
 //
-// El motor subio a 3.0.0 con DOS cambios: el DFI pasa a leer la EB-BIS de la v7 (CA-3, su v15) y el
-// puntaje de alimentacion del ICEC se re-porto de su v16 §4.2. Las dos mueven el DIAGNOSTICO, y lo ya
-// emitido NO se reescribe (regla 7): se reemite. Asi que antes de ejecutar hace falta saber a cuantos
+// El motor subio DOS veces el mismo dia: a 3.0.0 (el DFI pasa a leer la EB-BIS de la v7: CA-3, su v15) y a
+// 3.1.0 (el puntaje de alimentacion del ICEC, re-portado de su v16 §4.2). Las dos mueven el DIAGNOSTICO, y
+// lo ya emitido NO se reescribe (regla 7): se reemite. Asi que antes de ejecutar hace falta saber a cuantos
 // pacientes toca, que se les mueve, y cuantos de los frenados quedan libres.
+//
+// POR QUE SON DOS VERSIONES Y NO UNA: la 3.0.0 ya se habia empujado cuando se porto el calcPatron, asi que
+// meterlo dentro habria hecho que una misma version cubriera dos calculos del ICEC. Ver `version.ts`.
 //
 // ═══ NO ESCRIBE NADA, Y ESO ES LA MITAD DEL DISEÑO ═══
 //
@@ -55,7 +58,7 @@ type Snap = {
   versions?: { engine?: string };
 };
 
-describe("simulacion del recalculo del motor 3.0.0", () => {
+describe("simulacion del recalculo del motor 3.0.0 y 3.1.0", () => {
   it("mide a cuantos toca, que se mueve, y cuantos frenados se liberan", async () => {
     const { db } = await import("@/db");
     const schema = await import("@/db/schema");

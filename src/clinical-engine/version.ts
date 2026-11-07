@@ -152,11 +152,39 @@
 // LO EMITIDO ANTES NO SE REESCRIBE (regla 7): vive en su snapshot con su version. El RECALCULO de las
 // evaluaciones limpias va aparte, con su simulacion previa.
 //
-// ─── Y LA SEGUNDA MITAD DE LA MISMA 3.0.0: EL PUNTAJE DE ALIMENTACION (su v16 §4.2) ───
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// 3.1.0 (2026-11-06) · EL PUNTAJE DE ALIMENTACION DEL ICEC (su v16 §4.2)
 //
-// Entra en el MISMO mayor a proposito. Las dos mueven el mismo snapshot y las dos son del mismo motor;
-// partirlas en 3.0.0 y 4.0.0 obligaria a recalcular la cohorte dos veces y a dejar un mayor intermedio
-// que nunca estuvo en produccion. El plan lo dice asi: un bump, un recalculo, un juego de goldens.
+// ═══ POR QUE NO VA DENTRO DE LA 3.0.0, QUE ES COMO SE ESCRIBIO PRIMERO ═══
+//
+// Se escribio como "la segunda mitad de la 3.0.0", con un argumento correcto: las dos mueven el mismo
+// snapshot, las dos son del mismo motor, y el plan pedia un bump, un recalculo, un juego de goldens.
+//
+// LO QUE INVALIDA ESE ARGUMENTO ES UN HECHO, NO UNA OPINION: **la 3.0.0 YA SE EMPUJO** (Santiago, el
+// 2026-11-06 a las 21:00; `git reflog show origin/main` lo tiene como "update by push"). Asi que desde ese
+// momento la nube puede estar sellando consultas con `engine: "3.0.0"` y el `calcPatron` del v8. Dejar el
+// re-porte dentro de la 3.0.0 haria que **una misma cadena de version cubriera dos matematicas**, y eso es
+// exactamente lo que la constelacion de versiones (regla 7) existe para que no pase: un diagnostico de
+// esta tarde no se podria describir entero.
+//
+// Un bump cuesta una linea. Averiguar despues cual de los dos calculos sello un snapshot no se puede.
+//
+// ═══ POR QUE MENOR Y NO MAYOR ═══
+//
+// `docs/VERSIONES.md`: *"Mayor = la ciencia cambia y lo emitido antes no es comparable"*. La ciencia
+// cambia, si. Pero lo emitido antes SIGUE siendo comparable, y eso se puede sostener con la medicion:
+//
+//  · El ICEC se mueve UN PUNTO (simulacion del 2026-11-06, grupo del mayor 2: -1 exacto en las 62 de 62).
+//  · El dominio 5, que es por donde el ICEC entra al diagnostico, no se movio en NINGUNA de esas 62.
+//  · Y LO QUE LA COMPARABILIDAD PROTEGE DE VERDAD es la resta de dos EB-BIS, que es lo que el paciente lee
+//    como "mejoro" o "empeoro" (`sonComparables`, followups/eb-trajectory). El ICEC **no entra** al calculo
+//    de la v7 (su §1.2), asi que esta version no toca esa resta ni por un decimal.
+//
+// LO QUE SI QUEDA EXPUESTO, Y SE DICE: con el mayor igual, `sonComparables` dejara restar un dominio 5 de
+// 3.0.0 contra uno de 3.1.0, calculados con dos ICEC distintos. Medido, la diferencia no movio ninguna
+// severidad; si manana moviera alguna, el sitio de esa decision es este comentario y no un hallazgo.
+//
+// ─── QUE TRAE ───
 //
 // QUE PASO: una nutricionista reporto que la encuesta presentaba las carnes rojas y los embutidos como
 // PROTECTORAS. Gildardo lo verifico en su HTML y en Atlas, la causa era la misma en los dos, y la corrige
@@ -186,7 +214,7 @@
 // leerse distinto hoy. Es la misma familia que el efecto sella-vs-computa de la Δ (CA-2 del registro de
 // opcion B), y es aceptable por la misma razon: el que cambia es el que estaba mal, y es el defecto que
 // Gildardo esta corrigiendo. El ICEC SELLADO de las consultas viejas no se toca.
-export const ENGINE_VERSION = "3.0.0";
+export const ENGINE_VERSION = "3.1.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada

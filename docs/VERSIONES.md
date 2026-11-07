@@ -20,7 +20,7 @@ tabla dice qué significaba.
 
 | Artefacto | Formato | Hoy | Dónde vive |
 |---|---|---|---|
-| Motor clínico | **semver de tres** | `3.0.0` | `ENGINE_VERSION` (`src/clinical-engine/version.ts`) |
+| Motor clínico | **semver de tres** | `3.1.0` | `ENGINE_VERSION` (`src/clinical-engine/version.ts`) |
 | Conjunto de protocolo | **semver de tres** | `1.0.0` | `PROTOCOL_ENGINE_VERSION` (mismo archivo) |
 | Modelo | **semver de tres** | `1.0.0` | fila de `model_versions` (`version_name`) |
 | Reglas | **semver de tres** | `1.0.0` | fila de `model_versions` (`rules_version`) |
@@ -41,15 +41,23 @@ v5 necesitaba el ICEC, así que una consulta con la encuesta a medias se quedaba
 envejecimiento; la v7 no lo necesita. El detalle está en `version.ts` y la autorización en
 `CAMBIOS_AUTORIZADOS.md` **CA-3**.
 
-**Y la misma 3.0.0 lleva una segunda mitad: el puntaje de alimentación del ICEC** (su v16 §4.2). Una
+**El motor subió a 3.1.0 el mismo 2026-11-06: el puntaje de alimentación del ICEC** (su v16 §4.2). Una
 nutricionista reportó que la encuesta presentaba las carnes rojas y los embutidos como protectoras;
 Gildardo lo verificó en su archivo y en Atlas, y lo corrigió. `calcPatron` se re-portó de su `ATLAS_v16.html`
 del 4 de noviembre: entran los siete grupos protectores (los huevos no puntuaban), los embutidos se
 penalizan al doble, las carnes rojas dejan de sumar por comerlas a menudo, y con embutidos de 3 a 4 días o
-más el puntaje se topa en 54. Va en el MISMO mayor porque mueve el mismo snapshot y es del mismo motor:
-**un bump, un recálculo, un juego de goldens**. Toca el ICEC y por él el dominio 5 del DFI, pero **no toca
-la edad biológica**, porque en la v7 el ICEC ya no entra al cálculo. Los valores esperados son los siete
-casos de su §5, no nuestros.
+más el puntaje se topa en 54. Los valores esperados son los siete casos de su §5, no nuestros.
+
+**Se escribió primero como "la segunda mitad de la 3.0.0", y se separó por un hecho:** la 3.0.0 **ya se
+había empujado** (21:00 del mismo día), así que la nube puede estar sellando consultas con `3.0.0` y el
+cálculo anterior. Dejar el re-porte dentro de la 3.0.0 haría que **una misma versión cubriera dos
+matemáticas**, que es justo lo que la constelación de versiones existe para impedir. Un bump cuesta una
+línea; averiguar después cuál de los dos cálculos selló un snapshot no se puede.
+
+**Y es MENOR, no mayor, y eso se sostiene con la medición:** el ICEC se mueve un punto (−1 exacto en las 62
+consultas del grupo del mayor 2), el dominio 5 no se movió en ninguna de esas 62, y lo que la
+comparabilidad protege de verdad es la resta de dos EB-BIS, que esta versión **no toca**, porque en la v7 el
+ICEC ya no entra al cálculo.
 
 **El recálculo de lo ya emitido va aparte, con su simulación previa.**
 
