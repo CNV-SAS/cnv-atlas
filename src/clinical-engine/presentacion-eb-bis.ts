@@ -187,3 +187,57 @@ function enEspanol(n: number, decimales = 1): string {
     maximumFractionDigits: decimales,
   });
 }
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA ALERTA CONTEXTUAL  ·  v15, su decision 4 del 30 de octubre: "va"
+//
+// ═══ QUE DICE, Y POR QUE ES LA PAREJA DE LA OTRA ═══
+//
+// Textual suyo: *"Se activa con ICEC < 50 e IAE v7 ≥ +5 años y la ve solo el profesional. Es la pareja de
+// la alerta de discordancia: aquella avisa cuando el deterioro celular no concuerda con hábitos buenos;
+// esta, cuando hábitos y contexto desfavorables coinciden con envejecimiento acelerado."*
+//
+// O sea que las dos miran la misma pregunta por los dos lados, y por eso no se pisan: la de discordancia
+// salta cuando los habitos son BUENOS y el cuerpo no acompaña; esta, cuando los dos van en la misma
+// direccion mala. Pueden no salir ninguna, y nunca salen las dos.
+//
+// ═══ SUS DOS CORTES, Y DE DONDE SALEN ═══
+//
+// `ICEC < 50` y `IAE >= +5` (su v15 L15417). El segundo es el mismo corte de banda del IAE que ya vive en
+// `BANDA_IAE_ANIOS`, asi que se LEE de ahi y no se escribe otra vez: el dia que el lo mueva, se mueve con
+// el. El 50 es propio de esta alerta y no aparece en ningun otro sitio del modelo.
+//
+// Y SU PROPIO DOCUMENTO LO DICE: el umbral REEMPLAZA el `IAE > 3` de la Guia del Desarrollador v2, que
+// estaba definido sobre la escala anterior de la EB-BIS. No es un ajuste de gusto: la v7 cambio la escala.
+//
+// ═══ LA DEPENDENCIA QUE SU DOCUMENTO NO VE, Y POR LA QUE ESTO NO SE CONSTRUYO ANTES ═══
+//
+// La alerta se dispara con ICEC < 50, y hasta el 2026-09-06 el componente de Alimentacion del ICEC estaba
+// clavado (el interruptor `LE8_MAPEO_CORREGIDO` en false). Construirla entonces la habria hecho saltar
+// sobre un ICEC que no medía lo que decía: con la alimentacion deprimida, un paciente con buenos habitos
+// podia caer por debajo de 50 sin que su contexto fuera desfavorable. El interruptor esta encendido y
+// medido (`le8-encendido`: la alimentacion varia, 73/44/0 en tres pacientes), asi que ahora el corte mide.
+//
+// SOLO PROFESIONAL, como la de discordancia: el informe del paciente no la lleva.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** El corte del ICEC de esta alerta. Es suyo y propio de ella: no aparece en ningun otro sitio. */
+export const CORTE_ICEC_ALERTA_CONTEXTUAL = 50;
+
+/**
+ * Su texto de la alerta contextual, o `null` si no se activa.
+ *
+ * `null` tambien cuando falta cualquiera de las dos cifras: una alerta que afirma sobre un paciente no se
+ * emite con un dato ausente leido como cero. Es la misma regla que el resto del motor.
+ *
+ * EL TEXTO LLEVA LAS DOS CIFRAS, como en su archivo: sin ellas la alerta afirma algo que el profesional no
+ * puede cotejar con lo que tiene delante.
+ */
+export function alertaContextual(icecTotal: number | null, iae: number | null): string | null {
+  if (icecTotal == null || iae == null) return null;
+  if (!(icecTotal < CORTE_ICEC_ALERTA_CONTEXTUAL && iae >= BANDA_IAE_ANIOS)) return null;
+  return (
+    "Alerta contextual: envejecimiento bioeléctrico acelerado con carga epigenética alta " +
+    `(ICEC ${Math.round(icecTotal)} < ${CORTE_ICEC_ALERTA_CONTEXTUAL} e IAE ≥ +${BANDA_IAE_ANIOS} años)`
+  );
+}

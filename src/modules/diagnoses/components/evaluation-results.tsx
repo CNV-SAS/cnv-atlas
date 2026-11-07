@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type EngineIndicators, indicatorSeverities, isBisDerivedDomain } from "@/clinical-engine";
 import { veredictoSev } from "@/clinical-engine/severity";
 import {
+  alertaContextual,
   cifraEbBis,
   cifraIae,
   ebBisParaElProfesional,
@@ -335,6 +336,16 @@ export function EvaluationResults({
   // El soporte de la v7, del snapshot SELLADO. null en los diagnosticos anteriores a la v7 (salieron de la
   // v5, que no tenia z de pares, ni tope, ni alerta de discordancia).
   const soporteEbBis = snapshot.ebBis ? ebBisParaElProfesional(snapshot.ebBis) : null;
+  // ═══ LA ALERTA CONTEXTUAL (v15, su decision 4 del 30 de octubre) ═══
+  //
+  // ICEC < 50 e IAE >= +5. Es la PAREJA de la alerta de discordancia: aquella salta cuando los habitos son
+  // buenos y el cuerpo no acompaña; esta, cuando los dos van en la misma direccion mala. Nunca salen las
+  // dos, y pueden no salir ninguna.
+  //
+  // SE CALCULA AQUI Y NO DENTRO DE LA PRESENTACION DE LA EB-BIS porque necesita el ICEC, que no vive en el
+  // resultado de la EB-BIS sino en el DFI: pasarselo obligaria a que la presentacion de un indicador
+  // dependiera de otro. Las dos cifras salen del snapshot SELLADO, no de un recomputo.
+  const avisoContextual = alertaContextual(dfi.le8Total ?? null, indicators.iae ?? null);
   // Severidad por indicador (recomputada del snapshot) para el punto de color de la clasificacion.
   //
   // LA FILA ICA-BIS SE RESUELVE APARTE, con `clasificarIcaBis`, que es el porte de SU `dICA`: en ESTA
@@ -552,6 +563,10 @@ export function EvaluationResults({
             {soporteEbBis.alerta ? (
               <p className="text-clinical-warning">{soporteEbBis.alerta}</p>
             ) : null}
+            {/* LA CONTEXTUAL, en el mismo bloque y en el mismo color: tambien pide mirar algo. Va DESPUES
+                de la de discordancia porque nunca salen las dos (una exige habitos buenos y la otra
+                malos), asi que el orden solo decide donde aparece la que salga. */}
+            {avisoContextual ? <p className="text-clinical-warning">{avisoContextual}</p> : null}
           </div>
         ) : null}
       </div>
