@@ -52,7 +52,7 @@ vi.mock("@/modules/reports/data/freno-de-la-contradiccion", () => ({
 }));
 vi.mock("@/modules/reports/data/freno-de-trayectoria", () => ({
   frenoDeTrayectoria: vi.fn(async () => null),
-  ultimaObservacionDeLaConsulta: vi.fn(async () => null),
+  ultimoMensajeParaElPaciente: vi.fn(async () => null),
 }));
 // EL REGISTRO DE ENTREGAS (0148): el reporte deja su fila junto a las demas hojas.
 vi.mock("@/modules/reports/data/hc-entregas-writer", () => ({
@@ -124,7 +124,7 @@ describe("sendReport (orquestacion D4)", () => {
     vi.mocked(writer.markReportSent).mockReset().mockResolvedValue(undefined);
     vi.mocked(repo.getReportDispatch).mockReset().mockResolvedValue(dispatch());
     vi.mocked(freno.frenoDeTrayectoria).mockReset().mockResolvedValue(null);
-    vi.mocked(freno.ultimaObservacionDeLaConsulta).mockReset().mockResolvedValue(null);
+    vi.mocked(freno.ultimoMensajeParaElPaciente).mockReset().mockResolvedValue(null);
     vi.mocked(entregas.writeHcDelivery).mockReset().mockResolvedValue(undefined);
     vi.mocked(writer.markReportResent).mockReset().mockResolvedValue({ attempt: 1 });
     vi.mocked(treatmentService.emitirPrescripcion)
@@ -154,7 +154,7 @@ describe("sendReport (orquestacion D4)", () => {
   // era una decision que no aportaba. Lo que decide ahora es un hecho, no una eleccion: si el profesional
   // dejo su observacion de la consulta (en Seguimiento), viaja con el reporte.
   it("si el profesional escribio la observacion de la consulta, viaja con el reporte", async () => {
-    vi.mocked(freno.ultimaObservacionDeLaConsulta).mockResolvedValue("Toleró bien el cambio de porciones.");
+    vi.mocked(freno.ultimoMensajeParaElPaciente).mockResolvedValue("Toleró bien el cambio de porciones.");
     const res = await sendReport(baseInput());
     expect(res.ok).toBe(true);
     expect(vi.mocked(writer.markReportSent).mock.calls[0][0]).toMatchObject({ sendMode: "ambos" });
@@ -258,7 +258,7 @@ describe("enviar el reporte deja constancia de la entrega", () => {
     vi.mocked(writer.markReportSent).mockReset().mockResolvedValue(undefined);
     vi.mocked(repo.getReportDispatch).mockReset().mockResolvedValue(dispatch());
     vi.mocked(freno.frenoDeTrayectoria).mockReset().mockResolvedValue(null);
-    vi.mocked(freno.ultimaObservacionDeLaConsulta).mockReset().mockResolvedValue(null);
+    vi.mocked(freno.ultimoMensajeParaElPaciente).mockReset().mockResolvedValue(null);
     vi.mocked(entregas.writeHcDelivery).mockReset().mockResolvedValue(undefined);
     vi.mocked(treatmentService.emitirPrescripcion)
       .mockReset()

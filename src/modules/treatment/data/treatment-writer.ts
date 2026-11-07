@@ -396,6 +396,8 @@ export type AddNoteWrite = {
   profession: "medico" | "psicologo" | "deportologo" | "nutricionista" | null;
   treatmentId: string;
   note: string;
+  /** El mensaje para el paciente (0237). null = no le dejo mensaje y el informe sale solo. */
+  mensajeParaElPaciente: string | null;
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -407,7 +409,12 @@ export async function addTreatmentNote(input: AddNoteWrite): Promise<void> {
     await assertDiagnosisExists(tx, input.treatmentId);
     const [note] = await tx
       .insert(treatmentNotes)
-      .values({ treatmentId: input.treatmentId, note: input.note, profession: input.profession })
+      .values({
+        treatmentId: input.treatmentId,
+        note: input.note,
+        mensajeParaElPaciente: input.mensajeParaElPaciente,
+        profession: input.profession,
+      })
       .returning({ id: treatmentNotes.id });
     await recordAudit(tx, {
       event: "treatment.note_added",

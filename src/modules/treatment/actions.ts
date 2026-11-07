@@ -241,6 +241,8 @@ export async function addNoteAction(
   const parsed = addNoteSchema.safeParse({
     evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
     note: (form.get("note") as string | null)?.trim() ?? "",
+    // EL MENSAJE PARA EL PACIENTE (0237), opcional: Zod normaliza la cadena vacia a null.
+    mensajeParaElPaciente: (form.get("mensajeParaElPaciente") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "Nota inválida.");

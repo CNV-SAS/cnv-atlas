@@ -8,7 +8,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 import { ENGINE_VERSION, type EngineInput, runEngine } from "@/clinical-engine";
 import { BORDE_DEL_ENCABEZADO } from "@/modules/reports/pdf/encabezado-en-cuadros";
-import { RELLENO_DEL_INFORME, styles } from "@/modules/reports/pdf/estilos-del-pdf";
+import { CUERPO_DEL_TITULO, RELLENO_DEL_INFORME, styles } from "@/modules/reports/pdf/estilos-del-pdf";
 import { MAXIMO_DE_LA_OBSERVACION } from "@/modules/treatment/validations";
 import { ANCHO as ANCHO_DEL_RADAR } from "@/modules/reports/pdf/radar-del-paciente";
 import { TITULO_DEL_INFORME } from "@/modules/reports/pdf/report-document";
@@ -223,20 +223,36 @@ describe("el informe del paciente, medido sobre el PDF que sale", () => {
     ).toContain(comoPdfTrazo(BORDE_DEL_ENCABEZADO));
   });
 
-  it("(2) la edad biologica va GRANDE y sola, con el pie del modelo y no del equipo", () => {
-    // SU PEDIDO: *"la edad biologica estimada, grande, 'estimada por el modelo ANI-BIS-E'"*.
+  it("(2) la cifra va al tamaño del TITULO y la seguridad viaja con ella", () => {
+    // ═══ CAMBIO LA REGLA, Y ES DE SANTIAGO (2026-11-07) ═══
     //
-    // SE MIDE LA PROPORCION, no el numero: lo que pidio es que la cifra sea la pieza grande, y eso es
-    // relativo al cuerpo del documento. Un 34 escrito aqui envejeceria el dia que cambie la escala.
-    const cuerpo = styles.page.fontSize as number;
+    // Hasta el 6 de noviembre la regla era *"la cifra es la pieza grande de la hoja"* (medida como
+    // proporcion contra el cuerpo del documento, >= 3). Al verla impresa, Santiago la bajo: *"la cifra
+    // de la edad biologica, al tamano del titulo principal"*. Una cifra mas grande que el titulo se lee
+    // como el titulo de la hoja.
+    //
+    // SE COMPARA CONTRA EL TITULO DE VERDAD, no contra un 18 escrito aqui: si alguien mueve la escala
+    // tipografica del encabezado, la cifra tiene que moverse con ella o este caso lo dice. Es la misma
+    // razon por la que antes se medía como proporcion y no como numero.
     expect(
-      (styles.cifraGrande.fontSize as number) / cuerpo,
-      "la cifra dejo de ser la pieza grande de la hoja",
-    ).toBeGreaterThanOrEqual(3);
+      styles.cifraGrande.fontSize as number,
+      "la cifra se separo del cuerpo del titulo principal",
+    ).toBe(CUERPO_DEL_TITULO);
     expect(TEXTO, "falta el rotulo de la cifra").toContain("EDAD BIOLÓGICA ESTIMADA");
-    expect(TEXTO, "falta el pie que dice de donde sale la cifra").toContain(
-      "Estimada por el modelo ANI-BIS-E",
+
+    // ═══ Y EL PARRAFO QUE EXPLICABA EL MODELO SALIO, CON SU MEDIA LINEA MUDADA ═══
+    //
+    // Su punto c: fuera *"Estimada por el modelo ANI-BIS-E al comparar tu medición con..."*. Lo que NO
+    // podia salir con el es que esto es una ESTIMACION y no un diagnostico, y que sale de la medicion
+    // del paciente: las dos cosas viajan ahora pegadas a la cifra, en la frase de la banda.
+    expect(TEXTO, "volvio el parrafo que explicaba el grupo de comparacion").not.toContain(
+      "al comparar tu medición con",
     );
+    expect(TEXTO, "se perdio de donde sale la cifra").toContain("a partir de tu medición");
+    expect(TEXTO, "se perdio la media linea de seguridad").toContain(
+      "no es una enfermedad ni un pronóstico",
+    );
+
     // ═══ Y LA FRASE QUE NO SE ADOPTO DE LA SUGERENCIA ═══
     //
     // Su maqueta pone bajo la cifra *"Diferencia estimada reportada por el equipo"*. En Atlas es FALSO: el
@@ -767,19 +783,38 @@ describe("el tope de la observacion mantiene el informe inicial en una hoja", ()
     expect(hojasDe(pdf), "la observacion dejo de salir en el informe").toBe(2);
   });
 
-  it("y el tope del servidor es el MISMO numero que mide este candado", () => {
+  it("y el tope del servidor es el MISMO numero que mide este candado, y esta en el campo que toca", () => {
     // Dos numeros para la misma regla es como se desincronizan: el campo deja pasar lo que el papel no
     // aguanta, y el informe se parte en la consulta de un paciente.
     const VALIDACIONES = readFileSync("src/modules/treatment/validations.ts", "utf8");
     expect(VALIDACIONES).toContain("export const MAXIMO_DE_LA_OBSERVACION = 200;");
-    expect(VALIDACIONES, "el esquema dejo de topar la nota con esa constante").toContain(
-      "MAXIMO_DE_LA_OBSERVACION,\n      `La observación no puede pasar de",
+
+    // ═══ EL TOPE SE MUDO DE CAMPO, Y ESO ES LO QUE ESTE CASO VIGILA AHORA (0237, 2026-11-07) ═══
+    //
+    // Topaba `note`, la NOTA CLINICA, y ese era el defecto: un registro clinico recortado por una razon
+    // de papel, y encima viajando al paciente. Ahora topa el MENSAJE PARA EL PACIENTE, que es el unico
+    // texto que va al informe, y ahi los 200 si son su propia razon.
+    expect(VALIDACIONES, "el tope volvio a la nota clinica, que no se recorta por el papel").not.toContain(
+      "La observación no puede pasar de",
     );
+    expect(VALIDACIONES, "el mensaje para el paciente dejo de estar topado").toContain(
+      "El mensaje para el paciente no puede pasar de ${MAXIMO_DE_LA_OBSERVACION} caracteres",
+    );
+    // LA NOTA CLINICA, SIN TOPE: se comprueba que su esquema no lo lleva.
+    expect(VALIDACIONES).toContain(`note: z.string().trim().min(1, "La nota no puede estar vacía.")`);
+
     // Y LA PANTALLA LO ENSEÑA MIENTRAS SE ESCRIBE, que es la mitad que Santiago pidio: un tope que solo
     // aparece al enviar obliga a reescribir lo ya pensado.
     const CAMPO = readFileSync("src/modules/followups/components/observaciones-consulta.tsx", "utf8");
     expect(CAMPO, "el campo dejo de topar").toContain("maxLength={MAXIMO_DE_LA_OBSERVACION}");
     expect(CAMPO, "el contador dejo de verse al escribir").toContain("Quedan ${quedan} caracteres");
+    // EL CAMPO NUEVO EXISTE Y VIAJA (su `name` es lo que lo mete en el FormData), y es OPCIONAL: sin
+    // `required`, porque dejarlo en blanco es una respuesta valida.
+    expect(CAMPO).toContain(`name="mensajeParaElPaciente"`);
+    expect(CAMPO).toContain("Mensaje para el paciente");
+    // Y EL TOPE NO VOLVIO A LA NOTA CLINICA: su textarea no lleva `maxLength`.
+    const notaTextarea = CAMPO.slice(CAMPO.indexOf(`name="note"`), CAMPO.indexOf(`name="mensajeParaElPaciente"`));
+    expect(notaTextarea, "la nota clinica volvio a estar topada en la pantalla").not.toContain("maxLength");
   });
 });
 

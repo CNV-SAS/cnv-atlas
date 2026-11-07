@@ -54,6 +54,16 @@ export const MARCA_TINTA = "#15161a";
  * impreso, el tinta casi negro sobre el gris del visor no se lee como marca, se lee como borde de la hoja.
  */
 
+/**
+ * EL CUERPO DEL TITULO DEL DOCUMENTO, en un solo sitio.
+ *
+ * Lo usan el titulo del encabezado (los tres documentos) y la cifra de la edad biologica del informe,
+ * que desde el 2026-11-07 sale a ESTE tamaño (Santiago: *"la cifra de la edad biologica, al tamano del
+ * titulo principal"*). Escrito dos veces se separarian en cuanto alguien mueva la escala tipografica, y
+ * el dia que el titulo crezca la cifra se quedaria chica sin que nada falle.
+ */
+export const CUERPO_DEL_TITULO = 18;
+
 export const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
   // ═══ LA HOJA DEL INFORME VA MAS APRETADA QUE LA DEL PLAN, Y ES MEDIDO (2026-11-06) ═══
@@ -173,7 +183,16 @@ export const styles = StyleSheet.create({
   // siguiente en y=612,6, o sea DOS PUNTOS por encima y cruzandose en horizontal. En el arbol de vistas
   // esto es una columna y parece imposible; en el papel se solapaban, porque sin altura declarada la
   // linea de 30 puntos no reserva su espacio. Las tres lineas del bloque la llevan ahora.
-  cifraGrande: { fontSize: 30, fontWeight: "bold", color: MARCA_HONDA, lineHeight: 1.15 },
+  // ═══ Y AL TAMAÑO DEL TITULO PRINCIPAL, NO MAS GRANDE (Santiago, 2026-11-07) ═══
+  //
+  // Estuvo en 30 puntos desde el 5 de noviembre, cuando se pidio "grande, sola". Al verla impresa,
+  // Santiago la bajo al cuerpo del titulo del documento (18): una cifra mas grande que el titulo de la
+  // hoja se lee como el titulo, y el titulo deja de ser la entrada del documento. Los 12 puntos que
+  // devuelve son ademas parte del aire que la hoja 1 necesitaba para las cinco areas.
+  //
+  // EL 18 NO ES UN NUMERO SUELTO: es el del titulo (`encabezado-en-cuadros`, `titulo.fontSize`), y el
+  // candado los compara para que no puedan separarse sin que se vea.
+  cifraGrande: { fontSize: CUERPO_DEL_TITULO, fontWeight: "bold", color: MARCA_HONDA, lineHeight: 1.15 },
   /** La edad cronologica, debajo de la cifra: es lo que le da sentido al numero grande. */
   cifraEdadReal: { fontSize: 9, color: "#6b7280", lineHeight: 1.3, marginTop: 1 },
   /** La frase con la banda al final: la unica linea con veredicto, asi que va destacada y centrada. */
@@ -189,7 +208,13 @@ export const styles = StyleSheet.create({
   // CADA DOMINIO, UN BLOQUE (Santiago, 2026-09-21): el nombre en negrita, su etiqueta con su color y la
   // frase debajo. En parrafo corrido las cinco se leian como un solo texto y no se veia cual pedia trabajo.
   // La barra de la izquierda repite el color de la etiqueta: refuerza, no sustituye a la palabra.
-  dominio: { marginTop: 0.5, paddingLeft: 7, borderLeftWidth: 2.5 },
+  //
+  // Y CON AIRE ENTRE LAS CINCO (Santiago, 2026-11-07): *"hoy las rayas de color quedan pegadas"*. Con
+  // medio punto de separacion las cinco barras de color se leian como una sola barra rayada, que es lo
+  // contrario de lo que cada barra existe para hacer. Cuatro puntos las separan sin convertirlas en
+  // cinco bloques sueltos. El mismo estilo lo usa la hoja de seguimiento, asi que el aire entra en las
+  // dos a la vez.
+  dominio: { marginTop: 4, paddingLeft: 7, borderLeftWidth: 2.5 },
   dominioLectura: { marginTop: 1, color: "#374151" },
   bold: { fontWeight: "bold" },
   footer: {

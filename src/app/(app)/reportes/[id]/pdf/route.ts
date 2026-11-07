@@ -6,7 +6,7 @@ import { fechaParaElPaciente } from "@/lib/format/date";
 import { esUnId } from "@/lib/routing/id-de-ruta";
 import { downloadPlanPdf, downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
-import { ultimaObservacionDeLaConsulta } from "@/modules/reports/data/freno-de-trayectoria";
+import { ultimoMensajeParaElPaciente } from "@/modules/reports/data/freno-de-trayectoria";
 import { getInformeDelPaciente } from "@/modules/reports/data/informe-paciente-reader";
 import { getDominiosAnteriores } from "@/modules/reports/data/dominios-anteriores-reader";
 import { getSerieDelPaciente } from "@/modules/reports/data/serie-del-paciente";
@@ -118,7 +118,7 @@ export async function GET(
     },
     {
       mode: "ambos",
-      professionalNotes: await ultimaObservacionDeLaConsulta(dispatch.evaluationId),
+      professionalNotes: await ultimoMensajeParaElPaciente(dispatch.evaluationId),
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
       // EL RESTO DEL INFORME, porque el preview tiene que ser el documento que

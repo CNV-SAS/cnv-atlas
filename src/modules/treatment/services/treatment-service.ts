@@ -462,6 +462,7 @@ export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result
     await addTreatmentNote({
       treatmentId: protocol.treatmentId,
       note: input.note,
+      mensajeParaElPaciente: input.mensajeParaElPaciente ?? null,
       profession: (profession as ProfesionNota | null) ?? null,
       ...actor,
     });

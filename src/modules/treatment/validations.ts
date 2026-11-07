@@ -267,27 +267,48 @@ export type EmitirPrescripcionInput = z.infer<typeof emitirPrescripcionSchema>;
 // una hoja y 220 ya son dos**. Se deja en 200 para que quepa tambien si manana una frase del informe
 // crece un renglon. El candado `el-informe-maquetado` lo comprueba renderizando.
 //
-// ═══ LO QUE HAY QUE SABER ANTES DE SUBIRLO O BAJARLO ═══
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL TOPE SE MUDA: DE LA NOTA CLINICA AL MENSAJE PARA EL PACIENTE  ·  2026-11-07 (migracion 0237)
 //
-// ESTE CAMPO ES LA NOTA CLINICA, no un campo de maquetacion: sale en la historia clinica y lo leen los
-// otros profesionales. Topar un registro clinico por una razon de papel es una decision incomoda, y se
-// toma con una medicion detras: en produccion hay CINCO notas escritas y la mas larga tiene 116
-// caracteres (medido el 2026-11-06), asi que hoy el tope no recorta nada de lo que nadie escribio. Si
-// algun dia estorba, la salida NO es subir el tope hasta que el informe se parta: es separar la
-// observacion PARA EL PACIENTE de la nota clinica, que son dos cosas distintas. Queda en BACKLOG.
+// ESTO ES LO QUE DECIA AQUI, Y SE CUMPLIO: *"ESTE CAMPO ES LA NOTA CLINICA, no un campo de maquetacion:
+// sale en la historia clinica y lo leen los otros profesionales. Topar un registro clinico por una razon
+// de papel es una decision incomoda... Si algun dia estorba, la salida NO es subir el tope hasta que el
+// informe se parta: es separar la observacion PARA EL PACIENTE de la nota clinica, que son dos cosas
+// distintas. Queda en BACKLOG."*
+//
+// Santiago lo pidio el 7 de noviembre y es exactamente esa salida. Asi que:
+//
+//   · LA NOTA CLINICA QUEDA SIN TOPE. Es un registro clinico y no tiene por que caber en una hoja.
+//   · EL TOPE PASA AL MENSAJE PARA EL PACIENTE, que es el unico texto que viaja al informe, y ahi los 200
+//     caracteres SI son una razon legitima: es lo que cabe al final del documento con el nombre mas largo
+//     de la cohorte y las cinco areas en el nivel peor, medido renderizando (`el-informe-maquetado`).
+//
+// EL NOMBRE DE LA CONSTANTE NO CAMBIA porque lo que mide no cambio: sigue siendo "lo que cabe al final
+// del informe". Lo que cambio es QUE texto va ahi.
 export const MAXIMO_DE_LA_OBSERVACION = 200;
 
 // Nota clinica del tratamiento: append-only (treatment_notes lleva su timestamp).
 export const addNoteSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
-  note: z
+  // SIN TOPE (ver arriba). Lo unico que se exige es que no venga vacia.
+  note: z.string().trim().min(1, "La nota no puede estar vacía."),
+  /**
+   * El mensaje para el paciente, OPCIONAL.
+   *
+   * La cadena vacia se normaliza a `null` ANTES de validar el tope, y no es un detalle: un campo que la
+   * profesional dejo en blanco tiene que llegar como "no hay mensaje" y no como un texto de cero
+   * caracteres, porque el informe decide si pinta el bloque mirando si hay algo.
+   */
+  mensajeParaElPaciente: z
     .string()
     .trim()
-    .min(1, "La nota no puede estar vacía.")
     .max(
       MAXIMO_DE_LA_OBSERVACION,
-      `La observación no puede pasar de ${MAXIMO_DE_LA_OBSERVACION} caracteres: el informe del paciente la lleva al final y tiene que caber en una hoja.`,
-    ),
+      `El mensaje para el paciente no puede pasar de ${MAXIMO_DE_LA_OBSERVACION} caracteres: el informe lo lleva al final y tiene que caber en una hoja.`,
+    )
+    .transform((v) => v || null)
+    .nullable()
+    .optional(),
 });
 
 export type AddNoteInput = z.infer<typeof addNoteSchema>;

@@ -3,7 +3,7 @@ import { StyleSheet, View } from "@react-pdf/renderer";
 // El `Text` que traduce los simbolos que la fuente del PDF no dibuja (ver `text-seguro`).
 import { Text } from "./text-seguro";
 
-import { MARCA_AZUL, MARCA_HONDA } from "./estilos-del-pdf";
+import { CUERPO_DEL_TITULO, MARCA_AZUL, MARCA_HONDA } from "./estilos-del-pdf";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // EL ENCABEZADO EN CUADROS  ·  EL MISMO EN LOS TRES DOCUMENTOS  ·  Santiago, 2026-11-05
@@ -72,12 +72,19 @@ export type DatosDelEncabezado = {
 
 /** El filete de la caja. EXPORTADO para que el candado mida que la caja se dibuja, y no solo que su
  *  texto salga: tres rotulos sueltos se leerian igual en el texto del PDF y no serian una caja. */
-export const BORDE_DEL_ENCABEZADO = "#d1d5db";
+// ═══ UN POCO MAS OSCURO DESDE EL 2026-11-07 (Santiago) ═══
+//
+// Era `#d1d5db`, el gris 300 de la escala. Impreso, la caja de identidad casi desaparecia: un filete de
+// 0,75 puntos en gris claro se pierde en el papel y el bloque que sostiene la hoja dejaba de leerse como
+// un bloque. Sube al gris 400 (`#9ca3af`) y el filete a 1,1 puntos. No es decoracion: esa caja es lo
+// primero que el paciente mira para saber que el documento es suyo.
+export const BORDE_DEL_ENCABEZADO = "#9ca3af";
 const BORDE = BORDE_DEL_ENCABEZADO;
 const ROTULO = "#6b7280";
 
+
 const estilos = StyleSheet.create({
-  titulo: { fontSize: 18, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 8 },
+  titulo: { fontSize: CUERPO_DEL_TITULO, fontWeight: "bold", color: MARCA_HONDA, marginBottom: 8 },
   // CON SUBTITULO EL TITULO NO DEJA AIRE DEBAJO: los dos son un solo bloque, y 8 puntos en medio los
   // leeria como dos cosas distintas.
   // EL `lineHeight` ES LO QUE EVITA QUE EL SUBTITULO SE LE MONTE. Medido sobre el PDF (2026-11-06): el
@@ -85,7 +92,7 @@ const estilos = StyleSheet.create({
   // 306. Una linea grande sin altura declarada no reserva su espacio, y el `marginBottom: 1` de aqui
   // (que es correcto: son un solo bloque) no alcanzaba a separarlos.
   tituloConSubtitulo: {
-    fontSize: 18,
+    fontSize: CUERPO_DEL_TITULO,
     fontWeight: "bold",
     color: MARCA_HONDA,
     lineHeight: 1.2,
@@ -99,11 +106,11 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
-  cuadros: { flexDirection: "row", borderWidth: 0.75, borderColor: BORDE, borderRadius: 3 },
+  cuadros: { flexDirection: "row", borderWidth: 1.1, borderColor: BORDE, borderRadius: 3 },
   // LAS TRES COLUMNAS SE REPARTEN A PARTES IGUALES y la separacion es un borde interior, no un hueco: con
   // hueco, tres cajas suenan a tres bloques; con un filete, se leen como una sola caja de tres columnas.
   cuadro: { flex: 1, paddingVertical: 6, paddingHorizontal: 8 },
-  cuadroConFilete: { borderLeftWidth: 0.75, borderLeftColor: BORDE },
+  cuadroConFilete: { borderLeftWidth: 1.1, borderLeftColor: BORDE },
   rotulo: { fontSize: 7, color: ROTULO, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 },
   valor: { fontSize: 10 },
   // ═══ UN NOMBRE LARGO SE ENCOGE EN VEZ DE PARTIRSE (2026-11-06) ═══
@@ -120,7 +127,8 @@ const estilos = StyleSheet.create({
   valorLargo: { fontSize: 8.5 },
   valorMuyLargo: { fontSize: 7.5 },
   // LA LINEA DE DEBAJO: quien atendio a la izquierda y la otra fecha a la derecha, en el mismo renglon.
-  pie: { flexDirection: "row", justifyContent: "space-between", marginTop: 4, marginBottom: 5 },
+  // UNA SOLA LINEA, no dos extremos: ver el comentario del bloque que la pinta.
+  pie: { flexDirection: "row", marginTop: 4, marginBottom: 5 },
   pieTexto: { fontSize: 9, color: "#374151" },
 });
 
@@ -166,16 +174,29 @@ export function EncabezadoEnCuadros({ datos }: { datos: DatosDelEncabezado }) {
         ))}
       </View>
 
+      {/* ═══ UNA SOLA LINEA CON SEPARADOR, Y NO DOS EXTREMOS (Santiago, 2026-11-07) ═══
+
+          Pidio *"Te atendió: ... · <profesión> · Fecha de la consulta: ..., con el separador"*.
+
+          Antes eran dos textos con `space-between`: quien atendio pegado al margen izquierdo y la fecha
+          pegada al derecho, con un vacio de media hoja en medio. En el papel no se leian como una linea
+          sino como dos datos sin relacion, y el paciente tenia que cruzar la hoja con la vista para
+          juntar "quien" y "cuando". Con el punto medio los tres datos son una frase.
+
+          LAS PIEZAS SE ARMAN FILTRANDO, no concatenando con ternarios: un dato que falta tiene que
+          desaparecer CON su separador, y eso escrito a mano deja un " · " huerfano al principio o al
+          final, que es la clase de detalle que solo se ve impreso. */}
       <View style={estilos.pie}>
         <Text style={estilos.pieTexto}>
-          {datos.profesional
-            ? `${datos.rotuloDelProfesional ?? "Te atendió"}: ${datos.profesional.nombre}${
-                datos.profesional.profesion ? ` · ${datos.profesional.profesion}` : ""
-              }`
-            : ""}
-        </Text>
-        <Text style={estilos.pieTexto}>
-          {datos.otraFecha ? `${datos.otraFecha.rotulo}: ${datos.otraFecha.valor}` : ""}
+          {[
+            datos.profesional
+              ? `${datos.rotuloDelProfesional ?? "Te atendió"}: ${datos.profesional.nombre}`
+              : null,
+            datos.profesional?.profesion ?? null,
+            datos.otraFecha ? `${datos.otraFecha.rotulo}: ${datos.otraFecha.valor}` : null,
+          ]
+            .filter((x): x is string => Boolean(x && x.trim()))
+            .join(" · ")}
         </Text>
       </View>
     </>

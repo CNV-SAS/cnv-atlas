@@ -24,23 +24,24 @@ import { bandaIae, cifraEbBis, cifraIae } from "./presentacion-eb-bis";
 // (`eb-bis-v7.js` L20). Las dos cifras vienen redondeadas a un decimal, asi que la resta puede dar 63,9
 // o 64,1 donde la edad es 64; el redondeo devuelve el entero original y no inventa precision.
 //
-// ═══ CONTRA QUIEN SE COMPARA, Y POR QUE NO DICE LO QUE SANTIAGO ESCRIBIO ═══
+// ═══ Y EL GRUPO DE COMPARACION YA NO SE NOMBRA EN EL INFORME (Santiago, 2026-11-07) ═══
 //
-// Su nota pedia *"'de tu mismo sexo y edad', no 'edad y composicion' (la v7 compara con eso)"*. La mitad
-// es correcta y la otra mitad no, y conviene que quede escrito aqui porque es una afirmacion sobre el
-// paciente:
+// Hasta el 7 de noviembre el informe traia debajo de la cifra un parrafo que decia con quien se compara
+// al paciente ("personas de tu mismo sexo, tu misma edad y tu misma composicion corporal"). Su punto c lo
+// marco como texto que sobra y salio, con su constante.
 //
-//   El valor esperado de la v7 es `Sesp = b0 + b1*edad + b2*edad² + b3*FMI`, con un juego de parametros
-//   POR SEXO (`eb-bis-v7.js` L11-L14 y L34). O sea que el grupo de comparacion son personas del mismo
-//   SEXO, la misma EDAD **y la misma COMPOSICION** (el FMI es indice de masa grasa).
-//
-// Asi que el sexo SI faltaba, y la composicion NO sobra: esta en la regresion. La frase los nombra los
-// tres. Decir "de tu mismo sexo y edad" describiria un modelo que no es el que calculo su numero.
+// QUEDA ESCRITO EL RAZONAMIENTO, porque es una afirmacion sobre el paciente y el dia que alguien vuelva a
+// redactar esa frase va a tropezar con lo mismo: su nota pedia *"'de tu mismo sexo y edad', no 'edad y
+// composicion' (la v7 compara con eso)"*, y la mitad es correcta y la otra no. El valor esperado de la v7
+// es `Sesp = b0 + b1*edad + b2*edad² + b3*FMI`, con un juego de parametros POR SEXO (`eb-bis-v7.js`
+// L11-L14 y L34), asi que el grupo son personas del mismo SEXO, la misma EDAD **y la misma COMPOSICION**
+// (el FMI es indice de masa grasa). El sexo SI faltaba, y la composicion NO sobra: esta en la regresion.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
-/** Contra quien compara la v7, en una frase. Los tres terminos de su valor esperado, sin jerga. */
-export const CONTRA_QUIEN_SE_COMPARA =
-  "personas de tu mismo sexo, tu misma edad y tu misma composición corporal";
+/** La segunda mitad de la seguridad, sin el "Es una estimación" delante. Una sola redaccion para las dos. */
+const SIN_ENFERMEDAD = "no es una enfermedad ni un pronóstico.";
+/** La media linea de seguridad completa, que llega de su punto c y viaja pegada a la cifra. */
+const SEGURIDAD = `Es una estimación: ${SIN_ENFERMEDAD}`;
 
 export type EdadParaElPaciente = {
   /** "76,4 años": su cifra, para la pieza grande. */
@@ -63,23 +64,46 @@ export function edadParaElPaciente(eb: number | null, iae: number | null): EdadP
   const edadReal = edad >= 18 && edad <= 100 ? `Tu edad: ${edad} años` : null;
 
   const anios = Math.abs(iae);
-  // ═══ AQUI VA LA FRASE CORTA DE SANTIAGO, Y EL GRUPO COMPLETO VA UNA SOLA VEZ, DEBAJO ═══
+  // ═══ LA FRASE, TAL COMO SANTIAGO LA ESCRIBIO EL 2026-11-07 ═══
   //
-  // La primera version nombraba el grupo de comparacion entero en las DOS frases (esta y la explicacion
-  // del modelo que va al pie del bloque). Decia lo mismo dos veces en cuatro lineas, y ademas empujaba la
-  // hoja 1 a una segunda hoja. Asi que esta se queda con sus palabras ("que las personas de tu edad") y
-  // la de abajo, que es la que explica de donde sale el numero, lleva los tres terminos reales.
+  //     "Tu cuerpo se comporta como el de una persona 12,4 años mayor: envejecimiento acelerado
+  //      estimado a partir de tu medición. Es una estimación: no es una enfermedad ni un pronóstico."
   //
-  // EL CERO NO SE DICE COMO "0,0 años mayor": a un paciente eso no le dice nada. Se cuenta sin la cifra,
-  // que es lo que el numero significa (se comporta como su grupo).
+  // DOS COSAS CAMBIARON, Y LAS DOS SON SUYAS:
+  //
+  //   1 · "una persona" en vez de "alguien ... que las personas de tu edad". La cola sobraba y ademas
+  //       dejo de tener respaldo: el parrafo que explicaba el grupo de comparacion salio del informe el
+  //       mismo dia, asi que la frase ya no puede remitir a el.
+  //   2 · LA MEDIA LINEA DE SEGURIDAD SE MUDA AQUI. Vivia en el parrafo que explicaba el modelo, y ese
+  //       parrafo SALE del informe (su punto c). Lo que no podia salir con el es que esto es una
+  //       ESTIMACION y no un diagnostico: es la frase que evita que un paciente lea "envejecimiento
+  //       acelerado" como una enfermedad que tiene. Asi que viaja con la cifra, que es donde se lee.
+  //
+  // Y EL ORIGEN TAMBIEN SE MUDA ("a partir de tu medición"), porque era la otra mitad util del parrafo
+  // que sale: sin ella, la frase afirma algo sobre el cuerpo del paciente sin decir de donde sale.
+  //
+  // ═══ POR QUE EL ORIGEN SE PEGA A LA BANDA EN DOS CASOS Y A LA SEGURIDAD EN EL TERCERO ═══
+  //
+  // Las bandas de Gildardo son tres y entran VERBATIM: "envejecimiento acelerado estimado",
+  // "envejecimiento desacelerado estimado" y "acorde con sus pares". Las dos primeras terminan en
+  // "estimado", asi que "a partir de tu medición" las continua y sale la frase exacta que Santiago
+  // escribio. La tercera no, y pegarselo daria *"acorde con sus pares a partir de tu medición"*, que no
+  // es castellano. Ahi el origen viaja en la media linea de seguridad, que dice lo mismo y se lee bien.
+  //
+  // No es una excepcion escondida: es la unica forma de conservar su texto SIN tocarlo y que las tres
+  // variantes se lean. El candado fija las tres.
   const comparacion =
     anios < 0.05
       ? "Tu cuerpo se comporta como el de las personas de tu edad"
-      : `Tu cuerpo se comporta como el de alguien ${cifraIae(iae).replace(/^[+-]/, "")} años ${
+      : `Tu cuerpo se comporta como el de una persona ${cifraIae(iae).replace(/^[+-]/, "")} años ${
           iae > 0 ? "mayor" : "menor"
-        } que las personas de tu edad`;
+        }`;
 
-  // LA BANDA, VERBATIM Y AL FINAL, despues de los dos puntos: es el veredicto de su tabla 3 y entra sin
-  // tocar. Si algun dia cambia su texto, cambia aqui solo porque cambio en su sitio.
-  return { cifra: `${cifraEbBis(eb)} años`, edadReal, frase: `${comparacion}: ${bandaIae(iae)}.` };
+  const banda = bandaIae(iae);
+  const seEncadena = banda.endsWith("estimado");
+  const frase = seEncadena
+    ? `${comparacion}: ${banda} a partir de tu medición. ${SEGURIDAD}`
+    : `${comparacion}: ${banda}. Es una estimación a partir de tu medición: ${SIN_ENFERMEDAD}`;
+
+  return { cifra: `${cifraEbBis(eb)} años`, edadReal, frase };
 }

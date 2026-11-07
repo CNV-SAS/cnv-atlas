@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { date, index, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  date,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 import { createdAt, pk } from "./_columns";
 import { diagnoses } from "./diagnoses";
@@ -226,6 +237,21 @@ export const treatmentNotes = pgTable("treatment_notes", {
     .notNull()
     .references(() => treatments.id, { onDelete: "cascade" }),
   note: text("note").notNull(),
+  // ═══ EL MENSAJE PARA EL PACIENTE  ·  0237, 2026-11-07 ═══
+  //
+  // El UNICO texto de la profesional que viaja al informe. Opcional: `null` = no le dejo mensaje, y el
+  // informe sale solo.
+  //
+  // POR QUE ESTA SEPARADO DE `note`, que es lo importante: `note` es la NOTA CLINICA, se escribe para otro
+  // profesional y vive en la historia clinica. Hasta el 7 de noviembre hacia los dos trabajos, y eso
+  // produjo dos cosas malas a la vez: la nota clinica le llegaba al paciente tal cual, y se le habia
+  // puesto un tope de 200 caracteres a un registro clinico por una razon de PAPEL (que el informe cupiera
+  // en una hoja). El tope se queda donde le corresponde, que es aqui.
+  //
+  // LOS 200 SON UNA MEDICION, no una preferencia: es lo que cabe al final del informe con el nombre mas
+  // largo de la cohorte y las cinco areas en el nivel peor (`el-informe-maquetado`). Va declarado en la
+  // COLUMNA y no solo en Zod, para que ninguna otra via de escritura pueda partir el informe en dos hojas.
+  mensajeParaElPaciente: varchar("mensaje_para_el_paciente", { length: 200 }),
   // PROFESION con la que se escribio (Gildardo 2026-08-30 §8: "una por profesion, tres campos distintos;
   // cada rol escribe lo suyo y no se pisan"). Se sella EN EL ACTO, como `approvedProfession`: el autor
   // puede cambiar de profesion o dejar la organizacion, y la nota tiene que seguir diciendo desde que rol

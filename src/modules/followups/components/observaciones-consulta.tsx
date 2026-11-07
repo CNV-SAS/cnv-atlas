@@ -216,46 +216,72 @@ export function ObservacionesConsulta({
 }
 
 /**
- * El campo de la observacion, con su contador.
+ * Los DOS campos que se escriben en el mismo acto: la nota clinica y el mensaje para el paciente.
  *
- * ═══ POR QUE HAY UN TOPE, Y POR QUE SE VE MIENTRAS SE ESCRIBE (Santiago, 2026-11-06) ═══
+ * ═══ POR QUE SON DOS, Y POR QUE EL TOPE ESTA EN EL SEGUNDO (Santiago, 2026-11-07) ═══
  *
- * La ULTIMA observacion de la consulta es lo que cierra el informe del paciente, y el informe inicial
- * tiene que caber en UNA hoja. El numero esta MEDIDO renderizando el PDF con el nombre mas largo de la
- * cohorte y las cinco areas en el nivel peor (ver `MAXIMO_DE_LA_OBSERVACION`).
+ * Hasta el 6 de noviembre habia UN campo que hacia los dos trabajos: era la nota clinica (sale en la
+ * historia clinica, la leen los otros profesionales) y era ademas el texto que el PACIENTE recibia con su
+ * informe. De ahi salieron dos cosas malas a la vez: la nota clinica, que se escribe para otro
+ * profesional, le llegaba a la persona tal cual; y se le habia puesto un tope de 200 caracteres a un
+ * registro clinico por una razon de PAPEL (que el informe inicial quepa en una hoja).
  *
- * SE VE AL ESCRIBIR Y NO AL ENVIAR, que es lo que Santiago pidio: un tope que solo aparece cuando el
- * servidor rechaza obliga a reescribir lo que ya se penso, y en una pantalla de consulta eso se traduce
- * en que la observacion se recorta a lo bruto o no se escribe.
+ * Ahora la nota clinica no tiene tope y el mensaje si, porque ahi los 200 caracteres son su propia razon:
+ * es lo que cabe al final del informe con el nombre mas largo de la cohorte y las cinco areas en el nivel
+ * peor, MEDIDO renderizando (`MAXIMO_DE_LA_OBSERVACION`, candado `el-informe-maquetado`).
+ *
+ * ═══ EL CONTADOR SE VE MIENTRAS SE ESCRIBE (Santiago, 2026-11-06) ═══
+ *
+ * Un tope que solo aparece cuando el servidor rechaza obliga a reescribir lo que ya se penso, y en una
+ * pantalla de consulta eso se traduce en que el texto se recorta a lo bruto o no se escribe.
  *
  * EL ESTADO VIVE AQUI DENTRO a proposito: el padre remonta este componente con una `key` derivada del
- * numero de notas guardadas, asi que al guardar se vacian el campo Y el contador. Si el contador viviera
+ * numero de notas guardadas, asi que al guardar se vacian los campos Y el contador. Si el contador viviera
  * arriba, se quedaria marcando los caracteres de la nota anterior sobre un campo vacio.
  */
 function CampoDeObservacion() {
   const [largo, setLargo] = useState(0);
   const quedan = MAXIMO_DE_LA_OBSERVACION - largo;
   return (
-    <div className="flex flex-col gap-1">
-      <Textarea
-        name="note"
-        rows={4}
-        required
-        maxLength={MAXIMO_DE_LA_OBSERVACION}
-        onChange={(e) => setLargo(e.currentTarget.value.length)}
-        placeholder="Qué observaste en esta consulta, qué acordaste con el paciente, qué vigilar en el próximo control"
-      />
-      {/* EL AVISO SOLO CAMBIA DE TONO CERCA DEL TOPE: un contador en rojo desde el primer caracter se
-          vuelve ruido y se deja de mirar justo cuando empieza a importar. */}
-      <span
-        className={`self-end text-xs ${quedan <= 20 ? "text-clinical-warning" : "text-muted-foreground"}`}
-      >
-        {quedan >= 0
-          ? `Quedan ${quedan} caracteres de ${MAXIMO_DE_LA_OBSERVACION}`
-          : `Te pasaste por ${-quedan} caracteres`}
-        {" · "}
-        esta observación cierra el informe del paciente
-      </span>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        {/* SIN `maxLength`: es un registro clinico y no se recorta por una razon de maquetacion. */}
+        <Textarea
+          name="note"
+          rows={4}
+          required
+          placeholder="Qué observaste en esta consulta, qué acordaste con el paciente, qué vigilar en el próximo control"
+        />
+        <span className="text-xs text-muted-foreground">
+          Esta nota es para ti y para los otros profesionales del paciente: sale en la historia clínica y
+          no se le envía a él.
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium text-foreground" htmlFor="mensajeParaElPaciente">
+          Mensaje para el paciente <span className="font-normal text-muted-foreground">(opcional)</span>
+        </label>
+        <Textarea
+          id="mensajeParaElPaciente"
+          name="mensajeParaElPaciente"
+          rows={3}
+          maxLength={MAXIMO_DE_LA_OBSERVACION}
+          onChange={(e) => setLargo(e.currentTarget.value.length)}
+          placeholder="Una línea para él, con tus palabras. Si lo dejas en blanco, el informe sale solo."
+        />
+        {/* EL AVISO SOLO CAMBIA DE TONO CERCA DEL TOPE: un contador en rojo desde el primer caracter se
+            vuelve ruido y se deja de mirar justo cuando empieza a importar. */}
+        <span
+          className={`self-end text-xs ${quedan <= 20 ? "text-clinical-warning" : "text-muted-foreground"}`}
+        >
+          {quedan >= 0
+            ? `Quedan ${quedan} caracteres de ${MAXIMO_DE_LA_OBSERVACION}`
+            : `Te pasaste por ${-quedan} caracteres`}
+          {" · "}
+          es el único texto tuyo que va en el informe
+        </span>
+      </div>
     </div>
   );
 }

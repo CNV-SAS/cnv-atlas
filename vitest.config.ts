@@ -35,6 +35,9 @@ const DB_TESTS = [
   // existe en la base: las 16 pruebas de unidad del mismo arreglo estaban verdes mientras produccion lo
   // rechazaba con un 500.
   "src/tests/completar-capas-congeladas-db.test.ts",
+  // EL MENSAJE PARA EL PACIENTE (0237): comprueba contra la base que el tope de 200 vive en la COLUMNA y
+  // no solo en Zod, y que la nota clinica ya NO esta topada. Necesita la migracion aplicada.
+  "src/tests/el-mensaje-para-el-paciente-db.test.ts",
   "src/tests/alergenos-cobertura.test.ts",
   "src/tests/mapa-alegra.test.ts",
   "src/tests/sentry-causa-db.test.ts",

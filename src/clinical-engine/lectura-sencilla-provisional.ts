@@ -66,11 +66,17 @@ const SENCILLAS: Record<string, readonly (string | null)[]> = {
     "Tienes un riesgo alto para tu corazón y para cómo tu cuerpo maneja la energía.",
   ],
   // d3 · Envejecimiento. Su lectura habla del ritmo de envejecimiento biológico.
+  //
+  // "ENVEJECE", NO "SE DESGASTA" (Santiago, 2026-11-07). Las cuatro decian "se desgasta", y el desgaste
+  // es una metafora de maquina: sugiere una pieza que se gasta y no se repone, que es mas duro de lo que
+  // la lectura dice y ademas no es lo que mide el modelo. El documento ya se llama envejecimiento en
+  // todas partes (el indicador es la aceleracion del ENVEJECIMIENTO), asi que esta es la palabra de la
+  // casa y la que el paciente va a volver a encontrar en la consulta.
   d3: [
-    "Tu cuerpo se desgasta al ritmo que corresponde a tu edad, o más despacio.",
-    "Tu ritmo de desgaste está en el límite de lo esperado para tu edad.",
-    "Tu cuerpo se está desgastando más rápido de lo que corresponde a tu edad.",
-    "Tu cuerpo se está desgastando mucho más rápido de lo que corresponde a tu edad.",
+    "Tu cuerpo envejece al ritmo esperado para tu edad, o más despacio.",
+    "Tu ritmo de envejecimiento está en el límite de lo esperado para tu edad.",
+    "Tu cuerpo envejece más rápido de lo que corresponde a tu edad.",
+    "Tu cuerpo envejece mucho más rápido de lo que corresponde a tu edad.",
   ],
   // d4 · Conductual-Perceptual. En 2 y 3 manda SU frase de acompañamiento, que ya sustituye la lectura:
   // esta capa calla a proposito, y ese `null` no es un hueco sino el limite de la excepcion.

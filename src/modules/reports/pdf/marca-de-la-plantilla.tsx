@@ -66,6 +66,20 @@ const TRAMOS: readonly { color: string; desde: number; hasta: number }[] = [
  * `top: 0` Y NO EL NEGATIVO DEL MARGEN, que es lo que se escribio primero: en @react-pdf un elemento
  * absoluto se coloca contra la HOJA, no contra el area de contenido, asi que restar el margen lo saca del
  * papel. Medido: con `bottom: -42` el pie caia en y=812 sobre una hoja de 792, o sea veinte puntos fuera.
+ *
+ * ═══ EL TRAMO NAVY LLENA EL LADO IZQUIERDO Y NO LLEVA DIAGONAL (Santiago, 2026-11-07) ═══
+ *
+ * *"La figura #102545 tiene que llenar el lado izquierdo hasta el borde (rectangulo) y conservar la
+ * diagonal solo a la derecha. Hoy se ve la punta del trapecio a la izquierda."*
+ *
+ * Los cinco tramos se dibujaban iguales: paralelogramos con las DOS caras inclinadas. En el papel eso deja
+ * dos defectos en la esquina de arriba a la izquierda, que es por donde se empieza a mirar la hoja: una
+ * cuña blanca (el tramo arrancaba en el 1,2 % del ancho) y la punta inclinada del navy, que se lee como un
+ * recorte mal hecho y no como una decision de diseño.
+ *
+ * Asi que el PRIMER tramo arranca en x=0 con su cara izquierda VERTICAL, y conserva la diagonal de la
+ * derecha, que es la que hace reconocible la franja. Los otros cuatro no cambian: ahi la inclinacion
+ * separa un color del siguiente, que es su trabajo.
  */
 export function FranjaDeMarca() {
   const h = ALTO_FRANJA;
@@ -73,19 +87,19 @@ export function FranjaDeMarca() {
   return (
     <View fixed style={{ position: "absolute", top: 0, left: 0, width: ANCHO_CARTA, height: h }}>
       <Svg width={ANCHO_CARTA} height={h} viewBox={`0 0 ${ANCHO_CARTA} ${h}`}>
-        {TRAMOS.map((t) => {
+        {TRAMOS.map((t, i) => {
           // En la mitad de la altura el tramo va de `desde` a `hasta`; arriba se corre a la derecha y
           // abajo a la izquierda, la mitad del corrimiento en cada sentido.
           const a = t.desde * ANCHO_CARTA;
           const b = t.hasta * ANCHO_CARTA;
           const d = corrimiento / 2;
-          return (
-            <Polygon
-              key={t.color}
-              points={`${a + d},0 ${b + d},0 ${b - d},${h} ${a - d},${h}`}
-              fill={t.color}
-            />
-          );
+          // EL PRIMERO PEGADO AL BORDE Y A ESCUADRA: sus dos vertices de la izquierda caen en x=0, asi
+          // que no hay cuña blanca ni punta inclinada. Ver la nota de arriba.
+          const izquierdaRecta = i === 0;
+          const puntos = izquierdaRecta
+            ? `0,0 ${b + d},0 ${b - d},${h} 0,${h}`
+            : `${a + d},0 ${b + d},0 ${b - d},${h} ${a - d},${h}`;
+          return <Polygon key={t.color} points={puntos} fill={t.color} />;
         })}
       </Svg>
     </View>

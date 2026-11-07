@@ -8,7 +8,7 @@ import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader"
 
 import { sinGuionLargo } from "@/lib/format/guion";
 
-import { ultimaObservacionDeLaConsulta } from "./freno-de-trayectoria";
+import { ultimoMensajeParaElPaciente } from "./freno-de-trayectoria";
 import type { InformeDelPaciente } from "./reports-view-types";
 
 export type {
@@ -270,7 +270,7 @@ export async function getInformeDelPaciente(
       : protocolo
         ? listReferralsForTreatment(protocolo.treatmentId)
         : Promise.resolve([]),
-    ultimaObservacionDeLaConsulta(evaluationId),
+    ultimoMensajeParaElPaciente(evaluationId),
     getProximaCita(evaluationId),
   ]);
 

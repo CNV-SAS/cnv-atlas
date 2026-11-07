@@ -1660,6 +1660,13 @@
       "when": 1793800370491,
       "tag": "0236_el_tratamiento_se_busca_por_indice",
       "breakpoints": true
+    },
+    {
+      "idx": 237,
+      "version": "7",
+      "when": 1793800371491,
+      "tag": "0237_el_mensaje_para_el_paciente",
+      "breakpoints": true
     }
   ]
 }

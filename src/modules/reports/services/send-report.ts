@@ -7,7 +7,7 @@ import { fechaParaElPaciente } from "@/lib/format/date";
 import { emitirPrescripcion } from "@/modules/treatment/services/treatment-service";
 
 import { frenoDeLaContradiccion } from "../data/freno-de-la-contradiccion";
-import { frenoDeTrayectoria, ultimaObservacionDeLaConsulta } from "../data/freno-de-trayectoria";
+import { frenoDeTrayectoria, ultimoMensajeParaElPaciente } from "../data/freno-de-trayectoria";
 import { writeHcDelivery } from "../data/hc-entregas-writer";
 import { getReportDispatch } from "../data/reports-repository";
 import {
@@ -91,14 +91,15 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   }
 
   // LOS TRES MODOS SE RETIRARON (Santiago, 2026-09-18). Existian para elegir entre el reporte de Atlas y
-  // las notas del reporte, y esas notas ya no se escriben: la unica superficie de notas es la OBSERVACION DE
-  // LA CONSULTA, en Seguimiento, que es la que el profesional usa de verdad. Elegir entre dos cosas cuando
-  // solo hay una es una decision que no aporta.
+  // las notas del reporte, y esas notas ya no se escriben. Elegir entre dos cosas cuando solo hay una es
+  // una decision que no aporta.
   //
-  // Y ES LA QUE ACOMPAÑA LA ENTREGA: lo que el profesional escribio sobre esta consulta viaja con el
-  // documento. Si no escribio nada, sale el reporte solo.
-  const notasDeLaConsulta = await ultimaObservacionDeLaConsulta(dispatch.evaluationId);
-  const modo: SendMode = notasDeLaConsulta ? "ambos" : "atlas";
+  // Y LO QUE ACOMPAÑA LA ENTREGA ES EL MENSAJE PARA EL PACIENTE, no la nota clinica (0237, 2026-11-07).
+  // Hasta ese dia viajaba la NOTA CLINICA, que la profesional escribe para si misma y para los otros
+  // profesionales del paciente: le llegaba a la persona tal cual, en su correo. Ahora viaja el campo que
+  // se escribio PARA ella, y si lo dejo en blanco sale el documento solo.
+  const mensajeParaElPaciente = await ultimoMensajeParaElPaciente(dispatch.evaluationId);
+  const modo: SendMode = mensajeParaElPaciente ? "ambos" : "atlas";
 
   // ENVIAR ES EMITIR (2026-09-09). A partir de aqui el paciente tiene el plan, asi que este es el acto
   // que deja constancia de QUE recibio.
@@ -174,7 +175,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
     },
     {
       mode: modo,
-      professionalNotes: notasDeLaConsulta,
+      professionalNotes: mensajeParaElPaciente,
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
       // SIN EL PLAN: el informe dejo de llevar nada del plan el 2026-10-30. El plan viaja como SEGUNDO

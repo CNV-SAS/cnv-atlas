@@ -15,7 +15,6 @@ import {
   type MetaDePeso,
 } from "@/clinical-engine/comparacion-paciente";
 import {
-  CONTRA_QUIEN_SE_COMPARA,
   edadParaElPaciente,
 } from "@/clinical-engine/edad-para-el-paciente";
 import { lecturaSencilla } from "@/clinical-engine/lectura-sencilla-provisional";
@@ -390,7 +389,11 @@ export function ReportDocument({
       <View style={{ marginTop: 3 }}>
         {informe.seguimiento.observacion ? (
           <Text style={styles.para}>
-            <Text style={styles.bold}>Observaciones de tu profesional: </Text>
+            {/* EL ROTULO DICE "MENSAJE" Y NO "OBSERVACIONES" (0237, 2026-11-07): hasta ese dia aqui
+                salia la NOTA CLINICA, y "observaciones de tu profesional" la describia bien. Ahora sale
+                el campo que la profesional escribio PARA el paciente, de 200 caracteres, y llamarlo
+                observacion haria creer que lo que lee es la nota clinica completa. */}
+            <Text style={styles.bold}>Mensaje de tu profesional: </Text>
             {informe.seguimiento.observacion}
           </Text>
         ) : null}
@@ -577,30 +580,32 @@ export function ReportDocument({
           </View>
         ) : null}
 
-        {/* LA EXPLICACION VA PEGADA A LA CIFRA, sin el margen de una seccion propia: son una sola pieza
-            (el cuadro de la edad estimada de su maqueta), y 12 puntos en medio las separaba en dos. */}
-        {showAtlas && edadPac ? (
+        {/* ═══ AQUI IBA EL PARRAFO QUE EXPLICABA EL MODELO, Y SALE (Santiago, 2026-11-07) ═══
+
+            Decia *"Estimada por el modelo ANI-BIS-E al comparar tu medición con personas de tu mismo
+            sexo, tu misma edad y tu misma composición corporal. No es una enfermedad ni un pronóstico."*
+
+            Su punto c lo marca como texto que sobra. LAS DOS COSAS QUE SI HACIAN FALTA DE EL VIAJAN
+            AHORA EN LA FRASE DE LA CIFRA (`edad-para-el-paciente`): de donde sale el numero ("a partir
+            de tu medición") y la media linea de seguridad ("Es una estimación: no es una enfermedad ni
+            un pronóstico"). Lo que se pierde es el detalle del grupo de comparacion, que era la parte
+            larga y la que empujaba la hoja.
+
+            `CONTRA_QUIEN_SE_COMPARA` se BORRA del motor con el, y no se deja "por si acaso": no le
+            quedaba ningun otro lector (verificado con grep antes de quitarlo), y una pieza muerta es el
+            cable que alguien vuelve a conectar sin saber por que se desconecto. Su razonamiento, que es
+            lo que valia la pena guardar (la v7 compara por sexo, edad Y composicion, asi que decir "de
+            tu mismo sexo y edad" describiria otro modelo), se queda escrito en `eb-bis-v7` y en el
+            propio `edad-para-el-paciente`. */}
+        {/* LA NOTA DE LA ENCUESTA INCOMPLETA SE QUEDA, y ahora cuelga sola de la cifra: es lo que
+            explica que el bloque de las cinco areas falte, asi que sin ella el informe tendria un hueco
+            sin motivo. */}
+        {showAtlas && edadPac && !dfi.complete ? (
           <View>
-            {/* QUE ES, EN UNA LINEA. Su tabla da la cifra y su banda, no una explicación; sin ella la
-                frase "acorde con sus pares" deja al paciente sin saber con quién se lo compara. Esto
-                describe de dónde sale el número, no lo interpreta: el veredicto es el de su banda. */}
-            {/* CONTRA QUIEN SE COMPARA SALE DEL MOTOR, NO DE AQUÍ (2026-11-06). Decía "personas de tu
-                misma edad y composición", que deja fuera el sexo, y Santiago pidió "de tu mismo sexo y
-                edad", que deja fuera la composición. El valor esperado de la v7 usa LOS TRES (sexo, edad
-                y FMI), así que la frase los nombra los tres y vive al lado de la fórmula que los decide:
-                ver el porqué completo en `edad-para-el-paciente.ts`. */}
-            <Text style={[styles.para, { textAlign: "center" }]}>
-              Estimada por el modelo ANI-BIS-E al comparar tu medición con {CONTRA_QUIEN_SE_COMPARA}. No
-              es una enfermedad ni un pronóstico.
+            <Text style={styles.para}>
+              {NOTA_DFI_SIN_ENCUESTA}: cuando termines la encuesta, tu profesional puede completar la
+              lectura por áreas.
             </Text>
-            {/* SU NOTA, cuando la encuesta no está completa (tabla 3): la edad biológica sale sola y el
-                diagnóstico integrado queda pendiente. Es lo que explica que el bloque siguiente falte. */}
-            {!dfi.complete ? (
-              <Text style={styles.para}>
-                {NOTA_DFI_SIN_ENCUESTA}: cuando termines la encuesta, tu profesional puede completar la
-                lectura por áreas.
-              </Text>
-            ) : null}
           </View>
         ) : null}
 

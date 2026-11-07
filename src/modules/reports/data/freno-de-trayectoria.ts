@@ -49,20 +49,38 @@ export async function frenoDeTrayectoria(evaluationId: string, documento: string
 }
 
 /**
- * LA OBSERVACION DE LA CONSULTA, que es lo que el profesional escribe de verdad (en Seguimiento) y lo que
- * acompaña al documento que sale hacia el paciente. Las notas del reporte se retiraron: eran una segunda
- * superficie para lo mismo, y el archivo de Gildardo no las tiene.
+ * EL MENSAJE QUE LA PROFESIONAL LE DEJO AL PACIENTE, que es el UNICO texto suyo que viaja al informe.
  *
- * La MAS RECIENTE: `treatment_notes` es append-only por decision clinica, asi que corregirse es escribir otra.
+ * ═══ ANTES ESTO DEVOLVIA LA NOTA CLINICA, Y ERA UN DEFECTO (corregido el 2026-11-07, migracion 0237) ═══
+ *
+ * La funcion se llamaba `ultimaObservacionDeLaConsulta` y leia `treatment_notes.note`, o sea la NOTA
+ * CLINICA: el texto que la profesional escribe para si misma y para los otros profesionales del paciente
+ * ("vigilar adherencia", "sospecha de restriccion"). Ese texto salia en el informe y viajaba en el correo
+ * hacia la persona, tal cual.
+ *
+ * Santiago lo cerro en su punto i: *"Campo nuevo y opcional, 'Mensaje para el paciente', de 200
+ * caracteres... Es el unico texto de la profesional que va al informe. La nota clinica sigue en la HC."*
+ *
+ * ═══ LA ULTIMA QUE TIENE MENSAJE, NO LA ULTIMA NOTA ═══
+ *
+ * `treatment_notes` es append-only y el mensaje es OPCIONAL, asi que la ultima nota puede no traerlo. Si
+ * se leyera "el mensaje de la ultima nota", escribir una nota clinica mas (sin mensaje) BORRARIA del
+ * informe el mensaje que ya se le habia dejado al paciente, sin que nadie lo pidiera y sin que nada
+ * falle. Asi que se busca la ultima fila QUE TENGA mensaje: corregirse es escribir otro, igual que con la
+ * nota.
+ *
+ * `null` = no le dejo mensaje, y entonces el informe sale solo. Es lo que ya pasaba cuando no habia nota.
  */
-export async function ultimaObservacionDeLaConsulta(evaluationId: string): Promise<string | null> {
-  const [fila] = await db.execute<{ note: string }>(sql`
-    select n.note
+export async function ultimoMensajeParaElPaciente(evaluationId: string): Promise<string | null> {
+  const [fila] = await db.execute<{ mensaje: string }>(sql`
+    select n.mensaje_para_el_paciente as mensaje
       from treatment_notes n
       join treatments t on t.id = n.treatment_id
       join diagnoses d on d.id = t.diagnosis_id
      where d.evaluation_id = ${evaluationId}
+       and n.mensaje_para_el_paciente is not null
+       and btrim(n.mensaje_para_el_paciente) <> ''
      order by n.created_at desc
      limit 1`);
-  return fila?.note?.trim() || null;
+  return fila?.mensaje?.trim() || null;
 }
