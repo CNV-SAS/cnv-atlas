@@ -27,6 +27,10 @@ const DB_TESTS = [
   // hubo algo que recomputar). Vive en la suite de BD porque necesita datos reales; en la de unit haria
   // que `pnpm verify` dependiera de la base.
   "src/tests/medicion-efecto-del-bump.test.ts",
+  // TAMPOCO es un candado: es la SIMULACION del recalculo del motor 3.0.0 (solo lectura, imprime cifras
+  // para que Santiago apruebe la ejecucion). Mismo genero y misma razon para vivir aqui: necesita datos
+  // reales, y en la suite de unit haria que `pnpm verify` dependiera de la base.
+  "src/tests/simulacion-del-recalculo-db.test.ts",
   "src/tests/alergenos-cobertura.test.ts",
   "src/tests/mapa-alegra.test.ts",
   "src/tests/sentry-causa-db.test.ts",

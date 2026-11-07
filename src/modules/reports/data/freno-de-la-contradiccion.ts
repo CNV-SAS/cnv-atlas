@@ -71,6 +71,37 @@ export const MENSAJE_CONTRADICCION =
   "del motor. Se habilita cuando terminemos el ajuste del cálculo, que ya está en marcha: no tienes que " +
   "pedir nada. Mientras tanto sí puedes entregarle la hoja del plan, que no depende de esta cifra.";
 
+/**
+ * LO QUE EL DFI DICE DEL ENVEJECIMIENTO, por las TRES vias que lo dicen: la severidad del dominio 3, su
+ * texto, y la ruta de desaceleracion. Mirar solo una dejaria fuera la mitad de los casos medidos.
+ *
+ * SE EXPORTA, Y ESA ES LA RAZON DE QUE SEA UNA FUNCION (2026-11-06). Este criterio lo necesitan DOS
+ * lectores: el freno, que lo aplica sobre el snapshot SELLADO, y la simulacion del recalculo, que lo
+ * aplica sobre el RECOMPUTADO para poder decir cuantas consultas se destraban. Escrito dos veces, el dia
+ * que uno cambie la simulacion mediria otra cosa que el freno, y nadie lo notaria: es la misma razon por
+ * la que el LE8 tiene una sola puerta.
+ */
+export function lecturaDelDfi(
+  sevD3: number | null,
+  lecturaD3: string | null,
+  rutas: unknown,
+): "acelerado" | "no acelerado" {
+  const rs = Array.isArray(rutas) ? rutas.map(String) : [];
+  return (sevD3 ?? 0) >= 2 || /acelerad/i.test(lecturaD3 ?? "") || rs.some((x) => x.startsWith("R4"))
+    ? "acelerado"
+    : "no acelerado";
+}
+
+/**
+ * LO QUE LA EB-BIS DICE, en la banda de su tabla 3.
+ *
+ * EL CORTE SALE DEL MOTOR (`BANDA_IAE_ANIOS`) y no se escribe aqui: es el mismo que decide el texto que el
+ * informe pinta arriba, asi que las dos no pueden divergir.
+ */
+export function lecturaDeLaEbBis(iae: number): "acelerado" | "acorde o desacelerado" {
+  return iae >= BANDA_IAE_ANIOS ? "acelerado" : "acorde o desacelerado";
+}
+
 /** Las dos lecturas de una consulta, para poder decir en pantalla en qué se contradicen. */
 export type LasDosLecturas = {
   /** El IAE de la EB-BIS v7, el que el informe pinta arriba. */
@@ -86,6 +117,8 @@ type FilaDelSnapshot = {
   sev_d3: number | null;
   lectura_d3: string | null;
   rutas: unknown;
+  /** La version del motor del informe MAS RECIENTE, para decidir en TypeScript y no en el `where`. */
+  motor: string | null;
 };
 
 /**
@@ -99,43 +132,50 @@ type FilaDelSnapshot = {
 export async function lasDosLecturasDeEnvejecimiento(
   evaluationId: string,
 ): Promise<LasDosLecturas | null> {
+  // ═══ EL FILTRO DE VERSION SALIO DEL `where` EL 2026-11-06, Y ERA UN FRENO QUE NO SE SOLTABA ═══
+  //
+  // Estaba asi: `where ... and engine like '2.%' order by created_at desc limit 1`. En SQL el filtro va
+  // ANTES del orden y del limite, asi que la consulta no traia "el ultimo informe de esta consulta":
+  // traia **el ultimo informe 2.x**. Una reemision con el motor 3.0.0 (que es justo lo que el recalculo
+  // produce, porque un snapshot sellado no se reescribe nunca: regla 7) dejaba el informe viejo ahi, y la
+  // consulta seguia frenada para siempre con el documento nuevo ya emitido.
+  //
+  // O sea que el freno frenaba por el PASADO. Nadie lo habria visto desde la pantalla: el profesional
+  // reemite, el documento nuevo no se contradice, y el aviso sigue saliendo sin explicacion.
+  //
+  // Ahora se trae el ultimo informe, SIN CONDICION DE VERSION, y la version se mira despues en TypeScript:
+  // si el mas reciente no es 2.x, no hay dos lecturas que comparar y el freno no aplica. Lo vigila
+  // `el-freno-se-suelta-al-reemitir.test.ts`.
   const [fila] = await db.execute<FilaDelSnapshot>(sql`
     select (r.snapshot->'indicators'->>'iae')::numeric as iae,
            (select (d->>'sev')::int from jsonb_array_elements(r.snapshot->'dfi'->'domains') d
              where d->>'id' = 'd3') as sev_d3,
            (select d->>'lectura' from jsonb_array_elements(r.snapshot->'dfi'->'domains') d
              where d->>'id' = 'd3') as lectura_d3,
-           r.snapshot->'dfi'->'rutas' as rutas
+           r.snapshot->'dfi'->'rutas' as rutas,
+           r.snapshot->'versions'->>'engine' as motor
       from reports r
      where r.evaluation_id = ${evaluationId}
        and r.type = 'paciente'
-       -- SOLO LAS SELLADAS CON LA v7: antes, las dos lecturas salian del MISMO calculo y no podian
-       -- discrepar. Frenar un documento viejo seria frenar por un defecto que ese documento no tiene.
-       and r.snapshot->'versions'->>'engine' like '2.%'
      order by r.created_at desc
      limit 1`);
-  if (!fila || fila.iae == null) return null;
+  if (!fila) return null;
+  // SOLO LAS SELLADAS CON LA v7 (mayor 2): antes de ella las dos lecturas salian del MISMO calculo y no
+  // podian discrepar; desde la 3.0.0 hay una sola lectura, la de la v7, y tampoco pueden. Frenar
+  // cualquiera de las dos seria frenar por un defecto que ese documento no tiene.
+  if (!(fila.motor ?? "").startsWith("2.")) return null;
+  if (fila.iae == null) return null;
 
   const iae = Number(fila.iae);
   if (!Number.isFinite(iae)) return null;
   // Sin dominio 3 no hay segunda lectura que comparar.
   if (fila.sev_d3 == null && fila.lectura_d3 == null) return null;
 
-  const rutas = Array.isArray(fila.rutas) ? fila.rutas.map(String) : [];
-  // EL DFI HABLA DE ACELERACION por dos vias, y las dos cuentan: la severidad de su dominio 3 y la ruta
-  // de desaceleracion. Mirar solo una dejaria fuera la mitad de los casos medidos.
-  const segunElDfi =
-    (fila.sev_d3 ?? 0) >= 2 ||
-    /acelerad/i.test(fila.lectura_d3 ?? "") ||
-    rutas.some((x) => x.startsWith("R4"))
-      ? "acelerado"
-      : "no acelerado";
-
-  // LA BANDA ES LA DE SU TABLA 3, leida del motor y no escrita aqui: es la misma que decide el texto que
-  // el informe pinta arriba, asi que las dos no pueden divergir.
-  const segunLaEbBis = iae >= BANDA_IAE_ANIOS ? "acelerado" : "acorde o desacelerado";
-
-  return { iae, segunLaEbBis, segunElDfi };
+  return {
+    iae,
+    segunLaEbBis: lecturaDeLaEbBis(iae),
+    segunElDfi: lecturaDelDfi(fila.sev_d3, fila.lectura_d3, fila.rutas),
+  };
 }
 
 /** ¿Las dos lecturas se contradicen? */

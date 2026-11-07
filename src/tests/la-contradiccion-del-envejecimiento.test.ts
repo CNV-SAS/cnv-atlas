@@ -90,7 +90,35 @@ describe("el freno vive donde no se puede saltar, y la pantalla lo dice antes", 
   });
 
   it("solo mira los documentos sellados con la v7", () => {
-    expect(FRENO).toContain("'2.%'");
+    expect(FRENO).toContain('startsWith("2.")');
+  });
+
+  it("Y EL FILTRO DE VERSION NO VA EN EL `where`, porque entonces el freno no se suelta nunca", () => {
+    // EL DEFECTO QUE CIERRA (encontrado el 2026-11-06, al simular el recalculo del motor 3.0.0). La
+    // consulta decia `where ... and engine like '2.%' order by created_at desc limit 1`. En SQL el filtro
+    // va ANTES del orden y del limite, asi que no traia "el ultimo informe de esta consulta": traia **el
+    // ultimo informe 2.x**.
+    //
+    // Y UN SNAPSHOT SELLADO NO SE REESCRIBE NUNCA (regla 7), asi que el recalculo no corrige el informe
+    // viejo: EMITE OTRO, con el motor 3.0.0. Con el filtro en el `where`, el informe 2.x seguia ahi y la
+    // consulta quedaba frenada **para siempre**, con el documento nuevo ya emitido y sin contradecirse.
+    //
+    // Desde la pantalla nadie lo habria visto: el profesional reemite, el documento nuevo esta bien, y el
+    // aviso sigue saliendo sin explicacion posible. Son las 70 consultas que este freno retiene hoy.
+    const sql = FRENO.slice(FRENO.indexOf("select (r.snapshot"), FRENO.indexOf("limit 1"));
+    expect(sql, "el filtro de version volvio al where").not.toContain("like");
+    expect(sql, "el filtro de version volvio al where").not.toContain("2.%");
+    // Y la version SI se trae, para poder decidir despues.
+    expect(sql).toContain("'versions'->>'engine' as motor");
+  });
+
+  it("y la 3.0.0 tampoco se frena: con una sola lectura no hay dos que puedan discrepar", () => {
+    // El freno nacio para el mayor 2, donde el informe mostraba la v7 y el DFI calculaba la v5. En la
+    // 3.0.0 las dos salen de la v7. Si manana alguien ampliara el filtro a "2.x o mas", frenaria
+    // consultas que no pueden contradecirse, y el aviso diria algo que no es verdad.
+    // Se pincha la FORMA del predicado: un prefijo exacto, no una comparacion abierta.
+    expect(FRENO).toContain('if (!(fila.motor ?? "").startsWith("2.")) return null;');
+    expect(FRENO, "el filtro de version dejo de ser un prefijo exacto").not.toMatch(/motor[^)]*>=/);
   });
 
   it("y la pantalla avisa ANTES, con la MISMA función que decide el freno", () => {
