@@ -43,6 +43,18 @@ process.loadEnvFile(".env.local");
 //     pagina de una evaluacion vieja). Para la simulacion eso no alcanza: 282 de 492 sin causa no es un
 //     dato, es un agujero. Ahora cada `null` se re-deriva paso a paso y se agrupa por causa.
 //
+//  4. Y AL ARREGLAR EL TIEMPO SE CAYERON LOS 282, QUE ERAN UN ARTEFACTO DEL PROPIO TIMEOUT (segunda
+//     corrida, 174 s: quedan 14). Vale dejar escrito como se produjo, porque cualquier medicion larga
+//     contra la nube puede repetirlo: al cumplirse los 300 s vitest falla el test y corre el `afterAll`,
+//     que CIERRA EL POOL, pero la funcion del test sigue viva (una promesa suelta; JavaScript no se
+//     interrumpe). Desde ese instante toda consulta falla, `simularConCienciaDeHoy` se la traga y
+//     devuelve `null`, asi que las que faltaban se marcaron "no recomputables" de golpe y el bucle
+//     termino rapido, imprimiendo el JSON completo justo DESPUES del fallo. Cuadra exacto: 210 + 282 =
+//     492, y las cifras de movimiento de esa corrida escalaban por 478/210 = 2,28 (19 -> 47 acelerados,
+//     55 -> 106 rutas, 91 -> 189 reemisiones). O sea que medían el 43 % de la cohorte con el rotulo de
+//     toda. LA LECCION: una medicion que agota su timeout no da un resultado parcial, da un resultado
+//     FALSO, y encima creible. El timeout va holgado y el latido de progreso dice si avanza.
+//
 // ═══ COMO SE CORRE ═══
 //
 //   local:  pnpm vitest run --project db src/tests/simulacion-del-recalculo-db.test.ts
@@ -79,6 +91,14 @@ type Snap = {
   versions?: { engine?: string };
 };
 
+// ═══ SE IMPRIME CON `process.stdout.write` Y NO CON `console.log`  ·  2026-11-07 ═══
+//
+// Vitest INTERCEPTA `console.*`, y segun como se corra (sin terminal interactiva, con la salida redirigida
+// a un archivo, en CI) la salida de un test que PASA no aparece. Y el resultado de esta medicion ES la
+// salida: una corrida de tres minutos contra la nube que termina en verde y no imprime nada obliga a
+// repetirla. `process.stdout.write` no pasa por esa intercepcion y sale en los dos sitios.
+const imprimir = (linea: string) => process.stdout.write(`${linea}\n`);
+
 /** Corre `fn` sobre `items` en lotes de `n`, conservando el orden, con latido de progreso. */
 async function enLotes<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): Promise<R[]> {
   const out: R[] = [];
@@ -86,7 +106,7 @@ async function enLotes<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): P
     out.push(...(await Promise.all(items.slice(i, i + n).map(fn))));
     const hechas = Math.min(i + n, items.length);
     // Un latido cada diez lotes: sin esto, una corrida lenta contra la nube no se distingue de un cuelgue.
-    if ((i / n) % 10 === 0) console.log(`SIMULACION_300 progreso ${hechas}/${items.length}`);
+    if ((i / n) % 10 === 0) imprimir(`SIMULACION_300 progreso ${hechas}/${items.length}`);
   }
   return out;
 }
@@ -109,6 +129,11 @@ describe("simulacion del recalculo del motor 3.x", () => {
     const { veredictoDeReemision } = await import("@/modules/clinical-pipeline/reemision");
     const { BANDA_IAE_ANIOS } = await import("@/clinical-engine/presentacion-eb-bis");
     const { ENGINE_VERSION, runEngine } = await import("@/clinical-engine");
+    // LA MISMA PUERTA QUE LA PANTALLA DE RECALIBRACION, no una copia: si la simulacion decidiera por su
+    // cuenta quien entra, mediria un conjunto y la pantalla ofreceria otro.
+    const { motivoParaNoReemitir } = await import("@/modules/clinical-pipeline/motivo-para-no-reemitir");
+    const { huellasRepetidasEnVigentes } = await import("@/modules/bis/data/huellas-repetidas-reader");
+    const { edadSiSePuede } = await import("@/modules/clinical-pipeline/services/build-engine-input");
 
     // UN INFORME POR EVALUACION, EL MAS RECIENTE. Reemitir crea otro informe de la misma consulta, y
     // contar los dos duplicaria el tamaño del recalculo. Es la misma regla que usa el freno.
@@ -128,6 +153,101 @@ describe("simulacion del recalculo del motor 3.x", () => {
       if (!prev || f.createdAt > prev.createdAt) ultimo.set(f.evaluationId, f);
     }
     const consultas = [...ultimo.entries()];
+
+    // ══ FASE 0 · EL CONTEXTO DE CADA CONSULTA, EN UNA SOLA IDA ══
+    //
+    // Quien la atendio (para poder decirle a cada profesional cuantas le tocan), si su paciente cuenta
+    // como de prueba, su fecha de nacimiento y la de la medicion. La edad se mide A LA FECHA DE LA TOMA y
+    // no a hoy: es la misma regla que cerro "una fecha ilegible que se vuelve edad cero".
+    const ctxFilas = await db
+      .select({
+        evaluationId: schema.evaluations.id,
+        profesionalId: schema.evaluations.professionalId,
+        nombreDelProfesional: schema.profiles.fullName,
+        esDePrueba: schema.patients.cuentaComoDePrueba,
+        nacimiento: schema.patientProfiles.birthDate,
+        medicion: schema.bisMeasurements.measurementDate,
+      })
+      .from(schema.evaluations)
+      .innerJoin(schema.patients, eq(schema.patients.id, schema.evaluations.patientId))
+      .innerJoin(
+        schema.professionalProfiles,
+        eq(schema.professionalProfiles.id, schema.evaluations.professionalId),
+      )
+      .innerJoin(schema.profiles, eq(schema.profiles.id, schema.professionalProfiles.profileId))
+      .leftJoin(schema.patientProfiles, eq(schema.patientProfiles.patientId, schema.patients.id))
+      .leftJoin(
+        schema.bisMeasurements,
+        eq(schema.bisMeasurements.evaluationId, schema.evaluations.id),
+      );
+
+    type Ctx = {
+      /** OCHO CARACTERES, sin nombre: esta salida se pega en documentos y los nombres no van a git. */
+      profesional: string;
+      nombre: string;
+      esDePrueba: boolean;
+      nacimiento: string | null;
+      medicion: Date | null;
+    };
+    const ctx = new Map<string, Ctx>();
+    for (const f of ctxFilas) {
+      // VARIAS MEDICIONES POR CONSULTA es posible (una corregida deja la anterior colgada), asi que se
+      // queda la MAS RECIENTE: la misma regla de "lo vigente es la ultima fila".
+      const prev = ctx.get(f.evaluationId);
+      const medicion = f.medicion ?? null;
+      if (prev && (medicion == null || (prev.medicion != null && prev.medicion >= medicion))) continue;
+      ctx.set(f.evaluationId, {
+        profesional: f.profesionalId.slice(0, 8),
+        nombre: f.nombreDelProfesional,
+        esDePrueba: f.esDePrueba,
+        nacimiento: f.nacimiento ?? null,
+        medicion,
+      });
+    }
+
+    /** Cuenta un conjunto de consultas por profesional, con los OCHO caracteres como clave. */
+    const porProfesional = (ids: Iterable<string>) => {
+      const m: Record<string, number> = {};
+      for (const id of ids) {
+        const k = ctx.get(id)?.profesional ?? "sin profesional";
+        m[k] = (m[k] ?? 0) + 1;
+      }
+      return Object.fromEntries(Object.entries(m).sort((a, b) => b[1] - a[1]));
+    };
+
+    // ══ FASE 0b · QUE VA A OFRECER LA PANTALLA DE RECALIBRACION ══
+    //
+    // NO ES LO MISMO QUE "RECOMPUTABLE", y la diferencia es la que hay que tener delante antes de ejecutar:
+    // el motor puede recomputar una consulta que la pantalla NO ofrece, porque la pantalla ademas excluye
+    // la huella repetida (hay que resolver a quien pertenece la medicion), las edades fuera de 18 a 100
+    // (la v7 no las puntua) y los pacientes de prueba. Se mide con `motivoParaNoReemitir`, la MISMA puerta.
+    //
+    // UN DESCUADRE ESPERADO CONTRA LA PANTALLA: esto cuenta consultas CON INFORME y la pantalla cuenta
+    // DIAGNOSTICOS desfasados. Una consulta con diagnostico y sin informe sale en la pantalla y no aqui.
+    const huellasRepetidas = await huellasRepetidasEnVigentes();
+    const motivoDeCadaUna = new Map<string, string | null>();
+    for (const [evaluationId, f] of consultas) {
+      const c = ctx.get(evaluationId);
+      motivoDeCadaUna.set(
+        evaluationId,
+        c?.esDePrueba
+          ? "paciente de prueba: la pantalla los cuenta aparte y no los reemite"
+          : motivoParaNoReemitir({
+              huellaRepetida: huellasRepetidas.has(evaluationId),
+              nacimiento: c?.nacimiento ?? null,
+              hasta: c?.medicion ?? f.createdAt,
+            }),
+      );
+    }
+    const entranALaPantalla = [...motivoDeCadaUna]
+      .filter(([, m]) => m == null)
+      .map(([id]) => id);
+    const noEntranPorMotivo: Record<string, { n: number; cuales: string[] }> = {};
+    for (const [id, m] of motivoDeCadaUna) {
+      if (m == null) continue;
+      (noEntranPorMotivo[m] ??= { n: 0, cuales: [] }).n++;
+      noEntranPorMotivo[m].cuales.push(id);
+    }
 
     const sev = (o: Snap | null, id: string) => o?.dfi?.domains?.find((d) => d.id === id)?.sev ?? null;
     const lect = (o: Snap | null, id: string) => o?.dfi?.domains?.find((d) => d.id === id)?.lectura ?? null;
@@ -164,7 +284,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
     }
 
     // ══ FASE 2 · EL RECOMPUTO, EN LOTES ══
-    console.log(`SIMULACION_300 recomputando ${consultas.length} consultas en lotes de ${EN_PARALELO}`);
+    imprimir(`SIMULACION_300 recomputando ${consultas.length} consultas en lotes de ${EN_PARALELO}`);
     const recomputado = new Map<string, Snap | null>(
       await enLotes(
         consultas,
@@ -188,7 +308,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
       (causas[causa] ??= []).push(id);
     };
 
-    console.log(`SIMULACION_300 buscando la causa de ${sinRecomputo.length} sin recomputo`);
+    imprimir(`SIMULACION_300 buscando la causa de ${sinRecomputo.length} sin recomputo`);
     await enLotes(sinRecomputo, EN_PARALELO, async (evaluationId) => {
       if (!modeloActivo) {
         anota("no hay modelo activo (es global, no de la consulta)", evaluationId);
@@ -247,7 +367,8 @@ describe("simulacion del recalculo del motor 3.x", () => {
     let cambiaRiesgoNivel = 0;
     let cambiaRutas = 0;
     let cambiaIcec = 0;
-    let reemisionObligatoria = 0;
+    // CON SUS IDS, para poder repartirlas por profesional: son las que su §12b vuelve obligatorias.
+    const reemisionObligatoriaIds: string[] = [];
     const deltasIcec: Record<string, number[]> = {};
     const d3Nace: string[] = [];
     const d3Muere: {
@@ -255,6 +376,13 @@ describe("simulacion del recalculo del motor 3.x", () => {
       antes: number | null;
       estadoEbBis: string;
       motivo: string | null;
+      /** LA EDAD A LA FECHA DE LA TOMA, que es la que decide. "edad no valida" no dice si es menor o
+       *  mayor de 100, y la salida es distinta: el menor no se resuelve nunca, el de mas de 100 tampoco,
+       *  y una fecha mal escrita si. */
+      edadAlMedirse: number | null;
+      /** Y si la pantalla de recalibracion la ofrece: si no, esto no llega a produccion. */
+      laPantallaLaOfrece: boolean;
+      profesional: string;
     }[] = [];
     const pasaAAcelerado: string[] = [];
     let dejaDeSerAcelerado = 0;
@@ -292,11 +420,15 @@ describe("simulacion del recalculo del motor 3.x", () => {
         // CON SU CAUSA AL LADO, que es lo que faltaba. El dominio 3 deja de puntuar cuando la v7 no puede
         // calcular, y entonces `ebBis.estado` trae el motivo. La v5 si podia (salia de IFC, PABU e ICEC) y
         // NO se cae a ella a proposito: volver a la cifra vieja reintroduce la contradiccion.
+        const c = ctx.get(evaluationId);
         d3Muere.push({
           evaluationId,
           antes: sevAntes,
           estadoEbBis: hoy.ebBis?.estado ?? "sin ebBis en el recomputado",
           motivo: hoy.ebBis?.motivo ?? null,
+          edadAlMedirse: edadSiSePuede(c?.nacimiento ?? null, c?.medicion ?? f.createdAt),
+          laPantallaLaOfrece: motivoDeCadaUna.get(evaluationId) == null,
+          profesional: c?.profesional ?? "sin profesional",
         });
         sube(mayor, "dominio3QueDESAPARECE");
       }
@@ -368,7 +500,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
       }
 
       const v = veredictoDeReemision(sellado as never, hoy as never, true);
-      if (v.kind === "reemision-obligatoria") reemisionObligatoria++;
+      if (v.kind === "reemision-obligatoria") reemisionObligatoriaIds.push(evaluationId);
 
       // ═══ EL CRUCE QUE DECIDE SI EL PROFESIONAL SE ENTERA ═══
       //
@@ -393,7 +525,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
     // una salida aparte: una consulta frenada que no se puede recomputar se queda frenada PARA SIEMPRE.
     const frenadasSinSalida = [...frenadasHoy].filter((id) => recomputado.get(id) == null);
 
-    console.log(
+    imprimir(
       "SIMULACION_300 " +
         JSON.stringify(
           {
@@ -404,14 +536,54 @@ describe("simulacion del recalculo del motor 3.x", () => {
             porMotorSellado,
             recomputables,
             porMayorSellado: Object.fromEntries([...porMayor].sort()),
-            // LA TABLA QUE FALTABA: por que no se puede recomputar cada una, agrupado por causa.
+            // LA TABLA QUE FALTABA: por que no se puede recomputar cada una, agrupado por causa. CON TODOS
+            // LOS IDS (tope 60 por causa): con cinco ejemplos no se puede ir a buscar a los pacientes.
             noRecomputables: {
               n: sinRecomputo.length,
+              porProfesional: porProfesional(sinRecomputo),
               porCausa: Object.fromEntries(
                 Object.entries(causas)
                   .sort((a, b) => b[1].length - a[1].length)
-                  .map(([causa, ids]) => [causa, { n: ids.length, ejemplos: ids.slice(0, 5) }]),
+                  .map(([causa, ids]) => [
+                    causa,
+                    { n: ids.length, cuales: ids.slice(0, 60), porProfesional: porProfesional(ids) },
+                  ]),
               ),
+            },
+            // ══ LO QUE LA PANTALLA DE RECALIBRACION VA A OFRECER DE VERDAD ══
+            //
+            // `recomputables` es cuantas puede recomputar el MOTOR. Esto es cuantas se van a poder
+            // SELECCIONAR, que es siempre menos y es la cifra que decide el tamaño de la tanda.
+            laPantalla: {
+              entran: entranALaPantalla.length,
+              porProfesional: porProfesional(entranALaPantalla),
+              noEntran: Object.fromEntries(
+                Object.entries(noEntranPorMotivo)
+                  .sort((a, b) => b[1].n - a[1].n)
+                  // VEINTE IDS POR MOTIVO: lo que decide es la CUENTA, y las listas largas vuelven la
+                  // salida impegable. Las que si van completas son las 14 sin recomputo, que son las que
+                  // hay que ir a buscar una por una.
+                  .map(([motivo, v]) => [motivo, { n: v.n, cuales: v.cuales.slice(0, 20) }]),
+              ),
+            },
+            // ══ A QUIEN LE TOCA MIRAR ALGO DESPUES, por profesional (ocho caracteres) ══
+            //
+            // Las tres cosas que le cambian el trabajo a una profesional: el aviso ambar que la obliga a
+            // reemitir, las consultas cuya sugerencia de tratamiento se mueve, y los informes que se
+            // destraban y ya puede entregar.
+            quienTieneQueMirar: {
+              reemisionObligatoria: {
+                n: reemisionObligatoriaIds.length,
+                porProfesional: porProfesional(reemisionObligatoriaIds),
+              },
+              rutasQueCambian: {
+                n: conRutasQueCambian.length,
+                porProfesional: porProfesional(conRutasQueCambian),
+              },
+              informesQueSeDestraban: {
+                n: seDestraban.length,
+                porProfesional: porProfesional(seDestraban),
+              },
             },
             seMueve: {
               dominio3: cambiaD3,
@@ -421,7 +593,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
               icecTotal: cambiaIcec,
               riesgoNivel: cambiaRiesgoNivel,
               rutas: cambiaRutas,
-              reemisionObligatoria,
+              reemisionObligatoria: reemisionObligatoriaIds.length,
             },
             icecDelta: Object.fromEntries(
               Object.entries(deltasIcec)
@@ -466,6 +638,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
             freno: {
               // AHORA SI son todas las frenadas de hoy, no solo las recomputables.
               frenadasHoy: frenadasHoy.size,
+              frenadasHoyPorProfesional: porProfesional(frenadasHoy),
               // TIENE QUE SER 0: el freno existe porque ninguna se habia enviado todavia.
               frenadasHoyYaEnviadas,
               seDestraban: seDestraban.length,
@@ -489,6 +662,19 @@ describe("simulacion del recalculo del motor 3.x", () => {
           null,
           2,
         ),
+    );
+
+    // ═══ EL DIRECTORIO DE PROFESIONALES, EN SU PROPIA LINEA Y FUERA DEL JSON ═══
+    //
+    // Los agregados de arriba llevan OCHO CARACTERES y ningun nombre, porque esa salida se pega en
+    // documentos que van a git. Esta linea traduce los ocho caracteres a nombre para poder repartir el
+    // trabajo, y es la unica que NO se copia a un documento versionado: va a `docs/entregas/dudas/`, que
+    // esta fuera de git. No lleva ni un dato de paciente.
+    const directorio = new Map<string, string>();
+    for (const c of ctx.values()) directorio.set(c.profesional, c.nombre);
+    imprimir(
+      "SIMULACION_300 directorio (NO va a git) " +
+        JSON.stringify(Object.fromEntries([...directorio].sort()), null, 2),
     );
 
     // LO UNICO QUE SE AFIRMA: que hubo algo que simular, y que cada `null` tiene una causa escrita. Una
