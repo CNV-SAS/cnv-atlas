@@ -20,12 +20,28 @@ tabla dice qué significaba.
 
 | Artefacto | Formato | Hoy | Dónde vive |
 |---|---|---|---|
-| Motor clínico | **semver de tres** | `3.1.0` | `ENGINE_VERSION` (`src/clinical-engine/version.ts`) |
+| Motor clínico | **semver de tres** | `3.2.0` | `ENGINE_VERSION` (`src/clinical-engine/version.ts`) |
 | Conjunto de protocolo | **semver de tres** | `1.0.0` | `PROTOCOL_ENGINE_VERSION` (mismo archivo) |
 | Modelo | **semver de tres** | `1.0.0` | fila de `model_versions` (`version_name`) |
 | Reglas | **semver de tres** | `1.0.0` | fila de `model_versions` (`rules_version`) |
 | Encuesta | **entero** | `6` | fila de `survey_versions` (`version_number`) |
 | Prompt del resumen de IA | **entero** | `14` | fila de `ai_prompts` (`criterio.generate`, `version`) y su JSON en `src/modules/diagnoses/ai/prompts/` |
+
+**El motor subió a 3.2.0 el 2026-11-07: el borde exacto de ±5 del IAE se cierra, en los cuatro sitios.**
+Lo destapó la simulación del recálculo: dos consultas con el IAE en **+5,0 exacto** no se destrababan, y la
+causa era Atlas contradiciéndose consigo mismo en el borde. El texto que lee el paciente usaba el corte
+cerrado (`>= 5`), el clasificador del profesional el abierto (`<= 5`), y las rutas R1 y R4 el abierto
+también. Así que con un IAE de +5,0 el informe decía *"envejecimiento acelerado estimado"*, la tabla decía
+*"Acorde con sus pares"*, y el tratamiento no traía la ruta que trata el envejecimiento.
+
+El corte cerrado es **suyo** (su `cIAE` del v16, línea 4568, y sus condiciones de R1 y R4). Las tres piezas
+se re-portaron byte a byte. Es **menor** porque la cifra de la EB-BIS y del IAE no se mueve: solo en qué
+banda cae el valor exacto del borde. Sube también `emission_versions.classification` a `cXXX-2026-11-07`,
+porque una etiqueta sellada sí se movió. Son **cuatro consultas** en la cohorte.
+
+**Y una regla que salió de hacerlo dos veces en dos días:** mientras el recálculo esté sin aprobar, **cada
+cambio de ciencia que se escriba después de un push necesita su propia versión**, porque la nube ya puede
+estar sellando con la anterior. Pasó con la 3.0.0 y volvió a pasar con la 3.1.0.
 
 **El motor subió a 3.0.0 el 2026-11-06, y es el segundo MAYOR.** La 2.0.0 trajo la EB-BIS v7 a la
 pantalla y al informe, pero `analizarDFI` siguió calculando por dentro la **v5** y con ella resolvía el

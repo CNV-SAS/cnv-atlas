@@ -137,14 +137,17 @@ const cIEHH = v => v <= 0 ? {
 // SIN DISTINCION POR SEXO — DELIBERADO. Confirmado por la direccion cientifica
 // el 2026-07-28. No anadir umbrales por sexo por analogia con IFC, IRC, FMI o
 // FFMI: este indicador usa el mismo rango en hombres y mujeres.
-const cIAE = v => v < -5 ? {
+const cIAE = v => v <= -5 ? {
   l: "Desacelerado",
+  t: "Envejecimiento desacelerado estimado",
   c: "#10b981"
-} : v <= 5 ? {
+} : v < 5 ? {
   l: "Concordante",
+  t: "Acorde con sus pares",
   c: "#f59e0b"
 } : {
   l: "Acelerado",
+  t: "Envejecimiento acelerado estimado",
   c: "#ef4444"
 };
 

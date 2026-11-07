@@ -48,7 +48,24 @@ const CURRENT: EmissionVersions = {
   //
   // (El cambio de `cAF` del mismo dia NO justifica por si solo el bump: solo cambio el COLOR del label
   // "Normal", y el color no se sella. La etiqueta sellada no se movio.)
-  classification: "cXXX-2026-08-29", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
+  // ═══ BUMP 2026-11-07: EL BORDE DE ±5 DEL IAE SE CIERRA, Y ESO MUEVE UNA ETIQUETA SELLADA ═══
+  //
+  // `cIAE` se re-porto de su v16 (L4568), donde los dos bordes estan CERRADOS hacia el extremo. El que
+  // teniamos venia del v8: `v < -5` y `v <= 5`. Asi que en el borde EXACTO la etiqueta cambia:
+  //
+  //   · IAE +5,0 pasa de "Concordante" a "Acelerado"
+  //   · IAE -5,0 pasa de "Concordante" a "Desacelerado"
+  //
+  // ES EXACTAMENTE EL CASO PARA EL QUE EXISTE ESTA CLAVE: una etiqueta SELLADA se movio (no un color), asi
+  // que los diagnosticos de antes quedan marcados como emitidos con version anterior y la comparacion de
+  // bandas de su §12b puede dispararse. Medido sobre la nube el 2026-11-07: son CUATRO consultas
+  // (`fdb7e083` y `0eebf4dd` en +5,0 · `58d6ec8a` y `84253510` en -5,0).
+  //
+  // Y NO ES UN AJUSTE NUESTRO: el corte cerrado es de su archivo, y las condiciones de R1 y R4 de su v16
+  // dicen `>= 5` por lo mismo. Lo que habia en Atlas era un porte del v8 conviviendo con una capa de
+  // presentacion ya migrada, y en el borde las dos decian cosas distintas: ver
+  // `el-borde-de-los-cinco-dice-lo-mismo.test.ts`.
+  classification: "cXXX-2026-11-07", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
   // ═══ BUMP 2026-10-28: LLEGO LA CALIBRACION, Y CON OTRA FORMULA ═══
   //
   // Esta clave nacio "ebbis-v5-provisional" y el comentario de arriba decia que la calibracion

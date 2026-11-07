@@ -1,7 +1,13 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { ENTREGAS, htmlDeEntrega, HTML_VIGENTE } from "./fixtures/html-vigente";
+import {
+  CAMBIOS_NUEVOS,
+  ENTREGAS,
+  htmlDeCambioNuevo,
+  htmlDeEntrega,
+  HTML_VIGENTE,
+} from "./fixtures/html-vigente";
 
 // CANDADO DE DERIVA CONTRA LA ENTREGA VIGENTE, y es el que faltaba a los nueve diff que ya existen.
 //
@@ -170,6 +176,21 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
         "el ENVOLTORIO de las condiciones de ruta difiere: nuestro porte las extrajo a un mapa " +
         "RUTA_COND y en su v8 viven dentro de RUTAS[].condicion. Los CUERPOS se verifican abajo, uno " +
         "por uno, que es donde está la ciencia.",
+    },
+  ],
+  "engine.core.js": [
+    {
+      patron: /^(const cIAE = v => v <= -5 \? \{|t: "Envejecimiento (des)?acelerado estimado",|t: "Acorde con sus pares",)$/,
+      razon:
+        "RE-PORTADO DE SU v16 (L4568) el 2026-11-07, que es SEIS entregas mas nuevo que el que " +
+        "HTML_VIGENTE resuelve: por eso no esta en el v9. Su `cIAE` cierra los dos bordes hacia el " +
+        "extremo (de `v < -5` y `v <= 5` a `v <= -5` y `v < 5`) y trae los tres textos de banda. Se " +
+        "porto porque en +5,0 exacto Atlas se contradecia solo: el informe decia 'envejecimiento " +
+        "acelerado estimado' (presentacion ya migrada) y la tabla decia 'Concordante' (este clasificador, " +
+        "del v8), y la ruta que lo trata no se activaba. NO se tolera a ciegas: " +
+        "`el-borde-de-los-cinco-dice-lo-mismo.test.ts` compara el bloque byte a byte contra su v16 y " +
+        "pincha las cuatro lecturas en el borde; y la etiqueta sellada subio a `cXXX-2026-11-07`, porque " +
+        "esto SI mueve una banda.",
     },
   ],
   "atlas-tratamiento.js": [
@@ -374,14 +395,48 @@ describe("las condiciones de las seis rutas, cuerpo por cuerpo", () => {
     ]);
   });
 
+  // ═══ DOS RUTAS ANCLAN A UNA ENTREGA MAS NUEVA, Y NO SE "TOLERAN": SE COMPARAN CONTRA LA SUYA ═══
+  //
+  // El 2026-11-07 se re-portaron los bordes de R1 y R4 de su `ATLAS_v16.html` (`>= 5` en vez de `> 5`),
+  // porque en el borde exacto de +5,0 Atlas se contradecia consigo mismo: el informe decia "envejecimiento
+  // acelerado estimado" y la ruta que lo trata no se activaba. El corte cerrado es SUYO (su `cIAE` L4568 y
+  // sus condiciones de R1 y R4 lo dicen igual).
+  //
+  // NO ENTRAN EN `TOLERADAS`, y la diferencia importa: una tolerancia deja de mirar la linea. Esto la
+  // sigue mirando, contra el archivo CORRECTO. Si manana el cambiara otra vez ese corte, esto se pone
+  // rojo igual. Lo unico que cambia es a que archivo se le pregunta.
+  //
+  // Las otras cuatro siguen contra `HTML_VIGENTE`: no se tocaron.
+  const ENTREGA_NUEVA = "4 noviembre";
+  const DE_LA_ENTREGA_NUEVA: Record<string, string> = {
+    R1: "el borde del IAE se cerro (>= 5) con el re-porte de su v16, para que la banda, la clasificacion y las rutas digan lo mismo en +5,0 exacto",
+    R4: "lo mismo que R1: es la ruta que TRATA el envejecimiento, y con el corte abierto no se activaba justo en el borde donde el informe ya decia 'acelerado'",
+  };
+
+  it("la entrega nueva a la que anclan esas dos existe", () => {
+    expect(CAMBIOS_NUEVOS).toContain(ENTREGA_NUEVA);
+  });
+
+  const suV16 = sinEspacio(readFileSync(htmlDeCambioNuevo(ENTREGA_NUEVA), "utf8"));
+
   for (const [id, cuerpo] of condiciones) {
-    it(`${id}: su condición es la misma en el archivo vigente`, () => {
+    const razon = DE_LA_ENTREGA_NUEVA[id];
+    it(`${id}: su condición es la misma en ${razon ? "su v16" : "el archivo vigente"}`, () => {
       expect(
-        vigente.includes(sinEspacio(cuerpo)),
-        `la condición de ${id} ya no está en su archivo: o la cambió él, o la cambiamos nosotros`,
+        (razon ? suV16 : vigente).includes(sinEspacio(cuerpo)),
+        `la condición de ${id} ya no está en su archivo: o la cambió él, o la cambiamos nosotros` +
+          (razon ? ` · ancla al v16 porque ${razon}` : ""),
       ).toBe(true);
     });
   }
+
+  it("y las dos que anclan al v16 declaran su razon, que es lo que evita que la lista crezca sola", () => {
+    // Una excepcion sin razon escrita se convierte en el sitio donde se mete la siguiente sin mirar.
+    for (const [id, razon] of Object.entries(DE_LA_ENTREGA_NUEVA)) {
+      expect(condiciones.map(([x]) => x), `${id} ya no es una ruta`).toContain(id);
+      expect(razon.length, `${id}: la excepcion no dice por que`).toBeGreaterThan(60);
+    }
+  });
 });
 
 describe("las copias de su código en fixtures tampoco derivaron", () => {

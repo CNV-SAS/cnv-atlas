@@ -263,10 +263,17 @@ describe("indicatorBands: cortes anclados contra el clasificador frozen (no drif
     expect(indicatorBands("ISCM", true)).toContain("≤−1");
     expect(indicatorBands("ISCM", true)).toContain(fmtDec(2.5, 1));
   });
-  it("IAE: transiciones en -5/5 (desacelerado/concordante/acelerado)", () => {
+  it("IAE: transiciones en -5/5, con los bordes CERRADOS hacia el extremo (su v16)", () => {
+    // CAMBIO EL 2026-11-07, y no es un ajuste de este test: `cIAE` se re-porto de su v16 (L4568), donde
+    // los dos bordes estan cerrados. Antes `-5` y `+5` caian en "Concordante"; ahora caen en el extremo.
+    // La razon esta en `el-borde-de-los-cinco-dice-lo-mismo.test.ts`: con el corte abierto, un IAE de
+    // +5,0 hacia que el informe dijera "envejecimiento acelerado estimado" y la tabla "Acorde con sus
+    // pares", y la ruta que trata el envejecimiento no se activaba.
     expect(cIAE(-6).l).toBe("Desacelerado");
-    expect(cIAE(-5).l).toBe("Concordante");
-    expect(cIAE(5).l).toBe("Concordante");
+    expect(cIAE(-5).l).toBe("Desacelerado");
+    expect(cIAE(-4.9).l).toBe("Concordante");
+    expect(cIAE(4.9).l).toBe("Concordante");
+    expect(cIAE(5).l).toBe("Acelerado");
     expect(cIAE(6).l).toBe("Acelerado");
     expect(indicatorBands("IAE", true)).toContain("−5");
   });

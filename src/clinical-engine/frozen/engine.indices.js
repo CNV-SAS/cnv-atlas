@@ -51,7 +51,7 @@ function computeIAE(eb, edad) {
 // R6 recibe además `dominios`. Devuelven boolean.
 const RUTA_COND = {
   // R1 · Restauración Celular
-  R1: d => Number(d.ifc||d.IFC) < 4.5 && Number(d.ifc||d.IFC) > 0 && Number(d.irc||d.IRC) >= 3.5 && Number(d.iae||d.IAE) > 5,
+  R1: d => Number(d.ifc||d.IFC) < 4.5 && Number(d.ifc||d.IFC) > 0 && Number(d.irc||d.IRC) >= 3.5 && Number(d.iae||d.IAE) >= 5,
   // R2 · Reducción Riesgo Cardiometabólico
   R2: d => Number(d.FMI||d.fmi) > ((d.sexo==='M'||d.sexo==='Masculino') ? 6 : 9) || Number(d.iscm||d.ISCM) > 1.0 || d.obesidadSarcopenica === true || Number(d.ICC||d.icc) >= ((d.sexo==='M'||d.sexo==='Masculino') ? 0.90 : 0.85) || Number(d.ICT||d.ict) >= 0.50 || ((d.sexo==='M'||d.sexo==='Masculino') ? Number(d.IR||d.ir) >= 0.78 : Number(d.IR||d.ir) >= 0.82),
   // R3 · Manejo TCA (ENCUESTA: d2_21 conductas, d2_20 satisfacción corporal)
@@ -60,7 +60,7 @@ const RUTA_COND = {
     return ["Laxantes","Vómito","Ejercicio excesivo"].some(t => tca.includes(t)) || d.d2_20 === "Muy insatisfecho/a";
   },
   // R4 · Desaceleración del Envejecimiento
-  R4: d => Number(d.iae||d.IAE) > 5 || (Number(d.FFMI||d.ffmi) > 0 && Number(d.FFMI||d.ffmi) < ((d.sexo==='M'||d.sexo==='Masculino') ? 17 : 15)) || d.nivelFFMI === 'bajo' || d.obesidadSarcopenica === true,
+  R4: d => Number(d.iae||d.IAE) >= 5 || (Number(d.FFMI||d.ffmi) > 0 && Number(d.FFMI||d.ffmi) < ((d.sexo==='M'||d.sexo==='Masculino') ? 17 : 15)) || d.nivelFFMI === 'bajo' || d.obesidadSarcopenica === true,
   // R5 · Contextual / Epigenética (ENCUESTA: ≥3 factores)
   R5: d => {
     const dx = Array.isArray(d.d5_39) ? d.d5_39 : [];

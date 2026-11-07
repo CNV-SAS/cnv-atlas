@@ -62,10 +62,20 @@ function shaDeLosClasificadores(): string {
   return createHash("sha256").update(acc).digest("hex");
 }
 
-// SHA de los clasificadores CON los cortes del IRC por sexo ya portados (2026-08-29), que es la ciencia
-// que sella `cXXX-2026-08-29`.
-const SHA_ESPERADO = "b410d492e57758ce1458e5d78753c2d9ab50012fbcda7828dda2723e60aacb7c";
-const ETIQUETA_ESPERADA = "cXXX-2026-08-29";
+// SHA de los clasificadores con los cortes del IRC por sexo (2026-08-29) y con `cIAE` re-portado de su
+// v16 (2026-11-07), que es la ciencia que sella `cXXX-2026-11-07`.
+//
+// POR QUE SUBIO LA ETIQUETA Y NO SOLO EL SHA, que es la pregunta que este candado obliga a contestar: el
+// cambio de `cIAE` SI MUEVE UNA BANDA SELLADA. Sus dos bordes pasan a cerrados hacia el extremo (de
+// `v < -5` y `v <= 5` a `v <= -5` y `v < 5`), asi que un IAE de +5,0 exacto pasa de "Concordante" a
+// "Acelerado" y uno de -5,0 de "Concordante" a "Desacelerado". Medido sobre la nube el 2026-11-07: cuatro
+// consultas reales caen en esos bordes. El detalle, en `emission-versions.ts` y en
+// `el-borde-de-los-cinco-dice-lo-mismo.test.ts`.
+//
+// (El `t` nuevo de cada banda, que viene con su bloque, es TEXTO y no mueve ninguna etiqueta por si solo.
+// La etiqueta sube por los cortes, no por el.)
+const SHA_ESPERADO = "9547d4bd87ab91c6425f31f2db111b63e016a21ec3b96033ed2233f17364b4ec";
+const ETIQUETA_ESPERADA = "cXXX-2026-11-07";
 
 describe("los clasificadores y su versión de emisión no pueden divergir", () => {
   it("los diez clasificadores siguen existiendo con ese nombre", () => {

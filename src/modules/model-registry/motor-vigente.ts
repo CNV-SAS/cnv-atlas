@@ -113,6 +113,16 @@ const QUE_ES_ESTA_VERSION: Record<string, { texto: string; fecha: string }> = {
       "Adecuado. Afecta al índice de estilo de vida, no a la edad biológica.",
     fecha: "2026-11-06",
   },
+  // LO QUE EL PROFESIONAL VA A NOTAR: en el borde exacto de 5 años la etiqueta ya no dice lo contrario que
+  // el informe. Se dice SIN hablar de "cortes abiertos y cerrados", que es conversación interna: lo que él
+  // necesita saber es que esa contradicción no va a volver a verla.
+  "3.2.0": {
+    texto:
+      "Cuando la diferencia de edad biológica es de exactamente 5 años, la clasificación y el informe " +
+      "decían cosas distintas y el tratamiento no traía la ruta de envejecimiento. Ya dicen lo mismo, con " +
+      "el criterio del archivo de la Dirección Científica.",
+    fecha: "2026-11-07",
+  },
 };
 
 export type MotorVigente = {

@@ -214,7 +214,56 @@
 // leerse distinto hoy. Es la misma familia que el efecto sella-vs-computa de la Δ (CA-2 del registro de
 // opcion B), y es aceptable por la misma razon: el que cambia es el que estaba mal, y es el defecto que
 // Gildardo esta corrigiendo. El ICEC SELLADO de las consultas viejas no se toca.
-export const ENGINE_VERSION = "3.1.0";
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// 3.2.0 (2026-11-07) · EL BORDE DE ±5 DEL IAE SE CIERRA, EN LOS CUATRO SITIOS
+//
+// ═══ DE DONDE SALIO: LA SIMULACION DEL RECALCULO, CONTRA LA NUBE ═══
+//
+// La simulacion dijo que despues del recalculo UNA consulta seguia frenada (`0eebf4dd`) y OTRA quedaba
+// frenada de nuevo (`fdb7e083`). Las dos con el IAE en **+5,0 exacto**. No era un dato raro: era Atlas
+// contradiciendose consigo mismo en el borde, con CUATRO lectores y DOS cortes.
+//
+//   · `presentacion-eb-bis.ts` (lo que el PACIENTE lee) ..... >= 5  ->  "acelerado"
+//   · `cIAE` del frozen (la CLASIFICACION del profesional) .. <= 5  ->  "Concordante"
+//   · la condicion de R4 (lo que se PRESCRIBE) ............. >  5  ->  no activa
+//   · la condicion de R1 .................................. >  5  ->  no activa
+//
+// Con un IAE de +5,0 el informe decia "envejecimiento acelerado estimado" arriba, la tabla decia "Acorde
+// con sus pares", y el tratamiento no traia la ruta del envejecimiento. El freno hacia su trabajo: lo que
+// detectaba era REAL y lo producia Atlas.
+//
+// ═══ QUIEN LO DECIDE ═══
+//
+// Gildardo. Su `cIAE` del v16 (L4568) cierra los dos bordes hacia el extremo, y las condiciones de R1 y
+// R4 de su archivo dicen `>= 5` por lo mismo. Las tres piezas se RE-PORTARON byte a byte. Lo que habia en
+// Atlas era un porte del v8 conviviendo con una capa de presentacion ya migrada.
+//
+// ═══ QUE SE MUEVE ═══
+//
+//  · La ETIQUETA SELLADA de la banda: +5,0 pasa de "Concordante" a "Acelerado" y -5,0 a "Desacelerado".
+//    Por eso sube tambien `emission_versions.classification` a `cXXX-2026-11-07`.
+//  · La SEVERIDAD del dominio 3: en +5,0 pasa de 1 (via `iae > 3`) a 2 (via la banda "Acelerado").
+//  · Las RUTAS R1 y R4 se activan en +5,0 exacto, donde antes no.
+//  · Y los tres textos de banda de su tabla 3 entran con el bloque (`t`). No se usan todavia.
+//
+// Medido sobre la nube el 2026-11-07: CUATRO consultas en los bordes (`fdb7e083` y `0eebf4dd` en +5,0 ·
+// `58d6ec8a` y `84253510` en -5,0). Dos de ellas son exactamente las que la simulacion no destrababa.
+//
+// ═══ POR QUE MENOR, Y POR QUE VERSION PROPIA Y NO DENTRO DE LA 3.1.0 ═══
+//
+// MENOR: lo emitido antes sigue siendo comparable. Lo que la comparabilidad protege es la resta de dos
+// EB-BIS (`sonComparables`), y esta version no toca la cifra de la EB-BIS ni del IAE: solo en que banda
+// cae el valor exacto del borde.
+//
+// VERSION PROPIA porque la 3.1.0 YA SE EMPUJO (`git reflog show origin/main`, el 2026-11-07), igual que
+// habia pasado con la 3.0.0. Es la segunda vez en dos dias, asi que conviene decirlo como regla y no como
+// anecdota: **mientras el recalculo este sin aprobar, cada cambio de ciencia que se escriba despues de un
+// push necesita su propia version**, porque la nube ya puede estar sellando con la anterior.
+//
+// LO QUE SIGUE ABIERTO: el Δ de su linea 15628 sigue con el corte ABIERTO en su archivo, asi que en +5,0
+// su documento se contradice solo (la fila dice "acelerado" y el Δ de al lado dice "0,0"). Es su pregunta
+// 36 y la decide el. Esta version cubre la BANDA, no el Δ.
+export const ENGINE_VERSION = "3.2.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada
