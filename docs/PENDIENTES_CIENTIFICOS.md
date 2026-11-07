@@ -1,6 +1,6 @@
 # Lo que queda abierto con usted, Gildardo
 
-**Connected Nutrition Ventures · Atlas · 5 de noviembre de 2026** (las 31 del 4 de noviembre, más las cinco de la v15 y la v16)
+**Connected Nutrition Ventures · Atlas · 6 de noviembre de 2026** (las 31 del 4 de noviembre, más las cinco de la v15 y la v16, más la cadera mal tecleada del 6)
 **De:** Santiago (equipo técnico de Atlas) · **Para:** Gildardo de Jesús Uribe Gil
 
 > **Este documento no identifica a ningún paciente.** Donde hace falta señalar un caso va el id de
@@ -16,7 +16,8 @@ quedó contestada por ellas.
 recomendamos. Si con eso puede contestar, no necesita el resto. Debajo está **el detalle** de cada una, con
 el mismo número, para las que quiera mirar despacio.
 
-**Nada de esto frena a Atlas**, salvo las cuatro de abajo. Todo lo demás está construido y funcionando con
+**Nada de esto frena a Atlas**, salvo las cuatro de abajo (y una de ellas, la **37**, ya dejó a una
+paciente real sin diagnóstico). Todo lo demás está construido y funcionando con
 la decisión que tomamos en cada caso; lo que le preguntamos es si fue la que usted habría tomado. Lo
 marcado **[aplicado]** ya está hecho: si su respuesta es otra, se cambia. Donde dice *"se cambia en una
 línea"* es literal.
@@ -30,10 +31,16 @@ usted.
 
 | | Qué se decide | Qué se desbloquea |
 |---|---|---|
-| **4** | Si el DFI y las rutas pasan a leer el IAE de la v7, o si el dominio 3 tiene su propia escala | Que el informe deje de contradecirse. **Hoy 60 de 389 informes no se pueden entregar** |
+| **37** | Si una cintura o una cadera mal tecleada se puede corregir en Atlas, o se repite la toma | **Hay una consulta de una paciente real sin diagnóstico por esto**, de hoy |
 | **1** | Cuál Harris-Benedict manda (1919 o 1984) y sobre qué se aplica el 10 % | El motor calórico nuevo, y con él el flujo guiado del nutricionista |
 | **2** | Los rangos del control de calidad biológico | El control de calidad entra (sus once identidades imposibles ya están) |
 | **3** | Qué pasa con las consultas que el recálculo no puede tocar | Se cierra el recálculo del histórico con la v7 |
+
+**Y la 4 salió de esta lista el 6 de noviembre, porque su v15 ya la contestó.** Era la más importante de
+las cuatro y pedía decidir si el DFI y las rutas pasaban a leer el IAE de la v7. Su archivo dice que sí
+(`computeDFIFromData` L11834 · `atlasMigrarEbV7` L4458 · dominio 3 L13965 · §1.4), así que **ya está
+aplicado**: ver el anexo, al final. Lo que queda de la 4 es su segunda mitad, que no frena nada.
+**Medido el 6 de noviembre, con la cifra al día: eran 60 de 389 informes frenados y hoy son 70 de 422.**
 
 ---
 
@@ -65,7 +72,7 @@ claves que la encuesta no guarda, y eso ya estaba anotado de nuestro lado desde 
 
 ---
 
-## Las 36 preguntas
+## Las 37 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"4: opción 1 · 9: sí, el degradado hacia
 > rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -77,6 +84,18 @@ claves que la encuesta no guarda, y eso ya estaba anotado de nuestro lado desde 
 > copia: es un cambio de una palabra.*
 
 ### A · Las que frenan trabajo
+
+**37 · Una cadera mal tecleada: ¿se repite la toma, o Atlas deja corregirla?** Una profesional escribió
+**1020** en la cadera (un dedo de más en el teclado), Atlas frenó la importación, y no hay forma de
+corregir ese número sin volver a tomar la bioimpedancia: **la paciente ya se había ido y la consulta quedó
+sin diagnóstico.** En el archivo del equipo no hay nada derivado de esas dos medidas, pero en Atlas sí: el
+ICC es uno de los seis disparadores de la ruta R2, y con 1020 el disparador se apagaría sin que nadie lo
+note. · **A)** Siempre se repite la toma. · **B)** Atlas deja corregir o completar cintura y cadera después
+de importar, con motivo y guardando el valor original. · **C)** Se corrige en el Biody Manager, se
+reexporta, y en Atlas se reemplaza la medición con motivo.
+*Recomendamos C si el Biody Manager deja editar y reexportar sin volver a medir; si no deja, B. **La C ya
+está construida** y no cuesta nada: desde el 5 de noviembre el freno de huella repetida avisa, pide motivo
+y deja seguir.*
 
 **1 · ¿Cuál Harris-Benedict manda, y sobre qué se aplica el 10 %?** Su v12 pide Harris-Benedict sobre el
 peso meta más 10 % de termogénesis, y hay dos juegos de coeficientes posibles (1919 y 1984). Atlas ya tiene
@@ -327,8 +346,49 @@ palabra y cierra el asunto para siempre.
 
 # A · LAS QUE FRENAN TRABAJO
 
-Sin su respuesta, estas cinco no se construyen. No es una forma de decir que son importantes: es que
+Sin su respuesta, estas no se construyen. No es una forma de decir que son importantes: es que
 construirlas exige elegir por usted.
+
+## 37 · Una cadera mal tecleada: ¿se repite la toma, o Atlas deja corregirla? **[FRENA UNA CONSULTA REAL]**
+
+**El caso, del 6 de noviembre.** Una profesional escribió **1020** en la cadera (un dedo de más en el
+teclado). Atlas frenó la importación, que es lo correcto. Pero no hay forma de corregir ese número sin
+volver a tomar la bioimpedancia, y **la paciente ya se había ido**. La consulta quedó sin diagnóstico.
+
+**Lo que medimos antes de preguntarle, para que decida con datos:**
+
+**1 · En el ARCHIVO del Biody Manager no hay nada derivado de cintura ni de cadera.** Revisamos las 117
+columnas del export de esa paciente: `Hips Size cm` y `Waist Size cm` son datos hoja. No existe una
+columna de índice cintura-cadera, ni ninguna otra que cambie si se corrige una de las dos. (Las tres
+columnas con la palabra *ratio* son bioeléctricas: impedancia, ECW/ICW y ECM/BCM.)
+
+**Lo que no podemos saber desde aquí es si el Biody Manager las usa por dentro** para algo que no exporta:
+su propio informe, su interpretación, o un indicador que usted lea allá. Esa mitad es suya, y es la que
+decide entre B y C.
+
+**2 · En ATLAS sí dependen dos razones, y una es clínica.** Atlas calcula `ICC = cintura/cadera` y
+`ICT = cintura/talla`. **El ICC es uno de los seis disparadores de la ruta R2** (corte 0,90 en hombres y
+0,85 en mujeres). Con la cadera en 1020 el ICC da 0,08: ese disparador quedaría apagado y nadie lo notaría.
+O sea que la cadera **no es un dato de adorno en Atlas**, y por eso el freno acertó.
+
+**Las tres salidas:**
+
+| | Qué pasa | Qué queda en el Biody Manager |
+|---|---|---|
+| **A** | Siempre se repite la toma. | Igual que Atlas. |
+| **B** | Atlas deja corregir o completar cintura y cadera después de importar, con motivo y guardando el valor original. | **Con el dato viejo.** Para investigación, la fuente pasa a ser Atlas. |
+| **C** | Se corrige en el Biody Manager y se reexporta; en Atlas se reemplaza la medición con motivo. | Igual que Atlas. |
+
+**Nuestra recomendación: C**, si el Biody Manager deja editar y reexportar sin volver a medir (Santiago lo
+verifica en el programa). Si no deja, **B**.
+
+**Y la C ya está construida**, que es lo que la hace barata: un archivo reexportado trae las mismas
+lecturas eléctricas, así que el freno de huella repetida lo reconocería. Desde el 5 de noviembre ese freno
+**avisa, pide un motivo y deja seguir**, y el acto queda en el rastro clínico donde dirección lo ve. No
+hay que construir nada para la C: solo decir que se puede usar así.
+
+**Mientras tanto** la consulta de esa paciente queda como está, y la guía de profesionales no se toca
+hasta que usted responda.
 
 ## 1 · ¿Cuál Harris-Benedict manda, y sobre qué se aplica el 10 %?
 
@@ -983,6 +1043,26 @@ nuestra cuenta para no dejarle preguntas abiertas que frenaran el cotejo. Cada u
 salida: si prefiere otra cosa, se cambia.** (La pregunta de amputación salió de aquí a la lista, como la
 **30**: esa sí pide respuesta.)
 
+### Lo que aplicamos LEYENDO SU v15, sin devolvérselo como pregunta (2026-11-06)
+
+**La primera mitad de la pregunta 4: el diagnóstico funcional y las rutas ya leen el IAE de la v7.** No se
+la preguntamos porque su archivo la decide, y preguntar por lo que usted ya escribió es lo contrario de lo
+que nos pidió. Las líneas que lo dicen: `computeDFIFromData` **L11834** (el IAE del DFI sale del valor
+guardado, uno solo) · `atlasMigrarEbV7` **L4458** (ese valor se recalcula con la v7 y el v5 se mueve a
+`EB_BIS_v5`) · dominio 3 **L13965** (lee el mismo valor que ve el paciente) · **§1.4** (*"El valor v5 pasa
+a `EB_BIS_v5` / `IAE_v5`, que no se muestran en ninguna pantalla"*).
+
+**Qué cambió, medido:** en el caso de referencia el dominio de envejecimiento pasa de severidad 0 a 1 y el
+riesgo integrado de 25 a 30; el golden de narrativa, que antes **difería de su archivo** en ese dominio
+(Atlas lo dejaba sin puntuar y fabricaba una ruta R4 con metas a 24 semanas que su archivo no tiene), ahora
+**coincide**. Y los **70 informes** que hoy no se pueden entregar por contradicción dejan de producirse.
+
+**Aplicado según su v15; si no era eso, se revierte.** El registro completo, con lo que no se hizo y por
+qué, está en `docs/entregas/CAMBIOS_AUTORIZADOS.md`, CA-3.
+
+**Lo que SÍ sigue abierto de la 4 es su segunda mitad**, y por eso no sale de la lista: si sus tres textos
+por banda sustituyen al texto de trayectoria que hoy lee el paciente, o si conviven, y en qué orden.
+
 ### Del instrumento, que es suyo
 
 | Qué hicimos | Por qué | Revertir cuesta |
@@ -1109,6 +1189,7 @@ Para cruzar este documento con los dos que lo precedieron, por si empezó a resp
 | 30, 31 | Dudas del 30 de octubre, 13 y 14. La 30 con la corrección de cinco a cuatro |
 | **32, 33, 34** | **Nuevas del 5 de noviembre**, de leer la v15: las versiones 13 y 14 que no nos llegaron · la reconfirmación al cierre de ruta que su §5.5 dejó pendiente · el S1 sin nutracéuticos indicados |
 | **35, 36** | **Nuevas del 5 de noviembre**, y son la 15 y la 7 **con la evidencia de su v15**: el doble color de la banda central (`dIAE` azul contra `cIAE` ámbar) y el Δ en el borde exacto de ±5,0. Las dos viejas se quedan por su número; si contesta 35 y 36, aquellas quedan cerradas |
+| **37** | **Nueva del 6 de noviembre**, y es de una consulta real que se quedó sin diagnóstico hoy. Se escribió primero en las Dudas del 30 de octubre, que están RETIRADAS, y con el número 19, que ya estaba ocupado por sus dos clasificadores del ICC. Corregido: ni se agregan preguntas a un documento retirado, ni se reusa un número |
 | **Salieron** | Dudas 1 y 2 (respondidas en la 7.1.0) · Cola 22 (ya no aplica: preguntaba lo que respondía la fila PABU) · **la de las rutas al paciente** (Dudas 17 fundida con la Nueva del 19-sep: la respondió Santiago el 5 de noviembre, ver abajo) · **la del ICC y el ICT** (su propio texto decía que la decisión era de Santiago: la tomó él y ya está construida, ver abajo) |
 
 **Verificado otra vez el 5 de noviembre contra la v15 y la v16**, pregunta por pregunta y citando la línea

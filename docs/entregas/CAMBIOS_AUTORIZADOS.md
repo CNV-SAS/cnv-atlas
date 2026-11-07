@@ -28,6 +28,22 @@ Hasta ahora la garantía era **mecánica**: byte-identidad del frozen + golden c
 
 ---
 
+## Dos series se llaman "CA-N", y no son la misma (anotado el 2026-11-06)
+
+**Las de AQUÍ** (CA-1, CA-2, CA-3…) son cambios de **opción B**: tocan la ciencia y su garantía es la
+instrucción escrita de Gildardo más su aprobación.
+
+**Las del MANIFIESTO del frozen** (`src/clinical-engine/frozen/authorized-modifications.js`: CA-1, CA-3,
+CA-4, CA-5, CA-6a…o, CA-7a…d, CA-8a, CA-8b) son modificaciones **al archivo congelado**, aplicadas por un
+generador determinista y vigiladas por un test byte-exacto.
+
+**Los números se repiten y no se corresponden:** el CA-1 de aquí es la cintura y el CA-1 del manifiesto es
+el retiro de telómeros. Al citar uno, decir de cuál serie es. No se renumeran: los `caId` del manifiesto
+viajan en el archivo generado y en sus candados, y renumerarlos rompería la traza de lo ya emitido, que es
+lo contrario de para qué existen.
+
+---
+
 ## Registro
 
 ### CA-1 · Cintura: leer la medida, no el umbral
@@ -105,8 +121,26 @@ Hasta ahora la garantía era **mecánica**: byte-identidad del frozen + golden c
   envejecimiento sube de 0 a 1 y el riesgo integrado de 25 a 30. Cuando la v7 no se puede calcular, ese
   dominio queda sin puntuar en vez de volver a la cifra vieja.»
 
-- **Estado:** **implementado, pendiente de aprobación.** No llega a producción (definición de arriba) sin
-  su visto bueno registrado aquí.
+- **ESTO NO ES UN CAMBIO DE OPCIÓN B, Y POR ESO NO ESPERA SU FIRMA** (corregido el 2026-11-06, al revisar
+  el gate de arriba contra lo que esta entrada de verdad es). La opción B existe para los cambios en los
+  que, textual del encabezado de este documento, *"no hay artefacto contra el cual comparar: su
+  instrucción escrita reemplaza al archivo y su aprobación reemplaza al golden"*. **Aquí sí hay
+  artefacto**: su `ATLAS_v15.html`, con las cuatro líneas citadas arriba. Así que la garantía vuelve a ser
+  la mecánica de siempre (regla dura 6: golden contra su archivo), y no la débil.
+
+  **Y el golden lo confirma por el lado que importa:** antes de este cambio el golden de narrativa
+  DIFERÍA de su archivo en el dominio 3 (Atlas lo anulaba y fabricaba una ruta R4 con metas a 24 semanas
+  que su archivo no tiene); después del cambio **coincide**. O sea que esto no se aparta de su archivo
+  pidiendo permiso: **vuelve a él**. Devolvérselo como pregunta sería preguntarle si quiere lo que ya
+  escribió, que es lo que la Regla 0 manda no hacer.
+
+- **Aprobación:** **Santiago, 2026-11-06**, sobre las cuatro líneas de su `ATLAS_v15.html` citadas arriba
+  (`computeDFIFromData` L11834 · `atlasMigrarEbV7` L4458 · dominio 3 L13965 · §1.4). Queda dicho en el
+  anexo de `docs/PENDIENTES_CIENTIFICOS.md`: **aplicado según su v15; si no era eso, se revierte.**
+
+- **Estado:** **aprobado** (por Santiago, como port de su v15). Lo que sigue abierto con Gildardo es la
+  SEGUNDA mitad de su pregunta 4 (si sus tres textos por banda sustituyen al texto de trayectoria o
+  conviven), que no depende de este cambio.
 
 - **Divergencia:** no la hay. Esto ACERCA Atlas a su archivo: era Atlas el que se había quedado con la v5
   por dentro.

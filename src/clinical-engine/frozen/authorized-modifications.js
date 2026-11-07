@@ -17,6 +17,11 @@
  * (no solo por aplicabilidad): "sigue haciendo falta" o "Gildardo ya la absorbio en su archivo, se
  * retira de aqui". apply() ademas exige que cada oldSlice aparezca EXACTAMENTE UNA VEZ (falla en voz
  * alta si 0 o mas de 1) y prohibe modificaciones que se solapen.
+ *
+ * OJO CON LOS NUMEROS: los `caId` de ESTE archivo son una serie propia, y hay OTRA serie llamada igual en
+ * `docs/entregas/CAMBIOS_AUTORIZADOS.md` (los cambios de "opcion B"). Se repiten y NO se corresponden: el
+ * CA-1 de aqui retira telomeros del listado de examenes; el CA-1 de alla es la cintura. Al citar uno, decir
+ * de cual serie es. No se renumeran: estos viajan en el archivo generado y en los candados.
  */
 
 // Encabezado que el generador antepone al archivo generado (el que corre).
