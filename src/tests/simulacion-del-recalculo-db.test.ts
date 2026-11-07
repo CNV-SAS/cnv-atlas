@@ -133,6 +133,7 @@ describe("simulacion del recalculo del motor 3.x", () => {
     // cuenta quien entra, mediria un conjunto y la pantalla ofreceria otro.
     const { motivoParaNoReemitir } = await import("@/modules/clinical-pipeline/motivo-para-no-reemitir");
     const { huellasRepetidasEnVigentes } = await import("@/modules/bis/data/huellas-repetidas-reader");
+    const { vigenciaEmision } = await import("@/modules/clinical-pipeline/emision-vigencia");
     const { edadSiSePuede } = await import("@/modules/clinical-pipeline/services/build-engine-input");
 
     // UN INFORME POR EVALUACION, EL MAS RECIENTE. Reemitir crea otro informe de la misma consulta, y
@@ -205,6 +206,25 @@ describe("simulacion del recalculo del motor 3.x", () => {
       });
     }
 
+    // ═══ LA PREGUNTA QUE ESTE CRUCE CONTESTA, Y NO ES LA MISMA QUE `frenadasQueElRecalculoNoPuedeTocar` ═══
+    //
+    // El freno mira el snapshot SELLADO y solo aplica al mayor 2. Una consulta frenada se destraba cuando
+    // su diagnostico se REEMITE (ahi lo sellado pasa a 3.x), no cuando el motor PUEDE recomputarla. Asi
+    // que una frenada que la pantalla no ofrece se queda frenada aunque se ejecute el recalculo entero,
+    // con el agravante de que el mensaje del freno le promete que se va a habilitar.
+    //
+    // `frenadasQueElRecalculoNoPuedeTocar` contesta "¿el motor puede?"; esto contesta "¿la pantalla va a
+    // ofrecerla?". Las dos pueden diferir, y la segunda es la que decide si alguien queda sin salida.
+    const porMotivoDeLaPantalla = (ids: Iterable<string>) => {
+      const m: Record<string, number> = {};
+      for (const id of ids) {
+        const motivo = motivoDeCadaUna.get(id);
+        if (motivo == null) continue;
+        m[motivo] = (m[motivo] ?? 0) + 1;
+      }
+      return m;
+    };
+
     /** Cuenta un conjunto de consultas por profesional, con los OCHO caracteres como clave. */
     const porProfesional = (ids: Iterable<string>) => {
       const m: Record<string, number> = {};
@@ -224,13 +244,42 @@ describe("simulacion del recalculo del motor 3.x", () => {
     //
     // UN DESCUADRE ESPERADO CONTRA LA PANTALLA: esto cuenta consultas CON INFORME y la pantalla cuenta
     // DIAGNOSTICOS desfasados. Una consulta con diagnostico y sin informe sale en la pantalla y no aqui.
+    // EL DIAGNOSTICO VIGENTE DE CADA CONSULTA, que es lo que la pantalla mira: su version sellada y sus
+    // claves de emision. La pantalla lista lo que `vigenciaEmision` declara desfasado, asi que sin esto la
+    // simulacion contaria tambien las que YA ESTAN AL DIA y su cifra no cuadraria con la pantalla.
+    const dxFilas = await db
+      .select({
+        evaluationId: schema.diagnoses.evaluationId,
+        createdAt: schema.diagnoses.createdAt,
+        engineVersion: schema.diagnoses.engineVersion,
+        emissionVersions: schema.diagnoses.emissionVersions,
+      })
+      .from(schema.diagnoses);
+    const dxVigente = new Map<string, { engineVersion: string | null; emissionVersions: Record<string, unknown> | null; createdAt: Date }>();
+    for (const d of dxFilas) {
+      const prev = dxVigente.get(d.evaluationId);
+      if (prev && prev.createdAt >= d.createdAt) continue;
+      dxVigente.set(d.evaluationId, {
+        engineVersion: d.engineVersion ?? null,
+        emissionVersions: (d.emissionVersions as Record<string, unknown> | null) ?? null,
+        createdAt: d.createdAt,
+      });
+    }
+
     const huellasRepetidas = await huellasRepetidasEnVigentes();
     const motivoDeCadaUna = new Map<string, string | null>();
     for (const [evaluationId, f] of consultas) {
       const c = ctx.get(evaluationId);
+      const dx = dxVigente.get(evaluationId);
+      const alDia = vigenciaEmision({
+        engineVersion: dx?.engineVersion ?? null,
+        emissionVersions: dx?.emissionVersions ?? null,
+      }).alDia;
       motivoDeCadaUna.set(
         evaluationId,
-        c?.esDePrueba
+        alDia
+          ? "ya esta al dia con la ciencia de hoy: la pantalla no la lista"
+          : c?.esDePrueba
           ? "paciente de prueba: la pantalla los cuenta aparte y no los reemite"
           : motivoParaNoReemitir({
               huellaRepetida: huellasRepetidas.has(evaluationId),
@@ -575,6 +624,11 @@ describe("simulacion del recalculo del motor 3.x", () => {
               reemisionObligatoria: {
                 n: reemisionObligatoriaIds.length,
                 porProfesional: porProfesional(reemisionObligatoriaIds),
+                // EL AVISO AMBAR QUE NO SE VA A IR: son las que cambian de banda y la pantalla no ofrece.
+                queLaPantallaNOofrece: {
+                  n: reemisionObligatoriaIds.filter((id) => motivoDeCadaUna.get(id) != null).length,
+                  porMotivo: porMotivoDeLaPantalla(reemisionObligatoriaIds),
+                },
               },
               rutasQueCambian: {
                 n: conRutasQueCambian.length,
@@ -639,6 +693,15 @@ describe("simulacion del recalculo del motor 3.x", () => {
               // AHORA SI son todas las frenadas de hoy, no solo las recomputables.
               frenadasHoy: frenadasHoy.size,
               frenadasHoyPorProfesional: porProfesional(frenadasHoy),
+              frenadasHoyCuales: [...frenadasHoy],
+              // LAS QUE SE QUEDAN FRENADAS AUNQUE SE EJECUTE TODO, con su motivo y su profesional.
+              frenadasQueLaPantallaNOofrece: {
+                n: [...frenadasHoy].filter((id) => motivoDeCadaUna.get(id) != null).length,
+                porMotivo: porMotivoDeLaPantalla(frenadasHoy),
+                porProfesional: porProfesional(
+                  [...frenadasHoy].filter((id) => motivoDeCadaUna.get(id) != null),
+                ),
+              },
               // TIENE QUE SER 0: el freno existe porque ninguna se habia enviado todavia.
               frenadasHoyYaEnviadas,
               seDestraban: seDestraban.length,
