@@ -7,6 +7,7 @@ import { getClientIp } from "@/core/http/client-ip";
 import { requireUser } from "@/modules/auth/session";
 
 import { canReemitDiagnosis } from "./policies/can-reemit-diagnosis";
+import { completarCapasCongeladas } from "./services/completar-capas-congeladas";
 import { reemitirDiagnostico } from "./services/reemitir-diagnostico";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -82,6 +83,71 @@ export async function reemitirDiagnosticosAction(
     const yaEstaba = r.error.message.includes("no hay nada que reemitir");
     resultados.push({
       evaluationId,
+      estado: yaEstaba ? "saltada" : "fallo",
+      detalle: r.error.message,
+    });
+  }
+
+  revalidatePath("/admin/recalibracion");
+  return { error: null, resultados };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// COMPLETAR LAS CAPAS CONGELADAS QUE LA REEMISION NO ESCRIBIO  ·  2026-11-07
+//
+// La reparacion de un defecto nuestro: 424 informes reemitidos salieron sin `rutasContent`, `efrContent`
+// ni `validityCaveats`, y cinco superficies quedaron vacias sin que nada fallara. El porque de cada
+// guarda vive en el servicio; aqui va la misma forma que la otra action (policy, Zod, tope, en serie),
+// por la misma razon: una tanda grande que falla a la mitad deja un estado que nadie puede reanudar.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+const completarSchema = z.object({
+  reportIds: z.array(z.guid()).min(1).max(50),
+  confirmado: z.literal(true),
+});
+
+export type CompletarCapasActionState = {
+  error: string | null;
+  resultados: { reportId: string; estado: "hecha" | "saltada" | "fallo"; detalle: string }[];
+};
+
+export async function completarCapasCongeladasAction(
+  input: unknown,
+): Promise<CompletarCapasActionState> {
+  const user = await requireUser();
+  if (!canReemitDiagnosis(user)) {
+    return { error: "No tienes permiso para esta operación.", resultados: [] };
+  }
+  const parsed = completarSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      error: "La lista de informes no es válida, o falta confirmar la operación.",
+      resultados: [],
+    };
+  }
+
+  const ip = await getClientIp();
+  const resultados: CompletarCapasActionState["resultados"] = [];
+
+  for (const reportId of parsed.data.reportIds) {
+    const r = await completarCapasCongeladas({
+      reportId,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: ip === "unknown" ? null : ip,
+    });
+    if (r.ok) {
+      resultados.push({
+        reportId,
+        estado: "hecha",
+        detalle: `se escribieron: ${r.value.escritas.join(", ")}`,
+      });
+      continue;
+    }
+    // "SALTADA" ES LA QUE YA ESTABA COMPLETA, y es lo que hace la tanda repetible sin ruido.
+    const yaEstaba = r.error.message.includes("no hay nada que completar");
+    resultados.push({
+      reportId,
       estado: yaEstaba ? "saltada" : "fallo",
       detalle: r.error.message,
     });

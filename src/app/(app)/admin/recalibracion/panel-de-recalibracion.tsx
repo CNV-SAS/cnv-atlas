@@ -6,9 +6,25 @@ import { Button } from "@/components/ui/button";
 import { preservarScroll } from "@/components/shared/preservar-scroll";
 import type { EvaluacionDesfasada } from "@/modules/clinical-pipeline/data/desfasadas-reader";
 import {
+  completarCapasCongeladasAction,
   reemitirDiagnosticosAction,
+  type CompletarCapasActionState,
   type ReemitirActionState,
 } from "@/modules/clinical-pipeline/recalibracion-actions";
+
+/**
+ * Un informe reemitido al que le falta alguna capa congelada.
+ *
+ * LA FORMA SE DECLARA AQUI, no se importa del lector: ese lector es `server-only` y traerse su tipo desde
+ * un componente cliente es la arista que CLAUDE.md nombra (un `import type` tsc lo borra sin reportar, y
+ * el bundler de produccion puede volver el modulo una referencia-cliente).
+ */
+type InformeSinCapas = {
+  evaluationId: string;
+  reportId: string;
+  motorSellado: string;
+  falta: string[];
+};
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // EL PANEL DE LA RECALIBRACION
@@ -44,7 +60,13 @@ import {
 
 const TOPE_POR_TANDA = 50;
 
-export function PanelDeRecalibracion({ desfasadas }: { desfasadas: EvaluacionDesfasada[] }) {
+export function PanelDeRecalibracion({
+  desfasadas,
+  sinCapas,
+}: {
+  desfasadas: EvaluacionDesfasada[];
+  sinCapas: InformeSinCapas[];
+}) {
   const reales = desfasadas.filter((d) => !d.esDePrueba);
   const entran = reales.filter((d) => d.motivoSinReemitir == null);
   const noSePueden = reales.filter((d) => d.motivoSinReemitir != null);
@@ -53,6 +75,18 @@ export function PanelDeRecalibracion({ desfasadas }: { desfasadas: EvaluacionDes
   const [elegidas, setElegidas] = useState<Set<string>>(new Set());
   const [resultado, setResultado] = useState<ReemitirActionState | null>(null);
   const [enCurso, empezar] = useTransition();
+  const [capas, setCapas] = useState<CompletarCapasActionState | null>(null);
+  const [capasEnCurso, empezarCapas] = useTransition();
+
+  // LA REPARACION DE LAS CAPAS, en tandas del mismo tope y por la misma razon que la reemision.
+  const completarCapas = () => {
+    const ids = sinCapas.slice(0, TOPE_POR_TANDA).map((s) => s.reportId);
+    if (ids.length === 0) return;
+    preservarScroll();
+    empezarCapas(async () => {
+      setCapas(await completarCapasCongeladasAction({ reportIds: ids, confirmado: true }));
+    });
+  };
 
   const alternar = (id: string) =>
     setElegidas((antes) => {
@@ -83,16 +117,62 @@ export function PanelDeRecalibracion({ desfasadas }: { desfasadas: EvaluacionDes
     });
   };
 
+  // ═══ EL BLOQUE DE LA REPARACION, Y VA ANTES QUE TODO LO DEMAS ═══
+  //
+  // Es un defecto nuestro con pacientes reales en pantalla (cinco superficies vacias), asi que se lee
+  // primero. Y se declara ANTES del retorno temprano de "no hay desfasados": el dia que no quede ninguna
+  // desfasada, esta reparacion podria seguir pendiente, y el retorno temprano la habria escondido.
+  const bloqueDeCapas =
+    sinCapas.length === 0 ? null : (
+      <div className="flex flex-col gap-2 rounded-xl border-2 border-attention bg-attention-bg p-4 text-sm">
+        <p className="font-semibold text-attention">
+          {sinCapas.length} informe{sinCapas.length === 1 ? "" : "s"} reemitido
+          {sinCapas.length === 1 ? "" : "s"} sin sus capas congeladas
+        </p>
+        <p className="text-foreground">
+          La reemisión los escribió sin el contenido de las rutas, sin la evidencia del estado EFR o sin la
+          reserva de validez de la medición. Mientras falten, esas consultas muestran{" "}
+          <strong>0 rutas activas</strong> en Tratamiento, la hoja de rutas del paciente sale vacía y la
+          historia clínica no trae las remisiones que el modelo exige. Completarlo{" "}
+          <strong>no cambia ninguna cifra</strong>: solo escribe lo que faltaba.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" onClick={completarCapas} disabled={capasEnCurso}>
+            {capasEnCurso
+              ? "Completando…"
+              : `Completar ${Math.min(TOPE_POR_TANDA, sinCapas.length)} de ${sinCapas.length}`}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            En tandas de {TOPE_POR_TANDA}, como la reemisión. Se puede repetir: lo ya completo se salta.
+          </span>
+        </div>
+        {capas?.error ? <p className="text-sm text-clinical-critical">{capas.error}</p> : null}
+        {capas?.resultados.length ? (
+          <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+            {capas.resultados.map((r) => (
+              <li key={r.reportId}>
+                <span className="font-mono">{r.reportId.slice(0, 8)}</span> · {r.estado} · {r.detalle}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    );
+
   if (desfasadas.length === 0) {
     return (
-      <p className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-        No hay diagnósticos desfasados: todos están sellados con la versión vigente del motor.
-      </p>
+      <div className="flex flex-col gap-4">
+        {bloqueDeCapas}
+        <p className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+          No hay diagnósticos desfasados: todos están sellados con la versión vigente del motor.
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
+      {bloqueDeCapas}
       {/* LA CUENTA, DESGLOSADA Y SUMANDO. Que los tres grupos sumen el total es lo que permite cotejar
           esta pantalla contra el reporte previo sin tener que contar filas a mano. */}
       <div className="flex flex-col gap-1 rounded-xl border border-border p-4 text-sm">

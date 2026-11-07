@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { ENGINE_VERSION } from "@/clinical-engine";
 import { requireUser } from "@/modules/auth/session";
+import { informesSinCapasCongeladas } from "@/modules/clinical-pipeline/data/capas-congeladas-reader";
 import { evaluacionesDesfasadas } from "@/modules/clinical-pipeline/data/desfasadas-reader";
 import { canReemitDiagnosis } from "@/modules/clinical-pipeline/policies/can-reemit-diagnosis";
 
@@ -31,6 +32,9 @@ export default async function RecalibracionPage() {
   if (!canReemitDiagnosis(user)) redirect("/");
 
   const desfasadas = await evaluacionesDesfasadas();
+  // LOS INFORMES REEMITIDOS A LOS QUE LES FALTA UNA CAPA CONGELADA (2026-11-07). Es la reparacion de un
+  // defecto nuestro, no una operacion de rutina: cuando la cifra sea 0, el bloque desaparece solo.
+  const sinCapas = await informesSinCapasCongeladas();
 
   return (
     <div className="mx-auto flex w-full max-w-[64rem] flex-col gap-6 py-6">
@@ -45,7 +49,7 @@ export default async function RecalibracionPage() {
           Motor vigente: <span className="font-medium text-foreground">{ENGINE_VERSION}</span>
         </p>
       </header>
-      <PanelDeRecalibracion desfasadas={desfasadas} />
+      <PanelDeRecalibracion desfasadas={desfasadas} sinCapas={sinCapas} />
     </div>
   );
 }
