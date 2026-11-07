@@ -849,6 +849,35 @@ describe("simulacion del recalculo del motor 3.x", () => {
                 queLaPantallaNOofrece: {
                   n: reemisionObligatoriaIds.filter((id) => motivoDeCadaUna.get(id) != null).length,
                   porMotivo: porMotivoDeLaPantalla(reemisionObligatoriaIds),
+                  // ══ LA LISTA, POR MOTIVO Y POR PROFESIONAL, CON LAS CONSULTAS  ·  2026-11-07 ══
+                  //
+                  // La cuenta por motivo dice CUANTAS; esto dice CUALES, que es lo que hace falta para ir
+                  // a buscarlas una por una. OCHO CARACTERES de la evaluacion y del profesional: esta
+                  // salida se pega en documentos, y los nombres no van a git (el detalle con nombres vive
+                  // en `docs/entregas/dudas/`, que esta gitignoreado).
+                  //
+                  // Y CON LA MARCA DE LAS QUE PASAN A ACELERADO: son las que de verdad cambian lo que se
+                  // le dice al paciente, asi que son las primeras que hay que mirar.
+                  cuales: Object.fromEntries(
+                    [...new Set([...motivoDeCadaUna.values()].filter((m): m is string => m != null))].map(
+                      (motivo) => {
+                        const ids = reemisionObligatoriaIds.filter(
+                          (id) => motivoDeCadaUna.get(id) === motivo,
+                        );
+                        const porProf: Record<string, string[]> = {};
+                        for (const id of ids) {
+                          const k = ctx.get(id)?.profesional ?? "sin profesional";
+                          (porProf[k] ??= []).push(
+                            pasaAAcelerado.includes(id) ? `${id.slice(0, 8)} (pasa a acelerado)` : id.slice(0, 8),
+                          );
+                        }
+                        // TOPE DE 60 POR PROFESIONAL, como el de las causas: lo que decide es la
+                        // cuenta, y una lista de trescientos vuelve la salida impegable.
+                        for (const k of Object.keys(porProf)) porProf[k] = porProf[k].slice(0, 60);
+                        return [motivo, { n: ids.length, porProfesional: porProf }];
+                      },
+                    ).filter(([, v]) => (v as { n: number }).n > 0),
+                  ),
                 },
               },
               rutasQueCambian: {

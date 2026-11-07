@@ -46,15 +46,68 @@ export function motivoParaNoReemitir(a: {
   nacimiento: string | null;
   hasta: Date;
 }): string | null {
+  return motivoDeNoReemitir(a)?.texto ?? null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y LA MISMA PUERTA, CLASIFICADA  ·  2026-11-07
+//
+// ═══ POR QUE HACE FALTA LA CLASE Y NO BASTA EL TEXTO ═══
+//
+// El aviso ambar de "reemisión obligatoria" PIDE UNA ACCION, y hay consultas donde esa accion no existe:
+// un paciente que al medirse tenía 15 años nunca se va a recalcular, porque la v7 no se calibro ahi. El
+// aviso le decia a la profesional que reemitiera, la pantalla no se lo ofrecia, y el aviso no se podia
+// quitar. Un freno sin salida no es un guard: detiene a una persona.
+//
+// Los tres motivos no son el mismo caso, y por eso hay que poder DISTINGUIRLOS en la pantalla:
+//
+//   · `huella-repetida` SI tiene salida, y es la unica que de verdad hay que resolver: decidir de quien
+//     es la toma. El aviso se queda y nombra el camino.
+//   · `sin-fecha` tambien tiene salida (registrar la fecha de nacimiento del paciente) y despues se
+//     reemite por el flujo normal. Son las 14 de la simulacion.
+//   · `fuera-de-calibracion` NO tiene ninguna, y no es un problema que arreglar: es una condicion del
+//     paciente. Ahi el aviso deja de pedir accion y se vuelve una nota fija y neutra.
+//
+// EL TEXTO SE DERIVA DE LA CLASE y no se escribe dos veces: la pantalla de recalibracion seguia
+// necesitando la frase, asi que `motivoParaNoReemitir` queda como envoltorio y las dos lecturas no pueden
+// divergir. Es la misma razon por la que este modulo existe.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+export type MotivoDeNoReemitir =
+  /** La misma toma fisica esta en otra consulta vigente. Hay que decidir de quien es. */
+  | { clase: "huella-repetida"; texto: string }
+  /** Sin fecha de nacimiento legible: se registra y despues se reemite por el flujo normal. */
+  | { clase: "sin-fecha"; texto: string }
+  /** Fuera del rango donde la v7 puntua. No se resuelve: es una condicion del paciente. */
+  | { clase: "fuera-de-calibracion"; texto: string; edad: number };
+
+/** Lo mismo que `motivoParaNoReemitir`, con la CLASE, para que una pantalla pueda decidir el registro. */
+export function motivoDeNoReemitir(a: {
+  huellaRepetida: boolean;
+  nacimiento: string | null;
+  hasta: Date;
+}): MotivoDeNoReemitir | null {
   if (a.huellaRepetida) {
-    return "Su medición está repetida en otra consulta: hay que resolver a quién pertenece antes de recalcular.";
+    return {
+      clase: "huella-repetida",
+      texto:
+        "Su medición está repetida en otra consulta: hay que resolver a quién pertenece antes de recalcular.",
+    };
   }
   const edad = edadSiSePuede(a.nacimiento, a.hasta);
   if (edad === null) {
-    return "Sin fecha de nacimiento legible: la edad entra en la EB-BIS, así que no se puede recalcular.";
+    return {
+      clase: "sin-fecha",
+      texto:
+        "Sin fecha de nacimiento legible: la edad entra en la EB-BIS, así que no se puede recalcular.",
+    };
   }
   if (edad < EDAD_MINIMA_EB_BIS || edad > EDAD_MAXIMA_EB_BIS) {
-    return `Tenía ${edad} años al medirse: la EB-BIS v7 se calibró entre los ${EDAD_MINIMA_EB_BIS} y los ${EDAD_MAXIMA_EB_BIS}.`;
+    return {
+      clase: "fuera-de-calibracion",
+      edad,
+      texto: `Tenía ${edad} años al medirse: la EB-BIS v7 se calibró entre los ${EDAD_MINIMA_EB_BIS} y los ${EDAD_MAXIMA_EB_BIS}.`,
+    };
   }
   return null;
 }

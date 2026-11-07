@@ -43,6 +43,7 @@ import { nombreLlanoDelIndice } from "../nombre-llano-del-indice";
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-severity";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
+import type { MotivoDeNoReemitir } from "@/modules/clinical-pipeline/motivo-para-no-reemitir";
 import { MarcaDeReemision } from "./marca-de-reemision";
 import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
 import type { DfiPaciente } from "@/clinical-engine";
@@ -250,8 +251,16 @@ export function EvaluationResults({
   criterio = null,
   confirmCorrect = null,
   surveyDiagnosis = null,
+  motivoDeNoRecalcular = null,
 }: {
   results: Results;
+  /**
+   * POR QUE ESTA CONSULTA NO ENTRA AL RECALCULO, si es que no entra. Lo lee la pagina (necesita la huella
+   * repetida, que ya lee para su propio aviso) y aqui solo se pasa: sin esto, el ambar de "reemisión
+   * obligatoria" le pedia a la profesional una accion que la pantalla de recalibracion no le ofrece, y en
+   * las de fuera del rango de la EB-BIS no se la va a ofrecer nunca.
+   */
+  motivoDeNoRecalcular?: MotivoDeNoReemitir | null;
   /** Para la hoja impresa del Diagnostico Funcional. La pagina lo arma una vez para todas sus hojas. */
   encabezado: EncabezadoDeHoja;
   /**
@@ -615,7 +624,11 @@ export function EvaluationResults({
           veredicto y ARRIBA de las subpestañas, para que se vea sin tener que abrir ninguna, pero
           nunca por encima de la conclusión: es una nota de procedencia, no un hallazgo clínico.
           NO invalida el diagnóstico (ver el componente). */}
-      <AvisoCienciaAnterior vigencia={results.vigencia} veredicto={results.veredictoReemision} />
+      <AvisoCienciaAnterior
+        vigencia={results.vigencia}
+        veredicto={results.veredictoReemision}
+        motivoDeNoRecalcular={motivoDeNoRecalcular}
+      />
 
       {/* Y su par: este documento ya se puso al dia, y antes decia otra cosa. Nunca salen las dos
           (o esta desfasado, o esta reemitido), y van en el mismo sitio porque son la misma clase de

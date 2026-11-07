@@ -70,6 +70,7 @@ import { alertasDisponibles, encDesdeRespuestas } from "@/clinical-engine/alerta
 import { AlertasClinicas } from "@/modules/diagnoses/components/alertas-clinicas";
 import { etiquetaDeEtapa } from "@/modules/diagnoses/etapas";
 import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
+import { motivoDeNoRecalcularLaConsulta } from "@/modules/clinical-pipeline/data/motivo-de-no-recalcular-reader";
 import { IdentidadAutomatica } from "@/modules/evaluations/components/identidad-automatica";
 import {
   IdentityConfirmation,
@@ -982,6 +983,27 @@ export default async function ResultadosEvaluacionPage({
     return null;
   });
 
+  // ═══ ¿POR QUE ESTA CONSULTA NO ENTRA AL RECALCULO? (2026-11-07) ═══
+  //
+  // Lo necesita el aviso de "emitido con una version anterior": sin el motivo, su rama ambar le pedia a la
+  // profesional que reemitiera una consulta que la pantalla de recalibracion no le ofrece, y en las que
+  // quedan fuera del rango de la EB-BIS no se la va a ofrecer nunca.
+  //
+  // SE LEE AQUI Y CON LA HUELLA QUE YA SE LEYO: saber si una toma esta repetida exige mirar todas las
+  // vigentes, y eso ya se pago arriba. Solo cuando HAY desfase: si el documento esta al dia no hay aviso
+  // que matizar. Y con `catch`, por lo mismo que los otros tres: un aviso que tumba la pantalla donde se
+  // trabaja es peor que un aviso que falta.
+  const motivoDeNoRecalcular =
+    results && !results.vigencia.alDia
+      ? await motivoDeNoRecalcularLaConsulta({
+          evaluationId: id,
+          huellaRepetida: medicionRepetida != null,
+        }).catch((e) => {
+          reportServerError("evaluacion.motivo-de-no-recalcular", e);
+          return null;
+        })
+      : null;
+
   // ═══ ¿LA EDAD DE LA FICHA COINCIDE CON LA DEL EQUIPO? (su error 5) ═══
   //
   // Mismo patron que el aviso de huella repetida: se lee aqui para que la pestaña siga siendo presentacion
@@ -1595,6 +1617,7 @@ export default async function ResultadosEvaluacionPage({
         // pila suelta que compita con las subpestañas.
         <EvaluationResults
           results={results}
+          motivoDeNoRecalcular={motivoDeNoRecalcular}
           encabezado={encabezadoDeHoja}
           // LA HOJA DEL PACIENTE se compone en el SERVIDOR y baja lista: el diagnostico traducido y las
           // rutas ya filtradas salen de la misma fuente que el informe del correo (`informeDelPaciente`),
