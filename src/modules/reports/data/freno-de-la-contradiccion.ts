@@ -56,20 +56,30 @@ import { db } from "@/db";
 /** Las hojas que le cuentan al paciente como va. Solo estas se frenan (igual que el otro freno). */
 const HOJAS_QUE_CUENTAN_EL_CAMBIO = new Set(["reporte", "hc"]);
 
-// ═══ EL MENSAJE SE ACTUALIZO EL 2026-11-06, Y LO QUE CAMBIA ES QUE YA NO ES VERDAD LO QUE DECIA ═══
+// ═══ EL MENSAJE, EN SU TERCERA VERSION  ·  2026-11-07 ═══
 //
-// Decia "hasta que la Direccion Cientifica defina cual rige". Gildardo YA respondio, con su v15: el DFI
-// pasa a leer el IAE de la v7. Lo que falta es NUESTRO recalculo. Un freno que le echa la espera a quien
-// ya contesto manda a la profesional a esperar a la persona equivocada, y encima no le dice que puede
-// hacer hoy con el paciente que tiene delante.
+// 1. Nacio diciendo "hasta que la Direccion Cientifica defina cual rige". Gildardo YA habia respondido con
+//    su v15 (el DFI pasa a leer el IAE de la v7): mandaba a la profesional a esperar a quien ya contesto.
+// 2. El 6 de noviembre paso a "cuando terminemos el ajuste del calculo", que era verdad pero vago.
+// 3. Hoy dice QUE va a pasar y CUANDO deja de pasar, porque ya se midio: el recalculo reemite el
+//    diagnostico y ahi las dos lecturas salen del mismo calculo. Mas corto, y sin prometer una fecha.
 //
-// Y DICE LAS DOS COSAS QUE FALTABAN: que esto se destraba solo (no hay que pedir nada) y que la hoja del
-// plan si se puede entregar. Esa hoja es la que dice QUE HACER, y no depende de esta cifra.
+// Y NO LLEVA UNA SEGUNDA VARIANTE, que era lo que estaba previsto escribir. La simulacion contra la nube
+// midio `frenadasQueElRecalculoNoPuedeTocar = 0`: NINGUNA de las 70 frenadas se queda sin salida. Escribir
+// la variante de "a esta no se le va a habilitar" habria sido un mensaje para un conjunto vacio.
+//
+// LO QUE SI PUEDE PASAR, y no necesita mensaje propio: que la pantalla de recalibracion no ofrezca una
+// frenada porque su medicion esta repetida en otra consulta. Esa consulta YA trae su propio aviso ("esta
+// medicion esta repetida: revisa a quien pertenece"), que es justo el paso que hay que dar antes, asi que
+// la salida esta en pantalla y es la correcta. Dos avisos diciendo lo mismo se ignoran los dos.
+//
+// SE CONSERVAN LAS DOS COSAS QUE EL MENSAJE TENIA QUE DECIR: que no hay que pedir nada, y que la hoja del
+// plan si se puede entregar. Esa hoja dice QUE HACER y no depende de esta cifra.
 export const MENSAJE_CONTRADICCION =
-  "Este documento se contradice: la edad biológica estimada de esta consulta y la lectura de " +
-  "envejecimiento del diagnóstico funcional no dicen lo mismo, porque salen de dos versiones distintas " +
-  "del motor. Se habilita cuando terminemos el ajuste del cálculo, que ya está en marcha: no tienes que " +
-  "pedir nada. Mientras tanto sí puedes entregarle la hoja del plan, que no depende de esta cifra.";
+  "Este documento se contradice: la edad biológica estimada y la lectura de envejecimiento del " +
+  "diagnóstico funcional no dicen lo mismo, porque salen de dos versiones distintas del motor. Se " +
+  "habilita en cuanto el diagnóstico se reemita con el cálculo nuevo, y no tienes que pedir nada. " +
+  "Mientras tanto sí puedes entregarle la hoja del plan, que no depende de esta cifra.";
 
 /**
  * LO QUE EL DFI DICE DEL ENVEJECIMIENTO, por las TRES vias que lo dicen: la severidad del dominio 3, su
