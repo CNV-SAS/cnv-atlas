@@ -14,7 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // SU CONTENIDO TRAE GUIONES LARGOS y no se edita su archivo (rompería la fidelidad del port y sus golden
 // tests): se limpian AQUI, que es donde los ve una persona. Ver `lib/format/guion`.
 import { sinGuionLargo } from "@/lib/format/guion";
+import { activadorDeLaRuta } from "@/clinical-engine/activador-de-la-ruta";
 import type { RutaComponent, RutaContent } from "@/clinical-engine/rutas-content";
+import type { DfiDomain } from "@/clinical-engine/types";
 
 // Sección 1 del Tratamiento: las rutas de atención ACTIVAS (salida del DFI), con su contenido
 // clínico congelado en el snapshot (verbatim de Gildardo, T1). Presentación pura. Fidelidad
@@ -66,10 +68,11 @@ function ComponentBox({
   );
 }
 
-function RutaCard({ ruta }: { ruta: RutaContent }) {
+function RutaCard({ ruta, domains }: { ruta: RutaContent; domains?: DfiDomain[] | null }) {
   const Icon = ROUTE_ICON[ruta.id] ?? Zap;
   const accent = ROUTE_ACCENT[ruta.id] ?? "var(--primary)";
   const { nutricional, ejercicio, psicologico } = ruta.componentes;
+  const activador = activadorDeLaRuta(ruta.id, domains);
   // Sección 1: nutricional y ejercicio salvo aplica===false; psicológico solo si aplica. Médico no.
   const comps: { key: string; label: string; Icon: LucideIcon; comp: RutaComponent }[] = [];
   if (nutricional.aplica !== false)
@@ -91,6 +94,16 @@ function RutaCard({ ruta }: { ruta: RutaContent }) {
             {ruta.id} · {ruta.label}
           </h4>
           <p className="text-xs text-muted-foreground">Activación: {ruta.activacion}</p>
+          {/* ═══ Y LO QUE LA ACTIVO DE VERDAD EN ESTA CONSULTA  ·  2026-11-07 ═══
+
+              El renglon de arriba es el rotulo de Gildardo, verbatim, y describe SU OTRA regla para la
+              ruta (el predicado `condicion`, que no decide nada). La activacion de verdad es el DFI. El
+              smoke de `ed83ff97` mostro la R1 con "IFC bajo + IRC alto + IAE acelerado" sobre un IRC de
+              2,71, que es Normal: el rotulo se leia como el motivo de ESA consulta.
+
+              No se edita ninguna de las dos cosas (las dos son suyas: Regla 0, y la pregunta va en
+              PENDIENTES 38). Se AÑADE el dato sellado, que es lo que la Regla 0 si permite mostrar. */}
+          {activador ? <p className="text-xs text-muted-foreground">{activador}</p> : null}
         </div>
       </div>
 
@@ -123,10 +136,13 @@ function RutaCard({ ruta }: { ruta: RutaContent }) {
 export function RutasSection({
   rutas,
   ausente = false,
+  domains,
 }: {
   rutas: RutaContent[];
   /** La capa no se escribio (no que no haya rutas). Ver `results-reader.rutasContentAusente`. */
   ausente?: boolean;
+  /** Los dominios SELLADOS de esta consulta, para decir que activo cada ruta. Ausentes en snapshots viejos. */
+  domains?: DfiDomain[] | null;
 }) {
   const n = rutas.length;
   return (
@@ -161,7 +177,7 @@ export function RutasSection({
         ) : n === 0 ? (
           <p className="text-sm text-muted-foreground">Sin rutas activas para este estado.</p>
         ) : (
-          rutas.map((r) => <RutaCard key={r.id} ruta={r} />)
+          rutas.map((r) => <RutaCard key={r.id} ruta={r} domains={domains} />)
         )}
       </CardContent>
     </Card>

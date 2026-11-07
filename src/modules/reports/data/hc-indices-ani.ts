@@ -49,7 +49,11 @@ export type IndiceAniFila = {
   nombre: string | null;
   referencia: (sexoM: boolean) => string;
   /**
-   * Formato del valor. EL SUFIJO es suyo (" a" para los años, el signo del IAE); LOS DECIMALES salen de
+   * Formato del valor. EL SUFIJO va en PALABRA ("años"), no abreviado: su archivo escribe las dos formas
+   * (" a" en una tabla del informe, "años" en el contexto que le manda a la IA) y Santiago devolvio la
+   * abreviada el 2026-11-07, porque la fila del IAE salia "+12,4 a" entre filas que dicen años. La regla
+   * de la casa decide el empate: español correcto en lo que ve un usuario, y una unidad abreviada a una
+   * letra no es contenido clinico. El signo del IAE SI es suyo. LOS DECIMALES salen de
    * `decimalesDe`, la misma tabla que usa la pantalla y que calcula las Δ (2026-09-06).
    *
    * ANTES ERAN LOS SUYOS VERBATIM, y eran justo el desorden que Santiago devolvio: 2 en cuatro filas,
@@ -92,12 +96,12 @@ export const INDICES_ANI: IndiceAniFila[] = [
   {
     codigo: "EB", sigla: "EB-BIS", nombre: "Edad biológica estimada",
     referencia: () => "= Edad cronológica",
-    formato: (v) => `${dec(v, "EB")} a`,
+    formato: (v) => `${dec(v, "EB")} años`,
   },
   {
     codigo: "IAE", nombre: "Aceleración del Envejecimiento",
     referencia: () => "−5 a +5 años",
-    formato: (v) => `${v > 0 ? "+" : ""}${dec(v, "IAE")} a`,
+    formato: (v) => `${v > 0 ? "+" : ""}${dec(v, "IAE")} años`,
   },
   {
     codigo: "PABU", nombre: null,

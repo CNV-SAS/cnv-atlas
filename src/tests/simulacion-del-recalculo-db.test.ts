@@ -83,7 +83,7 @@ type Snap = {
   indicators?: Record<string, number | null>;
   ebBis?: { estado?: string; iae?: number | null; eb?: number | null; motivo?: string | null };
   dfi?: {
-    domains?: { id: string; sev: number | null; lectura?: string | null }[];
+    domains?: { id: string; sev: number | null; clasif?: string | null; lectura?: string | null }[];
     riesgo?: { nivel?: string; score?: number | null };
     rutas?: string[];
     le8Total?: number | null;
@@ -588,30 +588,99 @@ describe("simulacion del recalculo del motor 3.x", () => {
     //   2. A cuantas les falta una de las TRES CAPAS congeladas. Mide el defecto del 7 de noviembre (el
     //      snapshot de la reemision no las escribia) y es la cifra que confirma la reparacion: tiene que
     //      llegar a 0 en las reemitidas.
-    const penultimo = new Map<string, (typeof filas)[number]>();
+    //
+    // ═══ Y NO SE COMPARA CONTRA LA FILA INMEDIATAMENTE ANTERIOR  ·  2026-11-07 ═══
+    //
+    // Esa era la primera version, y DABA CERO despues de completar las capas congeladas, que es el
+    // resultado que Santiago no se creyo. La razon: la reparacion añadio una fila SUCESORA que copia el
+    // snapshot entero, asi que cada consulta reemitida tiene ahora TRES informes (2.x original ->
+    // reemision 3.2.0 -> sucesora 3.2.0) y la "anterior" era la reemision, con las MISMAS rutas. Medía
+    // la reparacion, no la reemision.
+    //
+    // LA LECCION, que es de la casa: una comparacion "contra la fila anterior" deja de medir lo que dice
+    // su rotulo en cuanto alguien inserta una fila en el medio, y no falla: da cero. Asi que lo que
+    // define al comparando no es su POSICION sino su MOTOR, que es lo que cambio.
+    const anteriorDeOtroMotor = new Map<string, (typeof filas)[number]>();
     for (const f of filas) {
       const vigente = ultimo.get(f.evaluationId);
       if (!vigente || f.createdAt >= vigente.createdAt) continue;
-      const prev = penultimo.get(f.evaluationId);
-      if (!prev || f.createdAt > prev.createdAt) penultimo.set(f.evaluationId, f);
+      const mayorVig = mayorDe((vigente.snapshot as Snap | null)?.versions?.engine ?? "sin version");
+      if (mayorDe((f.snapshot as Snap | null)?.versions?.engine ?? "sin version") === mayorVig) continue;
+      const prev = anteriorDeOtroMotor.get(f.evaluationId);
+      if (!prev || f.createdAt > prev.createdAt) anteriorDeOtroMotor.set(f.evaluationId, f);
     }
     const rutasDeLaReemisionCambian: string[] = [];
     const reemitidas: string[] = [];
     const sinRutasContent: string[] = [];
     const sinEfrContent: string[] = [];
     const sinValidityCaveats: string[] = [];
+    const rutasQueEntraron: Record<string, number> = {};
+    const rutasQueSalieron: Record<string, number> = {};
     for (const [evaluationId, f] of consultas) {
       const vig = f.snapshot as Snap | null;
       if (!vig) continue;
       if (vig.rutasContent == null) sinRutasContent.push(evaluationId);
       if (vig.efrContent == null) sinEfrContent.push(evaluationId);
       if (vig.validityCaveats == null) sinValidityCaveats.push(evaluationId);
-      const ant = penultimo.get(evaluationId)?.snapshot as Snap | null | undefined;
+      const ant = anteriorDeOtroMotor.get(evaluationId)?.snapshot as Snap | null | undefined;
       if (!ant) continue;
       reemitidas.push(evaluationId);
-      const a = new Set((ant.dfi?.rutas ?? []).map(String));
-      const b = new Set((vig.dfi?.rutas ?? []).map(String));
+      // POR EL ID DE LA RUTA Y NO POR LA CADENA ENTERA: el rotulo viaja en el mismo string
+      // ("R1 · Restauración Celular") y un cambio de redaccion suyo se contaria como ruta que cambia.
+      const a = new Set((ant.dfi?.rutas ?? []).map((r) => String(r).split(" ")[0]));
+      const b = new Set((vig.dfi?.rutas ?? []).map((r) => String(r).split(" ")[0]));
       if (a.size !== b.size || [...a].some((r) => !b.has(r))) rutasDeLaReemisionCambian.push(evaluationId);
+      // CUALES entraron y cuales salieron, que es lo que decide a quien hay que avisar: una R3 nueva
+      // manda a psicologia y una R1 que desaparece retira indicaciones que ya se entregaron.
+      for (const r of b) if (!a.has(r)) rutasQueEntraron[r] = (rutasQueEntraron[r] ?? 0) + 1;
+      for (const r of a) if (!b.has(r)) rutasQueSalieron[r] = (rutasQueSalieron[r] ?? 0) + 1;
+    }
+
+    // ══ FASE 5b · LA R1 Y SU ROTULO DE ACTIVACION, QUE NO DESCRIBEN LA MISMA REGLA ══
+    //
+    // SALIO DEL SMOKE DE `ed83ff97`: su tarjeta de R1 dice *"Activación: IFC bajo + IRC alto + IAE
+    // acelerado"* y su IRC es 2,71, que es Normal. Las dos cosas son de SU archivo (v16) y las dos estan
+    // portadas verbatim, pero no son la misma regla:
+    //
+    //   · el ROTULO (`RUTAS.R1.activacion`, su L11685) va con su predicado `condicion` (la linea
+    //     siguiente en su archivo): un Y de tres, `ifc < 4.5 && irc >= 3.5 && iae >= 5`;
+    //   · la ACTIVACION de verdad es el DFI (`if(dom1.sev>=2)`, su L14095), y su propio archivo lo
+    //     declara con ese titulo: *"DFI como UNICA fuente de rutas"*. El dominio 1 sale de la matriz D1
+    //     sobre las ETIQUETAS de IFC e IRC (su L14023), donde `"Normal|Normal"` vale 2. El IAE no entra
+    //     en el dominio 1: vive en el 3, que es el que activa la R4.
+    //
+    // O sea que su predicado `condicion` esta MUERTO en su propio archivo (solo lo llama `activar`, que
+    // no se usa) y en el nuestro (solo lo tocan los tests). Lo que se mide aqui es el TAMAÑO del
+    // descuadre, para poder preguntarselo con la cifra delante: cuantas consultas llevan la R1 activa
+    // sin cumplir las tres del rotulo, y cuantas cumplen las tres sin llevarla.
+    //
+    // NO SE ARREGLA AQUI NI EN EL MOTOR: cambiar el rotulo es editar su contenido clinico y cambiar la
+    // activacion es editar su DFI. La Regla 0 dice que esto se le devuelve a el.
+    const r1SinLasTres: string[] = [];
+    const lasTresSinR1: string[] = [];
+    // POR CELDA DE SU MATRIZ D1, que es lo que contesta la pregunta de fondo: de sus nueve celdas, SEIS
+    // valen 2 o 3, y una de ellas es "Normal|Normal". O sea que la R1 queda apagada solo con IFC Alto, o
+    // con IFC Normal e IRC Bajo. Con la cuenta por celda delante, la pregunta deja de ser una impresion.
+    const porCeldaD1: Record<string, { r1: number; sinR1: number }> = {};
+    for (const [evaluationId, f] of consultas) {
+      const sellado = f.snapshot as Snap | null;
+      const i = sellado?.indicators;
+      const d1 = sellado?.dfi?.domains?.find((d) => d.id === "d1");
+      if (d1?.clasif) {
+        const celda = `${d1.clasif} (sev ${d1.sev ?? "sin medir"})`;
+        const c = (porCeldaD1[celda] ??= { r1: 0, sinR1: 0 });
+        if ((sellado?.dfi?.rutas ?? []).some((r) => String(r).startsWith("R1"))) c.r1 += 1;
+        else c.sinR1 += 1;
+      }
+      if (!i) continue;
+      const ifc = i.ifc ?? null;
+      const irc = i.irc ?? null;
+      const iae = i.iae ?? null;
+      if (ifc == null || irc == null || iae == null) continue;
+      const lasTres = ifc < 4.5 && ifc > 0 && irc >= 3.5 && iae >= 5;
+      const tieneR1 = (sellado?.dfi?.rutas ?? []).some((r) => String(r).startsWith("R1"));
+      if (tieneR1 && !lasTres) r1SinLasTres.push(evaluationId);
+      if (lasTres && !tieneR1) lasTresSinR1.push(evaluationId);
     }
 
     // LAS FRENADAS QUE EL RECALCULO NO PUEDE TOCAR. Es la cifra que faltaba y la que decide si hace falta
@@ -670,26 +739,51 @@ describe("simulacion del recalculo del motor 3.x", () => {
                 n: reemitidas.length,
                 porProfesional: porProfesional(reemitidas),
               },
+              // CONTRA EL INFORME DEL MOTOR ANTERIOR (2.x o 1.x), no contra la fila de al lado: la
+              // sucesora de la reparacion copia el snapshot, asi que comparar con ella da siempre 0.
               rutasQueCambiaronAlReemitir: {
                 n: rutasDeLaReemisionCambian.length,
                 porProfesional: porProfesional(rutasDeLaReemisionCambian),
                 ejemplos: rutasDeLaReemisionCambian.slice(0, 10),
+                cualesEntraron: rutasQueEntraron,
+                cualesSalieron: rutasQueSalieron,
               },
               sinCongelar: {
                 rutasContent: {
                   n: sinRutasContent.length,
-                  reemitidas: sinRutasContent.filter((id) => penultimo.has(id)).length,
-                  porProfesional: porProfesional(sinRutasContent.filter((id) => penultimo.has(id))),
+                  reemitidas: sinRutasContent.filter((id) => anteriorDeOtroMotor.has(id)).length,
+                  porProfesional: porProfesional(sinRutasContent.filter((id) => anteriorDeOtroMotor.has(id))),
                 },
                 efrContent: {
                   n: sinEfrContent.length,
-                  reemitidas: sinEfrContent.filter((id) => penultimo.has(id)).length,
+                  reemitidas: sinEfrContent.filter((id) => anteriorDeOtroMotor.has(id)).length,
                 },
                 validityCaveats: {
                   n: sinValidityCaveats.length,
-                  reemitidas: sinValidityCaveats.filter((id) => penultimo.has(id)).length,
+                  reemitidas: sinValidityCaveats.filter((id) => anteriorDeOtroMotor.has(id)).length,
                 },
               },
+            },
+            // ══ EL DESCUADRE DE LA R1: SU ROTULO CONTRA SU ACTIVACION (fase 5b) ══
+            //
+            // `r1ConRotuloQueNoAplica` son las consultas donde la tarjeta dice "IFC bajo + IRC alto + IAE
+            // acelerado" y la R1 entro por otra via (la matriz D1: "Normal|Normal" vale 2). `lasTresSinR1`
+            // es el otro lado: cumplen las tres y NO llevan la ruta. Las dos cifras son para preguntarle a
+            // Gildardo cual de sus dos reglas manda.
+            laR1YSuRotulo: {
+              r1ConRotuloQueNoAplica: {
+                n: r1SinLasTres.length,
+                porProfesional: porProfesional(r1SinLasTres),
+                ejemplos: r1SinLasTres.slice(0, 10),
+              },
+              lasTresSinR1: { n: lasTresSinR1.length, ejemplos: lasTresSinR1.slice(0, 10) },
+              // CON R1 Y SIN R1 POR CELDA DEL DOMINIO 1: dice SI el descuadre es un borde raro o la
+              // regla general. Tope de 20 celdas para que la salida siga siendo pegable.
+              porCeldaDelDominio1: Object.fromEntries(
+                Object.entries(porCeldaD1)
+                  .sort((x, y) => y[1].r1 + y[1].sinR1 - (x[1].r1 + x[1].sinR1))
+                  .slice(0, 20),
+              ),
             },
             // ══ A QUIEN LE TOCA MIRAR ALGO DESPUES, por profesional (ocho caracteres) ══
             //

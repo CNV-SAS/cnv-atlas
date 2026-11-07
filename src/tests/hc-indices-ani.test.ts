@@ -161,7 +161,7 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
     const r = indicesAniAlterados({ IEHH: 0.89, IAE: 12.3 }, clas, { IEHH: 2, IAE: 3 }, true);
     expect(r.map((x) => `${x.codigo} ${x.valor} ${x.clasificacion}`)).toEqual([
       "IEHH 0,89 Desequilibrio leve",
-      "IAE +12,3 a envejecimiento acelerado estimado",
+      "IAE +12,3 años envejecimiento acelerado estimado",
     ]);
     // La severidad es la que se paso, o sea la sellada: el color no se movio.
     expect(r.map((x) => x.sev)).toEqual([2, 3]);
@@ -204,7 +204,9 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
 
   it("el IAE positivo lleva su signo, como en su tabla", () => {
     const r = indicesAniAlterados({ IAE: 12.3 }, { IAE: { label: "Acelerado" } }, { IAE: 3 }, true);
-    expect(r[0].valor).toBe("+12,3 a");
+    // EN PALABRA Y NO ABREVIADO (2026-11-07): "+12,3 a" entre filas que dicen años se leia como un
+    // documento a medio traducir. Vale para la EB-BIS y para el IAE, que son las dos filas con unidad.
+    expect(r[0].valor).toBe("+12,3 años");
   });
 
   it("los decimales salen de la tabla unica, no de un numero escrito en esta fila", () => {
