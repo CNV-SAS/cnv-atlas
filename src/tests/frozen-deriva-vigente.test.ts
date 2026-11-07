@@ -215,6 +215,19 @@ const FUERA_DEL_HTML: Record<string, { razon: string; anclaEn: string }> = {
  * candado que si lo vigila byte a byte contra su propia entrega.
  */
 const DE_ENTREGA_MAS_NUEVA: Record<string, { razon: string; anclaEn: string }> = {
+  // ENTRO EL 2026-11-06, al re-portar `calcPatron` del v16 (su §4.2). Hasta ese dia este modulo estaba en
+  // `MODULOS` y pasaba verde contra el v9, que es justo el defecto que la cabecera describe: entre el v8
+  // del que se habia portado y el v16 de hoy Gildardo reescribio la funcion entera, y nada se puso rojo
+  // porque el ancla miraba al pasado.
+  "engine.patron.js": {
+    razon:
+      "calcPatron se RE-PORTO del ATLAS_v16.html del 4 de noviembre de 2026 (su §4.2), SEIS entregas " +
+      "despues de la que HTML_VIGENTE resuelve. Sus ocho lineas nuevas (los siete protectores con el " +
+      "reescalado x 6/7, la penalizacion doble de embutidos, las carnes rojas que ya no suman y el tope " +
+      "de 54) no estan en el v9 porque no existian. Los cinco bloques de datos (FREQ_*) son identicos " +
+      "del v8 al v16 y el candado los compara pieza por pieza.",
+    anclaEn: "src/tests/frozen-patron-diff.test.ts",
+  },
   "engine.d1-clasificacion.js": {
     razon:
       "Portado del ATLAS_v16.html del 4 de noviembre de 2026 (L1401-1455), SEIS entregas despues de la " +
@@ -225,7 +238,6 @@ const DE_ENTREGA_MAS_NUEVA: Record<string, { razon: string; anclaEn: string }> =
 };
 
 const MODULOS = [
-  "engine.patron.js",
   "engine.dfi.js",
   "engine.core.js",
   "engine.indices.js",

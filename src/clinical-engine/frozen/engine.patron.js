@@ -1,16 +1,44 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   ATLAS · PATRON ALIMENTARIO (C9) — FROZEN DISPLAY
-   Datos y funcion de PANTALLA extraidos VERBATIM del prototipo VIGENTE de Gildardo
-   (gildardo-2026-08-04/ATLAS_v8.html), en DOS bloques no contiguos:
-     · datos (FREQ_GROUPS, FREQ_OPC, catColor, catLabel, FREQ_SUP): L1221-1296
-     · calcPatron (bloque "PANTALLA MOTOR"):                        L2930-3002
-   NO EDITAR A MANO. Excepcion nombrada a la regla 12 (ARCHITECTURE.md), como el resto
-   del frozen. ANCLADO por DIFF-patron (frozen-patron-diff.test.ts) byte a byte contra
-   ambas regiones; su comportamiento lo fija el golden (patron.golden.test.ts).
+   ATLAS · PATRON ALIMENTARIO (C9) — FROZEN
+   Datos y funcion extraidos VERBATIM del archivo de Gildardo. NO EDITAR A MANO. Excepcion
+   nombrada a la regla 12 (ARCHITECTURE.md), como el resto del frozen. ANCLADO por DIFF-patron
+   (frozen-patron-diff.test.ts) byte a byte; su comportamiento lo fija el golden
+   (patron.golden.test.ts).
 
-   ALCANCE: alimenta el DISPLAY del patron alimentario (calcPatron + su render). NO alimenta
-   el diagnostico: mientras LE8_MAPEO_CORREGIDO siga en false (engine.dfi.js), el dominio
-   Alimentacion del LE8 NO consume este score. Cablearlo es C1, no este bloque.
+     · datos (FREQ_GROUPS, FREQ_OPC, catColor, catLabel, FREQ_SUP): IDENTICOS del v8 al v16, y
+       el candado lo comprueba pieza por pieza contra el v16.
+     · calcPatron: RE-PORTADO del `ATLAS_v16.html` del 4 de noviembre de 2026 (antes salia del
+       v8 del 4 de agosto).
+
+   ═══ QUE CAMBIO EN EL RE-PORTE, Y POR QUE NO ES UNA MODIFICACION NUESTRA (2026-11-06) ═══
+
+   Su v16 §4.2 reescribe el puntaje, y el motivo es de campo: una nutricionista reporto que la
+   encuesta presentaba las carnes rojas y los embutidos como PROTECTORAS. Lo verifico en su HTML y
+   en Atlas, y la causa era la misma en los dos. Las cuatro cosas que cambian:
+
+     1. Los protectores entran los SIETE grupos (antes `prot.slice(0, 6)` dejaba fuera los huevos),
+        con la misma escala por grupo reescalada (`* 6 / 7`) para que el maximo siga siendo 60.
+     2. Los embutidos (grupo 12) se penalizan DOBLE (−2, −8, −14, −20): la penalizacion generica de
+        riesgo se aplica y despues se repite solo para ese grupo.
+     3. Las carnes rojas (grupo 15) dejan de SUMAR por comerlas a menudo. Antes estaban en el bono
+        de neutros y daban +3 desde 3-4 dias; ahora suman 3 solo con 2 dias o menos, no suman ni
+        restan con 3-4, y restan 4 y 7 con 5-6 y diario.
+     4. Con embutidos 3-4 dias o mas, el puntaje se TOPA en 54, que es "Mejorable": un consumo
+        frecuente de embutidos no puede quedar en "Adecuado" aunque los protectores esten completos.
+
+   SU PROPIA DECLARACION DE FUENTE, que es lo que permite que estos cortes entren (regla de
+   Santiago del 2026-10-02: ningun umbral sin su fuente al lado). Textual de su §4.2: los puntos de
+   las carnes rojas y de los embutidos y el tope de 54 *"son una calibracion de ATLAS sobre la
+   escala que ya existia, no valores tomados de la literatura"*; la literatura fija el ORDEN
+   (procesadas mas que rojas) y los UMBRALES DE FRECUENCIA, y para eso cita IARC grupo 1 para las
+   procesadas y 2A para las rojas, y el "poco o nada" de WCRF/AICR. Sus 15 referencias estan
+   verificadas por PMID y DOI en su bitacora.
+
+   ESTE SCORE SI ALIMENTA EL DIAGNOSTICO, y el comentario de aqui decia lo contrario hasta hoy:
+   `LE8_MAPEO_CORREGIDO` esta en `true` desde el 2026-09-06 (CA-8a/CA-8b del manifiesto, por su
+   instruccion del 2026-09-05), asi que el dominio Alimentacion del ICEC ES `calcPatron(enc).score`
+   y por el ICEC entra al dominio 5 del DFI. O sea que el re-porte mueve DOS cosas: la tarjeta del
+   patron, que se calcula al mostrar, y el ICEC sellado de las consultas nuevas.
 
    FREQ_OPC es el mapa ORDINAL canonico de los 15 grupos (0=Nunca .. 4=Todos los dias); los
    3 horarios (d1f_*) tienen su propio set en FREQ_SUP. El reader (patron.ts) resuelve el
@@ -111,19 +139,33 @@ const calcPatron = enc => {
 
   // ── Puntuación de calidad 0-100 ──
   let score = 0;
-  // Protectores: max 60 pts (hasta 10 pts c/u, primeros 6)
-  prot.slice(0, 6).forEach(v => {
-    if (v === 4) score += 10;else if (v === 3) score += 8;else if (v === 2) score += 5;else if (v === 1) score += 2;
+  // Protectores: máx. 60 pts. v16: entran los 7 grupos, huevos incluidos,
+  // con la misma escala por grupo reescalada a 60.
+  let protPts = 0;
+  prot.forEach(v => {
+    if (v === 4) protPts += 10;else if (v === 3) protPts += 8;else if (v === 2) protPts += 5;else if (v === 1) protPts += 2;
   });
+  score += protPts * 6 / 7;
   // Riesgo: penalización max -30 pts
   riesgo.forEach(v => {
     if (v === 4) score -= 10;else if (v === 3) score -= 7;else if (v === 2) score -= 4;else if (v === 1) score -= 1;
   });
-  // Neutros bonus leve
-  neutro.forEach(v => {
+  // v16 · Carnes procesadas y embutidos (n12): penalización doble
+  // (−2, −8, −14, −20). IARC grupo 1; WCRF/AICR «poco o nada».
+  const emb = riesgo[1];
+  if (emb === 4) score -= 10;else if (emb === 3) score -= 7;else if (emb === 2) score -= 4;else if (emb === 1) score -= 1;
+  // Neutros bonus leve (cereales integrales, tubérculos, carnes blancas)
+  neutro.slice(0, 3).forEach(v => {
     if (v >= 2) score += 3;
   });
-  score = Math.max(0, Math.min(100, score + 10)); // base +10
+  // v16 · Carnes rojas (n15): suma solo cuando el consumo es bajo y penaliza
+  // por encima de 3–4 días por semana. Antes sumaba 3 puntos al comerlas a menudo.
+  const rojas = neutro[3];
+  if (rojas === 0 || rojas === 1) score += 3;else if (rojas === 3) score -= 4;else if (rojas === 4) score -= 7;
+  score = Math.max(0, Math.min(100, Math.round(score + 10))); // base +10
+  // v16 · Con embutidos en exceso (3–4 días o más) el puntaje no llega a
+  // «Adecuado» (≥ 55), aunque los protectores estén completos.
+  if (riesgo[1] >= 2) score = Math.min(score, 54);
 
   const nivel = score >= 75 ? {
     l: "Óptimo",

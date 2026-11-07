@@ -39,7 +39,19 @@ emitido antes no es comparable con lo nuevo, que es la definición de este docum
 referencia el dominio 3 sube de 0 a 1 y el riesgo de 25 a 30. Y hay una recuperación además del cambio: la
 v5 necesitaba el ICEC, así que una consulta con la encuesta a medias se quedaba **sin** dominio de
 envejecimiento; la v7 no lo necesita. El detalle está en `version.ts` y la autorización en
-`CAMBIOS_AUTORIZADOS.md` **CA-3**. **El recálculo de lo ya emitido va aparte, con su simulación previa.**
+`CAMBIOS_AUTORIZADOS.md` **CA-3**.
+
+**Y la misma 3.0.0 lleva una segunda mitad: el puntaje de alimentación del ICEC** (su v16 §4.2). Una
+nutricionista reportó que la encuesta presentaba las carnes rojas y los embutidos como protectoras;
+Gildardo lo verificó en su archivo y en Atlas, y lo corrigió. `calcPatron` se re-portó de su `ATLAS_v16.html`
+del 4 de noviembre: entran los siete grupos protectores (los huevos no puntuaban), los embutidos se
+penalizan al doble, las carnes rojas dejan de sumar por comerlas a menudo, y con embutidos de 3 a 4 días o
+más el puntaje se topa en 54. Va en el MISMO mayor porque mueve el mismo snapshot y es del mismo motor:
+**un bump, un recálculo, un juego de goldens**. Toca el ICEC y por él el dominio 5 del DFI, pero **no toca
+la edad biológica**, porque en la v7 el ICEC ya no entra al cálculo. Los valores esperados son los siete
+casos de su §5, no nuestros.
+
+**El recálculo de lo ya emitido va aparte, con su simulación previa.**
 
 **El motor subió a 2.0.0 el 2026-10-28, y fue el primer MAYOR.** Entró la EB-BIS v7 (parámetros 7.1.0,
 entrega de Gildardo del 26 de octubre) y la v5 se retiró del motor. Cumple la definición de mayor de este

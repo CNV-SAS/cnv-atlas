@@ -9,11 +9,14 @@ const CONGELADOS = new Set([
   "frozen-dfi-calcle8-diff.test.ts",
   "frozen-dfi-ffmilow-diff.test.ts",
   "frozen-fenotipo-diff.test.ts",
-  "frozen-patron-diff.test.ts",
   "frozen-protocolo-chain-diff.test.ts",
   // `frozen-protocolo-diff` salio de esta lista el 2026-09-04: dejo de anclar por ruta literal al
   // re-anclarse por NOMBRE a la entrega vigente. La lista se achica sola cuando un candado deja de
   // necesitar la excepcion, que es lo que la mantiene honesta.
+  //
+  // Y `frozen-patron-diff` salio el 2026-11-06, por lo mismo: anclaba a `gildardo-2026-08-04/ATLAS_v8.html`
+  // por ruta literal Y por rangos de linea, y asi paso verde tres meses mientras Gildardo reescribia
+  // `calcPatron` en su v16. Ahora deriva la entrega (`htmlDeCambioNuevo`) y busca los bloques por nombre.
   // No ancla nada: CITA la entrega vigente para verificar que el texto salio de su archivo.
   "salvaguarda-tca-mensaje.test.ts",
   // ANCLA A PROPOSITO A SU ENTREGA, y no al HTML vigente, porque la EB-BIS v7 NO esta en ningun
@@ -145,7 +148,6 @@ describe("anclajes a una entrega de Gildardo", () => {
     for (const f of [
       "frozen-derivar-composicion-diff.test.ts",
       "frozen-dfi-ffmilow-diff.test.ts",
-      "frozen-patron-diff.test.ts",
       "frozen-protocolo-diff.test.ts",
     ]) {
       const src = readFileSync(`src/tests/${f}`, "utf8");

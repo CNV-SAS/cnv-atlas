@@ -221,6 +221,19 @@ describe("ANI-BIS-E fase 2b · DFI (BIS real + encuesta sintetica)", () => {
     expect(calcLE8(enc).total).toBe(golden.le8);
   });
 
+  it("y el componente de Alimentacion SI se movio con el v16, aunque el total no (2026-11-06)", () => {
+    // ESTO EXISTE PORQUE UN VERDE INVITA A CREER QUE NADA CAMBIO. El re-porte de `calcPatron` del v16
+    // (su §4.2) baja la Alimentacion de este donante de 60 a 57 (sus carnes rojas estan en 3-4 dias, que
+    // antes daba el bono de +3 y ahora no da nada), pero el ICEC TOTAL se queda en 80: 637/8 = 79,625
+    // redondea a 80, y antes 640/8 daba 80 exacto. El redondeo se come la diferencia.
+    //
+    // O SEA QUE ESTE GOLDEN NO CUBRE ESE CAMBIO, y conviene que este escrito donde se mira: lo cubren
+    // `patron.golden.test.ts` (sus siete casos) y `le8-encendido.test.ts` (la derivacion a mano). El
+    // tamaño sobre la cohorte se mide, no se infiere de aqui.
+    const alim = r.le8.scores.find((s) => s.dom === "Alimentación");
+    expect(alim?.v).toBe(57);
+  });
+
   it("severidad de los 5 dominios bloqueada", () => {
     const sev = r.domains.map((d) => ({ id: d.id, sev: d.sev }));
     expect(sev).toEqual(golden.dominios);

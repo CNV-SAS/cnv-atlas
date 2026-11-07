@@ -85,26 +85,37 @@ describe("1 · los textos canonicos de la matriz, que son el acoplamiento", () =
 });
 
 describe("2 · la Alimentacion deja de estar clavada, y varia con lo que come el paciente", () => {
-  // DERIVACION A MANO, de la tabla de `calcPatron`:
-  //   protectores (solo los SEIS primeros puntuan): 4 -> +10 · 3 -> +8 · 2 -> +5 · 1 -> +2
-  //   riesgo (los cuatro):                          4 -> -10 · 3 -> -7 · 2 -> -4 · 1 -> -1
-  //   neutros (los cuatro): +3 cada uno si es >= 2
-  //   score = max(0, min(100, suma + 10))
+  // DERIVACION A MANO, de la tabla de `calcPatron` CON EL v16 (re-portado el 2026-11-06, su §4.2):
+  //   protectores (LOS SIETE, huevos incluidos): 4 -> +10 · 3 -> +8 · 2 -> +5 · 1 -> +2, y la suma
+  //                                              se reescala x 6/7 para que el maximo siga en 60
+  //   riesgo (los cuatro):                       4 -> -10 · 3 -> -7 · 2 -> -4 · 1 -> -1
+  //   embutidos (el 12) OTRA VEZ, al doble:      4 -> -10 · 3 -> -7 · 2 -> -4 · 1 -> -1
+  //   neutros (SOLO 8, 9 y 10): +3 cada uno si es >= 2
+  //   carnes rojas (el 15):  0 o 1 -> +3 · 2 -> nada · 3 -> -4 · 4 -> -7
+  //   score = max(0, min(100, round(suma + 10))), y si los embutidos van >= 3-4 dias, tope de 54
+  //
+  // LAS TRES CIFRAS SE MOVIERON CON EL RE-PORTE, y la direccion es la que su v16 busca: el caso ALTO
+  // SUBE (70 -> 73) porque los huevos ya cuentan y las carnes rojas en "Nunca" suman, y el MEDIO BAJA
+  // (48 -> 44) porque los embutidos a 3-4 dias se penalizan doble y las carnes rojas a 3-4 dejan de dar
+  // el bono de +3.
 
-  it("ALTO: protectores a diario y riesgo nunca -> 70", () => {
-    // 6 x (+10) = 60 · riesgo en Nunca = 0 · neutros en Nunca (no llegan a 2) = 0 · +10 base = 70
+  it("ALTO: protectores a diario y riesgo nunca -> 73", () => {
+    // 7 x (+10) = 70, x 6/7 = 60 · riesgo en Nunca = 0 · neutros 8-9-10 en Nunca (no llegan a 2) = 0 ·
+    // carnes rojas en Nunca = +3 · +10 base = 73
     const enc = { ...BASE, ...matriz(TODOS, NUNCA, NUNCA) };
-    expect(dominio(enc, "Alimentación")).toBe(70);
+    expect(dominio(enc, "Alimentación")).toBe(73);
   });
 
-  it("MEDIO: todo moderado -> 48", () => {
-    // 6 x (+5) = 30 · riesgo 4 x (-1) = -4 -> 26 · neutros 4 x (+3) = +12 -> 38 · +10 base = 48
+  it("MEDIO: todo moderado -> 44", () => {
+    // 7 x (+5) = 35, x 6/7 = 30 · riesgo 4 x (-1) = -4 y los embutidos otra vez -1 = -5 -> 25 ·
+    // neutros 8-9-10 3 x (+3) = +9 -> 34 · carnes rojas a 3-4 dias no mueven · +10 base = 44
     const enc = { ...BASE, ...matriz(TRES_A_CUATRO, TRES_A_CUATRO, UNO_A_DOS) };
-    expect(dominio(enc, "Alimentación")).toBe(48);
+    expect(dominio(enc, "Alimentación")).toBe(44);
   });
 
   it("BAJO: protectores nunca y riesgo a diario -> 0", () => {
-    // protectores 0 · riesgo 4 x (-10) = -40 · neutros 0 · +10 base = -30, y el clamp lo sube a 0
+    // protectores 0 · riesgo 4 x (-10) = -40 y los embutidos otra vez -10 = -50 · neutros 0 · carnes
+    // rojas en Nunca +3 · +10 base = -37, y el clamp lo sube a 0 (el tope de 54 no muerde en un 0)
     const enc = { ...BASE, ...matriz(NUNCA, NUNCA, TODOS) };
     expect(dominio(enc, "Alimentación")).toBe(0);
   });
@@ -150,12 +161,15 @@ describe("3 · la Hidratacion deja de leer un campo inexistente", () => {
 });
 
 describe("4 · el ICEC total, que es lo que baja a la EB-BIS", () => {
-  it("el paciente ALTO da 88, no 76", () => {
-    // Encendido: (60 actividad + 70 alimentacion + 100 tabaco + 100 sueño + 100 glucosa + 100 colesterol
-    //             + 100 presion + 75 hidratacion) / 8 = 705/8 = 88,125 -> 88
+  it("el paciente ALTO da 89, no 76", () => {
+    // Encendido: (60 actividad + 73 alimentacion + 100 tabaco + 100 sueño + 100 glucosa + 100 colesterol
+    //             + 100 presion + 75 hidratacion) / 8 = 708/8 = 88,5 -> 89
     // Apagado:   (60 + 30 + 100 + 100 + 100 + 100 + 100 + 20) / 8 = 610/8 = 76,25 -> 76
+    //
+    // Eran 88 antes del re-porte del v16: la Alimentacion subio de 70 a 73 y el total cayo justo en el
+    // medio punto que redondea hacia arriba.
     const enc = { ...BASE, ...matriz(TODOS, NUNCA, NUNCA) };
-    expect((calcLE8(enc) as { total: number | null }).total).toBe(88);
+    expect((calcLE8(enc) as { total: number | null }).total).toBe(89);
   });
 });
 

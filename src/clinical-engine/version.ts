@@ -151,6 +151,41 @@
 //
 // LO EMITIDO ANTES NO SE REESCRIBE (regla 7): vive en su snapshot con su version. El RECALCULO de las
 // evaluaciones limpias va aparte, con su simulacion previa.
+//
+// ─── Y LA SEGUNDA MITAD DE LA MISMA 3.0.0: EL PUNTAJE DE ALIMENTACION (su v16 §4.2) ───
+//
+// Entra en el MISMO mayor a proposito. Las dos mueven el mismo snapshot y las dos son del mismo motor;
+// partirlas en 3.0.0 y 4.0.0 obligaria a recalcular la cohorte dos veces y a dejar un mayor intermedio
+// que nunca estuvo en produccion. El plan lo dice asi: un bump, un recalculo, un juego de goldens.
+//
+// QUE PASO: una nutricionista reporto que la encuesta presentaba las carnes rojas y los embutidos como
+// PROTECTORAS. Gildardo lo verifico en su HTML y en Atlas, la causa era la misma en los dos, y la corrige
+// en su v16. `calcPatron` se RE-PORTO de su `ATLAS_v16.html` del 4 de noviembre (antes salia del v8 del 4
+// de agosto). Las cuatro piezas: los siete protectores entran (los huevos no puntuaban) con la escala
+// reescalada x 6/7 para que el maximo siga en 60 · los embutidos se penalizan DOBLE (-2, -8, -14, -20) ·
+// las carnes rojas dejan de SUMAR por comerlas a menudo y pasan a restar · y con embutidos 3-4 dias o mas
+// el puntaje se TOPA en 54, o sea "Mejorable", aunque los protectores esten completos.
+//
+// POR QUE TOCA EL DIAGNOSTICO Y NO SOLO UNA TARJETA: `LE8_MAPEO_CORREGIDO` esta en `true` desde el
+// 2026-09-06, asi que el componente Alimentacion del ICEC ES este puntaje, y el ICEC alimenta el dominio 5
+// del DFI. Lo que NO toca es la edad biologica: en la v7 el ICEC ya no entra al calculo (su §1.2), y eso es
+// lo que hizo barato este cambio. En la v5 habria movido la EB-BIS de todos entre 1 y 8 años.
+//
+// QUE SE MUEVE, CON SUS SIETE CASOS: los valores esperados NO son nuestros. Su v16 §5 trae siete casos con
+// su cifra (46, 40, 54, 70, 70, 65, 54) y el golden los corre tal cual. Y su columna del v15 (63, 60, 60,
+// 67, 67, 69, 63) coincide con lo que daba nuestro porte del v8 en esos mismos siete, que es el control
+// cruzado de que el porte anterior tambien era el suyo.
+//
+// LO QUE EL CASO DE REFERENCIA NO VE, y hay que decirlo porque un golden verde invita a creer lo
+// contrario: en el donante golden la Alimentacion baja de 60 a 57, pero el ICEC total se queda en 80
+// (637/8 = 79,625, y antes 640/8 = 80 exacto). O sea que el golden del DFI NO cubre este cambio: lo
+// absorbe el redondeo. El tamaño real se mide sobre la cohorte, no aqui.
+//
+// Y ES RETROACTIVO EN UNA SUPERFICIE: la tarjeta del patron alimentario se calcula AL MOSTRAR, no se
+// sella (`patron-view.ts`). Asi que el nivel que un profesional vio ayer en una consulta vieja puede
+// leerse distinto hoy. Es la misma familia que el efecto sella-vs-computa de la Δ (CA-2 del registro de
+// opcion B), y es aceptable por la misma razon: el que cambia es el que estaba mal, y es el defecto que
+// Gildardo esta corrigiendo. El ICEC SELLADO de las consultas viejas no se toca.
 export const ENGINE_VERSION = "3.0.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).

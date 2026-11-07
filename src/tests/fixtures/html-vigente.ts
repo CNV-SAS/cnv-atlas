@@ -83,6 +83,11 @@ export function htmlDeEntrega(carpeta: string): string {
 // con su razon para borrarlas una por una en los pasos 3 y 5. **El re-anclaje va al final del paso 5, y
 // ahi entra con CERO tolerancias**, que es lo que de verdad prueba que el porte esta al dia.
 //
+// AVANCE, MISMO DIA: las DOS de `calcPatron` ya estan, y `engine.patron.js` salio de `MODULOS` en
+// `frozen-deriva-vigente` para entrar en `DE_ENTREGA_MAS_NUEVA`, con su candado propio contra el v16
+// (`frozen-patron-diff`). Quedan DIECISEIS. Las tres de la EB-BIS v7 son del mismo paso 3; las tres del
+// motor calorico esperan su pregunta 1; las diez del parrafo de dieta son del paso 5.
+//
 // Mientras tanto la ruta de las entregas nuevas tambien se DERIVA aqui, para que ningun candado la escriba
 // a mano: es la regla que vigila `html-vigente-lock.test.ts`, y vale igual para la convencion nueva.
 const DIR_NUEVOS = `${DIR}/Nuevos cambios html`;

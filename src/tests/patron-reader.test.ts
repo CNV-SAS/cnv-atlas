@@ -16,8 +16,14 @@ const ans = (fieldKey: string, ordinal: number): PatronAnswer => ({ fieldKey, an
 // Caso "Optimo" del golden: protectores(1-7) y neutros(8,9,10,15) en 4, riesgo(11-14) en 0.
 function optimoAnswers(): PatronAnswer[] {
   const out: PatronAnswer[] = [];
-  for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15]) out.push(ans(`d1_${n}_i`, 4));
-  for (const n of [11, 12, 13, 14]) out.push(ans(`d1_${n}_i`, 0));
+  // EL GRUPO 15 (carnes rojas) VA EN "Nunca", NO EN "Todos los dias" (corregido el 2026-11-06, con el
+  // re-porte del v16). Antes estaba a diario y el caso igual salia "Optimo" con 82, porque el grupo 15
+  // vivia en el bono de neutros y SUMABA. Con su v16 la carne roja diaria resta 7, asi que el mismo caso
+  // daria 72 y "Adecuado": no es que el reader se haya roto, es que un patron optimo ya no incluye comer
+  // carne roja todos los dias. El sujeto de este archivo es el READER, asi que la fixtura se corrige para
+  // seguir siendo lo que su nombre dice.
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) out.push(ans(`d1_${n}_i`, 4));
+  for (const n of [11, 12, 13, 14, 15]) out.push(ans(`d1_${n}_i`, 0));
   return out;
 }
 

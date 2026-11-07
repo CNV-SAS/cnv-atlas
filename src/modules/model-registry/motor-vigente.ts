@@ -91,15 +91,18 @@ const QUE_ES_ESTA_VERSION: Record<string, { texto: string; fecha: string }> = {
     fecha: "2026-10-28",
   },
   // LO QUE EL PROFESIONAL VA A NOTAR, que es el criterio de este mapa: el diagnóstico y la edad biológica
-  // dejan de poder decir cosas distintas, y el área de envejecimiento aparece en consultas donde antes
-  // salía vacía. El porqué (que el DFI usaba la v5 por dentro, las 70 consultas frenadas, por qué es
-  // versión mayor) vive en `version.ts` y en CAMBIOS_AUTORIZADOS CA-3, que es donde lo busca quien
-  // mantiene el motor.
+  // dejan de poder decir cosas distintas, el área de envejecimiento aparece en consultas donde antes
+  // salía vacía, y el puntaje de alimentación deja de tratar las carnes rojas y los embutidos como si
+  // protegieran. El porqué (que el DFI usaba la v5 por dentro, las 70 consultas frenadas, el re-porte de
+  // `calcPatron` del v16, por qué es versión mayor) vive en `version.ts`, en CAMBIOS_AUTORIZADOS CA-3 y en
+  // el candado `frozen-patron-diff`, que es donde lo busca quien mantiene el motor.
   "3.0.0": {
     texto:
       "El diagnóstico integrado ahora usa la misma edad biológica que ves en el informe, así que ya no " +
-      "pueden decir cosas distintas sobre el envejecimiento del paciente. Además, el área de " +
-      "envejecimiento aparece también cuando la encuesta está a medias.",
+      "pueden decir cosas distintas sobre el envejecimiento del paciente, y el área de envejecimiento " +
+      "aparece también cuando la encuesta está a medias. Y el puntaje de alimentación cambió: las carnes " +
+      "rojas y los embutidos ya no suman, los huevos sí, y un consumo frecuente de embutidos no puede " +
+      "quedar en Adecuado.",
     fecha: "2026-11-06",
   },
 };
