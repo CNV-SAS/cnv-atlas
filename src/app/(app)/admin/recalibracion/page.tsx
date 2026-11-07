@@ -27,6 +27,11 @@ import { PanelDeRecalibracion } from "./panel-de-recalibracion";
 // cuando es. Es una operacion sobre el historico, no una lista de personas.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
+// LAS TANDAS SON LARGAS: una invocacion por tanda, y cada fila son varias idas a la base. El tope por
+// defecto de una funcion (60 s) alcanzaba para las tandas de 50 de la reemision, pero sin margen declarado;
+// 300 es el mismo tope que ya lleva `importar-html`, que es la otra operacion masiva de administracion.
+export const maxDuration = 300;
+
 export default async function RecalibracionPage() {
   const user = await requireUser();
   if (!canReemitDiagnosis(user)) redirect("/");

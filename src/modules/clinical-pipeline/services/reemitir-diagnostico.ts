@@ -184,6 +184,10 @@ export async function reemitirDiagnostico(
         trajectory: reports.trajectory,
         trajectoryCommunicatedAt: reports.trajectoryCommunicatedAt,
         trajectoryCommunicatedBy: reports.trajectoryCommunicatedBy,
+        // Y LA NOTA DEL PROFESIONAL (2026-11-07). Es texto suyo guardado en la fila del informe; una fila
+        // nueva sin ella la hace desaparecer del documento vigente. Se vio al revisar por que la fila
+        // nueva salia sin las tres capas congeladas: la misma omision, en otro campo.
+        professionalNotes: reports.professionalNotes,
       })
       .from(reports)
       .where(and(eq(reports.evaluationId, input.evaluationId), eq(reports.type, "paciente")))
@@ -261,7 +265,9 @@ export async function reemitirDiagnostico(
           validityCaveats,
           rutasContent,
         },
-        // La banda sellada y su acuse viajan con la version nueva: ver la nota de arriba.
+        // La banda sellada y su acuse viajan con la version nueva: ver la nota de arriba. Y la nota del
+        // profesional, por lo mismo: es texto suyo y no se pierde al suceder la fila.
+        professionalNotes: informeAnterior?.professionalNotes ?? null,
         trajectory: (informeAnterior?.trajectory ?? null) as object | null,
         trajectoryCommunicatedAt: informeAnterior?.trajectoryCommunicatedAt ?? null,
         trajectoryCommunicatedBy: informeAnterior?.trajectoryCommunicatedBy ?? null,

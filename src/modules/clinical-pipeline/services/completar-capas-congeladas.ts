@@ -14,38 +14,50 @@ import { readEfrContent } from "../data/pipeline-reader";
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // COMPLETAR LAS CAPAS CONGELADAS QUE LA REEMISION NO ESCRIBIO  ·  2026-11-07
 //
-// ═══ QUE ES ESTO, DICHO SIN ADORNO ═══
+// ═══ QUE SE REPARA ═══
 //
-// La reparacion de un defecto nuestro. La reemision del 7 de noviembre escribio 424 informes sin las tres
-// capas que el pipeline congela junto al EngineOutput (`rutasContent`, `efrContent`, `validityCaveats`), y
-// cinco superficies quedaron vacias sin que nada fallara. Esto escribe lo que faltaba.
+// La reemision del 7 de noviembre escribio 422 informes sin las tres capas que el pipeline congela junto
+// al EngineOutput (`rutasContent`, `efrContent`, `validityCaveats`). Los lectores las toman con `?? []` /
+// `?? null`, asi que nada fallo y cinco superficies quedaron vacias: las tarjetas de ruta de Tratamiento,
+// la hoja de rutas imprimible, las rutas y remisiones del informe del paciente, las remisiones EXIGIDAS de
+// la historia clinica y la evidencia del estado EFR. Mas la reserva de validez de la medicion.
 //
-// ═══ POR QUE ES UN UPDATE, QUE ES LO QUE ESTE PROYECTO NO HACE ═══
+// ═══ SE CORRIGE POR VERSION NUEVA, Y LA PRIMERA VERSION DE ESTO ESTABA MAL ═══
 //
-// `reports` se trata como inmutable y esta bien que sea asi. Tres cosas hacen de esto la excepcion, y las
-// tres son verificables en la propia fila, no un argumento:
+// Nacio como un `update` que añadia las tres claves con `||` de jsonb. La base lo rechazo en produccion:
+// `prevent_report_snapshot_mutation` (0003, extendido en la 0010, 0033 y 0034) lanza
+// *"reports.snapshot es inmutable: no se permite modificarlo"*, y tambien prohibe el DELETE. El trigger
+// hizo exactamente su trabajo.
 //
-//   1. NO SE CAMBIA NI UNA CIFRA. El parche solo AÑADE las claves ausentes (`||` de jsonb sobre claves que
-//      no existen). Si alguna estuviera presente, no se toca: se calcula solo lo que falta.
-//   2. SON FILAS DE HOY, EN BORRADOR, QUE NADIE ENVIO. Nacieron hace minutos de nuestra escritura a
-//      medias; no hay un documento en manos de un paciente que esto contradiga.
-//   3. SOLO LAS 3.x. Un snapshot de otra era tampoco trae estas capas, y esos NO se tocan: nacieron
-//      cuando las capas no existian, y reescribir el pasado es lo que la regla 7 prohibe.
+// Y TENIA RAZON LA BASE, NO YO. El argumento que escribi (que el parche solo añade, que son filas de hoy,
+// que nadie las envio) describe por que el riesgo era bajo, no por que la regla no aplicaba. La regla de
+// esta casa es que lo sellado se SUCEDE, no se reescribe, y existe para que nadie tenga que confiar en un
+// argumento caso por caso. Asi que esto INSERTA una fila nueva de `reports` que sucede a la de la
+// reemision, que es el mismo mecanismo de la reemision misma y el de la correccion.
 //
-// LA ALTERNATIVA ERA PEOR. Reemitir otra vez añade un diagnostico y un informe mas por consulta (la
-// pantalla diria "reemitido 2 veces") para tapar un error nuestro, y encima no se puede: con la version ya
-// al dia, el guard responde "no hay nada que reemitir".
+// ═══ NINGUNA CIFRA SE MUEVE, Y AHORA ES VERIFICABLE EN LA PROPIA FILA ═══
 //
-// Y LO QUE NO SE HIZO, que era la salida facil: que el lector RESUELVA las rutas cuando faltan. Eso deja
-// dos fuentes para el mismo dato y rompe la garantia de congelarlo (el dia que Gildardo cambie el
-// contenido de una ruta, los diagnosticos viejos empezarian a mostrar el nuevo). Una capa congelada se
-// escribe una vez; si falta, se escribe, no se adivina al leer.
+// El snapshot nuevo es el ANTERIOR COPIADO ENTERO mas las claves que faltaban (`{ ...viejo, ...capas }`),
+// no un snapshot recalculado. El motor no vuelve a correr: el diagnostico es el mismo, su version es la
+// misma, y las cifras son byte a byte las que ese documento ya tenia. Lo unico que aparece es el contenido
+// clinico que debio congelarse con el.
 //
-// ═══ SE CALCULA CON LAS MISMAS TRES FUNCIONES, Y DESDE EL PROPIO SNAPSHOT ═══
+// NO SE CREA UN DIAGNOSTICO NUEVO. Reemitir es un acto clinico con su firma y su rastro; esto es terminar
+// una escritura. La marca de pantalla ("Reemitido el ... ") cuenta filas de `diagnoses`, asi que seguira
+// diciendo una reemision y no dos, que es la verdad.
 //
-// `resolveRutasContent` sobre las rutas QUE ESA FILA YA TIENE sellada, y `readEfrContent` con las bandas
-// de SU estado y el `model_version_id` de SU diagnostico, no el del modelo activo de hoy. Asi la capa que
-// se escribe es la que le correspondia a ese documento, no la de hoy.
+// ═══ LAS TRES CAPAS SE RESUELVEN DESDE ESA FILA, NO CON LO DE HOY ═══
+//
+// Las rutas, de los ids que ESE snapshot ya tiene sellados. El estado EFR, con las bandas de SU
+// diagnostico y su `model_version_id`, no el del modelo activo. Los caveats, de su propia fuente sellada
+// (las condiciones de la toma BIS). Si el registry no tiene el estado EFR, no se escribe nada: un snapshot
+// a medias es justo lo que causo esto.
+//
+// ═══ Y VIAJAN TAMBIEN LAS TRES COSAS QUE UNA FILA NUEVA PIERDE SI NADIE LAS COPIA ═══
+//
+// La banda sellada de trayectoria y su acuse (si no, el informe nuevo seria la via para saltarse el freno
+// del cambio desfavorable: ya estaba escrito en `emitirVersionNueva` y en la reemision), y la nota del
+// profesional de esa fila. Lo que NO viaja: `storage_path` y `sent_at`, que son del documento que SALIO.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 
 export type CompletarCapasInput = {
@@ -57,15 +69,23 @@ export type CompletarCapasInput = {
 
 export type CompletarCapasResult = {
   evaluationId: string;
+  /** El informe nuevo que sucede al de la reemision. */
+  reportIdNuevo: string;
   /** Las capas que se escribieron. */
   escritas: string[];
 };
 
 type FilaDelInforme = {
   evaluation_id: string;
+  patient_id: string;
   motor: string | null;
   rutas: unknown;
   bands: unknown;
+  snapshot: Record<string, unknown>;
+  professional_notes: string | null;
+  trajectory: unknown;
+  trajectory_communicated_at: string | null;
+  trajectory_communicated_by: string | null;
   tiene_rutas: boolean;
   tiene_efr: boolean;
   tiene_caveats: boolean;
@@ -78,9 +98,15 @@ export async function completarCapasCongeladas(
   // ── 1. LA FILA, CON TODO LO QUE DECIDE SI SE PUEDE TOCAR ─────────────────────────────────────────
   const [fila] = await db.execute<FilaDelInforme>(sql`
     select r.evaluation_id,
+           r.patient_id,
            r.snapshot->'versions'->>'engine' as motor,
            r.snapshot->'dfi'->'rutas' as rutas,
            r.snapshot->'efrPhenotype'->'bands' as bands,
+           r.snapshot,
+           r.professional_notes,
+           r.trajectory,
+           r.trajectory_communicated_at,
+           r.trajectory_communicated_by,
            jsonb_exists(r.snapshot, 'rutasContent') as tiene_rutas,
            jsonb_exists(r.snapshot, 'efrContent') as tiene_efr,
            jsonb_exists(r.snapshot, 'validityCaveats') as tiene_caveats,
@@ -92,8 +118,8 @@ export async function completarCapasCongeladas(
      where r.id = ${input.reportId} and r.type = 'paciente'`);
 
   if (!fila) return err(appError("not_found", "Ese informe no existe."));
-  // EL VIGENTE Y NADA MAS: una version anterior no es lo que la pantalla lee, y repararla seria tocar
-  // historia por nada.
+  // EL VIGENTE Y NADA MAS: una version anterior no es lo que la pantalla lee, y sucederla no arreglaria
+  // nada (la fila de arriba seguiria sin capas).
   if (!fila.es_vigente) {
     return err(appError("validation", "Ese informe ya fue sucedido por otro: no es el vigente."));
   }
@@ -101,7 +127,7 @@ export async function completarCapasCongeladas(
     return err(
       appError(
         "validation",
-        "Ese informe se emitió con una versión anterior del motor, cuando estas capas no existían: no se reescribe.",
+        "Ese informe se emitió con una versión anterior del motor, cuando estas capas no existían: no se completa.",
       ),
     );
   }
@@ -119,12 +145,12 @@ export async function completarCapasCongeladas(
   if (!dx) return err(appError("not_found", "Esa evaluación no tiene diagnóstico."));
 
   // ── 3. LAS CAPAS QUE FALTAN, UNA POR UNA ────────────────────────────────────────────────────────
-  const parche: Record<string, unknown> = {};
+  const capas: Record<string, unknown> = {};
 
   if (!fila.tiene_rutas) {
     // DE LAS RUTAS QUE ESA FILA YA TIENE SELLADAS: el contenido tiene que corresponder a esos ids.
     const ids = Array.isArray(fila.rutas) ? fila.rutas.map(String) : [];
-    parche.rutasContent = resolveRutasContent(ids);
+    capas.rutasContent = resolveRutasContent(ids);
   }
 
   if (!fila.tiene_efr) {
@@ -136,47 +162,82 @@ export async function completarCapasCongeladas(
     }
     const efrContent = await readEfrContent(dx.modelVersionId, bands);
     if (!efrContent) {
-      // NO SE ESCRIBE NADA A MEDIAS, igual que en el pipeline: un snapshot incompleto es lo que causo esto.
       return err(
         appError("internal", "El registry no tiene el contenido del estado EFR de ese diagnóstico."),
       );
     }
-    parche.efrContent = efrContent;
+    capas.efrContent = efrContent;
   }
 
   if (!fila.tiene_caveats) {
     // DE SU PROPIA FUENTE SELLADA (las condiciones de la toma BIS), no del intake vivo.
-    parche.validityCaveats = await getSealedValidityCaveats(fila.evaluation_id);
+    capas.validityCaveats = await getSealedValidityCaveats(fila.evaluation_id);
   }
 
-  // ── 4. UNA TRANSACCION: el parche + el rastro INLINE (regla dura 8) ─────────────────────────────
-  return await db.transaction(async (tx: DbTransaction) => {
-    await tx
-      .update(reports)
-      // `||` AÑADE Y NO REEMPLAZA: solo viajan las claves ausentes, asi que ninguna cifra sellada puede
-      // moverse ni por error de calculo ni por un parche mal armado.
-      .set({ snapshot: sql`${reports.snapshot} || ${JSON.stringify(parche)}::jsonb` })
-      .where(eq(reports.id, input.reportId));
+  // ── 4. UNA TRANSACCION: la fila nueva + el rastro INLINE (regla dura 8) ─────────────────────────
+  //
+  // CON `try/catch`, Y NO POR COSTUMBRE: la primera version de esto tumbo la pantalla con un 500 porque
+  // el trigger lanzo y nadie lo atrapo. Una action devuelve `Result` (regla de CLAUDE.md); y aqui ademas
+  // la tanda tiene que poder decir CUAL fila fallo y seguir siendo repetible.
+  try {
+    return await db.transaction(async (tx: DbTransaction) => {
+      const [nuevo] = await tx
+        .insert(reports)
+        .values({
+          evaluationId: fila.evaluation_id,
+          patientId: fila.patient_id,
+          type: "paciente",
+          // EN BORRADOR, como la reemision: no es un documento que salga, es el mismo documento completo.
+          status: "draft",
+          // EL ANTERIOR, ENTERO, MAS LAS CLAVES QUE FALTABAN. El motor no vuelve a correr.
+          snapshot: { ...fila.snapshot, ...capas },
+          professionalNotes: fila.professional_notes,
+          trajectory: (fila.trajectory ?? null) as object | null,
+          trajectoryCommunicatedAt: fila.trajectory_communicated_at
+            ? new Date(fila.trajectory_communicated_at)
+            : null,
+          trajectoryCommunicatedBy: fila.trajectory_communicated_by,
+        })
+        .returning({ id: reports.id });
 
-    await recordAudit(tx, {
-      event: "report.frozen_layers_completed",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "report",
-      entityId: input.reportId,
-      payload: {
-        evaluation_id: fila.evaluation_id,
-        diagnosis_vigente: dx.id,
-        motor_sellado: fila.motor,
-        capas_escritas: Object.keys(parche),
-        // QUE NO SE TOCO, dicho y no deducido: el parche solo añade claves ausentes.
-        cifras_modificadas: "ninguna: el parche solo añade las claves ausentes",
-        motivo:
-          "la reemision del 2026-11-07 escribio el snapshot sin las capas congeladas (defecto corregido en reemitir-diagnostico)",
-      },
-      ip: input.ip,
+      await recordAudit(tx, {
+        event: "report.frozen_layers_completed",
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        entityType: "report",
+        entityId: nuevo.id,
+        payload: {
+          evaluation_id: fila.evaluation_id,
+          informe_anterior: input.reportId,
+          diagnosis_vigente: dx.id,
+          motor_sellado: fila.motor,
+          capas_escritas: Object.keys(capas),
+          // QUE NO SE MOVIO, dicho y no deducido: dentro de un año, la ausencia no lo distingue.
+          cifras_modificadas:
+            "ninguna: el snapshot anterior se copia entero y solo se añaden las claves ausentes",
+          diagnostico_nuevo: false,
+          motivo:
+            "la reemision del 2026-11-07 escribio el snapshot sin las capas congeladas (defecto corregido en reemitir-diagnostico)",
+        },
+        ip: input.ip,
+      });
+
+      return ok({
+        evaluationId: fila.evaluation_id,
+        reportIdNuevo: nuevo.id,
+        escritas: Object.keys(capas),
+      });
     });
-
-    return ok({ evaluationId: fila.evaluation_id, escritas: Object.keys(parche) });
-  });
+  } catch (e) {
+    // EL MENSAJE DE LA BASE SE CONSERVA, RECORTADO: si un trigger vuelve a negarse, la tanda tiene que
+    // decir por que y no "algo fallo". Drizzle envuelve el error de Postgres, asi que el motivo real vive
+    // en la causa.
+    const causa = (e as { cause?: { message?: string } }).cause?.message;
+    return err(
+      appError(
+        "internal",
+        `La base no aceptó la fila nueva: ${(causa ?? (e as Error).message).slice(0, 160)}`,
+      ),
+    );
+  }
 }

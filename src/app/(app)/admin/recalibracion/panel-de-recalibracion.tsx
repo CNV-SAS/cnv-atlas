@@ -77,14 +77,41 @@ export function PanelDeRecalibracion({
   const [enCurso, empezar] = useTransition();
   const [capas, setCapas] = useState<CompletarCapasActionState | null>(null);
   const [capasEnCurso, empezarCapas] = useTransition();
+  /** Cuantas van, mientras el bucle de tandas avanza. Sin esto, 422 filas son un boton mudo. */
+  const [progreso, setProgreso] = useState<string | null>(null);
 
-  // LA REPARACION DE LAS CAPAS, en tandas del mismo tope y por la misma razon que la reemision.
+  // ═══ LA REPARACION: TANDAS DE 50, PERO UN SOLO BOTON ═══
+  //
+  // El tope de 50 se queda (una tanda que falla a la mitad deja un tramo revisable, y cada tanda es su
+  // propia invocacion del servidor, asi que ninguna se acerca al limite de tiempo de la funcion). Lo que
+  // no tiene sentido es que alguien pulse nueve veces: el bucle va aqui, en el cliente, con una llamada
+  // por tanda.
+  //
+  // PARA AL PRIMER FALLO, a proposito: si una fila la rechaza la base, las siguientes probablemente
+  // tambien, y seguir solo llenaria el informe de lineas iguales. Lo saltado se vuelve a intentar pulsando
+  // otra vez (lo ya completo se salta).
+  //
+  // LOS IDS SE CAPTURAN AL PULSAR y no se releen entre tandas: el `revalidatePath` de la action cambia la
+  // prop a mitad del bucle, y un bucle que se re-lee a si mismo mientras avanza es como se repite o se
+  // salta una tanda.
   const completarCapas = () => {
-    const ids = sinCapas.slice(0, TOPE_POR_TANDA).map((s) => s.reportId);
-    if (ids.length === 0) return;
-    preservarScroll();
+    const todos = sinCapas.map((s) => s.reportId);
+    if (todos.length === 0) return;
     empezarCapas(async () => {
-      setCapas(await completarCapasCongeladasAction({ reportIds: ids, confirmado: true }));
+      const acumulado: CompletarCapasActionState["resultados"] = [];
+      for (let i = 0; i < todos.length; i += TOPE_POR_TANDA) {
+        const tanda = todos.slice(i, i + TOPE_POR_TANDA);
+        setProgreso(`${Math.min(i + TOPE_POR_TANDA, todos.length)} de ${todos.length}`);
+        // EL GUARD VA DENTRO DEL BUCLE, UNA VEZ POR TANDA, y no es para contentar al candado: cada
+        // invocacion revalida y hace que Next navegue, asi que cada una salta. Con el guard solo fuera, el
+        // primer salto se deshacia y los ocho siguientes no.
+        preservarScroll();
+        const r = await completarCapasCongeladasAction({ reportIds: tanda, confirmado: true });
+        acumulado.push(...r.resultados);
+        setCapas({ error: r.error, resultados: acumulado });
+        if (r.error || r.resultados.some((x) => x.estado === "fallo")) break;
+      }
+      setProgreso(null);
     });
   };
 
@@ -131,19 +158,20 @@ export function PanelDeRecalibracion({
         </p>
         <p className="text-foreground">
           La reemisión los escribió sin el contenido de las rutas, sin la evidencia del estado EFR o sin la
-          reserva de validez de la medición. Mientras falten, esas consultas muestran{" "}
-          <strong>0 rutas activas</strong> en Tratamiento, la hoja de rutas del paciente sale vacía y la
-          historia clínica no trae las remisiones que el modelo exige. Completarlo{" "}
-          <strong>no cambia ninguna cifra</strong>: solo escribe lo que faltaba.
+          reserva de validez de la medición. Mientras falten, en esas consultas la hoja de rutas del
+          paciente sale vacía y la historia clínica no trae las remisiones que el modelo exige. Esto{" "}
+          <strong>no cambia ninguna cifra y no reemite el diagnóstico</strong>: emite una versión nueva del
+          informe con el mismo contenido más las capas que faltaban, y la anterior se conserva entera.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" onClick={completarCapas} disabled={capasEnCurso}>
             {capasEnCurso
-              ? "Completando…"
-              : `Completar ${Math.min(TOPE_POR_TANDA, sinCapas.length)} de ${sinCapas.length}`}
+              ? `Completando… ${progreso ?? ""}`
+              : `Completar los ${sinCapas.length}`}
           </Button>
           <span className="text-xs text-muted-foreground">
-            En tandas de {TOPE_POR_TANDA}, como la reemisión. Se puede repetir: lo ya completo se salta.
+            Por dentro va en tandas de {TOPE_POR_TANDA}, como la reemisión, y <strong>para al primer
+            fallo</strong>. Se puede repetir: lo ya completo se salta.
           </span>
         </div>
         {capas?.error ? <p className="text-sm text-clinical-critical">{capas.error}</p> : null}

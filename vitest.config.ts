@@ -31,6 +31,10 @@ const DB_TESTS = [
   // para que Santiago apruebe la ejecucion). Mismo genero y misma razon para vivir aqui: necesita datos
   // reales, y en la suite de unit haria que `pnpm verify` dependiera de la base.
   "src/tests/simulacion-del-recalculo-db.test.ts",
+  // LA REPARACION DE LAS CAPAS CONGELADAS CONTRA EL TRIGGER DE VERDAD. Vive aqui porque el trigger solo
+  // existe en la base: las 16 pruebas de unidad del mismo arreglo estaban verdes mientras produccion lo
+  // rechazaba con un 500.
+  "src/tests/completar-capas-congeladas-db.test.ts",
   "src/tests/alergenos-cobertura.test.ts",
   "src/tests/mapa-alegra.test.ts",
   "src/tests/sentry-causa-db.test.ts",

@@ -38,9 +38,34 @@ const PANEL = sinComentarios(
   readFileSync("src/app/(app)/admin/recalibracion/panel-de-recalibracion.tsx", "utf8"),
 );
 
-describe("la reparacion solo puede AÑADIR lo que falta", () => {
-  it("el parche va con `||` de jsonb, que añade y no reemplaza", () => {
-    expect(SERVICIO).toContain("|| ${JSON.stringify(parche)}::jsonb");
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y LA PRIMERA VERSION DE ESTA REPARACION ESTABA MAL: HACIA UN `update`  ·  2026-11-07
+//
+// La base la rechazo en produccion con `prevent_report_snapshot_mutation` (*"reports.snapshot es
+// inmutable"*, P0001) y la pantalla se cayo con un 500. Estas 16 pruebas estaban VERDES mientras eso
+// pasaba, porque todas miraban la forma del codigo y ninguna podia ver el trigger.
+//
+// De ahi salen dos cosas: este bloque, que amarra que la reparacion SUCEDA en vez de reescribir, y
+// `completar-capas-congeladas-db`, que corre contra el trigger de verdad. Un candado de codigo comprueba
+// lo que escribimos; solo la BD comprueba lo que la base acepta.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("la reparacion SUCEDE a la fila, no la reescribe", () => {
+  it("INSERTA una fila nueva de reports", () => {
+    expect(SERVICIO).toContain("tx\n        .insert(reports)");
+  });
+
+  it("CONTROL: no hay un update ni un delete de reports en ningun sitio", () => {
+    // La forma exacta que la base rechazo. Si alguien la restaura buscando "una reparacion mas simple",
+    // esto se pone rojo antes de que lo vea un profesional.
+    expect(SERVICIO, "volvio el update que el trigger prohibe").not.toContain("update(reports)");
+    expect(SERVICIO).not.toContain("delete(reports)");
+    expect(SERVICIO).not.toContain("::jsonb");
+  });
+
+  it("el snapshot nuevo es el ANTERIOR copiado entero mas las claves que faltaban", () => {
+    // Ninguna cifra se puede mover: el motor no vuelve a correr y el documento viaja completo.
+    expect(SERVICIO).toContain("snapshot: { ...fila.snapshot, ...capas }");
+    expect(SERVICIO, "la reparacion volvio a correr el motor").not.toContain("runEngine(");
   });
 
   it("y cada capa se calcula SOLO si falta", () => {
@@ -49,9 +74,30 @@ describe("la reparacion solo puede AÑADIR lo que falta", () => {
     }
   });
 
-  it("CONTROL: no escribe el snapshot entero, que es la forma de perder una cifra", () => {
-    // Un `set({ snapshot: ... })` con un objeto armado a mano reemplazaria el documento completo.
-    expect(SERVICIO).not.toMatch(/set\(\{\s*snapshot:\s*\{/);
+  it("NO crea un diagnostico nuevo: esto termina una escritura, no es un acto clinico", () => {
+    // Reemitir lleva firma y rastro propios, y la marca de pantalla cuenta filas de `diagnoses`: un
+    // diagnostico mas diria "reemitido 2 veces", que seria falso.
+    expect(SERVICIO).not.toContain("insert(diagnoses)");
+    expect(SERVICIO).toContain("diagnostico_nuevo: false");
+  });
+
+  it("y la fila nueva LLEVA lo que una fila nueva pierde si nadie lo copia", () => {
+    // La banda sellada de trayectoria y su acuse: sin ellas, el informe nuevo seria la via para saltarse
+    // el freno del cambio desfavorable. Y la nota del profesional, que es texto suyo.
+    expect(SERVICIO).toContain("trajectory: (fila.trajectory ?? null)");
+    expect(SERVICIO).toContain("trajectoryCommunicatedAt:");
+    expect(SERVICIO).toContain("professionalNotes: fila.professional_notes");
+    // Lo que NO viaja: el PDF y la fecha de envio, que son del documento que SALIO.
+    expect(SERVICIO).not.toContain("storagePath");
+    expect(SERVICIO).not.toContain("sentAt");
+  });
+
+  it("y un fallo de la base NO tumba la pantalla: devuelve el motivo", () => {
+    // La primera version dejo un 500 en la cara de Santiago. Una action devuelve Result.
+    expect(SERVICIO).toContain("} catch (e) {");
+    expect(SERVICIO).toContain("La base no aceptó la fila nueva");
+    // Y el motivo real vive en la CAUSA: Drizzle envuelve el error de Postgres.
+    expect(SERVICIO).toContain("cause?.message");
   });
 });
 
@@ -130,12 +176,41 @@ describe("y tiene superficie: un guard sin pantalla hace creer que se aplico", (
     );
   });
 
-  it("y el bloque dice que no cambia ninguna cifra, que es lo que decide si se pulsa", () => {
+  it("y el bloque dice que no cambia ninguna cifra ni reemite, que es lo que decide si se pulsa", () => {
     const fuente = readFileSync(
       "src/app/(app)/admin/recalibracion/panel-de-recalibracion.tsx",
       "utf8",
     );
-    expect(fuente).toContain("no cambia ninguna cifra");
-    expect(fuente).toContain("0 rutas activas");
+    expect(fuente).toContain("no cambia ninguna cifra y no reemite el diagnóstico");
+    // Y la consecuencia de no hacerlo, que es la otra mitad de la decision. (Subcadena corta: el texto
+    // viene partido en varias lineas por el formateador, y una frase entera no coincide nunca.)
+    expect(fuente).toContain("hoja de rutas del");
+    expect(fuente).toContain("sale vacía");
+  });
+
+  it("un solo boton hace todas las tandas, y PARA al primer fallo", () => {
+    const fuente = sinComentarios(
+      readFileSync("src/app/(app)/admin/recalibracion/panel-de-recalibracion.tsx", "utf8"),
+    );
+    // El bucle va en el cliente: una llamada por tanda, asi que ninguna invocacion se acerca al limite de
+    // tiempo de la funcion, y nadie pulsa nueve veces.
+    expect(fuente).toContain("for (let i = 0; i < todos.length; i += TOPE_POR_TANDA)");
+    expect(fuente).toContain('if (r.error || r.resultados.some((x) => x.estado === "fallo")) break;');
+    // Con progreso: 422 filas no pueden ser un boton mudo.
+    expect(fuente).toContain("setProgreso(");
+  });
+
+  it("y mientras falte la capa, Tratamiento NO dice 0 rutas activas: dice que se estan completando", () => {
+    // TRES ESTADOS Y NO DOS. "Sin rutas activas para este estado" es un resultado clinico; la capa sin
+    // escribir es un defecto nuestro. Mostrarlos igual puso "0 rutas activas" al lado de un riesgo
+    // integrado CRITICO, que es un vacio leido como resultado.
+    const seccion = readFileSync("src/modules/diagnoses/components/rutas-section.tsx", "utf8");
+    expect(seccion).toContain("Las rutas de esta consulta se están completando.");
+    expect(seccion).toContain("No es que no haya rutas");
+    const lector = sinComentarios(
+      readFileSync("src/modules/diagnoses/data/results-reader.ts", "utf8"),
+    );
+    // Solo 3.x: en un snapshot de otra era la capa no falta, no existia. Mismo filtro que la reparacion.
+    expect(lector).toContain('rutasContent == null && (engineVersion ?? "").startsWith("3.")');
   });
 });
