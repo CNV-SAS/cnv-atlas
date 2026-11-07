@@ -72,17 +72,41 @@ export async function evaluacionesDesfasadas(): Promise<EvaluacionDesfasada[]> {
   // y la fecha de la medicion (la edad se mide A LA FECHA DE LA TOMA, no a hoy: es la misma regla que
   // cerro "una fecha ilegible que se vuelve edad cero"). El tope alto y el orden estable son los de
   // siempre: PostgREST devuelve mil filas y no lo dice.
-  const { data, error } = await supabase
-    .from("diagnoses")
-    // UN SOLO LITERAL, SIN CONCATENAR. PostgREST tipa el select a partir de la CADENA LITERAL, y un "+"
-    // la vuelve un string cualquiera: entonces las filas pasan a GenericStringError y tsc se queja de
-    // cada campo. Partirla para que quepa en la linea cuesta la verificacion de tipos entera.
-    .select(
-      "evaluation_id, engine_version, emission_versions, created_at, evaluations!inner(patients!inner(cuenta_como_de_prueba, patient_profiles(birth_date)), bis_measurements(measurement_date))",
-    )
-    .order("created_at", { ascending: false })
-    .limit(2000);
-  if (error) throw new Error(`desfasadas-reader: ${error.message}`);
+  // ═══ SE LEE POR PAGINAS, Y NO ES PREVENCION: ESTO YA FALLO EN PRODUCCION  ·  2026-11-07 ═══
+  //
+  // Decia `.limit(2000)` y PostgREST corta en MIL SIN DECIRLO. Mientras hubo una fila de diagnostico por
+  // consulta cabia; el recalculo del 7 de noviembre inserto 424 filas nuevas, el total paso de mil, y como
+  // el orden es `created_at desc` lo que se cayo por el borde fueron las filas MAS VIEJAS: justo los 67
+  // diagnosticos del motor 1.0.0 y los 3 de anibise-1.4.0, que son los que quedan por reemitir. La
+  // pantalla paso a decir "Total desfasadas: 14" cuando eran 71, sin un error y sin un hueco visible.
+  //
+  // Es la tercera vez que esta tapa muerde en el proyecto, asi que aqui se pagina de verdad: se piden
+  // paginas de mil hasta que una venga corta. El `order` es estable y va en la consulta, no despues
+  // (paginar sin `order by` no define que trae cada pagina).
+  const TAMANO = 1000;
+  type FilaDx = {
+    evaluation_id: string;
+    engine_version: string | null;
+    emission_versions: Record<string, unknown> | null;
+    created_at: string;
+    evaluations: unknown;
+  };
+  const data: FilaDx[] = [];
+  for (let desde = 0; ; desde += TAMANO) {
+    const { data: pagina, error } = await supabase
+      .from("diagnoses")
+      // UN SOLO LITERAL, SIN CONCATENAR. PostgREST tipa el select a partir de la CADENA LITERAL, y un "+"
+      // la vuelve un string cualquiera: entonces las filas pasan a GenericStringError y tsc se queja de
+      // cada campo. Partirla para que quepa en la linea cuesta la verificacion de tipos entera.
+      .select(
+        "evaluation_id, engine_version, emission_versions, created_at, evaluations!inner(patients!inner(cuenta_como_de_prueba, patient_profiles(birth_date)), bis_measurements(measurement_date))",
+      )
+      .order("created_at", { ascending: false })
+      .range(desde, desde + TAMANO - 1);
+    if (error) throw new Error(`desfasadas-reader: ${error.message}`);
+    data.push(...((pagina ?? []) as unknown as FilaDx[]));
+    if ((pagina?.length ?? 0) < TAMANO) break;
+  }
 
   // Las huellas repetidas, en UNA ida a la base para todo el conjunto. No se consulta por fila: la
   // pantalla lista cientos y una consulta por fila la volveria inusable.

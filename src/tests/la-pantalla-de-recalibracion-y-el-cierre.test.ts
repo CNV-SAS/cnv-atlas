@@ -123,6 +123,21 @@ describe("(3 bis) los motivos salen de donde ya viven, no de una copia", () => {
     });
   });
 
+  it("se lee POR PAGINAS, porque PostgREST corta en mil sin decirlo y ya mordio", () => {
+    // ERA `.limit(2000)`, Y PASO EN PRODUCCION EL 7 DE NOVIEMBRE. Mientras hubo una fila de diagnostico
+    // por consulta cabia; el recalculo inserto 424 filas, el total paso de mil y, como el orden es
+    // `created_at desc`, se cayeron por el borde las MAS VIEJAS: los 67 diagnosticos de 1.0.0 y los 3 de
+    // anibise-1.4.0, que son justo los que quedan por reemitir. La pantalla dijo "Total desfasadas: 14"
+    // cuando eran 71. Sin error, sin hueco visible, y con una cifra creible.
+    const codigo = sinComentarios(LECTOR);
+    expect(codigo).toContain(".range(desde, desde + TAMANO - 1)");
+    expect(codigo, "volvio el limit que PostgREST ignora en silencio").not.toContain("limit(2000)");
+    // El orden va EN la consulta y no despues: paginar sin `order by` no define que trae cada pagina.
+    expect(codigo).toContain('.order("created_at", { ascending: false })');
+    // Y la pagina corta es la condicion de parada: con `===` en vez de `<` un conteo exacto la colgaria.
+    expect(codigo).toContain("< TAMANO) break;");
+  });
+
   it("y la pantalla ofrece EXACTAMENTE lo que el guard de la reemision acepta", () => {
     // ERAN DOS PUERTAS, Y YA HABIAN DIVERGIDO (2026-11-07). La pantalla filtraba por MAYOR distinto y
     // `reemitirDiagnostico` decide con `vigenciaEmision` (la cadena entera del motor mas las claves de

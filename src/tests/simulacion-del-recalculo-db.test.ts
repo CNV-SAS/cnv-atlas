@@ -89,6 +89,12 @@ type Snap = {
     le8Total?: number | null;
   };
   versions?: { engine?: string };
+  // LAS TRES CAPAS QUE EL PIPELINE CONGELA junto al EngineOutput. La reemision nacio sin escribirlas y
+  // dejo 424 consultas con "0 rutas activas": se miden para saber a cuantas les falta y para confirmar la
+  // reparacion. Opcionales en el tipo porque los snapshots viejos tampoco las traen todas.
+  rutasContent?: unknown[];
+  efrContent?: unknown;
+  validityCaveats?: unknown[];
 };
 
 // ═══ SE IMPRIME CON `process.stdout.write` Y NO CON `console.log`  ·  2026-11-07 ═══
@@ -570,6 +576,44 @@ describe("simulacion del recalculo del motor 3.x", () => {
       }
     }
 
+    // ══ FASE 5 · QUE CAMBIO CON LA REEMISION, Y QUE QUEDO SIN CONGELAR ══
+    //
+    // Compara el informe VIGENTE con el que sucedio (la fila anterior de la misma consulta). Es la unica
+    // forma de medirlo despues de ejecutar: sellado contra recomputado ya no dice nada, porque lo sellado
+    // ES lo de hoy. Contesta dos cosas distintas:
+    //
+    //   1. A cuantas les cambiaron las RUTAS al reemitir. Su tratamiento se construyo con las anteriores
+    //      (`treatments.diagnosis_id` apunta al diagnostico de antes, a proposito), asi que son las
+    //      consultas donde la profesional tiene algo que mirar de verdad.
+    //   2. A cuantas les falta una de las TRES CAPAS congeladas. Mide el defecto del 7 de noviembre (el
+    //      snapshot de la reemision no las escribia) y es la cifra que confirma la reparacion: tiene que
+    //      llegar a 0 en las reemitidas.
+    const penultimo = new Map<string, (typeof filas)[number]>();
+    for (const f of filas) {
+      const vigente = ultimo.get(f.evaluationId);
+      if (!vigente || f.createdAt >= vigente.createdAt) continue;
+      const prev = penultimo.get(f.evaluationId);
+      if (!prev || f.createdAt > prev.createdAt) penultimo.set(f.evaluationId, f);
+    }
+    const rutasDeLaReemisionCambian: string[] = [];
+    const reemitidas: string[] = [];
+    const sinRutasContent: string[] = [];
+    const sinEfrContent: string[] = [];
+    const sinValidityCaveats: string[] = [];
+    for (const [evaluationId, f] of consultas) {
+      const vig = f.snapshot as Snap | null;
+      if (!vig) continue;
+      if (vig.rutasContent == null) sinRutasContent.push(evaluationId);
+      if (vig.efrContent == null) sinEfrContent.push(evaluationId);
+      if (vig.validityCaveats == null) sinValidityCaveats.push(evaluationId);
+      const ant = penultimo.get(evaluationId)?.snapshot as Snap | null | undefined;
+      if (!ant) continue;
+      reemitidas.push(evaluationId);
+      const a = new Set((ant.dfi?.rutas ?? []).map(String));
+      const b = new Set((vig.dfi?.rutas ?? []).map(String));
+      if (a.size !== b.size || [...a].some((r) => !b.has(r))) rutasDeLaReemisionCambian.push(evaluationId);
+    }
+
     // LAS FRENADAS QUE EL RECALCULO NO PUEDE TOCAR. Es la cifra que faltaba y la que decide si hace falta
     // una salida aparte: una consulta frenada que no se puede recomputar se queda frenada PARA SIEMPRE.
     const frenadasSinSalida = [...frenadasHoy].filter((id) => recomputado.get(id) == null);
@@ -614,6 +658,38 @@ describe("simulacion del recalculo del motor 3.x", () => {
                   // hay que ir a buscar una por una.
                   .map(([motivo, v]) => [motivo, { n: v.n, cuales: v.cuales.slice(0, 20) }]),
               ),
+            },
+            // ══ LO QUE DEJO LA REEMISION ══
+            //
+            // `laPrescripcionSeApoyaEnElAnterior` son las consultas con un informe anterior: su
+            // tratamiento se construyo con el diagnostico de antes, y en Tratamiento sale el aviso.
+            // `sinCongelar` tiene que ser 0 en las tres: si no, ese informe sale sin rutas, sin evidencia
+            // del estado EFR o sin la reserva de validez de la medicion.
+            laReemision: {
+              laPrescripcionSeApoyaEnElAnterior: {
+                n: reemitidas.length,
+                porProfesional: porProfesional(reemitidas),
+              },
+              rutasQueCambiaronAlReemitir: {
+                n: rutasDeLaReemisionCambian.length,
+                porProfesional: porProfesional(rutasDeLaReemisionCambian),
+                ejemplos: rutasDeLaReemisionCambian.slice(0, 10),
+              },
+              sinCongelar: {
+                rutasContent: {
+                  n: sinRutasContent.length,
+                  reemitidas: sinRutasContent.filter((id) => penultimo.has(id)).length,
+                  porProfesional: porProfesional(sinRutasContent.filter((id) => penultimo.has(id))),
+                },
+                efrContent: {
+                  n: sinEfrContent.length,
+                  reemitidas: sinEfrContent.filter((id) => penultimo.has(id)).length,
+                },
+                validityCaveats: {
+                  n: sinValidityCaveats.length,
+                  reemitidas: sinValidityCaveats.filter((id) => penultimo.has(id)).length,
+                },
+              },
             },
             // ══ A QUIEN LE TOCA MIRAR ALGO DESPUES, por profesional (ocho caracteres) ══
             //
