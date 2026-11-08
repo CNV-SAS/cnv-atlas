@@ -51,7 +51,7 @@ const BASE: TreatmentProtocol = {
     { id: "g-1", text: "5 comidas al dia" },
     { id: "g-2", text: "Evitar ultraprocesados" },
   ],
-  notes: [{ id: "note-1", note: "Nota inicial", createdAt: "2026-08-01T00:00:00Z", profession: null }],
+  notes: [{ id: "note-1", note: "Nota inicial", mensajeParaElPaciente: null, createdAt: "2026-08-01T00:00:00Z", profession: null }],
   declaracionesPaciente: { alergias: [], intolerancias: [] },
   catalog: [
     {

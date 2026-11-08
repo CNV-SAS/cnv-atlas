@@ -449,7 +449,20 @@ export async function emitirPrescripcion(
 // documentar una observacion aunque su profesion no este configurada; bloquearlo por un campo
 // administrativo vacio seria un gate de mas. El guard de profesion cubre solo los actos que crean o
 // producen la prescripcion, no la documentacion clinica.
-export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result<void>> {
+/** Lo que la pantalla necesita para pintar la nota vigente SIN esperar al refresco de la pagina. */
+export type NotaGuardada = {
+  id: string;
+  note: string;
+  mensajeParaElPaciente: string | null;
+  /** ISO, tal como la base la sello. */
+  createdAt: string;
+  profession: string | null;
+};
+
+export async function addNote(
+  input: AddNoteInput,
+  actor: Actor,
+): Promise<Result<NotaGuardada>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
   // LA PROFESION SE LEE, NO SE PIDE (§8: "cada rol escribe lo suyo"). Viene del perfil del actor, no de un
@@ -459,18 +472,24 @@ export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result
   // entra sin ella y la pantalla lo dice.
   const { profession } = await getActorProfession(actor.actorId);
   try {
-    await addTreatmentNote({
+    const escrita = await addTreatmentNote({
       treatmentId: protocol.treatmentId,
       note: input.note,
       mensajeParaElPaciente: input.mensajeParaElPaciente ?? null,
       profession: (profession as ProfesionNota | null) ?? null,
       ...actor,
     });
+    return ok({
+      id: escrita.id,
+      note: input.note ?? "",
+      mensajeParaElPaciente: input.mensajeParaElPaciente ?? null,
+      createdAt: escrita.createdAt.toISOString(),
+      profession: (profession as string | null) ?? null,
+    });
   } catch (e) {
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;
   }
-  return ok(undefined);
 }
 
 // ═══ UN SOLO GUARDADO PARA TODO EL PROTOCOLO (Santiago, 2026-09-09) ═══

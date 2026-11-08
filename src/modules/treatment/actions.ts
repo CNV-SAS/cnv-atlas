@@ -20,6 +20,7 @@ import {
   saveNutraceuticals,
   registrarSinPrescripcion,
 } from "./services/treatment-service";
+import type { NotaGuardada } from "./services/treatment-service";
 import {
   acknowledgeRestrictionsSchema,
   addNoteSchema,
@@ -39,6 +40,12 @@ export type TreatmentActionState = {
   error: string | null;
   success: string | null;
   warning: string | null;
+  /**
+   * LA NOTA QUE SE ACABA DE GUARDAR (2026-11-08). La usa la pantalla de observaciones para pintar la
+   * vigente AL INSTANTE, sin esperar al refresco de la pagina de la evaluacion, que tarda segundos
+   * porque recarga todo. Ausente en las demas acciones de tratamiento, que no escriben notas.
+   */
+  nota?: NotaGuardada | null;
 };
 
 const fail = (error: string): TreatmentActionState => ({ error, success: null, warning: null });
@@ -257,7 +264,17 @@ export async function addNoteAction(
 
   // NO REVALIDA: el refresco lo hace el cliente tras disparar el aviso (useFormToastAndRefresh). Un
   // revalidate aqui arrastra la pagina al inicio y desmonta el form antes de que el aviso se vea.
-  return { error: null, success: "Nota agregada.", warning: null };
+  // EL MENSAJE DEL AVISO DICE QUE SE GUARDO, y son dos cosas distintas: la nota clinica va a la
+  // historia clinica y el mensaje va al informe del paciente. Un "Nota agregada" sobre un acto que solo
+  // llevaba mensaje seria falso.
+  const guardo = result.value;
+  const queSeGuardo =
+    guardo.note.trim() !== "" && guardo.mensajeParaElPaciente
+      ? "Nota clínica y mensaje para el paciente guardados."
+      : guardo.note.trim() !== ""
+        ? "Nota clínica agregada."
+        : "Mensaje para el paciente guardado.";
+  return { error: null, success: queSeGuardo, warning: null, nota: guardo };
 }
 
 // T2 A2: reconocimiento de las restricciones del modelo. PROFESIONAL-SOLO (acto clinico).

@@ -200,9 +200,25 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     // EL COMENTARIO DECIA "addNote NO llama a getActorProfession", y desde el 2026-08-31 SI la llama:
     // no para gatear, sino para SELLAR con que rol se escribio (Gildardo §8, una nota por profesion).
     // Por eso este caso ahora afirma algo mas fuerte que antes: la lee Y NO la usa como puerta.
+    // EL WRITER DEVUELVE LA FILA desde el 2026-11-08 (la pantalla pinta la nota vigente al instante, sin
+    // esperar al refresco), asi que el doble tiene que devolverla: un `vi.fn()` pelado devuelve
+    // `undefined` y el servicio revienta al leer su id.
+    vi.mocked(addTreatmentNote).mockResolvedValue({ id: "n-1", createdAt: new Date("2026-11-08") });
     const r = await addNote({ evaluationId: "E1", note: "hola" }, actor);
     expect(r.ok).toBe(true);
     expect(addTreatmentNote).toHaveBeenCalledTimes(1);
+  });
+
+  it("y SIN NOTA pero CON MENSAJE tambien escribe: corregir el mensaje no obliga a otra nota clinica", async () => {
+    // `treatment_notes` es append-only, asi que corregir el mensaje al paciente es una fila nueva. Con la
+    // nota obligatoria, cambiar una coma del mensaje metia en la historia clinica una nota que nadie
+    // quiso escribir. Lo que se exige es que el acto diga ALGO, y eso lo decide el esquema.
+    vi.mocked(addTreatmentNote).mockResolvedValue({ id: "n-2", createdAt: new Date("2026-11-08") });
+    const r = await addNote(
+      { evaluationId: "E1", note: "", mensajeParaElPaciente: "Sigue con el plan." },
+      actor,
+    );
+    expect(r.ok).toBe(true);
   });
 });
 

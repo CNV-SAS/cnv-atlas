@@ -1320,6 +1320,7 @@ export default async function ResultadosEvaluacionPage({
             notas={(protocol?.notes ?? []).map((n) => ({
               id: n.id,
               note: n.note,
+              mensajeParaElPaciente: n.mensajeParaElPaciente,
               // LA PANTALLA DE TRABAJO SI LLEVA HORA, y el documento no: dos notas del mismo dia hay que
               // poder distinguirlas mientras se trabaja. La hora se quito de la HISTORIA CLINICA, que es
               // un documento clinico y no un registro de sistema.

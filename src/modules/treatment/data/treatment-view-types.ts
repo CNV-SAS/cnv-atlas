@@ -69,6 +69,13 @@ export const PROFESION_NOTA: Record<string, string> = {
 export type TreatmentNote = {
   id: string;
   note: string;
+  /**
+   * El mensaje que va al INFORME del paciente (0237). null = esa nota no llevaba.
+   *
+   * Viaja con la nota porque se escriben en el mismo acto, y porque la pantalla tiene que poder enseñar
+   * el vigente: sin el, la profesional guardaba un mensaje y no volvia a verlo en ninguna parte.
+   */
+  mensajeParaElPaciente: string | null;
   createdAt: string;
   profession: ProfesionNota | null;
 };

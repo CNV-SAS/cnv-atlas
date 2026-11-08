@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { NotebookPen } from "lucide-react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
+import { formatDateTime } from "@/lib/format/date";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,8 @@ import { PROFESION_NOTA } from "@/modules/treatment/data/treatment-view-types";
 type Nota = {
   id: string;
   note: string;
+  /** El mensaje que va al informe del paciente. null = esa nota no llevaba. */
+  mensajeParaElPaciente: string | null;
   /** Fecha ya formateada, para mostrar. */
   createdAt: string;
   /** El instante real (ISO). Es lo que decide cual es la vigente. */
@@ -43,9 +46,27 @@ type Nota = {
   profession: string | null;
 };
 
+/**
+ * EL MENSAJE VIGENTE: el de la ULTIMA nota QUE TRAIGA uno, con sus versiones anteriores.
+ *
+ * ═══ "LA ULTIMA QUE TENGA", NO "EL DE LA ULTIMA NOTA" ═══
+ *
+ * Es la misma regla que el informe (`ultimoMensajeParaElPaciente`), y escrita igual a proposito: si
+ * fuera "el de la ultima nota", escribir una nota clinica mas SIN mensaje borraria de la pantalla el
+ * mensaje que ya se le habia dejado al paciente, mientras el informe lo sigue llevando. La pantalla
+ * diria que no hay mensaje y el paciente recibiria uno.
+ */
+function mensajesPorFecha(notas: Nota[]): { vigente: Nota; anteriores: Nota[] } | null {
+  const conMensaje = notas
+    .filter((n) => (n.mensajeParaElPaciente ?? "").trim() !== "")
+    .sort((a, b) => b.creadaEn.localeCompare(a.creadaEn));
+  if (conMensaje.length === 0) return null;
+  return { vigente: conMensaje[0], anteriores: conMensaje.slice(1) };
+}
+
 export function ObservacionesConsulta({
   evaluationId,
-  notas,
+  notas: notasDelServidor,
   puedeEscribir,
 }: {
   evaluationId: string;
@@ -59,6 +80,60 @@ export function ObservacionesConsulta({
     warning: null,
   });
   useFormToastAndRefresh(state);
+
+  // ═══ LO GUARDADO APARECE AL INSTANTE, NO CUANDO TERMINE EL REFRESCO (Santiago, 2026-11-08) ═══
+  //
+  // EL DEFECTO, de su smoke: *"al pulsar «Agregar observación» hay que esperar unos 5 segundos, o
+  // recargar, para que el campo se limpie y aparezca la vigente"*.
+  //
+  // La causa no era el guardado, que es inmediato: la pantalla esperaba al `router.refresh()`, que
+  // recompone la PAGINA ENTERA de la evaluacion (encuesta, composicion, diagnostico, tratamiento). Cinco
+  // segundos mirando un campo lleno, en consulta y con el paciente delante, es exactamente la ventana en
+  // la que alguien vuelve a pulsar. Y esto es append-only: la segunda pulsacion no corrige, DUPLICA.
+  //
+  // Asi que la accion devuelve la fila que la base acaba de sellar y se pinta ya. El refresco sigue
+  // llegando detras y la trae otra vez; se deduplica por `id`, que es lo unico que no depende de que las
+  // dos copias se vean iguales.
+  const notas = useMemo(() => {
+    if (!state.nota) return notasDelServidor;
+    if (notasDelServidor.some((n) => n.id === state.nota?.id)) return notasDelServidor;
+    const n = state.nota;
+    return [
+      {
+        id: n.id,
+        note: n.note,
+        mensajeParaElPaciente: n.mensajeParaElPaciente,
+        // LA MISMA FUNCION QUE USA EL SERVIDOR para las demas: dos formatos de fecha en la misma lista se
+        // ven como dos cosas distintas, y la de arriba seria justo la recien guardada.
+        createdAt: formatDateTime(n.createdAt),
+        creadaEn: n.createdAt,
+        profession: n.profession,
+      },
+      ...notasDelServidor,
+    ];
+  }, [state.nota, notasDelServidor]);
+
+  const mensajes = mensajesPorFecha(notas);
+
+  // ¿Hay algo que guardar? Lo informa el bloque de campos. Arranca en  porque el formulario nace
+  // vacio, y se reinicia solo: al guardar, el bloque se remonta con su  y vuelve a avisar.
+  // ═══ ¿HAY ALGO QUE GUARDAR? Y POR QUÉ LLEVA LA MARCA DEL FORMULARIO AL QUE PERTENECE ═══
+  //
+  // El bloque de campos se remonta con una `key` derivada del número de notas, así que al guardar los dos
+  // campos se vacían. Este estado vive en el PADRE y sobreviviría a ese remonte: el botón quedaría
+  // diciendo "Guardar", habilitado, sobre dos campos vacíos, invitando a un envío que el servidor va a
+  // rechazar.
+  //
+  // SE RESUELVE DERIVANDO, NO CON UN EFECTO que lo reponga: el valor se guarda junto con la `key` del
+  // formulario que lo produjo, y si esa `key` ya no es la de ahora, no cuenta. Un `setState` dentro de un
+  // efecto para reponer un estado es la forma de encadenar renders que el lint prohíbe, y además deja un
+  // instante en que el botón dice lo que no es.
+  const [escrito, setEscrito] = useState<{ enLaNota: number; hay: boolean }>({
+    enLaNota: notas.length,
+    hay: false,
+  });
+  const hayAlgoQueGuardar = escrito.enLaNota === notas.length && escrito.hay;
+  const setHayAlgoQueGuardar = (hay: boolean) => setEscrito({ enLaNota: notas.length, hay });
 
   // MANDA LA MAS RECIENTE Y LAS ANTERIORES QUEDAN PLEGADAS. Es el patron con el que quedo el criterio del
   // profesional (cotejo 2026-09-06, punto 13a), y se trae tal cual porque el problema es el mismo:
@@ -169,6 +244,67 @@ export function ObservacionesConsulta({
           </p>
         )}
 
+        {/* ═══ EL MENSAJE PARA EL PACIENTE, QUE NO SE VEÍA EN NINGUNA PARTE (Santiago, 2026-11-08) ═══
+
+            Su smoke: *"el «Mensaje para el paciente» no se ve en ningún lado después de guardarse; tras
+            recargar el campo sale vacío y la profesional no sabe qué le va a llegar al paciente."*
+
+            Y es lo más delicado de los dos textos, porque es el único que SALE DE LA CLÍNICA. Un
+            registro que no se puede releer antes de que lo lea su destinatario no se puede corregir: la
+            profesional escribía una línea para una persona y la perdía de vista en el mismo acto.
+
+            VA EN SU PROPIO BLOQUE Y NO MEZCLADO con las notas clínicas, a propósito: son dos cosas con
+            dos destinos, y ponerlas juntas es lo que hizo falta separar en la 0237. */}
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+              Mensaje para el paciente · va en su informe
+            </span>
+            {mensajes ? (
+              <span className="text-xs text-muted-foreground">{mensajes.vigente.createdAt}</span>
+            ) : null}
+          </div>
+          {mensajes ? (
+            <>
+              <p className="whitespace-pre-wrap rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground">
+                {mensajes.vigente.mensajeParaElPaciente}
+              </p>
+              <span className="text-xs text-muted-foreground">
+                Es lo que el paciente va a leer al final de su informe. Para cambiarlo, escribe otro
+                abajo: el nuevo pasa a ser el vigente y este queda guardado.
+              </span>
+              {mensajes.anteriores.length ? (
+                <details className="rounded-lg border border-dashed border-border">
+                  <summary className="cursor-pointer px-4 py-2 text-xs text-muted-foreground">
+                    {mensajes.anteriores.length === 1
+                      ? "Ver el mensaje anterior"
+                      : `Ver los ${mensajes.anteriores.length} mensajes anteriores`}
+                  </summary>
+                  <ol className="flex flex-col gap-3 border-t border-border p-4">
+                    {mensajes.anteriores.map((n) => (
+                      <li key={n.id} className="rounded-lg border border-border p-3">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 pb-1">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Mensaje anterior
+                          </span>
+                          <span className="text-xs text-muted-foreground">{n.createdAt}</span>
+                        </div>
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                          {n.mensajeParaElPaciente}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              ) : null}
+            </>
+          ) : (
+            <p className="rounded-lg border border-dashed border-border px-4 py-3 text-sm italic text-muted-foreground">
+              No le has dejado ningún mensaje. Su informe sale solo, sin texto tuyo.
+            </p>
+          )}
+        </div>
+
         {puedeEscribir ? (
           // NO se usa la prop `action`: en React 19 resetea el formulario tras la accion, y ahi es donde
           // se pierde lo escrito cuando el servidor rechaza (hazard 2 de CLAUDE.md).
@@ -189,12 +325,19 @@ export function ObservacionesConsulta({
                 se vacia cuando la nota EXISTE, no cuando la accion vuelve, y si el servidor rechaza el
                 texto se queda donde estaba. Es el mismo patron que usan las medidas de Antropometria, y
                 NO reabre el hazard 2: un remonte por dato nuevo no es un `form.reset()`. */}
-            <CampoDeObservacion key={`nota-${notas.length}`} />
+            <CampoDeObservacion key={`nota-${notas.length}`} onHayAlgo={setHayAlgoQueGuardar} />
             <div className="flex flex-wrap items-center gap-3">
               {/* `required` en el campo y no un `disabled` calculado: sin estado controlado, deshabilitar
                   por vacio exigiria volver a controlarlo. El navegador ya impide enviar vacio. */}
-              <Button type="submit" size="sm" disabled={pending}>
-                {pending ? "Agregando..." : "Agregar observación"}
+              {/* EL BOTON ES DONDE VIVE LA EXIGENCIA desde que la nota dejo de ser obligatoria: pide
+                  que haya ALGO (nota, mensaje, o los dos) y LO DICE EN SU ROTULO. Un boton muerto sin
+                  explicacion es peor que un error claro (hazard 8). */}
+              <Button type="submit" size="sm" disabled={pending || !hayAlgoQueGuardar}>
+                {pending
+                  ? "Guardando..."
+                  : hayAlgoQueGuardar
+                    ? "Guardar"
+                    : "Escribe la nota o el mensaje"}
               </Button>
               {/* LA CONSECUENCIA, DONDE SE PULSA (leccion del punto 13: a media pantalla del boton no se
                   lee). Y se dice que sale en la historia clinica, porque creer que una nota es privada
@@ -239,17 +382,37 @@ export function ObservacionesConsulta({
  * numero de notas guardadas, asi que al guardar se vacian los campos Y el contador. Si el contador viviera
  * arriba, se quedaria marcando los caracteres de la nota anterior sobre un campo vacio.
  */
-function CampoDeObservacion() {
+function CampoDeObservacion({ onHayAlgo }: { onHayAlgo: (v: boolean) => void }) {
   const [largo, setLargo] = useState(0);
+  const [hayNota, setNota] = useState(false);
+  const [hayMensaje, setMensaje] = useState(false);
+  const setHayNota = (v: boolean) => {
+    setNota(v);
+    onHayAlgo(v || hayMensaje);
+  };
   const quedan = MAXIMO_DE_LA_OBSERVACION - largo;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        {/* SIN `maxLength`: es un registro clinico y no se recorta por una razon de maquetacion. */}
+        {/* ═══ EL RÓTULO DICE EL DESTINO (Santiago, 2026-11-08) ═══
+
+            Los dos campos se escriben en el mismo acto y van a sitios distintos. Sin decirlo encima de
+            cada uno, la única forma de saberlo era leer la línea de abajo, y creer que una nota es
+            privada cambia lo que se escribe en ella. */}
+        <label className="text-sm font-medium text-foreground" htmlFor="note">
+          Nota clínica <span className="font-normal text-muted-foreground">· va a la historia clínica</span>
+        </label>
+        {/* SIN `maxLength`: es un registro clinico y no se recorta por una razon de maquetacion.
+            Y SIN `required`, desde el 2026-11-08: corregir el mensaje al paciente obligaba a escribir
+            OTRA nota clinica (esto es append-only), asi que la historia se llenaba de notas que nadie
+            quiso escribir. La exigencia no desaparece, se mueve: el boton de abajo pide que haya ALGO,
+            y lo dice en su rotulo. Es el hazard 8 de CLAUDE.md: una bandera inerte engaña mas que su
+            ausencia, asi que se borra y la regla se rehace donde si se cumple. */}
         <Textarea
+          id="note"
           name="note"
           rows={4}
-          required
+          onChange={(e) => setHayNota(e.currentTarget.value.trim() !== "")}
           placeholder="Qué observaste en esta consulta, qué acordaste con el paciente, qué vigilar en el próximo control"
         />
         <span className="text-xs text-muted-foreground">
@@ -260,14 +423,20 @@ function CampoDeObservacion() {
 
       <div className="flex flex-col gap-1">
         <label className="text-sm font-medium text-foreground" htmlFor="mensajeParaElPaciente">
-          Mensaje para el paciente <span className="font-normal text-muted-foreground">(opcional)</span>
+          Mensaje para el paciente{" "}
+          <span className="font-normal text-muted-foreground">· va en su informe (opcional)</span>
         </label>
         <Textarea
           id="mensajeParaElPaciente"
           name="mensajeParaElPaciente"
           rows={3}
           maxLength={MAXIMO_DE_LA_OBSERVACION}
-          onChange={(e) => setLargo(e.currentTarget.value.length)}
+          onChange={(e) => {
+            setLargo(e.currentTarget.value.length);
+            const hay = e.currentTarget.value.trim() !== "";
+            setMensaje(hay);
+            onHayAlgo(hayNota || hay);
+          }}
           placeholder="Una línea para él, con tus palabras. Si lo dejas en blanco, el informe sale solo."
         />
         {/* EL AVISO SOLO CAMBIA DE TONO CERCA DEL TOPE: un contador en rojo desde el primer caracter se

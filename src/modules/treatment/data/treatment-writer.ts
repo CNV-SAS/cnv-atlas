@@ -404,8 +404,16 @@ export type AddNoteWrite = {
 };
 
 // Agrega una nota clinica al tratamiento (append-only) con audit inline.
-export async function addTreatmentNote(input: AddNoteWrite): Promise<void> {
-  await db.transaction(async (tx) => {
+/**
+ * Devuelve la fila escrita, y no `void`, por una razon de pantalla (Santiago, 2026-11-08): la nota
+ * vigente tiene que aparecer AL GUARDAR, no cuando termine el refresco de la pagina entera (que en la
+ * evaluacion tarda segundos). Lo que se devuelve es lo que la base acaba de sellar, no lo que se mando:
+ * la fecha y el id los pone ella.
+ */
+export async function addTreatmentNote(
+  input: AddNoteWrite,
+): Promise<{ id: string; createdAt: Date }> {
+  return db.transaction(async (tx) => {
     await assertDiagnosisExists(tx, input.treatmentId);
     const [note] = await tx
       .insert(treatmentNotes)
@@ -415,7 +423,7 @@ export async function addTreatmentNote(input: AddNoteWrite): Promise<void> {
         mensajeParaElPaciente: input.mensajeParaElPaciente,
         profession: input.profession,
       })
-      .returning({ id: treatmentNotes.id });
+      .returning({ id: treatmentNotes.id, createdAt: treatmentNotes.createdAt });
     await recordAudit(tx, {
       event: "treatment.note_added",
       actorId: input.actorId,
@@ -425,6 +433,7 @@ export async function addTreatmentNote(input: AddNoteWrite): Promise<void> {
       payload: { note_id: note.id, profession: input.profession },
       ip: input.ip,
     });
+    return { id: note.id, createdAt: note.createdAt };
   });
 }
 

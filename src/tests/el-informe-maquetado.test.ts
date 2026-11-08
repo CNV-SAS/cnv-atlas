@@ -862,7 +862,16 @@ describe("el tope de la observacion mantiene el informe inicial en una hoja", ()
       "El mensaje para el paciente no puede pasar de ${MAXIMO_DE_LA_OBSERVACION} caracteres",
     );
     // LA NOTA CLINICA, SIN TOPE: se comprueba que su esquema no lo lleva.
-    expect(VALIDACIONES).toContain(`note: z.string().trim().min(1, "La nota no puede estar vacía.")`);
+    //
+    // RE-ANCLADO EL 2026-11-08: la nota dejó de ser obligatoria POR SÍ SOLA (corregir el mensaje al
+    // paciente obligaba a escribir otra nota clínica, y esto es append-only). Lo que se exige ahora es
+    // que el acto diga ALGO, y vive en el `refine`. Lo que este caso sigue vigilando es lo suyo: que la
+    // nota no tenga tope.
+    expect(VALIDACIONES).toContain("note: z.string().trim(),");
+    expect(VALIDACIONES, "la nota clínica volvió a llevar tope").not.toMatch(
+      /note: z\.string\(\)\.trim\(\)\.max\(/,
+    );
+    expect(VALIDACIONES).toContain("Escribe la nota clínica, el mensaje para el paciente, o los dos.");
 
     // Y LA PANTALLA LO ENSEÑA MIENTRAS SE ESCRIBE, que es la mitad que Santiago pidio: un tope que solo
     // aparece al enviar obliga a reescribir lo ya pensado.

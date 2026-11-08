@@ -290,8 +290,21 @@ export const MAXIMO_DE_LA_OBSERVACION = 200;
 // Nota clinica del tratamiento: append-only (treatment_notes lleva su timestamp).
 export const addNoteSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
-  // SIN TOPE (ver arriba). Lo unico que se exige es que no venga vacia.
-  note: z.string().trim().min(1, "La nota no puede estar vacía."),
+  /**
+   * SIN TOPE (ver arriba) y, desde el 2026-11-08, SIN SER OBLIGATORIA POR SI SOLA.
+   *
+   * ═══ POR QUE DEJO DE EXIGIRSE ═══
+   *
+   * Santiago pidio que el mensaje vigente se pueda CORREGIR, y `treatment_notes` es append-only: una
+   * correccion es una fila nueva. Con la nota obligatoria, corregir una coma del mensaje al paciente
+   * obligaba a escribir OTRA nota clinica, asi que la historia clinica se llenaba de notas que nadie
+   * quiso escribir, solo para poder tocar el mensaje. Una exigencia que obliga a inventar un registro
+   * clinico es peor que no tenerla.
+   *
+   * LO QUE SI SE EXIGE es que el acto diga ALGO: al menos uno de los dos. Esta en el `refine` de abajo,
+   * que es el unico sitio donde la regla se puede escribir sin contradecirse.
+   */
+  note: z.string().trim(),
   /**
    * El mensaje para el paciente, OPCIONAL.
    *
@@ -309,6 +322,11 @@ export const addNoteSchema = z.object({
     .transform((v) => v || null)
     .nullable()
     .optional(),
+}).refine((v) => v.note.trim() !== "" || (v.mensajeParaElPaciente ?? "") !== "", {
+  // EL MENSAJE NOMBRA LAS DOS SALIDAS, porque las dos son validas y quien lo lea tiene que saber que
+  // puede hacer cualquiera de ellas. Un "no puede estar vacía" a secas se lee como "escribe la nota".
+  message: "Escribe la nota clínica, el mensaje para el paciente, o los dos.",
+  path: ["note"],
 });
 
 export type AddNoteInput = z.infer<typeof addNoteSchema>;

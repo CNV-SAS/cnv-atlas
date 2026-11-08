@@ -175,7 +175,7 @@ export async function getTreatmentProtocol(
       .eq("treatment_id", treatmentId),
     supabase
       .from("treatment_notes")
-      .select("id, note, created_at, profession")
+      .select("id, note, mensaje_para_el_paciente, created_at, profession")
       .eq("treatment_id", treatmentId)
       .order("created_at", { ascending: false }),
     supabase
@@ -372,6 +372,10 @@ export async function getTreatmentProtocol(
     notes: (notes.data ?? []).map((n) => ({
       id: n.id,
       note: n.note,
+      // EL MENSAJE PARA EL PACIENTE (0237). Viaja con la nota porque se escriben en el MISMO acto, y
+      // porque la pantalla tiene que poder enseñar el vigente: sin el, la profesional guardaba un
+      // mensaje y no volvia a verlo en ninguna parte (smoke de Santiago, 2026-11-08).
+      mensajeParaElPaciente: (n as { mensaje_para_el_paciente?: string | null }).mensaje_para_el_paciente ?? null,
       createdAt: n.created_at,
       // null = nota ANTERIOR a la separacion por profesion (§8). No se rellena: no sabemos con que rol
       // se escribio, y ponerle uno seria fabricar autoria clinica.
