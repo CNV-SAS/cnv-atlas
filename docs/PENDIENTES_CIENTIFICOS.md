@@ -23,6 +23,18 @@ si su respuesta es otra, se cambia. Donde dice *"se cambia en una línea"* es li
 **Los números no se reciclan.** Una pregunta contestada se marca y se queda con su número; una que se
 absorbe en otra lo dice. Así, si usted responde *"la 15"* dos semanas después, sigue siendo la misma.
 
+> **Dos cosas que conviene saber antes de empezar.**
+>
+> **Con sus respuestas se cierra todo lo científico de la v10 a la v16.** El 7 de noviembre barrimos los
+> cinco documentos que nos ha entregado (v10, v11, v12, v15 y v16), cosa por cosa, verificando cada una
+> contra el código o contra la base y no contra otro documento: de 68 cosas que pide, 41 están hechas, 13
+> no aplican en Atlas, 6 son decisiones nuestras que le declaramos aquí, **7 esperan una respuesta suya**
+> y 1 faltaba y se hizo ese mismo día. El detalle está en `BARRIDO_FINAL_V10_A_V16_2026-11-07.md`.
+>
+> **Y la Encuesta CNV-S ya está construida.** Las diez piezas de su v15 §2 están hechas y **no activadas**:
+> ningún paciente la ve todavía. Lo que falta para encenderla es el smoke en navegador y lo que usted
+> diga en la última sección de este documento, *"Lo que salió al construir la encuesta de seguimiento"*.
+
 ---
 
 ## Si solo responde tres, que sean estas
@@ -93,7 +105,7 @@ instrucción (el interruptor del mapeo, con su adaptador de ordinales). Hoy la A
 
 ---
 
-## Las 38 preguntas
+## Las 45 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"37: C, solo cintura y cadera · 9: sí,
 > el degradado hacia rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -326,9 +338,14 @@ calcular. Si CNV va a atender pediatría, con qué ecuaciones es decisión suya.
 ### G · Las que salieron de leer la v15 y la v16
 
 Las primeras se añadieron el 5 de noviembre, al revisar sus dos entregas nuevas; la **38** salió el 7, al
-portar su §4.5. **Dos de las de noviembre se absorbieron en preguntas que ya existían, y no se renumera
-nada:** la **35** (los dos colores de "Acorde con sus pares") vive ahora dentro de la **15**, y la **36**
-(el Δ en el borde de ±5,0) dentro de la **7**, que es donde estaba la misma pregunta.
+portar su §4.5, y la **39**, la **40** y la **41** ese mismo día, de medir la cohorte contra la nube y de
+barrer los cinco documentos de la v10 a la v16. **Dos de las de noviembre se absorbieron en preguntas que
+ya existían, y no se renumera nada:** la **35** (los dos colores de "Acorde con sus pares") vive ahora
+dentro de la **15**, y la **36** (el Δ en el borde de ±5,0) dentro de la **7**, que es donde estaba la
+misma pregunta.
+
+**Y las cuatro últimas (42 a 45) tienen su propia sección**, al final: salieron de **construir** su
+CNV-S, no de leerla, y conviene que se distingan.
 
 **32 · ¿Qué pasó con las versiones 13 y 14 del HTML?** Nosotros nos quedamos en la v12 del 12 de octubre, y
 las dos siguientes que nos llegaron son la v15 y la v16. Entendemos que la 13 y la 14 fueron adelantos que
@@ -377,9 +394,31 @@ Y su archivo declara cuál manda, con ese título: **"DFI como ÚNICA fuente de 
 apagada solo con **IFC Alto**, o con IFC Normal e IRC Bajo. El IAE no entra en el dominio 1: vive en el 3,
 que es el que activa la R4.
 
-En la cohorte local, **346 de 364 consultas** llevan la R1 activa sin cumplir las tres del rótulo, y
-**todas** caen en la misma celda ("IFC Normal · IRC Normal"); **ninguna** cumple las tres sin llevarla. La
-cifra de la nube va en la corrida de la simulación.
+**Medido contra la nube el 7 de noviembre, sobre las 497 consultas con informe sellado. La tabla por
+celda no deja lugar a dudas:**
+
+| Celda del dominio 1 (IFC · IRC) | severidad | con R1 | sin R1 |
+|---|---|---|---|
+| IFC Normal · IRC Normal | **2** | **158** | 0 |
+| IFC Bajo · IRC Alto | **3** | **54** | 0 |
+| IFC Normal · IRC Alto | **2** | **19** | 0 |
+| IFC Bajo · IRC Normal | **3** | **15** | 0 |
+| IFC Alto · IRC Normal | **2** | **1** | 0 |
+| IFC Alto · IRC Bajo | 0 | 0 | 142 |
+| IFC Normal · IRC Bajo | 1 | 0 | 59 |
+| IFC Alto · IRC Normal | 1 | 0 | 27 |
+| IFC Alto · IRC Bajo | 1 | 0 | 22 |
+| **Total** | | **247** | **250** |
+
+**La R1 está encendida en el 100 % de las celdas de severidad 2 o 3 y apagada en el 100 % de las de 0 o
+1. Cero excepciones en 497 consultas.** O sea que la activación real es exactamente `dom1.sev >= 2`, como
+dice su L14095, y su predicado `condicion` no interviene en ninguna.
+
+**Y el rótulo no describe a casi nadie: de las 247 con R1, solo UNA cumple las tres condiciones que
+anuncia** (IFC bajo + IRC alto + IAE acelerado). Las otras 246 leen en su tarjeta una explicación que no
+es la suya. Al revés no pasa nunca: ninguna cumple las tres sin llevar la ruta.
+
+*(En la cohorte local, más pequeña, la proporción era la misma: 346 de 364.)*
 
  · **A)** Manda el DFI (como dice su archivo) y el **rótulo** de la R1 se reescribe para que describa lo
  que de verdad la activa. · **B)** Manda el predicado (`ifc < 4,5` y `irc >= 3,5` y `iae >= 5`) y entonces
@@ -392,8 +431,84 @@ dominio 1 (Celular-Eléctrico), severidad 2 de 3: IFC Normal · IRC Normal". As�
 entró esa ruta sin que nosotros reescribamos nada suyo.*
 
 *Y una consecuencia de fondo que conviene que mire aunque conteste A: con la matriz de hoy, la R1
-(Restauración Celular) se activa en casi toda la cohorte. Una ruta que entra en el 95 % de las consultas
-deja de ordenar la atención, que es para lo que las seis rutas existen.*
+(Restauración Celular) se activa en LA MITAD de la cohorte (247 de 497, medido en la nube). Una ruta que
+entra en una de cada dos consultas ordena menos la atención que las otras cinco, que es para lo que las
+seis existen.*
+
+**39 · El marco de referencia de cada sección: ¿es parte del instrumento?** *(De su v15 §7.1 y §2.6.)*
+Su §2.6 dice que *"el marco de dos semanas también se agrega a la encuesta de línea base"*, y ya está:
+cada sección muestra su ventana de recuerdo ("Piensa en las últimas dos semanas", "Piensa en tu situación
+actual", "Piensa en tu patrón usual de consumo"). **La pregunta es de versionado, no de texto.** El marco
+cambia cómo se interpreta una respuesta aunque no cambie ningún enunciado ni ninguna opción, así que su
+regla de invariancia (§7.4, que habla de enunciado, opciones y puntaje) no se rompe. Pero si usted
+considera que el marco es parte del instrumento, esto pide **una versión nueva de la encuesta** y no un
+cambio de pantalla, y entonces las respuestas de antes del 7 de noviembre quedan en la versión anterior.
+ · **A)** Es presentación: se queda como está, sin versión nueva. · **B)** Es instrumento: se versiona, y
+ lo respondido antes queda en la versión sin marco.
+*Recomendamos **A**. El marco no cambia qué se pregunta ni con qué opciones; hace EXPLÍCITO lo que el
+instrumento ya suponía, y hasta ahora cada paciente elegía su propia ventana. Versionar tendría un costo
+real (las encuestas anteriores dejarían de ser corregibles) a cambio de una distinción que no cambia el
+dato. **Si contesta B, se hace: son unas horas, no un rediseño.***
+
+**40 · Los menores de edad salen de la cohorte de investigación [aplicado]** *(De su v15 §1.1, error 7.)*
+Al medir la cohorte contra la nube apareció **una consulta de una persona de 13 años** dentro de
+`evaluaciones_para_investigacion`. La sacamos, y la razón es suya por partida doble: la **EB-BIS v7 está
+calibrada de 18 a 100** y su propio código rechaza la edad fuera de ese rango, así que sus cifras de edad
+no significan lo que dice la columna; y la autorización de investigación de un menor no la da él.
+ · **A)** Fuera de la cohorte, marcados y contados aparte. · **B)** Dentro, con su marca, y que cada
+ análisis decida. · **C)** Otra cosa.
+*Recomendamos A, y es lo que hay. La consulta **sigue contando como consulta atendida** (son 6 de 652): lo
+que sale es su fila de la cohorte publicable, y la pantalla lo dice en vez de callarlo. La edad se mide **a
+la fecha de la toma**, no a hoy: si no, un menor que cumple 18 el mes que viene entraría sin que su
+medición hubiera cambiado.*
+
+**41 · Las consultas sin medición, ¿pertenecen a la cohorte de investigación?** *(Salió de medir la
+cohorte el 7 de noviembre.)* De las 429 consultas de la cohorte, **140 no tienen diagnóstico**, y al
+mirarlas una por una resultaron ser **consultas en curso**: 68 en borrador, 36 esperando la encuesta, 35 en
+progreso y 1 abandonada. **108 de ellas aportan solo la encuesta** (sin medición BIS), 3 aportan las dos
+cosas y 29 no aportan nada todavía.
+ · **A)** Se quedan: una encuesta respondida es dato de investigación aunque no haya bioimpedancia. ·
+ **B)** Solo entran las que tengan medición. · **C)** Se quedan, pero marcadas, y cada análisis decide.
+*Recomendamos **A con la marca de C**, que es lo que hay hoy: la vista las trae y **/obbia las separa** en
+su propia cifra ("con diagnóstico sellado: las únicas con indicadores"). Sacarlas de la vista escondería
+encuestas completas que sí sirven para analizar hábitos; contarlas sin decirlo haría creer que hay 429
+bioimpedancias cuando hay 289.*
+
+### H · Las que salieron de CONSTRUIR la encuesta de seguimiento
+
+**Van aparte porque son de otra clase.** Todo lo de arriba sale de leer sus documentos; estas cuatro
+salieron de construir su CNV-S 1.0, que es cuando aparece lo que un documento no puede anticipar. La
+encuesta está **construida y apagada**: ninguna de las cuatro frena nada, y lo que usted decida se aplica
+antes de encenderla. El desarrollo de cada una está al final del documento, en su propia sección.
+
+**42 · ¿A quién se le aplica la CNV-S si su primera consulta no tiene encuesta completa?** En Atlas hay
+162 consultas importadas del HTML cuya "línea base" no trae todas las respuestas, y la CNV-S les mostraría
+ocho ítems "a confirmar" sin nada que confirmar y cuatro retirados que conservarían un valor que no existe.
+ · **A)** Encuesta completa otra vez, y la CNV-S desde la siguiente. · **B)** CNV-S, y lo que no tenga
+ respuesta anterior se presenta abierto. · **C)** Otra cosa.
+*Recomendamos **B para los ocho de confirmación** (es lo construido) **y A para los cuatro retirados**: un
+ítem retirado que nunca se preguntó no es un dato conservado, es un hueco permanente.*
+
+**43 · "Lo suspendió" en el S1, ¿cuenta como falta de adherencia?** Puede ser lo contrario de una falla: un
+paciente que suspende por una molestia digestiva hizo lo correcto, y su S2 lo recoge.
+ · **A)** Cuenta, como las otras dos. · **B)** No cuenta: el producto sale del denominador. · **C)**
+ Depende del motivo del S2.
+*Recomendamos **A**, que es lo construido: la adherencia mide **exposición**, y un producto suspendido no
+expuso al paciente. La C mezcla adherencia con causa y dejaría a dos pacientes con la misma exposición en
+escenarios distintos de su tabla 6.*
+
+**44 · La reconfirmación anual cuando la línea base viene del HTML.** Su §7.3 cuenta desde "la última
+confirmación completa", y 162 consultas tienen por línea base un archivo, no una encuesta diligenciada.
+ · **A)** Cuenta la fecha de la consulta importada. · **B)** No hay confirmación completa: la primera
+ CNV-S trae la reconfirmación entera. · **C)** Otra cosa.
+*Recomendamos **B**: una encuesta importada no se confirmó con nadie delante, y tratarla como confirmación
+completa le daría un año de validez a un dato que nadie revisó.*
+
+**45 · `d7_agua` no está en su tabla 3.** Es una pregunta de Atlas (los vasos de agua) y alimenta la
+hidratación del ICEC. La pusimos en **repetir**.
+ · **A)** Repetir (es lo que hay). · **B)** Confirmar. · **C)** Retirar del control.
+*Recomendamos **A**: el ICEC se recalcula en cada consulta y la hidratación es justo lo que cambia entre
+una y otra.*
 
 ---
 
@@ -1165,10 +1280,168 @@ debajo de su rótulo, **el dominio sellado que la activó con su severidad y su 
 · IRC Normal"*. Así el profesional ve por qué entró la ruta sin que nadie reescriba nada suyo.
 
 **Y la consecuencia de fondo, que es la que de verdad le pedimos mirar:** con la matriz de hoy, la
-**Restauración Celular** se activa en casi toda la cohorte. Una ruta que entra en el 95 % de las consultas
-deja de ordenar la atención, que es para lo que las seis existen. Puede ser exactamente lo que usted
+**Restauración Celular** se activa en **247 de 497 consultas** (medido en la nube el 7 de noviembre).
+Una ruta que entra en una de cada dos ordena menos la atención que las otras cinco, que es para lo que
+las seis existen. Puede ser exactamente lo que usted
 quiere (que casi todo el mundo necesite restauración celular es una afirmación clínica defendible), y en ese
 caso lo único que sobra es el rótulo. Pero conviene que sea una decisión y no un efecto.
+
+---
+
+## 39 · El marco de referencia: ¿presentación o instrumento?
+
+Su §2.6 pide el marco también en la línea base, y está puesto: cada sección dice su ventana de recuerdo.
+Lo que hay que decidir es **si eso versiona el instrumento**.
+
+**El argumento de que no:** su regla de invariancia (§7.4) habla de *enunciado, opciones y puntaje*, y
+ninguno de los tres cambia. El marco **hace explícito** lo que el instrumento ya suponía; lo que había
+antes no era "sin ventana", era **cada paciente eligiendo la suya**, que es peor.
+
+**El argumento de que sí:** "¿fumas?" contestada pensando en el último año y contestada pensando en las
+últimas dos semanas son dos preguntas distintas con el mismo enunciado. Si usted lo lee así, lo respondido
+antes del 7 de noviembre no es estrictamente comparable con lo de después.
+
+**Lo que cuesta cada una.** La A no cuesta nada. La B cuesta un bump de encuesta: las respuestas
+anteriores quedan en la versión sin marco y esas evaluaciones **dejan de ser corregibles** (el flujo de
+corrección exige que la versión del instrumento coincida). Son unas horas de trabajo, no un rediseño.
+
+---
+
+## 40 · Los menores fuera de la cohorte **[aplicado]**
+
+**El hecho:** una consulta de una persona de **13 años al medirse** estaba dentro de
+`evaluaciones_para_investigacion`, con el motor 1.0.0.
+
+**Las dos razones de sacarla, las dos suyas.** La **EB-BIS v7 está calibrada de 18 a 100** y su código
+devuelve "pendiente: edad no válida" fuera de ese rango (es su propio error 7 de la especificación): las
+cifras de edad de esa fila no significan lo que dice la columna. Y la **autorización de investigación de
+un menor no la da él**, sino quien tenga su representación legal, que es una comprobación que Atlas hoy no
+hace.
+
+**Lo que NO se hizo, y por qué.** No se quitó de `evaluaciones_vigentes`, que es la vista que cuenta
+consultas: la consulta ocurrió, el paciente fue atendido, y borrarla de ahí diría que no. Ahí queda
+**marcada** (son 6 de 652). Lo que sale es su fila de la cohorte publicable.
+
+**Dos detalles de método.** La edad se mide **a la fecha de la toma** y no a hoy, que es la misma regla
+que cerró "una fecha ilegible que se vuelve edad cero": a hoy, un menor que cumple 18 el mes que viene
+entraría a la cohorte sin que su medición hubiera cambiado. Y **"no se sabe" no es "es menor"**: sin fecha
+de nacimiento la fila se queda, porque un dato que falta es un problema de calidad y no una causa de
+inelegibilidad (medido: en la cohorte no hay ninguna sin fecha de nacimiento).
+
+---
+
+## 41 · Las 140 sin diagnóstico: qué son y qué aportan
+
+Al medir la cohorte apareció la cifra y hubo que mirarla una por una, porque "sin diagnóstico" podía
+significar tres cosas distintas. Es **una sola**: son consultas **en curso**.
+
+| Estado de la consulta | Cuántas |
+|---|---|
+| Borrador | 68 |
+| Esperando la encuesta | 36 |
+| En progreso | 35 |
+| Abandonada | 1 |
+
+**Qué aportan:** 108 traen **solo la encuesta**, 3 traen encuesta y medición, 29 no traen nada todavía, y
+**ninguna trae solo medición**. O sea que lo que hay ahí son encuestas respondidas esperando su toma.
+
+**Y /obbia ya las separa**, que es la mitad de la respuesta: la pantalla muestra "consultas autorizadas"
+y, al lado, "con diagnóstico sellado: las únicas con indicadores". Sin esa segunda cifra, 429 se leería
+como 429 bioimpedancias, y son 289.
+
+---
+
+# H · LO QUE SALIÓ AL CONSTRUIR LA ENCUESTA DE SEGUIMIENTO
+
+**Esta sección va aparte, y es deliberado.** Todo lo de arriba sale de leer sus documentos; esto sale de
+**construir** su CNV-S 1.0, que es cuando aparecen las preguntas que un documento no puede anticipar. Las
+cinco son de su §2, y ninguna frena el resto: la encuesta está construida y **apagada**, y lo que usted
+decida aquí se aplica antes de encenderla.
+
+**Lo que ya está hecho**, para que sepa sobre qué contesta: el instrumento de seguimiento apunta a **las
+mismas preguntas** de la línea base (su §2.2) y no las duplica con otro texto, así que la invariancia de su
+§7.4 no es una regla que haya que recordar sino algo que la estructura impide romper; el **Módulo S** está
+con sus seis ítems y sus opciones literales; el **bloque de confirmación** con sus tres estados; la **regla
+de salto** digestivo; la **reconfirmación anual** con el ítem 38 que vuelve solo en ella; y el **marco de
+referencia** por sección. Las cuentas de su tabla 3 salen exactas: 45 repetir, 7 con filtro, 8 confirmar y
+4 retirar.
+
+---
+
+## 42 · ¿A quién se le aplica la CNV-S si su primera consulta no tiene encuesta completa?
+
+Su §2.1 dice *"desde la segunda consulta se aplica la CNV-S"*, y el bloque de confirmación precarga la
+respuesta de la consulta anterior. **El problema es que en Atlas hay primeras consultas sin encuesta
+completa**: las 162 importadas del HTML, que no traen todas las respuestas, y las que quedaron a medias.
+
+A un paciente así, la CNV-S le mostraría ocho ítems "a confirmar" sin nada que confirmar, y cuatro
+retirados que conservarían un valor que no existe. Hoy esos cuatro quedarían **vacíos para siempre**: no se
+preguntan nunca más.
+
+ · **A)** Si la consulta anterior no tiene las ocho de confirmación, se aplica la **encuesta completa**
+ otra vez, y la CNV-S empieza en la siguiente. · **B)** Se aplica la CNV-S y los ítems sin respuesta
+ anterior se presentan abiertos (es lo que hace hoy el bloque). · **C)** Otra cosa.
+
+*Recomendamos **B para los ocho de confirmación** (es lo construido: sin respuesta anterior no hay nada que
+confirmar, así que se presenta la pregunta original) **y A para los cuatro retirados**: un ítem retirado
+que nunca se preguntó no es un dato conservado, es un hueco permanente. Con B sola, los antecedentes
+familiares, los suplementos y las cirugías de un paciente importado no se preguntarían jamás.*
+
+---
+
+## 43 · "Lo suspendió" en el S1: ¿cuenta como falta de adherencia?
+
+Su S1 tiene cinco opciones y su regla de adherencia nombra dos: *"S1 en «Todos los días» o «5 o más» para
+todos los indicados"*. Las otras tres (menos de 5 días, no lo tomó, lo suspendió) quedan, por resta, como
+no adherencia.
+
+**"Lo suspendió" es la que conviene mirar**, porque puede ser lo contrario de una falla: un paciente que
+suspende por una molestia digestiva **hizo lo correcto**, y su S2 lo recoge (*"molestia digestiva u otro
+efecto"*). Contarlo como baja adherencia pone en su tabla 6 el escenario *"exposición insuficiente"* sobre
+alguien que siguió una indicación razonable.
+
+ · **A)** Cuenta como no adherencia, como las otras dos. · **B)** No cuenta: el producto sale del
+ denominador y la adherencia se mide sobre los que siguió tomando. · **C)** Depende del S2: si suspendió
+ por efecto adverso, no cuenta; por olvido o costo, sí.
+
+*Recomendamos **A** y dejarlo dicho, que es lo construido: la adherencia mide **exposición**, y un producto
+suspendido no expuso al paciente, cualquiera que sea el motivo. La razón se registra en el S2 y el
+profesional la ve. **La C es tentadora y la descartamos:** mezcla adherencia con causa, y entonces dos
+pacientes con la misma exposición saldrían en escenarios distintos de su tabla 6.*
+
+---
+
+## 44 · La reconfirmación anual cuando la línea base viene del HTML
+
+Su §7.3: *"si pasó un año o más desde la última confirmación completa... Cuentan como confirmación completa
+la línea base y cada reconfirmación hecha."*
+
+En Atlas hay **162 consultas importadas** cuya "línea base" es un archivo, no una encuesta diligenciada en
+una fecha. Para esos pacientes, ¿qué fecha cuenta como la última confirmación completa: la de la consulta
+importada, o no hay ninguna y la primera CNV-S hace de reconfirmación?
+
+ · **A)** La fecha de la consulta importada. · **B)** No hay confirmación completa: la primera CNV-S de
+ ese paciente trae la reconfirmación anual entera. · **C)** Otra cosa.
+
+*Recomendamos **B**. Una encuesta importada no se confirmó con nadie delante, y tratarla como confirmación
+completa le daría un año de validez a un dato que nadie revisó. La B cuesta una consulta más larga, una
+sola vez, y deja el instrumento en el estado que su §7.3 describe.*
+
+---
+
+## 45 · `d7_agua` no está en su tabla 3
+
+Su tabla 3 reparte los ítems por número y los nuestros llevan el suyo (`d3_28` es su ítem 28). **Uno no
+tiene número: `d7_agua`**, los vasos de agua al día, que es una pregunta de Atlas y no del instrumento que
+usted numeró. Alimenta el componente de hidratación del ICEC.
+
+Lo pusimos en **repetir**, que es el defecto de su tabla.
+
+ · **A)** Repetir en cada control (es lo que hay). · **B)** Confirmar, como los otros ítems estables. ·
+ **C)** Retirar del control.
+
+*Recomendamos **A**: el ICEC se recalcula en cada consulta y la hidratación es justo lo que cambia entre
+una y otra. Las otras dos dejarían el ICEC de seguimiento apoyado en un dato viejo.*
 
 ---
 
@@ -1245,6 +1518,31 @@ objetivo, avisamos (en su HTML las porciones viven en el navegador; nosotros las
 calórica cuadra macros, distingue calculado de ajustado y lleva candado de concurrencia · la distribución
 por tiempos exige al menos un tiempo activo · y **un documento que se contradice consigo mismo no se
 entrega** (la pregunta 4; es un freno, no un criterio: no decide nada clínico).
+
+### De la CNV-S, que son de estructura y no de contenido (2026-11-07)
+
+Ninguna cambia una pregunta, una opción ni un puntaje. Van declaradas porque **sostienen la invariancia de
+su §7.4**, y quien lea este documento dentro de un año tiene que poder saber por qué está así.
+
+| Qué hicimos | Por qué | Revertir cuesta |
+|---|---|---|
+| **El instrumento es una capa sobre la versión**, no otra versión de la encuesta | Su §2.2 pide que la CNV-S apunte a las MISMAS preguntas. En Atlas una pregunta pertenece a una versión, así que una versión nueva habría obligado a copiar las 64 con sus opciones: dos textos de la misma pregunta que se separan al editar uno, y el `field_key` repetido en dos filas (el motor lee por `field_key`). Con la capa, la invariancia no es una regla que haya que recordar: no hay dos textos que se puedan separar | Un rediseño. **Es la decisión de fondo** |
+| **El Módulo S vive en su propia versión** | Cuatro lectores enumeran las preguntas por versión para medir completitud, el gate del diagnóstico entre ellos. Siete preguntas más en la versión del cuestionario le habrían sumado siete huecos a TODAS las encuestas de línea base | Una migración |
+| **S1 y S2 guardan una respuesta por producto**, como un objeto | Su S1 se presenta "una vez por cada nutracéutico" y una pregunta de Atlas guarda UNA respuesta por encuesta. Es la misma forma que ya usa la opción múltiple | Un cambio de lectura |
+| **Los ocho ítems a confirmar van juntos en su propio paso** | Es el orden de su anexo A ("Inicio, Módulo S, Confirmar, D1 a D8, Cierre"). En sus dominios quedarían repartidos por toda la encuesta | Una línea |
+| **"Sin cambios" guarda la respuesta anterior**, no una marca de confirmado | Lo que la consulta de hoy tiene que poder decir es QUÉ respondió el paciente. Con una marca, una encuesta confirmada entera saldría vacía y el gate del diagnóstico la frenaría | Una línea |
+| **`cnvsNoComparable` y `cnvsAdherenciaAdecuada` no son columnas**: se derivan al leerlas | Son derivadas de respuestas que ya están selladas. En columna serían el mismo hecho en dos sitios que pueden divergir, y el día que su regla cambie habría filas viejas calculadas con la vieja sin que nadie sepa cuáles | Dos columnas |
+
+### Lo que se midió contra la nube el 7 de noviembre, y cambió lo que decía un documento
+
+Tres cosas que un barrido de papeles habría dado por buenas:
+
+- **Su v16 §6 y §7 describen bien el defecto y ya no el estado.** Los 15 grupos de D1 están en Atlas **en
+  las cinco versiones publicadas** (633 de 634 encuestas traen el grupo 15), y el componente de
+  Alimentación del ICEC se arregló el **6 de septiembre**, antes de que usted lo escribiera.
+- **La R1 está en 247 de 497, no en el 95 %.** La cifra local era de una cohorte más pequeña.
+- **El grupo 3 de las mediciones repetidas se cerró solo**, porque su gemela resultó ser de una cuenta de
+  prueba y esas no cuentan. Quedan 20 consultas en 10 grupos, no 21 en 11.
 
 ---
 
