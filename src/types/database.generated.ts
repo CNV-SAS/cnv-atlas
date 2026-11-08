@@ -2733,6 +2733,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"survey_instrument_items": {
+                  Row: {
+                    "comportamiento": string,"filtro_question_id": string | null,"id": string,"instrument_id": string,"order_index": number,"question_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "comportamiento": string,"filtro_question_id"?: string | null,"id"?: string,"instrument_id": string,"order_index": number,"question_id": string
+                  }
+                  Update: {
+                    "comportamiento"?: string,"filtro_question_id"?: string | null,"id"?: string,"instrument_id"?: string,"order_index"?: number,"question_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "survey_instrument_items_filtro_question_id_fkey"
+      columns: ["filtro_question_id"]
+isOneToOne: false
+      referencedRelation: "survey_questions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_instrument_items_instrument_id_fkey"
+      columns: ["instrument_id"]
+isOneToOne: false
+      referencedRelation: "survey_instruments"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_instrument_items_question_id_fkey"
+      columns: ["question_id"]
+isOneToOne: false
+      referencedRelation: "survey_questions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"survey_instruments": {
+                  Row: {
+                    "codigo": string,"descripcion": string | null,"id": string,"nombre": string,"published_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "codigo": string,"descripcion"?: string | null,"id"?: string,"nombre": string,"published_at"?: string
+                  }
+                  Update: {
+                    "codigo"?: string,"descripcion"?: string | null,"id"?: string,"nombre"?: string,"published_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"survey_links": {
                   Row: {
                     "consumed_at": string | null,"created_at": string,"created_by": string | null,"expires_at": string | null,"id": string,"organization_id": string,"patient_id": string | null,"prefill": Json | null,"professional_id": string,"token": string,"type": Database["public"]['Enums']["evaluation_type"]
@@ -2845,14 +2891,14 @@ isOneToOne: false
                   ]
                 },"survey_responses": {
                   Row: {
-                    "captured_by": string | null,"created_at": string,"evaluation_id": string,"id": string,"import_batch_id": string | null,"ip_address": unknown,"survey_version_id": string
+                    "captured_by": string | null,"confirmacion": Json | null,"created_at": string,"evaluation_id": string,"id": string,"import_batch_id": string | null,"instrument_id": string | null,"ip_address": unknown,"minutos_de_diligenciamiento": number | null,"reconfirmacion_anual_at": string | null,"survey_version_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "captured_by"?: string | null,"created_at"?: string,"evaluation_id": string,"id"?: string,"import_batch_id"?: string | null,"ip_address"?: unknown,"survey_version_id": string
+                    "captured_by"?: string | null,"confirmacion"?: Json | null,"created_at"?: string,"evaluation_id": string,"id"?: string,"import_batch_id"?: string | null,"instrument_id"?: string | null,"ip_address"?: unknown,"minutos_de_diligenciamiento"?: number | null,"reconfirmacion_anual_at"?: string | null,"survey_version_id": string
                   }
                   Update: {
-                    "captured_by"?: string | null,"created_at"?: string,"evaluation_id"?: string,"id"?: string,"import_batch_id"?: string | null,"ip_address"?: unknown,"survey_version_id"?: string
+                    "captured_by"?: string | null,"confirmacion"?: Json | null,"created_at"?: string,"evaluation_id"?: string,"id"?: string,"import_batch_id"?: string | null,"instrument_id"?: string | null,"ip_address"?: unknown,"minutos_de_diligenciamiento"?: number | null,"reconfirmacion_anual_at"?: string | null,"survey_version_id"?: string
                   }
                   Relationships: [
                     {
@@ -2884,6 +2930,12 @@ isOneToOne: false
       columns: ["import_batch_id"]
 isOneToOne: false
       referencedRelation: "html_import_batches"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_responses_instrument_id_fkey"
+      columns: ["instrument_id"]
+isOneToOne: false
+      referencedRelation: "survey_instruments"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "survey_responses_survey_version_id_survey_versions_id_fk"

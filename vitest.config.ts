@@ -42,6 +42,9 @@ const DB_TESTS = [
   // comprueba que las DOS vistas se comportan como dicen. Necesita la migracion aplicada, y escribe
   // dentro de una transaccion que se deshace.
   "src/tests/los-menores-no-entran-a-la-cohorte-db.test.ts",
+  // EL INSTRUMENTO DE LA ENCUESTA (0240): compara la lista de preguntas por los DOS caminos (por version
+  // y por instrumento) contra la base real. Es el seguro del cambio del lector.
+  "src/tests/el-instrumento-no-cambia-la-linea-base-db.test.ts",
   "src/tests/alergenos-cobertura.test.ts",
   "src/tests/mapa-alegra.test.ts",
   "src/tests/sentry-causa-db.test.ts",

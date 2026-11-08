@@ -14,7 +14,38 @@ export type SurveyQuestionView = {
   // CLAVE y no en la posicion ni en el texto: un orden se desincroniza en cuanto se inserta algo.
   options: SurveyOptionView[];
 };
+
+/** Los cinco comportamientos de su tabla 3. `propio` es el Modulo S, que no existe en la linea base. */
+export type ComportamientoDelItem =
+  | "repetir"
+  | "repetir_con_filtro"
+  | "confirmar"
+  | "retirar"
+  | "propio";
+
+/**
+ * UNA PREGUNTA **DENTRO DE UN INSTRUMENTO**: lo que se pinta, más qué hace aquí (0240, su tabla 3).
+ *
+ * ES UN TIPO APARTE Y NO DOS CAMPOS MAS EN `SurveyQuestionView`, y la razón es concreta: hay dos
+ * pantallas (la corrección de una evaluación y la edición de la encuesta por el profesional) que arman
+ * una pregunta a mano para pintar su widget, y ahí el comportamiento no significa nada. Metidos en el
+ * tipo común, esas dos tendrían que inventarse un valor, y un valor inventado se ve igual que uno bueno.
+ *
+ * El formulario de la CNV-S, en cambio, NO puede recibir una pregunta sin comportamiento: es lo que
+ * decide si se presenta, se confirma o se salta.
+ */
+export type SurveyItemView = SurveyQuestionView & {
+  comportamiento: ComportamientoDelItem;
+  /** La pregunta filtro, cuando `comportamiento` es `repetir_con_filtro`. Su §7.2. */
+  filtroQuestionId: string | null;
+};
+
 export type ActiveSurvey = {
   surveyVersionId: string;
-  questions: SurveyQuestionView[];
+  /**
+   * EL INSTRUMENTO con el que se esta aplicando. Viaja con la encuesta porque es lo que se guarda en la
+   * respuesta: sin el, una respuesta no dice bajo que reglas se recogio.
+   */
+  instrumento: { id: string; codigo: string; nombre: string };
+  questions: SurveyItemView[];
 };

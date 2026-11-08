@@ -1681,6 +1681,13 @@
       "when": 1793800373491,
       "tag": "0239_los_menores_no_entran_a_la_cohorte",
       "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1793800374491,
+      "tag": "0240_el_instrumento_de_la_encuesta",
+      "breakpoints": true
     }
   ]
 }

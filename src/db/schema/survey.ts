@@ -85,6 +85,56 @@ export const surveyOptions = pgTable("survey_options", {
   orderIndex: integer("order_index").notNull(),
 });
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL INSTRUMENTO, SEPARADO DE LA VERSION  ·  0240, v15 §2
+//
+// `survey_versions` dice QUE preguntas hay; `survey_instruments` dice COMO se aplican en una consulta.
+// Los dos instrumentos (la linea base y la CNV-S de seguimiento) apuntan a LAS MISMAS filas de
+// `survey_questions`, que es lo que hace ESTRUCTURAL la invariancia de su §7.4: no hay dos textos de la
+// misma pregunta que se puedan separar al editar uno. La razon larga esta en la migracion.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+export const surveyInstruments = pgTable("survey_instruments", {
+  id: pk(),
+  /** "CNV v2.0" | "CNV-S 1.0". Es el que se guarda en los DATOS, y es suyo. */
+  codigo: text("codigo").notNull().unique(),
+  /** Lo que se lee en PANTALLA ("Encuesta CNV v3.0"). Su nota del 30-oct pide las dos cosas distintas. */
+  nombre: text("nombre").notNull(),
+  descripcion: text("descripcion"),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Los cinco comportamientos de su tabla 3. `propio` es el Modulo S, que no existe en la linea base. */
+export const COMPORTAMIENTOS_DEL_ITEM = [
+  "repetir",
+  "repetir_con_filtro",
+  "confirmar",
+  "retirar",
+  "propio",
+] as const;
+
+export const surveyInstrumentItems = pgTable(
+  "survey_instrument_items",
+  {
+    id: pk(),
+    instrumentId: uuid("instrument_id")
+      .notNull()
+      .references(() => surveyInstruments.id, { onDelete: "cascade" }),
+    questionId: uuid("question_id")
+      .notNull()
+      .references(() => surveyQuestions.id, { onDelete: "cascade" }),
+    comportamiento: text("comportamiento").notNull(),
+    /** La pregunta filtro de un `repetir_con_filtro` (su §7.2, los sintomas digestivos). */
+    filtroQuestionId: uuid("filtro_question_id").references(() => surveyQuestions.id),
+    orderIndex: integer("order_index").notNull(),
+  },
+  (t) => [
+    unique("survey_instrument_items_question_unique").on(t.instrumentId, t.questionId),
+    unique("survey_instrument_items_order_unique").on(t.instrumentId, t.orderIndex),
+    index("survey_instrument_items_instrument_idx").on(t.instrumentId, t.orderIndex),
+  ],
+);
+
 export const surveyResponses = pgTable(
   "survey_responses",
   {
@@ -95,6 +145,23 @@ export const surveyResponses = pgTable(
     surveyVersionId: uuid("survey_version_id")
       .notNull()
       .references(() => surveyVersions.id),
+    /**
+     * CON QUE INSTRUMENTO se aplico (0240). NULL en las anteriores: son todas de linea base, y no se
+     * rellenan hacia atras porque eso afirmaria sobre una encuesta pasada algo que nadie decidio entonces.
+     */
+    instrumentId: uuid("instrument_id").references(() => surveyInstruments.id),
+    /** Su `encuestaMinutos` (§2.7): cuanto tardo en diligenciarse. */
+    minutosDeDiligenciamiento: integer("minutos_de_diligenciamiento"),
+    /** Su `cnvsConfirmacion` (§2.7): por item confirmado, `sin_cambios` | `editado` | `sin_marcar`. */
+    confirmacion: jsonb("confirmacion"),
+    /**
+     * Cuando se hizo la reconfirmacion anual completa EN esta encuesta. NULL = no se hizo.
+     *
+     * ES UNA FECHA Y NO UN BOOLEANO: lo que la regla anual necesita saber es CUANDO fue la ultima
+     * confirmacion completa, no si hubo alguna. Con un booleano habria que ir a buscar la fecha a
+     * `created_at` de otra fila, y entonces la regla dependeria de dos datos en vez de uno.
+     */
+    reconfirmacionAnualAt: timestamp("reconfirmacion_anual_at", { withTimezone: true }),
     ipAddress: inet("ip_address"),
     // Procedencia: el lote que las importo del HTML (0162).
     importBatchId: uuid("import_batch_id"),

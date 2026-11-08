@@ -15,6 +15,7 @@ import {
   patients,
   surveyAnswers,
   surveyLinks,
+  surveyInstruments,
   surveyResponses,
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
@@ -29,6 +30,7 @@ import type { ConsentType } from "@/modules/consent/validations";
 import { CONSENT_VERSION } from "@/modules/consent/versions";
 
 import { canCreateEvaluation, type ConsentGateResult } from "../policies/can-create-evaluation";
+import { CODIGO_LINEA_BASE } from "../instrumento";
 import type { EvaluationType, IntakeIdentity } from "../types";
 
 // Escritura del intake de la encuesta. Drizzle conecta como owner (BYPASSA RLS) a proposito: el paciente
@@ -845,9 +847,30 @@ async function upsertResponseAndAnswers(
     .where(eq(surveyResponses.evaluationId, evaluationId))
     .limit(1);
   if (!response) {
+    // ═══ CON QUE INSTRUMENTO SE APLICO (0240) ═══
+    //
+    // SE RESUELVE AQUI, DENTRO DE LA TRANSACCION, y no viaja desde la pantalla: lo que el formulario
+    // manda son RESPUESTAS, y un instrumento que llegara del cliente seria un dato del cuestionario
+    // decidido por quien lo contesta. Hoy es siempre la linea base, porque `CNVS_ACTIVA` esta apagado.
+    //
+    // Y si el instrumento no esta, se deja NULO en vez de fallar: lo que se perderia es una etiqueta de
+    // trazabilidad, y tumbar el envio de una encuesta ya contestada por eso seria mucho peor que no
+    // saber con que instrumento se recogio. El lector de la encuesta SI falla en voz alta, que es donde
+    // esa falta se nota antes de que nadie conteste nada.
+    const [instrumento] = await tx
+      .select({ id: surveyInstruments.id })
+      .from(surveyInstruments)
+      .where(eq(surveyInstruments.codigo, CODIGO_LINEA_BASE))
+      .limit(1);
     [response] = await tx
       .insert(surveyResponses)
-      .values({ evaluationId, surveyVersionId, ipAddress, capturedBy: capturedBy ?? null })
+      .values({
+        evaluationId,
+        surveyVersionId,
+        instrumentId: instrumento?.id ?? null,
+        ipAddress,
+        capturedBy: capturedBy ?? null,
+      })
       .returning({ id: surveyResponses.id });
   } else if (capturedBy !== undefined) {
     // Se escribe SOLO al cerrar: el envio es el acto que sella el conjunto (las respuestas se reemplazan
