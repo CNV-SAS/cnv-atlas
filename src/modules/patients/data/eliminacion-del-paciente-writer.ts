@@ -66,6 +66,24 @@ export type PeticionDeEliminacion = {
   pedidoPor: string | null;
 };
 
+/**
+ * UNA PETICION MAS LO QUE DEJA DE CONTAR SI SE APRUEBA (Santiago, 2026-11-08).
+ *
+ * Las tres cifras van juntas porque contestan la misma pregunta ("¿que se lleva por delante este
+ * acto?") y por separado no se entienden: un paciente con tres consultas diagnosticadas y ninguna en la
+ * cohorte no es el mismo caso que el contrario.
+ *
+ * ES UN TIPO APARTE Y NO TRES CAMPOS MAS EN EL DE ARRIBA: la lista de ELIMINADOS usa el mismo tipo y
+ * ahi estas cifras no sirven para nada (el acto ya se hizo; lo que hace falta alli es poder
+ * restituirlo, que ya esta). Tres campos que una de las dos listas tendria que rellenar con ceros son
+ * tres cifras inventadas, y una cifra inventada se ve igual que una buena.
+ */
+export type PeticionConConsecuencias = PeticionDeEliminacion & {
+  diagnosticadas: number;
+  informesEnviados: number;
+  enLaCohorte: number;
+};
+
 type Actor = {
   actorId: string;
   actorEmail: string;
@@ -226,19 +244,40 @@ export async function restituirAlPaciente(
  * TRAE EL NOMBRE porque la decision es sobre una persona, y el MOTIVO porque es lo unico con lo que se
  * puede decidir. Es la misma consulta que la bandeja de la 0180, con su misma forma.
  */
-export async function peticionesDeEliminacionPendientes(): Promise<PeticionDeEliminacion[]> {
+export async function peticionesDeEliminacionPendientes(): Promise<PeticionConConsecuencias[]> {
   const filas = await db.execute<{
     patient_id: string;
     nombre: string;
     motivo: string;
     pedido_en: string;
     pedido_por: string | null;
+    diagnosticadas: number;
+    informes_enviados: number;
+    en_la_cohorte: number;
   }>(sql`
     select p.id as patient_id,
            coalesce(pp.first_name || ' ' || pp.last_name, '(sin nombre)') as nombre,
            p.eliminacion_motivo as motivo,
            p.eliminacion_pedida_at::text as pedido_en,
-           pr.full_name as pedido_por
+           pr.full_name as pedido_por,
+           -- ═══ LO QUE SE VA A DEJAR DE CONTAR, CONTADO  ·  Santiago, 2026-11-08 ═══
+           --
+           -- La bandeja mostraba nombre, motivo y quien lo pidio: con eso, quien aprueba decide SIN VER
+           -- LA CONSECUENCIA. Y la consecuencia no es que se borre algo (no se borra nada): es que esas
+           -- consultas salen de las pantallas y de la cohorte de investigacion, o sea que el "n" de un
+           -- articulo cambia por un acto administrativo que nadie relaciono con el.
+           --
+           -- CONSULTAS DIAGNOSTICADAS, no filas de diagnostico: una reemision añade fila y no añade
+           -- consulta, asi que contar filas inflaria la cifra justo despues de un recalculo.
+           (select count(distinct e.id) from evaluations e
+              join diagnoses d on d.evaluation_id = e.id
+             where e.patient_id = p.id)::int as diagnosticadas,
+           (select count(*) from reports r
+             where r.patient_id = p.id and r.sent_at is not null)::int as informes_enviados,
+           -- Y LA COHORTE SE PREGUNTA A LA VISTA, no se reconstruye aqui: sus tres condiciones
+           -- (autorizacion de investigacion vigente, huella no repetida, no menor al medirse) viven ahi.
+           (select count(*) from public.evaluaciones_para_investigacion v
+             where v.patient_id = p.id)::int as en_la_cohorte
       from patients p
       left join patient_profiles pp on pp.patient_id = p.id
       left join profiles pr on pr.id = p.eliminacion_pedida_por
@@ -250,6 +289,9 @@ export async function peticionesDeEliminacionPendientes(): Promise<PeticionDeEli
     motivo: f.motivo,
     pedidoEn: f.pedido_en,
     pedidoPor: f.pedido_por,
+    diagnosticadas: Number(f.diagnosticadas),
+    informesEnviados: Number(f.informes_enviados),
+    enLaCohorte: Number(f.en_la_cohorte),
   }));
 }
 

@@ -37,6 +37,15 @@ export type PeticionEnPantalla = {
   pedidoPor: string | null;
 };
 
+/** La peticion MAS lo que deja de contar si se aprueba. La forma se declara aqui, no se importa del
+ *  writer: ese es `server-only` y traerse su tipo desde un componente cliente es la arista que CLAUDE.md
+ *  nombra (un `import type` tsc lo borra sin reportar). */
+export type PeticionConConsecuenciasEnPantalla = PeticionEnPantalla & {
+  diagnosticadas: number;
+  informesEnviados: number;
+  enLaCohorte: number;
+};
+
 const enBogota = (iso: string) =>
   new Date(iso).toLocaleDateString("es-CO", { timeZone: "America/Bogota" });
 
@@ -84,7 +93,47 @@ export function PedirEliminacionDelPerfil({ patientId }: { patientId: string }) 
  * LO QUE SE VA CON EL CAMPO: el estado por peticion, el boton apagado y su linea de explicacion. Con dos
  * botones simetricos no hay boton apagado que explicar, que es la forma mas simple de cumplir el hazard 8.
  */
-export function ResolverEliminaciones({ peticiones }: { peticiones: PeticionEnPantalla[] }) {
+/**
+ * LO QUE DEJA DE CONTAR, EN UNA LINEA  ·  Santiago, 2026-11-08
+ *
+ * *"Que quien aprueba vea cuantos diagnosticos sellados, informes enviados y consultas en la cohorte de
+ * investigacion tiene ese paciente."*
+ *
+ * Y la razon de fondo: aprobar no borra nada, pero esas consultas salen de las pantallas y de la cohorte,
+ * o sea que el "n" de un articulo cambia por un acto administrativo. Sin esta linea, quien aprueba lo
+ * decide sin verlo, y despues no hay forma de saber que se movio ni cuando.
+ *
+ * SIN CIFRAS NO SE CALLA: "ninguna consulta diagnosticada" es un dato (es el caso facil, y el que casi
+ * siempre explica la peticion), y un hueco se leeria como que no se pudo averiguar.
+ */
+function LoQueDejaDeContar({ p }: { p: PeticionConConsecuenciasEnPantalla }) {
+  const nada = p.diagnosticadas === 0 && p.informesEnviados === 0 && p.enLaCohorte === 0;
+  if (nada) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        No tiene consultas diagnosticadas, ni informes enviados, ni consultas en la cohorte de
+        investigación.
+      </span>
+    );
+  }
+  const partes = [
+    `${p.diagnosticadas} ${p.diagnosticadas === 1 ? "consulta diagnosticada" : "consultas diagnosticadas"}`,
+    `${p.informesEnviados} ${p.informesEnviados === 1 ? "informe enviado" : "informes enviados"}`,
+    `${p.enLaCohorte} en la cohorte de investigación`,
+  ];
+  return (
+    <span className="text-xs text-clinical-warning">
+      Si lo apruebas: {partes.join(" · ")}. Nada de eso se borra (la historia clínica se conserva 15
+      años), pero sale de las pantallas y de la cohorte hasta que se restituya.
+    </span>
+  );
+}
+
+export function ResolverEliminaciones({
+  peticiones,
+}: {
+  peticiones: PeticionConConsecuenciasEnPantalla[];
+}) {
   const [state, action, pending] = useActionState(resolverEliminacionDelPacienteAction, INICIAL);
   useFormToastAndRefresh(state);
 
@@ -101,6 +150,7 @@ export function ResolverEliminaciones({ peticiones }: { peticiones: PeticionEnPa
           <span className="text-muted-foreground">
             &ldquo;{p.motivo}&rdquo; · lo pidió {p.pedidoPor ?? "alguien"} el {enBogota(p.pedidoEn)}
           </span>
+          <LoQueDejaDeContar p={p} />
           <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="patientId" value={p.patientId} />
             {/* DOS BOTONES CON `key` DISTINTA (hazard 1) y su dato en `name`/`value`, que SOLO viaja

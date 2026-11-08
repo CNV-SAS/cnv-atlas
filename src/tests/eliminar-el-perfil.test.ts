@@ -149,6 +149,40 @@ describe("2 · la bandeja son dos botones, y no se teclea ninguna cedula", () =>
     expect(bandeja).toContain("enviarSinReset(action)");
   });
 
+  it("Y LA BANDEJA DICE LO QUE DEJA DE CONTAR, o se aprueba sin ver la consecuencia", () => {
+    // ═══ EL HUECO, Y POR QUE IMPORTA (Santiago, 2026-11-08) ═══
+    //
+    // La bandeja mostraba nombre, motivo y quien lo pidio. Con eso no se puede ver que ese paciente
+    // tiene tres consultas diagnosticadas y dos en la cohorte de investigacion: aprobar no borra nada,
+    // pero las saca de las pantallas y de la cohorte, o sea que el "n" de un articulo cambia por un acto
+    // administrativo que nadie relaciono con el. Quien aprueba tiene que verlo ANTES.
+    const bandeja = PANTALLA.slice(
+      PANTALLA.indexOf("function LoQueDejaDeContar"),
+      PANTALLA.indexOf("export function PacientesEliminados"),
+    );
+    expect(bandeja, "la bandeja dejo de pintar las consecuencias").toContain(
+      "<LoQueDejaDeContar p={p} />",
+    );
+    expect(bandeja).toContain("consultas diagnosticadas");
+    expect(bandeja).toContain("informes enviados");
+    expect(bandeja).toContain("en la cohorte de investigación");
+    // SIN CIFRAS SE DICE QUE NO HAY: un hueco se leeria como que no se pudo averiguar.
+    expect(bandeja).toContain("No tiene consultas diagnosticadas");
+    // Y NO SE PROMETE UN BORRADO QUE NO OCURRE, que es la mitad que la palabra "eliminar" no dice.
+    expect(bandeja).toContain("Nada de eso se borra");
+
+    // LAS TRES CIFRAS SALEN DE LA BASE, y la cohorte se le pregunta A LA VISTA: reconstruir aqui sus
+    // tres condiciones seria una segunda definicion de quien esta en la cohorte.
+    const WRITER_ = readFileSync(
+      "src/modules/patients/data/eliminacion-del-paciente-writer.ts",
+      "utf8",
+    );
+    expect(WRITER_).toContain("public.evaluaciones_para_investigacion");
+    // CONSULTAS diagnosticadas, no filas de diagnostico: una reemision añade fila y no añade consulta.
+    expect(WRITER_).toContain("count(distinct e.id)");
+    expect(WRITER_).toContain("r.sent_at is not null");
+  });
+
   it("aprobar NO es rojo: lo que hace es sacarlo de las pantallas, no perder su historia", () => {
     // Mismo criterio que el boton de reemplazar la medicion BIS, el mismo dia: el rojo de `destructive`
     // significa un acto que QUITA algo, y aqui la historia clinica se conserva por ley.
