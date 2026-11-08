@@ -39,6 +39,7 @@ const COHORTE: CohorteDeInvestigacion = {
   conAutorizacion: 316,
   sinAutorizacion: 197,
   fueraPorHuellaRepetida: { consultas: 13, grupos: 10, pacientes: 14 },
+  fueraPorSerMenor: { consultas: 1, pacientes: 1 },
   pacientesAutorizados: 349,
   conDiagnostico: 212,
   importadas: 8,

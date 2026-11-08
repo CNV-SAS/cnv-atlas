@@ -370,6 +370,32 @@ export default async function ObbiaPage({
           </p>
         ) : null}
 
+        {/* ═══ LA EXCLUSIÓN POR MINORÍA DE EDAD (0239) ═══
+
+            Tercera razón, y tampoco es ninguna de las otras dos: el paciente autorizó y la toma está
+            bien. Lo que pasa es que la EB-BIS v7 está calibrada de 18 a 100 años y rechaza la edad fuera
+            de ese rango, así que sus indicadores de edad no significan lo que dice la columna; y la
+            autorización de investigación de un menor no la da él.
+
+            SALE AUNQUE SEA UNA SOLA. Una exclusión silenciosa es una cifra que nadie puede cuadrar: quien
+            compare el total de la vista con el de la cohorte tiene que poder explicar cada fila que falta.
+            El aviso es NEUTRO y no ámbar: no hay nada que corregir, la consulta está bien atendida y esa
+            toma vuelve a contar el día que la persona sea mayor y se mida otra vez. */}
+        {cohorte.fueraPorSerMenor.consultas > 0 ? (
+          <p className="max-w-prose rounded border bg-muted/40 p-2 text-xs text-foreground">
+            <strong>
+              {cohorte.fueraPorSerMenor.consultas}{" "}
+              {cohorte.fueraPorSerMenor.consultas === 1 ? "consulta queda" : "consultas quedan"} fuera por
+              ser de un menor de edad al medirse
+            </strong>{" "}
+            ({cohorte.fueraPorSerMenor.pacientes}{" "}
+            {cohorte.fueraPorSerMenor.pacientes === 1 ? "paciente" : "pacientes"}). La EB-BIS está
+            calibrada de 18 a 100 años, así que sus cifras de edad no son comparables con las del resto de
+            la cohorte. No hay nada que corregir: la consulta se atendió bien y sigue contando como
+            consulta vigente.
+          </p>
+        ) : null}
+
         {/* ═══ POR QUÉ QUEDAN FUERA LAS QUE QUEDAN FUERA (Gildardo, 2026-10-25) ═══
 
             "197 de 513 es el 38 %, pero dijiste que 53 de 402 pacientes no autorizaron (13 %)". Las dos

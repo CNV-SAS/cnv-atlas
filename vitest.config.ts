@@ -38,6 +38,10 @@ const DB_TESTS = [
   // EL MENSAJE PARA EL PACIENTE (0237): comprueba contra la base que el tope de 200 vive en la COLUMNA y
   // no solo en Zod, y que la nota clinica ya NO esta topada. Necesita la migracion aplicada.
   "src/tests/el-mensaje-para-el-paciente-db.test.ts",
+  // LOS MENORES FUERA DE LA COHORTE (0239): siembra un paciente menor con su consentimiento en regla y
+  // comprueba que las DOS vistas se comportan como dicen. Necesita la migracion aplicada, y escribe
+  // dentro de una transaccion que se deshace.
+  "src/tests/los-menores-no-entran-a-la-cohorte-db.test.ts",
   "src/tests/alergenos-cobertura.test.ts",
   "src/tests/mapa-alegra.test.ts",
   "src/tests/sentry-causa-db.test.ts",

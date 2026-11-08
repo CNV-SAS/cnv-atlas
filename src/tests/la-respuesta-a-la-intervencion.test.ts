@@ -165,6 +165,30 @@ describe("y no se resta entre dos escalas del motor", () => {
     expect(r?.riesgo?.antes).toBe(70);
   });
 
+  it("pero `anibise-1.4.0` y `1.0.0` SI se comparan: es el mismo MAYOR con dos grafias", () => {
+    // ═══ LA DUDA DE SANTIAGO DEL 2026-11-07, Y POR QUE LA RESPUESTA ES AL REVES ═══
+    //
+    // Vio la tarjeta comparar contra la consulta del 13 de julio y escribio: *"si el 13 de julio esta en
+    // 1.0.0 (los de prueba no se reemitieron), no deberia ser comparable"*. Medido en la nube ese mismo
+    // dia, el paciente es f21235ca (DE PRUEBA) y sus dos extremos son `anibise-1.4.0` (13 jul) y `1.0.0`
+    // (14 sep): los dos son MAYOR 1, asi que son comparables, y estar en 1.x es justo lo que los hace
+    // comparables, no lo que deberia impedirlo. El criterio es `docs/VERSIONES.md`: *"Mayor = la ciencia
+    // cambia y lo emitido antes no es comparable"*.
+    //
+    // ESTE CASO EXISTE PARA QUE LA RESPUESTA NO HAYA QUE VOLVER A MEDIRLA: en produccion conviven las dos
+    // grafias del mismo mayor, y una lectura que comparase la cadena entera las separaria en silencio, lo
+    // que apagaria la tarjeta en los pacientes mas antiguos sin que nada fallara.
+    const r = respuestaALaIntervencion(
+      [
+        punto({ fecha: "2026-07-13", riesgoScore: 15, engineVersion: "anibise-1.4.0" }),
+        punto({ fecha: "2026-09-14", riesgoScore: 95, engineVersion: "1.0.0" }),
+      ],
+      REF,
+    );
+    expect(r?.anterior.fecha, "las dos grafias del mayor 1 dejaron de compararse").toBe("2026-07-13");
+    expect(r?.riesgo).toMatchObject({ antes: 15, ahora: 95, direccion: "empeora" });
+  });
+
   it("con una sola consulta no hay respuesta a nada", () => {
     expect(respuestaALaIntervencion([punto({ fecha: "2026-04-01", riesgoScore: 42 })], REF)).toBeNull();
     expect(respuestaALaIntervencion([], REF)).toBeNull();

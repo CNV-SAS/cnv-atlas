@@ -1674,6 +1674,13 @@
       "when": 1793800372491,
       "tag": "0238_prompt_criterio_v15",
       "breakpoints": true
+    },
+    {
+      "idx": 239,
+      "version": "7",
+      "when": 1793800373491,
+      "tag": "0239_los_menores_no_entran_a_la_cohorte",
+      "breakpoints": true
     }
   ]
 }

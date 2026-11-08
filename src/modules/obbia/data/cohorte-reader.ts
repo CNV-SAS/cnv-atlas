@@ -70,6 +70,19 @@ export type CohorteDeInvestigacion = {
    * se corrija cual de las dos es.
    */
   fueraPorHuellaRepetida: { consultas: number; grupos: number; pacientes: number };
+  /**
+   * LAS QUE SALEN POR SER DE UN MENOR DE EDAD AL MEDIRSE (0239).
+   *
+   * Tercer cubo, y tercera razon distinta: no es falta de permiso (el consentimiento esta) ni falta de
+   * calidad del dato (la toma es buena). Es ELEGIBILIDAD: la EB-BIS v7 esta calibrada de 18 a 100 y su
+   * propio codigo rechaza la edad fuera de ese rango, y la autorizacion de investigacion de un menor no
+   * la da el. Se dice aparte por la misma razon que las otras dos: meterlas en el cubo del consentimiento
+   * le atribuiria al paciente una decision que no tomo.
+   *
+   * Y SE DICE AUNQUE SEA UNA SOLA (medido en la nube el 2026-11-07: 1 de 429). Una exclusion silenciosa
+   * es una cifra que nadie puede cuadrar: la regla de la casa es que lo que se recorta se dice.
+   */
+  fueraPorSerMenor: { consultas: number; pacientes: number };
   /** Pacientes distintos en la cohorte autorizada. */
   pacientesAutorizados: number;
   /** De la cohorte autorizada, cuantas tienen diagnostico sellado (las unicas con indicadores). */
@@ -307,7 +320,18 @@ export async function leerCohorteDeInvestigacion(
       (select count(distinct v.huella)::int from universo v
         where v.es_consulta_hecha and v.huella_repetida) as grupos_de_huella,
       (select count(distinct v.patient_id)::int from universo v
-        where v.es_consulta_hecha and v.huella_repetida) as pacientes_de_huella
+        where v.es_consulta_hecha and v.huella_repetida) as pacientes_de_huella,
+      -- Y LAS QUE SALEN POR SER DE UN MENOR: autorizadas, con la toma buena, y fuera de la calibracion
+      -- del modelo. Se cuentan sobre el universo y con la autorizacion comprobada, igual que las de
+      -- huella: una cifra por resta heredaria las otras dos exclusiones (leccion de la 0230).
+      (select count(*)::int from universo v
+        where v.es_consulta_hecha and v.menor_al_medirse
+          and exists (select 1 from patient_consents c
+                       where c.patient_id = v.patient_id
+                         and c.consent_type = 'investigacion'
+                         and c.revoked_at is null)) as fuera_por_menor,
+      (select count(distinct v.patient_id)::int from universo v
+        where v.es_consulta_hecha and v.menor_al_medirse) as pacientes_menores
   `);
   const t = (totales as unknown as Record<string, number>[])[0] ?? {};
   const vigentes = Number(t.vigentes ?? 0);
@@ -487,6 +511,10 @@ export async function leerCohorteDeInvestigacion(
       consultas: Number(t.fuera_por_huella ?? 0),
       grupos: Number(t.grupos_de_huella ?? 0),
       pacientes: Number(t.pacientes_de_huella ?? 0),
+    },
+    fueraPorSerMenor: {
+      consultas: Number(t.fuera_por_menor ?? 0),
+      pacientes: Number(t.pacientes_menores ?? 0),
     },
     porFamiliaDelMotor,
     mezclaFamilias: porFamiliaDelMotor.length > 1,
