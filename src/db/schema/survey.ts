@@ -124,6 +124,15 @@ export const surveyInstrumentItems = pgTable(
       .notNull()
       .references(() => surveyQuestions.id, { onDelete: "cascade" }),
     comportamiento: text("comportamiento").notNull(),
+    /**
+     * LA SECCION EN ESTE INSTRUMENTO, cuando no es la de la pregunta. NULL = se usa la suya.
+     *
+     * Es lo UNICO que un instrumento cambia de una pregunta, y por eso es una columna del ITEM: en el
+     * seguimiento los ocho que se confirman van juntos en su propio paso ("Confirmar") y no repartidos
+     * por sus dominios, que es el orden de su anexo A. Cambiarlo en la pregunta se lo llevaria tambien la
+     * linea base, donde no hay nada que confirmar.
+     */
+    seccion: text("seccion"),
     /** La pregunta filtro de un `repetir_con_filtro` (su §7.2, los sintomas digestivos). */
     filtroQuestionId: uuid("filtro_question_id").references(() => surveyQuestions.id),
     orderIndex: integer("order_index").notNull(),

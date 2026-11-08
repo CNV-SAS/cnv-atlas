@@ -73,7 +73,7 @@ export async function getActiveSurvey(
   const { data: items, error: qErr } = await supabase
     .from("survey_instrument_items")
     .select(
-      "comportamiento, filtro_question_id, order_index, " +
+      "comportamiento, filtro_question_id, seccion, order_index, " +
         "survey_questions!survey_instrument_items_question_id_fkey(" +
         "id, question_text, hint, question_type, section, field_key, survey_version_id, " +
         "survey_options(id, option_text, order_index))",
@@ -85,6 +85,7 @@ export async function getActiveSurvey(
   type Fila = {
     comportamiento: string;
     filtro_question_id: string | null;
+    seccion: string | null;
     order_index: number;
     survey_questions: {
       id: string;
@@ -121,7 +122,9 @@ export async function getActiveSurvey(
         text: q.question_text,
         hint: q.hint,
         type: q.question_type,
-        section: q.section,
+        // LA SECCION DEL ITEM MANDA sobre la de la pregunta cuando existe: es lo unico que un
+        // instrumento cambia, y en la CNV-S es lo que junta los ocho `confirmar` en su propio paso.
+        section: f.seccion ?? q.section,
         fieldKey: q.field_key,
         comportamiento: f.comportamiento as ComportamientoDelItem,
         filtroQuestionId: f.filtro_question_id,

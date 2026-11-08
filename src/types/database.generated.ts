@@ -2735,14 +2735,14 @@ isOneToOne: false
                   ]
                 },"survey_instrument_items": {
                   Row: {
-                    "comportamiento": string,"filtro_question_id": string | null,"id": string,"instrument_id": string,"order_index": number,"question_id": string
+                    "comportamiento": string,"filtro_question_id": string | null,"id": string,"instrument_id": string,"order_index": number,"question_id": string,"seccion": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "comportamiento": string,"filtro_question_id"?: string | null,"id"?: string,"instrument_id": string,"order_index": number,"question_id": string
+                    "comportamiento": string,"filtro_question_id"?: string | null,"id"?: string,"instrument_id": string,"order_index": number,"question_id": string,"seccion"?: string | null
                   }
                   Update: {
-                    "comportamiento"?: string,"filtro_question_id"?: string | null,"id"?: string,"instrument_id"?: string,"order_index"?: number,"question_id"?: string
+                    "comportamiento"?: string,"filtro_question_id"?: string | null,"id"?: string,"instrument_id"?: string,"order_index"?: number,"question_id"?: string,"seccion"?: string | null
                   }
                   Relationships: [
                     {

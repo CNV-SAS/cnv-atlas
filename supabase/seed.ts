@@ -161,7 +161,11 @@ type SurveyQ = {
   key: string; // clave del prototipo (d5_39, d1_1_i, d7_agua...)
   // opcion/opcion_multiple = pills; contador = +/- (cantidades); escala = slider 1-10.
   // El intake (B7.1) renderiza el widget segun este tipo; el motor no lo usa.
-  type: "opcion" | "opcion_multiple" | "contador" | "escala";
+  // `opcion_por_producto` (0241, Modulo S): una respuesta por cada nutraceutico indicado en la consulta
+  // anterior. La respuesta se guarda como un objeto JSON {producto: opcion}, que es la misma forma que
+  // `opcion_multiple` ya usa para sus arreglos. Es lo unico que permite el "una vez por cada
+  // nutraceutico" de su S1 sin crear una pregunta por producto.
+  type: "opcion" | "opcion_multiple" | "contador" | "escala" | "opcion_por_producto";
   text: string;
   // Ayuda opcional bajo el enunciado (el `sub` del instrumento de Gildardo): ejemplos + ancla de porcion en
   // D1, o aclaracion de item. Display puro, el motor no lo lee. Sin emoji (CLAUDE.md: sin emojis en UI).
@@ -177,6 +181,10 @@ type SurveyQ = {
   // FALSE (igual que treatmentEngine): llega al reader del patron pero NO al diagnostico. Son los 15
   // grupos d1_N_i + los 3 horarios d1f_*_i. calcPatron lee ORDINALES, no el texto de la opcion.
   patternEngine?: boolean;
+  // Es del MODULO S de la CNV-S (0241) -> field_key = key, used_in_diagnosis = FALSE. No alimenta ningun
+  // motor congelado: su S1 a S6 son adherencia y eventos, que entran a la tarjeta de seguimiento y al
+  // export, no al diagnostico. Lleva field_key igual porque sus respuestas se leen por clave.
+  cnvs?: boolean;
 };
 
 // Dominio (D1-D8) por prefijo del d-field, para agrupar visualmente el intake (B7.1).
@@ -329,6 +337,192 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d8_60", type: "opcion", text: "¿Con qué frecuencia come fuera de casa?", options: ["Nunca", "1–2 veces/semana", "3–4 veces/semana", "Todos los días"], treatmentEngine: true },
   { key: "d8_61", type: "opcion", text: "¿Tiene acceso fácil a alimentos frescos y saludables?", options: ["Sí, siempre", "A veces es difícil", "Generalmente es difícil"], engine: true },
   { key: "d8_62", type: "opcion", text: "¿Hay momentos en que no tiene suficiente comida en el hogar?", options: ["No, nunca", "A veces", "Frecuentemente"], engine: true },
+];
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL MODULO S DE LA ENCUESTA CNV-S  ·  v15 §2.3 y §7.2  ·  2026-11-07
+//
+// ═══ POR QUE VIVE EN SU PROPIA VERSION Y NO ENTRE LAS 64 ═══
+//
+// Porque cuatro lectores enumeran las preguntas POR VERSION para medir completitud (el gate del
+// diagnostico entre ellos). Meter siete preguntas mas en la version del cuestionario le habria sumado
+// siete huecos a TODAS las encuestas de linea base, y el gate habria dicho "faltan 7" a todo el mundo sin
+// que nada fallara. Es el hazard del lector compartido, el mismo que DEPLOY.md describe con nombre propio.
+//
+// En su propia version, los cuatro lectores no las ven y no hay que tocarlos. Quien las junta con el
+// cuestionario es el INSTRUMENTO, que para eso existe.
+//
+// ═══ LOS ENUNCIADOS Y LAS OPCIONES SON SUYOS, VERBATIM ═══
+//
+// De su tabla de §2.3. Su propio documento dice que ninguno lleva raya larga, asi que entran tal cual.
+//
+// S1 Y S2 SON POR PRODUCTO, y eso obliga a un tipo nuevo: su S1 se presenta *"una vez por cada
+// nutraceutico"* y su S2 *"una sola respuesta por producto"*. Una pregunta de Atlas guarda UNA respuesta
+// por (encuesta, pregunta), asi que la respuesta se guarda como un objeto JSON {producto: respuesta}, que
+// es la misma forma que ya usa `opcion_multiple` para sus arreglos. La lista de productos NO viene de
+// aqui: sale de los nutraceuticos de la consulta anterior (`modulo-s/s1-reader`).
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** La plantilla y la version del Modulo S. Separadas de la encuesta: ver la nota de arriba. */
+const CNVS_TEMPLATE_ID = "55555555-5555-5555-5555-5555555555a1";
+const CNVS_VERSION_ID = "55555555-5555-5555-5555-5555555555a2";
+const CNVS_VERSION_NUMBER = 1;
+/** El instrumento de seguimiento. El de la linea base lo sembro la 0240. */
+const CNVS_INSTRUMENT_ID = "aa000000-0000-4000-8000-000000000002";
+
+const MODULO_S_QUESTIONS: SurveyQ[] = [
+  // Las cinco del Modulo S van en su propio paso, antes de la confirmacion y de D1 (su anexo A).
+  { key: "cnvs_s1", type: "opcion_por_producto", text: "¿Con qué frecuencia lo tomó?", sub: "Una respuesta por cada producto que se le indicó en la consulta anterior.", options: ["Todos los días", "5 o más días por semana", "Menos de 5 días por semana", "No lo tomó", "Lo suspendió"], cnvs: true },
+  { key: "cnvs_s2", type: "opcion_por_producto", text: "Si no lo tomó como se indicó, ¿por qué?", sub: "Solo para los productos que no tomó todos los días ni 5 o más días por semana.", options: ["Olvido", "Costo", "Molestia digestiva u otro efecto", "No vio cambios", "Otro"], cnvs: true },
+  { key: "cnvs_s3", type: "opcion", text: "¿En qué medida siguió el plan de alimentación indicado?", options: ["Nada", "Poco", "La mitad", "Casi todo", "Todo"], cnvs: true },
+  { key: "cnvs_s4", type: "opcion_multiple", text: "Desde la última consulta, ¿ha tenido alguno de estos eventos?", options: ["Enfermedad aguda (fiebre, infección, diarrea)", "Hospitalización o cirugía", "Medicamento nuevo", "Embarazo o lactancia", "Cambio de turno o de trabajo", "Evento estresante mayor", "Ninguno"], cnvs: true },
+  { key: "cnvs_s5", type: "opcion", text: "¿Ha intentado cambiar su peso desde la última consulta?", options: ["No", "Sí, bajar", "Sí, subir"], cnvs: true },
+  // El S6 va en el CIERRE, no en el Modulo S. Es su anexo A: "Inicio, Módulo S, Confirmar, D1 a D8, Cierre".
+  { key: "cnvs_s6", type: "opcion", text: "Desde la última consulta, ¿cómo describiría el cambio en su estado de salud general?", options: ["Muchísimo mejor", "Mucho mejor", "Un poco mejor", "Sin cambios", "Un poco peor", "Mucho peor", "Muchísimo peor"], cnvs: true },
+  // EL FILTRO DIGESTIVO (§7.2). Su enunciado, literal. Va DELANTE de los items 45 a 51 y por eso su
+  // seccion es la de ellos: no es una pregunta del Modulo S, es la puerta de un bloque de D6.
+  { key: "cnvs_gi_filtro", type: "opcion", text: "En las últimas dos semanas, ¿ha tenido algún síntoma digestivo (hinchazón, gases, dolor, diarrea, estreñimiento, reflujo o náuseas)?", options: ["Sí", "No"], cnvs: true },
+];
+
+/** La seccion de cada pregunta del Modulo S. No sale del prefijo: estas claves no son `dN_…`. */
+const CNVS_SECTION: Record<string, string> = {
+  cnvs_s1: "Módulo S",
+  cnvs_s2: "Módulo S",
+  cnvs_s3: "Módulo S",
+  cnvs_s4: "Módulo S",
+  cnvs_s5: "Módulo S",
+  cnvs_s6: "Cierre",
+  cnvs_gi_filtro: "Alergias y digestión",
+};
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA TABLA 3 DE LA CNV-S: QUE HACE CADA PREGUNTA EN EL SEGUIMIENTO
+//
+// Textual de su §2.2:
+//
+//   Repetir             D1 completo, 19 a 27, 29 a 31, 32, 33, 36, 37, 52 a 58, 60 a 62
+//   Repetir con filtro  45 a 51
+//   Confirmar           28, 34, 39, 40, 42, 43, 44, 59
+//   Retirar             35, 38, 41 y 63
+//
+// SU NUMERO DE ITEM ES EL SUFIJO DE LA CLAVE de Atlas (`d3_28` es su item 28), asi que el mapa se escribe
+// por clave y se puede cotejar contra su tabla sin traducir nada. Lo que NO aparece aqui es `repetir`,
+// que es lo que le toca a todo lo demas: escribir las 45 filas de `repetir` seria copiar la encuesta
+// entera a un segundo sitio, y es donde se olvidaria una.
+//
+// DOS CLAVES NO ESTAN EN SU TABLA Y SE DECLARAN:
+//
+//   · `d6_qx` es su item 63 (cirugias digestivas), que el retira en su decision 1 del 30 de octubre. En
+//     Atlas la clave no lleva el numero porque entro despues (ECA1), asi que se nombra aqui.
+//   · `d7_agua` es de Atlas y no tiene numero suyo: son los vasos de agua, que alimentan la hidratacion
+//     del ICEC. Va en `repetir` por defecto, que es lo correcto (el ICEC se recalcula en cada consulta),
+//     y queda dicho aqui para que no parezca un olvido.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+const CNVS_COMPORTAMIENTO: Record<string, string> = {
+  // Confirmar: precargadas, con "Sin cambios" o "Editar".
+  d3_28: "confirmar",
+  d4_34: "confirmar",
+  d5_39: "confirmar",
+  d5_40: "confirmar",
+  d5_42: "confirmar",
+  d6_43: "confirmar",
+  d6_44: "confirmar",
+  d8_59: "confirmar",
+  // Retirar: no se preguntan y conservan el valor de la linea base.
+  d4_35: "retirar",
+  d5_38: "retirar",
+  d5_41: "retirar",
+  d6_qx: "retirar",
+  // Repetir con filtro: los siete sintomas digestivos, detras del filtro.
+  d6_45: "repetir_con_filtro",
+  d6_46: "repetir_con_filtro",
+  d6_47: "repetir_con_filtro",
+  d6_48: "repetir_con_filtro",
+  d6_49: "repetir_con_filtro",
+  d6_50: "repetir_con_filtro",
+  d6_51: "repetir_con_filtro",
+};
+
+/**
+ * EL ORDEN DE LA CNV-S, por seccion (su anexo A): *"Inicio, Módulo S, Confirmar, D1 a D8, Cierre"*.
+ *
+ * El `order_index` del item sale de este orden y NO del de la pregunta, que es para lo que existe la
+ * columna: el Modulo S va ANTES de D1 aunque sus preguntas se hayan creado despues.
+ */
+/**
+ * LOS ITEMS DE LA CNV-S, DERIVADOS y no escritos.
+ *
+ * Son 71 filas (las 64 del cuestionario mas las 7 propias) y escribirlas a mano seria copiar la encuesta
+ * entera a un segundo sitio: la que se olvidara quedaria fuera del seguimiento sin que nada fallara.
+ * Aqui se recorren las dos listas y se les pone su comportamiento; lo que no esta en el mapa es
+ * `repetir`, que es la regla por defecto de su tabla 3.
+ *
+ * EL ORDEN SALE DE `CNVS_ORDEN_DE_SECCION` (su anexo A) y, dentro de cada seccion, del orden del
+ * cuestionario. Asi el Modulo S va antes de D1 aunque sus preguntas se hayan creado despues, y el S6 va
+ * al Cierre.
+ *
+ * Y LA SECCION DE LOS `confirmar` SE SOBREESCRIBE a "Confirmar": en el seguimiento los ocho items que se
+ * confirman van juntos en su propio paso, no repartidos por sus dominios. Es la unica cosa que el
+ * instrumento cambia de una pregunta, y por eso es una columna del item y no un campo de la pregunta.
+ */
+function itemsDeLaCnvs() {
+  const delCuestionario = SURVEY_QUESTIONS.map((q, i) => ({
+    questionId: surveyUuid("q", SURVEY_VERSION_ID, q.key),
+    key: q.key,
+    comportamiento: CNVS_COMPORTAMIENTO[q.key] ?? "repetir",
+    seccionBase: sectionFor(q.key),
+    posicion: i,
+  }));
+  const propias = MODULO_S_QUESTIONS.map((q, i) => ({
+    questionId: surveyUuid("q", CNVS_VERSION_ID, q.key),
+    key: q.key,
+    comportamiento: "propio",
+    seccionBase: CNVS_SECTION[q.key] ?? "Otras",
+    posicion: 1000 + i,
+  }));
+  // EL FILTRO DIGESTIVO VA DELANTE de los siete sintomas, no al final de su seccion: es la puerta del
+  // bloque, y detras de ellos no filtraria nada. Se le da la posicion del primero menos una fracción.
+  const primerSintoma = delCuestionario.find((x) => x.comportamiento === "repetir_con_filtro");
+  const filtroId = surveyUuid("q", CNVS_VERSION_ID, "cnvs_gi_filtro");
+  for (const p of propias) {
+    if (p.key === "cnvs_gi_filtro" && primerSintoma) p.posicion = primerSintoma.posicion - 0.5;
+  }
+
+  const todas = [...delCuestionario, ...propias].map((x) => ({
+    ...x,
+    seccion: x.comportamiento === "confirmar" ? "Confirmar" : x.seccionBase,
+  }));
+  todas.sort((a, b) => {
+    const sa = CNVS_ORDEN_DE_SECCION.indexOf(a.seccion);
+    const sb = CNVS_ORDEN_DE_SECCION.indexOf(b.seccion);
+    if (sa !== sb) return sa - sb;
+    return a.posicion - b.posicion;
+  });
+
+  return todas.map((x, i) => ({
+    instrument_id: CNVS_INSTRUMENT_ID,
+    question_id: x.questionId,
+    comportamiento: x.comportamiento,
+    // LOS SIETE SINTOMAS APUNTAN A SU FILTRO, y por FK: el formulario no tiene que buscar la pregunta
+    // filtro por su texto ni por su posicion.
+    filtro_question_id: x.comportamiento === "repetir_con_filtro" ? filtroId : null,
+    seccion: x.seccion,
+    order_index: i + 1,
+  }));
+}
+
+const CNVS_ORDEN_DE_SECCION = [
+  "Módulo S",
+  "Confirmar",
+  "Alimentación",
+  "Percepción corporal",
+  "Hábitos",
+  "Conductas alimentarias",
+  "Antecedentes y estilo de vida",
+  "Alergias y digestión",
+  "Hidratación",
+  "Contexto social",
+  "Cierre",
 ];
 
 async function main() {
@@ -733,6 +927,68 @@ async function main() {
       console.log(`  · ${sobran.length} opcion(es) retirada(s) del set: borradas.`);
     }
   }
+
+  // ── 6bis · EL MODULO S Y EL INSTRUMENTO DE SEGUIMIENTO (0241) ───────────────────────────────────
+  //
+  // Es aditivo y NO toca nada de lo anterior: una plantilla y una version propias para las siete
+  // preguntas del Modulo S, el instrumento `CNV-S 1.0`, y sus items (las 64 del cuestionario con el
+  // comportamiento de su tabla 3, mas las siete propias). Nadie lo aplica todavia: `CNVS_ACTIVA` esta
+  // apagado, y mientras lo este todo seguimiento usa la linea base.
+  check(
+    "survey_templates (CNV-S)",
+    (await supabase.from("survey_templates").upsert({ id: CNVS_TEMPLATE_ID, name: "Módulo S de la Encuesta CNV-S", description: "Las siete preguntas PROPIAS de la encuesta de seguimiento (S1 a S6 y el filtro digestivo). Viven en su propia version para que los lectores que enumeran por version no las cuenten como huecos de la linea base." }, { onConflict: "id" })).error,
+  );
+  check(
+    "survey_versions (CNV-S)",
+    (await supabase.from("survey_versions").upsert({ id: CNVS_VERSION_ID, template_id: CNVS_TEMPLATE_ID, version_number: CNVS_VERSION_NUMBER }, { onConflict: "id" })).error,
+  );
+  check(
+    "survey_questions (Módulo S)",
+    (
+      await supabase.from("survey_questions").upsert(
+        MODULO_S_QUESTIONS.map((q, i) => ({
+          id: surveyUuid("q", CNVS_VERSION_ID, q.key),
+          survey_version_id: CNVS_VERSION_ID,
+          question_text: q.text,
+          question_type: q.type,
+          // field_key SI (sus respuestas se leen por clave), used_in_diagnosis NO: el Modulo S es
+          // adherencia y eventos, y no entra al diagnostico ni a `dfi.complete`.
+          field_key: q.key,
+          hint: q.sub ?? null,
+          section: CNVS_SECTION[q.key] ?? "Otras",
+          order_index: i + 1,
+          data_class: "clinical" as const,
+          used_in_diagnosis: false,
+        })),
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "survey_options (Módulo S)",
+    (
+      await supabase.from("survey_options").upsert(
+        MODULO_S_QUESTIONS.flatMap((q) =>
+          (q.options ?? []).map((opt, j) => ({
+            id: surveyUuid("o", CNVS_VERSION_ID, q.key, String(j)),
+            question_id: surveyUuid("q", CNVS_VERSION_ID, q.key),
+            option_text: opt,
+            value: null,
+            order_index: j + 1,
+          })),
+        ),
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "survey_instruments (CNV-S)",
+    (await supabase.from("survey_instruments").upsert({ id: CNVS_INSTRUMENT_ID, codigo: "CNV-S 1.0", nombre: "Encuesta CNV-S (seguimiento)", descripcion: "La version de seguimiento: repite, confirma, retira y añade el Módulo S. Apunta a LAS MISMAS preguntas de la línea base, que es la invariancia de su §7.4." }, { onConflict: "id" })).error,
+  );
+  check(
+    "survey_instrument_items (CNV-S)",
+    (await supabase.from("survey_instrument_items").upsert(itemsDeLaCnvs(), { onConflict: "instrument_id,question_id" })).error,
+  );
 
   // 7. 2 devices en estados distintos.
   check(

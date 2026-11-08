@@ -1688,6 +1688,13 @@
       "when": 1793800374491,
       "tag": "0240_el_instrumento_de_la_encuesta",
       "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1793800375491,
+      "tag": "0241_el_modulo_s",
+      "breakpoints": true
     }
   ]
 }
