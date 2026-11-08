@@ -142,6 +142,56 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     ).not.toBe(base.length);
   });
 
+  it("EL LECTOR DE VERDAD trae la encuesta entera, con sus opciones (el embed no es ambiguo)", async () => {
+    // ═══ POR QUE ESTE CASO Y NO SOLO EL SQL DE ARRIBA ═══
+    //
+    // `survey_instrument_items` tiene DOS claves ajenas hacia `survey_questions` (`question_id` y
+    // `filtro_question_id`), y eso vuelve AMBIGUO el embed de PostgREST: es el hazard que CLAUDE.md
+    // describe con nombre propio, el mismo que rompio tres consultas el 2026-08-12 al agregar un FK a
+    // una tabla ya referenciada. El lector lo desambigua con el hint del nombre del constraint, y un
+    // hint equivocado NO lo ve tsc: falla en runtime, al abrir la encuesta un paciente.
+    //
+    // Asi que aqui se llama al LECTOR, no a una consulta parecida.
+    const { getActiveSurvey } = await import("@/modules/evaluations/data/survey-reader");
+    const encuesta = await getActiveSurvey();
+    expect(encuesta, "el lector no devolvio la encuesta").not.toBeNull();
+    const version = await porLaVersion();
+    expect(
+      encuesta?.questions.map((q) => q.id),
+      "el lector trae otras preguntas que la version de la linea base",
+    ).toEqual(version.map((q) => q.id));
+    expect(encuesta?.instrumento.codigo).toBe("CNV v2.0");
+    // Y CON SUS OPCIONES: un embed que trae la pregunta y pierde las opciones deja la encuesta con
+    // enunciados y sin nada que pulsar, y el texto saldria igual en cualquier `toContain`.
+    const conOpciones = (encuesta?.questions ?? []).filter((q) => q.options.length > 0);
+    expect(conOpciones.length, "ninguna pregunta trajo opciones").toBeGreaterThan(50);
+    // En la linea base ningun item cambia de seccion: la de la pregunta manda.
+    expect([...new Set((encuesta?.questions ?? []).map((q) => q.comportamiento))]).toEqual(["repetir"]);
+  });
+
+  it("y el lector de la CNV-S trae el Modulo S DELANTE de la encuesta", async () => {
+    // El orden de presentacion sale del item y no del `order_index` de la pregunta: sin eso, el Modulo S
+    // caeria al final (sus preguntas se crearon despues) y su anexo A dice lo contrario.
+    const { getActiveSurvey } = await import("@/modules/evaluations/data/survey-reader");
+    const cnvs = await getActiveSurvey("CNV-S 1.0");
+    expect(cnvs, "no existe el instrumento de seguimiento").not.toBeNull();
+    const secciones = [...new Set((cnvs?.questions ?? []).map((q) => q.section))];
+    expect(secciones.slice(0, 2), "el orden de su anexo A se perdio").toEqual([
+      "Módulo S",
+      "Confirmar",
+    ]);
+    expect(secciones[secciones.length - 1]).toBe("Cierre");
+    // Y LA VERSION QUE SE SELLA ES LA DEL CUESTIONARIO, no la del Modulo S: es la que el motor congelado
+    // usa para resolver sus `field_key` y la que gatea una correccion.
+    const base = await porLaVersion();
+    const { getActiveSurvey: g2 } = await import("@/modules/evaluations/data/survey-reader");
+    const linea = await g2();
+    expect(cnvs?.surveyVersionId, "la CNV-S sellaria la version del Módulo S").toBe(
+      linea?.surveyVersionId,
+    );
+    expect(base.length).toBeGreaterThan(50);
+  });
+
   it("y todo instrumento tiene items: uno vacio deja la encuesta del paciente en blanco", async () => {
     const vacios = (await db.execute(sql`
       select s.codigo

@@ -101,11 +101,20 @@ export async function getActiveSurvey(
   const filas = ((items ?? []) as unknown as Fila[]).filter((f) => f.survey_questions != null);
   if (filas.length === 0) return null;
 
-  // LA VERSION QUE SE SELLA EN LA RESPUESTA es la de las preguntas del CUESTIONARIO, no la del Modulo S:
-  // es la que el motor congelado usa para resolver sus `field_key`, y la que gatea una correccion. Se
-  // toma la de la primera pregunta CON `field_key`, que por construccion es del cuestionario.
+  // ═══ LA VERSION QUE SE SELLA EN LA RESPUESTA ES LA DEL CUESTIONARIO, NUNCA LA DEL MODULO S ═══
+  //
+  // Es la que el motor congelado usa para resolver sus `field_key` (`expectedFieldKeys`), la que mide la
+  // completitud del diagnostico y la que gatea una correccion. Con la del Modulo S, una consulta de
+  // seguimiento sellaria una version de SIETE preguntas y el diagnostico creeria que la encuesta tiene
+  // siete campos.
+  //
+  // SE TOMA LA DEL PRIMER ITEM QUE NO SEA `propio`, que es la definicion exacta: `propio` significa
+  // "esta pregunta es del instrumento", o sea del Modulo S. La primera version de esto miraba el
+  // `field_key` ("por construccion es del cuestionario") y ERA FALSO: las preguntas del Modulo S tambien
+  // llevan `field_key`, porque sus respuestas se leen por clave. Lo atrapo el candado de BD al llamar al
+  // lector de verdad; ningun test de tipos podia verlo.
   const surveyVersionId =
-    filas.find((f) => f.survey_questions?.field_key)?.survey_questions?.survey_version_id ??
+    filas.find((f) => f.comportamiento !== "propio")?.survey_questions?.survey_version_id ??
     filas[0].survey_questions!.survey_version_id;
 
   return {
