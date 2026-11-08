@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import type { SignIdentityPrefill } from "../types";
-import type { SurveyQuestionView } from "../data/survey-view-types";
+import type { SurveyItemView } from "../data/survey-view-types";
 import { FollowupStartScreen } from "./followup-start-screen";
 import { SignPhaseForm } from "./sign-phase-form";
 import { SurveyPhaseForm } from "./survey-phase-form";
@@ -20,7 +20,7 @@ export type SurveyIntakeFormProps = {
   token: string;
   isFollowup: boolean;
   prefill: SignIdentityPrefill | null;
-  questions: SurveyQuestionView[];
+  questions: SurveyItemView[];
   consentText: string;
   professional: { fullName: string; profession: string; license: string | null };
   // Seguimiento: "nosign" = camino sin firma (normal); "sign" = requiere firma (bump sustantivo). Inicial: ignora.

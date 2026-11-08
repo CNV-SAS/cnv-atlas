@@ -47,12 +47,27 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     ({ sql } = await import("drizzle-orm"));
   });
 
+  // ═══ LA VERSION DE LA LINEA BASE ES LA QUE SU INSTRUMENTO USA, no "la mas reciente publicada" ═══
+  //
+  // Y esto NO es circular: lo que el caso afirma es que el instrumento cubre esa version ENTERA y en su
+  // orden. Si el instrumento perdiera una pregunta, la version la seguiria teniendo y las dos listas
+  // diferirian, que es exactamente lo que hay que atrapar.
+  //
+  // "La mas reciente publicada" dejo de servir el 2026-11-07, y es el defecto que el cambio del lector
+  // vino a cerrar: desde que el Modulo S tiene su propia version, esa consulta devuelve SIETE preguntas.
+  // Este caso lo vivio: fallo diciendo "la base no tiene preguntas" cuando lo que pasaba es que estaba
+  // mirando el cuestionario equivocado.
   const porLaVersion = async () =>
     (await db.execute(sql`
       select q.id, q.question_text, q.field_key, q.order_index
         from survey_questions q
        where q.survey_version_id = (
-               select v.id from survey_versions v order by v.published_at desc, v.id desc limit 1
+               select q2.survey_version_id
+                 from survey_instrument_items i2
+                 join survey_questions q2 on q2.id = i2.question_id
+                 join survey_instruments s2 on s2.id = i2.instrument_id
+                where s2.codigo = 'CNV v2.0'
+                limit 1
              )
        order by q.order_index asc
     `)) as unknown as { id: string; question_text: string; field_key: string | null }[];
@@ -106,6 +121,25 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
       repetidos.map((r) => `${r.codigo}:${r.field_key} x${r.n}`),
       "un field_key aparece dos veces en el mismo instrumento",
     ).toEqual([]);
+  });
+
+  it("'la version mas reciente publicada' YA NO es la encuesta, y por eso el lector no la usa", async () => {
+    // El lector preguntaba por la version mas reciente SIN filtrar por plantilla. Desde que el Modulo S
+    // tiene la suya, esa consulta devuelve el Modulo S: la encuesta del paciente habria pasado a ser
+    // siete preguntas de adherencia. Este caso fija el hecho para que nadie "simplifique" el lector
+    // volviendo a esa consulta.
+    const [reciente] = (await db.execute(sql`
+      select v.id,
+             (select count(*)::int from survey_questions q where q.survey_version_id = v.id) as n
+        from survey_versions v
+       order by v.published_at desc, v.id desc
+       limit 1
+    `)) as unknown as { id: string; n: number }[];
+    const base = await porLaVersion();
+    expect(
+      reciente.n,
+      "la version mas reciente volvio a ser la encuesta entera: si es asi, este caso ya no mide nada",
+    ).not.toBe(base.length);
   });
 
   it("y todo instrumento tiene items: uno vacio deja la encuesta del paciente en blanco", async () => {

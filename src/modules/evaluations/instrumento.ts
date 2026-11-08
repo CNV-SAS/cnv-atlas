@@ -37,6 +37,29 @@ export const CODIGO_SEGUIMIENTO = "CNV-S 1.0";
 export const CNVS_ACTIVA = false;
 
 /**
+ * ═══ EL ULTIMO CABLE, QUE NO ESTA PUESTO, Y QUE ESTO IMPIDE OLVIDAR ═══
+ *
+ * La CNV-S esta construida de punta a punta MENOS una cosa: el envio de la encuesta
+ * (`submitSurveyAnswersAction`) resuelve el instrumento llamando a `getActiveSurvey()` SIN codigo, o sea
+ * siempre la linea base. Con la CNV-S encendida, eso descartaria las respuestas del Modulo S al leer el
+ * formulario, porque esas preguntas no estan en el instrumento que la accion consulta.
+ *
+ * NO SE CABLEO HOY A PROPOSITO: esa accion es el camino por el que pasa HOY la encuesta de todos los
+ * pacientes, y tocarla para una funcion apagada es poner codigo nuevo en la ruta que mas duele. Va con el
+ * smoke, que es cuando se puede ver funcionando.
+ *
+ * Y PARA QUE NO SE ENCIENDA SIN EL, el candado `el-modulo-s` exige que, si `CNVS_ACTIVA` pasa a `true`,
+ * la accion de envio nombre a `instrumentoParaLaConsulta`. Una pieza terminada a la que le falta el
+ * ultimo cable es un defecto que este proyecto ya pago: lo que lo cierra no es acordarse, es que no se
+ * pueda encender sin el.
+ *
+ * Lo mismo con `survey_responses.confirmacion` y `minutos_de_diligenciamiento`: las columnas estan (0240)
+ * y nadie las escribe todavia. El ESTADO de cada confirmacion es lo unico que se pierde; la RESPUESTA
+ * confirmada si viaja, porque "Sin cambios" emite el valor anterior como respuesta.
+ */
+export const CABLE_PENDIENTE = "submitSurveyAnswersAction no resuelve el instrumento";
+
+/**
  * El codigo del instrumento que le toca a una consulta.
  *
  * UNA SOLA FUNCION lo decide, y por eso recibe el tipo de la consulta en vez de leerlo: si cada pantalla

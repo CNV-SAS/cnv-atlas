@@ -167,6 +167,27 @@ describe("y la CNV-S NO esta activa para ningun paciente", () => {
     expect(instrumentoParaLaConsulta("seguimiento")).toBe("CNV v2.0");
   });
 
+  it("NO SE PUEDE ENCENDER sin cablear el envio, y eso lo decide este caso", () => {
+    // ═══ LA PIEZA TERMINADA A LA QUE LE FALTA EL ULTIMO CABLE ═══
+    //
+    // `submitSurveyAnswersAction` resuelve el instrumento con `getActiveSurvey()` sin codigo, o sea
+    // siempre la linea base. Con la CNV-S encendida eso descartaria las respuestas del Modulo S al leer
+    // el formulario, en silencio: el paciente las contesta y no se guardan.
+    //
+    // No se cableo hoy a proposito (esa accion es por donde pasa la encuesta de TODOS los pacientes, y
+    // no se toca para una funcion apagada), asi que lo que cierra el riesgo no es acordarse: es que
+    // encender el interruptor sin el cable ponga esto en rojo.
+    const ACCIONES = readFileSync("src/modules/evaluations/actions.ts", "utf8");
+    if (CNVS_ACTIVA) {
+      expect(
+        ACCIONES,
+        "la CNV-S se encendio y el envio sigue leyendo SIEMPRE la linea base: las respuestas del Módulo S se perderian",
+      ).toContain("instrumentoParaLaConsulta");
+    } else {
+      expect(ACCIONES).toContain("getActiveSurvey()");
+    }
+  });
+
   it("y el instrumento lo decide UNA sola funcion, no cada pantalla", () => {
     // Si cada pantalla resolviera su instrumento, el dia que la regla cambie habria que encontrarlas
     // todas, y la que se quede atras aplicaria OTRO cuestionario sin que nada fallara.

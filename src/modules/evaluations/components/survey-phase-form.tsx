@@ -27,12 +27,19 @@ import {
   submitSurveyAnswersAction,
 } from "../actions";
 import { marcoDeLaSeccion } from "../marco-de-la-seccion";
+import { GI_NUNCA, saltoDeLosDigestivos } from "@/modules/followups/modulo-s";
 
 import type { SaveProgressState, SurveyFormState } from "../validations";
-import type { SurveyQuestionView } from "../data/survey-view-types";
+import type { SurveyItemView, SurveyQuestionView } from "../data/survey-view-types";
 import { AboutYouSection, type AboutYouPrefill } from "./about-you-section";
 import { ResumeLinkBox } from "./resume-link-box";
 import { SurveyQuestion } from "./survey-widgets";
+import {
+  BloqueDeConfirmacion,
+  FiltroDigestivo,
+  PreguntaPorProducto,
+  type EstadoDeConfirmacion,
+} from "./cnvs-widgets";
 
 // FASE 2 del intake: la ENCUESTA. Se llega aqui ya firmado (fase 1) con un resume_token que autentica la
 // escritura de respuestas sin sesion. Guarda a medida (al pasar de seccion) para que quien pause y vuelva
@@ -155,7 +162,28 @@ const GUARDAR_DEL_PROFESIONAL = guardadoConRed(guardarEncuestaDelPacienteAction)
 export type SurveyPhaseFormProps = {
   resumeToken: string;
   isFollowup: boolean;
-  questions: SurveyQuestionView[];
+  /**
+   * LOS ITEMS DEL INSTRUMENTO, no las preguntas sueltas (0240).
+   *
+   * Cada uno trae QUE HACE en esta encuesta: en la linea base todos son `repetir` y esto no cambia nada;
+   * en la CNV-S es lo que decide si se presenta, se confirma o se salta. La lista viene de la base y no
+   * de una tabla escrita en el componente, que es la condicion de su §2.2.
+   */
+  questions: SurveyItemView[];
+  /**
+   * LO QUE LA CNV-S NECESITA ADEMAS, y que la linea base no tiene. `undefined` = linea base.
+   *
+   * VA COMO UN BLOQUE OPCIONAL Y NO COMO UN FORMULARIO APARTE, a proposito: este componente es el que
+   * tiene resueltos los nueve hazards de navegador (las `key` distintas de Siguiente y Enviar, el envio
+   * por `onSubmit` sin auto-reset, el `submitter` en el FormData, el relanzamiento del redirect). Un
+   * segundo formulario para el seguimiento nacería sin ninguno de los cuatro y con el mismo aspecto.
+   */
+  cnvs?: {
+    /** Las respuestas de la consulta ANTERIOR, por `field_key`: la precarga del bloque de confirmacion. */
+    anteriores: Record<string, string | null>;
+    /** Los nutraceuticos indicados en la anterior, para el S1 y el S2. Vacio = no se presentan. */
+    productos: { id: string; nombre: string; dosis: string | null }[];
+  };
   // Respuestas ya guardadas (reanudacion): questionId -> valor. En el flujo normal (recien firmado) es
   // null y todo arranca en blanco.
   prefill?: Record<string, string> | null;
@@ -185,7 +213,8 @@ const SECTION_INTRO: Record<string, string> = {
 export function SurveyPhaseForm({
   resumeToken,
   isFollowup,
-  questions,
+  questions: items,
+  cnvs,
   prefill = null,
   initialStep = 0,
   characterizationPrefill = null,
@@ -208,9 +237,121 @@ export function SurveyPhaseForm({
   // muestra los 4 campos de perfil + motivo.
   const includeProfile = !isFollowup;
 
+  // ═══ LO QUE SE PRESENTA, QUE NO ES LO MISMO QUE LO QUE EL INSTRUMENTO TRAE (0241) ═══
+  //
+  // Dos cosas quedan fuera, y las dos siguen llegando en `items` porque el servidor las necesita:
+  //
+  //   · los `retirar` (sus ítems 35, 38, 41 y 63): no se preguntan y CONSERVAN el valor de la línea
+  //     base. Llegan para que el envío sepa cuáles arrastrar; si el reader los filtrara, el servidor no
+  //     tendría de dónde saber que esa pregunta no es un hueco sino un valor heredado.
+  //   · el S1 y el S2 cuando no hay ningún nutracéutico indicado (decisión 34): una pregunta sobre un
+  //     producto que nadie le indicó no tiene respuesta correcta, y la adherencia se resuelve con el S3.
+  //
+  // EN LA LÍNEA BASE ESTO NO QUITA NADA: todos sus ítems son `repetir` y no hay `cnvs`.
+  const sinProductos = cnvs != null && cnvs.productos.length === 0;
+  const questions = useMemo(
+    () =>
+      items.filter((q) => {
+        if (q.comportamiento === "retirar") return false;
+        if (sinProductos && (q.fieldKey === "cnvs_s1" || q.fieldKey === "cnvs_s2")) return false;
+        return true;
+      }),
+    [items, sinProductos],
+  );
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // LO QUE SOLO EXISTE EN LA CNV-S. En la linea base `cnvs` es `undefined` y todo esto queda inerte.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+
+  const itemFiltro = useMemo(
+    () => items.find((q) => q.fieldKey === "cnvs_gi_filtro") ?? null,
+    [items],
+  );
+  const itemsDigestivos = useMemo(
+    () => items.filter((q) => q.comportamiento === "repetir_con_filtro"),
+    [items],
+  );
+  // EL FILTRO VA EN ESTADO Y NO EN EL WIDGET NORMAL: su respuesta decide si se presentan los siete
+  // sintomas, y el formulario tiene que saberla en el momento. Los widgets guardan su valor dentro de si
+  // mismos; leerlo desde fuera obligaria a espiar el DOM despues de cada clic.
+  const [filtroGi, setFiltroGi] = useState<string | null>(
+    itemFiltro ? (prefill?.[itemFiltro.id] ?? null) : null,
+  );
+  const saltoDigestivo = useMemo(() => {
+    if (!cnvs || itemsDigestivos.length === 0) return null;
+    return saltoDeLosDigestivos(
+      filtroGi,
+      cnvs.anteriores,
+      itemsDigestivos.map((q) => q.fieldKey ?? q.id),
+    );
+  }, [cnvs, filtroGi, itemsDigestivos]);
+
+  // EL ESTADO DE CADA ITEM A CONFIRMAR (§2.7: `sin_cambios`, `editado`, `sin_marcar`). Arranca en
+  // `sin_marcar` a proposito: pasar de largo NO es confirmar, y distinguirlo es la diferencia entre un
+  // dato y una suposicion.
+  const [confirmacion, setConfirmacion] = useState<Record<string, EstadoDeConfirmacion>>({});
+
+  // LOS PRODUCTOS NO ADHERENTES, para el S2: su §2.3 lo presenta *"solo si S1 no es «Todos los días» ni
+  // «5 o más»"*. Se deriva del S1 que el paciente acaba de contestar, asi que vive en estado.
+  const [s1PorProducto, setS1PorProducto] = useState<Record<string, string>>({});
+  const noAdherentes = useMemo(() => {
+    const s = new Set<string>();
+    for (const [id, v] of Object.entries(s1PorProducto)) {
+      if (v !== "Todos los días" && v !== "5 o más días por semana") s.add(id);
+    }
+    return s;
+  }, [s1PorProducto]);
+
+  /**
+   * COMO SE PINTA CADA ITEM. `null` = no se pinta.
+   *
+   * ES UN SOLO SITIO Y NO UN `if` repartido por el JSX: las cuatro formas de presentar una pregunta
+   * (normal, por producto, a confirmar, y el filtro) tienen que ser excluyentes, y con la decision en un
+   * sitio eso se ve de un vistazo.
+   */
+  const pintarItem = (q: SurveyItemView) => {
+    const guardada = prefill?.[q.id] ?? null;
+
+    // EL FILTRO DIGESTIVO, controlado (ver la nota de `filtroGi`).
+    if (cnvs && itemFiltro && q.id === itemFiltro.id) {
+      return <FiltroDigestivo q={q} valor={filtroGi} onValor={setFiltroGi} />;
+    }
+    // LOS SIETE SINTOMAS: no se pintan cuando su regla salta. Lo que se guarda en su lugar va abajo.
+    if (q.comportamiento === "repetir_con_filtro" && saltoDigestivo?.seSalta) return null;
+
+    // S1 Y S2: una respuesta por producto.
+    if (cnvs && q.type === "opcion_por_producto") {
+      const esS2 = q.fieldKey === "cnvs_s2";
+      return (
+        <PreguntaPorProducto
+          q={q}
+          productos={cnvs.productos}
+          answer={guardada}
+          soloSiNoAdherente={esS2 ? noAdherentes : undefined}
+          onValores={esS2 ? undefined : setS1PorProducto}
+        />
+      );
+    }
+
+    // EL BLOQUE DE CONFIRMACION.
+    if (cnvs && q.comportamiento === "confirmar") {
+      return (
+        <BloqueDeConfirmacion
+          q={q}
+          anterior={q.fieldKey ? (cnvs.anteriores[q.fieldKey] ?? null) : null}
+          answer={guardada}
+          estado={confirmacion[q.id] ?? "sin_marcar"}
+          onEstado={(e) => setConfirmacion((c) => ({ ...c, [q.id]: e }))}
+        />
+      );
+    }
+
+    return <SurveyQuestion q={q} answer={guardada} />;
+  };
+
   // Agrupa las preguntas por dominio (section), preservando el orden del reader.
   const sections = useMemo(() => {
-    const groups: { title: string; questions: SurveyQuestionView[] }[] = [];
+    const groups: { title: string; questions: SurveyItemView[] }[] = [];
     for (const q of questions) {
       const title = q.section ?? "Otras";
       const last = groups[groups.length - 1];
@@ -625,17 +766,31 @@ export function SurveyPhaseForm({
                   respuesta hacia lo que se espera de el, y esto es un cuestionario de frecuencia. Viven
                   ahora en las vistas del profesional (survey-readonly y survey-edit-form). El ORDEN, que es
                   el mensaje que el pidio, se conserva intacto. Candado: encabezados-frecuencia.test.ts. */}
-              {s.questions.map((q) => (
-                <div
-                  key={q.id}
-                  // ANCLA para el salto desde la lista de preguntas pendientes. Va sobre el contenedor y
-                  // no sobre el input: al saltar tiene que verse el ENUNCIADO, no el control suelto.
-                  id={anclaPregunta(q.id)}
-                  className="scroll-mt-24 rounded-lg border border-border/60 bg-muted/20 p-3 sm:bg-transparent sm:p-0 sm:border-0"
-                >
-                  <SurveyQuestion q={q} answer={prefill?.[q.id] ?? null} />
-                </div>
-              ))}
+              {s.questions.map((q) => {
+                const pintado = pintarItem(q);
+                if (pintado === null) return null;
+                return (
+                  <div
+                    key={q.id}
+                    // ANCLA para el salto desde la lista de preguntas pendientes. Va sobre el contenedor y
+                    // no sobre el input: al saltar tiene que verse el ENUNCIADO, no el control suelto.
+                    id={anclaPregunta(q.id)}
+                    className="scroll-mt-24 rounded-lg border border-border/60 bg-muted/20 p-3 sm:bg-transparent sm:p-0 sm:border-0"
+                  >
+                    {pintado}
+                  </div>
+                );
+              })}
+              {/* LO QUE EL SALTO DIGESTIVO GUARDA SIN PREGUNTAR (§7.2), dentro del formulario y en esta
+                  sección, que es donde viven los siete. Su regla dice que se GUARDAN como "Nunca", no
+                  que se omitan: un salto que deja huecos convierte una regla de ahorro en una encuesta
+                  incompleta y el gate del diagnóstico la frenaría. */}
+              {saltoDigestivo?.seSalta &&
+              s.questions.some((q) => q.comportamiento === "repetir_con_filtro")
+                ? itemsDigestivos.map((q) => (
+                    <input key={q.id} type="hidden" name={`answer_${q.id}`} value={GI_NUNCA} />
+                  ))
+                : null}
             </div>
           </section>
         );
