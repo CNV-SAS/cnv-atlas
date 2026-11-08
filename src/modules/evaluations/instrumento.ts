@@ -28,46 +28,78 @@ export const CODIGO_LINEA_BASE = "CNV v2.0";
 export const CODIGO_SEGUIMIENTO = "CNV-S 1.0";
 
 /**
- * EL INTERRUPTOR. `false` = ningun paciente ve la CNV-S y todo seguimiento sigue con la encuesta
- * completa, que es exactamente lo que pasaba ayer.
+ * ═══ APROBADA PARA PACIENTES REALES. `false` HASTA QUE GILDARDO LA APRUEBE ═══
  *
- * NO SE ENCIENDE sin: (a) el smoke en navegador del plan, (b) el visto bueno de Gildardo sobre el
- * Modulo S y (c) resolver la pregunta 39 (si el marco de referencia pide version nueva del instrumento).
+ * Esto NO es "la CNV-S existe": es *"se le aplica a una persona que vino a consulta"*. Con `false`,
+ * ningun paciente real ve la CNV-S, cualquiera que sea el estado del otro interruptor.
+ *
+ * NO SE ENCIENDE sin: (a) el smoke en navegador, (b) el visto bueno de Gildardo sobre el Modulo S y
+ * (c) resolver la pregunta 39 (si el marco de referencia pide version nueva del instrumento).
  */
 export const CNVS_ACTIVA = false;
 
 /**
- * ═══ EL ULTIMO CABLE, QUE NO ESTA PUESTO, Y QUE ESTO IMPIDE OLVIDAR ═══
+ * ═══ EN PRUEBAS: SOLO PACIENTES DE PRUEBA, TAMBIEN EN PRODUCCION (Santiago, 2026-11-08) ═══
  *
- * La CNV-S esta construida de punta a punta MENOS una cosa: el envio de la encuesta
- * (`submitSurveyAnswersAction`) resuelve el instrumento llamando a `getActiveSurvey()` SIN codigo, o sea
- * siempre la linea base. Con la CNV-S encendida, eso descartaria las respuestas del Modulo S al leer el
- * formulario, porque esas preguntas no estan en el instrumento que la accion consulta.
+ * *"En producción, la CNV-S se aplica SOLO a pacientes de prueba (is_test), no con un interruptor
+ * global. Los reales siguen con CNV v2.0 hasta la aprobación."*
  *
- * NO SE CABLEO HOY A PROPOSITO: esa accion es el camino por el que pasa HOY la encuesta de todos los
- * pacientes, y tocarla para una funcion apagada es poner codigo nuevo en la ruta que mas duele. Va con el
- * smoke, que es cuando se puede ver funcionando.
+ * ES UNA SEGUNDA BANDERA Y NO UN VALOR MAS DE LA PRIMERA, porque dicen dos cosas distintas: aquella es
+ * una decision CLINICA (la encuesta esta aprobada) y esta es una decision OPERATIVA (se esta probando).
+ * Juntarlas en un enum de tres estados obligaria a mirar cual es cual en cada lectura, y el dia que la
+ * aprueben habria que acordarse de apagar el modo pruebas en el mismo movimiento.
  *
- * Y PARA QUE NO SE ENCIENDA SIN EL, el candado `el-modulo-s` exige que, si `CNVS_ACTIVA` pasa a `true`,
- * la accion de envio nombre a `instrumentoParaLaConsulta`. Una pieza terminada a la que le falta el
- * ultimo cable es un defecto que este proyecto ya pago: lo que lo cierra no es acordarse, es que no se
- * pueda encender sin el.
+ * ═══ LA PUERTA ES `cuenta_como_de_prueba`, NO `is_test` ═══
  *
- * Lo mismo con `survey_responses.confirmacion` y `minutos_de_diligenciamiento`: las columnas estan (0240)
- * y nadie las escribe todavia. El ESTADO de cada confirmacion es lo unico que se pierde; la RESPUESTA
+ * Y la diferencia importa: `is_test` es la DECISION sobre una persona, y `cuenta_como_de_prueba` es su
+ * consecuencia mas la DERIVADA (0202/0203), que incluye a todo paciente de un profesional marcado de
+ * prueba. Es exactamente lo que Santiago propone (*"los pacientes de un profesional marcado de
+ * prueba"*), ya esta calculado, y es la misma columna por la que esos pacientes no entran a /obbia ni a
+ * la cohorte. Filtrar por `is_test` dejaria fuera la derivada, que es el error que el candado del
+ * barrido ya vigila en otro sitio.
+ */
+export const CNVS_EN_PRUEBAS = true;
+
+/**
+ * EL CABLE QUE FALTABA, PUESTO EL 2026-11-08: las cuatro acciones y las tres pantallas de la encuesta
+ * resuelven el instrumento con esta funcion (`data/instrumento-de-la-consulta`) en vez de pedir siempre
+ * la linea base. Sin el, el Modulo S se habria perdido EN SILENCIO al enviar.
+ *
+ * Lo que sigue sin escribirse: `survey_responses.confirmacion` y `minutos_de_diligenciamiento`. Las
+ * columnas estan (0240) y el ESTADO de cada confirmacion es lo unico que se pierde; la RESPUESTA
  * confirmada si viaja, porque "Sin cambios" emite el valor anterior como respuesta.
  */
-export const CABLE_PENDIENTE = "submitSurveyAnswersAction no resuelve el instrumento";
+export const CABLE_PENDIENTE = null;
 
 /**
  * El codigo del instrumento que le toca a una consulta.
  *
- * UNA SOLA FUNCION lo decide, y por eso recibe el tipo de la consulta en vez de leerlo: si cada pantalla
- * resolviera su instrumento, el dia que la regla cambie habria que encontrarlas todas, y la que se quede
- * atras aplicaria OTRO cuestionario sin que nada falle. Es la misma razon por la que `sonComparables`
- * vive en un sitio.
+ * UNA SOLA FUNCION lo decide, y por eso recibe los datos en vez de leerlos: si cada pantalla resolviera
+ * su instrumento, el dia que la regla cambie habria que encontrarlas todas, y la que se quede atras
+ * aplicaria OTRO cuestionario sin que nada falle. Es la misma razon por la que `sonComparables` vive en
+ * un sitio.
+ *
+ * ═══ EL ORDEN DE LAS TRES PUERTAS NO ES ARBITRARIO ═══
+ *
+ *   1. UNA INICIAL NUNCA ES CNV-S, pase lo que pase con los interruptores. Es su §2.1 y no admite
+ *      excepcion: sin linea base no hay nada que confirmar ni contra que comparar.
+ *   2. APROBADA: se aplica a todo el mundo.
+ *   3. EN PRUEBAS: **solo** si el paciente cuenta como de prueba.
+ *
+ * Y LA PROPIEDAD QUE EL CANDADO FIJA: con `CNVS_ACTIVA` en `false`, un paciente REAL no puede recibir la
+ * CNV-S por ningun camino. El modo pruebas no puede alcanzarlo.
  */
-export function instrumentoParaLaConsulta(tipo: "inicial" | "seguimiento"): string {
-  if (tipo === "seguimiento" && CNVS_ACTIVA) return CODIGO_SEGUIMIENTO;
+export function instrumentoParaLaConsulta(
+  tipo: "inicial" | "seguimiento",
+  /**
+   * Si el paciente cuenta como de prueba (`patients.cuenta_como_de_prueba`, con su derivada). Es un
+   * parametro OBLIGATORIO y no opcional con `false` por defecto: un llamador que se olvide tiene que
+   * fallar al compilar, no decidir en silencio sobre un paciente real.
+   */
+  cuentaComoDePrueba: boolean,
+): string {
+  if (tipo !== "seguimiento") return CODIGO_LINEA_BASE;
+  if (CNVS_ACTIVA) return CODIGO_SEGUIMIENTO;
+  if (CNVS_EN_PRUEBAS && cuentaComoDePrueba) return CODIGO_SEGUIMIENTO;
   return CODIGO_LINEA_BASE;
 }

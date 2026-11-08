@@ -8,6 +8,7 @@ import { requireUser } from "@/modules/auth/session";
 import { getEvaluationHeaderForSession } from "@/modules/diagnoses/data/results-reader";
 import { SurveyPhaseForm } from "@/modules/evaluations/components/survey-phase-form";
 import { getResumeTokenDeMiEvaluacion } from "@/modules/evaluations/data/evaluations-repository";
+import { instrumentoPorTokenDeEncuesta } from "@/modules/evaluations/data/instrumento-de-la-consulta";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import { canRegistrarEncuestaDelPaciente } from "@/modules/evaluations/policies/can-manage-evaluations";
 import { readSurveyProgress } from "@/modules/evaluations/services/survey-intake";
@@ -78,7 +79,13 @@ export default async function ResponderEncuestaPage({ params }: { params: Promis
   const resumeToken = await getResumeTokenDeMiEvaluacion(id);
   if (!resumeToken) notFound();
 
-  const [progress, survey] = await Promise.all([readSurveyProgress(resumeToken), getActiveSurvey()]);
+  // EL INSTRUMENTO SALE DEL SELLO DE LA CONSULTA (0243), no de "el de siempre": si esta pantalla
+  // pintara la encuesta completa sobre una consulta sellada como CNV-S, la profesional veria un
+  // cuestionario y el envio guardaria otro.
+  const [progress, survey] = await Promise.all([
+    readSurveyProgress(resumeToken),
+    getActiveSurvey(await instrumentoPorTokenDeEncuesta(resumeToken)),
+  ]);
   if (!progress || !survey) notFound();
 
   const prefill: Record<string, string> = {};

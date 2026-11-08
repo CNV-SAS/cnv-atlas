@@ -56,6 +56,10 @@ import {
   signSurveyIntake,
   submitSurveyAnswers,
 } from "./services/survey-intake";
+import {
+  instrumentoDeUnSeguimiento,
+  instrumentoPorTokenDeEncuesta,
+} from "./data/instrumento-de-la-consulta";
 import { getActiveSurvey } from "./data/survey-reader";
 import { buildResumeUrl } from "./resume-url";
 import {
@@ -405,6 +409,9 @@ export async function abrirEvaluacionEnConsultaAction(
       patientId,
       linkId: null,
       ipAddress: ip === "unknown" ? null : ip,
+      // EL INSTRUMENTO SE SELLA AQUI (0243): esta consulta ES un seguimiento desde el primer momento,
+      // asi que no hay el desfase del enlace generico del consultorio.
+      surveyInstrumentId: await instrumentoDeUnSeguimiento(patientId),
     });
     revalidatePath("/pacientes");
     return {
@@ -457,6 +464,8 @@ export async function startFollowupAction(
       patientId: link.patientId,
       linkId: link.id,
       ipAddress: ip === "unknown" ? null : ip,
+      // Igual que arriba: el enlace de seguimiento ya identifica al paciente y a la consulta.
+      surveyInstrumentId: await instrumentoDeUnSeguimiento(link.patientId),
     });
     return {
       error: null,
@@ -492,7 +501,7 @@ export async function saveProgressAction(
   const resumeToken = str(form, "resumeToken");
   if (!resumeToken) return { saved: false, error: "Falta el enlace de la encuesta." };
   try {
-    const survey = await getActiveSurvey();
+    const survey = await getActiveSurvey(await instrumentoPorTokenDeEncuesta(resumeToken));
     if (!survey) return { saved: false, error: "La encuesta no esta disponible en este momento." };
     const ip = await getClientIp();
     const answers = readAnswersFromForm(form, survey.questions);
@@ -559,7 +568,7 @@ export async function submitSurveyAnswersAction(
   const resumeToken = str(form, "resumeToken");
   if (!resumeToken) return fail("Falta el enlace de la encuesta.");
   try {
-    const survey = await getActiveSurvey();
+    const survey = await getActiveSurvey(await instrumentoPorTokenDeEncuesta(resumeToken));
     if (!survey) return fail("La encuesta no esta disponible en este momento.");
     const ip = await getClientIp();
     const answers = readAnswersFromForm(form, survey.questions);
@@ -1092,7 +1101,7 @@ export async function enviarEncuestaDelPacienteAction(
   try {
     const user = await profesionalDeLaEncuesta(resumeToken);
     if (!user) return fail("No autorizado.");
-    const survey = await getActiveSurvey();
+    const survey = await getActiveSurvey(await instrumentoPorTokenDeEncuesta(resumeToken));
     if (!survey) return fail("La encuesta no esta disponible en este momento.");
     const ip = await getClientIp();
     const res = await submitSurveyAnswers({

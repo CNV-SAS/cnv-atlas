@@ -29,6 +29,23 @@ export const evaluations = pgTable(
     // status = 'awaiting_survey' (al completar la encuesta pasa a 'draft' y el token deja de habilitar).
     // Se trata como el token del enlace: largo, imposible de adivinar, nunca en logs. null salvo el shell.
     resumeToken: text("resume_token").unique(),
+    /**
+     * CON QUE INSTRUMENTO SE LE PIDIO LA ENCUESTA A ESTA CONSULTA (0243).
+     *
+     * SE DECIDE UNA VEZ Y SE SELLA, al crear el shell, porque la encuesta publica se sirve en UNA sola
+     * carga: la pagina trae las preguntas y el formulario pasa de la firma a la encuesta sin volver al
+     * servidor. Si cada lector lo dedujera por su cuenta, el enlace generico del consultorio (donde la
+     * cedula se escribe DESPUES de pintar la pagina) podria acabar con una respuesta etiquetada con un
+     * instrumento que nunca se mostro.
+     *
+     * NULL = linea base. Es el valor de todo lo anterior al 2026-11-08 y el de todo lo que no resuelva
+     * otra cosa: el peor caso tiene que ser "se le aplica la encuesta completa".
+     *
+     * LA CLAVE AJENA VIVE EN LA BASE Y NO AQUI (`0243`), y es a proposito: `survey.ts` ya importa este
+     * archivo (sus respuestas cuelgan de una evaluacion), asi que declararla con `.references()` cerraria
+     * un ciclo entre los dos modulos del esquema. La restriccion la impone Postgres, que es donde importa.
+     */
+    surveyInstrumentId: uuid("survey_instrument_id"),
     // Conflicto de identidad: el documento coincidio con un paciente registrado PERO el nombre declarado
     // difiere (nameSimilarity < umbral). Se atribuye al paciente existente (el documento es la llave) pero
     // se marca para que el profesional resuelva ANTES de usarla. GATE: confirmIdentityAction rechaza

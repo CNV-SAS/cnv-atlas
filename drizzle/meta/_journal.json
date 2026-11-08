@@ -1702,6 +1702,13 @@
       "when": 1793800376491,
       "tag": "0242_rls_del_instrumento",
       "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1793800377491,
+      "tag": "0243_el_instrumento_de_la_consulta",
+      "breakpoints": true
     }
   ]
 }

@@ -15,7 +15,6 @@ import {
   patients,
   surveyAnswers,
   surveyLinks,
-  surveyInstruments,
   surveyResponses,
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
@@ -30,7 +29,6 @@ import type { ConsentType } from "@/modules/consent/validations";
 import { CONSENT_VERSION } from "@/modules/consent/versions";
 
 import { canCreateEvaluation, type ConsentGateResult } from "../policies/can-create-evaluation";
-import { CODIGO_LINEA_BASE } from "../instrumento";
 import type { EvaluationType, IntakeIdentity } from "../types";
 
 // Escritura del intake de la encuesta. Drizzle conecta como owner (BYPASSA RLS) a proposito: el paciente
@@ -413,6 +411,15 @@ export type SignIntakeInput = {
   // nombre DECLARADO para que el profesional resuelva declarado-vs-registrado antes de usar la evaluacion.
   identityConflict?: boolean;
   /**
+   * EL INSTRUMENTO QUE LA PANTALLA YA PINTO (0243). `null` = la linea base.
+   *
+   * VIENE DE FUERA Y NO SE DEDUCE AQUI, y esa es toda la razon de que exista: la encuesta publica se
+   * sirve en UNA carga, asi que lo que el paciente va a ver quedo decidido al pintar la pagina. Deducirlo
+   * del tipo de la consulta le pondria a una respuesta la etiqueta de un instrumento que nunca se mostro,
+   * que es justo lo que pasa con el enlace generico del consultorio (la cedula se escribe DESPUES).
+   */
+  surveyInstrumentId?: string | null;
+  /**
    * CONSENTIMIENTO PRESENCIAL (dictamen 2026-09-08). Ausente = el paciente firmo solo, desde su enlace.
    *
    * NO OTORGA NADA: el gate de la regla dura 15 sigue leyendo `patient_consents` en esta misma
@@ -522,6 +529,8 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
         organizationId: input.organizationId,
         type: input.mode,
         status: "awaiting_survey",
+        // EL INSTRUMENTO QUE LA PANTALLA YA PINTO (0243). Ver la nota de `SignIntakeInput`.
+        surveyInstrumentId: input.surveyInstrumentId ?? null,
         // Constancia de consentimiento (dictamen legal 2026-08-20 §4): la version EFECTIVA (la que el paciente
         // tiene tras la firma: la actual si re-consintio, la que ya tenia si entro por excepcion sin cambiar
         // nada). El gate de regla 15 (writePatientConsentsAndGate) ya verifico la vigencia ANTES de este insert.
@@ -580,6 +589,8 @@ export type StartFollowupInput = {
   patientId: string;
   linkId: string | null;
   ipAddress: string | null;
+  /** El instrumento que la pantalla ya pinto (0243). `null` = la linea base. */
+  surveyInstrumentId?: string | null;
 };
 
 export async function startFollowupWithoutSignature(
@@ -661,6 +672,9 @@ export async function startFollowupWithoutSignature(
         organizationId: input.organizationId,
         type: "seguimiento",
         status: "awaiting_survey",
+        // EL INSTRUMENTO QUE LA PANTALLA YA PINTO (0243). Este camino SOLO se alcanza desde un enlace de
+        // seguimiento, asi que la pagina ya sabia que lo era: no hay el desfase del enlace generico.
+        surveyInstrumentId: input.surveyInstrumentId ?? null,
         // Constancia: la version vigente del paciente, no CONSENT_VERSION.
         consentVersion: heldVersion,
         resumeToken,
@@ -847,21 +861,23 @@ async function upsertResponseAndAnswers(
     .where(eq(surveyResponses.evaluationId, evaluationId))
     .limit(1);
   if (!response) {
-    // ═══ CON QUE INSTRUMENTO SE APLICO (0240) ═══
+    // ═══ CON QUE INSTRUMENTO SE APLICO (0240, y desde la 0243 SE HEREDA DE LA CONSULTA) ═══
     //
-    // SE RESUELVE AQUI, DENTRO DE LA TRANSACCION, y no viaja desde la pantalla: lo que el formulario
-    // manda son RESPUESTAS, y un instrumento que llegara del cliente seria un dato del cuestionario
-    // decidido por quien lo contesta. Hoy es siempre la linea base, porque `CNVS_ACTIVA` esta apagado.
+    // NO SE DEDUCE AQUI Y NO VIAJA DESDE LA PANTALLA. Se lee el que la consulta lleva sellado, que es el
+    // que se decidio al crear el shell y el unico que de verdad describe lo que el paciente vio. Si esta
+    // escritura lo dedujera por su cuenta (tipo + paciente de prueba), podria etiquetar la respuesta con
+    // un instrumento que nunca se mostro; y si llegara del formulario, seria un dato del cuestionario
+    // decidido por quien lo contesta.
     //
-    // Y si el instrumento no esta, se deja NULO en vez de fallar: lo que se perderia es una etiqueta de
-    // trazabilidad, y tumbar el envio de una encuesta ya contestada por eso seria mucho peor que no
-    // saber con que instrumento se recogio. El lector de la encuesta SI falla en voz alta, que es donde
-    // esa falta se nota antes de que nadie conteste nada.
-    const [instrumento] = await tx
-      .select({ id: surveyInstruments.id })
-      .from(surveyInstruments)
-      .where(eq(surveyInstruments.codigo, CODIGO_LINEA_BASE))
+    // NULO = linea base, que es lo que llevan todas las consultas anteriores a la 0243. Se deja nulo en
+    // vez de resolver "la linea base" por nombre: el nulo dice la verdad (no se eligio instrumento), y
+    // escribir un codigo afirmaria una eleccion que nadie hizo.
+    const [consulta] = await tx
+      .select({ instrumentoId: evaluations.surveyInstrumentId })
+      .from(evaluations)
+      .where(eq(evaluations.id, evaluationId))
       .limit(1);
+    const instrumento = consulta?.instrumentoId ? { id: consulta.instrumentoId } : null;
     [response] = await tx
       .insert(surveyResponses)
       .values({

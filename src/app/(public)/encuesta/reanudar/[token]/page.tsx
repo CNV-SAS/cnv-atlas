@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { SurveyPhaseForm } from "@/modules/evaluations/components/survey-phase-form";
+import { instrumentoPorTokenDeEncuesta } from "@/modules/evaluations/data/instrumento-de-la-consulta";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import {
   readResumeTokenStatus,
@@ -91,7 +92,7 @@ export default async function ReanudarEncuestaPage({
     );
   }
 
-  const survey = await getActiveSurvey();
+  const survey = await getActiveSurvey(await instrumentoPorTokenDeEncuesta(token));
   if (!survey) {
     return (
       <Shell>

@@ -11,7 +11,11 @@ import {
   S1_OPCIONES,
   tocaReconfirmacionAnual,
 } from "@/modules/followups/modulo-s";
-import { CNVS_ACTIVA, instrumentoParaLaConsulta } from "@/modules/evaluations/instrumento";
+import {
+  CNVS_ACTIVA,
+  CNVS_EN_PRUEBAS,
+  instrumentoParaLaConsulta,
+} from "@/modules/evaluations/instrumento";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
@@ -157,34 +161,53 @@ describe("la reconfirmacion anual, y el item 38 que vuelve con ella", () => {
   });
 });
 
-describe("y la CNV-S NO esta activa para ningun paciente", () => {
-  it("el interruptor esta apagado", () => {
-    expect(CNVS_ACTIVA, "la CNV-S se activo sin el smoke en navegador").toBe(false);
+describe("a quien se le aplica la CNV-S, y a quien NO puede aplicarse", () => {
+  it("UN PACIENTE REAL NO LA RECIBE mientras no este aprobada. Es LA propiedad de seguridad", () => {
+    // Si este caso se pone en rojo, alguien le esta aplicando a una persona real un cuestionario que
+    // Gildardo no ha aprobado, y lo primero que pierde son los cuatro items retirados: no se le
+    // preguntan y no hay linea base previa que conserve su valor.
+    expect(CNVS_ACTIVA, "la CNV-S se aprobo para pacientes reales sin decirlo aqui").toBe(false);
+    expect(
+      instrumentoParaLaConsulta("seguimiento", false),
+      "un paciente REAL recibiria la CNV-S sin aprobacion",
+    ).toBe("CNV v2.0");
   });
 
-  it("asi que un seguimiento sigue usando la encuesta completa", () => {
-    expect(instrumentoParaLaConsulta("inicial")).toBe("CNV v2.0");
-    expect(instrumentoParaLaConsulta("seguimiento")).toBe("CNV v2.0");
+  it("UNA INICIAL NUNCA es CNV-S, pase lo que pase con los interruptores", () => {
+    // Es su §2.1 y no admite excepcion: sin linea base no hay nada que confirmar ni contra que comparar.
+    // Y es la puerta que va PRIMERA, antes de mirar ninguna bandera.
+    expect(instrumentoParaLaConsulta("inicial", false)).toBe("CNV v2.0");
+    expect(instrumentoParaLaConsulta("inicial", true)).toBe("CNV v2.0");
   });
 
-  it("NO SE PUEDE ENCENDER sin cablear el envio, y eso lo decide este caso", () => {
-    // ═══ LA PIEZA TERMINADA A LA QUE LE FALTA EL ULTIMO CABLE ═══
-    //
-    // `submitSurveyAnswersAction` resuelve el instrumento con `getActiveSurvey()` sin codigo, o sea
-    // siempre la linea base. Con la CNV-S encendida eso descartaria las respuestas del Modulo S al leer
-    // el formulario, en silencio: el paciente las contesta y no se guardan.
-    //
-    // No se cableo hoy a proposito (esa accion es por donde pasa la encuesta de TODOS los pacientes, y
-    // no se toca para una funcion apagada), asi que lo que cierra el riesgo no es acordarse: es que
-    // encender el interruptor sin el cable ponga esto en rojo.
-    const ACCIONES = readFileSync("src/modules/evaluations/actions.ts", "utf8");
-    if (CNVS_ACTIVA) {
-      expect(
-        ACCIONES,
-        "la CNV-S se encendio y el envio sigue leyendo SIEMPRE la linea base: las respuestas del Módulo S se perderian",
-      ).toContain("instrumentoParaLaConsulta");
-    } else {
-      expect(ACCIONES).toContain("getActiveSurvey()");
+  it("y un SEGUIMIENTO DE UN PACIENTE DE PRUEBA si la recibe, que es el modo pruebas", () => {
+    // Santiago, 2026-11-08: *"En producción, la CNV-S se aplica SOLO a pacientes de prueba, no con un
+    // interruptor global."* La puerta es `cuenta_como_de_prueba`, que incluye la DERIVADA (todo paciente
+    // de un profesional marcado de prueba), no `is_test` a secas.
+    expect(CNVS_EN_PRUEBAS, "el modo pruebas se apago: el smoke en la nube deja de funcionar").toBe(true);
+    expect(instrumentoParaLaConsulta("seguimiento", true)).toBe("CNV-S 1.0");
+  });
+
+  it("EL ENVIO RESUELVE EL INSTRUMENTO, que era el cable que faltaba", () => {
+    // Sin esto, `getActiveSurvey()` sin codigo devolvia siempre la linea base y `readAnswersFromForm`
+    // descartaba las respuestas del Modulo S: el paciente las contesta y no se guardan, sin un error.
+    const ACCIONES = sinComentarios(readFileSync("src/modules/evaluations/actions.ts", "utf8"));
+    expect(ACCIONES, "el envio volvio a pedir siempre la linea base").not.toMatch(
+      /getActiveSurvey\(\)/,
+    );
+    expect(ACCIONES).toContain("getActiveSurvey(await instrumentoPorTokenDeEncuesta(resumeToken))");
+  });
+
+  it("y las TRES pantallas resuelven el mismo instrumento que el envio", () => {
+    // El defecto que esto vigila no es que una falle: es que la pantalla pinte un cuestionario y el
+    // envio guarde otro. Ninguna de las dos daria error.
+    for (const f of [
+      "src/app/(app)/ani-bis-e/[id]/responder-encuesta/page.tsx",
+      "src/app/(public)/encuesta/reanudar/[token]/page.tsx",
+      "src/app/(public)/encuesta/[token]/page.tsx",
+    ]) {
+      const s = sinComentarios(readFileSync(f, "utf8"));
+      expect(s, `${f} volvio a pedir la encuesta sin instrumento`).not.toMatch(/getActiveSurvey\(\)/);
     }
   });
 
@@ -194,5 +217,33 @@ describe("y la CNV-S NO esta activa para ningun paciente", () => {
     const FUENTE = sinComentarios(readFileSync("src/modules/evaluations/instrumento.ts", "utf8"));
     expect(FUENTE).toContain("export function instrumentoParaLaConsulta");
     expect(FUENTE).toContain("export const CNVS_ACTIVA = false;");
+  });
+
+  it("EL SELLO MANDA SOBRE LA DEDUCCION: los lectores leen la columna, no el tipo de consulta", () => {
+    // ═══ EL CASO DEL ENLACE GENERICO DEL CONSULTORIO ═══
+    //
+    // La encuesta publica se sirve en UNA carga. Con el enlace generico, la cedula se escribe DESPUES de
+    // pintar la pagina, asi que la consulta puede acabar siendo un seguimiento mientras el paciente vio
+    // la encuesta completa. Un lector que dedujera el instrumento del tipo de la consulta le pondria a
+    // esa respuesta la etiqueta de un instrumento que nunca se mostro: un dato FALSO, no uno que falta.
+    const LECTOR = sinComentarios(
+      readFileSync("src/modules/evaluations/data/instrumento-de-la-consulta.ts", "utf8"),
+    );
+    expect(LECTOR).toContain("evaluations.surveyInstrumentId");
+    // Y los dos lectores por consulta NO vuelven a mirar si el paciente es de prueba: eso se decidio al
+    // sellar. Mirarlo otra vez al leer significaria que marcar un paciente de prueba HOY cambiaria el
+    // instrumento de una encuesta que ya se contesto.
+    const porToken = LECTOR.slice(LECTOR.indexOf("export async function instrumentoPorTokenDeEncuesta"));
+    expect(porToken, "el lector volvio a deducir el instrumento").not.toContain("cuentaComoDePrueba");
+  });
+
+  it("y la respuesta hereda el instrumento DE LA CONSULTA, no uno resuelto al escribir", () => {
+    const WRITER = sinComentarios(
+      readFileSync("src/modules/evaluations/data/intake-writer.ts", "utf8"),
+    );
+    expect(WRITER).toContain("instrumentoId: evaluations.surveyInstrumentId");
+    expect(WRITER, "el writer volvio a resolver el instrumento por su cuenta").not.toContain(
+      "surveyInstruments.codigo",
+    );
   });
 });

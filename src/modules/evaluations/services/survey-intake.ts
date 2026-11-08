@@ -33,6 +33,7 @@ import {
   type ResumeTokenStatus,
   type SurveyProgressCharacterization,
 } from "../data/intake-writer";
+import { instrumentoDelEnlace } from "../data/instrumento-de-la-consulta";
 import { characterizationSchema, intakeAnswersSchema, intakeIdentitySchema } from "../validations";
 import type { IntakeIdentityInput } from "../validations";
 import type { SurveyIntakeResult, SurveyLinkView } from "../types";
@@ -279,6 +280,17 @@ export async function signSurveyIntake(
       }
     }
 
+    // ═══ EL INSTRUMENTO QUE LA PANTALLA YA PINTO (0243) ═══
+    //
+    // SE RESUELVE CON `link.type`, NO CON `mode`, y es toda la diferencia: `mode` puede ser "seguimiento"
+    // porque la cedula resolvio a un paciente que ya existe, pero eso se supo DESPUES de pintar la
+    // pagina, que trajo la encuesta completa. Sellar CNV-S ahi le pondria a la respuesta la etiqueta de
+    // un instrumento que nunca se mostro.
+    //
+    // La pagina publica resuelve lo mismo con los mismos dos datos (`link.type` y si el paciente del
+    // enlace cuenta como de prueba), asi que las dos llegan al mismo resultado por construccion.
+    const instrumentoId = await instrumentoDelEnlace(input.link);
+
     const signed = await signIntakeEvaluation({
       organizationId: input.link.organizationId,
       professionalId: input.link.professionalId,
@@ -291,6 +303,7 @@ export async function signSurveyIntake(
       signature,
       identityConflict: resolution.identityConflict,
       presencial: input.presencial,
+      surveyInstrumentId: instrumentoId,
     });
     // CONSUMO del codigo, ya con la firma PERSISTIDA. No puede ir dentro de la transaccion de BD porque el
     // codigo vive en otro almacen (Redis), asi que va inmediatamente despues de que la transaccion

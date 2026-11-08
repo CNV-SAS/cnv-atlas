@@ -192,6 +192,60 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     expect(base.length).toBeGreaterThan(50);
   });
 
+  it("EL SELLO: un seguimiento de un paciente DE PRUEBA recibe la CNV-S; uno REAL, no", async () => {
+    // ═══ LA PROPIEDAD DE SEGURIDAD DEL MODO PRUEBAS (2026-11-08) ═══
+    //
+    // Santiago quiere hacer el smoke EN PRODUCCION, asi que la CNV-S se aplica solo a pacientes de
+    // prueba. Lo que no puede pasar es que alcance a una persona real: perderia los cuatro items
+    // retirados (no se le preguntan y no hay linea base previa que conserve su valor) y recibiria un
+    // cuestionario que Gildardo no ha aprobado.
+    //
+    // SE MIDE CONTRA LA BASE y no sobre la funcion pura, porque lo que decide es una columna DERIVADA
+    // (`cuenta_como_de_prueba`, que incluye a todo paciente de un profesional marcado de prueba): la
+    // funcion sola no dice nada sobre si esa derivacion llega hasta aqui.
+    const { instrumentoDeUnSeguimiento } = await import(
+      "@/modules/evaluations/data/instrumento-de-la-consulta"
+    );
+    const [dePrueba] = (await db.execute(
+      sql`select id from patients where cuenta_como_de_prueba order by id limit 1`,
+    )) as unknown as { id: string }[];
+    const [real] = (await db.execute(
+      sql`select id from patients where not cuenta_como_de_prueba and deleted_at is null order by id limit 1`,
+    )) as unknown as { id: string }[];
+    expect(dePrueba, "la base no tiene ningun paciente de prueba: el caso no mide nada").toBeDefined();
+    expect(real, "la base no tiene ningun paciente real: el caso no mide nada").toBeDefined();
+
+    const [cnvs] = (await db.execute(
+      sql`select id from survey_instruments where codigo = 'CNV-S 1.0'`,
+    )) as unknown as { id: string }[];
+    expect(
+      await instrumentoDeUnSeguimiento(dePrueba.id),
+      "un paciente de prueba no recibe la CNV-S: el smoke en la nube no funcionaria",
+    ).toBe(cnvs.id);
+    expect(
+      await instrumentoDeUnSeguimiento(real.id),
+      "UN PACIENTE REAL RECIBIRIA LA CNV-S sin aprobacion de Gildardo",
+    ).toBeNull();
+  });
+
+  it("y el enlace GENERICO del consultorio nunca sella la CNV-S, aunque acabe en seguimiento", async () => {
+    // Con el enlace generico la cedula se escribe DESPUES de pintar la pagina, que trajo la encuesta
+    // completa. Si el sello mirara el tipo de la CONSULTA que sale, la respuesta quedaria etiquetada con
+    // un instrumento que nunca se mostro. Mira el tipo del ENLACE, que es lo que la pantalla sabia.
+    const { instrumentoDelEnlace } = await import(
+      "@/modules/evaluations/data/instrumento-de-la-consulta"
+    );
+    const [dePrueba] = (await db.execute(
+      sql`select id from patients where cuenta_como_de_prueba order by id limit 1`,
+    )) as unknown as { id: string }[];
+    expect(
+      await instrumentoDelEnlace({ type: "inicial", patientId: null }),
+      "el enlace generico sello un instrumento que la pagina no pinto",
+    ).toBeNull();
+    // Y el enlace de SEGUIMIENTO del mismo paciente si, porque ahi la pagina si lo sabia.
+    expect(await instrumentoDelEnlace({ type: "seguimiento", patientId: dePrueba.id })).not.toBeNull();
+  });
+
   it("y todo instrumento tiene items: uno vacio deja la encuesta del paciente en blanco", async () => {
     const vacios = (await db.execute(sql`
       select s.codigo

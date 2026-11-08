@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { SurveyIntakeForm } from "@/modules/evaluations/components/survey-intake-form";
+import { codigoDelInstrumentoDelEnlace } from "@/modules/evaluations/data/instrumento-de-la-consulta";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import {
   getFollowupIdentityPrefill,
@@ -100,7 +101,14 @@ export default async function EncuestaPage({
     signPrefill = prefill;
   }
 
-  const survey = await getActiveSurvey();
+  // ═══ EL INSTRUMENTO SE RESUELVE CON EL ENLACE, NO CON LA CONSULTA (0243) ═══
+  //
+  // Aqui la consulta todavia no existe: el paciente firma (o arranca su seguimiento) y la encuesta se
+  // pinta en ESTA misma carga, sin volver al servidor. Asi que lo que decide es lo que el enlace ya
+  // sabe: si es un enlace de seguimiento de un paciente concreto, y si ese paciente cuenta como de
+  // prueba. Con el enlace generico del consultorio la cedula se escribe despues, asi que aqui es
+  // siempre la encuesta completa, y el shell se sella igual (`instrumentoDelEnlace`, la misma funcion).
+  const survey = await getActiveSurvey(await codigoDelInstrumentoDelEnlace(link));
   if (!survey) {
     return (
       <Shell>
