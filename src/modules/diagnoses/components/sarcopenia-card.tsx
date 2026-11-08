@@ -60,15 +60,50 @@ const BANDA_SARCO: Record<number, string> = {
 export function SarcopeniaCard({
   asmi,
   af,
-  sexoM,
+  sexo,
   // Fuerza prensil (dinamometria). null = el profesional no la registro. Ver la nota de arriba.
   fuerzaPrensil = null,
 }: {
   asmi: number | null;
   af: number | null;
-  sexoM: boolean;
+  /**
+   * EL SEXO, Y NO UN BOOLEANO "esMasculino" (Santiago, 2026-11-08).
+   *
+   * ═══ POR QUE CAMBIO, Y ES EL DEFECTO QUE ENCONTRO EN LA PACIENTE DE VERIFICACION ═══
+   *
+   * La tarjeta recibia `sexoM: boolean`, y un booleano NO TIENE SITIO PARA "no se sabe": cualquier cosa
+   * que no sea femenino cae en masculino. Asi, la pagina de la evaluacion le pasaba `false` fijo en la
+   * rama CON diagnostico y una MUJER veia los cortes de hombre (fuerza <27 Kgf, ASMI <7,0) en lugar de
+   * los suyos (<16 y <5,5). Los cortes de la tarjeta siempre estuvieron bien: lo que mentia era la prop.
+   *
+   * Y el mismo booleano escondia el otro caso: un paciente SIN SEXO REGISTRADO (los hay) tambien veia
+   * los cortes de hombre, con su veredicto, sobre un dato que nadie sabe.
+   *
+   * `null` = no se sabe, y entonces NO SE CLASIFICA. Es la decision explicita de Gildardo para la
+   * capacitancia, y aqui vale igual: los cortes del EWGSOP2 son por sexo, asi que sin el no hay corte
+   * que aplicar y elegir uno se equivoca en la mitad de los casos.
+   */
+  sexo: "M" | "F" | null;
   fuerzaPrensil?: number | null;
 }) {
+  // SIN SEXO NO SE CLASIFICA: la tarjeta dice que falta y por donde se arregla, en vez de pintar los
+  // cortes de un sexo sobre alguien del que no se sabe.
+  if (sexo == null) {
+    return (
+      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
+        <h3 className="text-base font-semibold text-foreground">Diagnóstico de sarcopenia</h3>
+        <div className="flex items-start gap-2 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>
+            <span className="font-medium">Falta el sexo del paciente.</span> Los tres cortes del EWGSOP2
+            (fuerza prensil, ASMI y ángulo de fase) son distintos para hombres y mujeres, así que sin ese
+            dato no se puede clasificar. Regístralo en la ficha del paciente y vuelve a entrar.
+          </span>
+        </div>
+      </section>
+    );
+  }
+  const sexoM = sexo === "M";
   // EL VEREDICTO sale de SU clasificador, el mismo que alimenta el fenotipo del protocolo. Con la fuerza
   // sin registrar devuelve "Ingrese fuerza prensil", que ya lo dice el aviso de abajo, asi que ahi no se
   // pinta: seria decir dos veces lo mismo.

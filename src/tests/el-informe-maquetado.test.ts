@@ -535,14 +535,23 @@ describe("la fecha de la consulta no puede ser anterior a la medición", () => {
     // ES LA MISMA REGLA QUE YA RIGE EN LA BASE: `evaluaciones_vigentes` agrupa por
     // `coalesce(dia, created_at)`. Una consulta no podía contarse en octubre para la cohorte y en
     // noviembre para el paciente.
+    // ═══ RE-ANCLADO EL 2026-11-08: LA DEFINICIÓN SE MUDÓ, LA PROPIEDAD NO ═══
+    //
+    // La regla vivía aquí dentro y la HISTORIA CLÍNICA tenía la suya (`created_at` a secas), así que los
+    // dos documentos de la misma consulta salían con dos fechas. Ahora hay UNA definición compartida
+    // (`modules/reports/fecha-de-la-consulta`) y los dos lectores la usan. Lo que este caso vigila sigue
+    // siendo lo mismo: que el informe no vuelva a fechar la consulta el día que se abrió la ficha.
+    //
+    // El resto (que la HC la use, el respaldo, las varias tomas) vive en `una-sola-fecha-de-consulta`.
     const REPO = sinComentarios(
       readFileSync("src/modules/reports/data/reports-repository.ts", "utf8"),
     );
     expect(REPO, "la fecha de la consulta volvió a ser la de apertura de la ficha").toContain(
-      "return fechaDeMedicion(ev) ??",
+      "fechaDeLaConsulta(",
     );
     // Y EL RESPALDO SE QUEDA: una consulta sin toma todavía tiene que decir una fecha.
-    expect(REPO).toContain("created_at ?? null");
+    const DEF = sinComentarios(readFileSync("src/modules/reports/fecha-de-la-consulta.ts", "utf8"));
+    expect(DEF).toContain("if (fechas.length === 0) return createdAt;");
   });
 
   it("y las dos fechas siguen siendo DOS en el documento", () => {

@@ -4,7 +4,8 @@ import { Document, Page, View } from "@react-pdf/renderer";
 // sabe dibujar (ver `text-seguro`). Un candado lo exige en toda esta carpeta.
 import { Text } from "./text-seguro";
 
-import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
+import { dfiParaPaciente, ENGINE_VERSION, type EngineOutput } from "@/clinical-engine";
+import { sinEnvejecimientoDeOtraCiencia } from "../envejecimiento-sin-estimacion";
 import { EncabezadoEnCuadros } from "./encabezado-en-cuadros";
 import { COLOR_SEVERIDAD, RadarDelPaciente } from "./radar-del-paciente";
 
@@ -292,7 +293,23 @@ export function ReportDocument({
   // EL DFI EN SU LENGUAJE, no en el del modelo. Porte de su mapa (`dfiParaPaciente`): CRITICO pasa a
   // Prioritario, el dominio conductual con severidad alta se reemplaza por una frase que no menciona TCA,
   // y el veto se reformula como acompañamiento. Ver el porqué en `clinical-engine/dfi-paciente.ts`.
-  const dfiPac = dfiParaPaciente(snapshot);
+  // ═══ Y SIN VEREDICTO DE ENVEJECIMIENTO SI EL SELLO ES DE OTRA ERA (Santiago, 2026-11-08) ═══
+  //
+  // La CIFRA ya estaba suprimida (el cuadro de la edad solo sale con `ebBis.estado === "ok"`, que un
+  // sello 1.x no trae). Lo que quedaba vivo era el DOMINIO 3: su severidad sale del IAE de la v5, y de
+  // ahi salian su etiqueta, su color, su punta en la figura y su frase. El documento no decia la cifra
+  // retirada pero SI su veredicto. Ver `envejecimiento-sin-estimacion`.
+  const dfiPacCrudo = dfiParaPaciente(snapshot);
+  const dfiPac = dfiPacCrudo
+    ? {
+        ...dfiPacCrudo,
+        dominios: sinEnvejecimientoDeOtraCiencia(
+          dfiPacCrudo.dominios,
+          snapshot.versions?.engine,
+          ENGINE_VERSION,
+        ),
+      }
+    : null;
   const notes = (professionalNotes ?? "").trim();
   const showAtlas = mode === "atlas" || mode === "ambos";
   const showNotes = (mode === "notas" || mode === "ambos") && notes.length > 0;

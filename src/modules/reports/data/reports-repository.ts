@@ -3,6 +3,7 @@ import "server-only";
 import type { EngineOutput } from "@/clinical-engine";
 import { reportServerError } from "@/lib/observability/report-error";
 import { etiquetaDeProfesion } from "@/modules/auth/admin-validations";
+import { fechaDeLaConsulta } from "../fecha-de-la-consulta";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hayProtocoloSellado } from "@/modules/treatment/data/treatment-reader";
 import { BAND_TEXT, type EbBand } from "@/modules/followups/services/eb-trajectory";
@@ -440,24 +441,15 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
   };
 }
 
-// ═══ LA FECHA DE LA CONSULTA ES EL DIA DE LA ATENCION, NO EL DIA QUE SE ABRIO LA FICHA ═══
-//
-// EL DEFECTO (Santiago, 2026-11-03), en un informe real: *"Fecha de la medición 3/11/2026 · Fecha de la
-// consulta 30/10/2026"*. La consulta sale ANTERIOR a la medicion, que leido por el paciente es absurdo:
-// lo midieron en una consulta que, segun el papel, ya habia terminado cuatro dias antes.
-//
-// Y NO ES UN DATO MALO: es `evaluations.created_at`, el instante en que el profesional ABRIO la ficha.
-// Abrirla antes de la cita es normal (se prepara, se manda el enlace de la encuesta, el paciente la
-// responde en casa). Lo que no es cierto es llamar a eso "la fecha de la consulta".
-//
-// LA ATENCION OCURRIO EL DIA DE LA MEDICION, que es cuando el paciente estuvo delante del equipo. Asi que
-// manda esa, y `created_at` queda de respaldo para las consultas que todavia no tienen toma.
-//
-// Y ES LA MISMA REGLA QUE YA RIGE EN LA BASE: `evaluaciones_vigentes` agrupa por
-// `coalesce(dia, created_at)`, o sea la fecha de la medicion con el mismo respaldo. Una consulta no podia
-// contarse en octubre para la cohorte y en noviembre para el paciente.
+// LA FECHA DE LA CONSULTA vive en `modules/reports/fecha-de-la-consulta`, con su historia: la leian
+// el informe y la historia clinica con DOS definiciones distintas, y los dos documentos de la misma
+// consulta salian con dos fechas. Aqui solo se adapta la forma del embed.
 function fechaDeConsulta(ev: unknown): string | null {
-  return fechaDeMedicion(ev) ?? (Array.isArray(ev) ? ev[0] : (ev as { created_at?: string | null } | undefined))?.created_at ?? null;
+  const uno = (Array.isArray(ev) ? ev[0] : ev) as
+    | { created_at?: string | null; bis_measurements?: { measurement_date?: string | null }[] | null }
+    | undefined;
+  if (!uno?.created_at) return fechaDeMedicion(ev);
+  return fechaDeLaConsulta(uno.created_at, (uno.bis_measurements ?? []).map((m) => m.measurement_date));
 }
 
 // Fecha de MEDICION de la evaluacion del reporte; null si aun no se midio.

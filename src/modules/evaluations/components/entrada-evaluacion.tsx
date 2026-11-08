@@ -44,6 +44,7 @@ export function EntradaEvaluacion({
   bisCatalog,
   bisIntake,
   patientIsFemale,
+  sexoDelPaciente,
   bisReadonly,
   diagnosticoGenerado,
   importada = false,
@@ -141,6 +142,16 @@ export function EntradaEvaluacion({
   bisCatalog: BisConditionCatalog | null;
   bisIntake: BisIntakeRecord | null;
   patientIsFemale: boolean;
+  /**
+   * EL SEXO, para los cortes por sexo del EWGSOP2 (2026-11-08).  = no se sabe, y entonces la
+   * tarjeta de sarcopenia NO clasifica.
+   *
+   * ES UNA PROP APARTE DE  y no la sustituye, porque las dos preguntan cosas distintas:
+   * aquella decide si se pintan las condiciones de la toma que solo aplican a mujeres (y ahi "no se
+   * sabe" se comporta bien como "no las pintes"); esta decide un CORTE CLINICO, y ahi "no se sabe" no
+   * puede caer del lado de hombre.
+   */
+  sexoDelPaciente: "M" | "F" | null;
   // Captura sellada en SOLO LECTURA (tras el diagnostico, ya no editable). null si no hay o si la
   // captura editable aplica.
   bisReadonly: BisConditionsReadonlyData | null;
@@ -182,7 +193,7 @@ export function EntradaEvaluacion({
   // ASMI y AF para el diagnostico de sarcopenia (EWGSOP2): se leen de las filas de la composicion (ASMI =
   // MMEM/talla^2 computado; AF = columna del equipo). La fuerza prensil (dinamometria, criterio PRIMARIO) SI
   // se captura: es el campo `gripStrengthKg` de las condiciones de la toma BIS (editable o ya sellado). Se
-  // cablea a la card (Gildardo 2026-08-17 §6). sexoM = paciente no femenino.
+  // cablea a la card (Gildardo 2026-08-17 §6). El SEXO viaja aparte: ver .
   const compRows = composition ? allCompositionRows(composition) : [];
   const sarcopeniaAsmi = compRows.find((r) => r.key === "asmi")?.value ?? null;
   const sarcopeniaAf = compRows.find((r) => r.key === "AF")?.value ?? null;
@@ -461,7 +472,7 @@ export function EntradaEvaluacion({
         <SarcopeniaCard
           asmi={sarcopeniaAsmi}
           af={sarcopeniaAf}
-          sexoM={!patientIsFemale}
+          sexo={sexoDelPaciente}
           fuerzaPrensil={sarcopeniaFuerza}
         />
       ) : null}

@@ -1,5 +1,9 @@
 import "server-only";
 
+import {
+  loQueCambioAlReemitir,
+  type CambioAlReemitir,
+} from "@/clinical-engine/lo-que-cambio-al-reemitir";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -49,6 +53,14 @@ export type Reemision = {
   veces: number;
   /** Las cifras del documento anterior, o null si su snapshot no las trae. */
   anterior: CifrasAnteriores | null;
+  /**
+   * LO QUE CAMBIO ENTRE LOS DOS DOCUMENTOS (Santiago, 2026-11-08).
+   *
+   * Lista vacia = los dos dicen lo mismo, y eso tambien se dice: una reemision que no cambio nada es un
+   * hecho (cambio el motor, no la salida), no un panel en blanco. `null` = no se pudo comparar porque
+   * falta el snapshot anterior.
+   */
+  cambios: CambioAlReemitir[] | null;
 };
 
 /**
@@ -87,12 +99,33 @@ export async function leerReemision(evaluationId: string): Promise<Reemision | n
     .limit(1);
   if (rErr) throw new Error(`reemision-reader: reports: ${rErr.message}`);
 
+  // EL INFORME VIGENTE, para poder comparar. Se busca DESDE la fecha de la reemision hacia adelante y se
+  // toma el mas reciente: es el que lleva el snapshot del motor de hoy.
+  const { data: vigentes, error: vErr } = await supabase
+    .from("reports")
+    .select("snapshot, created_at")
+    .eq("evaluation_id", evaluationId)
+    .eq("type", "paciente")
+    .gte("created_at", vigente.created_at as string)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (vErr) throw new Error(`reemision-reader: reports vigente: ${vErr.message}`);
+
+  const snapshotAnterior = informes?.[0]?.snapshot ?? null;
+  const snapshotVigente = vigentes?.[0]?.snapshot ?? null;
+
   return {
     fecha: vigente.created_at as string,
     versionAnterior: (anterior.engine_version as string) ?? "(sin versión)",
     versionNueva: (vigente.engine_version as string) ?? "(sin versión)",
     veces: dxs.length - 1,
-    anterior: cifrasDelSnapshot(informes?.[0]?.snapshot),
+    anterior: cifrasDelSnapshot(snapshotAnterior),
+    // `null` SOLO cuando falta alguno de los dos snapshots: una lista vacia significa "no cambio nada",
+    // que es un resultado distinto de "no se pudo comparar" y la pantalla los dice distinto.
+    cambios:
+      snapshotAnterior && snapshotVigente
+        ? loQueCambioAlReemitir(snapshotAnterior, snapshotVigente)
+        : null,
   };
 }
 

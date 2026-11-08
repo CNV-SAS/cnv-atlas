@@ -274,7 +274,13 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
 
         {hc.plan ? (
           <Seccion titulo="Plan nutricional">
-            <Dato etiqueta="GEB" valor={noRegistrado(hc.plan.geb, " kcal")} />
+            {/* "GEB (Mifflin)" Y NO "GEB" (Santiago, 2026-11-08). La misma historia clinica trae DOS
+                cifras de metabolismo basal con nombres casi iguales y valores distintos: esta, que la
+                calcula la cadena calorica con Mifflin-St Jeor sobre el peso de la cadena, y la fila
+                "Metabolismo basal (GEB)" de la tabla de composicion, que es LA DEL EQUIPO. Sin decir cual
+                es cual, el profesional lee una contradiccion donde hay dos medidas. La pantalla ya lo
+                decia; el PDF no. */}
+            <Dato etiqueta="GEB (Mifflin)" valor={noRegistrado(hc.plan.geb, " kcal")} />
             <Dato etiqueta="GET" valor={noRegistrado(hc.plan.get, " kcal")} />
             <Dato etiqueta="Objetivo" valor={noRegistrado(hc.plan.kcalObjetivo, " kcal")} />
             <Dato etiqueta="Proteína" valor={noRegistrado(hc.plan.proteinaG, " g")} />

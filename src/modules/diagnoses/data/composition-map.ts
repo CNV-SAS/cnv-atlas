@@ -135,7 +135,11 @@ const EVAL_LEVELS: { title: string; rows: LevelRow[] }[] = [
       ["Estatura", "talla", null, "cm"],
       ["Cintura", "cintura", null, "cm"],
       ["Cadera", "cadera", null, "cm"],
-      ["Metabolismo basal (GEB)", "GEB", "GEB_ref", "kcal"],
+      // "del equipo" NO es un rotulo nuevo, es DECIR DE DONDE SALE la cifra (Santiago, 2026-11-08): esta
+      // columna la trae el Biody, y el plan nutricional de la misma historia clinica trae OTRO GEB, el
+      // que calcula la cadena calorica con Mifflin. Dos cifras de metabolismo basal con el mismo nombre
+      // en el mismo documento se leen como un error del sistema.
+      ["Metabolismo basal (GEB) · del equipo", "GEB", "GEB_ref", "kcal"],
       ["Gasto energético total (GET)", "GET", null, "kcal"],
     ],
   },

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { fechaDeLaConsulta } from "../fecha-de-la-consulta";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { edadEnFecha } from "@/lib/format/edad";
 
@@ -67,7 +68,7 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
       // El embed de `survey_responses` trae QUIEN la registro, con hint del FK (`captured_by`): la tabla
       // tiene mas de una relacion hacia profiles a traves de la evaluacion, y un embed sin hint revienta en
       // runtime, no en tsc.
-      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profession, profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name), survey_responses(registrada:profiles!captured_by(full_name))",
+      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profession, profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name), survey_responses(registrada:profiles!captured_by(full_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -81,7 +82,16 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
   const perfilProfesional = uno<ProfesionalEmbed>(data.professional_profiles as never);
   const profesional = uno(perfilProfesional?.profiles as never) as { full_name: string | null } | null;
 
-  const fechaConsulta = data.created_at as string;
+  // LA FECHA DE LA CONSULTA, DE LA DEFINICION COMPARTIDA (2026-11-08). Leia `created_at` a secas, que
+  // es cuando se ABRIO la ficha, asi que la historia clinica y el informe de la misma consulta salian
+  // con dos fechas distintas. Y arrastraba mas que una fecha: la edad que imprime la HC se calcula a
+  // ESTA fecha, asi que podia no ser la que el motor uso para diagnosticar.
+  const fechaConsulta = fechaDeLaConsulta(
+    data.created_at as string,
+    ((data.bis_measurements ?? []) as { measurement_date?: string | null }[]).map(
+      (m) => m.measurement_date,
+    ),
+  );
   // reason_for_visit se guarda como JSON de opciones elegidas (con "Otro: <texto>" ya resuelto en el
   // intake). Si por cualquier via llega texto plano, se muestra tal cual antes que perderlo.
   const raw = (data.reason_for_visit as string | null) ?? "";

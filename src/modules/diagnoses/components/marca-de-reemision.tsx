@@ -70,7 +70,44 @@ export function MarcaDeReemision({ reemision }: { reemision: Reemision | null })
         </span>
       </p>
 
-      {reemision.anterior ? (
+      {/* ═══ LO QUE CAMBIÓ, NO "LO QUE DECÍA" (Santiago, 2026-11-08) ═══
+
+          El panel se titulaba "Lo que decía el documento anterior" y ponía siempre la EB-BIS y el IAE.
+          En la paciente de verificación esas dos cifras NO habían cambiado (ya eran v7 desde el 29 de
+          octubre): quien lo abría buscando qué cambió encontraba dos cifras idénticas a las de arriba,
+          cerraba el desplegable, y se perdía que su paciente pasó de cero rutas a tres.
+
+          Ahora la lista sale de COMPARAR los dos snapshots sellados, y cada fila repite lo que cada
+          documento dice de sí mismo: las etiquetas de antes salen del snapshot de antes. Ninguna cifra
+          se reclasifica con la ciencia de hoy, que es la lección que ya costó una ronda. */}
+      {reemision.cambios && reemision.cambios.length > 0 ? (
+        <DetailsSection title={`Lo que cambió (${reemision.cambios.length})`}>
+          <dl className="flex flex-col gap-2 text-sm">
+            {reemision.cambios.map((c) => (
+              <div key={c.que} className="flex flex-col">
+                <dt className="font-medium text-foreground">{c.que}</dt>
+                <dd className="text-muted-foreground">
+                  Antes: {c.antes} · <span className="text-foreground">Ahora: {c.ahora}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Lo de la izquierda es lo que decía el documento emitido con el motor{" "}
+            {reemision.versionAnterior}, con sus propias palabras. Las dos versiones quedan en la
+            historia, y la vigente es la de arriba.
+          </p>
+        </DetailsSection>
+      ) : reemision.cambios ? (
+        // LISTA VACÍA NO ES LO MISMO QUE NO PODER COMPARAR, y por eso son dos ramas: que el motor
+        // cambiara y la salida no es un HECHO que el profesional necesita (explica por qué su documento
+        // dice lo mismo tras una recalibración), no un panel en blanco.
+        <p className="text-xs text-muted-foreground">
+          Ninguna salida del diagnóstico cambió: las rutas, el riesgo, los cinco dominios y la edad
+          biológica dicen lo mismo que antes. Lo que cambió fue el motor que las calcula.
+        </p>
+      ) : reemision.anterior ? (
+        // Y SI NO SE PUDO COMPARAR (falta alguno de los dos snapshots), se cae a lo que sí se sabe.
         <DetailsSection title="Lo que decía el documento anterior">
           <dl className="flex flex-col gap-1 text-sm">
             <div className="flex flex-wrap gap-x-2">

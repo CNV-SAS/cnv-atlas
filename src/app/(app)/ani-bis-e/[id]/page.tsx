@@ -403,6 +403,7 @@ export default async function ResultadosEvaluacionPage({
       bisCatalog: entryCatalog,
       bisIntake: entryIntake,
       patientIsFemale: entrySex === "F",
+      sexoDelPaciente: entrySex,
       bisReadonly: null,
       identityConfirmationSlot: identityNode,
       medicionRepetida: medicionRepetidaSinDx,
@@ -526,6 +527,9 @@ export default async function ResultadosEvaluacionPage({
   };
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
+  // EL SEXO SELLADO EN EL DIAGNOSTICO, para las tarjetas que clasifican por sexo. Es el que el motor uso
+  // (la v7 lo EXIGE: sin sexo no hay diagnostico), asi que en esta rama nunca es desconocido.
+  const sexoDelPacienteSellado: "M" | "F" = sexoM ? "M" : "F";
 
   // Antecedentes de la HC: se resuelven sobre las respuestas YA leidas (entrySurvey), sin consulta nueva.
   // La marca de "solo registro" sale del field_key de cada pregunta, no de una lista escrita a mano.
@@ -1032,7 +1036,14 @@ export default async function ResultadosEvaluacionPage({
     bisImportEval: null,
     bisCatalog: null,
     bisIntake: null,
-    patientIsFemale: false,
+    // ═══ ESTABA EN  FIJO, Y ERA EL DEFECTO DE LA PACIENTE DE VERIFICACION (2026-11-08) ═══
+    //
+    // Con el diagnostico ya generado, esta rama le pasaba a la pestaña "paciente no femenino" SIEMPRE,
+    // asi que la tarjeta de sarcopenia de una MUJER mostraba los cortes de hombre (<27 Kgf, ASMI <7,0).
+    // Era inocuo para lo unico que se miraba al escribirlo (las condiciones de la toma, que en esta rama
+    // ni se pintan) y mentia en dos tarjetas clinicas.
+    patientIsFemale: !sexoM,
+    sexoDelPaciente: sexoDelPacienteSellado,
     bisReadonly: entryReadonly,
     diagnosticoGenerado: Boolean(results),
     // UN SOLO BLOQUE, ARRIBA DE Antrop. & BIS (Santiago, 2026-10-28). El aviso y su salida iban en dos
