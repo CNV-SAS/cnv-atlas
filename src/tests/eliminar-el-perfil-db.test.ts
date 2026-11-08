@@ -248,3 +248,153 @@ describe.skipIf(!HAS_DB)("eliminar el perfil de un paciente (BD real)", () => {
     expect(p.retirado).toBeNull();
   }, 30_000);
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y QUE PASA CON LO QUE YA ESTABA DENTRO: INVESTIGACION, /obbia Y LA BODEGA  ·  Santiago, 2026-11-08
+//
+// ═══ LAS TRES PREGUNTAS, SUYAS Y TEXTUALES ═══
+//
+// *"¿un paciente eliminado logicamente sale de evaluaciones_para_investigacion, /obbia y la bodega? ¿Y al
+// restituirlo, vuelve?"*
+//
+// ═══ POR QUE NO SE PUEDE CONTESTAR LEYENDO EL CODIGO ═══
+//
+// Porque el filtro NO esta en la vista que se nombra. `evaluaciones_para_investigacion` no menciona
+// `deleted_at` en ninguna linea: lo hereda de `evaluaciones_vigentes`, de la que selecciona. O sea que
+// quien busque la garantia en la vista de investigacion no la encuentra, y quien la mida la ve. El dia
+// que alguien reescriba la vista de arriba leyendo de `evaluations` en vez de la de abajo, la garantia se
+// cae sin que ningun test de codigo lo note.
+//
+// Y /obbia NO ES OTRA PREGUNTA: la pantalla, su filtro y su CSV leen esa misma vista (`cohorte-reader`,
+// `exportar-la-cohorte`). Por eso el candado mide la vista, que es donde esta el hecho, y no tres
+// pantallas.
+//
+// ═══ LA BODEGA ES EL CASO CONTRARIO, Y TAMBIEN SE AMARRA ═══
+//
+// Las ventas NO salen, y es deliberado: son documentos fiscales con su propia retencion, y la 0233 lo
+// dejo escrito (*"NO toca las ventas ni las facturas"*). Se afirma aqui para que nadie lo "arregle"
+// pensando que es un olvido: un paciente eliminado que desaparece de la contabilidad es un problema peor
+// que el que se creia resolver.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe.skipIf(!HAS_DB)("un paciente eliminado y lo que ya estaba dentro (BD real)", () => {
+  let pacienteEnLaCohorte = "";
+  let consultasEnLaCohorte = 0;
+  let adminDeLaCohorte = "";
+
+  beforeAll(async () => {
+    const { db } = await import("@/db");
+    // UN PACIENTE QUE DE VERDAD ESTA EN LA COHORTE. Tomar "el primero de patients" dejaria el caso verde
+    // sin haber medido nada: si no estaba dentro, no puede salir.
+    const [uno] = await db.execute<{ patient_id: string; n: number }>(dsql`
+      select v.patient_id, count(*)::int as n
+        from public.evaluaciones_para_investigacion v
+        join patients p on p.id = v.patient_id
+       where p.deleted_at is null
+       group by v.patient_id
+       order by count(*) desc
+       limit 1`);
+    pacienteEnLaCohorte = uno?.patient_id ?? "";
+    consultasEnLaCohorte = uno?.n ?? 0;
+    const [adm] = await db.execute<{ id: string }>(dsql`
+      select p.id from profiles p
+        join user_roles ur on ur.user_id = p.id
+        join roles r on r.id = ur.role_id
+       where r.name = 'admin' limit 1`);
+    adminDeLaCohorte = adm.id;
+  }, 30_000);
+
+  afterAll(async () => {
+    if (!HAS_DB || pacienteEnLaCohorte === "") return;
+    const { db } = await import("@/db");
+    // SE DEJA COMO ESTABA: es un paciente REAL de la base local.
+    await db.execute(dsql`
+      update patients set deleted_at = null, eliminado_por = null, eliminacion_pedida_at = null,
+                          eliminacion_pedida_por = null, eliminacion_motivo = null
+       where id = ${pacienteEnLaCohorte}::uuid`);
+  }, 30_000);
+
+  it("el fixture encontro un paciente con consultas DENTRO de la cohorte", () => {
+    expect(pacienteEnLaCohorte).not.toBe("");
+    expect(consultasEnLaCohorte).toBeGreaterThan(0);
+  });
+
+  it("al eliminarlo, sus consultas SALEN de evaluaciones_para_investigacion (y de /obbia, que la lee)", async () => {
+    const { db } = await import("@/db");
+    const { pedirLaEliminacionDelPaciente, resolverLaEliminacion } = await import(
+      "@/modules/patients/data/eliminacion-del-paciente-writer"
+    );
+    await pedirLaEliminacionDelPaciente({
+      patientId: pacienteEnLaCohorte,
+      motivo: "candado: medir la salida de la cohorte",
+      actorId: adminDeLaCohorte,
+      actorEmail: "admin@cnv",
+      ip: null,
+    });
+    await resolverLaEliminacion({
+      patientId: pacienteEnLaCohorte,
+      confirmar: true,
+      actorId: adminDeLaCohorte,
+      actorEmail: "admin@cnv",
+      ip: null,
+    });
+    const [dentro] = await db.execute<{ n: number }>(dsql`
+      select count(*)::int as n from public.evaluaciones_para_investigacion
+       where patient_id = ${pacienteEnLaCohorte}::uuid`);
+    expect(dentro.n, "un paciente eliminado sigue entrando a investigacion").toBe(0);
+  }, 60_000);
+
+  it("y NINGUNA consulta de NINGUN paciente eliminado esta dentro", async () => {
+    const { db } = await import("@/db");
+    // La pregunta en grande, no solo sobre el paciente del fixture: es la que importa si algun dia la
+    // vista de arriba deja de leer la de abajo.
+    const [fuera] = await db.execute<{ n: number }>(dsql`
+      select count(*)::int as n
+        from public.evaluaciones_para_investigacion v
+        join patients p on p.id = v.patient_id
+       where p.deleted_at is not null`);
+    expect(fuera.n).toBe(0);
+  }, 30_000);
+
+  it("al restituirlo, vuelven las MISMAS consultas que tenia", async () => {
+    const { db } = await import("@/db");
+    const { restituirAlPaciente } = await import(
+      "@/modules/patients/data/eliminacion-del-paciente-writer"
+    );
+    await restituirAlPaciente({
+      patientId: pacienteEnLaCohorte,
+      actorId: adminDeLaCohorte,
+      actorEmail: "admin@cnv",
+      ip: null,
+    });
+    const [dentro] = await db.execute<{ n: number }>(dsql`
+      select count(*)::int as n from public.evaluaciones_para_investigacion
+       where patient_id = ${pacienteEnLaCohorte}::uuid`);
+    // NO "mas de cero": las MISMAS. Eliminar y restituir no puede cambiar el tamaño de la cohorte, porque
+    // entonces el "n" de un articulo dependeria de un acto administrativo.
+    expect(dentro.n).toBe(consultasEnLaCohorte);
+  }, 60_000);
+
+  it("la garantia la hereda de `evaluaciones_vigentes`, y eso se dice en voz alta", async () => {
+    const { db } = await import("@/db");
+    const [inv] = await db.execute<{ def: string }>(dsql`
+      select pg_get_viewdef('public.evaluaciones_para_investigacion'::regclass, true) as def`);
+    const [vig] = await db.execute<{ def: string }>(dsql`
+      select pg_get_viewdef('public.evaluaciones_vigentes'::regclass, true) as def`);
+    // Si alguien reescribe la de investigacion leyendo de `evaluations`, este caso cae y dice por que.
+    expect(inv.def, "la vista de investigacion dejo de leer evaluaciones_vigentes").toMatch(
+      /evaluaciones_vigentes/,
+    );
+    expect(vig.def, "evaluaciones_vigentes dejo de filtrar deleted_at").toMatch(/deleted_at/);
+  }, 30_000);
+
+  it("pero las VENTAS no salen, y es deliberado (documento fiscal con su propia retencion)", async () => {
+    const { db } = await import("@/db");
+    const [ventas] = await db.execute<{ def: string }>(dsql`
+      select pg_get_viewdef('public.ventas_reales'::regclass, true) as def`);
+    expect(
+      /deleted_at/.test(ventas.def),
+      "alguien puso deleted_at en ventas_reales: eliminar un perfil no puede borrar la contabilidad",
+    ).toBe(false);
+  }, 30_000);
+});
