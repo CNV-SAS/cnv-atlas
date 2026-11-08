@@ -70,7 +70,7 @@ física**: resolver una resuelve a las dos.
 
 | grupo | consultas | ¿entre pacientes distintos? | nota |
 |---|---|---|---|
-| 3 | `99f4be45` | sí | su gemela es de un paciente de prueba: se resuelve retirando esa |
+| 3 | `99f4be45` | sí | **ya resuelto**: su gemela es de una cuenta de prueba, que no cuenta (ver abajo) |
 | 4 | `f99bc9f3` · `d8a9076a` | no | mismo paciente, inicial y seguimiento |
 | 5 | `4118e694` · `36aba016` | **sí** | dos pacientes distintos |
 | 6 | `d6892f88` · `7f31029c` | no | mismo paciente, inicial y seguimiento |
@@ -81,6 +81,12 @@ física**: resolver una resuelve a las dos.
 | 12 | `8ddc1244` · `baf15441` | **sí** | dos documentos distintos, nombre parecido |
 | 13 | `e3599e84` · `0c6f8ad4` | **sí** | dos pacientes distintos |
 | 14 | **`2be9aa69`** · **`b4a9ea2a`** | no | **las dos pasan a acelerado con el motor de hoy** |
+
+**Vueltas a medir contra la nube el 2026-11-07 por la tarde: quedan 20 en 10 grupos, no 21 en 11.** El
+grupo 3 se cerró **solo**, y la razón vale la pena: el lector de huellas repetidas excluye a los pacientes
+de prueba, así que en cuanto su gemela quedó marcada como de prueba, `99f4be45` dejó de tener con quién
+repetirse. Las otras diez siguen abiertas. Preguntarle a la vista antes de mandar trabajo es lo que evita
+que alguien vaya a corregir algo que ya no existe.
 
 **Las dos del grupo 14 son las primeras que hay que mirar.** Son las que cambian lo que se le dice al
 paciente: con el motor de hoy su IAE entra en banda acelerada, así que el documento que tiene en la mano
