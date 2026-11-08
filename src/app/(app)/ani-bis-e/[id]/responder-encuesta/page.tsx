@@ -8,7 +8,9 @@ import { requireUser } from "@/modules/auth/session";
 import { getEvaluationHeaderForSession } from "@/modules/diagnoses/data/results-reader";
 import { SurveyPhaseForm } from "@/modules/evaluations/components/survey-phase-form";
 import { getResumeTokenDeMiEvaluacion } from "@/modules/evaluations/data/evaluations-repository";
+import { insumosDeLaCnvs } from "@/modules/evaluations/data/insumos-de-la-cnvs";
 import { instrumentoPorTokenDeEncuesta } from "@/modules/evaluations/data/instrumento-de-la-consulta";
+import { CODIGO_SEGUIMIENTO } from "@/modules/evaluations/instrumento";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import { canRegistrarEncuestaDelPaciente } from "@/modules/evaluations/policies/can-manage-evaluations";
 import { readSurveyProgress } from "@/modules/evaluations/services/survey-intake";
@@ -88,6 +90,13 @@ export default async function ResponderEncuestaPage({ params }: { params: Promis
   ]);
   if (!progress || !survey) notFound();
 
+  // LOS INSUMOS DE LA CNV-S: la precarga del bloque de confirmacion y la lista del S1. Solo se leen
+  // cuando el instrumento los pide; con la linea base no hay nada que confirmar y la consulta sobraria.
+  const cnvs =
+    survey.instrumento.codigo === CODIGO_SEGUIMIENTO
+      ? await insumosDeLaCnvs({ patientId: progress.patientId, excluyendo: progress.evaluationId })
+      : undefined;
+
   const prefill: Record<string, string> = {};
   for (const a of progress.answers) prefill[a.questionId] = a.answerValue;
 
@@ -126,6 +135,7 @@ export default async function ResponderEncuestaPage({ params }: { params: Promis
           initialStep={initialStep}
           characterizationPrefill={progress.characterization}
           ethnicityAuthorized={progress.ethnicityAuthorized}
+          cnvs={cnvs}
           modo="profesional"
         />
       </Panel>

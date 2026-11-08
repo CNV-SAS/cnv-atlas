@@ -1,11 +1,10 @@
 import "server-only";
 
-import { and, desc, eq, isNull, ne } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
   diagnoses,
-  evaluations,
   nutraceuticals,
   treatmentNutraceuticals,
   treatments,
@@ -54,37 +53,22 @@ export type NutraceuticoIndicado = {
 };
 
 /**
- * Los nutraceuticos indicados en la consulta VIGENTE anterior a `evaluationId`, del mismo paciente.
+ * Los nutraceuticos indicados EN esa consulta. Lista vacia = no se le indico ninguno (el caso normal).
  *
- * Lista vacia = no se le indico ninguno (el caso normal) o no hay consulta anterior.
+ * ═══ ES EL PRIMITIVO, Y NO RESUELVE "LA ANTERIOR" ═══
+ *
+ * Nacio llamandose `nutraceuticosDeLaAnterior` y buscando el mismo la consulta previa del paciente. Al
+ * conectarlo (2026-11-08) resulto que quien lo llama YA tiene esa consulta resuelta, porque necesita de
+ * ella tambien las respuestas de la encuesta: dos resoluciones de "la anterior" es como se consigue que
+ * la precarga del bloque de confirmacion y la lista del S1 acaben hablando de consultas distintas.
+ *
+ * Asi que quien resuelve cual es la anterior es `insumos-de-la-cnvs`, en un sitio, y esto responde por
+ * la consulta que le den.
  */
-export async function nutraceuticosDeLaAnterior(
+export async function nutraceuticosIndicadosEn(
   evaluationId: string,
 ): Promise<NutraceuticoIndicado[]> {
-  const [actual] = await db
-    .select({ patientId: evaluations.patientId, createdAt: evaluations.createdAt })
-    .from(evaluations)
-    .where(eq(evaluations.id, evaluationId))
-    .limit(1);
-  if (!actual) return [];
-
-  // LA ANTERIOR SE BUSCA POR `created_at` DE LA EVALUACION y no por la fecha de la medicion: la medicion
-  // puede faltar (una consulta en curso) y entonces no habria con que ordenar. Lo que se quiere es la
-  // consulta previa del paciente, que es un hecho de la agenda.
-  const [anterior] = await db
-    .select({ id: evaluations.id })
-    .from(evaluations)
-    .where(
-      and(
-        eq(evaluations.patientId, actual.patientId),
-        ne(evaluations.id, evaluationId),
-        isNull(evaluations.supersededAt),
-        isNull(evaluations.retiradaAt),
-      ),
-    )
-    .orderBy(desc(evaluations.createdAt), desc(evaluations.id))
-    .limit(1);
-  if (!anterior) return [];
+  const anterior = { id: evaluationId };
 
   // EL TRATAMIENTO VIGENTE de esa consulta: el ultimo, que es la regla de la casa para todo lo que
   // cuelga de un diagnostico. Un tratamiento anterior es historia sellada, no la indicacion que rige.

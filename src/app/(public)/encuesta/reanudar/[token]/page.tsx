@@ -1,7 +1,9 @@
 import Image from "next/image";
 
 import { SurveyPhaseForm } from "@/modules/evaluations/components/survey-phase-form";
+import { insumosDeLaCnvs } from "@/modules/evaluations/data/insumos-de-la-cnvs";
 import { instrumentoPorTokenDeEncuesta } from "@/modules/evaluations/data/instrumento-de-la-consulta";
+import { CODIGO_SEGUIMIENTO } from "@/modules/evaluations/instrumento";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import {
   readResumeTokenStatus,
@@ -129,6 +131,13 @@ export default async function ReanudarEncuestaPage({
     if (sectionHasAnswer[i]) initialStep = i;
   }
 
+  // LOS INSUMOS DE LA CNV-S: la precarga del bloque de confirmacion y la lista del S1. Solo se leen
+  // cuando el instrumento los pide.
+  const cnvs =
+    survey.instrumento.codigo === CODIGO_SEGUIMIENTO
+      ? await insumosDeLaCnvs({ patientId: progress.patientId, excluyendo: progress.evaluationId })
+      : undefined;
+
   return (
     <Shell>
       <div className="flex flex-col gap-1">
@@ -147,6 +156,7 @@ export default async function ReanudarEncuestaPage({
         initialStep={initialStep}
         characterizationPrefill={progress.characterization}
         ethnicityAuthorized={progress.ethnicityAuthorized}
+        cnvs={cnvs}
       />
     </Shell>
   );

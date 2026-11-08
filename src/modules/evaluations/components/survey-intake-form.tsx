@@ -21,6 +21,8 @@ export type SurveyIntakeFormProps = {
   isFollowup: boolean;
   prefill: SignIdentityPrefill | null;
   questions: SurveyItemView[];
+  /** Los insumos de la CNV-S (precarga de confirmacion y lista del S1). Ausente = linea base. */
+  cnvs?: { anteriores: Record<string, string | null>; productos: { id: string; nombre: string; dosis: string | null }[] };
   consentText: string;
   professional: { fullName: string; profession: string; license: string | null };
   // Seguimiento: "nosign" = camino sin firma (normal); "sign" = requiere firma (bump sustantivo). Inicial: ignora.
@@ -35,6 +37,7 @@ export function SurveyIntakeForm({
   isFollowup,
   prefill,
   questions,
+  cnvs,
   consentText,
   professional,
   followupMode = "sign",
@@ -85,6 +88,7 @@ export function SurveyIntakeForm({
         resumeToken={resumeToken}
         isFollowup={isFollowup}
         questions={questions}
+        cnvs={cnvs}
         ethnicityAuthorized={ethnicityAuthorized}
       />
     );

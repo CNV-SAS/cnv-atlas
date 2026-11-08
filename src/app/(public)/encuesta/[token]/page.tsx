@@ -1,7 +1,9 @@
 import Image from "next/image";
 
 import { SurveyIntakeForm } from "@/modules/evaluations/components/survey-intake-form";
+import { insumosDeLaCnvs } from "@/modules/evaluations/data/insumos-de-la-cnvs";
 import { codigoDelInstrumentoDelEnlace } from "@/modules/evaluations/data/instrumento-de-la-consulta";
+import { CODIGO_SEGUIMIENTO } from "@/modules/evaluations/instrumento";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import {
   getFollowupIdentityPrefill,
@@ -124,6 +126,14 @@ export default async function EncuestaPage({
     );
   }
 
+  // LOS INSUMOS DE LA CNV-S SALEN DEL PACIENTE DEL ENLACE, no de la consulta: aqui la consulta TODAVIA
+  // NO EXISTE (el paciente firma o arranca su seguimiento y la encuesta se pinta en esta misma carga).
+  // Por eso `excluyendo` va nulo: no hay ninguna consulta de hoy que excluir.
+  const cnvs =
+    survey.instrumento.codigo === CODIGO_SEGUIMIENTO && link.patientId
+      ? await insumosDeLaCnvs({ patientId: link.patientId, excluyendo: null })
+      : undefined;
+
   return (
     <Shell>
       <div className="flex flex-col gap-1">
@@ -144,6 +154,7 @@ export default async function EncuestaPage({
         professional={professional}
         followupMode={followupMode}
         substantiveBump={substantiveBump}
+        cnvs={cnvs}
       />
     </Shell>
   );

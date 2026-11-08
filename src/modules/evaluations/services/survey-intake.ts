@@ -438,6 +438,7 @@ export async function readSurveyProgress(
   resumeToken: string,
 ): Promise<{
   evaluationId: string;
+  patientId: string;
   mode: "inicial" | "seguimiento";
   answers: SurveyAnswer[];
   characterization: SurveyProgressCharacterization;

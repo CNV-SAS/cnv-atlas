@@ -959,6 +959,8 @@ export type SurveyProgressCharacterization = {
 
 export async function getSurveyProgress(resumeToken: string): Promise<{
   evaluationId: string;
+  /** El paciente de la consulta. Lo necesita la CNV-S para leer los insumos de la ANTERIOR. */
+  patientId: string;
   mode: EvaluationType;
   answers: SurveyAnswer[];
   characterization: SurveyProgressCharacterization;
@@ -1010,13 +1012,14 @@ export async function getSurveyProgress(resumeToken: string): Promise<{
     .where(eq(surveyResponses.evaluationId, ev.id))
     .limit(1);
   if (!response)
-    return { evaluationId: ev.id, mode: ev.mode, answers: [], characterization, ethnicityAuthorized };
+    return { evaluationId: ev.id, patientId: ev.patientId, mode: ev.mode, answers: [], characterization, ethnicityAuthorized };
   const rows = await db
     .select({ questionId: surveyAnswers.questionId, answerValue: surveyAnswers.answerValue })
     .from(surveyAnswers)
     .where(eq(surveyAnswers.responseId, response.id));
   return {
     evaluationId: ev.id,
+    patientId: ev.patientId,
     mode: ev.mode,
     answers: rows.map((r) => ({ questionId: r.questionId, answerValue: r.answerValue ?? "" })),
     characterization,

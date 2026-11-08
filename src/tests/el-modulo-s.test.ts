@@ -211,6 +211,39 @@ describe("a quien se le aplica la CNV-S, y a quien NO puede aplicarse", () => {
     }
   });
 
+  it("y las tres pantallas pasan los INSUMOS de la CNV-S, no solo sus preguntas", () => {
+    // ═══ EL MISMO DEFECTO, UN NIVEL MAS ABAJO ═══
+    //
+    // El formulario pinta el bloque de confirmacion, el S1 por producto y el filtro digestivo SOLO si
+    // recibe `cnvs`. Sin ese prop no falla: cae al widget normal, asi que los ocho items a confirmar
+    // saldrian en blanco (sin "la vez pasada respondiste"), el S1 no pintaria ningun producto y el salto
+    // digestivo no se aplicaria nunca. Una CNV-S que se ve como la encuesta completa.
+    for (const f of [
+      "src/app/(app)/ani-bis-e/[id]/responder-encuesta/page.tsx",
+      "src/app/(public)/encuesta/reanudar/[token]/page.tsx",
+      "src/app/(public)/encuesta/[token]/page.tsx",
+    ]) {
+      const s = sinComentarios(readFileSync(f, "utf8"));
+      expect(s, `${f} no lee los insumos de la CNV-S`).toContain("insumosDeLaCnvs(");
+      expect(s, `${f} no se los pasa al formulario`).toContain("cnvs={cnvs}");
+    }
+  });
+
+  it("y los insumos se leen SOLO con el instrumento de seguimiento", () => {
+    // Con la linea base no hay nada que confirmar: la consulta de la anterior seria trabajo tirado en
+    // cada carga de la encuesta de cada paciente.
+    for (const f of [
+      "src/app/(app)/ani-bis-e/[id]/responder-encuesta/page.tsx",
+      "src/app/(public)/encuesta/reanudar/[token]/page.tsx",
+      "src/app/(public)/encuesta/[token]/page.tsx",
+    ]) {
+      const s = sinComentarios(readFileSync(f, "utf8"));
+      expect(s, `${f} lee los insumos sin mirar el instrumento`).toContain(
+        "survey.instrumento.codigo === CODIGO_SEGUIMIENTO",
+      );
+    }
+  });
+
   it("y el instrumento lo decide UNA sola funcion, no cada pantalla", () => {
     // Si cada pantalla resolviera su instrumento, el dia que la regla cambie habria que encontrarlas
     // todas, y la que se quede atras aplicaria OTRO cuestionario sin que nada fallara.
