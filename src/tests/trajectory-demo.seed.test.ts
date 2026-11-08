@@ -1,6 +1,8 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
+import { sql as dsqlVersion } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-professional";
@@ -87,7 +89,7 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     proId = pro.proId;
     actorId = pro.actorId;
     await reassignDemoEvaluations(db, schema, [EMP_E1, EMP_E2, MEJ_E1, MEJ_E2, SHT_E1, SHT_E2], proId);
-    svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.publishedAt)).limit(1))[0].id;
+    svId = ((await db.execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[]) as unknown as { id: string }[])[0].id;
   });
 
   async function ensurePatient(patientId: string, apellido: string) {

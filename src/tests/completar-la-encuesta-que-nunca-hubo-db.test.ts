@@ -1,3 +1,4 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
 import { sql as dsql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -101,7 +102,7 @@ describe.skipIf(!HAS_DB)("completar la encuesta de una consulta que entro sin ni
     profileId = prof.profile_id;
     organizationId = prof.organization_id;
     const [v] = await db.execute(
-      dsql`select id from survey_versions order by published_at desc limit 1`,
+      dsql.raw(`select ${SQL_VERSION_VIGENTE} as id`),
     );
     surveyVersionId = v.id;
     preguntas = await db.execute(

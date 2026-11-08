@@ -1,3 +1,4 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
 import { readFileSync } from "node:fs";
 
 import { sql as dsql } from "drizzle-orm";
@@ -66,7 +67,7 @@ describe.skipIf(!HAS_DB)("la encuesta que registra el profesional (BD real)", ()
     profileId = prof.profile_id;
     organizationId = prof.organization_id;
     const [v] = await db.execute<{ id: string }>(
-      dsql`select id from survey_versions order by published_at desc limit 1`,
+      dsql.raw(`select ${SQL_VERSION_VIGENTE} as id`),
     );
     surveyVersionId = v.id;
     preguntas = await db.execute<{ id: string; field_key: string | null }>(

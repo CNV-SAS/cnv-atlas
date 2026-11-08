@@ -1,3 +1,4 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
 import { sql as dsql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -197,7 +198,7 @@ describe.skipIf(!HAS_DB)("retirar una consulta (BD real)", () => {
   it("retirar NO borra la encuesta ni el consentimiento", async () => {
     const id = await crearEvaluacion();
     // Una respuesta de encuesta colgada de la evaluacion, que es lo que no puede desaparecer.
-    const [v] = await db.execute(dsql`select id from survey_versions order by published_at desc limit 1`);
+    const [v] = await db.execute(dsql.raw(`select ${SQL_VERSION_VIGENTE} as id`));
     const [sr] = await db.execute(dsql`
       insert into survey_responses (evaluation_id, survey_version_id)
       values (${id}, ${v.id}) returning id`);

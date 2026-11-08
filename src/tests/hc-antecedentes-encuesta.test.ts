@@ -1,6 +1,8 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
+import { sql as dsqlVersion } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { HC_ANTECEDENTES } from "@/modules/reports/data/hc-antecedentes-map";
 
@@ -28,10 +30,7 @@ describe.skipIf(!RUN)("el mapa de antecedentes resuelve contra la encuesta vigen
     const schema: any = await import("@/db/schema");
     const db: any = (await import("@/db")).db;
     const [sv] = await db
-      .select({ id: schema.surveyVersions.id })
-      .from(schema.surveyVersions)
-      .orderBy(desc(schema.surveyVersions.publishedAt))
-      .limit(1);
+      .execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[];
     preguntas = await db
       .select({ fieldKey: schema.surveyQuestions.fieldKey, questionText: schema.surveyQuestions.questionText })
       .from(schema.surveyQuestions)

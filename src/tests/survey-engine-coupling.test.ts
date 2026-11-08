@@ -1,6 +1,8 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
+import { sql as dsqlVersion } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 import { runEngine } from "@/clinical-engine";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
@@ -174,10 +176,7 @@ describe.skipIf(!HAS_DB)("acoplamiento con el seed (BD real)", () => {
     const { db } = await import("@/db");
     const schema = await import("@/db/schema");
     const [ver] = await db
-      .select({ id: schema.surveyVersions.id })
-      .from(schema.surveyVersions)
-      .orderBy(desc(schema.surveyVersions.publishedAt))
-      .limit(1);
+      .execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[];
     const qs = await db
       .select({
         id: schema.surveyQuestions.id,

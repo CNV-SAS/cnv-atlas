@@ -1,3 +1,4 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
 import { sql as dsql } from "drizzle-orm";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
@@ -89,7 +90,7 @@ describe.skipIf(!HAS_DB)("importar y deshacer un lote (BD real)", () => {
              join profiles p on p.id = pp.profile_id limit 1`,
     );
     const [version] = await db.execute<{ id: string }>(
-      dsql`select id from survey_versions order by published_at desc limit 1`,
+      dsql.raw(`select ${SQL_VERSION_VIGENTE} as id`),
     );
     const [versionCondiciones] = await db.execute<{ id: string }>(
       dsql`select id from bis_condition_versions order by published_at desc limit 1`,
@@ -246,7 +247,7 @@ describe.skipIf(!HAS_DB)("la importada, con la encuesta completa, pide las condi
              join profiles p on p.id = pp.profile_id limit 1`,
     );
     const [version] = await db.execute<{ id: string }>(
-      dsql`select id from survey_versions order by published_at desc limit 1`,
+      dsql.raw(`select ${SQL_VERSION_VIGENTE} as id`),
     );
     const [versionCondiciones] = await db.execute<{ id: string }>(
       dsql`select id from bis_condition_versions order by published_at desc limit 1`,
@@ -372,7 +373,7 @@ describe.skipIf(!HAS_DB)("teclear la cintura y la cadera de una importada (BD re
              join profiles p on p.id = pp.profile_id limit 1`,
     );
     const [version] = await db.execute<{ id: string }>(
-      dsql`select id from survey_versions order by published_at desc limit 1`,
+      dsql.raw(`select ${SQL_VERSION_VIGENTE} as id`),
     );
     const [versionCondiciones] = await db.execute<{ id: string }>(
       dsql`select id from bis_condition_versions order by published_at desc limit 1`,

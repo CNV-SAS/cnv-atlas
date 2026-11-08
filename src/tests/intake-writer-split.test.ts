@@ -1,6 +1,8 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
+import { sql as dsqlVersion } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
 // Reorganizacion del intake, checkpoint 1: el writer se partio en FIRMAR (crea el shell 'awaiting_survey'
 // SIN survey_responses, con resume_token) y ESCRIBIR RESPUESTAS (crea survey_responses + answers, pasa a
@@ -64,10 +66,7 @@ describe.skipIf(!HAS_DB)("intake-writer split (BD real)", () => {
     proId = (await db.select({ id: schema.professionalProfiles.id }).from(schema.professionalProfiles).limit(1))[0].id;
     svId = (
       await db
-        .select({ id: schema.surveyVersions.id })
-        .from(schema.surveyVersions)
-        .orderBy(desc(schema.surveyVersions.publishedAt))
-        .limit(1)
+        .execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[]
     )[0].id;
   });
 

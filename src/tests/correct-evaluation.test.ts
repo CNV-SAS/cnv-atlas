@@ -1,3 +1,5 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
+import { sql as dsqlVersion } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -172,7 +174,7 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
         .limit(1)
     )[0].profileId;
     svId = (
-      await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.publishedAt)).limit(1)
+      (await db.execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[]) as unknown as { id: string }[]
     )[0].id;
     // Pregunta sin field_key DE LA VERSION ACTIVA (svId): con mas de una version publicada (v2+v3), un
     // limit(1) sin filtrar por version podia agarrar una pregunta de OTRA version y romper la validacion
@@ -512,23 +514,58 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
   });
 
   it("gate: version de encuesta distinta a la vigente se rechaza con mensaje claro", async () => {
+    // ═══ RE-ANCLADO EL 2026-11-07, Y LA RAZON ES UN CAMBIO DE DEFINICION, NO UN AJUSTE ═══
+    //
+    // Antes, este caso publicaba una `survey_version` MAS NUEVA y daba por hecho que `getActiveSurvey`
+    // se movia a ella. Desde la 0240 la encuesta vigente **no es "la version mas reciente"**: es la que
+    // aplica el INSTRUMENTO de linea base. Publicar una version suelta ya no cambia nada, que es
+    // exactamente lo que se queria arreglar (el Modulo S vive en su propia version y no puede
+    // convertirse en la encuesta del paciente por ser la ultima publicada).
+    //
+    // ASI QUE EL CASO AHORA PONE LA EVALUACION EN LA VERSION ANTIGUA, que es el hecho que el gate
+    // describe: *"esta evaluación se hizo con una versión anterior del cuestionario"*. Se comprueba la
+    // misma propiedad, por el lado que de verdad ocurre en produccion.
     const oldId = await makeEvaluationWithDiagnosis("SURVEYVER");
-    // Publicar una version de encuesta MAS NUEVA para el mismo template: getActiveSurvey pasa a ella,
-    // la evaluacion queda en la anterior -> el gate debe rechazar.
     const templateId = (await db.select({ templateId: schema.surveyVersions.templateId }).from(schema.surveyVersions).where(eq(schema.surveyVersions.id, svId)).limit(1))[0].templateId;
     const maxNum = (await db.select({ n: schema.surveyVersions.versionNumber }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.versionNumber)).limit(1))[0].n;
-    const newSv = (
+    const otraSv = (
       await db
         .insert(schema.surveyVersions)
-        .values({ templateId, versionNumber: maxNum + 1, publishedAt: new Date(Date.now() + 1000) })
+        .values({ templateId, versionNumber: maxNum + 1 })
         .returning({ id: schema.surveyVersions.id })
     )[0].id;
-    createdSurveyVersions.push(newSv);
+    createdSurveyVersions.push(otraSv);
+    // LA OTRA VERSION LLEVA UNA PREGUNTA CON `field_key`, y no esta vacia a proposito: el gate de la
+    // version va DESPUES del que exige que la evaluacion declare field_key. Con una version pelada
+    // saltaria el primero ("La evaluación no tiene una encuesta valida") y este caso pasaria verde
+    // midiendo otra cosa.
+    await db.insert(schema.surveyQuestions).values({
+      surveyVersionId: otraSv,
+      questionText: "Pregunta de la version anterior",
+      questionType: "opcion",
+      fieldKey: "d8_61",
+      section: "Contexto social",
+      orderIndex: 1,
+      dataClass: "clinical",
+      usedInDiagnosis: true,
+    });
+    // La respuesta de ESTA evaluacion pasa a colgar de la otra version: el instrumento vigente sigue
+    // aplicando la del seed, asi que las dos ya no coinciden.
+    await db
+      .update(schema.surveyResponses)
+      .set({ surveyVersionId: otraSv })
+      .where(eq(schema.surveyResponses.evaluationId, oldId));
+
     const res = await correctEvaluation(baseInput(oldId), actor());
     expect(res.ok).toBe(false);
-    expect(res.error.message).toContain("versión anterior del cuestionario");
-    // limpiar la version extra ya (para no afectar otros tests del archivo que leen getActiveSurvey)
-    await db.delete(schema.surveyVersions).where(eq(schema.surveyVersions.id, newSv));
+    if (!res.ok) expect(res.error.message).toContain("versión anterior del cuestionario");
+
+    // Se devuelve a su version y se limpia la extra, para no afectar a los demas casos del archivo.
+    await db
+      .update(schema.surveyResponses)
+      .set({ surveyVersionId: svId })
+      .where(eq(schema.surveyResponses.evaluationId, oldId));
+    await db.delete(schema.surveyVersions).where(eq(schema.surveyVersions.id, otraSv));
     createdSurveyVersions.pop();
   });
 

@@ -1,6 +1,8 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
+import { sql as dsqlVersion } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { characterizationSchema } from "@/modules/evaluations/validations";
 
@@ -114,7 +116,7 @@ describe.skipIf(!HAS_DB)("caracterizacion: persistencia (BD real)", () => {
     completeSurvey = writer.completeSurvey;
     orgId = (await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1))[0].id;
     proId = (await db.select({ id: schema.professionalProfiles.id }).from(schema.professionalProfiles).limit(1))[0].id;
-    svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.publishedAt)).limit(1))[0].id;
+    svId = ((await db.execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[]) as unknown as { id: string }[])[0].id;
   });
 
   afterAll(async () => {

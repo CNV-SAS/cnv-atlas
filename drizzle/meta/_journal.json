@@ -1695,6 +1695,13 @@
       "when": 1793800375491,
       "tag": "0241_el_modulo_s",
       "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1793800376491,
+      "tag": "0242_rls_del_instrumento",
+      "breakpoints": true
     }
   ]
 }

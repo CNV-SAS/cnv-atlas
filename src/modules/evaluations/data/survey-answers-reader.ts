@@ -2,6 +2,8 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { versionVigenteDeLaEncuesta } from "./version-vigente-de-la-encuesta";
+
 // Lectura de las respuestas de la encuesta de una evaluacion para la vista del profesional
 // (pestana Evaluacion, solo lectura). Devuelve TODAS las preguntas del instrumento (las ~62,
 // no solo las de field_key que alimentan el motor), con su respuesta, agrupadas por dominio
@@ -168,14 +170,12 @@ export async function getSurveyFormForEvaluation(evaluationId: string): Promise<
   if (rErr) throw new Error(`survey-answers-reader: survey_responses: ${rErr.message}`);
   if (resp) return leerInstrumento(supabase, resp.survey_version_id, resp.id);
 
-  const { data: version, error: vErr } = await supabase
-    .from("survey_versions")
-    .select("id")
-    .order("published_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (vErr) throw new Error(`survey-answers-reader: survey_versions: ${vErr.message}`);
+  // LA VERSION VIGENTE SALE DEL INSTRUMENTO, no de "la mas reciente publicada" (2026-11-07). Aquella
+  // consulta no filtraba por plantilla, asi que devolvia la fila mas nueva de la TABLA: con el Modulo S
+  // en su propia version, esta pantalla habria mostrado siete preguntas de adherencia en vez de la
+  // encuesta. La definicion vive en un solo sitio, con su historia.
+  const version = await versionVigenteDeLaEncuesta();
   if (!version) return [];
 
-  return leerInstrumento(supabase, version.id, null);
+  return leerInstrumento(supabase, version, null);
 }

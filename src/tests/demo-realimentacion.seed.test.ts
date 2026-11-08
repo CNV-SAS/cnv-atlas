@@ -1,6 +1,8 @@
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
+import { sql as dsqlVersion } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-demo-realimentacion-f10.json";
@@ -82,10 +84,7 @@ describe.skipIf(!RUN)("seed demo de los avisos del plan (via pipeline real)", ()
     actorId = pro.actorId;
     svId = (
       await db
-        .select({ id: schema.surveyVersions.id })
-        .from(schema.surveyVersions)
-        .orderBy(desc(schema.surveyVersions.publishedAt))
-        .limit(1)
+        .execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[]
     )[0].id;
   });
 

@@ -1,4 +1,6 @@
-import { and, desc, eq } from "drizzle-orm";
+import { SQL_VERSION_VIGENTE } from "@/modules/evaluations/version-vigente-sql";
+import { sql as dsqlVersion } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 
 import { FREQ_OPC, FREQ_SUP } from "@/clinical-engine/frozen/engine.patron.js";
@@ -46,10 +48,7 @@ describe.skipIf(!HAS_DB)("candado patron (B): la semilla == frozen char-by-char 
     const { db } = await import("@/db");
     const schema = await import("@/db/schema");
     const [ver] = await db
-      .select({ id: schema.surveyVersions.id })
-      .from(schema.surveyVersions)
-      .orderBy(desc(schema.surveyVersions.publishedAt))
-      .limit(1);
+      .execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[];
 
     for (const key of GROUP_KEYS) {
       const [q] = await db
@@ -71,10 +70,7 @@ describe.skipIf(!HAS_DB)("candado patron (B): la semilla == frozen char-by-char 
     const { db } = await import("@/db");
     const schema = await import("@/db/schema");
     const [ver] = await db
-      .select({ id: schema.surveyVersions.id })
-      .from(schema.surveyVersions)
-      .orderBy(desc(schema.surveyVersions.publishedAt))
-      .limit(1);
+      .execute(dsqlVersion.raw(`select ${SQL_VERSION_VIGENTE} as id`)) as unknown as { id: string }[];
 
     for (const sup of FREQ_SUP) {
       const [q] = await db

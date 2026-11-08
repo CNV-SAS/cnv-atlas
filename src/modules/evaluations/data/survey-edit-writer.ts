@@ -1,6 +1,6 @@
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -9,9 +9,9 @@ import {
   professionalProfiles,
   surveyAnswers,
   surveyResponses,
-  surveyVersions,
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
+import { SQL_VERSION_VIGENTE } from "./version-vigente-de-la-encuesta";
 
 // Edicion de la encuesta del paciente por el PROFESIONAL, ANTES del diagnostico (a). El paciente pudo
 // dejarla incompleta; el profesional la revisa y la completa en consulta. Pre-diagnostico NO hay
@@ -97,12 +97,16 @@ export async function saveSurveyEdit(input: {
     // lo que permite distinguir en la base lo que trajo el archivo de lo que se completo a mano.
     let responseId = existente?.id ?? null;
     if (!responseId) {
-      const [version] = await tx
-        .select({ id: surveyVersions.id })
-        .from(surveyVersions)
-        .orderBy(desc(surveyVersions.publishedAt))
-        .limit(1);
-      if (!version) return { ok: false, reason: "not_editable" };
+      // LA VERSION VIGENTE SALE DEL INSTRUMENTO, no de "la mas reciente publicada" (2026-11-07). La
+      // consulta anterior no filtraba por plantilla: con el Modulo S en su propia version, esta
+      // respuesta se habria sellado contra un cuestionario de siete preguntas, y el gate del
+      // diagnostico habria medido la completitud contra el. La definicion vive en
+      // `version-vigente-de-la-encuesta`, con su historia; aqui se usa su SQL porque esto va dentro de
+      // la transaccion y no por el cliente de Supabase.
+      const [version] = (await tx.execute(
+        sql.raw(`select ${SQL_VERSION_VIGENTE} as id`),
+      )) as unknown as { id: string | null }[];
+      if (!version?.id) return { ok: false, reason: "not_editable" };
       const [creada] = await tx
         .insert(surveyResponses)
         .values({
