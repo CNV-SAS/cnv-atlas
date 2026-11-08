@@ -192,6 +192,40 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     expect(base.length).toBeGreaterThan(50);
   });
 
+
+  it("LAS RESPUESTAS DEL MODULO S SE VEN: sus preguntas NO son de la version sellada", async () => {
+    // ══════════════════════════════════════════════════════════════════════════════════════════════
+    // EL ULTIMO CABLE DE LA CNV-S, Y EL DEFECTO QUE ESTE CASO MIDE  ·  2026-11-08
+    //
+    // La respuesta sella la version del CUESTIONARIO (el caso de arriba), y la vista del profesional
+    // pedia las preguntas DE ESA VERSION. Las del Modulo S viven en OTRA version, asi que las siete
+    // respuestas quedaban guardadas y **invisibles**: el paciente las contesta, la base las tiene, y la
+    // pestaña Evaluacion no mostraba ni la adherencia ni los eventos del S4. En el smoke se habria leido
+    // como "el Modulo S no se guardo", que es falso y manda a buscar el defecto donde no esta.
+    //
+    // Este caso mide el HECHO que lo causa: las dos versiones son distintas, y por eso la vista tiene
+    // que ensamblarse por el INSTRUMENTO y no por la version. Si algun dia el Modulo S pasara a la
+    // version del cuestionario, este caso cae y hay que revisar si ese otro camino sigue haciendo falta.
+    // ══════════════════════════════════════════════════════════════════════════════════════════════
+    const { db } = await import("@/db");
+    const { getActiveSurvey } = await import("@/modules/evaluations/data/survey-reader");
+    const cnvs = await getActiveSurvey("CNV-S 1.0");
+    const propias = (cnvs?.questions ?? []).filter((q) => q.section === "Módulo S");
+    expect(propias.length, "el Modulo S se quedo sin preguntas").toBeGreaterThan(0);
+
+    const versiones = new Set<string>();
+    for (const q of propias) {
+      const [fila] = (await db.execute(sql`
+        select survey_version_id as v from survey_questions where id = ${q.id}::uuid`)) as unknown as { v: string }[];
+      versiones.add(fila.v);
+    }
+    expect(versiones.size, "las preguntas del Modulo S se repartieron en varias versiones").toBe(1);
+    expect(
+      [...versiones][0],
+      "el Modulo S paso a la version del cuestionario: revisar si el ensamblado por instrumento sigue haciendo falta",
+    ).not.toBe(cnvs?.surveyVersionId);
+  });
+
   it("EL SELLO: un seguimiento de un paciente DE PRUEBA recibe la CNV-S; uno REAL, no", async () => {
     // ═══ LA PROPIEDAD DE SEGURIDAD DEL MODO PRUEBAS (2026-11-08) ═══
     //

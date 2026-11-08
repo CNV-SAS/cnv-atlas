@@ -2,6 +2,9 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { CODIGO_LINEA_BASE } from "../instrumento";
+import { instrumentoDeLaConsulta } from "./instrumento-de-la-consulta";
+import { getActiveSurvey } from "./survey-reader";
 import { versionVigenteDeLaEncuesta } from "./version-vigente-de-la-encuesta";
 
 // Lectura de las respuestas de la encuesta de una evaluacion para la vista del profesional
@@ -119,6 +122,66 @@ async function leerInstrumento(
   return groupSurveyAnswers(questions, answersRes.data ?? [], optionsRes.data ?? []);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y CUANDO LA CONSULTA APLICO UN INSTRUMENTO (LA CNV-S), SE ENSAMBLA POR EL INSTRUMENTO  ·  2026-11-08
+//
+// ═══ EL DEFECTO QUE CIERRA, Y ES EL ULTIMO CABLE DE LA CNV-S ═══
+//
+// La respuesta de una consulta sella la version del CUESTIONARIO, nunca la del Modulo S (ver la nota de
+// `survey-reader`: con la del Modulo S, el diagnostico creeria que la encuesta tiene siete campos). Esa
+// decision es correcta y tiene un efecto que nadie habia mirado: esta lectura pedia las preguntas DE ESA
+// VERSION, asi que las siete respuestas del Modulo S quedaban **guardadas y invisibles**. La profesional
+// habria abierto la pestana Evaluacion de un seguimiento CNV-S y no habria visto ni la adherencia, ni los
+// eventos del S4, ni los sintomas digestivos: el paciente los contesta, la base los tiene, y ninguna
+// pantalla los muestra. Es el mismo genero de defecto que ya cost tres veces aqui (una pieza escrita y no
+// renderizada), y habria aparecido en el primer smoke como "el Modulo S no se guardo", que es falso.
+//
+// ═══ SE ARMA CON EL MISMO LECTOR QUE LA ENCUESTA DEL PACIENTE ═══
+//
+// `getActiveSurvey(codigo)` es el que pinto el formulario: mismos items, mismo orden, mismas secciones.
+// Armar la lista aqui por segunda vez es como la vista del profesional acaba numerando distinto que la
+// del paciente, y entonces "pregunta 38" deja de ser la misma pregunta en las dos pantallas.
+//
+// `used_in_diagnosis` es lo unico que se pide aparte: no viaja en el item del instrumento (y no debe,
+// porque es un atributo de la PREGUNTA), y la vista lo usa para marcar las que alimentan el motor.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+async function leerPorInstrumento(
+  supabase: Cliente,
+  codigo: string,
+  responseId: string,
+): Promise<SurveyDomain[]> {
+  const survey = await getActiveSurvey(codigo);
+  if (!survey) return [];
+  const ids = survey.questions.map((q) => q.id);
+  const [answersRes, flagsRes] = await Promise.all([
+    supabase.from("survey_answers").select("question_id, answer_value").eq("response_id", responseId),
+    supabase.from("survey_questions").select("id, used_in_diagnosis").in("id", ids),
+  ]);
+  if (answersRes.error) {
+    throw new Error(`survey-answers-reader: survey_answers: ${answersRes.error.message}`);
+  }
+  if (flagsRes.error) {
+    throw new Error(`survey-answers-reader: used_in_diagnosis: ${flagsRes.error.message}`);
+  }
+  const usadas = new Map((flagsRes.data ?? []).map((f) => [f.id, f.used_in_diagnosis]));
+  const questions: QuestionRow[] = survey.questions.map((q, i) => ({
+    id: q.id,
+    question_text: q.text,
+    hint: q.hint,
+    question_type: q.type,
+    field_key: q.fieldKey,
+    used_in_diagnosis: usadas.get(q.id) ?? false,
+    section: q.section,
+    // EL ORDEN ES EL DEL INSTRUMENTO, no el de la pregunta: es justo lo que un instrumento cambia (el
+    // Modulo S va DELANTE de la encuesta), y por eso se reusa la posicion en la lista ya ordenada.
+    order_index: i,
+  }));
+  const opciones = survey.questions.flatMap((q) =>
+    q.options.map((o, i) => ({ question_id: q.id, option_text: o.text, order_index: i })),
+  );
+  return groupSurveyAnswers(questions, answersRes.data ?? [], opciones);
+}
+
 export async function getSurveyAnswersForEvaluation(
   evaluationId: string,
 ): Promise<SurveyDomain[] | null> {
@@ -133,6 +196,13 @@ export async function getSurveyAnswersForEvaluation(
     .maybeSingle();
   if (rErr) throw new Error(`survey-answers-reader: survey_responses: ${rErr.message}`);
   if (!resp) return null; // aun sin encuesta para esta evaluacion
+
+  // LA LINEA BASE SIGUE POR SU CAMINO DE SIEMPRE, y no es timidez: su instrumento lleva TODAS las
+  // preguntas de la version como `repetir`, asi que los dos caminos dan lo mismo (lo comprueba
+  // `el-instrumento-no-cambia-la-linea-base-db`), y las 500 consultas que ya existen no tienen por que
+  // cambiar de ruta para nada. Solo un instrumento DISTINTO del de siempre necesita el otro ensamblado.
+  const codigo = await instrumentoDeLaConsulta(evaluationId);
+  if (codigo !== CODIGO_LINEA_BASE) return leerPorInstrumento(supabase, codigo, resp.id);
 
   return leerInstrumento(supabase, resp.survey_version_id, resp.id);
 }

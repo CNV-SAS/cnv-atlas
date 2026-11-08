@@ -198,6 +198,40 @@ describe("a quien se le aplica la CNV-S, y a quien NO puede aplicarse", () => {
     expect(ACCIONES).toContain("getActiveSurvey(await instrumentoPorTokenDeEncuesta(resumeToken))");
   });
 
+  it("Y LA VISTA DEL PROFESIONAL SE ENSAMBLA POR EL INSTRUMENTO, o el Modulo S queda invisible", () => {
+    // ═══ EL DEFECTO, QUE NO ES UNA SUPOSICION ═══
+    //
+    // La respuesta sella la version del CUESTIONARIO (nunca la del Modulo S: con esa, el diagnostico
+    // creeria que la encuesta tiene siete campos). Y esta lectura pedia las preguntas DE ESA VERSION,
+    // asi que las siete respuestas del Modulo S quedaban GUARDADAS Y SIN PANTALLA: adherencia, eventos
+    // del S4 y sintomas digestivos contestados por el paciente y ausentes de la pestaña Evaluacion, de
+    // la historia clinica, del SOAP y del CSV, que leen todos de aqui.
+    //
+    // Y SE ARMA CON `getActiveSurvey`, el MISMO lector que pinto el formulario del paciente: armar la
+    // lista por segunda vez es como la vista del profesional acaba numerando distinto, y entonces
+    // "pregunta 38" deja de ser la misma pregunta en las dos pantallas.
+    const LECTOR = sinComentarios(
+      readFileSync("src/modules/evaluations/data/survey-answers-reader.ts", "utf8"),
+    );
+    expect(LECTOR, "la vista volvio a leer solo la version sellada").toContain(
+      "instrumentoDeLaConsulta(evaluationId)",
+    );
+    expect(LECTOR).toContain("codigo !== CODIGO_LINEA_BASE");
+    expect(LECTOR, "la vista arma el instrumento por su cuenta en vez de reusar el lector").toContain(
+      "getActiveSurvey(codigo)",
+    );
+    // Y LA NUMERACION SIGUE SALIENDO DE LA MISMA FUNCION PURA que la linea base.
+    expect(LECTOR).toContain("groupSurveyAnswers(questions,");
+  });
+
+  it("y la pantalla de la encuesta DICE con que instrumento se recogio", () => {
+    // Sin esto, la trazabilidad del instrumento existe solo en una columna: nadie puede comprobar en
+    // pantalla si a esa consulta se le aplico la CNV-S o la encuesta completa.
+    const PAGINA = readFileSync("src/app/(app)/ani-bis-e/[id]/encuesta/page.tsx", "utf8");
+    expect(PAGINA).toContain("instrumentoDeLaConsulta(id)");
+    expect(PAGINA).toContain("Instrumento: ${instrumento}");
+  });
+
   it("y las TRES pantallas resuelven el mismo instrumento que el envio", () => {
     // El defecto que esto vigila no es que una falle: es que la pantalla pinte un cuestionario y el
     // envio guarde otro. Ninguna de las dos daria error.

@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/format/date";
 import { alertasDisponibles, encDesdeRespuestas } from "@/clinical-engine/alertas-disponibles";
 import { AlertasClinicas } from "@/modules/diagnoses/components/alertas-clinicas";
 import { SurveyReadonly } from "@/modules/evaluations/components/survey-readonly";
+import { instrumentoDeLaConsulta } from "@/modules/evaluations/data/instrumento-de-la-consulta";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 
@@ -35,11 +36,14 @@ export default async function EncuestaEvaluacionPage({
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 
-  const [header, domains, results, correctionAvailability] = await Promise.all([
+  const [header, domains, results, correctionAvailability, instrumento] = await Promise.all([
     getEvaluationHeaderForSession(id),
     getSurveyAnswersForEvaluation(id),
     getEvaluationResults(id),
     getCorrectionAvailability(id),
+    // BAJO QUE INSTRUMENTO SE RECOGIO ESTA ENCUESTA (0243). Se LEE el sello, no se deduce del tipo de la
+    // consulta: deducirlo podria decir "CNV-S" sobre una respuesta recogida con la encuesta completa.
+    instrumentoDeLaConsulta(id),
   ]);
   if (!header) notFound();
 
@@ -75,7 +79,7 @@ export default async function EncuestaEvaluacionPage({
       <TituloPantalla
         volver={<VolverA padre={`/ani-bis-e/${id}`} />}
         titulo="Encuesta del paciente"
-        descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
+        descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)} · Instrumento: ${instrumento}`}
       />
       <Panel>
         {esperandoLaEncuesta ? (
