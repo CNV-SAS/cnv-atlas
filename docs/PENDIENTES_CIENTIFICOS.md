@@ -1,6 +1,6 @@
 # Lo que queda abierto con usted, Gildardo
 
-**Connected Nutrition Ventures · Atlas · 7 de noviembre de 2026**
+**Connected Nutrition Ventures · Atlas · 8 de noviembre de 2026**
 **De:** Santiago (equipo técnico de Atlas) · **Para:** Gildardo de Jesús Uribe Gil
 
 > **Este documento no identifica a ningún paciente.** Donde hace falta señalar un caso va el id de
@@ -31,9 +31,16 @@ absorbe en otra lo dice. Así, si usted responde *"la 15"* dos semanas después,
 > no aplican en Atlas, 6 son decisiones nuestras que le declaramos aquí, **7 esperan una respuesta suya**
 > y 1 faltaba y se hizo ese mismo día. El detalle está en `BARRIDO_FINAL_V10_A_V16_2026-11-07.md`.
 >
-> **Y la Encuesta CNV-S ya está construida.** Las diez piezas de su v15 §2 están hechas y **no activadas**:
-> ningún paciente la ve todavía. Lo que falta para encenderla es el smoke en navegador y lo que usted
-> diga en la última sección de este documento, *"Lo que salió al construir la encuesta de seguimiento"*.
+> **Y la Encuesta CNV-S ya está construida.** Las diez piezas de su v15 §2 están hechas. Desde el 8 de
+> noviembre está **encendida solo para pacientes de prueba**: un paciente real que entre a un seguimiento
+> hoy sigue viendo la CNV v2.0 completa, y lo seguirá viendo hasta que usted apruebe la CNV-S. Lo que falta
+> para encenderla de verdad es lo que usted diga en la última sección de este documento, *"Lo que salió al
+> construir la encuesta de seguimiento"*.
+>
+> Un detalle de construcción que conviene que sepa, porque protege sus datos: **cada consulta guarda qué
+> instrumento se le mostró** (CNV v2.0 o CNV-S 1.0), sellado en el momento de abrirla. No se deduce
+> después. Así, el día que la CNV-S se encienda para todos, ninguna respuesta vieja queda rotulada con un
+> instrumento que nadie le mostró, y sus series por instrumento no se mezclan.
 
 ---
 
@@ -105,7 +112,36 @@ instrucción (el interruptor del mapeo, con su adaptador de ordinales). Hoy la A
 
 ---
 
-## Las 45 preguntas
+## Lo que salió de revisar una paciente de verificación, el 8 de noviembre
+
+Santiago leyó de principio a fin el informe y la historia clínica de una paciente ya diagnosticada,
+comparando pantalla por pantalla. Salieron seis cosas. **Cinco eran nuestras y están corregidas**; se las
+contamos aquí para que no las vuelva a reportar, y porque dos de ellas tocaban cifras clínicas:
+
+1. **El panel de la reemisión no decía qué cambió.** Ponía siempre la edad biológica y el IAE; en esa
+   paciente esas dos cifras no se habían movido, y lo que sí cambió (pasó de cero rutas a tres) quedaba
+   invisible. Ahora el panel compara los dos documentos sellados y lista lo que cambió.
+2. **Dos fechas de consulta para el mismo caso** (el informe decía 25 de agosto, la historia clínica
+   20/8/2026): eran dos definiciones, no un formato. Manda **la fecha de la medición**, en los dos sitios.
+   La historia clínica arrastraba además la edad calculada a la otra fecha, o sea una edad distinta de la
+   que el motor usó para diagnosticar.
+3. **La tarjeta de sarcopenia mostraba cortes de hombre en una mujer.** Sus cortes del EWGSOP2 estaban
+   bien portados (H<27 · M<16 Kgf); lo que estaba mal era un dato nuestro: la página pasaba "no es mujer"
+   fijo. Corregido, con candado. Y de paso se cerró un caso peor que nadie había visto: un paciente **sin
+   sexo registrado** veía los cortes de hombre y su veredicto; ahora la tarjeta no clasifica y lo dice.
+4. **Dos metabolismos basales con el mismo nombre** en la misma historia clínica (903 y 1.028,75 kcal).
+   Son dos cosas distintas y ahora cada una lo dice: uno es el estimado por Mifflin y el otro el que
+   reporta el equipo.
+5. **Un informe emitido con el motor anterior afirmaba sobre envejecimiento.** La cifra ya estaba
+   suprimida, pero el dominio de envejecimiento conservaba su color, su punta en la figura y su frase, que
+   salen del IAE viejo. Ahora ese dominio sale **"Sin estimación en esta consulta"** y las otras cuatro
+   áreas se leen igual.
+
+**La sexta no es nuestra: son dos reglas suyas, y es la pregunta 46.**
+
+---
+
+## Las 46 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"37: C, solo cintura y cadera · 9: sí,
 > el degradado hacia rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -250,7 +286,7 @@ leyendo?*
 
 ### D · Dos reglas suyas para lo mismo (necesita mirar su archivo)
 
-Las siete de aquí no son diferencias entre su archivo y Atlas: son diferencias **entre dos sitios de su
+Las ocho de aquí no son diferencias entre su archivo y Atlas: son diferencias **entre dos sitios de su
 propio archivo**. En cada una portamos una de las dos y le decimos cuál.
 
 **17 · La fila ICA-BIS tiene dos reglas, una por superficie.** En Composición gradúa la magnitud en cinco
@@ -286,6 +322,20 @@ el PBI vuelve: cuál de los dos umbrales de AF manda, porque no pueden convivir.
 lista plana; nosotros como una cuenta (GEB × PAL = GET, menos el déficit, igual al objetivo). *La pregunta:
 cuál quiere. Y una nueva: su v12 retira la tabla vieja, y con ella se va el ORIGEN del rótulo "Fórmula
 sintética", que adoptamos por ser el suyo. ¿Cómo debe llamarse ese bloque?*
+
+**46 · Sus dos hidrataciones se contradicen entre 71 % y 73 %, y la tabla las pone una debajo de otra.**
+Son dos indicadores distintos (ACT/MLG y Hidratación sin grasa) con **dos clasificadores suyos** cuyas
+bandas no coinciden: `dACTMLG` llama **Normal** a todo lo que esté entre 71 y 74, y `dHidDef` llama
+**Deshidratación leve** a todo lo que esté por debajo de 73. En una paciente real las dos filas salieron
+con veredictos opuestos. *Esta es la tercera vez que la misma pareja aparece: la badge retirada de la 21
+era el mismo choque.*
+ · **A)** `dHidDef` manda y `dACTMLG` sube su piso a 73. · **B)** `dACTMLG` manda y `dHidDef` baja su piso
+ a 71. · **C)** Las dos se quedan como están, y la tabla DICE que miden cosas distintas (hoy las dos se
+ llaman "hidratación"). · **D)** Una de las dos filas sale de la tabla.
+*Recomendamos **C**: los dos números son suyos y los dos son correctos, lo que falta es que el documento
+diga que no son el mismo (uno es agua total sobre masa libre de grasa, el otro es agua libre de grasa
+sobre masa libre de grasa descontada la del tejido graso). Cambiar un piso nos pondría a mover un corte
+clínico suyo, y eso no lo hacemos. Si prefiere A o B, es una línea.*
 
 ### E · El instrumento y el prompt
 
@@ -478,8 +528,9 @@ bioimpedancias cuando hay 289.*
 
 **Van aparte porque son de otra clase.** Todo lo de arriba sale de leer sus documentos; estas cuatro
 salieron de construir su CNV-S 1.0, que es cuando aparece lo que un documento no puede anticipar. La
-encuesta está **construida y apagada**: ninguna de las cuatro frena nada, y lo que usted decida se aplica
-antes de encenderla. El desarrollo de cada una está al final del documento, en su propia sección.
+encuesta está **construida y encendida solo para pacientes de prueba**: ninguna de las cuatro frena nada,
+ningún paciente real la ve, y lo que usted decida se aplica antes de encenderla para todos. El desarrollo
+de cada una está al final del documento, en su propia sección.
 
 **42 · ¿A quién se le aplica la CNV-S si su primera consulta no tiene encuesta completa?** En Atlas hay
 162 consultas importadas del HTML cuya "línea base" no trae todas las respuestas, y la CNV-S les mostraría
@@ -1074,6 +1125,50 @@ dónde sale cada número, que es lo que el nutricionista necesita cuando ajusta 
 la tabla vieja de la fórmula. En Atlas esa tabla no existe, así que el retiro no nos toca, **pero se lleva el
 ORIGEN del rótulo "Fórmula sintética"**, que adoptamos precisamente porque Santiago pidió usar el suyo. Si el
 rótulo desaparece de su archivo, ¿cómo debe llamarse ese bloque en Atlas?
+
+## 46 · Sus dos hidrataciones se contradicen en la franja de 71 % a 73 %
+
+**De dónde salió.** De leer una paciente ya diagnosticada, el 8 de noviembre: en su tabla de composición
+hay dos filas seguidas que hablan de hidratación y dan **veredictos opuestos**.
+
+**Los dos indicadores son distintos, y eso no es el problema.** Son dos cosas de verdad diferentes, las dos
+definidas en su archivo:
+
+| Fila | Qué es | Referencia |
+|---|---|---|
+| **ACT/MLG** | Agua corporal total ÷ masa libre de grasa × 100 | 73,2 % |
+| **Hidratación sin grasa** | Agua libre de grasa ÷ (masa libre de grasa − 0,15 × masa grasa) × 100 | 73,2 % |
+
+**El problema son sus dos clasificadores, que no comparten el borde.** Los dos están portados tal cual:
+
+- **`dACTMLG`** (su línea 14086): **Normal de 71 a 74**; por debajo de 71, "Deshidratación relativa"; por
+  encima de 74, "Sobrehidratación/edema".
+- **`dHidDef`**: **Normohidratación de 73 en adelante**; por debajo de 73, "Deshidratación leve" (hasta 5
+  puntos), "moderada" (hasta 10) y "severa".
+
+Así que **cualquier paciente cuyos dos valores caigan entre 71 y 73 sale con "Normal" en una fila y
+"Deshidratación leve" en la de abajo**, sin que nada explique por qué. Y como los dos números suelen ir
+cerca, la franja no es rara.
+
+**Es la tercera vez que esta misma pareja aparece.** La badge "Hidratación celular deficiente" que usted
+notó en septiembre (pregunta **21**) era este mismo choque visto desde el otro lado: su tabla decía
+"hidratación adecuada" y la badge decía "deficiente". Entonces se retiró la badge, que resolvió el síntoma
+y no la causa.
+
+**Lo que no hacemos por nuestra cuenta:** mover ninguno de los dos pisos. Son cortes clínicos suyos, y
+elegir uno es decidir sobre el paciente.
+
+**Las salidas:**
+
+- **A)** `dHidDef` manda: `dACTMLG` sube su piso de 71 a 73 y los dos coinciden.
+- **B)** `dACTMLG` manda: `dHidDef` baja su piso de 73 a 71.
+- **C)** Las dos se quedan, y la tabla **dice** que miden cosas distintas: los rótulos dejan de llamarse
+  las dos "hidratación" y cada fila lleva al lado qué agua sobre qué masa es.
+- **D)** Una de las dos filas sale de la tabla de composición.
+
+*Recomendamos **C**. Los dos números son suyos y los dos son correctos: lo que falta es que el documento
+diga que no son el mismo indicador, que es lo que hoy hace que se lean como una contradicción. Si prefiere
+A o B, en Atlas es una línea; si prefiere D, díganos cuál de las dos se queda.*
 
 ---
 
