@@ -34,6 +34,7 @@ import {
   type SurveyProgressCharacterization,
 } from "../data/intake-writer";
 import { instrumentoDelEnlace } from "../data/instrumento-de-la-consulta";
+import { retiradosHeredados } from "../data/retirados-heredados";
 import { characterizationSchema, intakeAnswersSchema, intakeIdentitySchema } from "../validations";
 import type { IntakeIdentityInput } from "../validations";
 import type { SurveyIntakeResult, SurveyLinkView } from "../types";
@@ -415,11 +416,19 @@ export async function submitSurveyAnswers(
   if ((await closeAwaitingIfConsentRevoked(input.resumeToken, input.ipAddress)).bloqueada) {
     return err(appError("forbidden", CONSENT_REVOKED_DURING_SURVEY));
   }
+  // LOS `retirar` SE HEREDAN AQUI, en el envio final y no en el autoguardado: el autoguardado es un
+  // snapshot a medias que el paciente va a seguir moviendo, y heredar ahi dejaria el valor viejo dentro de
+  // un borrador que todavia puede cambiar de instrumento (si la consulta se reabre por otro camino). Ver
+  // `retirados-heredados`: sin esto, TODA consulta CNV-S sale sin `d5_38` y el gate la frena.
+  const heredadas = await retiradosHeredados({
+    resumeToken: input.resumeToken,
+    yaRespondidas: new Set(answers.data.map((a) => a.questionId)),
+  });
   try {
     const res = await completeSurvey({
       resumeToken: input.resumeToken,
       surveyVersionId: input.surveyVersionId,
-      answers: answers.data,
+      answers: [...answers.data, ...heredadas],
       ipAddress: input.ipAddress,
       characterization: characterization.success ? characterization.data : null,
       // Nulo cuando la cierra el paciente por su enlace, que es el camino de siempre.

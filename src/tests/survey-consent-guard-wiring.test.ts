@@ -27,6 +27,12 @@ vi.mock("@/modules/evaluations/data/intake-writer", () => ({
   ResumeTokenError: class ResumeTokenError extends Error {},
 }));
 
+// LA HERENCIA DE LOS `retirar` TAMBIEN SE MOCKEA: es `server-only` y toca la base, y este archivo no
+// conecta a ninguna. Lista vacia es lo que devuelve en la linea base, que es el caso de este candado.
+vi.mock("@/modules/evaluations/data/retirados-heredados", () => ({
+  retiradosHeredados: vi.fn(async () => []),
+}));
+
 const ENTRADA = {
   resumeToken: "token-x",
   surveyVersionId: "11111111-1111-1111-1111-111111111111",

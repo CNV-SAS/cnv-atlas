@@ -226,6 +226,37 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     ).not.toBe(cnvs?.surveyVersionId);
   });
 
+
+  it("UNO DE LOS CUATRO `retirar` ALIMENTA EL DIAGNOSTICO: por eso hay que heredarlos", async () => {
+    // ══════════════════════════════════════════════════════════════════════════════════════════════
+    // LA MEDICION QUE OBLIGA AL CABLE DE LA HERENCIA  ·  2026-11-08
+    //
+    // Los cuatro `retirar` no se vuelven a preguntar (su tabla 3). Si ademas no se heredan, la consulta
+    // CNV-S nace sin ellos, y `d5_38` (familiares cercanos con estas enfermedades) tiene
+    // `used_in_diagnosis = true`: la encuesta sale incompleta y el gate frena la emision. Lo que este
+    // caso fija es el HECHO, no la opinion: cuantos de los retirados son del diagnostico.
+    //
+    // Si algun dia su tabla 3 cambia y ningun retirado alimenta el diagnostico, este caso cae y
+    // entonces hay que decidir si la herencia sigue haciendo falta (seguiria haciendo falta para la
+    // historia clinica, pero ya no frenaria nada).
+    // ══════════════════════════════════════════════════════════════════════════════════════════════
+    const retirados = (await db.execute(sql`
+      select q.field_key, q.used_in_diagnosis
+        from survey_instrument_items i
+        join survey_instruments ins on ins.id = i.instrument_id
+        join survey_questions q on q.id = i.question_id
+       where ins.codigo = 'CNV-S 1.0' and i.comportamiento = 'retirar'
+       order by i.order_index`)) as unknown as {
+      field_key: string | null;
+      used_in_diagnosis: boolean;
+    }[];
+    expect(retirados.length, "su tabla 3 retira cuatro items").toBe(4);
+    const delDiagnostico = retirados.filter((r) => r.used_in_diagnosis).map((r) => r.field_key);
+    expect(delDiagnostico, "cambio que retirados alimentan el diagnostico: revisar la herencia").toEqual(
+      ["d5_38"],
+    );
+  });
+
   it("EL SELLO: un seguimiento de un paciente DE PRUEBA recibe la CNV-S; uno REAL, no", async () => {
     // ═══ LA PROPIEDAD DE SEGURIDAD DEL MODO PRUEBAS (2026-11-08) ═══
     //

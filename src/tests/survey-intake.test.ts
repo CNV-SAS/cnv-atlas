@@ -67,6 +67,12 @@ vi.mock("@/modules/patients/data/paciente-del-enlace", () => ({
 vi.mock("@/modules/evaluations/data/instrumento-de-la-consulta", () => ({
   instrumentoDelEnlace: vi.fn(async () => null),
 }));
+
+// Y LA HERENCIA DE LOS `retirar` (v15 tabla 3), por lo mismo: es `server-only`. Devuelve lista vacia, que
+// es lo que hace en la linea base (sin instrumento sellado no hay nada que heredar).
+vi.mock("@/modules/evaluations/data/retirados-heredados", () => ({
+  retiradosHeredados: vi.fn(async () => []),
+}));
 vi.mock("@/modules/consent/otp/otp-service", () => ({
   verifyOtp: vi.fn(),
   consumeOtp: vi.fn(),

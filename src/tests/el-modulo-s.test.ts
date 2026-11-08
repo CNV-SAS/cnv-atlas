@@ -224,6 +224,40 @@ describe("a quien se le aplica la CNV-S, y a quien NO puede aplicarse", () => {
     expect(LECTOR).toContain("groupSurveyAnswers(questions,");
   });
 
+  it("LOS `retirar` SE HEREDAN EN EL ENVIO, o la consulta CNV-S nace sin ellos", () => {
+    // ═══ EL DEFECTO MEDIDO, Y HABRIA TUMBADO EL PRIMER SMOKE ═══
+    //
+    // El formulario filtra los cuatro `retirar` (no se vuelven a preguntar, su tabla 3) y su comentario
+    // decia que llegaban "para que el envio sepa cuales arrastrar"... y nadie los arrastraba. Una de las
+    // cuatro, `d5_38`, tiene `used_in_diagnosis = true`: sin heredarla, TODA consulta CNV-S sale con
+    // "Encuesta incompleta: faltan 1 de 29 respuestas que usa el diagnostico" y el gate la frena.
+    const SERVICIO = sinComentarios(
+      readFileSync("src/modules/evaluations/services/survey-intake.ts", "utf8"),
+    );
+    expect(SERVICIO, "el envio dejo de heredar los `retirar`").toContain("retiradosHeredados({");
+    expect(SERVICIO).toContain("answers: [...answers.data, ...heredadas]");
+    // Y EL AUTOGUARDADO NO LOS HEREDA: es un borrador que el paciente sigue moviendo.
+    const guardado = SERVICIO.slice(
+      SERVICIO.indexOf("export async function saveProgress"),
+      SERVICIO.indexOf("export async function submitSurveyAnswers"),
+    );
+    expect(guardado, "el autoguardado empezo a heredar los retirados").not.toContain(
+      "retiradosHeredados",
+    );
+  });
+
+  it("y lo heredado NO pisa lo que el paciente contesto hoy, ni se inventa lo que no existe", () => {
+    const LECTOR = sinComentarios(
+      readFileSync("src/modules/evaluations/data/retirados-heredados.ts", "utf8"),
+    );
+    expect(LECTOR).toContain("if (input.yaRespondidas.has(q.id)) continue;");
+    expect(LECTOR, "un item sin respuesta anterior se rellenaria con un valor inventado").toContain(
+      'if (valor === "") continue;',
+    );
+    // Y en la linea base no cuesta ni una consulta: sin instrumento sellado, se va de inmediato.
+    expect(LECTOR).toContain("if (!ev?.instrumentoId) return [];");
+  });
+
   it("y la pantalla de la encuesta DICE con que instrumento se recogio", () => {
     // Sin esto, la trazabilidad del instrumento existe solo en una columna: nadie puede comprobar en
     // pantalla si a esa consulta se le aplico la CNV-S o la encuesta completa.
