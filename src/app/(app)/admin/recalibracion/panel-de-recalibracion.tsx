@@ -277,6 +277,14 @@ export function PanelDeRecalibracion({
               </span>
               <span className="text-muted-foreground">{d.fecha}</span>
               <span className="text-foreground">sellada con {d.selladaCon}</span>
+              {/* EL SEGUNDO MOTIVO, CUANDO LO HAY (0244): una consulta sellada con el motor de hoy puede
+                  entrar porque a su paciente se le corrigio la fecha de nacimiento despues de emitirla.
+                  Sin esta linea, esa fila apareceria en la lista sin que nada explique por que, y una
+                  fila inexplicable en una pantalla que ejecuta en tandas de 50 es como se corre lo que
+                  nadie reviso. */}
+              {d.datoCorregido ? (
+                <span className="text-clinical-warning">{d.datoCorregido}</span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -297,6 +305,9 @@ export function PanelDeRecalibracion({
                   </span>
                   <span className="text-muted-foreground">{d.fecha}</span>
                   <span className="text-muted-foreground">sellada con {d.selladaCon}</span>
+                  {/* Tambien aqui: una fila que entro por la fecha corregida y encima no se puede
+                      reemitir tiene que decir las DOS cosas, o se lee como un rechazo sin causa. */}
+                  {d.datoCorregido ? <span className="text-muted-foreground">{d.datoCorregido}</span> : null}
                 </span>
                 <span className="text-clinical-warning">{d.motivoSinReemitir}</span>
               </li>

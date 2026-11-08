@@ -58,6 +58,15 @@ vi.mock("@/modules/evaluations/data/intake-writer", () => {
 vi.mock("@/modules/patients/data/paciente-del-enlace", () => ({
   esPacienteDelEnlace: vi.fn(),
 }));
+
+// EL INSTRUMENTO QUE SE SELLA EN LA CONSULTA (0243). Es `server-only` (lee la base), asi que sin este
+// mock el modulo se evalua de verdad y el fallo sale al CARGAR: "Cannot find package 'server-only'", que
+// no dice nada del intake. Devuelve null, que es "la linea base" y es lo que vale para estos casos: lo
+// que este test prueba es la orquestacion de la FIRMA, no que instrumento se sello (eso lo prueba
+// `el-instrumento-no-cambia-la-linea-base-db`, contra la base real).
+vi.mock("@/modules/evaluations/data/instrumento-de-la-consulta", () => ({
+  instrumentoDelEnlace: vi.fn(async () => null),
+}));
 vi.mock("@/modules/consent/otp/otp-service", () => ({
   verifyOtp: vi.fn(),
   consumeOtp: vi.fn(),

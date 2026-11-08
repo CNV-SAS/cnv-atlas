@@ -379,20 +379,35 @@ export async function getEvaluationResults(
 // Devuelve tambien `engine_version`: es la COLUMNA SELLADA (constelacion de la regla 7), que es la
 // autoridad sobre con que motor se emitio. El `versions.engine` del snapshot deberia coincidir, pero
 // para decidir si un documento quedo con ciencia anterior manda lo sellado en la fila, no lo copiado.
-export async function getDiagnosisEmissionVersions(
-  evaluationId: string,
-): Promise<{ emissionVersions: Record<string, unknown> | null; engineVersion: string | null }> {
+// DEVUELVE TAMBIEN EL CUANDO Y EL DE QUIEN (0244): el `created_at` del diagnostico vigente y el paciente
+// de la consulta. No es informacion de versiones, pero sale de la MISMA fila y de la misma pregunta
+// ("¿este documento esta al dia?"), que desde la correccion de fechas de nacimiento tiene dos puertas:
+// la ciencia se movio, o un insumo del paciente se corrigio despues de sellar. Pedirlo en otra consulta
+// seria leer dos veces la misma fila para contestar media pregunta cada vez.
+export async function getDiagnosisEmissionVersions(evaluationId: string): Promise<{
+  emissionVersions: Record<string, unknown> | null;
+  engineVersion: string | null;
+  createdAt: string | null;
+  patientId: string | null;
+}> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("diagnoses")
-    .select("emission_versions, engine_version")
+    .select("emission_versions, engine_version, created_at, evaluations!inner(patient_id)")
     .eq("evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(`results-reader: emission_versions: `);
+  // EL MENSAJE LLEVA EL ERROR: decia `results-reader: emission_versions:` y nada mas, asi que un fallo de
+  // PostgREST aqui llegaba mudo (un error que nadie puede leer deja el freno abierto).
+  if (error) throw new Error(`results-reader: emission_versions: ${error.message}`);
+  // El embed vuelve objeto o arreglo segun el shape; misma tolerancia que el resto de la casa.
+  const ev = data?.evaluations as { patient_id?: string | null } | { patient_id?: string | null }[] | null;
+  const uno = Array.isArray(ev) ? (ev[0] ?? null) : (ev ?? null);
   return {
     emissionVersions: (data?.emission_versions as Record<string, unknown> | null) ?? null,
     engineVersion: data?.engine_version ?? null,
+    createdAt: data?.created_at ?? null,
+    patientId: uno?.patient_id ?? null,
   };
 }

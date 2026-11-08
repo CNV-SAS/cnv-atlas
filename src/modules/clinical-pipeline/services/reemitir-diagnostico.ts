@@ -14,9 +14,12 @@ import { getDiagnosisEmissionVersions } from "@/modules/diagnoses/data/results-r
 import { resolveRutasContent } from "@/clinical-engine/rutas-content";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
 
+import { correccionesDeFechaDeUnPaciente } from "@/modules/patients/data/correcciones-de-fecha-reader";
+
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { simularConCienciaDeHoy } from "../data/simular-con-ciencia-de-hoy";
 import { vigenciaEmision } from "../emision-vigencia";
+import { fechaCorregidaDespuesDeEmitir } from "../fecha-corregida-despues-de-emitir";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // REEMITIR EL DIAGNOSTICO, SIN TOCAR EL TRATAMIENTO  ·  recalibracion_ciencia
@@ -106,11 +109,26 @@ export async function reemitirDiagnostico(
     engineVersion: sellado.engineVersion,
     emissionVersions: sellado.emissionVersions,
   });
-  if (vigencia.alDia) {
+  // ═══ LA SEGUNDA PUERTA: UN INSUMO DEL PACIENTE QUE SE CORRIGIO DESPUES  ·  0244, 2026-11-08 ═══
+  //
+  // La fecha de nacimiento se puede corregir desde la ficha (admin, con motivo y fuente), y entonces el
+  // diagnostico sellado quedo emitido con una edad que hoy sabemos equivocada: la edad entra al motor por
+  // cuatro puertas, la EB-BIS entre ellas. La ciencia puede ser exactamente la de hoy y el documento
+  // estar igual de desfasado, asi que exigir SOLO desfase de version dejaba estos casos sin salida (que
+  // es lo que obligaba a corregir por SQL a mano).
+  //
+  // EL CRITERIO ES EL DE LA PANTALLA, literalmente el mismo modulo: esta pantalla OFRECE lo que este
+  // guard ACEPTA, y escribir la pregunta dos veces ya las hizo divergir una vez (nota del 2026-11-07 en
+  // `desfasadas-reader`).
+  const fechaCorregida = fechaCorregidaDespuesDeEmitir(
+    sellado.patientId ? await correccionesDeFechaDeUnPaciente(sellado.patientId) : [],
+    sellado.createdAt,
+  );
+  if (vigencia.alDia && fechaCorregida == null) {
     return err(
       appError(
         "validation",
-        "Ese diagnóstico ya está al día con la ciencia vigente: no hay nada que reemitir.",
+        "Ese diagnóstico ya está al día con la ciencia vigente y sus datos no han cambiado: no hay nada que reemitir.",
       ),
     );
   }
@@ -287,6 +305,13 @@ export async function reemitirDiagnostico(
         diagnosis_anterior: anterior.id,
         engine_version_anterior: anterior.engineVersion,
         engine_version_nueva: output.versions.engine,
+        // ═══ CUAL DE LAS DOS PUERTAS ABRIO, DICHO AQUI Y NO DEDUCIDO ═══
+        //
+        // Con las dos versiones iguales, el payload no distinguiria una reemision por fecha de nacimiento
+        // corregida de un duplicado inexplicable. Y es justo el caso que alguien va a tener que entender
+        // dentro de un año: el diagnostico nuevo dice lo mismo del motor y otra cosa de la edad.
+        desfase_de_version: !vigencia.alDia,
+        fecha_de_nacimiento_corregida_despues_de_emitir: fechaCorregida,
         // QUE NO SE TOCO, dicho explicitamente y no por omision: dentro de un año, "el tratamiento no
         // aparece en el payload" no distingue entre "no se toco" y "nadie lo registro".
         tratamiento_no_modificado: true,

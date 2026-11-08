@@ -1709,6 +1709,20 @@
       "when": 1793800377491,
       "tag": "0243_el_instrumento_de_la_consulta",
       "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1793800378491,
+      "tag": "0244_corregir_la_fecha_de_nacimiento",
+      "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1793800379491,
+      "tag": "0245_la_correccion_de_fecha_es_append_only",
+      "breakpoints": true
     }
   ]
 }

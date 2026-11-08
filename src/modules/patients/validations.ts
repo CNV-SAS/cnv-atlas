@@ -63,6 +63,32 @@ export const fechaDeNacimientoPacienteSchema = z.object({
     ),
 });
 
+/**
+ * CORREGIR una fecha de nacimiento YA REGISTRADA (0244). Es la de arriba MAS dos campos obligatorios.
+ *
+ * ═══ POR QUE EL MOTIVO Y LA FUENTE SON OBLIGATORIOS, Y POR QUE SON DOS ═══
+ *
+ *   · el MOTIVO dice POR QUE se corrige, y es lo que un auditor lee dentro de dos años;
+ *   · la FUENTE dice DE DONDE SALE el dato nuevo, y es lo que separa una correccion de una suposicion.
+ *     Una fecha de nacimiento no se corrige de memoria.
+ *
+ * EL MINIMO DEL MOTIVO ES DE DIEZ CARACTERES, no de uno: "error" no explica nada y deja al siguiente en
+ * el mismo sitio. Es el mismo criterio del motivo de retirar una consulta y del de reasignar.
+ */
+export const correccionDeFechaDeNacimientoSchema = fechaDeNacimientoPacienteSchema.extend({
+  motivo: z
+    .string()
+    .trim()
+    .min(10, "Escribe por qué se corrige: queda en la historia y alguien va a necesitar saberlo.")
+    .max(500),
+  // LA LISTA LA CIERRA EL CHECK DE LA TABLA, y aqui se repite para que el mensaje sea legible: un error
+  // de restriccion de Postgres en pantalla no le dice nada a quien lo lee.
+  fuente: z.enum(
+    ["documento_de_identidad", "registro_civil", "el_paciente_lo_confirmo", "otro"],
+    { message: "Elige de dónde sale la fecha correcta." },
+  ),
+});
+
 export const contactoPacienteSchema = z.object({
   patientId: z.guid(),
   email: z

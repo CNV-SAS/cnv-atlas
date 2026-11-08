@@ -11,11 +11,13 @@ import { canArchivePatient } from "@/modules/patients/policies/can-archive-patie
 import {
   canCompletePatientBirthDate,
   canCompletePatientSex,
+  canCorrectPatientBirthDate,
   canCorrectPatientSex,
 } from "@/modules/patients/policies/can-complete-patient-sex";
 import { canEditPatientContact } from "@/modules/patients/policies/can-edit-patient-contact";
 import { CompletarFechaDeNacimiento } from "@/modules/patients/components/completar-fecha-de-nacimiento";
 import { CompletarSexo } from "@/modules/patients/components/completar-sexo";
+import { CorregirFechaDeNacimiento } from "@/modules/patients/components/corregir-fecha-de-nacimiento";
 import { CorregirSexo } from "@/modules/patients/components/corregir-sexo";
 import { contarDiagnosticosDelPaciente } from "@/modules/patients/data/diagnosticos-del-paciente-reader";
 import { EditarContacto } from "@/modules/patients/components/editar-contacto";
@@ -102,6 +104,10 @@ export default async function HistoriaPacientePage({
   // el aviso de "falta la fecha de nacimiento" seria un callejon.
   const leFaltaLaFecha = !paciente.birthDate;
   const puedeCompletarLaFecha = canCompletePatientBirthDate(user) && leFaltaLaFecha;
+  // Y CORREGIR LA QUE YA ESTA (0244, 2026-11-08): el otro lado del mismo dato, EXCLUYENTE con el de
+  // completar por la misma construccion que el sexo. Esta solo para admin: corregirla cambia la rama del
+  // consentimiento y la edad con la que se diagnostico, que no son decisiones de la consulta.
+  const puedeCorregirLaFecha = canCorrectPatientBirthDate(user) && !leFaltaLaFecha;
   // Emitir link de seguimiento: sitio FIJO en el perfil (antes vivia en la tarjeta de confirmar identidad,
   // que desaparece al confirmar; Santiago 2026-08-20 §5a). El action re-resuelve el profesional asignado.
   const puedeEmitirSeguimiento = canEmitFollowupLink(user);
@@ -179,6 +185,12 @@ export default async function HistoriaPacientePage({
               patientId={patientId}
               sexoActual={paciente.sex ?? ""}
               diagnosticosGenerados={diagnosticosGenerados}
+            />
+          ) : null}
+          {puedeCorregirLaFecha ? (
+            <CorregirFechaDeNacimiento
+              patientId={patientId}
+              actual={formatDateOnlyShort(paciente.birthDate) || null}
             />
           ) : null}
         </div>

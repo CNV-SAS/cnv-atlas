@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { patientProfiles } from "@/db/schema";
+import { correccionesDeFechaDeNacimiento, patientConsents, patientProfiles } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
+import { hechosDelConsentimiento, motivoDeRegularizacion } from "@/modules/consent/regularizacion";
 
 // COMPLETAR LA FECHA DE NACIMIENTO DE UN PACIENTE AL QUE LE FALTA.
 //
@@ -81,5 +82,129 @@ export async function completarFechaDeNacimiento(
       ip: actor.ip ?? null,
     });
     return true;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// CORREGIR UNA FECHA DE NACIMIENTO YA REGISTRADA  ·  0244, Santiago 2026-11-08
+//
+// ═══ ES OTRO ACTO, Y POR ESO ES OTRA FUNCION ═══
+//
+// `completarFechaDeNacimiento` rellena un hueco y su `where` lleva `is null`. Esto PISA un valor, que es
+// justo lo que aquella se negaba a hacer. No se mezclan en una con una bandera: la bandera convertiria
+// el camino seguro en el peligroso para quien la pase por descuido, y la razon de aquella (*"pisarla
+// podria convertir un consentimiento firmado como adulto en uno que no autorizaba quien tenia que
+// autorizarlo"*) no desaparece: se CUMPLE, detectandolo y diciendolo.
+//
+// ═══ LO QUE NO HACE, Y ES DELIBERADO ═══
+//
+// NO toca el consentimiento, NO reemite ningun diagnostico y NO esconde nada. Deja el dato corregido, su
+// historia, y los dos hechos que se derivan de el a la vista: si la persona era menor al firmar (que la
+// ficha ya sabe mostrar como "pendiente de regularizar") y que sus consultas selladas se diagnosticaron
+// con otra edad (que la pantalla de recalibracion lee de estas filas).
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+export type CorreccionDeFecha = {
+  patientId: string;
+  /** La fecha correcta, ya validada. */
+  birthDate: string;
+  motivo: string;
+  /** De donde sale el dato nuevo. La lista la cierra el CHECK de la tabla. */
+  fuente: string;
+};
+
+export type ResultadoDeLaCorreccion = {
+  anterior: string | null;
+  nueva: string;
+  /** Si con la fecha NUEVA la persona era menor el dia que firmo. La pantalla lo dice en voz alta. */
+  cambiaLaRamaDelConsentimiento: boolean;
+};
+
+/**
+ * Corrige la fecha y deja su historia. `null` si el paciente no existe o la fecha es la misma.
+ *
+ * LA MISMA FECHA NO ES UNA CORRECCION: se devuelve `null` en vez de escribir una fila que no cambia
+ * nada. El CHECK de la tabla lo impide tambien, por si alguien llega por otro camino.
+ */
+export async function corregirFechaDeNacimiento(
+  input: CorreccionDeFecha,
+  actor: ActorDeLaFecha,
+): Promise<ResultadoDeLaCorreccion | null> {
+  return db.transaction(async (tx) => {
+    const [perfil] = await tx
+      .select({ anterior: patientProfiles.birthDate })
+      .from(patientProfiles)
+      .where(eq(patientProfiles.patientId, input.patientId))
+      .limit(1);
+    if (!perfil) return null;
+    if (perfil.anterior === input.birthDate) return null;
+
+    // ═══ LA RAMA DEL CONSENTIMIENTO SE MIRA ANTES DE ESCRIBIR, Y CON LAS DOS FECHAS ═══
+    //
+    // Lo que importa no es la edad de HOY: es si la persona era menor EL DIA QUE FIRMO. Esa fecha de
+    // firma no cambia, asi que la pregunta se contesta aqui, con la fecha nueva, y se guarda en la fila.
+    const firmas = await tx
+      .select({ type: patientConsents.consentType, signedAt: patientConsents.signedAt })
+      .from(patientConsents)
+      .where(
+        and(eq(patientConsents.patientId, input.patientId), isNull(patientConsents.revokedAt)),
+      );
+    const conLaNueva = motivoDeRegularizacion(
+      hechosDelConsentimiento({
+        fechaDeNacimiento: input.birthDate,
+        consents: firmas.map((f) => ({
+          consent_type: f.type,
+          signed_at: f.signedAt?.toISOString() ?? null,
+        })),
+      }),
+    );
+    const conLaVieja = motivoDeRegularizacion(
+      hechosDelConsentimiento({
+        fechaDeNacimiento: perfil.anterior,
+        consents: firmas.map((f) => ({
+          consent_type: f.type,
+          signed_at: f.signedAt?.toISOString() ?? null,
+        })),
+      }),
+    );
+    // CAMBIA LA RAMA cuando con la fecha nueva hay un motivo de regularizacion que antes no habia, o al
+    // reves: los dos sentidos importan. Corregir una fecha puede DESTAPAR que firmo siendo menor, y
+    // tambien puede LIMPIAR una alarma que existia por un digito mal tecleado.
+    const cambia = (conLaNueva?.clave ?? null) !== (conLaVieja?.clave ?? null);
+
+    await tx
+      .update(patientProfiles)
+      .set({ birthDate: input.birthDate })
+      .where(eq(patientProfiles.patientId, input.patientId));
+
+    await tx.insert(correccionesDeFechaDeNacimiento).values({
+      patientId: input.patientId,
+      anterior: perfil.anterior,
+      nueva: input.birthDate,
+      motivo: input.motivo,
+      fuente: input.fuente,
+      corregidaPor: actor.actorId,
+      cambiaLaRamaDelConsentimiento: cambia,
+    });
+
+    await recordAudit(tx, {
+      event: "patient.fecha_de_nacimiento_corregida",
+      actorId: actor.actorId,
+      actorEmail: actor.actorEmail,
+      entityType: "patient",
+      entityId: input.patientId,
+      // LAS DOS FECHAS VAN AL RASTRO. La edad entra al diagnostico por cuatro puertas y decide la rama
+      // del consentimiento: quien audite esto necesita poder reconstruir que se diagnostico con cual.
+      payload: {
+        anterior: perfil.anterior,
+        nueva: input.birthDate,
+        motivo: input.motivo,
+        fuente: input.fuente,
+        cambia_la_rama_del_consentimiento: cambia,
+      },
+      ip: actor.ip ?? null,
+    });
+
+    return { anterior: perfil.anterior, nueva: input.birthDate, cambiaLaRamaDelConsentimiento: cambia };
   });
 }

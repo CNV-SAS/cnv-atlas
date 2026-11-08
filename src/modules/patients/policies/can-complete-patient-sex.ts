@@ -62,3 +62,17 @@ export function canCorrectPatientSex(user: CurrentUser): boolean {
 export function canCompletePatientBirthDate(user: CurrentUser): boolean {
   return hasAnyRole(user, ["professional", "admin"]);
 }
+
+// ═══ CORREGIR UNA FECHA DE NACIMIENTO YA REGISTRADA: SOLO ADMIN (0244, 2026-11-08) ═══
+//
+// Y NO ES LA MISMA PUERTA que completarla, aunque el dato sea el mismo campo. Completar rellena un hueco
+// y lo hace quien atiende; CORREGIR pisa un valor con el que YA se diagnostico y con el que se decidio
+// la rama del consentimiento. Es del mismo genero que eliminar un perfil o marcar a alguien de prueba:
+// actos sobre el registro, no actos de consulta.
+//
+// Y HAY UNA RAZON PRACTICA ADEMAS DE LA DE PRINCIPIO: quien corrige tiene que poder ver lo que la
+// correccion destapa (que el paciente firmo siendo menor, que sus consultas hay que reemitirlas), y esas
+// dos pantallas son de admin.
+export function canCorrectPatientBirthDate(user: CurrentUser): boolean {
+  return hasAnyRole(user, ["admin"]);
+}

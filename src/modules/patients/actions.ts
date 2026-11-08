@@ -16,7 +16,10 @@ import {
   resolverPropuestaDePrueba,
 } from "./data/de-prueba-writer";
 import { guardarContactoDelPaciente } from "./data/patient-contact-writer";
-import { completarFechaDeNacimiento } from "./data/patient-birthdate-writer";
+import {
+  completarFechaDeNacimiento,
+  corregirFechaDeNacimiento,
+} from "./data/patient-birthdate-writer";
 import { reasignarPaciente, reasignarPacientesEnLote } from "./data/reasignacion-writer";
 import { completarSexoDelPaciente, corregirSexoDelPaciente } from "./data/patient-sex-writer";
 import { contarDiagnosticosDelPaciente } from "./data/diagnosticos-del-paciente-reader";
@@ -35,6 +38,7 @@ import {
 } from "./policies/can-delete-patient";
 import {
   canCompletePatientBirthDate,
+  canCorrectPatientBirthDate,
   canCompletePatientSex,
   canCorrectPatientSex,
 } from "./policies/can-complete-patient-sex";
@@ -55,6 +59,7 @@ import {
   contactoPacienteSchema,
   correccionDeSexoSchema,
   documentoSchema,
+  correccionDeFechaDeNacimientoSchema,
   fechaDeNacimientoPacienteSchema,
   reasignacionDePacienteSchema,
   reasignacionEnLoteSchema,
@@ -574,6 +579,81 @@ export async function completarFechaDeNacimientoAction(
   return {
     error: null,
     success: "Fecha de nacimiento registrada. Ya se le puede generar el diagnóstico.",
+    warning: null,
+  };
+}
+
+/**
+ * CORREGIR UNA FECHA DE NACIMIENTO YA REGISTRADA (0244, Santiago 2026-11-08).
+ *
+ * Es OTRA accion que completarla, no la misma con una bandera: aquella rellena un hueco y la hace quien
+ * atiende; esta PISA un valor con el que ya se diagnostico y con el que se decidio la rama del
+ * consentimiento, y la hace admin.
+ *
+ * LO QUE DEVUELVE NO ES SOLO "listo": dice si la correccion CAMBIO LA RAMA DEL CONSENTIMIENTO, porque es
+ * la consecuencia que no se puede dejar a que alguien la descubra. Va como `warning` y no como error: la
+ * correccion se hizo y esta bien hecha; lo que hay es algo mas que mirar.
+ */
+export async function corregirFechaDeNacimientoAction(
+  _prev: SexoPacienteState,
+  form: FormData,
+): Promise<SexoPacienteState> {
+  const user = await requireUser();
+  if (!canCorrectPatientBirthDate(user)) {
+    return {
+      error: "Solo un administrador puede corregir una fecha de nacimiento.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  const datos = correccionDeFechaDeNacimientoSchema.safeParse({
+    patientId: form.get("patientId"),
+    birthDate: form.get("birthDate"),
+    motivo: form.get("motivo"),
+    fuente: form.get("fuente"),
+  });
+  if (!datos.success) {
+    return {
+      error: datos.error.issues[0]?.message ?? "Revisa los datos.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  const ip = await getClientIp();
+  const hecho = await corregirFechaDeNacimiento(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!hecho) {
+    return {
+      error: null,
+      success: null,
+      warning:
+        "No se cambió nada: ese paciente no existe, o ya tenía exactamente esa fecha. Si lo que falta es ponerla por primera vez, usa el bloque de completar.",
+    };
+  }
+
+  const deAHasta = `${hecho.anterior ?? "sin fecha"} a ${hecho.nueva}`;
+  if (hecho.cambiaLaRamaDelConsentimiento) {
+    return {
+      error: null,
+      success: null,
+      // SE DICE ENTERO Y EN EL MISMO AVISO: lo que cambio, y lo que eso destapa. Partirlo en "corregida"
+      // y dejar el resto para que alguien lo note en otra pantalla es como se pierde.
+      warning:
+        `Fecha corregida (${deAHasta}). OJO: con la fecha nueva cambia la rama del consentimiento de ` +
+        "este paciente. Queda marcado como pendiente de regularizar en su ficha; revísalo antes de su " +
+        "próxima consulta.",
+    };
+  }
+  return {
+    error: null,
+    success:
+      `Fecha corregida (${deAHasta}). Sus consultas ya diagnosticadas aparecen en Recalibración para ` +
+      "reemitirlas con la edad correcta.",
     warning: null,
   };
 }

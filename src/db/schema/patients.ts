@@ -300,3 +300,43 @@ export const presencialConsentSessions = pgTable(
   },
   (t) => [index("presencial_sessions_prof_idx").on(t.professionalId, t.createdAt.desc())],
 );
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA HISTORIA DE LAS CORRECCIONES DE FECHA DE NACIMIENTO  ·  0244, 2026-11-08
+//
+// APPEND-ONLY: `patient_profiles.birth_date` sigue siendo el valor VIGENTE y esto es su historia. Una
+// tabla y no cinco columnas en el perfil, porque con columnas la segunda correccion PISA el valor
+// anterior de la primera y la cadena se pierde. La razon larga esta en la migracion.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+export const correccionesDeFechaDeNacimiento = pgTable(
+  "correcciones_de_fecha_de_nacimiento",
+  {
+    id: pk(),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "cascade" }),
+    /** La fecha que habia. `null` = no habia ninguna (no deberia pasar; para eso esta completar). */
+    anterior: date("anterior"),
+    nueva: date("nueva").notNull(),
+    /** Por que se corrige. Obligatorio por CHECK: sin motivo nadie puede auditar la decision. */
+    motivo: text("motivo").notNull(),
+    /**
+     * DE DONDE SALE EL DATO NUEVO, y no es lo mismo que el motivo: es lo que separa una correccion de
+     * una suposicion. Una fecha de nacimiento no se corrige de memoria. Lista cerrada por CHECK.
+     */
+    fuente: text("fuente").notNull(),
+    corregidaPor: uuid("corregida_por")
+      .notNull()
+      .references(() => profiles.id),
+    /**
+     * Si con la fecha NUEVA la persona era menor el dia que firmo. Se calcula al corregir y se guarda:
+     * depende de la fecha de FIRMA, que no cambia, asi que la pregunta queda contestada en la fila.
+     */
+    cambiaLaRamaDelConsentimiento: boolean("cambia_la_rama_del_consentimiento")
+      .notNull()
+      .default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("correcciones_fecha_nacimiento_patient_idx").on(t.patientId, t.createdAt)],
+);
