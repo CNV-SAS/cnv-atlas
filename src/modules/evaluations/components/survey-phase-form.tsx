@@ -26,6 +26,8 @@ import {
   saveProgressAction,
   submitSurveyAnswersAction,
 } from "../actions";
+import { marcoDeLaSeccion } from "../marco-de-la-seccion";
+
 import type { SaveProgressState, SurveyFormState } from "../validations";
 import type { SurveyQuestionView } from "../data/survey-view-types";
 import { AboutYouSection, type AboutYouPrefill } from "./about-you-section";
@@ -591,6 +593,21 @@ export function SurveyPhaseForm({
                   {s.questions.length} {s.questions.length === 1 ? "pregunta" : "preguntas"}
                 </span>
               </h2>
+              {/* ═══ EL MARCO DE REFERENCIA DE LA SECCIÓN (v15 §7.1, y su §2.6 lo trae a la línea
+                  base) ═══
+
+                  No es ayuda de pantalla: es la VENTANA DE RECUERDO del instrumento. "¿Fumas?"
+                  contestada pensando en el último año y contestada pensando en las últimas dos semanas
+                  son dos preguntas distintas con el mismo enunciado, y sin marco cada paciente elige su
+                  propia ventana.
+
+                  VA ANTES del párrafo de ayuda y en negrita: el párrafo de Alimentación explica cómo
+                  responder, y esto dice SOBRE QUÉ PERIODO. Lo segundo manda sobre lo primero. */}
+              {marcoDeLaSeccion(s.questions) ? (
+                <p className="text-sm font-medium text-foreground">
+                  {marcoDeLaSeccion(s.questions)?.texto}
+                </p>
+              ) : null}
               {SECTION_INTRO[s.title] ? (
                 <p className="rounded-md bg-muted/40 px-3 py-2 text-sm text-foreground">
                   {SECTION_INTRO[s.title]}

@@ -4,6 +4,7 @@ import { isAnswered } from "@/modules/clinical-pipeline/services/survey-complete
 import { Panel } from "@/components/shared/panel";
 
 import type { SurveyDomain } from "../data/survey-answers-reader";
+import { marcoDeLaSeccion } from "../marco-de-la-seccion";
 import { EncabezadoDeFrecuencia } from "./encabezado-frecuencia";
 import { SurveyAnswerReadonly } from "./survey-widgets";
 
@@ -38,6 +39,15 @@ export function SurveyReadonly({ domains }: { domains: SurveyDomain[] }) {
       {domains.map((d) => (
         <Panel key={d.section} titulo={d.section}>
           <div className="flex flex-col gap-4">
+            {/* ═══ EL MARCO DE REFERENCIA, TAMBIÉN AQUÍ (v15 §7.1) ═══
+
+                Es el mismo texto que ve el paciente, y por eso sale del mismo módulo. Al profesional le
+                dice SOBRE QUÉ PERIODO contestó: una respuesta de hábitos leída como "siempre" y leída
+                como "en las últimas dos semanas" sostienen conclusiones distintas, y quien interpreta
+                tiene que ver la misma ventana que quien respondió. */}
+            {marcoDeLaSeccion(d.questions) ? (
+              <p className="text-xs text-muted-foreground">{marcoDeLaSeccion(d.questions)?.texto}</p>
+            ) : null}
             {/* LOS ENCABEZADOS DE CATEGORIA VIVEN AQUI, no en la encuesta del paciente (Santiago,
                 2026-08-31): al profesional le dicen contra que agrupa el modelo, y a esta altura ya no
                 pueden sesgar una respuesta, porque ya esta dada. Se derivan de la categoria de la pregunta
