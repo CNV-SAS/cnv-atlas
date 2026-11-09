@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -64,17 +64,55 @@ export async function insumosDeLaCnvsDeLaConsulta(evaluationId: string): Promise
   return insumosDeLaCnvs({ patientId: ev.patientId, excluyendo: evaluationId });
 }
 
-export async function insumosDeLaCnvs(input: {
+/**
+ * LA CONSULTA ANTERIOR VIGENTE de un paciente, o `null`.
+ *
+ * EXPORTADA PARA PODER COMPROBARLA: desde fuera de `insumosDeLaCnvs` solo se ven sus respuestas, y un
+ * candado que mire el resultado no distingue "eligio la anterior" de "eligio otra parecida".
+ */
+export async function consultaAnteriorVigente(input: {
   patientId: string;
-  /** La consulta de HOY, para excluirla. `null` cuando todavia no existe (el camino publico). */
+  /** La consulta de HOY, para excluirla y para poner el techo. `null` cuando todavia no existe. */
   excluyendo: string | null;
-}): Promise<InsumosDeLaCnvs> {
+}): Promise<{ id: string } | null> {
   const condiciones = [
     eq(evaluations.patientId, input.patientId),
     isNull(evaluations.supersededAt),
     isNull(evaluations.retiradaAt),
   ];
-  if (input.excluyendo) condiciones.push(ne(evaluations.id, input.excluyendo));
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // "LA ANTERIOR" ES ANTERIOR **EN EL TIEMPO**, NO SOLO DISTINTA  ·  medido el 2026-11-09
+  //
+  // ═══ QUE PASABA CON SOLO EXCLUIRLA ═══
+  //
+  // Esto era `id <> la de hoy` y nada mas, o sea "la ultima consulta vigente del paciente que no sea
+  // esta". Mientras lo llamaba solo el momento de CREAR el shell daba lo correcto, porque entonces la de
+  // hoy ES la ultima y no hay ninguna despues.
+  //
+  // PERO AHORA LO LLAMAN TAMBIEN LAS PANTALLAS DEL PROFESIONAL sobre una consulta YA GUARDADA (la vista
+  // de la encuesta, la de completarla y la tarjeta de seguimiento, para resolver el nombre de los
+  // productos del S1). Abrir una consulta de la semana pasada leia como "anterior" la de ayer, que es
+  // POSTERIOR. Medido en la nube con el paciente del smoke: la consulta de las 10:43 tenia como
+  // "anterior" la de las 11:54 del dia siguiente.
+  //
+  // Y FALLA EN SILENCIO: el S1 resolveria sus nombres contra el tratamiento de una consulta que ese dia
+  // no existia, asi que los productos saldrian sin nombre, y el bloque de confirmacion precargaria
+  // respuestas del futuro.
+  //
+  // ES LA MISMA REGLA QUE `corte-de-la-serie` ya aplica a los graficos de seguimiento, y por la misma
+  // razon: lo posterior a una consulta no es parte de lo que esa consulta sabia.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  if (input.excluyendo) {
+    condiciones.push(ne(evaluations.id, input.excluyendo));
+    const [deHoy] = await db
+      .select({ creadaEn: evaluations.createdAt })
+      .from(evaluations)
+      .where(eq(evaluations.id, input.excluyendo))
+      .limit(1);
+    // SIN LA FECHA NO SE PONE TECHO: la consulta no existe (o no se pudo leer), y el peor caso tiene que
+    // ser el de antes, no quedarse sin insumos.
+    if (deHoy?.creadaEn) condiciones.push(lt(evaluations.createdAt, deHoy.creadaEn));
+  }
 
   const [anterior] = await db
     .select({ id: evaluations.id })
@@ -82,6 +120,15 @@ export async function insumosDeLaCnvs(input: {
     .where(and(...condiciones))
     .orderBy(desc(evaluations.createdAt), desc(evaluations.id))
     .limit(1);
+  return anterior ?? null;
+}
+
+export async function insumosDeLaCnvs(input: {
+  patientId: string;
+  /** La consulta de HOY, para excluirla. `null` cuando todavia no existe (el camino publico). */
+  excluyendo: string | null;
+}): Promise<InsumosDeLaCnvs> {
+  const anterior = await consultaAnteriorVigente(input);
   if (!anterior) return VACIO;
 
   // LA RESPUESTA VIGENTE de esa consulta: la ultima fila, que es la regla de la casa. Una correccion

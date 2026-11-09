@@ -445,4 +445,52 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
       "la CNV-S sellaria la version del Modulo S: el diagnostico creeria que la encuesta tiene siete campos",
     ).not.toBe(versiones[0]);
   });
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // "LA ANTERIOR" ES ANTERIOR EN EL TIEMPO  ·  medido el 2026-11-09
+  //
+  // El lector de los insumos de la CNV-S elegia "la ultima consulta vigente del paciente que no sea
+  // esta". Mientras solo lo llamaba la creacion del shell daba lo correcto (entonces la de hoy ES la
+  // ultima), pero ahora lo llaman tambien las pantallas del profesional sobre una consulta ya guardada,
+  // para resolver el nombre de los productos del S1. Medido en la nube: la consulta de las 10:43 tenia
+  // como "anterior" la de las 11:54 del dia siguiente.
+  //
+  // ESTE CASO LO COMPRUEBA SOBRE TODOS LOS PACIENTES CON DOS O MAS CONSULTAS VIGENTES, y lo hace por la
+  // propiedad y no por un caso: para cada consulta, la que el lector elige tiene que ser mas vieja. Es
+  // la misma regla que `corte-de-la-serie` aplica a los graficos.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("la consulta anterior de los insumos de la CNV-S nunca es posterior", async () => {
+    const { consultaAnteriorVigente } = await import(
+      "@/modules/evaluations/data/insumos-de-la-cnvs"
+    );
+    const pares = (await db.execute(sql`
+      select e.id, e.patient_id, e.created_at
+        from evaluations e
+       where e.superseded_at is null and e.retirada_at is null
+         and e.patient_id in (
+           select patient_id from evaluations
+            where superseded_at is null and retirada_at is null
+            group by patient_id having count(*) > 1
+         )
+       order by e.patient_id, e.created_at
+       limit 60
+    `)) as unknown as { id: string; patient_id: string; created_at: string }[];
+    expect(pares.length, "la base no tiene ningun paciente con dos consultas vigentes").toBeGreaterThan(1);
+
+    for (const ev of pares) {
+      const anterior = await consultaAnteriorVigente({
+        patientId: ev.patient_id,
+        excluyendo: ev.id,
+      });
+      if (!anterior) continue; // la primera del paciente: no hay anterior, y eso es correcto
+      const [fila] = (await db.execute(sql`
+        select created_at from evaluations where id = ${anterior.id}::uuid`)) as unknown as {
+        created_at: string;
+      }[];
+      expect(
+        new Date(fila.created_at).getTime(),
+        `la consulta ${ev.id} tiene como anterior una POSTERIOR (${anterior.id})`,
+      ).toBeLessThan(new Date(ev.created_at).getTime());
+    }
+  });
 });
