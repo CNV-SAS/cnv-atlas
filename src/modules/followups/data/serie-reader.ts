@@ -3,6 +3,7 @@ import "server-only";
 import { BIODY_COLUMNS } from "@/clinical-engine/edge/biody-columns";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { reportServerError } from "@/lib/observability/report-error";
 
 import { capRef, clasificarCapacitancia } from "@/clinical-engine/capacitancia";
 import { corteDeLaSerie, dentroDelCorte } from "../corte-de-la-serie";
@@ -32,7 +33,12 @@ export type { PuntoSerie, SerieSeguimiento };
 type Fila = {
   id: string;
   snapshot: unknown;
-  evaluations: { superseded_at: string | null; bis_measurements: { measurement_date: string | null }[] } | null;
+  evaluations: {
+    superseded_at: string | null;
+    /** El instrumento SELLADO en esa consulta. `null` = la linea base (ver el gate del Modulo S). */
+    survey_instrument_id: string | null;
+    bis_measurements: { measurement_date: string | null }[];
+  } | null;
 };
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -47,7 +53,7 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     .eq("id", evaluationId)
     .maybeSingle();
   const patientId = ev?.patient_id as string | undefined;
-  if (!patientId) return { puntos: [], omitidas: 0, refC: null };
+  if (!patientId) return { puntos: [], omitidas: 0, refC: null, serieIlegible: false, moduloSIlegible: false };
   // HASTA DONDE LLEGA ESTA EVALUACION. Sin este techo, la pestaña Seguimiento de una evaluacion vieja
   // pintaba las consultas POSTERIORES, que el dia que se selló no existían. Ver `corte-de-la-serie.ts`.
   const corte = corteDeLaSerie(
@@ -59,7 +65,7 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
   const { data, error } = await supabase
     .from("reports")
     .select(
-      "id, evaluation_id, created_at, snapshot, evaluations!inner(superseded_at, bis_measurements(measurement_date))",
+      "id, evaluation_id, created_at, snapshot, evaluations!inner(superseded_at, survey_instrument_id, bis_measurements(measurement_date))",
     )
     .eq("patient_id", patientId)
     .eq("type", "paciente")
@@ -81,6 +87,9 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
   // SE QUEDA EL MAS RECIENTE de cada evaluacion, que es el documento vigente (el mismo criterio que usan
   // la tarjeta del informe y el lector del tratamiento).
   const vistas = new Set<string>();
+  // QUE CONSULTAS SELLARON UN INSTRUMENTO, para el gate del Modulo S de mas abajo. Sale de la fila que
+  // ya se pidio: no cuesta una consulta mas.
+  const conInstrumento = new Set<string>();
   for (const row of (data ?? []) as unknown as (Fila & { evaluation_id: string })[]) {
     if (vistas.has(row.evaluation_id)) continue;
     vistas.add(row.evaluation_id);
@@ -88,6 +97,7 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     // Una evaluacion REEMPLAZADA por una correccion no es un punto de la trayectoria: comparariamos
     // contra el yo pre-correccion del paciente (misma regla que ya aplica comparison-chronology).
     if (!ev || ev.superseded_at != null) continue;
+    if (ev.survey_instrument_id != null) conInstrumento.add(row.evaluation_id);
     const fechas = (ev.bis_measurements ?? []).map((m) => m.measurement_date).filter((d): d is string => d != null);
     if (fechas.length === 0) continue; // sin medicion no hay punto en el tiempo
     const fecha = fechas.reduce((max, d) => (d > max ? d : max), fechas[0]);
@@ -158,12 +168,32 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     for (const pt of puntos) pt.c = porEval.get(pt.evaluationId) ?? null;
   }
 
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
   // EL MODULO S DE CADA PUNTO (su §3): es el segundo eje de la tabla 6 de la tarjeta de respuesta.
-  if (puntos.length > 0) {
-    const porEval = await moduloSPorConsulta(
+  //
+  // ═══ SOLO SI ALGUNA CONSULTA SELLO UN INSTRUMENTO  ·  2026-11-09, tras el incidente ═══
+  //
+  // La CNV-S hoy solo se le aplica a pacientes de prueba, asi que en la inmensa mayoria de las
+  // pantallas estas consultas no pueden encontrar nada. No preguntar es mejor que preguntar rapido.
+  //
+  // Y LA COMPROBACION NO CUESTA OTRA VUELTA A LA BASE: `survey_instrument_id` viaja en la misma fila
+  // que la serie ya pide. La columna es NULL para la linea base POR CONSTRUCCION (ver
+  // `idDelInstrumento`: devuelve null para `CNV v2.0`, porque el nulo dice la verdad, que nadie eligio
+  // instrumento), asi que hoy 'no nula' y 'CNV-S 1.0' son el mismo conjunto.
+  //
+  // SE COMPARA CONTRA NULL Y NO CONTRA EL ID DE LA CNV-S a proposito: resolver ese id pediria la
+  // consulta que este gate existe para evitar, y el peor caso de equivocarse es el bueno. Si algun dia
+  // hay un tercer instrumento, lo que pasa es que la lectura SE HACE (lo de hoy), nunca que el Modulo S
+  // se pierda.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  let moduloSIlegible = false;
+  const conCnvs = puntos.filter((p2) => conInstrumento.has(p2.evaluationId));
+  if (conCnvs.length > 0) {
+    const { porEval, ilegible } = await moduloSPorConsulta(
       supabase,
-      puntos.map((p2) => p2.evaluationId),
+      conCnvs.map((p2) => p2.evaluationId),
     );
+    moduloSIlegible = ilegible;
     for (const pt of puntos) {
       const m = porEval.get(pt.evaluationId);
       if (m) pt.moduloS = { ...m, nombresDeProductos: {} };
@@ -182,9 +212,18 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
   // seguimiento, y la comparacion que le importa al profesional es la de hoy.
   // LOS NOMBRES DE LOS PRODUCTOS, SOLO DEL ULTIMO PUNTO: es el unico cuyo S1 escribe la tarjeta, y
   // resolverlos para los ocho seria una vuelta a la base por consulta para texto que nadie lee.
+  //
+  // Y CON `catch`, POR LO MISMO QUE EL LECTOR DEL MODULO S: esto es TEXTO (el nombre comercial que va al
+  // lado de la respuesta). Sin el, el S1 sale con el id del producto, que se lee mal pero se lee. Que un
+  // rotulo tumbe la pantalla donde se trabaja no es una opcion.
   const conModuloS = enPantalla[enPantalla.length - 1];
   if (conModuloS?.moduloS) {
-    const { productos } = await insumosDeLaCnvsDeLaConsulta(conModuloS.evaluationId);
+    const productos = await insumosDeLaCnvsDeLaConsulta(conModuloS.evaluationId)
+      .then((i) => i.productos)
+      .catch((e: unknown) => {
+        reportServerError("seguimiento.nombres-de-productos", e);
+        return [] as { id: string; nombre: string }[];
+      });
     conModuloS.moduloS = {
       ...conModuloS.moduloS,
       nombresDeProductos: Object.fromEntries(productos.map((p2) => [p2.id, p2.nombre])),
@@ -218,65 +257,135 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     }
   }
 
-  return { puntos: enPantalla, omitidas, refC };
+  return { puntos: enPantalla, omitidas, refC, serieIlegible: false, moduloSIlegible };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// EL MODULO S DE CADA PUNTO  ·  el segundo eje de su tabla 6  ·  2026-11-09
+// EL MODULO S DE CADA PUNTO  ·  el segundo eje de su tabla 6
 //
-// SE LEE EN UNA SOLA CONSULTA para los (como mucho) ocho puntos de la serie, y se filtra por las SIETE
-// claves del Modulo S: traer la encuesta entera de ocho consultas para calcular una adherencia seria
-// pedirle a la base medio millar de filas por pantalla.
+// ═══ EL INCIDENTE DEL 2026-11-09: ESTA FUNCION TUMBO /ani-bis-e ENTERA ═══
 //
-// LA RESPUESTA VIGENTE DE CADA CONSULTA ES LA ULTIMA, que es la regla de la casa: una correccion escribe
-// un `survey_responses` nuevo, y leer el viejo mostraria el dato PRE-correccion.
+// Diez eventos en Sentry, escalando, no manejados: *"canceling statement due to statement timeout"*.
+// Ninguna consulta de ningun paciente abria, en ninguna pestana, porque la serie se lee en el
+// `Promise.all` de la pagina y un rechazo ahi tumba la pagina entera.
+//
+// ═══ POR QUE ERA LENTA: LA RLS, NO EL TAMANO ═══
+//
+// La consulta pedia `survey_answers` filtrando SOLO por columnas de sus dos embebidos
+// (`survey_questions.field_key` y `survey_responses.evaluation_id`). Sobre la tabla propia no habia
+// ningun filtro, asi que Postgres tenia que recorrerla entera y evaluar en CADA fila la politica de RLS
+// de `survey_answers`, que no es un `true`: es un `exists` que salta a `survey_responses`, de ahi a
+// `evaluations` y de ahi llama a `is_patient_professional`.
+//
+// MEDIDO, no deducido (2026-11-09):
+//   · la forma vieja CON RLS, con una sesion de profesional de verdad: TIMEOUT A LOS 8.092 ms, con el
+//     mismo mensaje que Sentry. La nueva, 24 ms (10 + 6 + 8). Es el defecto reproducido.
+//   · la forma vieja con el service_role, o sea SIN RLS: 408 ms. La forma no cuesta; la RLS por fila si.
+//
+// Y DE AHI SALE POR QUE LAS PRUEBAS NO LO VIERON, que no es que la base local sea chica: tiene 176.724
+// respuestas contra las 41.858 de la nube, cuatro veces mas. Es que LA SUITE SE CONECTA COMO DUENO DE LA
+// BASE (`DATABASE_URL`) Y LA RLS NO SE LE APLICA, asi que la politica que cuesta el tiempo nunca corre.
+// Lo mismo vale para cualquier medicion que se haga con el service_role.
+//
+// ═══ TRES CONSULTAS CORTAS EN VEZ DE UNA LARGA ═══
+//
+//   1. las `survey_responses` de esas consultas, por `evaluation_id` (indice `survey_responses_eval_idx`);
+//   2. los ids de las SIETE preguntas del modulo, una vez (`survey_questions` es chica y su RLS es `true`);
+//   3. las `survey_answers` por `response_id` + `question_id`, las dos columnas PROPIAS de la tabla y las
+//      dos indexadas (`survey_answers_response_idx` y el unico `(response_id, question_id)`).
+//
+// Los tres indices ya existian, asi que no hace falta migracion.
+//
+// EL PASO 1 TAMBIEN RECORTA EL 3: la respuesta VIGENTE de cada consulta se resuelve antes de pedir una
+// sola respuesta, asi que el `in` del paso 3 lleva como mucho ocho ids, uno por punto de la serie. Es la
+// regla de la casa (una correccion escribe un `survey_responses` nuevo, y leer el viejo mostraria el dato
+// PRE-correccion) y ademas mantiene la URL corta, que es otro fallo que ya nos costo.
+//
+// ═══ Y NO LANZA, PASE LO QUE PASE ═══
+//
+// El Modulo S es un dato SECUNDARIO de la serie: sin el, la tarjeta no puede decir la adherencia ni el
+// escenario de la tabla 6, y todo lo demas de la pantalla sigue en pie. Un dato secundario que al fallar
+// deja sin consulta a todos los pacientes no es un dato secundario, es un freno. Asi que el fallo se
+// reporta a Sentry, se devuelve vacio y SE DICE (`moduloSIlegible`). Lo unico que no se puede hacer es
+// callarlo y dejar que la pantalla afirme que no hubo encuesta de seguimiento.
 //
 // Y SI UNA CONSULTA NO TIENE NINGUNA de las siete, su `moduloS` queda en `null`, que es lo que significa
 // "esta consulta no aplico la CNV-S". No es lo mismo que un Modulo S con todo en blanco: con null la
 // tarjeta no habla de adherencia; con el objeto vacio diria que la adherencia no se puede calcular, que
 // es una afirmacion sobre una encuesta que nunca existio.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
+type ModuloSLeido = {
+  porEval: Map<string, Omit<ModuloSDelPunto, "nombresDeProductos">>;
+  /** La lectura fallo. `porEval` esta vacio por el fallo, no porque no hubiera nada. */
+  ilegible: boolean;
+};
+
 async function moduloSPorConsulta(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   evaluationIds: string[],
-): Promise<Map<string, Omit<ModuloSDelPunto, "nombresDeProductos">>> {
-  const salida = new Map<string, Omit<ModuloSDelPunto, "nombresDeProductos">>();
-  if (evaluationIds.length === 0) return salida;
-  const { data, error } = await supabase
-    .from("survey_answers")
-    .select(
-      "answer_value, survey_questions!inner(field_key), survey_responses!inner(id, evaluation_id, created_at)",
-    )
-    .in("survey_responses.evaluation_id", evaluationIds)
-    .in("survey_questions.field_key", [...CLAVES_DEL_MODULO_S]);
-  if (error) throw new Error(`serie-reader: modulo S: ${error.message}`);
-
-  type Fila = {
-    answer_value: string | null;
-    survey_questions: { field_key: string | null } | { field_key: string | null }[];
-    survey_responses:
-      | { id: string; evaluation_id: string; created_at: string }
-      | { id: string; evaluation_id: string; created_at: string }[];
+): Promise<ModuloSLeido> {
+  const porEval = new Map<string, Omit<ModuloSDelPunto, "nombresDeProductos">>();
+  const vacio: ModuloSLeido = { porEval, ilegible: false };
+  // Un area sola para los tres pasos, con el paso en el mensaje: en Sentry interesa agrupar por
+  // "el Modulo S no se pudo leer" y poder ver dentro cual de las tres consultas fallo.
+  const falla = (paso: string, mensaje: string): ModuloSLeido => {
+    reportServerError("seguimiento.modulo-s", new Error(`serie-reader: modulo S: ${paso}: ${mensaje}`));
+    return { porEval: new Map(), ilegible: true };
   };
-  // LA RESPUESTA VIGENTE DE CADA CONSULTA, primero: sin este paso una consulta corregida mezclaria las
-  // respuestas de las dos versiones y la adherencia saldria de una mitad de cada una.
-  const vigentePorEval = new Map<string, { id: string; created_at: string }>();
-  const filas = ((data ?? []) as unknown as Fila[]).map((f) => ({
-    valor: f.answer_value,
-    clave: (Array.isArray(f.survey_questions) ? f.survey_questions[0] : f.survey_questions)?.field_key ?? null,
-    resp: Array.isArray(f.survey_responses) ? f.survey_responses[0] : f.survey_responses,
-  }));
-  for (const f of filas) {
-    if (!f.resp) continue;
-    const actual = vigentePorEval.get(f.resp.evaluation_id);
-    if (!actual || f.resp.created_at > actual.created_at) {
-      vigentePorEval.set(f.resp.evaluation_id, { id: f.resp.id, created_at: f.resp.created_at });
+  if (evaluationIds.length === 0) return vacio;
+
+  // ── 1 · LAS RESPUESTAS DE ESAS CONSULTAS, y la VIGENTE de cada una ──────────────────────────────
+  const { data: respuestas, error: eResp } = await supabase
+    .from("survey_responses")
+    .select("id, evaluation_id, created_at")
+    .in("evaluation_id", evaluationIds);
+  if (eResp) return falla("respuestas", eResp.message);
+  const vigentePorEval = new Map<string, { id: string; createdAt: string }>();
+  for (const r of (respuestas ?? []) as unknown as {
+    id: string;
+    evaluation_id: string;
+    created_at: string;
+  }[]) {
+    const actual = vigentePorEval.get(r.evaluation_id);
+    if (!actual || r.created_at > actual.createdAt) {
+      vigentePorEval.set(r.evaluation_id, { id: r.id, createdAt: r.created_at });
     }
   }
-  for (const f of filas) {
-    if (!f.resp || !f.clave) continue;
-    if (vigentePorEval.get(f.resp.evaluation_id)?.id !== f.resp.id) continue;
-    const previo = salida.get(f.resp.evaluation_id) ?? {
+  // El camino de vuelta: de la respuesta a su consulta. El paso 3 ya no trae el `evaluation_id`.
+  const evalPorRespuesta = new Map<string, string>();
+  for (const [evaluationId, v] of vigentePorEval) evalPorRespuesta.set(v.id, evaluationId);
+  if (evalPorRespuesta.size === 0) return vacio;
+
+  // ── 2 · LOS IDS DE LAS SIETE PREGUNTAS DEL MODULO ───────────────────────────────────────────────
+  const { data: preguntas, error: ePreg } = await supabase
+    .from("survey_questions")
+    .select("id, field_key")
+    .in("field_key", [...CLAVES_DEL_MODULO_S]);
+  if (ePreg) return falla("preguntas", ePreg.message);
+  const clavePorPregunta = new Map<string, string>();
+  for (const q of (preguntas ?? []) as unknown as { id: string; field_key: string | null }[]) {
+    if (q.field_key) clavePorPregunta.set(q.id, q.field_key);
+  }
+  // Una base sin las preguntas de la CNV-S no es un fallo: es una base anterior a 0240.
+  if (clavePorPregunta.size === 0) return vacio;
+
+  // ── 3 · LAS RESPUESTAS, POR LAS DOS COLUMNAS PROPIAS E INDEXADAS ────────────────────────────────
+  const { data: filas, error: eAns } = await supabase
+    .from("survey_answers")
+    .select("response_id, question_id, answer_value")
+    .in("response_id", [...evalPorRespuesta.keys()])
+    .in("question_id", [...clavePorPregunta.keys()]);
+  if (eAns) return falla("respuestas del modulo", eAns.message);
+
+  for (const fila of (filas ?? []) as unknown as {
+    response_id: string;
+    question_id: string;
+    answer_value: string | null;
+  }[]) {
+    const evaluationId = evalPorRespuesta.get(fila.response_id);
+    const clave = clavePorPregunta.get(fila.question_id);
+    if (!evaluationId || !clave) continue;
+    const previo = porEval.get(evaluationId) ?? {
       s1: null,
       s2: null,
       s3: null,
@@ -284,13 +393,13 @@ async function moduloSPorConsulta(
       s5: null,
       s6: null,
     };
-    if (f.clave === "cnvs_s1") previo.s1 = parsePorProducto(f.valor);
-    else if (f.clave === "cnvs_s2") previo.s2 = parsePorProducto(f.valor);
-    else if (f.clave === "cnvs_s3") previo.s3 = f.valor;
-    else if (f.clave === "cnvs_s4") previo.s4 = valoresDeLaRespuesta(f.valor);
-    else if (f.clave === "cnvs_s5") previo.s5 = f.valor;
-    else if (f.clave === "cnvs_s6") previo.s6 = f.valor;
-    salida.set(f.resp.evaluation_id, previo);
+    if (clave === "cnvs_s1") previo.s1 = parsePorProducto(fila.answer_value);
+    else if (clave === "cnvs_s2") previo.s2 = parsePorProducto(fila.answer_value);
+    else if (clave === "cnvs_s3") previo.s3 = fila.answer_value;
+    else if (clave === "cnvs_s4") previo.s4 = valoresDeLaRespuesta(fila.answer_value);
+    else if (clave === "cnvs_s5") previo.s5 = fila.answer_value;
+    else if (clave === "cnvs_s6") previo.s6 = fila.answer_value;
+    porEval.set(evaluationId, previo);
   }
-  return salida;
+  return { porEval, ilegible: false };
 }

@@ -405,6 +405,27 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ═══ LO QUE NO SE PUDO LEER, PRIMERO Y CON SU NOMBRE (2026-11-09) ═══
+
+          Nace del incidente de hoy. El arreglo de fondo es que un fallo de base en estos dos lectores
+          no tumbe la consulta; la mitad que falta es esta, porque un hueco silencioso en una pantalla
+          de seguimiento no se lee como un fallo, se lee como un paciente sin datos. Es el mismo
+          criterio que el aviso de las mediciones omitidas: cuando algo no esta, SE DICE por que. */}
+      {serie.serieIlegible ? (
+        <p className="rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-xs text-attention">
+          No se pudo leer la serie de seguimiento de este paciente, así que esta pestaña no muestra sus
+          mediciones. No es que no las tenga: la lectura falló y ya quedó reportada. Vuelve a cargar la
+          página; si sigue igual, avisa a soporte.
+        </p>
+      ) : null}
+      {serie.moduloSIlegible ? (
+        <p className="rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-xs text-attention">
+          No se pudo leer el módulo de seguimiento (CNV-S) de estas consultas, así que la tarjeta de
+          respuesta no muestra la adherencia ni el escenario de respuesta. El resto de esta pestaña sí
+          es de fiar: las mediciones y el diagnóstico funcional no dependen de esa lectura.
+        </p>
+      ) : null}
+
       {serie.omitidas > 0 ? (
         <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           Se muestran las últimas {serie.puntos.length} mediciones.{" "}

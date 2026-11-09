@@ -125,4 +125,19 @@ export type SerieSeguimiento = {
   refC: RefCapacitancia | null;
   /** Cuantas mediciones quedaron fuera por el tope. 0 = se muestran todas. */
   omitidas: number;
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // LOS DOS FALLOS SE DICEN, NO SE DISFRAZAN DE 'NO HAY DATOS'  ·  2026-11-09
+  //
+  // Nacen del incidente de produccion de hoy: el lector del Modulo S LANZABA ante un error de base y
+  // con eso tumbaba /ani-bis-e entera, con todos los pacientes y en todas las pestanas. El arreglo es
+  // que no lance; pero devolver la serie vacia SIN DECIRLO seria peor que el error, porque la pestana
+  // afirmaria sobre un paciente algo que no midio: 'una sola medicion', 'sin adherencia'.
+  //
+  // ASI QUE EL FALLO VIAJA COMO DATO. Es la misma regla que ya aplica `omitidas`: cuando algo no se
+  // muestra, SE DICE cuanto y por que. Nunca truncar en silencio.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  /** La serie entera no se pudo leer. Con `true`, `puntos` esta vacio porque fallo la base. */
+  serieIlegible: boolean;
+  /** El Modulo S de los puntos no se pudo leer. Los puntos son buenos; su `moduloS` queda en null. */
+  moduloSIlegible: boolean;
 };

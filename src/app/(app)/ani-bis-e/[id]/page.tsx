@@ -508,8 +508,22 @@ export default async function ResultadosEvaluacionPage({
     getHcHeaderForEvaluation(id),
     // Proximo control (Seguimiento, pieza 1): ruta activa, criterio de egreso y la cita.
     getProximoControl(id),
-    // Serie del paciente para las tres visuales de Seguimiento.
-    getSerieSeguimiento(id),
+    // ═══ LA SERIE, CON `catch`: ES EL INCIDENTE DEL 2026-11-09 ═══
+    //
+    // Las tres visuales de Seguimiento son el ultimo bloque de la ultima pestana, y su lector estaba
+    // aqui a pelo. El dia que su consulta del Modulo S se paso del tiempo limite de la base, el
+    // rechazo subio por este `Promise.all` y TUMBO LA PAGINA ENTERA: ninguna consulta de ningun
+    // paciente abria, en ninguna pestana. Diez eventos en Sentry, escalando.
+    //
+    // ES EL MISMO CRITERIO QUE LOS OTROS CUATRO `catch` de esta pagina, y aqui se ve por que importa:
+    // una pestana que no se pinta es un bloque menos; un lector que lanza es la consulta entera.
+    //
+    // Y EL FALLO VIAJA, no se disfraza de serie vacia (`serieIlegible`): decir "una sola medicion"
+    // cuando lo que paso es que no se pudo leer seria una afirmacion sobre el paciente.
+    getSerieSeguimiento(id).catch((e) => {
+      reportServerError("evaluacion.serie-seguimiento", e);
+      return { puntos: [], omitidas: 0, refC: null, serieIlegible: true, moduloSIlegible: false };
+    }),
   ]);
 
   // EL ENCABEZADO DE LAS HOJAS IMPRESAS, uno solo para todas: quien firma (con su profesion) y de quien es.
