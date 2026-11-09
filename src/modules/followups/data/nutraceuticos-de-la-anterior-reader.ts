@@ -77,6 +77,7 @@ export async function nutraceuticosIndicadosEn(
       id: nutraceuticals.id,
       nombre: nutraceuticals.name,
       dosis: treatmentNutraceuticals.dosage,
+      treatmentId: treatments.id,
       treatmentCreatedAt: treatments.createdAt,
     })
     .from(treatmentNutraceuticals)
@@ -87,8 +88,24 @@ export async function nutraceuticosIndicadosEn(
     .orderBy(desc(treatments.createdAt));
   if (filas.length === 0) return [];
 
-  const masReciente = filas[0].treatmentCreatedAt;
-  const delVigente = filas.filter((f) => f.treatmentCreatedAt === masReciente);
+  // ═══════════════════════════════════════════════════════════════════════════════════════
+  // EL TRATAMIENTO VIGENTE SE FILTRA POR SU **ID**, NO POR SU FECHA  ·  defecto del smoke, 2026-11-09
+  //
+  // AQUI DECIA `f.treatmentCreatedAt === masReciente`, y `===` entre dos `Date` compara LA REFERENCIA, no
+  // el instante: dos filas del MISMO tratamiento llegan con dos objetos `Date` distintos que valen lo
+  // mismo, asi que solo la fila 0 (de donde salio `masReciente`) pasaba el filtro.
+  //
+  // O SEA QUE EL S1 PRESENTABA SIEMPRE UN SOLO PRODUCTO, el primero, aunque la consulta anterior tuviera
+  // varios indicados. MEDIDO EN EL SMOKE del 9 de noviembre: la anterior indicaba DOS (MULTI-CELL BASE y
+  // OMEGA COMPLEX) y al paciente se le pregunto por uno. Y no falla en voz alta: la pregunta se presenta
+  // igual, con un producto menos, asi que la respuesta parece completa y la adherencia se habria calculado
+  // sobre la mitad de lo que se le indico.
+  //
+  // SE FILTRA POR EL ID DEL TRATAMIENTO, que es la definicion exacta de "el tratamiento vigente" y no
+  // depende de como se comparen dos marcas de tiempo. Comparar por `getTime()` arreglaria el sintoma, pero
+  // dejaria mezclados dos tratamientos sellados en el mismo milisegundo.
+  // ═══════════════════════════════════════════════════════════════════════════════════════
+  const delVigente = filas.filter((f) => f.treatmentId === filas[0].treatmentId);
 
   // SIN REPETIDOS: el mismo producto indicado dos veces en el mismo tratamiento daria dos filas del S1
   // con la misma clave, y la segunda pisaria a la primera al guardar.

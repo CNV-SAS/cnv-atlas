@@ -1723,6 +1723,13 @@
       "when": 1793800379491,
       "tag": "0245_la_correccion_de_fecha_es_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1793800380491,
+      "tag": "0246_los_rotulos_para_el_paciente",
+      "breakpoints": true
     }
   ]
 }

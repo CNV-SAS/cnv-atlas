@@ -176,9 +176,11 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     const cnvs = await getActiveSurvey("CNV-S 1.0");
     expect(cnvs, "no existe el instrumento de seguimiento").not.toBeNull();
     const secciones = [...new Set((cnvs?.questions ?? []).map((q) => q.section))];
+    // LOS ROTULOS CAMBIARON CON LA 0246 (ver el caso de mas abajo): aqui solo se comprueba el ORDEN,
+    // que es lo que este caso vigila.
     expect(secciones.slice(0, 2), "el orden de su anexo A se perdio").toEqual([
-      "Módulo S",
-      "Confirmar",
+      "Seguimiento",
+      "Confirmación",
     ]);
     expect(secciones[secciones.length - 1]).toBe("Cierre");
     // Y LA VERSION QUE SE SELLA ES LA DEL CUESTIONARIO, no la del Modulo S: es la que el motor congelado
@@ -210,7 +212,11 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     const { db } = await import("@/db");
     const { getActiveSurvey } = await import("@/modules/evaluations/data/survey-reader");
     const cnvs = await getActiveSurvey("CNV-S 1.0");
-    const propias = (cnvs?.questions ?? []).filter((q) => q.section === "Módulo S");
+    // SE RECONOCEN POR SU CLAVE Y NO POR EL ROTULO de la seccion: el rotulo es texto para el paciente y
+    // cambio el 2026-11-09 ("Módulo S" pasó a "Seguimiento", 0246), con lo que este caso se quedo
+    // buscando una seccion que ya no existe y fallo diciendo que el Modulo S no tenia preguntas. La
+    // clave es del instrumento y no cambia porque alguien ajuste una etiqueta.
+    const propias = (cnvs?.questions ?? []).filter((q) => q.fieldKey?.startsWith("cnvs"));
     expect(propias.length, "el Modulo S se quedo sin preguntas").toBeGreaterThan(0);
 
     const versiones = new Set<string>();
@@ -318,5 +324,125 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
        where not exists (select 1 from survey_instrument_items i where i.instrument_id = s.id)
     `)) as unknown as { codigo: string }[];
     expect(vacios.map((v) => v.codigo)).toEqual([]);
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // EL S1 PREGUNTA POR **TODOS** LOS PRODUCTOS INDICADOS  ·  defecto del smoke, 2026-11-09
+  //
+  // ═══ EL CASO ═══
+  //
+  // Santiago hizo el smoke y el S1 solo trajo MULTI-CELL BASE, cuando la consulta anterior tenia DOS
+  // nutraceuticos indicados en el mismo tratamiento (el otro era OMEGA COMPLEX). La causa: el lector
+  // filtraba el tratamiento vigente con `f.treatmentCreatedAt === masReciente`, y `===` entre dos `Date`
+  // compara LA REFERENCIA. Dos filas del mismo tratamiento traen dos objetos `Date` distintos que valen
+  // lo mismo, asi que solo pasaba la fila 0.
+  //
+  // ═══ POR QUE ESTE CASO Y NO UNA CIFRA ═══
+  //
+  // No se afirma "son dos": se comprueba la INVARIANCIA contra la base, consulta por consulta. El lector
+  // tiene que devolver tantos productos como filas DISTINTAS tenga el tratamiento vigente de esa
+  // consulta. Una cifra absoluta envejece y acaba fallando por otra razon; esta propiedad vale con los
+  // datos de hoy y con los de dentro de un año.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("el S1 trae TODOS los nutraceuticos del tratamiento vigente, no solo el primero", async () => {
+    const { nutraceuticosIndicadosEn } = await import(
+      "@/modules/followups/data/nutraceuticos-de-la-anterior-reader"
+    );
+    // El tratamiento VIGENTE de cada consulta diagnosticada (el ultimo, que es la regla de la casa) y
+    // cuantos productos DISTINTOS lleva.
+    const casos = (await db.execute(sql`
+      with vigente as (
+        select d.evaluation_id,
+               (select t.id from treatments t where t.diagnosis_id = d.id
+                 order by t.created_at desc, t.id desc limit 1) as treatment_id
+          from diagnoses d
+      )
+      select v.evaluation_id, count(distinct tn.nutraceutical_id)::int as productos
+        from vigente v
+        join treatment_nutraceuticals tn on tn.treatment_id = v.treatment_id
+       group by v.evaluation_id
+       order by count(distinct tn.nutraceutical_id) desc, v.evaluation_id
+       limit 20
+    `)) as unknown as { evaluation_id: string; productos: number }[];
+
+    expect(casos.length, "la base no tiene ninguna consulta con nutraceuticos indicados").toBeGreaterThan(0);
+    // Y QUE HAYA AL MENOS UNA CON DOS O MAS, o el caso pasaria sin ejercer el defecto. Si algun dia no la
+    // hay, este caso cae y hay que sembrarla, no borrarlo: es el unico que mira la pluralidad.
+    expect(casos[0].productos, "ninguna consulta indica dos productos: el caso no prueba nada").toBeGreaterThan(1);
+
+    for (const caso of casos) {
+      const leidos = await nutraceuticosIndicadosEn(caso.evaluation_id);
+      expect(
+        leidos.length,
+        `la consulta ${caso.evaluation_id} indica ${caso.productos} productos y el S1 presentaria ${leidos.length}`,
+      ).toBe(caso.productos);
+      // Y SIN REPETIDOS: dos filas con la misma clave se pisarian al guardar la respuesta.
+      expect(new Set(leidos.map((l) => l.id)).size).toBe(leidos.length);
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // LOS DOS ROTULOS QUE EL PACIENTE LEE (0246, Santiago 2026-11-09)
+  //
+  // *"«Modulo S» pasa a «Seguimiento» y «Confirmación». Solo el rotulo: los field_key y el instrumento no
+  // cambian."* Las dos mitades se comprueban: la que cambia Y la que NO. Un cambio de rotulo que se lleve
+  // por delante un `field_key` rompe el diagnostico en silencio, porque el motor resuelve por clave.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("las secciones de la CNV-S se llaman como las lee el paciente, y las claves no se movieron", async () => {
+    const { getActiveSurvey } = await import("@/modules/evaluations/data/survey-reader");
+    const cnvs = await getActiveSurvey("CNV-S 1.0");
+    const secciones = [...new Set((cnvs?.questions ?? []).map((q) => q.section))];
+    expect(secciones.slice(0, 2), "el orden de su anexo A se perdio").toEqual([
+      "Seguimiento",
+      "Confirmación",
+    ]);
+    expect(secciones[secciones.length - 1]).toBe("Cierre");
+    expect(secciones, "quedo un rotulo interno en la pantalla del paciente").not.toContain("Módulo S");
+    expect(secciones).not.toContain("Confirmar");
+    // LAS CLAVES, INTACTAS: son las que resuelven el Modulo S en todos los lectores.
+    const claves = (cnvs?.questions ?? []).map((q) => q.fieldKey).filter((k) => k?.startsWith("cnvs"));
+    expect(claves.sort()).toEqual([
+      "cnvs_gi_filtro",
+      "cnvs_s1",
+      "cnvs_s2",
+      "cnvs_s3",
+      "cnvs_s4",
+      "cnvs_s5",
+      "cnvs_s6",
+    ]);
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // Y NINGUNA DE LAS SIETE DEL MODULO S ALIMENTA EL DIAGNOSTICO  ·  lo que Santiago pidio verificar
+  //
+  // Su 3e: *"confirma que las respuestas del modulo de seguimiento NO alimentan el DFI (solo la tarjeta
+  // de respuesta, la no comparabilidad y la investigacion)"*.
+  //
+  // SON DOS CANDADOS EN UNO, y el segundo es el que de verdad cierra: aunque alguien marcara una de las
+  // siete como `used_in_diagnosis`, el motor no la veria, porque `expectedFieldKeys` sale de las
+  // preguntas de la VERSION SELLADA en la respuesta, que es la del cuestionario, y el Modulo S vive en su
+  // propia version. Asi que se comprueba la bandera Y la separacion de versiones.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("ninguna pregunta del Modulo S alimenta el diagnostico, ni por bandera ni por version", async () => {
+    const filas = (await db.execute(sql`
+      select q.field_key, q.used_in_diagnosis, q.survey_version_id
+        from survey_questions q
+       where q.field_key like 'cnvs%'
+    `)) as unknown as { field_key: string; used_in_diagnosis: boolean; survey_version_id: string }[];
+    expect(filas.length, "no estan las siete del Modulo S").toBe(7);
+    expect(
+      filas.filter((f) => f.used_in_diagnosis).map((f) => f.field_key),
+      "una pregunta del Modulo S entro al diagnostico",
+    ).toEqual([]);
+
+    // Y VIVEN TODAS EN SU PROPIA VERSION, que es la que la respuesta NO sella.
+    const versiones = [...new Set(filas.map((f) => f.survey_version_id))];
+    expect(versiones.length, "el Modulo S se repartio entre dos versiones").toBe(1);
+    const { getActiveSurvey } = await import("@/modules/evaluations/data/survey-reader");
+    const cnvs = await getActiveSurvey("CNV-S 1.0");
+    expect(
+      cnvs?.surveyVersionId,
+      "la CNV-S sellaria la version del Modulo S: el diagnostico creeria que la encuesta tiene siete campos",
+    ).not.toBe(versiones[0]);
   });
 });
