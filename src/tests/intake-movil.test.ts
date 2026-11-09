@@ -64,20 +64,84 @@ describe("se ve dónde empieza cada pregunta", () => {
   });
 });
 
-describe("el bloque final tiene UN camino de envío", () => {
+describe("el bloque de envío tiene UN camino, en cualquier sección", () => {
   it("la fila de navegación se oculta mientras se confirma el envío", () => {
     // Había CUATRO botones a la vez y DOS que enviaban ("Enviar así" y "Enviar"), uno encima del otro, en
     // el momento de más atención. En un teléfono el pulgar alcanza los dos.
-    expect(FORM).toContain('isLast && confirmMissing !== null ? "hidden" : ""');
+    //
+    // YA NO DEPENDE DE `isLast` (2026-11-09): con el botón de enviar en todas las secciones, esa
+    // condición habría dejado los cuatro botones a la vez en las siete primeras.
+    expect(FORM).toContain('confirmMissing !== null ? "hidden" : ""');
+    expect(FORM, "el ocultado volvió a depender del último paso").not.toContain(
+      'isLast && confirmMissing !== null ? "hidden" : ""',
+    );
   });
 
-  it("y se conserva el hazard de las keys distintas (auto-envío del último paso)", () => {
-    // Sin keys distintas React reutiliza el nodo al pasar de "Siguiente" a "Enviar" y el navegador
-    // auto-envía al entrar a la última sección. Solo se ve en navegador real (CLAUDE.md).
+  // ═══ EL AVISO DE LO QUE FALTA SALE DONDE SE PULSE ENVIAR ═══
+  //
+  // Su pedido: *"al pulsarlo, el mismo comportamiento del final: si faltan preguntas, el mismo aviso de
+  // siempre y la confirmación"*. Si el aviso siguiera siendo del último paso, el botón de las otras
+  // siete frenaría el envío a propósito y no mostraría por qué: un botón que no hace nada.
+  it("el aviso de lo que falta no es del último paso", () => {
+    expect(FORM).toContain('{confirmMissing !== null ? (');
+    expect(FORM, "el aviso volvió a ser del último paso").not.toContain('{isLast && confirmMissing !== null ? (');
+  });
+
+  // ═══ EL HAZARD 1, AHORA CERRADO POR CONSTRUCCION ═══
+  //
+  // Antes había UN nodo que pasaba de `type="button"` a `type="submit"` al entrar al último paso, y lo
+  // único que evitaba el auto-envío eran las keys distintas. Ahora son dos nodos que no se intercambian:
+  // el de enviar está montado en todos los pasos y su `type` no cambia nunca.
+  it("el botón de enviar está siempre montado y su type no es condicional", () => {
+    const i = FORM.indexOf('key="nav-submit"');
+    expect(i, 'no se encontró el botón de enviar').toBeGreaterThan(0);
+    const bloque = FORM.slice(i, i + 220);
+    expect(bloque, 'el type del botón de enviar volvió a ser condicional').toContain('type="submit"');
+    expect(bloque).not.toMatch(/type=\{/);
+    // Y no cuelga de un ternario sobre `isLast`: el que desaparece en el último paso es "Siguiente".
+    expect(FORM).toContain('{isLast ? null : (');
+    expect(FORM, 'el envío volvió a existir solo en el último paso').not.toContain(
+      '{isLast ? (\n            <Button key="nav-submit"',
+    );
+  });
+
+  it("y se conservan las keys distintas de los tres botones", () => {
+    // Son gratis y son el candado: si alguien vuelve a juntar los dos nodos en uno, las keys son lo
+    // único que separa el nodo de "Siguiente" del de "Enviar" (CLAUDE.md, hazard 1).
     expect(FORM).toContain('key="nav-next"');
     expect(FORM).toContain('key="nav-submit"');
+    expect(FORM).toContain('key="nav-back"');
     expect(FORM).toContain('key="confirm-send"');
     expect(FORM).toContain('<Button key="confirm-send" type="button"');
+  });
+
+  // ═══ HAZARD 5: EL ENVIO PROPIO NO LLEVA SUBMITTER ═══
+  //
+  // `new FormData(form)` NO incluye el `name`/`value` del botón que envió. Mientras ningún botón de este
+  // formulario lleve datos en su `name`, no se pierde nada; el día que alguien se lo ponga, se perdería
+  // en silencio. Así que se vigila que no lo lleven.
+  it("ningún botón de navegación o envío lleva su dato en el name", () => {
+    for (const key of ['nav-submit', 'nav-next', 'nav-back', 'confirm-send']) {
+      const i = FORM.indexOf(`key="${key}"`);
+      const bloque = FORM.slice(i, i + 220);
+      expect(bloque, `${key} lleva un name: su valor NO viaja en new FormData(form)`).not.toMatch(
+        /\sname=/,
+      );
+    }
+  });
+
+  // ═══ HAZARD 6: NINGUN `required` EN LA ENCUESTA DEL PACIENTE ═══
+  //
+  // Es lo que hace que enviar desde la sección 2 funcione de verdad: TODAS las secciones están montadas
+  // (solo ocultas), así que un `required` en cualquiera de ellas lo validaría el navegador al enviar, no
+  // podría enfocar un campo invisible, y el envío no haría nada sin decir por qué. Y además el diseño es
+  // que el paciente puede dejar preguntas sin responder: *"puedes enviarla y completarlas con tu
+  // profesional"*. Un `required` aquí contradice la frase que la propia pantalla muestra.
+  it("ni el formulario ni sus widgets exigen ninguna respuesta", () => {
+    for (const [nombre, src] of Object.entries({ formulario: FORM, widgets: WIDGETS })) {
+      expect(src, `${nombre}: un required en la encuesta del paciente bloquea el envío desde otra sección`)
+        .not.toMatch(/\srequired(\s|=|\/|>)/);
+    }
   });
 });
 

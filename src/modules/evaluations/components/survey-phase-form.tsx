@@ -843,7 +843,13 @@ export function SurveyPhaseForm({
             Y NO SE USA `attention` (el ambar operativo) TAMPOCO, aunque existe y seria correcto en el eje:
             ese token dice "esto pide que hagas algo", y aqui las dos salidas son igual de validas. Lo que
             hay es una eleccion, no un pendiente. Neutro es lo que no empuja a ninguna de las dos. */}
-        {isLast && confirmMissing !== null ? (
+        {/* ═══ EL AVISO YA NO ES DEL ULTIMO PASO: ES DE DONDE SE PULSE ENVIAR (Santiago, 2026-11-09) ═══
+
+            Era `isLast && confirmMissing !== null`. Con el boton de enviar en todas las secciones, eso
+            habria dejado el aviso invisible en siete de las ocho: el paciente pulsa Enviar, el envio se
+            frena a proposito para advertirle, y no ve la advertencia ni los dos botones. O sea un boton
+            que no hace nada, que es peor que no tenerlo. */}
+        {confirmMissing !== null ? (
           <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
             <p>
               Te {confirmMissing === 1 ? "falta" : "faltan"}{" "}
@@ -904,25 +910,53 @@ export function SurveyPhaseForm({
         ) : null}
 
         <div
-          className={`flex items-center justify-between gap-3 ${
-            isLast && confirmMissing !== null ? "hidden" : ""
+          className={`flex flex-wrap items-center justify-between gap-3 ${
+            confirmMissing !== null ? "hidden" : ""
           }`}
         >
           <Button key="nav-back" type="button" variant="outline" onClick={goBack} disabled={step === 0 || submitting}>
             Anterior
           </Button>
-          {/* keys DISTINTAS a proposito (ver CLAUDE.md): sin ellas React reutiliza el nodo al pasar de
-              "Siguiente" a "Enviar" y el navegador auto-envia al entrar a la ultima seccion, perdiendola
-              en TODOS los pacientes. Solo se ve en navegador real. */}
-          {isLast ? (
-            <Button key="nav-submit" type="submit" disabled={submitting}>
+          {/* ══════════════════════════════════════════════════════════════════════════════════════
+              ENVIAR DESDE CUALQUIER SECCION  ·  Santiago, 2026-11-09
+
+              SU PEDIDO: *"el boton de enviar disponible en todas las secciones de la encuesta del
+              paciente, no solo en la ultima"*, con el mismo comportamiento del final (el aviso de lo que
+              falta y su confirmacion).
+
+              ═══ Y ESTO CIERRA EL HAZARD 1 EN VEZ DE CONVIVIR CON EL ═══
+
+              Antes habia UN nodo que cambiaba de `type="button"` a `type="submit"` al entrar al ultimo
+              paso, y lo unico que evitaba el auto-envio eran las keys distintas: con la misma key React
+              reutiliza el nodo, el re-render sincrono dentro del onClick le cambia el `type`, y el
+              navegador ejecuta la accion por defecto del clic sobre un boton que ya envia. Eso perdia la
+              ultima seccion de TODOS los pacientes y dejo el demo degradado semanas.
+
+              AHORA SON DOS NODOS DISTINTOS QUE NUNCA SE INTERCAMBIAN: el de enviar esta montado en todos
+              los pasos y su `type` no cambia nunca; el de "Siguiente" se desmonta en el ultimo. Ya no
+              hay transicion de tipo que pueda disparar un envio, y las keys se conservan igual (son
+              gratis y son el candado).
+
+              ═══ EL ORDEN VISUAL DICE CUAL ES EL CAMINO ═══
+
+              "Siguiente" es el primario hasta el ultimo paso; "Enviar" va al lado en secundario y pasa a
+              primario al final. Dos botones primarios juntos en un telefono son dos caminos que piden lo
+              mismo, y el pulgar alcanza los dos. */}
+          <div className="flex items-center gap-2">
+            {isLast ? null : (
+              <Button key="nav-next" type="button" onClick={goNext}>
+                Siguiente
+              </Button>
+            )}
+            <Button
+              key="nav-submit"
+              type="submit"
+              variant={isLast ? "default" : "outline"}
+              disabled={submitting}
+            >
               {submitting ? "Enviando..." : isFollowup ? "Enviar seguimiento" : "Enviar"}
             </Button>
-          ) : (
-            <Button key="nav-next" type="button" onClick={goNext}>
-              Siguiente
-            </Button>
-          )}
+          </div>
         </div>
       </div>
     </form>
