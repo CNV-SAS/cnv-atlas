@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { useLimpiarAlGuardar } from "@/components/shared/limpiar-al-guardar";
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,10 @@ export function DeclararRemesaForm({
 }) {
   const [state, action, pending] = useActionState(declareRemesaFormAction, initial);
   useFormToast(state);
+  // LOS CAMPOS SE VACIAN AL DECLARARLA, y no es comodidad: esta accion CREA el movimiento de despacho,
+  // asi que con los cuatro campos llenos y el boton vivo, volver a pulsar declara una SEGUNDA remesa.
+  // Solo la limita la existencia en la central. Ver `limpiar-al-guardar`.
+  const limpio = useLimpiarAlGuardar(state);
 
   if (professionals.length === 0 || products.length === 0) {
     return (
@@ -44,7 +49,13 @@ export function DeclararRemesaForm({
     <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="professionalId">Integrante</Label>
-        <select id="professionalId" name="professionalId" required className={`${selectClass} w-56`}>
+        <select
+          key={`prof-${limpio}`}
+          id="professionalId"
+          name="professionalId"
+          required
+          className={`${selectClass} w-56`}
+        >
           <option value="">Selecciona un integrante</option>
           {professionals.map((p) => (
             <option key={p.professionalId} value={p.professionalId}>
@@ -55,7 +66,13 @@ export function DeclararRemesaForm({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="nutraceuticalId">Producto</Label>
-        <select id="nutraceuticalId" name="nutraceuticalId" required className={`${selectClass} w-56`}>
+        <select
+          key={`prod-${limpio}`}
+          id="nutraceuticalId"
+          name="nutraceuticalId"
+          required
+          className={`${selectClass} w-56`}
+        >
           <option value="">Selecciona un producto</option>
           {products.map((p) => (
             <option key={p.id} value={p.id}>
@@ -67,13 +84,29 @@ export function DeclararRemesaForm({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="quantity">Cantidad enviada</Label>
-        <Input id="quantity" name="quantity" type="number" inputMode="numeric" min={1} required className="w-32" />
+        <Input
+          key={`cant-${limpio}`}
+          id="quantity"
+          name="quantity"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          required
+          className="w-32"
+        />
       </div>
       <div className="flex flex-col gap-1.5">
         {/* OBLIGATORIO: el inventario se lleva por lote, así que sin él la remesa no se puede registrar. Decía
             "(opcional)" y el servicio la rechazaba al enviar. */}
         <Label htmlFor="lote">Lote</Label>
-        <Input id="lote" name="lote" placeholder="El que viene en la caja" required className="w-40" />
+        <Input
+          key={`lote-${limpio}`}
+          id="lote"
+          name="lote"
+          placeholder="El que viene en la caja"
+          required
+          className="w-40"
+        />
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? "Declarando..." : "Declarar remesa"}

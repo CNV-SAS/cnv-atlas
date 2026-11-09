@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
+import { useLimpiarAlGuardar } from "@/components/shared/limpiar-al-guardar";
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,11 @@ export function DeclararDevolucionForm({ lotes }: { lotes: LoteParaDevolver[] })
   const [state, action, pending] = useActionState(declararDevolucionFormAction, initial);
   useFormToastAndRefresh(state);
   const [lotId, setLotId] = useState("");
+  // AL DECLARARLA SE SUELTA EL LOTE, con lo que la cantidad y el motivo se desmontan con el. Esta
+  // accion solo comprueba el DISPONIBLE, asi que declarar 5 dos veces teniendo 10 pasa las dos veces:
+  // su propio writer ya avisaba del riesgo de "declarar dos veces las mismas cinco unidades". Ver
+  // `limpiar-al-guardar`.
+  useLimpiarAlGuardar(state, () => setLotId(""));
   const elegido = lotes.find((l) => l.lotId === lotId);
 
   return (

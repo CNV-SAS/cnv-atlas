@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 
+import { useLimpiarAlGuardar } from "@/components/shared/limpiar-al-guardar";
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,11 @@ export function MiConteoForm({ products }: { products: { id: string; name: strin
   const [state, action, pending] = useActionState(recordCountFormAction, initial);
   useFormToast(state);
   const [rows, setRows] = useState<Record<string, { qty: string; lote: string }>>({});
+  // EL CONTEO SE VACIA AL REGISTRARLO, y es el mas delicado de los tres: cada envio crea una SESION
+  // de conteo, y de las sesiones salen los FALTANTES. Con las cifras aun en pantalla y el boton vivo,
+  // volver a pulsar abre un segundo conteo identico, o sea faltantes duplicados, que tienen
+  // consecuencia economica para el Integrante. Ver `limpiar-al-guardar`.
+  const limpio = useLimpiarAlGuardar(state, () => setRows({}));
 
   const set = (id: string, field: "qty" | "lote", value: string) =>
     setRows((prev) => {
@@ -70,7 +76,13 @@ export function MiConteoForm({ products }: { products: { id: string; name: strin
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="note">Nota (opcional)</Label>
-        <Input id="note" name="note" className="w-full" placeholder="Observaciones del conteo" />
+        <Input
+          key={`nota-${limpio}`}
+          id="note"
+          name="note"
+          className="w-full"
+          placeholder="Observaciones del conteo"
+        />
       </div>
       <Button type="submit" disabled={pending || lines.length === 0}>
         {pending ? "Registrando..." : "Registrar conteo"}
