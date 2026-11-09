@@ -61,7 +61,22 @@ export type ObservacionVigente = ObservacionCruda & {
  */
 export function observacionesVigentes(todas: ObservacionCruda[]): ObservacionVigente[] {
   const porProfesion = new Map<string, ObservacionCruda[]>();
-  for (const o of todas) {
+  // ═══ UNA FILA SIN NOTA NO ES UNA OBSERVACION  ·  defecto del smoke (Santiago, 2026-11-09) ═══
+  //
+  // Desde la 0237 el mismo acto puede escribir DOS textos con destinos distintos: la nota clinica y el
+  // mensaje para el paciente. Y desde el 2026-11-08 la nota dejo de ser obligatoria, justamente para que
+  // corregir el mensaje no obligue a inventar un registro clinico. Asi que hay filas con mensaje y SIN
+  // nota, y esta reduccion las contaba: en el historial salia una "Observacion 1 de 2" VACIA.
+  //
+  // LO QUE SE LEE DE ESA FILA VACIA ES FALSO EN LAS DOS DIRECCIONES: si es la ultima, pasa a ser "la
+  // observacion vigente" y tapa la que si tiene texto; y si es anterior, infla el "de N" con un acto que
+  // nadie escribio. Y no es solo pantalla: la misma reduccion la usan la historia clinica, su PDF y el
+  // SOAP, que son documento probatorio.
+  //
+  // SE FILTRA AQUI, EN LA UNICA DEFINICION, y no en cada superficie: el historial del MENSAJE ya filtra
+  // por su propio campo, asi que cada lista mira el texto que le corresponde y una fila con los dos sigue
+  // apareciendo en las dos.
+  for (const o of todas.filter((o) => (o.note ?? "").trim() !== "")) {
     const k = o.profesion ?? "sin-profesion";
     porProfesion.set(k, [...(porProfesion.get(k) ?? []), o]);
   }

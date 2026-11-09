@@ -210,3 +210,65 @@ describe("el campo se vacía al guardar, sin reabrir el hazard del auto-reset", 
     expect(OBS).not.toMatch(/<form\s+action=/);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// UNA FILA SIN NOTA NO ES UNA OBSERVACION  ·  defecto del smoke (Santiago, 2026-11-09)
+//
+// Textual: *"en el historial de notas clinicas aparece una «Observacion 1 de 2» vacia. Es la fila que
+// solo traia mensaje para el paciente."*
+//
+// DE DONDE SALE ESA FILA: desde la 0237 el mismo acto escribe DOS textos con destinos distintos (la nota
+// clinica, que va a la historia, y el mensaje para el paciente, que va en su informe), y desde el
+// 2026-11-08 la nota dejo de ser obligatoria, justamente para que corregir el mensaje no obligue a
+// inventar un registro clinico. Asi que hay filas con mensaje y sin nota, y son correctas.
+//
+// LO QUE SE LEE DE ELLAS ES FALSO EN LAS DOS DIRECCIONES: si la fila vacia es la ultima, pasa a ser "la
+// observacion vigente" y TAPA la que si tiene texto; y si es anterior, infla el "de N" con un acto que
+// nadie escribio. Y no es solo pantalla: la misma reduccion la usan la historia clinica, su PDF y el
+// SOAP, que son documento probatorio.
+//
+// SE FILTRA EN LA UNICA DEFINICION y no en cada superficie, que es la misma razon por la que esta
+// reduccion existe. El historial del MENSAJE ya filtra por su propio campo, asi que cada lista mira el
+// texto que le corresponde y una fila con los dos sigue apareciendo en las dos.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("las filas que solo llevan mensaje para el paciente", () => {
+  const fila = (id: string, creadaEn: string, note: string) => ({
+    id,
+    note,
+    fecha: creadaEn.slice(0, 10),
+    creadaEn,
+    profesion: "medico",
+  });
+
+  it("no se cuentan como observaciones", () => {
+    const r = observacionesVigentes([
+      fila("con-nota", "2026-11-08T10:00:00.000Z", "La paciente refiere mejoria del reflujo."),
+      fila("solo-mensaje", "2026-11-08T11:00:00.000Z", ""),
+    ]);
+    expect(r.length).toBe(1);
+    expect(r[0].id, "la fila sin nota tapo a la que si tiene texto").toBe("con-nota");
+    expect(r[0].reemplaza, "la fila sin nota inflo el conteo de anteriores").toBe(0);
+    expect(r[0].anteriores).toEqual([]);
+  });
+
+  it("ni cuando son las unicas: entonces no hay ninguna observacion", () => {
+    // Y eso es lo correcto: el mensaje se le dejo al paciente, no se escribio un registro clinico. La
+    // pantalla dice "aun no has registrado observaciones", que es cierto.
+    expect(observacionesVigentes([fila("solo-mensaje", "2026-11-08T11:00:00.000Z", "   ")])).toEqual([]);
+  });
+
+  it("y la reduccion es la UNICA que lo decide, no cada superficie", () => {
+    // Las cuatro leen de aqui (ya lo vigila el caso de arriba); lo que este añade es que ninguna se
+    // monte su propio filtro, que es como volverian a divergir.
+    for (const [nombre, fuente] of [
+      ["la pantalla de seguimiento", OBS],
+      ["la historia clinica", HC],
+      ["el PDF de la historia", PDF],
+    ] as const) {
+      const limpia = sinComentarios(fuente);
+      expect(limpia, `${nombre} filtra las notas vacias por su cuenta`).not.toMatch(
+        /\.filter\(\(n\)\s*=>\s*\(?n\.note/,
+      );
+    }
+  });
+});
