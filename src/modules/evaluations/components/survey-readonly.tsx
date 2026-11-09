@@ -71,6 +71,9 @@ export function SurveyReadonly({ domains }: { domains: SurveyDomain[] }) {
                     questionType={q.questionType}
                     answerValue={q.answerValue}
                     options={q.options}
+                    // EL S1 Y EL S2 GUARDAN SU RESPUESTA POR ID DE PRODUCTO: sin los nombres, esta
+                    // vista escribia el objeto JSON crudo (smoke del 2026-11-09).
+                    nombresDeProductos={q.nombresDeProductos}
                   />
                 </div>
               );

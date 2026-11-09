@@ -1,4 +1,8 @@
 import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
+import {
+  textoDeLaRespuesta,
+  type NombresDeProductos,
+} from "@/modules/evaluations/respuesta-en-texto";
 
 // ═══ LA ENCUESTA, REDACTADA POR DOMINIO (plan del SOAP, forma B) ═══
 //
@@ -16,25 +20,25 @@ import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-typ
 //
 // PURO: sin BD ni server-only. Lo llaman el lector del SOAP y sus tests, con casos escritos a mano.
 
-/** Una respuesta, ya en texto. Las múltiples se unen con coma; el objeto raro se serializa antes que perderse. */
-function respuestaEnTexto(valor: unknown): string {
+/**
+ * Una respuesta, ya en texto. LA LECTURA ES LA COMPARTIDA (`respuesta-en-texto`), no una propia.
+ *
+ * Aqui vivia una cuarta copia de "como se lee una respuesta guardada", y por eso el S1 de la CNV-S
+ * habria salido en el SOAP como el objeto JSON crudo, con los ids de los productos dentro, y una multi
+ * confirmada como un arreglo dentro de otro. El tipo de la pregunta y los nombres de los productos los
+ * pasa quien llama, que es quien los tiene.
+ */
+function respuestaEnTexto(
+  valor: unknown,
+  tipo?: string | null,
+  nombres?: NombresDeProductos,
+): string {
   if (valor == null) return "";
   if (Array.isArray(valor)) return valor.map((v) => String(v).trim()).filter(Boolean).join(", ");
-  // LAS DE OPCION MULTIPLE LLEGAN COMO JSON ("[\"Ejercicio excesivo\",\"Vómito\"]"), y salian asi, crudas, en la S
-  // (Santiago, 2026-09-21). Se leen como lista; si no parsean, se muestran tal cual antes que perderlas.
-  if (typeof valor === "string" && valor.trim().startsWith("[")) {
-    try {
-      const lista: unknown = JSON.parse(valor);
-      if (Array.isArray(lista)) return lista.map((v) => String(v).trim()).filter(Boolean).join(", ");
-    } catch {
-      // no era JSON
-    }
-  }
   if (typeof valor === "boolean") return valor ? "sí" : "no";
   if (typeof valor === "object") return JSON.stringify(valor);
-  return String(valor).trim();
+  return textoDeLaRespuesta(String(valor), { tipo, nombres });
 }
-
 /**
  * La pregunta como ETIQUETA de la frase: sin los signos de interrogación y con la primera letra en
  * minúscula, para que encaje dentro de la oración ("Refiere: cuántas comidas consume al día: 3").
@@ -49,8 +53,7 @@ export function preguntaComoEtiqueta(texto: string): string {
 }
 
 /** ¿Hay respuesta? Se usa el mismo criterio que el resto del sistema: vacío y "Otra" pelada no cuentan. */
-function respondida(valor: unknown): boolean {
-  const texto = respuestaEnTexto(valor);
+function respondida(texto: string): boolean {
   if (texto === "") return false;
   // "Otra" sin el texto que la acompaña es un hueco, no una respuesta (la misma regla que `isAnswered`).
   return !/^otra?$/i.test(texto);
@@ -76,12 +79,13 @@ export function redactarDominio(
 
   for (const q of dominio.questions) {
     if (omitir.has(q.questionId)) continue;
-    if (!respondida(q.answerValue)) {
+    const texto = respuestaEnTexto(q.answerValue, q.questionType, q.nombresDeProductos);
+    if (!respondida(texto)) {
       faltantes.push(q.number);
       continue;
     }
     const etiqueta = preguntaComoEtiqueta(q.questionText);
-    conRespuesta.push(`${etiqueta}: ${respuestaEnTexto(q.answerValue)}`);
+    conRespuesta.push(`${etiqueta}: ${texto}`);
   }
 
   const partes: string[] = [];

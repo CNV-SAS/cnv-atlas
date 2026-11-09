@@ -47,6 +47,23 @@ export type InsumosDeLaCnvs = {
 
 const VACIO: InsumosDeLaCnvs = { anteriores: {}, productos: [] };
 
+/**
+ * LOS INSUMOS DE UNA CONSULTA YA CREADA, por su id. Resuelve el paciente y excluye la consulta.
+ *
+ * Lo usan los lectores que solo tienen la consulta delante (la vista de la encuesta del profesional y
+ * la pantalla de completarla): necesitan los NOMBRES de los productos del S1, que la respuesta guarda
+ * por id. Va aqui, al lado de la resolucion de "la anterior", para no tener dos.
+ */
+export async function insumosDeLaCnvsDeLaConsulta(evaluationId: string): Promise<InsumosDeLaCnvs> {
+  const [ev] = await db
+    .select({ patientId: evaluations.patientId })
+    .from(evaluations)
+    .where(eq(evaluations.id, evaluationId))
+    .limit(1);
+  if (!ev) return VACIO;
+  return insumosDeLaCnvs({ patientId: ev.patientId, excluyendo: evaluationId });
+}
+
 export async function insumosDeLaCnvs(input: {
   patientId: string;
   /** La consulta de HOY, para excluirla. `null` cuando todavia no existe (el camino publico). */

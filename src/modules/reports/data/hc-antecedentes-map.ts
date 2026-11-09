@@ -10,6 +10,7 @@
 // si una deja de resolver, falla ruidoso en vez de perder una fila en silencio.
 
 import type { SurveyAnswerView } from "@/modules/evaluations/data/survey-answers-types";
+import { valoresDeLaRespuesta } from "@/modules/evaluations/respuesta-en-texto";
 
 export type HcAntecedenteRow = {
   id: string;
@@ -98,20 +99,17 @@ export type HcAntecedenteResuelto = {
   soloNinguna: boolean;
 };
 
-/** Divide una respuesta guardada en sus valores: multi (JSON) o token plano. Conserva el texto de "Otra". */
+/**
+ * Divide una respuesta guardada en sus valores: multi (JSON) o token plano. Conserva el texto de "Otra".
+ *
+ * ES LA LECTURA COMPARTIDA (`respuesta-en-texto`), no una propia. Aqui habia una cuarta copia, y con el
+ * arreglo-dentro-del-arreglo que escribia el bloque de confirmacion de la CNV-S, la fila de antecedentes
+ * familiares de la historia clinica habria dicho ["Ninguna"] con sus corchetes, o peor: habria dejado de
+ * reconocer el "Ninguna" que hace que la fila NO se pinte, y entonces afirmaria un antecedente que la
+ * paciente nego.
+ */
 export function valoresDeRespuesta(raw: string | null | undefined): string[] {
-  if (raw == null) return [];
-  const s = raw.trim();
-  if (s === "" || s === "[]") return [];
-  if (s.startsWith("[")) {
-    try {
-      const arr: unknown = JSON.parse(s);
-      if (Array.isArray(arr)) return arr.filter((el): el is string => typeof el === "string" && el.trim() !== "");
-    } catch {
-      return [s]; // no parseable: se muestra crudo antes que perderlo
-    }
-  }
-  return [s];
+  return valoresDeLaRespuesta(raw);
 }
 
 function encontrar(answers: SurveyAnswerView[], fila: HcAntecedenteRow): SurveyAnswerView | null {

@@ -27,7 +27,11 @@ import {
   submitSurveyAnswersAction,
 } from "../actions";
 import { marcoDeLaSeccion } from "../marco-de-la-seccion";
-import { GI_NUNCA, saltoDeLosDigestivos } from "@/modules/followups/modulo-s";
+import {
+  GI_NUNCA,
+  noAdherentesAlProducto,
+  saltoDeLosDigestivos,
+} from "@/modules/followups/modulo-s";
 
 import type { SaveProgressState, SurveyFormState } from "../validations";
 import type { SurveyItemView, SurveyQuestionView } from "../data/survey-view-types";
@@ -40,6 +44,7 @@ import {
   PreguntaPorProducto,
   type EstadoDeConfirmacion,
 } from "./cnvs-widgets";
+import { parsePorProducto } from "../respuesta-en-texto";
 
 // FASE 2 del intake: la ENCUESTA. Se llega aqui ya firmado (fase 1) con un resume_token que autentica la
 // escritura de respuestas sin sesion. Guarda a medida (al pasar de seccion) para que quien pause y vuelva
@@ -237,27 +242,8 @@ export function SurveyPhaseForm({
   // muestra los 4 campos de perfil + motivo.
   const includeProfile = !isFollowup;
 
-  // ═══ LO QUE SE PRESENTA, QUE NO ES LO MISMO QUE LO QUE EL INSTRUMENTO TRAE (0241) ═══
-  //
-  // Dos cosas quedan fuera, y las dos siguen llegando en `items` porque el servidor las necesita:
-  //
-  //   · los `retirar` (sus ítems 35, 38, 41 y 63): no se preguntan y CONSERVAN el valor de la línea
-  //     base. Llegan para que el envío sepa cuáles arrastrar; si el reader los filtrara, el servidor no
-  //     tendría de dónde saber que esa pregunta no es un hueco sino un valor heredado.
-  //   · el S1 y el S2 cuando no hay ningún nutracéutico indicado (decisión 34): una pregunta sobre un
-  //     producto que nadie le indicó no tiene respuesta correcta, y la adherencia se resuelve con el S3.
-  //
-  // EN LA LÍNEA BASE ESTO NO QUITA NADA: todos sus ítems son `repetir` y no hay `cnvs`.
+  // LA LINEA BASE NO TIENE PRODUCTOS NI MODULO S: `cnvs` es undefined y esta bandera queda en false.
   const sinProductos = cnvs != null && cnvs.productos.length === 0;
-  const questions = useMemo(
-    () =>
-      items.filter((q) => {
-        if (q.comportamiento === "retirar") return false;
-        if (sinProductos && (q.fieldKey === "cnvs_s1" || q.fieldKey === "cnvs_s2")) return false;
-        return true;
-      }),
-    [items, sinProductos],
-  );
 
   // ══════════════════════════════════════════════════════════════════════════════════════════════
   // LO QUE SOLO EXISTE EN LA CNV-S. En la linea base `cnvs` es `undefined` y todo esto queda inerte.
@@ -267,6 +253,7 @@ export function SurveyPhaseForm({
     () => items.find((q) => q.fieldKey === "cnvs_gi_filtro") ?? null,
     [items],
   );
+  const itemS1 = useMemo(() => items.find((q) => q.fieldKey === "cnvs_s1") ?? null, [items]);
   const itemsDigestivos = useMemo(
     () => items.filter((q) => q.comportamiento === "repetir_con_filtro"),
     [items],
@@ -293,14 +280,61 @@ export function SurveyPhaseForm({
 
   // LOS PRODUCTOS NO ADHERENTES, para el S2: su §2.3 lo presenta *"solo si S1 no es «Todos los días» ni
   // «5 o más»"*. Se deriva del S1 que el paciente acaba de contestar, asi que vive en estado.
-  const [s1PorProducto, setS1PorProducto] = useState<Record<string, string>>({});
-  const noAdherentes = useMemo(() => {
-    const s = new Set<string>();
-    for (const [id, v] of Object.entries(s1PorProducto)) {
-      if (v !== "Todos los días" && v !== "5 o más días por semana") s.add(id);
-    }
-    return s;
-  }, [s1PorProducto]);
+  // ARRANCA CON LO QUE YA ESTABA RESPONDIDO, no en blanco (defecto visto al revisar el smoke).
+  // Este estado es el que decide a que productos se les presenta el S2. Arrancando vacio, un paciente
+  // que ya habia contestado el S1 y vuelve por su enlace NO ve el S2 de ningun producto, aunque
+  // hubiera dicho que no se tomo ninguno: la pregunta por la que no lo tomo desaparece sin que nadie
+  // lo note.
+  const [s1PorProducto, setS1PorProducto] = useState<Record<string, string>>(() =>
+    parsePorProducto(itemS1 ? prefill?.[itemS1.id] : null),
+  );
+  // LA FRONTERA ES LA SUYA Y VIVE EN `modulo-s`, no aqui: estaba escrita a mano con sus dos cadenas
+  // copiadas, que es una segunda definicion de "adherente al producto" dentro de una pantalla.
+  const noAdherentes = useMemo(() => noAdherentesAlProducto(s1PorProducto), [s1PorProducto]);
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // LO QUE SE PRESENTA, EN UN SOLO SITIO  ·  (0241, y el defecto del smoke del 2026-11-09)
+  //
+  // ═══ POR QUE ESTO ES UNA LISTA Y NO UN `if` EN EL JSX ═══
+  //
+  // Lo que se presenta se usa para CUATRO cosas: pintar, contar el denominador de la barra, contar lo
+  // respondido, y decidir que preguntas faltan al enviar. El defecto que Santiago encontro en el smoke
+  // es exactamente lo que pasa cuando esas cuatro no leen la misma lista: *"el envio dice que falta la
+  // pregunta 2 cuando no se mostro porque el S1 fue «Todos los días»"*. El S2 se descartaba DENTRO de su
+  // control (que devuelve null sin productos no adherentes) y el recuento no se enteraba, asi que el
+  // aviso pedia responder una pregunta que no estaba en la pantalla. Es el hazard 6: una exigencia sobre
+  // algo que no se puede alcanzar.
+  //
+  // ═══ LO QUE QUEDA FUERA, Y POR QUE SIGUE LLEGANDO EN `items` ═══
+  //
+  //   · los `retirar` (sus ítems 35, 38, 41 y 63): no se preguntan y CONSERVAN el valor de la línea
+  //     base. Llegan para que el envío sepa cuáles arrastrar (`retiradosHeredados`, en el servidor).
+  //   · el S1 y el S2 cuando no hay ningún nutracéutico indicado (decisión 34): una pregunta sobre un
+  //     producto que nadie le indicó no tiene respuesta correcta, y la adherencia se resuelve con el S3.
+  //   · el S2 cuando NINGÚN producto quedó no adherente (su §2.3: solo se presenta para los que no se
+  //     tomaron como se indicó). Con un solo producto en "Todos los días", el S2 no tiene a quién
+  //     preguntarle.
+  //   · los siete digestivos cuando su §7.2 los salta, y también mientras el filtro esté sin responder
+  //     si el salto puede aplicar (ver `saltoDeLosDigestivos`).
+  //
+  // EN LA LÍNEA BASE ESTO NO QUITA NADA: todos sus ítems son `repetir` y no hay `cnvs`.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  const questions = useMemo(
+    () =>
+      items.filter((q) => {
+        if (q.comportamiento === "retirar") return false;
+        if (sinProductos && (q.fieldKey === "cnvs_s1" || q.fieldKey === "cnvs_s2")) return false;
+        if (cnvs && q.fieldKey === "cnvs_s2" && noAdherentes.size === 0) return false;
+        if (q.comportamiento === "repetir_con_filtro" && saltoDigestivo && !saltoDigestivo.sePresentan) {
+          return false;
+        }
+        return true;
+      }),
+    [items, sinProductos, cnvs, noAdherentes, saltoDigestivo],
+  );
+
+  /** La seccion donde viven los siete digestivos, para poder guardarlos ahi cuando se saltan. */
+  const seccionDigestiva = itemsDigestivos[0]?.section ?? null;
 
   /**
    * COMO SE PINTA CADA ITEM. `null` = no se pinta.
@@ -316,9 +350,6 @@ export function SurveyPhaseForm({
     if (cnvs && itemFiltro && q.id === itemFiltro.id) {
       return <FiltroDigestivo q={q} valor={filtroGi} onValor={setFiltroGi} />;
     }
-    // LOS SIETE SINTOMAS: no se pintan cuando su regla salta. Lo que se guarda en su lugar va abajo.
-    if (q.comportamiento === "repetir_con_filtro" && saltoDigestivo?.seSalta) return null;
-
     // S1 Y S2: una respuesta por producto.
     if (cnvs && q.type === "opcion_por_producto") {
       const esS2 = q.fieldKey === "cnvs_s2";
@@ -785,8 +816,7 @@ export function SurveyPhaseForm({
                   sección, que es donde viven los siete. Su regla dice que se GUARDAN como "Nunca", no
                   que se omitan: un salto que deja huecos convierte una regla de ahorro en una encuesta
                   incompleta y el gate del diagnóstico la frenaría. */}
-              {saltoDigestivo?.seSalta &&
-              s.questions.some((q) => q.comportamiento === "repetir_con_filtro")
+              {saltoDigestivo?.seSalta && s.title === seccionDigestiva
                 ? itemsDigestivos.map((q) => (
                     <input key={q.id} type="hidden" name={`answer_${q.id}`} value={GI_NUNCA} />
                   ))

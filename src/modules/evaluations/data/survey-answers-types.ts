@@ -15,6 +15,16 @@ export type SurveyAnswerView = {
   usedInDiagnosis: boolean; // si alimenta el DIAGNOSTICO (gatea dfi.complete): a priorizar al completar
   answerValue: string | null; // opcion: option_text; opcion_multiple: JSON array; numeros: string
   options: string[]; // opciones (option_text) ordenadas; vacio para numero/texto/contador/escala
+  /**
+   * EL NOMBRE COMERCIAL DE CADA PRODUCTO, POR ID. Solo lo traen el S1 y el S2 de la CNV-S
+   * (`opcion_por_producto`), cuya respuesta se guarda como {idDelProducto: opcion}.
+   *
+   * VIENE RESUELTO DEL LECTOR y no se deduce en la pantalla: el id es lo que se guarda (un nombre
+   * comercial cambia y la respuesta sellada no), asi que el nombre de hoy solo lo puede poner quien
+   * tiene la base delante. Sin esto, las cuatro superficies que escriben la respuesta (la vista del
+   * profesional, el SOAP, la historia clinica y el CSV) mostraban el objeto JSON con los ids dentro.
+   */
+  nombresDeProductos?: Record<string, string>;
 };
 
 export type SurveyDomain = { section: string; questions: SurveyAnswerView[] };

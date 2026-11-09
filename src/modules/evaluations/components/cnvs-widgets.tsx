@@ -4,8 +4,9 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import type { SurveyItemView } from "../data/survey-view-types";
-import { SurveyQuestion } from "./survey-widgets";
+import type { SurveyQuestionView } from "../data/survey-view-types";
+import { parsePorProducto, valoresDeLaRespuesta } from "../respuesta-en-texto";
+import { pillClass, SurveyAnswerReadonly, SurveyQuestion } from "./survey-widgets";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // LOS TRES CONTROLES QUE SOLO EXISTEN EN LA CNV-S  ·  v15 §2.3, §2.4 y §7.2  ·  2026-11-07
@@ -19,14 +20,14 @@ import { SurveyQuestion } from "./survey-widgets";
 // Es la misma forma que el resto de los widgets (`answer_<id>`), y no es un detalle: un control que vive
 // FUERA del formulario deja de validarse y su valor no viaja (hazard 8). Y ninguno lleva `required`: esta
 // encuesta no bloquea por campos vacios, avisa (hazard 6).
+//
+// ═══ Y LAS PASTILLAS SON LAS DE LA CASA (`pillClass`), NO UNAS PROPIAS (smoke, 2026-11-09) ═══
+//
+// Estas tres nacieron con su propio estilo local, y la elegida quedaba en NEGRO mientras todo el resto de
+// la encuesta la pinta en el azul de marca. El paciente lo lee como otra clase de control, o como un
+// desperfecto. Reusar `pillClass` ata ademas el color al token: el dia que la marca cambie, cambian las
+// diez superficies, no nueve.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-
-const pill = (activo: boolean) =>
-  `rounded-full border px-3 py-1.5 text-sm transition ${
-    activo
-      ? "border-foreground bg-foreground text-background"
-      : "border-border bg-background hover:bg-muted"
-  }`;
 
 // ── 1 · LA PREGUNTA POR PRODUCTO (S1 y S2) ────────────────────────────────────────────────────────
 //
@@ -43,7 +44,7 @@ export function PreguntaPorProducto({
   soloSiNoAdherente,
   onValores,
 }: {
-  q: SurveyItemView;
+  q: SurveyQuestionView;
   productos: ProductoIndicado[];
   answer?: string | null;
   /**
@@ -58,16 +59,7 @@ export function PreguntaPorProducto({
    */
   soloSiNoAdherente?: Set<string>;
 }) {
-  const inicial = (() => {
-    try {
-      const v = answer ? (JSON.parse(answer) as Record<string, string>) : {};
-      return typeof v === "object" && v !== null ? v : {};
-    } catch {
-      // Una respuesta guardada que no es JSON no es un error del paciente: se arranca en blanco.
-      return {} as Record<string, string>;
-    }
-  })();
-  const [valores, setValores] = useState<Record<string, string>>(inicial);
+  const [valores, setValores] = useState<Record<string, string>>(() => parsePorProducto(answer));
   const visibles = soloSiNoAdherente
     ? productos.filter((p) => soloSiNoAdherente.has(p.id))
     : productos;
@@ -95,16 +87,17 @@ export function PreguntaPorProducto({
                   key={o.id}
                   type="button"
                   aria-pressed={activo}
-                  onClick={() =>
-                    setValores((v) => {
-                      const siguiente = { ...v };
-                      if (activo) delete siguiente[p.id];
-                      else siguiente[p.id] = o.text;
-                      onValores?.(siguiente);
-                      return siguiente;
-                    })
-                  }
-                  className={pill(activo)}
+                  // EL AVISO HACIA ARRIBA VA FUERA DEL ACTUALIZADOR DE ESTADO, no dentro: React puede
+                  // invocar dos veces la funcion que recibe `setValores`, y un `setState` de otro
+                  // componente ahi dentro es un efecto secundario en un sitio que tiene que ser puro.
+                  onClick={() => {
+                    const siguiente = { ...valores };
+                    if (activo) delete siguiente[p.id];
+                    else siguiente[p.id] = o.text;
+                    setValores(siguiente);
+                    onValores?.(siguiente);
+                  }}
+                  className={pillClass(activo)}
                 >
                   {o.text}
                 </button>
@@ -136,7 +129,7 @@ export function BloqueDeConfirmacion({
   estado,
   onEstado,
 }: {
-  q: SurveyItemView;
+  q: SurveyQuestionView;
   /** La respuesta de la consulta anterior. null = no la hay, y entonces el item se presenta abierto. */
   anterior: string | null;
   answer?: string | null;
@@ -170,8 +163,24 @@ export function BloqueDeConfirmacion({
       <p className="text-sm font-medium text-foreground">
         <span className="text-muted-foreground">{q.number}.</span> {q.text}
       </p>
+      {/* ═══ LA RESPUESTA ANTERIOR EN PALABRAS, NO EN CRUDO (smoke, 2026-11-09) ═══
+
+          Aqui salia el valor tal como lo guarda la base, asi que una pregunta de seleccion multiple le
+          decia al paciente: *La vez pasada respondiste: ["Ninguno"]*. Corchetes y comillas en una frase
+          dirigida a una persona.
+
+          SE PINTA CON EL MISMO LECTOR QUE LA VISTA DEL PROFESIONAL (`SurveyAnswerReadonly`, variante
+          `plain`): es el que ya sabe unir varias opciones por comas y pegarle su texto libre a "Otra".
+          Redactarlo aqui a mano seria una segunda interpretacion del mismo dato, y entonces el paciente
+          y su profesional podrian leer cosas distintas de la misma respuesta. */}
       <p className="rounded-md bg-muted/40 px-3 py-2 text-sm text-foreground">
-        La vez pasada respondiste: <strong>{anterior}</strong>
+        La vez pasada respondiste:{" "}
+        <SurveyAnswerReadonly
+          questionType={q.type}
+          answerValue={anterior}
+          options={q.options.map((o) => o.text)}
+          variant="plain"
+        />
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -186,11 +195,27 @@ export function BloqueDeConfirmacion({
           Editar
         </Button>
       </div>
-      {/* SE GUARDA LA RESPUESTA ANTERIOR, no una marca de "confirmado": lo que la consulta de hoy tiene
+      {/* ═══ SE GUARDA LA RESPUESTA ANTERIOR, Y EN LA FORMA EN QUE EL SERVIDOR LA ESPERA ═══
+
+          Lo que se guarda es la RESPUESTA, no una marca de "confirmado": lo que la consulta de hoy tiene
           que poder decir es QUE respondio el paciente, no que no cambio. Sin esto, una encuesta
-          confirmada entera saldria vacia y el gate del diagnostico la frenaria. */}
+          confirmada entera saldria vacia y el gate del diagnostico la frenaria.
+
+          Y VA UN CAMPO POR OPCION cuando la pregunta es de seleccion multiple (defecto del smoke del
+          2026-11-09). Antes iba UNO solo con el arreglo JSON dentro, y el servidor, que envuelve en un
+          arreglo todo lo que llega de una multi, lo guardaba como un arreglo cuyo unico texto es otro
+          arreglo. Eso no casa con ninguna opcion del catalogo, asi que las dos pantallas mostraban SIN
+          RESPONDER una pregunta que el paciente si confirmo, y en `d5_39`, que alimenta el diagnostico,
+          el motor no habria reconocido ningun diagnostico personal. La forma correcta es la que ya emite
+          el widget de la pregunta: un campo por valor elegido. */}
       {estado === "sin_cambios" ? (
-        <input type="hidden" name={`answer_${q.id}`} value={anterior} />
+        q.type === "opcion_multiple" ? (
+          valoresDeLaRespuesta(anterior).map((v, i) => (
+            <input key={`${q.id}-${i}`} type="hidden" name={`answer_${q.id}`} value={v} />
+          ))
+        ) : (
+          <input type="hidden" name={`answer_${q.id}`} value={anterior} />
+        )
       ) : null}
     </div>
   );
@@ -208,7 +233,7 @@ export function FiltroDigestivo({
   valor,
   onValor,
 }: {
-  q: SurveyItemView;
+  q: SurveyQuestionView;
   valor: string | null;
   onValor: (v: string | null) => void;
 }) {
@@ -226,7 +251,7 @@ export function FiltroDigestivo({
               type="button"
               aria-pressed={activo}
               onClick={() => onValor(activo ? null : o.text)}
-              className={pill(activo)}
+              className={pillClass(activo)}
             >
               {o.text}
             </button>

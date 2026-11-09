@@ -3,6 +3,7 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { CODIGO_LINEA_BASE } from "../instrumento";
+import { insumosDeLaCnvsDeLaConsulta } from "./insumos-de-la-cnvs";
 import { instrumentoDeLaConsulta } from "./instrumento-de-la-consulta";
 import { getActiveSurvey } from "./survey-reader";
 import { versionVigenteDeLaEncuesta } from "./version-vigente-de-la-encuesta";
@@ -28,6 +29,8 @@ type QuestionRow = {
   used_in_diagnosis?: boolean | null; // opcional: los tests construyen filas sin este campo
   section: string | null;
   order_index: number;
+  /** Solo las `opcion_por_producto` (el S1 y el S2): el nombre de cada producto, por id. */
+  nombresDeProductos?: Record<string, string>;
 };
 type AnswerRow = { question_id: string; answer_value: string | null };
 type OptionRow = { question_id: string; option_text: string; order_index: number };
@@ -73,6 +76,7 @@ export function groupSurveyAnswers(
       usedInDiagnosis: q.used_in_diagnosis ?? false,
       answerValue: answerByQ.get(q.id) ?? null,
       options: opts,
+      nombresDeProductos: q.nombresDeProductos,
     });
   });
   return domains;
@@ -148,13 +152,18 @@ async function leerInstrumento(
 async function leerPorInstrumento(
   supabase: Cliente,
   codigo: string,
-  responseId: string,
+  /** La respuesta de la consulta, o `null` cuando todavia no hay ninguna (el formulario de completar). */
+  responseId: string | null,
+  /** El nombre de cada producto indicado en la anterior, por id: lo necesitan el S1 y el S2. */
+  nombresDeProductos: Record<string, string>,
 ): Promise<SurveyDomain[]> {
   const survey = await getActiveSurvey(codigo);
   if (!survey) return [];
   const ids = survey.questions.map((q) => q.id);
   const [answersRes, flagsRes] = await Promise.all([
-    supabase.from("survey_answers").select("question_id, answer_value").eq("response_id", responseId),
+    responseId
+      ? supabase.from("survey_answers").select("question_id, answer_value").eq("response_id", responseId)
+      : Promise.resolve({ data: [] as AnswerRow[], error: null }),
     supabase.from("survey_questions").select("id, used_in_diagnosis").in("id", ids),
   ]);
   if (answersRes.error) {
@@ -172,6 +181,9 @@ async function leerPorInstrumento(
     field_key: q.fieldKey,
     used_in_diagnosis: usadas.get(q.id) ?? false,
     section: q.section,
+    // LOS NOMBRES SOLO EN LAS PREGUNTAS POR PRODUCTO: en las demas serian un campo que nadie lee, y
+    // un campo presente invita a usarlo.
+    nombresDeProductos: q.type === "opcion_por_producto" ? nombresDeProductos : undefined,
     // EL ORDEN ES EL DEL INSTRUMENTO, no el de la pregunta: es justo lo que un instrumento cambia (el
     // Modulo S va DELANTE de la encuesta), y por eso se reusa la posicion en la lista ya ordenada.
     order_index: i,
@@ -180,6 +192,21 @@ async function leerPorInstrumento(
     q.options.map((o, i) => ({ question_id: q.id, option_text: o.text, order_index: i })),
   );
   return groupSurveyAnswers(questions, answersRes.data ?? [], opciones);
+}
+
+/**
+ * EL NOMBRE DE CADA PRODUCTO INDICADO EN LA CONSULTA ANTERIOR, por id, para el S1 y el S2.
+ *
+ * LA RESPUESTA GUARDA EL ID y hace bien: un nombre comercial cambia y una respuesta sellada no. El
+ * precio de eso es que leerla necesita esta vuelta a la base, y por eso se hace UNA vez por pantalla y
+ * no una por pregunta.
+ *
+ * SALE DE `insumos-de-la-cnvs`, que es quien resuelve "la consulta anterior vigente": resolverla aqui
+ * otra vez seria la segunda definicion que ese modulo existe para evitar.
+ */
+async function nombresDeLosProductos(evaluationId: string): Promise<Record<string, string>> {
+  const { productos } = await insumosDeLaCnvsDeLaConsulta(evaluationId);
+  return Object.fromEntries(productos.map((p) => [p.id, p.nombre]));
 }
 
 export async function getSurveyAnswersForEvaluation(
@@ -202,7 +229,9 @@ export async function getSurveyAnswersForEvaluation(
   // `el-instrumento-no-cambia-la-linea-base-db`), y las 500 consultas que ya existen no tienen por que
   // cambiar de ruta para nada. Solo un instrumento DISTINTO del de siempre necesita el otro ensamblado.
   const codigo = await instrumentoDeLaConsulta(evaluationId);
-  if (codigo !== CODIGO_LINEA_BASE) return leerPorInstrumento(supabase, codigo, resp.id);
+  if (codigo !== CODIGO_LINEA_BASE) {
+    return leerPorInstrumento(supabase, codigo, resp.id, await nombresDeLosProductos(evaluationId));
+  }
 
   return leerInstrumento(supabase, resp.survey_version_id, resp.id);
 }
@@ -238,6 +267,33 @@ export async function getSurveyFormForEvaluation(evaluationId: string): Promise<
     .limit(1)
     .maybeSingle();
   if (rErr) throw new Error(`survey-answers-reader: survey_responses: ${rErr.message}`);
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // Y ESTA PANTALLA TAMBIEN SE ARMA POR EL INSTRUMENTO SELLADO  ·  defecto del smoke, 2026-11-09
+  //
+  // Textual de Santiago: *"/encuesta/editar abre la encuesta de LINEA BASE: no trae el modulo de
+  // seguimiento ni el Cierre, y muestra como no respondidas preguntas que si lo estan"*.
+  //
+  // LAS DOS MITADES DEL DEFECTO: esto pedia las preguntas de la VERSION sellada en la respuesta, que es
+  // la del cuestionario (correcto: ver la nota de `survey-reader`), asi que el Modulo S y el Cierre no
+  // aparecian; y el orden era el de la pregunta, no el del instrumento. La profesional abria la encuesta
+  // de un seguimiento para completarla y no veia ni la adherencia ni los eventos del S4. La otra mitad,
+  // las preguntas confirmadas que salian sin responder, era el arreglo-dentro-del-arreglo del bloque de
+  // confirmacion, arreglado aparte.
+  //
+  // SE DESPACHA IGUAL QUE LA VISTA DE LECTURA, con el mismo lector: dos pantallas de la misma consulta
+  // que armen la encuesta de dos maneras es como "pregunta 38" deja de ser la misma pregunta.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  const codigo = await instrumentoDeLaConsulta(evaluationId);
+  if (codigo !== CODIGO_LINEA_BASE) {
+    return leerPorInstrumento(
+      supabase,
+      codigo,
+      resp?.id ?? null,
+      await nombresDeLosProductos(evaluationId),
+    );
+  }
+
   if (resp) return leerInstrumento(supabase, resp.survey_version_id, resp.id);
 
   // LA VERSION VIGENTE SALE DEL INSTRUMENTO, no de "la mas reciente publicada" (2026-11-07). Aquella

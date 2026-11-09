@@ -10,6 +10,7 @@ import { encabezadoAntesDe } from "@/clinical-engine/encabezados-frecuencia";
 import { EncabezadoDeFrecuencia } from "@/modules/evaluations/components/encabezado-frecuencia";
 // Tipo desde el modulo NEUTRO de tipos, NO desde el reader server-only (este es componente cliente).
 import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
+import { PreguntaPorProducto } from "@/modules/evaluations/components/cnvs-widgets";
 import { SurveyQuestion } from "@/modules/evaluations/components/survey-widgets";
 // El MISMO predicado del gate (y del aviso del paciente): una respuesta cuenta como respondida solo si tiene
 // valor real, incluida la regla de "Otra" pelada (multi y unica). Antes este form tenia su propio isUnanswered
@@ -115,6 +116,32 @@ export function SurveyEditForm({
                       pregunta quiere el campo, no el dato (Santiago). `scroll-mt` deja sitio para la
                       cabecera; sin eso el salto la deja justo debajo del borde. */}
                   <div id={`p-${q.questionId}`} className="scroll-mt-24">
+                  {/* ═══ EL S1 Y EL S2 SE PINTAN CON SU PROPIO CONTROL (smoke, 2026-11-09) ═══
+
+                      Su tipo es `opcion_por_producto` y guardan {idDelProducto: opcion}, asi que el
+                      widget normal caia en su campo de texto de respaldo: la profesional veia el
+                      objeto JSON en una caja, editable a mano. Es el MISMO control que ve el
+                      paciente, con los productos que el lector ya resolvio por su nombre. */}
+                  {q.questionType === "opcion_por_producto" ? (
+                    <PreguntaPorProducto
+                      q={{
+                        id: q.questionId,
+                        number: q.number,
+                        text: q.questionText,
+                        hint: q.questionHint,
+                        type: q.questionType,
+                        section: dom.section,
+                        fieldKey: q.fieldKey,
+                        options: q.options.map((o, idx) => ({ id: `${q.questionId}-${idx}`, text: o })),
+                      }}
+                      productos={Object.entries(q.nombresDeProductos ?? {}).map(([id, nombre]) => ({
+                        id,
+                        nombre,
+                        dosis: null,
+                      }))}
+                      answer={q.answerValue}
+                    />
+                  ) : (
                   <SurveyQuestion
                     q={{
                       id: q.questionId,
@@ -128,6 +155,7 @@ export function SurveyEditForm({
                     }}
                     answer={q.answerValue}
                   />
+                  )}
                   </div>
                 </Fragment>
               );

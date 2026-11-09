@@ -1,4 +1,5 @@
-import type { SurveyDomain } from "../data/survey-answers-types";
+import type { SurveyAnswerView, SurveyDomain } from "../data/survey-answers-types";
+import { textoDeLaRespuesta } from "../respuesta-en-texto";
 
 // ═══ LAS RESPUESTAS DE LA ENCUESTA, EN UN ARCHIVO (observación f de Gildardo) ═══
 //
@@ -37,12 +38,19 @@ function celda(valor: string | null | undefined): string {
   return /[",;]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
 }
 
-/** El valor de una respuesta como texto plano. Las múltiples se unen con " | ", que no choca con el CSV. */
-function respuesta(valor: unknown): string {
-  if (valor == null) return "";
-  if (Array.isArray(valor)) return valor.map((v) => String(v)).join(" | ");
-  if (typeof valor === "object") return JSON.stringify(valor);
-  return String(valor);
+/**
+ * El valor de una respuesta como texto plano, con LA LECTURA COMPARTIDA (`respuesta-en-texto`).
+ *
+ * Las múltiples se unen con " | ", que no choca con el CSV. Aquí vivía otra copia del parseo, así que
+ * el S1 de la CNV-S se habría exportado como el objeto JSON con los ids de los productos dentro: un
+ * archivo para analizar que obliga a resolver identificadores a mano.
+ */
+function respuesta(valor: string | null | undefined, q?: SurveyAnswerView): string {
+  return textoDeLaRespuesta(valor, {
+    tipo: q?.questionType,
+    nombres: q?.nombresDeProductos,
+    separador: " | ",
+  });
 }
 
 export function respuestasACsv(domains: SurveyDomain[], procedencia: ProcedenciaDelExport): string {
@@ -67,7 +75,7 @@ export function respuestasACsv(domains: SurveyDomain[], procedencia: Procedencia
           celda(q.questionText),
           // SIN RESPONDER SE DICE, no se deja en blanco: una celda vacía se confunde con un dato perdido
           // en la exportación, y aquí la ausencia es información (el paciente no contestó).
-          celda(respuesta(q.answerValue) || "(sin responder)"),
+          celda(respuesta(q.answerValue, q) || "(sin responder)"),
         ].join(","),
       );
     }

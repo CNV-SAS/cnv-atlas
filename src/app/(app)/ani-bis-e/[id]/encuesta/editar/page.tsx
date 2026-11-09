@@ -9,6 +9,7 @@ import { getEvaluationHeaderForSession, getEvaluationResults } from "@/modules/d
 import { formatDate } from "@/lib/format/date";
 import { SurveyEditForm } from "@/modules/evaluations/components/survey-edit-form";
 import { getSurveyFormForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
+import { instrumentoDeLaConsulta } from "@/modules/evaluations/data/instrumento-de-la-consulta";
 import { canRegistrarEncuestaDelPaciente } from "@/modules/evaluations/policies/can-manage-evaluations";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 
@@ -25,13 +26,17 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 
-  const [header, results, domains] = await Promise.all([
+  const [header, results, domains, instrumento] = await Promise.all([
     getEvaluationHeaderForSession(id),
     getEvaluationResults(id),
     // EL LECTOR DEL FORMULARIO, no el de las respuestas: trae el instrumento aunque la evaluacion no
     // tenga ni una respuesta (las 15 consultas del lote del HTML). El otro devuelve null en ese caso y
     // esta pantalla rendia un formulario sin ninguna pregunta.
     getSurveyFormForEvaluation(id),
+    // EL INSTRUMENTO, PARA DECIRLO (trazabilidad de su §2.7). La vista de lectura ya lo dice; aqui hacia
+    // mas falta todavia, porque esta pantalla es la que ARMA la encuesta: si alguna vez vuelve a armar
+    // la de linea base sobre un seguimiento, el rotulo es lo que lo delata.
+    instrumentoDeLaConsulta(id),
   ]);
   if (!header) notFound();
   // Ya diagnosticada: no se edita directo, se corrige (version nueva).
@@ -76,7 +81,7 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
       <TituloPantalla
         volver={<VolverA padre={backHref} />}
         titulo="Completar la encuesta"
-        descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
+        descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)} · Instrumento: ${instrumento}`}
       />
 
       {/* En superficie, igual que la vista de lectura: el formulario estaba suelto sobre el gris. */}

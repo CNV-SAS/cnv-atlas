@@ -7,6 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import type { SurveyOptionView, SurveyQuestionView } from "../data/survey-view-types";
+// EL PARSEO DE UNA RESPUESTA GUARDADA VIVE EN UN MODULO NEUTRO, no aqui: lo necesitan tambien el SOAP,
+// el CSV y la historia clinica, que son de servidor, y no pueden importar un valor de un modulo
+// `"use client"` (hazard B de las fronteras RSC). Aqui solo se PINTA.
+import {
+  parsePorProducto,
+  textoPorProducto,
+  valoresDeLaRespuesta,
+  type NombresDeProductos,
+} from "../respuesta-en-texto";
 
 // Widgets de la encuesta por tipo de pregunta. Fuente unica, TRES superficies que los consumen:
 //   1. el formulario PUBLICO del paciente (survey-intake-form, interactivos, sin valor previo);
@@ -471,7 +480,7 @@ export function SurveyQuestion({ q, answer }: { q: SurveyQuestionView; answer?: 
       {q.type === "opcion" && q.options.length > 0 ? (
         <PillsSingle id={q.id} options={q.options} defaultValue={a ?? ""} />
       ) : q.type === "opcion_multiple" && q.options.length > 0 ? (
-        <PillsMulti id={q.id} options={q.options} defaultValue={a ? parseMulti(a) : []} />
+        <PillsMulti id={q.id} options={q.options} defaultValue={valoresDeLaRespuesta(a)} />
       ) : q.type === "contador" ? (
         // a === "0" es un cero real guardado (string truthy -> muestra 0); sin respuesta -> null (vacio).
         <Counter id={q.id} defaultValue={a ? Number(a) : null} />
@@ -483,15 +492,6 @@ export function SurveyQuestion({ q, answer }: { q: SurveyQuestionView; answer?: 
       )}
     </div>
   );
-}
-
-function parseMulti(value: string): string[] {
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.map(String) : [value];
-  } catch {
-    return [value];
-  }
 }
 
 // Render de SOLO LECTURA de la respuesta a una pregunta (vista del profesional). Dos variantes de
@@ -508,11 +508,14 @@ export function SurveyAnswerReadonly({
   options,
   variant = "chips",
   colorHeredado = false,
+  nombresDeProductos,
 }: {
   questionType: string;
   answerValue: string | null;
   options: string[];
   variant?: "chips" | "plain";
+  /** El nombre comercial de cada producto, por id. Solo lo usa el S1/S2 de la CNV-S. */
+  nombresDeProductos?: NombresDeProductos;
   /**
    * El texto toma el color de quien lo envuelve en vez del de primer plano. Lo usa la pastilla de color de
    * D2-D8 (porte del v9), donde el color ES la lectura de la respuesta.
@@ -528,8 +531,44 @@ export function SurveyAnswerReadonly({
     return <span className="text-sm italic text-muted-foreground">Sin responder</span>;
   }
 
+  // ═══ EL S1 Y EL S2: UNA RESPUESTA POR PRODUCTO (smoke, 2026-11-09) ═══
+  //
+  // Sin esta rama caia en el "valor tal cual" de abajo, asi que la profesional veia el objeto crudo de la
+  // base: `{"77777777-...-702":"Lo suspendió"}`. Un identificador en una pantalla clinica no es
+  // informacion: es ruido que ademas parece un desperfecto.
+  //
+  // EL NOMBRE SALE DEL LECTOR, no de la respuesta: la clave es el id del producto (lo correcto al
+  // guardar, porque un nombre comercial cambia) y el nombre de hoy lo resuelve quien lee la encuesta. Si
+  // no se puede nombrar, se dice, y la respuesta no se pierde.
+  if (questionType === "opcion_por_producto") {
+    const porProducto = Object.entries(parsePorProducto(answerValue));
+    if (porProducto.length === 0) {
+      return <span className="text-sm italic text-muted-foreground">Sin responder</span>;
+    }
+    if (variant === "plain") {
+      return (
+        <span className={`${cuerpo} font-semibold ${tinta}`}>
+          {textoPorProducto(answerValue, nombresDeProductos)}
+        </span>
+      );
+    }
+    return (
+      <ul className={`flex flex-col gap-1 ${cuerpo} ${tinta}`}>
+        {porProducto.map(([id, valor]) => (
+          <li key={id}>
+            <span className="text-muted-foreground">
+              {nombresDeProductos?.[id] ?? "Producto no identificado"}:
+            </span>{" "}
+            <span className="font-semibold">{valor}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
   if (questionType === "opcion" || questionType === "opcion_multiple") {
-    const selected = questionType === "opcion_multiple" ? parseMulti(answerValue) : [answerValue];
+    const selected =
+      questionType === "opcion_multiple" ? valoresDeLaRespuesta(answerValue) : [answerValue];
     // Texto plano: solo lo elegido, con el texto libre de "Otra" pegado, unido por comas. Misma
     // descomposicion (splitOther) que los chips, para que el dato se lea identico en las dos formas.
     if (variant === "plain") {

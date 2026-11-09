@@ -133,8 +133,44 @@ describe("el salto de los sintomas digestivos: sus DOS condiciones son un Y", ()
     expect(saltoDeLosDigestivos("No", faltaUno, SIETE).seSalta).toBe(false);
   });
 
-  it("y sin responder el filtro tampoco: se presenta", () => {
+  it("y sin responder el filtro no se salta: no hay con que decidirlo", () => {
     expect(saltoDeLosDigestivos(null, todasNunca, SIETE).seSalta).toBe(false);
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // PERO MIENTRAS EL FILTRO ESTE SIN RESPONDER, SI EL SALTO PUEDE APLICAR, LOS SIETE NO SE PRESENTAN
+  //
+  // (Santiago, 2026-11-09, al revisar el smoke.) Antes se presentaban desde el primer momento y se
+  // recogian al responder «No», asi que el paciente veia aparecer y desaparecer siete preguntas: se lee
+  // como que la pantalla se equivoco, y quien ya habia empezado a contestarlas pierde lo que llevaba.
+  //
+  // LA DISTINCION ES LO QUE LO HACE CORRECTO: «no se salta» y «no se presenta todavia» son dos cosas, y
+  // solo se espera cuando responder el filtro puede cambiar algo. Si el salto no es posible (la vez
+  // pasada hubo algun sintoma), esperar seria esconder siete preguntas por nada.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("no se presentan mientras falte el filtro, si la vez pasada fueron las siete «Nunca»", () => {
+    const r = saltoDeLosDigestivos(null, todasNunca, SIETE);
+    expect(r.seSalta).toBe(false);
+    expect(r.seSalta === false && r.sePresentan).toBe(false);
+    expect(r.seSalta === false && r.motivo).toBe("falta el filtro");
+  });
+
+  it("pero si el salto NO puede aplicar, se presentan desde el principio", () => {
+    const conReflujo = { ...todasNunca, d6_50: "Frecuente" };
+    const r = saltoDeLosDigestivos(null, conReflujo, SIETE);
+    expect(r.seSalta === false && r.sePresentan).toBe(true);
+    // Y sin consulta anterior, igual: no hay nada que pueda saltarse.
+    expect(
+      (() => {
+        const sin = saltoDeLosDigestivos(null, null, SIETE);
+        return sin.seSalta === false && sin.sePresentan;
+      })(),
+    ).toBe(true);
+  });
+
+  it("y cuando el salto manda, no se presentan Y se guardan los siete", () => {
+    const r = saltoDeLosDigestivos("No", todasNunca, SIETE);
+    expect(r.seSalta && r.sePresentan === false).toBe(true);
   });
 });
 
