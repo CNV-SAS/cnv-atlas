@@ -8,7 +8,16 @@ import { capRef, clasificarCapacitancia } from "@/clinical-engine/capacitancia";
 import { corteDeLaSerie, dentroDelCorte } from "../corte-de-la-serie";
 import { edadEnFecha } from "@/lib/format/edad";
 
-import { SERIE_MAX, type PuntoSerie, type RefCapacitancia, type SerieSeguimiento } from "./serie-types";
+import {
+  SERIE_MAX,
+  type ModuloSDelPunto,
+  type PuntoSerie,
+  type RefCapacitancia,
+  type SerieSeguimiento,
+} from "./serie-types";
+import { CLAVES_DEL_MODULO_S } from "../modulo-s";
+import { parsePorProducto, valoresDeLaRespuesta } from "@/modules/evaluations/respuesta-en-texto";
+import { insumosDeLaCnvsDeLaConsulta } from "@/modules/evaluations/data/insumos-de-la-cnvs";
 
 export { SERIE_MAX };
 export type { PuntoSerie, SerieSeguimiento };
@@ -120,6 +129,8 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
       // y la tarjeta no compara, en vez de restar contra un cero que nadie midio.
       riesgoScore: num(snap?.dfi?.riesgo?.score),
       engineVersion,
+      // Se resuelve despues, en una sola consulta para todos los puntos.
+      moduloS: null,
     });
   }
 
@@ -147,6 +158,18 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     for (const pt of puntos) pt.c = porEval.get(pt.evaluationId) ?? null;
   }
 
+  // EL MODULO S DE CADA PUNTO (su §3): es el segundo eje de la tabla 6 de la tarjeta de respuesta.
+  if (puntos.length > 0) {
+    const porEval = await moduloSPorConsulta(
+      supabase,
+      puntos.map((p2) => p2.evaluationId),
+    );
+    for (const pt of puntos) {
+      const m = porEval.get(pt.evaluationId);
+      if (m) pt.moduloS = { ...m, nombresDeProductos: {} };
+    }
+  }
+
   puntos.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
   const omitidas = Math.max(0, puntos.length - SERIE_MAX);
   const enPantalla = puntos.slice(-SERIE_MAX);
@@ -157,6 +180,17 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
   //
   // SE RESUELVE CON LA ULTIMA MEDICION, no con la primera: la decada de edad puede cambiar a lo largo del
   // seguimiento, y la comparacion que le importa al profesional es la de hoy.
+  // LOS NOMBRES DE LOS PRODUCTOS, SOLO DEL ULTIMO PUNTO: es el unico cuyo S1 escribe la tarjeta, y
+  // resolverlos para los ocho seria una vuelta a la base por consulta para texto que nadie lee.
+  const conModuloS = enPantalla[enPantalla.length - 1];
+  if (conModuloS?.moduloS) {
+    const { productos } = await insumosDeLaCnvsDeLaConsulta(conModuloS.evaluationId);
+    conModuloS.moduloS = {
+      ...conModuloS.moduloS,
+      nombresDeProductos: Object.fromEntries(productos.map((p2) => [p2.id, p2.nombre])),
+    };
+  }
+
   const ultimo = enPantalla[enPantalla.length - 1];
   let refC: RefCapacitancia | null = null;
   if (ultimo) {
@@ -185,4 +219,78 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
   }
 
   return { puntos: enPantalla, omitidas, refC };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL MODULO S DE CADA PUNTO  ·  el segundo eje de su tabla 6  ·  2026-11-09
+//
+// SE LEE EN UNA SOLA CONSULTA para los (como mucho) ocho puntos de la serie, y se filtra por las SIETE
+// claves del Modulo S: traer la encuesta entera de ocho consultas para calcular una adherencia seria
+// pedirle a la base medio millar de filas por pantalla.
+//
+// LA RESPUESTA VIGENTE DE CADA CONSULTA ES LA ULTIMA, que es la regla de la casa: una correccion escribe
+// un `survey_responses` nuevo, y leer el viejo mostraria el dato PRE-correccion.
+//
+// Y SI UNA CONSULTA NO TIENE NINGUNA de las siete, su `moduloS` queda en `null`, que es lo que significa
+// "esta consulta no aplico la CNV-S". No es lo mismo que un Modulo S con todo en blanco: con null la
+// tarjeta no habla de adherencia; con el objeto vacio diria que la adherencia no se puede calcular, que
+// es una afirmacion sobre una encuesta que nunca existio.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+async function moduloSPorConsulta(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  evaluationIds: string[],
+): Promise<Map<string, Omit<ModuloSDelPunto, "nombresDeProductos">>> {
+  const salida = new Map<string, Omit<ModuloSDelPunto, "nombresDeProductos">>();
+  if (evaluationIds.length === 0) return salida;
+  const { data, error } = await supabase
+    .from("survey_answers")
+    .select(
+      "answer_value, survey_questions!inner(field_key), survey_responses!inner(id, evaluation_id, created_at)",
+    )
+    .in("survey_responses.evaluation_id", evaluationIds)
+    .in("survey_questions.field_key", [...CLAVES_DEL_MODULO_S]);
+  if (error) throw new Error(`serie-reader: modulo S: ${error.message}`);
+
+  type Fila = {
+    answer_value: string | null;
+    survey_questions: { field_key: string | null } | { field_key: string | null }[];
+    survey_responses:
+      | { id: string; evaluation_id: string; created_at: string }
+      | { id: string; evaluation_id: string; created_at: string }[];
+  };
+  // LA RESPUESTA VIGENTE DE CADA CONSULTA, primero: sin este paso una consulta corregida mezclaria las
+  // respuestas de las dos versiones y la adherencia saldria de una mitad de cada una.
+  const vigentePorEval = new Map<string, { id: string; created_at: string }>();
+  const filas = ((data ?? []) as unknown as Fila[]).map((f) => ({
+    valor: f.answer_value,
+    clave: (Array.isArray(f.survey_questions) ? f.survey_questions[0] : f.survey_questions)?.field_key ?? null,
+    resp: Array.isArray(f.survey_responses) ? f.survey_responses[0] : f.survey_responses,
+  }));
+  for (const f of filas) {
+    if (!f.resp) continue;
+    const actual = vigentePorEval.get(f.resp.evaluation_id);
+    if (!actual || f.resp.created_at > actual.created_at) {
+      vigentePorEval.set(f.resp.evaluation_id, { id: f.resp.id, created_at: f.resp.created_at });
+    }
+  }
+  for (const f of filas) {
+    if (!f.resp || !f.clave) continue;
+    if (vigentePorEval.get(f.resp.evaluation_id)?.id !== f.resp.id) continue;
+    const previo = salida.get(f.resp.evaluation_id) ?? {
+      s1: null,
+      s2: null,
+      s3: null,
+      s4: null,
+      s5: null,
+      s6: null,
+    };
+    if (f.clave === "cnvs_s1") previo.s1 = parsePorProducto(f.valor);
+    else if (f.clave === "cnvs_s2") previo.s2 = parsePorProducto(f.valor);
+    else if (f.clave === "cnvs_s3") previo.s3 = f.valor;
+    else if (f.clave === "cnvs_s4") previo.s4 = valoresDeLaRespuesta(f.valor);
+    else if (f.clave === "cnvs_s5") previo.s5 = f.valor;
+    else if (f.clave === "cnvs_s6") previo.s6 = f.valor;
+    salida.set(f.resp.evaluation_id, previo);
+  }
+  return salida;
 }

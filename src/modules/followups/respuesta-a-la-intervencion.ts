@@ -1,11 +1,12 @@
+import { adherenciaAdecuada, eventosQueImpidenComparar, medicionComparable } from "./modulo-s";
 import { sonComparables } from "./services/eb-trajectory";
 
-import type { PuntoSerie, RefCapacitancia } from "./data/serie-types";
+import type { ModuloSDelPunto, PuntoSerie, RefCapacitancia } from "./data/serie-types";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// RESPUESTA A LA INTERVENCION  ·  v15 §3, 2026-11-07
+// RESPUESTA A LA INTERVENCION  ·  v15 §3, 2026-11-07, COMPLETADA EL 2026-11-09
 //
-// ═══ QUE PIDE SU v15, Y QUE PARTE ENTRA HOY ═══
+// ═══ QUE PIDE SU v15 ═══
 //
 // Su tarjeta *"Respuesta a la intervención · Encuesta CNV-S"* (`cnvsTarjetaSeguimiento`, su L15978) compara
 // contra la ULTIMA CONSULTA COMPARABLE y muestra tres cosas:
@@ -14,13 +15,15 @@ import type { PuntoSerie, RefCapacitancia } from "./data/serie-types";
 //   2. la adherencia, S1 a S6 y las mediciones no comparables;
 //   3. el escenario de su tabla 6, que cruza el delta del DFI con la adherencia.
 //
-// ESTE MODULO HACE LA 1, Y SOLO LA 1. La 2 y la 3 dependen del **Modulo S** de la encuesta CNV-S, que
-// todavia no existe en Atlas: su tabla 6 tiene dos columnas ("adherencia adecuada" y "adherencia
-// insuficiente") y sin el Modulo S no hay ninguna de las dos. Media tabla de decision, con un eje
-// inventado, seria peor que ninguna: diria "respuesta compatible con la ruta" sobre un paciente del que no
-// se sabe si siguio la ruta.
+// ═══ HASTA EL 8 DE NOVIEMBRE ESTE MODULO HACIA LA 1 Y SOLO LA 1 ═══
 //
-// La tarjeta lo DICE, en vez de callarlo. Es la regla de la casa con las piezas a medias.
+// La 2 y la 3 dependen del Modulo S, que no existia en Atlas, y la tarjeta lo DECIA en vez de callarlo:
+// media tabla de decision con un eje inventado habria dicho *"respuesta compatible con la ruta"* sobre un
+// paciente del que no se sabia si siguio la ruta.
+//
+// AHORA EL MODULO S EXISTE, se guarda y se lee (`ModuloSDelPunto` viaja con cada punto de la serie), asi
+// que la tarjeta completa su parte. Lo que NO cambia es la regla: cuando falta uno de los dos ejes, el
+// escenario sigue sin decirse. La diferencia es que antes faltaba SIEMPRE y ahora falta cuando falta.
 //
 // ═══ LAS TRES CIFRAS NO MEJORAN EN LA MISMA DIRECCION, Y ESO ES LO DELICADO ═══
 //
@@ -66,15 +69,93 @@ export type DeltaSeguimiento = {
   direccion: Direccion;
 };
 
+/**
+ * EL MODULO S DE ESTA CONSULTA, ya interpretado: sus respuestas y las dos reglas que salen de ellas.
+ *
+ * LAS DOS REGLAS VIENEN DE `modulo-s`, QUE ES LA UNICA DEFINICION. Aquí no se decide qué cuenta como
+ * adherencia ni qué evento impide comparar: se pregunta. Si esta tarjeta lo decidiera por su cuenta,
+ * habría dos respuestas posibles a *"¿este paciente siguió la ruta?"* según por dónde se mire.
+ */
+export type SeguimientoDeLaConsulta = {
+  /** ¿La adherencia fue adecuada? `null` cuando no se puede decir (sin S3 no hay media regla). */
+  adherencia: boolean | null;
+  /** ¿La medición de esta consulta entra al delta? `false` con uno de sus tres eventos del S4. */
+  comparable: boolean;
+  /** Los eventos del S4 que la vuelven no comparable, para poder DECIR por qué. */
+  eventos: string[];
+  /** Las respuestas, tal como se guardaron, para escribir S1 a S6. */
+  respuestas: ModuloSDelPunto;
+};
+
+/**
+ * EL ESCENARIO DE SU TABLA 6: cuatro casillas, dos ejes.
+ *
+ * `delta` y `adherencia` viajan con el título porque la casilla sola no se puede auditar: quien lee la
+ * tarjeta tiene que poder ver con qué dos coordenadas se eligió, y quien la revisa dentro de un año, con
+ * qué dos coordenadas se eligió entonces.
+ */
+export type EscenarioDeRespuesta = {
+  /** La casilla, con sus palabras. */
+  titulo: string;
+  delta: "mejora" | "sin mejora";
+  adherencia: "adecuada" | "insuficiente";
+};
+
+/**
+ * La casilla de su tabla 6 (§3), verbatim:
+ *
+ * | Delta del DFI | Adherencia adecuada | Adherencia insuficiente |
+ * |---|---|---|
+ * | Mejora | Respuesta compatible con la ruta | Mejora no atribuible a la ruta |
+ * | Sin cambio o empeoramiento | Respuesta insuficiente con exposición adecuada | Exposición insuficiente |
+ *
+ * `null` CUANDO FALTA CUALQUIERA DE LOS DOS EJES, y esa es la regla que sostiene la tarjeta: sin el
+ * delta del DFI (una sola consulta, o dos de escalas distintas del motor) y sin la adherencia (una
+ * encuesta sin el S3) no hay casilla. Elegir una de las cuatro con un eje supuesto es afirmar sobre el
+ * paciente algo que no se midió, y las cuatro frases son afirmaciones fuertes: dos de ellas le atribuyen
+ * al tratamiento el resultado y las otras dos se lo quitan.
+ *
+ * "SIN CAMBIO" VA CON "EMPEORAMIENTO", como él lo escribió, y no con "mejora": su fila es *"sin cambio o
+ * empeoramiento"*. Agruparlo con la mejora convertiría una intervención que no movió nada en una
+ * respuesta a la ruta.
+ */
+export function escenarioDeLaTabla6(
+  direccionDelRiesgo: Direccion,
+  adherencia: boolean | null,
+): EscenarioDeRespuesta | null {
+  if (direccionDelRiesgo == null || adherencia == null) return null;
+  const mejora = direccionDelRiesgo === "mejora";
+  const titulo = mejora
+    ? adherencia
+      ? "Respuesta compatible con la ruta"
+      : "Mejora no atribuible a la ruta"
+    : adherencia
+      ? "Respuesta insuficiente con exposición adecuada"
+      : "Exposición insuficiente";
+  return {
+    titulo,
+    delta: mejora ? "mejora" : "sin mejora",
+    adherencia: adherencia ? "adecuada" : "insuficiente",
+  };
+}
+
 export type RespuestaALaIntervencion = {
-  /** La consulta contra la que se compara. */
-  anterior: { evaluationId: string; fecha: string };
+  /**
+   * La consulta contra la que se compara. `null` cuando no hay ninguna con la que comparar y la tarjeta
+   * sale solo con el Módulo S: es el caso de la primera CNV-S de un paciente cuya consulta anterior se
+   * selló con otra escala del motor, o de una medición que su S4 dejó fuera del delta.
+   */
+  anterior: { evaluationId: string; fecha: string } | null;
   /** El riesgo integrado del DFI (0 a 100, menor es mejor). `null` si alguno de los dos sellos no lo trae. */
   riesgo: DeltaSeguimiento | null;
   /** La capacitancia de membrana. Su dirección es `null` sin referencia poblacional. */
   capacitancia: DeltaSeguimiento | null;
   /** La PABU, con φ como referencia. */
   pabu: DeltaSeguimiento | null;
+  /** El Módulo S de esta consulta. `null` = no aplicó la CNV-S, y entonces no se habla de adherencia. */
+  seguimiento: SeguimientoDeLaConsulta | null;
+  /** La casilla de su tabla 6. `null` cuando falta uno de los dos ejes. */
+  escenario: EscenarioDeRespuesta | null;
 };
 
 /** Un cambio por debajo de esto no se llama cambio: es ruido de redondeo de la propia cifra. */
@@ -112,45 +193,76 @@ function acercarseEsMejor(antes: number, ahora: number, referencia: number | nul
   };
 }
 
+/** El Módulo S de un punto, con sus dos reglas resueltas. `null` si ese punto no lo tiene. */
+function interpretar(moduloS: ModuloSDelPunto | null): SeguimientoDeLaConsulta | null {
+  if (!moduloS) return null;
+  return {
+    adherencia: adherenciaAdecuada(moduloS),
+    comparable: medicionComparable(moduloS),
+    eventos: eventosQueImpidenComparar(moduloS),
+    respuestas: moduloS,
+  };
+}
+
 /**
- * La respuesta a la intervención de la consulta de `puntos.at(-1)`, o `null` si no hay con qué comparar.
+ * La respuesta a la intervención de la consulta de `puntos.at(-1)`, o `null` si no hay nada que decir.
  *
- * `null` en los tres casos en que compararía algo que no se puede comparar: una sola consulta, ninguna
- * anterior de la MISMA escala del motor, o la última sin versión sellada.
+ * `null` SOLO cuando no hay ni delta ni Módulo S: sin consultas, o con una sola que además no aplicó la
+ * CNV-S. Con el Módulo S respondido la tarjeta sale aunque no haya con qué comparar, porque la adherencia
+ * y los eventos intercurrentes son lectura de ESTA consulta y no de la pareja.
  *
  * LA ANTERIOR COMPARABLE SE BUSCA HACIA ATRÁS, no se toma la penúltima: si la penúltima es de otra era del
  * motor pero la anterior a esa es de la misma, esa última sí se puede comparar. Es lo que dice "la última
  * consulta comparable" y no "la anterior".
+ *
+ * ═══ Y UNA MEDICIÓN NO COMPARABLE NO ENTRA AL DELTA (su §3) ═══
+ *
+ * Textual: *"una medición marcada como no comparable se guarda y se informa, pero no entra al delta"*. Se
+ * aplica a los DOS extremos, y hay que decirlo porque solo uno es evidente:
+ *
+ *   · si la de HOY lo es (su S4 trae enfermedad aguda, hospitalización o cirugía, o embarazo o
+ *     lactancia), no se resta nada: el delta mediría el evento, no la intervención;
+ *   · y si lo es la ANTERIOR, se sigue buscando hacia atrás, igual que con las escalas del motor. Restar
+ *     contra la consulta de una neumonía hace que cualquier recuperación se lea como respuesta a la ruta.
  */
 export function respuestaALaIntervencion(
   puntos: PuntoSerie[],
   refC: RefCapacitancia | null,
 ): RespuestaALaIntervencion | null {
-  if (puntos.length < 2) return null;
+  if (puntos.length === 0) return null;
   const ahora = puntos[puntos.length - 1];
+  const seguimiento = interpretar(ahora.moduloS);
 
+  // CON LA DE HOY FUERA DEL DELTA no se busca pareja: no es que no haya, es que no se resta.
   let anterior: PuntoSerie | null = null;
-  for (let i = puntos.length - 2; i >= 0; i -= 1) {
-    if (sonComparables(ahora.engineVersion, puntos[i].engineVersion)) {
+  if (seguimiento == null || seguimiento.comparable) {
+    for (let i = puntos.length - 2; i >= 0; i -= 1) {
+      if (!sonComparables(ahora.engineVersion, puntos[i].engineVersion)) continue;
+      const suyo = interpretar(puntos[i].moduloS);
+      if (suyo && !suyo.comparable) continue;
       anterior = puntos[i];
       break;
     }
   }
-  if (!anterior) return null;
+  if (!anterior && !seguimiento) return null;
 
   const par = (a: number | null, b: number | null): [number, number] | null =>
-    a != null && b != null ? [a, b] : null;
+    anterior != null && a != null && b != null ? [a, b] : null;
 
-  const rie = par(anterior.riesgoScore, ahora.riesgoScore);
-  const cap = par(anterior.c, ahora.c);
-  const pab = par(anterior.pabu, ahora.pabu);
+  const rie = par(anterior?.riesgoScore ?? null, ahora.riesgoScore);
+  const cap = par(anterior?.c ?? null, ahora.c);
+  const pab = par(anterior?.pabu ?? null, ahora.pabu);
+
+  const riesgo = rie ? menorEsMejor(rie[0], rie[1]) : null;
 
   return {
-    anterior: { evaluationId: anterior.evaluationId, fecha: anterior.fecha },
-    riesgo: rie ? menorEsMejor(rie[0], rie[1]) : null,
+    anterior: anterior ? { evaluationId: anterior.evaluationId, fecha: anterior.fecha } : null,
+    riesgo,
     // LA MEDIANA DE SU GRUPO, no un rango: su regla dice "acercarse a la mediana", y los percentiles son
     // para decir cuánto margen hay, no para decidir la dirección.
     capacitancia: cap ? acercarseEsMejor(cap[0], cap[1], refC?.mediana ?? null) : null,
     pabu: pab ? acercarseEsMejor(pab[0], pab[1], PHI) : null,
+    seguimiento,
+    escenario: escenarioDeLaTabla6(riesgo?.direccion ?? null, seguimiento?.adherencia ?? null),
   };
 }

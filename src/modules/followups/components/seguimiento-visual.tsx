@@ -7,8 +7,11 @@ import {
   respuestaALaIntervencion,
   type Direccion,
   type DeltaSeguimiento,
+  type EscenarioDeRespuesta,
   type RespuestaALaIntervencion,
+  type SeguimientoDeLaConsulta,
 } from "../respuesta-a-la-intervencion";
+import { textoPorProducto } from "@/modules/evaluations/respuesta-en-texto";
 import type { SerieSeguimiento } from "../data/serie-types";
 import { SerieLinea } from "./serie-linea";
 
@@ -212,15 +215,120 @@ function FilaDelta({
   );
 }
 
+/**
+ * ═══ LO QUE RESPONDIO EN LA ENCUESTA DE SEGUIMIENTO (su v15 §3: "la adherencia, S1 a S6 y las
+ * mediciones no comparables") ═══
+ *
+ * SE ESCRIBEN LAS SEIS RESPUESTAS, no solo la adherencia que sale de ellas. La adherencia es un sí o un
+ * no derivado de dos preguntas; lo que cambia una decisión clínica es POR QUÉ ("Lo suspendió · Costo" no
+ * se atiende igual que "Olvido"), y eso está en el S2. Un resumen que solo dijera "adherencia
+ * insuficiente" obligaría a abrir la encuesta para saber qué hacer con el paciente que está delante.
+ *
+ * Y VA EN NEUTRO, sin color de veredicto: la adherencia no es una severidad clínica, es lo que el
+ * paciente refiere. El único color de este bloque es el ámbar de ATENCIÓN de los eventos que dejan la
+ * medición fuera del delta, que sí pide algo de quien lee.
+ */
+function FilaDelModuloS({ rotulo, valor }: { rotulo: string; valor: string | null }) {
+  if (!valor || valor.trim() === "") return null;
+  return (
+    <p className="text-sm text-foreground">
+      <span className="text-muted-foreground">{rotulo}:</span>{" "}
+      <span className="font-medium">{valor}</span>
+    </p>
+  );
+}
+
+function ModuloSDeLaConsulta({ s }: { s: SeguimientoDeLaConsulta }) {
+  const r = s.respuestas;
+  const nombres = r.nombresDeProductos;
+  const adherencia =
+    s.adherencia == null
+      ? // SIN S3 NO HAY MEDIA REGLA, y se dice cuál falta: así quien lee sabe que se arregla
+        // preguntándoselo al paciente, no que el sistema no sabe calcularlo.
+        "No se puede decir: falta la pregunta del plan de alimentación (S3)"
+      : s.adherencia
+        ? "Adecuada"
+        : "Insuficiente";
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Encuesta de seguimiento (CNV-S)
+      </p>
+      <FilaDelModuloS rotulo="Adherencia" valor={adherencia} />
+      <FilaDelModuloS
+        rotulo="Cómo tomó lo indicado (S1)"
+        valor={r.s1 ? textoPorProducto(JSON.stringify(r.s1), nombres) : null}
+      />
+      <FilaDelModuloS
+        rotulo="Por qué no lo tomó así (S2)"
+        valor={r.s2 ? textoPorProducto(JSON.stringify(r.s2), nombres) : null}
+      />
+      <FilaDelModuloS rotulo="Siguió el plan de alimentación (S3)" valor={r.s3} />
+      <FilaDelModuloS rotulo="Eventos desde la última consulta (S4)" valor={(r.s4 ?? []).join(", ")} />
+      <FilaDelModuloS rotulo="Intentó cambiar su peso (S5)" valor={r.s5} />
+      <FilaDelModuloS rotulo="Cómo describe el cambio (S6)" valor={r.s6} />
+      {/* LA MEDICION QUE NO ENTRA AL DELTA: *"se guarda y se informa, pero no entra al delta"* (§3). Se
+          dice QUE evento lo decidio, porque es justo lo que el profesional necesita leer al lado de la
+          medicion: "no comparable" a secas le obliga a abrir la encuesta para averiguarlo. */}
+      {!s.comparable ? (
+        <p className="rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-xs text-attention">
+          Esta medición no entra en la comparación: {s.eventos.join(", ").toLocaleLowerCase("es-CO")}. La
+          medición se conserva y se informa igual; lo que no se hace es restarla contra la consulta
+          anterior, porque el cambio mediría el evento y no la intervención.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * ═══ EL ESCENARIO DE SU TABLA 6 ═══
+ *
+ * Cuatro casillas, dos ejes: el delta del DFI y la adherencia. SIN COLOR DE VEREDICTO, y es deliberado:
+ * las cuatro frases son afirmaciones sobre la RUTA, no sobre la gravedad del paciente, y dos de ellas
+ * ("mejora no atribuible a la ruta", "exposición insuficiente") se leerían como un reproche en rojo.
+ *
+ * SE ESCRIBEN LAS DOS COORDENADAS debajo. La casilla sola no se puede auditar: quien la lee tiene que
+ * poder ver con qué se eligió, y la misma frase con los ejes al revés sería un error invisible.
+ */
+function EscenarioDeLaTabla({ e }: { e: EscenarioDeRespuesta }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+        Escenario de respuesta
+      </p>
+      <p className="text-sm font-semibold text-foreground">{e.titulo}</p>
+      <p className="text-xs text-muted-foreground">
+        Riesgo integrado: {e.delta} · adherencia {e.adherencia}. Es la tabla 6 del modelo de seguimiento,
+        que cruza esas dos.
+      </p>
+    </div>
+  );
+}
+
 function RespuestaCard({ r }: { r: RespuestaALaIntervencion }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Respuesta a la intervención</CardTitle>
         <span className="text-xs text-muted-foreground">
-          Comparado con la consulta del {formatDateOnlyShort(r.anterior.fecha)}, que es la última de la
-          misma versión del modelo. El riesgo integrado va de 0 a 100 y menor es mejor; la capacitancia y la
-          proporción bioeléctrica son bidireccionales, así que mejorar es acercarse a su referencia.
+          {r.anterior ? (
+            <>
+              Comparado con la consulta del {formatDateOnlyShort(r.anterior.fecha)}, que es la última de la
+              misma versión del modelo. El riesgo integrado va de 0 a 100 y menor es mejor; la capacitancia
+              y la proporción bioeléctrica son bidireccionales, así que mejorar es acercarse a su
+              referencia.
+            </>
+          ) : (
+            // SIN PAREJA LA TARJETA SIGUE SALIENDO, con lo que SI es de esta consulta (la adherencia y los
+            // eventos). Y se dice que no hay con qué comparar, en vez de dejar la tarjeta sin filas y que
+            // parezca que algo no cargó.
+            <>
+              No hay una consulta anterior con la que comparar las cifras: o es la primera, o la anterior se
+              selló con otra versión del modelo, o esta medición quedó fuera de la comparación. Lo que sigue
+              es lo que el paciente respondió en esta consulta.
+            </>
+          )}
         </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
@@ -233,12 +341,24 @@ function RespuestaCard({ r }: { r: RespuestaALaIntervencion }) {
           nota="No hay referencia poblacional de su grupo (falta sexo o fecha de nacimiento), así que se dice cuánto se movió y no si eso es mejoría: acercarse a la mediana es mejorar, y alejarse en cualquier dirección, no."
         />
         <FilaDelta rotulo="Proporción bioeléctrica (PABU)" dato={r.pabu} decimales={3} />
-        {/* LO QUE FALTA DE SU TARJETA, DICHO. Ver la nota del bloque. */}
-        <p className="mt-1 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          La adherencia y el escenario de respuesta de la tabla 6 llegan con la encuesta de seguimiento
-          (CNV-S): su Módulo S es el que pregunta si el paciente siguió la ruta, y sin esa mitad el
-          escenario no se puede decidir.
-        </p>
+        {r.escenario ? <EscenarioDeLaTabla e={r.escenario} /> : null}
+        {r.seguimiento ? <ModuloSDeLaConsulta s={r.seguimiento} /> : null}
+        {/* ═══ POR QUE AQUI YA NO HAY UN AVISO DE "ESTO LLEGA CON LA CNV-S" ═══
+
+            Lo hubo desde el 7 de noviembre, y decía la verdad: la adherencia y el escenario de su tabla 6
+            dependen del Módulo S, que no existía. Desde el 9 de noviembre existe, se guarda y se lee, así
+            que el aviso pasó a ser lo contrario de lo que se escribió para evitar: una pantalla diciendo
+            que falta algo que ya está.
+
+            LO QUE SE CONSERVA ES LA REGLA, no el aviso: cuando falta uno de los dos ejes, el escenario no
+            se dice (`escenarioDeLaTabla6` devuelve null) y el bloque de arriba explica cuál falta. */}
+        {!r.seguimiento ? (
+          <p className="mt-1 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Esta consulta se respondió con la encuesta completa (CNV v2.0), que no lleva el módulo de
+            seguimiento: no hay adherencia que leer, así que el escenario de respuesta no se puede decidir.
+            Las cifras de arriba sí comparan.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

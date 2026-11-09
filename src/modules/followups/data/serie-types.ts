@@ -46,7 +46,44 @@ export type PuntoSerie = {
    * leer, y entonces tampoco se compara.
    */
   engineVersion: string | null;
+  /** El Modulo S de esa consulta. `null` = no aplico la CNV-S (todo lo anterior al 2026-11-08). */
+  moduloS: ModuloSDelPunto | null;
 };
+
+/**
+ * EL MODULO S DE ESA CONSULTA, ya leido por su clave. `null` = la consulta no aplico la CNV-S.
+ *
+ * ES EL SEGUNDO EJE DE SU TABLA 6 (§3): el escenario de respuesta cruza el delta del DFI con la
+ * adherencia, y la adherencia solo se puede saber preguntandosela al paciente. Sin esto, la tarjeta de
+ * respuesta a la intervencion solo podia decir cuanto se movio cada cifra.
+ *
+ * SE LEE DEL SELLO, COMO TODO LO DEMAS DEL PUNTO: son las respuestas que ese dia dio el paciente, no una
+ * relectura de hoy. Y SIN COLUMNAS DERIVADAS: la adherencia y la comparabilidad se calculan al leerlas
+ * con `modulo-s`, que es la unica definicion (ver su nota: una columna seria el mismo hecho en dos
+ * sitios que pueden divergir).
+ */
+export type ModuloSDelPunto = {
+  /** S1: una respuesta POR PRODUCTO, {idDelProducto: opcion}. `null` = no se presento. */
+  s1: Record<string, string> | null;
+  /** S2: por que no lo tomo como se indico, tambien por producto. */
+  s2: Record<string, string> | null;
+  /** S3: en que medida siguio el plan de alimentacion. */
+  s3: string | null;
+  /** S4: los eventos intercurrentes marcados. */
+  s4: string[] | null;
+  /** S5: si intento cambiar su peso. */
+  s5: string | null;
+  /** S6: como describiria el cambio desde la ultima consulta. */
+  s6: string | null;
+  /**
+   * El nombre comercial de cada producto, por id, para poder escribir el S1 y el S2.
+   *
+   * La respuesta guarda el ID (un nombre comercial cambia y una respuesta sellada no), asi que el nombre
+   * de hoy lo pone quien lee. Solo se resuelve para el ULTIMO punto, que es el que la tarjeta escribe.
+   */
+  nombresDeProductos: Record<string, string>;
+};
+
 
 /**
  * Referencia poblacional de capacitancia del grupo del paciente (sexo + decada de edad).
