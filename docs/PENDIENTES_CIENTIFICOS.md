@@ -151,7 +151,7 @@ contamos aquí para que no las vuelva a reportar, y porque dos de ellas tocaban 
 
 ---
 
-## Las 47 preguntas
+## Las 51 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"37: C, solo cintura y cadera · 9: sí,
 > el degradado hacia rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -225,7 +225,7 @@ IAE esté entre −5 y +5; lo cambiamos a una raya porque el IAE ya es una difer
 valor se leía como si el IAE fuera cero. *Recomendamos dejar la raya, pero es preferencia nuestra contra su
 regla escrita: dígalo.*
 
-**7 · El borde exacto de ±5,0 del IAE, en TRES sitios de su archivo** *(absorbe la 36 del 5 de noviembre,
+**7 · El borde exacto de ±5,0 del IAE, en TRES sitios de su archivo** **[parcial con la v17: fija el borde del IFC, no el del IAE]** *(absorbe la 36 del 5 de noviembre,
 que era este mismo caso visto en la v15)*. Su tabla 3 usa cortes **cerrados** y su `cIAE` lo cumple; pero el
 Δ de la línea 15628 sigue **abierto**, y al cerrar el borde en Atlas apareció un **tercer** sitio: la
 sugerencia del nutracéutico y el protocolo de telómeros, las dos con `iae > 5`.
@@ -273,7 +273,7 @@ registrada ("no se midió" más el motivo). Lo tiene que aprobar usted porque ca
 sencillo para las cinco, sin aplicar. *Recomendamos que las escriba o las corrija usted: el informe
 llevaría las suyas para el paciente y las de hoy para el profesional.*
 
-**14 · Su banda media del IFC y del IRC tiene tres nombres, y uno dice «normal».** Sus clasificadores la
+**14 · Su banda media del IFC y del IRC tiene tres nombres, y uno dice «normal».** **[parcial con la v17: fija los CORTES, no el significado de la banda]** Sus clasificadores la
 llaman "Alerta funcional" y "Riesgo moderado"; su `idx` del DFI la llama "Normal"; y su párrafo del DFI
 escribe *"en rango normal"*. Un profesional leyó las dos cosas y entendió que el sistema se contradecía.
 *La pregunta: para la banda media, ¿qué debe decir su párrafo? Y de paso, el criterio de egreso de la R1
@@ -299,7 +299,7 @@ leyendo?*
 Las ocho de aquí no son diferencias entre su archivo y Atlas: son diferencias **entre dos sitios de su
 propio archivo**. En cada una portamos una de las dos y le decimos cuál.
 
-**17 · La fila ICA-BIS tiene dos reglas, una por superficie.** En Composición gradúa la magnitud en cinco
+**17 · La fila ICA-BIS tiene dos reglas, una por superficie.** **[respondida por la v17: con signo y por percentiles del sexo]** En Composición gradúa la magnitud en cinco
 escalones; en la historia clínica hace `icaBisClf = cPABU(t_pabu)`, con su nota *"cICABIS eliminado, usar
 cPABU global"*. *La pregunta: ¿es deliberado (la historia resume, la pantalla detalla) o esa nota iba
 también para la tabla de Composición?*
@@ -434,7 +434,7 @@ vacía.
 Módulo S todavía no existe en Atlas, así que la regla está DECIDIDA y entra con él. Marcarla como aplicada
 diría que ya corre, y no corre.*
 
-**38 · La R1 se activa por un criterio y su tarjeta anuncia otro, y las dos reglas son suyas.** *(Salió del
+**38 · La R1 se activa por un criterio y su tarjeta anuncia otro, y las dos reglas son suyas.** **[respondida por la v17: manda el DFI]** *(Salió del
 smoke del 7 de noviembre sobre su propio caso del anexo, `ed83ff97`.)*
 
 La tarjeta de la R1 dice **"Activación: IFC bajo + IRC alto + IAE acelerado"** y esa paciente tiene un IRC
@@ -582,6 +582,42 @@ cifra significa. Pero lo que el paciente toma por fuera es información clínica
 duplicidad de principios activos) y hoy se pierde: su ítem 35, el de suplementos, está RETIRADO en la
 CNV-S, así que en un control no se vuelve a preguntar nunca. La C la descartamos: obliga a la
 profesional a teclear antes de cada encuesta y a inventar un producto que no está en el catálogo.*
+
+**48 · El IEHH y el ISCM-BIS que ya se informaron dejan de ser comparables.** Su v17 recalcula los dos
+con fórmulas y puntuaciones z **por sexo**, y ordena conservar los anteriores (`IEHH_v16`, `ISCM_v16`). Un
+paciente al que ya se le informó un IEHH tiene a partir de ese día otro número para el mismo día.
+ · **A)** Se le muestra solo el nuevo. · **B)** El nuevo con el anterior al lado. · **C)** El nuevo y un
+ aviso de recalibración, como se hizo con la EB-BIS v5.
+*Recomendamos **C**: es el precedente de la casa y la única que no obliga al paciente a explicarse solo
+por qué su número cambió sin que él cambiara.*
+
+**49 · El ISCM-BIS se sigue informando, pero sin lectura. ¿También al paciente?** Su v17 retira los
+cuatro niveles *"hasta validarlo frente a biomarcadores"*, y con razón: dice que hoy **no se sabe qué
+extremo de su distribución corresponde a mayor susceptibilidad**. Queda el valor y su percentil.
+ · **A)** Se le muestra al paciente con su percentil y sin nivel. · **B)** Deja de mostrársele al
+ paciente y queda solo en la vista del profesional. · **C)** Se retira de todas las superficies hasta
+ que se valide.
+*Recomendamos **B**: un número sin lectura no es información para quien no puede interpretarlo, y la A
+le deja un dato del que ni nosotros sabemos decir si es bueno o malo.*
+
+**50 · El bump a la v17 parte la serie de seguimiento de todos los pacientes.** Su propio documento lo
+dice: *"la comparación con la consulta previa empieza a funcionar desde la primera consulta guardada con
+v17"*. En Atlas eso apaga la tarjeta de respuesta a la intervención y los deltas hasta la segunda
+consulta con v17.
+ · **A)** La tarjeta no aparece, como hoy cuando no hay anterior. · **B)** Aparece diciendo que no puede
+ comparar porque la ciencia cambió entre las dos consultas.
+*Recomendamos **B**, con el mismo criterio que ya aplicamos a una medición no comparable: cuando algo no
+se muestra, se dice por qué. Un hueco silencioso se lee como un paciente sin trayectoria.*
+
+**51 · La cintura pasa a mover una severidad: ¿qué pasa cuando falta?** En su v17 el perímetro de
+cintura (OMS: hombres ≥ 94 cm, mujeres ≥ 80 cm) o el índice cintura-talla ≥ 0,50 suman **+1 al dominio
+metabólico-estructural**. Hasta hoy la cintura en Atlas es un dato de contexto; con esto entra al
+diagnóstico.
+ · **A)** Sin cintura ni ICT no se aplica el modificador y el dominio queda en su gravedad base. ·
+ **B)** Sin ese dato no se emite el dominio 2. · **C)** Se exige la cintura para poder diagnosticar.
+*Recomendamos **A**: es lo que su redacción implica (el modificador es un "+1 si"), y las otras dos
+frenan una consulta entera por un dato que su tabla de sectores no necesita. Y el caso es raro, no
+inexistente: **509 de 509 mediciones de la nube traen la cintura y el ICT**.*
 
 **44 · La reconfirmación anual cuando la línea base viene del HTML.** Su §7.3 cuenta desde "la última
 confirmación completa", y 162 consultas tienen por línea base un archivo, no una encuesta diligenciada.
