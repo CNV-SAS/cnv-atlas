@@ -45,6 +45,10 @@ const DB_TESTS = [
   // EL INSTRUMENTO DE LA ENCUESTA (0240): compara la lista de preguntas por los DOS caminos (por version
   // y por instrumento) contra la base real. Es el seguro del cambio del lector.
   "src/tests/el-instrumento-no-cambia-la-linea-base-db.test.ts",
+  // "LA ANTERIOR" ES LA QUE OCURRIO: la regla se comprueba pura, y la PROPIEDAD contra todos los
+  // pacientes de la base. Vive aqui porque esa eleccion ya se escribio mal tres veces, y lo que atrapa el
+  // filtro que falta no es un caso, son los datos reales.
+  "src/tests/la-anterior-es-la-que-ocurrio-db.test.ts",
   "src/tests/alergenos-cobertura.test.ts",
   "src/tests/mapa-alegra.test.ts",
   "src/tests/sentry-causa-db.test.ts",
