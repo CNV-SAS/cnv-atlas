@@ -1,6 +1,6 @@
 # Lo que queda abierto con usted, Gildardo
 
-**Connected Nutrition Ventures · Atlas · 8 de noviembre de 2026**
+**Connected Nutrition Ventures · Atlas · 9 de noviembre de 2026**
 **De:** Santiago (equipo técnico de Atlas) · **Para:** Gildardo de Jesús Uribe Gil
 
 > **Este documento no identifica a ningún paciente.** Donde hace falta señalar un caso va el id de
@@ -31,11 +31,21 @@ absorbe en otra lo dice. Así, si usted responde *"la 15"* dos semanas después,
 > no aplican en Atlas, 6 son decisiones nuestras que le declaramos aquí, **7 esperan una respuesta suya**
 > y 1 faltaba y se hizo ese mismo día. El detalle está en `BARRIDO_FINAL_V10_A_V16_2026-11-07.md`.
 >
-> **Y la Encuesta CNV-S ya está construida.** Las diez piezas de su v15 §2 están hechas. Desde el 8 de
-> noviembre está **encendida solo para pacientes de prueba**: un paciente real que entre a un seguimiento
-> hoy sigue viendo la CNV v2.0 completa, y lo seguirá viendo hasta que usted apruebe la CNV-S. Lo que falta
-> para encenderla de verdad es lo que usted diga en la última sección de este documento, *"Lo que salió al
-> construir la encuesta de seguimiento"*.
+> **Y la Encuesta CNV-S ya está construida, y el 9 de noviembre se probó con un paciente de prueba.** Las
+> diez piezas de su v15 §2 están hechas. Desde el 8 de noviembre está **encendida solo para pacientes de
+> prueba**: un paciente real que entre a un seguimiento hoy sigue viendo la CNV v2.0 completa, y lo
+> seguirá viendo hasta que usted apruebe la CNV-S. Lo que falta para encenderla de verdad es lo que usted
+> diga en la última sección de este documento, *"Lo que salió al construir la encuesta de seguimiento"*.
+>
+> **De la prueba: lo suyo funcionó y lo nuestro tenía cuatro defectos, ya corregidos.** Funcionaron el
+> sello del instrumento, la herencia de los cuatro ítems retirados, el salto de los síntomas digestivos y
+> el envío. Lo que falló era de construcción, no de su modelo, y salió de ahí **una pregunta nueva para
+> usted, la 47** (los productos que el paciente toma por fuera, que el S1 no nombra).
+>
+> **Y con eso entra la tarjeta «Respuesta a la intervención» completa** (su v15 §3): además del delta del
+> riesgo integrado, de la capacitancia y de la PABU, ya trae la adherencia, el S1 a S6, las mediciones que
+> su S4 deja fuera de la comparación y **el escenario de su tabla 6**. Hasta ayer la tarjeta decía que esa
+> mitad llegaba con el Módulo S; ya llegó.
 >
 > Un detalle de construcción que conviene que sepa, porque protege sus datos: **cada consulta guarda qué
 > instrumento se le mostró** (CNV v2.0 o CNV-S 1.0), sellado en el momento de abrirla. No se deduce
@@ -141,7 +151,7 @@ contamos aquí para que no las vuelva a reportar, y porque dos de ellas tocaban 
 
 ---
 
-## Las 46 preguntas
+## Las 47 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"37: C, solo cintura y cadera · 9: sí,
 > el degradado hacia rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -526,11 +536,20 @@ bioimpedancias cuando hay 289.*
 
 ### H · Las que salieron de CONSTRUIR la encuesta de seguimiento
 
-**Van aparte porque son de otra clase.** Todo lo de arriba sale de leer sus documentos; estas cuatro
-salieron de construir su CNV-S 1.0, que es cuando aparece lo que un documento no puede anticipar. La
-encuesta está **construida y encendida solo para pacientes de prueba**: ninguna de las cuatro frena nada,
-ningún paciente real la ve, y lo que usted decida se aplica antes de encenderla para todos. El desarrollo
-de cada una está al final del documento, en su propia sección.
+**Van aparte porque son de otra clase.** Todo lo de arriba sale de leer sus documentos; estas cinco
+salieron de construir su CNV-S 1.0 y de **probarla con un paciente de prueba el 9 de noviembre**, que es
+cuando aparece lo que un documento no puede anticipar. La encuesta está **construida y encendida solo
+para pacientes de prueba**: ninguna de las cinco frena nada, ningún paciente real la ve, y lo que usted
+decida se aplica antes de encenderla para todos. El desarrollo de cada una está al final del documento,
+en su propia sección.
+
+**De la prueba del 9 de noviembre salió una pregunta nueva (la 47) y nada más que fuera suyo.** Los
+demás hallazgos de ese día eran defectos nuestros y ya están corregidos; se los contamos por si le
+interesa el tipo de cosa que aparece al probar: el S1 presentaba un solo producto cuando la consulta
+anterior tenía dos indicados, el bloque de confirmación guardaba la respuesta anterior en un formato que
+las pantallas no reconocían, y la pantalla de completar la encuesta abría la de línea base en vez de la
+de seguimiento. **Lo que su documento dice que haga, lo hace:** el sello del instrumento, la herencia de
+los cuatro ítems retirados y el salto de los síntomas digestivos funcionaron.
 
 **42 · ¿A quién se le aplica la CNV-S si su primera consulta no tiene encuesta completa?** En Atlas hay
 162 consultas importadas del HTML cuya "línea base" no trae todas las respuestas, y la CNV-S les mostraría
@@ -540,13 +559,29 @@ ocho ítems "a confirmar" sin nada que confirmar y cuatro retirados que conserva
 *Recomendamos **B para los ocho de confirmación** (es lo construido) **y A para los cuatro retirados**: un
 ítem retirado que nunca se preguntó no es un dato conservado, es un hueco permanente.*
 
-**43 · "Lo suspendió" en el S1, ¿cuenta como falta de adherencia?** Puede ser lo contrario de una falla: un
+**43 · "Lo suspendió" en el S1, ¿cuenta como falta de adherencia?** **[aplicado: A]** Puede ser lo contrario de una falla: un
 paciente que suspende por una molestia digestiva hizo lo correcto, y su S2 lo recoge.
  · **A)** Cuenta, como las otras dos. · **B)** No cuenta: el producto sale del denominador. · **C)**
  Depende del motivo del S2.
 *Recomendamos **A**, que es lo construido: la adherencia mide **exposición**, y un producto suspendido no
 expuso al paciente. La C mezcla adherencia con causa y dejaría a dos pacientes con la misma exposición en
-escenarios distintos de su tabla 6.*
+escenarios distintos de su tabla 6.* **Aplicado el 9 de noviembre** con la A, al construir la tarjeta de
+respuesta a la intervención: la adherencia y el escenario de su tabla 6 ya salen en Seguimiento. Si
+prefiere otra, se cambia en un sitio y la tarjeta cambia con ella.
+
+**47 · ¿El S1 pregunta por los productos que el paciente compró POR FUERA?** Su S1 sale de *"los
+nutracéuticos registrados en Rutas de atención"*, o sea de lo que se le indicó en Atlas. Un producto que
+el paciente toma por su cuenta (otra marca, otro profesional, una recomendación de la farmacia) no
+aparece, así que su adherencia se mide solo sobre lo nuestro y el profesional no ve lo demás.
+ · **A)** Como está: solo lo indicado en la consulta anterior. · **B)** Una pregunta abierta más en el
+ Módulo S, *"¿está tomando algo que no le indicamos?"*. · **C)** Que el profesional pueda añadir
+ productos al S1 antes de enviarle la encuesta.
+*Recomendamos **A** por ahora, y **B como ítem nuevo de su §2.3 si usted lo aprueba**: la adherencia que
+su tabla 6 cruza es a LA RUTA, y meter en ese cálculo un producto que nadie indicó cambiaría lo que la
+cifra significa. Pero lo que el paciente toma por fuera es información clínica (interacciones,
+duplicidad de principios activos) y hoy se pierde: su ítem 35, el de suplementos, está RETIRADO en la
+CNV-S, así que en un control no se vuelve a preguntar nunca. La C la descartamos: obliga a la
+profesional a teclear antes de cada encuesta y a inventar un producto que no está en el catálogo.*
 
 **44 · La reconfirmación anual cuando la línea base viene del HTML.** Su §7.3 cuenta desde "la última
 confirmación completa", y 162 consultas tienen por línea base un archivo, no una encuesta diligenciada.
@@ -1537,6 +1572,40 @@ Lo pusimos en **repetir**, que es el defecto de su tabla.
 
 *Recomendamos **A**: el ICEC se recalcula en cada consulta y la hidratación es justo lo que cambia entre
 una y otra. Las otras dos dejarían el ICEC de seguimiento apoyado en un dato viejo.*
+
+---
+
+## 47 · ¿El S1 pregunta por los productos que el paciente compró por fuera?
+
+**De dónde sale la pregunta.** Su §2.3 dice que el S1 es dinámico y de dónde sale la lista: *"de los
+nutracéuticos registrados en Rutas de atención para el paciente... En ATLAS CNV deben salir de la tabla
+donde guardas las indicaciones o despachos de la consulta anterior"*. En Atlas leemos las
+**indicaciones** (lo que se le pidió tomar), y lo dijimos al construirlo: un producto indicado y no
+despachado es justo el caso en que la respuesta importa, porque o se lo compró por fuera o no se lo
+compró.
+
+**Lo que eso deja fuera**, y es lo que salió al probarla: un producto que el paciente **toma por su
+cuenta** no está en ninguna de las dos tablas. Otra marca del mismo principio activo, algo que le
+recomendaron en la farmacia, un frasco que le quedaba de otro tratamiento. El S1 no lo nombra, así que:
+
+  · su adherencia se mide **solo sobre lo nuestro**, que para su tabla 6 es lo correcto;
+  · pero el profesional **no se entera** de lo demás, y eso sí es información clínica: interacciones,
+    duplicidad de principios activos, o la explicación de un cambio que no viene de la ruta.
+
+**Y hoy no lo recoge nada más.** Su ítem 35 (*"¿Qué suplementos toma actualmente?"*) está **RETIRADO**
+en la CNV-S por su tabla 3, así que en un control no se vuelve a preguntar: conserva para siempre lo que
+el paciente respondió en su primera consulta. En la línea base sí se pregunta, y ahí queda.
+
+ · **A)** Como está: el S1 solo pregunta por lo indicado en la consulta anterior. · **B)** Un ítem nuevo
+ en el Módulo S, abierto: *"¿está tomando algún suplemento o nutracéutico que no le hayamos indicado?"*.
+ · **C)** Que la profesional pueda añadir productos a la lista del S1 antes de enviar la encuesta.
+
+*Recomendamos **A** para el cálculo y **B como ítem nuevo**, si usted lo aprueba. Las dos cosas a la vez
+no se contradicen: la adherencia que su tabla 6 cruza es a LA RUTA, y meter ahí un producto que nadie
+indicó cambiaría lo que la cifra significa; pero la respuesta del ítem nuevo no entraría en ese cálculo,
+iría a la historia clínica, que es donde hace falta. **La C la descartamos:** obliga a teclear antes de
+cada encuesta y a inventar en el momento un producto que no está en el catálogo, con lo que la lista del
+S1 dejaría de ser trazable a una indicación.*
 
 ---
 
