@@ -94,6 +94,7 @@ import { ObservacionesConsulta } from "@/modules/followups/components/observacio
 import { PROFESION_NOTA } from "@/modules/treatment/data/treatment-view-types";
 import { ProximoControl } from "@/modules/followups/components/proximo-control";
 import { getProximoControl } from "@/modules/followups/data/proximo-control-reader";
+import { contextoDeLaCnvsDeLaConsulta } from "@/modules/evaluations/data/insumos-de-la-cnvs";
 import {
   SeguimientoSinPrevia,
   SeguimientoVisual,
@@ -308,6 +309,7 @@ export default async function ResultadosEvaluacionPage({
       entryCatalog,
       entryIntake,
       entrySex,
+      entryCnvs,
     ] = await Promise.all([
       getConsentStatusForEvaluation(id),
       getSurveyAnswersForEvaluation(id),
@@ -316,6 +318,16 @@ export default async function ResultadosEvaluacionPage({
       getActiveBisConditionCatalog(),
       getBisIntakeForEvaluation(id),
       getEvaluationPatientSex(id),
+      // QUE PREGUNTAS SE PRESENTARON DE VERDAD (2026-11-09): el bloque de la encuesta avisa en ambar
+      // de las que faltan, y contaba el instrumento ENTERO. `null` en una consulta de linea base.
+      //
+      // CON `catch` PORQUE ES UN AVISO (lo exigio el candado de esta mañana, y con razon): si falla, el
+      // bloque vuelve a contar el instrumento entero, que es lo que hacia hasta hoy. Y `null` es el
+      // valor CORRECTO en toda consulta de linea base, o sea en todas menos las de prueba.
+      contextoDeLaCnvsDeLaConsulta(id).catch((e) => {
+        reportServerError("evaluacion.contexto-cnvs", e);
+        return null;
+      }),
     ]);
     // Confirmar identidad DENTRO de la evaluacion (Santiago 2026-08-15, c): si esta en draft, se arma el
     // widget de confirmacion (o la resolucion de conflicto declarado-vs-registrado) y se coloca al inicio de
@@ -398,6 +410,7 @@ export default async function ResultadosEvaluacionPage({
       importada: header.importada,
       consentStatus: entryConsent,
       surveyDomains: entrySurvey,
+      cnvs: entryCnvs,
       composition: entryComposition,
       bisImportEval: entryBisImport,
       bisCatalog: entryCatalog,
@@ -469,6 +482,7 @@ export default async function ResultadosEvaluacionPage({
     profileHasCharacterization,
     hcHeader,
     proximoControl,
+    cnvsDeLaConsulta,
     serie,
   ] = await Promise.all([
     // EL DESPLEGABLE DEPENDE DE QUIEN MIRA (2026-10-04): a una cuenta real no se le ofrecen productos de
@@ -508,6 +522,18 @@ export default async function ResultadosEvaluacionPage({
     getHcHeaderForEvaluation(id),
     // Proximo control (Seguimiento, pieza 1): ruta activa, criterio de egreso y la cita.
     getProximoControl(id),
+    // LOS INSUMOS DE LA CNV-S, SOLO PARA SABER QUE PREGUNTAS SE PRESENTARON (2026-11-09): el bloque de
+    // la encuesta avisa en ambar de las que faltan y las enlaza una por una, y contaba el instrumento
+    // ENTERO. Con la CNV-S eso incluye los cuatro `retirar` (que no se preguntan, se heredan) y el S2
+    // cuando ningun producto quedo no adherente, o sea que le pedia a la profesional responder una
+    // pregunta que la encuesta decidio no hacer. `null` en una consulta de linea base.
+    //
+    // CON `catch`, como los otros seis avisos de esta pagina: lo peor que puede pasar al fallar es que
+    // el contador sobre, y eso no justifica dejar sin consulta a nadie.
+    contextoDeLaCnvsDeLaConsulta(id).catch((e) => {
+      reportServerError("evaluacion.contexto-cnvs", e);
+      return null;
+    }),
     // ═══ LA SERIE, CON `catch`: ES EL INCIDENTE DEL 2026-11-09 ═══
     //
     // Las tres visuales de Seguimiento son el ultimo bloque de la ultima pestana, y su lector estaba
@@ -1046,6 +1072,7 @@ export default async function ResultadosEvaluacionPage({
     evaluationId: id,
     consentStatus: entryConsent,
     surveyDomains: entrySurvey,
+    cnvs: cnvsDeLaConsulta,
     composition,
     bisImportEval: null,
     bisCatalog: null,

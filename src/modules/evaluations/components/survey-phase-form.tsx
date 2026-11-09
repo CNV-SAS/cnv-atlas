@@ -19,6 +19,7 @@ import {
 
 import { reportClientError } from "@/lib/observability/report-client-error";
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
+import { loQueSePresenta } from "@/modules/evaluations/lo-que-se-presenta";
 
 import {
   enviarEncuestaDelPacienteAction,
@@ -293,46 +294,25 @@ export function SurveyPhaseForm({
   const noAdherentes = useMemo(() => noAdherentesAlProducto(s1PorProducto), [s1PorProducto]);
 
   // ══════════════════════════════════════════════════════════════════════════════════════════════
-  // LO QUE SE PRESENTA, EN UN SOLO SITIO  ·  (0241, y el defecto del smoke del 2026-11-09)
+  // LO QUE SE PRESENTA: LA REGLA VIVE EN `lo-que-se-presenta`, NO AQUI  ·  2026-11-09, por la tarde
   //
-  // ═══ POR QUE ESTO ES UNA LISTA Y NO UN `if` EN EL JSX ═══
+  // Estaba escrita en este `useMemo`, y por eso la pantalla de edicion del profesional tenia la suya:
+  // *"con los dos productos en «5 o mas dias», la pregunta 2 sale sin responder y marcada como
+  // OBLIGATORIA"*. Una regla compartida por dos pantallas no puede vivir dentro de una de ellas.
   //
-  // Lo que se presenta se usa para CUATRO cosas: pintar, contar el denominador de la barra, contar lo
-  // respondido, y decidir que preguntas faltan al enviar. El defecto que Santiago encontro en el smoke
-  // es exactamente lo que pasa cuando esas cuatro no leen la misma lista: *"el envio dice que falta la
-  // pregunta 2 cuando no se mostro porque el S1 fue «Todos los días»"*. El S2 se descartaba DENTRO de su
-  // control (que devuelve null sin productos no adherentes) y el recuento no se enteraba, asi que el
-  // aviso pedia responder una pregunta que no estaba en la pantalla. Es el hazard 6: una exigencia sobre
-  // algo que no se puede alcanzar.
-  //
-  // ═══ LO QUE QUEDA FUERA, Y POR QUE SIGUE LLEGANDO EN `items` ═══
-  //
-  //   · los `retirar` (sus ítems 35, 38, 41 y 63): no se preguntan y CONSERVAN el valor de la línea
-  //     base. Llegan para que el envío sepa cuáles arrastrar (`retiradosHeredados`, en el servidor).
-  //   · el S1 y el S2 cuando no hay ningún nutracéutico indicado (decisión 34): una pregunta sobre un
-  //     producto que nadie le indicó no tiene respuesta correcta, y la adherencia se resuelve con el S3.
-  //   · el S2 cuando NINGÚN producto quedó no adherente (su §2.3: solo se presenta para los que no se
-  //     tomaron como se indicó). Con un solo producto en "Todos los días", el S2 no tiene a quién
-  //     preguntarle.
-  //   · los siete digestivos cuando su §7.2 los salta, y también mientras el filtro esté sin responder
-  //     si el salto puede aplicar (ver `saltoDeLosDigestivos`).
-  //
-  // EN LA LÍNEA BASE ESTO NO QUITA NADA: todos sus ítems son `repetir` y no hay `cnvs`.
+  // ESTA LISTA SIGUE SIENDO LA UNICA DE ESTA PANTALLA: pinta, pone el denominador de la barra, cuenta
+  // lo respondido y decide que falta al enviar. Lo que cambia es donde esta escrito el criterio.
   // ══════════════════════════════════════════════════════════════════════════════════════════════
   const questions = useMemo(
     () =>
-      items.filter((q) => {
-        if (q.comportamiento === "retirar") return false;
-        if (sinProductos && (q.fieldKey === "cnvs_s1" || q.fieldKey === "cnvs_s2")) return false;
-        if (cnvs && q.fieldKey === "cnvs_s2" && noAdherentes.size === 0) return false;
-        if (q.comportamiento === "repetir_con_filtro" && saltoDigestivo && !saltoDigestivo.sePresentan) {
-          return false;
-        }
-        return true;
+      loQueSePresenta(items, {
+        esCnvs: cnvs != null,
+        sinProductos,
+        noAdherentes,
+        digestivosSePresentan: saltoDigestivo ? saltoDigestivo.sePresentan : null,
       }),
     [items, sinProductos, cnvs, noAdherentes, saltoDigestivo],
   );
-
   /** La seccion donde viven los siete digestivos, para poder guardarlos ahi cuando se saltan. */
   const seccionDigestiva = itemsDigestivos[0]?.section ?? null;
 

@@ -170,12 +170,24 @@ describe("el formulario de la encuesta: una sola lista", () => {
     readFileSync("src/modules/evaluations/components/survey-phase-form.tsx", "utf8"),
   );
 
-  it("el S2 sale de la lista cuando ningun producto quedo no adherente", () => {
-    expect(FORM).toContain('q.fieldKey === "cnvs_s2" && noAdherentes.size === 0');
+  // ═══ EL CRITERIO SE MUDO, Y POR ESO ESTE CASO CAMBIO (2026-11-09, tarde) ═══
+  //
+  // Estaba escrito dentro de este formulario, y eso es lo que permitio que la pantalla de edicion
+  // tuviera el suyo. Ahora vive en `lo-que-se-presenta`, que es un modulo neutro, y las TRES pantallas
+  // lo llaman. Lo que aqui se vigila es que esta siga llamandolo; el COMPORTAMIENTO de la regla lo
+  // comprueban los casos de `la-edicion-presenta-lo-mismo-que-la-encuesta`, que es donde tiene que
+  // estar: una regla compartida no se comprueba leyendo el codigo de uno de sus clientes.
+  it("el criterio de lo que se presenta no vuelve a vivir dentro del formulario", () => {
+    expect(FORM).toContain("loQueSePresenta(items, {");
+    expect(FORM, "volvio a decidir el S2 por su cuenta").not.toContain('"cnvs_s2" &&');
+    expect(FORM, "volvio a decidir los retirados por su cuenta").not.toContain('=== "retirar"');
   });
 
-  it("los digestivos salen de la lista cuando su regla no los presenta", () => {
-    expect(FORM).toContain("!saltoDigestivo.sePresentan");
+  it("y le pasa los cuatro datos que deciden, no tres", () => {
+    expect(FORM).toContain("esCnvs: cnvs != null");
+    expect(FORM).toContain("sinProductos,");
+    expect(FORM).toContain("noAdherentes,");
+    expect(FORM).toContain("digestivosSePresentan: saltoDigestivo ? saltoDigestivo.sePresentan : null");
   });
 
   it("y las cuatro lecturas salen de esa lista, no cada una de la suya", () => {

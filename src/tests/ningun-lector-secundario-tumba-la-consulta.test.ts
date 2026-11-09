@@ -114,6 +114,7 @@ const LECTORES_QUE_PUEDEN_LANZAR = new Set([
 
 /** Los que HOY estan envueltos y tienen que seguir estandolo: son avisos, paneles o visuales. */
 const LECTORES_CON_CATCH = [
+  "contextoDeLaCnvsDeLaConsulta",
   "huellaRepetidaDeLaConsulta",
   "edadDiscordanteDeLaConsulta",
   "qcBiologicoDeLaConsulta",

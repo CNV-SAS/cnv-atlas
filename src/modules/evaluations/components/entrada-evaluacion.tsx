@@ -19,6 +19,14 @@ import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
 import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
+// LA MISMA REGLA DE LO QUE SE PRESENTA que la encuesta del paciente y la pantalla de edicion. Ver su
+// modulo: este bloque contaba el instrumento ENTERO, asi que el aviso ambar pedia responder una
+// pregunta que la CNV-S habia decidido no hacer, y es la superficie que de verdad se lee como una
+// obligacion.
+import {
+  dominiosQueSePresentan,
+  type InsumosParaPresentar,
+} from "@/modules/evaluations/lo-que-se-presenta";
 
 import { HojaImprimible, type EncabezadoDeHoja } from "@/components/shared/hoja-imprimible";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
@@ -39,6 +47,7 @@ export function EntradaEvaluacion({
   evaluationId,
   consentStatus,
   surveyDomains,
+  cnvs,
   composition,
   bisImportEval,
   bisCatalog,
@@ -129,6 +138,13 @@ export function EntradaEvaluacion({
   diagnosticoGenerado: boolean;
   consentStatus: ConsentStatus | null;
   surveyDomains: SurveyDomain[] | null;
+  /**
+   * Los insumos de la CNV-S de esta consulta, o `null` si aplico la linea base.
+   *
+   * SIRVEN PARA UNA SOLA COSA AQUI: saber que preguntas se le presentaron de verdad, para no contar
+   * como faltante algo que la CNV-S decidio no preguntar.
+   */
+  cnvs?: InsumosParaPresentar;
   composition: Composition | null;
   // Confirmar identidad, DENTRO de la evaluacion (Santiago 2026-08-15, c): la accion se movio de la lista
   // aca, al INICIO de Encuesta, cuando la evaluacion esta en draft. null si ya esta confirmada (in_progress).
@@ -167,7 +183,10 @@ export function EntradaEvaluacion({
   // (isAnswered) que el gate, el aviso del paciente, el modo edicion y la previsualizacion: era el CUARTO
   // sitio que contaba distinto (contaba "Otra" pelada como respondida, y el porcentaje subia; Santiago §1
   // del 2026-08-20). El predicado unico es el unico blindaje contra que recaiga por quinta vez.
-  const domains = surveyDomains ?? [];
+  // LO QUE SE PRESENTA, NO EL INSTRUMENTO ENTERO (2026-11-09): sin esto el contador, la barra y el
+  // aviso ambar contaban los cuatro `retirar` (que no se preguntan, se heredan), el S2 cuando ningun
+  // producto quedo no adherente, y los siete digestivos cuando su §7.2 los salta.
+  const domains = dominiosQueSePresentan(surveyDomains ?? [], cnvs ?? null);
   const total = domains.reduce((acc, d) => acc + d.questions.length, 0);
   const answered = domains.reduce(
     (acc, d) => acc + d.questions.filter((q) => isAnswered(q.answerValue)).length,

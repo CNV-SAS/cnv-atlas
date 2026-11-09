@@ -5,6 +5,8 @@
 // puede convertirlo en referencia-cliente, dejando sus funciones undefined en el server. El reader los
 // re-exporta para el codigo de servidor.
 
+import type { ComportamientoDelItem } from "./survey-view-types";
+
 export type SurveyAnswerView = {
   questionId: string;
   number: number; // numeracion continua 1..N por el orden (coincide con la del intake); ver survey-answers-reader
@@ -25,6 +27,19 @@ export type SurveyAnswerView = {
    * profesional, el SOAP, la historia clinica y el CSV) mostraban el objeto JSON con los ids dentro.
    */
   nombresDeProductos?: Record<string, string>;
+  /**
+   * QUE HACE ESTE ITEM EN EL INSTRUMENTO (su tabla 3), cuando se sabe.
+   *
+   * ES OPCIONAL Y NO UN CAMPO MAS: solo lo trae el camino que lee POR INSTRUMENTO (la CNV-S). En la
+   * linea base y en las pantallas que arman una pregunta a mano queda `undefined`, y quien lo lee
+   * tiene que tratar eso como `repetir`, que es el comportamiento de toda la linea base. Un valor
+   * inventado se ve igual que uno bueno, asi que aqui "no se sabe" se dice con la ausencia.
+   *
+   * HACE FALTA PORQUE LA PANTALLA DE EDICION PRESENTA LO MISMO QUE LA ENCUESTA (2026-11-09): sin el
+   * comportamiento no puede saber que un item es `retirar` (no se pregunta, se hereda) ni que es uno
+   * de los siete digestivos que su §7.2 puede saltar.
+   */
+  comportamiento?: ComportamientoDelItem;
 };
 
 export type SurveyDomain = { section: string; questions: SurveyAnswerView[] };

@@ -13,6 +13,9 @@ import {
 } from "@/db/schema";
 import { nutraceuticosIndicadosEn } from "@/modules/followups/data/nutraceuticos-de-la-anterior-reader";
 
+import { CODIGO_LINEA_BASE } from "../instrumento";
+import { instrumentoDeLaConsulta } from "./instrumento-de-la-consulta";
+
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // LO QUE LA CNV-S NECESITA DE LA CONSULTA ANTERIOR  ·  v15 §2.3 y §2.4  ·  2026-11-08
 //
@@ -56,6 +59,28 @@ const VACIO: InsumosDeLaCnvs = { anteriores: {}, productos: [] };
  * la pantalla de completarla): necesitan los NOMBRES de los productos del S1, que la respuesta guarda
  * por id. Va aqui, al lado de la resolucion de "la anterior", para no tener dos.
  */
+/**
+ * LOS INSUMOS **SOLO SI LA CONSULTA APLICO LA CNV-S**, para las pantallas que deciden que presentar.
+ *
+ * ═══ POR QUE UNA FUNCION Y NO QUE CADA PANTALLA JUNTE LAS DOS PIEZAS ═══
+ *
+ * Decidir que se le presenta a alguien en una CNV-S necesita TRES datos que vienen de dos sitios: si
+ * el instrumento es el de seguimiento, los productos indicados en la anterior y las respuestas de la
+ * anterior. La encuesta del paciente ya los recibe juntos. La pantalla de edicion del profesional no,
+ * y por eso tenia su propia lista de lo que se presenta, que es el defecto del 2026-11-09 por la
+ * tarde: *"con los dos productos en «5 o mas dias», la pregunta 2 sale sin responder y marcada como
+ * OBLIGATORIA"*.
+ *
+ * `null` = esta consulta no aplico la CNV-S, y entonces no hay nada que filtrar ni que confirmar.
+ */
+export async function contextoDeLaCnvsDeLaConsulta(
+  evaluationId: string,
+): Promise<InsumosDeLaCnvs | null> {
+  const codigo = await instrumentoDeLaConsulta(evaluationId);
+  if (codigo === CODIGO_LINEA_BASE) return null;
+  return insumosDeLaCnvsDeLaConsulta(evaluationId);
+}
+
 export async function insumosDeLaCnvsDeLaConsulta(evaluationId: string): Promise<InsumosDeLaCnvs> {
   const [ev] = await db
     .select({ patientId: evaluations.patientId })

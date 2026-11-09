@@ -9,6 +9,7 @@ import { getEvaluationHeaderForSession, getEvaluationResults } from "@/modules/d
 import { formatDate } from "@/lib/format/date";
 import { SurveyEditForm } from "@/modules/evaluations/components/survey-edit-form";
 import { getSurveyFormForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
+import { contextoDeLaCnvsDeLaConsulta } from "@/modules/evaluations/data/insumos-de-la-cnvs";
 import { instrumentoDeLaConsulta } from "@/modules/evaluations/data/instrumento-de-la-consulta";
 import { canRegistrarEncuestaDelPaciente } from "@/modules/evaluations/policies/can-manage-evaluations";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -26,7 +27,7 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 
-  const [header, results, domains, instrumento] = await Promise.all([
+  const [header, results, domains, instrumento, cnvs] = await Promise.all([
     getEvaluationHeaderForSession(id),
     getEvaluationResults(id),
     // EL LECTOR DEL FORMULARIO, no el de las respuestas: trae el instrumento aunque la evaluacion no
@@ -37,6 +38,17 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
     // mas falta todavia, porque esta pantalla es la que ARMA la encuesta: si alguna vez vuelve a armar
     // la de linea base sobre un seguimiento, el rotulo es lo que lo delata.
     instrumentoDeLaConsulta(id),
+    // ═══ LOS INSUMOS DE LA CNV-S, PORQUE ESTA PANTALLA DECIDE QUE PRESENTAR (2026-11-09) ═══
+    //
+    // Textual de Santiago: *"con los dos productos en «5 o más días», la pregunta 2 sale sin responder
+    // y marcada como OBLIGATORIA"*. Lo que se presenta en una CNV-S depende de dos datos que no están
+    // en las respuestas de ESTA consulta: los productos indicados en la anterior (deciden si el S1 y el
+    // S2 existen) y las respuestas de la anterior (deciden si el salto digestivo puede aplicar). Sin
+    // ellos, esta pantalla solo podía hacer lo que hacía: presentar el instrumento entero.
+    //
+    // `null` en una consulta de línea base, y entonces la regla solo quita los `retirar`, que ahí no
+    // existen: las 500 consultas que ya hay no cambian ni una pregunta.
+    contextoDeLaCnvsDeLaConsulta(id),
   ]);
   if (!header) notFound();
   // Ya diagnosticada: no se edita directo, se corrige (version nueva).
@@ -86,7 +98,7 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
 
       {/* En superficie, igual que la vista de lectura: el formulario estaba suelto sobre el gris. */}
       <Panel>
-        <SurveyEditForm evaluationId={id} domains={domains} backHref={backHref} />
+        <SurveyEditForm evaluationId={id} domains={domains} backHref={backHref} cnvs={cnvs} />
       </Panel>
     </div>
   );

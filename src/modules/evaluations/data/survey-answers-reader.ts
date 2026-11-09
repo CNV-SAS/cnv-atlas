@@ -19,6 +19,7 @@ import { versionVigenteDeLaEncuesta } from "./version-vigente-de-la-encuesta";
 // alcance del cliente. Se re-exportan para el codigo de servidor que ya los importa desde aqui.
 export type { SurveyAnswerView, SurveyDomain } from "./survey-answers-types";
 import type { SurveyDomain } from "./survey-answers-types";
+import type { ComportamientoDelItem } from "./survey-view-types";
 
 type QuestionRow = {
   id: string;
@@ -31,6 +32,8 @@ type QuestionRow = {
   order_index: number;
   /** Solo las `opcion_por_producto` (el S1 y el S2): el nombre de cada producto, por id. */
   nombresDeProductos?: Record<string, string>;
+  /** Que hace el item en el instrumento. Solo lo trae `leerPorInstrumento`; ausente = `repetir`. */
+  comportamiento?: ComportamientoDelItem;
 };
 type AnswerRow = { question_id: string; answer_value: string | null };
 type OptionRow = { question_id: string; option_text: string; order_index: number };
@@ -77,6 +80,7 @@ export function groupSurveyAnswers(
       answerValue: answerByQ.get(q.id) ?? null,
       options: opts,
       nombresDeProductos: q.nombresDeProductos,
+      comportamiento: q.comportamiento,
     });
   });
   return domains;
@@ -184,6 +188,9 @@ async function leerPorInstrumento(
     // LOS NOMBRES SOLO EN LAS PREGUNTAS POR PRODUCTO: en las demas serian un campo que nadie lee, y
     // un campo presente invita a usarlo.
     nombresDeProductos: q.type === "opcion_por_producto" ? nombresDeProductos : undefined,
+    // EL COMPORTAMIENTO, PARA QUE LA EDICION PRESENTE LO MISMO QUE LA ENCUESTA: sin el, esa pantalla
+    // no puede distinguir un `retirar` (que se hereda y no se pregunta) de una pregunta normal.
+    comportamiento: q.comportamiento,
     // EL ORDEN ES EL DEL INSTRUMENTO, no el de la pregunta: es justo lo que un instrumento cambia (el
     // Modulo S va DELANTE de la encuesta), y por eso se reusa la posicion en la lista ya ordenada.
     order_index: i,
