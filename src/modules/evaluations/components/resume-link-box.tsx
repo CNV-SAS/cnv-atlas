@@ -22,10 +22,37 @@ export type ResumeLinkBoxProps = {
 };
 
 export function ResumeLinkBox({ resumeToken }: ResumeLinkBoxProps) {
-  // Init perezoso (no en efecto): este arbol solo se monta en cliente (tras firmar o al reanudar).
-  const [resumeUrl] = useState(() =>
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // POR QUE LA URL SE VUELVE A CALCULAR TRAS MONTAR  ·  Santiago, 2026-11-11
+  //
+  // SU REPORTE: *"al abrir la CNV-S no aparece el enlace para retomarla; la inicial si lo muestra"*.
+  //
+  // LA CAUSA, Y LA ASIMETRIA ES LA PRUEBA: esta caja se esconde sola cuando no puede construir una URL
+  // absoluta (`if (!resumeUrl) return null`), y la construia UNA SOLA VEZ, en el init perezoso del
+  // `useState`. El comentario que estaba aqui decia que este arbol *"solo se monta en cliente"*, y eso
+  // es cierto en la INICIAL (la encuesta aparece despues de firmar, ya en el navegador) y FALSO en el
+  // seguimiento: ahi el paciente entra por la pagina de reanudacion, que es un Server Component, asi
+  // que el primer render ocurre en el SERVIDOR, donde `window` no existe. El valor se congela vacio y la
+  // hidratacion no lo recalcula: la caja no vuelve a aparecer nunca.
+  //
+  // (Con `NEXT_PUBLIC_APP_URL` puesta en el build no haria falta el origen del navegador, porque ya
+  // habria base. Que el defecto se vea en produccion dice que ahi no esta: queda avisado, porque es la
+  // variable del dominio canonico y la usa todo enlace absoluto.)
+  //
+  // EL ARREGLO: la URL se completa AL ABRIR la caja, que es cuando hace falta y cuando el navegador
+  // existe seguro. No en un efecto: un `setState` sincrono dentro de un efecto dispara renders en
+  // cascada (lo prohibe el lint, y con razon). Y el boton ya no depende de la URL, solo del token: la
+  // via de vuelta se ANUNCIA siempre, que es lo que el paciente necesita ver antes de empezar.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  const [resumeUrl, setResumeUrl] = useState(() =>
     buildResumeUrl(resumeToken, typeof window !== "undefined" ? window.location.origin : null),
   );
+  const alternar = () => {
+    // En el navegador `window.location.origin` existe siempre, asi que a partir de aqui la URL es buena
+    // incluso si el primer render fue en el servidor y sin `NEXT_PUBLIC_APP_URL`.
+    if (!resumeUrl) setResumeUrl(buildResumeUrl(resumeToken, window.location.origin));
+    setOpen((v) => !v);
+  };
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,13 +85,15 @@ export function ResumeLinkBox({ resumeToken }: ResumeLinkBoxProps) {
     return () => clearTimeout(t);
   }, [copied]);
 
-  if (!resumeUrl) return null;
+  // YA NO SE ESCONDE POR NO TENER URL (2026-11-11). Era `if (!resumeUrl) return null`, y eso convertia un
+  // dato que falta (el origen, en el render del servidor) en una via de vuelta que el paciente no ve.
+  // La URL se completa al abrir; el boton se muestra siempre.
 
   return (
     <div className="flex flex-col gap-2">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={alternar}
         aria-expanded={open}
         className="w-fit text-sm font-medium text-primary underline underline-offset-2"
       >

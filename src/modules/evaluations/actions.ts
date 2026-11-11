@@ -51,6 +51,7 @@ import {
 import { emitFollowupLink } from "./data/survey-links-writer";
 import {
   CONSENT_REVOKED_DURING_SURVEY,
+  RESUME_INVALID,
   readSurveyProgress,
   saveProgress,
   signSurveyIntake,
@@ -517,6 +518,20 @@ export async function saveProgressAction(
       // le lleva a la pagina que reconoce lo que hizo, explica que pasa con lo que ya escribio y da la
       // salida. Es su derecho ejercido, no un fallo.
       if (res.error.message === CONSENT_REVOKED_DURING_SURVEY) redirect(`/encuesta/reanudar/${resumeToken}`);
+      // ═══ Y SI LA ENCUESTA YA NO ESTA ABIERTA, LO MISMO (Santiago, 2026-11-11) ═══
+      //
+      // SU REPORTE: *"si el profesional cierra la encuesta, el paciente ve «No se pudo guardar el
+      // avance»"*. Ese mensaje dice que hubo un problema PASAJERO y que siga respondiendo ("tus
+      // respuestas siguen aqui, intentamos de nuevo"), y es lo contrario de lo que pasa: la encuesta se
+      // cerro y nada de lo que escriba a partir de ahora se va a guardar. El paciente sigue llenando
+      // una encuesta que ya no existe.
+      //
+      // SE LE LLEVA A LA PAGINA DE REANUDACION, igual que con la revocacion, y por la misma razon: esa
+      // pagina ya distingue las TRES situaciones y las dice con sus palabras (cerrada por el
+      // profesional, ya completada, enlace no valido). Escribir aqui un cuarto mensaje seria inventar
+      // una cuarta version de lo mismo, y encima tendria que adivinar cual de las tres es: el token
+      // invalido no dice por que.
+      if (res.error.message === RESUME_INVALID) redirect(`/encuesta/reanudar/${resumeToken}`);
       return { saved: false, error: res.error.message };
     }
     return { saved: true, error: null };
@@ -582,6 +597,10 @@ export async function submitSurveyAnswersAction(
     if (!res.ok) {
       // Mismo trato que en el guardado: la pagina de reanudacion ya dice lo que hay que decir.
       if (res.error.message === CONSENT_REVOKED_DURING_SURVEY) redirect(`/encuesta/reanudar/${resumeToken}`);
+      // Y si la encuesta ya se cerro o ya se completo, la pagina de reanudacion lo dice con sus
+      // palabras (ver la nota del guardado de avance). En el ENVIO importa mas todavia: un "no se pudo
+      // enviar, vuelve a pulsar" sobre una encuesta cerrada manda al paciente a pulsar para siempre.
+      if (res.error.message === RESUME_INVALID) redirect(`/encuesta/reanudar/${resumeToken}`);
       return fail(res.error.message);
     }
     redirect("/encuesta/gracias");

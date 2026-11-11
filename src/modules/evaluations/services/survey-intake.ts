@@ -370,7 +370,13 @@ export type SurveyPhase2Input = {
   characterization?: unknown;
 };
 
-const RESUME_INVALID = "El enlace de la encuesta no es válido o la encuesta ya se completó.";
+/**
+ * EL MENSAJE DEL TOKEN QUE YA NO ABRE LA ENCUESTA. EXPORTADO para que la accion lo RECONOZCA y lleve al
+ * paciente a la pagina de reanudacion, que es la que sabe decir POR QUE (cerrada, completada, invalida).
+ * Se exporta la constante y no se copia el texto: dos copias del mismo mensaje se desincronizan, y la
+ * comparacion dejaria de reconocerlo EN SILENCIO (el paciente volveria a ver "no se pudo guardar").
+ */
+export const RESUME_INVALID = "El enlace de la encuesta no es válido o la encuesta ya se completó.";
 
 // MENSAJE AL PACIENTE QUE REVOCO MIENTRAS RESPONDIA. Tres piezas, y las tres importan: RECONOCE el acto
 // (no es un fallo del enlace, es su derecho ejercido), explica la CONSECUENCIA con lo que pasa con lo que
