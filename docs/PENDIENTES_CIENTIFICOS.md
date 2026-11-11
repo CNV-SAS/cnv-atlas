@@ -151,7 +151,52 @@ contamos aquí para que no las vuelva a reportar, y porque dos de ellas tocaban 
 
 ---
 
-## Las 51 preguntas
+## Lo que su v17 mueve en la cohorte (informativo: no hay nada que responder aquí)
+
+> **Esto no es una pregunta.** Es la medición de lo que su v17 cambia sobre las consultas que ya
+> existen, hecha ANTES de construirla y sobre la base real. Va aquí porque tres de sus cambios mueven
+> cifras en más de la mitad de la cohorte, y nos parece que usted tiene que saber el tamaño antes de
+> que se apliquen, no después.
+
+Medido el 11 de noviembre de 2026 sobre las **441 consultas vigentes con informe sellado**:
+
+| Lo que cambia | Consultas | De la cohorte |
+| --- | --- | --- |
+| El **sector** de la Diana (los cortes MCCB de su Tabla 10.2) | 279 | 63,3 % |
+| El **número de estado** de la Diana | 282 | 63,9 % |
+| El **anillo** de la Diana (los cortes del IFC de su Tabla 6.1) | 4 | 0,9 % |
+| La **categoría del IFC** | 4 | 0,9 % |
+| El **dominio 1** (celular-eléctrico) | 21 | 4,8 % |
+| El **dominio 2** (metabólico-estructural, por sector + adiposidad central) | 330 | 74,8 % |
+| El **dominio 3** (al retirar el escalón de IAE > 3) | 55 | 12,5 % |
+| El **riesgo integrado** (la cifra) | 342 | 77,6 % |
+| El **nivel** de riesgo (bajo / medio / alto / crítico) | 154 | 34,9 % |
+| La **R2** entra donde no estaba | 97 | 22,0 % |
+| La **R2** sale donde estaba | 74 | 16,8 % |
+| La **R1** entra donde no estaba | 4 | 0,9 % |
+
+**Y tres cifras más que explican de dónde viene cada cosa:**
+
+- el **ICA-BIS** estaba guardado con el signo equivocado en **245 de 441 (55,6 %)**: son las
+  consultas con la PABU por debajo de φ, a las que se les mostraba una desviación positiva (que se lee
+  como déficit) teniendo exceso de adiposidad. Ya está corregido, y sin tocar ningún informe sellado:
+  el ICA-BIS se deriva de la PABU, que siempre estuvo bien;
+- la **adiposidad central** (su modificador del dominio 2: cintura ≥ 94 en hombres o ≥ 80 en mujeres,
+  o ICT ≥ 0,50) se cumple en **229 de 441 (51,9 %)**. El dato está en el 100 % de las mediciones, así
+  que el modificador se puede aplicar sin pedir nada nuevo;
+- el **IEHH por debajo de −1** (que con su v17 suma 1 al dominio 1 y antes no sumaba) aparece en **69
+  de 441 (15,6 %)**. Esta última es una **cota inferior**: está medida sobre el IEHH actual, y su v17
+  además lo RECALCULA con las z por sexo, así que el número real será otro. Se volverá a medir cuando
+  ese cálculo esté construido.
+
+**Lo que esto implica en la práctica, y es la razón de contárselo:** el dominio 2 y el riesgo
+integrado se mueven en tres de cada cuatro consultas, y la ruta R2 cambia de población (entra en 97,
+sale en 74). No es un ajuste de bordes: es una recalibración. El histórico se reemite una sola vez,
+con su simulación delante y con la aprobación de Santiago antes de ejecutarla.
+
+---
+
+## Las 53 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"37: C, solo cintura y cadera · 9: sí,
 > el degradado hacia rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -600,14 +645,22 @@ extremo de su distribución corresponde a mayor susceptibilidad**. Queda el valo
 *Recomendamos **B**: un número sin lectura no es información para quien no puede interpretarlo, y la A
 le deja un dato del que ni nosotros sabemos decir si es bueno o malo.*
 
-**50 · El bump a la v17 parte la serie de seguimiento de todos los pacientes.** Su propio documento lo
-dice: *"la comparación con la consulta previa empieza a funcionar desde la primera consulta guardada con
-v17"*. En Atlas eso apaga la tarjeta de respuesta a la intervención y los deltas hasta la segunda
-consulta con v17.
- · **A)** La tarjeta no aparece, como hoy cuando no hay anterior. · **B)** Aparece diciendo que no puede
- comparar porque la ciencia cambió entre las dos consultas.
+**50 · La serie de seguimiento se parte donde el histórico no se puede recalcular.** Su propio
+documento dice que *"la comparación con la consulta previa empieza a funcionar desde la primera consulta
+guardada con v17"*, y leído así el bump apagaría la tarjeta de respuesta a la intervención **para
+todos** hasta su segunda consulta con la v17.
+
+**Y por eso el histórico se reemite, en vez de esperar.** Decisión de Santiago del 11 de noviembre: el
+recálculo del histórico va inmediatamente después de construir la v17, no después de que usted responda
+este documento, justamente para que la serie no se parta. Con el histórico reemitido, **la serie solo
+queda partida en las consultas que no se pueden recalcular** (las 71 que Santiago identificó), no en
+toda la cohorte.
+ · **A)** En esas consultas la tarjeta no aparece, como hoy cuando no hay anterior. · **B)** Aparece
+ diciendo que no puede comparar porque la ciencia cambió entre las dos y esa consulta no se pudo
+ recalcular.
 *Recomendamos **B**, con el mismo criterio que ya aplicamos a una medición no comparable: cuando algo no
-se muestra, se dice por qué. Un hueco silencioso se lee como un paciente sin trayectoria.*
+se muestra, se dice por qué. Un hueco silencioso se lee como un paciente sin trayectoria, y aquí además
+sería un hueco que no se va a cerrar nunca.*
 
 **51 · La cintura pasa a mover una severidad: ¿qué pasa cuando falta?** En su v17 el perímetro de
 cintura (OMS: hombres ≥ 94 cm, mujeres ≥ 80 cm) o el índice cintura-talla ≥ 0,50 suman **+1 al dominio
@@ -618,6 +671,31 @@ diagnóstico.
 *Recomendamos **A**: es lo que su redacción implica (el modificador es un "+1 si"), y las otras dos
 frenan una consulta entera por un dato que su tabla de sectores no necesita. Y el caso es raro, no
 inexistente: **509 de 509 mediciones de la nube traen la cintura y el ICT**.*
+
+**52 · Sus nueve fenotipos del sector frente a los doce que Atlas ya tiene.** Su Tabla 11.2 nombra
+**nueve** fenotipos MCCB, uno por sector (atlético magro, atlético, magro funcional, composición
+saludable, obesidad muscular, obesidad con masa normal, desnutrición bilateral, normal-sarcopénica,
+obesidad sarcopénica), y de ellos sale la gravedad del dominio metabólico-estructural. Atlas ya tiene
+**doce** (F1 a F12), portados verbatim de su `ATLAS.html` e indexados por (FMI, obesidad clínica,
+FFMI): los doce distinguen **obesidad clínica de preclínica**, que los nueve no.
+ · **A)** Los nueve reemplazan a los doce. · **B)** Conviven: los nueve gobiernan el sector y el
+ dominio 2, y los doce siguen en la tarjeta del fenotipo. · **C)** Se retiran los doce.
+*Recomendamos **B**: los nueve son una propiedad del SECTOR y es lo que su dominio 2 necesita, mientras
+los doce cargan una distinción que usted introdujo (clínica contra preclínica, con el criterio de
+obesidad clínica de Rubino 2025 que su propio documento cita) y que los nueve no pueden expresar.
+Retirarlos perdería información suya. La A no es imposible, pero habría que decir qué pasa con esa
+distinción.*
+
+**53 · El orden de prioridad de las rutas, que su §10 nombra y no escribe.** Dice que `activarRutas`
+devuelve *"las rutas del DFI en su orden de prioridad"*, y ese orden no está escrito en el documento. El
+de su `computeDFI` es R1, R2, R3, R4, R5 por el orden en que las añade, y la R3 lleva el rótulo
+*"(prioritaria)"* pegado al nombre.
+ · **A)** El orden en que su `computeDFI` las añade: R1, R2, R3, R4, R5, y R6 sola cuando ningún
+ dominio llega a 2. · **B)** El mismo, pero con la R3 **primera** cuando se enciende el veto
+ conductual. · **C)** Otro orden que usted fije.
+*Recomendamos **B**: su propio rótulo llama a la R3 prioritaria, y el veto conductual es el único que
+fuerza el riesgo integrado a crítico por sí solo. Si una persona tiene señal de conducta de riesgo, esa
+ficha no puede quedar tercera en la lista que el profesional lee.*
 
 **44 · La reconfirmación anual cuando la línea base viene del HTML.** Su §7.3 cuenta desde "la última
 confirmación completa", y 162 consultas tienen por línea base un archivo, no una encuesta diligenciada.

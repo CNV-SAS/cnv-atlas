@@ -139,9 +139,25 @@ const cIR = (v, sexo) => {
     ? { l: 'Óptimo',                c: '#16a34a' }
     : { l: 'Inflamación bajo grado', c: '#dc2626' };
 };
-// SIN DISTINCION POR SEXO — DELIBERADO. Confirmado por la direccion cientifica
-// el 2026-07-28. No anadir umbrales por sexo por analogia con IFC, IRC, FMI o
-// FFMI: este indicador usa el mismo rango en hombres y mujeres.
+// ═══ LA v17 REVIRTIO ESTA DECISION, Y LA DISTINCION ES FINA (2026-11-11) ═══
+//
+// Aqui decia: *"SIN DISTINCION POR SEXO - DELIBERADO. Confirmado por la direccion cientifica el
+// 2026-07-28. No anadir umbrales por sexo... este indicador usa el mismo rango en hombres y mujeres"*.
+//
+// Su v17 §5 y §6 lo cambia, y conviene leerlo con cuidado porque las dos mitades no dicen lo mismo:
+//
+//   · LOS CORTES de este clasificador SIGUEN siendo iguales en los dos sexos, y su documento explica
+//     por que: *"los cortes son los mismos en hombres y mujeres porque el indice ya esta expresado en
+//     puntuaciones z por sexo"*;
+//   · pero EL VALOR que entra aqui ya NO es el mismo para los dos: el IEHH y el ISCM-BIS se calculan
+//     con las medias y desviaciones POR SEXO de su tabla de siete componentes (su §5).
+//
+// O sea que el sexo SI entra, un paso antes. Dejar el comentario viejo haria creer que no entra en
+// ninguna parte, que es justo lo contrario de lo que su v17 hace.
+//
+// EL CALCULO POR SEXO TODAVIA NO ESTA PORTADO: es el paso 5 del porte (`engine.indices.js`, nueve
+// lineas medidas). Hasta entonces este clasificador lee un valor calculado con z GLOBALES, y por eso
+// este aviso esta aqui y no una nota que diga que ya se hizo.
 const cISCM = v => v <= -1 ? {
   l: "ISCM-1 Bajo riesgo",
   c: "#10b981"
@@ -155,9 +171,25 @@ const cISCM = v => v <= -1 ? {
   l: "ISCM-4 Alta susceptibilidad",
   c: "#ef4444"
 };
-// SIN DISTINCION POR SEXO — DELIBERADO. Confirmado por la direccion cientifica
-// el 2026-07-28. No anadir umbrales por sexo por analogia con IFC, IRC, FMI o
-// FFMI: este indicador usa el mismo rango en hombres y mujeres.
+// ═══ LA v17 REVIRTIO ESTA DECISION, Y LA DISTINCION ES FINA (2026-11-11) ═══
+//
+// Aqui decia: *"SIN DISTINCION POR SEXO - DELIBERADO. Confirmado por la direccion cientifica el
+// 2026-07-28. No anadir umbrales por sexo... este indicador usa el mismo rango en hombres y mujeres"*.
+//
+// Su v17 §5 y §6 lo cambia, y conviene leerlo con cuidado porque las dos mitades no dicen lo mismo:
+//
+//   · LOS CORTES de este clasificador SIGUEN siendo iguales en los dos sexos, y su documento explica
+//     por que: *"los cortes son los mismos en hombres y mujeres porque el indice ya esta expresado en
+//     puntuaciones z por sexo"*;
+//   · pero EL VALOR que entra aqui ya NO es el mismo para los dos: el IEHH y el ISCM-BIS se calculan
+//     con las medias y desviaciones POR SEXO de su tabla de siete componentes (su §5).
+//
+// O sea que el sexo SI entra, un paso antes. Dejar el comentario viejo haria creer que no entra en
+// ninguna parte, que es justo lo contrario de lo que su v17 hace.
+//
+// EL CALCULO POR SEXO TODAVIA NO ESTA PORTADO: es el paso 5 del porte (`engine.indices.js`, nueve
+// lineas medidas). Hasta entonces este clasificador lee un valor calculado con z GLOBALES, y por eso
+// este aviso esta aqui y no una nota que diga que ya se hizo.
 const cIEHH = v => v <= 0 ? {
   l: "Óptimo",
   c: "#10b981"
