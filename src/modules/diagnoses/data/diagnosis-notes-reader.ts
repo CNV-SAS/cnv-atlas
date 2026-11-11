@@ -1,4 +1,5 @@
 import "server-only";
+import { idsDeLosDiagnosticos } from "@/modules/diagnoses/data/diagnosticos-de-la-consulta";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -37,10 +38,16 @@ export async function getDiagnosisCriterion(
   // Las dos mitades son distintas a proposito: una nota NUEVA pertenece al diagnostico de hoy (por eso
   // `diagnosisId` sigue siendo el vigente), pero las ESCRITAS no se mudan ni se duplican, se siguen
   // viendo. Van en orden cronologico, que es lo que deja leer el criterio como lo que es, un historial.
+  // ═══ POR COLUMNA PROPIA E INDEXADA, NO POR EL EMBEBIDO (apagon del 2026-11-10) ═══
+  //
+  // Filtrar solo por `diagnoses.evaluation_id` hacia que Postgres recorriera `treatments` entera
+  // evaluando la RLS en cada fila. Ver `diagnosticos-de-la-consulta`: misma forma, otra tabla: `diagnosis_notes` tambien se recorria entera.
+  const { ids: idsNotas, error: dnErr } = await idsDeLosDiagnosticos(supabase, evaluationId);
+  if (dnErr) throw new Error(`diagnosis-notes-reader: diagnoses: ${dnErr}`);
   const { data: notes, error: nErr } = await supabase
     .from("diagnosis_notes")
-    .select("id, note, created_at, diagnoses!inner(evaluation_id)")
-    .eq("diagnoses.evaluation_id", evaluationId)
+    .select("id, note, created_at")
+    .in("diagnosis_id", idsNotas)
     .order("created_at", { ascending: true });
   if (nErr) throw new Error(`diagnosis-notes-reader: notes: ${nErr.message}`);
 

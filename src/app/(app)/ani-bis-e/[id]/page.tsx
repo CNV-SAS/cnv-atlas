@@ -503,8 +503,24 @@ export default async function ResultadosEvaluacionPage({
     getBisConditionsReadonly(id),
     // Perfil profesional del actor (B1): decide que seccion de tratamiento por profesion ve.
     getActorProfession(user.id),
+    // ═══ LOS TRES QUE EL CANDADO DEL 9 DE NOVIEMBRE DEJO DECLARADOS, ENVUELTOS (2026-11-11) ═══
+    //
+    // El candado los listaba con su razon: *"les toca `catch`, como a la serie; lo que falta no es el
+    // `catch`, es decidir QUE DICE la pantalla cuando no se pueden leer"*. El apagon del 10 de
+    // noviembre decidio: 25 eventos NO MANEJADOS tumbando la consulta de pacientes reales, y uno de
+    // los tres (`getProximoControl`) es justo uno de los nueve lectores que tenian la forma lenta.
+    //
+    // ASI QUE LA PREGUNTA SE RESPONDE AL REVES DE LO QUE PARECIA: no es "que dice la pantalla si
+    // falla", es "que pasa con TODOS los pacientes mientras lo decidimos". Un aviso que falta es un
+    // bloque menos; un lector que lanza es la consulta entera, y eso ya paso dos veces en tres dias.
+    //
+    // Lo que SI queda pendiente, y se dice: los tres fallan en silencio (sin bandera en pantalla, como
+    // la serie). Esta en PENDIENTES.
     // P0 Parte 2 (P5): por que el paciente no ve un cambio (recomputado en vivo). null si hay banda o inicial.
-    getTrajectoryNotice(id),
+    getTrajectoryNotice(id).catch((e) => {
+      reportServerError("evaluacion.aviso-de-trayectoria", e);
+      return null;
+    }),
     // LAS DOS LECTURAS DEL ENVEJECIMIENTO (2026-11-03): si no coinciden, el documento no se entrega y hay
     // que decirlo ANTES de que el profesional pulse enviar. Se lee aqui, con el resto, y no dentro del
     // componente, para que la pestaña siga siendo presentacion.
@@ -521,7 +537,10 @@ export default async function ResultadosEvaluacionPage({
     // Encabezado de la historia clinica (bloques 1 y 2).
     getHcHeaderForEvaluation(id),
     // Proximo control (Seguimiento, pieza 1): ruta activa, criterio de egreso y la cita.
-    getProximoControl(id),
+    getProximoControl(id).catch((e) => {
+      reportServerError("evaluacion.proximo-control", e);
+      return null;
+    }),
     // LOS INSUMOS DE LA CNV-S, SOLO PARA SABER QUE PREGUNTAS SE PRESENTARON (2026-11-09): el bloque de
     // la encuesta avisa en ambar de las que faltan y las enlaza una por una, y contaba el instrumento
     // ENTERO. Con la CNV-S eso incluye los cuatro `retirar` (que no se preguntan, se heredan) y el S2
@@ -608,7 +627,10 @@ export default async function ResultadosEvaluacionPage({
   const referralToday = new Date().toISOString().slice(0, 10);
   const referralPendingHints =
     actorProfession.isProfessional && protocol?.treatmentId
-      ? await getPendingReferralHints(protocol.treatmentId)
+      ? await getPendingReferralHints(protocol.treatmentId).catch((e) => {
+          reportServerError("evaluacion.pistas-de-remision", e);
+          return [];
+        })
       : [];
   const referralRegister =
     actorProfession.isProfessional && protocol?.treatmentId

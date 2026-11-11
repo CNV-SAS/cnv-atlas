@@ -1,4 +1,5 @@
 import "server-only";
+import { idsDeLosDiagnosticos } from "@/modules/diagnoses/data/diagnosticos-de-la-consulta";
 
 import type { EngineOutput } from "@/clinical-engine";
 import { reportServerError } from "@/lib/observability/report-error";
@@ -190,13 +191,17 @@ export async function getReportCardForEvaluation(
     // por el camino evaluation -> diagnosis -> treatment, bajo RLS.
     let proximaCita: string | null = null;
     if (sealed.band === "empeoro") {
-      const { data: t } = await supabase
-        .from("treatments")
-        .select("proxima_cita, diagnoses!inner(evaluation_id)")
-        .eq("diagnoses.evaluation_id", evaluationId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Por columna propia e indexada (apagon del 2026-11-10): ver `diagnosticos-de-la-consulta`.
+      const { ids: idsCita } = await idsDeLosDiagnosticos(supabase, evaluationId);
+      const { data: t } = idsCita.length
+        ? await supabase
+            .from("treatments")
+            .select("proxima_cita")
+            .in("diagnosis_id", idsCita)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : { data: null };
       proximaCita = (t?.proxima_cita as string | null) ?? null;
     }
     trajectory = {
@@ -368,13 +373,17 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
   const band = (data.trajectory as { band?: string } | null)?.band;
   let patientBandAppointmentDate: string | null = null;
   if (patientBandText && band === "empeoro") {
-    const { data: t } = await supabase
-      .from("treatments")
-      .select("proxima_cita, diagnoses!inner(evaluation_id)")
-      .eq("diagnoses.evaluation_id", data.evaluation_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Por columna propia e indexada (apagon del 2026-11-10): ver `diagnosticos-de-la-consulta`.
+    const { ids: idsBanda } = await idsDeLosDiagnosticos(supabase, data.evaluation_id as string);
+    const { data: t } = idsBanda.length
+      ? await supabase
+          .from("treatments")
+          .select("proxima_cita")
+          .in("diagnosis_id", idsBanda)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
     patientBandAppointmentDate = formatAppointmentDate((t?.proxima_cita as string | null) ?? "");
   }
 

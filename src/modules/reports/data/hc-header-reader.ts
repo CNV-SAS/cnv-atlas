@@ -1,4 +1,5 @@
 import "server-only";
+import { idsDeLosDiagnosticos } from "@/modules/diagnoses/data/diagnosticos-de-la-consulta";
 
 import { fechaDeLaConsulta } from "../fecha-de-la-consulta";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -111,13 +112,20 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
 
   // La proxima cita vive en el tratamiento; se lee aparte y EN VIVO (no se sella: si el profesional la
   // mueve, la historia debe decir la vigente). Lectura chica por evaluation -> diagnosis -> treatment.
-  const { data: t } = await supabase
-    .from("treatments")
-    .select("proxima_cita, diagnoses!inner(evaluation_id)")
-    .eq("diagnoses.evaluation_id", evaluationId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // ═══ POR COLUMNA PROPIA E INDEXADA, NO POR EL EMBEBIDO (apagon del 2026-11-10) ═══
+  //
+  // Filtrar solo por `diagnoses.evaluation_id` hacia que Postgres recorriera `treatments` entera
+  // evaluando la RLS en cada fila. Ver `diagnosticos-de-la-consulta`: mismo criterio que el anterior: sin mirar el error.
+  const { ids: idsHc } = await idsDeLosDiagnosticos(supabase, evaluationId);
+  const { data: t } = idsHc.length
+    ? await supabase
+        .from("treatments")
+        .select("proxima_cita")
+        .in("diagnosis_id", idsHc)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
 
   return {
     paciente: `${paciente?.first_name ?? ""} ${paciente?.last_name ?? ""}`.trim(),

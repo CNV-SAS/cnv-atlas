@@ -1,4 +1,5 @@
 import "server-only";
+import { idsDeLosDiagnosticos } from "@/modules/diagnoses/data/diagnosticos-de-la-consulta";
 
 import type { ProtocoloAjustes, ProtocoloSnapshot } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -104,10 +105,17 @@ function patientIdFrom(evaluations: unknown): string {
  */
 export async function hayProtocoloSellado(evaluationId: string): Promise<boolean> {
   const supabase = await createSupabaseServerClient();
+  // ═══ POR COLUMNA PROPIA E INDEXADA, NO POR EL EMBEBIDO (apagon del 2026-11-10) ═══
+  //
+  // Filtrar solo por `diagnoses.evaluation_id` hacia que Postgres recorriera `treatments` entera
+  // evaluando la RLS en cada fila. Ver `diagnosticos-de-la-consulta`: este lector LANZA, asi que su error se propaga igual que antes.
+  const { ids, error: dErr } = await idsDeLosDiagnosticos(supabase, evaluationId);
+  if (dErr) throw new Error(`treatment-reader(protocolo-sellado): diagnoses: ${dErr}`);
+  if (ids.length === 0) return false;
   const { data, error } = await supabase
     .from("treatments")
-    .select("protocol_suggested, diagnoses!inner(evaluation_id)")
-    .eq("diagnoses.evaluation_id", evaluationId)
+    .select("protocol_suggested")
+    .in("diagnosis_id", ids)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -145,12 +153,19 @@ export async function getTreatmentProtocol(
   // Asi que se busca por la EVALUACION, subiendo del tratamiento a su diagnostico. Es el camino que ya
   // usaban los otros ocho lectores (informe, HC, plan, proximo control, tablero), y por eso ellos nunca
   // se rompieron. El `!inner` mantiene el gate: un tratamiento sin diagnostico no existe.
+  // ═══ POR COLUMNA PROPIA E INDEXADA, NO POR EL EMBEBIDO (apagon del 2026-11-10) ═══
+  //
+  // Filtrar solo por `diagnoses.evaluation_id` hacia que Postgres recorriera `treatments` entera
+  // evaluando la RLS en cada fila. Ver `diagnosticos-de-la-consulta`: y este `select` es el que mas costaba, con SEIS columnas JSONB por fila recorrida.
+  const { ids: idsDx, error: dxErr } = await idsDeLosDiagnosticos(supabase, evaluationId);
+  if (dxErr) throw new Error(`treatment-reader: diagnoses: ${dxErr}`);
+  if (idsDx.length === 0) return null;
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, diagnosis_id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, sin_prescripcion_motivo, sin_prescripcion_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit, diagnoses!inner(evaluation_id)",
+      "id, diagnosis_id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, sin_prescripcion_motivo, sin_prescripcion_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit",
     )
-    .eq("diagnoses.evaluation_id", evaluationId)
+    .in("diagnosis_id", idsDx)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -465,12 +480,19 @@ export async function getTreatmentForApproval(
 
   // Por la EVALUACION, no por el diagnostico vigente: ver la nota en `getTreatmentProtocol`. Si filtrara
   // por el vigente, aprobar la prescripcion de una evaluacion reemitida diria "no hay nada que aprobar".
+  // ═══ POR COLUMNA PROPIA E INDEXADA, NO POR EL EMBEBIDO (apagon del 2026-11-10) ═══
+  //
+  // Filtrar solo por `diagnoses.evaluation_id` hacia que Postgres recorriera `treatments` entera
+  // evaluando la RLS en cada fila. Ver `diagnosticos-de-la-consulta`: aqui el diagnostico vigente ya se leyo arriba, pero hacen falta TODOS los de la consulta.
+  const { ids: idsAprob, error: aErr } = await idsDeLosDiagnosticos(supabase, evaluationId);
+  if (aErr) throw new Error(`treatment-reader(approval): diagnoses: ${aErr}`);
+  if (idsAprob.length === 0) return null;
   const { data: t, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit, diagnoses!inner(evaluation_id)",
+      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit",
     )
-    .eq("diagnoses.evaluation_id", evaluationId)
+    .in("diagnosis_id", idsAprob)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

@@ -1,4 +1,5 @@
 import "server-only";
+import { idsDeLosDiagnosticos } from "@/modules/diagnoses/data/diagnosticos-de-la-consulta";
 
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 import { remisionesExigidas } from "./hc-composicion";
@@ -329,10 +330,17 @@ export async function getInformeDelPaciente(
  */
 async function getProximaCita(evaluationId: string): Promise<string | null> {
   const supabase = await createSupabaseServerClient();
+  // ═══ POR COLUMNA PROPIA E INDEXADA, NO POR EL EMBEBIDO (apagon del 2026-11-10) ═══
+  //
+  // Filtrar solo por `diagnoses.evaluation_id` hacia que Postgres recorriera `treatments` entera
+  // evaluando la RLS en cada fila. Ver `diagnosticos-de-la-consulta`: este LANZA, y se conserva.
+  const { ids, error: dErr } = await idsDeLosDiagnosticos(supabase, evaluationId);
+  if (dErr) throw new Error(`informe-paciente-reader (próxima cita): diagnoses: ${dErr}`);
+  if (ids.length === 0) return null;
   const { data, error } = await supabase
     .from("treatments")
-    .select("proxima_cita, diagnoses!inner(evaluation_id)")
-    .eq("diagnoses.evaluation_id", evaluationId)
+    .select("proxima_cita")
+    .in("diagnosis_id", ids)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

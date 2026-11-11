@@ -80,11 +80,17 @@ describe("ningun lector del tratamiento depende del diagnostico VIGENTE", () => 
   it("y los cinco que estaban mal llegan al tratamiento POR LA EVALUACION", () => {
     // El control positivo del barrido de arriba: que el camino nuevo sea el correcto, no solo que el
     // viejo no este. Cada uno con el dialecto que usa.
+    //
+    // EL DIALECTO DEL PRIMERO Y DEL CUARTO CAMBIO EL 2026-11-11, y la propiedad es la misma: llegar al
+    // tratamiento (o a la nota) POR LA EVALUACION y no por el diagnostico vigente. Lo que cambio es que
+    // ya no se llega con el embebido `.eq("diagnoses.evaluation_id")`, que obligaba a Postgres a recorrer
+    // la tabla entera evaluando la RLS en cada fila y tumbo /ani-bis-e el 10 de noviembre, sino por los
+    // ids de los diagnosticos de esa consulta (`idsDeLosDiagnosticos`, una sola definicion).
     const esperado: [string, RegExp][] = [
-      ["src/modules/treatment/data/treatment-reader.ts", /\.eq\("diagnoses\.evaluation_id", evaluationId\)/],
+      ["src/modules/treatment/data/treatment-reader.ts", /idsDeLosDiagnosticos\(supabase, evaluationId\)/],
       ["src/modules/corrections/data/correction-warnings-reader.ts", /eq\(dxDelTratamiento\.evaluationId, evaluationId\)/],
       ["src/modules/followups/data/proximo-control-writer.ts", /eq\(diagnoses\.evaluationId, input\.evaluationId\)/],
-      ["src/modules/diagnoses/data/diagnosis-notes-reader.ts", /\.eq\("diagnoses\.evaluation_id", evaluationId\)/],
+      ["src/modules/diagnoses/data/diagnosis-notes-reader.ts", /idsDeLosDiagnosticos\(supabase, evaluationId\)/],
     ];
     for (const [ruta, patron] of esperado) {
       const f = FUENTES.find((x) => x.ruta === ruta);
@@ -97,7 +103,9 @@ describe("ningun lector del tratamiento depende del diagnostico VIGENTE", () => 
     // del informe tenia su propia copia de esa condicion, escrita a mano y contra una columna inexistente.
     // Una condicion duplicada se desincroniza; una contada aqui, no.
     const tr = FUENTES.find((x) => x.ruta === "src/modules/treatment/data/treatment-reader.ts")!;
-    expect(tr.codigo.match(/\.eq\("diagnoses\.evaluation_id", evaluationId\)/g) ?? []).toHaveLength(3);
+    expect(tr.codigo.match(/idsDeLosDiagnosticos\(supabase, evaluationId\)/g) ?? []).toHaveLength(3);
+    // Y NINGUNA DE LAS TRES vuelve al embebido, que es la forma que no escala.
+    expect(tr.codigo, 'una de las tres volvio al embebido').not.toMatch(/\.eq\("diagnoses\.evaluation_id"/);
   });
 
   it("las notas de criterio se LEEN por la evaluacion pero se ESCRIBEN en el vigente", () => {

@@ -257,7 +257,13 @@ describe("los bloques de su §7.1 siguen saliendo, y se sabe por cuál hoja", ()
     const LECTOR = readFileSync("src/modules/treatment/data/treatment-reader.ts", "utf8");
     const gate = LECTOR.slice(LECTOR.indexOf("export async function hayProtocoloSellado"));
     const cuerpo = gate.slice(0, gate.indexOf("export async function getTreatmentProtocol"));
-    expect(cuerpo).toContain('.select("protocol_suggested, diagnoses!inner(evaluation_id)")');
+    // EL ANCLA SE MOVIO EL 2026-11-11, LA PROPIEDAD NO: la condicion sigue siendo el tratamiento MAS
+    // RECIENTE de la consulta (el `order by`) y `protocol_suggested`. Lo que cambio es COMO se llega a
+    // los tratamientos de esa consulta: antes por el embebido (que hacia recorrer la tabla entera y
+    // tumbo /ani-bis-e el 10 de noviembre), ahora por los ids de sus diagnosticos.
+    expect(cuerpo).toContain('.select("protocol_suggested")');
+    expect(cuerpo).toContain('.in("diagnosis_id", ids)');
+    expect(cuerpo, 'volvio a filtrar por el embebido').not.toContain('diagnoses!inner(evaluation_id)');
     expect(cuerpo).toContain('.order("created_at", { ascending: false })');
     expect(cuerpo).toContain("data?.protocol_suggested != null");
     // La condición de `getPlanPaciente`, en su propio archivo, por la MISMA columna.
