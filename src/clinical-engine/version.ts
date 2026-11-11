@@ -263,7 +263,30 @@
 // LO QUE SIGUE ABIERTO: el Δ de su linea 15628 sigue con el corte ABIERTO en su archivo, asi que en +5,0
 // su documento se contradice solo (la fila dice "acelerado" y el Δ de al lado dice "0,0"). Es su pregunta
 // 36 y la decide el. Esta version cubre la BANDA, no el Δ.
-export const ENGINE_VERSION = "3.2.0";
+//  · 3.3.0 (2026-11-11): EL ICA-BIS, CON SIGNO (v17 §4). Hasta aqui el motor sellaba
+//    `icaBis = |PABU - 1,618|`, en magnitud, y el valor absoluto PIERDE LA DIRECCION del alejamiento de
+//    φ, que es la mitad del significado: por encima de φ es deficit estructural y por debajo es exceso
+//    de adiposidad. Textual de su v17: *"ICA-BIS = PABU - 1,618, con signo"*.
+//
+//    POR QUE SUBE **MINOR** Y NO MAYOR, que es la decision que importa: `sonComparables` compara la
+//    version MAYOR, asi que un salto de mayor PARTE LA SERIE de todos los pacientes (hasta la segunda
+//    consulta con la version nueva no hay delta ni tarjeta de respuesta). Eso se paga cuando cambia una
+//    CLASIFICACION, y aqui no cambia ninguna: el `icaBis` no entra en ningun puntaje del DFI, ni en una
+//    severidad, ni en el riesgo integrado, ni en una ruta. Lo que cambia es lo que se le DICE al
+//    profesional, al paciente y a la IA. Partir la serie de 441 consultas por un rotulo seria cobrar el
+//    precio del bump sin comprar nada.
+//
+//    Y NO HAY MIGRACION DE DATOS, a diferencia de lo que su documento pide para su aplicacion: ahi el
+//    ICA-BIS es un campo almacenado que las pantallas leen, y aqui un informe sellado es INMUTABLE
+//    (regla 7). El ICA-BIS es una funcion pura de la PABU, y la PABU sellada ya es correcta, asi que se
+//    DERIVA al leer (`clinical-engine/ica-bis`) y el historico completo se ve bien sin tocar una fila.
+//    Es, ademas, lo que su propio documento pide a las pantallas: *"cuando la PABU esta disponible, toda
+//    pantalla calcula el ICA-BIS desde ella y no lee primero el valor guardado"*.
+//
+//    MEDIDO EN LA NUBE antes de aplicarlo: 245 de 441 consultas vigentes (55,6 %) tienen la PABU por
+//    DEBAJO de φ, o sea que a mas de la mitad se les mostraba una desviacion positiva (que se lee como
+//    deficit) teniendo exceso de adiposidad. No es un borde.
+export const ENGINE_VERSION = "3.3.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada

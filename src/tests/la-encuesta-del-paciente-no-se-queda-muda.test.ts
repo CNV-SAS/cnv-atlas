@@ -52,7 +52,7 @@ describe("el enlace para retomar la encuesta", () => {
     expect(CAJA).toContain("buildResumeUrl(resumeToken, window.location.origin)");
     expect(CAJA).toContain("onClick={alternar}");
     expect(CAJA, "la URL volvio a calcularse en un efecto").not.toMatch(
-      /useEffect\([^)]*\)\s*=>\s*\{[^}]*setResumeUrl/s,
+      /useEffect\([\s\S]*?setResumeUrl/,
     );
   });
 

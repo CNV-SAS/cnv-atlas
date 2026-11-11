@@ -108,6 +108,17 @@ export const INDICES_ANI: IndiceAniFila[] = [
     referencia: (m) => (m ? "φ = 1,618 (k=0,78)" : "φ = 1,618 (k=0,46)"),
     formato: (v) => dec(v, "PABU"),
   },
+  // ═══ LA REFERENCIA ES SUYA Y NO SE RETOCA, AUNQUE AHORA SE LEA RARA (2026-11-11) ═══
+  //
+  // Con el ICA-BIS en MAGNITUD, "0.00-0.15" era exacto. Con el signo de la v17 §4, la mitad negativa de
+  // la zona φ queda fuera del rango escrito. La tentacion es poner "−0,15 a +0,15", y seria INVENTAR
+  // texto suyo: su archivo dice 0.00-0.15 y el candado de esta tabla compara contra SU archivo, no
+  // contra lo que nos parezca coherente (Regla 0).
+  //
+  // Y NO HACE FALTA RETOCARLA, porque su propia v17 la reemplaza: §4 cambia la lectura del ICA-BIS por
+  // los PERCENTILES del sexo (Tabla 7.3), y esta referencia se rehace con esa tabla en el paso que
+  // construya `cPABU(pabu, sexo)`. Hasta entonces se queda la suya, que es lo unico que no afirma nada
+  // que el no haya escrito. Esta anotado en PENDIENTES.
   { codigo: "ICA-BIS", nombre: "Desviación de φ", referencia: () => "0.00–0.15 Zona φ", formato: (v) => dec(v, "ICA-BIS") },
 ];
 

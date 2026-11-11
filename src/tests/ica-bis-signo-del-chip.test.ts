@@ -57,6 +57,27 @@ describe("la desviación de φ del chip del PABU (cotejo punto 9)", () => {
     expect(chipPabu(fila(1.9925, Math.abs(1.9925 - PHI)))).toContain("+0,37");
   });
 
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // Y DESDE LA v17 EL NUMERO Y LA ETIQUETA DICEN LO MISMO  ·  2026-11-11
+  //
+  // Hasta aqui la fila llevaba la MAGNITUD, asi que un paciente por debajo de φ veia un numero
+  // POSITIVO con la etiqueta "por exceso": la direccion la decia solo la etiqueta. Su v17 lo corrige
+  // (ICA-BIS = PABU - 1,618, con signo), asi que ahora las dos mitades coinciden. El caso de abajo se
+  // conserva porque sigue probando las DOS ramas del frozen cuando se le entrega una magnitud; este
+  // prueba lo que Atlas le entrega de verdad.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("el numero del chip lleva el signo de la direccion", async () => {
+    const { icaBisDeLaPabu } = await import("@/clinical-engine/ica-bis");
+    // Por DEBAJO de φ: exceso de adiposidad, y el numero es negativo.
+    const abajo = chipPabu(fila(1.2, icaBisDeLaPabu(1.2) as number));
+    expect(abajo).toContain("-0,42");
+    expect(abajo).toContain("Desviación por exceso");
+    // Por ENCIMA: deficit estructural, y el numero es positivo.
+    const arriba = chipPabu(fila(1.9925, icaBisDeLaPabu(1.9925) as number));
+    expect(arriba).toContain("+0,37");
+    expect(arriba).toContain("Desviación por déficit");
+  });
+
   it("y la DIRECCION sigue viniendo de la etiqueta, no del signo del numero", () => {
     // La regla de Gildardo: cPABU dice hacia donde, el ICA-BIS dice cuanto. Por debajo de φ la etiqueta
     // es "por exceso" (exceso de adiposidad) aunque la magnitud sea positiva.
@@ -75,7 +96,11 @@ describe("la desviación de φ del chip del PABU (cotejo punto 9)", () => {
     // φ, donde el valor con signo y el absoluto COINCIDEN. Es el mismo agujero que dejo pasar el
     // defecto.
     const src = sinComentarios(readFileSync("src/clinical-engine/analysis.ts", "utf8"));
-    expect(src, "la fila que va al DFI tiene que llevar el ICA_BIS").toContain("ICA_BIS: Math.abs(PABU - 1.618)");
+    // EL ANCLA CAMBIO CON LA v17 §4, LA PROPIEDAD NO: lo que este caso fija es que `analizarDFI` LLENE
+    // el campo (el defecto era una omision). Lo que cambio es el valor que llena: ya no la magnitud,
+    // sino la desviacion CON SIGNO, que es lo que su v17 ordena.
+    expect(src, "la fila que va al DFI tiene que llevar el ICA_BIS").toContain("ICA_BIS: icaBisDeLaPabu(PABU)");
+    expect(src, "volvio a entregar la magnitud").not.toContain("Math.abs(PABU - 1.618)");
   });
 
   it("y con el donante golden la cadena real sigue citando la magnitud", () => {

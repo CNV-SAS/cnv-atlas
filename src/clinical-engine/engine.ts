@@ -7,6 +7,7 @@
 // silencioso). Cuando se porte la encuesta real, el DFI se enciende sin tocar el motor.
 
 import { analizarDesdeBiody, analizarDFI, calcLE8 } from "./analysis";
+import { icaBisDeLaPabu } from "./ica-bis";
 import { suspendSurveyRoutes } from "./dfi-routes";
 import { classifyFenotipo } from "./protocolo-fenotipo";
 // Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
@@ -22,10 +23,6 @@ import {
   type IndicatorClass,
 } from "./types";
 import { ENGINE_VERSION } from "./version";
-
-function r4(n: number): number {
-  return Math.round(n * 10000) / 10000;
-}
 
 // Coercion de un crudo del Biody (number | null) a numero para el clasificador, igual que el
 // protocolo (num): null/NaN -> 0. classifyFenotipo tolera 0 en sus guardas.
@@ -100,7 +97,7 @@ export function runEngine(input: EngineInput): EngineOutput {
   const fyr = core.FYR_LABELS[fyrKey];
   const frSector = { key: fyrKey, nombre: fyr?.l ?? fyrKey };
 
-  // Indicadores (12). AF/IR de las columnas del Biody; ICA-BIS = |PABU - phi| (ATLAS_v7
+  // Indicadores (12). AF/IR de las columnas del Biody; ICA-BIS = PABU - phi CON SIGNO (v17 §4; era
   // L5721). ISCM/IEHH/IAE/EB pueden ser null (no se inventan).
   const rawAF = a.fuente.raw.AF;
   const rawIR = a.fuente.raw.IR;
@@ -108,7 +105,9 @@ export function runEngine(input: EngineInput): EngineOutput {
     ifc: a.indices.IFC,
     irc: a.indices.IRC,
     pabu: a.indices.PABU,
-    icaBis: r4(Math.abs(a.indices.PABU - 1.618)),
+    // CON SIGNO desde la v17 §4 (antes `Math.abs`): el valor absoluto perdia la DIRECCION del
+    // alejamiento de φ, que es la mitad del significado. Ver `ica-bis.ts`.
+    icaBis: icaBisDeLaPabu(a.indices.PABU),
     iscm: a.indices.ISCM,
     iehh: a.indices.IEHH,
     // ═══ LA SUSPENSION POR ENCUESTA INCOMPLETA SE RETIRA CON LA v7 (su §2, 2026-10-26) ═══

@@ -49,7 +49,11 @@ export type EngineIndicators = {
   ifc: number;
   irc: number;
   pabu: number;
-  icaBis: number;
+  /**
+   * ICA-BIS = PABU - φ, CON SIGNO (v17 §4). `null` sin PABU: sin ella no hay desviacion que medir, y
+   * antes se sellaba un 0 que se leia como "esta en el punto aureo".
+   */
+  icaBis: number | null;
   iscm: number | null;
   iehh: number | null;
   iae: number | null;

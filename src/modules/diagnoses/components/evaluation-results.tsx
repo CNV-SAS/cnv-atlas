@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { icaBisDelSello } from "@/clinical-engine/ica-bis";
 import {
   Ban,
   Brain,
@@ -322,8 +323,30 @@ export function EvaluationResults({
   }
 
   const { snapshot, efrState } = results;
-  const { indicators, classifications, efrPhenotype, structural, fenotipoMCCB, frSector, dfi, versions } =
-    snapshot;
+  const {
+    indicators: indicadoresSellados,
+    classifications,
+    efrPhenotype,
+    structural,
+    fenotipoMCCB,
+    frSector,
+    dfi,
+    versions,
+  } = snapshot;
+  // ═══ EL ICA-BIS SE DERIVA DE LA PABU SELLADA, Y NO SE LEE EL SELLADO (v17 §4, 2026-11-11) ═══
+  //
+  // Los informes anteriores a esta version sellaron `icaBis` en MAGNITUD (`Math.abs`), asi que su
+  // signo se perdio: medido en la nube, 245 de 441 consultas (55,6 %) tienen la PABU por debajo de φ y
+  // mostraban una desviacion POSITIVA, que se lee como deficit cuando es exceso de adiposidad.
+  //
+  // NO SE REESCRIBE NINGUN INFORME: un sello es inmutable (regla 7). Se deriva al LEER, que es lo que
+  // su v17 pide (*"toda pantalla calcula el ICA-BIS desde ella y no lee primero el valor guardado"*) y
+  // que ademas arregla el historico completo sin tocar una fila. Va en UN sitio, aqui arriba, porque
+  // esta pantalla lee `indicators.icaBis` en tres lugares (la fila, la Δ y la hoja imprimible).
+  const indicators = {
+    ...indicadoresSellados,
+    icaBis: icaBisDelSello(indicadoresSellados),
+  };
   const sexM = snapshot.sexo === "M"; // para los rangos de referencia por sexo (indicator-ranges)
   // Dominios que el motor NO puntuó (CA-6). Del snapshot SELLADO, no recalculado: lo que se emitió es
   // lo que se muestra. Ausente en snapshots anteriores a CA-6, donde todos los dominios puntuaban:

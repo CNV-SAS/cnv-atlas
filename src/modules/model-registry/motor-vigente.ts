@@ -123,6 +123,18 @@ const QUE_ES_ESTA_VERSION: Record<string, { texto: string; fecha: string }> = {
       "el criterio del archivo de la Dirección Científica.",
     fecha: "2026-11-07",
   },
+  // LO QUE EL PROFESIONAL VA A NOTAR: que la desviacion del punto aureo ya dice HACIA DONDE, no solo
+  // cuanto. El porque (que se sellaba en valor absoluto, que afecta a mas de la mitad de las consultas,
+  // por que es version menor y no mayor, y por que no hay migracion de datos) vive en `version.ts` y en
+  // `clinical-engine/ica-bis`, que es donde lo busca quien mantiene el motor.
+  "3.3.0": {
+    texto:
+      "La desviación del punto áureo (ICA-BIS) ahora lleva signo: positiva cuando la PABU está por " +
+      "encima de φ (déficit estructural) y negativa cuando está por debajo (exceso de adiposidad). Antes " +
+      "se mostraba siempre positiva, así que la dirección solo se leía en la etiqueta. No cambia ningún " +
+      "diagnóstico ni ninguna ruta de atención.",
+    fecha: "2026-11-11",
+  },
 };
 
 export type MotorVigente = {

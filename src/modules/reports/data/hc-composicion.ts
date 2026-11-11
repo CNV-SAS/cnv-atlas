@@ -1,4 +1,5 @@
 import { computeProtocoloEfectivo, type ProtocoloSnapshot } from "@/clinical-engine";
+import { icaBisDelSello } from "@/clinical-engine/ica-bis";
 import type { EngineIndicators } from "@/clinical-engine/types";
 import { nivelFaLabel } from "@/modules/treatment/data/treatment-view-types";
 import { indicatorSeverities } from "@/clinical-engine/severity";
@@ -173,7 +174,12 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
           EB: e.snapshot.indicators.eb ?? null,
           IAE: e.snapshot.indicators.iae ?? null,
           PABU: e.snapshot.indicators.pabu ?? null,
-          "ICA-BIS": e.snapshot.indicators.icaBis ?? null,
+          // DERIVADO DE LA PABU SELLADA (v17 §4): los informes anteriores guardaron la magnitud. Ver
+          // `clinical-engine/ica-bis`: no se reescribe ningun sello, se lee bien.
+          "ICA-BIS": icaBisDelSello({
+            pabu: e.snapshot.indicators.pabu ?? null,
+            icaBis: e.snapshot.indicators.icaBis ?? null,
+          }),
         },
         conClaseIcaBis(e.snapshot.classifications as Record<string, { label?: string | null } | null>),
         severidades,

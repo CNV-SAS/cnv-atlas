@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Clase } from "./frozen/engine.core";
+import { icaBisDeLaPabu } from "./ica-bis";
 // Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
 // derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
 import * as core from "./frozen/engine.core.derived.js";
@@ -348,7 +349,16 @@ export function analizarDFI(
     //
     // Alcance: `icaBis` NO entra en ningun puntaje del DFI. Se usa en UN sitio, el texto del chip
     // (engine.dfi.js:146). No mueve severidades, ni riesgo integrado, ni rutas.
-    ICA_BIS: Math.abs(PABU - 1.618),
+    // ═══ CON SIGNO DESDE LA v17 §4 (2026-11-11) ═══
+    //
+    // Aqui decia `Math.abs(PABU - 1.618)`, y todo el parrafo de arriba explica por que: su aplicacion
+    // llenaba la fila con la MAGNITUD y la nuestra no la llenaba, asi que el chip y la fila de la tabla
+    // mostraban dos signos para el mismo concepto. La v17 resuelve la contradiccion por el otro lado:
+    // **la magnitud era lo equivocado**. Textual de su documento: *"ICA-BIS = PABU - 1,618, con signo"*.
+    //
+    // Y SU ALCANCE NO CAMBIA: `icaBis` sigue sin entrar en ningun puntaje del DFI. Lo que cambia es que
+    // la direccion deja de perderse en el camino.
+    ICA_BIS: icaBisDeLaPabu(PABU),
   };
 
   const out = dfi.computeDFIFromData(encLe8, bis);
