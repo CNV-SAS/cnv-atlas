@@ -65,7 +65,22 @@ const CURRENT: EmissionVersions = {
   // dicen `>= 5` por lo mismo. Lo que habia en Atlas era un porte del v8 conviviendo con una capa de
   // presentacion ya migrada, y en el borde las dos decian cosas distintas: ver
   // `el-borde-de-los-cinco-dice-lo-mismo.test.ts`.
-  classification: "cXXX-2026-11-07", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
+  // ═══ SUBE CON EL PASO 2 DE LA v17 (su §3 y §4)  ·  2026-11-11 ═══
+  //
+  // TRES ETIQUETAS SELLADAS SE MUEVEN, y por eso esta clave sube (no es un color):
+  //
+  //   · el IFC cambia de categoria en las ventanas de 0,02 que abren sus cortes nuevos (mujeres en
+  //     [2,08 · 2,10) y en (3,28 · 3,30]; hombres en [4,10 · 4,12) y en (6,68 · 6,70]). Medido en la
+  //     nube el 2026-11-11: 4 de 441 consultas vigentes;
+  //   · el IFC de un paciente SIN SEXO pasa a "Sin sexo: no se clasifica" (antes caia al corte global
+  //     3,5 / 6,0, que su v17 retira). En la nube son 2 pacientes de 665;
+  //   · la etiqueta del PABU cambia para TODOS: la zona fija de ±0,15 ("Zona φ — Homeostasis",
+  //     "Desviación por déficit/exceso") pasa a los percentiles de su Tabla 7.3 ("Rango habitual",
+  //     "Alejamiento leve/marcado por déficit", "Desplazamiento leve/marcado por exceso").
+  //
+  // Los diagnosticos anteriores quedan marcados como emitidos con version anterior, que es lo correcto y
+  // es lo que permite que la reemision de su §12b se dispare donde corresponda.
+  classification: "cXXX-2026-11-11", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
   // ═══ BUMP 2026-10-28: LLEGO LA CALIBRACION, Y CON OTRA FORMULA ═══
   //
   // Esta clave nacio "ebbis-v5-provisional" y el comentario de arriba decia que la calibracion

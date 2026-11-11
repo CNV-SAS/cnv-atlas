@@ -71,19 +71,22 @@ describe("la desviación de φ del chip del PABU (cotejo punto 9)", () => {
     // Por DEBAJO de φ: exceso de adiposidad, y el numero es negativo.
     const abajo = chipPabu(fila(1.2, icaBisDeLaPabu(1.2) as number));
     expect(abajo).toContain("-0,42");
-    expect(abajo).toContain("Desviación por exceso");
+    // LA ETIQUETA ES LA DE SU v17 §4 (percentiles del sexo): "desplazamiento leve/marcado por exceso"
+    // en vez de "desviación por exceso". Se comprueba la DIRECCION, que es lo que este caso fija, y no la
+    // cadena entera: el escalon (leve o marcado) lo decide su Tabla 7.3 y tiene su propio candado.
+    expect(abajo).toContain("por exceso");
     // Por ENCIMA: deficit estructural, y el numero es positivo.
     const arriba = chipPabu(fila(1.9925, icaBisDeLaPabu(1.9925) as number));
     expect(arriba).toContain("+0,37");
-    expect(arriba).toContain("Desviación por déficit");
+    expect(arriba).toContain("por déficit");
   });
 
   it("y la DIRECCION sigue viniendo de la etiqueta, no del signo del numero", () => {
     // La regla de Gildardo: cPABU dice hacia donde, el ICA-BIS dice cuanto. Por debajo de φ la etiqueta
     // es "por exceso" (exceso de adiposidad) aunque la magnitud sea positiva.
     const c = chipPabu(fila(1.2, Math.abs(1.2 - PHI)));
-    expect(c).toContain("Desviación por exceso");
-    expect(chipPabu(fila(1.9925, Math.abs(1.9925 - PHI)))).toContain("Desviación por déficit");
+    expect(c).toContain("por exceso");
+    expect(chipPabu(fila(1.9925, Math.abs(1.9925 - PHI)))).toContain("por déficit");
   });
 
   it("UNA SOLA FUENTE: `analizarDFI` le ENTREGA el ICA_BIS a la fila, en vez de dejar que lo recalcule", () => {

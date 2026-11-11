@@ -47,8 +47,8 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
   });
 
   it("IFC/IRC/FMI (M): salen del CLASIFICADOR del motor (Q20/C11), no de la tabla de display", () => {
-    // IFC 5.3651: sano = optima (> hi 6.68). Umbral 6.68, Δ = valor − 6.68 = -1.31.
-    expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6,68", delta: "-1,31" });
+    // IFC 5.3651: sano = optima (> hi). v17 §3, Tabla 6.1: hi 6,7 (antes 6,68). Δ = 5,3651 − 6,7 = -1,33.
+    expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6,70", delta: "-1,33" });
     // IRC 1.8218: sano = bajo riesgo (< lo 1.68). Umbral 1.68, Δ = valor − 1.68 = 0.14.
     expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1,70", delta: "0,12" });
     // FMI 6.369: Normal 3–6. Gildardo §2: Δ contra el BORDE superior 6 = 0.37 (antes promedio 4.5 = 1.87).
@@ -57,7 +57,8 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
 
   it("IFC/IRC/FMI (F): usan los cortes femeninos del clasificador", () => {
     // F: cIFC hi 3.28, cIRC lo 2.27, cFMI Normal 5–9. FMI Δ contra el BORDE superior 9 = -2.63 (Gildardo §2).
-    expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3,28", delta: "2,09" });
+    // v17 §3: hi 3,3 (antes 3,28). Δ = 5,3651 − 3,3 = 2,07.
+    expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3,30", delta: "2,07" });
     expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2,30", delta: "-0,48" });
     expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5–9", delta: "-2,63" });
   });
@@ -182,9 +183,11 @@ describe("CANDADO · la referencia sale del clasificador del motor (no de una ta
   const b1 = (fn: (v: number) => { l: string }, b: number) =>
     expect(fn(b - E).l, `frontera ${b}`).not.toBe(fn(b + E).l);
 
-  it("IFC: umbral sano/alerta 6.68 (M) / 3.28 (F)", () => {
-    b2(cIFC, "M", 6.68);
-    b2(cIFC, "F", 3.28);
+  // RE-ANCLADO a su v17 §3 (Tabla 6.1). Este candado se puso ROJO al portar, que es exactamente para lo
+  // que existe: un cambio de ciencia no puede entrar en silencio.
+  it("IFC: umbral sano/alerta 6.7 (M) / 3.3 (F)", () => {
+    b2(cIFC, "M", 6.7);
+    b2(cIFC, "F", 3.3);
   });
   // ACTUALIZADO al porte del ATLAS_v8 del 2026-08-29 (punto 6 de su respuesta): los cortes pasan a los del
   // articulo. Este candado se puso ROJO al portar, que es exactamente para lo que existe: un cambio de
@@ -221,9 +224,18 @@ describe("CANDADO · la referencia sale del clasificador del motor (no de una ta
     b1(cIAE, -5);
     b1(cIAE, 5);
   });
-  it("PABU: el punto φ = 1.618 cae en la zona de homeostasis del clasificador direccional", () => {
-    // cPABU direccional (swap del 18): un solo argumento; |1.618-φ|=0 ≤ 0.15 → zona φ
-    expect(cPABU(1.618).l).toContain("Homeostasis");
+  // ═══ RE-ANCLADO A SU v17 §4 (2026-11-11) ═══
+  //
+  // Antes: `cPABU(1.618)` con UN argumento y la zona fija de ±0,15, asi que φ caia en "Homeostasis".
+  // Su v17 lee el ICA-BIS contra los PERCENTILES del sexo (Tabla 7.3), asi que el clasificador recibe el
+  // sexo y la frontera ya no es simetrica: en φ el ICA-BIS es 0, que esta dentro del P25-P75 de los dos
+  // sexos (M: -0,27 a 0,36 · F: -0,20 a 0,45), o sea RANGO HABITUAL. La propiedad que este caso fija es
+  // la misma (φ es lo normal); lo que cambia es como se llama y de donde sale la frontera.
+  it("PABU: el punto φ = 1.618 cae en el rango habitual de los dos sexos", () => {
+    expect(cPABU(1.618, "M").l).toContain("Rango habitual");
+    expect(cPABU(1.618, "F").l).toContain("Rango habitual");
+    // Y sin sexo no se clasifica, como el IFC: es la regla general de su v17 §3.
+    expect(cPABU(1.618, null).l).toContain("Sin sexo");
   });
 });
 
@@ -232,13 +244,15 @@ describe("CANDADO · la referencia sale del clasificador del motor (no de una ta
 // corte, el frozen cambia y este test truena, forzando actualizar la cadena de bandas junto con el motor.
 describe("indicatorBands: cortes anclados contra el clasificador frozen (no drift silencioso)", () => {
   const M: Sexo = "M";
-  it("IFC (M): transiciones en 4.12 (disfuncion/alerta) y 6.68 (alerta/optima)", () => {
-    expect(cIFC(4.11, M).risk).toBe("alto");
-    expect(cIFC(4.12, M).risk).toBe("moderado");
-    expect(cIFC(6.68, M).risk).toBe("moderado");
-    expect(cIFC(6.69, M).risk).toBe("bajo");
-    expect(indicatorBands("IFC", true)).toContain(fmtDec(4.12));
-    expect(indicatorBands("IFC", true)).toContain(fmtDec(6.68));
+  // RE-ANCLADO a su v17 §3 (Tabla 6.1): 4,1 y 6,7 en hombres. Las dos cadenas (el clasificador del motor
+  // y la de bandas de la tarjeta) se mueven JUNTAS, que es lo que este caso existe para forzar.
+  it("IFC (M): transiciones en 4.1 (disfuncion/alerta) y 6.7 (alerta/optima)", () => {
+    expect(cIFC(4.09, M).risk).toBe("alto");
+    expect(cIFC(4.1, M).risk).toBe("moderado");
+    expect(cIFC(6.7, M).risk).toBe("moderado");
+    expect(cIFC(6.71, M).risk).toBe("bajo");
+    expect(indicatorBands("IFC", true)).toContain(fmtDec(4.1));
+    expect(indicatorBands("IFC", true)).toContain(fmtDec(6.7));
   });
   it("IRC (M): transiciones en 1.7 y 2.1", () => {
     expect(cIRC(1.67, M).risk).toBe("bajo");

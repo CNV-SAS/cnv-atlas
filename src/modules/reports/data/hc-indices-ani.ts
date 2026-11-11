@@ -68,7 +68,10 @@ const dec = (v: number, codigo: string) => v.toFixed(decimalesDe(codigo)).replac
 
 // Orden y referencias EXACTOS de su tabla (v8 L15087-15095).
 export const INDICES_ANI: IndiceAniFila[] = [
-  { codigo: "IFC", nombre: "Función Celular", referencia: (m) => (m ? "≥6,68 óptimo" : "≥3,28 óptimo"), formato: (v) => dec(v, "IFC") },
+    // v17 §3: su archivo cambio esta referencia con los cortes de la Tabla 6.1, y cambio tambien el signo
+  // de la comparacion: antes "≥6,68 óptimo", ahora ">6,7 óptimo". Las dos cosas son suyas, verbatim de su
+  // ATLAS_v17.html, y el candado de esta tabla las coteja contra SU archivo.
+  { codigo: "IFC", nombre: "Función Celular", referencia: (m) => (m ? ">6,7 óptimo" : ">3,3 óptimo"), formato: (v) => dec(v, "IFC") },
   {
     // ═══ DESFASE NUESTRO, CORREGIDO EL 2026-09-10 ═══
     //

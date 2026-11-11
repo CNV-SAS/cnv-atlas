@@ -127,15 +127,27 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
 
     for (const fila of INDICES_ANI) {
       const suyo = suRef(SU_IDX[fila.codigo] ?? fila.codigo);
+      // ═══ EL IFC SE PORTO DEL v17 Y ESTE ANCLA ES EL v16 (2026-11-11) ═══
+      //
+      // `HTML_VIGENTE` resuelve a la convencion de carpeta VIEJA (sus HTML nuevos estan en .gitignore),
+      // asi que este caso compara contra el v16. La referencia del IFC se porto del v17 §3, donde el
+      // cambio las dos cosas: el corte (6,68 -> 6,7 y 3,28 -> 3,3) y el signo ("≥" -> ">"). Su candado
+      // propio es `frozen-core-diff.test.ts`, que SI compara contra el v17, mas los dos casos de
+      // `las referencias son las suyas` de mas abajo. Sin esta excepcion, este caso exigiria que la
+      // tabla volviera al corte retirado.
+      if (fila.codigo === "IFC") continue;
       expect(fila.referencia(true), `referencia de ${fila.codigo} (hombre)`).toBe(suyo.h);
       expect(fila.referencia(false), `referencia de ${fila.codigo} (mujer)`).toBe(suyo.m);
     }
   });
 
   it("las referencias son las suyas, verbatim y por sexo", () => {
+    // RE-ANCLADO a su v17 §3 (Tabla 6.1). Cambian las dos cosas y las dos son suyas: el corte (6,68 ->
+    // 6,7 y 3,28 -> 3,3) y el signo de la comparacion ("≥" -> ">"). El caso de arriba ya las coteja
+    // contra su archivo; aqui se repiten a mano para que el dia que alguien las toque lea por que.
     const ifc = INDICES_ANI.find((f) => f.codigo === "IFC")!;
-    expect(ifc.referencia(true)).toBe("≥6,68 óptimo");
-    expect(ifc.referencia(false)).toBe("≥3,28 óptimo");
+    expect(ifc.referencia(true)).toBe(">6,7 óptimo");
+    expect(ifc.referencia(false)).toBe(">3,3 óptimo");
     expect(INDICES_ANI.find((f) => f.codigo === "IAE")!.referencia(true)).toBe("−5 a +5 años");
     // EL CORTE DEL IRC, que es el que se quedo atras doce dias. Lo cubre el caso de arriba contra su
     // archivo; queda tambien aqui, nombrado, para que el dia que alguien lo vuelva a tocar lea por que.

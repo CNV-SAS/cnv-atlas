@@ -66,7 +66,10 @@ export function indicatorSeverities(output: EngineOutput): Record<string, number
   const sev: Record<string, number | null> = {};
   sev.IFC = veredictoSev(core.cIFC(i.ifc, sexo));
   sev.IRC = veredictoSev(core.cIRC(i.irc, sexo));
-  sev.PABU = veredictoSev(core.cPABU(i.pabu)); // cPABU direccional (swap del 18): sin IFC
+  // v17 §4: con el SEXO, porque la lectura del ICA-BIS es por percentiles del sexo. Sin sexo, su
+  // clasificador devuelve "sin sexo: no se clasifica" y la severidad queda sin veredicto, que es lo
+  // correcto: no se pinta un color sobre una cifra que no se pudo clasificar.
+  sev.PABU = veredictoSev(core.cPABU(i.pabu, sexo));
   sev.FMI = veredictoSev(core.cFMI(i.FMI, sexo));
   sev.FFMI = veredictoSev(core.cFFMI(i.FFMI, sexo));
   if (i.iscm != null) sev.ISCM = veredictoSev(core.cISCM(i.iscm));

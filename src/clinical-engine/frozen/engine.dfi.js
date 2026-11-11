@@ -250,7 +250,7 @@ const computeDFIFromData = (enc, bis) => {
       irc:  esMasc ? "H: <1,7 bajo · 1,7–2,1 normal · >2,1 alto" : "M: <2,3 bajo · 2,3–2,8 normal · >2,8 alto",
       pabu: esMasc ? "k=0,78 (H)" : "k=0,46 (M)"
     },
-    pabuCl: { l: cPABU(pabu).l },
+    pabuCl: { l: cPABU(pabu, sexoM).l },
     ifcCl: { l: ifcK === 3 ? "Alto" : ifcK === 2 ? "Normal" : "Bajo" },
     ircCl: { l: ircK === 1 ? "Bajo" : ircK === 2 ? "Normal" : "Alto" },
     iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === "Severo" ? "Alto" : x; })() },

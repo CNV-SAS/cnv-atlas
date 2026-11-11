@@ -19,26 +19,55 @@
        de codigo.
    (engine.dfi.js y los demas chunks tienen su propio encabezado y estado de sync.)
    ═══════════════════════════════════════════════════════════════════════════ */
+// ─── v17 · EL SEXO SE NORMALIZA UNA SOLA VEZ, Y LA TABLA DEL ICA-BIS ──────────────────────────
+// Las dos piezas son de su ATLAS_v17.html, verbatim. `sexoBIS` existe porque sus clasificadores
+// reconocian una sola forma del dato ('M' pero no 'Masculino'), y la tabla es su Tabla 7.3 (n = 5.891).
+const sexoBIS = s => (s === 'M' || s === 'Masculino') ? 'M' : (s === 'F' || s === 'Femenino') ? 'F' : null;
+const ICA_BIS_REF = {
+  F: { p10: -0.43, p25: -0.20, p75: 0.45, p90: 0.86 },
+  M: { p10: -0.50, p25: -0.27, p75: 0.36, p90: 0.83 },
+};
 const calcIFC = (C, Rinf) => Rinf === 0 ? 0 : C / Rinf * 1000;
 const calcIRC = (Re, Ri, C) => Ri * C === 0 ? 0 : (Re / (Ri * C)) * 10;
-// PABU · constante k recalibrada por sexo (cohorte 6.063): H=0,78 · M=0,46 · sin sexo=0,9 (histórico)
+// PABU · constante k por sexo (cohorte 6.063): H=0,78 · M=0,46.
+//
+// ═══ v17: SIN SEXO YA NO SE CALCULA ═══
+//
+// Aqui habia un tercer caso, `k = 0,9` para el paciente sin sexo registrado. Su v17 lo retira con
+// nombre y todo (*"la k = 0,9 queda retirada"*), y devuelve 0, que en su motor significa SIN DATO: una
+// PABU calculada con una k que no es de nadie es una cifra inventada sobre una persona.
+//
+// EN LA NUBE SON DOS PACIENTES de 665 (medido el 2026-11-11). Para ellos la PABU, el ICA-BIS y el IFC
+// pasan a decir "sin sexo: no se clasifica", que es la verdad, y se arregla registrando el sexo.
 const calcPABU = (Re, Ri, Rinf, C, sexo) => {
-  const k = (sexo === 'M' || sexo === 'Masculino') ? 0.78 : (sexo === 'F' || sexo === 'Femenino') ? 0.46 : 0.9;
+  const s = sexoBIS(sexo);
+  if (!s) return 0;
+  const k = s === 'M' ? 0.78 : 0.46;
   return Rinf * C === 0 ? 0 : (Re + Ri) * k / (Rinf * C);
-};
+}
 
 // ─── CLASIFICADORES BIS ───────────────────────────────────────────────────────
 // Puntos de corte EXACTOS del Excel MAPA_RyF_BIS
 // IFC por sexo (cohorte 6.063, P25/P75): H Bajo<4,12 Normal 4,12–6,68 Alto>6,68 · M Bajo<2,08 Normal 2,08–3,28 Alto>3,28
 // (sin sexo → corte histórico 3,5/6,0). IFC alto = mejor función celular.
+// ═══ v17: LOS CORTES SON LOS DE SU TABLA 6.1, Y SIN SEXO NO SE CLASIFICA ═══
+//
+// Antes: H 4,12 / 6,68 y M 2,08 / 3,28 (los percentiles del Excel MAPA_RyF_BIS), con caida al corte
+// global 3,5 / 6,0 sin sexo. Su v17 fija los valores de REFERENCIA DEL SISTEMA (Tabla 6.1 del libro):
+// H < 4,1 / 4,1-6,7 / > 6,7 y M < 2,1 / 2,1-3,3 / > 3,3, y retira el corte global.
+//
+// LAS VENTANAS DONDE ALGUIEN CAMBIA DE CATEGORIA son de 0,02 de ancho: mujeres en [2,08 · 2,10) pasan
+// de Normal a Bajo y en (3,28 · 3,30] de Alto a Normal; hombres en [4,10 · 4,12) pasan de Bajo a
+// NORMAL (mejoran) y en (6,68 · 6,70] de Alto a Normal. Medido en la nube: 4 de 441 consultas (0,9 %).
 const cIFC = (v, sexo) => {
-  const m = sexo === 'M' || sexo === 'Masculino', f = sexo === 'F' || sexo === 'Femenino';
-  const lo = m ? 4.12 : f ? 2.08 : 3.5;
-  const hi = m ? 6.68 : f ? 3.28 : 6.0;
+  const s = sexoBIS(sexo);
+  if (!s) return { l: 'Sin sexo: no se clasifica', c: '#94a3b8', risk: null, k: 0 };
+  const lo = s === 'M' ? 4.1 : 2.1;
+  const hi = s === 'M' ? 6.7 : 3.3;
   return v > hi  ? { l: 'Función óptima',     c: '#1a7a4a', risk: 'bajo',     k: 3 }
     : v >= lo    ? { l: 'Alerta funcional',   c: '#e6a817', risk: 'moderado', k: 2 }
     : { l: 'Disfunción celular', c: '#c0392b', risk: 'alto',     k: 1 };
-};
+}
 // IRC por sexo (Articulo_IRC_vs_IR, Tabla 3, cohorte 6.063, P25/P75): H Bajo<1,7 Normal 1,7–2,1 Alto>2,1
 // · M Bajo<2,3 Normal 2,3–2,8 Alto>2,8. IRC alto = mayor riesgo.
 //
@@ -69,16 +98,26 @@ const cIRC = (v, sexo) => {
 // La MAGNITUD del deterioro no se gradúa aquí: la establecen los indicadores
 // estructurales (FMI, FFMI, ASMI, MCA), que es donde está definida. Duplicar esa
 // graduación en la PABU añadiría bandas sin aportar información nueva.
-const cPABU = (v) => {
+// ═══ v17: LA ZONA FIJA DE ±0,15 SE REEMPLAZA POR LOS PERCENTILES DEL SEXO (su Tabla 7.3) ═══
+//
+// Antes esta funcion no recibia el sexo y usaba una zona φ de ±0,15 igual para todos, con dos
+// etiquetas de direccion. Su v17 la lee contra la distribucion de referencia del sexo: rango habitual
+// (P25 a P75), alejamiento LEVE (P75 a P90 o P10 a P25) y MARCADO (> P90 o < P10), cada uno con su
+// direccion. Y ahora devuelve dos campos mas: `dir` (deficit / exceso) y `g` (0, 1 o 2), que son los
+// que su §3 usa para las alertas criticas sin duplicar cortes.
+//
+// TODAS SUS LLAMADAS RECIBEN EL SEXO. Sin el, "sin sexo: no se clasifica", como el IFC.
+const cPABU = (v, sexo) => {
   if (!v) return { l: 'Sin dato', c: '#94a3b8' };
-  const raw = v - 1.618;
-  // La zona φ se evalúa primero y sin mirar el signo: la persona sana está en 1,61,
-  // milésimas por DEBAJO de φ, y ramificar antes por el signo la sacaría de la zona.
-  if (Math.abs(raw) <= 0.15) return { l: 'Zona φ — Homeostasis', c: '#1a7a4a' };
-  return raw > 0
-    ? { l: 'Desviación por déficit', c: '#e6a817' }
-    : { l: 'Desviación por exceso',  c: '#e6a817' };
-};
+  const s = sexoBIS(sexo);
+  if (!s) return { l: 'Sin sexo: no se clasifica', c: '#94a3b8' };
+  const r = ICA_BIS_REF[s], ica = v - 1.618;
+  if (ica > r.p90)  return { l: 'Alejamiento marcado por déficit',   c: '#c0392b', dir: 'deficit', g: 2 };
+  if (ica > r.p75)  return { l: 'Alejamiento leve por déficit',      c: '#e6a817', dir: 'deficit', g: 1 };
+  if (ica >= r.p25) return { l: 'Rango habitual',                    c: '#1a7a4a', dir: null,      g: 0 };
+  if (ica >= r.p10) return { l: 'Desplazamiento leve por exceso',    c: '#e6a817', dir: 'exceso',  g: 1 };
+  return               { l: 'Desplazamiento marcado por exceso', c: '#c0392b', dir: 'exceso',  g: 2 };
+}
 const cAF = (v, sexo) => {
   const m = sexo === 'M' || sexo === 'Masculino';
   if (!v || v <= 0) return { l: 'Sin dato', c: '#94a3b8' };

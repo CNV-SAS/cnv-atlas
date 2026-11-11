@@ -249,6 +249,19 @@ const DE_ENTREGA_MAS_NUEVA: Record<string, { razon: string; anclaEn: string }> =
       "del v8 al v16 y el candado los compara pieza por pieza.",
     anclaEn: "src/tests/frozen-patron-diff.test.ts",
   },
+  // ENTRO EL 2026-11-11, con el paso 2 del porte de la v17 (§3 y §4): los cortes del IFC de su Tabla
+  // 6.1, la k de la PABU sin el caso sin sexo, y la lectura del ICA-BIS por percentiles. Mientras
+  // `HTML_VIGENTE` resuelva al v16, este modulo NO puede coincidir con el: coincide con el v17, que es
+  // lo que se porto.
+  "engine.core.js": {
+    razon:
+      "Cinco piezas RE-PORTADAS del ATLAS_v17.html del 9 de noviembre de 2026 (su §3 y §4): sexoBIS, " +
+      "ICA_BIS_REF (su Tabla 7.3), calcPABU (k 0,78/0,46 y sin sexo no se calcula), cIFC (los cortes de " +
+      "su Tabla 6.1: H 4,1/6,7 y M 2,1/3,3, con la caida global 3,5/6,0 retirada) y cPABU (la zona fija " +
+      "de ±0,15 reemplazada por los percentiles del sexo). Ninguna de las cinco esta en el v16 porque la " +
+      "v17 las reescribio. El resto del modulo sigue coincidiendo con las dos entregas.",
+    anclaEn: "src/tests/frozen-core-diff.test.ts",
+  },
   "engine.d1-clasificacion.js": {
     razon:
       "Portado del ATLAS_v16.html del 4 de noviembre de 2026 (L1401-1455), SEIS entregas despues de la " +
@@ -260,7 +273,6 @@ const DE_ENTREGA_MAS_NUEVA: Record<string, { razon: string; anclaEn: string }> =
 
 const MODULOS = [
   "engine.dfi.js",
-  "engine.core.js",
   "engine.indices.js",
   "atlas-protocolo.js",
   "atlas-tratamiento.js",

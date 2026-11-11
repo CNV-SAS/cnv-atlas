@@ -1,16 +1,22 @@
 // Tipos para el núcleo CONGELADO (engine.core.js, extraído verbatim del prototipo).
 // El .js no se edita; estos tipos solo describen su superficie pública.
+// v17 §3: el sexo se normaliza con `sexoBIS`, que acepta las dos formas y devuelve null cuando no hay
+// dato. Los clasificadores por sexo reciben `Sexo | null` porque el caso "sin sexo" es una rama REAL
+// de su v17 ("sin sexo: no se clasifica"), no un error del llamador.
 export type Sexo = 'M' | 'F' | 'Masculino' | 'Femenino';
+export type SexoOpcional = Sexo | null | undefined;
 export interface Clase { l: string; c: string; k?: number; risk?: string; }
 export interface DXResult { n: string; dx?: string; name?: string; [k: string]: unknown; }
 
 export function calcIFC(C: number, Rinf: number): number;
 export function calcIRC(Re: number, Ri: number, C: number): number;
-export function calcPABU(Re: number, Ri: number, Rinf: number, C: number, sexo: Sexo): number;
+export function calcPABU(Re: number, Ri: number, Rinf: number, C: number, sexo: SexoOpcional): number;
 
-export function cIFC(v: number, sexo: Sexo): Clase & { k: number };
+export function cIFC(v: number, sexo: SexoOpcional): Clase & { k: number };
 export function cIRC(v: number, sexo: Sexo): Clase & { k: number };
-export function cPABU(v: number): Clase; // direccional (swap del 18): ya no recibe ifc (Q27)
+// v17 §4: recibe el SEXO y lee el ICA-BIS contra los percentiles de su Tabla 7.3. Devuelve dos campos
+// mas que los demas clasificadores (`dir` y `g`), que su §3 usa para las alertas criticas.
+export function cPABU(v: number, sexo: SexoOpcional): Clase & { dir?: "deficit" | "exceso" | null; g?: number };
 export function cFMI(v: number, s: Sexo): Clase & { k: number };
 export function cFFMI(v: number, s: Sexo): Clase & { k: number };
 export function cISCM(v: number): Clase;

@@ -74,8 +74,13 @@ function shaDeLosClasificadores(): string {
 //
 // (El `t` nuevo de cada banda, que viene con su bloque, es TEXTO y no mueve ninguna etiqueta por si solo.
 // La etiqueta sube por los cortes, no por el.)
-const SHA_ESPERADO = "9547d4bd87ab91c6425f31f2db111b63e016a21ec3b96033ed2233f17364b4ec";
-const ETIQUETA_ESPERADA = "cXXX-2026-11-07";
+// SHA ACTUALIZADO (2026-11-11) CON SUBIDA DE ETIQUETA: paso 2 del porte de la v17 (su §3 y §4). Las tres
+// etiquetas que se mueven estan escritas en `emission-versions.ts`, al lado de la clave que subio: el IFC
+// en las ventanas de 0,02 de sus cortes nuevos, el IFC del paciente sin sexo, y la del PABU para TODOS
+// (la zona fija de ±0,15 pasa a los percentiles de su Tabla 7.3). O sea que SI mueve bandas, y por eso la
+// etiqueta sube en el mismo acto que este SHA.
+const SHA_ESPERADO = "d76d544c715aeac3ae0092dfca38108172be28395f5ed7660df7e7f2be78cf50";
+const ETIQUETA_ESPERADA = "cXXX-2026-11-11";
 
 describe("los clasificadores y su versión de emisión no pueden divergir", () => {
   it("los diez clasificadores siguen existiendo con ese nombre", () => {

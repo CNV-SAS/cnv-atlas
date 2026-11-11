@@ -59,8 +59,20 @@ describe("ANI-BIS-E · Golden Juan Esteban (export real, anonimizado)", () => {
   it("clasificaciones clinicas correctas", () => {
     expect(r.clases.IFC.l).toBe("Alerta funcional");
     expect(r.clases.IRC.l).toBe("Riesgo moderado");
-    // cPABU direccional (swap del 18): PABU 1.9925 > φ → "Desviación por déficit" (antes graduado "Desviación leve")
-    expect(r.clases.PABU.l).toBe("Desviación por déficit");
+    // ═══ RE-DERIVADO DE SU v17 §4 (2026-11-11), NO "actualizado" ═══
+    //
+    // Antes: `cPABU` direccional con zona fija de ±0,15, asi que una PABU de 1,9925 (por encima de φ)
+    // daba "Desviación por déficit" sin graduar. Su v17 lee el ICA-BIS contra los percentiles del sexo
+    // (Tabla 7.3, n = 5.891). La aritmetica, para que el valor esperado no sea un numero copiado de
+    // nuestra propia salida:
+    //
+    //   ICA-BIS = 1,9925 − 1,618 = 0,3745
+    //   hombres: P75 = 0,36 · P90 = 0,83
+    //   0,3745 esta por ENCIMA del P75 y por DEBAJO del P90 → "alejamiento LEVE por déficit"
+    //
+    // Es el escalon que su tabla pide para este donante, y por eso el golden sigue probando paridad con
+    // SU archivo y no con lo que nosotros calculamos.
+    expect(r.clases.PABU.l).toBe("Alejamiento leve por déficit");
     expect(r.clases.FMI.l).toBe("Alto SS");
     expect(r.clases.FFMI.l).toBe("Normal");
   });

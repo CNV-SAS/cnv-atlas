@@ -284,8 +284,13 @@ export function indicatorBands(code: string, sexM: boolean): string | null {
   switch (code) {
     case "IFC": // cIFC: >hi optima · lo–hi alerta · <lo disfuncion (mas alto es mejor)
       return sexM
-        ? "óptima >6,68 · alerta 4,12–6,68 · disfunción <4,12"
-        : "óptima >3,28 · alerta 2,08–3,28 · disfunción <2,08";
+        // v17 §3, Tabla 6.1: los cortes del sistema. Antes 4,12/6,68 y 2,08/3,28 (percentiles del
+        // Excel MAPA_RyF_BIS). Esta cadena y `cIFC` tienen que moverse JUNTAS: el candado
+        // `indicator-ranges.test` prueba cada clasificador en sus fronteras y truena si divergen.
+        // Y CON `fmtDec`, NO A MANO, por lo mismo que el IRC de abajo: la cadena a mano decia "4,1" y el
+        // resto de la pantalla "4,10", asi que el MISMO corte salia con dos formas segun donde se leyera.
+        ? `óptima >${fmtDec(6.7)} · alerta ${fmtDec(4.1)}–${fmtDec(6.7)} · disfunción <${fmtDec(4.1)}`
+        : `óptima >${fmtDec(3.3)} · alerta ${fmtDec(2.1)}–${fmtDec(3.3)} · disfunción <${fmtDec(2.1)}`;
     case "IRC": // cIRC: <lo bajo · lo–hi moderado · >hi alto (mas bajo es mejor)
       return sexM
         ? // Los cortes se escriben con `fmtDec`, no a mano: la cadena a mano decia "1,7" y el resto de la
@@ -332,9 +337,9 @@ export function indicatorRange(
     // mas alto es mejor; en IRC mas bajo). FMI resulta banda MEDIA (sano = Normal, entre dos cortes),
     // asi que va como RANGO igual que FFMI (Δ contra el promedio).
     case "IFC": {
-      // cIFC: sano = optima (> hi). Umbral = hi (M 6.68, F 3.28). Δ = valor − hi (corte unico).
+      // cIFC: sano = optima (> hi). Umbral = hi (v17 §3, Tabla 6.1: M 6,7 · F 3,3). Δ = valor − hi.
       if (ind.ifc == null) return null;
-      const hi = sexM ? 6.68 : 3.28;
+      const hi = sexM ? 6.7 : 3.3;
       return { reference: `> ${fmtDec(hi)}`, delta: f(ind.ifc - hi, decimalesDe("IFC")) };
     }
     case "IRC": {

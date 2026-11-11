@@ -208,7 +208,9 @@ export function analizarDesdeBiody(
 
   const cIFC = core.cIFC(IFC, sexo);
   const cIRC = core.cIRC(IRC, sexo);
-  const cPABU = core.cPABU(PABU); // cPABU direccional (swap del 18): ya no usa IFC (Q27 resuelto)
+  // v17 §4: `cPABU` recibe el SEXO y lee el ICA-BIS contra los percentiles de su Tabla 7.3. Antes era
+  // una zona fija de ±0,15 igual para todos.
+  const cPABU = core.cPABU(PABU, sexo);
   const cFMI = core.cFMI(imp.FMI, sexo);
   const cFFMI = core.cFFMI(imp.FFMI, sexo);
 
