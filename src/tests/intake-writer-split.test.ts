@@ -130,6 +130,155 @@ describe.skipIf(!HAS_DB)("intake-writer split (BD real)", () => {
     expect(answers).toHaveLength(1);
   });
 
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // DOS GUARDADOS A LA VEZ SOBRE LA MISMA CONSULTA  ·  EL CANDADO DEL 2026-11-10
+  //
+  // EL CASO REAL, con una paciente de Angela: un guardado de avance fallo con `duplicate key value
+  // violates unique constraint "survey_answers_response_question_unique"` (23505) y la transaccion
+  // rechazo las 52 respuestas del lote. No fue un payload con una pregunta repetida: fue el `delete` +
+  // `insert` de DOS escrituras simultaneas sobre la misma consulta, que es el caso de uso normal de
+  // *"Responder la encuesta con el paciente"* (la profesional y el telefono de la paciente trabajan
+  // sobre el MISMO borrador, y el formulario autoguarda solo).
+  //
+  // POR QUE ESTE CASO VA CONTRA LA BASE Y NO PUEDE SER DE UNIDAD: lo que se comprueba es que Postgres
+  // SERIALIZA las dos transacciones (`for update` sobre la fila de la consulta). Sin base no hay dos
+  // transacciones, y un mock las ordenaria por construccion, que es justo lo que no hay que asumir.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("DOS guardados simultaneos no se pisan: ni 23505, ni dos filas de respuestas", async () => {
+    const signed = await writer.signIntakeEvaluation(signInput("conc"));
+    createdEvals.push(signed.evaluationId);
+    createdPatients.push(signed.patientId);
+    const qs = await db
+      .select({ id: schema.surveyQuestions.id })
+      .from(schema.surveyQuestions)
+      .where(eq(schema.surveyQuestions.surveyVersionId, svId))
+      .limit(3);
+    const token = signed.resumeToken;
+
+    // ── PRIMER GUARDADO, para que la fila de respuestas EXISTA (es el estado de produccion) ──
+    await writer.saveSurveyProgress({
+      resumeToken: token,
+      surveyVersionId: svId,
+      answers: [{ questionId: qs[0].id, answerValue: "ya estaba" }],
+      ipAddress: null,
+    });
+    const [resp] = await db
+      .select({ id: schema.surveyResponses.id })
+      .from(schema.surveyResponses)
+      .where(eq(schema.surveyResponses.evaluationId, signed.evaluationId));
+
+    // ── EL INTERLEAVING, FORZADO ──
+    //
+    // `Promise.allSettled` de dos guardados NO reproduce la carrera, y eso hay que decirlo porque el
+    // primer candado que escribimos pasaba sin el arreglo: cuando las filas YA existen, el `delete` de la
+    // segunda transaccion se bloquea en los locks de fila de la primera y acaba ordenandose solo.
+    //
+    // EL 23505 SALE CUANDO LA FILA QUE SE VA A INSERTAR NO EXISTIA: las dos transacciones borran cero y
+    // las dos insertan la misma `question_id`. Aqui se monta exactamente eso: una transaccion A inserta
+    // la respuesta de `qs[1]` y SE QUEDA ABIERTA; el writer entra con un lote que incluye `qs[1]`, no
+    // encuentra nada que borrar y va a insertarla.
+    //
+    // A TOMA EL MISMO CANDADO QUE TOMA EL WRITER (`for update` sobre la consulta), porque A ES el otro
+    // writer: la pestana de la profesional o el telefono de la paciente entrando por el mismo token. Sin
+    // esa linea el caso no prueba el arreglo, prueba otra cosa: lo escribimos primero sin ella y
+    // reproducia el 23505 **con el arreglo puesto**, porque una escritura que NO pasa por el writer no
+    // respeta su candado. Eso tambien es verdad y queda dicho: este arreglo serializa a los que entran
+    // por `findAwaitingByToken`, que son los tres caminos de la encuesta (guardar, enviar y responder con
+    // el paciente). Una escritura directa a `survey_answers` desde otro sitio volveria a poder chocar.
+    //
+    // CON EL `for update` el writer espera a A en su PRIMERA consulta y, cuando entra, ya ve la fila de A:
+    // la borra y la reescribe. Sin el, llega al `insert` y muere con el 23505.
+    let soltarA: () => void = () => {};
+    const aInserto = new Promise<void>((resolve) => {
+      soltarA = resolve;
+    });
+    let dejarCommitA: () => void = () => {};
+    const puedeCommit = new Promise<void>((resolve) => {
+      dejarCommitA = resolve;
+    });
+    const trabajoA = db.transaction(async (tx: any) => {
+      await tx
+        .select({ id: schema.evaluations.id })
+        .from(schema.evaluations)
+        .where(eq(schema.evaluations.id, signed.evaluationId))
+        .for("update")
+        .limit(1);
+      await tx.insert(schema.surveyAnswers).values({
+        responseId: resp.id,
+        questionId: qs[1].id,
+        answerValue: "de la otra pestana",
+      });
+      soltarA();
+      await puedeCommit;
+    });
+    await aInserto;
+
+    const trabajoWriter = writer.saveSurveyProgress({
+      resumeToken: token,
+      surveyVersionId: svId,
+      answers: [
+        { questionId: qs[0].id, answerValue: "del writer 0" },
+        { questionId: qs[1].id, answerValue: "del writer 1" },
+        { questionId: qs[2].id, answerValue: "del writer 2" },
+      ],
+      ipAddress: null,
+    });
+    // Se le da tiempo a que llegue a su primera consulta y se quede esperando el lock.
+    await new Promise((r) => setTimeout(r, 150));
+    dejarCommitA();
+    await trabajoA;
+    // NO FALLA. Antes del bloqueo, aqui saltaba el 23505 y se perdia el lote entero.
+    await expect(trabajoWriter).resolves.toBeTruthy();
+
+    // Y el snapshot queda ENTERO y es el del writer, que fue el ultimo.
+    const progreso = await writer.getSurveyProgress(token);
+    expect(progreso.answers).toHaveLength(3);
+    const porPregunta = new Map(progreso.answers.map((a: any) => [a.questionId, a.answerValue]));
+    expect(porPregunta.get(qs[1].id)).toBe("del writer 1");
+
+    // UNA SOLA FILA DE RESPUESTAS POR CONSULTA. Es la otra mitad que el bloqueo cierra: sin el, dos
+    // primeros guardados simultaneos creaban DOS `survey_responses` para la misma consulta, y el lector
+    // se queda con una (o sea que la mitad de lo contestado desaparece de la pantalla sin ningun error).
+    const filas = await db
+      .select({ id: schema.surveyResponses.id })
+      .from(schema.surveyResponses)
+      .where(eq(schema.surveyResponses.evaluationId, signed.evaluationId));
+    expect(filas, "la consulta quedo con dos filas de respuestas").toHaveLength(1);
+  });
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // Y LA MISMA PREGUNTA DOS VECES EN UN LOTE NO TUMBA EL GUARDADO
+  //
+  // Hoy no puede pasar (`readAnswersFromForm` recorre las preguntas del instrumento, una entrada por
+  // pregunta), pero un duplicado costaba el guardado COMPLETO: Postgres rechaza las 52, no la repetida.
+  // La regla escrita es que gana la ULTIMA, y el writer lo reporta a Sentry con la clave.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  it("la misma pregunta dos veces en el mismo lote: gana la ULTIMA y no se pierde nada", async () => {
+    const signed = await writer.signIntakeEvaluation(signInput("dup"));
+    createdEvals.push(signed.evaluationId);
+    createdPatients.push(signed.patientId);
+    const qs = await db
+      .select({ id: schema.surveyQuestions.id })
+      .from(schema.surveyQuestions)
+      .where(eq(schema.surveyQuestions.surveyVersionId, svId))
+      .limit(2);
+
+    await writer.saveSurveyProgress({
+      resumeToken: signed.resumeToken,
+      surveyVersionId: svId,
+      answers: [
+        { questionId: qs[0].id, answerValue: "primera" },
+        { questionId: qs[1].id, answerValue: "otra pregunta" },
+        { questionId: qs[0].id, answerValue: "ULTIMA" },
+      ],
+      ipAddress: null,
+    });
+
+    const progreso = await writer.getSurveyProgress(signed.resumeToken);
+    expect(progreso.answers, "se perdio la respuesta de la otra pregunta").toHaveLength(2);
+    const porPregunta = new Map(progreso.answers.map((a: any) => [a.questionId, a.answerValue]));
+    expect(porPregunta.get(qs[0].id)).toBe("ULTIMA");
+    expect(porPregunta.get(qs[1].id)).toBe("otra pregunta");
+  });
   it("el resume_token es de UN SOLO USO: un segundo envio con el mismo token falla (ya es 'draft')", async () => {
     const signed = await writer.signIntakeEvaluation(signInput("c"));
     createdEvals.push(signed.evaluationId);

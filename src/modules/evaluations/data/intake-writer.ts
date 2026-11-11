@@ -1,4 +1,5 @@
 import "server-only";
+import { reportServerError } from "@/lib/observability/report-error";
 
 import { randomBytes } from "node:crypto";
 
@@ -756,6 +757,43 @@ export type SurveyPhase2Input = {
 
 // La evaluacion en 'awaiting_survey' con ese token (o ResumeTokenError). El token se acota solo: al
 // completar la encuesta pasa a 'draft' y esta consulta deja de encontrarla.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA CONSULTA SE BLOQUEA (FOR UPDATE)  ·  EL DEFECTO DEL 2026-11-10, CON UNA PACIENTE REAL
+//
+// ═══ QUE PASO ═══
+//
+// Un guardado de avance fallo con `duplicate key value violates unique constraint
+// "survey_answers_response_question_unique"` (23505) y la transaccion rechazo TODO el guardado: 52
+// respuestas que no se escribieron.
+//
+// ═══ POR QUE, Y POR QUE NO ERA UN PAYLOAD CON UNA PREGUNTA REPETIDA ═══
+//
+// `readAnswersFromForm` recorre las preguntas del instrumento, UNA entrada por pregunta, asi que el
+// payload no puede traer la misma dos veces (y el `unique` del instrumento lo impide aguas arriba).
+// El duplicado no estaba DENTRO del lote: estaba CONTRA LAS FILAS QUE OTRA TRANSACCION ACABABA DE
+// INSERTAR.
+//
+// `upsertResponseAndAnswers` reemplaza el snapshot completo: `delete` de las respuestas y `insert` de
+// todas. Con dos escrituras a la vez sobre la MISMA consulta, el `delete` de la segunda no ve lo que la
+// primera todavia no ha confirmado, borra las filas viejas, y su `insert` choca contra las nuevas en
+// cuanto la primera confirma. Es el 23505.
+//
+// Y DOS ESCRITURAS A LA VEZ NO SON UN CASO RARO AQUI, son el caso de uso: la pantalla
+// *"Responder la encuesta con el paciente"* trabaja sobre EL MISMO borrador que el enlace del paciente
+// (su propia nota lo dice), el formulario autoguarda 1,2 s despues de cada cambio, y el envio final es
+// OTRA accion con su propia transicion. La profesional llenando con la paciente mientras el telefono de
+// la paciente sigue abierto es exactamente esto.
+//
+// ═══ EL ARREGLO: SE SERIALIZAN, NO SE ESQUIVAN ═══
+//
+// `for update` sobre la fila de la consulta. La segunda escritura ESPERA a que la primera termine y
+// entonces hace su `delete` + `insert` sobre un estado ya confirmado. El contrato no cambia (el ultimo
+// gana, y cada guardado manda el formulario completo), y no hace falta ninguna migracion.
+//
+// SE BLOQUEA LA CONSULTA Y NO LA FILA DE RESPUESTAS porque la fila de respuestas puede NO EXISTIR
+// todavia: dos primeros guardados simultaneos crearian dos. La consulta existe siempre, y es el mismo
+// candado que `saveSurveyEdit` ya usa para su mitad (editar la encuesta ya enviada).
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
 async function findAwaitingByToken(tx: Tx, resumeToken: string): Promise<{ id: string; patientId: string }> {
   const [ev] = await tx
     .select({ id: evaluations.id, patientId: evaluations.patientId })
@@ -770,6 +808,7 @@ async function findAwaitingByToken(tx: Tx, resumeToken: string): Promise<{ id: s
         isNull(evaluations.retiradaAt),
       ),
     )
+    .for("update")
     .limit(1);
   if (!ev) throw new ResumeTokenError();
   return ev;
@@ -894,11 +933,47 @@ async function upsertResponseAndAnswers(
     // la termina) queda con quien cerro, que es un hecho y no una interpretacion.
     await tx.update(surveyResponses).set({ capturedBy }).where(eq(surveyResponses.id, response.id));
   }
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // NI DOS VECES LA MISMA PREGUNTA EN EL MISMO LOTE  ·  la otra mitad del 2026-11-10
+  //
+  // El bloqueo de arriba cierra el duplicado ENTRE transacciones. Esto cierra el duplicado DENTRO del
+  // lote, que hoy no puede pasar (`readAnswersFromForm` recorre las preguntas del instrumento, una
+  // entrada por pregunta) pero que **ya costo un guardado entero** y no puede volver a costarlo: con un
+  // solo duplicado, Postgres rechaza las 52 respuestas, no la duplicada.
+  //
+  // LA REGLA, ESCRITA: gana LA ULTIMA. Un payload en el que la misma pregunta llega dos veces trae dos
+  // valores para un solo hecho, y el ultimo es el que el formulario tenia al final. Y NO SE CALLA: se
+  // reporta con la clave de la pregunta, porque un duplicado silencioso aqui significa que alguien aguas
+  // arriba empezo a emitir dos campos para la misma pregunta, y eso hay que arreglarlo alla.
+  //
+  // NO SE USA `onConflictDoUpdate` en su lugar: el contrato de esta funcion es REEMPLAZAR el snapshot
+  // (una respuesta que se borra tiene que desaparecer), y un upsert sin el `delete` dejaria vivas las que
+  // el paciente quito.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  const porPregunta = new Map<string, string>();
+  const repetidas: string[] = [];
+  for (const a of answers) {
+    if (porPregunta.has(a.questionId)) repetidas.push(a.questionId);
+    porPregunta.set(a.questionId, a.answerValue);
+  }
+  if (repetidas.length > 0) {
+    reportServerError(
+      "encuesta.pregunta-repetida",
+      new Error(
+        `intake-writer: la misma pregunta llego ${repetidas.length > 1 ? repetidas.length + " veces" : "dos veces"} ` +
+          `en el mismo guardado (consulta ${evaluationId}): ${[...new Set(repetidas)].join(", ")}`,
+      ),
+    );
+  }
   // Reemplaza el snapshot completo (borra e inserta): el cliente manda todo lo contestado.
   await tx.delete(surveyAnswers).where(eq(surveyAnswers.responseId, response.id));
-  if (answers.length > 0) {
+  if (porPregunta.size > 0) {
     await tx.insert(surveyAnswers).values(
-      answers.map((a) => ({ responseId: response.id, questionId: a.questionId, answerValue: a.answerValue })),
+      [...porPregunta].map(([questionId, answerValue]) => ({
+        responseId: response.id,
+        questionId,
+        answerValue,
+      })),
     );
   }
 }
