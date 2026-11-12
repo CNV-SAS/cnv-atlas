@@ -39,7 +39,7 @@
 // el frozen. Asi que el dominio 2 las toma de ahi. Y es lo que el encabezado del derivado ya dice de si
 // mismo: *"este archivo es EL MOTOR VIVO: los imports del clinical-engine apuntan aqui, no al
 // original"*. Lo demas del require no cambia: son las mismas funciones del nucleo.
-const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');
+const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cISCM, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');
 
 // ─── MAPEO DEL LE8 A LOS CAMPOS QUE LA ENCUESTA SÍ CAPTURA ──────────────────
 // Los campos d1_9, d1_10 y d1_16 que lee calcLE8 NO existen en la encuesta: solo
@@ -140,7 +140,9 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   const ifcL = idx.ifcCl?.l, ircL = idx.ircCl?.l;
   const D1 = { "Alto|Bajo":0,"Alto|Normal":1,"Normal|Bajo":1,"Alto|Alto":2,"Normal|Normal":2,"Bajo|Bajo":2,"Normal|Alto":2,"Bajo|Normal":3,"Bajo|Alto":3 };
   let s1 = D1[`${ifcL}|${ircL}`]; if(s1==null) s1=1;
-  const iehhAlt = idx.iehhCl && (idx.iehhCl.l==="Moderado"||idx.iehhCl.l==="Alto");
+  // v17: el IEHH suma 1 cuando está fuera de −1 a +1, en cualquiera de las dos direcciones.
+  const iehhZ = idx.iehhCl && idx.iehhCl.l;
+  const iehhAlt = iehhZ === "Déficit" || iehhZ === "Capacitancia alta";
   if(iehhAlt) s1=_dfiCap3(s1+1);
   const dom1 = { id:"d1", nombre:"Celular-Eléctrico", icon:"🔬", sev:s1,
     clasif: idx.frL || `IFC ${ifcL} · IRC ${ircL}`,
@@ -170,7 +172,8 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   const iae = idx.iae ?? 0;
   let s3;
   if(idx.iaeCl?.l==="Enlentecido") s3=0;
-  else if(idx.iaeCl?.l==="Concordante") s3 = iae>3?1:0;
+  // v17: concordante = 0 (se retira el escalón de IAE > 3, que el libro no tiene).
+  else if(idx.iaeCl?.l==="Concordante") s3 = 0;
   else s3 = iae>10?3:2;
   const dom3 = { id:"d3", nombre:"Envejecimiento", icon:"⏳", sev:s3,
     clasif:`IAE ${_dfiSigned(iae)} años · ${idx.iaeCl?.l||"-"}`,
@@ -281,8 +284,11 @@ const computeDFIFromData = (enc, bis) => {
     pabuCl: { l: cPABU(pabu, sexoM).l },
     ifcCl: { l: ifcK === 3 ? "Alto" : ifcK === 2 ? "Normal" : "Bajo" },
     ircCl: { l: ircK === 1 ? "Bajo" : ircK === 2 ? "Normal" : "Alto" },
-    iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === "Severo" ? "Alto" : x; })() },
-    iscmCl: { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },
+    // v17 §5: las tres zonas de su Tabla 8.2, tal cual. Ya no hay que renombrar "Severo" a "Alto":
+    // ese remapeo existia porque el dominio 1 solo miraba hacia arriba y su matriz hablaba de "Alto".
+    iehhCl: { l: cIEHH(iehh).l },
+    // v17: el ISCM-BIS no gradúa (libro, 8.3.4); se pasa su ubicación por sexo solo como dato.
+    iscmTxt: cISCM(iscm, sexoM).l,
     iaeCl: { l: (() => { const x = cIAE(iae || 0).l; return x === "Desacelerado" ? "Enlentecido" : x; })() },
     sector: _sec, adip: _adip,
     fmiCat: (_fmiK <= 1 ? "bajo_grasa" : _fmiK === 2 ? "normal" : "exceso"),

@@ -61,6 +61,15 @@ const PIEZAS: { nombre: string; conLlaves: boolean; debeTener: string[] }[] = [
   { nombre: "calcPABU", conLlaves: true, debeTener: ["0.78", "0.46", "sexoBIS"] },
   { nombre: "cIFC", conLlaves: true, debeTener: ["4.1", "6.7", "2.1", "3.3", "Sin sexo"] },
   { nombre: "cPABU", conLlaves: true, debeTener: ["ICA_BIS_REF", "Rango habitual", "deficit", "exceso"] },
+  // ── ENTRARON CON EL PASO 5 (su §5 y §6) ──
+  // `ISCM_REF`: los percentiles del ISCM-BIS por sexo, que reemplazan a sus cuatro niveles.
+  { nombre: "ISCM_REF", conLlaves: false, debeTener: ["-3.72", "-2.09", "4.32", "-4.02", "2.02", "4.19"] },
+  // `cISCM`: ya no gradua, ubica entre percentiles. Tiene que seguir sin rastro de los cuatro niveles.
+  { nombre: "cISCM", conLlaves: true, debeTener: ["sexoBIS", "P10 a P25", "P25 a P75", "P75 a P90", "> P90"] },
+  // `iscmRefTxt`: el texto de referencia por sexo que la HC y las dos pantallas muestran.
+  { nombre: "iscmRefTxt", conLlaves: false, debeTener: ["P25 a P75", "(H)", "(M)", "Sin sexo"] },
+  // `cIEHH`: tres zonas simetricas, con la zona numerica que el dominio 1 usa en las dos direcciones.
+  { nombre: "cIEHH", conLlaves: false, debeTener: ["Déficit", "Óptimo", "Capacitancia alta", "zona"] },
 ];
 
 describe(`engine.core.js: las piezas de la v17 salen de su ATLAS del ${ENTREGA}`, () => {
@@ -101,5 +110,11 @@ describe(`engine.core.js: las piezas de la v17 salen de su ATLAS del ${ENTREGA}`
     }
     // La k = 0,9 se busca en su forma exacta: `0.9` suelto aparece en otras constantes legitimas.
     expect(src, "la k = 0,9 sigue viva").not.toMatch(/\?\s*0\.78\s*:.*\?\s*0\.46\s*:\s*0\.9/);
+    // LOS DEL PASO 5 (su §5 y §6, criterio de aceptacion §14): los cuatro niveles del ISCM-BIS no
+    // pueden quedar en ninguna parte del modulo, ni como etiqueta ni en una linea de codigo.
+    expect(src, "los niveles ISCM-1 a ISCM-4 siguen en el modulo").not.toMatch(/ISCM-[1-4]/);
+    // Y los grados del IEHH: su v17 los reemplaza por tres zonas, asi que "Leve", "Moderado" y "Severo"
+    // no pueden seguir siendo etiquetas de ESE clasificador. Se busca la forma de su etiqueta.
+    expect(src, "los grados del IEHH siguen vivos").not.toMatch(/l:\s*"(Leve|Moderado|Severo)"/);
   });
 });

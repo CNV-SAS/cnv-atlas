@@ -19,8 +19,20 @@ export function cIRC(v: number, sexo: Sexo): Clase & { k: number };
 export function cPABU(v: number, sexo: SexoOpcional): Clase & { dir?: "deficit" | "exceso" | null; g?: number };
 export function cFMI(v: number, s: Sexo): Clase & { k: number };
 export function cFFMI(v: number, s: Sexo): Clase & { k: number };
-export function cISCM(v: number): Clase;
-export function cIEHH(v: number): Clase;
+// ═══ v17 §5 y §6: LOS DOS CAMBIAN DE FORMA, y los dos por la misma razon ═══
+//
+// `cISCM` RECIBE EL SEXO y ya no gradua: su libro retiro los cuatro niveles (ISCM-1 a ISCM-4) hasta
+// validar el indice frente a biomarcadores, asi que devuelve la UBICACION del valor entre los
+// percentiles de su sexo (`banda`: "< P10", "P10 a P25", "P25 a P75", "P75 a P90", "> P90"), como
+// dato. `banda` es null cuando no hay valor o no hay sexo.
+//
+// `cIEHH` pasa de cuatro grados a TRES ZONAS simetricas y expone `zona` (-1 deficit · 0 optimo ·
+// 1 capacitancia alta), que es lo que el DFI usa para sumar en las DOS direcciones.
+export function cISCM(v: number | null, sexo: SexoOpcional): Clase & { banda: string | null };
+export function cIEHH(v: number): Clase & { zona: -1 | 0 | 1 };
+export const ISCM_REF: Record<"F" | "M", { p10: number; p25: number; p50: number; p75: number; p90: number }>;
+/** El texto "P25 a P75: ... (H/M)" que las pantallas muestran al lado del valor del ISCM-BIS. */
+export function iscmRefTxt(sexo: SexoOpcional): string;
 export function cIAE(v: number): Clase;
 // cAF/cIR: ya estaban en module.exports del .js (clasificadores de angulo de fase y radio de
 // impedancia), solo faltaba declararlos aqui. NO son parte de los 6 exports del mecanismo derivado.

@@ -120,8 +120,9 @@ describe("el riesgo integrado se renormaliza, no se abarata", () => {
 describe("y la prosa tampoco vuelve a afirmar lo que no se midió", () => {
   const base = {
     dom4Veto: false, veto: false, nivelLabel: "MEDIO",
-    ifcL: "Normal", ircL: "Normal", iehhL: "Bajo", iscmL: "Bajo",
-    fen: "Normal", aeL: "Concordante", iae: 0,
+    // v17 §5: la zona del IEHH, no un grado. "Óptimo" es la del centro, que es la que no suma.
+    ifcL: "Normal", ircL: "Normal", iehhL: "Óptimo",
+    fen: "Composición saludable", aeL: "Concordante", iae: 0, adipTxt: null,
   };
 
   it("cada dominio anulado dice que no se evaluó, en vez de dar su lectura favorable", () => {
@@ -129,7 +130,9 @@ describe("y la prosa tampoco vuelve a afirmar lo que no se midió", () => {
       ...base,
       domSev: { d1: null, d2: null, d3: null, d4: 0, d5: null },
     }).parrafo;
-    for (const frase of ["no se evaluó el dominio celular-eléctrico", "no se evaluó: falta el ISCM",
+    // v17 §2.3: el dominio 2 ya no depende del ISCM, asi que su frase de "no medido" es la suya:
+    // *"no se pudo establecer el fenotipo MCCB"*. Las otras tres no cambian.
+    for (const frase of ["no se evaluó el dominio celular-eléctrico", "no se pudo establecer el fenotipo MCCB",
       "no se evaluó: falta la edad biológica", "no se evaluó: falta el ICEC"]) {
       expect(p, `falta la frase "${frase}"`).toContain(frase);
     }

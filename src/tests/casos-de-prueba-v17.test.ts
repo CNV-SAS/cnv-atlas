@@ -170,6 +170,46 @@ describe("v17 §13 · los casos del sector y del dominio 2 (pasos 3 y 4)", () =>
     expect(riesgo).toBe("CRÍTICO");
   });
 
+  it("D · mujer con el IEHH en déficit: suma 1 al dominio 1, que llega a 3, y activa la R1", () => {
+    // Su caso D: *"M; IFC 3,0; IRC 2,5; FFMI 16,0; FMI 6,5; cintura 74 cm; IEHH −1,5"* -> *"IEHH en
+    // déficit, suma 1; dominio 1 = 3; activa R1"*. Es el caso que prueba la mitad NUEVA del escalon del
+    // dominio 1: hasta la v16 el IEHH sumaba solo hacia ARRIBA (sus grados "Moderado" y "Severo"), asi
+    // que un −1,5 no sumaba nada. Con sus tres zonas suma igual por abajo.
+    //
+    // La aritmetica: IFC 3,0 en mujer (cortes 2,1/3,3) es Normal, IRC 2,5 (cortes 2,3/2,8) es Normal, y
+    // su matriz da 2 para Normal|Normal. El IEHH en zona de deficit suma 1 -> 3.
+    const r = computeDFIFromData(
+      {},
+      fila({ sexo: "F", IFC: 3.0, IRC: 2.5, FFMI: 16.0, FMI: 6.5, IEHH: -1.5, cintura: 74, tallaCm: 160 }),
+    ) as { domains: { id: string; sev: number | null; items: string[] }[]; rutas: string[] };
+    const d1 = r.domains.find((d) => d.id === "d1")!;
+    expect(d1.sev).toBe(3);
+    expect(d1.items.some((t) => t.includes("Déficit"))).toBe(true);
+    expect(r.rutas.some((x) => x.startsWith("R1"))).toBe(true);
+    // Y el control que lo vuelve una prueba y no una coincidencia: con el MISMO paciente y el IEHH
+    // dentro de la zona optima, el dominio se queda en 2.
+    const sinDeficit = computeDFIFromData(
+      {},
+      fila({ sexo: "F", IFC: 3.0, IRC: 2.5, FFMI: 16.0, FMI: 6.5, IEHH: 0, cintura: 74, tallaCm: 160 }),
+    ) as { domains: { id: string; sev: number | null }[] };
+    expect(sinDeficit.domains.find((d) => d.id === "d1")!.sev).toBe(2);
+  });
+
+  it("H · el dominio 3 sin el escalón de IAE > 3: 0 / 2 / 3 / 0", () => {
+    // Su caso H: *"IAE +4 / +6 / +12 / −6"* -> *"Dominio 3 = 0 / 2 / 3 / 0"*. El primero es el que
+    // cambia: un IAE de +4 es CONCORDANTE (su banda es −5 a +5) y hasta la v16 puntuaba 1 por el
+    // escalon de `iae > 3`, que su §2.6 retira porque *"el libro no lo tiene"*. Los otros tres ya
+    // daban eso y van de control: sin ellos, un dominio 3 clavado en 0 pasaria este caso igual.
+    const d3De = (iae: number) => {
+      const r = computeDFIFromData(
+        {},
+        fila({ sexo: "M", IFC: 5.0, IRC: 1.9, FFMI: 20, FMI: 5, IAE: iae, EB_BIS: 40 + iae }),
+      ) as { domains: { id: string; sev: number | null }[] };
+      return r.domains.find((d) => d.id === "d3")!.sev;
+    };
+    expect([d3De(4), d3De(6), d3De(12), d3De(-6)]).toEqual([0, 2, 3, 0]);
+  });
+
   it("y el tope de 3 del modificador se comprueba aparte, sin depender del sector peor", () => {
     // Con S8 (gravedad 2) mas adiposidad central da 3, y no 3 por casualidad: es 2 + 1.
     const { d2 } = dom2({ sexo: "F", IFC: 3.0, IRC: 2.5, FFMI: 15.0, FMI: 6.0, cintura: 92, tallaCm: 158 });
@@ -216,17 +256,22 @@ describe("los nueve sectores del libro caen en el orden de la Diana", () => {
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 describe("v17 §13 · los casos que todavia no se pueden escribir", () => {
   const PENDIENTES: Record<string, string> = {
-    D: "paso 5 (IEHH con z por sexo): el IEHH en deficit suma 1 y el dominio 1 llega a 3",
-    H: "paso 6 (dominio 3 sin el escalon de IAE > 3): 0 / 2 / 3 / 0",
-    I: "paso 5 (ISCM-BIS con z por sexo): P75 a P90 en mujer, > P90 en hombre",
-    J: "paso 5 (cIEHH en tres zonas): deficit / optimo / optimo / capacitancia alta",
     L: "ya cubierto por `el-ica-bis-lleva-signo` (el historico se deriva de la PABU sellada)",
-    M: "paso 5: IEHH −0,099 e ISCM-BIS 0,834 con sus siete componentes",
-    N: "paso 5: los mismos datos como hombre dan IEHH −0,569 e ISCM-BIS −4,172",
-    O: "paso 5: IEHH −0,081 e ISCM-BIS −0,196",
-    P: "paso 5: sin sexo o sin un componente, los dos indices quedan en 0 (sin dato)",
-    Q: "paso 5 + migracion: al abrir una consulta vieja, los valores se recalculan y los de v16 se conservan",
-    R: "paso 5: los percentiles de los 5.255 registros de su informe tecnico",
+    // ═══ LA Q NO ES UN PENDIENTE: ES UNA DIVERGENCIA DECLARADA, Y LA RAZON ES LA REGLA 7 ═══
+    //
+    // Su caso Q pide que al ABRIR una consulta guardada el IEHH y el ISCM-BIS se RECALCULEN y los
+    // valores de la v16 se conserven al lado (`IEHH_v16`, `ISCM_v16`). En su aplicacion eso tiene
+    // sentido: ahi son campos almacenados que las pantallas leen y reescriben.
+    //
+    // EN ATLAS UN INFORME SELLADO ES INMUTABLE (ARCHITECTURE regla 7), asi que al abrir una consulta de
+    // v16 se ve lo que decia el dia que se emitio, no un recalculo. Y la diferencia con el ICA-BIS es
+    // exacta y vale la pena tenerla escrita: el ICA-BIS SI se deriva al leer, porque sale de UN insumo
+    // sellado (la PABU) con una formula que no cambio; el IEHH y el ISCM-BIS necesitan SIETE
+    // componentes crudos que el snapshot no lleva. Lo que los actualiza es el RECALCULO del historico,
+    // que es un acto aparte, con su simulacion y su aprobacion, y que deja las dos versiones en la
+    // historia en vez de sobreescribir una.
+    Q: "DIVERGENCIA DECLARADA, no pendiente: en Atlas un informe sellado no se recalcula al abrirlo (regla 7); lo actualiza el recalculo del historico, que conserva las dos versiones",
+    R: "no portable como golden: necesita su base de 5.255 registros de referencia (su informe tecnico)",
     S: "paso 7 (alertas criticas por sexo): mujer sin alertas, hombre con IFC critico",
     T: "paso 7: las tres alertas a la vez en una mujer",
     U: "paso 7: IFC critico, IRC muy elevado e ICA-BIS critico por exceso en un hombre",

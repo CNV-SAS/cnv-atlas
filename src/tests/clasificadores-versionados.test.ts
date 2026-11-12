@@ -79,8 +79,18 @@ function shaDeLosClasificadores(): string {
 // en las ventanas de 0,02 de sus cortes nuevos, el IFC del paciente sin sexo, y la del PABU para TODOS
 // (la zona fija de ±0,15 pasa a los percentiles de su Tabla 7.3). O sea que SI mueve bandas, y por eso la
 // etiqueta sube en el mismo acto que este SHA.
-const SHA_ESPERADO = "d76d544c715aeac3ae0092dfca38108172be28395f5ed7660df7e7f2be78cf50";
-const ETIQUETA_ESPERADA = "cXXX-2026-11-11";
+// SHA ACTUALIZADO (2026-11-12) CON SUBIDA DE ETIQUETA: pasos 3, 4 y 5 del porte de la v17. Es el cambio
+// mas grande que han tenido estos clasificadores desde el porte inicial, y la lista de etiquetas que se
+// mueven esta en `emission-versions.ts`, al lado de la clave que subio. En dos palabras: los cuatro
+// niveles del ISCM-BIS se retiran (cambia la etiqueta de TODOS), los cuatro grados del IEHH pasan a tres
+// zonas Y su valor se recalcula con z por sexo (tambien para todos), y el sector de la Diana se
+// clasifica con los cortes MCCB (279 de 441 consultas en la nube).
+//
+// EL VALOR SE TOMA DEL QUE REPORTA ESTE MISMO CANDADO, y la razon quedo escrita en septiembre: el hash
+// se calcula sobre el texto de las funciones con los finales de linea normalizados, asi que calcularlo
+// por fuera da otro numero si se olvida esa normalizacion. Ya paso una vez.
+const SHA_ESPERADO = "2b7d5829154df51730c0976bf0579ac8d67b9787274e5ecf80a6fa3203ee7fbe";
+const ETIQUETA_ESPERADA = "cXXX-2026-11-12";
 
 describe("los clasificadores y su versión de emisión no pueden divergir", () => {
   it("los diez clasificadores siguen existiendo con ese nombre", () => {

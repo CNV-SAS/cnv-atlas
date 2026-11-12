@@ -80,7 +80,28 @@ const CURRENT: EmissionVersions = {
   //
   // Los diagnosticos anteriores quedan marcados como emitidos con version anterior, que es lo correcto y
   // es lo que permite que la reemision de su §12b se dispare donde corresponda.
-  classification: "cXXX-2026-11-11", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
+  // ═══ SUBE CON LOS PASOS 3, 4 Y 5 DE LA v17  ·  2026-11-12 ═══
+  //
+  // ES EL BUMP MAS GRANDE QUE HA TENIDO ESTA CLAVE, y conviene que se lea la lista completa:
+  //
+  //   · EL SECTOR DE LA DIANA (S1 a S9) se clasifica con los cortes MCCB de su Tabla 10.2, por sexo,
+  //     en vez de los del Excel Mapa E_BIS. Medido en la nube el 11 de noviembre: cambia en 279 de
+  //     441 consultas vigentes (63,3 %), y con el el NUMERO DE ESTADO en 282 (63,9 %);
+  //   · EL FENOTIPO DEL SECTOR pasa a los nueve nombres de su Tabla 11.2 (antes los de
+  //     `STRUCT_LABELS`), y el codigo del eje de E a S;
+  //   · LOS CUATRO NIVELES DEL ISCM-BIS ("ISCM-1 Bajo riesgo" a "ISCM-4 Alta susceptibilidad") se
+  //     RETIRAN: su libro los quito hasta validar el indice frente a biomarcadores. La etiqueta pasa a
+  //     ser la ubicacion entre los percentiles del sexo, y eso cambia la etiqueta de TODOS;
+  //   · LOS CUATRO GRADOS DEL IEHH (Óptimo/Leve/Moderado/Severo) pasan a TRES ZONAS simetricas
+  //     (Déficit / Óptimo / Capacitancia alta), y ademas el VALOR se recalcula con las z por sexo de
+  //     su §5, asi que tambien cambia para todos;
+  //   · EL DOMINIO 2 Y EL DOMINIO 3 cambian de criterio (sector + adiposidad central, y el escalon de
+  //     IAE > 3 retirado), y con ellos el riesgo integrado y las rutas.
+  //
+  // Y EL EFECTO QUE IMPORTA de que esta clave suba: los diagnosticos ya emitidos quedan marcados como
+  // emitidos con la version anterior, asi que la reemision de su §12b se puede disparar donde el
+  // veredicto se mueva. Ninguno se reescribe.
+  classification: "cXXX-2026-11-12", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
   // ═══ BUMP 2026-10-28: LLEGO LA CALIBRACION, Y CON OTRA FORMULA ═══
   //
   // Esta clave nacio "ebbis-v5-provisional" y el comentario de arriba decia que la calibracion

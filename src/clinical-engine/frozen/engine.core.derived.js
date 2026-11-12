@@ -173,18 +173,54 @@ const cIR = (v, sexo) => {
 // EL CALCULO POR SEXO TODAVIA NO ESTA PORTADO: es el paso 5 del porte (`engine.indices.js`, nueve
 // lineas medidas). Hasta entonces este clasificador lee un valor calculado con z GLOBALES, y por eso
 // este aviso esta aqui y no una nota que diga que ya se hizo.
-const cISCM = v => v <= -1 ? {
-  l: "ISCM-1 Bajo riesgo",
-  c: "#10b981"
+// ═══ LOS CUATRO NIVELES DEL ISCM-BIS Y LOS CUATRO GRADOS DEL IEHH SE RETIRAN (v17 §5 y §6) ═══
+//
+// AQUI HABIA DOS CLASIFICADORES Y LOS DOS SE REEMPLAZAN POR SU BLOQUE DE LA v17, verbatim:
+//
+//   · `cISCM` graduaba en cuatro niveles ("ISCM-1 Bajo riesgo" a "ISCM-4 Alta susceptibilidad"). Su
+//     §6 los RETIRA: *"el libro retiró los cuatro niveles de susceptibilidad hasta validar el ISCM-BIS
+//     frente a biomarcadores cardiometabólicos"*. Ahora `cISCM(valor, sexo)` devuelve solo la UBICACION
+//     del valor entre los percentiles de su sexo, como dato. No gradua, no colorea un veredicto.
+//
+//   · `cIEHH` graduaba desde 0 ("Óptimo" ≤ 0, "Leve", "Moderado", "Severo"), o sea que trataba el cero
+//     como el mejor valor posible y solo miraba hacia arriba. Su §5 lo cambia a TRES ZONAS simetricas
+//     (< −1 déficit · −1 a +1 óptimo · > +1 capacitancia alta), porque el indice ya es una z: el valor
+//     bueno es el CENTRO, y alejarse por abajo es tan informativo como por arriba. Es lo que hace que el
+//     dominio 1 sume en las dos direcciones.
+//
+// Y LOS CORTES SIGUEN SIENDO IGUALES EN LOS DOS SEXOS, que es la distincion fina que ya estaba escrita
+// aqui: *"los cortes son los mismos en hombres y mujeres porque el índice ya está expresado en
+// puntuaciones z por sexo"*. Lo que cambio es el VALOR que entra, y eso se calcula en
+// `engine.indices.js` con `calcIEHH_ISCM` y las referencias de su tabla de siete componentes.
+const ISCM_REF = {
+  F: { p10: -3.72, p25: -2.09, p50: -0.35, p75: 1.80, p90: 4.32 },
+  M: { p10: -4.02, p25: -2.12, p50: 0.03,  p75: 2.02, p90: 4.19 },
+};
+const cISCM = (v, sexo) => {
+  if (v == null || isNaN(v)) return { l: "Sin dato", c: "#94a3b8", banda: null };
+  const s = sexoBIS(sexo);
+  if (!s) return { l: "Sin sexo: sin percentil", c: "#94a3b8", banda: null };
+  const r = ISCM_REF[s];
+  const banda = v < r.p10 ? "< P10" : v < r.p25 ? "P10 a P25" : v <= r.p75 ? "P25 a P75" : v <= r.p90 ? "P75 a P90" : "> P90";
+  return { l: banda + " de su sexo", c: "#475569", banda };
+};
+// Percentiles de referencia del ISCM-BIS del sexo, para mostrarlos como referencia.
+const iscmRefTxt = sexo => { const s = sexoBIS(sexo); return s === "M" ? "P25 a P75: −2,12 a 2,02 (H)" : s === "F" ? "P25 a P75: −2,09 a 1,80 (M)" : "Sin sexo"; };
+// v17 · IEHH en tres zonas (libro, Tabla 8.2). Los cortes son los mismos en hombres y
+// mujeres porque el índice ya está expresado en puntuaciones z por sexo.
+//   < −1 déficit · −1 a +1 óptimo (rango de referencia) · > +1 capacitancia relativa alta
+const cIEHH = v => v < -1 ? {
+  l: "Déficit",
+  c: "#ea580c",
+  zona: -1
 } : v <= 1 ? {
-  l: "ISCM-2 Susceptibilidad leve",
-  c: "#f59e0b"
-} : v <= 2.5 ? {
-  l: "ISCM-3 Susceptibilidad moderada",
-  c: "#ea580c"
+  l: "Óptimo",
+  c: "#10b981",
+  zona: 0
 } : {
-  l: "ISCM-4 Alta susceptibilidad",
-  c: "#ef4444"
+  l: "Capacitancia alta",
+  c: "#f59e0b",
+  zona: 1
 };
 // ═══ LA v17 REVIRTIO ESTA DECISION, Y LA DISTINCION ES FINA (2026-11-11) ═══
 //
@@ -205,19 +241,6 @@ const cISCM = v => v <= -1 ? {
 // EL CALCULO POR SEXO TODAVIA NO ESTA PORTADO: es el paso 5 del porte (`engine.indices.js`, nueve
 // lineas medidas). Hasta entonces este clasificador lee un valor calculado con z GLOBALES, y por eso
 // este aviso esta aqui y no una nota que diga que ya se hizo.
-const cIEHH = v => v <= 0 ? {
-  l: "Óptimo",
-  c: "#10b981"
-} : v <= 1 ? {
-  l: "Leve",
-  c: "#f59e0b"
-} : v <= 2 ? {
-  l: "Moderado",
-  c: "#ea580c"
-} : {
-  l: "Severo",
-  c: "#ef4444"
-};
 // IAE crudo (EB-BIS − edad cronológica), en años. Cortes ±5 años, coherentes con la referencia
 // "−5 a +5 años" usada en los informes. <−5 desacelerado · −5..+5 concordante · >+5 acelerado.
 // SIN DISTINCION POR SEXO — DELIBERADO. Confirmado por la direccion cientifica
@@ -1118,4 +1141,4 @@ const getDX = (ifcK, ircK, ffmiK, fmiK) => {
 
 module.exports = { calcIFC, calcIRC, calcPABU, cIFC, cIRC, cPABU, cFMI, cFFMI, cISCM, cIEHH, cIAE, cAF, cIR, kl, DX, efrCompose, getDX, FYR_LABELS, STRUCT_LABELS };
 
-Object.assign(module.exports, { efrProf, cSMM, cMMEM, cASMI, cFFW, cEISG, MCCB_CORTES, cFFMI_MCCB, cFMI_MCCB, MCCB_SECTORES, sectorMCCB });
+Object.assign(module.exports, { efrProf, cSMM, cMMEM, cASMI, cFFW, cEISG, MCCB_CORTES, cFFMI_MCCB, cFMI_MCCB, MCCB_SECTORES, sectorMCCB, sexoBIS, ISCM_REF, iscmRefTxt });

@@ -30,9 +30,19 @@ export type DfiNarrativeInput = {
   nivelLabel: string; // NIV[nivel].l -> "BAJO"|"MEDIO"|"ALTO"|"CRITICO" (== dfi.riesgo.nivel)
   ifcL: string; // classifications.ifc.label
   ircL: string; // classifications.irc.label
-  iehhL: string | null; // classifications.iehh.label (null si IEHH no computable)
-  iscmL: string | null; // classifications.iscm.label
-  fen: string; // structural.nombre (fenotipo estructural)
+  // ═══ LO QUE LA v17 CAMBIA EN ESTE PARRAFO (su §5 y §6, 2026-11-12) ═══
+  //
+  // `iehhL` ya no es un GRADO (Óptimo/Leve/Moderado/Severo) sino una ZONA de las tres de su Tabla 8.2
+  // ("Déficit", "Óptimo", "Capacitancia alta"), y el parrafo deja de decir "expansión extracelular":
+  // su §5 lo dice con esas palabras (*"el párrafo del DFI ya no dice «expansión extracelular»: usa la
+  // lectura de la zona"*), porque esa frase describia UNA de las dos direcciones y ahora hay dos.
+  //
+  // `iscmL` DESAPARECE de este tipo. El parrafo decia "presenta susceptibilidad cardiometabólica
+  // <leve/moderada/alta>", y esa graduacion es justo la que su libro retiro. En su v17 el segmento
+  // habla del FENOTIPO del sector y de la adiposidad central, que es de donde sale el dominio.
+  iehhL: string | null; // la ZONA del IEHH (null si no se pudo calcular)
+  fen: string; // el fenotipo del sector MCCB (su Tabla 11.2)
+  adipTxt: string | null; // el texto de la adiposidad central, o null si no la hay
   aeL: string | null; // classifications.iae.label
   iae: number | null; // indicators.iae (anos)
 };
@@ -114,8 +124,10 @@ const ROLN: Record<Rol, string> = {
   psicologia: "psicología",
 };
 
-// _iscmW map (L12959).
-const ISCM_W: Record<string, string> = { Bajo: "baja", Leve: "leve", Moderado: "intermedia", Alto: "elevada" };
+// SE RETIRO EL MAPA DE PALABRAS DEL ISCM-BIS (v17 §6, 2026-11-12). Era su `_iscmW` (L12959) y
+// traducia el nivel a un adjetivo ("susceptibilidad cardiometabólica intermedia"). Su libro retiro los
+// cuatro niveles, asi que no hay nada que traducir: el segmento 2 del parrafo habla ahora del fenotipo
+// del sector y de la adiposidad central. Su v17 tambien lo borra de su funcion.
 
 type Act = { k: string; pr: number; nom: string };
 
@@ -173,7 +185,7 @@ function metaDe(rol: Rol, i: DfiNarrativeInput, acts: Act[]): string {
 // Reconstruye parrafo + metas del DFI (transcripcion fiel de L12955-13010, sin tocar el frozen).
 export function dfiNarrative(i: DfiNarrativeInput): DfiNarrative {
   const { d1, d2, d3, d4, d5 } = i.domSev;
-  const iehhAlt = i.iehhL === "Moderado" || i.iehhL === "Alto";
+  const iehhZ = i.iehhL;
   const iae = i.iae ?? 0;
 
   // Los cuatro segmentos con dominio anulable abren con el caso "no medido". Va PRIMERO en cada uno,
@@ -194,15 +206,23 @@ export function dfiNarrative(i: DfiNarrativeInput): DfiNarrative {
       : i.ircL === "Normal"
         ? "con riesgo celular en rango normal"
         : "con riesgo celular elevado, compatible con inflamación de bajo grado") +
-    (iehhAlt ? " y signos de alteración del espectro de hidratación (expansión extracelular)" : "");
+    // v17 §5: la lectura de la ZONA, verbatim de su Tabla 8.2. Las dos direcciones dicen cosas
+    // distintas, y por eso no puede haber una sola frase para las dos.
+    (iehhZ === "Déficit"
+      ? " y un IEHH en zona de déficit (menor capacitancia relativa y desplazamiento del equilibrio hídrico)"
+      : iehhZ === "Capacitancia alta"
+        ? " y un IEHH con capacitancia relativa alta, que puede acompañar contracción extracelular"
+        : "");
 
-  const iscmW = ISCM_W[i.iscmL ?? ""] || "intermedia";
+  // v17 §2.3 y §6: el segmento habla del FENOTIPO DEL SECTOR y de la adiposidad central, que es de
+  // donde sale la gravedad del dominio. La graduacion del ISCM-BIS que estaba aqui es la que su libro
+  // retiro. Cuando no hay sector, se dice con SUS palabras.
   const seg2 =
-    d2 == null
-      ? "el dominio metabólico-estructural no se evaluó: falta el ISCM"
-      : "en el dominio metabólico-estructural presenta susceptibilidad cardiometabólica " +
-        iscmW +
-        (i.fen ? " con un fenotipo estructural de " + String(i.fen).replace(/^Fenotipo\s+/i, "").toLowerCase() : "");
+    d2 == null || !i.fen
+      ? "en el dominio metabólico-estructural no se pudo establecer el fenotipo MCCB"
+      : "en el dominio metabólico-estructural presenta un fenotipo de " +
+        String(i.fen).toLowerCase() +
+        (i.adipTxt ? ", con " + i.adipTxt : "");
 
   const seg3 =
     d3 == null
@@ -297,8 +317,16 @@ function labelInParens(s: string | undefined): string | null {
 
 // structL de dom2.items[1] = "Fenotipo: {structL}". El frozen pone "N/C" cuando viene vacio; la narrativa espera "".
 function fenFromDom2(d2?: EngineOutput["dfi"]["domains"][number]): string {
-  const raw = (d2?.items?.[1] ?? "").replace(/^Fenotipo:\s*/, "");
-  return raw === "N/C" ? "" : raw;
+  // ═══ v17: EL FENOTIPO SALE DEL ITEM DEL SECTOR, Y SU FORMA CAMBIO (2026-11-12) ═══
+  //
+  // Antes el item era `Fenotipo: <nombre>` y estaba en la posicion 1. Su v17 lo escribe como
+  // `Fenotipo MCCB: S6 Obesidad con masa normal` y lo pone PRIMERO, asi que leer la posicion 1 a
+  // ciegas devolvia la linea del FMI y el parrafo decia "presenta un fenotipo de fmi 8 · ffmi 19".
+  // Por eso ahora se busca por PREFIJO y no por indice: una posicion es una suposicion, un prefijo es
+  // un contrato. Se aceptan las dos formas para que un snapshot sellado antes del bump siga leyendose.
+  const item = (d2?.items ?? []).find((t) => /^Fenotipo(\s+MCCB)?:/.test(t)) ?? "";
+  const raw = item.replace(/^Fenotipo(\s+MCCB)?:\s*/, "").replace(/^S[1-9]\s+/, "");
+  return raw === "N/C" || raw === "" ? "" : raw;
 }
 
 // Categorias del idx del frozen, parseadas de sus cadenas de dominio (su vocabulario literal).
@@ -306,23 +334,25 @@ export function dfiCategoriesFromOutput(o: EngineOutput): {
   ifcL: string;
   ircL: string;
   iehhL: string | null;
-  iscmL: string | null;
   aeL: string | null;
   fen: string;
+  adipTxt: string | null;
 } {
   const { d1, d2, d3 } = DOMS(o);
   const iehhItem = (d1?.items ?? []).find((it) => it.startsWith("IEHH"));
-  // dom2.clasif = "ISCM {iscmL} · {fen}"; dom3.clasif = "IAE {signed} años · {aeL}".
-  const iscmM = (d2?.clasif ?? "").match(/^ISCM\s+(.+?)\s+·/);
+  // dom3.clasif = "IAE {signed} años · {aeL}".
   const aeM = (d3?.clasif ?? "").match(/·\s*(.+?)\s*$/);
   const norm = (x: string | null | undefined) => (x && x !== "-" ? x : null);
+  // v17: la adiposidad central se lee de su propio item del dominio 2. La primera letra viene en
+  // mayuscula porque ahi abre la frase, y aqui va en medio de una.
+  const adipItem = (d2?.items ?? []).find((t) => /^Adiposidad central/i.test(t));
   return {
     ifcL: labelInParens(d1?.items?.[0]) ?? "",
     ircL: labelInParens(d1?.items?.[1]) ?? "",
     iehhL: labelInParens(iehhItem),
-    iscmL: norm(iscmM?.[1]),
     aeL: norm(aeM?.[1]),
     fen: fenFromDom2(d2),
+    adipTxt: adipItem ? adipItem.charAt(0).toLowerCase() + adipItem.slice(1) : null,
   };
 }
 
@@ -345,8 +375,8 @@ export function dfiNarrativeFromOutput(o: EngineOutput): DfiNarrative {
     ifcL: cat.ifcL,
     ircL: cat.ircL,
     iehhL: cat.iehhL,
-    iscmL: cat.iscmL,
     fen: cat.fen,
+    adipTxt: cat.adipTxt,
     aeL: cat.aeL,
     iae: o.indicators.iae,
   });

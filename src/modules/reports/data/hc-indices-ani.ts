@@ -1,6 +1,7 @@
 import { indicatorRange, decimalesDe, rotuloDisplayDeIndice } from "@/modules/diagnoses/data/indicator-ranges";
 import { nombreLlanoDelIndice } from "@/modules/diagnoses/nombre-llano-del-indice";
 import type { EngineIndicators } from "@/clinical-engine/types";
+import { iscmRefTxt } from "@/clinical-engine/frozen/engine.core.derived.js";
 
 // Indices ANI-BIS-E para la tabla de la historia clinica (porte 2026-08-24). Modulo NEUTRO y PURO.
 //
@@ -94,8 +95,30 @@ export const INDICES_ANI: IndiceAniFila[] = [
     referencia: (m) => (m ? "<1,7 bajo riesgo" : "<2,3 bajo riesgo"),
     formato: (v) => dec(v, "IRC"),
   },
-  { codigo: "ISCM", nombre: "Síndrome Celular", referencia: () => "ISCM-1 ≤ −1", formato: (v) => dec(v, "ISCM") },
-  { codigo: "IEHH", nombre: "Hidro-Homeostasis", referencia: () => "≤0.0 óptimo", formato: (v) => dec(v, "IEHH") },
+  // ═══ LAS DOS REFERENCIAS CAMBIAN CON SU v17 (§5 y §6), Y ES EL SITIO QUE EL NOMBRA ═══
+  //
+  // Su §6 dice donde hay que retirar los cuatro niveles del ISCM-BIS, y la historia clinica esta en la
+  // lista: *"se retiraron las etiquetas «ISCM-1 Bajo riesgo» a «ISCM-4 Alta susceptibilidad» de la tabla
+  // de composición, la historia clínica, los dos reportes y el motor de la IA"*. Asi que la referencia
+  // de esta fila no puede seguir diciendo "ISCM-1 ≤ −1": ese nivel ya no existe.
+  //
+  // LO QUE VA EN SU LUGAR es lo que su §6 pone en su lugar: el rango central de SU SEXO (P25 a P75 de
+  // su tabla), que es contra lo que se lee el valor ahora. Y los numeros se leen de `ISCM_REF`, el
+  // mismo sitio del que los lee el clasificador, en vez de copiarlos a esta columna.
+  //
+  // El IEHH pasa de "≤0.0 óptimo" a su zona de referencia de las tres de su Tabla 8.2. La anterior no
+  // solo cambio de numero: decia que el optimo era TODO lo que estuviera por debajo de cero, y en la
+  // v17 el optimo es el CENTRO, con dos colas que significan cosas distintas.
+  {
+    codigo: "ISCM", nombre: "Síndrome Celular",
+    // SE LLAMA A SU PROPIA FUNCION, que es lo mejor que le puede pasar a esta columna: su v17 escribe
+    // `ref: iscmRefTxt(sexoK_v)` en la misma fila de su HC, e `iscmRefTxt` esta expuesta por el
+    // mecanismo de archivo derivado. Asi que aqui no hay copia que pueda envejecer: es su cadena, con
+    // su formato y su sufijo "(H)" / "(M)".
+    referencia: (m) => iscmRefTxt(m ? "M" : "F"),
+    formato: (v) => dec(v, "ISCM"),
+  },
+  { codigo: "IEHH", nombre: "Hidro-Homeostasis", referencia: () => "−1 a +1 óptimo", formato: (v) => dec(v, "IEHH") },
   {
     codigo: "EB", sigla: "EB-BIS", nombre: "Edad biológica estimada",
     referencia: () => "= Edad cronológica",

@@ -24,7 +24,11 @@ export const DERIVED = join(ROOT, "src/clinical-engine/frozen/engine.core.derive
 // los necesita para numerar la Diana, asi que tienen que salir del frozen y no copiarse a TypeScript:
 // una copia de nueve sectores en otro archivo es la forma de que un dia digan otra cosa.
 export const ADDED_EXPORTS = ["efrProf", "cSMM", "cMMEM", "cASMI", "cFFW", "cEISG",
-  "MCCB_CORTES", "cFFMI_MCCB", "cFMI_MCCB", "MCCB_SECTORES", "sectorMCCB"];
+  "MCCB_CORTES", "cFFMI_MCCB", "cFMI_MCCB", "MCCB_SECTORES", "sectorMCCB",
+  // Entraron con el paso 5 (v17 §5 y §6): la normalizacion del sexo, que `engine.indices` necesita para
+  // calcular el IEHH y el ISCM-BIS con las z de su tabla; los percentiles del ISCM-BIS por sexo; y el
+  // texto de referencia que las pantallas muestran al lado del valor, ahora que el indice no se gradua.
+  "sexoBIS", "ISCM_REF", "iscmRefTxt"];
 
 const HEADER = `/*
  * engine.core.derived.js — ARCHIVO GENERADO. NO editar a mano. NO es ciencia editada.

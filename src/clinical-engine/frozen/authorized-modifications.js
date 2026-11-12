@@ -152,21 +152,22 @@ const AUTHORIZED_MODIFICATIONS = [
       '             : (d.iscm != null && d.iscm !== "" && !isNaN(Number(d.iscm))) ? Number(d.iscm) : null,',
     ].join(String.fromCharCode(10)),  // sin secuencia de escape: mas legible y no se rompe al editar
   },
-  {
-    caId: "CA-5",
-    decision: "D-007",
-    date: "2026-08-29",
-    targetFile: "engine.dfi.js",
-    // Segunda mitad de CA-4: con el ISCM en null la clasificacion tiene que ser null tambien, no
-    // "Leve". Los consumidores del frozen ya escriben idx.iscmCl?.l || "-", asi que en cuanto esto es
-    // null la pantalla dice "-" sola, sin tocar ninguno de los siete.
-    instruction:
-      "El ISCM ausente no se clasifica (misma instruccion de CA-4).",
-    oldSlice:
-      '    iscmCl: { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },',
-    newSlice:
-      '    iscmCl: iscm == null ? null : { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },',
-  },
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // CA-5 · RETIRADA EL 2026-11-12, Y POR LA MEJOR RAZON: SU v17 HACE LO QUE PEDIA
+  //
+  // Decia: "El ISCM ausente no se clasifica (misma instruccion de CA-4)". Existia porque `iscmCl`
+  // clasificaba un ISCM ausente como si fuera un cero medido (el 0 caia en "Leve"), y su punto 4 del
+  // 28-ago ordena que un indice ausente NO SE EMITA ni se clasifique. La modificacion lo volvia null.
+  //
+  // Su v17 §6 reemplaza `iscmCl` por `cISCM(valor, sexo)`, y esa funcion ABRE con la misma guarda que
+  // nosotros habiamos tenido que agregar: `if (v == null || isNaN(v)) return { l: "Sin dato", ... }`.
+  // Asi que la divergencia desaparece porque EL la adopto, que es la mejor manera de que una
+  // modificacion autorizada muera: no se borra el criterio, se deja de necesitar el parche.
+  //
+  // CA-4 SE QUEDA, y con la v17 importa MAS: es la que hace que el valor llegue como null en vez de
+  // como 0, y un ISCM-BIS de 0 ahora es un valor perfectamente normal (cae dentro del P25 a P75 de
+  // los dos sexos). Si CA-4 se retirara, un ausente se leeria como un paciente en la mediana.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
   // ── CA-6 · El dominio sin dato no puntua (Gildardo 2026-08-30 §4) ──────────────────────────────
   //
   // EL NOMBRO UNO Y HAY CUATRO. Su punto 4 senala el `?? 1` del dominio 2 (ISCM). Al ir a aplicarlo
@@ -266,8 +267,13 @@ const AUTHORIZED_MODIFICATIONS = [
     date: "2026-08-31",
     targetFile: "engine.dfi.js",
     instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
-    oldSlice: "  let s3;\n  if(idx.iaeCl?.l===\"Enlentecido\") s3=0;\n  else if(idx.iaeCl?.l===\"Concordante\") s3 = iae>3?1:0;\n  else s3 = iae>10?3:2;",
-    newSlice: "  // EL PEOR DE LOS CUATRO. Sin EB-BIS no hay `iaeCl`, ninguna rama coincidia y la cadena caia al\n  // `else`, que con iae = 0 devuelve 2: envejecimiento acelerado AFIRMADO sobre lo no medido.\n  let s3;\n  if(idx.iaeCl?.l == null) s3=null;\n  else if(idx.iaeCl.l===\"Enlentecido\") s3=0;\n  else if(idx.iaeCl.l===\"Concordante\") s3 = iae>3?1:0;\n  else s3 = iae>10?3:2;",
+    // ANCLA ACTUALIZADA (2026-11-12, v17 §2.6): se retiro el escalon de IAE > 3, asi que la rama de
+    // "Concordante" pasa de `iae>3?1:0` a `0`. La modificacion y su razon NO cambian: lo que agrega es
+    // la rama de ARRIBA (sin `iaeCl` no hay dato y el dominio no puntua), que seguia siendo el peor de
+    // los cuatro casos porque la cadena caia al `else` y afirmaba envejecimiento acelerado sobre un
+    // dominio no medido. Con el escalon retirado ese riesgo no se va: el `else` sigue ahi.
+    oldSlice: "  let s3;\n  if(idx.iaeCl?.l===\"Enlentecido\") s3=0;\n  // v17: concordante = 0 (se retira el escalón de IAE > 3, que el libro no tiene).\n  else if(idx.iaeCl?.l===\"Concordante\") s3 = 0;\n  else s3 = iae>10?3:2;",
+    newSlice: "  // EL PEOR DE LOS CUATRO. Sin EB-BIS no hay `iaeCl`, ninguna rama coincidia y la cadena caia al\n  // `else`, que con iae = 0 devuelve 2: envejecimiento acelerado AFIRMADO sobre lo no medido.\n  let s3;\n  if(idx.iaeCl?.l == null) s3=null;\n  else if(idx.iaeCl.l===\"Enlentecido\") s3=0;\n  // v17: concordante = 0 (se retira el escalón de IAE > 3, que el libro no tiene).\n  else if(idx.iaeCl.l===\"Concordante\") s3 = 0;\n  else s3 = iae>10?3:2;",
   },
   {
     caId: "CA-6i",
@@ -371,8 +377,13 @@ const AUTHORIZED_MODIFICATIONS = [
     date: "2026-08-31",
     targetFile: "engine.dfi.js",
     instruction: "Un dato que falta no puede entrar al calculo como si fuera una respuesta, y menos como una respuesta favorable (Gildardo 2026-08-30 punto 1, CONDUCTA GENERAL: \"aplica a todo el sistema, no solo a esa regla. No me lo pregunten regla por regla\"). Aplicado al IAE, la EB-BIS y el IEHH, donde el adaptador seguia fabricando un 0 y clasificandolo.",
-    oldSlice: "    iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === \"Severo\" ? \"Alto\" : x; })() },",
-    newSlice: "    iehhCl: !_presente(\"IEHH\", \"iehh\") ? null : { l: (() => { const x = cIEHH(iehh).l; return x === \"Severo\" ? \"Alto\" : x; })() },",
+    // ANCLA ACTUALIZADA (2026-11-12, v17 §5): `cIEHH` paso de cuatro grados a tres zonas, asi que el
+    // remapeo de "Severo" a "Alto" desaparecio de la linea. La modificacion y su razon NO cambian, y
+    // con la v17 la necesidad es la misma de siempre: su `cIEHH` no tiene guarda de null, y un IEHH
+    // ausente entraria como 0, que cae en la zona "Óptimo". O sea la lectura mas favorable posible
+    // sobre un indice que nadie pudo calcular, que es exactamente lo que su punto 1 prohibe.
+    oldSlice: "    iehhCl: { l: cIEHH(iehh).l },",
+    newSlice: "    iehhCl: !_presente(\"IEHH\", \"iehh\") ? null : { l: cIEHH(iehh).l },",
   },
   {
     caId: "CA-7d",
@@ -428,9 +439,9 @@ const AUTHORIZED_MODIFICATIONS = [
     // que el dominio 2 necesita. La modificacion autorizada NO cambia (sigue siendo poner calcPatron en
     // el ambito); lo que cambia es la linea a la que se engancha.
     oldSlice:
-      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');",
+      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cISCM, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');",
     newSlice:
-      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');" +
+      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cISCM, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');" +
       "\nconst { calcPatron } = require('./engine.patron.js');",
   },
 ];

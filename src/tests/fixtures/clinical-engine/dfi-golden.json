@@ -13,7 +13,7 @@
   },
   {
    "id": "d3",
-   "sev": 1
+   "sev": 0
   },
   {
    "id": "d4",
@@ -26,7 +26,7 @@
  ],
  "riesgo": {
   "l": "MEDIO",
-  "score": 43
+  "score": 38
  },
  "veto": false,
  "rutas": [

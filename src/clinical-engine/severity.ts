@@ -72,7 +72,16 @@ export function indicatorSeverities(output: EngineOutput): Record<string, number
   sev.PABU = veredictoSev(core.cPABU(i.pabu, sexo));
   sev.FMI = veredictoSev(core.cFMI(i.FMI, sexo));
   sev.FFMI = veredictoSev(core.cFFMI(i.FFMI, sexo));
-  if (i.iscm != null) sev.ISCM = veredictoSev(core.cISCM(i.iscm));
+  // ═══ EL ISCM-BIS SE QUEDA SIN VEREDICTO (v17 §6, 2026-11-12) ═══
+  //
+  // Aqui se le sacaba un color de severidad a `cISCM`, que graduaba en cuatro niveles. Su libro los
+  // RETIRO *"hasta validar el ISCM-BIS frente a biomarcadores cardiometabólicos"*, y su clasificador
+  // nuevo devuelve la ubicacion entre percentiles con un gris fijo. Pintarle verde o rojo a eso seria
+  // inventar el veredicto que el acaba de retirar, asi que el indicador queda NEUTRAL: se muestra su
+  // valor y su percentil, sin color.
+  //
+  // No se pone `sev.ISCM = null` sino que no se pone: el contrato de este mapa es que la clave ausente
+  // significa "sin color", y un null explicito se lee igual pero sugiere que hubo un intento.
   if (i.iehh != null) sev.IEHH = veredictoSev(core.cIEHH(i.iehh));
   if (i.iae != null) sev.IAE = veredictoSev(core.cIAE(i.iae));
   // AF/IR: sus clasificadores tambien existen (cAF/cIR); antes faltaban aqui como faltaban en

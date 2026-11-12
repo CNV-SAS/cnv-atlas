@@ -138,7 +138,7 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
       // adiposidad central, en vez de los niveles del ISCM-BIS. Son tokens de la v17 que no existen en
       // ninguna entrega anterior, asi que el patron no puede tolerar de mas por accidente.
       patron:
-        /sectorMCCB|cFMI_MCCB|idx\.sector|_adip|adip\.central|sec \? sec\.|Fenotipo MCCB|4,1 bajo|pabu - 1\.618|Fenotipo estructural de alto riesgo|_cint|_ict/,
+        /sectorMCCB|cFMI_MCCB|idx\.sector|_adip|adip\.central|sec \? sec\.|Fenotipo MCCB|4,1 bajo|pabu - 1\.618|Fenotipo estructural de alto riesgo|_cint|_ict|iehhZ|iscmTxt|cIEHH\(iehh\)\.l/,
       razon:
         "PORTADAS DEL ATLAS_v17.html del 9 de noviembre de 2026 (su §2.3 y §2.4), DOCE entregas despues " +
         "de la que HTML_VIGENTE resuelve: la gravedad del dominio 2 por sector (su Tabla 11.2), el " +
@@ -184,6 +184,22 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
       razon:
         "portado del v7, donde era una FUNCION; en el v8 el mismo calculo va inline dentro del render. " +
         "Las constantes se verifican una por una abajo, que es lo que importa: la ciencia, no la forma.",
+    },
+    {
+      // Las lineas que la v17 §5 trajo a este modulo: la tabla de referencias POR SEXO de sus siete
+      // componentes y la funcion que la usa. No existen en ninguna entrega anterior.
+      patron:
+        /IEHH_ISCM_REF|calcIEHH_ISCM|ReRinf:|AECAICsg:|IFC: \[|MCA: \[|FMI: \[|FFW: \[|const r = IEHH|const re = n\(Re\)|const z = \(v, k\)|const zEI =/,
+      razon:
+        "PORTADAS DEL ATLAS_v17.html del 9 de noviembre de 2026 (su §5): la media y la desviacion de " +
+        "cada uno de los siete componentes del IEHH y del ISCM-BIS, POR SEXO (los 5.255 adultos de su " +
+        "base consolidada), y `calcIEHH_ISCM`, que reemplaza a `computeIEHH` y `computeISCM`. No estan " +
+        "en el v9 porque la v17 las escribio: hasta la v16 las z eran GLOBALES y el segundo componente " +
+        "del IEHH era otro (la FFW en vez de la razon AEC/AIC SG). Las dos funciones viejas se " +
+        "conservan en el modulo y se siguen comparando linea a linea contra su archivo, porque son la " +
+        "unica forma de releer un valor sellado antes del bump. ANCLADAS, cifra por cifra y formula " +
+        "por formula, en src/tests/frozen-indices-v17-diff.test.ts, que compara contra el v17 Y contra " +
+        "la tabla de su documento.",
     },
     {
       patron: /^(R\d:|return Object\.keys\(RUTA_COND\))/,
@@ -501,6 +517,16 @@ describe("las copias de su código en fixtures tampoco derivaron", () => {
   // fuerte que la de antes y no una tolerancia. La cabecera de `fixtures/html-vigente.ts` anotaba estas
   // diez lineas como "del paso 5"; ya estan, asi que aqui entran con su ancla de verdad.
   const DE_ENTREGA_NUEVA: Record<string, { carpeta: string; razon: string }> = {
+    "dfi-vigente.js": {
+      carpeta: "9 noviembre",
+      razon:
+        "la narrativa del DFI se RE-EXTRAJO del ATLAS_v17.html del 9 de noviembre (sus §5 y §2.3): el " +
+        "dominio 1 lee la ZONA del IEHH y suma en las dos direcciones, el segmento 1 del parrafo dice " +
+        "la lectura de la zona en vez de hablar de expansion extracelular, y el dominio 2 completo pasa " +
+        "a salir del sector MCCB mas la adiposidad central. Es la referencia del golden diferencial de " +
+        "la narrativa: si se quedara en el v8, ese golden compararia nuestro porte contra la ciencia " +
+        "que el ya cambio, y pasaria verde.",
+    },
     "resumen-dieta-vigente.js": {
       carpeta: "4 noviembre",
       razon:

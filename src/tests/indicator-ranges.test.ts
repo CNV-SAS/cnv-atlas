@@ -5,6 +5,7 @@ import {
   cAF,
   cFFMI,
   cFFMI_MCCB,
+  ISCM_REF,
   cFMI,
   cFMI_MCCB,
   MCCB_CORTES,
@@ -112,8 +113,17 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     expect(indicatorRange("AF", ind, true)?.delta).toBe("-0,7");
   });
 
-  it("ISCM: -2.07 (valor crudo, ref implicita 0) → -1.07 (corte -1)", () => {
-    expect(indicatorRange("ISCM", ind, true)).toEqual({ reference: "≤−1", delta: "-1,07" });
+  it("ISCM: sin Δ y con el rango central de su sexo (v17 §6: no hay corte que medir)", () => {
+    // ═══ RE-DERIVADO (2026-11-12) ═══
+    //
+    // Decia `{ reference: "≤−1", delta: "-1,07" }`: la referencia era la frontera del nivel ISCM-1 y
+    // la Δ la distancia a ese −1. Su libro retiro los cuatro niveles, asi que esa frontera ya no
+    // decide nada y una Δ contra ella seria una cifra con forma de dato. La referencia pasa a ser el
+    // rango central del sexo (P25 a P75 de su tabla del §6) y la Δ a "—", como el IAE.
+    expect(indicatorRange("ISCM", ind, true)).toEqual({
+      reference: `${fmtDec(ISCM_REF.M.p25).replace("-", "−")} a ${fmtDec(ISCM_REF.M.p75)}`,
+      delta: null,
+    });
   });
 
   it("FFMI: 4,10 (borde 17 del Excel) → 2,30 (borde 18,8 del libro)", () => {
@@ -137,7 +147,12 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     // El PABU pasa a TRES el 2026-09-06: su corte es φ = 1,618 y una Δ con dos decimales no alcanza a
     // distinguir del corte contra el que se mide. El IEHH baja a DOS: su corte es 0, un entero.
     expect(indicatorRange("PABU", ind, true)?.delta).toBe("0,374");
-    expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0,50");
+    // EL IEHH SE QUEDO SIN Δ CON LA v17 §5, y el caso lo dice en vez de seguir afirmando un numero:
+    // su clasificador es de DOS COLAS (deficit por abajo, capacitancia alta por arriba), asi que una Δ
+    // sola no dice de que lado esta el paciente. Es la regla general de dos colas que quedo registrada
+    // con el IAE, aplicada por segunda vez. La referencia que se muestra es su zona optima.
+    expect(indicatorRange("IEHH", ind, true)?.delta).toBe(null);
+    expect(indicatorRange("IEHH", ind, true)?.reference).toBe("−1 a +1");
   });
 
   it("IAE (dos colas): Δ = distancia al límite cruzado, 0 dentro del rango (Gildardo §5, 2026-09-01)", () => {
@@ -228,8 +243,21 @@ describe("CANDADO · la referencia sale del clasificador del motor (no de una ta
     b2(cIR, "M", 0.78);
     b2(cIR, "F", 0.82);
   });
-  it("ISCM: corte -1", () => b1(cISCM, -1));
-  it("IEHH: corte 0", () => b1(cIEHH, 0));
+  // ═══ LOS DOS SE REAPUNTAN CON LA v17 (§5 y §6, 2026-11-12) ═══
+  //
+  // El ISCM-BIS ya no tiene cortes que vigilar: su libro retiro los cuatro niveles, y su clasificador
+  // devuelve la ubicacion entre percentiles. Lo que si se vigila es que los PERCENTILES de la pantalla
+  // sean los de su tabla, y eso se hace abajo leyendolos de `ISCM_REF` en vez de copiarlos.
+  //
+  // El IEHH cambia de corte: el 0 (frontera entre su "Óptimo" y su "Leve") desaparece, y las fronteras
+  // pasan a ser −1 y +1, las dos zonas de su Tabla 8.2.
+  it("IEHH: fronteras en −1 y +1 (sus tres zonas)", () => {
+    b1(cIEHH, -1);
+    b1(cIEHH, 1);
+    // Y el 0 ya NO es frontera: a los dos lados del cero se lee lo mismo (optimo), que es justo el
+    // cambio de significado del indice.
+    expect(cIEHH(-0.01).l).toBe(cIEHH(0.01).l);
+  });
   it("IAE: cortes -5 y +5", () => {
     b1(cIAE, -5);
     b1(cIAE, 5);
@@ -272,20 +300,41 @@ describe("indicatorBands: cortes anclados contra el clasificador frozen (no drif
     expect(indicatorBands("IRC", true)).toContain(fmtDec(1.7));
     expect(indicatorBands("IRC", true)).toContain(fmtDec(2.1));
   });
-  it("IEHH: transiciones en 0/1/2 (Optimo/Leve/Moderado/Severo)", () => {
-    expect(cIEHH(0).l).toBe("Óptimo");
-    expect(cIEHH(1).l).toBe("Leve");
-    expect(cIEHH(2).l).toBe("Moderado");
-    expect(cIEHH(2.1).l).toBe("Severo");
-    expect(indicatorBands("IEHH", true)).toContain("≤0");
+  it("IEHH: sus TRES zonas, y el caso J de su §13", () => {
+    // Sus cuatro valores del caso J (−1,5 / −1 / +1 / +1,2) y lo que su documento espera de cada uno:
+    // Déficit / óptimo / óptimo / capacitancia alta. Los dos bordes CERRADOS hacia el optimo.
+    expect(cIEHH(-1.5).l).toBe("Déficit");
+    expect(cIEHH(-1).l).toBe("Óptimo");
+    expect(cIEHH(1).l).toBe("Óptimo");
+    expect(cIEHH(1.2).l).toBe("Capacitancia alta");
+    // Y la zona numerica, que es la que usa el DFI para sumar en las dos direcciones.
+    expect(cIEHH(-1.5).zona).toBe(-1);
+    expect(cIEHH(0).zona).toBe(0);
+    expect(cIEHH(1.2).zona).toBe(1);
+    expect(indicatorBands("IEHH", true)).toContain("−1 a +1");
   });
-  it("ISCM: transiciones en -1/1/2.5 (ISCM-1..4)", () => {
-    expect(cISCM(-1).l).toContain("ISCM-1");
-    expect(cISCM(1).l).toContain("ISCM-2");
-    expect(cISCM(2.5).l).toContain("ISCM-3");
-    expect(cISCM(2.6).l).toContain("ISCM-4");
-    expect(indicatorBands("ISCM", true)).toContain("≤−1");
-    expect(indicatorBands("ISCM", true)).toContain(fmtDec(2.5, 1));
+  it("ISCM: sin niveles, con la ubicacion entre percentiles de su sexo (caso I de su §13)", () => {
+    // Su caso I: un ISCM-BIS de 4,25 en mujer cae en P75 a P90, y en hombre pasa de P90. Es el mismo
+    // numero leido contra dos tablas, que es el punto entero de haberlo puesto por sexo.
+    expect(cISCM(4.25, "F").banda).toBe("P75 a P90");
+    expect(cISCM(4.25, "M").banda).toBe("> P90");
+    // Y no queda ni rastro de los cuatro niveles retirados.
+    for (const sexo of ["F", "M"] as const) {
+      for (const v of [-5, -1, 0, 1, 2.5, 2.6, 5]) {
+        expect(cISCM(v, sexo).l).not.toMatch(/ISCM-[1-4]/);
+      }
+    }
+    // Sin valor o sin sexo lo dice, en vez de ubicarlo en una banda que no le corresponde.
+    expect(cISCM(null, "F").banda).toBe(null);
+    expect(cISCM(1, null).banda).toBe(null);
+    // La banda que se MUESTRA sale de sus percentiles, leidos del frozen y no copiados aqui. El signo
+    // menos es el TIPOGRAFICO en toda esta ficha, asi que se compara con el mismo que muestra.
+    const comoSeMuestra = (v: number) => fmtDec(v).replace("-", "−");
+    expect(indicatorBands("ISCM", true)).toContain(comoSeMuestra(ISCM_REF.M.p25));
+    expect(indicatorBands("ISCM", true)).toContain(comoSeMuestra(ISCM_REF.M.p75));
+    expect(indicatorBands("ISCM", false)).toContain(comoSeMuestra(ISCM_REF.F.p25));
+    // Y ninguna de las dos fichas lleva un guion corto suelto delante de un numero.
+    expect(indicatorBands("ISCM", true)).not.toMatch(/-d/);
   });
   it("IAE: transiciones en -5/5, con los bordes CERRADOS hacia el extremo (su v16)", () => {
     // CAMBIO EL 2026-11-07, y no es un ajuste de este test: `cIAE` se re-porto de su v16 (L4568), donde

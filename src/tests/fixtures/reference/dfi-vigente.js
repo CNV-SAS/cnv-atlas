@@ -11,6 +11,21 @@ function _dfiFmt(v){ return v==null||isNaN(v) ? "-" : (Math.round(v*100)/100).to
 function _dfiSigned(v){ const n=Math.round((v||0)*10)/10; return (n>=0?"+":"")+n.toString().replace(".",","); }
 function _dfiIsLimiting(v){ return v && !["no","nunca","buena","alta","siempre_disponible",""].includes(v); }
 
+// ═══ RE-EXTRAIDO DEL ATLAS_v17.html DEL 9 DE NOVIEMBRE (sus §5, §2.3 y §2.4)  ·  2026-11-12 ═══
+//
+// Esta referencia es una copia VERBATIM de SU `computeDFI`, y existe para que el golden de la
+// narrativa compare contra SU funcion corriendo, no contra un texto que hayamos leido. Su v17 cambia
+// tres lineas de esta funcion, asi que la copia se re-extrajo de su archivo nuevo en esas tres:
+//
+//   · el dominio 1 lee la ZONA del IEHH y suma en las dos direcciones (antes solo hacia arriba);
+//   · el segmento 1 del parrafo dice la lectura de la zona (su §5: *"el párrafo del DFI ya no dice
+//     «expansión extracelular»"*), que son dos frases distintas y no una;
+//   · el segmento 2 habla del FENOTIPO DEL SECTOR y de la adiposidad central, en vez de graduar la
+//     susceptibilidad cardiometabolica con los niveles del ISCM-BIS que su libro retiro.
+//
+// Las tres se extrajeron con un script desde su HTML y estan ancladas en `frozen-dfi-v17-diff`, que
+// las compara contra su archivo. Asi que esta copia no se puede quedar atras en silencio, que es lo
+// unico que la haria peligrosa: una referencia vieja hace que el golden pase verde contra el pasado.
 function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}, epi={} }){
   if(!idx) return null;
   const famHx = (epi.famHx||[]).filter(f=>f && String(f).toLowerCase()!=="ninguna");
@@ -18,7 +33,8 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   const ifcL = idx.ifcCl?.l, ircL = idx.ircCl?.l;
   const D1 = { "Alto|Bajo":0,"Alto|Normal":1,"Normal|Bajo":1,"Alto|Alto":2,"Normal|Normal":2,"Bajo|Bajo":2,"Normal|Alto":2,"Bajo|Normal":3,"Bajo|Alto":3 };
   let s1 = D1[`${ifcL}|${ircL}`]; if(s1==null) s1=1;
-  const iehhAlt = idx.iehhCl && (idx.iehhCl.l==="Moderado"||idx.iehhCl.l==="Alto");
+  const iehhZ = idx.iehhCl && idx.iehhCl.l;
+  const iehhAlt = iehhZ === "Déficit" || iehhZ === "Capacitancia alta";
   if(iehhAlt) s1=_dfiCap3(s1+1);
   const dom1 = { id:"d1", nombre:"Celular-Eléctrico", icon:"🔬", sev:s1,
     clasif: idx.frL || `IFC ${ifcL} · IRC ${ircL}`,
@@ -31,20 +47,25 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
       `PABU ${_dfiFmt(idx.pabu)} ${idx.sexoRef?.pabu ? idx.sexoRef.pabu + " " : ""}→ ${idx.pabuCl?.l || "-"}${idx.icaBis != null ? " · desviación de φ " + (idx.icaBis >= 0 ? "+" : "") + _dfiFmt(idx.icaBis) : ""}`,
       `IEHH ${_dfiFmt(idx.iehh)} (${idx.iehhCl?.l||"-"})`
     ] };
-  // ---- Dominio 2 · Metabólico-Estructural (ISCM-BIS × fenotipo) ----
-  const iscmMap = { Bajo:0, Leve:1, Moderado:2, Alto:3 };
-  let s2 = iscmMap[idx.iscmCl?.l] ?? 1;
-  const fen = idx.structL || "";
-  if(/Sarcop|Déficit|Deficit/i.test(fen)) s2=_dfiCap3(s2+1);
+  // ---- Dominio 2 · Metabólico-Estructural (sector MCCB + adiposidad central) ----
+  // v17: gravedad base por sector de la Diana (libro, Tabla 11.2; decisión del 7-nov-2026):
+  // S1 a S4 = 0 · S5 y S6 = 1 · S8 = 2 · S7 y S9 = 3. Modificador +1 (tope 3) con adiposidad
+  // central. El ISCM-BIS ya no gradúa este dominio: se cita como valor.
+  const sec = idx.sector || null, adip = idx.adip || {};
+  let s2 = sec ? sec.g : 1;
+  if(adip.central) s2=_dfiCap3(s2+1);
+  const fen = sec ? sec.fen : (idx.structL || "");
+  const _adipTxt = adip.central ? ("adiposidad central (" + [adip.cintura>0 ? "cintura de " + _dfiFmt(adip.cintura) + " cm" : null, adip.ict>0 ? "ICT de " + _dfiFmt(adip.ict) : null].filter(Boolean).join(", ") + ")") : "";
   const dom2 = { id:"d2", nombre:"Metabólico-Estructural", icon:"❤️", sev:s2,
-    clasif:`ISCM ${idx.iscmCl?.l||"-"} · ${fen||"fenotipo N/C"}`,
-    lectura: s2>=3?"Susceptibilidad cardiometabólica alta; fenotipo de riesgo.":s2===2?"Vulnerabilidad metabólica o fenotipo a corregir.":s2===1?"Susceptibilidad leve: prevención eficaz.":"Perfil metabólico-estructural favorable.",
-    items:[`ISCM-BIS ${_dfiFmt(idx.iscm)} (${idx.iscmCl?.l||"-"})`,`Fenotipo: ${fen||"N/C"}`,`FMI ${_dfiFmt(dv.fmi)} · FFMI ${_dfiFmt(dv.ffmi)}`] };
+    clasif:`${sec ? sec.id + " · " + fen : "Sector N/C"}${adip.central ? " · adiposidad central" : ""}`,
+    lectura: s2>=3?"Fenotipo estructural de alto riesgo.":s2===2?"Fenotipo o adiposidad central a corregir.":s2===1?"Carga estructural leve: prevención eficaz.":"Perfil metabólico-estructural favorable.",
+    items:[`Fenotipo MCCB: ${sec ? sec.id + " " + fen : "N/C"}`,`FMI ${_dfiFmt(dv.fmi)} · FFMI ${_dfiFmt(dv.ffmi)} (cortes MCCB por sexo)`, adip.central ? _adipTxt.charAt(0).toUpperCase() + _adipTxt.slice(1) : "Sin adiposidad central",`ISCM-BIS ${_dfiFmt(idx.iscm)} (${idx.iscmTxt || "-"}; se reporta sin nivel)`] };
   // ---- Dominio 3 · Envejecimiento (EB-BIS · IAE) ----
   const iae = idx.iae ?? 0;
   let s3;
   if(idx.iaeCl?.l==="Enlentecido") s3=0;
-  else if(idx.iaeCl?.l==="Concordante") s3 = iae>3?1:0;
+  // v17: concordante = 0 (se retira el escalón de IAE > 3, que el libro no tiene).
+  else if(idx.iaeCl?.l==="Concordante") s3 = 0;
   else s3 = iae>10?3:2;
   const dom3 = { id:"d3", nombre:"Envejecimiento", icon:"⏳", sev:s3,
     clasif:`IAE ${_dfiSigned(iae)} años · ${idx.iaeCl?.l||"-"}`,
@@ -99,9 +120,8 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   // transcripcion de los 5 dominios (no redaccion libre); la meta se deriva de las rutas.
   var _seg1 = "El paciente " + (ifcL==="Alto"?"conserva una función celular óptima":ifcL==="Normal"?"presenta una función celular en rango normal":"muestra disfunción celular")
     + " " + (ircL==="Bajo"?"con riesgo celular bajo":ircL==="Normal"?"con riesgo celular en rango normal":"con riesgo celular elevado, compatible con inflamación de bajo grado")
-    + (iehhAlt?" y signos de alteración del espectro de hidratación (expansión extracelular)":"");
-  var _iscmW = ({Bajo:"baja",Leve:"leve",Moderado:"intermedia",Alto:"elevada"})[idx.iscmCl && idx.iscmCl.l] || "intermedia";
-  var _seg2 = "en el dominio metabólico-estructural presenta susceptibilidad cardiometabólica " + _iscmW + (fen?(" con un fenotipo estructural de " + String(fen).replace(/^Fenotipo\s+/i,"").toLowerCase()):"");
+    + (iehhZ==="Déficit"?" y un IEHH en zona de déficit (menor capacitancia relativa y desplazamiento del equilibrio hídrico)":iehhZ==="Capacitancia alta"?" y un IEHH con capacitancia relativa alta, que puede acompañar contracción extracelular":"");
+  var _seg2 = fen ? ("en el dominio metabólico-estructural presenta un fenotipo de " + String(fen).toLowerCase() + (adip.central ? (", con " + _adipTxt) : "")) : "en el dominio metabólico-estructural no se pudo establecer el fenotipo MCCB";
   var _aeL = idx.iaeCl && idx.iaeCl.l;
   var _seg3 = _aeL==="Enlentecido" ? "su ritmo de envejecimiento es más lento que su edad cronológica"
     : (s3>=2 ? ("su envejecimiento biológico está acelerado (" + Math.round(Math.abs(iae)) + " años por encima de lo esperado)") : "su ritmo de envejecimiento es acorde con su edad cronológica");

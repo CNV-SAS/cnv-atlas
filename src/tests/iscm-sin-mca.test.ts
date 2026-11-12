@@ -114,7 +114,11 @@ describe("el ISCM ausente no se clasifica, y el dominio 2 ya no depende de el (p
   it("el cambio está en el MANIFIESTO, no editado a mano en el generado", () => {
     const manifiesto = readFileSync("src/clinical-engine/frozen/authorized-modifications.js", "utf8");
     expect(manifiesto).toContain('caId: "CA-4"');
-    expect(manifiesto).toContain('caId: "CA-5"');
+    // CA-5 SE RETIRO EL 2026-11-12 y este caso lo dice en vez de seguir exigiendola: su v17 §6 reemplaza
+    // `iscmCl` por `cISCM(valor, sexo)`, y esa funcion ya abre con la guarda de null que la modificacion
+    // agregaba. Una modificacion autorizada que el adopta deja de ser una divergencia.
+    expect(manifiesto).not.toContain('caId: "CA-5"');
+    expect(manifiesto, "se perdio el registro de por que CA-5 se retiro").toContain("CA-5 · RETIRADA");
     // Y el ORIGINAL sigue byte-identico a su archivo: es lo que hace legitima la divergencia.
     const original = readFileSync("src/clinical-engine/frozen/engine.dfi.js", "utf8");
     expect(original).toContain('iscm = num("ISCM", "iscm")');

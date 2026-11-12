@@ -1,5 +1,5 @@
 import type { EngineIndicators } from "@/clinical-engine";
-import { MCCB_CORTES } from "@/clinical-engine/frozen/engine.core.derived.js";
+import { ISCM_REF, MCCB_CORTES } from "@/clinical-engine/frozen/engine.core.derived.js";
 import { bandaIae } from "@/clinical-engine/presentacion-eb-bis";
 import { fmtDec } from "@/lib/format/decimal";
 
@@ -30,6 +30,9 @@ const cortesMccb = (sexM: boolean) => MCCB_CORTES[sexM ? "M" : "F"];
 // como otra precision, y da dos decimales a los demas ("3,70"). Aqui el formato es el suyo.
 const corte = (v: number) => v.toFixed(1).replace(".", ",");
 
+/** Como `fmtDec`, pero con el signo menos TIPOGRAFICO (−), que es el que usa el resto de la ficha. */
+const conMenos = (v: number) => fmtDec(v).replace("-", "−");
+
 // Rangos de referencia y DELTA de la tabla de indicadores. Los RANGOS de referencia se transcriben
 // VERBATIM del HTML de Gildardo (docs/entregas/gildardo-2026-07-30/ATLAS_v7.html, filas R(...) de los
 // Niveles II/IV/V y del bloque "ÍNDICES BIOELÉCTRICOS INTEGRADOS", ~12828-12878). NO se inventa ningun
@@ -37,9 +40,13 @@ const corte = (v: number) => v.toFixed(1).replace(".", ",");
 //
 // El DELTA sigue la regla que Gildardo FIJO el 2026-08-17 (§2), que REVIERTE CA-2 opcion B (punto medio):
 //   Δ = valor obtenido − EL BORDE QUE DECIDE la clasificacion (no el punto medio ni el borde mas cercano).
-//   - Rango de dos bordes: la referencia es el LIMITE QUE GOBIERNA el riesgo (FFMI inferior 17/15; FMI
-//     superior 6/9; AF inferior 6.5/6.0).
-//   - Corte unico (un solo limite): la referencia es EL CORTE (IFC, IRC, ISCM, IEHH, IR: sin cambio).
+//   - Rango de dos bordes: la referencia es el LIMITE QUE GOBIERNA el riesgo (FFMI inferior 18,8/15,5;
+//     FMI superior 6,4/8,1 (los dos, cortes MCCB desde la v17); AF inferior 6.5/6.0).
+//   - Corte unico (un solo limite): la referencia es EL CORTE (IFC, IRC, IR).
+//   - DOS COLAS (desde la v17, y ya son dos): la referencia es la ZONA y la Δ se deja en "—", porque
+//     una Δ sola no dice de que lado esta el paciente. Son el IAE (−5 a +5) y el IEHH (−1 a +1).
+//   - SIN CORTE (desde la v17): el ISCM-BIS. Su libro retiro los cuatro niveles, asi que no hay
+//     frontera que medir; la referencia es el rango central de su sexo y la Δ queda en "—".
 // "El punto medio es defendible en estadistica y engañoso en clinica" (Gildardo): FFMI 19.90 normal daba
 // −1.10 contra el medio 21, que en una columna Δ roja se lee como deficit inexistente; contra el borde 17
 // da +2.90, cuanto falta para cruzar el limite. El delta se COMPUTA al mostrar, NO se sella: cambia en
@@ -49,13 +56,15 @@ const corte = (v: number) => v.toFixed(1).replace(".", ",");
 // IAE: RESUELTO (Gildardo §2, 2026-08-18). Es el unico clasificador de DOS COLAS; su Δ se deja en "—"
 // (decision Santiago 2026-08-19), conservando la referencia y el valor con su signo. Ver el case "IAE".
 //
-// Efecto por indicador (Gildardo §2, borde): FFMI (borde inferior 17/15), AF (borde inferior 6.5/6.0), FMI
-// (borde superior 6/9) miden contra el limite que decide. ISCM/IEHH/IR/IFC/IRC son corte unico (sin cambio);
-// PABU/ICA-BIS son punto (φ / 0); EB usa la edad cronologica. IFC/IRC/FMI salen del CLASIFICADOR DEL MOTOR
-// sexo-especifico (Q20/C11, 2026-08-02), con test-candado que lo verifica (no la tabla de display).
+// Efecto por indicador (Gildardo §2, borde): FFMI (borde inferior), AF (borde inferior 6.5/6.0) y FMI
+// (borde superior) miden contra el limite que decide. IR/IFC/IRC son corte unico. PABU/ICA-BIS son punto
+// (φ / 0); EB usa la edad cronologica. IFC/IRC/FMI/FFMI salen del CLASIFICADOR DEL MOTOR sexo-especifico
+// (Q20/C11, 2026-08-02; los dos ultimos con los cortes MCCB desde la v17), con test-candado que lo
+// verifica (no la tabla de display).
 //
-// Rangos de UN SOLO LIMITE: ISCM (≤−1), IEHH (≤0), IR (<0.78/<0.82). PABU e ICA-BIS son referencia de
-// PUNTO (φ = 1.618 / coherencia 0). EB usa la edad cronologica como referencia.
+// Rangos de UN SOLO LIMITE: IR (<0.78/<0.82). PABU e ICA-BIS son referencia de PUNTO (φ = 1.618 /
+// coherencia 0). EB usa la edad cronologica. Y los dos que la v17 saco de esta lista: el IEHH pasa a
+// ZONA de dos colas (−1 a +1) y el ISCM-BIS a rango central de su sexo, los dos sin Δ.
 
 export type IndicatorRange = { reference: string; delta: string | null };
 
@@ -331,10 +340,19 @@ export function indicatorBands(code: string, sexM: boolean): string | null {
           // pantalla "1,70", asi que el MISMO corte salia con dos formas segun donde se leyera.
           `bajo <${fmtDec(1.7)} · moderado ${fmtDec(1.7)}–${fmtDec(2.1)} · alto >${fmtDec(2.1)}`
         : `bajo <${fmtDec(2.3)} · moderado ${fmtDec(2.3)}–${fmtDec(2.8)} · alto >${fmtDec(2.8)}`;
-    case "IEHH": // cIEHH (sin sexo): ≤0 óptimo · ≤1 leve · ≤2 moderado · >2 severo
-      return "óptimo ≤0 · leve ≤1 · moderado ≤2 · severo >2";
-    case "ISCM": // cISCM (sin sexo): ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2.5 · ISCM-4 >2.5
-      return "ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2,5 · ISCM-4 >2,5";
+    case "IEHH":
+      // v17 §5: TRES ZONAS, y los cortes son los mismos en los dos sexos porque el indice ya es una z
+      // por sexo. Lo que cambia respecto de la v16 no es solo el numero de bandas: el valor bueno pasa
+      // de ser el CERO (y todo lo de arriba, grados de gravedad) a ser el CENTRO de −1 a +1, con las
+      // dos colas informando cosas distintas.
+      return "déficit <−1 · óptimo −1 a +1 · capacitancia alta >+1";
+    case "ISCM": {
+      // v17 §6: EL ISCM-BIS NO TIENE BANDAS. Su libro retiro los cuatro niveles hasta validarlo frente
+      // a biomarcadores, asi que no hay nada que graduar. Lo que SI se puede decir es contra que se
+      // compara el valor, y eso es el rango central de su sexo (P25 a P75 de su Tabla del §6).
+      const r = ISCM_REF[sexM ? "M" : "F"];
+      return `P25 a P75 de su sexo: ${conMenos(r.p25)} a ${conMenos(r.p75)}`;
+    }
     case "IAE": // Su tabla 3 (2026-10-26): >= +5,0 acelerado · entre −5,0 y +5,0 acorde · <= −5,0 desacelerado
       // Sus cortes, con sus palabras y cerrados en los dos extremos como el los escribio.
       return "desacelerado ≤−5 · acorde con sus pares entre −5 y +5 · acelerado ≥+5";
@@ -407,13 +425,24 @@ export function indicatorRange(
       // con el delta (contra 0) y, como icaBis = pabu − φ por definicion, su Δ coincide con la de PABU,
       // lo que en pantalla se leia como que ICA-BIS copiaba el delta de PABU. Referencia correcta: 0.
       return ind.icaBis != null ? { reference: "0 (coherencia)", delta: f(ind.icaBis - 0, decimalesDe("ICA-BIS")) } : null;
-    case "ISCM":
-      // CA-2: corte unico −1 (de "≤−1"); la referencia ES el corte. Δ = valor − (−1). ANTES el HTML
-      // mostraba el valor crudo (referencia implicita 0); ahora es contra el corte.
-      return ind.iscm != null ? { reference: "≤−1", delta: f(ind.iscm - -1, decimalesDe("ISCM")) } : null;
+    case "ISCM": {
+      // ═══ SIN Δ, Y ES LO CORRECTO (v17 §6, 2026-11-12) ═══
+      //
+      // Aqui la referencia era el corte "≤−1" (la frontera del nivel ISCM-1) y la Δ se medía contra el
+      // −1. Con los niveles retirados ese corte no existe, asi que una Δ contra el seguiria mostrando
+      // una distancia a una frontera que ya no decide nada: es justo la clase de cifra que parece un
+      // dato y no lo es. La referencia pasa a ser el RANGO CENTRAL de su sexo y la Δ se deja en "—",
+      // como ya se hace con el IAE por la misma razon (ahi el valor con su signo lo dice todo).
+      if (ind.iscm == null) return null;
+      const r = ISCM_REF[sexM ? "M" : "F"];
+      return { reference: `${conMenos(r.p25)} a ${conMenos(r.p75)}`, delta: null };
+    }
     case "IEHH":
-      // CA-2: corte unico 0 (de "≤0"). Δ = valor − 0 = valor (sin cambio).
-      return ind.iehh != null ? { reference: "≤0", delta: f(ind.iehh - 0, decimalesDe("IEHH")) } : null;
+      // v17 §5: el rango de referencia es −1 a +1 (su zona optima), y la Δ se deja en "—" porque este
+      // clasificador es de DOS COLAS: una Δ sola no dice de que lado esta el paciente, y la zona (que
+      // se muestra al lado) ya lo dice con palabras. Es la regla general de dos colas que quedo
+      // registrada con el IAE, aplicada por segunda vez.
+      return ind.iehh != null ? { reference: "−1 a +1", delta: null } : null;
     case "IAE":
       // IAE: unico clasificador de DOS COLAS del sistema (<−5 desacelerado · −5..+5 concordante · >+5
       // acelerado; Gildardo §2, 2026-08-18). El Delta se deja en "—" (delta: null) por decision de Santiago

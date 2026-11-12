@@ -136,6 +136,24 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
       // `las referencias son las suyas` de mas abajo. Sin esta excepcion, este caso exigiria que la
       // tabla volviera al corte retirado.
       if (fila.codigo === "IFC") continue;
+      // ═══ Y EL ISCM TAMPOCO SE COMPARA ASI, PERO POR LA RAZON CONTRARIA (v17 §6, 2026-11-12) ═══
+      //
+      // Este caso extrae la referencia de su archivo buscando las CADENAS ENTRE COMILLAS de la fila.
+      // En su v17 la fila del ISCM-BIS ya no lleva una cadena: lleva `ref: iscmRefTxt(sexoK_v)`, una
+      // llamada a su propia funcion, porque la referencia depende del sexo y sale de su tabla de
+      // percentiles. Asi que no hay literal que comparar.
+      //
+      // NO ES UN AGUJERO: nuestra fila llama a ESA MISMA funcion (`iscmRefTxt`, expuesta por el
+      // mecanismo de archivo derivado), asi que no hay copia que pueda divergir, que es mas fuerte que
+      // lo que este caso comprueba. Lo que si se comprueba abajo es que la cadena que produce lleva
+      // sus percentiles.
+      if (fila.codigo === "ISCM") continue;
+      // ═══ Y EL IEHH, COMO EL IFC: PORTADO DEL v17 CONTRA UN ANCLA QUE ES EL v16 (2026-11-12) ═══
+      //
+      // Su v17 §5 escribe en esta misma fila `ref: "−1 a +1 óptimo"` (sus tres zonas); el v16, al que
+      // `HTML_VIGENTE` resuelve, decia "≤0.0 óptimo". Es el mismo caso del IFC: la cadena nuestra SI es
+      // la suya, pero la de otra entrega. La compara `frozen-indices-v17-diff.test.ts`, que mira al v17.
+      if (fila.codigo === "IEHH") continue;
       expect(fila.referencia(true), `referencia de ${fila.codigo} (hombre)`).toBe(suyo.h);
       expect(fila.referencia(false), `referencia de ${fila.codigo} (mujer)`).toBe(suyo.m);
     }

@@ -7,6 +7,9 @@ import {
   dfiNarrativeFromOutput,
   type DfiNarrativeInput,
 } from "@/clinical-engine/dfi-narrative";
+import { BIODY_COLUMNS } from "@/clinical-engine/edge/biody-columns";
+import { MEASURED_WAIST_HEADER } from "@/clinical-engine/edge/biody-columns";
+import * as core from "@/clinical-engine/frozen/engine.core.derived.js";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { buildEngineInput } from "@/modules/clinical-pipeline/services/build-engine-input";
 
@@ -46,7 +49,9 @@ function bisRawFromFixture(): Record<string, number> {
 
 type RefIdx = Record<string, unknown>;
 type RefDfi = {
-  domains: { id: string; sev: number; veto?: boolean }[];
+  // `items` entra con la v17: el segmento 2 del parrafo cita la adiposidad central, y su texto vive en
+  // los items del dominio 2 (que es tambien de donde lo lee el motor al leer un snapshot).
+  domains: { id: string; sev: number; veto?: boolean; items?: string[] }[];
   riesgo: { l: string };
   veto: boolean;
   parrafo: string;
@@ -75,9 +80,25 @@ function refIdx(): RefIdx {
     ifcCl: { l: cat.ifcL },
     ircCl: { l: cat.ircL },
     iehhCl: { l: cat.iehhL ?? "-" },
-    iscmCl: { l: cat.iscmL ?? "-" },
+    // v17 §6: `iscmCl` ya no existe en el idx del frozen (el ISCM-BIS no gradua). Se pasa `iscmTxt`,
+    // que es lo que su v17 pone en su lugar, para que este reconstructor siga siendo fiel al idx real.
+    iscmTxt: "-",
     iaeCl: { l: cat.aeL ?? "-" },
     structL: cat.fen,
+    // ═══ EL SECTOR Y LA ADIPOSIDAD, QUE SU v17 METE EN EL idx (§2.3) ═══
+    //
+    // El dominio 2 de su v17 los lee de `idx`, igual que leia `iscmCl`. Se arman con LAS MISMAS
+    // funciones del motor congelado y los MISMOS insumos que recibio el frozen, que es lo que mantiene
+    // la comparacion apples-to-apples: si aqui se armaran a mano, el reference y el frozen recibirian
+    // dos insumos distintos y la igualdad de la narrativa dejaria de probar nada.
+    sector: core.sectorMCCB(o.indicators.FFMI, o.indicators.FMI, o.sexo),
+    adip: (() => {
+      const fila = biodyJson as Record<string, unknown>;
+      const cintura = Number(fila[MEASURED_WAIST_HEADER]) || 0;
+      const ict = Number(fila[BIODY_COLUMNS.ict.header]) || 0;
+      const esM = o.sexo === "M";
+      return { cintura, ict, central: (cintura > 0 && cintura >= (esM ? 94 : 80)) || ict >= 0.5 };
+    })(),
   };
 }
 
@@ -93,8 +114,17 @@ function inputFromRef(ref: RefDfi, idx: RefIdx): DfiNarrativeInput {
     ifcL: label(idx.ifcCl) ?? "",
     ircL: label(idx.ircCl) ?? "",
     iehhL: label(idx.iehhCl),
-    iscmL: label(idx.iscmCl),
     fen: (idx.structL as string) ?? "",
+    // LA ADIPOSIDAD SE LEE DEL PROPIO DOMINIO 2 DE LA REFERENCIA, con el mismo criterio que
+    // `dfiCategoriesFromOutput` usa sobre el frozen: su item empieza por "Adiposidad central" y la
+    // primera letra viene en mayuscula porque ahi abre la frase. Si se pasara null, los dos lados del
+    // diferencial recibirian insumos distintos y la igualdad del parrafo dejaria de probar algo.
+    adipTxt: (() => {
+      const it = (ref.domains.find((d) => d.id === "d2")?.items ?? []).find((t) =>
+        /^Adiposidad central/i.test(String(t)),
+      );
+      return it ? String(it).charAt(0).toLowerCase() + String(it).slice(1) : null;
+    })(),
     aeL: label(idx.iaeCl),
     iae: (idx.iae as number | null) ?? null,
   };

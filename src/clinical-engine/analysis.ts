@@ -102,7 +102,53 @@ export interface AnalisisANIBISE {
 }
 
 // Insumos secundarios que habilitan ISCM (todos presentes o ISCM = null).
-const SECONDARY_FIELDS = ["FFW", "MCA_dif", "ECW_sg", "ICW_sg"] as const;
+// SE RETIRO `SECONDARY_FIELDS` (v17 §5, 2026-11-12). Era la lista de los cuatro insumos que habia que
+// tener para poder calcular el ISCM-BIS de la v16, y se consultaba antes de llamarlo. La funcion de su
+// v17 (`calcIEHH_ISCM`) hace esa comprobacion POR DENTRO, componente por componente, y devuelve 0 si
+// falta alguno: *"un componente ausente ya no entra como z = 0"*. Una lista nuestra al lado de la suya
+// seria una segunda definicion de "se puede calcular", y la primera vez que el agregue o quite un
+// componente, las dos dirian cosas distintas.
+//
+// `MCA_dif` ademas ya no es insumo de nada: la v17 usa la MCA en kilos, que es el defecto que su §5
+// nombra. Si hiciera falta volver a saber que insumos exige el indice, se leen de `IEHH_ISCM_REF`.
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL IEHH Y EL ISCM-BIS DE LA v17, EN UNA SOLA PUERTA  ·  su §5  ·  2026-11-12
+//
+// Se calculan los DOS de una sola llamada porque su `calcIEHH_ISCM` los devuelve juntos: comparten
+// cinco de los siete componentes y la misma tabla de referencias por sexo, asi que separarlos seria
+// armar el mismo insumo dos veces (y la primera vez que uno de los dos cambie, tener dos verdades).
+//
+// LOS SIETE COMPONENTES Y DE DONDE SALEN, que es lo que hay que verificar al leer esto:
+//
+//   Re, R∞, C   · los mismos parametros Cole que el IFC (columnas obligatorias del Biody);
+//   AEC SG      · `ECW_sg`, agua extracelular sin grasa, en litros;
+//   AIC SG      · `ICW_sg`, agua intracelular sin grasa, en litros;
+//   MCA         · masa celular activa EN KILOS (`MCA`), no su desvio contra el teorico. Su §5 nombra
+//                 justo ese defecto de la v16: *"el z de la MCA usaba el desvío frente al valor
+//                 teórico del equipo en lugar de la MCA en kg"*;
+//   FMI         · el derivado del borde (FM / talla²), no una columna;
+//   FFW         · agua sin grasa, en litros.
+//
+// Y EL IFC DEL ISCM-BIS NO SE LE PASA: su funcion lo calcula desde C y R∞ por dentro (su regla, §5).
+//
+// SIN SEXO O SIN ALGUN COMPONENTE DEVUELVE 0, y 0 significa SIN DATO: *"un componente ausente ya no
+// entra como z = 0, que lo ubicaba en la media de su sexo"*. Aqui ese 0 se convierte en `null` para
+// `analizarDesdeBiody`, que es como Atlas representa la ausencia en los indicadores que se sellan, y
+// se deja en 0 para el DFI, que es lo que su adaptador espera.
+function indicesPorSexo(imp: BiodyImport, sexo: SexoCanonico | null) {
+  return ix.calcIEHH_ISCM({
+    sexo,
+    Re: imp.Re,
+    Rinf: imp.Rinf,
+    C: imp.C,
+    MCA: imp.raw.MCA,
+    AECsg: imp.raw.ECW_sg,
+    AICsg: imp.raw.ICW_sg,
+    FMI: imp.FMI,
+    FFW: imp.raw.FFW,
+  });
+}
 
 
 /** El rotulo de la FORMULA que se sella con cada resultado (su §6). */
@@ -201,13 +247,12 @@ export function analizarDesdeBiody(
   const IRC = core.calcIRC(imp.Re, imp.Ri, imp.C);
   const PABU = core.calcPABU(imp.Re, imp.Ri, imp.Rinf, imp.C, sexo);
 
-  // Indices secundarios (100% del Excel si vienen los insumos). FIX: FMI explicito.
-  const secOk = SECONDARY_FIELDS.every((f) => imp.raw[f] != null);
-  const ISCM = secOk ? ix.computeISCM({ ...imp.raw, ifc: IFC, FMI: imp.FMI }) : null;
-  const IEHH =
-    imp.raw.FFW != null
-      ? ix.computeIEHH({ Re: imp.Re, Rinf: imp.Rinf, C: imp.C, FFW: imp.raw.FFW })
-      : null;
+  // Indices secundarios con las z POR SEXO de su v17 §5 (antes `computeISCM`/`computeIEHH`, con z
+  // globales y el segundo componente del IEHH equivocado). El 0 de su funcion es AUSENCIA, y aqui se
+  // convierte en null: un indicador que no se pudo calcular no se sella como cero.
+  const porSexo = indicesPorSexo(imp, sexo);
+  const ISCM = porSexo.iscm === 0 ? null : porSexo.iscm;
+  const IEHH = porSexo.iehh === 0 ? null : porSexo.iehh;
 
   // ═══ EB-BIS v7 (su entrega del 2026-10-26, parametros 7.1.0) ═══
   //
@@ -258,7 +303,9 @@ export function analizarDesdeBiody(
       PABU: { l: cPABU.l },
       FMI: { l: cFMI.l, k: cFMI.k },
       FFMI: { l: cFFMI.l, k: cFFMI.k },
-      ISCM: ISCM != null ? { l: core.cISCM(ISCM).l } : null,
+      // v17 §6: la etiqueta del ISCM-BIS ya no es un NIVEL, es la ubicacion del valor entre los
+      // percentiles de su sexo ("P25 a P75 de su sexo"). Se lee como dato, no como veredicto.
+      ISCM: ISCM != null ? { l: core.cISCM(ISCM, sexo).l } : null,
       IEHH: IEHH != null ? { l: core.cIEHH(IEHH).l } : null,
       IAE: IAE != null ? { l: core.cIAE(IAE).l } : null,
     },
@@ -294,12 +341,12 @@ export function analizarDFI(
   const IFC = core.calcIFC(imp.C, imp.Rinf);
   const IRC = core.calcIRC(imp.Re, imp.Ri, imp.C);
   const PABU = core.calcPABU(imp.Re, imp.Ri, imp.Rinf, imp.C, sexo);
-  const secOk = SECONDARY_FIELDS.every((f) => imp.raw[f] != null);
-  const ISCM = secOk ? ix.computeISCM({ ...imp.raw, ifc: IFC, FMI: imp.FMI }) : 0;
-  const IEHH =
-    imp.raw.FFW != null
-      ? ix.computeIEHH({ Re: imp.Re, Rinf: imp.Rinf, C: imp.C, FFW: imp.raw.FFW })
-      : 0;
+  // Los mismos dos indices, por la MISMA puerta (v17 §5). Aqui se conserva el 0 de su funcion porque
+  // es lo que su adaptador del DFI espera: `num()` lo lee como ausencia y CA-4/CA-5 ya distinguen el
+  // ausente del cero medido.
+  const porSexo = indicesPorSexo(imp, sexo);
+  const ISCM = porSexo.iscm;
+  const IEHH = porSexo.iehh;
 
   // EL ENC ADAPTADO SE ARMA UNA VEZ Y VIAJA A LOS DOS CONSUMIDORES, y esto no es estilo: hay DOS
   // puertas al LE8 y la segunda esta DENTRO del frozen. `computeDFIFromData` vuelve a llamar a

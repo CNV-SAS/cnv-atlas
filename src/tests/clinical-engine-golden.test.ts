@@ -132,14 +132,47 @@ describe("ANI-BIS-E fase 2 · indices secundarios (datos reales)", () => {
   // golden traia el defecto adentro, y la v7 lo rechaza en vez de calcular sobre el.
   const con = analizarDesdeBiody(biody, sexoBiody, { icec: 58.578, edad: 54 });
 
-  it("ISCM-BIS anclado al Excel real (con el FIX de FMI: -2.072, no -1.568)", () => {
-    expect(near(sin.indices.ISCM, -2.072)).toBe(true);
-    expect(sin.clases.ISCM?.l).toBe("ISCM-1 Bajo riesgo");
+  it("ISCM-BIS re-derivado con las z POR SEXO de su §5: 1,925, y sin nivel", () => {
+    // ═══ RE-DERIVADO, NO ACTUALIZADO (v17 §5 y §6, 2026-11-12) ═══
+    //
+    // Este caso anclaba el ISCM-BIS a −2,072, que es lo que daba la formula de la v16:
+    //
+    //   v16:  −z(IFC) − z(MCA_dif) + z(AEC/AIC SG) + z(FMI) − z(FFW),  con z GLOBALES
+    //   v17:  +z(IFC) + z(MCA)     + z(AEC/AIC SG) + z(FMI) + z(FFW),  con z POR SEXO
+    //
+    // Son TRES cambios a la vez, y su §5 los nombra uno por uno: la suma pasa a ser aditiva (sin
+    // signos), el segundo termino deja de ser el DESVIO de la masa celular contra el teorico del equipo
+    // y pasa a ser la masa celular EN KILOS, y las referencias pasan a ser las de su tabla de siete
+    // componentes por sexo. Para este donante (hombre) el valor pasa de −2,072 a **1,925**.
+    //
+    // EL NUMERO NO SALE DE NUESTRA SALIDA: sale de su funcion `calcIEHH_ISCM`, cuya paridad con su
+    // archivo esta probada en `frozen-indices-v17-diff` con sus casos M, N y O de la §13, que dan sus
+    // tres pares de cifras exactos. Este caso lo que fija es que la CADENA de Atlas (import del Biody
+    // -> componentes -> indice) le entregue los insumos correctos.
+    expect(near(sin.indices.ISCM, 1.925)).toBe(true);
+    // Y SIN NIVEL: su §6 retiro los cuatro. La etiqueta es la ubicacion entre los percentiles de su
+    // sexo, que para 1,925 en hombre (P25 −2,12 · P75 2,02) es el rango central.
+    expect(sin.clases.ISCM?.l).toBe("P25 a P75 de su sexo");
+    expect(sin.clases.ISCM?.l).not.toMatch(/ISCM-[1-4]/);
   });
 
-  it("IEHH anclado al Excel real", () => {
-    expect(near(sin.indices.IEHH, 0.151)).toBe(true);
-    expect(sin.clases.IEHH?.l).toBe("Leve");
+  it("IEHH re-derivado con las z POR SEXO de su §5: −0,473, zona óptima", () => {
+    // Mismo re-derivado, y aqui el cambio de formula es mas visible todavia porque el SEGUNDO
+    // COMPONENTE es otro:
+    //
+    //   v16:  0,25·z(Re/R∞) + 0,25·z(FFW)        + 0,50·z(C),  z GLOBALES
+    //   v17:  0,25·z(Re/R∞) + 0,25·z(AEC/AIC SG) + 0,50·z(C),  z POR SEXO
+    //
+    // O sea que el termino del medio dejaba de medir lo que su libro dice que mide (la razon entre el
+    // agua extracelular y la intracelular) y medía el agua total sin grasa. El valor pasa de 0,151 a
+    // **−0,473**, y con el la lectura: de "Leve" (su grado 2 de 4) a la zona OPTIMA.
+    //
+    // Y ESO NO ES SOLO UN ROTULO MAS AMABLE: en la v16 los grados "Moderado" y "Severo" sumaban 1 al
+    // dominio celular-electrico, y en la v17 suma 1 todo lo que caiga FUERA de −1 a +1, en las dos
+    // direcciones. Este donante no sumaba antes (era "Leve") y no suma ahora (es "Óptimo"), asi que su
+    // dominio 1 no se mueve; lo que cambia es que ahora un IEHH de −1,5 si sumaria, y antes no.
+    expect(near(sin.indices.IEHH, -0.473)).toBe(true);
+    expect(sin.clases.IEHH?.l).toBe("Óptimo");
   });
 
   it("EB-BIS/IAE = null sin EDAD, y el motivo lo dice", () => {
@@ -273,7 +306,7 @@ describe("ANI-BIS-E fase 2b · DFI (BIS real + encuesta sintetica)", () => {
     // ═══ RE-DERIVADO DE SU v17 §2.3 (2026-11-12), Y DOS DE LOS CINCO SE MUEVEN ═══
     //
     // El fixture decia d1 2 · d2 0 · d3 1 · d4 1 · d5 0, con el riesgo en 30. Con la v17 queda
-    // d1 2 · d2 1 · d3 1 · d4 2 · d5 0, con el riesgo en 43. La aritmetica de los dos que cambian,
+    // d1 2 · d2 1 · d3 0 · d4 2 · d5 0, con el riesgo en 38. La aritmetica de los TRES que cambian,
     // porque un numero nuevo sin su cuenta al lado no es un golden, es una copia de nuestra salida:
     //
     // DOMINIO 2, de 0 a 1. Ya no sale del nivel del ISCM-BIS, sale de la gravedad del sector mas la
@@ -288,14 +321,20 @@ describe("ANI-BIS-E fase 2b · DFI (BIS real + encuesta sintetica)", () => {
     // con 'sobrepeso', que su mapa traduce a 'exceso'. Antes coincidian y no habia distorsion; ahora no
     // coinciden y si la hay, asi que el dominio sube a 2. O sea que los cortes MCCB mueven tambien la
     // DISTORSION DE IMAGEN CORPORAL, no solo el sector. Hay que medirlo en la cohorte (plan §3).
+    //
+    // DOMINIO 3, de 1 a 0, y esta es la mas simple de las tres. Su v17 §2.6 retira el escalon de
+    // IAE > 3 dentro de "Concordante" (*"el libro no lo tiene"*): este donante tiene un IAE de +4
+    // años, que es concordante (su banda es −5 a +5), y con el escalon puntuaba 1. Ahora puntua 0.
     const sev = r.domains.map((d) => ({ id: d.id, sev: d.sev }));
     expect(sev).toEqual(golden.dominios);
   });
 
   it("riesgo integrado y veto bloqueados", () => {
     // El riesgo es la suma ponderada de los cinco (W = 0,30 · 0,25 · 0,15 · 0,15 · 0,15):
-    //   0,30·(2/3) + 0,25·(1/3) + 0,15·(1/3) + 0,15·(2/3) + 0,15·0 = 0,4333 -> 43
-    // Con los dominios de la v16 daba 0,30 -> 30. El NIVEL no se mueve: MEDIO en los dos.
+    //   0,30·(2/3) + 0,25·(1/3) + 0,15·0 + 0,15·(2/3) + 0,15·0 = 0,3833 -> 38
+    // Con los dominios de la v16 daba 0,30 -> 30. El NIVEL no se mueve: MEDIO en los dos, y eso es
+    // informativo: tres de los cinco dominios se movieron y el veredicto que el profesional lee es el
+    // mismo. En esta cohorte no siempre va a pasar (el nivel cambia en 154 de 441).
     expect(r.riesgo.l).toBe(golden.riesgo.l);
     expect(r.riesgo.score).toBe(golden.riesgo.score);
     expect(r.veto).toBe(golden.veto);
