@@ -89,23 +89,53 @@ const nivelDe = (score01, sev, veto) => {
   return n;
 };
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// TRAER TODAS LAS FILAS, Y NO LAS PRIMERAS MIL  ·  2026-11-12
+//
+// ═══ EL RIESGO QUE CIERRA, Y YA NOS COSTO UNA CIFRA ═══
+//
+// PostgREST devuelve como maximo MIL filas por consulta y **no lo dice**: no hay error, no hay aviso, la
+// respuesta llega completa en apariencia. Un script de medicion que pida `reports` o `evaluations` sin
+// paginar mide la cohorte que CABE en mil filas y reporta porcentajes sobre ella como si fueran de todas.
+// Ya paso: una pantalla decia 316 y el dato real eran 136.
+//
+// EL ORDEN NO ES ESTETICO, ES LO QUE HACE QUE LA PAGINACION SIGNIFIQUE ALGO. Paginar sin un `order by`
+// estable no define que trae cada pagina: el motor puede devolver la misma fila dos veces y perder otra,
+// y el total sale mal por los dos lados a la vez. Se ordena por `id`, que es unico.
+//
+// Y FALLA RUIDOSO ante un error de base, en vez de devolver lo que alcanzo a traer: una medicion a medias
+// con forma de medicion completa es peor que ninguna.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+const PAGINA = 1000;
+async function traerTodo(tabla, columnas, filtrar = (q) => q, orden = "id") {
+  const filas = [];
+  for (let desde = 0; ; desde += PAGINA) {
+    const { data, error } = await filtrar(sb.from(tabla).select(columnas))
+      .order(orden, { ascending: true })
+      .range(desde, desde + PAGINA - 1);
+    if (error) throw new Error(`${tabla}: ${error.message}`);
+    filas.push(...(data ?? []));
+    if ((data ?? []).length < PAGINA) return filas;
+  }
+}
+
 // ── Los datos: una consulta vigente, su informe mas reciente ──
-const { data: evs } = await sb
-  .from("evaluations")
-  .select("id, patient_id, created_at")
-  .is("superseded_at", null)
-  .is("retirada_at", null);
-const { data: reps } = await sb
-  .from("reports")
-  .select("evaluation_id, created_at, snapshot")
-  .eq("type", "paciente")
-  .order("created_at", { ascending: false });
+const evs = await traerTodo("evaluations", "id, patient_id, created_at", (q) =>
+  q.is("superseded_at", null).is("retirada_at", null),
+);
+// El informe se pide con su `id` para poder paginar por una columna unica, y el MAS RECIENTE por
+// consulta se elige despues ordenando en memoria: el `order by created_at` de la consulta ya no puede
+// decidirlo, porque la paginacion ordena por id. Es la misma cantidad de datos y una comparacion mas,
+// a cambio de que el total sea el total.
+const reps = await traerTodo("reports", "id, evaluation_id, created_at, snapshot", (q) => q.eq("type", "paciente"));
 const vigentes = new Set(evs.map((e) => e.id));
 const porEval = new Map();
-for (const r of reps) if (vigentes.has(r.evaluation_id) && !porEval.has(r.evaluation_id)) porEval.set(r.evaluation_id, r.snapshot);
+for (const r of [...reps].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))) {
+  if (vigentes.has(r.evaluation_id) && !porEval.has(r.evaluation_id)) porEval.set(r.evaluation_id, r.snapshot);
+}
 
 // Cintura e ICT por medicion -> por consulta
-const { data: med } = await sb.from("bis_measurements").select("id, evaluation_id");
+const med = await traerTodo("bis_measurements", "id, evaluation_id");
 const evalPorMed = new Map(med.map((m) => [m.id, m.evaluation_id]));
 const cintura = new Map(), ict = new Map();
 // ═══ LOS SIETE COMPONENTES DEL IEHH Y DEL ISCM-BIS (v17 §5) ═══
@@ -131,9 +161,10 @@ const VARIABLE_DE = {
   FFW: "Fat free water valor L",
 };
 for (const [campo, variable] of Object.entries(VARIABLE_DE)) {
-  const { data, error } = await sb.from("bis_raw_values").select("measurement_id, value").eq("variable_name", variable);
-  if (error) { console.log(`! ${variable}: ${error.message}`); continue; }
-  for (const r of data ?? []) {
+  const data = await traerTodo("bis_raw_values", "id, measurement_id, value", (q) =>
+    q.eq("variable_name", variable),
+  );
+  for (const r of data) {
     const e = evalPorMed.get(r.measurement_id);
     const v = Number(r.value);
     if (e && Number.isFinite(v) && v > 0) crudos[campo].set(e, v);
@@ -141,8 +172,10 @@ for (const [campo, variable] of Object.entries(VARIABLE_DE)) {
 }
 
 for (const [variable, destino] of [["Waist Size cm", cintura], ["Ratio Cintura/Altura valor", ict]]) {
-  const { data } = await sb.from("bis_raw_values").select("measurement_id, value").eq("variable_name", variable);
-  for (const r of data ?? []) {
+  const data = await traerTodo("bis_raw_values", "id, measurement_id, value", (q) =>
+    q.eq("variable_name", variable),
+  );
+  for (const r of data) {
     const e = evalPorMed.get(r.measurement_id);
     const v = Number(r.value);
     if (e && Number.isFinite(v) && v > 0) destino.set(e, v);

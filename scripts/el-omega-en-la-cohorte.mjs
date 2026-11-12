@@ -59,46 +59,71 @@ const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
   auth: { persistSession: false },
 });
 
-const { data: evs } = await sb
-  .from("evaluations")
-  .select("id")
-  .is("superseded_at", null)
-  .is("retirada_at", null);
-const vigentes = new Set((evs ?? []).map((e) => e.id));
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// TRAER TODAS LAS FILAS, Y NO LAS PRIMERAS MIL  ·  2026-11-12
+//
+// ═══ EL RIESGO QUE CIERRA, Y YA NOS COSTO UNA CIFRA ═══
+//
+// PostgREST devuelve como maximo MIL filas por consulta y **no lo dice**: no hay error, no hay aviso, la
+// respuesta llega completa en apariencia. Un script de medicion que pida `reports` o `evaluations` sin
+// paginar mide la cohorte que CABE en mil filas y reporta porcentajes sobre ella como si fueran de todas.
+// Ya paso: una pantalla decia 316 y el dato real eran 136.
+//
+// EL ORDEN NO ES ESTETICO, ES LO QUE HACE QUE LA PAGINACION SIGNIFIQUE ALGO. Paginar sin un `order by`
+// estable no define que trae cada pagina: el motor puede devolver la misma fila dos veces y perder otra,
+// y el total sale mal por los dos lados a la vez. Se ordena por `id`, que es unico.
+//
+// Y FALLA RUIDOSO ante un error de base, en vez de devolver lo que alcanzo a traer: una medicion a medias
+// con forma de medicion completa es peor que ninguna.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+const PAGINA = 1000;
+async function traerTodo(tabla, columnas, filtrar = (q) => q, orden = "id") {
+  const filas = [];
+  for (let desde = 0; ; desde += PAGINA) {
+    const { data, error } = await filtrar(sb.from(tabla).select(columnas))
+      .order(orden, { ascending: true })
+      .range(desde, desde + PAGINA - 1);
+    if (error) throw new Error(`${tabla}: ${error.message}`);
+    filas.push(...(data ?? []));
+    if ((data ?? []).length < PAGINA) return filas;
+  }
+}
+
+const evs = await traerTodo("evaluations", "id", (q) => q.is("superseded_at", null).is("retirada_at", null));
+const vigentes = new Set(evs.map((e) => e.id));
 
 // Las consultas CON TRATAMIENTO (el denominador que pidio el gerente).
-const { data: dgs } = await sb.from("diagnoses").select("id, evaluation_id");
-const evalPorDx = new Map((dgs ?? []).map((d) => [d.id, d.evaluation_id]));
-const { data: trs } = await sb.from("treatments").select("id, diagnosis_id");
+const dgs = await traerTodo("diagnoses", "id, evaluation_id");
+const evalPorDx = new Map(dgs.map((d) => [d.id, d.evaluation_id]));
+const trs = await traerTodo("treatments", "id, diagnosis_id");
 const evalPorTratamiento = new Map();
-for (const t of trs ?? []) {
+for (const t of trs) {
   const e = evalPorDx.get(t.diagnosis_id);
   if (e && vigentes.has(e)) evalPorTratamiento.set(t.id, e);
 }
 const conTratamiento = new Set(evalPorTratamiento.values());
 
 // PRESCRITO: una linea de `treatment_nutraceuticals` cuyo producto se llame omega.
-const { data: nts } = await sb.from("nutraceuticals").select("id, name");
-const idsOmega = new Set((nts ?? []).filter((n) => ES_OMEGA.test(String(n.name))).map((n) => n.id));
-const nombresOmega = (nts ?? []).filter((n) => idsOmega.has(n.id)).map((n) => n.name);
-const { data: tn } = await sb.from("treatment_nutraceuticals").select("treatment_id, nutraceutical_id");
+const nts = await traerTodo("nutraceuticals", "id, name");
+const idsOmega = new Set(nts.filter((n) => ES_OMEGA.test(String(n.name))).map((n) => n.id));
+const nombresOmega = nts.filter((n) => idsOmega.has(n.id)).map((n) => n.name);
+const tn = await traerTodo("treatment_nutraceuticals", "id, treatment_id, nutraceutical_id");
 const prescrito = new Set();
-for (const fila of tn ?? []) {
+for (const fila of tn) {
   if (!idsOmega.has(fila.nutraceutical_id)) continue;
   const e = evalPorTratamiento.get(fila.treatment_id);
   if (e) prescrito.add(e);
 }
 
 // SUGERIDO: la lista que el motor sello en el informe de esa consulta.
-const { data: reps } = await sb
-  .from("reports")
-  .select("evaluation_id, created_at, snapshot")
-  .eq("type", "paciente")
-  .order("created_at", { ascending: false });
+// Se pide con `id` para paginar por columna unica, y el MAS RECIENTE por consulta se elige despues
+// ordenando en memoria (la paginacion ya ordena por id, asi que no puede ordenar por fecha a la vez).
+const repsCrudos = await traerTodo("reports", "id, evaluation_id, created_at, snapshot", (q) => q.eq("type", "paciente"));
+const reps = [...repsCrudos].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 const vistas = new Set();
 const sugerido = new Set();
 let conInforme = 0;
-for (const r of reps ?? []) {
+for (const r of reps) {
   if (!conTratamiento.has(r.evaluation_id) || vistas.has(r.evaluation_id)) continue;
   vistas.add(r.evaluation_id);
   conInforme++;
