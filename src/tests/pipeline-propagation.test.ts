@@ -232,10 +232,20 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     expect(proto.calorico.gebAuto).toBe(Math.round(10 * 76.625 + 6.25 * 180 - 5 * 54 + 5));
     expect(proto.pesoCalculo).toBeCloseTo(76.625, 3);
 
-    // el diagnostico real de Juan Esteban (oro): N_N_N_A, estado 33 (numeracion de Gildardo).
-    expect(snapshot.efrPhenotype.key).toBe("N_N_N_A");
-    expect(diag.efrStateNumber).toBe(33);
-    expect(diag.diagnosisName).toBe("Composición saludable con grasa alta → riesgo de progresión");
+    // ═══ RE-DERIVADO DE SU TABLA 10.2 (v17 §2.4, 2026-11-12), NO ACTUALIZADO ═══
+    //
+    // El diagnostico real de Juan Esteban era N_N_N_A, estado 33. Con los cortes MCCB por sexo las dos
+    // bandas estructurales se mueven, y en direcciones opuestas:
+    //
+    //   FFMI 21,1 · cortes H 18,8 / 21,0  ->  21,1 > 21,0  ->  banda ALTA  (antes Normal, 17-25)
+    //   FMI  6,369 · cortes H  3,7 /  6,4  ->  dentro       ->  banda NORMAL (antes Alto SS, 6-9)
+    //
+    // Asi que la clave pasa a N_N_A_N y el estado a 3·9 + 0 + 1 = 29 (el anillo no se mueve: sigue
+    // siendo A4, el rango de IFC Normal con IRC Normal). Los dos numeros caen muy cerca de un corte,
+    // que es donde se ve que el cambio de cortes no es cosmetico.
+    expect(snapshot.efrPhenotype.key).toBe("N_N_A_N");
+    expect(diag.efrStateNumber).toBe(29);
+    expect(diag.diagnosisName).toBe("Adiposo subclínico con reserva → prevención eficaz");
     // los FK del registry se resolvieron por clave (fenotipo estructural + sector FyR).
     expect(diag.phenotypeId).not.toBeNull();
     expect(diag.frSectorId).not.toBeNull();
@@ -301,10 +311,19 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     const a = await readPersisted(evalA);
     const b = await readPersisted(evalB);
 
-    expect(a.snapshot.efrPhenotype.key).toBe("N_N_N_A");
-    expect(b.snapshot.efrPhenotype.key).toBe("N_N_N_N");
-    expect(a.diag.efrStateNumber).toBe(33);
-    expect(b.diag.efrStateNumber).toBe(31);
+    // RE-DERIVADO con los cortes MCCB (v17 §2.4). Lo que este caso aisla no cambia (lo unico distinto
+    // entre A y B sigue siendo la grasa), pero las dos claves se mueven con los cortes nuevos:
+    //
+    //   A · FFMI 21,1 (alto) · FMI 6,369 (normal)            -> N_N_A_N · estado 29
+    //   B · FFMI 21,1 (alto) · FMI 10/1,80² = 3,086 (bajo)   -> N_N_A_B · estado 28
+    //
+    // El FMI de B cruza el corte inferior masculino (3,7), que con los cortes del Excel (3) no cruzaba:
+    // antes era Normal y ahora es Bajo. O sea que el contraste entre A y B es MAS marcado que antes,
+    // que es lo que este caso quiere.
+    expect(a.snapshot.efrPhenotype.key).toBe("N_N_A_N");
+    expect(b.snapshot.efrPhenotype.key).toBe("N_N_A_B");
+    expect(a.diag.efrStateNumber).toBe(29);
+    expect(b.diag.efrStateNumber).toBe(28);
     // los outputs difieren: si se hubieran mezclado, serian iguales.
     expect(a.snapshot.indicators).not.toEqual(b.snapshot.indicators);
     expect(a.diag.efrStateNumber).not.toBe(b.diag.efrStateNumber);
