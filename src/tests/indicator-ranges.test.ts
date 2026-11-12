@@ -4,7 +4,10 @@ import type { EngineIndicators } from "@/clinical-engine";
 import {
   cAF,
   cFFMI,
+  cFFMI_MCCB,
   cFMI,
+  cFMI_MCCB,
+  MCCB_CORTES,
   cIAE,
   cIEHH,
   cIFC,
@@ -51,16 +54,20 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
     expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6,70", delta: "-1,33" });
     // IRC 1.8218: sano = bajo riesgo (< lo 1.68). Umbral 1.68, Δ = valor − 1.68 = 0.14.
     expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1,70", delta: "0,12" });
-    // FMI 6.369: Normal 3–6. Gildardo §2: Δ contra el BORDE superior 6 = 0.37 (antes promedio 4.5 = 1.87).
-    expect(indicatorRange("FMI", ind, true)).toEqual({ reference: "3–6", delta: "0,37" });
+    // FMI 6.369, RE-DERIVADO de su Tabla 10.2 (v17 §2.4): la banda sana pasa de 3-6 (Excel Mapa E_BIS)
+    // a 3,7-6,4 (el libro, por sexo). Su regla de la Δ no cambia (contra el BORDE superior, el que
+    // decide), cambia el borde: 6,369 − 6,4 = -0,031, o sea que este donante deja de estar por ENCIMA
+    // del borde y queda justo por debajo. Es el mismo numero leido contra otro corte.
+    expect(indicatorRange("FMI", ind, true)).toEqual({ reference: "3,7–6,4", delta: "-0,03" });
   });
 
   it("IFC/IRC/FMI (F): usan los cortes femeninos del clasificador", () => {
-    // F: cIFC hi 3.28, cIRC lo 2.27, cFMI Normal 5–9. FMI Δ contra el BORDE superior 9 = -2.63 (Gildardo §2).
+    // F: cIFC hi 3,3 · cIRC lo 2,3 · FMI con los cortes del libro 5,0-8,1 (antes 5-9 del Excel).
     // v17 §3: hi 3,3 (antes 3,28). Δ = 5,3651 − 3,3 = 2,07.
     expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3,30", delta: "2,07" });
     expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2,30", delta: "-0,48" });
-    expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5–9", delta: "-2,63" });
+    // 6,369 − 8,1 = -1,731 contra el borde superior femenino del libro (antes -2,63 contra el 9).
+    expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5,0–8,1", delta: "-1,73" });
   });
 
   it("ICA-BIS: referencia de coherencia 0 (NO φ), Δ = el valor mismo", () => {
@@ -109,8 +116,11 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     expect(indicatorRange("ISCM", ind, true)).toEqual({ reference: "≤−1", delta: "-1,07" });
   });
 
-  it("FFMI: 0.10 (promedio 21) → 4.10 (borde inferior 17)", () => {
-    expect(indicatorRange("FFMI", ind, true)).toEqual({ reference: "17–25", delta: "4,10" });
+  it("FFMI: 4,10 (borde 17 del Excel) → 2,30 (borde 18,8 del libro)", () => {
+    // RE-DERIVADO de su Tabla 10.2 (v17 §2.4). Su regla sigue siendo la Δ contra el BORDE INFERIOR (lo
+    // que decide en el FFMI es el deficit), y el borde pasa de 17 a 18,8 en hombres:
+    //   21,1 − 18,8 = 2,30   (antes 21,1 − 17 = 4,10)
+    expect(indicatorRange("FFMI", ind, true)).toEqual({ reference: "18,8–21,0", delta: "2,30" });
   });
 
   it("sin cambio de CRITERIO: IR, ICA-BIS, PABU e IEHH siguen midiendo contra lo mismo", () => {
@@ -291,13 +301,27 @@ describe("indicatorBands: cortes anclados contra el clasificador frozen (no drif
     expect(cIAE(6).l).toBe("Acelerado");
     expect(indicatorBands("IAE", true)).toContain("−5");
   });
-  it("FMI/FFMI (M): banda Normal 3-6 / 17-25", () => {
-    expect(cFMI(3, M).l).toBe("Normal");
-    expect(cFMI(6, M).l).toBe("Normal");
-    expect(cFFMI(17, M).l).toBe("Normal");
-    expect(cFFMI(25, M).l).toBe("Normal");
-    expect(indicatorBands("FMI", true)).toContain("3–6");
-    expect(indicatorBands("FFMI", true)).toContain("17–25");
+  it("FMI/FFMI (M): la banda que se MUESTRA es la del clasificador que GOBIERNA (v17: el MCCB)", () => {
+    // ═══ RE-ANCLADO (2026-11-12) Y LA PROPIEDAD ES LA MISMA ═══
+    //
+    // Este candado existe para que la banda mostrada no derive del clasificador. Lo que cambio con la
+    // v17 es CUAL clasificador gobierna: el sector de la Diana, el fenotipo y el dominio
+    // metabolico-estructural salen de `cFFMI_MCCB`/`cFMI_MCCB` (su Tabla 10.2), asi que la ficha del
+    // indicador tiene que mostrar ESOS cortes. `cFMI`/`cFFMI` se quedan con sus banderas clinicas en la
+    // columna de diagnostico de la tabla de composicion, y ahi se siguen vigilando (su propio diff).
+    //
+    // LOS NUMEROS NO SE ESCRIBEN AQUI: salen de `MCCB_CORTES`, el mismo sitio del que los lee la
+    // pantalla. Antes estaban a mano en los dos lados, que es como se divergio la primera vez.
+    const { fmi, ffmi } = MCCB_CORTES.M;
+    expect(cFMI_MCCB(fmi[0], M).l).toBe("Normal");
+    expect(cFMI_MCCB(fmi[1], M).l).toBe("Normal");
+    expect(cFMI_MCCB(fmi[0] - 0.01, M).l).toBe("Bajo");
+    expect(cFMI_MCCB(fmi[1] + 0.01, M).l).toBe("Alto");
+    expect(cFFMI_MCCB(ffmi[0], M).l).toBe("Normal");
+    expect(cFFMI_MCCB(ffmi[1], M).l).toBe("Normal");
+    const uno = (v: number) => v.toFixed(1).replace(".", ",");
+    expect(indicatorBands("FMI", true)).toContain(`${uno(fmi[0])}–${uno(fmi[1])}`);
+    expect(indicatorBands("FFMI", true)).toContain(`${uno(ffmi[0])}–${uno(ffmi[1])}`);
   });
   it("los indicadores sin bandas de display devuelven null (PABU/EB)", () => {
     expect(indicatorBands("PABU", true)).toBeNull();

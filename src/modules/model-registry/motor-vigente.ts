@@ -135,6 +135,21 @@ const QUE_ES_ESTA_VERSION: Record<string, { texto: string; fecha: string }> = {
       "diagnóstico ni ninguna ruta de atención.",
     fecha: "2026-11-11",
   },
+  // LO QUE EL PROFESIONAL VA A NOTAR, y es lo mas grande de todas las entradas de este mapa: que
+  // pacientes ya diagnosticados cambian de sector en la Diana y algunos de ruta de atencion. Se dice
+  // SIN hablar de cortes MCCB, percentiles ni tablas: lo que el necesita saber es que no es un error,
+  // que no tiene que hacer nada con los informes ya entregados salvo donde la ruta cambie, y que Atlas
+  // le va a marcar esas consultas. El porque (las cifras de la cohorte, por que es version mayor, que el
+  // dominio conductual tambien se mueve) vive en `version.ts` y en el plan de la v17.
+  "4.0.0": {
+    texto:
+      "El sector de la Diana y el área metabólico-estructural se calculan con los valores de referencia " +
+      "de masa grasa y masa libre de grasa del libro, por sexo, y con el perímetro de cintura. Por eso " +
+      "algunos pacientes cambian de sector y algunas rutas de atención entran o salen. Lo ya entregado no " +
+      "se reescribe: Atlas marca las consultas emitidas con la ciencia anterior y propone reemitir donde " +
+      "el cambio mueve el veredicto.",
+    fecha: "2026-11-12",
+  },
 };
 
 export type MotorVigente = {

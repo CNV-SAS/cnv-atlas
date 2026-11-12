@@ -89,13 +89,25 @@ describe("la forma: ni el motor sella la magnitud, ni las pantallas la leen", ()
     expect(pantalla).toContain("icaBis: icaBisDelSello(indicadoresSellados)");
   });
 
-  it("la version del motor subio MENOR, no mayor: la serie de los pacientes no se parte", () => {
+  it("el signo, POR SI SOLO, subio MENOR: no fue el que partio la serie", () => {
+    // ═══ REAPUNTADO (2026-11-12), Y LA PROPIEDAD ES LA QUE IMPORTA ═══
+    //
+    // Decia `ENGINE_VERSION === "3.3.0"`, que era la version del dia. Hoy el motor va en 4.0.0 porque
+    // los pasos 3 y 4 de la v17 mueven el SECTOR de la Diana y el dominio metabolico-estructural, y eso
+    // si parte la serie a proposito. Afirmar la version del dia convertia este candado en una cifra que
+    // envejece: habria que tocarlo en cada bump, y en el bump siguiente nadie recuerda por que estaba.
+    //
+    // LO QUE ESTE CASO FIJA ES OTRA COSA, y sigue siendo cierta: que el signo del ICA-BIS entro como
+    // version MENOR y con su razon escrita. Si alguien decide manana que el signo merecia un mayor,
+    // tiene que borrar esa explicacion, y entonces este candado truena y la discusion se vuelve a tener.
     const version = readFileSync("src/clinical-engine/version.ts", "utf8");
-    expect(version).toContain('export const ENGINE_VERSION = "3.3.0"');
-    // `sonComparables` compara la MAYOR: con un 4.x la tarjeta de respuesta a la intervencion
-    // desapareceria para todos hasta la segunda consulta con la version nueva, y eso se paga cuando
-    // cambia una clasificacion. Aqui no cambia ninguna.
+    expect(version, "desaparecio la entrada de la 3.3.0").toContain("· 3.3.0 (2026-11-11)");
     expect(version, "la explicacion del bump menor desaparecio").toContain("POR QUE SUBE **MINOR**");
+    // Y el motor nunca vuelve atras: la version vigente es 3.3.0 o posterior.
+    const vigente = /export const ENGINE_VERSION = "(\d+)\.(\d+)\.(\d+)"/.exec(version);
+    expect(vigente, "no se pudo leer ENGINE_VERSION").not.toBe(null);
+    const [mayor, menor] = [Number(vigente![1]), Number(vigente![2])];
+    expect(mayor > 3 || (mayor === 3 && menor >= 3), "el motor quedo antes de la 3.3.0").toBe(true);
   });
 
   it("la referencia de la fila en la HC sigue siendo la de SU archivo", () => {

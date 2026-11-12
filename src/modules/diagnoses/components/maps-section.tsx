@@ -4,6 +4,7 @@ import { Compass, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 import type { DfiDomain } from "@/clinical-engine";
+import { sectorDelIndice } from "@/clinical-engine/sector-mccb";
 import { bandToLetter, bandToWord, efrDesglose } from "@/clinical-engine/types";
 import * as core from "@/clinical-engine/frozen/engine.core.js";
 
@@ -88,10 +89,17 @@ function StateDetailPanel({ detail, kind }: { detail: StateDetail; kind: "pacien
         nombreAnillo:
           (core.FYR_LABELS as Record<string, { l: string } | undefined>)[`${d.ifc}_${d.irc}`]?.l ??
           `A${d.ringIndex + 1}`,
+        // EL NOMBRE DEL SECTOR SALE DE SU TABLA 11.2 (v17 §2.4), no de `STRUCT_LABELS`. Las dos listas
+        // son suyas y nombran las mismas nueve celdas, pero la del libro es la que la v17 usa para el
+        // sector y para la gravedad del dominio metabolico-estructural, y dejar la vieja aqui pondria
+        // un nombre en la tarjeta y otro en el dominio sobre la misma celda.
+        codigoSector: sectorDelIndice(d.sectorIndex)?.id ?? `S${d.sectorIndex + 1}`,
         nombreSector:
+          sectorDelIndice(d.sectorIndex)?.fenotipo ??
           (core.STRUCT_LABELS as Record<string, string | undefined>)[
             `${bandToLetter(d.ffmi)}_${bandToLetter(d.fmi)}`
-          ] ?? `E${d.sectorIndex + 1}`,
+          ] ??
+          `S${d.sectorIndex + 1}`,
       }
     : null;
 
@@ -136,7 +144,7 @@ function StateDetailPanel({ detail, kind }: { detail: StateDetail; kind: "pacien
         </span>
         {ejes ? (
           <span className="text-xs text-muted-foreground">
-            Anillo A{ejes.ringIndex + 1} ({ejes.nombreAnillo}) · Sector E{ejes.sectorIndex + 1} (FFMI{" "}
+            Anillo A{ejes.ringIndex + 1} ({ejes.nombreAnillo}) · Sector {ejes.codigoSector} (FFMI{" "}
             {bandToWord(ejes.ffmi)} / FMI {bandToWord(ejes.fmi)})
           </span>
         ) : null}

@@ -133,6 +133,21 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
       razon:
         "lleva comentario NUESTRO pegado en la misma linea (el barrido del umbral 24 -> 22)",
     },
+    {
+      // Las lineas que la v17 §2.3 trajo a este modulo: el DOMINIO 2 pasa a salir del SECTOR MCCB mas la
+      // adiposidad central, en vez de los niveles del ISCM-BIS. Son tokens de la v17 que no existen en
+      // ninguna entrega anterior, asi que el patron no puede tolerar de mas por accidente.
+      patron:
+        /sectorMCCB|cFMI_MCCB|idx\.sector|_adip|adip\.central|sec \? sec\.|Fenotipo MCCB|4,1 bajo|pabu - 1\.618|Fenotipo estructural de alto riesgo|_cint|_ict/,
+      razon:
+        "PORTADAS DEL ATLAS_v17.html del 9 de noviembre de 2026 (su §2.3 y §2.4), DOCE entregas despues " +
+        "de la que HTML_VIGENTE resuelve: la gravedad del dominio 2 por sector (su Tabla 11.2), el " +
+        "modificador de adiposidad central (cintura OMS o ICT >= 0,50), el FMI categorizado con los " +
+        "cortes MCCB, el ICA-BIS con la PABU como fuente primaria y los cortes del IFC que el DFI CITA " +
+        "(su Tabla 6.1, que eran una segunda fuente y se habian quedado en los de la v16). No estan en " +
+        "el v9 porque la v17 las escribio. ANCLADAS, una por una y contra SU archivo, en " +
+        "src/tests/frozen-dfi-v17-diff.test.ts, que ademas exige que lo retirado no quede.",
+    },
   ],
   "atlas-geb.js": [
     {
@@ -302,6 +317,19 @@ describe("el frozen no derivó de la entrega vigente de Gildardo", () => {
       // resuelve, declarados arriba uno por uno con su razon.
       .filter((f) => !(f in FUERA_DEL_HTML) && !(f in DE_ENTREGA_MAS_NUEVA));
     expect([...enDisco].sort()).toEqual([...MODULOS].sort());
+  });
+
+  it("toda tolerancia que nombre un candado en otro archivo, lo nombra bien y ese archivo existe", () => {
+    // Una tolerancia cuya razon dice "esto lo vigila tal test" y el test no existe es un agujero con
+    // buena prosa. Es la misma exigencia que el caso de abajo hace a las exenciones de modulo entero;
+    // aqui se le hace a las de linea, que son las que crecen con cada porte.
+    for (const [modulo, lista] of Object.entries(TOLERADAS)) {
+      for (const t of lista) {
+        for (const ruta of t.razon.match(/src\/tests\/[\w.-]+\.test\.ts/g) ?? []) {
+          expect(existsSync(ruta), `${modulo}: la tolerancia nombra ${ruta} y no existe`).toBe(true);
+        }
+      }
+    }
   });
 
   it("y cada exencion del HTML nombra el candado que SI lo vigila, y ese candado existe", () => {

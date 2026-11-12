@@ -1,4 +1,5 @@
 import { BIODY_COLUMNS, type EngineInput, type EngineModelContext, type Sex } from "@/clinical-engine";
+import { MEASURED_WAIST_HEADER } from "@/clinical-engine/edge/biody-columns";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 // LA EDAD EN ANOS CUMPLIDOS SE LEE CON LA FUNCION QUE YA EXISTIA, la del consentimiento. Es pura (sin
 // server-only, sin React) y ya era la ESTRICTA de la casa: exige `YYYY-MM-DD` y devuelve null ante
@@ -328,6 +329,17 @@ export function buildBisRow(bisRaw: Record<string, number>): Record<string, unkn
     if (typeof v === "number" && Number.isFinite(v)) {
       row[col.header] = v;
     }
+  }
+  // ═══ LA CINTURA MEDIDA VIAJA APARTE, Y TIENE QUE VIAJAR (v17 §2.3, 2026-11-12) ═══
+  //
+  // No esta en `BIODY_COLUMNS` a proposito (el mapeo de Gildardo apunta al umbral de la OMS y hay un
+  // candado que exige que no vuelva), asi que este bucle no la copiaba y el motor nunca la veia. Desde
+  // la v17 el dominio metabolico-estructural suma 1 cuando hay adiposidad central (cintura H >= 94 ·
+  // M >= 80, o ICT >= 0,50), asi que sin esta linea el modificador quedaria construido y SIN INSUMO:
+  // existiendo en el motor, pasando sus pruebas y sin encenderse nunca con un paciente real.
+  const cintura = bisRaw[normalizeHeader(MEASURED_WAIST_HEADER)];
+  if (typeof cintura === "number" && Number.isFinite(cintura)) {
+    row[MEASURED_WAIST_HEADER] = cintura;
   }
   return row;
 }

@@ -25,56 +25,90 @@ const dom2 = (b: Record<string, unknown>) => {
   return r.domains.find((d) => d.id === "d2")!;
 };
 
-describe("el ISCM ausente no se clasifica (punto 4)", () => {
-  it("sin ISCM la clasificación es '-', NO 'Leve'", () => {
+describe("el ISCM ausente no se clasifica, y el dominio 2 ya no depende de el (punto 4 + v17 §2.3)", () => {
+  // ═══ ESTE BLOQUE SE REESCRIBIO CON LA v17 (2026-11-12), Y LA REGLA SUYA NO SE TOCO ═══
+  //
+  // Hasta aqui el DOMINIO 2 salia del NIVEL del ISCM-BIS, asi que este candado probaba las dos cosas a
+  // la vez: que un ISCM ausente no se clasifica (su punto 4) y que por eso el dominio no puntuaba.
+  //
+  // Su v17 §2.3 separa las dos: el ISCM-BIS **ya no gradua** el dominio 2 (*"se reporta sin nivel"*), que
+  // ahora sale de la GRAVEDAD DEL SECTOR MCCB (su Tabla 11.2) mas la adiposidad central. Asi que:
+  //
+  //   · la regla de "el indice ausente no se clasifica" sigue igual y se sigue probando (CA-4/CA-5): un
+  //     ISCM que falta se cita como "-", nunca como 0;
+  //   · la regla de "un dominio sin dato no puntua" (su punto 4 del 30-ago) sigue igual y se sigue
+  //     probando, pero sobre el insumo NUEVO: sin sector no hay dato, y sin sector no puntua.
+  //
+  // Lo que NO se hace es borrar el candado porque su insumo cambio. Se reapunta, citando el documento.
+  it("sin ISCM el dominio 2 se clasifica igual, por su sector: el ISCM dejo de graduarlo", () => {
     const d = dom2(bis());
-    expect(d.clasif).toContain("ISCM -");
-    expect(d.clasif).not.toContain("Leve");
-    expect(d.items[0]).toBe("ISCM-BIS - (-)");
-    // Y esta es la afirmacion que se estaba haciendo antes y ya no: un 0 impreso como si fuera medido.
-    expect(d.items[0]).not.toContain("0");
+    // La clasificacion es el SECTOR, no el nivel del ISCM. Con FMI 8 y FFMI 19 en hombre, los cortes
+    // MCCB (H: FMI 3,7/6,4 · FFMI 18,8/21,0) dan FMI alto con FFMI normal = S6, gravedad base 1.
+    expect(d.clasif).toBe("S6 · Obesidad con masa normal");
+    expect(d.sev).toBe(1);
+    expect(d.clasif).not.toContain("ISCM");
   });
 
-  it("CONTROL: con ISCM presente todo sigue igual que antes", () => {
-    // Sin esto el verde de arriba no distingue "lo arreglamos" de "lo rompimos entero".
-    const d = dom2(bis({ ISCM: 2.0 }));
-    expect(d.clasif).toContain("ISCM Moderado");
-    expect(d.items[0]).toBe("ISCM-BIS 2 (Moderado)");
-    expect(d.sev).toBe(2);
+  it("y el ISCM ausente se CITA como '-', nunca como un 0 medido (su punto 4, intacto)", () => {
+    const d = dom2(bis());
+    const linea = d.items.find((i) => i.startsWith("ISCM-BIS"))!;
+    expect(linea).toContain("ISCM-BIS -");
+    // Esta es la afirmacion que se hacia antes y ya no: un 0 impreso como si lo hubieran medido.
+    expect(linea).not.toMatch(/ISCM-BIS 0/);
+    // Y tampoco vuelve por la puerta del nivel: su v17 lo reporta SIN nivel.
+    expect(linea).toContain("se reporta sin nivel");
+    expect(linea).not.toContain("Leve");
   });
 
-  it("un ISCM de CERO MEDIDO sí se clasifica: cero respondido no es cero ausente", () => {
+  it("CONTROL: con ISCM presente se cita su valor, y el dominio no se mueve por el", () => {
+    // Sin esto el verde de arriba no distingue "lo arreglamos" de "lo rompimos entero". Y prueba lo que
+    // su v17 pide: el ISCM se ve, y NO cambia la severidad.
+    const sin = dom2(bis());
+    const con = dom2(bis({ ISCM: 2.0 }));
+    expect(con.items.find((i) => i.startsWith("ISCM-BIS"))).toContain("ISCM-BIS 2");
+    expect(con.sev).toBe(sin.sev);
+    expect(con.clasif).toBe(sin.clasif);
+  });
+
+  it("un ISCM de CERO MEDIDO sí se cita: cero respondido no es cero ausente", () => {
     // Es la distincion entera del punto 4, y la misma de CA-3 sobre calcLE8. Si esto se rompiera,
     // habriamos cambiado "no inventes un dato" por "ignora un dato valido".
-    const d = dom2(bis({ ISCM: 0 }));
-    expect(d.clasif).toContain("ISCM Leve");
-    expect(d.items[0]).toBe("ISCM-BIS 0 (Leve)");
+    expect(dom2(bis({ ISCM: 0 })).items.find((i) => i.startsWith("ISCM-BIS"))).toContain("ISCM-BIS 0");
   });
 
-  it("la severidad del dominio 2 sin ISCM es null: el dominio NO puntúa", () => {
-    // ESTE TEST SE INVIRTIÓ, Y ASÍ ES COMO SE INVIERTE UN CANDADO: citando la respuesta, no borrándolo.
-    // Decía "sigue siendo 1, que es SU default", con la nota de que estaba preguntado en la ronda y de
-    // que si él respondía otra cosa este era el test a invertir. Respondió el 2026-08-30, punto 4:
+  it("la severidad del dominio 2 SIN SECTOR es null: el dominio NO puntúa", () => {
+    // ESTE TEST YA SE HABIA INVERTIDO UNA VEZ, Y ASI ES COMO SE INVIERTE UN CANDADO: citando la
+    // respuesta, no borrandolo. Decia "sigue siendo 1, que es SU default"; el respondio el 2026-08-30,
+    // punto 4:
     //
     //   "No debe puntuar 1. Un vértice de susceptibilidad leve dibujado sobre un dominio que no se midió
     //    es la misma lectura favorable de un vacío que corregimos en el ISCM, y en el radar pesa más
     //    porque se ve de un golpe. Ese `?? 1` está escrito para una clasificación fuera del mapa, que es
     //    otra cosa: ahí sí hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntúa."
     //
-    // Lo aplica CA-6, que al ir a aplicarlo encontró otros tres sitios con la misma forma.
-    expect(dom2(bis()).sev).toBe(null);
+    // Con la v17 el "sin dato" del dominio 2 es OTRO: ya no es el ISCM que falta, es el SECTOR que no se
+    // puede resolver (sin FFMI o sin FMI). La regla no cambia; cambia de que depende.
+    expect(dom2(bis({ FFMI: 0 })).sev).toBe(null);
+    expect(dom2(bis({ FMI: 0 })).sev).toBe(null);
+    expect(dom2(bis({ FFMI: 0 })).clasif).toBe("Sector N/C");
   });
 
-  it("pero una clasificación FUERA DEL MAPA con dato sí puntúa 1: su `?? 1` se conserva", () => {
-    // La otra mitad, y es la que impide que "aplicar su punto 4" se lleve por delante lo que él SÍ quiso.
-    // Con una etiqueta que existe y el mapa no reconoce hay dato: no es el caso del vacío.
-    const d = dom2(bis({ ISCM: 2.0 }));
-    expect(d.sev).toBe(2); // control: la etiqueta conocida sigue mapeando
-    // Y con una etiqueta desconocida (dato presente, clasificador que no la reconoce) cae en su default.
-    const raro = computeDFIFromData({}, bis({ ISCM: 2.0 })) as {
-      domains: { id: string; sev: number | null }[];
-    };
-    expect(raro.domains.find((x) => x.id === "d2")!.sev).not.toBe(null);
+  it("y la adiposidad central NO convierte un dominio sin dato en un dominio con 1 (CA-6f)", () => {
+    // La otra mitad de su regla: un MODIFICADOR no puede fabricar severidad sobre un vacio. Con cintura
+    // de 100 cm en un hombre (>= 94, su corte de la OMS) el dominio sube 1 cuando HAY sector...
+    expect(dom2(bis({ cintura: 100 })).sev).toBe(2);
+    expect(dom2(bis({ cintura: 100 })).clasif).toContain("adiposidad central");
+    // ...y se queda en null cuando no lo hay, aunque la cintura este medida.
+    expect(dom2(bis({ cintura: 100, FFMI: 0 })).sev).toBe(null);
+  });
+
+  it("el ICT tambien la enciende, que es la otra mitad de su corte", () => {
+    // Su regla: cintura H >= 94 / M >= 80, O ICT >= 0,50. Con la cintura por debajo del corte pero el
+    // ICT por encima, tiene que encenderse igual.
+    const d = dom2(bis({ cintura: 85, ICT: 0.55 }));
+    expect(d.clasif).toContain("adiposidad central");
+    // Su `_dfiFmt` escribe los decimales con COMA, que es como se leen en Colombia.
+    expect(d.items.find((i) => i.startsWith("Adiposidad"))).toContain("ICT de 0,55");
   });
 
   it("el cambio está en el MANIFIESTO, no editado a mano en el generado", () => {

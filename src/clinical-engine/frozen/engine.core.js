@@ -268,6 +268,39 @@ const cFFMI = (v, s) => s === "M" || s === "Masculino" ?
   v < 15 ? { l: "Bajo — riesgo desnutrición",        c: "#ef4444", k: 1 } :
   v <= 23 ? { l: "Normal",                            c: "#10b981", k: 2 } :
             { l: "Alto — sospecha anabolizantes",     c: "#3b82f6", k: 3 };
+// v17 · MCCB (libro, Tabla 10.2: percentiles 25 y 75 de la base consolidada, por sexo).
+// Gobiernan el sector de la Diana, el fenotipo MCCB y el dominio Metabólico-Estructural.
+// cFFMI y cFMI quedan solo para sus banderas clínicas (sospecha de anabolizantes), no para fenotipar.
+const MCCB_CORTES = {
+  F: { fmi: [5.0, 8.1], ffmi: [15.5, 17.1] },
+  M: { fmi: [3.7, 6.4], ffmi: [18.8, 21.0] },
+};
+const _mccbK = (v, lo, hi) => v < lo ? 1 : v <= hi ? 2 : 3;
+const _mccbCl = (v, sexo, eje) => {
+  const s = sexoBIS(sexo);
+  if (!s || !(Number(v) > 0)) return { l: "Sin dato", k: 0 };
+  const [lo, hi] = MCCB_CORTES[s][eje];
+  const k = _mccbK(Number(v), lo, hi);
+  return { l: ["Bajo", "Normal", "Alto"][k - 1], k };
+};
+const cFFMI_MCCB = (v, sexo) => _mccbCl(v, sexo, "ffmi");
+const cFMI_MCCB  = (v, sexo) => _mccbCl(v, sexo, "fmi");
+// Sectores de la Diana (libro, Tabla 11.2) y gravedad base del dominio 2 (decisión del 7-nov-2026).
+const MCCB_SECTORES = [
+  { id: "S1", fn: 3, fm: 1, fen: "Atlético magro",            g: 0 },
+  { id: "S2", fn: 3, fm: 2, fen: "Atlético",                  g: 0 },
+  { id: "S3", fn: 2, fm: 1, fen: "Magro funcional",           g: 0 },
+  { id: "S4", fn: 2, fm: 2, fen: "Composición saludable",     g: 0 },
+  { id: "S5", fn: 3, fm: 3, fen: "Obesidad muscular",         g: 1 },
+  { id: "S6", fn: 2, fm: 3, fen: "Obesidad con masa normal",  g: 1 },
+  { id: "S7", fn: 1, fm: 1, fen: "Desnutrición bilateral",    g: 3 },
+  { id: "S8", fn: 1, fm: 2, fen: "Normal-sarcopénica",        g: 2 },
+  { id: "S9", fn: 1, fm: 3, fen: "Obesidad sarcopénica",      g: 3 },
+];
+const sectorMCCB = (ffmi, fmi, sexo) => {
+  const a = cFFMI_MCCB(ffmi, sexo).k, b = cFMI_MCCB(fmi, sexo).k;
+  return (a && b) ? MCCB_SECTORES.find(x => x.fn === a && x.fm === b) : null;
+};
 // SMM/Peso — EWGSOP2/AWGS
 const cSMM = (v, s) => s === "M" ? v < 27 ? {
   l: "Sarcopenia",

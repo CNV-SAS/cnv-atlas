@@ -47,8 +47,25 @@ describe("la desviación de φ del chip del PABU (cotejo punto 9)", () => {
     expect(chipPabu(fila(1.2))).toContain("-0,42");
   });
 
-  it("con el dato en la fila (que es lo que hace Atlas), la magnitud manda: +0,42", () => {
-    expect(chipPabu(fila(1.2, Math.abs(1.2 - PHI)))).toContain("+0,42");
+  it("y desde la v17 la PABU MANDA sobre el valor guardado, aunque venga sin signo", () => {
+    // ═══ ESTE CASO SE INVIRTIO CON LA v17 §4 (2026-11-12), Y ES LA INVERSION QUE IMPORTA ═══
+    //
+    // Decia: *"con el dato en la fila, la magnitud manda: +0,42"*, y era cierto: su reserva era
+    // `num("ICA_BIS","icaBis") || (pabu ? pabu - 1.618 : null)`, o sea que un valor guardado (y hasta
+    // la v16 se guardaba SIN signo) ganaba sobre el calculo. Su v17 invierte el orden:
+    //
+    //   const icaBis = pabu ? pabu - 1.618 : (num("ICA_BIS", "icaBis") || null);
+    //
+    // Y ESA INVERSION ES LO QUE DEJA LEER BIEN EL HISTORICO SIN TOCAR UN SELLO, que es la decision que
+    // Santiago aprobo en el paso 1: una consulta sellada con la magnitud (positiva) se abre hoy y el
+    // chip muestra la desviacion con su signo, porque se deriva de la PABU, que siempre estuvo bien.
+    // Sin esta linea de su v17, el valor viejo seguiria ganando y el historico seguiria mintiendo.
+    //
+    // Aqui se le entrega A PROPOSITO la magnitud vieja (el 0,42 positivo de una consulta de v16) para
+    // comprobar que NO gana.
+    const conElValorViejo = chipPabu(fila(1.2, Math.abs(1.2 - PHI)));
+    expect(conElValorViejo).toContain("-0,42");
+    expect(conElValorViejo).not.toContain("+0,42");
   });
 
   it("POR ENCIMA de φ los dos caminos coinciden: ahi el golden no puede ver nada", () => {

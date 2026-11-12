@@ -1,6 +1,34 @@
 import type { EngineIndicators } from "@/clinical-engine";
+import { MCCB_CORTES } from "@/clinical-engine/frozen/engine.core.derived.js";
 import { bandaIae } from "@/clinical-engine/presentacion-eb-bis";
 import { fmtDec } from "@/lib/format/decimal";
+
+// ═══ LOS CORTES DEL FMI Y DEL FFMI PASAN A LOS DEL LIBRO (v17 §2.4, 2026-11-12) ═══
+//
+// POR QUE SE MUEVEN, que es la razon de fondo y no una preferencia: el encabezado de este archivo dice
+// que la referencia que se muestra es *"el LIMITE QUE GOBIERNA el riesgo"*. Desde la v17 el limite que
+// gobierna el sector de la Diana, el fenotipo del sector y el dominio metabolico-estructural son los
+// cortes MCCB de su Tabla 10.2, no los del Excel Mapa E_BIS. Con los viejos, la misma pantalla se
+// contradecia: un FFMI de 21,1 en hombre salia aqui como *"Normal (17-25)"* y en la Diana como sector
+// con *"FFMI Alto"*. Son dos partes de la pantalla diciendo cosas opuestas, y eso nunca es un problema
+// de redaccion: es que LEEN FUENTES DISTINTAS.
+//
+// `cFMI` y `cFFMI` NO se retiran y siguen en la columna de diagnostico de la tabla de composicion, que
+// es donde su v17 los deja: ahi viven sus BANDERAS CLINICAS (sospecha de anabolizantes, riesgo de
+// desnutricion), que los cortes del libro no expresan.
+//
+// Y LOS NUMEROS NO SE ESCRIBEN AQUI: se leen de `MCCB_CORTES` del motor congelado. Antes estaban a
+// mano (3-6 / 5-9 / 17-25 / 15-23) y eso es lo que permitio que divergieran. Si el mueve un corte, esta
+// pantalla se mueve con el sin que nadie tenga que acordarse.
+//
+// ES PREGUNTA 54 DE PENDIENTES, construida con nuestra recomendacion marcada [aplicado]: quien decide
+// que cortes lee el profesional en la ficha del indicador es la Direccion Cientifica, no nosotros.
+const cortesMccb = (sexM: boolean) => MCCB_CORTES[sexM ? "M" : "F"];
+
+// UN DECIMAL Y CON SU CERO, como su Tabla 10.2 los escribe: 3,7 · 6,4 · 5,0 · 8,1 · 18,8 · 21,0.
+// `fmtDec` quita los decimales a los enteros ("5" en vez de "5,0"), que en una tabla de cortes se lee
+// como otra precision, y da dos decimales a los demas ("3,70"). Aqui el formato es el suyo.
+const corte = (v: number) => v.toFixed(1).replace(".", ",");
 
 // Rangos de referencia y DELTA de la tabla de indicadores. Los RANGOS de referencia se transcriben
 // VERBATIM del HTML de Gildardo (docs/entregas/gildardo-2026-07-30/ATLAS_v7.html, filas R(...) de los
@@ -266,12 +294,18 @@ export function conClaseIcaBis<T>(porCodigo: Record<string, T>): Record<string, 
   return { ...porCodigo, "ICA-BIS": porCodigo[CODIGO_CLASE_ICA_BIS] };
 }
 
-// Rango de referencia del FMI, del CLASIFICADOR DEL MOTOR (cFMI, banda media sana): H 3-6, M 5-9. Se
-// exporta para que la tabla de Wang (composition-section) muestre el MISMO rango sin duplicar el corte.
-// NO es el "6-9/9-13" de la tabla de display del HTML (stale; manda el motor, instruccion Gildardo 2-ago).
+// Rango de referencia del FMI, del CLASIFICADOR QUE GOBIERNA (v17: los cortes MCCB de su Tabla 10.2,
+// H 3,7-6,4 · M 5,0-8,1). Se exporta para que la tabla de Wang (composition-section) muestre el MISMO
+// rango sin duplicar el corte, y los numeros se LEEN del frozen.
 export function fmiReferenceLabel(sexM: boolean): string {
-  const [lo, hi] = sexM ? [3, 6] : [5, 9];
-  return `${lo}–${hi}`;
+  const [lo, hi] = cortesMccb(sexM).fmi;
+  return `${corte(lo)}–${corte(hi)}`;
+}
+
+/** Lo mismo para el FFMI (v17: H 18,8-21,0 · M 15,5-17,1). */
+export function ffmiReferenceLabel(sexM: boolean): string {
+  const [lo, hi] = cortesMccb(sexM).ffmi;
+  return `${corte(lo)}–${corte(hi)}`;
 }
 
 // Bandas de corte COMPLETAS por indicador (para el hibrido inline de las tarjetas del DFI, aprobado
@@ -304,10 +338,16 @@ export function indicatorBands(code: string, sexM: boolean): string | null {
     case "IAE": // Su tabla 3 (2026-10-26): >= +5,0 acelerado · entre −5,0 y +5,0 acorde · <= −5,0 desacelerado
       // Sus cortes, con sus palabras y cerrados en los dos extremos como el los escribio.
       return "desacelerado ≤−5 · acorde con sus pares entre −5 y +5 · acelerado ≥+5";
-    case "FMI": // cFMI: banda media Normal (H 3–6, F 5–9)
-      return sexM ? "bajo <3 · normal 3–6 · alto >6" : "bajo <5 · normal 5–9 · alto >9";
-    case "FFMI": // cFFMI: banda media Normal (H 17–25, F 15–23)
-      return sexM ? "bajo <17 · normal 17–25 · alto >25" : "bajo <15 · normal 15–23 · alto >23";
+    case "FMI": {
+      // v17: cFMI_MCCB, su Tabla 10.2 (H 3,7-6,4 · M 5,0-8,1). Leidos del frozen.
+      const [lo, hi] = cortesMccb(sexM).fmi;
+      return `bajo <${corte(lo)} · normal ${corte(lo)}–${corte(hi)} · alto >${corte(hi)}`;
+    }
+    case "FFMI": {
+      // v17: cFFMI_MCCB, su Tabla 10.2 (H 18,8-21,0 · M 15,5-17,1).
+      const [lo, hi] = cortesMccb(sexM).ffmi;
+      return `bajo <${corte(lo)} · normal ${corte(lo)}–${corte(hi)} · alto >${corte(hi)}`;
+    }
     case "ICEC": // icec.cl (engine.dfi): <50 bajo · 50–80 intermedio · ≥80 ideal (LE8, 0-100)
       return "bajo <50 · intermedio 50–80 · ideal ≥80";
     default:
@@ -349,10 +389,11 @@ export function indicatorRange(
       return { reference: `< ${fmtDec(lo)}`, delta: f(ind.irc - lo, decimalesDe("IRC")) };
     }
     case "FMI": {
-      // cFMI: sano = Normal (M 3-6, F 5-9). Gildardo §2 (2026-08-17): Δ contra el BORDE SUPERIOR (M 6 / F 9),
-      // el limite que decide (exceder grasa es el riesgo), no el punto medio.
+      // SU REGLA NO CAMBIA, CAMBIA EL BORDE. Gildardo §2 (2026-08-17): la Δ va contra el BORDE SUPERIOR
+      // de la banda sana, el limite que decide (exceder grasa es el riesgo), no el punto medio. Con la
+      // v17 ese borde es el de su Tabla 10.2 (H 6,4 · M 8,1) en vez del del Excel (H 6 · M 9).
       if (ind.FMI == null) return null;
-      const ref = sexM ? 6 : 9;
+      const ref = cortesMccb(sexM).fmi[1];
       return { reference: fmiReferenceLabel(sexM), delta: f(ind.FMI - ref, decimalesDe("FMI")) };
     }
     case "PABU":
@@ -433,9 +474,10 @@ export function indicatorRange(
       return ind.eb != null ? { reference: "—", delta: null } : null;
     case "FFMI": {
       if (ind.FFMI == null) return null;
-      // Gildardo §2 (2026-08-17): Δ contra el BORDE inferior (M 17 / F 15), no el punto medio del rango.
-      const ref = sexM ? 17 : 15;
-      return { reference: sexM ? "17–25" : "15–23", delta: f(ind.FFMI - ref, decimalesDe("FFMI")) };
+      // Gildardo §2 (2026-08-17): Δ contra el BORDE inferior, no el punto medio. Con la v17 ese borde es
+      // el de su Tabla 10.2 (H 18,8 · M 15,5) en vez del del Excel (H 17 · M 15).
+      const ref = cortesMccb(sexM).ffmi[0];
+      return { reference: ffmiReferenceLabel(sexM), delta: f(ind.FFMI - ref, decimalesDe("FFMI")) };
     }
     case "AF": {
       if (!(ind.AF > 0)) return null;

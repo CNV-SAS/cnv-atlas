@@ -6,6 +6,21 @@
 //
 // EXCEPCION (2026-07-29): `cintura` se deja FUERA a propósito (ver el comentario en su lugar); el
 // port de los otros 93 campos sigue fiel a importarComposicion.
+// ═══ LA CINTURA MEDIDA: EL NOMBRE DE LA COLUMNA VIVE AQUI, Y FUERA DE BIODY_COLUMNS (2026-11-12) ═══
+//
+// La v17 §2.3 necesita el PERIMETRO DE CINTURA para el modificador de adiposidad central del dominio
+// metabolico-estructural (H >= 94 cm · M >= 80 cm). El dato existe en el export, y en la nube esta en
+// las 509 mediciones, pero NO puede entrar a `BIODY_COLUMNS`: el mapeo de Gildardo apunta a la columna
+// de REFERENCIA (el umbral de la OMS, 102 para todo paciente) y hay un candado que exige
+// `BIODY_COLUMNS.cintura === undefined` para que ese valor no vuelva a colarse como si fuera una
+// medida. Ese candado se queda como esta.
+//
+// POR QUE EL NOMBRE SE MUEVE AQUI EN VEZ DE COPIARSE: lo definia `modules/bis/services/header-map.ts`,
+// y el motor no puede importar de la app (regla 12). Copiar la cadena dejaria DOS fuentes del mismo
+// nombre de columna, y la primera vez que el Biody le cambie un espacio una de las dos se queda muda,
+// que con un header ya paso dos veces. Asi que vive en el borde del motor y la app la importa de aqui.
+export const MEASURED_WAIST_HEADER = "Waist Size cm";
+
 export interface BiodyColumn { header: string; unit: string; required: boolean; }
 export const BIODY_COLUMNS: Record<string, BiodyColumn> = {
   peso: { header: "Peso kg", unit: "kg", required: true },

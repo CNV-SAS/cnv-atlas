@@ -15,15 +15,24 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const ORIGINAL = join(ROOT, "src/clinical-engine/frozen/engine.core.js");
 export const DERIVED = join(ROOT, "src/clinical-engine/frozen/engine.core.derived.js");
 
-// Las 6 funciones a exponer (INVENTARIO punto 6b). Existen en engine.core.js, no en su module.exports.
-export const ADDED_EXPORTS = ["efrProf", "cSMM", "cMMEM", "cASMI", "cFFW", "cEISG"];
+// Los nombres a exponer (INVENTARIO punto 6b). TODOS existen en engine.core.js y ninguno esta en su
+// `module.exports`. Se agregan sin editar el frozen, que es justo para lo que existe este mecanismo.
+//
+// Los cinco del final entraron con la v17 §2.4 (2026-11-12): son el bloque MCCB de su archivo (los
+// cortes de su Tabla 10.2, los dos clasificadores que gobiernan el sector, los nueve sectores de su
+// Tabla 11.2 con su fenotipo y su gravedad, y la funcion que resuelve el sector). El motor de Atlas
+// los necesita para numerar la Diana, asi que tienen que salir del frozen y no copiarse a TypeScript:
+// una copia de nueve sectores en otro archivo es la forma de que un dia digan otra cosa.
+export const ADDED_EXPORTS = ["efrProf", "cSMM", "cMMEM", "cASMI", "cFFW", "cEISG",
+  "MCCB_CORTES", "cFFMI_MCCB", "cFMI_MCCB", "MCCB_SECTORES", "sectorMCCB"];
 
 const HEADER = `/*
  * engine.core.derived.js — ARCHIVO GENERADO. NO editar a mano. NO es ciencia editada.
  *
  * Es una copia BYTE A BYTE de engine.core.js (la ciencia congelada de Gildardo, regla 16) mas UNA
- * sola linea final: un Object.assign aditivo que expone 6 funciones que YA existen en el original
- * pero no estaban en su module.exports (efrProf, cSMM, cMMEM, cASMI, cFFW, cEISG). Ese es el
+ * sola linea final: un Object.assign aditivo que expone los nombres que YA existen en el original
+ * pero no estaban en su module.exports (los 6 clasificadores de composicion y, desde la v17, las 5
+ * piezas del bloque MCCB: cortes, clasificadores, sectores). Ese es el
  * mecanismo de archivo derivado: exponer sin editar el frozen. NO agrega logica ni cambia una
  * formula; si algo mas cambia, se rompio el mecanismo.
  *

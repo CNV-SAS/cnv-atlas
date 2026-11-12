@@ -32,7 +32,14 @@
    No truena mientras 'bis' traiga PABU precalculado (flujo normal). Se preserva
    verbatim; corregir en el fuente si se desea.
    ═══════════════════════════════════════════════════════════════════════════ */
-const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');
+// EL REQUIRE APUNTA AL DERIVADO, NO AL ORIGINAL (2026-11-12, v17 §2.3).
+//
+// `cFMI_MCCB` y `sectorMCCB` existen en `engine.core.js` pero NO en su `module.exports`: se exponen por
+// el mecanismo de archivo derivado (ARCHITECTURE regla 16), que es justo para esto, exponer sin editar
+// el frozen. Asi que el dominio 2 las toma de ahi. Y es lo que el encabezado del derivado ya dice de si
+// mismo: *"este archivo es EL MOTOR VIVO: los imports del clinical-engine apuntan aqui, no al
+// original"*. Lo demas del require no cambia: son las mismas funciones del nucleo.
+const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');
 
 // ─── MAPEO DEL LE8 A LOS CAMPOS QUE LA ENCUESTA SÍ CAPTURA ──────────────────
 // Los campos d1_9, d1_10 y d1_16 que lee calcLE8 NO existen en la encuesta: solo
@@ -146,15 +153,19 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
       `PABU ${_dfiFmt(idx.pabu)} ${idx.sexoRef?.pabu ? idx.sexoRef.pabu + " " : ""}→ ${idx.pabuCl?.l || "-"}${idx.icaBis != null ? " · desviación de φ " + (idx.icaBis >= 0 ? "+" : "") + _dfiFmt(idx.icaBis) : ""}`,
       `IEHH ${_dfiFmt(idx.iehh)} (${idx.iehhCl?.l||"-"})`
     ] };
-  // ---- Dominio 2 · Metabólico-Estructural (ISCM-BIS × fenotipo) ----
-  const iscmMap = { Bajo:0, Leve:1, Moderado:2, Alto:3 };
-  let s2 = iscmMap[idx.iscmCl?.l] ?? 1;
-  const fen = idx.structL || "";
-  if(/Sarcop|Déficit|Deficit/i.test(fen)) s2=_dfiCap3(s2+1);
+  // ---- Dominio 2 · Metabólico-Estructural (sector MCCB + adiposidad central) ----
+  // v17: gravedad base por sector de la Diana (libro, Tabla 11.2; decisión del 7-nov-2026):
+  // S1 a S4 = 0 · S5 y S6 = 1 · S8 = 2 · S7 y S9 = 3. Modificador +1 (tope 3) con adiposidad
+  // central. El ISCM-BIS ya no gradúa este dominio: se cita como valor.
+  const sec = idx.sector || null, adip = idx.adip || {};
+  let s2 = sec ? sec.g : 1;
+  if(adip.central) s2=_dfiCap3(s2+1);
+  const fen = sec ? sec.fen : (idx.structL || "");
+  const _adipTxt = adip.central ? ("adiposidad central (" + [adip.cintura>0 ? "cintura de " + _dfiFmt(adip.cintura) + " cm" : null, adip.ict>0 ? "ICT de " + _dfiFmt(adip.ict) : null].filter(Boolean).join(", ") + ")") : "";
   const dom2 = { id:"d2", nombre:"Metabólico-Estructural", icon:"❤️", sev:s2,
-    clasif:`ISCM ${idx.iscmCl?.l||"-"} · ${fen||"fenotipo N/C"}`,
-    lectura: s2>=3?"Susceptibilidad cardiometabólica alta; fenotipo de riesgo.":s2===2?"Vulnerabilidad metabólica o fenotipo a corregir.":s2===1?"Susceptibilidad leve: prevención eficaz.":"Perfil metabólico-estructural favorable.",
-    items:[`ISCM-BIS ${_dfiFmt(idx.iscm)} (${idx.iscmCl?.l||"-"})`,`Fenotipo: ${fen||"N/C"}`,`FMI ${_dfiFmt(dv.fmi)} · FFMI ${_dfiFmt(dv.ffmi)}`] };
+    clasif:`${sec ? sec.id + " · " + fen : "Sector N/C"}${adip.central ? " · adiposidad central" : ""}`,
+    lectura: s2>=3?"Fenotipo estructural de alto riesgo.":s2===2?"Fenotipo o adiposidad central a corregir.":s2===1?"Carga estructural leve: prevención eficaz.":"Perfil metabólico-estructural favorable.",
+    items:[`Fenotipo MCCB: ${sec ? sec.id + " " + fen : "N/C"}`,`FMI ${_dfiFmt(dv.fmi)} · FFMI ${_dfiFmt(dv.ffmi)} (cortes MCCB por sexo)`, adip.central ? _adipTxt.charAt(0).toUpperCase() + _adipTxt.slice(1) : "Sin adiposidad central",`ISCM-BIS ${_dfiFmt(idx.iscm)} (${idx.iscmTxt || "-"}; se reporta sin nivel)`] };
   // ---- Dominio 3 · Envejecimiento (EB-BIS · IAE) ----
   const iae = idx.iae ?? 0;
   let s3;
@@ -225,10 +236,12 @@ const computeDFIFromData = (enc, bis) => {
         pabu = num("PABU", "pabu") || calcPABU(Re, Ri, Rinf, C, sexoM);
   const iehh = num("IEHH", "iehh"), iscm = num("ISCM", "iscm"), iae = num("IAE", "iae"),
         ebBis = num("EB_BIS", "eb", "ebBis"), FMI = num("FMI", "fmi"), FFMI = num("FFMI", "ffmi");
-  const icaBis = num("ICA_BIS", "icaBis") || (pabu ? pabu - 1.618 : null);
+  // v17: ICA-BIS con signo desde la PABU; el valor guardado (sin signo hasta v16) solo si falta la PABU.
+  const icaBis = pabu ? pabu - 1.618 : (num("ICA_BIS", "icaBis") || null);
   const sexoM = (d.sexo === "Masculino" || d.sexo === "M") ? "M" : "F";
   const esMasc = sexoM === "M";
-  const ifcK = cIFC(ifc, sexoM).k, ircK = cIRC(irc, sexoM).k, _fmiK = cFMI(FMI, sexoM).k;
+  // v17: el FMI se categoriza con los cortes MCCB por sexo; sin ellos (sin sexo o sin valor), los viejos.
+  const ifcK = cIFC(ifc, sexoM).k, ircK = cIRC(irc, sexoM).k, _fmiK = cFMI_MCCB(FMI, sexoM).k || cFMI(FMI, sexoM).k;
   const edad = Number(d.edad) || null;
   const _asmi = num("ASMI"), _smmw = num("SMM_W", "smmW");
   const _fmiElev = esMasc ? FMI > 6.0 : FMI > 9.0;
@@ -241,12 +254,27 @@ const computeDFIFromData = (enc, bis) => {
   const _asmiLow = _asmi > 0 && _asmi < (esMasc ? 7.0 : 5.5);
   const _smmwLow = _smmw > 0 && _smmw < (esMasc ? 27 : 22); // mujer 24 -> 22 (Gildardo §1 2026-08-19: barrido del umbral; 2o sitio, ver DECISIONES P-24)
   const _obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow);
+  // ═══ LAS CINCO LINEAS DE ARRIBA YA NO ALIMENTAN EL DOMINIO 2 (v17 §2.3, 2026-11-12) ═══
+  //
+  // `structL` salia de `_obSarc`; desde la v17 sale del SECTOR MCCB, asi que nada lee `_obSarc` en esta
+  // funcion. Su v17 las borra de aqui. Se CONSERVAN porque dos candados las anclan a su archivo
+  // (`frozen-dfi-ffmilow-diff` sobre `_ffmiLow` y `frozen-deriva-vigente` sobre `_smmwLow`) y porque las
+  // mismas expresiones siguen vivas en su modulo de Tratamiento (su `_obSarcDx`). Queda dicho en voz
+  // alta para que nadie crea que la obesidad sarcopenica sigue entrando al DFI por aqui: entra por el
+  // sector S9, que es otra cuenta.
+  // v17: fenotipo por el sector MCCB (libro, Tablas 10.2 y 11.2). La obesidad sarcopénica es
+  // el sector S9: FFMI bajo con FMI alto del MCCB (antes FMI > 6 o > 9).
+  const _sec = sectorMCCB(FFMI, FMI, sexoM);
+  // Adiposidad central (modificador del dominio 2): cintura OMS (H ≥ 94 cm · M ≥ 80 cm) o ICT ≥ 0,50.
+  const _cint = num("cintura", "circCint"), _talla = num("tallaCm", "talla");
+  const _ict = num("ICT", "ict") || (_cint > 0 && _talla > 0 ? _cint / _talla : 0);
+  const _adip = { cintura: _cint, ict: _ict, central: (_cint > 0 && _cint >= (esMasc ? 94 : 80)) || _ict >= 0.50 };
   const _idx = {
     ifc, irc, iehh, iscm, iae, ebBis, icaBis, pabu,
     // Referencias del sexo del paciente, para que el DFI las pueda citar en vez de
     // dejar sólo la etiqueta Alto/Normal/Bajo, que no dice contra qué se comparó.
     sexoRef: {
-      ifc:  esMasc ? "H: <4,12 bajo · 4,12–6,68 normal · >6,68 alto" : "M: <2,08 bajo · 2,08–3,28 normal · >3,28 alto",
+      ifc:  esMasc ? "H: <4,1 bajo · 4,1–6,7 normal · >6,7 alto" : "M: <2,1 bajo · 2,1–3,3 normal · >3,3 alto",
       irc:  esMasc ? "H: <1,7 bajo · 1,7–2,1 normal · >2,1 alto" : "M: <2,3 bajo · 2,3–2,8 normal · >2,8 alto",
       pabu: esMasc ? "k=0,78 (H)" : "k=0,46 (M)"
     },
@@ -256,8 +284,9 @@ const computeDFIFromData = (enc, bis) => {
     iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === "Severo" ? "Alto" : x; })() },
     iscmCl: { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },
     iaeCl: { l: (() => { const x = cIAE(iae || 0).l; return x === "Desacelerado" ? "Enlentecido" : x; })() },
+    sector: _sec, adip: _adip,
     fmiCat: (_fmiK <= 1 ? "bajo_grasa" : _fmiK === 2 ? "normal" : "exceso"),
-    structL: _obSarc ? "Obesidad sarcopénica" : ("Fenotipo " + cFMI(FMI, sexoM).l + "/" + cFFMI(FFMI, sexoM).l)
+    structL: _sec ? _sec.fen : ""
   };
   const _perc = {
     bodyImage: _pick({ "muy delgado/a": "muy_delgado", "delgado/a": "delgado", "normal": "normal", "sobrepeso": "sobrepeso", "obesidad": "obesidad" }, d.d2_19),

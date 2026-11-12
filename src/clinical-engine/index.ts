@@ -71,3 +71,8 @@ export {
 // Normalizador canonico de sexo (M/F, fail-loud): el MISMO borde que usa el motor. La UI lo reusa
 // para no comparar sexo crudo (Biody exporta "Male", el motor clasifica con "M/Masculino").
 export { normalizeSexo } from "./edge/normalize";
+
+// EL SECTOR DEL LIBRO (S1-S9, v17 §2.4): su codigo, su fenotipo y su gravedad, derivados del MISMO
+// rango que coloca y colorea la celda de la Diana. Ver `sector-mccb.ts` para por que se deriva por
+// indice y no por las dos bandas.
+export { sectorDelIndice, sectorDeLasBandas, SECTORES_DIANA, type SectorDiana } from "./sector-mccb";

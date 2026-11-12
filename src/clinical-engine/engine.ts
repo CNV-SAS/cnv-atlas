@@ -9,6 +9,7 @@
 import { analizarDesdeBiody, analizarDFI, calcLE8 } from "./analysis";
 import { icaBisDeLaPabu } from "./ica-bis";
 import { suspendSurveyRoutes } from "./dfi-routes";
+import { sectorDeLasBandas } from "./sector-mccb";
 import { classifyFenotipo } from "./protocolo-fenotipo";
 // Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
 // derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
@@ -80,12 +81,11 @@ export function runEngine(input: EngineInput): EngineOutput {
   // Ruta BIS (siempre): indices, clases, fenotipo EFR/estructural/FyR, nutraceuticos.
   const a = analizarDesdeBiody(bisRow, sexo, { icec, edad });
 
-  const bands = {
-    ifc: a.clases.IFC.k,
-    irc: a.clases.IRC.k,
-    ffmi: a.clases.FFMI.k,
-    fmi: a.clases.FMI.k,
-  };
+  // LAS BANDAS QUE NUMERAN LA DIANA, que desde la v17 §2.4 NO son las de `a.clases` en los dos ejes
+  // estructurales: el sector sale de los cortes MCCB de su Tabla 10.2 (por sexo), mientras `clases.FFMI`
+  // y `clases.FMI` siguen siendo `cFFMI`/`cFMI`, que es lo que se muestra con sus banderas clinicas.
+  // `analysis.ts` las calcula y las devuelve ya separadas; aqui NO se vuelve a elegir.
+  const bands = a.bandasDiana;
 
   const efrKey = a.fenotipoEFR.key;
   const stateNumber = efrStateNumber(bands);
@@ -93,6 +93,11 @@ export function runEngine(input: EngineInput): EngineOutput {
   // Fenotipo estructural (STRUCT_LABELS: FFMI_FMI) y sector FyR (FYR_LABELS: ifcK_ircK).
   const structKey = `${bandToLetter(bands.ffmi)}_${bandToLetter(bands.fmi)}`;
   const structural = { key: structKey, nombre: core.STRUCT_LABELS[structKey] ?? structKey };
+  // El sector S1-S9 se deriva del MISMO rango que coloca y colorea la celda (ver `sector-mccb.ts`), no
+  // de `a.sector`: asi el rotulo no puede nombrar una celda distinta de la encendida, ni quedarse vacio
+  // sobre una celda pintada cuando falta el sexo.
+  const sectorDiana = sectorDeLasBandas(bands.ffmi, bands.fmi);
+
   const fyrKey = `${bands.ifc}_${bands.irc}`;
   const fyr = core.FYR_LABELS[fyrKey];
   const frSector = { key: fyrKey, nombre: fyr?.l ?? fyrKey };
@@ -232,6 +237,7 @@ export function runEngine(input: EngineInput): EngineOutput {
       nutraceuticos: a.fenotipoEFR.nutraceuticos,
     },
     structural,
+    sectorDiana,
     fenotipoMCCB,
     frSector,
     dfi,

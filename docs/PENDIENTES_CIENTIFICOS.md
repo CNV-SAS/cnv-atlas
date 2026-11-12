@@ -196,7 +196,7 @@ con su simulación delante y con la aprobación de Santiago antes de ejecutarla.
 
 ---
 
-## Las 53 preguntas
+## Las 55 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"37: C, solo cintura y cadera · 9: sí,
 > el degradado hacia rojo"*). Si está de acuerdo con nuestra recomendación, basta con **"de acuerdo"**.
@@ -696,6 +696,50 @@ de su `computeDFI` es R1, R2, R3, R4, R5 por el orden en que las añade, y la R3
 *Recomendamos **B**: su propio rótulo llama a la R3 prioritaria, y el veto conductual es el único que
 fuerza el riesgo integrado a crítico por sí solo. Si una persona tiene señal de conducta de riesgo, esa
 ficha no puede quedar tercera en la lista que el profesional lee.*
+
+**54 · ¿Qué cortes de FMI y FFMI lee el profesional en la ficha del indicador? [aplicado: B]** Su v17
+deja **dos** juegos de cortes vivos y con oficios distintos: los del libro (Tabla 10.2, por sexo: FMI
+H 3,7-6,4 · M 5,0-8,1 · FFMI H 18,8-21,0 · M 15,5-17,1), que gobiernan el sector de la Diana, el
+fenotipo y el dominio metabólico-estructural; y los de `cFMI`/`cFFMI` (del Excel Mapa E_BIS: FMI H 3-6 ·
+M 5-9 · FFMI H 17-25 · M 15-23), que su documento conserva *"solo para sus banderas clínicas"* (sospecha
+de anabolizantes, riesgo de desnutrición).
+
+**El problema es que la pantalla los mezclaba.** Un hombre con FFMI 21,1 salía en la ficha del indicador
+como *"Normal (17–25)"* y en la Diana como sector con *"FFMI Alto"*: el mismo número, dos lecturas
+opuestas a un clic de distancia. Las dos son suyas; lo que no puede es que el profesional no sepa cuál
+manda.
+ · **A)** La ficha sigue mostrando los cortes de `cFMI`/`cFFMI`. · **B)** La ficha muestra los cortes
+ **del libro** (los que gobiernan el sector y el dominio), y las banderas clínicas se quedan en la
+ columna de diagnóstico de la tabla de composición. · **C)** La ficha muestra los dos, rotulados.
+*Recomendamos **B**, y está **[aplicado]**: el encabezado de esa pantalla dice que la referencia que
+muestra es "el límite que gobierna el riesgo", y desde la v17 ese límite es el del libro. La bandera
+clínica no desaparece: sigue visible donde ya estaba. La **C** es la más completa pero duplica cuatro
+cifras en una ficha que se lee de un golpe, y la **A** deja la contradicción.*
+
+**Y una consecuencia medida, para que se vea el tamaño:** con el cambio, la Δ del donante de nuestros
+goldens pasa de **+0,37** a **−0,03** en el FMI (el borde sube de 6 a 6,4 y el paciente cruza al otro
+lado) y de **+4,10** a **+2,30** en el FFMI (el borde sube de 17 a 18,8). No es un decimal: es que el
+profesional lee "por encima del límite" o "por debajo" según qué tabla esté mirando.
+
+**55 · Su caso K dice "sin sexo no se clasifica", pero el adaptador del DFI lo vuelve FEMENINO.** Su
+§13 caso K pide que sin sexo registrado el IFC, la PABU y el ICA-BIS digan *"Sin sexo: no se
+clasifica"*, y así lo hacen: `cIFC`, `cPABU` y `calcPABU` de su v17 devuelven k = 0 o 0. Pero su
+`computeDFIFromData` (la función que arma el diagnóstico funcional integral) empieza con
+`const sexoM = (d.sexo === "Masculino" || d.sexo === "M") ? "M" : "F"`, o sea que **cualquier valor
+que no sea masculino se trata como femenino**, incluido el vacío. Así que en esa pantalla un paciente
+sin sexo recibe el sector, el fenotipo y el dominio metabólico-estructural **de una mujer**, en vez de
+quedar sin clasificar.
+
+**En Atlas hoy no es alcanzable** (la cadena normaliza el sexo antes y rechaza un valor desconocido, y
+en la base solo hay M, F y dos nulos), así que esto **no es un defecto vivo**: es una contradicción
+dentro de su propio archivo, y la señalamos porque el día que entre un registro sin sexo decidiría en
+silencio.
+ · **A)** Vale el caso K: sin sexo, el DFI tampoco clasifica (el sector queda N/C y el dominio no
+ puntúa, como ya hace cuando falta el FFMI). · **B)** Vale el código: sin sexo se asume femenino.
+ · **C)** Otra cosa.
+*Recomendamos **A**, y NO la aplicamos todavía porque toca su código congelado: es su criterio
+declarado en el caso K, y es además el que Atlas ya aplica en todos los demás sitios. Asumir femenino
+es la clase de valor por defecto que no se ve en ninguna pantalla y cambia un veredicto.*
 
 **44 · La reconfirmación anual cuando la línea base viene del HTML.** Su §7.3 cuenta desde "la última
 confirmación completa", y 162 consultas tienen por línea base un archivo, no una encuesta diligenciada.

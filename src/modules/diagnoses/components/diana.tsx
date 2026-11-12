@@ -1,6 +1,6 @@
 "use client";
 
-import { bandToWord, efrRiskRank, efrSectorBands } from "@/clinical-engine";
+import { bandToWord, efrRiskRank, efrSectorBands, sectorDelIndice } from "@/clinical-engine";
 
 // La Diana EFR: grafico polar de los 81 estados (imagen caracteristica de Atlas, BRAND).
 // Fiel a la definicion del modelo (ATLAS_v7.html:11166,:11177): 9 ANILLOS radiales = IFC x IRC
@@ -196,8 +196,8 @@ export function Diana({
             onClick={interactive && onSelectCell ? () => onSelectCell(cell.num) : undefined}
           />
         ))}
-        {/* Etiquetas de lectura, fieles a la definicion: sectores E1-E9 en el borde (angular, FFMI x FMI,
-            estructura; §15 renombre R->E, la R queda reservada para las rutas de atencion), anillos
+        {/* Etiquetas de lectura, fieles a la definicion: sectores S1-S9 en el borde (angular, FFMI x FMI,
+            estructura; §15 renombre R->E, y v17 §2.4 renombre E->S con los sectores del libro), anillos
             A1-A9 sobre el radio superior (radial, IFC x IRC, funcion y riesgo). Son rotulos fijos de eje.
             El prefijo se DERIVA del rango al pintar (efrRiskRank), nunca se sella: por eso el renombre no
             necesita migracion ni traduccion, y viejas y nuevas evaluaciones se leen igual. */}
@@ -258,8 +258,13 @@ export function Diana({
                   </tspan>
                 </>
               ) : null}
+              {/* EL CODIGO DEL SECTOR PASA DE E A S CON LA v17 (su §2.4, el renombre del libro), y ya
+                  no se arma con el indice mas uno: sale de SU tabla de sectores por el mismo rango que
+                  pinta la celda (`sectorDelIndice`). Es el tercer nombre de este eje (R hasta el 9 de
+                  agosto, luego E, ahora S) y ninguno se sella: se deriva al pintar, asi que el renombre
+                  no necesita migracion y una consulta vieja y una nueva se leen igual. */}
               <tspan x={tx} dy={bandas ? 7.5 : 0} fontWeight={700}>
-                E{sc + 1}
+                {sectorDelIndice(sc)?.id ?? `S${sc + 1}`}
               </tspan>
             </text>
           );

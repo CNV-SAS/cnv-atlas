@@ -73,7 +73,9 @@ const MEASUREMENT_DATE_HEADERS = new Set<string>(["Measurement date"]);
 // monitoring Waist Size ... referencia", que es el corte OMS, NO una medida: confundirlas causo un
 // falso positivo de riesgo CV sistematico). Se usan para el display de composicion (cintura) y para
 // el bloqueo del import por regla de negocio (cintura/cadera, sub-bloque B).
-export const MEASURED_WAIST_HEADER = "Waist Size cm"; // cintura
+// La CINTURA se re-exporta del borde del motor, donde vive desde la v17: el dominio 2 la necesita y
+// el motor no puede importar de la app. Una sola fuente del nombre de la columna.
+export { MEASURED_WAIST_HEADER } from "@/clinical-engine/edge/biody-columns";
 export const MEASURED_HIPS_HEADER = "Hips Size cm"; // cadera
 // Reactancia MEDIDA a 50 kHz. Es la que su tabla de Wang pone en "Reactancia 50 kHz" (`bis.X50`, v9 L6515 y
 // L7792). NO es `Xc` del contrato del motor, que es la reactancia del CENTRO DEL CIRCULO de Cole (negativa

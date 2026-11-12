@@ -41,10 +41,17 @@ const dfi = (b: Record<string, unknown>, enc: Record<string, unknown> = {}) =>
 const dom = (r: Res, id: string) => r.domains.find((d) => d.id === id)!;
 
 describe("los cuatro dominios que puntuaban sobre un vacío", () => {
-  it("d2 Metabólico sin ISCM no puntúa (el que él nombró)", () => {
-    const r = dfi(bis({ ISCM: undefined }));
+  it("d2 Metabólico sin SECTOR no puntúa (el que él nombró, con el insumo de la v17)", () => {
+    // SU REGLA NO CAMBIA; CAMBIA DE QUE DEPENDE (v17 §2.3, 2026-11-12). El dominio 2 salia del nivel
+    // del ISCM-BIS, asi que el caso del vacio era "sin ISCM"; ahora sale de la gravedad del SECTOR
+    // MCCB, asi que el vacio es "sin sector", o sea sin FFMI o sin FMI con los que resolverlo. El ISCM
+    // ausente sigue sin clasificarse (eso lo prueba `iscm-sin-mca`), pero ya no anula el dominio: la
+    // v17 lo cita como valor y no lo gradua.
+    const r = dfi(bis({ FFMI: 0 }));
     expect(dom(r, "d2").sev).toBe(null);
     expect(r.sinDato).toContain("d2");
+    // Y el control de la mitad que se movio: sin ISCM el dominio SI puntua, por su sector.
+    expect(dom(dfi(bis({ ISCM: undefined })), "d2").sev).not.toBe(null);
   });
 
   it("d3 Envejecimiento sin EB-BIS no puntúa · antes daba 0 y lo llamaba ritmo esperado", () => {
@@ -89,7 +96,11 @@ describe("el riesgo integrado se renormaliza, no se abarata", () => {
     // El caso que lo hace evidente: TODOS los dominios medidos en severidad 3 (lo peor) y el ICEC
     // ausente. Renormalizado da 100. Diluyendo el término ausente daría 85, o sea que al paciente más
     // grave del sistema le bajaría el riesgo por una casilla que nadie llenó.
-    const r = dfi(bis({ ISCM: 3.0, IAE: 12, IFC: 1.0, IRC: 3.0 }), { d2_21: ["Laxantes"] });
+    // EL CASO SE REARMO CON LA v17: el dominio 2 ya no llega a 3 por un ISCM de 3,0, llega por el
+    // SECTOR. FFMI 17 con FMI 8 en hombre son, con los cortes MCCB (H: FFMI 18,8/21,0 · FMI 3,7/6,4),
+    // FFMI bajo con FMI alto = S9 (obesidad sarcopenica), gravedad 3, que es el peor sector de su
+    // Tabla 11.2. El caso sigue siendo el mismo: los cuatro dominios en lo peor y el ICEC ausente.
+    const r = dfi(bis({ ISCM: 3.0, IAE: 12, IFC: 1.0, IRC: 3.0, FFMI: 17, FMI: 8 }), { d2_21: ["Laxantes"] });
     expect(r.sinDato, "este caso ya no ejercita la renormalización").toContain("d5");
     for (const id of ["d1", "d2", "d3", "d4"]) {
       expect(dom(r, id).sev, `${id} no quedó en 3: el caso ya no prueba lo que dice`).toBe(3);

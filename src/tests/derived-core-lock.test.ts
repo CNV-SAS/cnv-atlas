@@ -18,7 +18,20 @@ import { describe, expect, it } from "vitest";
 
 const ORIGINAL = "src/clinical-engine/frozen/engine.core.js";
 const DERIVED = "src/clinical-engine/frozen/engine.core.derived.js";
-const ASSIGN_LINE = "Object.assign(module.exports, { efrProf, cSMM, cMMEM, cASMI, cFFW, cEISG });";
+
+// ═══ LA LINEA ESPERADA SE DERIVA DEL GENERADOR, NO SE ESCRIBE AQUI (2026-11-12) ═══
+//
+// Estaba escrita a mano. Al exponer las cinco piezas del bloque MCCB de la v17 el generador cambio y
+// este candado cayo por la razon equivocada: no porque alguien hubiera editado la ciencia, sino porque
+// la copia de aqui habia envejecido. Es la misma leccion del HTML vigente, un archivo mas abajo: una
+// cadena escrita a mano junto a su original es una segunda fuente, y la segunda fuente miente primero.
+//
+// Lo que se compara ahora es LO MISMO pero sin copia: el archivo commiteado tiene que ser exactamente
+// lo que `buildDerived` produce desde el original. Eso sigue atrapando las dos cosas que este candado
+// existe para atrapar (una edicion de la ciencia en el derivado, y un `engine.core.js` que cambio sin
+// regenerar), y ademas atrapa una tercera: una edicion del propio derivado que el generador no haria.
+const { ADDED_EXPORTS, buildDerived } = await import("../../scripts/gen-derived-core.mjs");
+const ASSIGN_LINE = `Object.assign(module.exports, { ${ADDED_EXPORTS.join(", ")} });`;
 
 describe("DIFF C: engine.core.derived.js = engine.core.js + exports aditivos", () => {
   const original = readFileSync(ORIGINAL, "utf8");
@@ -36,5 +49,22 @@ describe("DIFF C: engine.core.derived.js = engine.core.js + exports aditivos", (
   it("lo unico despues del original es la linea aditiva Object.assign (sin logica)", () => {
     const after = derived.slice(derived.indexOf(original) + original.length);
     expect(after.trim()).toBe(ASSIGN_LINE);
+  });
+
+  it("el archivo commiteado es EXACTAMENTE lo que produce el generador", () => {
+    // La comparacion de fondo: sin copias intermedias. Si falla, se regenera con
+    // `node scripts/gen-derived-core.mjs` y se revisa el diff antes de commitear.
+    expect(derived).toBe(buildDerived(original));
+  });
+
+  it("todo nombre expuesto EXISTE en el original (el assign es aditivo, no inventa)", () => {
+    // Un nombre en ADDED_EXPORTS que no exista en el frozen rompe el modulo en runtime con un
+    // ReferenceError, y lo haria al CARGAR el motor, o sea en la primera consulta que se abra.
+    for (const nombre of ADDED_EXPORTS) {
+      expect(
+        new RegExp(`(const|function|var|let)\\s+${nombre}\\b`).test(original),
+        `${nombre} no esta definido en engine.core.js`,
+      ).toBe(true);
+    }
   });
 });

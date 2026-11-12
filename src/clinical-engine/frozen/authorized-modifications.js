@@ -223,8 +223,21 @@ const AUTHORIZED_MODIFICATIONS = [
     date: "2026-08-31",
     targetFile: "engine.dfi.js",
     instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
-    oldSlice: "  let s2 = iscmMap[idx.iscmCl?.l] ?? 1;",
-    newSlice: "  // El caso que el nombro. El `?? 1` se conserva para lo que el lo escribio: una etiqueta que existe\n  // y el mapa no reconoce. Lo que cambia es la AUSENCIA de clasificacion, que ya no puntua.\n  let s2 = idx.iscmCl?.l == null ? null : (iscmMap[idx.iscmCl.l] ?? 1);",
+    // ═══ REHECHA PARA EL DOMINIO 2 DE LA v17 (2026-11-12), Y SU REGLA NO CAMBIA ═══
+    //
+    // Hasta aqui el dominio 2 salia del nivel del ISCM-BIS, y esta modificacion decia: una AUSENCIA de
+    // clasificacion no puntua, y el `?? 1` se conserva para el caso que el nombro (una etiqueta que
+    // existe y el mapa no reconoce). Su v17 cambia el insumo: el dominio 2 sale del SECTOR MCCB, con
+    // `sec ? sec.g : 1`.
+    //
+    // Y AHI LAS DOS MITADES DE SU `?? 1` SE JUNTAN EN UNA, que es la razon de reescribir esto en vez de
+    // trasladarlo: con el sector no existe el caso "hay dato y el mapa no lo reconoce". Los nueve
+    // sectores cubren las nueve combinaciones de bandas, asi que si `sectorMCCB` devuelve null es
+    // porque NO HAY DATO (sin sexo, o sin FFMI/FMI), que es exactamente el caso que su regla manda no
+    // puntuar. El `: 1` queda inalcanzable con dato, y dejarlo en 1 seria dibujar el vertice de "carga
+    // estructural leve" sobre un dominio que no se midio, que es la frase que el escribio.
+    oldSlice: "  let s2 = sec ? sec.g : 1;",
+    newSlice: "  // Su regla del 30-ago punto 4, aplicada al insumo nuevo: sin sector no hay dato, y sin dato el\n  // dominio no puntua ni dibuja su vertice. Con sector, la gravedad es la de su Tabla 11.2, tal cual.\n  let s2 = sec ? sec.g : null;",
   },
   {
     caId: "CA-6f",
@@ -232,8 +245,11 @@ const AUTHORIZED_MODIFICATIONS = [
     date: "2026-08-31",
     targetFile: "engine.dfi.js",
     instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
-    oldSlice: "  if(/Sarcop|Déficit|Deficit/i.test(fen)) s2=_dfiCap3(s2+1);",
-    newSlice: "  if(/Sarcop|Déficit|Deficit/i.test(fen) && s2 != null) s2=_dfiCap3(s2+1);",
+    // ANCLA REHECHA (2026-11-12, v17 §2.3): el escalon del dominio 2 ya no es el fenotipo con
+    // sarcopenia, es la ADIPOSIDAD CENTRAL. La guarda es la misma y por la misma razon: un modificador
+    // no puede convertir un dominio sin dato en un dominio con severidad 1.
+    oldSlice: "  if(adip.central) s2=_dfiCap3(s2+1);",
+    newSlice: "  if(adip.central && s2 != null) s2=_dfiCap3(s2+1);",
   },
   {
     caId: "CA-6g",
@@ -408,10 +424,13 @@ const AUTHORIZED_MODIFICATIONS = [
     // nombra en su rama encendida.
     instruction:
       "Poner calcPatron en el ambito de engine.dfi (reparacion de ambito, no ciencia): su archivo es un solo scope y el nuestro son modulos. Sin esto, CA-8a cae al catch y la Alimentacion se queda en 30.",
+    // ANCLA ACTUALIZADA (2026-11-12, v17 §2.3): el require del nucleo gano `cFMI_MCCB` y `sectorMCCB`,
+    // que el dominio 2 necesita. La modificacion autorizada NO cambia (sigue siendo poner calcPatron en
+    // el ambito); lo que cambia es la linea a la que se engancha.
     oldSlice:
-      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');",
+      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');",
     newSlice:
-      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');" +
+      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE, cFMI_MCCB, sectorMCCB } = require('./engine.core.derived.js');" +
       "\nconst { calcPatron } = require('./engine.patron.js');",
   },
 ];

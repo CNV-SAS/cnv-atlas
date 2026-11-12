@@ -95,6 +95,16 @@ export type MccbPhenotype = { id: string; nombre: string; riesgo: string; color:
 // Sector funcional FyR (FYR_LABELS, IFC x IRC): 9 combinaciones.
 export type FrSector = { key: string; nombre: string };
 
+// EL SECTOR ESTRUCTURAL DEL LIBRO (v17 §2.4, su Tabla 11.2): S1 a S9, con el fenotipo del sector y la
+// GRAVEDAD que ese sector aporta al dominio metabolico-estructural. Se sella con el diagnostico, y se
+// sella el NOMBRE y no solo el codigo por la misma razon que el fenotipo MCCB: si un dia un nombre
+// cambia, un diagnostico viejo tiene que mostrar el nombre con que se emitio.
+//
+// `structural` (arriba, STRUCT_LABELS) NO se retira y no es lo mismo: son sus nombres anteriores de las
+// nueve celdas, y los diagnosticos ya sellados los llevan. Los dos conviven rotulados aparte, igual que
+// el fenotipo EFR y el MCCB.
+export type SectorDiana = { id: string; fenotipo: string; gravedad: number };
+
 // DFI: dominio del arbol de 5 dominios.
 export type DfiDomain = {
   id: string; // d1..d5
@@ -195,6 +205,9 @@ export type EngineOutput = {
   classifications: Record<string, IndicatorClass>;
   efrPhenotype: EfrPhenotype;
   structural: StructuralPhenotype;
+  // El sector del libro (S1-S9) con su fenotipo y su gravedad. NULL solo en un snapshot sellado antes
+  // de la v17: el guard `isEngineOutput` no lo exige, para que un informe viejo siga abriendo.
+  sectorDiana?: SectorDiana | null;
   // Fenotipo MCCB (F1-F12). Se SELLA en el snapshot (no como columna FK: decision de Santiago
   // 2026-08-02, "de aqui en adelante", no hay consumidores que filtren por el, y evita duplicar el
   // eje FMIxFFMI que ya guarda phenotype_id con la de nueve estados). Se movera a columna el dia que

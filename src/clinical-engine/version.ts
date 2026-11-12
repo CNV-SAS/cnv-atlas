@@ -286,7 +286,36 @@
 //    MEDIDO EN LA NUBE antes de aplicarlo: 245 de 441 consultas vigentes (55,6 %) tienen la PABU por
 //    DEBAJO de φ, o sea que a mas de la mitad se les mostraba una desviacion positiva (que se lee como
 //    deficit) teniendo exceso de adiposidad. No es un borde.
-export const ENGINE_VERSION = "3.3.0";
+//  · 4.0.0 (2026-11-12): LA DIANA SE MUEVE. Pasos 3 y 4 del porte de la v17 (su §2.3 y §2.4): los
+//    cortes MCCB de su Tabla 10.2 gobiernan el SECTOR de la Diana, el fenotipo del sector y el DOMINIO
+//    METABOLICO-ESTRUCTURAL, que pasa de graduarse por el nivel del ISCM-BIS a salir de la gravedad del
+//    sector (su Tabla 11.2: S1-S4 = 0 · S5-S6 = 1 · S8 = 2 · S7/S9 = 3) mas 1 por adiposidad central
+//    (cintura H >= 94 · M >= 80, o ICT >= 0,50, con tope 3).
+//
+//    POR QUE ESTA SI SUBE **MAYOR**, al contrario de la 3.3.0: aqui se mueven CLASIFICACIONES SELLADAS.
+//    Medido en la nube el 11 de noviembre sobre las 441 consultas vigentes: el sector cambia en 279
+//    (63,3 %), el numero de estado en 282 (63,9 %), el dominio 2 en 330 (74,8 %), el riesgo integrado en
+//    342 (77,6 %) y su NIVEL en 154 (34,9 %); la ruta R2 entra en 97 y sale en 74. `sonComparables`
+//    compara la version mayor, asi que la serie de seguimiento se parte a proposito: comparar una
+//    consulta de v16 con una de v17 seria comparar dos ciencias. El recalculo del historico (aprobado por
+//    Santiago el 11 de noviembre, con su parada antes de ejecutarse) es lo que vuelve a unir la serie.
+//
+//    Y DOS CONSECUENCIAS QUE NO ESTABAN EN EL PLAN, las dos encontradas construyendo y verificadas con
+//    aritmetica en sus goldens:
+//
+//      · EL DOMINIO 4 TAMBIEN SE MUEVE. La distorsion de imagen corporal compara lo que el paciente dice
+//        de su cuerpo contra su fenotipo REAL (`fmiCat`), y ese fenotipo ahora se categoriza con los
+//        cortes MCCB. Un FMI de 6,369 en hombre era 'exceso' (corte > 6 del Excel) y es 'normal' (3,7 a
+//        6,4 del libro): el paciente que se percibe con sobrepeso pasa de coincidir a no coincidir, y el
+//        dominio conductual sube. No es un efecto secundario que haya que corregir, es su codigo (su
+//        linea 12018 categoriza el FMI con el MCCB); lo que hace falta es MEDIRLO, y se mide.
+//      · LA LISTA DE NUTRACEUTICOS SUGERIDOS SE MUEVE CON EL ESTADO. El mapa DX se indexa por las cuatro
+//        bandas, asi que al cambiar el sector cambia la celda y con ella su `n`. En el donante golden
+//        sale BERBERINA METABO y entra MITO-Q10 PLUS.
+//
+//    NO HAY MIGRACION EN ESTE BUMP: lo sellado se queda como se sello (regla 7). Lo que mueve el
+//    historico es el recalculo, que es un acto aparte y con aprobacion.
+export const ENGINE_VERSION = "4.0.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada

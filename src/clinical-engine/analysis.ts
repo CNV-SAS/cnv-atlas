@@ -24,8 +24,9 @@ import * as dfi from "./frozen/engine.dfi.authorized.js";
 import * as ix from "./frozen/engine.indices.js";
 import { ebBisV7, EB_BIS_V7 } from "./frozen/eb-bis-v7.js";
 import { type BiodyImport, parseBiodyRow } from "./edge/biody-import";
+import { MEASURED_WAIST_HEADER } from "./edge/biody-columns";
 import { ordinalesPatron } from "./patron";
-import { normalizeSexo, type SexoCanonico } from "./edge/normalize";
+import { normalizeSexo, toNum, type SexoCanonico } from "./edge/normalize";
 import type { ResultadoEbBis } from "./types";
 
 /**
@@ -80,6 +81,22 @@ export interface AnalisisANIBISE {
     IEHH: { l: string } | null;
     IAE: { l: string } | null;
   };
+  /**
+   * LAS BANDAS QUE NUMERAN LA DIANA, que desde la v17 §2.4 YA NO SON LAS DE `clases` en los dos ejes
+   * estructurales, y separarlas es el punto de este campo.
+   *
+   * `clases.FFMI` y `clases.FMI` siguen siendo `cFFMI`/`cFMI`, que es lo que se MUESTRA en la tabla de
+   * composicion con sus banderas clinicas (sospecha de anabolizantes, riesgo de desnutricion).
+   * El SECTOR, el fenotipo del sector y el dominio 2 salen de los cortes MCCB de su
+   * Tabla 10.2, que son otros numeros. Mezclarlos en un solo campo obligaria a elegir cual gana, y
+   * cualquiera de las dos elecciones deja una pantalla diciendo lo contrario de la otra.
+   *
+   * IFC e IRC son los mismos en los dos usos (su v17 no los duplica), y se repiten aqui para que el
+   * numero de estado se arme de UN solo objeto y no de dos mitades.
+   */
+  bandasDiana: { ifc: number; irc: number; ffmi: number; fmi: number };
+  /** El sector del libro (Tabla 11.2) con su fenotipo y su gravedad base, o null sin sexo/valor. */
+  sector: core.SectorMCCB | null;
   fenotipoEFR: { key: string; dx: string | null; nutraceuticos: string };
   fuente: BiodyImport;
 }
@@ -214,8 +231,22 @@ export function analizarDesdeBiody(
   const cFMI = core.cFMI(imp.FMI, sexo);
   const cFFMI = core.cFFMI(imp.FFMI, sexo);
 
-  const dx = core.getDX(cIFC.k, cIRC.k, cFFMI.k, cFMI.k);
-  const key = `${core.kl(cIFC.k)}_${core.kl(cIRC.k)}_${core.kl(cFFMI.k)}_${core.kl(cFMI.k)}`;
+  // ═══ v17 §2.4: EL SECTOR Y EL FENOTIPO SE CLASIFICAN CON LOS CORTES MCCB, POR SEXO ═══
+  //
+  // Su Tabla 10.2 (percentiles 25 y 75 de la base consolidada): FMI H 3,7/6,4 · M 5,0/8,1 ·
+  // FFMI H 18,8/21,0 · M 15,5/17,1. Los cortes de `cFMI`/`cFFMI` (el Excel Mapa E_BIS) se quedan
+  // SOLO con sus banderas clinicas, literal suyo.
+  //
+  // LA CAIDA SIN SEXO ES SUYA, no nuestra: su linea 7912 escribe `cFFMI_MCCB(...).k || ffmiCl.k`, o sea
+  // que cuando el MCCB no tiene dato (sin sexo, o el valor en 0) se CONSERVA la banda anterior. Lo
+  // seguimos tal cual, y conviene saber por que no se deja en 0: un 0 haria que `efrRiskRank` no
+  // encontrara el par y el estado se volveria 1 para cualquiera, que es peor que una banda vieja.
+  const ffmiK = core.cFFMI_MCCB(imp.FFMI, sexo).k || cFFMI.k;
+  const fmiK = core.cFMI_MCCB(imp.FMI, sexo).k || cFMI.k;
+  const sector = core.sectorMCCB(imp.FFMI, imp.FMI, sexo);
+
+  const dx = core.getDX(cIFC.k, cIRC.k, ffmiK, fmiK);
+  const key = `${core.kl(cIFC.k)}_${core.kl(cIRC.k)}_${core.kl(ffmiK)}_${core.kl(fmiK)}`;
 
   return {
     sexo,
@@ -231,6 +262,8 @@ export function analizarDesdeBiody(
       IEHH: IEHH != null ? { l: core.cIEHH(IEHH).l } : null,
       IAE: IAE != null ? { l: core.cIAE(IAE).l } : null,
     },
+    bandasDiana: { ifc: cIFC.k, irc: cIRC.k, ffmi: ffmiK, fmi: fmiK },
+    sector,
     fenotipoEFR: { key, dx: dx.dx ?? dx.name ?? null, nutraceuticos: dx.n },
     fuente: imp,
   };
@@ -361,6 +394,24 @@ export function analizarDFI(
     // Y SU ALCANCE NO CAMBIA: `icaBis` sigue sin entrar en ningun puntaje del DFI. Lo que cambia es que
     // la direccion deja de perderse en el camino.
     ICA_BIS: icaBisDeLaPabu(PABU),
+    // ═══ LOS TRES INSUMOS DE LA ADIPOSIDAD CENTRAL (v17 §2.3) ═══
+    //
+    // Su `computeDFIFromData` resuelve el modificador asi:
+    //
+    //   ICT    = num("ICT","ict") || (cintura > 0 && talla > 0 ? cintura / talla : 0)
+    //   central = (cintura > 0 && cintura >= (hombre ? 94 : 80)) || ICT >= 0,50
+    //
+    // O sea que con el ICT solo ya se puede encender, y la cintura ademas aporta su propio corte de la
+    // OMS. Se le entregan los tres y no uno: con el ICT solo se pierde el corte de cintura, y con la
+    // cintura sola se pierde el ICT que el equipo ya calcula. La TALLA va para la reserva de su formula
+    // (si el ICT no viniera, su codigo lo deriva), no para recalcularlo nosotros.
+    //
+    // LA CINTURA NO SALE DE `BIODY_COLUMNS` a proposito: ahi el mapeo de Gildardo apunta al UMBRAL de
+    // la OMS (102 para todo paciente) y hay un candado que exige que no vuelva. La MEDIDA se lee de su
+    // columna plana, con el nombre que vive en el borde del motor (`MEASURED_WAIST_HEADER`).
+    cintura: toNum(row[MEASURED_WAIST_HEADER]) ?? 0,
+    tallaCm: imp.talla,
+    ICT: imp.raw.ict ?? 0,
   };
 
   const out = dfi.computeDFIFromData(encLe8, bis);

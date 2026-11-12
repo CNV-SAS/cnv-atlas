@@ -51,12 +51,16 @@ describe("clinical-engine runEngine (motor real)", () => {
   it("produce la forma completa del EngineOutput real", () => {
     const out = runEngine(input());
     expect(Object.keys(out.indicators)).toHaveLength(12);
-    expect(out.efrPhenotype.key).toBe("N_N_N_A");
-    expect(out.efrPhenotype.stateNumber).toBe(33); // N_N_N_A (bandas 2,2,2,3), numeracion de Gildardo
+    expect(out.efrPhenotype.key).toBe("N_N_A_N");
+    // EL NUMERO DE ESTADO SE MUEVE CON LOS CORTES MCCB (v17 §2.4), y la aritmetica es la suya:
+    //   anillo IFC x IRC = (2,2) -> rango 3   ·   sector FFMI x FMI = (3,2) -> rango 1
+    //   estado = 3 * 9 + 1 + 1 = 29      (con los cortes de v16 era 3 * 9 + 5 + 1 = 33)
+    expect(out.efrPhenotype.stateNumber).toBe(29);
+    expect(out.sectorDiana).toEqual({ id: "S2", fenotipo: "Atlético", gravedad: 0 });
     expect(out.structural.nombre).toBeTruthy();
     expect(out.frSector.nombre).toBeTruthy();
     expect(out.nutraceuticos).toBeTruthy();
-    expect(out.resumenClinico).toContain("N_N_N_A");
+    expect(out.resumenClinico).toContain("N_N_A_N");
   });
 
   it("determinista: mismo input produce el mismo output", () => {

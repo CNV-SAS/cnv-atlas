@@ -78,13 +78,36 @@ describe("ANI-BIS-E · Golden Juan Esteban (export real, anonimizado)", () => {
   });
 
   it("fenotipo EFR y recomendacion bloqueados", () => {
-    expect(r.fenotipoEFR.key).toBe("N_N_N_A");
+    // ═══ RE-DERIVADO DE SU TABLA 10.2 (v17 §2.4, 2026-11-12), NO "actualizado" ═══
+    //
+    // El sector de la Diana y el fenotipo dejan de salir de `cFFMI`/`cFMI` (los cortes del Excel Mapa
+    // E_BIS) y pasan a los cortes MCCB por sexo del libro. Para este donante (hombre, FFMI 21,1 ·
+    // FMI 6,369) la aritmetica es:
+    //
+    //   FFMI 21,1 · cortes H 18,8 / 21,0  ->  21,1 > 21,0  ->  banda ALTA (antes Normal: 17-25)
+    //   FMI  6,369 · cortes H  3,7 /  6,4  ->  3,7 <= 6,369 <= 6,4  ->  banda NORMAL (antes Alto SS: 6-9)
+    //
+    // O sea que las DOS bandas estructurales se mueven, y en direcciones opuestas: la clave pasa de
+    // N_N_N_A a N_N_A_N. Los dos numeros caen muy cerca de un corte (21,1 contra 21,0 y 6,369 contra
+    // 6,4), que es exactamente donde se ve que el cambio de cortes no es cosmetico.
+    //
+    // `clases.FMI` y `clases.FFMI` (arriba) NO cambian y eso es deliberado: siguen siendo `cFMI`/`cFFMI`,
+    // que su v17 conserva *"solo para sus banderas clinicas"*. Por eso este golden ahora afirma las dos
+    // cosas a la vez, y tiene que poder: "Alto SS" en la tabla de composicion y banda NORMAL en el sector.
+    expect(r.fenotipoEFR.key).toBe("N_N_A_N");
     expect(r.fenotipoEFR.dx).toBe(
-      "Composición saludable con grasa alta → riesgo de progresión",
+      "Adiposo subclínico con reserva → prevención eficaz",
     );
+    // Y LA LISTA DE NUTRACEUTICOS SE MUEVE CON EL ESTADO, que es el efecto que hay que ver escrito:
+    // sale BERBERINA METABO (su ficha metabolica, que el estado anterior pedia por la grasa alta) y
+    // entra MITO-Q10 PLUS. No es una decision nuestra: es el mapa DX de Gildardo leido en la celda
+    // nueva. Santiago pidio medir cuantas consultas de la cohorte cambian de lista; esta es UNA.
     expect(r.fenotipoEFR.nutraceuticos).toBe(
-      "BERBERINA METABO, OMEGA COMPLEX, MULTI-CELL BASE",
+      "OMEGA COMPLEX, MULTI-CELL BASE, MITO-Q10 PLUS",
     );
+    // El sector del libro de esta celda (Tabla 11.2): FFMI alto con FMI normal = S2, atletico.
+    expect(r.sector).toEqual({ id: "S2", fn: 3, fm: 2, fen: "Atlético", g: 0 });
+    expect(r.bandasDiana).toEqual({ ifc: 2, irc: 2, ffmi: 3, fmi: 2 });
   });
 });
 
@@ -247,11 +270,32 @@ describe("ANI-BIS-E fase 2b · DFI (BIS real + encuesta sintetica)", () => {
   });
 
   it("severidad de los 5 dominios bloqueada", () => {
+    // ═══ RE-DERIVADO DE SU v17 §2.3 (2026-11-12), Y DOS DE LOS CINCO SE MUEVEN ═══
+    //
+    // El fixture decia d1 2 · d2 0 · d3 1 · d4 1 · d5 0, con el riesgo en 30. Con la v17 queda
+    // d1 2 · d2 1 · d3 1 · d4 2 · d5 0, con el riesgo en 43. La aritmetica de los dos que cambian,
+    // porque un numero nuevo sin su cuenta al lado no es un golden, es una copia de nuestra salida:
+    //
+    // DOMINIO 2, de 0 a 1. Ya no sale del nivel del ISCM-BIS, sale de la gravedad del sector mas la
+    // adiposidad central. El donante (hombre, FFMI 21,1 · FMI 6,369) cae en S2 (FFMI alto con FMI
+    // normal, 'atletico'), que en su Tabla 11.2 tiene gravedad 0. Y su export trae cintura de 98 cm
+    // (>= 94, el corte de la OMS para hombres) e ICT de 0,544 (>= 0,50): adiposidad central, +1.
+    //
+    // DOMINIO 4, de 1 a 2, y ESTE NO LO HABIAMOS PREVISTO. El dominio conductual compara la imagen que
+    // el paciente tiene de su cuerpo contra su FENOTIPO REAL (`fmiCat`), y el fenotipo real ahora se
+    // categoriza con los cortes MCCB: FMI 6,369 era 'exceso' con los cortes del Excel (H > 6) y es
+    // 'normal' con los del libro (H 3,7-6,4 ... 6,369 entra). La encuesta sintetica dice que se percibe
+    // con 'sobrepeso', que su mapa traduce a 'exceso'. Antes coincidian y no habia distorsion; ahora no
+    // coinciden y si la hay, asi que el dominio sube a 2. O sea que los cortes MCCB mueven tambien la
+    // DISTORSION DE IMAGEN CORPORAL, no solo el sector. Hay que medirlo en la cohorte (plan §3).
     const sev = r.domains.map((d) => ({ id: d.id, sev: d.sev }));
     expect(sev).toEqual(golden.dominios);
   });
 
   it("riesgo integrado y veto bloqueados", () => {
+    // El riesgo es la suma ponderada de los cinco (W = 0,30 · 0,25 · 0,15 · 0,15 · 0,15):
+    //   0,30·(2/3) + 0,25·(1/3) + 0,15·(1/3) + 0,15·(2/3) + 0,15·0 = 0,4333 -> 43
+    // Con los dominios de la v16 daba 0,30 -> 30. El NIVEL no se mueve: MEDIO en los dos.
     expect(r.riesgo.l).toBe(golden.riesgo.l);
     expect(r.riesgo.score).toBe(golden.riesgo.score);
     expect(r.veto).toBe(golden.veto);
