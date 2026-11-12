@@ -346,6 +346,16 @@ Santiago (responsable técnico) NO es desarrollador profesional. Es competente, 
 - No le devuelvas paredes de código sin explicación.
 - Si una decisión tiene trade-offs, explícalos brevemente.
 
+## Cómo se escriben tus respuestas (Santiago, 2026-11-12)
+
+Santiago lee tus respuestas en la terminal, y cuando intercalas texto entre ediciones de codigo las
+partes se pierden en el historial. A partir de ahora:
+
+- durante el trabajo, solo lineas cortas de progreso;
+- al final de cada turno, UN informe final completo y autocontenido que repita todo lo importante del
+  turno (lo hecho, lo que falta, lo que le toca a Santiago, los comandos), aunque ya lo hayas dicho
+  antes. Santiago solo debe necesitar leer ese ultimo bloque.
+
 ---
 
 ## Verificación al final de cada bloque

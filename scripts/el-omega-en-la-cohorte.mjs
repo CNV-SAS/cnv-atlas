@@ -105,13 +105,31 @@ for (const r of reps ?? []) {
   if (ES_OMEGA.test(String(r.snapshot?.nutraceuticos ?? ""))) sugerido.add(r.evaluation_id);
 }
 
+// ── 3 · LAS TRES POBLACIONES, SEPARADAS (y la razon de separarlas) ──
+// La corrida del 11 de noviembre dio "prescrito SIN que el modelo lo sugiriera: 31" con el modelo
+// sugiriendolo en 434 de 434 consultas con informe. Las dos cifras juntas solo pueden significar una
+// cosa: esas 31 son consultas CON TRATAMIENTO y SIN INFORME SELLADO, o sea sin snapshot contra el que
+// comparar. Decir de ellas que el profesional se aparto del modelo es afirmar algo que el dato no
+// sostiene, asi que desde aqui se cuentan aparte.
+const sinInforme = new Set([...conTratamiento].filter((e) => !vistas.has(e)));
 const pc = (n, d) => (d > 0 ? `${((n / d) * 100).toFixed(1)} %` : "-");
 console.log(`\n── LA COHORTE ──`);
 console.log(`productos de catalogo que son omega: ${nombresOmega.join(", ") || "(ninguno)"}`);
-console.log(`consultas vigentes CON TRATAMIENTO: ${conTratamiento.size} (de ellas con informe sellado: ${conInforme})`);
+console.log(`consultas vigentes CON TRATAMIENTO: ${conTratamiento.size}`);
+console.log(`  de ellas con informe de paciente sellado: ${conInforme} · sin informe: ${sinInforme.size}`);
 console.log(`  el modelo lo SUGIRIO en: ${sugerido.size} (${pc(sugerido.size, conInforme)} de las que tienen informe)`);
 console.log(`  el profesional lo PRESCRIBIO en: ${prescrito.size} (${pc(prescrito.size, conTratamiento.size)} de las que tienen tratamiento)`);
+
 const sugeridoYprescrito = [...sugerido].filter((e) => prescrito.has(e)).length;
-console.log(`  sugerido Y prescrito: ${sugeridoYprescrito}`);
+const prescritoSinSugerencia = [...prescrito].filter((e) => vistas.has(e) && !sugerido.has(e)).length;
+const prescritoSinInforme = [...prescrito].filter((e) => !vistas.has(e)).length;
+console.log(`\n  sugerido Y prescrito: ${sugeridoYprescrito}`);
 console.log(`  sugerido y NO prescrito: ${sugerido.size - sugeridoYprescrito}`);
-console.log(`  prescrito SIN que el modelo lo sugiriera: ${[...prescrito].filter((e) => !sugerido.has(e)).length}`);
+console.log(`  prescrito con informe que NO lo sugirio: ${prescritoSinSugerencia}  ← esto si es apartarse del modelo`);
+console.log(`  prescrito SIN informe para comparar: ${prescritoSinInforme}  ← no se sabe que sugirio el modelo`);
+
+// Un cuadre: las tres poblaciones de "prescrito" tienen que sumar el total prescrito.
+const suma = sugeridoYprescrito + prescritoSinSugerencia + prescritoSinInforme;
+if (suma !== prescrito.size) {
+  console.log(`\n  ! las cuentas no cuadran: ${suma} contra ${prescrito.size} prescritos. No usar estas cifras.`);
+}
