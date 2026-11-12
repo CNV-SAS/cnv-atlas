@@ -19,7 +19,47 @@
 > entre "en cuántas consultas el modelo lo sugirió" y "en cuántas se prescribió" no es un error del
 > sistema: es la decisión clínica de cada profesional, consulta por consulta.
 
-*(Las dos cifras de la cohorte van en la sección siguiente, en cuanto se corra la medición.)*
+> **Y las cifras de la casa, medidas el 11 de noviembre sobre las consultas reales:** de las **497**
+> consultas vigentes con tratamiento, **434** tienen informe sellado, y en **las 434 el modelo sugirió
+> OMEGA COMPLEX** (el 100 %). Se prescribió en **322 de las 497** (65 %). Donde el modelo lo sugirió y
+> hay con qué comparar, se prescribió en **291 de 434** (67 %).
+
+---
+
+## Las cifras de la cohorte, y cómo leerlas sin equivocarse
+
+Corrida por Santiago contra la nube el 11 de noviembre de 2026.
+
+| | Consultas |
+| --- | --- |
+| Vigentes **con tratamiento** (el denominador que pidió el gerente) | **497** |
+| De ellas, con informe de paciente sellado (hay con qué comparar) | 434 |
+| El modelo lo **sugirió** | **434 de 434** (100 %) |
+| El profesional lo **prescribió** | **322 de 497** (64,8 %) |
+| Sugerido **y** prescrito | 291 |
+| Sugerido y **no** prescrito | 143 |
+| Prescrito **sin informe con el que comparar** | 31 |
+
+**Tres lecturas que conviene hacer, y una que NO hay que hacer:**
+
+1. **El 100 % no es un redondeo: en esta cohorte ninguna consulta cayó en los 14 estados que no lo
+   sugieren.** Los catorce tienen masa muscular baja, y entre 434 consultas no hay ninguna ahí. O sea
+   que la base de la que habla el párrafo de arriba no es teórica: hoy aplica a todos.
+2. **De las 434 donde el modelo lo sugirió, se prescribió en 291.** Las otras 143 son decisión clínica,
+   no un fallo: el motor propone y el profesional dispone. Es un dato para conversar con los
+   profesionales, no para corregirles.
+3. **Los 31 "prescritos sin que el modelo lo sugiriera" NO son profesionales apartándose del modelo.**
+   Así los rotulaba la primera versión del script, y era un error de redacción con consecuencias: son
+   consultas **con tratamiento y sin informe sellado**, o sea que no hay snapshot con el que comparar.
+   La aritmética lo demuestra: el modelo lo sugirió en el 100 % de las que SÍ tienen informe, así que
+   una consulta prescrita que no aparece en "sugerido" solo puede ser una de las 63 sin informe. El
+   script ya las cuenta aparte y las rotula *"sin informe para comparar"*.
+
+**Y LA QUE NO HAY QUE HACER:** estas cifras son de la ciencia de HOY. La v17 de la Dirección Científica
+mueve el estado de la Diana de dos de cada tres consultas, y la lista de nutracéuticos sugeridos se mueve
+con el estado. **El "67 de 81" del párrafo no cambia** (es el mapa del modelo, que la v17 no toca), pero
+las cifras de la cohorte sí van a moverse cuando el histórico se recalcule. Si el gerente va a usar estos
+números para una proyección, conviene decirle la fecha de la medición.
 
 ---
 
