@@ -34,3 +34,11 @@ export function cFMI_MCCB(v: number, sexo: SexoOpcional): { l: string; k: number
 export type SectorMCCB = { id: string; fn: number; fm: number; fen: string; g: number };
 export const MCCB_SECTORES: readonly SectorMCCB[];
 export function sectorMCCB(ffmi: number, fmi: number, sexo: SexoOpcional): SectorMCCB | null;
+
+// ═══ LOS CORTES DE LAS ALERTAS CRITICAS (v17 §2.9) ═══
+//
+// La cola extrema de su distribucion de referencia: el P10 del IFC y el P90 del IRC de cada sexo.
+// Reemplazan los umbrales unicos de su v16 (IFC < 2,0 · IRC > 5,0), que su §14 prohibe conservar.
+export const ALERTA_CRITICA_REF: Record<"F" | "M", { ifcP10: number; ircP90: number }>;
+/** El rango habitual del ICA-BIS de ese sexo, en texto ("−0,27 a 0,36 (H)"). */
+export function icaBisRefTxt(sexo: SexoOpcional): string;

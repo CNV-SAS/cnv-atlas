@@ -112,6 +112,7 @@ describe("la regla del IFC sobre el AF", () => {
       sexo: "Masculino",
       alertas: [],
       respuestasEnRojo: [],
+      alertasCriticas: [],
       direccionPabu: null,
       edad: 30,
       ocupacion: null,

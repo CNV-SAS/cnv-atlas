@@ -13,6 +13,7 @@ import {
 
 import { indicesAniAlterados, type IndiceAniResuelto } from "./hc-indices-ani";
 import { recomendacionesDe, type RecomendacionBloque } from "./hc-recomendaciones";
+import * as core from "@/clinical-engine/frozen/engine.core.derived.js";
 import { asesoriaFuera } from "@/clinical-engine/frozen/atlas-asesoria-macro.js";
 import type { AsesoriaMacro } from "@/modules/treatment/data/treatment-view-types";
 
@@ -291,8 +292,19 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
     diagnosticos,
     tieneHTA: e.flags.tieneHTA,
     tieneIRC: e.flags.tieneIRC,
-    // El corte del FFMI bajo es el del clasificador; se lee del indicador, no se reescribe.
-    sarcopenia: e.snapshot ? e.snapshot.indicators.FFMI > 0 && e.snapshot.indicators.FFMI < 17 : false,
+    // ═══ EL FFMI BAJO ES POR SEXO, Y SE LEE DEL CLASIFICADOR (v17 §11, 2026-11-12) ═══
+    //
+    // Aqui decia `FFMI < 17` para los DOS SEXOS, y su §11 lo nombra: *"Sarcopenia con FFMI < 17 para
+    // ambos sexos"* -> *"FFMI bajo por sexo con cFFMI"*. El 17 es el corte MASCULINO; en una mujer el
+    // corte es 15, asi que una mujer con FFMI 16 salia marcada como sarcopenica y no lo esta por ese
+    // criterio. Es un falso positivo SISTEMATICO en mujeres, que son 476 de los 665 pacientes.
+    //
+    // Y NO SE ESCRIBE EL NUMERO: se pregunta al clasificador (`cFFMI(...).k === 1` es su banda baja). El
+    // comentario de arriba ya decia que el corte se lee del indicador y no se reescribe; lo que faltaba
+    // era hacerlo.
+    sarcopenia: e.snapshot
+      ? e.snapshot.indicators.FFMI > 0 && core.cFFMI(e.snapshot.indicators.FFMI, e.sexoM ? "M" : "F").k === 1
+      : false,
     exceso: e.deficitEstrategia > 0,
     // Las cifras del motor que gobierna. Con ellas, tres de los cuatro bloques que esperaban dejan de
     // esperar; el cuarto (exceso de grasa) cita el objetivo calorico, que es lo que sigue preguntado.

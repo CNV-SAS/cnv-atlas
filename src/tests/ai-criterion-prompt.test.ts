@@ -52,6 +52,7 @@ const input: CriterionPromptInput = {
   ],
   // v5: vacías por defecto; los casos que las usan las ponen ellos.
   respuestasEnRojo: [],
+  alertasCriticas: [],
   direccionPabu: null,
   edad: 61,
   ocupacion: "Docente",

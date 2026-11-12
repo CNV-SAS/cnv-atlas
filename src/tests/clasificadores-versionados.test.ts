@@ -89,7 +89,16 @@ function shaDeLosClasificadores(): string {
 // EL VALOR SE TOMA DEL QUE REPORTA ESTE MISMO CANDADO, y la razon quedo escrita en septiembre: el hash
 // se calcula sobre el texto de las funciones con los finales de linea normalizados, asi que calcularlo
 // por fuera da otro numero si se olvida esa normalizacion. Ya paso una vez.
-const SHA_ESPERADO = "2b7d5829154df51730c0976bf0579ac8d67b9787274e5ecf80a6fa3203ee7fbe";
+// SHA ACTUALIZADO (2026-11-12b) SIN SUBIR LA ETIQUETA, y aqui la respuesta a la pregunta de este
+// candado es NO: el paso 6 pasa `cFMI`, `cSMM`, `cMMEM` y `cASMI` por `sexoBIS` (su §11), y eso NO
+// mueve ninguna etiqueta sellada en Atlas. La razon esta medida: la cadena normaliza el sexo con
+// `normalizeSexo` antes de llamarlos, y en la base solo hay "M", "F" y dos nulos, asi que ninguno de
+// los cuatro recibio nunca un "Masculino" ni un "Femenino". Era un hazard LATENTE. Si algun dia una
+// pantalla los llamara con la forma larga, la etiqueta se habria movido sin que nadie subiera nada:
+// por eso el arreglo entra, y por eso la etiqueta no sube.
+//
+// La etiqueta vigente (cXXX-2026-11-12) ya cubre los pasos 3, 4 y 5, que SI mueven etiquetas.
+const SHA_ESPERADO = "cb8cf284a77e2a2e165ff28a716931cf82102b58a98e2dbfac9c793963cc94a6";
 const ETIQUETA_ESPERADA = "cXXX-2026-11-12";
 
 describe("los clasificadores y su versión de emisión no pueden divergir", () => {

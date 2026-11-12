@@ -192,6 +192,11 @@ export type CriterionPromptInput = {
   alertas: AlertaDelPrompt[];
   // ── Las respuestas en rojo del clasificador de la encuesta (v5). Misma fuente que el SOAP. ──
   respuestasEnRojo: RespuestaEnRojoDelPrompt[];
+  // ── LAS ALERTAS CRITICAS BIOELECTRICAS (v17 §2.9). Son otra familia que las de arriba: salen de la
+  //    MEDICION contra la cola extrema de la distribucion de referencia del SEXO del paciente (el P10
+  //    del IFC, el P90 del IRC, el ICA-BIS fuera de su Tabla 7.3), no de la encuesta. Llegan con las
+  //    palabras de Gildardo y con su simbolo: son texto clinico, no datos para redactar. Vacio = ninguna.
+  alertasCriticas: string[];
 
   // ── Composicion corporal y bioelectrica, ya formateadas por su capa de display (etiqueta + valor con
   //    sus unidades y decimales), que es lo que el profesional ve en pantalla. ──
@@ -312,6 +317,29 @@ export function buildCriterionPrompt(
     }
   } else {
     L.push("", "ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna. No comentes su ausencia.");
+  }
+
+  // ═══ LAS ALERTAS CRITICAS BIOELECTRICAS, EN SU PROPIO BLOQUE (v17 §2.9, 2026-11-12) ═══
+  //
+  // VAN APARTE DE LAS DE LA ENCUESTA, y no es orden: es que no son lo mismo. Las de arriba salen de lo
+  // que el paciente RESPONDIO; estas salen de lo que el equipo MIDIO, comparado con la cola extrema de
+  // la distribucion de referencia de su sexo. Mezclarlas haria que el modelo las citara como si
+  // tuvieran la misma procedencia, y la frase *"segun la encuesta, su IFC es critico"* es falsa.
+  //
+  // ESTAS SI SE ENUMERAN, al contrario de las de la encuesta: Atlas no las presenta en un parrafo
+  // propio, asi que si el modelo no las dice, no las dice nadie.
+  //
+  // Y EL BLOQUE SE ESCRIBE SIEMPRE, tambien vacio, por la razon de siempre: sin la linea que dice que no
+  // hay ninguna, el modelo no distingue "no hay" de "no me las mandaron", y ante la duda las deduce de
+  // los indicadores y sus cortes, que es escribir su propia version de una alerta clinica.
+  if (input.alertasCriticas.length > 0) {
+    L.push(
+      "",
+      "ALERTAS CRÍTICAS DE LA MEDICIÓN (cola extrema de la distribución de referencia de su sexo; cítalas en el dominio que les corresponde, con estas palabras):",
+      ...input.alertasCriticas,
+    );
+  } else {
+    L.push("", "ALERTAS CRÍTICAS DE LA MEDICIÓN: ninguna. No comentes su ausencia.");
   }
 
   L.push("", "=== DATOS CRUDOS DEL PACIENTE (evidencia de respaldo) ===", "");

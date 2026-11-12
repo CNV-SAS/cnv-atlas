@@ -33,6 +33,18 @@ export type RutaContent = {
   id: string; // R1..R6
   n: number;
   label: string;
+  /**
+   * EL CRITERIO QUE DE VERDAD ACTIVA LA RUTA (v17 §10, 2026-11-12), con las palabras de su v17.
+   *
+   * LAS SEIS DECIAN OTRA COSA, y era la pregunta 38 de PENDIENTES: describian los predicados de su
+   * `RUTAS[].condicion` ("IFC bajo + IRC alto + IAE acelerado"), que ya NO deciden nada. Lo que activa
+   * una ruta es la gravedad del dominio correspondiente en el DFI, y su §10 lo cierra retirando la
+   * funcion `activar` y dejando de evaluar el campo `condicion`.
+   *
+   * No es un detalle de redaccion: el profesional leia en la ficha un criterio que no se habia
+   * cumplido, al lado de una ruta que si estaba activa. `activador-de-la-ruta.ts` existe justo para
+   * decirle cual dominio la encendio, y ahora la ficha y ese texto dicen lo mismo.
+   */
   activacion: string;
   componentes: {
     nutricional: RutaComponent;
@@ -153,7 +165,7 @@ export const RUTAS_CONTENT: Record<string, RutaContent> = {
     id: "R1",
     n: 1,
     label: "Restauración Celular",
-    activacion: "IFC bajo + IRC alto + IAE acelerado",
+    activacion: "Dominio Celular-Eléctrico con gravedad 2 o 3",
     componentes: {
       nutricional: {
         aplica: true,
@@ -203,7 +215,7 @@ export const RUTAS_CONTENT: Record<string, RutaContent> = {
     id: "R2",
     n: 2,
     label: "Reducción Riesgo Cardiometabólico",
-    activacion: "FMI elevado / ISCM alto / obesidad sarcopénica / ICC-ICT-IR cardiometabólico",
+    activacion: "Dominio Metabólico-Estructural con gravedad 2 o 3",
     componentes: {
       nutricional: {
         aplica: true,
@@ -252,7 +264,7 @@ export const RUTAS_CONTENT: Record<string, RutaContent> = {
     id: "R3",
     n: 3,
     label: "Intervención Conductual",
-    activacion: "TCA activo o insatisfacción corporal severa",
+    activacion: "Dominio Conductual-Perceptual con conducta de riesgo (veto) o gravedad 3",
     componentes: {
       nutricional: {
         aplica: true,
@@ -304,7 +316,7 @@ export const RUTAS_CONTENT: Record<string, RutaContent> = {
     id: "R4",
     n: 4,
     label: "Desaceleración del Envejecimiento",
-    activacion: "IAE acelerado + Sarcopenia / FFMI bajo clasificado",
+    activacion: "Dominio de Envejecimiento con gravedad 2 o 3",
     componentes: {
       nutricional: {
         aplica: true,
@@ -353,7 +365,7 @@ export const RUTAS_CONTENT: Record<string, RutaContent> = {
     id: "R5",
     n: 5,
     label: "Intervención Contextual / Epigenética",
-    activacion: "≥3 factores de riesgo epigenético",
+    activacion: "Dominio Epigenético-Contextual con gravedad 2 o 3",
     componentes: {
       nutricional: {
         aplica: true,
@@ -404,7 +416,7 @@ export const RUTAS_CONTENT: Record<string, RutaContent> = {
     id: "R6",
     n: 6,
     label: "Mantenimiento y Optimización",
-    activacion: "Todos los dominios normales y composición corporal en rango",
+    activacion: "Ningún dominio con gravedad 2 o 3",
     componentes: {
       nutricional: {
         aplica: true,

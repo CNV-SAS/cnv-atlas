@@ -28,7 +28,10 @@ export const ADDED_EXPORTS = ["efrProf", "cSMM", "cMMEM", "cASMI", "cFFW", "cEIS
   // Entraron con el paso 5 (v17 §5 y §6): la normalizacion del sexo, que `engine.indices` necesita para
   // calcular el IEHH y el ISCM-BIS con las z de su tabla; los percentiles del ISCM-BIS por sexo; y el
   // texto de referencia que las pantallas muestran al lado del valor, ahora que el indice no se gradua.
-  "sexoBIS", "ISCM_REF", "iscmRefTxt"];
+  "sexoBIS", "ISCM_REF", "iscmRefTxt",
+  // Entraron con el paso 7 (v17 §2.9): los cortes de las alertas criticas por sexo (cola extrema de su
+  // distribucion de referencia) y el texto del rango habitual del ICA-BIS que las pantallas citan.
+  "ALERTA_CRITICA_REF", "icaBisRefTxt"];
 
 const HEADER = `/*
  * engine.core.derived.js — ARCHIVO GENERADO. NO editar a mano. NO es ciencia editada.

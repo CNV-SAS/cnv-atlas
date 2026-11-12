@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import * as core from "@/clinical-engine/frozen/engine.core.derived.js";
 import { computeIntercambio, INTER_GRUPOS, INTER_TABLA_A } from "@/clinical-engine/intercambio";
 import {
   listaIntercambioPaciente,
@@ -220,7 +221,17 @@ export async function getPlanPaciente(
     diagnosticos: [],
     tieneHTA: snap.flags.tieneHTA,
     tieneIRC: snap.flags.tieneIRC,
-    sarcopenia: snapshot.indicators.FFMI > 0 && snapshot.indicators.FFMI < 17,
+    // ═══ EL FFMI BAJO ES POR SEXO, Y SE LEE DEL CLASIFICADOR (v17 §11, 2026-11-12) ═══
+    //
+    // Aqui decia `FFMI < 17` para los DOS SEXOS, y su §11 lo nombra: *"Sarcopenia con FFMI < 17 para
+    // ambos sexos"* -> *"FFMI bajo por sexo con cFFMI"*. El 17 es el corte MASCULINO; en una mujer el
+    // corte es 15, asi que una mujer con FFMI 16 salia marcada como sarcopenica y no lo esta por ese
+    // criterio. Es un falso positivo SISTEMATICO en mujeres, que son 476 de los 665 pacientes.
+    //
+    // Y NO SE ESCRIBE EL NUMERO: se pregunta al clasificador (`cFFMI(...).k === 1` es su banda baja). El
+    // comentario de arriba ya decia que el corte se lee del indicador y no se reescribe; lo que faltaba
+    // era hacerlo.
+    sarcopenia: snapshot.indicators.FFMI > 0 && core.cFFMI(snapshot.indicators.FFMI, snapshot.sexo).k === 1,
     exceso: (snap.estrategia.deficit ?? 0) > 0,
     sodioMax: prescripcion?.sodioMax ?? null,
     // La EFECTIVA, no la del motor: el texto de la recomendacion habla de la proteina que este paciente

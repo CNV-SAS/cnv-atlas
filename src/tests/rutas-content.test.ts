@@ -35,7 +35,9 @@ describe("RUTAS_CONTENT (contenido clínico verbatim de Gildardo)", () => {
   });
 
   it("ancla textos verbatim clave (activación, urgencia como string libre, seguimiento)", () => {
-    expect(RUTAS_CONTENT.R1.activacion).toBe("IFC bajo + IRC alto + IAE acelerado");
+    // RE-ANCLADO a su v17 §10 (2026-11-12): el reescribio los seis rotulos de activacion para que
+    // describan el criterio del DFI, que es el que de verdad enciende la ruta. Era la pregunta 38.
+    expect(RUTAS_CONTENT.R1.activacion).toBe("Dominio Celular-Eléctrico con gravedad 2 o 3");
     expect(RUTAS_CONTENT.R1.seguimiento.frecuencia).toBe("Cada 30 días");
     expect(RUTAS_CONTENT.R1.componentes.nutricional.indicaciones[0]).toBe(
       "Omega-3 dietario: ≥2 porciones pescado graso/semana",

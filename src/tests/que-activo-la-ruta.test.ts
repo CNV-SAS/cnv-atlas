@@ -94,10 +94,21 @@ describe("y no se corrige lo que es de Gildardo", () => {
     readFileSync("src/modules/diagnoses/components/rutas-section.tsx", "utf8"),
   );
 
-  it("el rotulo de activacion de la R1 sigue siendo el suyo, palabra por palabra", () => {
-    // Si alguien lo "arregla" para que cuadre con lo que activa, deja de ser su archivo. Lo que se hizo
-    // fue AÑADIR la frase del dominio al lado; el rotulo no se toca.
-    expect(CONTENIDO).toContain('activacion: "IFC bajo + IRC alto + IAE acelerado"');
+  it("el rotulo de activacion de la R1 sigue siendo el suyo, y EL lo cambio (v17 §10)", () => {
+    // ═══ ESTE CANDADO SE REAPUNTA, Y LA HISTORIA ES LA QUE IMPORTA (2026-11-12) ═══
+    //
+    // Decia: *"si alguien lo arregla para que cuadre con lo que activa, deja de ser su archivo"*, y
+    // exigia el rotulo viejo (*"IFC bajo + IRC alto + IAE acelerado"*) palabra por palabra. Era
+    // correcto: el rotulo describia su predicado `condicion`, que no activa nada, y nosotros no
+    // podiamos corregirle un texto clinico. Fue la pregunta 38 de PENDIENTES.
+    //
+    // LA RESPONDIO EN SU v17 §10: retira la funcion `activar`, deja de evaluar `condicion` y reescribe
+    // los seis rotulos para que describan el criterio del DFI. Asi que el rotulo sigue siendo SUYO; lo
+    // que cambio es que ahora el suyo dice lo que de verdad pasa. Lo que NO se hizo, ni antes ni ahora,
+    // es inventarlo.
+    expect(CONTENIDO).toContain('activacion: "Dominio Celular-Eléctrico con gravedad 2 o 3"');
+    // Y el viejo no puede volver: si reapareciera, la tarjeta volveria a describir un criterio retirado.
+    expect(CONTENIDO).not.toContain("IFC bajo + IRC alto + IAE acelerado");
     expect(SECCION).toContain("Activación: {ruta.activacion}");
   });
 

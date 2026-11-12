@@ -1,4 +1,5 @@
 import { alertasDeLaConsulta } from "@/clinical-engine/alertas-de-la-consulta";
+import { alertasCriticas } from "@/clinical-engine/alertas-criticas";
 import "server-only";
 
 import { isEngineOutput, type EngineOutput } from "@/clinical-engine";
@@ -257,6 +258,24 @@ export async function buildCriterionInput(
       pregunta: r.pregunta,
       respuesta: r.respuesta,
     })),
+    // ═══ LAS ALERTAS CRITICAS BIOELECTRICAS (v17 §2.9, 2026-11-12) ═══
+    //
+    // Son OTRA FAMILIA que las de arriba y por eso viajan aparte: las de `alertas` salen de la
+    // ENCUESTA (sus quince reglas y las respuestas en rojo) y estas salen de la MEDICION, contra la
+    // cola extrema de la distribucion de referencia del sexo del paciente.
+    //
+    // SE DERIVAN DE LO SELLADO, asi que llegan al modelo tambien en las consultas ya emitidas, que hoy
+    // son todas. Y se le entregan HECHAS, con las palabras de Gildardo: si el modelo tuviera que
+    // deducirlas de los indicadores y sus cortes, escribiria su propia version de una alerta clinica.
+    alertasCriticas: alertasCriticas({
+      sexo: snap.sexo,
+      ifc: snap.indicators.ifc,
+      irc: snap.indicators.irc,
+      pabu: snap.indicators.pabu,
+      iae: snap.indicators.iae,
+      ffmi: snap.indicators.FFMI,
+      sectorId: snap.sectorDiana?.id ?? null,
+    }),
     composicion: filasComposicion,
     estadoEfr: efr?.diagnosisName ?? snap.efrPhenotype.diagnostico,
     fenotipoEstructural: snap.structural.nombre,

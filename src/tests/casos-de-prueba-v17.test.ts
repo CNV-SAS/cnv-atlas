@@ -272,10 +272,8 @@ describe("v17 §13 · los casos que todavia no se pueden escribir", () => {
     // historia en vez de sobreescribir una.
     Q: "DIVERGENCIA DECLARADA, no pendiente: en Atlas un informe sellado no se recalcula al abrirlo (regla 7); lo actualiza el recalculo del historico, que conserva las dos versiones",
     R: "no portable como golden: necesita su base de 5.255 registros de referencia (su informe tecnico)",
-    S: "paso 7 (alertas criticas por sexo): mujer sin alertas, hombre con IFC critico",
-    T: "paso 7: las tres alertas a la vez en una mujer",
-    U: "paso 7: IFC critico, IRC muy elevado e ICA-BIS critico por exceso en un hombre",
-    V: "paso 7: sin sexo, o con los indicadores en 0, no se emite ninguna",
+    // S, T, U y V entraron el 2026-11-12 con el paso 7, y viven en `alertas-criticas.test.ts` porque los
+    // cuatro prueban la misma pieza nueva. Aqui quedan nombrados para que la cuenta de los 22 cuadre.
   };
 
   it("estan nombrados los diecisiete que faltan, con el paso que los enciende", () => {

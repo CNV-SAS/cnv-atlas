@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { alertasCriticas } from "@/clinical-engine/alertas-criticas";
 import { icaBisDelSello } from "@/clinical-engine/ica-bis";
 import {
   Ban,
@@ -376,6 +377,25 @@ export function EvaluationResults({
   // el porque completo esta en indicator-ranges). La severidad sale del hex por `veredictoSev`, el mismo
   // camino que los quince clasificadores congelados, asi que "Desviación leve" (#f59e0b) es AMBAR y no
   // se puede volver a elegir a mano: ese verde era el defecto del cotejo.
+  // ═══ LAS ALERTAS CRITICAS DE LA MEDICION (v17 §2.9, 2026-11-12) ═══
+  //
+  // SE DERIVAN DEL SNAPSHOT SELLADO, igual que las severidades de la tabla: asi aparecen tambien en los
+  // diagnosticos ya emitidos, que hoy son todos. Si se hubieran sellado, las 441 consultas que existen
+  // se quedarian sin ellas para siempre, y la primera que las tuviera seria la del dia del despliegue.
+  //
+  // `sectorDiana` no existe en los snapshots anteriores a la v17, y por eso se cae a `undefined` en vez
+  // de derivarse de las bandas: la alerta de obesidad sarcopenica es el sector S9 con los cortes MCCB,
+  // y un snapshot viejo tiene las bandas de los cortes del Excel. Derivarla de ahi diria S9 donde la
+  // v17 no lo diria, o al reves. La reemision del historico es lo que las completa.
+  const alertasDeLaMedicion = alertasCriticas({
+    sexo: snapshot.sexo,
+    ifc: indicators.ifc,
+    irc: indicators.irc,
+    pabu: indicators.pabu,
+    iae: indicators.iae,
+    ffmi: indicators.FFMI,
+    sectorId: snapshot.sectorDiana?.id ?? null,
+  });
   const claseIca = clasificarIcaBis(indicators.icaBis);
   const sevByCode: Record<string, number | null> = {
     ...indicatorSeverities(snapshot),
@@ -631,6 +651,35 @@ export function EvaluationResults({
             la validez: {results.validityCaveats.map((c) => c.label).join(", ")}. El resultado debe
             interpretarse con reserva.
           </p>
+        </div>
+      ) : null}
+
+      {/* ═══ LAS ALERTAS CRITICAS DE LA MEDICION (v17 §2.9) ═══
+
+          VAN ARRIBA, justo despues de la reserva de validez, y es la misma razon por la que el puso las
+          de la encuesta al abrir la encuesta: *"son lo que le dice que mirar ANTES de evaluar, no una
+          conclusion del diagnostico"*. Un IFC en la cola extrema de su sexo se mira antes de leer la
+          tabla de indices, no despues.
+
+          Y SIN ALERTAS NO HAY BLOQUE, como el de la encuesta: dejarlo diciendo "ninguna" seria una
+          afirmacion sobre el paciente en una pantalla que ya tiene muchas. */}
+      {alertasDeLaMedicion.length > 0 ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-lg border-2 border-clinical-critical bg-clinical-critical-bg p-4"
+        >
+          <p className="text-sm font-bold text-clinical-critical">
+            {alertasDeLaMedicion.length === 1
+              ? "Alerta crítica de la medición"
+              : "Alertas críticas de la medición"}
+          </p>
+          <ul className="flex flex-col gap-1">
+            {alertasDeLaMedicion.map((a) => (
+              <li key={a} className="text-sm text-foreground/90">
+                {a}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

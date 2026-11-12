@@ -133,6 +133,23 @@ const cPABU = (v, sexo) => {
   if (ica >= r.p10) return { l: 'Desplazamiento leve por exceso',    c: '#e6a817', dir: 'exceso',  g: 1 };
   return               { l: 'Desplazamiento marcado por exceso', c: '#c0392b', dir: 'exceso',  g: 2 };
 }
+// ═══ LOS CORTES DE LAS ALERTAS CRITICAS, POR SEXO (v17 §2.9, portado el 2026-11-12) ═══
+//
+// Son la COLA EXTREMA de su distribucion de referencia (informe tecnico de validacion Tabla 6, y libro
+// Tabla 7.3 para el ICA-BIS): el P10 del IFC y el P90 del IRC de cada sexo. Reemplazan los umbrales
+// UNICOS de su v16 (IFC < 2,0 · IRC > 5,0 · ICA-BIS > 3,0), que su §14 prohibe conservar.
+//
+// EN ATLAS LAS TRES ALERTAS NO EXISTIAN: es pieza nueva, no una correccion de cortes. Las quince alertas
+// de `atlas-alertas.js` son de ENCUESTA (TCA, riesgo glucemico, sodio) y ninguna lee el IFC.
+//
+// Y EL ORDEN DE MAGNITUD DE LOS CORTES VIEJOS EXPLICA POR QUE IMPORTA: un IFC < 2,0 era una alerta que
+// en hombres no se disparaba casi nunca (su P10 es 3,49) y en mujeres se disparaba de mas (su P10 es
+// 1,73). El umbral unico no era neutro: era el de un sexo aplicado a los dos.
+const ALERTA_CRITICA_REF = {
+  F: { ifcP10: 1.73, ircP90: 3.13 },
+  M: { ifcP10: 3.49, ircP90: 2.30 },
+};
+const icaBisRefTxt = sexo => { const s = sexoBIS(sexo); return s === 'M' ? '−0,27 a 0,36 (H)' : s === 'F' ? '−0,20 a 0,45 (M)' : 'Sin sexo'; };
 const cAF = (v, sexo) => {
   const m = sexo === 'M' || sexo === 'Masculino';
   if (!v || v <= 0) return { l: 'Sin dato', c: '#94a3b8' };
@@ -260,9 +277,22 @@ const cIAE = v => v <= -5 ? {
   c: "#ef4444"
 };
 
+// ═══ LOS CUATRO LEEN LAS DOS FORMAS DEL SEXO (v17 §11, 2026-11-12) ═══
+//
+// `cFMI`, `cSMM`, `cMMEM` y `cASMI` comparaban `s === "M"` a secas, asi que un hombre registrado como
+// "Masculino" se clasificaba CON LOS CORTES DE MUJER. Su §11 lo arregla pasandolos todos por `sexoBIS`,
+// que acepta las cuatro formas (M, Masculino, F, Femenino) y devuelve null cuando no hay sexo.
+//
+// EN ATLAS ERA UN HAZARD LATENTE, NO UN DEFECTO VIVO, y la distincion importa para no contar un arreglo
+// que no cambio ninguna cifra: la cadena normaliza el sexo con `normalizeSexo` ANTES de llamar a estos
+// clasificadores, y en la base solo hay "M" (187), "F" (476) y dos nulos. Medido. Lo que lo salvaba era
+// una convencion de la capa de arriba, y eso es exactamente lo que un hazard latente es: correcto por
+// como se llama hoy, roto el dia que alguien lo llame de otra forma.
+//
+// `cFFMI` ya aceptaba las dos y se queda como estaba, que es tambien como esta en su v17.
 // ─── CLASIFICADORES COMPOSICIÓN — Biody Manager ───────────────────────────────
 // FMI / FFMI — puntos de corte del Excel Mapa E_BIS
-const cFMI = (v, s) => s === "M" ? v < 3 ? {
+const cFMI = (v, s) => sexoBIS(s) === "M" ? v < 3 ? {
   l: "Bajo",
   c: "#60a5fa",
   k: 1
@@ -340,7 +370,7 @@ const sectorMCCB = (ffmi, fmi, sexo) => {
   return (a && b) ? MCCB_SECTORES.find(x => x.fn === a && x.fm === b) : null;
 };
 // SMM/Peso — EWGSOP2/AWGS
-const cSMM = (v, s) => s === "M" ? v < 27 ? {
+const cSMM = (v, s) => sexoBIS(s) === "M" ? v < 27 ? {
   l: "Sarcopenia",
   c: "#ef4444"
 } : v <= 33 ? {
@@ -369,7 +399,7 @@ const cSMM = (v, s) => s === "M" ? v < 27 ? {
 // anterior usaba "H/M" para hombre/mujer y las dos ramas quedaron intercambiadas: el
 // hombre se evaluaba contra 5,7 y la mujer contra 7,0, de modo que ambos sexos se
 // clasificaban mal. Corregido el 2026-07-28 por indicación de la dirección científica.
-const cMMEM = (v, s) => s === "M" ? v < 7.0 ? {
+const cMMEM = (v, s) => sexoBIS(s) === "M" ? v < 7.0 ? {
   l: "Bajo",
   c: "#ef4444"
 } : {
@@ -383,7 +413,7 @@ const cMMEM = (v, s) => s === "M" ? v < 7.0 ? {
   c: "#10b981"
 };
 // ASMI (Appendicular Skeletal Muscle Mass Index) — EWGSOP2/AWGS2019
-const cASMI = (v, s) => s === "M" ? v < 7.0 ? {
+const cASMI = (v, s) => sexoBIS(s) === "M" ? v < 7.0 ? {
   l: "Riesgo de Sarcopenia",
   c: "#ef4444"
 } : {
@@ -1141,4 +1171,4 @@ const getDX = (ifcK, ircK, ffmiK, fmiK) => {
 
 module.exports = { calcIFC, calcIRC, calcPABU, cIFC, cIRC, cPABU, cFMI, cFFMI, cISCM, cIEHH, cIAE, cAF, cIR, kl, DX, efrCompose, getDX, FYR_LABELS, STRUCT_LABELS };
 
-Object.assign(module.exports, { efrProf, cSMM, cMMEM, cASMI, cFFW, cEISG, MCCB_CORTES, cFFMI_MCCB, cFMI_MCCB, MCCB_SECTORES, sectorMCCB, sexoBIS, ISCM_REF, iscmRefTxt });
+Object.assign(module.exports, { efrProf, cSMM, cMMEM, cASMI, cFFW, cEISG, MCCB_CORTES, cFFMI_MCCB, cFMI_MCCB, MCCB_SECTORES, sectorMCCB, sexoBIS, ISCM_REF, iscmRefTxt, ALERTA_CRITICA_REF, icaBisRefTxt });
