@@ -45,6 +45,7 @@ import { createClient } from "@supabase/supabase-js";
 // existen en el codigo (la v17 los retiro), y son justo lo que hay que reproducir para validar.
 const require = createRequire(import.meta.url);
 const core = require("../src/clinical-engine/frozen/engine.core.derived.js");
+const ix = require("../src/clinical-engine/frozen/engine.indices.js");
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -107,6 +108,38 @@ for (const r of reps) if (vigentes.has(r.evaluation_id) && !porEval.has(r.evalua
 const { data: med } = await sb.from("bis_measurements").select("id, evaluation_id");
 const evalPorMed = new Map(med.map((m) => [m.id, m.evaluation_id]));
 const cintura = new Map(), ict = new Map();
+// ═══ LOS SIETE COMPONENTES DEL IEHH Y DEL ISCM-BIS (v17 §5) ═══
+//
+// Hasta la corrida del 11 de noviembre el IEHH se simulaba cambiando solo su ZONA sobre el valor
+// ACTUAL, que era una COTA INFERIOR del cambio real y se dijo asi. Ahora el porte existe, asi que el
+// indice se RECALCULA con su funcion y sus referencias por sexo, desde los crudos de la medicion.
+//
+// LOS NOMBRES SON LOS NORMALIZADOS de `bis_raw_values`, que no son los encabezados del export: el
+// import los pasa por `normalizeHeader` (recorta y traduce los tokens del equipo). Se verificaron
+// contra la base, uno por uno, en vez de deducirlos del contrato del motor.
+const crudos = {
+  Re: new Map(), Rinf: new Map(), C: new Map(), MCA: new Map(),
+  AECsg: new Map(), AICsg: new Map(), FFW: new Map(),
+};
+const VARIABLE_DE = {
+  Re: "Extracellular resistance",
+  Rinf: "Infinite resistance",
+  C: "Membrane capacitance nF",
+  MCA: "Masa celular activa valor kg",
+  AECsg: "Agua extracelular sin grasa valor L",
+  AICsg: "Agua intracelular sin grasa valor L",
+  FFW: "Fat free water valor L",
+};
+for (const [campo, variable] of Object.entries(VARIABLE_DE)) {
+  const { data, error } = await sb.from("bis_raw_values").select("measurement_id, value").eq("variable_name", variable);
+  if (error) { console.log(`! ${variable}: ${error.message}`); continue; }
+  for (const r of data ?? []) {
+    const e = evalPorMed.get(r.measurement_id);
+    const v = Number(r.value);
+    if (e && Number.isFinite(v) && v > 0) crudos[campo].set(e, v);
+  }
+}
+
 for (const [variable, destino] of [["Waist Size cm", cintura], ["Ratio Cintura/Altura valor", ict]]) {
   const { data } = await sb.from("bis_raw_values").select("measurement_id, value").eq("variable_name", variable);
   for (const r of data ?? []) {
@@ -127,6 +160,9 @@ const c = {
   // Los cortes MCCB mueven tambien la CATEGORIA del FMI que el dominio conductual usa para medir la
   // distorsion de imagen corporal, y la LISTA DE NUTRACEUTICOS que el mapa DX sugiere por celda.
   fmiCatCambia: 0, fmiCatCambia_conDistorsion: 0, fmiCatCambia_sinDistorsion: 0,
+  // El IEHH y el ISCM-BIS recalculados de verdad (ya no una cota).
+  iehhRecalculable: 0, iehhCambiaZona: 0, iehhEntraEnDeficit: 0, iehhSaleDeDeficit: 0,
+  iscmRecalculable: 0, iscmCambiaBanda: 0, sinCrudosParaIehh: 0,
   nutraCambia: 0, validaNutra: 0, validaNutra_no: 0,
 };
 const ejemplos = [];
@@ -181,10 +217,45 @@ for (const [evId, snap] of porEval) {
     if (ejemplos.length < 6) ejemplos.push(`  ${evId.slice(0, 8)} ${s} IFC ${ifc.toFixed(2)} IRC ${irc.toFixed(2)} FFMI ${ffmi.toFixed(1)} FMI ${fmi.toFixed(1)}: #${estadoH} -> #${estadoV} (S${sectorH + 1}->S${sectorV + 1}, A${anilloH + 1}->A${anilloV + 1})`);
   }
 
-  // dominio 1: matriz con la etiqueta v17 + IEHH fuera de -1..+1 (cota inferior: el valor no se recalcula)
+  // ── EL IEHH Y EL ISCM-BIS, RECALCULADOS CON SU FUNCION Y SUS REFERENCIAS POR SEXO (v17 §5) ──
+  //
+  // Ya no es una cota: se llama a `calcIEHH_ISCM` con los siete componentes crudos de ESTA medicion.
+  // Si falta alguno, su funcion devuelve 0 (sin dato) y aqui se cuenta aparte en vez de mezclarse con
+  // un cero medido, que con el ISCM-BIS es un valor perfectamente normal.
+  const comp = {
+    sexo: s,
+    Re: crudos.Re.get(evId) ?? null,
+    Rinf: crudos.Rinf.get(evId) ?? null,
+    C: crudos.C.get(evId) ?? null,
+    MCA: crudos.MCA.get(evId) ?? null,
+    AECsg: crudos.AECsg.get(evId) ?? null,
+    AICsg: crudos.AICsg.get(evId) ?? null,
+    FMI: fmi,
+    FFW: crudos.FFW.get(evId) ?? null,
+  };
+  const nuevos = ix.calcIEHH_ISCM(comp);
+  const iehhV17 = nuevos.iehh === 0 ? null : nuevos.iehh;
+  const iscmV17 = nuevos.iscm === 0 ? null : nuevos.iscm;
+  if (iehhV17 == null) c.sinCrudosParaIehh++;
+  else {
+    c.iehhRecalculable++;
+    // La ZONA de hoy se deriva del valor SELLADO con los grados de la v16; la nueva, de sus tres zonas.
+    const zonaHoy = iehh == null ? null : iehh <= 0 ? 0 : 1; // v16: el cero era el optimo
+    const zonaV17 = iehhV17 < -1 ? -1 : iehhV17 <= 1 ? 0 : 1;
+    if (zonaHoy !== zonaV17) c.iehhCambiaZona++;
+    if (zonaV17 === -1) c.iehhEntraEnDeficit++;
+    if (iehh != null && iehh < -1 && zonaV17 !== -1) c.iehhSaleDeDeficit++;
+  }
+  if (iscmV17 != null) {
+    c.iscmRecalculable++;
+    const banda = (v) => core.cISCM(v, s).banda;
+    if (banda(iscmV17) !== banda(i.iscm == null ? null : Number(i.iscm))) c.iscmCambiaBanda++;
+  }
+
+  // dominio 1: matriz con la etiqueta v17 + el IEHH RECALCULADO fuera de -1..+1, en las dos direcciones
   let d1V = ifcLV == null ? null : (D1[`${ifcLV}|${ircL}`] ?? 1);
-  if (d1V != null && iehh != null && (iehh > 1 || iehh < -1)) d1V = cap3(d1V + 1);
-  if (iehh != null && iehh < -1) c.iehhFueraAbajo++;
+  if (d1V != null && iehhV17 != null && (iehhV17 > 1 || iehhV17 < -1)) d1V = cap3(d1V + 1);
+  if (iehhV17 != null && iehhV17 < -1) c.iehhFueraAbajo++;
   if (d1V != null && d1V !== sevHoy[0]) c.dom1Cambia++;
 
   // dominio 2: sector + adiposidad central
@@ -280,7 +351,14 @@ console.log(`  NIVEL de riesgo cambia:        ${pc(c.nivelCambia)}`);
 console.log(`  R1 entra / sale:               ${c.r1Entra} / ${c.r1Sale}`);
 console.log(`  R2 entra / sale:               ${c.r2Entra} / ${c.r2Sale}`);
 console.log(`  R4 sale:                       ${c.r4Sale}`);
-console.log(`  IEHH por DEBAJO de -1 (hoy no suma, v17 si): ${pc(c.iehhFueraAbajo)}`);
+console.log(`\n── EL IEHH Y EL ISCM-BIS, YA RECALCULADOS (v17 §5, no una cota) ──`);
+console.log(`  IEHH recalculable (vienen los 7 crudos): ${pc(c.iehhRecalculable)} · sin crudos: ${c.sinCrudosParaIehh}`);
+console.log(`  IEHH cambia de ZONA:            ${c.iehhCambiaZona}`);
+console.log(`  IEHH en zona de DEFICIT (< -1): ${c.iehhEntraEnDeficit}  <- suma 1 al dominio 1 y antes no sumaba`);
+console.log(`  IEHH que SALE del deficit:      ${c.iehhSaleDeDeficit}`);
+console.log(`  ISCM-BIS recalculable:          ${pc(c.iscmRecalculable)}`);
+console.log(`  ISCM-BIS cambia de banda de percentil: ${c.iscmCambiaBanda}`);
+console.log(`  (el IEHH por debajo de -1 ya es el REAL, no la cota del 11 de noviembre): ${pc(c.iehhFueraAbajo)}`);
 console.log(`  adiposidad central (cintura OMS o ICT>=0,5): ${pc(c.conAdiposidad)}`);
 console.log(`  sin cintura NI ICT:            ${pc(c.sinCinturaNiIct)}`);
 console.log(`  ICA-BIS guardado con el signo EQUIVOCADO (PABU < phi): ${pc(c.icaSignoMal)}`);
