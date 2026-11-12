@@ -196,6 +196,54 @@ con su simulación delante y con la aprobación de Santiago antes de ejecutarla.
 
 ---
 
+## El barrido contra su documento del 8 de noviembre (versión 1.2)
+
+> **Esto tampoco es una pregunta.** Es el cotejo de las preguntas abiertas contra su documento
+> `CAMBIOS_ATLAS_v17_URGENTE_para_Santiago` versión 1.2 **y contra su `ATLAS_v17.html`**, hecho el 12 de
+> noviembre. Va aquí porque lo que su v17 ya respondió no tiene por qué volver a preguntárselo, y lo que
+> NO respondió merece que le digamos que lo buscamos.
+
+**Se cotejó contra las dos fuentes, y a propósito:** el documento narra los cambios y el HTML los tiene.
+Donde el documento no menciona un tema, se fue a mirar el archivo, porque una corrección puede estar
+hecha sin estar narrada. Las citas de abajo son del HTML del 9 de noviembre, con su línea.
+
+### Lo que su v17 CIERRA
+
+| Pregunta | Qué la cierra |
+| --- | --- |
+| **38** · la R1 se activa por un criterio y su tarjeta anuncia otro | Su §10 retira `activar`, deja de evaluar `condicion` y reescribe los seis rótulos. Los seis portados. |
+| **17** · la fila ICA-BIS con dos reglas por superficie | Ya estaba respondida por su v17 §4 (los percentiles reemplazan la zona fija). Queda cerrada. |
+| **51** · qué pasa cuando falta la cintura | **Su propio código responde A**: `_cint` cae a 0 y `central` queda en falso, o sea que el modificador no suma y el dominio se queda en la gravedad de su sector. Construido así, marcado `[aplicado: A]`. |
+
+### Lo que su v17 NO responde, y se verificó en su archivo
+
+Las que Santiago pidió revisar una por una. En todas se fue al `ATLAS_v17.html` a comprobar si el
+cambio estaba hecho sin estar narrado, y en todas **sigue como estaba**. La primera de la lista entró
+aquí después de haberla dado por cerrada: la verificación en su archivo fue lo que lo destapó.
+
+| Pregunta | Lo que se encontró en su v17 |
+| --- | --- |
+| **7** · el borde de ±5,0 del IAE en tres sitios | **SE CREYÓ CERRADA Y NO LO ESTÁ**, y queda escrito porque el error es instructivo: `cIAE` y `dIAE` ya coinciden en el borde cerrado, así que *parecía* resuelta. Pero la pregunta no era de esos dos: era del Δ y de los DOS sitios del tratamiento, y en su v17 siguen con el borde ABIERTO (`iae > 5` en L17204, el protocolo de telómeros, y en L17211, la Coenzima Q10). Con un IAE de exactamente +5,0 su archivo sigue activando la R4 y dejando fuera el nutracéutico que esa ruta justifica. |
+| **2** · los cortes del control de calidad biológico | `controlCalidadImport` (L239) sigue comprobando SOLO las tres identidades de masa (MSSG, FFM, masa magra) con un desvío de 0,05 kg. No hay rangos fisiológicos, que es lo que se preguntó. |
+| **8** · los tres cortes de color de la Diana | Su documento no toca el color de la Diana en ninguna de sus 14 secciones. |
+| **15** · el IAE concordante en ámbar y en azul | **Siguen los dos colores, en el mismo archivo:** `cIAE` pinta la banda central en `#f59e0b` (ámbar, L4658) y `dIAE` la misma banda en `#3b82f6` (azul, L15655). |
+| **16** · la casilla 3_3 con un cian | **Sigue el cian:** `FYR_LABELS["3_3"]` = *"Función normal con riesgo"* con `c: "#22d3ee"` (L5389). |
+| **18** · el % de grasa con dos cortes | **Siguen los dos:** su tabla de composición dice Normal hasta 22 y *"Sobrepeso adiposo"* hasta 25 (L15669); su historia clínica dice Normal hasta 20 y *"Límite"* hasta 25 (L16751). Un hombre con 22,4 % sigue leyéndose distinto en las dos. |
+| **19** · dos clasificadores del índice cintura-cadera | **Siguen los dos:** `clasifICC` (L8878) y `dICC` (L15633), mismos cortes y distinta redacción. |
+| **20** · `clasifLancet` declarado y sin llamar | **Sigue declarado una sola vez** (L8891) y nadie lo llama, ni en su v17. Ha sobrevivido dos entregas más. |
+| **21** · las badges del Nivel III y el ECM/BCM | **`celBadges` se sigue llenando** (L22943-22947) y ningún render la lee. El ECM/BCM > 1,4 sigue sin fila propia. |
+| **22** · el estado PBI y su tercer umbral de ángulo de fase | **Sigue el tercer umbral:** su `estadoPBI` usa AF < 6,80 en hombres y < 6,30 en mujeres (L13715), mientras `cAF` usa 6,5 y 6,0. Y el PBI sigue vivo en su cadena causal. |
+| **46** · sus dos hidrataciones, 71 % contra 73 % | **Siguen contradiciéndose:** `dACTMLG` llama Normal a 71-74 (L15645) y `dHidDef` llama normohidratación a ≥ 73 (L15660). Es la **cuarta** vez que esta pareja aparece. |
+
+**Y una lectura de conjunto, que es lo que más vale de este barrido:** las diez son la misma clase de
+cosa, y ninguna es un desacuerdo entre su archivo y Atlas. Son **dos sitios de su propio archivo**
+diciendo cosas distintas sobre el mismo número, o una pieza declarada que nadie conecta. Su v17 es una
+conciliación con el libro, y el libro no habla de colores de celda ni de qué tabla de la pantalla manda:
+por eso ninguna se cerró ahí. Siguen necesitando una decisión suya, y son barata: cada una es elegir
+entre dos cosas que usted ya escribió.
+
+---
+
 ## Las 55 preguntas
 
 > **Puede responder por número en un solo mensaje** (por ejemplo: *"37: C, solo cintura y cadera · 9: sí,
@@ -662,7 +710,7 @@ toda la cohorte.
 se muestra, se dice por qué. Un hueco silencioso se lee como un paciente sin trayectoria, y aquí además
 sería un hueco que no se va a cerrar nunca.*
 
-**51 · La cintura pasa a mover una severidad: ¿qué pasa cuando falta?** En su v17 el perímetro de
+**51 · La cintura pasa a mover una severidad: ¿qué pasa cuando falta? [aplicado: A, y su propio código hace A]** En su v17 el perímetro de
 cintura (OMS: hombres ≥ 94 cm, mujeres ≥ 80 cm) o el índice cintura-talla ≥ 0,50 suman **+1 al dominio
 metabólico-estructural**. Hasta hoy la cintura en Atlas es un dato de contexto; con esto entra al
 diagnóstico.
