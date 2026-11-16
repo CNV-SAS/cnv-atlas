@@ -31,11 +31,18 @@ absorbe en otra lo dice. Así, si usted responde *"la 15"* dos semanas después,
 > no aplican en Atlas, 6 son decisiones nuestras que le declaramos aquí, **7 esperan una respuesta suya**
 > y 1 faltaba y se hizo ese mismo día. El detalle está en `BARRIDO_FINAL_V10_A_V16_2026-11-07.md`.
 >
-> **Y la Encuesta CNV-S ya está construida, y el 9 de noviembre se probó con un paciente de prueba.** Las
-> diez piezas de su v15 §2 están hechas. Desde el 8 de noviembre está **encendida solo para pacientes de
-> prueba**: un paciente real que entre a un seguimiento hoy sigue viendo la CNV v2.0 completa, y lo
-> seguirá viendo hasta que usted apruebe la CNV-S. Lo que falta para encenderla de verdad es lo que usted
-> diga en la última sección de este documento, *"Lo que salió al construir la encuesta de seguimiento"*.
+> **Y la Encuesta CNV-S está ACTIVA desde el 16 de noviembre, para todos los pacientes.** Las diez piezas
+> de su v15 §2 están hechas. Desde el 8 de noviembre estuvo encendida solo para pacientes de prueba; el
+> 16, repetido el smoke de los tres casos (el paciente sin nutracéuticos en la consulta anterior, el
+> adherente y el no adherente) y pasando los tres, Santiago la encendió para pacientes reales. **Desde la
+> segunda consulta, cualquier paciente responde la CNV-S 1.0 en vez de la CNV v2.0 completa.**
+>
+> **Y se encendió SIN su visto bueno, que es una decisión de Santiago y conviene que usted la vea dicha
+> así.** Lo que eso acepta: si su respuesta a la **39** (el marco de referencia por sección) pide una
+> versión nueva del instrumento, las consultas que para entonces ya hayan aplicado la CNV-S **quedan
+> selladas con la 1.0** y la versión nueva rige hacia adelante. Un registro clínico sellado no se
+> reescribe. Las cinco preguntas de la última sección de este documento, *"Lo que salió al construir la
+> encuesta de seguimiento"*, siguen abiertas y ninguna se dio por contestada.
 >
 > **De la prueba: lo suyo funcionó y lo nuestro tenía cuatro defectos, ya corregidos.** Funcionaron el
 > sello del instrumento, la herencia de los cuatro ítems retirados, el salto de los síntomas digestivos y
@@ -51,6 +58,28 @@ absorbe en otra lo dice. Así, si usted responde *"la 15"* dos semanas después,
 > instrumento se le mostró** (CNV v2.0 o CNV-S 1.0), sellado en el momento de abrirla. No se deduce
 > después. Así, el día que la CNV-S se encienda para todos, ninguna respuesta vieja queda rotulada con un
 > instrumento que nadie le mostró, y sus series por instrumento no se mezclan.
+
+---
+
+## Su v17 ya está aplicada, y esto es lo que movió (informativo: no hay nada que responder)
+
+**El histórico se recalculó el 16 de noviembre de 2026.** Las 481 consultas que se podían recalcular ya
+están con la versión nueva; las 71 que no, tienen su motivo (34 son de pacientes de prueba, y de las 37
+reales: 20 con la medición repetida en otra consulta, 13 sin fecha de nacimiento legible y 4 fuera del
+rango donde la EB-BIS v7 se calibró). Medido antes de ejecutar, sobre las **532 consultas vigentes con
+informe**, en la simulación del 15 de noviembre que fue la que autorizó la operación:
+
+| Lo que cambia | Consultas | De la cohorte |
+| --- | --- | --- |
+| El **nivel de riesgo** (bajo / medio / alto / crítico) | 183 | 34,4 % |
+| El **sector** de la Diana (sus cortes MCCB de la Tabla 10.2) | 325 | 61,1 % |
+| La **ruta R2** | 108 entran · 80 salen | — |
+| Los **nutracéuticos** sugeridos | 75 | 14,1 % |
+| El **IEHH** cambia de zona (sus tres de la Tabla 8.2) | 170 de 524 | 32,4 % |
+
+**Lo único que hay que saber leyendo esto:** no es un ajuste de bordes, es una recalibración, y por eso el
+histórico se reemitió una sola vez y con la simulación delante. **Nada de lo prescrito se tocó**: ni
+calorías, ni macros, ni nutracéuticos indicados, ni menús, ni las notas de los profesionales.
 
 ---
 
@@ -215,11 +244,30 @@ hecha sin estar narrada. Las citas de abajo son del HTML del 9 de noviembre, con
 | **17** · la fila ICA-BIS con dos reglas por superficie | Ya estaba respondida por su v17 §4 (los percentiles reemplazan la zona fija). Queda cerrada. |
 | **51** · qué pasa cuando falta la cintura | **Su propio código responde A**: `_cint` cae a 0 y `central` queda en falso, o sea que el modificador no suma y el dominio se queda en la gravedad de su sector. Construido así, marcado `[aplicado: A]`. |
 
-### Lo que su v17 NO responde, y se verificó en su archivo
+### Las DIEZ que su v17 no cierra, y que son todas la misma cosa
 
-Las que Santiago pidió revisar una por una. En todas se fue al `ATLAS_v17.html` a comprobar si el
-cambio estaba hecho sin estar narrado, y en todas **sigue como estaba**. La primera de la lista entró
-aquí después de haberla dado por cerrada: la verificación en su archivo fue lo que lo destapó.
+> **Léalo primero, porque ahorra las diez lecturas siguientes:** ninguna de estas diez es un desacuerdo
+> entre su archivo y Atlas. **Las diez son dos sitios de SU PROPIO archivo diciendo cosas distintas sobre
+> el mismo número**, o una pieza que su archivo declara y nadie conecta. Por eso su v17 no las cerró: la
+> v17 es una conciliación con el libro, y el libro no habla de colores de celda ni de qué tabla de la
+> pantalla manda. **Y por eso son baratas: cada una es elegir entre dos cosas que usted ya escribió.**
+
+Agrupadas por lo que hay que decidir:
+
+| Lo que hay que decidir | Preguntas |
+| --- | --- |
+| **Un borde que no coincide consigo mismo** (`>` contra `>=`, o un corte contra otro) | **7** (el ±5,0 del IAE, en tres sitios), **22** (el ángulo de fase del estado PBI contra `cAF`) |
+| **Dos clasificadores del mismo indicador, con cortes o palabras distintas** | **18** (el % de grasa), **19** (el índice cintura-cadera), **46** (la hidratación, 71 % contra 73 %) |
+| **Un color que dice una cosa y la etiqueta de al lado otra** | **8** (los tres cortes de la Diana), **15** (el IAE concordante, ámbar y azul), **16** (la casilla 3_3 en cian) |
+| **Una pieza declarada que nadie conecta** | **20** (`clasifLancet`), **21** (las badges del Nivel III y el ECM/BCM) |
+
+La **2** (los cortes del control de calidad biológico) va aparte: ahí no hay dos sitios suyos
+contradiciéndose, falta un criterio que nunca se escribió.
+
+El detalle de cada una, con la línea de su archivo donde se verificó. En todas se fue al
+`ATLAS_v17.html` a comprobar si el cambio estaba hecho sin estar narrado, y en todas **sigue como
+estaba**. La primera de la lista entró aquí después de haberla dado por cerrada: la verificación en su
+archivo fue lo que lo destapó.
 
 | Pregunta | Lo que se encontró en su v17 |
 | --- | --- |
@@ -235,12 +283,12 @@ aquí después de haberla dado por cerrada: la verificación en su archivo fue l
 | **22** · el estado PBI y su tercer umbral de ángulo de fase | **Sigue el tercer umbral:** su `estadoPBI` usa AF < 6,80 en hombres y < 6,30 en mujeres (L13715), mientras `cAF` usa 6,5 y 6,0. Y el PBI sigue vivo en su cadena causal. |
 | **46** · sus dos hidrataciones, 71 % contra 73 % | **Siguen contradiciéndose:** `dACTMLG` llama Normal a 71-74 (L15645) y `dHidDef` llama normohidratación a ≥ 73 (L15660). Es la **cuarta** vez que esta pareja aparece. |
 
-**Y una lectura de conjunto, que es lo que más vale de este barrido:** las diez son la misma clase de
-cosa, y ninguna es un desacuerdo entre su archivo y Atlas. Son **dos sitios de su propio archivo**
-diciendo cosas distintas sobre el mismo número, o una pieza declarada que nadie conecta. Su v17 es una
-conciliación con el libro, y el libro no habla de colores de celda ni de qué tabla de la pantalla manda:
-por eso ninguna se cerró ahí. Siguen necesitando una decisión suya, y son barata: cada una es elegir
-entre dos cosas que usted ya escribió.
+**Y una undécima que se encontró el 16 de noviembre, de la misma familia exacta:** es la **14**, el nombre
+de la banda media del IRC. El comentario que encabeza su `cIRC` escribe *"M: Bajo <2,3 · **Normal**
+2,3–2,8 · Alto >2,8"* y el código, tres líneas más abajo, rotula esa misma banda **"Riesgo moderado"** en
+ámbar. Dos líneas de la misma función. No es cosmético: el ámbar vale como alteración, así que una mujer
+con un IRC de 2,71, que está dentro del rango de referencia de su sexo, sale listada en *«Índices
+ANI-BIS-E alterados»* de su historia clínica.
 
 ---
 
@@ -631,10 +679,12 @@ bioimpedancias cuando hay 289.*
 
 **Van aparte porque son de otra clase.** Todo lo de arriba sale de leer sus documentos; estas cinco
 salieron de construir su CNV-S 1.0 y de **probarla con un paciente de prueba el 9 de noviembre**, que es
-cuando aparece lo que un documento no puede anticipar. La encuesta está **construida y encendida solo
-para pacientes de prueba**: ninguna de las cinco frena nada, ningún paciente real la ve, y lo que usted
-decida se aplica antes de encenderla para todos. El desarrollo de cada una está al final del documento,
-en su propia sección.
+cuando aparece lo que un documento no puede anticipar. **Desde el 16 de noviembre la encuesta está ACTIVA
+para todos los pacientes**, por decisión de Santiago y con el smoke de los tres casos pasando. Ninguna de
+las cinco frena nada; lo que cambia respecto de la semana pasada es que ya no se aplican "antes de
+encenderla", sino **hacia adelante**: lo que usted decida se aplica a las consultas nuevas, y las que ya
+se hayan respondido quedan selladas con la CNV-S 1.0. Solo la **39** podría obligar a una versión nueva
+del instrumento. El desarrollo de cada una está al final del documento, en su propia sección.
 
 **De la prueba del 9 de noviembre salió una pregunta nueva (la 47) y nada más que fuera suyo.** Los
 demás hallazgos de ese día eran defectos nuestros y ya están corregidos; se los contamos por si le
@@ -1056,6 +1106,22 @@ la misma fila se contradicen.
 **Nuestra recomendación:** alinear el Δ a **su** corte cerrado, y entonces un IAE de exactamente +5,0
 saldría con banda "acelerado" y Δ "+0,0 años" (está justo en el límite, a cero de distancia). **No lo
 cambiamos todavía** porque es su corte y porque reintroduce un "0,0" que la pregunta 6 acaba de retirar.
+
+**Cotejado contra su `ATLAS_v17.html` el 16 de noviembre, y los tres sitios siguen diciendo cosas
+distintas.** Estas son las tres líneas de su propio archivo:
+
+| Dónde | Lo que dice su v17 | Con IAE = +5,0 exacto |
+| --- | --- | --- |
+| La síntesis del envejecimiento (L13811) | `iae >= 5` | **entra** |
+| El protocolo de telómeros / estrés oxidativo (L17204) | `iae > 5` | **no entra** |
+| La Coenzima Q10 (L17211) | `iae > 5` | **no entra** |
+
+Así que, con un IAE de exactamente +5,0, su archivo **nombra el envejecimiento acelerado en la síntesis y
+no prescribe la Coenzima Q10 que esa misma lectura justifica.** Atlas lo porta byte a byte: son
+`frozen/atlas-protocolo.js` L108 (telómeros) y L115 (Coenzima Q10), verificables hoy sin su archivo.
+
+**La pregunta sigue siendo una sola:** ¿los tres sitios usan el corte cerrado (`≥ 5`) de su tabla 3, o los
+tres el abierto? Lo que no puede quedarse es el reparto de hoy, que es dos contra uno.
 
 ## 8 · Los tres cortes de la Diana, y una objeción de estética que no habíamos dicho
 
@@ -1682,6 +1748,13 @@ antes del 7 de noviembre no es estrictamente comparable con lo de después.
 **Lo que cuesta cada una.** La A no cuesta nada. La B cuesta un bump de encuesta: las respuestas
 anteriores quedan en la versión sin marco y esas evaluaciones **dejan de ser corregibles** (el flujo de
 corrección exige que la versión del instrumento coincida). Son unas horas de trabajo, no un rediseño.
+
+**Y desde el 16 de noviembre tiene una consecuencia más, que no tenía cuando se la preguntamos.** Ese día
+se encendió la CNV-S para todos los pacientes, así que desde entonces hay seguimientos reales
+respondiéndose con la **CNV-S 1.0**. Si usted elige la **B**, esas respuestas quedan selladas con la 1.0 y
+la versión nueva rige **hacia adelante**: no se reescribe ningún registro clínico ya guardado, y las
+consultas de ese tramo dejan de ser corregibles por el motivo de arriba. Es el coste que la decisión de
+encenderla aceptó por anticipado; cuanto antes responda esta, más corto es ese tramo.
 
 ---
 
