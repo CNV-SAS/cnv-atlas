@@ -13,6 +13,18 @@
 //    el _smmwLow del DFI (engine.dfi, alimenta obSarc -> Dominio 2) baja mujer 24 -> 22, junto con el
 //    gate del fenotipo (protocolo-fenotipo, que sube PROTOCOL a 2026-08-19b). Se folda en 1.1.0 porque
 //    aun no hay despliegue: 1.1.0 = el re-port completo a la ciencia del 19 (18 + los tres residuos).
+//    ─── ADVERTENCIA SOBRE ESTA VERSION, encontrada el 2026-11-15 ───
+//    DOS CIENCIAS COMPARTEN EL NUMERO 1.1.0. El 2026-08-29 (commit 662dc410, porte del ATLAS_v8 del 29)
+//    los cortes del IRC se movieron SIN subir la version: H 1,68/2,11 -> 1,7/2,1 · M 2,27/2,85 ->
+//    2,3/2,8 · y el "sin sexo" dejo de tener corte propio (2,0/3,4) para caer al MASCULINO. Eso MUEVE una
+//    clasificacion sellada, asi que le tocaba un MAJOR y un recalculo, y no los tuvo.
+//    LO QUE DEJA: un diagnostico que dice 1.1.0 puede haber clasificado su IRC con cualquiera de los dos
+//    pares de cortes, y la version no lo distingue; solo la FECHA lo dice. Se ve al reproducir lo sellado:
+//    la simulacion de la v17 no puede reproducir el estado de los sellos anteriores al 29 cuyo IRC cae en
+//    la franja entre los dos pares (`scripts/simular-v17.mjs` los nombra y lo explica).
+//    NO SE ARREGLA HACIA ATRAS (regla 7: un sello es inmutable, y renumerar una version ya persistida
+//    seria peor). Se deja escrito aqui, que es donde alguien va a buscar que significa un 1.1.0 sellado, y
+//    el recalculo de la v17 los vuelve a poner a todos en la misma ciencia.
 //  · 1.2.0 (2026-08-31): LA DINAMOMETRIA ENTRA AL MOTOR (Gildardo 2026-08-30 §6). Hasta aqui la fuerza
 //    prensil se capturaba y no llegaba a `classifyFenotipo`, asi que `dxSarcopenia` devolvia "Ingrese
 //    fuerza prensil" SIEMPRE, incluso con el dato registrado, y el disyunto `sarcoDx.k >= 2` nunca se

@@ -182,6 +182,59 @@ for (const [variable, destino] of [["Waist Size cm", cintura], ["Ratio Cintura/A
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// CON QUE CIENCIA SE SELLO CADA UNA  ·  para poder explicar los que NO reproducen  ·  2026-11-15
+//
+// La corrida del 15 dio 523 bien y 9 mal en el numero de estado. Un contador que no cuadra no se
+// puede dejar en un numero: o se explica, o la cifra de cambio de abajo no vale. Y la explicacion no
+// esta en los indicadores, esta en la FECHA: los cortes del IRC se movieron el 2026-08-29 (de H
+// 1,68/2,11 y M 2,27/2,85 a H 1,7/2,1 y M 2,3/2,8, y el «sin sexo» paso a caer al corte masculino) y
+// ese cambio NO subio la version del motor. Asi que un diagnostico sellado antes de ese dia clasifico
+// su IRC con otros cortes, y reproducirlo con los de hoy da otra banda cuando el valor cae en la
+// franja entre los dos. El `engine_version` no lo distingue: los dos lados dicen 1.1.0.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL MAJOR DEL MOTOR CON EL QUE SE SELLO  ·  y por que decide TODO lo de abajo  ·  2026-11-15
+//
+// ═══ EL DEFECTO QUE ESTO CIERRA, Y ERA DEL SCRIPT ═══
+//
+// La corrida del 15 dio «numero de estado: 523 bien, 9 mal», y la regla de la casa dice que si no se
+// reproduce, la aritmetica no vale. La causa no estaba en la aritmetica: estaba en que el script
+// comparaba TODO contra los cortes de ayer, y el motor 4.0.0 YA ESTA EN PRODUCCION desde el push. O
+// sea que las consultas selladas despues del push se clasificaron con los cortes NUEVOS, y el lado
+// «HOY» del script (escrito a mano con los cortes viejos, que es lo correcto para validar lo viejo)
+// no puede reproducirlas. El script se estaba midiendo contra un blanco en movimiento.
+//
+// Y NO ERA SOLO LA VALIDACION: esas consultas tambien entraban en «cuanto cambia», donde contaban un
+// cambio QUE YA OCURRIO. La cifra de la reemision estaba inflada por ellas.
+//
+// ASI QUE LA COHORTE SE PARTE EN DOS, y cada mitad se valida contra la ciencia que la sello:
+//   · PENDIENTES (major < 4): son las que la reemision moveria. Se validan contra los cortes viejos
+//     y son el unico denominador honesto de «cuanto cambia».
+//   · YA EN LA v17 (major >= 4): no hay nada que reemitir. Se validan contra el lado v17, que de paso
+//     es la mejor prueba del porte: si lo que el motor sello coincide con lo que este script calcula,
+//     las dos implementaciones de su Tabla 10.2 dicen lo mismo sobre datos reales.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+const dgs = await traerTodo("diagnoses", "id, evaluation_id, engine_version, created_at");
+// El prefijo cambio por el camino (`anibise-1.1.0` y `4.0.0` conviven en la base), asi que se toma el
+// PRIMER numero de la ultima terna, no el primer caracter.
+const majorDe = (v) => {
+  const m = /(\d+)\.(\d+)\.(\d+)\s*$/.exec(String(v ?? ""));
+  return m ? Number(m[1]) : null;
+};
+const selloDe = new Map();
+for (const d of [...dgs].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))) {
+  // El PRIMER diagnostico de la consulta es el que fijo la ciencia con la que se clasifico; una
+  // reemision posterior reescribe el informe, asi que se guarda tambien el ultimo.
+  const previo = selloDe.get(d.evaluation_id);
+  selloDe.set(d.evaluation_id, {
+    primera: previo?.primera ?? d.created_at,
+    ultima: d.created_at,
+    version: d.engine_version,
+    major: majorDe(d.engine_version),
+  });
+}
+
 console.log(`consultas vigentes con informe: ${porEval.size} (de ${vigentes.size} vigentes)`);
 
 const c = {
@@ -197,8 +250,17 @@ const c = {
   iehhRecalculable: 0, iehhCambiaZona: 0, iehhEntraEnDeficit: 0, iehhSaleDeDeficit: 0,
   iscmRecalculable: 0, iscmCambiaBanda: 0, sinCrudosParaIehh: 0,
   nutraCambia: 0, validaNutra: 0, validaNutra_no: 0,
+  // LAS DOS MITADES, y la validacion del lado v17 sobre las que ya se sellaron con el.
+  pendientes: 0, yaEnLaV17: 0, sinSello: 0,
+  v17Valida: 0, v17Valida_no: 0,
 };
 const ejemplos = [];
+// EL DETALLE DE CADA UNO QUE NO REPRODUCE. Sin esto, el bloque de validacion dice «9 mal» y no hay
+// manera de saber si es un defecto de la aritmetica o ciencia vieja sellada, que son cosas opuestas:
+// la primera invalida la simulacion entera y la segunda no invalida nada.
+const noReproducen = [];
+const nutraSolo = [];
+const noReproducenV17 = [];
 
 for (const [evId, snap] of porEval) {
   const i = snap?.indicators ?? {};
@@ -232,19 +294,72 @@ for (const [evId, snap] of porEval) {
   // La leccion, que es la misma de otras tres veces: un 0/0 no es un dato, es una pregunta sin
   // responder. Un contador que no se incrementa nunca tiene que decir "no lo encontre", no "no hay".
   const estadoSellado = snap?.efrPhenotype?.stateNumber ?? null;
-  if (estadoSellado != null) { if (estadoSellado === estadoH) c.validaSector++; else c.validaSector_no++; }
+
+  // ── v17: se calcula ANTES de validar, porque la mitad ya sellada con 4.0.0 se valida contra EL ──
+  const [ifcLV, ifcKV] = ifcV17(ifc, s);
+  const anilloV = ifcKV == null ? null : rank(ifcKV, ircK);
+  const sectorV = s ? rank(ffmiV17(ffmi, s), fmiV17(fmi, s)) : null;
+  const estadoV = anilloV != null && sectorV != null ? anilloV * 9 + sectorV + 1 : null;
+
+  const sello = selloDe.get(evId) ?? {};
+  if (sello.major == null) c.sinSello++;
+  const yaV17 = sello.major != null && sello.major >= 4;
+
+  // ═══ LA MITAD QUE YA ESTA EN LA v17: NO HAY NADA QUE REEMITIR, Y SIRVE DE PRUEBA DEL PORTE ═══
+  if (yaV17) {
+    c.yaEnLaV17++;
+    if (estadoSellado != null && estadoV != null) {
+      if (estadoSellado === estadoV) c.v17Valida++;
+      else {
+        c.v17Valida_no++;
+        // ESTO SI SERIA UN DEFECTO DEL PORTE, no ciencia vieja: el motor y este script discreparian
+        // sobre su Tabla 10.2 con los mismos datos. Se imprime aparte y en voz alta.
+        noReproducenV17.push(`  ${evId.slice(0, 8)} ${s ?? "?"} sellado #${estadoSellado} con motor ${sello.version} -> el script calcula #${estadoV}`);
+      }
+    }
+    continue; // no entra en «cuanto cambia»: su cambio YA ocurrio
+  }
+  c.pendientes++;
+
+  if (estadoSellado != null) {
+    if (estadoSellado === estadoH) c.validaSector++;
+    else {
+      c.validaSector_no++;
+      // ═══ QUE EJE DIFIERE, Y CONTRA QUE VALOR ═══
+      //
+      // Las cuatro bandas SELLADAS se derivan del numero con la misma aritmetica que lo compuso
+      // (`efrDesglose` en el motor; aqui se reescribe porque este script no importa TypeScript), asi
+      // que la comparacion es banda por banda y no «el numero no cuadra». De los cuatro ejes, el unico
+      // cuyos cortes se movieron sin subir la version es el IRC.
+      const n = estadoSellado - 1;
+      const anilloSellado = EFR_RISK_ORDER[Math.floor(n / 9)] ?? [null, null];
+      const sectorSellado = EFR_RISK_ORDER[n % 9] ?? [null, null];
+      noReproducen.push({
+        id: evId.slice(0, 8),
+        sexo: s ?? '?',
+        selladoRaw: snap?.sexo ?? null,
+        estadoSellado,
+        estadoH,
+        ejes: [
+          ['IFC', anilloSellado[0], ifcKH, ifc],
+          ['IRC', anilloSellado[1], ircK, irc],
+          ['FFMI', sectorSellado[0], ffmiHoy(ffmi, s), ffmi],
+          ['FMI', sectorSellado[1], fmiHoy(fmi, s), fmi],
+        ].filter(([, sellada, recalculada]) => sellada !== recalculada),
+        version: sello.version ?? '?',
+        primera: String(sello.primera ?? '').slice(0, 10),
+        ultima: String(sello.ultima ?? '').slice(0, 10),
+      });
+    }
+  }
   if (d1H === sevHoy[0]) c.validaDom1++; else c.validaDom1_no++;
   const scoreH = Math.round(sevHoy.reduce((a, v, k) => a + W[k] * (v / 3), 0) * 100);
   if (snap?.dfi?.riesgo?.score === scoreH) c.validaScore++; else c.validaScore_no++;
 
-  // ── v17 ──
-  const [ifcLV, ifcKV] = ifcV17(ifc, s);
+  // ── v17: lo que cambiaria (el estado y las bandas ya estan calculados arriba) ──
   if (ifcLV !== ifcLH) c.ifcCambia++;
-  const anilloV = ifcKV == null ? null : rank(ifcKV, ircK);
-  const sectorV = s ? rank(ffmiV17(ffmi, s), fmiV17(fmi, s)) : null;
   if (sectorV != null && sectorV !== sectorH) c.sectorCambia++;
   if (anilloV != null && anilloV !== anilloH) c.anilloCambia++;
-  const estadoV = anilloV != null && sectorV != null ? anilloV * 9 + sectorV + 1 : null;
   if (estadoV != null && estadoV !== estadoH) {
     c.estadoCambia++;
     if (ejemplos.length < 6) ejemplos.push(`  ${evId.slice(0, 8)} ${s} IFC ${ifc.toFixed(2)} IRC ${irc.toFixed(2)} FFMI ${ffmi.toFixed(1)} FMI ${fmi.toFixed(1)}: #${estadoH} -> #${estadoV} (S${sectorH + 1}->S${sectorV + 1}, A${anilloH + 1}->A${anilloV + 1})`);
@@ -348,7 +463,17 @@ for (const [evId, snap] of porEval) {
   // primero se VALIDA contra la que el informe ya trae sellada.
   const nutraSellada = typeof snap?.nutraceuticos === "string" ? snap.nutraceuticos.trim() : null;
   const nutraHoy = core.getDX(ifcKH, ircK, ffmiHoy(ffmi, s), fmiHoy(fmi, s)).n;
-  if (nutraSellada) { if (nutraSellada === String(nutraHoy).trim()) c.validaNutra++; else c.validaNutra_no++; }
+  if (nutraSellada) {
+    if (nutraSellada === String(nutraHoy).trim()) c.validaNutra++;
+    else {
+      c.validaNutra_no++;
+      // LA LISTA SALE DE LA CELDA, asi que si una banda no reproduce, la lista tampoco tiene por que:
+      // es la MISMA incidencia contada otra vez, no una segunda. Se marca para no sumar 9 + 4 = 13.
+      const yaContado = noReproducen.find((x) => x.id === evId.slice(0, 8));
+      if (yaContado) yaContado.nutraTambien = true;
+      else nutraSolo.push(evId.slice(0, 8));
+    }
+  }
   if (ifcKV != null && sectorV != null) {
     const nutraV17 = core.getDX(ifcKV, ircK, ffmiV17(ffmi, s), fmiV17(fmi, s)).n;
     if (String(nutraV17).trim() !== String(nutraHoy).trim()) c.nutraCambia++;
@@ -357,8 +482,26 @@ for (const [evId, snap] of porEval) {
   if (pabu != null && Number.isFinite(pabu) && pabu < 1.618) c.icaSignoMal++;
 }
 
-const pc = (n) => `${n} (${((n / c.usables) * 100).toFixed(1)} %)`;
-console.log(`\n── VALIDACION contra lo sellado (si esto no cuadra, lo de abajo no vale) ──`);
+// EL DENOMINADOR SON LAS PENDIENTES, no las usables: una consulta ya sellada con 4.0.0 no puede
+// «cambiar» con la reemision, porque su cambio ya esta dentro. Con `usables` el porcentaje salia
+// diluido y el valor absoluto inflado a la vez.
+const pc = (n) => `${n} (${c.pendientes ? ((n / c.pendientes) * 100).toFixed(1) : "0.0"} %)`;
+console.log(`\n── LA COHORTE, PARTIDA POR LA CIENCIA QUE LA SELLO ──`);
+console.log(`  PENDIENTES de reemitir (motor 1.x a 3.x): ${c.pendientes}`);
+console.log(`  ya selladas con el motor 4.x (nada que reemitir): ${c.yaEnLaV17}`);
+if (c.sinSello > 0) console.log(`  ! sin diagnostico que diga su version: ${c.sinSello} (se tratan como pendientes)`);
+if (c.yaEnLaV17 > 0) {
+  console.log(
+    `  de las ${c.yaEnLaV17} ya en la v17, el script reproduce su estado en ${c.v17Valida} y falla en ${c.v17Valida_no}`,
+  );
+  // ES LA MEJOR PRUEBA DEL PORTE QUE HAY: el motor sello con su codigo y el script calcula con el de
+  // aqui; si coinciden sobre datos reales, las dos lecturas de su Tabla 10.2 dicen lo mismo.
+  for (const linea of noReproducenV17) console.log(linea);
+  if (c.v17Valida_no > 0) {
+    console.log(`  ! ESO SI ES UN DEFECTO DEL PORTE (no ciencia vieja): el motor y este script discrepan. Parar.`);
+  }
+}
+console.log(`\n── VALIDACION de las PENDIENTES contra lo sellado (si esto no cuadra, lo de abajo no vale) ──`);
 console.log(`  dominio 1 reproducido: ${c.validaDom1} bien, ${c.validaDom1_no} mal`);
 console.log(`  riesgo integrado reproducido: ${c.validaScore} bien, ${c.validaScore_no} mal`);
 console.log(
@@ -367,7 +510,59 @@ console.log(
     : `  numero de estado reproducido: ${c.validaSector} bien, ${c.validaSector_no} mal`,
 );
 console.log(`  lista de nutraceuticos reproducida: ${c.validaNutra} bien, ${c.validaNutra_no} mal`);
-console.log(`\n── CUANTO CAMBIA (sobre ${c.usables} consultas vigentes con informe) ──`);
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS QUE NO REPRODUCEN, UNO POR UNO  ·  «si no se reproduce, la aritmetica no vale» (Santiago)
+//
+// La regla se mantiene, y por eso esto se imprime: lo que decide si la simulacion vale no es el
+// NUMERO de los que no cuadran, es su CAUSA. Un eje que difiere porque sus cortes se movieron despues
+// del sello no dice nada malo de la aritmetica de hoy: dice que ese sello es de otra ciencia. Un eje
+// que difiere SIN que sus cortes se hayan movido si seria un defecto de este script, y entonces la
+// simulacion entera queda invalidada.
+//
+// NO IMPRIME NINGUN DATO DE PACIENTE: el prefijo del id de la consulta, el sexo y los indicadores.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+if (noReproducen.length > 0 || nutraSolo.length > 0) {
+  console.log(`\n── LOS ${noReproducen.length} QUE NO REPRODUCEN EL NUMERO DE ESTADO, Y POR QUE ──`);
+  const porEje = new Map();
+  for (const x of noReproducen) {
+    const ejes = x.ejes.map(([nombre]) => nombre).join('+') || 'ninguno (revisar: el numero difiere y las cuatro bandas coinciden)';
+    porEje.set(ejes, (porEje.get(ejes) ?? 0) + 1);
+    const detalle = x.ejes
+      .map(([nombre, sellada, recalculada, valor]) => `${nombre} ${Number(valor).toFixed(2)}: sellada k=${sellada} -> recalculada k=${recalculada}`)
+      .join(' · ');
+    console.log(
+      `  ${x.id} ${x.sexo} #${x.estadoSellado} -> #${x.estadoH}  ${detalle}` +
+        `  [motor ${x.version}, 1er dx ${x.primera}${x.ultima !== x.primera ? `, ultimo ${x.ultima}` : ''}` +
+        `${x.nutraTambien ? ', y por eso su lista de nutraceuticos tampoco' : ''}]`,
+    );
+  }
+  console.log(`  --- por eje que difiere ---`);
+  for (const [ejes, n] of [...porEje].sort((a, b) => b[1] - a[1])) console.log(`  ${ejes}: ${n}`);
+  // EL IRC ES EL UNICO EJE CON EXPLICACION CONOCIDA, y conviene decirlo aqui y no en un documento: los
+  // cortes se movieron el 2026-08-29 SIN subir la version del motor (H 1,68/2,11 -> 1,7/2,1 · M
+  // 2,27/2,85 -> 2,3/2,8 · sin sexo 2,0/3,4 -> el masculino). Un sello anterior a ese dia con el IRC
+  // en la franja entre los dos pares de cortes NO puede reproducirse con los de hoy, y no deberia.
+  const franja = (v, sexo) => {
+    const pares = sexo === 'F' ? [[2.27, 2.3], [2.8, 2.85]] : [[1.68, 1.7], [2.1, 2.11]];
+    return pares.some(([a, b]) => v >= Math.min(a, b) && v <= Math.max(a, b));
+  };
+  const porElIrc = noReproducen.filter(
+    (x) => x.ejes.length === 1 && x.ejes[0][0] === 'IRC' && franja(Number(x.ejes[0][3]), x.sexo),
+  );
+  console.log(
+    `  de los ${noReproducen.length}, ${porElIrc.length} difieren SOLO en el IRC y con el valor en la franja que`,
+  );
+  console.log(`     los cortes del 2026-08-29 dejaron atras: esos son ciencia vieja sellada, no un defecto.`);
+  if (porElIrc.length !== noReproducen.length) {
+    console.log(`  ! LOS OTROS ${noReproducen.length - porElIrc.length} NO tienen esa explicacion: revisar el script ANTES de usar las cifras de abajo.`);
+  }
+  if (nutraSolo.length > 0) {
+    console.log(`  ! ${nutraSolo.length} con la LISTA de nutraceuticos distinta y el estado BIEN (${nutraSolo.join(', ')}):`);
+    console.log(`     eso no lo explica ningun corte. Revisar si la lista sellada se edito a mano.`);
+  }
+}
+console.log(`\n── CUANTO CAMBIA (sobre las ${c.pendientes} PENDIENTES, no sobre las ${c.usables} con informe) ──`);
 console.log(`  IFC cambia de categoria:        ${pc(c.ifcCambia)}`);
 console.log(`  sin sexo (v17 no clasifica):   ${pc(c.ifcSinSexo)}`);
 console.log(`  SECTOR de la Diana cambia:     ${pc(c.sectorCambia)}`);
