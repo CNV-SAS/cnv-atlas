@@ -1,6 +1,6 @@
 # El omega en el modelo y en las consultas
 
-**Connected Nutrition Ventures · Atlas · 11 de noviembre de 2026 · Para Santiago, para pasarle al gerente**
+**Connected Nutrition Ventures · Atlas · 11 de noviembre de 2026, con las cifras de la cohorte corregidas el 15 · Para Santiago, para pasarle al gerente**
 
 ---
 
@@ -19,47 +19,63 @@
 > entre "en cuántas consultas el modelo lo sugirió" y "en cuántas se prescribió" no es un error del
 > sistema: es la decisión clínica de cada profesional, consulta por consulta.
 
-> **Y las cifras de la casa, medidas el 11 de noviembre sobre las consultas reales:** de las **497**
-> consultas vigentes con tratamiento, **434** tienen informe sellado, y en **las 434 el modelo sugirió
-> OMEGA COMPLEX** (el 100 %). Se prescribió en **322 de las 497** (65 %). Donde el modelo lo sugirió y
-> hay con qué comparar, se prescribió en **291 de 434** (67 %).
+> **Y las cifras de la casa, medidas el 15 de noviembre sobre las consultas reales:** de las **532**
+> consultas vigentes con tratamiento, el modelo sugirió OMEGA COMPLEX en **530** (el 99,6 %). Se
+> prescribió en **346** (65 %). De las 530 donde el modelo lo sugirió, se prescribió en **346** y no se
+> prescribió en **184**. Y en **ninguna** consulta se prescribió sin que el modelo lo sugiriera.
 
 ---
 
 ## Las cifras de la cohorte, y cómo leerlas sin equivocarse
 
-Corrida por Santiago contra la nube el 11 de noviembre de 2026.
+Corrida por Santiago contra la nube el **15 de noviembre de 2026**.
+
+> **Estas cifras reemplazan las del 11 de noviembre, que estaban cortadas.** La medición pedía las
+> tablas enteras sin paginar, y PostgREST devuelve como máximo mil filas **sin decirlo**: no hay error
+> ni aviso, la respuesta llega completa en apariencia. Así que la corrida del 11 midió la parte de la
+> cohorte que cabía en mil filas y calculó porcentajes sobre ella como si fueran de todas. El script se
+> arregló el 12 (pagina de mil en mil, con un orden estable) y esta corrida es la completa.
 
 | | Consultas |
 | --- | --- |
-| Vigentes **con tratamiento** (el denominador que pidió el gerente) | **497** |
-| De ellas, con informe de paciente sellado (hay con qué comparar) | 434 |
-| El modelo lo **sugirió** | **434 de 434** (100 %) |
-| El profesional lo **prescribió** | **322 de 497** (64,8 %) |
-| Sugerido **y** prescrito | 291 |
-| Sugerido y **no** prescrito | 143 |
-| Prescrito **sin informe con el que comparar** | 31 |
+| Vigentes **con tratamiento** (el denominador que pidió el gerente) | **532** |
+| El modelo lo **sugirió** | **530 de 532** (99,6 %) |
+| El profesional lo **prescribió** | **346 de 532** (65 %) |
+| Sugerido **y** prescrito | **346** |
+| Sugerido y **no** prescrito | **184** |
+| Prescrito **sin que el modelo lo sugiriera** | **0** |
 
 **Tres lecturas que conviene hacer, y una que NO hay que hacer:**
 
-1. **El 100 % no es un redondeo: en esta cohorte ninguna consulta cayó en los 14 estados que no lo
-   sugieren.** Los catorce tienen masa muscular baja, y entre 434 consultas no hay ninguna ahí. O sea
-   que la base de la que habla el párrafo de arriba no es teórica: hoy aplica a todos.
-2. **De las 434 donde el modelo lo sugirió, se prescribió en 291.** Las otras 143 son decisión clínica,
+1. **El 99,6 % no es el 100 %, y la diferencia son dos consultas.** La corrida cortada decía 100 %, y
+   con la cohorte entera aparecen **2 consultas en alguno de los 14 estados que no lo sugieren** (los
+   catorce tienen masa muscular baja). O sea que el mapa del modelo no es teórico ni en la excepción:
+   la regla del párrafo de arriba se cumple en 530 de 532, y donde no se cumple es porque el estado de
+   esa persona es uno de los catorce.
+2. **De las 530 donde el modelo lo sugirió, se prescribió en 346.** Las otras 184 son decisión clínica,
    no un fallo: el motor propone y el profesional dispone. Es un dato para conversar con los
    profesionales, no para corregirles.
-3. **Los 31 "prescritos sin que el modelo lo sugiriera" NO son profesionales apartándose del modelo.**
-   Así los rotulaba la primera versión del script, y era un error de redacción con consecuencias: son
-   consultas **con tratamiento y sin informe sellado**, o sea que no hay snapshot con el que comparar.
-   La aritmética lo demuestra: el modelo lo sugirió en el 100 % de las que SÍ tienen informe, así que
-   una consulta prescrita que no aparece en "sugerido" solo puede ser una de las 63 sin informe. El
-   script ya las cuenta aparte y las rotula *"sin informe para comparar"*.
+3. **En NINGUNA consulta se prescribió sin que el modelo lo sugiriera.** La corrida cortada mostraba 31
+   ahí, y hubo que explicarlas dos veces. La primera redacción del script las rotulaba *"prescrito sin
+   que el modelo lo sugiriera"*, que se lee como profesionales apartándose del modelo; se corrigió a
+   *"sin informe para comparar"* razonando que, si el modelo lo sugería en el 100 % de las que tienen
+   informe, una prescrita que no apareciera en "sugerido" solo podía ser de las que no tenían informe.
+   **El razonamiento daba el resultado correcto por una causa equivocada:** esas 31 consultas SÍ tenían
+   su informe sellado en la base, y lo que pasaba es que el script no lo leía, porque la lectura de
+   informes se cortaba en la fila mil. Con la cohorte entera no son 31 ni 63: son **cero**. Lo que no
+   cambia, y es lo que le importa al gerente, es la conclusión: **nadie prescribió OMEGA COMPLEX en una
+   consulta donde el modelo no lo sugiriera.**
 
 **Y LA QUE NO HAY QUE HACER:** estas cifras son de la ciencia de HOY. La v17 de la Dirección Científica
 mueve el estado de la Diana de dos de cada tres consultas, y la lista de nutracéuticos sugeridos se mueve
 con el estado. **El "67 de 81" del párrafo no cambia** (es el mapa del modelo, que la v17 no toca), pero
 las cifras de la cohorte sí van a moverse cuando el histórico se recalcule. Si el gerente va a usar estos
 números para una proyección, conviene decirle la fecha de la medición.
+
+**Y la lección de las dos corridas, que vale más que cualquiera de las dos cifras:** una medición
+incompleta no se parece a una medición incompleta. Se parece a una medición. Las cifras del 11 eran
+creíbles, cuadraban entre sí y daban un 100 % redondo que invitaba a usarlo como titular. Lo único que
+las delató fue que una de ellas (los 31) exigía una explicación demasiado rebuscada.
 
 ---
 
