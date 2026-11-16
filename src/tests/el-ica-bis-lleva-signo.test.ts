@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { icaBisDeLaPabu, icaBisDelSello, PHI } from "@/clinical-engine/ica-bis";
+import { icaBisRefTxt } from "@/clinical-engine/frozen/engine.core.derived.js";
+import { referenciaDelIndice } from "@/modules/diagnoses/data/indicator-ranges";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
@@ -110,10 +112,25 @@ describe("la forma: ni el motor sella la magnitud, ni las pantallas la leen", ()
     expect(mayor > 3 || (mayor === 3 && menor >= 3), "el motor quedo antes de la 3.3.0").toBe(true);
   });
 
-  it("la referencia de la fila en la HC sigue siendo la de SU archivo", () => {
-    // La tentacion era escribir "−0,15 a +0,15" para que cuadrara con el signo. Seria inventar texto
-    // suyo: su v17 reemplaza esa lectura por los percentiles del sexo, y hasta entonces manda la suya.
+  it("la referencia de la fila en la HC es la de SU v17, no una redacción nuestra", () => {
+    // ═══ ESTE CASO CAMBIA DE ASERCION, Y HAY QUE SABER POR QUE (2026-11-16) ═══
+    //
+    // Exigia la cadena literal "0.00-0.15 Zona φ" con un argumento correcto: la tentacion era escribir
+    // "−0,15 a +0,15" para que cuadrara con el signo, y eso seria inventar texto suyo. La nota decia
+    // tambien la salida: *"su propia v17 la reemplaza: §4 cambia la lectura del ICA-BIS por los
+    // PERCENTILES del sexo (Tabla 7.3), y esta referencia se rehace con esa tabla en el paso que
+    // construya cPABU(pabu, sexo)"*.
+    //
+    // ESE PASO YA OCURRIO, y el texto lo escribe EL: `icaBisRefTxt`, en el motor congelado, estaba
+    // portada y no la leia nadie. Asi que la fila no vuelve a una redaccion nuestra: cambia de una
+    // entrega suya a la siguiente, que es lo que la Regla 0 manda.
+    //
+    // Lo que destapo el cambio fue Santiago: la HC web seguia con la zona fija mientras el diagnostico
+    // y el PDF decian "0 (coherencia)". Lo vigila `la-referencia-es-la-misma-en-las-cuatro`.
     const hc = readFileSync("src/modules/reports/data/hc-indices-ani.ts", "utf8");
-    expect(hc).toContain('referencia: () => "0.00–0.15 Zona φ"');
+    expect(hc, "la zona fija de ±0,15 volvió a la tabla").not.toContain("0.00–0.15 Zona φ");
+    expect(hc).toContain('refAni("ICA-BIS", m)');
+    expect(referenciaDelIndice("ICA-BIS", true)).toBe(icaBisRefTxt("M"));
+    expect(referenciaDelIndice("ICA-BIS", false)).toBe(icaBisRefTxt("F"));
   });
 });

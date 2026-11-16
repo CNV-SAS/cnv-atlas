@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import * as core from "@/clinical-engine/frozen/engine.core.derived.js";
 import { calcIEHH_ISCM, IEHH_ISCM_REF } from "@/clinical-engine/frozen/engine.indices.js";
 
+import { referenciaDelIndice } from "@/modules/diagnoses/data/indicator-ranges";
+
 import { CAMBIOS_NUEVOS, htmlDeCambioNuevo } from "./fixtures/html-vigente";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -171,8 +173,14 @@ describe(`engine.indices.js: el IEHH y el ISCM-BIS salen de su ATLAS del ${ENTRE
   it("y la referencia del IEHH que muestra la HC es la cadena de su v17", () => {
     // Su v17 escribe `ref: "−1 a +1 óptimo"` en la fila del IEHH de su historia clinica. La nuestra dice
     // lo mismo, y aqui se comprueba contra su archivo porque el ancla de `hc-indices-ani` es el v16.
-    const hc = readFileSync("src/modules/reports/data/hc-indices-ani.ts", "utf8");
-    expect(hc).toContain('referencia: () => "−1 a +1 óptimo"');
+    // ═══ LA CADENA SE MUDO, NO CAMBIO (2026-11-16) ═══
+    //
+    // Estaba escrita en la tabla de la HC y OTRA VEZ, con otra redaccion ("−1 a +1"), en
+    // `indicatorRange`: la HC web y el diagnostico decian cosas distintas del mismo indice. Ahora las
+    // ocho referencias salen de `referenciaDelIndice`, y esta es la suya, verbatim. Lo que este caso
+    // comprueba no cambia: que la que mostramos sea la de su v17.
+    expect(referenciaDelIndice("IEHH", true)).toBe("−1 a +1 óptimo");
+    expect(referenciaDelIndice("IEHH", false)).toBe("−1 a +1 óptimo");
     expect(sinEspacio(suyo())).toContain(sinEspacio('ref:"−1 a +1 óptimo"'));
   });
 });

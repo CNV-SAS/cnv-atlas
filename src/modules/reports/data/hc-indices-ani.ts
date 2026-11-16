@@ -1,7 +1,11 @@
-import { indicatorRange, decimalesDe, rotuloDisplayDeIndice } from "@/modules/diagnoses/data/indicator-ranges";
+import {
+  indicatorRange,
+  decimalesDe,
+  referenciaDelIndice,
+  rotuloDisplayDeIndice,
+} from "@/modules/diagnoses/data/indicator-ranges";
 import { nombreLlanoDelIndice } from "@/modules/diagnoses/nombre-llano-del-indice";
 import type { EngineIndicators } from "@/clinical-engine/types";
-import { iscmRefTxt } from "@/clinical-engine/frozen/engine.core.derived.js";
 
 // Indices ANI-BIS-E para la tabla de la historia clinica (porte 2026-08-24). Modulo NEUTRO y PURO.
 //
@@ -67,12 +71,24 @@ export type IndiceAniFila = {
 /** El valor con los decimales de su indicador, en español. Misma tabla que la pantalla y las Δ. */
 const dec = (v: number, codigo: string) => v.toFixed(decimalesDe(codigo)).replace(".", ",");
 
+// ═══ LA COLUMNA DE REFERENCIA YA NO SE ESCRIBE AQUI (Santiago, 2026-11-16) ═══
+//
+// Estas ocho cadenas estaban escritas en esta tabla y OTRA VEZ, con otra redaccion, en `indicatorRange`.
+// Resultado: la HC web decia "0.00-0.15 Zona φ" en la fila del ICA-BIS mientras el diagnostico y el PDF
+// decian "0 (coherencia)" sobre el mismo numero, y lo mismo pasaba, mas callado, en la EB y en el PABU.
+//
+// Ahora las ocho salen de `referenciaDelIndice`, que es la unica fuente, y es la que lee TAMBIEN
+// `indicatorRange`: la HC web, el PDF y el diagnostico no pueden volver a discrepar porque ya no hay dos
+// sitios donde escribirlas. El texto no cambio de dueño: sigue siendo el de su archivo, verbatim, y el
+// candado de esta tabla lo sigue cotejando contra su HTML a traves de `fila.referencia`.
+const refAni = (codigo: string, sexoM: boolean) => referenciaDelIndice(codigo, sexoM) ?? "—";
+
 // Orden y referencias EXACTOS de su tabla (v8 L15087-15095).
 export const INDICES_ANI: IndiceAniFila[] = [
     // v17 §3: su archivo cambio esta referencia con los cortes de la Tabla 6.1, y cambio tambien el signo
   // de la comparacion: antes "≥6,68 óptimo", ahora ">6,7 óptimo". Las dos cosas son suyas, verbatim de su
   // ATLAS_v17.html, y el candado de esta tabla las coteja contra SU archivo.
-  { codigo: "IFC", nombre: "Función Celular", referencia: (m) => (m ? ">6,7 óptimo" : ">3,3 óptimo"), formato: (v) => dec(v, "IFC") },
+  { codigo: "IFC", nombre: "Función Celular", referencia: (m) => refAni("IFC", m), formato: (v) => dec(v, "IFC") },
   {
     // ═══ DESFASE NUESTRO, CORREGIDO EL 2026-09-10 ═══
     //
@@ -92,7 +108,7 @@ export const INDICES_ANI: IndiceAniFila[] = [
     // unifico los decimales vale para las bandas que redactamos NOSOTROS (`indicatorBands`); esta columna
     // es transcripcion literal de su archivo, y ahi manda la Regla 0.
     codigo: "IRC", nombre: "Riesgo Celular",
-    referencia: (m) => (m ? "<1,7 bajo riesgo" : "<2,3 bajo riesgo"),
+    referencia: (m) => refAni("IRC", m),
     formato: (v) => dec(v, "IRC"),
   },
   // ═══ LAS DOS REFERENCIAS CAMBIAN CON SU v17 (§5 y §6), Y ES EL SITIO QUE EL NOMBRA ═══
@@ -115,23 +131,23 @@ export const INDICES_ANI: IndiceAniFila[] = [
     // `ref: iscmRefTxt(sexoK_v)` en la misma fila de su HC, e `iscmRefTxt` esta expuesta por el
     // mecanismo de archivo derivado. Asi que aqui no hay copia que pueda envejecer: es su cadena, con
     // su formato y su sufijo "(H)" / "(M)".
-    referencia: (m) => iscmRefTxt(m ? "M" : "F"),
+    referencia: (m) => refAni("ISCM", m),
     formato: (v) => dec(v, "ISCM"),
   },
-  { codigo: "IEHH", nombre: "Hidro-Homeostasis", referencia: () => "−1 a +1 óptimo", formato: (v) => dec(v, "IEHH") },
+  { codigo: "IEHH", nombre: "Hidro-Homeostasis", referencia: (m) => refAni("IEHH", m), formato: (v) => dec(v, "IEHH") },
   {
     codigo: "EB", sigla: "EB-BIS", nombre: "Edad biológica estimada",
-    referencia: () => "= Edad cronológica",
+    referencia: (m) => refAni("EB", m),
     formato: (v) => `${dec(v, "EB")} años`,
   },
   {
     codigo: "IAE", nombre: "Aceleración del Envejecimiento",
-    referencia: () => "−5 a +5 años",
+    referencia: (m) => refAni("IAE", m),
     formato: (v) => `${v > 0 ? "+" : ""}${dec(v, "IAE")} años`,
   },
   {
     codigo: "PABU", nombre: null,
-    referencia: (m) => (m ? "φ = 1,618 (k=0,78)" : "φ = 1,618 (k=0,46)"),
+    referencia: (m) => refAni("PABU", m),
     formato: (v) => dec(v, "PABU"),
   },
   // ═══ LA REFERENCIA ES SUYA Y NO SE RETOCA, AUNQUE AHORA SE LEA RARA (2026-11-11) ═══
@@ -145,7 +161,7 @@ export const INDICES_ANI: IndiceAniFila[] = [
   // los PERCENTILES del sexo (Tabla 7.3), y esta referencia se rehace con esa tabla en el paso que
   // construya `cPABU(pabu, sexo)`. Hasta entonces se queda la suya, que es lo unico que no afirma nada
   // que el no haya escrito. Esta anotado en PENDIENTES.
-  { codigo: "ICA-BIS", nombre: "Desviación de φ", referencia: () => "0.00–0.15 Zona φ", formato: (v) => dec(v, "ICA-BIS") },
+  { codigo: "ICA-BIS", nombre: "Desviación de φ", referencia: (m) => refAni("ICA-BIS", m), formato: (v) => dec(v, "ICA-BIS") },
 ];
 
 export type IndiceAniResuelto = {

@@ -154,6 +154,16 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
       // `HTML_VIGENTE` resuelve, decia "≤0.0 óptimo". Es el mismo caso del IFC: la cadena nuestra SI es
       // la suya, pero la de otra entrega. La compara `frozen-indices-v17-diff.test.ts`, que mira al v17.
       if (fila.codigo === "IEHH") continue;
+      // ═══ Y EL ICA-BIS, COMO EL ISCM: SU v17 LO VOLVIO UNA LLAMADA (§4, 2026-11-16) ═══
+      //
+      // El ancla `HTML_VIGENTE` es el v16, donde esta fila dice "0.00-0.15 Zona φ": la zona FIJA de
+      // ±0,15. Su §4 la retira y la reemplaza por los percentiles del sexo (su Tabla 7.3), con el texto
+      // escrito por el (`icaBisRefTxt`, expuesta por el archivo derivado). Nuestra fila llama a ESA
+      // funcion, asi que no hay copia que divergir, que es mas fuerte que lo que este caso comprueba.
+      //
+      // Y es la fila que Santiago reporto: la HC web seguia con la zona fija mientras el diagnostico y
+      // el PDF decian otra cosa. Lo coteja `la-referencia-es-la-misma-en-las-cuatro`.
+      if (fila.codigo === "ICA-BIS") continue;
       expect(fila.referencia(true), `referencia de ${fila.codigo} (hombre)`).toBe(suyo.h);
       expect(fila.referencia(false), `referencia de ${fila.codigo} (mujer)`).toBe(suyo.m);
     }

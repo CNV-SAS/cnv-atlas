@@ -6,6 +6,7 @@ import {
   cFFMI,
   cFFMI_MCCB,
   ISCM_REF,
+  iscmRefTxt,
   cFMI,
   cFMI_MCCB,
   MCCB_CORTES,
@@ -52,9 +53,15 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
 
   it("IFC/IRC/FMI (M): salen del CLASIFICADOR del motor (Q20/C11), no de la tabla de display", () => {
     // IFC 5.3651: sano = optima (> hi). v17 §3, Tabla 6.1: hi 6,7 (antes 6,68). Δ = 5,3651 − 6,7 = -1,33.
-    expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6,70", delta: "-1,33" });
+    // ═══ LA REFERENCIA PASO A SER LA DE SU ARCHIVO (2026-11-16) ═══
+    //
+    // La cadena cambia, el CORTE no: la Δ se sigue midiendo contra el mismo umbral. Hasta hoy esta
+    // funcion redactaba la referencia por su cuenta ("> 6,70") y la tabla de la historia clinica
+    // escribia la SUYA (">6,7 óptimo"), asi que el diagnostico, el PDF y la HC web decian cosas
+    // distintas del mismo numero. Ahora las tres leen `referenciaDelIndice`, con su texto.
+    expect(indicatorRange("IFC", ind, true)).toEqual({ reference: ">6,7 óptimo", delta: "-1,33" });
     // IRC 1.8218: sano = bajo riesgo (< lo 1.68). Umbral 1.68, Δ = valor − 1.68 = 0.14.
-    expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1,70", delta: "0,12" });
+    expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "<1,7 bajo riesgo", delta: "0,12" });
     // FMI 6.369, RE-DERIVADO de su Tabla 10.2 (v17 §2.4): la banda sana pasa de 3-6 (Excel Mapa E_BIS)
     // a 3,7-6,4 (el libro, por sexo). Su regla de la Δ no cambia (contra el BORDE superior, el que
     // decide), cambia el borde: 6,369 − 6,4 = -0,031, o sea que este donante deja de estar por ENCIMA
@@ -65,8 +72,8 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
   it("IFC/IRC/FMI (F): usan los cortes femeninos del clasificador", () => {
     // F: cIFC hi 3,3 · cIRC lo 2,3 · FMI con los cortes del libro 5,0-8,1 (antes 5-9 del Excel).
     // v17 §3: hi 3,3 (antes 3,28). Δ = 5,3651 − 3,3 = 2,07.
-    expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3,30", delta: "2,07" });
-    expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2,30", delta: "-0,48" });
+    expect(indicatorRange("IFC", ind, false)).toEqual({ reference: ">3,3 óptimo", delta: "2,07" });
+    expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "<2,3 bajo riesgo", delta: "-0,48" });
     // 6,369 − 8,1 = -1,731 contra el borde superior femenino del libro (antes -2,63 contra el 9).
     expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5,0–8,1", delta: "-1,73" });
   });
@@ -75,11 +82,19 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
     // DOS DECIMALES desde el 2026-09-06. La ASERCION es la misma (la referencia es 0, no φ, y la Δ es el
     // valor mismo); lo que cambio es el FORMATO, por el criterio de Santiago: su archivo no tiene una
     // regla de decimales, tiene la que quedo en cada sitio, y el estandar de Atlas es 2.
-    expect(indicatorRange("ICA-BIS", ind, true)).toEqual({ reference: "0 (coherencia)", delta: "0,37" });
+    // ═══ Y AQUI LA REFERENCIA CAMBIA DE DUEÑO, NO SOLO DE REDACCION (v17 §4, 2026-11-16) ═══
+    //
+    // "0 (coherencia)" era NUESTRA, y era razonable mientras el ICA-BIS fuera una magnitud. Su v17
+    // reemplaza la lectura por los PERCENTILES del sexo (Tabla 7.3) y escribe el texto el mismo
+    // (`icaBisRefTxt`, del motor congelado). La Δ no se mueve: sigue siendo el valor contra 0.
+    expect(indicatorRange("ICA-BIS", ind, true)).toEqual({ reference: "−0,27 a 0,36 (H)", delta: "0,37" });
   });
 
   it("EB: referencia '—' (edad no sellada) → Δ TAMBIEN oculta (no se muestra una diferencia sin referencia)", () => {
-    expect(indicatorRange("EB", ind, true)).toEqual({ reference: "—", delta: null });
+    // LA RAYA ERA DE LA Δ, NO DE LA REFERENCIA (2026-11-16): la edad cronologica no esta sellada en el
+    // snapshot, asi que la Δ no se puede calcular y sigue oculta. Pero contra QUE se lee la EB si se
+    // puede decir, y su archivo lo dice: "= Edad cronológica". La HC web ya lo decia; esta no.
+    expect(indicatorRange("EB", ind, true)).toEqual({ reference: "= Edad cronológica", delta: null });
   });
 });
 
@@ -120,10 +135,19 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     // la Δ la distancia a ese −1. Su libro retiro los cuatro niveles, asi que esa frontera ya no
     // decide nada y una Δ contra ella seria una cifra con forma de dato. La referencia pasa a ser el
     // rango central del sexo (P25 a P75 de su tabla del §6) y la Δ a "—", como el IAE.
+    // ═══ Y DESDE EL 2026-11-16 EL TEXTO LO ESCRIBE EL, NO NOSOTROS ═══
+    //
+    // Esta cadena la componiamos aqui con los percentiles de su tabla; la historia clinica llamaba a
+    // SU funcion (`iscmRefTxt`), que ademas trae el "P25 a P75:" y el sufijo "(H)". Dos redacciones de
+    // lo mismo en dos pantallas. Ahora las dos llaman a la suya, asi que la referencia no es una copia
+    // que pueda envejecer: los percentiles se siguen leyendo de `ISCM_REF`, dentro de su propia funcion.
     expect(indicatorRange("ISCM", ind, true)).toEqual({
-      reference: `${fmtDec(ISCM_REF.M.p25).replace("-", "−")} a ${fmtDec(ISCM_REF.M.p75)}`,
+      reference: iscmRefTxt("M"),
       delta: null,
     });
+    // Y la cadena suya SI lleva los percentiles de su tabla, que es lo que este caso vigilaba.
+    expect(iscmRefTxt("M")).toContain(fmtDec(ISCM_REF.M.p25).replace("-", "−"));
+    expect(iscmRefTxt("M")).toContain(fmtDec(ISCM_REF.M.p75));
   });
 
   it("FFMI: 4,10 (borde 17 del Excel) → 2,30 (borde 18,8 del libro)", () => {
@@ -152,7 +176,7 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     // sola no dice de que lado esta el paciente. Es la regla general de dos colas que quedo registrada
     // con el IAE, aplicada por segunda vez. La referencia que se muestra es su zona optima.
     expect(indicatorRange("IEHH", ind, true)?.delta).toBe(null);
-    expect(indicatorRange("IEHH", ind, true)?.reference).toBe("−1 a +1");
+    expect(indicatorRange("IEHH", ind, true)?.reference).toBe("−1 a +1 óptimo");
   });
 
   it("IAE (dos colas): Δ = distancia al límite cruzado, 0 dentro del rango (Gildardo §5, 2026-09-01)", () => {

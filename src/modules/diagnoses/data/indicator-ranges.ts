@@ -407,6 +407,74 @@ export function indicatorBands(code: string, sexM: boolean): string | null {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA COLUMNA DE REFERENCIA DE LOS OCHO INDICES ANI, EN UN SOLO SITIO  ·  Santiago, 2026-11-16
+//
+// ═══ EL CASO QUE LO ABRE ═══
+//
+// En la HC web la fila del ICA-BIS decia *"0.00-0.15 Zona φ"* (la zona fija que su v17 retiro) y el
+// diagnostico y el PDF decian *"0 (coherencia)"*, sobre la MISMA consulta y el MISMO numero. Hazard 4 de
+// CLAUDE.md en estado puro: no era un texto mal redactado, eran DOS FUENTES. La HC web pintaba
+// `INDICES_ANI[].referencia` (la tabla portada de su archivo) y las otras dos `indicatorRange().reference`
+// (esta funcion). Nadie podia notarlo mirando una sola pantalla.
+//
+// ═══ LO QUE SE UNIFICA, Y HACIA DONDE ═══
+//
+// Hacia SU texto, no hacia el nuestro: la columna de referencia de esas ocho filas es transcripcion de su
+// archivo (Regla 0). Lo que decia `indicatorRange` era una redaccion nuestra, mas corta, nacida de mostrar
+// "el umbral que decide" para que la Δ fuera autoevidente. La Δ NO se toca: sigue midiendose contra el
+// mismo corte, y es la que esta funcion ya calculaba.
+//
+// ═══ Y DOS FILAS LAS ESCRIBE EL, NO NOSOTROS ═══
+//
+// El ISCM-BIS y el ICA-BIS no llevan cadena fija en su v17: llevan una LLAMADA a su propia funcion
+// (`iscmRefTxt`, `icaBisRefTxt`), porque la referencia depende del sexo y sale de sus tablas de
+// percentiles. Las dos estan expuestas por el mecanismo de archivo derivado, asi que aqui no hay copia
+// que pueda envejecer. `icaBisRefTxt` existia desde que se porto la v17 y NO LA LEIA NADIE: es
+// exactamente el paso que la nota de la fila del ICA-BIS dejaba anotado esperando a `cPABU`.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+export function referenciaDelIndice(code: string, sexM: boolean): string | null {
+  switch (code) {
+    // v17 §3, Tabla 6.1. Cambio el corte (6,68 -> 6,7 · 3,28 -> 3,3) y el signo ("≥" -> ">").
+    case "IFC":
+      return sexM ? ">6,7 óptimo" : ">3,3 óptimo";
+    // Sus cortes por sexo del 2026-08-29 (su respuesta del 28, punto 6).
+    case "IRC":
+      return sexM ? "<1,7 bajo riesgo" : "<2,3 bajo riesgo";
+    // v17 §6: los cuatro niveles del ISCM-BIS se retiraron; lo que queda es el rango central de su sexo.
+    case "ISCM":
+      return core.iscmRefTxt(sexM ? "M" : "F");
+    // v17 §5, Tabla 8.2: el optimo es el CENTRO, no todo lo que este por debajo de cero.
+    case "IEHH":
+      return "−1 a +1 óptimo";
+    // La EB se lee CONTRA LA EDAD, y decirlo no cuesta un dato que no tengamos. `indicatorRange` ponia
+    // "—" aqui, y esa raya venia de otra cosa: la edad cronologica no esta sellada en el snapshot, asi
+    // que no se puede calcular la Δ. La Δ sigue oculta por esa razon; la referencia si se puede nombrar.
+    case "EB":
+      return "= Edad cronológica";
+    // Su tabla 3 (2026-10-26), cerrada en los dos extremos como el la escribe.
+    case "IAE":
+      return "−5 a +5 años";
+    // La `k` es SUYA y es por sexo: sin ella la fila dice un punto φ igual para los dos, que no lo es.
+    case "PABU":
+      return sexM ? "φ = 1,618 (k=0,78)" : "φ = 1,618 (k=0,46)";
+    // v17 §4: la zona fija de ±0,15 la reemplazan los percentiles de su Tabla 7.3, y el texto es suyo.
+    case "ICA-BIS":
+      return core.icaBisRefTxt(sexM ? "M" : "F");
+    default:
+      return null;
+  }
+}
+
+/**
+ * Atajo local: la referencia de un indice ANI, que SIEMPRE existe para esos ocho codigos.
+ *
+ * El `??` no es defensivo por si acaso: es para que el tipo sea `string` y no `string | null`. Si algun
+ * dia se borra una rama de `referenciaDelIndice`, el candado `las-cuatro-superficies-dicen-la-misma-
+ * referencia` falla antes de que nadie vea una celda vacia.
+ */
+const ref = (code: string, sexM: boolean) => referenciaDelIndice(code, sexM) ?? "—";
+
 // Referencia + delta para un indicador (por codigo de la tabla), verbatim del HTML. sexM: masculino.
 // Devuelve null si el indicador no tiene valor (queda "-").
 export function indicatorRange(
@@ -432,13 +500,13 @@ export function indicatorRange(
       // cIFC: sano = optima (> hi). Umbral = hi (v17 §3, Tabla 6.1: M 6,7 · F 3,3). Δ = valor − hi.
       if (ind.ifc == null) return null;
       const hi = sexM ? 6.7 : 3.3;
-      return { reference: `> ${fmtDec(hi)}`, delta: f(ind.ifc - hi, decimalesDe("IFC")) };
+      return { reference: ref("IFC", sexM), delta: f(ind.ifc - hi, decimalesDe("IFC")) };
     }
     case "IRC": {
       // cIRC: sano = bajo riesgo (< lo). Umbral = lo (M 1.7, F 2.3). Δ = valor − lo (corte unico).
       if (ind.irc == null) return null;
       const lo = sexM ? 1.7 : 2.3;
-      return { reference: `< ${fmtDec(lo)}`, delta: f(ind.irc - lo, decimalesDe("IRC")) };
+      return { reference: ref("IRC", sexM), delta: f(ind.irc - lo, decimalesDe("IRC")) };
     }
     case "FMI": {
       // SU REGLA NO CAMBIA, CAMBIA EL BORDE. Gildardo §2 (2026-08-17): la Δ va contra el BORDE SUPERIOR
@@ -452,13 +520,14 @@ export function indicatorRange(
       // CA-2: referencia de punto φ = 1.618. Δ = valor − 1.618.
       // TRES DECIMALES, y no por copiar su tabla: los pide SU CORTE. φ = 1,618 lleva tres, asi que una Δ
       // con dos no alcanza a distinguir del corte contra el que se mide. Ver la regla arriba.
-      return ind.pabu != null ? { reference: "φ = 1,618", delta: f(ind.pabu - 1.618, decimalesDe("PABU")) } : null;
+      return ind.pabu != null ? { reference: ref("PABU", sexM), delta: f(ind.pabu - 1.618, decimalesDe("PABU")) } : null;
     case "ICA-BIS":
-      // ICA-BIS = PABU − φ: su referencia de normalidad es 0 (coherencia perfecta), NO φ. Δ = valor − 0
-      // = el valor mismo. La etiqueta de referencia decia "φ = 1.618" (copiada de PABU): era inconsistente
+      // ICA-BIS = PABU − φ. La Δ se mide contra 0 (coherencia perfecta), NO contra φ: Δ = valor − 0
+      // = el valor mismo. La etiqueta de referencia decia φ (copiada de PABU): era inconsistente
       // con el delta (contra 0) y, como icaBis = pabu − φ por definicion, su Δ coincide con la de PABU,
-      // lo que en pantalla se leia como que ICA-BIS copiaba el delta de PABU. Referencia correcta: 0.
-      return ind.icaBis != null ? { reference: "0 (coherencia)", delta: f(ind.icaBis - 0, decimalesDe("ICA-BIS")) } : null;
+      // lo que en pantalla se leia como que ICA-BIS copiaba el delta de PABU. La REFERENCIA, en cambio,
+      // ya no la redactamos nosotros: desde la v17 §4 es la de su Tabla 7.3 (ver referenciaDelIndice).
+      return ind.icaBis != null ? { reference: ref("ICA-BIS", sexM), delta: f(ind.icaBis - 0, decimalesDe("ICA-BIS")) } : null;
     case "ISCM": {
       // ═══ SIN Δ, Y ES LO CORRECTO (v17 §6, 2026-11-12) ═══
       //
@@ -468,15 +537,14 @@ export function indicatorRange(
       // dato y no lo es. La referencia pasa a ser el RANGO CENTRAL de su sexo y la Δ se deja en "—",
       // como ya se hace con el IAE por la misma razon (ahi el valor con su signo lo dice todo).
       if (ind.iscm == null) return null;
-      const r = ISCM_REF[sexM ? "M" : "F"];
-      return { reference: `${conMenos(r.p25)} a ${conMenos(r.p75)}`, delta: null };
+      return { reference: ref("ISCM", sexM), delta: null };
     }
     case "IEHH":
       // v17 §5: el rango de referencia es −1 a +1 (su zona optima), y la Δ se deja en "—" porque este
       // clasificador es de DOS COLAS: una Δ sola no dice de que lado esta el paciente, y la zona (que
       // se muestra al lado) ya lo dice con palabras. Es la regla general de dos colas que quedo
       // registrada con el IAE, aplicada por segunda vez.
-      return ind.iehh != null ? { reference: "−1 a +1", delta: null } : null;
+      return ind.iehh != null ? { reference: ref("IEHH", sexM), delta: null } : null;
     case "IAE":
       // IAE: unico clasificador de DOS COLAS del sistema (<−5 desacelerado · −5..+5 concordante · >+5
       // acelerado; Gildardo §2, 2026-08-18). El Delta se deja en "—" (delta: null) por decision de Santiago
@@ -518,7 +586,7 @@ export function indicatorRange(
       // que es el hazard 4 de CLAUDE.md (dos partes del sistema contradiciendose porque leen dos fuentes).
       return ind.iae != null
         ? {
-            reference: "−5 a +5 años",
+            reference: ref("IAE", sexM),
             delta:
               ind.iae > 5
                 ? f(ind.iae - 5, decimalesDe("IAE"))
@@ -534,7 +602,7 @@ export function indicatorRange(
       // el IAE, que ya tiene su propia fila; se mostraba dos veces, una sin explicacion). Para
       // mostrarlos haria falta sellar la edad en el snapshot (solo diagnosticos nuevos); registrado en
       // BACKLOG como mejora hacia adelante.
-      return ind.eb != null ? { reference: "—", delta: null } : null;
+      return ind.eb != null ? { reference: ref("EB", sexM), delta: null } : null;
     case "FFMI": {
       if (ind.FFMI == null) return null;
       // Gildardo §2 (2026-08-17): Δ contra el BORDE inferior, no el punto medio. Con la v17 ese borde es

@@ -28,8 +28,16 @@ describe("los dos bloques de prescripcion", () => {
   it("las dos listas salen de la PROPIEDAD del producto, no de nombres a mano", () => {
     // Con una lista de nombres, un producto de tercero nuevo apareceria entre los nutraceuticos hasta que
     // alguien se acordara de agregarlo aqui.
-    expect(src).toContain('c.ownership !== "tercero"');
-    expect(src).toContain('c.ownership === "tercero"');
+    // ═══ LA REGLA SE MUDO A UN MODULO NEUTRO, Y SIGUE SIENDO LA PROPIEDAD (2026-11-16) ═══
+    //
+    // Este caso exigia los dos `ownership` escritos AQUI, y eso era exactamente lo que dejaba la regla
+    // en dos sitios: el cierre de la consulta contaba las filas prescritas sin mirar de quien es el
+    // producto, asi que una prescripcion con solo LUVIA cerraba el pendiente de nutraceuticos. Lo que
+    // este caso protege (que las listas salgan de la PROPIEDAD y no de una lista de nombres) se cumple
+    // igual, y mejor: la propiedad la decide una funcion que leen las dos superficies.
+    expect(src).toContain('esNutraceuticoDeCnv(c.ownership)');
+    expect(src).toContain('esProductoDeTercero(c.ownership)');
+    expect(src).toContain('producto-de-tercero');
     expect(codigo).not.toContain("LUVIA"); // el nombre no se cablea en la logica (el comentario si lo nombra)
   });
 
