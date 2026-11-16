@@ -35,9 +35,26 @@ export function ResumeLinkBox({ resumeToken }: ResumeLinkBoxProps) {
   // que el primer render ocurre en el SERVIDOR, donde `window` no existe. El valor se congela vacio y la
   // hidratacion no lo recalcula: la caja no vuelve a aparecer nunca.
   //
-  // (Con `NEXT_PUBLIC_APP_URL` puesta en el build no haria falta el origen del navegador, porque ya
-  // habria base. Que el defecto se vea en produccion dice que ahi no esta: queda avisado, porque es la
-  // variable del dominio canonico y la usa todo enlace absoluto.)
+  // ── CORRECCION DE LO QUE ESTABA ESCRITO AQUI  ·  Santiago, 2026-11-15 ──────────────────────────
+  //
+  // Aqui decia: *"que el defecto se vea en produccion dice que ahi no esta [la variable]"*. **Eso no se
+  // sostiene, y Santiago lo señalo:** `NEXT_PUBLIC_APP_URL` existe en Vercel desde el 8 de agosto, en
+  // Production y en Preview, con el dominio canonico. Era una inferencia, no una medicion, y se escribio
+  // como si fuera un hecho.
+  //
+  // LO QUE EL SINTOMA SI PRUEBA, y es todo lo que prueba: que en ESE render `buildResumeUrl` devolvio
+  // cadena vacia, o sea que NI el valor incrustado NI `window` estaban disponibles en ese momento. Por
+  // que no estaba el incrustado no se puede decidir leyendo el codigo: un `NEXT_PUBLIC_*` se incrusta en
+  // el BUILD, asi que depende de con que build se sirvio esa pagina, no de lo que diga el panel hoy. Lo
+  // que lo resolveria en diez segundos: abrir cualquier pagina de produccion, ver el codigo fuente y
+  // buscar `atlas.cnvsystem.com`. Si esta, la variable llego al build.
+  //
+  // Y ES ACADEMICO PARA ESTA CAJA: el arreglo de abajo no depende de ninguna de las dos cosas. El boton
+  // cuelga solo del token, y la URL se completa en el navegador al abrir. Cubre un conjunto de causas
+  // mas grande que la que se habia nombrado, incluida la que no sabemos.
+  //
+  // (La variable SI hace falta igual, y por otro motivo: el enlace del CORREO sale del servidor, donde
+  // no hay `window`, y ahi `buildResumeUrl` sin ella caeria al host de la peticion. Ver `resume-url.ts`.)
   //
   // EL ARREGLO: la URL se completa AL ABRIR la caja, que es cuando hace falta y cuando el navegador
   // existe seguro. No en un efecto: un `setState` sincrono dentro de un efecto dispara renders en
