@@ -1675,6 +1675,9 @@ export default async function ResultadosEvaluacionPage({
                 nutraceuticosDecision: protocol?.nutraceuticalDecision?.decision ?? null,
                 // LA VIA NUEVA (0214): el criterio clínico de no prescribir. Resuelve el mismo pendiente.
                 sinPrescripcion: protocol?.sinPrescripcion != null,
+                // CUANTOS PRESCRIBIO: decide si el pendiente es "falta registrar la entrega" o "falta
+                // registrar el criterio". Con dos prescritos, el aviso le ofrecia el boton que los borra.
+                nutraceuticosPrescritos: protocol?.nutraceuticals.length ?? 0,
                 // LA VENTA ES EL "SI". Basta con que exista una PAGADA: una pendiente de pago todavia no dice
                 // que el paciente se los llevo.
                 hayVentaDeNutraceuticos: ventasDeLaConsulta.some((v) => v.status === "paid"),

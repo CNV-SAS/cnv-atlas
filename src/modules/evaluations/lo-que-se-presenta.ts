@@ -41,6 +41,11 @@ import { parsePorProducto } from "./respuesta-en-texto";
 export type ItemQueSePresenta = {
   fieldKey: string | null;
   comportamiento?: ComportamientoDelItem | null;
+  /**
+   * EL NUMERO QUE SE LE MUESTRA. Opcional porque los gates no lo necesitan (cuentan, no pintan).
+   * Cuando esta, lo REESCRIBE `renumerarPresentadas`: ver su nota.
+   */
+  number?: number;
 };
 
 export type ContextoDeLaPresentacion = {
@@ -95,6 +100,39 @@ export function loQueSePresenta<T extends ItemQueSePresenta>(
     }
     return true;
   });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y LA NUMERACION ES LA DE LO PRESENTADO, NO LA DEL INSTRUMENTO  ·  Santiago, smoke del 2026-11-15
+//
+// Textual suyo: *"Numeración: el paciente ve números internos (de la 43 a la 45, la 47 como si fuera
+// la 13). Que vea 1, 2, 3... seguidos según lo que se le presenta"*.
+//
+// ═══ POR QUE SALIA ASI ═══
+//
+// El numero se deriva de la POSICION en el instrumento (`survey-reader` y `survey-answers-reader`
+// numeran 1..N sobre la lista ordenada), y eso era correcto mientras el instrumento y lo presentado
+// fueran la misma lista: en la linea base lo son. En la CNV-S no: los cuatro `retirar` no se preguntan,
+// el S1 y el S2 pueden no aplicar, y los siete digestivos se pueden saltar. El paciente veia los huecos
+// que dejaban, o sea la contabilidad interna del instrumento.
+//
+// ═══ Y SE RENUMERA AQUI, no en cada pantalla ═══
+//
+// Porque la numeracion es una propiedad de LO PRESENTADO, no de quien lo pinta: la encuesta del
+// paciente, la vista del profesional y la pantalla de edicion presentan la MISMA lista, asi que
+// renumerando en el mismo sitio que filtra, "pregunta 12" sigue siendo la misma pregunta en las tres.
+// Renumerar en cada pantalla es como se consigue que dejen de coincidir.
+//
+// LO QUE NO SE CONSERVA, y conviene saberlo: el numero ya NO identifica una pregunta entre consultas
+// distintas del mismo paciente (una CNV-S que salta los digestivos presenta siete menos que otra que no
+// los salta). Nunca fue un identificador: lo que identifica es el `field_key`, y es lo que usan el
+// motor, los candados y los enlaces.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** Reescribe el numero 1..N en el orden en que se presentan. Los items sin numero se devuelven igual. */
+export function renumerarPresentadas<T extends ItemQueSePresenta>(items: T[]): T[] {
+  let n = 0;
+  return items.map((q) => (q.number == null ? q : { ...q, number: ++n }));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -170,8 +208,18 @@ export function dominiosQueSePresentan<T extends ItemLeido>(
 
   // UN DOMINIO QUE SE QUEDA SIN PREGUNTAS NO SE PINTA: un acordeón vacío con su contador en cero se lee
   // como "aquí falta algo", que es lo contrario de lo que la regla acaba de decidir.
+  //
+  // Y LA NUMERACION SE REESCRIBE AL SALIR, CORRIDA ENTRE DOMINIOS (ver la nota de
+  // `renumerarPresentadas`): el contador no se reinicia en cada acordeón, porque el paciente ve una
+  // encuesta, no ocho.
+  let n = 0;
   return dominios
-    .map((d) => ({ section: d.section, questions: d.questions.filter((q) => presentadas.has(q)) }))
+    .map((d) => ({
+      section: d.section,
+      questions: d.questions
+        .filter((q) => presentadas.has(q))
+        .map((q) => (q.number == null ? q : { ...q, number: ++n })),
+    }))
     .filter((d) => d.questions.length > 0);
 }
 
@@ -200,10 +248,15 @@ export function loQueSeConservaSinPreguntar<T extends ItemLeido & { questionId: 
   enVivo?: { s1?: Record<string, string>; filtroGi?: string | null },
 ): { questionId: string; answerValue: string }[] {
   const todas = dominios.flatMap((d) => d.questions);
+  // POR `questionId` Y NO POR IDENTIDAD DE OBJETO (2026-11-15). Desde que `dominiosQueSePresentan`
+  // renumera, lo que devuelve son COPIAS, asi que comparar referencias diria que no se presenta
+  // ninguna... y entonces esto conservaria el instrumento entero, incluidos los siete digestivos como
+  // "Nunca" sobre un paciente que acaba de decir que tiene sintomas. Se compara por el id, que es lo
+  // unico que no depende de como se construyo el objeto.
   const presentadas = new Set(
-    dominiosQueSePresentan(dominios, cnvs, enVivo).flatMap((d) => d.questions),
+    dominiosQueSePresentan(dominios, cnvs, enVivo).flatMap((d) => d.questions.map((q) => q.questionId)),
   );
-  const salen = todas.filter((q) => !presentadas.has(q));
+  const salen = todas.filter((q) => !presentadas.has(q.questionId));
   const salida: { questionId: string; answerValue: string }[] = [];
   for (const q of salen) {
     if (q.comportamiento === "retirar") {

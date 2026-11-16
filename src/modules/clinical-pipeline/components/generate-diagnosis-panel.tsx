@@ -15,8 +15,9 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { preservarScroll } from "@/components/shared/preservar-scroll";
 
 // Cuanto se espera a que la pagina traiga los resultados antes de decir que no llegaron. El pipeline
-// completo contra base son ~600-830 ms medidos; el `router.refresh()` de una pagina de este tamaño contra
-// la nube son segundos. Doce da margen de sobra sin dejar al profesional mirando una pantalla muda.
+// completo contra base son ~600-830 ms medidos, y desde el 2026-11-15 la pagina llega en la RESPUESTA
+// de la accion (un solo ciclo), asi que esta espera es la red para el payload que se pierde, no el
+// camino normal. Doce segundos: si se llega aqui, de verdad no llego.
 const ESPERA_RESULTADOS_MS = 12_000;
 
 const initialState: RunPipelineState = {
@@ -100,11 +101,30 @@ export function GenerateDiagnosisPanel({
     action(datos);
   }, [activa, ready, action, evaluationId]);
 
-  // Al generar, la pagina tiene que re-renderizar a la rama de resultados: se rindio SIN diagnostico, asi
-  // que sin esto el profesional se queda mirando el panel de "generando" con el diagnostico ya hecho.
-  useEffect(() => {
-    if (state.done) router.refresh();
-  }, [state.done, router]);
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // AQUI NO HAY `router.refresh()`, Y ESE ES EL ARREGLO  ·  Santiago, smoke del 2026-11-15
+  //
+  // Textual suyo: *"«El diagnóstico ya está generado, pero la pantalla no terminó de cargarlo»: pasa
+  // casi siempre y tarda unos 3 s. Mismo patrón del router.refresh: que se pinte lo que devuelve la
+  // acción, sin esperar la recarga"*.
+  //
+  // ═══ ERAN DOS CICLOS DE REFRESCO, Y SE PISABAN ═══
+  //
+  // La accion ya llama a `revalidatePath` de la ruta de ESTA consulta, asi que su propia respuesta trae
+  // la pagina re-renderizada: el panel se desmonta y los resultados aparecen sin una segunda vuelta al
+  // servidor. Encima de eso, este efecto pedia la pagina OTRA VEZ. El segundo ciclo no solo duplica el
+  // trabajo (son los segundos que reportaba, no el motor: el pipeline completo son ~600-830 ms medidos):
+  // compite con el primero, y el payload que acaba aplicandose puede ser el de antes. De ahi el "casi
+  // siempre".
+  //
+  // ES LA MISMA REGLA DEL CANDADO `refresco-una-sola-vez`: uno de los dos, nunca los dos. Ese candado
+  // vigila los dos hooks que refrescan (`useFormToastAndRefresh`, `useFormToastRefreshOnSuccess`), y
+  // este panel se le escapaba porque usa `useFormToast` y escribia el refresco A MANO. Un hazard
+  // documentado sigue vivo donde nadie lo aplico; el candado ahora barre tambien los refrescos a mano.
+  //
+  // LAS REDES DE ABAJO SE QUEDAN: un payload se puede perder igual (pestaña en segundo plano, red que
+  // se cae), y entonces hay que poder reintentar. Lo que se quita es el ciclo que sobraba SIEMPRE.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
 
   // ═══ Y SI EL REFRESCO NO TRAE LOS RESULTADOS, SE DICE (Santiago, 2026-09-10) ═══
   //
@@ -232,8 +252,8 @@ export function GenerateDiagnosisPanel({
           <p aria-live="polite" className="text-sm text-muted-foreground">
             {/* TRES ESTADOS, NO DOS (Santiago, 2026-09-09: "es necesario esperar segundos?").
                 El motor NO es lo lento: el pipeline completo contra base de datos son ~600-830 ms
-                medidos (`pipeline-propagation.test.ts`). Los segundos son el `router.refresh()` de
-                arriba, que vuelve a rendir la pagina entera contra la nube.
+                medidos (`pipeline-propagation.test.ts`). Los segundos eran el SEGUNDO ciclo de refresco,
+                retirado el 2026-11-15: la pagina llega en la respuesta de la accion.
                 Y en ESE tramo, que es el largo, el texto decia "Preparando el diagnóstico...", porque
                 `pending` ya es false: afirmaba estar preparando algo que ya habia terminado. Es la
                 misma familia de los dos textos que se barrieron el 2026-09-09, y el arreglo es el

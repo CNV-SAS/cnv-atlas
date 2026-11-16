@@ -3,7 +3,6 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { preservarScroll } from "@/components/shared/preservar-scroll";
-import { useRouter } from "next/navigation";
 
 import { useEtapaActiva } from "@/modules/diagnoses/components/etapa-activa";
 
@@ -39,7 +38,6 @@ export function IdentidadAutomatica({ evaluationId }: { evaluationId: string }) 
     error: null,
     confirmed: false,
   } satisfies ConfirmIdentityState);
-  const router = useRouter();
   // UNA SOLA VEZ. En desarrollo React monta dos veces a proposito (StrictMode), y sin esto la accion se
   // dispararia dos veces: la segunda seria inocua (el guard de estado la rechaza con "ya fue confirmada")
   // pero dejaria un intento de mas en el log del servidor.
@@ -72,12 +70,20 @@ export function IdentidadAutomatica({ evaluationId }: { evaluationId: string }) 
     action(datos);
   }, [activa, action, evaluationId]);
 
-  // AL CONFIRMAR SE REFRESCA, y hace falta: la pagina se rindio con la evaluacion en `draft`, asi que las
-  // condiciones de la toma y el import BIS llegaron apagados. Sin esto el profesional veria una pantalla
-  // que le dice que no puede importar cuando ya puede. Es el mismo patron del resumen de IA.
-  useEffect(() => {
-    if (state.confirmed) router.refresh();
-  }, [state.confirmed, router]);
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // AL CONFIRMAR SE REFRESCA **UNA** VEZ, Y LA HACE LA ACCION  ·  2026-11-15
+  //
+  // HACE FALTA REFRESCAR: la pagina se rindio con la evaluacion en `draft`, asi que las condiciones de
+  // la toma y el import BIS llegaron apagados, y sin refresco el profesional veria una pantalla que le
+  // dice que no puede importar cuando ya puede.
+  //
+  // LO QUE SE QUITA ES EL SEGUNDO CICLO. `confirmIdentityAction` ya revalida `/ani-bis-e` y la ruta de
+  // esta consulta, asi que su respuesta trae la pagina re-renderizada; este efecto la pedia OTRA VEZ.
+  // Dos ciclos no solo duplican el trabajo: compiten, y el payload que acaba aplicandose puede ser el
+  // de antes. Es el defecto que Santiago reporto en el panel del diagnostico (smoke del 2026-11-15) y
+  // estaba vivo aqui tambien, en la misma forma escrita a mano. Candado: `refresco-una-sola-vez`,
+  // que desde hoy barre tambien los refrescos a mano y no solo los dos hooks.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
 
   // EN SILENCIO CUANDO SALE BIEN. Un aviso de "identidad confirmada" para algo que el profesional no pidio
   // es ruido: le cuenta un tramite, no un hecho clinico. Queda en el audit, que es donde importa.

@@ -19,7 +19,7 @@ import {
 
 import { reportClientError } from "@/lib/observability/report-client-error";
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
-import { loQueSePresenta } from "@/modules/evaluations/lo-que-se-presenta";
+import { loQueSePresenta, renumerarPresentadas } from "@/modules/evaluations/lo-que-se-presenta";
 
 import {
   enviarEncuestaDelPacienteAction,
@@ -303,14 +303,18 @@ export function SurveyPhaseForm({
   // ESTA LISTA SIGUE SIENDO LA UNICA DE ESTA PANTALLA: pinta, pone el denominador de la barra, cuenta
   // lo respondido y decide que falta al enviar. Lo que cambia es donde esta escrito el criterio.
   // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // Y EL NUMERO QUE VE EL PACIENTE ES EL DE ESTA LISTA, 1..N seguidos: con el del instrumento veia
+  // los huecos de lo que no se le pregunta (*"de la 43 a la 45, la 47 como si fuera la 13"*).
   const questions = useMemo(
     () =>
-      loQueSePresenta(items, {
-        esCnvs: cnvs != null,
-        sinProductos,
-        noAdherentes,
-        digestivosSePresentan: saltoDigestivo ? saltoDigestivo.sePresentan : null,
-      }),
+      renumerarPresentadas(
+        loQueSePresenta(items, {
+          esCnvs: cnvs != null,
+          sinProductos,
+          noAdherentes,
+          digestivosSePresentan: saltoDigestivo ? saltoDigestivo.sePresentan : null,
+        }),
+      ),
     [items, sinProductos, cnvs, noAdherentes, saltoDigestivo],
   );
   /** La seccion donde viven los siete digestivos, para poder guardarlos ahi cuando se saltan. */

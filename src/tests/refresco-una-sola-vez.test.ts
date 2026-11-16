@@ -7,8 +7,30 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 // UN SOLO CICLO DE REFRESCO POR GUARDADO. Candado de la REGLA, no de un archivo.
 //
-// LA REGLA: si una pantalla refresca con `useFormToastAndRefresh` o `useFormToastRefreshOnSuccess`, su
-// server action NO puede llamar a `revalidatePath`. Uno de los dos, nunca los dos.
+// LA REGLA: si una pantalla refresca tras una server action, esa accion NO puede llamar a
+// `revalidatePath`. Uno de los dos, nunca los dos. Y "refrescar" son LAS DOS FORMAS:
+//
+//   · con los hooks `useFormToastAndRefresh` / `useFormToastRefreshOnSuccess`;
+//   · O A MANO, con un `useEffect` que llama a `router.refresh()` al ver el estado de la accion.
+//
+// ═══ LA SEGUNDA FORMA SE AÑADIO EL 2026-11-15, Y LA PAGO UN SMOKE ═══
+//
+// Textual de Santiago: *"«El diagnóstico ya está generado, pero la pantalla no terminó de cargarlo»:
+// pasa casi siempre y tarda unos 3 s. Mismo patrón del router.refresh"*. El panel del diagnostico usa
+// `useFormToast` (el que NO refresca) y escribia el refresco a mano, asi que este candado no lo veia; y
+// `runPipelineAction` revalida. Dos ciclos compitiendo, y el payload que acaba aplicandose puede ser el
+// de antes: de ahi el "casi siempre". Al barrer la forma nueva aparecio un SEGUNDO sitio con el mismo
+// defecto, la confirmacion de identidad, que nadie habia reportado. Es la razon por la que este archivo
+// es un candado de REGLA: un hazard documentado sigue vivo donde nadie lo aplico.
+//
+// ═══ Y UN REFRESCO **TEMPORIZADO** NO ES EL SEGUNDO CICLO: ES UNA RED ═══
+//
+// El mismo panel conserva un efecto que refresca al volver a la pestaña y una vez a mitad de la espera,
+// porque un payload se puede perder de verdad (pestaña en segundo plano, red que se cae). Eso no corre
+// en el camino feliz: corre cuando el camino feliz ya fallo. Un candado que lo acusara obligaria a
+// quitar la red, y un candado que acusa de mas se acaba desactivando. Asi que la frontera es explicita:
+// un efecto con `setTimeout` o `addEventListener` es una red; uno que refresca y nada mas es el ciclo
+// que sobra.
 //
 // POR QUE IMPORTA, y son dos razones distintas que apuntan al mismo sitio:
 //
@@ -90,20 +112,57 @@ function cuerpoDeAccion(src: string, nombre: string): string | null {
  * Y SE PARTE POR FUNCIONES antes de emparejar, porque el nombre `state` se repite en los dos componentes
  * del mismo archivo: fuera de su funcion, ese nombre no identifica nada.
  */
-const pares: { pantalla: string; accion: string; modulo: string }[] = [];
+/**
+ * LOS CUERPOS DE CADA `useEffect` de un bloque, por conteo de llaves.
+ *
+ * Hace falta mirar DENTRO del efecto y no el archivo entero: el panel del diagnostico tiene un
+ * `router.refresh()` en el `onClick` de su boton de ultima red ("Cargar los resultados"), que es
+ * deliberado y lo pulsa una persona. Mirando el archivo, ese boton saldria acusado.
+ */
+function efectosDe(bloque: string): string[] {
+  const out: string[] = [];
+  let i = 0;
+  while ((i = bloque.indexOf("useEffect(", i)) !== -1) {
+    const abre = bloque.indexOf("{", i);
+    if (abre === -1) break;
+    let prof = 0;
+    let k = abre;
+    for (; k < bloque.length; k++) {
+      if (bloque[k] === "{") prof++;
+      else if (bloque[k] === "}" && --prof === 0) break;
+    }
+    out.push(bloque.slice(abre, k + 1));
+    i = k + 1;
+  }
+  return out;
+}
+
+const pares: { pantalla: string; accion: string; modulo: string; forma: string }[] = [];
 for (const archivo of archivos(SRC)) {
   const src = readFileSync(archivo, "utf8");
-  if (!HOOKS_QUE_REFRESCAN.some((h) => new RegExp(`${h}\\s*\\(`).test(src))) continue;
-  const bloques = src.split(/\n(?=(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s)/);
+  const conHook = HOOKS_QUE_REFRESCAN.some((h) => new RegExp(`${h}\\s*\\(`).test(src));
+  const conMano = src.includes("router.refresh()");
+  if (!conHook && !conMano) continue;
+  const bloques = sinComentarios(src).split(/\n(?=(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s)/);
   for (const bloque of bloques) {
     for (const m of bloque.matchAll(/const\s*\[\s*(\w+)[^\]]*\]\s*=\s*useActionState\(\s*(\w+)/g)) {
       const [, variable, accion] = m;
-      const refresca = HOOKS_QUE_REFRESCAN.some((h) =>
+      const porHook = HOOKS_QUE_REFRESCAN.some((h) =>
         new RegExp(`${h}\\s*\\(\\s*${variable}\\b`).test(bloque),
       );
-      if (!refresca) continue;
+      // A MANO Y SIN TEMPORIZAR: el efecto refresca en cuanto ve el estado de la accion. Con
+      // `setTimeout` o `addEventListener` dentro es una red y no cuenta (ver la cabecera).
+      const porMano = efectosDe(bloque).some(
+        (e) =>
+          e.includes("router.refresh()") &&
+          new RegExp(`\\b${variable}\\b`).test(e) &&
+          !/setTimeout|addEventListener/.test(e),
+      );
+      if (!porHook && !porMano) continue;
       const modulo = moduloDe(src, archivo, accion);
-      if (modulo) pares.push({ pantalla: archivo, accion, modulo });
+      if (modulo) {
+        pares.push({ pantalla: archivo, accion, modulo, forma: porHook ? "hook" : "router.refresh a mano" });
+      }
     }
   }
 }
@@ -120,21 +179,33 @@ describe("un guardado refresca UNA vez: o la accion revalida, o la pantalla refr
       pares.some((p) => p.accion === "saveMedidasProfesionalAction"),
       "el guardado de las medidas del profesional se salio del barrido",
     ).toBe(true);
+    // Y LA FORMA A MANO TIENE QUE ESTAR DENTRO DE LO QUE SE MIRA. Sin esto, el barrido ampliado podria
+    // dejar de alcanzar los refrescos escritos a mano y volveria a pasar verde con el defecto vivo. Se
+    // comprueba contra el `survey-edit-form`, que refresca a mano y cuya accion NO revalida (o sea que
+    // cumple la regla): un par correcto sirve igual de testigo de que el detector llega.
+    expect(
+      pares.some((p) => p.forma === "router.refresh a mano"),
+      "el barrido dejo de ver los refrescos escritos a mano",
+    ).toBe(true);
   });
 
   it("ninguna de esas acciones revalida", () => {
     const culpables: string[] = [];
-    for (const { pantalla, accion, modulo } of pares) {
+    for (const { pantalla, accion, modulo, forma } of pares) {
       const cuerpo = cuerpoDeAccion(readFileSync(modulo, "utf8"), accion);
       if (cuerpo === null) continue; // no es una accion exportada en ese modulo
-      if (cuerpo.includes("revalidatePath(")) culpables.push(`${accion} (${modulo}) <- ${pantalla}`);
+      if (cuerpo.includes("revalidatePath(")) {
+        culpables.push(`${accion} (${modulo}) <- ${pantalla} [${forma}]`);
+      }
     }
     expect(
       culpables,
       "Estas acciones revalidan Y su pantalla refresca. Los dos ciclos montan segmentos dos veces, o " +
-        "sea que la pagina salta al inicio dos veces. Y el formulario puede desmontarse antes de que se " +
-        "vea el toast, que es la razon original del helper. Deja el refresco en la pantalla y quita el " +
-        "`revalidatePath` de la accion.",
+        "sea que la pagina salta al inicio dos veces. Y compiten: el payload que acaba aplicandose puede " +
+        "ser el de ANTES de la escritura, que es el defecto del 2026-11-15 («pasa casi siempre y tarda " +
+        "unos 3 s»). Ademas el formulario puede desmontarse antes de que se vea el toast, que es la " +
+        "razon original del helper. Deja UNO: o el refresco en la pantalla sin `revalidatePath`, o el " +
+        "`revalidatePath` de la accion sin refresco en la pantalla.",
     ).toEqual([]);
   });
 

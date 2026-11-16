@@ -293,10 +293,100 @@ describe("las tres pantallas leen la regla compartida", () => {
     expect(src).toContain("collectAnswers(new FormData(e.currentTarget), presentados, conservados)");
   });
 
+  it("la encuesta del paciente renumera lo presentado", () => {
+    // Las otras dos lo reciben ya renumerado de `dominiosQueSePresentan`; esta trabaja con los ITEMS del
+    // instrumento, asi que tiene que pedirlo.
+    const src = readFileSync("src/modules/evaluations/components/survey-phase-form.tsx", "utf8");
+    expect(src).toContain("renumerarPresentadas(");
+  });
+
   it("y los contadores de las dos pantallas salen de lo presentado", () => {
     const edicion = readFileSync("src/modules/evaluations/components/survey-edit-form.tsx", "utf8");
     expect(edicion).toContain("presentados.reduce((acc, d) => acc + d.questions.length, 0)");
     const entrada = readFileSync("src/modules/evaluations/components/entrada-evaluacion.tsx", "utf8");
     expect(entrada).toContain("dominiosQueSePresentan(surveyDomains ?? [], cnvs ?? null)");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LA NUMERACION ES LA DE LO PRESENTADO  ·  Santiago, smoke del 2026-11-15
+//
+// Textual suyo: *"el paciente ve números internos (de la 43 a la 45, la 47 como si fuera la 13). Que
+// vea 1, 2, 3... seguidos según lo que se le presenta"*.
+//
+// El numero se derivaba de la POSICION EN EL INSTRUMENTO, que era correcto mientras el instrumento y lo
+// presentado fueran la misma lista (en la linea base lo son). En la CNV-S no: los `retirar` no se
+// preguntan, el S1 y el S2 pueden no aplicar y los siete digestivos se pueden saltar, asi que el paciente
+// veia los huecos que dejaban, o sea la contabilidad interna del sistema.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("el numero que se ve es 1..N de lo presentado", () => {
+  const conNumero = (fieldKey: string, comportamiento: Fila["comportamiento"], n: number, v: string | null = null) => ({
+    ...fila(fieldKey, comportamiento, v),
+    number: n,
+  });
+
+  it("renumera corrido ENTRE dominios, no reiniciando en cada uno", () => {
+    // El paciente ve UNA encuesta, no ocho acordeones con su propio contador.
+    const dominios = [
+      {
+        section: "Seguimiento",
+        questions: [
+          conNumero("cnvs_s1", "propio", 43, JSON.stringify({ p1: TODOS_LOS_DIAS, p2: CINCO_O_MAS })),
+          conNumero("cnvs_s2", "propio", 44), // no se presenta: los dos adherentes
+          conNumero("cnvs_s3", "propio", 45, "Todo"),
+        ],
+      },
+      {
+        section: "Antecedentes",
+        questions: [
+          conNumero("d5_38", "retirar", 46, "No"), // no se presenta: se hereda
+          conNumero("d5_39", "repetir", 47, "No"),
+        ],
+      },
+    ];
+    const salida = dominiosQueSePresentan(dominios, CON_SALTO);
+    expect(salida.flatMap((d) => d.questions.map((q) => q.number))).toEqual([1, 2, 3]);
+    expect(salida.flatMap((d) => d.questions.map((q) => q.fieldKey))).toEqual([
+      "cnvs_s1",
+      "cnvs_s3",
+      "d5_39",
+    ]);
+  });
+
+  it("y en la linea base no mueve nada, porque ahi lo presentado ES el instrumento", () => {
+    const dominios = [
+      {
+        section: "Hábitos",
+        questions: [conNumero("d1_1", "repetir", 1, "A veces"), conNumero("d1_2", "repetir", 2, "Nunca")],
+      },
+    ];
+    expect(dominiosQueSePresentan(dominios, null).flatMap((d) => d.questions.map((q) => q.number))).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("un item SIN numero se devuelve igual: los gates cuentan, no pintan", () => {
+    const dominios = [{ section: "Hábitos", questions: [fila("d1_1", "repetir", "A veces")] }];
+    const q = dominiosQueSePresentan(dominios, null)[0].questions[0];
+    expect("number" in q).toBe(false);
+  });
+
+  // LA MITAD PELIGROSA DEL ARREGLO: al renumerar, lo que devuelve la regla son COPIAS. Comparar
+  // referencias para saber que NO se presenta diria "ninguna", y entonces se conservaria el instrumento
+  // entero, incluidos los siete digestivos como "Nunca" sobre un paciente que acaba de decir que tiene
+  // sintomas. Se compara por `questionId`.
+  it("y lo que se conserva sigue saliendo bien con los objetos renumerados", () => {
+    const dominios = [
+      {
+        section: "Seguimiento",
+        questions: instrumento(JSON.stringify({ p1: NO_LO_TOMO }), "Sí", "A veces").map((q, i) => ({
+          ...q,
+          number: i + 1,
+        })),
+      },
+    ];
+    const conservados = loQueSeConservaSinPreguntar(dominios, CON_SALTO);
+    // Con sintomas, los siete se presentan: lo UNICO que se conserva es el retirado.
+    expect(conservados.map((c) => c.questionId)).toEqual(["q-d5_38"]);
   });
 });

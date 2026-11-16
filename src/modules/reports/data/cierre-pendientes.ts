@@ -14,7 +14,10 @@
 // consulta, hasta el fin de los tiempos.
 //
 // Y el TONO importa: el profesional puede cerrar con pendientes A PROPOSITO (el paciente se lo piensa, la
-// remision depende de otro). La lista informa, no reprocha; por eso ningun texto dice "falta" ni "debes".
+// remision depende de otro). La lista informa, no reprocha: ningun texto reprocha A LA PERSONA ("debes",
+// "olvidaste", "no hiciste"). Decir que falta un REGISTRO si cabe, y hace falta: describe lo que el
+// sistema no tiene, no lo que alguien dejo de hacer (precisado el 2026-11-15, con el aviso de la entrega
+// de los nutraceuticos).
 
 export type PendienteCierre = {
   id: string;
@@ -50,6 +53,13 @@ export type EstadoConsulta = {
    * congelado el 2026-10-10.
    */
   sinPrescripcion: boolean;
+  /**
+   * CUANTOS NUTRACEUTICOS HAY PRESCRITOS en esta consulta. Decide QUE pendiente es (Santiago, smoke del
+   * 2026-11-15): con dos prescritos, el aviso le decia *"si no le prescribiste ninguno, usa el botón No
+   * prescribo"*, que es un consejo sobre un caso que no es el suyo. Lo que le falta es registrar la
+   * ENTREGA, y eso se hace con la venta.
+   */
+  nutraceuticosPrescritos: number;
   proximaCita: string | null;
   remisionesSinRetorno: number;
 };
@@ -135,16 +145,41 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
   const resueltoPorLaVenta = e.hayVentaDeNutraceuticos;
   const resueltoPorElNo = e.nutraceuticosDecision === "no" || e.sinPrescripcion;
   if (!resueltoPorLaVenta && !resueltoPorElNo) {
+    // ═══ Y EL AVISO DICE **SU** CASO, NO LOS TRES A LA VEZ (Santiago, smoke del 2026-11-15) ═══
+    //
+    // Textual suyo: *"con dos nutracéuticos prescritos sigue saliendo «No se registró si el paciente se
+    // lleva los nutracéuticos... Si no le prescribiste ninguno, usa el botón No prescribo». Si lo que
+    // falta es registrar la entrega, el aviso tiene que decirlo según el caso"*.
+    //
+    // SON DOS HUECOS DISTINTOS y el texto los mezclaba:
+    //
+    //   · CON PRESCRIPCION: el profesional ya decidio, y lo que falta es el hecho de la ENTREGA. Decirle
+    //     "si no le prescribiste ninguno" le ofrece una salida que no es la suya, y encima la unica que
+    //     nombra (el boton "No prescribo") BORRARIA lo que prescribio. Un consejo equivocado en una
+    //     lista de pendientes es peor que una linea de menos: el que lo sigue deshace su propio trabajo.
+    //   · SIN PRESCRIPCION: no hay nada que entregar, y lo que falta es registrar el criterio.
+    //
+    // Y LA CIFRA VA EN EL TITULO, porque es lo que le dice que el sistema SI tiene lo que el prescribio:
+    // el titulo viejo ("no se registró si...") se lee como que la prescripcion tampoco esta.
+    const prescritos = e.nutraceuticosPrescritos;
+    const titulo =
+      e.nutraceuticosDecision === "pendiente"
+        ? "El paciente quedó de pensar los nutracéuticos"
+        : prescritos === 1
+          ? "Prescribiste 1: falta registrar si se lo llevó"
+          : prescritos > 1
+            ? `Prescribiste ${prescritos}: falta registrar si se los llevó`
+            : "No se registró si el paciente se lleva los nutracéuticos";
+    const detalle =
+      e.nutraceuticosDecision === "pendiente"
+        ? "Es una respuesta válida: se puede cerrar así y registrarla cuando el paciente decida."
+        : prescritos > 0
+          ? "La entrega queda registrada con la venta, en Pagos. Si el paciente no se los lleva hoy, se puede cerrar así y registrarlo cuando los adquiera."
+          : "Si se los llevó, queda registrado con la venta. Si no le prescribiste ninguno, usa el botón \"No prescribo nutracéuticos\", junto a Guardar prescripción.";
     out.push({
       id: "nutraceuticos",
-      titulo:
-        e.nutraceuticosDecision === "pendiente"
-          ? "El paciente quedó de pensar los nutracéuticos"
-          : "No se registró si el paciente se lleva los nutracéuticos",
-      detalle:
-        e.nutraceuticosDecision === "pendiente"
-          ? "Es una respuesta válida: se puede cerrar así y registrarla cuando el paciente decida."
-          : "Si se los llevó, queda registrado con la venta. Si no le prescribiste ninguno, usa el botón \"No prescribo nutracéuticos\", junto a Guardar prescripción.",
+      titulo,
+      detalle,
       etapa: "tratamiento",
       bloqueadoPor: null,
     });

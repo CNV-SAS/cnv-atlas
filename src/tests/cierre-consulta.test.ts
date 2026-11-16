@@ -24,6 +24,8 @@ const completa: EstadoConsulta = {
   hayVentaDeNutraceuticos: true,
   // Y LA VIA NUEVA TAMPOCO (0214): asi el fixture prueba que la VENTA sola cierra el pendiente.
   sinPrescripcion: false,
+  // CON PRESCRIPCION, que es el caso de la consulta completa: hay dos y la venta ya los cerro.
+  nutraceuticosPrescritos: 2,
   proximaCita: "2026-11-22",
   remisionesSinRetorno: 0,
 };
@@ -102,9 +104,14 @@ describe("pendientes del cierre", () => {
   });
 
   it("sin venta y sin 'no', sigue pendiente, y el texto dice las DOS salidas", () => {
-    const p = con({ nutraceuticosDecision: null, hayVentaDeNutraceuticos: false }).find(
-      (x) => x.id === "nutraceuticos",
-    );
+    // SIN NINGUNO PRESCRITO, que es el caso en el que las dos salidas son las dos salidas. Con alguno
+    // prescrito el boton no es una salida sino un borrado, y el texto es otro (ver el caso de abajo); el
+    // fixture `completa` trae dos, asi que esto tenia que decirlo en vez de heredarlo.
+    const p = con({
+      nutraceuticosDecision: null,
+      hayVentaDeNutraceuticos: false,
+      nutraceuticosPrescritos: 0,
+    }).find((x) => x.id === "nutraceuticos");
     expect(p).toBeDefined();
     // Un pendiente que no dice como resolverse obliga a adivinar. Nombra la venta y el boton.
     expect(p?.detalle).toContain("venta");
@@ -124,14 +131,50 @@ describe("pendientes del cierre", () => {
     expect(ids({ hayVentaDeNutraceuticos: false, sinPrescripcion: false })).toContain("nutraceuticos");
   });
 
-  it("y el detalle manda al boton que SI existe", () => {
-    const p = con({ hayVentaDeNutraceuticos: false, sinPrescripcion: false }).find((x) => x.id === "nutraceuticos");
+  // ═══ EL AVISO DICE SU CASO, NO LOS DOS A LA VEZ  ·  Santiago, smoke del 2026-11-15 ═══
+  //
+  // Textual suyo: *"con dos nutracéuticos prescritos sigue saliendo «No se registró si el paciente se
+  // lleva los nutracéuticos... Si no le prescribiste ninguno, usa el botón No prescribo»"*.
+  //
+  // LO QUE HACE QUE ESTO SEA PEOR QUE RUIDO: la unica salida que el texto nombraba era el boton "No
+  // prescribo nutracéuticos", que BORRARIA los dos que acababa de prescribir. Un consejo equivocado en
+  // una lista de pendientes no es una linea de mas: el que lo sigue deshace su propio trabajo.
+  it("con nutraceuticos prescritos, lo que falta es la ENTREGA y no ofrece el boton que los borra", () => {
+    const p = con({ hayVentaDeNutraceuticos: false, nutraceuticosPrescritos: 2 }).find(
+      (x) => x.id === "nutraceuticos",
+    );
+    expect(p?.titulo).toBe("Prescribiste 2: falta registrar si se los llevó");
+    expect(p?.detalle, "le ofrece el boton que borraria su prescripcion").not.toContain(
+      "No prescribo nutracéuticos",
+    );
+    expect(p?.detalle).toContain("venta");
+    // Y EN SINGULAR, que es la mitad del caso real: con uno solo, "se los llevó" suena a otra cosa.
+    const uno = con({ hayVentaDeNutraceuticos: false, nutraceuticosPrescritos: 1 }).find(
+      (x) => x.id === "nutraceuticos",
+    );
+    expect(uno?.titulo).toBe("Prescribiste 1: falta registrar si se lo llevó");
+  });
+
+  it("y el detalle manda al boton que SI existe cuando NO prescribio ninguno", () => {
+    const p = con({
+      hayVentaDeNutraceuticos: false,
+      sinPrescripcion: false,
+      nutraceuticosPrescritos: 0,
+    }).find((x) => x.id === "nutraceuticos");
     expect(p?.detalle).toContain("No prescribo nutracéuticos");
     // El rotulo viejo no puede quedar: nombra un boton retirado.
     expect(p?.detalle).not.toContain("debajo de los recomendados");
   });
 
-  it("NINGÚN texto de la lista regaña: sin 'falta', sin 'debes', sin 'no hiciste'", () => {
+  // ═══ "NO REPROCHA" NO ES "NO DICE QUE FALTA"  ·  precisado el 2026-11-15 ═══
+  //
+  // El nombre de este caso decia "sin 'falta'" y la lista de palabras prohibidas NUNCA incluyo "falta":
+  // afirmaba una regla que no comprobaba. Se corrige el nombre, no la regla, porque la regla es la
+  // correcta: lo que no cabe es un reproche A LA PERSONA ("debes", "olvidaste", "no hiciste"). Decir que
+  // falta un REGISTRO describe lo que el sistema no tiene, y es justo lo que Santiago pidio que dijera
+  // (*"Prescribiste 2: falta registrar si se los llevó"*): sin eso, el titulo se lee como que la
+  // prescripcion tampoco esta.
+  it("NINGÚN texto de la lista regaña a la persona: sin 'debes', sin 'olvidaste', sin 'no hiciste'", () => {
     // El profesional puede cerrar con pendientes a proposito; la lista es informacion, no reproche.
     const todos = pendientesDeLaConsulta({
       encuestaCompleta: false,
@@ -141,6 +184,7 @@ describe("pendientes del cierre", () => {
       nutraceuticosDecision: null,
       hayVentaDeNutraceuticos: false,
       sinPrescripcion: false,
+      nutraceuticosPrescritos: 0,
       proximaCita: null,
       remisionesSinRetorno: 1,
     });

@@ -2,6 +2,8 @@ import "server-only";
 
 import { type EngineIndicators, indicatorSeverities, isEngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+import { sonComparables } from "../services/eb-trajectory";
 import { pickPreviousEvaluation } from "./comparison-chronology";
 import {
   getReportDispatch,
@@ -60,6 +62,23 @@ export type FollowupComparison = {
   // difieren, parte de las diferencias mostradas puede venir de una actualizacion del modelo, no del
   // paciente; el aviso lo dice sin alarmar (la mayoria de los seguimientos actuales cruzan 1.0.0 -> 1.1.0).
   engineVersionCross: { previous: string; current: string } | null;
+  /**
+   * SI LAS DOS SE PUEDEN RESTAR. Sale de `sonComparables` (la version MAYOR del motor), que es donde ya
+   * vive ese criterio y lo que ya aplican la tarjeta de respuesta, la serie y la EB del informe.
+   *
+   * ═══ EL CASO QUE LO TRAJO (Santiago, smoke del 2026-11-15) ═══
+   *
+   * Textual suyo: *"las dos fechas son 13/7/2026, todos los indicadores iguales (cambio 0, mismo
+   * archivo, es prueba), pero «Riesgo integrado BAJO (20) -> ALTO (25)». Eso sale del cambio de motor,
+   * no del paciente"*. Y tenia razon: con los mismos datos crudos y la misma ciencia el DFI es
+   * identico, asi que el salto solo puede venir de que la previa se sello con 3.x y la actual con
+   * 4.0.0, donde la v17 movio el dominio 2 en siete de cada diez consultas.
+   *
+   * LO QUE HACIA ESTE BLOQUE: avisaba del cruce de versiones y a la vez AFIRMABA que *"el estado EFR y
+   * los indicadores siguen siendo comparables"*. Con el mayor distinto eso es falso, y es la frase que
+   * convierte un aviso en un permiso para leer la resta.
+   */
+  mismaEscala: boolean;
 };
 
 // La fecha de medicion de una evaluacion = la mas reciente de sus mediciones (normalmente una).
@@ -167,6 +186,7 @@ export async function getFollowupComparison(
       cur.versions.engine !== pre.versions.engine
         ? { previous: pre.versions.engine, current: cur.versions.engine }
         : null,
+    mismaEscala: sonComparables(cur.versions.engine, pre.versions.engine),
   };
 }
 

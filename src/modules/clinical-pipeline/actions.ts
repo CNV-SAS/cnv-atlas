@@ -102,8 +102,10 @@ export async function runPipelineAction(
   }
 
   revalidatePath("/ani-bis-e");
-  // Tambien la evaluacion: si se genero desde su pestana Diagnostico, la pagina re-renderiza a la rama de
-  // resultados (el diagnostico ya existe), en vez de quedarse en el panel de generar.
+  // Y LA CONSULTA: es EL ciclo de refresco, no un apoyo de otro (2026-11-15). Con esto la respuesta de
+  // la accion ya trae la pagina re-renderizada a la rama de resultados, asi que el panel de generar se
+  // desmonta sin una segunda vuelta al servidor. El `router.refresh()` que el panel hacia encima era el
+  // segundo ciclo que se pisaba con este (candado `refresco-una-sola-vez`).
   revalidatePath(`/ani-bis-e/${evaluationId}`);
   return {
     error: null,
