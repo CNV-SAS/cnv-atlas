@@ -4,10 +4,11 @@
 // Su regla, textual: *"La primera consulta usa la encuesta completa (línea base). **Desde la segunda
 // consulta se aplica la CNV-S.**"*
 //
-// ═══ Y HOY NO SE APLICA A NADIE, A PROPOSITO ═══
+// ═══ ACTIVA PARA TODOS DESDE EL 2026-11-16 ═══
 //
-// La CNV-S esta CONSTRUIDA y NO ACTIVA. El interruptor es esta constante, y es una constante y no una
-// variable de entorno por tres razones concretas:
+// Estuvo construida y apagada desde el 7 de noviembre. Santiago la encendio el 16, con el smoke de los
+// tres casos pasando; lo que sigue abierto esta escrito en `CNVS_ACTIVA`, abajo. El interruptor es esa
+// constante, y es una constante y no una variable de entorno por tres razones concretas:
 //
 //   · una variable de entorno hay que documentarla en DEPLOY.md y tiene TRES estados (puesta, vacia,
 //     ausente), que es justo la forma en que una bandera se queda encendida sin que nadie lo sepa;
@@ -28,15 +29,34 @@ export const CODIGO_LINEA_BASE = "CNV v2.0";
 export const CODIGO_SEGUIMIENTO = "CNV-S 1.0";
 
 /**
- * ═══ APROBADA PARA PACIENTES REALES. `false` HASTA QUE GILDARDO LA APRUEBE ═══
+ * ═══ APROBADA PARA PACIENTES REALES  ·  ENCENDIDA EL 2026-11-16 ═══
  *
- * Esto NO es "la CNV-S existe": es *"se le aplica a una persona que vino a consulta"*. Con `false`,
- * ningun paciente real ve la CNV-S, cualquiera que sea el estado del otro interruptor.
+ * Esto NO es "la CNV-S existe": es *"se le aplica a una persona que vino a consulta"*. Con `true`, toda
+ * consulta de SEGUIMIENTO (la segunda en adelante, de cualquier paciente) aplica la CNV-S.
  *
- * NO SE ENCIENDE sin: (a) el smoke en navegador, (b) el visto bueno de Gildardo sobre el Modulo S y
- * (c) resolver la pregunta 39 (si el marco de referencia pide version nueva del instrumento).
+ * LA DECISION ES DE SANTIAGO, con el smoke de los tres casos repetido y pasando (sin nutraceuticos en
+ * la anterior, todos adherentes, alguno no adherente), que es el que el gate de completitud bloqueaba
+ * hasta el 15 de noviembre. Textual suyo: *"Decisión: CNVS_ACTIVA = true para pacientes reales"*.
+ *
+ * ═══ Y LO QUE SIGUE ABIERTO SIGUE ABIERTO, QUE NO ES LO MISMO QUE RESUELTO ═══
+ *
+ * El runbook pedia TRES precondiciones y se cumple una: el smoke. Las otras dos son de Gildardo y
+ * quedan pendientes, asi que esto se enciende SIN su visto bueno clinico, por decision de Santiago:
+ *
+ *   · las cinco preguntas de la seccion H de `PENDIENTES_CIENTIFICOS.md` (39, 40, 43, 46, 47);
+ *   · la 39 en particular, que es la unica que podria obligar a cambiar el INSTRUMENTO (si el marco de
+ *     referencia por seccion pide una version nueva).
+ *
+ * Si la 39 se responde pidiendo version nueva, lo que ya se haya aplicado queda sellado con la 1.0 y
+ * hay que emitir una 1.1; las consultas selladas NO se reescriben (regla 7). Eso es lo que esta
+ * decision acepta, y queda escrito aqui para que no haya que reconstruirlo despues.
+ *
+ * COMO SE APAGA: se vuelve esta constante a `false` y se pushea. Una consulta que YA sello la CNV-S
+ * sigue viendola (las pantallas leen el sello, no la regla), asi que apagar no rompe lo que esta a
+ * medias: solo cambia que se le aplica a las consultas NUEVAS. No hay nada que migrar ni que deshacer.
+ * Dejar `CNVS_EN_PRUEBAS = true` conserva el estado anterior: solo pacientes de prueba.
  */
-export const CNVS_ACTIVA = false;
+export const CNVS_ACTIVA = true;
 
 /**
  * ═══ EN PRUEBAS: SOLO PACIENTES DE PRUEBA, TAMBIEN EN PRODUCCION (Santiago, 2026-11-08) ═══

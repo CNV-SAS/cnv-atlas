@@ -198,15 +198,29 @@ describe("la reconfirmacion anual, y el item 38 que vuelve con ella", () => {
 });
 
 describe("a quien se le aplica la CNV-S, y a quien NO puede aplicarse", () => {
-  it("UN PACIENTE REAL NO LA RECIBE mientras no este aprobada. Es LA propiedad de seguridad", () => {
-    // Si este caso se pone en rojo, alguien le esta aplicando a una persona real un cuestionario que
-    // Gildardo no ha aprobado, y lo primero que pierde son los cuatro items retirados: no se le
-    // preguntan y no hay linea base previa que conserve su valor.
-    expect(CNVS_ACTIVA, "la CNV-S se aprobo para pacientes reales sin decirlo aqui").toBe(false);
+  // ═══ ESTE CASO CAMBIO DE LADO EL 2026-11-16, Y SIGUE SIENDO EL MISMO CANDADO ═══
+  //
+  // Decia: *"un paciente real NO la recibe mientras no este aprobada"*, y fijaba `CNVS_ACTIVA === false`.
+  // Santiago la encendio para pacientes reales con el smoke de los tres casos pasando. Asi que lo que se
+  // fija ahora es el estado DECLARADO, no uno de los dos valores: el candado existe para que encenderla o
+  // apagarla sea un acto VISIBLE y deliberado (se ve en el diff del test, no solo en el de la constante),
+  // y para que la segunda puerta no se mueva sola.
+  it("ESTA ENCENDIDA, y encenderla es un acto declarado aquí y en el runbook", () => {
+    expect(CNVS_ACTIVA, "alguien movió el interruptor sin pasar por este candado").toBe(true);
     expect(
       instrumentoParaLaConsulta("seguimiento", false),
-      "un paciente REAL recibiria la CNV-S sin aprobacion",
-    ).toBe("CNV v2.0");
+      "la CNV-S está activa y un paciente real no la recibe",
+    ).toBe("CNV-S 1.0");
+    // Y EL RUNBOOK LO DICE: si la constante y el documento no coinciden, el que se queda atras es el que
+    // alguien va a leer el dia que haya que apagarla.
+    const RUNBOOK = readFileSync("docs/entregas/ACTIVAR_LA_CNVS_2026-11-09.md", "utf8");
+    expect(RUNBOOK, "el runbook no registra que ya está encendida").toContain("ENCENDIDA el 16 de noviembre");
+  });
+
+  it("y el paciente de prueba la sigue recibiendo, por la segunda puerta", () => {
+    // Apagar `CNVS_ACTIVA` tiene que devolver el estado anterior (solo pruebas) sin tocar nada mas. Si
+    // esta puerta se hubiera retirado al encender la primera, apagar dejaria la CNV-S inalcanzable.
+    expect(instrumentoParaLaConsulta("seguimiento", true)).toBe("CNV-S 1.0");
   });
 
   it("UNA INICIAL NUNCA es CNV-S, pase lo que pase con los interruptores", () => {
@@ -353,7 +367,7 @@ describe("a quien se le aplica la CNV-S, y a quien NO puede aplicarse", () => {
     // todas, y la que se quede atras aplicaria OTRO cuestionario sin que nada fallara.
     const FUENTE = sinComentarios(readFileSync("src/modules/evaluations/instrumento.ts", "utf8"));
     expect(FUENTE).toContain("export function instrumentoParaLaConsulta");
-    expect(FUENTE).toContain("export const CNVS_ACTIVA = false;");
+    expect(FUENTE).toContain("export const CNVS_ACTIVA = true;");
   });
 
   it("EL SELLO MANDA SOBRE LA DEDUCCION: los lectores leen la columna, no el tipo de consulta", () => {

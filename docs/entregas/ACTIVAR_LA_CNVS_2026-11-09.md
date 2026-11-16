@@ -2,23 +2,28 @@
 
 **Connected Nutrition Ventures · Atlas · 9 de noviembre de 2026**
 
-> **Esto es el runbook, no la decisión.** La CNV-S está construida y hoy se aplica **solo a pacientes de
-> prueba**. Encenderla para pacientes reales lo decide Santiago después del smoke, y clínicamente lo
-> aprueba Gildardo. Aquí está exactamente qué hacer, qué cambia, cómo se apaga y qué decirles a los
+> **ENCENDIDA el 16 de noviembre de 2026**, por decisión de Santiago, con el smoke de los tres casos
+> repetido y pasando. Toda consulta de seguimiento de cualquier paciente aplica ya la CNV-S 1.0. Este
+> documento sigue siendo el runbook: qué cambió, **cómo se apaga**, qué mirar y qué decirles a los
 > profesionales.
 
 ---
 
-## 1 · Lo que falta antes de encenderla
+## 1 · Las precondiciones: se cumplió una de tres
 
-| Precondición | Estado al 9 de noviembre |
+| Precondición | Estado al 16 de noviembre |
 | --- | --- |
-| El smoke en navegador, completo | **Pendiente de Santiago**: falta medir la consulta de prueba, generar el diagnóstico y ver la tarjeta de respuesta, la HC, el SOAP y el CSV. |
-| El visto bueno de **Gildardo** sobre el Módulo S | **Pendiente.** Son las cinco preguntas de la sección H de `PENDIENTES_CIENTIFICOS.md` (39, 40, 43, 46, 47). |
-| La pregunta **39** (si el marco de referencia pide versión nueva del instrumento) | **Pendiente.** Es la única de las cinco que puede obligar a cambiar el instrumento, así que va antes de encender. |
+| El smoke en navegador, completo | **CUMPLIDA.** Santiago repitió los tres casos (sin nutracéuticos en la anterior, todos adherentes, alguno no adherente) y pasaron. Eran los tres que el gate de completitud bloqueaba hasta el 15. |
+| El visto bueno de **Gildardo** sobre el Módulo S | **SIGUE PENDIENTE.** Son las cinco preguntas de la sección H de `PENDIENTES_CIENTIFICOS.md` (39, 40, 43, 46, 47). |
+| La pregunta **39** (si el marco de referencia pide versión nueva del instrumento) | **SIGUE PENDIENTE.** Es la única de las cinco que puede obligar a cambiar el instrumento. |
 | El marco de referencia por sección (§7.1) | **No construido**, y está declarado: `marcoDeLaSeccion` deriva el marco del `field_key` (`d1…d8`), así que los ítems `cnvs_*` no reciben ninguno y los `confirmar` heredan "últimas dos semanas". Arreglarlo bien necesita la sección y el comportamiento, no solo la clave. |
 
-**Nada de lo anterior bloquea el smoke**: todo eso se puede probar hoy con el paciente de prueba.
+**Se encendió con dos de las tres abiertas, y es una decisión consciente de Santiago.** Lo que eso acepta,
+dicho sin rodeos: si la 39 se responde pidiendo una versión nueva del instrumento, las consultas que para
+entonces ya hayan aplicado la CNV-S **quedan selladas con la 1.0** y habría que emitir una 1.1 hacia
+adelante. Un sello no se reescribe (regla dura 7). No hay forma de evitarlo salvo esperar su respuesta, y
+esperar tiene su propio costo: los seguimientos reales siguen respondiendo la encuesta completa, que es
+lo que la CNV-S existe para no pedirles.
 
 ---
 
@@ -27,12 +32,17 @@
 **Un interruptor, una línea.** En `src/modules/evaluations/instrumento.ts`:
 
 ```ts
-export const CNVS_ACTIVA = false;   // ← pasa a true
+export const CNVS_ACTIVA = true;   // ← estaba en false hasta el 16 de noviembre
 ```
 
 Es una constante y no una variable de entorno a propósito: una variable hay que documentarla y tiene
 **tres** estados (puesta, vacía, ausente), que es justo la forma en que una bandera se queda encendida sin
 que nadie lo sepa. Una constante **se ve en el diff**.
+
+**Y por eso NO hay que tocar nada en Vercel.** No es una variable de entorno: no hay nada que añadir, que
+marcar en Production/Preview ni que verificar en el panel. La constante viaja dentro del build, así que lo
+único que la pone en producción es el **push y su despliegue**. El corolario importa para apagarla: no se
+puede apagar desde el panel de Vercel; hay que revertir la constante y volver a desplegar.
 
 **Lo que pasa con `true`:**
 

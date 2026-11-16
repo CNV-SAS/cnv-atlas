@@ -117,9 +117,21 @@ describe("anclajes a una entrega de Gildardo", () => {
       // que se persigue es la ruta ESCRITA A MANO, que es la que envejece. Lo aprendí comiteando este
       // mismo candado en rojo: marcó al candado de deriva, que construye su ruta desde ENTREGAS.
       const derivada = /docs\/entregas\/[^"'`]*\$\{\s*ENTREGAS/;
+      // ═══ UN DOCUMENTO NUESTRO NO ES UNA ENTREGA SUYA (2026-11-16) ═══
+      //
+      // Lo que este candado persigue es anclar a una ENTREGA de Gildardo por ruta escrita a mano, porque
+      // esas se superan y el ancla se queda mirando al pasado. Sus entregas viven SIEMPRE dentro de una
+      // subcarpeta (`Gildardo responses/...`, `html actualizado <dia> <mes>`, `Nuevos cambios html/...`).
+      //
+      // Un `.md` NUESTRO en la raiz de `docs/entregas` es otra cosa: un runbook, un plan, un informe. No
+      // se supera por una entrega nueva, y un candado que coteje la constante contra su runbook (el de la
+      // CNV-S lo hace) tiene que poder nombrarlo. Se distingue por la FORMA de la ruta y no por una lista
+      // de excepciones, para que esto no se pueda usar para colar un HTML suyo: con una barra mas, vuelve
+      // a estar perseguido.
+      const documentoNuestro = /docs\/entregas\/[A-Za-z0-9_.-]+\.md/;
       const literales = codigo
         .split("\n")
-        .filter((l) => /docs\/entregas\//.test(l) && !derivada.test(l));
+        .filter((l) => /docs\/entregas\//.test(l) && !derivada.test(l) && !documentoNuestro.test(l));
       if (literales.length > 0) sueltos.push(f);
     }
     expect(
