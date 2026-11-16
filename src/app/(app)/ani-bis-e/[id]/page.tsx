@@ -1685,9 +1685,6 @@ export default async function ResultadosEvaluacionPage({
                 // CUANTOS PRESCRIBIO: decide si el pendiente es "falta registrar la entrega" o "falta
                 // registrar el criterio". Con dos prescritos, el aviso le ofrecia el boton que los borra.
                 nutraceuticosPrescritos: protocol?.nutraceuticals.length ?? 0,
-                // LA VENTA ES EL "SI". Basta con que exista una PAGADA: una pendiente de pago todavia no dice
-                // que el paciente se los llevo.
-                hayVentaDeNutraceuticos: ventasDeLaConsulta.some((v) => v.status === "paid"),
                 proximaCita: hcHeader.proximaCita,
                 remisionesSinRetorno: hcRemisiones.filter((r) => !r.returnedAt).length,
               })}

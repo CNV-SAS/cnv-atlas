@@ -17,14 +17,13 @@ const completa: EstadoConsulta = {
   protocoloComputado: true,
   protocoloEmitido: true,
   reporteEstado: "sent",
-  // EL "SI" YA NO SE DECLARA (rediseño del 2026-09-26): la pregunta de tres opciones se retiro y lo que dice
-  // que el paciente se los llevo es la VENTA. Se deja la decision en null a proposito, para que el fixture
-  // "completa" pruebe que la venta sola cierra el pendiente.
+  // EL "SI" YA NO SE DECLARA (rediseño del 2026-09-26): la pregunta de tres opciones se retiro. Y desde el
+  // 2026-11-16 lo que cierra el pendiente tampoco es la VENTA: es la PRESCRIPCION. Se dejan la decision y
+  // la via del "no" vacias a proposito, para que el fixture "completa" pruebe que la prescripcion sola lo
+  // cierra.
   nutraceuticosDecision: null,
-  hayVentaDeNutraceuticos: true,
-  // Y LA VIA NUEVA TAMPOCO (0214): asi el fixture prueba que la VENTA sola cierra el pendiente.
   sinPrescripcion: false,
-  // CON PRESCRIPCION, que es el caso de la consulta completa: hay dos y la venta ya los cerro.
+  // CON PRESCRIPCION, que es el caso de la consulta completa: hay dos, y con eso basta.
   nutraceuticosPrescritos: 2,
   proximaCita: "2026-11-22",
   remisionesSinRetorno: 0,
@@ -85,85 +84,79 @@ describe("pendientes del cierre", () => {
   });
 
   it("'pendiente' de nutracéuticos se lee como decisión válida, no como olvido", () => {
-    const p = con({ nutraceuticosDecision: "pendiente", hayVentaDeNutraceuticos: false }).find(
+    const p = con({ nutraceuticosDecision: "pendiente", nutraceuticosPrescritos: 0 }).find(
       (x) => x.id === "nutraceuticos",
     );
     expect(p?.detalle).toContain("Es una respuesta válida");
   });
 
-  // ═══ LAS DOS VIAS QUE CIERRAN LO DE NUTRACEUTICOS (2026-09-26) ═══
+  // ═══ LO QUE CIERRA ES LA PRESCRIPCION, NO LA ENTREGA  ·  Santiago, 2026-11-16 ═══
   //
-  // Antes habia UNA: contestar la pregunta. Ahora hay dos, y la primera es un HECHO y no una declaracion, que es
-  // lo que hace que nadie tenga que acordarse de marcarla.
-  it("la VENTA sola cierra el pendiente: el 'sí' no se declara, se demuestra", () => {
-    expect(ids({ nutraceuticosDecision: null, hayVentaDeNutraceuticos: true })).not.toContain("nutraceuticos");
+  // SU REGLA, textual: *"el ítem se CIERRA cuando el profesional guardó una prescripción de nutracéuticos
+  // (los del modelo u otros distintos), o marcó «No prescribo» con su motivo; queda ABIERTO solo si no hay
+  // ninguna de las dos cosas; si el paciente se los lleva o no, es comercial: no frena el cierre"*.
+  //
+  // POR QUE ES LA CORRECTA: esta lista es de pendientes CLINICOS, y el acto clinico es PRESCRIBIR. Que el
+  // paciente compre hoy, la semana que viene o nunca tiene su propio sitio (la venta) y su propia medicion
+  // clinica (el S1 de la CNV-S, que pregunta si los tomo). Mientras la entrega fuera la condicion, una
+  // consulta bien hecha se quedaba con un pendiente que el profesional no podia resolver desde la consulta,
+  // y los pendientes que no se pueden resolver son los que enseñan a no leer la lista.
+  it("la PRESCRIPCION sola cierra el pendiente, sin venta y sin declarar nada", () => {
+    expect(ids({ nutraceuticosDecision: null, nutraceuticosPrescritos: 2 })).not.toContain("nutraceuticos");
+    expect(ids({ nutraceuticosDecision: null, nutraceuticosPrescritos: 1 })).not.toContain("nutraceuticos");
   });
 
-  it("y el 'no' con su motivo tambien lo cierra, sin venta", () => {
-    expect(ids({ nutraceuticosDecision: "no", hayVentaDeNutraceuticos: false })).not.toContain("nutraceuticos");
+  it("y el 'no' con su motivo tambien lo cierra, sin ninguna prescripcion", () => {
+    expect(ids({ nutraceuticosDecision: "no", nutraceuticosPrescritos: 0 })).not.toContain("nutraceuticos");
+    expect(ids({ sinPrescripcion: true, nutraceuticosPrescritos: 0 })).not.toContain("nutraceuticos");
   });
 
-  it("sin venta y sin 'no', sigue pendiente, y el texto dice las DOS salidas", () => {
-    // SIN NINGUNO PRESCRITO, que es el caso en el que las dos salidas son las dos salidas. Con alguno
-    // prescrito el boton no es una salida sino un borrado, y el texto es otro (ver el caso de abajo); el
-    // fixture `completa` trae dos, asi que esto tenia que decirlo en vez de heredarlo.
+  it("sin prescripcion y sin 'no', sigue pendiente, y el texto dice las DOS salidas", () => {
     const p = con({
       nutraceuticosDecision: null,
-      hayVentaDeNutraceuticos: false,
-      nutraceuticosPrescritos: 0,
-    }).find((x) => x.id === "nutraceuticos");
-    expect(p).toBeDefined();
-    // Un pendiente que no dice como resolverse obliga a adivinar. Nombra la venta y el boton.
-    expect(p?.detalle).toContain("venta");
-    expect(p?.detalle).toContain("botón");
-  });
-
-// ═══ LA VIA NUEVA CIERRA EL MISMO PENDIENTE (2026-10-10, migracion 0214) ═══
-  //
-  // El boton "el paciente no los adquiere por ahora" se retiro (medía si el PACIENTE adquiere, que es un hecho
-  // que la venta ya responde) y lo reemplaza "No prescribo nutraceuticos", el criterio del PROFESIONAL.
-  //
-  // SIN ESTO, una consulta cerrada por la via nueva seguiria listando el pendiente, y su detalle mandaria a
-  // pulsar un boton que ya no existe: la regla muerta en otra puerta, que en este archivo ya paso dos veces.
-  it("registrar que NO se prescriben nutraceuticos cierra el pendiente, sin venta", () => {
-    expect(ids({ hayVentaDeNutraceuticos: false, sinPrescripcion: true })).not.toContain("nutraceuticos");
-    // Control: sin ninguna de las tres vias, sigue pendiente.
-    expect(ids({ hayVentaDeNutraceuticos: false, sinPrescripcion: false })).toContain("nutraceuticos");
-  });
-
-  // ═══ EL AVISO DICE SU CASO, NO LOS DOS A LA VEZ  ·  Santiago, smoke del 2026-11-15 ═══
-  //
-  // Textual suyo: *"con dos nutracéuticos prescritos sigue saliendo «No se registró si el paciente se
-  // lleva los nutracéuticos... Si no le prescribiste ninguno, usa el botón No prescribo»"*.
-  //
-  // LO QUE HACE QUE ESTO SEA PEOR QUE RUIDO: la unica salida que el texto nombraba era el boton "No
-  // prescribo nutracéuticos", que BORRARIA los dos que acababa de prescribir. Un consejo equivocado en
-  // una lista de pendientes no es una linea de mas: el que lo sigue deshace su propio trabajo.
-  it("con nutraceuticos prescritos, lo que falta es la ENTREGA y no ofrece el boton que los borra", () => {
-    const p = con({ hayVentaDeNutraceuticos: false, nutraceuticosPrescritos: 2 }).find(
-      (x) => x.id === "nutraceuticos",
-    );
-    expect(p?.titulo).toBe("Prescribiste 2: falta registrar si se los llevó");
-    expect(p?.detalle, "le ofrece el boton que borraria su prescripcion").not.toContain(
-      "No prescribo nutracéuticos",
-    );
-    expect(p?.detalle).toContain("venta");
-    // Y EN SINGULAR, que es la mitad del caso real: con uno solo, "se los llevó" suena a otra cosa.
-    const uno = con({ hayVentaDeNutraceuticos: false, nutraceuticosPrescritos: 1 }).find(
-      (x) => x.id === "nutraceuticos",
-    );
-    expect(uno?.titulo).toBe("Prescribiste 1: falta registrar si se lo llevó");
-  });
-
-  it("y el detalle manda al boton que SI existe cuando NO prescribio ninguno", () => {
-    const p = con({
-      hayVentaDeNutraceuticos: false,
       sinPrescripcion: false,
       nutraceuticosPrescritos: 0,
     }).find((x) => x.id === "nutraceuticos");
+    expect(p).toBeDefined();
+    expect(p?.titulo).toBe("No se registró la decisión sobre los nutracéuticos");
+    // Un pendiente que no dice como resolverse obliga a adivinar. Nombra las dos salidas reales.
+    expect(p?.detalle).toContain("prescripción");
     expect(p?.detalle).toContain("No prescribo nutracéuticos");
     // El rotulo viejo no puede quedar: nombra un boton retirado.
     expect(p?.detalle).not.toContain("debajo de los recomendados");
+  });
+
+  it("LA ENTREGA YA NO APARECE: ni en el título ni como condición", () => {
+    // Es el defecto que se retira. Con dos prescritos el aviso decia "Prescribiste 2: falta registrar si
+    // se los llevó", y la entrega es un hecho comercial que esta lista no mide.
+    expect(ids({ nutraceuticosPrescritos: 2 })).not.toContain("nutraceuticos");
+    const sinNada = con({ nutraceuticosPrescritos: 0, nutraceuticosDecision: null }).find(
+      (x) => x.id === "nutraceuticos",
+    );
+    const texto = `${sinNada?.titulo} ${sinNada?.detalle}`;
+    for (const frase of ["se los llevó", "se lo llevó", "Prescribiste"]) {
+      expect(texto, `todavía mide la entrega: "${frase}"`).not.toContain(frase);
+    }
+  });
+
+  it("un nutracéutico que NO es de los que sugiere el modelo cuenta igual", () => {
+    // Su parentesis: *"los del modelo u otros distintos: hoy uno distinto tampoco cuenta, y eso es un
+    // defecto"*. La cuenta sale de `treatment_nutraceuticals`, que es lo que el profesional AGREGA, y no
+    // mira si el modelo lo habia sugerido. Aqui se fija que la regla no tenga esa distincion.
+    expect(
+      ids({ nutraceuticosPrescritos: 1, nutraceuticosDecision: null, sinPrescripcion: false }),
+    ).not.toContain("nutraceuticos");
+  });
+
+  // ═══ LA VENTA YA NO ES UNA VIA, Y LA FORMA LO FIJA (2026-11-16) ═══
+  //
+  // El campo `hayVentaDeNutraceuticos` se RETIRO de `EstadoConsulta`, no se dejo sin leer: una bandera que
+  // nadie mira deja creer que se esta aplicando. Esta asercion es sobre la forma porque el tipo ya no
+  // permite pasarla, asi que el unico sitio donde podria reaparecer es el codigo.
+  it("la venta no vuelve a entrar como condición del cierre", () => {
+    const src = readFileSync("src/modules/reports/data/cierre-pendientes.ts", "utf8");
+    expect(src).toContain("resueltoPorLaPrescripcion");
+    expect(src, "la venta volvió a decidir el pendiente clínico").not.toContain("resueltoPorLaVenta");
   });
 
   // ═══ "NO REPROCHA" NO ES "NO DICE QUE FALTA"  ·  precisado el 2026-11-15 ═══
@@ -182,7 +175,6 @@ describe("pendientes del cierre", () => {
       protocoloEmitido: false,
       reporteEstado: "draft",
       nutraceuticosDecision: null,
-      hayVentaDeNutraceuticos: false,
       sinPrescripcion: false,
       nutraceuticosPrescritos: 0,
       proximaCita: null,

@@ -42,11 +42,18 @@ export type EstadoConsulta = {
    * tres opciones se retiro y el "si" YA NO SE DECLARA, se demuestra con la venta.
    */
   nutraceuticosDecision: "si" | "no" | "pendiente" | null;
-  /**
-   * Si esta consulta tiene una venta de nutraceuticos. ES EL "SI", y por eso entra aqui: un hecho (el paciente
-   * pago y se los llevo) vale mas que una casilla marcada, y ademas no hay que acordarse de marcarla.
-   */
-  hayVentaDeNutraceuticos: boolean;
+  // ═══ `hayVentaDeNutraceuticos` SE RETIRA DEL ESTADO (Santiago, 2026-11-16) ═══
+  //
+  // Estuvo aqui desde el rediseño del 2026-09-26 como "el SI" de los nutraceuticos, con un buen argumento:
+  // un hecho (el paciente pago) vale mas que una casilla marcada. Lo que su regla nueva precisa es que ese
+  // hecho es COMERCIAL y este pendiente es CLINICO: lo que cierra el acto es la PRESCRIPCION.
+  //
+  // Y NO SE DEJA EL CAMPO SIN LEER, que es la tentacion barata: una bandera que nadie mira deja creer que
+  // se esta aplicando. Quitarla obliga a los dos llamadores a enterarse de que la regla cambio.
+  //
+  // Medido antes de cambiarlo, sobre los 554 tratamientos de la nube: el pendiente CIERRA en 434 que
+  // antes seguian abiertos, y ABRE en 4, que son ventas pagadas sin prescripcion registrada. Esas 4 no
+  // son un efecto colateral: son el hueco de registro clinico que la regla nueva existe para enseñar.
   /**
    * El profesional registró que NO prescribe nutracéuticos en esta consulta (0214). Es la tercera vía que
    * resuelve este pendiente, y es la ÚNICA que se puede registrar hoy: `nutraceuticosDecision` quedó
@@ -142,40 +149,47 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
   // SI NO SE SUMARA AQUI, una consulta cerrada por la via nueva seguiria listando este pendiente, y su
   // detalle mandaria a pulsar un boton que ya no existe. Es el defecto de la regla muerta en otra puerta,
   // que en este archivo ya paso dos veces (el diagnostico confirmado y la entrega del plan).
-  const resueltoPorLaVenta = e.hayVentaDeNutraceuticos;
+  // ═══ Y LA REGLA CAMBIA: LO QUE CIERRA ES LA PRESCRIPCION, NO LA ENTREGA (Santiago, 2026-11-16) ═══
+  //
+  // El aviso del 15 de noviembre decia su caso ("Prescribiste 2: falta registrar si se los llevó"), que
+  // era mejor que el anterior, y seguia midiendo lo que no le toca medir a esta lista. Textual suyo:
+  //
+  //   · *"el ítem se CIERRA cuando el profesional guardó una prescripción de nutracéuticos (los del
+  //     modelo u otros distintos), o marcó «No prescribo» con su motivo"*;
+  //   · *"queda ABIERTO solo si no hay ninguna de las dos cosas (o si lo único prescrito no es un
+  //     nutracéutico)"*;
+  //   · *"si el paciente se los lleva o no, es comercial: no frena el cierre. La compra queda en la
+  //     venta, y la adherencia en el S1 del seguimiento"*.
+  //
+  // POR QUE ES LA REGLA CORRECTA, y no solo un texto mejor: esta lista es de pendientes CLINICOS de la
+  // consulta, y el acto clinico es PRESCRIBIR. Que el paciente compre hoy, la semana que viene o nunca es
+  // un hecho comercial que ya tiene su propio sitio (la venta) y su propia medicion clinica (el S1 de la
+  // CNV-S, que pregunta si los tomo). Mientras la entrega fuera la condicion de cierre, una consulta bien
+  // hecha se quedaba con un pendiente que el profesional no podia resolver desde la consulta, y los
+  // pendientes que no se pueden resolver son los que ensenan a no leer la lista.
+  //
+  // LO QUE CAMBIA EN LOS DATOS: antes la via del "si" era la VENTA (`hayVentaDeNutraceuticos`). Ahora es
+  // la prescripcion. La venta deja de cerrarlo **a proposito**: una venta sin prescripcion es una falta
+  // de registro clinico de verdad, y el unico sitio donde se puede ver es aqui. Medido antes de
+  // cambiarlo, para no abrir un pendiente masivo sin saberlo (ver el informe del 2026-11-16).
+  const resueltoPorLaPrescripcion = e.nutraceuticosPrescritos > 0;
   const resueltoPorElNo = e.nutraceuticosDecision === "no" || e.sinPrescripcion;
-  if (!resueltoPorLaVenta && !resueltoPorElNo) {
-    // ═══ Y EL AVISO DICE **SU** CASO, NO LOS TRES A LA VEZ (Santiago, smoke del 2026-11-15) ═══
+  if (!resueltoPorLaPrescripcion && !resueltoPorElNo) {
+    // AQUI SOLO SE LLEGA SIN PRESCRIPCION Y SIN "No prescribo", asi que el hueco es UNO y el aviso puede
+    // nombrarlo sin condicionales: falta el criterio del profesional sobre los nutracéuticos.
     //
-    // Textual suyo: *"con dos nutracéuticos prescritos sigue saliendo «No se registró si el paciente se
-    // lleva los nutracéuticos... Si no le prescribiste ninguno, usa el botón No prescribo». Si lo que
-    // falta es registrar la entrega, el aviso tiene que decirlo según el caso"*.
-    //
-    // SON DOS HUECOS DISTINTOS y el texto los mezclaba:
-    //
-    //   · CON PRESCRIPCION: el profesional ya decidio, y lo que falta es el hecho de la ENTREGA. Decirle
-    //     "si no le prescribiste ninguno" le ofrece una salida que no es la suya, y encima la unica que
-    //     nombra (el boton "No prescribo") BORRARIA lo que prescribio. Un consejo equivocado en una
-    //     lista de pendientes es peor que una linea de menos: el que lo sigue deshace su propio trabajo.
-    //   · SIN PRESCRIPCION: no hay nada que entregar, y lo que falta es registrar el criterio.
-    //
-    // Y LA CIFRA VA EN EL TITULO, porque es lo que le dice que el sistema SI tiene lo que el prescribio:
-    // el titulo viejo ("no se registró si...") se lee como que la prescripcion tampoco esta.
-    const prescritos = e.nutraceuticosPrescritos;
+    // EL CASO "quedó de pensarlo" SE CONSERVA porque es un dato que alguien dio (la pregunta de tres
+    // opciones se retiro el 2026-09-26, pero sus respuestas siguen en la base) y porque dice otra cosa:
+    // ahi SI hubo una decision, aplazada. Un pendiente que ignora una respuesta registrada le pide al
+    // profesional que vuelva a decidir algo que ya decidio.
     const titulo =
       e.nutraceuticosDecision === "pendiente"
         ? "El paciente quedó de pensar los nutracéuticos"
-        : prescritos === 1
-          ? "Prescribiste 1: falta registrar si se lo llevó"
-          : prescritos > 1
-            ? `Prescribiste ${prescritos}: falta registrar si se los llevó`
-            : "No se registró si el paciente se lleva los nutracéuticos";
+        : "No se registró la decisión sobre los nutracéuticos";
     const detalle =
       e.nutraceuticosDecision === "pendiente"
         ? "Es una respuesta válida: se puede cerrar así y registrarla cuando el paciente decida."
-        : prescritos > 0
-          ? "La entrega queda registrada con la venta, en Pagos. Si el paciente no se los lleva hoy, se puede cerrar así y registrarlo cuando los adquiera."
-          : "Si se los llevó, queda registrado con la venta. Si no le prescribiste ninguno, usa el botón \"No prescribo nutracéuticos\", junto a Guardar prescripción.";
+        : 'Guarda la prescripción con los que le indicaste, o usa el botón "No prescribo nutracéuticos" con su motivo, junto a Guardar prescripción. Si se los lleva o no, queda en la venta.';
     out.push({
       id: "nutraceuticos",
       titulo,
