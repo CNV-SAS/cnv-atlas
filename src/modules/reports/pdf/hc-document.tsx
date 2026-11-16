@@ -1,3 +1,4 @@
+import { fraseDelSelloDeConsentimiento } from "../data/sello-del-consentimiento";
 import { Document, Page, StyleSheet, View } from "@react-pdf/renderer";
 
 // El `Text` que traduce los simbolos que la fuente del PDF no dibuja (ver `text-seguro`).
@@ -512,9 +513,10 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             texto de SU versión. Va antes de la firma, que es donde cierra el documento. */}
         <View style={styles.sello}>
           <Text style={{ fontWeight: "bold" }}>Autorizaciones del paciente</Text>
-          <Text>
-            Consentimiento de esta consulta: versión {hc.consentVersion ?? "no registrada"}
-          </Text>
+          {/* LA FRASE SALE DE UN SOLO SITIO, igual que en la pantalla: cuando no hay version, dice POR
+              QUE no la hay (archivo importado, o consulta anterior al 21 de agosto de 2026). Una
+              ausencia sin explicar, en un documento probatorio, se lee como un dato que falta. */}
+          <Text>{fraseDelSelloDeConsentimiento({ version: hc.consentVersion, importada: hc.consultaImportada })}</Text>
           {hc.autorizaciones.length > 0 ? (
             hc.autorizaciones.map((a) => (
               <Text key={a.tipo} style={styles.item}>

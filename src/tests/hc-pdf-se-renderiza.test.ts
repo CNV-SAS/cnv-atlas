@@ -63,7 +63,8 @@ function hcVacia(): HistoriaClinicaDoc {
     proximaCita: null,
     entregas: [],
     prescripcionSinEmitir: false,
-    consentVersion: "1.1",
+    consultaImportada: false,
+  consentVersion: "1.1",
     autorizaciones: [],
   };
 }

@@ -41,10 +41,24 @@ import type { HcPlanNutricional, HcRemisionExigida, HcValidacion } from "../comp
 // El resultado es el mismo patron que `getPlanPaciente`: una sola forma del documento, dos presentaciones.
 
 export type HcEntradas = {
-  /** Snapshot del motor, o null si la evaluacion no tiene uno compatible. */
+  /**
+   * Snapshot del motor, o null si la evaluacion no tiene uno compatible.
+   *
+   * ═══ EL `sexo` ES OBLIGATORIO, Y ES EL ARREGLO DEL 2026-11-16 ═══
+   *
+   * Este campo no estaba, y sin el la severidad de los indices se computaba con `sexo` undefined: desde
+   * la v17 eso deja a `cIFC` y a `cPABU` en "sin sexo: no se clasifica" (gris, sin severidad), asi que
+   * sus filas DESAPARECIAN de la tabla de alterados de la historia clinica, y `cIRC` caia al corte
+   * masculino y pintaba de rojo una banda que en una mujer es ambar. Medido en la nube: 542 de 552.
+   *
+   * ES EL DEL SELLO, no el de la ficha de hoy: un documento clinico de hace un año no puede cambiar de
+   * veredicto porque alguien corrija el sexo en la ficha. `sexoM` (abajo) sale del mismo sitio en los dos
+   * llamadores, asi que no son dos fuentes; se pide aqui porque es lo que el motor recibe.
+   */
   snapshot: {
     indicators: Record<string, number | null> & { FFMI: number };
     classifications: Record<string, unknown>;
+    sexo: "M" | "F";
   } | null;
   /** Prescripcion SUGERIDA sellada del protocolo (`protocol_suggested`), o null. */
   suggested: ProtocoloSnapshot | null;
@@ -161,8 +175,17 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
   // nunca la fila: el snapshot sella `classifications["ICA-BIS"] = null` y `indicatorSeverities` no emite
   // esa clave, asi que los dos filtros de `indicesAniAlterados` (sin severidad y sin clasificacion) la
   // descartaban en silencio, desviada o no. El porque clinico esta en indicator-ranges.
+  //
+  // Y SE LLAMA CON `indicators` Y `sexo`, SIN NINGUN `as never`: el cast que habia aqui existia solo para
+  // callar a tsc sobre un campo que no se estaba pasando, y lo que callaba era el defecto (ver la nota
+  // del campo `sexo` arriba y la de `indicatorSeverities`).
   const severidades = e.snapshot
-    ? conClaseIcaBis(indicatorSeverities(e.snapshot as never) as Record<string, number>)
+    ? conClaseIcaBis(
+        indicatorSeverities({
+          indicators: e.snapshot.indicators as unknown as EngineIndicators,
+          sexo: e.snapshot.sexo,
+        }) as Record<string, number>,
+      )
     : {};
 
   const indices = e.snapshot

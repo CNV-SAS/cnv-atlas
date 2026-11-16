@@ -916,6 +916,9 @@ export default async function ResultadosEvaluacionPage({
             FFMI: number;
           },
           classifications: results.snapshot.classifications as unknown as Record<string, unknown>,
+          // EL SEXO DEL SELLO. Sin el, la severidad de los indices se computaba sin sexo y la tabla de
+          // alterados perdia filas enteras (2026-11-16, ver `HcEntradas.snapshot`).
+          sexo: results.snapshot.sexo,
         }
       : null,
     suggested: ps,
@@ -1524,6 +1527,9 @@ export default async function ResultadosEvaluacionPage({
                     sevByCode={hcSev}
                     references={wangRefs}
                     fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
+                    // EL SECTOR DE LA v17, que nombra el MISMO cruce que el fenotipo y es el que usa el DFI
+                    // (2026-11-16). Ver `sectorMccb` en CompositionSection.
+                    sectorMccb={results.snapshot.sectorDiana ?? null}
                     soloAlterados
                     // LOS INDICES ANI-BIS-E, COMO UN NIVEL MAS DE LA TABLA (Santiago, 2026-09-10), que es
                     // como los tiene el archivo de Gildardo. Vivian debajo, en una tabla aparte con su
@@ -1653,6 +1659,7 @@ export default async function ResultadosEvaluacionPage({
               <HcConsentimiento
                 autorizaciones={hcAutorizaciones}
                 versionDeLaConsulta={hcHeader.consentVersion}
+                consultaImportada={hcHeader.importada}
               />
               <HcFirmaYFecha
                 profesional={hcHeader.profesional}
@@ -1728,6 +1735,9 @@ export default async function ResultadosEvaluacionPage({
                   }
                   references={wangRefs}
                   fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
+                  // EL SECTOR DE LA v17, que nombra el MISMO cruce que el fenotipo y es el que usa el DFI
+                  // (2026-11-16). Ver `sectorMccb` en CompositionSection.
+                  sectorMccb={results.snapshot.sectorDiana ?? null}
                 />
                 {/* AQUI IBA "Nivel III · Salud celular" (las badges `celBadges`), retirado el 2026-09-07
                     por el punto 10 de su cotejo. La razon completa esta en DIVERGENCIAS.md; lo que hay que

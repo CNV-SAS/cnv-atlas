@@ -191,6 +191,8 @@ export type HistoriaClinicaDoc = {
   prescripcionSinEmitir: boolean;
   /** Version del consentimiento CON QUE SE CAPTURO ESTA CONSULTA, no la vigente hoy. */
   consentVersion: string | null;
+  /** La consulta viene del archivo importado: explica por que no hay version. Ver `sello-del-consentimiento`. */
+  consultaImportada: boolean;
   autorizaciones: HcAutorizacionDoc[];
 };
 

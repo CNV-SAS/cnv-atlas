@@ -148,14 +148,28 @@ const PHI = 1.618;
  * carga ALTA. Groq escribio "ICEC 33, carga epigenetica baja" (2026-09-22).
  */
 export function lecturaDelIndicador(code: string, clasificacion: string): string {
-  // EL IEHH GRADUA LA HIDRO-HOMEOSTASIS (su cIEHH, v9 L4029: Óptimo, Leve, Moderado, Severo), no la
-  // deshidratacion. Gemini escribio "IEHH 0,81 (Leve), lo que sugiere una leve deshidratacion" (2026-09-22).
-  // COMO DATO, NO COMO EXPLICACION (v13): con "gradúa el equilibrio hídrico..., no la deshidratación" Gemini
-  // pego la aclaracion tal cual en el texto. Se le da la lectura hecha, que es lo que tiene que decir.
+  // EL IEHH GRADUA LA HIDRO-HOMEOSTASIS (su cIEHH), no la deshidratacion. Gemini escribio "IEHH 0,81
+  // (Leve), lo que sugiere una leve deshidratacion" (2026-09-22). COMO DATO, NO COMO EXPLICACION (v13):
+  // con "gradúa el equilibrio hídrico..., no la deshidratación" Gemini pego la aclaracion tal cual en el
+  // texto. Se le da la lectura hecha, que es lo que tiene que decir.
+  //
+  // ═══ Y LAS TRES ZONAS DE LA v17 NO SON CUATRO GRADOS (2026-11-16) ═══
+  //
+  // Esto estaba escrito para su `cIEHH` de la v16 (Óptimo · Leve · Moderado · Severo), donde todo lo que
+  // no fuera "Óptimo" era una alteracion GRADUADA y la frase "alteración leve del equilibrio hídrico"
+  // salia bien. Su v17 §5 pasa a TRES ZONAS con nombre (`Déficit` · `Óptimo` · `Capacitancia alta`), y
+  // con la plantilla vieja al modelo le llegaba "alteración déficit del equilibrio hídrico" y
+  // "alteración capacitancia alta del equilibrio hídrico": frases rotas, y peor que rotas, porque
+  // presentan como un GRADO lo que es una DIRECCION, y las dos colas significan cosas opuestas.
+  //
+  // Las tres se nombran por su zona, con SUS palabras y sin graduar.
   if (code === "IEHH") {
-    return /^óptimo$/i.test(clasificacion)
-      ? `${clasificacion}: equilibrio hídrico óptimo`
-      : `${clasificacion}: alteración ${clasificacion.toLocaleLowerCase("es-CO")} del equilibrio hídrico`;
+    if (/^óptimo$/i.test(clasificacion)) return `${clasificacion}: equilibrio hídrico óptimo`;
+    if (/^déficit$/i.test(clasificacion)) return `${clasificacion}: el equilibrio hídrico está en zona de déficit`;
+    if (/^capacitancia alta$/i.test(clasificacion))
+      return `${clasificacion}: el equilibrio hídrico está en zona de capacitancia alta`;
+    // Un sello de la v16 (Leve / Moderado / Severo) todavia puede llegar aqui: esos SI son grados.
+    return `${clasificacion}: alteración ${clasificacion.toLocaleLowerCase("es-CO")} del equilibrio hídrico`;
   }
   if (code === "ICEC") {
     return `${clasificacion}: carga epigenético-contextual alta, porque en LE8 un puntaje bajo es peor`;

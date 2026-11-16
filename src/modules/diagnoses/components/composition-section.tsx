@@ -118,6 +118,7 @@ export function CompositionSection({
   sevByCode = {},
   references = {},
   fenotipoMccb = null,
+  sectorMccb = null,
   showDiagnosis = true,
   // El titulo se OCULTA cuando el bloque ya viene envuelto en algo que lo titula (la entrada de la
   // evaluacion lo mete en un DetailsSection que dice "Composición corporal (Niveles de Wang)"). Sin
@@ -144,6 +145,24 @@ export function CompositionSection({
   // Fenotipo MCCB (FFMI x FMI), del snapshot sellado: se muestra como ULTIMA fila del Nivel IV, como en el
   // HTML de Gildardo (smoke Santiago d). No sale del mapa PURO (es salida del diagnostico); lo pasa la pagina.
   fenotipoMccb?: { id: string; nombre: string } | null;
+  /**
+   * ═══ EL SECTOR DEL LIBRO, QUE NOMBRA EL MISMO CRUCE (v17 §2.4, 2026-11-16) ═══
+   *
+   * Hay DOS nombres suyos para el cruce FFMI x FMI, y los dos se sellan: el fenotipo MCCB de doce
+   * (F1-F12, de su Excel) y el sector de la Diana de nueve (S1-S9, de su Tabla 11.2 del libro). Son dos
+   * rejillas distintas del mismo plano, asi que la misma consulta puede salir "Normopeso" (F8) en esta
+   * tabla y "S4 · Composición saludable" en el DFI, dentro del MISMO documento. Santiago lo reporto el
+   * 16 de noviembre; medido en la nube, pasa en las 481 consultas que tienen los dos sellados.
+   *
+   * MIENTRAS SU PREGUNTA 52 DECIDE QUE NOMBRES MANDAN, esta fila muestra los de la v17 (instruccion de
+   * Santiago, 2026-11-16), que son los que el resto de la pantalla ya usa para el sector, la gravedad del
+   * dominio metabolico-estructural y los cortes de la ficha. El fenotipo de doce NO se retira de ninguna
+   * parte: sigue sellandose y sigue gobernando el protocolo por fenotipo; lo que deja de hacer es
+   * nombrar esta fila con otra palabra que la de al lado.
+   *
+   * null (snapshot anterior a la v17) = se muestra el fenotipo, como estaba.
+   */
+  sectorMccb?: { id: string; fenotipo: string } | null;
   showDiagnosis?: boolean;
   showTitle?: boolean;
   /** Historia clinica: muestra SOLO las filas con clasificacion alterada (sev >= 1). */
@@ -163,6 +182,15 @@ export function CompositionSection({
    */
   bloqueFinal?: { titulo: string; filas: FilaBloqueFinal[] } | null;
 }) {
+  // EL CRUCE FFMI x FMI, UNA SOLA VEZ Y CON UN SOLO NOMBRE. Manda el sector de la v17 cuando el sello lo
+  // trae; si no (snapshot anterior a la v17), el fenotipo de doce, que es lo que ese sello tiene. Se
+  // resuelve aqui arriba y no en el JSX para que no haya dos ramas pintando la misma fila.
+  const cruceFfmiFmi = sectorMccb
+    ? { rotulo: "Sector MCCB (FFMI×FMI)", nombre: `${sectorMccb.id} · ${sectorMccb.fenotipo}` }
+    : fenotipoMccb
+      ? { rotulo: "Fenotipo MCCB (FFMI×FMI)", nombre: fenotipoMccb.nombre }
+      : null;
+
   // ═══ LA META DE PESO ES LA REFERENCIA DE LA FILA DE PESO (2026-09-10, correccion del porte) ═══
   //
   // COMO ESTA EN SU ARCHIVO (entrega VIGENTE del 4 de septiembre, linea 7721): la fila de Peso pone la
@@ -475,13 +503,13 @@ export function CompositionSection({
                   {/* Fenotipo MCCB (FFMI x FMI) como ultima fila del Nivel IV (smoke Santiago d): valor y
                       diagnostico = el nombre del fenotipo; sin referencia ni Δ (es una clasificacion, no un
                       numero), igual que el HTML. Solo en Diagnostico y si el snapshot lo trae. */}
-                  {showDiagnosis && fenotipoMccb && lvl.title.includes("Tejidos") ? (
+                  {showDiagnosis && cruceFfmiFmi && lvl.title.includes("Tejidos") ? (
                     <tr className="border-b border-border/40">
-                      <td className="py-1.5 pl-3 pr-4 text-foreground">Fenotipo MCCB (FFMI×FMI)</td>
-                      <td className="py-1.5 pr-4 text-right text-foreground">{fenotipoMccb.nombre}</td>
+                      <td className="py-1.5 pl-3 pr-4 text-foreground">{cruceFfmiFmi.rotulo}</td>
+                      <td className="py-1.5 pr-4 text-right text-foreground">{cruceFfmiFmi.nombre}</td>
                       <td className="py-1.5 pr-4 text-right text-muted-foreground">-</td>
                       <td className="py-1.5 pr-4 text-right text-muted-foreground">-</td>
-                      <td className="py-1.5 pr-3 text-foreground">{fenotipoMccb.nombre}</td>
+                      <td className="py-1.5 pr-3 text-foreground">{cruceFfmiFmi.nombre}</td>
                     </tr>
                   ) : null}
                 </Fragment>

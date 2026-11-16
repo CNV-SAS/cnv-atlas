@@ -733,6 +733,12 @@ los doce cargan una distinción que usted introdujo (clínica contra preclínica
 obesidad clínica de Rubino 2025 que su propio documento cita) y que los nueve no pueden expresar.
 Retirarlos perdería información suya. La A no es imposible, pero habría que decir qué pasa con esa
 distinción.*
+ **Mientras tanto, la tabla de composición muestra el nombre de la v17 (2026-11-16).** Santiago lo pidió
+ así al ver que el **mismo documento** daba dos nombres al **mismo cruce** FFMI × FMI: la tabla decía
+ *«Fenotipo MCCB: Normopeso»* (F8, de los doce) y el DFI *«S4 · Composición saludable»* (de los nueve).
+ Pasa en las **481** consultas que tienen los dos sellados, o sea en todas. Los doce **no se retiran** de
+ ninguna parte: se siguen sellando y siguen gobernando el protocolo por fenotipo. Lo único que cambió es
+ qué nombre se pinta en esa fila, y vuelve a cambiar en cuanto usted responda.
 
 **53 · El orden de prioridad de las rutas, que su §10 nombra y no escribe.** Dice que `activarRutas`
 devuelve *"las rutas del DFI en su orden de prioridad"*, y ese orden no está escrito en el documento. El
@@ -1203,8 +1209,29 @@ Alto/Normal/Bajo (*función normal · función · disfunción*) con IRC Bajo/Nor
 riesgo · con riesgo*). O sea que en su vocabulario más reciente la banda media del IRC se lee **"sin
 riesgo"**, y su `cIRC` la rotula **"Riesgo moderado"**. Es la misma tensión, y es suya.
 
+**Y su v17 lo dice en la MISMA función, tres líneas más arriba (2026-11-16).** El comentario que encabeza
+su `cIRC` en el `ATLAS_v17.html` escribe los cortes así:
+
+```
+//   H: Bajo <1,7 · Normal 1,7–2,1 · Alto >2,1
+//   M: Bajo <2,3 · Normal 2,3–2,8 · Alto >2,8
+const cIRC = (v, sexo) => { ... : v <= hi ? { l: 'Riesgo moderado', c: '#e6a817', risk: 'moderado', k: 2 } ... }
+```
+
+El comentario la llama **Normal** y el código la rotula **Riesgo moderado** en ámbar. No es una
+divergencia entre dos entregas suyas: son dos líneas de la misma función.
+
+**Y ahora tiene una consecuencia que se ve en un documento probatorio.** Santiago lo reportó el 16 de
+noviembre sobre una consulta reemitida: una mujer con IRC **2,71**, que está dentro de su banda central
+(P25 a P75 de su sexo), sale listada en *«Índices ANI-BIS-E alterados»* de la historia clínica, porque el
+ámbar de su clasificador vale como alteración. Textual suyo: *«con la v17, mujer 2,3 a 2,8 es NORMAL; no
+debería estar en alterados»*. **Atlas no lo cambia por su cuenta** (Regla 0: el rótulo y el color son de su
+clasificador, y nuestro porte es byte a byte el suyo); lo que sí se arregló fue que esa fila llevaba la
+severidad del corte MASCULINO, que es defecto nuestro y ya está cerrado.
+
 **La pregunta:** para la banda media, ¿qué debe decir su párrafo? ¿«en rango normal», como hoy, o algo
-alineado con sus clasificadores? El texto es suyo y se pone verbatim.
+alineado con sus clasificadores? Y, derivado de lo anterior: ¿la banda media del IRC **cuenta como índice
+alterado** en la historia clínica, o solo las dos colas? El texto es suyo y se pone verbatim.
 
 **Y una del mismo tema, más pequeña.** El criterio de egreso de su ruta R1 dice *«IFC ≥ 4.5 y IRC < 3.5
 sostenido 2 controles»*. Son cortes únicos, sin sexo. Para una mujer, su corte superior del IFC es 3,28: con
@@ -1253,7 +1280,22 @@ se pinta mal. Se lo decimos porque **en su archivo sí es el color que se ve**, 
 Las siete de este bloque tienen la misma forma: **no son diferencias entre su archivo y Atlas, sino entre
 dos sitios de su propio archivo.** En cada una portamos una de las dos y le decimos cuál.
 
-## 17 · La fila ICA-BIS tiene DOS reglas, una por superficie. ¿Es a propósito?
+## 17 · La fila ICA-BIS tiene DOS reglas, una por superficie. ¿Es a propósito? **[CONTESTADA POR SU v17: ya no son dos]**
+
+**Su v17 la cierra sin que haga falta responderla (verificado el 2026-11-16).** `dICA` **ya no existe en su
+`ATLAS_v17.html`**: las dos superficies leen `cPABU`, con los percentiles del sexo de su Tabla 7.3. O sea
+que la nota de su historia clínica (*"cICABIS eliminado, usar cPABU global"*) sí iba a aplicarse también a
+la tabla de Composición, y quedó a medias hasta esta entrega. Atlas ya lo portó: las dos superficies usan
+`cPABU`.
+
+**Y la diferencia no era de palabras.** Desde su §4 el ICA-BIS lleva **signo** (PABU − φ), y el
+clasificador de magnitud estaba escrito para el valor absoluto: todo el lado negativo, que es el **exceso
+de adiposidad**, caía en su rama de *«Reserva bioeléctrica»*, que se lee como algo bueno y se pinta de
+azul. Medido en la nube: en las **552** consultas con informe sellado las dos superficies daban veredictos
+distintos, y en **323** la pantalla decía «reserva bioeléctrica» donde su clasificador dice
+desplazamiento por exceso.
+
+Lo que sigue abajo es el texto original de la pregunta, para que se entienda de dónde salió.
 
 **En Diagnóstico → Composición Corporal**, la fila ICA-BIS usa un clasificador que **gradúa la magnitud** en
 cinco escalones (Zona φ / Desviación leve / moderada / severa / Zona crítica).

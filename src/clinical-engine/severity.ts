@@ -60,7 +60,28 @@ export function veredictoSev(v: { l?: unknown; c?: unknown } | null | undefined)
 // Mapa codigo de indicador -> severidad (0-3) o null (sin color). Solo los indicadores con
 // clasificador congelado; el resto queda neutral. Los clasificadores nullable (ISCM/IEHH/IAE)
 // solo se corren si el valor existe.
-export function indicatorSeverities(output: EngineOutput): Record<string, number | null> {
+//
+// ═══ EL PARAMETRO PIDE SOLO LO QUE USA, Y ESO NO ES ESTILO (2026-11-16) ═══
+//
+// Decia `output: EngineOutput`, que es el objeto ENTERO, y esta funcion solo lee dos campos. La
+// consecuencia no fue teorica: la historia clinica compone desde un snapshot RECORTADO (`{indicators,
+// classifications}`, sin `sexo`), asi que para poder llamar aqui tuvo que escribir
+// `indicatorSeverities(e.snapshot as never)`. **El `as never` no era descuido: era la unica forma de
+// satisfacer un parametro que pedia de mas**, y con el entro un `sexo` undefined sin que tsc dijera nada.
+//
+// LO QUE ESO PRODUCIA, medido en la nube el 16 de noviembre sobre las 552 consultas con informe sellado:
+// en 542 al menos una fila ENTRABA O SALIA de la tabla "Indices ANI-BIS-E alterados" de la HC por la
+// severidad equivocada. Desde la v17 pesa el doble, porque sus clasificadores por sexo (`cIFC`, `cPABU`,
+// `cFMI`, `cFFMI`) ya NO caen a un corte global: devuelven "sin sexo: no se clasifica" en gris, el gris no
+// tiene severidad, y la fila desaparece. Un IFC de 1,89 con "Disfunción celular" no salia en el documento
+// probatorio. El `cIRC` no usa `sexoBIS` y cae al corte MASCULINO, asi que en una mujer no desaparecia:
+// se pintaba de ROJO una banda que en su sexo es ambar.
+//
+// Pidiendo solo `indicators` y `sexo`, el llamador que no tenga el sexo no compila, que es donde se
+// tenia que haber detenido.
+export function indicatorSeverities(
+  output: Pick<EngineOutput, "indicators" | "sexo">,
+): Record<string, number | null> {
   const i: EngineIndicators = output.indicators;
   const sexo = output.sexo;
   const sev: Record<string, number | null> = {};

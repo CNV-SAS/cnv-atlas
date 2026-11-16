@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 
 import { rotuloDisplayDeIndice } from "@/modules/diagnoses/data/indicator-ranges";
 
-import { HTML_VIGENTE } from "./fixtures/html-vigente";
+import * as core from "@/clinical-engine/frozen/engine.core.derived.js";
+
+import { HTML_VIGENTE, CAMBIOS_NUEVOS, htmlDeCambioNuevo } from "./fixtures/html-vigente";
+
+// La entrega de la v17, DERIVADA como en los demas candados: la ultima de la convencion nueva.
+const ENTREGA_V17 = CAMBIOS_NUEVOS[CAMBIOS_NUEVOS.length - 1];
 
 // CANDADO DE LOS ROTULOS DE LA TABLA DE INDICES (2026-09-09).
 //
@@ -30,17 +35,22 @@ function rotulosDeSuDisplay(nombre: string): string[] {
   return [...linea.matchAll(/\{l:'([^']+)'/g)].map((m) => m[1]);
 }
 
-// Valor que cae en cada escalon, en el MISMO orden en que su clasificador los declara. Es lo unico
-// escrito a mano, y tiene que serlo: son sus cortes. Se elige un valor por rama, no el corte exacto.
-const SONDAS: Record<string, number[]> = {
-  // El IFC YA NO SE SONDEA POR VALOR (2026-09-21): sus cortes de display (3,5/6,0) son los historicos
-  // que el propio Gildardo prohibio. Se traduce por su banda sellada; ver el bloque de abajo.
-  //
-  // Y EL IAE TAMPOCO, DESDE EL 2026-10-29, por la MISMA razon de fondo: una entrega posterior suya pisa
-  // su capa de display vieja. Su tabla 3 de la EB-BIS v7 (2026-10-26) gobierna como se presenta este
-  // indicador, y dice otras palabras Y otros cortes que `dIAE`. Ver el bloque del final.
-  IEHH: [-1, 0.5, 1.5, 3], // <=0 · <=1 · <=2 · resto
-};
+// ═══ YA NO QUEDA NINGUN INDICE QUE SE SONDEE POR VALOR CONTRA SU DISPLAY VIEJO (2026-11-16) ═══
+//
+// Aqui habia un mapa de SONDAS (un valor por rama) que comparaba nuestro rotulo contra los `{l:'...'}`
+// de su clasificador de display. Se fue vaciando por la MISMA razon tres veces seguidas: **una entrega
+// posterior suya pisa su capa de display vieja**.
+//
+//   · el IFC salio el 2026-09-21 (sus cortes de display eran los historicos 3,5/6,0, que el prohibio);
+//   · el IAE salio el 2026-10-29 (su tabla 3 de la EB-BIS v7 gobierna como se presenta);
+//   · el IEHH sale hoy, y este es el caso mas limpio de los tres: **lo movio EL**. Su `dIEHH` del v9
+//     tenia los cuatro escalones; su ATLAS_v17 lo reemplaza por `const dIEHH = v=>v==null?null:cIEHH(v);`
+//     con su propio comentario *"v17: tres zonas (libro, Tabla 8.2)"*. Sondear por valor contra el v9
+//     seria anclar a una entrega superada, que es justo lo que la cabecera de `html-vigente` describe
+//     como el candado mas peligroso: el que da una garantia que ya no existe.
+//
+// El mecanismo de leer sus rotulos NO se retira: lo siguen usando el vocabulario del IFC y el control
+// del IAE, abajo. Lo que se retira es la comparacion por valor, que ya no tiene a quien comparar.
 
 describe("los rótulos de los índices son los de SU capa de display", () => {
   it("el control: sus clasificadores de display se leen y traen rótulos", () => {
@@ -49,23 +59,6 @@ describe("los rótulos de los índices son los de SU capa de display", () => {
     for (const d of ["dIFC", "dIAE", "dIEHH"]) {
       expect(rotulosDeSuDisplay(d).length, `no se leyeron los rótulos de ${d}`).toBeGreaterThan(2);
     }
-  });
-
-  it("y cada escalón nuestro coincide con el suyo", () => {
-    for (const [codigo, sondas] of Object.entries(SONDAS)) {
-      const suyos = rotulosDeSuDisplay(`d${codigo}`);
-      const nuestros = sondas.map((v) => rotuloDisplayDeIndice(codigo, v));
-      // PABU declara tres ramas y solo se sondean dos: se comparan las que se sondean, en su orden.
-      expect(nuestros, `los rótulos de ${codigo} dejaron de ser los suyos`).toEqual(
-        suyos.slice(0, nuestros.length),
-      );
-    }
-  });
-
-  it("el control: sigue habiendo indices que SI salen de su capa de display", () => {
-    // Si el mapa se quedara vacio (porque cada indice se fuera yendo a una entrega posterior, como se
-    // fueron el IFC y el IAE), la comparacion de arriba pasaria verde sin comparar nada.
-    expect(Object.keys(SONDAS).length).toBeGreaterThan(0);
   });
 
   it("y los que NO difieren no se tocan", () => {
@@ -174,5 +167,61 @@ describe("el IAE se rotula con su tabla 3, no con su display viejo", () => {
     // No se borra de su HTML ni se corrige: su archivo es su archivo. Lo que cambia es CUAL de sus dos
     // fuentes rige esta fila. Si algun dia `dIAE` desapareciera de su entrega, este control lo diria.
     expect(rotulosDeSuDisplay("dIAE")).toContain("Envejecimiento acelerado");
+  });
+});
+
+// ═══ EL IEHH: SUS TRES ZONAS, PORQUE SU PROPIA v17 DELEGO EL DISPLAY EN EL CLASIFICADOR (2026-11-16) ═══
+//
+// EL DEFECTO QUE CIERRA, reportado por Santiago sobre una consulta ya reemitida a 4.0.0: la HC decia
+// *"Equilibrio hídrico −1,57 · Equilibrio hídrico óptimo · referencia −1 a +1"*. La referencia ya era la
+// de la v17 y el veredicto no, asi que la misma linea afirmaba que el valor esta DENTRO de un rango que
+// ella misma imprime y del que esta fuera; y el analisis del SOAP, dos parrafos mas abajo, decia *"un
+// IEHH en zona de déficit"*. Medido en la nube: en 265 de 552 consultas el rotulo y el clasificador se
+// contradicen. Es el hazard 4 de CLAUDE.md: no es redaccion, es que LEEN FUENTES DISTINTAS.
+//
+// LA CAUSA: `ROTULOS_DISPLAY.IEHH` era una copia de su `dIEHH` del v9, con los CUATRO escalones de
+// entonces y "Equilibrio hídrico óptimo" para TODO v <= 0. Su v17 §5 rehizo el indicador: tres zonas,
+// y el valor bueno deja de ser "todo lo que este por debajo de cero" para ser el CENTRO. Con la escalera
+// vieja encima, el deficit (la cola que su v17 inventa para poder nombrarlo) salia como optimo.
+//
+// Y LO MOVIO EL, QUE ES LO QUE HACE ESTE CASO FACIL: su ATLAS_v17 escribe
+// `const dIEHH = v=>v==null?null:cIEHH(v);` con el comentario *"v17: tres zonas (libro, Tabla 8.2)"*.
+// Asi que delegar en `cIEHH` no es una decision nuestra sobre su contenido: es portar la suya.
+describe("el IEHH se rotula con su clasificador de la v17, no con la escalera de la v16", () => {
+  it("el caso de Santiago: −1,57 es déficit, no equilibrio óptimo", () => {
+    expect(rotuloDisplayDeIndice("IEHH", -1.57)).toBe("Déficit");
+    expect(rotuloDisplayDeIndice("IEHH", -1.57)).not.toContain("óptimo");
+  });
+
+  it("las tres zonas, con sus palabras", () => {
+    expect(rotuloDisplayDeIndice("IEHH", -2)).toBe("Déficit");
+    expect(rotuloDisplayDeIndice("IEHH", 0)).toBe("Óptimo");
+    expect(rotuloDisplayDeIndice("IEHH", 2)).toBe("Capacitancia alta");
+  });
+
+  it("y los dos bordes pertenecen al centro, como su clasificador los escribe", () => {
+    // `cIEHH`: `v < -1` deficit · `v <= 1` optimo · resto capacitancia alta. Los bordes importan porque
+    // son justo donde una copia a mano se equivoca de signo.
+    expect(rotuloDisplayDeIndice("IEHH", -1)).toBe("Óptimo");
+    expect(rotuloDisplayDeIndice("IEHH", 1)).toBe("Óptimo");
+    expect(rotuloDisplayDeIndice("IEHH", -1.0001)).toBe("Déficit");
+    expect(rotuloDisplayDeIndice("IEHH", 1.0001)).toBe("Capacitancia alta");
+  });
+
+  it("y el rótulo no es una copia: es su propio clasificador", () => {
+    // El dia que el mueva una zona, esta fila se mueve con el. Una copia aqui seria la tercera fuente
+    // del mismo veredicto, que es lo que acaba de costar la contradiccion.
+    for (const v of [-3, -1.57, -1, 0, 1, 1.5, 4]) {
+      expect(rotuloDisplayDeIndice("IEHH", v)).toBe(String(core.cIEHH(v).l));
+    }
+  });
+
+  it("CONTROL: su v17 delega el display del IEHH en `cIEHH`", () => {
+    // Si una entrega suya posterior le devolviera escalones propios al `dIEHH`, este control lo diria, y
+    // entonces mandaria su display otra vez (es la regla que ya movio al IFC y al IAE, en el otro sentido).
+    const suyo = readFileSync(htmlDeCambioNuevo(ENTREGA_V17), "utf8").replace(/\r\n/g, "\n");
+    const i = suyo.indexOf("const dIEHH");
+    expect(i, "no aparece dIEHH en su ATLAS_v17").toBeGreaterThan(0);
+    expect(suyo.slice(i, suyo.indexOf("\n", i)).replace(/\s+/g, "")).toContain("dIEHH=v=>v==null?null:cIEHH(v)");
   });
 });

@@ -45,6 +45,9 @@ export type HcHeader = {
    *  recogio cada cosa, y "hubo permiso" sin decir DE QUE texto no es constancia de nada. Puede diferir de
    *  la vigente hoy: es la de la consulta, no la del momento en que se imprime. */
   consentVersion: string | null;
+  /** La consulta viene del archivo importado (`import_batch_id`). Explica por que no hay version
+   *  sellada: el consentimiento de esas no se recogio en Atlas. Ver `data/sello-del-consentimiento`. */
+  importada: boolean;
 };
 
 type PerfilEmbed = { first_name: string | null; last_name: string | null; sex: string | null; birth_date: string | null; occupation: string | null };
@@ -69,7 +72,7 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
       // El embed de `survey_responses` trae QUIEN la registro, con hint del FK (`captured_by`): la tabla
       // tiene mas de una relacion hacia profiles a traves de la evaluacion, y un embed sin hint revienta en
       // runtime, no en tsc.
-      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profession, profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name), survey_responses(registrada:profiles!captured_by(full_name))",
+      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, import_batch_id, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profession, profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name), survey_responses(registrada:profiles!captured_by(full_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -152,5 +155,22 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     // paciente si dio. Versionar existe para registrar un CAMBIO entre visitas, no para perder el dato.
     ocupacion: (data.occupation as string | null) ?? paciente?.occupation ?? null,
     consentVersion: (data.consent_version as string | null) ?? null,
+    // ═══ POR QUE NO HAY VERSION, CUANDO NO LA HAY (Santiago, 2026-11-16) ═══
+    //
+    // La historia clinica decia *"Consulta capturada bajo el consentimiento versión no registrada"*, y en
+    // un documento probatorio una ausencia sin explicar se lee como un dato que falta. Medido en la nube
+    // el 2026-11-16: de 778 consultas, 170 no tienen version, y las 170 se explican por DOS razones que no
+    // son la misma, asi que el documento tiene que poder distinguirlas:
+    //
+    //   · 166 vienen del archivo IMPORTADO. Su consentimiento no se recogio en Atlas, asi que aqui no hay
+    //     version que sellar; las autorizaciones que el paciente SI firmo despues se listan en la tabla.
+    //   · 4 nacieron en Atlas antes del 2026-08-21, que es cuando `consent_version` entro (migracion
+    //     0072, del dictamen legal del 20 de agosto). Ninguna consulta posterior a esa fecha nacida en
+    //     Atlas se quedo sin version: 0 de 608.
+    //
+    // ESO ES TODO LO QUE EL LECTOR NECESITA, y es un hecho, no una disculpa: con el lote se sabe que el
+    // consentimiento vive fuera de Atlas, y sin lote y antes de esa fecha se sabe que Atlas todavia no lo
+    // sellaba. No se fabrica el dato en ninguno de los dos casos.
+    importada: data.import_batch_id != null,
   };
 }

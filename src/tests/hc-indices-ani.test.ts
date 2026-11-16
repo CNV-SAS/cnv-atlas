@@ -174,7 +174,7 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
     expect(irc.referencia(false)).toBe("<2,3 bajo riesgo");
   });
 
-  it("muestra el caso de su captura: IEHH leve e IAE acelerado", () => {
+  it("muestra el caso de su captura: IEHH en déficit e IAE acelerado", () => {
     // COMA DECIMAL desde el 2026-09-06, y no es cosmetico: en la MISMA fila la referencia ya decia
     // "≥6,68 óptimo" (coma) y el valor "0.89" (punto), porque la referencia es nuestra y el formato del
     // valor venia copiado del suyo. Es el "sistema mezclado" que la regla de ortografia por superficie
@@ -188,9 +188,17 @@ describe("indices ANI-BIS-E de la historia clinica", () => {
     // PROBATORIO. Santiago lo preguntó y tenia razon.
     //
     // EL COLOR NO SE UNIFICA Y NO ES UN OLVIDO: `sev` sigue saliendo del sellado, aqui y en la pantalla.
-    const r = indicesAniAlterados({ IEHH: 0.89, IAE: 12.3 }, clas, { IEHH: 2, IAE: 3 }, true);
+    //
+    // ═══ Y EL VALOR DEL IEHH CAMBIA CON LA v17, PORQUE EL DE ANTES YA NO ESTA ALTERADO (2026-11-16) ═══
+    //
+    // Este caso usaba 0,89 con el rotulo "Desequilibrio leve", que era correcto con la escalera de cuatro
+    // escalones de su v16. Su v17 §5 pone el optimo en el CENTRO (−1 a +1), asi que 0,89 es OPTIMO: un
+    // caso de la tabla de ALTERADOS con un valor que ya no lo esta se habria quedado verde afirmando lo
+    // contrario de lo que su libro dice. Se usa el valor REAL que Santiago reporto, −1,57, que es la cola
+    // de deficit: la que la escalera vieja pintaba como "Equilibrio hídrico óptimo".
+    const r = indicesAniAlterados({ IEHH: -1.57, IAE: 12.3 }, clas, { IEHH: 2, IAE: 3 }, true);
     expect(r.map((x) => `${x.codigo} ${x.valor} ${x.clasificacion}`)).toEqual([
-      "IEHH 0,89 Desequilibrio leve",
+      "IEHH -1,57 Déficit",
       "IAE +12,3 años envejecimiento acelerado estimado",
     ]);
     // La severidad es la que se paso, o sea la sellada: el color no se movio.

@@ -1,4 +1,5 @@
 import type { EngineIndicators } from "@/clinical-engine";
+import * as core from "@/clinical-engine/frozen/engine.core.derived.js";
 import { ISCM_REF, MCCB_CORTES } from "@/clinical-engine/frozen/engine.core.derived.js";
 import { bandaIae } from "@/clinical-engine/presentacion-eb-bis";
 import { fmtDec } from "@/lib/format/decimal";
@@ -168,22 +169,35 @@ export type ClaseIcaBis = { l: string; c: string };
 /**
  * Clasificacion de la fila ICA-BIS de la tabla de indices del DIAGNOSTICO.
  *
- * PORTE VERBATIM de `dICA` (ATLAS_v8 L14443), las dos ramas y los cinco hexadecimales. La rama negativa
- * ("Reserva bioeléctrica") no se alcanza hoy porque el motor sella `icaBis` como |PABU - phi|, igual que
- * su tabla, que muestra 0,4157 para un PABU de 1,2023. Se porta igual: retirarla seria decidir por el.
+ * ═══ LAS DOS REGLAS SE VOLVIERON UNA: SU v17 BORRO `dICA` (2026-11-16) ═══
+ *
+ * AQUI VIVIA EL PORTE VERBATIM de su `dICA` (ATLAS_v8 L14443): un clasificador de MAGNITUD con cinco
+ * escalones y sus hexadecimales, propio de esta superficie, mientras la historia clinica tomaba la del
+ * PABU. Estaba bien portado y estaba documentado: *"su archivo tiene DOS reglas, una por superficie"*.
+ *
+ * SU ATLAS_v17 YA NO LO TIENE. `dICA` no aparece en su archivo, y las dos superficies suyas leen `cPABU`
+ * con los percentiles del sexo de su Tabla 7.3. Es el MISMO movimiento que ya hicieron el IFC
+ * (2026-09-21), el IAE (2026-10-29) y el IEHH (2026-11-16): una entrega posterior suya pisa su capa de
+ * display vieja. Aqui ademas no hay que elegir entre dos fuentes suyas, porque solo queda una.
+ *
+ * Y LA DIFERENCIA NO ERA DE PALABRAS. Desde su v17 el ICA-BIS lleva SIGNO (PABU − φ), y `dICA` estaba
+ * escrito para la magnitud: **todo el lado negativo, que es el exceso de adiposidad, caia en su rama de
+ * "Reserva bioeléctrica"**, que se lee como algo bueno y se pinta de azul. Medido en la nube el
+ * 2026-11-16 sobre las 552 consultas con informe: las 552 daban un veredicto distinto en la pantalla y
+ * en la HC, y en 323 la pantalla decia "reserva bioeléctrica" donde su clasificador dice desplazamiento
+ * marcado o leve por EXCESO.
+ *
+ * SE LE PASA LA PABU, NO EL ICA-BIS, porque es lo que `cPABU` recibe y porque asi no hay una resta
+ * intermedia que pueda perder el signo otra vez. Sin PABU o sin sexo no se clasifica: su regla.
  */
-export function clasificarIcaBis(icaBis: number | null): ClaseIcaBis | null {
-  if (icaBis == null) return null;
-  if (icaBis < 0) {
-    if (icaBis > -0.15) return { l: "Reserva bioeléctrica leve", c: "#16a34a" };
-    if (icaBis > -0.5) return { l: "Reserva bioeléctrica moderada", c: "#3b82f6" };
-    return { l: "Reserva bioeléctrica superior", c: "#0891b2" };
-  }
-  if (icaBis <= 0.15) return { l: "Zona φ — Homeostasis óptima", c: "#16a34a" };
-  if (icaBis <= 0.5) return { l: "Desviación leve", c: "#f59e0b" };
-  if (icaBis <= 1.5) return { l: "Desviación moderada", c: "#f97316" };
-  if (icaBis <= 3.0) return { l: "Desviación severa", c: "#ef4444" };
-  return { l: "Zona crítica", c: "#7f1d1d" };
+export function clasificarIcaBis(
+  pabu: number | null | undefined,
+  sexo: "M" | "F" | null | undefined,
+): ClaseIcaBis | null {
+  if (pabu == null || !Number.isFinite(pabu) || pabu === 0 || !sexo) return null;
+  const clase = core.cPABU(pabu, sexo) as { l?: unknown; c?: unknown };
+  if (typeof clase?.l !== "string" || typeof clase?.c !== "string") return null;
+  return { l: clase.l, c: clase.c };
 }
 
 // ═══ LOS ROTULOS DE LA TABLA DE INDICES SON LOS DE SU CAPA DE DISPLAY (2026-09-09) ═══
@@ -231,16 +245,36 @@ const ROTULOS_DISPLAY: Record<string, (v: number) => string> = {
   // sellado, asi que en un IAE de exactamente +5,0 (o -5,0) el rotulo diria acelerado y el color seguiria
   // el del sellado. Es una pregunta suya, no nuestra: va al documento de dudas.
   IAE: (v) => bandaIae(v),
-  // dIEHH (L14445): los cuatro escalones. "Óptimo/Leve/Moderado/Severo" no dice de QUE, y en una tabla
-  // donde la fila de al lado tambien gradua, un "Leve" suelto no se sabe leve de que.
-  IEHH: (v) =>
-    v <= 0
-      ? "Equilibrio hídrico óptimo"
-      : v <= 1
-        ? "Desequilibrio leve"
-        : v <= 2
-          ? "Desequilibrio moderado"
-          : "Desequilibrio severo",
+  // ═══ EL IEHH VUELVE A SU CLASIFICADOR, PORQUE ESTA ESCALERA ERA LA DE LA v16 (2026-11-16) ═══
+  //
+  // AQUI HABIA UNA COPIA de su `dIEHH` (L14445) con los CUATRO escalones de entonces: "Equilibrio hídrico
+  // óptimo" para todo v <= 0, y luego Leve / Moderado / Severo hacia arriba. Se porto con un argumento
+  // bueno: "Óptimo/Leve/Moderado/Severo" no dice de QUE.
+  //
+  // SU v17 §5 REHIZO EL INDICADOR, y no movio un corte: cambio la FORMA. Pasa a TRES zonas y el valor
+  // bueno deja de ser "todo lo que este por debajo de cero" para ser el CENTRO, con dos colas que
+  // significan cosas opuestas (`cIEHH`: déficit < −1 · óptimo −1 a +1 · capacitancia alta > +1). Con la
+  // escalera vieja encima, **todo el lado negativo seguia saliendo "Equilibrio hídrico óptimo"**, incluido
+  // el déficit, que es la cola que su v17 inventa para poder nombrarlo.
+  //
+  // LO QUE SANTIAGO VIO (2026-11-16), y es el peor sitio donde podia verse: una HC con *"Equilibrio
+  // hídrico −1,57 · Equilibrio hídrico óptimo · referencia −1 a +1"*. La referencia ya era la de la v17 y
+  // el veredicto no, asi que la misma linea decia que el valor esta fuera del rango que ella misma
+  // imprime; y dos parrafos mas abajo el analisis del SOAP, que SI lee el clasificador, decia *"un IEHH en
+  // zona de déficit"*. Medido en la nube: en 265 de 552 consultas el rotulo y el clasificador se
+  // contradicen. Es el hazard 4 de CLAUDE.md en un documento probatorio: no es un texto mal redactado, es
+  // que LEEN FUENTES DISTINTAS.
+  //
+  // Y EL ARGUMENTO DEL "de que" SIGUE RESUELTO, por otro lado: la columna del nombre dice "Equilibrio
+  // hídrico" (`nombreLlanoDelIndice`), asi que la fila se lee "Equilibrio hídrico · −1,57 · Déficit". Lo
+  // que no se puede hacer es inventarle una frase: sus tres palabras son suyas y el candado de esta tabla
+  // las coteja contra su archivo.
+  //
+  // SE DELEGA EN `cIEHH`, NO SE COPIAN LAS TRES ZONAS: una copia aqui es exactamente lo que acaba de
+  // costar seis meses de veredictos falsos. Y se computa AL MOSTRAR, desde el valor sellado, como las
+  // severidades y las alertas criticas: asi el rotulo correcto sale tambien en los diagnosticos que
+  // todavia no se han reemitido.
+  IEHH: (v) => String(core.cIEHH(v).l),
 };
 
 /**

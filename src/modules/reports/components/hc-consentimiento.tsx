@@ -1,5 +1,7 @@
 import { formatDate } from "@/lib/format/date";
 
+import { fraseDelSelloDeConsentimiento } from "../data/sello-del-consentimiento";
+
 // SELLO DE CONSENTIMIENTO DE LA HISTORIA CLINICA (asesoria legal, 2026-09-01).
 //
 // QUE PIDE EL LEGAL: que el documento diga BAJO QUE AUTORIZACIONES se recogio cada cosa. No basta con que
@@ -31,19 +33,28 @@ export type HcAutorizacion = {
 export function HcConsentimiento({
   autorizaciones,
   versionDeLaConsulta,
+  consultaImportada = false,
 }: {
   autorizaciones: HcAutorizacion[];
   /** `evaluations.consent_version`: la version bajo la que se capturo ESTA consulta. */
   versionDeLaConsulta: string | null;
+  /** La consulta viene del archivo importado. Explica por que no hay version sellada. */
+  consultaImportada?: boolean;
 }) {
   return (
     <section className="flex flex-col gap-2 border-t border-border pt-4">
       <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">
         Autorizaciones bajo las que se recogió esta información
       </h3>
+      {/* LA FRASE SALE DE UN SOLO SITIO, el mismo que usa el PDF: decia "versión no registrada" a secas,
+          y en un documento probatorio una ausencia sin explicar se lee como un dato que falta. Ahora dice
+          POR QUE no la hay (archivo importado, o consulta anterior al 21 de agosto de 2026), que es un
+          hecho verificable y no una disculpa. Ver `data/sello-del-consentimiento`. */}
       <p className="text-xs text-muted-foreground">
-        Consulta capturada bajo el consentimiento{" "}
-        <strong>versión {versionDeLaConsulta ?? "no registrada"}</strong>.
+        {fraseDelSelloDeConsentimiento({
+          version: versionDeLaConsulta,
+          importada: consultaImportada,
+        })}
       </p>
 
       {autorizaciones.length === 0 ? (

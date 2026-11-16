@@ -396,7 +396,24 @@ export function EvaluationResults({
     ffmi: indicators.FFMI,
     sectorId: snapshot.sectorDiana?.id ?? null,
   });
-  const claseIca = clasificarIcaBis(indicators.icaBis);
+  // ═══ EL ICA-BIS PASA A `cPABU` TAMBIEN AQUI, PORQUE SU v17 BORRO `dICA` (2026-11-16) ═══
+  //
+  // Hasta aqui esta fila usaba `clasificarIcaBis`, el porte de su `dICA`: un clasificador de MAGNITUD con
+  // cinco escalones, propio de esta pantalla. Era correcto, y estaba documentado como "su archivo tiene
+  // DOS reglas, una por superficie" (la HC tomaba la del PABU). Su v17 cierra esa division: **`dICA` ya
+  // no existe en su archivo**, y las dos superficies leen `cPABU`, con los percentiles del sexo de su
+  // Tabla 7.3. Es el mismo movimiento que ya hicieron el IFC, el IAE y el IEHH: una entrega posterior
+  // suya pisa su capa de display vieja.
+  //
+  // Y NO ERA SOLO UN NOMBRE DISTINTO. Desde la v17 el ICA-BIS lleva SIGNO, y `dICA` estaba escrito para
+  // la magnitud: todo el lado negativo (que ahora es el exceso de adiposidad) caia en su rama de
+  // "Reserva bioeléctrica", que se lee como algo BUENO y se pinta de AZUL. Medido en la nube el
+  // 2026-11-16: las 552 consultas con informe dan un veredicto distinto en las dos superficies, y en 323
+  // la pantalla dice "reserva bioeléctrica" donde su clasificador dice desplazamiento por exceso.
+  //
+  // SIN SEXO NO SE CLASIFICA, que es su regla y la misma que ya rige el IFC: la fila queda sin veredicto
+  // en vez de inventarle uno con el corte del otro sexo.
+  const claseIca = clasificarIcaBis(indicators.pabu, snapshot.sexo);
   const sevByCode: Record<string, number | null> = {
     ...indicatorSeverities(snapshot),
     "ICA-BIS": veredictoSev(claseIca),

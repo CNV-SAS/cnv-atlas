@@ -157,6 +157,9 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
       ? {
           indicators: engine.indicators as unknown as Record<string, number | null> & { FFMI: number },
           classifications: engine.classifications as unknown as Record<string, unknown>,
+          // EL SEXO DEL SELLO. Sin el, la severidad de los indices se computaba sin sexo y la tabla de
+          // alterados perdia filas enteras (2026-11-16, ver `HcEntradas.snapshot`).
+          sexo: engine.sexo,
         }
       : null,
     suggested: snapshot,
@@ -330,6 +333,7 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     // falsa con formato de documento clinico.
     prescripcionSinEmitir: !documento.sellados,
     consentVersion: header.consentVersion,
+    consultaImportada: header.importada,
     // REVOCADA y NUNCA OTORGADA no son lo mismo en un documento probatorio: una dice que el permiso
     // existio y se retiro, la otra que nunca lo hubo. Se conservan separadas, como en la pantalla.
     autorizaciones: consents.map((c) => ({
