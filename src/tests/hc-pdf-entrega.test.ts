@@ -202,6 +202,21 @@ describe("los quince bloques van SIEMPRE, con o sin dato", () => {
     //
     // (Mi primera versión de este candado prohibía la cadena a secas y se puso roja sobre el código
     // CORRECTO, que usa ese mismo condicional dentro de la sección para elegir el contenido.)
+    // ═══ "Recomendaciones" SALE DE ESTA LISTA, Y NO ES UNA RELAJACION (Santiago, 2026-11-16) ═══
+    //
+    // Su caso: el PDF decia "Recomendaciones: No se emitieron recomendaciones para este caso." y justo
+    // debajo listaba las remisiones, que SI las hay. Leido de corrido, el documento parece negar lo que
+    // afirma dos lineas mas abajo.
+    //
+    // LA DISTINCION QUE SOSTIENE LA REGLA PARA LAS OTRAS SEIS: esas seis son DATOS DEL PACIENTE (lo que
+    // se registro, lo que se midio, lo que el modelo exigio), y ahi la ausencia es un hecho de esta
+    // consulta que el lector tiene que ver: un bloque ausente se lee como que no se evaluo. Las
+    // "Recomendaciones" no son datos del paciente: son los SIETE BLOQUES CONDICIONALES por diagnostico
+    // de su archivo (v8 L15255-15272). Que no se active ninguno no es un hueco de esta consulta, es que
+    // para este caso su archivo no tiene nada que recomendar aparte de la ruta. Ahi callar es exacto.
+    //
+    // Y lo que decide es de quien es la decision: imprimir un bloque vacio es PRESENTACION nuestra, su
+    // archivo no la manda, y Santiago la cambio. Las otras seis siguen vigilandose aqui.
     const codigo = sinComentarios(DOC);
     for (const titulo of [
       "Objetivo del tratamiento",
@@ -210,7 +225,6 @@ describe("los quince bloques van SIEMPRE, con o sin dato", () => {
       "Composición corporal",
       "Índices ANI-BIS-E alterados",
       "Observaciones del profesional",
-      "Recomendaciones",
     ]) {
       const i = codigo.indexOf(`<Seccion titulo="${titulo}">`);
       expect(i, `falta la sección ${titulo}`).toBeGreaterThan(-1);

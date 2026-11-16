@@ -980,9 +980,10 @@ Para que no lo busque. Una línea cada una.
   suplementos y las remisiones, porque el informe no puede recomendar algo que la profesional no
   recomendó. Siguen en la historia clínica y en la hoja del plan.
 - **El ICC y el ICT** (decidido por Santiago): si se teclea la cintura o la cadera, Atlas recalcula los
-  dos con sus fórmulas; si no, manda el del equipo. **Y la fila PABU:** el 7 de septiembre respondió "ya
-  revisé ATLAS y está bien como lo tienen", un barrido nuestro la cambió sin instrucción suya, se
-  restituyó el 21 y hoy lleva candado.
+  dos con sus fórmulas; si no, manda el del equipo.
+- **La fila PABU.** El 7 de septiembre respondió:
+  "Ya revisé ATLAS y está bien como lo tienen". Un barrido de rótulos nuestro la cambió el 9 sin
+  instrucción suya, se restituyó el 21 y hoy lleva candado.
 - **Por sus respuestas de septiembre:** la apertura del párrafo de IA · el criterio del profesional en la
   HC · las tres entradas de Leche semidescremada · la ortografía de la tabla de intercambio · las dos
   preguntas de encuesta que no llegaron en la entrega del 4 · los dos guiones de ANI-BIS-E · el
