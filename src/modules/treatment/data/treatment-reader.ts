@@ -182,7 +182,9 @@ export async function getTreatmentProtocol(
     await Promise.all([
     supabase
       .from("treatment_nutraceuticals")
-      .select("id, nutraceutical_id, dosage, duration_days, nutraceuticals(name)")
+      // `ownership` viaja CON la fila (2026-11-16): es lo que decide si esta linea cierra el pendiente
+      // del cierre, y resolverlo despues cruzando contra el catalogo seria una segunda fuente.
+      .select("id, nutraceutical_id, dosage, duration_days, nutraceuticals(name, ownership)")
       .eq("treatment_id", treatmentId),
     supabase
       .from("treatment_diet_guidelines")
@@ -379,6 +381,7 @@ export async function getTreatmentProtocol(
       nutraceuticalId: n.nutraceutical_id,
       // El join anida el nombre del catalogo; puede venir como objeto o arreglo segun el shape.
       name: nutraceuticalName(n.nutraceuticals),
+      ownership: nutraceuticalOwnership(n.nutraceuticals),
       dosage: n.dosage,
       durationDays: n.duration_days,
     })),
@@ -432,12 +435,23 @@ export async function getTreatmentProtocol(
 // El embed de PostgREST puede tipar la relacion como objeto o como arreglo; se resuelve
 // defensivamente a un nombre legible.
 function nutraceuticalName(rel: unknown): string {
-  if (Array.isArray(rel)) {
-    const first = rel[0] as { name?: string } | undefined;
-    return first?.name ?? "Nutracéutico";
-  }
-  const obj = rel as { name?: string } | null;
-  return obj?.name ?? "Nutracéutico";
+  return nutraceuticalEmbed(rel)?.name ?? "Nutracéutico";
+}
+
+/**
+ * EL `ownership` DEL PRODUCTO EMBEBIDO. null si el embed no lo trajo.
+ *
+ * Se lee aparte del nombre y NO cae a "propio" aqui: la decision de que hacer con un ownership
+ * desconocido es de la regla (`producto-de-tercero`), no del lector. Un lector que elige por su cuenta
+ * es una segunda fuente escondida.
+ */
+function nutraceuticalOwnership(rel: unknown): string | null {
+  return nutraceuticalEmbed(rel)?.ownership ?? null;
+}
+
+function nutraceuticalEmbed(rel: unknown): { name?: string; ownership?: string | null } | null {
+  if (Array.isArray(rel)) return (rel[0] as { name?: string; ownership?: string | null }) ?? null;
+  return (rel as { name?: string; ownership?: string | null } | null) ?? null;
 }
 
 // --- T2 A3: lectura para aprobar el protocolo ---

@@ -12,6 +12,15 @@ export type PrescribedNutraceutical = {
   name: string;
   dosage: string | null;
   durationDays: number | null;
+  /**
+   * DE QUIEN ES EL PRODUCTO (`propio` | `tercero`), traido del catalogo con la fila (2026-11-16).
+   *
+   * No es decoracion: es lo que decide si esta linea CIERRA el pendiente de nutraceuticos del cierre.
+   * LUVIA es de tercero y la pantalla de prescribir ya lo separaba; la lista de pendientes no lo
+   * miraba, asi que una prescripcion que solo tenia LUVIA cerraba el item igual. La regla vive en
+   * `modules/treatment/producto-de-tercero`, para que las dos superficies no puedan discrepar.
+   */
+  ownership: string | null;
 };
 
 export type DietGuideline = { id: string; text: string };

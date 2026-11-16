@@ -61,12 +61,34 @@ export type EstadoConsulta = {
    */
   sinPrescripcion: boolean;
   /**
-   * CUANTOS NUTRACEUTICOS HAY PRESCRITOS en esta consulta. Decide QUE pendiente es (Santiago, smoke del
-   * 2026-11-15): con dos prescritos, el aviso le decia *"si no le prescribiste ninguno, usa el botón No
-   * prescribo"*, que es un consejo sobre un caso que no es el suyo. Lo que le falta es registrar la
-   * ENTREGA, y eso se hace con la venta.
+   * CUANTOS NUTRACEUTICOS DE CNV HAY EN LA PRESCRIPCION VIGENTE de esta consulta.
+   *
+   * ═══ LAS DOS PRECISIONES, Y LAS DOS SON DE UN CASO REAL ═══
+   *
+   * 1 · VIGENTE, NO HISTORIAL. Siempre lo fue: `treatment_nutraceuticals` se reemplaza en bloque dentro
+   *     de la transaccion que guarda la prescripcion, asi que quitar un producto borra su fila. No hay
+   *     historial de prescripcion que se pueda estar contando por error (lo emitido vive aparte, en
+   *     `prescription_emissions`, y nadie lo lee para esto).
+   *
+   * 2 · DE CNV, NO CUALQUIER PRODUCTO (Santiago, 2026-11-16). Hasta hoy era el numero de filas, y eso
+   *     contaba tambien los productos de TERCERO. Su caso: *"se prescribe un nutraceutico, se quita,
+   *     queda solo un producto Luvia, y el item del cierre desaparece"*. La pantalla de prescribir ya
+   *     los separaba desde el 2026-09-26 (LUVIA sale en su propio bloque, rotulado "Producto externo");
+   *     esta lista no, y por eso las dos decian cosas distintas sobre la misma consulta.
+   *
+   * La regla de que cuenta vive en `modules/treatment/producto-de-tercero`, que es el mismo modulo que
+   * usa la pantalla: dos copias de esta regla es exactamente como nacio el defecto.
    */
   nutraceuticosPrescritos: number;
+  /**
+   * CUANTOS PRODUCTOS DE TERCERO hay en la misma prescripcion vigente (LUVIA y los que vengan).
+   *
+   * NO cierra el pendiente: por eso es un campo aparte y no se suma al de arriba. Existe para que el
+   * aviso no le diga *"guarda la prescripción con los que le indicaste"* a quien acaba de guardar una:
+   * seria describirle un hueco que no es el suyo, que es el mismo defecto que el aviso del 15 de
+   * noviembre. Con esto el aviso puede nombrar lo que de verdad falta.
+   */
+  productosDeTerceroPrescritos: number;
   proximaCita: string | null;
   remisionesSinRetorno: number;
 };
@@ -182,14 +204,25 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
     // opciones se retiro el 2026-09-26, pero sus respuestas siguen en la base) y porque dice otra cosa:
     // ahi SI hubo una decision, aplazada. Un pendiente que ignora una respuesta registrada le pide al
     // profesional que vuelva a decidir algo que ya decidio.
+    //
+    // ── Y EL TERCER CASO: LO PRESCRITO NO ES UN NUTRACEUTICO (Santiago, 2026-11-16) ──
+    //
+    // Hay prescripcion guardada, pero solo de productos externos. Decirle "guarda la prescripción" a
+    // quien acaba de guardar una lo manda a buscar un boton que ya pulsó. Lo que le falta es otra cosa,
+    // y el aviso la nombra: el criterio sobre los nutracéuticos de CNV.
+    const soloDeTercero = e.productosDeTerceroPrescritos > 0;
     const titulo =
       e.nutraceuticosDecision === "pendiente"
         ? "El paciente quedó de pensar los nutracéuticos"
-        : "No se registró la decisión sobre los nutracéuticos";
+        : soloDeTercero
+          ? "Lo prescrito es un producto externo, no un nutracéutico"
+          : "No se registró la decisión sobre los nutracéuticos";
     const detalle =
       e.nutraceuticosDecision === "pendiente"
         ? "Es una respuesta válida: se puede cerrar así y registrarla cuando el paciente decida."
-        : 'Guarda la prescripción con los que le indicaste, o usa el botón "No prescribo nutracéuticos" con su motivo, junto a Guardar prescripción. Si se los lleva o no, queda en la venta.';
+        : soloDeTercero
+          ? 'La prescripción quedó guardada. Falta el criterio sobre los nutracéuticos de CNV: agrégalos a la misma prescripción, o usa el botón "No prescribo nutracéuticos" con su motivo.'
+          : 'Guarda la prescripción con los que le indicaste, o usa el botón "No prescribo nutracéuticos" con su motivo, junto a Guardar prescripción. Si se los lleva o no, queda en la venta.';
     out.push({
       id: "nutraceuticos",
       titulo,

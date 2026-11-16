@@ -18,6 +18,7 @@ import { estadoParaPrescribir, LEYENDA_DISPONIBILIDAD } from "@/modules/nutraceu
 import { prescriptionSignature } from "../data/protocol-signature";
 import type { TreatmentProtocol } from "../data/treatment-view-types";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
+import { esNutraceuticoDeCnv, esProductoDeTercero } from "../producto-de-tercero";
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
@@ -75,10 +76,13 @@ export function NutraceuticalsSection({
   const idsRecomendados = new Set(
     recommended.map((r) => (r.status === "en_catalogo" ? r.product.id : null)).filter((id): id is string => id != null),
   );
+  // LA REGLA SALE DEL MODULO NEUTRO (2026-11-16), no de un `!== "tercero"` escrito aqui: la lista de
+  // pendientes del cierre tiene que partir el catalogo EXACTAMENTE igual, y mientras fueron dos copias
+  // la pantalla decia "producto externo" y el cierre lo contaba como nutraceutico.
   const nutraceuticosDeCnv = protocol.catalog.filter(
-    (c) => c.ownership !== "tercero" && !idsRecomendados.has(c.id),
+    (c) => esNutraceuticoDeCnv(c.ownership) && !idsRecomendados.has(c.id),
   );
-  const productosDeTercero = protocol.catalog.filter((c) => c.ownership === "tercero");
+  const productosDeTercero = protocol.catalog.filter((c) => esProductoDeTercero(c.ownership));
   const isAdded = (id: string) => nutras.some((n) => n.nutraceuticalId === id);
   // El producto del desplegable, para poner sus declaraciones junto a las del paciente mientras elige.
   const seleccionado = protocol.catalog.find((c) => c.id === pickId) ?? null;

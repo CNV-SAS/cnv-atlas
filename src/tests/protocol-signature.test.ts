@@ -43,8 +43,8 @@ const BASE: TreatmentProtocol = {
   menuSemanal: null,
   kcalSugerido: 2100,
   nutraceuticals: [
-    { id: "tn-1", nutraceuticalId: "n-multicell", name: "MULTI-CELL BASE", dosage: "1/dia", durationDays: 30 },
-    { id: "tn-2", nutraceuticalId: "n-omega", name: "OMEGA COMPLEX", dosage: null, durationDays: null },
+    { id: "tn-1", nutraceuticalId: "n-multicell", name: "MULTI-CELL BASE", ownership: "propio", dosage: "1/dia", durationDays: 30 },
+    { id: "tn-2", nutraceuticalId: "n-omega", name: "OMEGA COMPLEX", ownership: "propio", dosage: null, durationDays: null },
   ],
   recommendedNutraceuticals: "MULTI-CELL BASE, OMEGA COMPLEX",
   guidelines: [
@@ -156,6 +156,7 @@ describe("nutraceuticalsSignature: key de remonte + base del candado de la presc
       id: "tn-3",
       nutraceuticalId: "n-curcumin",
       name: "CURCUMIN",
+      ownership: "propio",
       dosage: null,
       durationDays: null,
     });

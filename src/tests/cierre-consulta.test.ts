@@ -25,6 +25,8 @@ const completa: EstadoConsulta = {
   sinPrescripcion: false,
   // CON PRESCRIPCION, que es el caso de la consulta completa: hay dos, y con eso basta.
   nutraceuticosPrescritos: 2,
+  // Sin productos externos en el caso base: su efecto se prueba en su propio caso (LUVIA).
+  productosDeTerceroPrescritos: 0,
   proximaCita: "2026-11-22",
   remisionesSinRetorno: 0,
 };
@@ -116,6 +118,7 @@ describe("pendientes del cierre", () => {
       nutraceuticosDecision: null,
       sinPrescripcion: false,
       nutraceuticosPrescritos: 0,
+      productosDeTerceroPrescritos: 0,
     }).find((x) => x.id === "nutraceuticos");
     expect(p).toBeDefined();
     expect(p?.titulo).toBe("No se registró la decisión sobre los nutracéuticos");
@@ -148,6 +151,56 @@ describe("pendientes del cierre", () => {
     ).not.toContain("nutraceuticos");
   });
 
+  // ═══ EL CASO DE SANTIAGO: SE QUITA EL NUTRACEUTICO Y QUEDA SOLO LUVIA (2026-11-16) ═══
+  //
+  // Textual suyo: *"se prescribe un nutraceutico, se quita, queda solo un producto Luvia, y el item del
+  // cierre desaparece"*. La cuenta siempre fue la VIGENTE (el writer reemplaza el set entero), asi que
+  // quitar el nutraceutico ya borraba su fila; lo que faltaba era no contar los productos de TERCERO.
+  it("quitar el nutracéutico y dejar solo LUVIA deja el pendiente ABIERTO", () => {
+    const soloLuvia = { nutraceuticosPrescritos: 0, productosDeTerceroPrescritos: 1 };
+    expect(ids(soloLuvia)).toContain("nutraceuticos");
+  });
+
+  it("y el aviso de ese caso NO le pide guardar una prescripción que ya guardó", () => {
+    const p = con({ nutraceuticosPrescritos: 0, productosDeTerceroPrescritos: 1 }).find(
+      (x) => x.id === "nutraceuticos",
+    );
+    expect(p?.titulo).toContain("producto externo");
+    // Lo que SI tiene que ofrecerle: completar con nutracéuticos de CNV, o el botón del criterio.
+    expect(p?.detalle).toContain("No prescribo nutracéuticos");
+    expect(p?.detalle, "le manda a pulsar Guardar prescripción, que ya pulsó").not.toContain(
+      "Guarda la prescripción",
+    );
+  });
+
+  it("un nutracéutico de CNV cierra el ítem aunque además haya un producto externo", () => {
+    // La mezcla es el caso normal: LUVIA mas un VITACELLEBIS. El externo no resta.
+    expect(ids({ nutraceuticosPrescritos: 1, productosDeTerceroPrescritos: 1 })).not.toContain(
+      "nutraceuticos",
+    );
+  });
+
+  // ═══ Y LA REGLA VIVE EN UN SOLO SITIO, QUE ES LO QUE DEJO NACER EL DEFECTO ═══
+  //
+  // La pantalla de prescribir partia el catalogo con `ownership !== "tercero"` desde el 2026-09-26 y la
+  // lista de pendientes no miraba el ownership: dos copias de la misma regla, y una envejecio sola.
+  it("la pantalla de prescribir y el cierre parten el catálogo con la MISMA regla", () => {
+    const pantalla = readFileSync(
+      "src/modules/treatment/components/nutraceuticals-section.tsx",
+      "utf8",
+    );
+    expect(pantalla).toContain("producto-de-tercero");
+    expect(pantalla, 'la pantalla volvió a escribir su propia copia de la regla').not.toContain(
+      'ownership === "tercero"',
+    );
+    expect(pantalla).not.toContain('ownership !== "tercero"');
+    const pagina = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
+    expect(pagina).toContain("cuantosNutraceuticosDeCnv");
+    expect(pagina, "el cierre volvió a contar filas sin mirar de quién es el producto").not.toContain(
+      "nutraceuticosPrescritos: protocol?.nutraceuticals.length",
+    );
+  });
+
   // ═══ LA VENTA YA NO ES UNA VIA, Y LA FORMA LO FIJA (2026-11-16) ═══
   //
   // El campo `hayVentaDeNutraceuticos` se RETIRO de `EstadoConsulta`, no se dejo sin leer: una bandera que
@@ -177,6 +230,7 @@ describe("pendientes del cierre", () => {
       nutraceuticosDecision: null,
       sinPrescripcion: false,
       nutraceuticosPrescritos: 0,
+      productosDeTerceroPrescritos: 0,
       proximaCita: null,
       remisionesSinRetorno: 1,
     });

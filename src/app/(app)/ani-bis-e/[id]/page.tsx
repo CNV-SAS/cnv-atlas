@@ -149,6 +149,10 @@ import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
 import {
+  cuantosNutraceuticosDeCnv,
+  esProductoDeTercero,
+} from "@/modules/treatment/producto-de-tercero";
+import {
   getAsesoriaMacros,
   getPrescripcionNutricional,
   getProtKgPrescrito,
@@ -1682,9 +1686,15 @@ export default async function ResultadosEvaluacionPage({
                 nutraceuticosDecision: protocol?.nutraceuticalDecision?.decision ?? null,
                 // LA VIA NUEVA (0214): el criterio clínico de no prescribir. Resuelve el mismo pendiente.
                 sinPrescripcion: protocol?.sinPrescripcion != null,
-                // CUANTOS PRESCRIBIO: decide si el pendiente es "falta registrar la entrega" o "falta
-                // registrar el criterio". Con dos prescritos, el aviso le ofrecia el boton que los borra.
-                nutraceuticosPrescritos: protocol?.nutraceuticals.length ?? 0,
+                // LA CUENTA ES SOBRE LA PRESCRIPCION VIGENTE Y SOLO SOBRE LOS NUTRACEUTICOS DE CNV
+                // (2026-11-16): `protocol.nutraceuticals` son las filas de `treatment_nutraceuticals`,
+                // que el writer reemplaza en bloque, asi que quitar un producto ya lo quitaba de aqui.
+                // Lo que faltaba era no contar los productos de tercero: con solo LUVIA prescrita, el
+                // item se cerraba sin que hubiera ningun nutraceutico indicado.
+                nutraceuticosPrescritos: cuantosNutraceuticosDeCnv(protocol?.nutraceuticals ?? []),
+                productosDeTerceroPrescritos: (protocol?.nutraceuticals ?? []).filter((n) =>
+                  esProductoDeTercero(n.ownership),
+                ).length,
                 proximaCita: hcHeader.proximaCita,
                 remisionesSinRetorno: hcRemisiones.filter((r) => !r.returnedAt).length,
               })}
