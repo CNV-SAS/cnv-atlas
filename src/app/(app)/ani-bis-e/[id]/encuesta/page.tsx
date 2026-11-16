@@ -15,7 +15,9 @@ import { formatDate } from "@/lib/format/date";
 import { alertasDisponibles, encDesdeRespuestas } from "@/clinical-engine/alertas-disponibles";
 import { AlertasClinicas } from "@/modules/diagnoses/components/alertas-clinicas";
 import { SurveyReadonly } from "@/modules/evaluations/components/survey-readonly";
+import { contextoDeLaCnvsDeLaConsulta } from "@/modules/evaluations/data/insumos-de-la-cnvs";
 import { instrumentoDeLaConsulta } from "@/modules/evaluations/data/instrumento-de-la-consulta";
+import { dominiosQueSePresentan } from "@/modules/evaluations/lo-que-se-presenta";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 
@@ -36,7 +38,7 @@ export default async function EncuestaEvaluacionPage({
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 
-  const [header, domains, results, correctionAvailability, instrumento] = await Promise.all([
+  const [header, domains, results, correctionAvailability, instrumento, cnvs] = await Promise.all([
     getEvaluationHeaderForSession(id),
     getSurveyAnswersForEvaluation(id),
     getEvaluationResults(id),
@@ -44,8 +46,21 @@ export default async function EncuestaEvaluacionPage({
     // BAJO QUE INSTRUMENTO SE RECOGIO ESTA ENCUESTA (0243). Se LEE el sello, no se deduce del tipo de la
     // consulta: deducirlo podria decir "CNV-S" sobre una respuesta recogida con la encuesta completa.
     instrumentoDeLaConsulta(id),
+    // QUE PREGUNTAS SE LE PRESENTARON DE VERDAD (Santiago, 2026-11-15): esta vista mostraba el S1 y el
+    // S2 como «Sin responder» en un seguimiento donde la CNV-S decidio no preguntarlos, y los contaba en
+    // su aviso ambar. `null` en una consulta de linea base, que es donde la regla no quita nada.
+    //
+    // CON `catch` como los demas avisos de pantalla: si falla, la vista vuelve a mostrar el instrumento
+    // entero, que es lo que hacia hasta hoy, y eso nunca deja a nadie sin la encuesta delante.
+    contextoDeLaCnvsDeLaConsulta(id).catch(() => null),
   ]);
   if (!header) notFound();
+
+  // LO QUE SE PRESENTO, con la regla unica. La VISTA y su aviso ambar leen esto; las ALERTAS CLINICAS de
+  // mas abajo, no: esas se derivan de las respuestas SELLADAS, y entre ellas estan las heredadas de los
+  // cuatro `retirar` (el `d5_38` alimenta el diagnostico). Filtrarlas ahi seria perder un dato clinico
+  // que el paciente SI dio, solo que en otra consulta.
+  const presentados = dominiosQueSePresentan(domains ?? [], cnvs ?? null);
 
   // Pre-diagnostico: se puede COMPLETAR/EDITAR directo (nada sellado). Con diagnostico, cambiar una
   // respuesta es el flujo de CORRECCION versionada, que ahora vive AQUI (Santiago 2026-08-15, b): antes
@@ -158,7 +173,7 @@ export default async function EncuestaEvaluacionPage({
         )}
       />
 
-      <SurveyReadonly domains={domains ?? []} />
+      <SurveyReadonly domains={presentados} />
     </div>
   );
 }

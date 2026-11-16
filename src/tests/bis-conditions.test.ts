@@ -324,7 +324,11 @@ describe("el import BIS exige condiciones y encuesta completa, todo en un mensaj
 
   it("el action lo aplica con la misma cuenta que el diagnóstico, y la pantalla ya no bloquea", () => {
     const action = readFileSync("src/modules/bis/actions.ts", "utf8");
-    expect(action).toContain("evaluarRequisitosDelImport(intake, domains ? computeSurveyGapsFromDomains(domains) : null)");
+    // "LA MISMA CUENTA QUE EL DIAGNOSTICO" es ahora literal: las dos puertas piden `huecosDeLoPresentado`,
+    // el unico lector que aplica la regla de lo que se presenta (2026-11-15). Antes las dos contaban por su
+    // cuenta y en una CNV-S daban cifras distintas: este boton exigia el S2 que el formulario no presento.
+    expect(action).toContain("evaluarRequisitosDelImport(intake, huecos)");
+    expect(action).toContain("huecosDeLoPresentado(evaluationId)");
     const pantalla = readFileSync("src/modules/evaluations/components/entrada-evaluacion.tsx", "utf8");
     expect(pantalla).not.toContain("Primero, las condiciones de la toma");
     expect(pantalla).toContain("<BisImportForm evaluation={bisImportEval} />");
@@ -760,7 +764,10 @@ describe("el diagnóstico exige las condiciones de la toma, venga de donde venga
 
   it("el pipeline lo aplica después del gate de encuesta completa", () => {
     const pipeline = readFileSync("src/modules/clinical-pipeline/services/run-pipeline.ts", "utf8");
-    const encuesta = pipeline.indexOf("formatIncompleteSurveyMessage(inputs.surveyGaps)");
+    // LA CUENTA SE MUDO A `huecosDeLoPresentado` (2026-11-15): contaba las preguntas de la VERSION, y en
+    // una CNV-S eso exigia los `retirar` y no veia el Modulo S. Lo que este candado fija es el ORDEN, que
+    // no cambia: primero la encuesta con su lista por dominio, despues las condiciones de la toma.
+    const encuesta = pipeline.indexOf("formatIncompleteSurveyMessage(surveyGaps)");
     const condiciones = pipeline.indexOf("condicionesParaDiagnosticar(inputs.bisConditions)");
     expect(encuesta).toBeGreaterThan(-1);
     expect(condiciones).toBeGreaterThan(encuesta);

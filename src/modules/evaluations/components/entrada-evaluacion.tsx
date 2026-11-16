@@ -527,7 +527,7 @@ export function EntradaEvaluacion({
     surveyDomains && surveyDomains.length > 0 ? (
       <div className="solo-impresion flex-col gap-6">
         {consentStatus ? <ConsentStatusCard status={consentStatus} /> : null}
-        <SurveyReadonly domains={surveyDomains} />
+        <SurveyReadonly domains={domains} />
         {bisReadonly ? <BisConditionsReadonly data={bisReadonly} /> : null}
       </div>
     ) : null;

@@ -14,6 +14,8 @@ import {
   mensajeDelInsumoClinico,
 } from "@/modules/bis-intake/services/import-gate";
 
+import { huecosDeLoPresentado } from "@/modules/evaluations/data/lo-presentado-de-la-consulta";
+
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
 import { restriccionesDeLaEncuesta } from "@/modules/treatment/services/restricciones-de-la-encuesta";
@@ -68,9 +70,19 @@ export async function runClinicalPipeline(
   // action ofrezca el enlace a completarla. El guardado por partes del intake es otro flujo y NO se toca.
   // (La suspension Q28 queda como red, inalcanzable por esta via: el gate hace imposible sellar uno nuevo
   // incompleto.)
-  if (inputs.surveyGaps.length > 0) {
+  //
+  // ═══ Y SE CUENTA **LO QUE SE PRESENTO**, NO EL INSTRUMENTO ENTERO (Santiago, 2026-11-15) ═══
+  //
+  // Esta cuenta vivia en `readPipelineInputs` y enumeraba las preguntas DE LA VERSION sellada, que es la
+  // del cuestionario. En una CNV-S eso fallaba por los dos lados a la vez: contaba los cuatro `retirar`
+  // (que no se preguntan, se heredan) y NO VEIA las siete del Modulo S, que viven en su propia version.
+  // O sea que podia exigir una pregunta que no se hizo y dejar pasar un S3 sin responder, que es la mitad
+  // de su tabla 6. Ahora la cuenta la hace el unico lector que aplica la regla de lo que se presenta, el
+  // mismo que usan el boton de importar la BIS y el gate de regenerar.
+  const surveyGaps = await huecosDeLoPresentado(input.evaluationId);
+  if (surveyGaps && surveyGaps.length > 0) {
     return err(
-      appError("validation", formatIncompleteSurveyMessage(inputs.surveyGaps), {
+      appError("validation", formatIncompleteSurveyMessage(surveyGaps), {
         incompleteSurvey: "1",
       }),
     );

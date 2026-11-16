@@ -34,10 +34,8 @@ import {
   sexoParaDiagnosticar,
   type SurveyFieldAnswer,
 } from "@/modules/clinical-pipeline/services/build-engine-input";
-import {
-  computeSurveyGaps,
-  formatIncompleteSurveyMessage,
-} from "@/modules/clinical-pipeline/services/survey-completeness";
+import { formatIncompleteSurveyMessage } from "@/modules/clinical-pipeline/services/survey-completeness";
+import { huecosDeLoPresentado } from "@/modules/evaluations/data/lo-presentado-de-la-consulta";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import { restriccionesDeLaEncuesta } from "@/modules/treatment/services/restricciones-de-la-encuesta";
 
@@ -370,17 +368,17 @@ export async function correctEvaluation(
   const output = runEngine(engineInput);
 
   // GATE de encuesta COMPLETA TAMBIEN al REGENERAR (Gildardo §1): si el profesional corrige y deja la
-  // encuesta incompleta, no puede regenerar. Mismo predicado que al generar (las 64 de la version), pero
-  // sobre el estado CORREGIDO (correctedRows), no el guardado: una pregunta completada en esta correccion
-  // ya cuenta. El mensaje dice cuanto falta y por dominio.
+  // encuesta incompleta, no puede regenerar. Se mide sobre el estado CORREGIDO, no sobre el guardado:
+  // una pregunta completada en esta correccion ya cuenta. El mensaje dice cuanto falta y por dominio.
+  //
+  // ═══ Y SOBRE **LO QUE SE PRESENTO**, con el mismo lector que las otras dos puertas (2026-11-15) ═══
+  //
+  // Esto enumeraba `catalog`, o sea las preguntas de la VERSION, y en una CNV-S eso exigia los cuatro
+  // `retirar` (que no se preguntan, se heredan) y no veia las siete del Modulo S. El estado corregido
+  // viaja como SOBRESCRITURA y se aplica ANTES de filtrar, que es lo que importa: si la profesional
+  // corrige el S1 y los dos productos quedan adherentes, el S2 deja de aplicar en el mismo acto.
   const correctedByQuestion = new Map(correctedRows.map((r) => [r.questionId, r.answerValue ?? null]));
-  const surveyGaps = computeSurveyGaps(
-    catalog.map((q) => ({
-      section: q.section,
-      orderIndex: q.orderIndex,
-      answerValue: correctedByQuestion.get(q.id) ?? null,
-    })),
-  );
+  const surveyGaps = (await huecosDeLoPresentado(input.evaluationId, correctedByQuestion)) ?? [];
   if (surveyGaps.length > 0) {
     return err(appError("validation", formatIncompleteSurveyMessage(surveyGaps, "regenerar")));
   }
