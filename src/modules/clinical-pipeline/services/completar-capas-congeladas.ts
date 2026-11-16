@@ -10,6 +10,7 @@ import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditio
 import { recordAudit } from "@/modules/audit/log";
 
 import { readEfrContent } from "../data/pipeline-reader";
+import { tieneQueTraerLasCapas } from "../mayor-con-capas";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // COMPLETAR LAS CAPAS CONGELADAS QUE LA REEMISION NO ESCRIBIO  ·  2026-11-07
@@ -123,7 +124,10 @@ export async function completarCapasCongeladas(
   if (!fila.es_vigente) {
     return err(appError("validation", "Ese informe ya fue sucedido por otro: no es el vigente."));
   }
-  if (!(fila.motor ?? "").startsWith("3.")) {
+  // EL MISMO UMBRAL QUE EL LECTOR, y por eso sale de un modulo neutro: decia `startsWith("3.")`, que era
+  // el motor del dia cuando se escribio, y el recalculo del 16 de noviembre lo dejo rechazando TODO lo que
+  // la reemision acababa de escribir, sin fallar.
+  if (!tieneQueTraerLasCapas(fila.motor)) {
     return err(
       appError(
         "validation",

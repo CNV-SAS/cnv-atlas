@@ -4,6 +4,8 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
 
+import { MAYOR_DESDE_EL_QUE_HAY_CAPAS } from "../mayor-con-capas";
+
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // QUE INFORMES REEMITIDOS QUEDARON SIN SUS CAPAS CONGELADAS  ·  LECTURA (regla dura 1)
 //
@@ -25,10 +27,25 @@ import { db } from "@/db";
 //
 // ═══ SOLO LAS QUE ESCRIBIO LA REEMISION, Y ESO ES UN FILTRO, NO UN DETALLE ═══
 //
-// `motor like '3.%'`. Los snapshots de eras anteriores TAMPOCO traen estas capas, y esos no se tocan: son
-// documentos emitidos cuando esas capas no existian, y reescribir el pasado es justo lo que la regla 7
-// prohibe. El filtro distingue "nacio sin ellas porque no existian" de "nacio sin ellas porque nuestro
-// codigo no las escribio hoy".
+// Los snapshots de eras anteriores TAMPOCO traen estas capas, y esos no se tocan: son documentos emitidos
+// cuando esas capas no existian, y reescribir el pasado es justo lo que la regla 7 prohibe. El filtro
+// distingue "nacio sin ellas porque no existian" de "nacio sin ellas porque nuestro codigo no las
+// escribio hoy".
+//
+// ═══ Y EL FILTRO DECIA `motor like '3.%'`, QUE ERA CORRECTO EL 7 DE NOVIEMBRE Y DEJO DE SERLO ═══
+//
+// El 3.x era el motor del dia. Con el recalculo del 16 de noviembre toda la cohorte pasa a 4.0.0, asi que
+// ese `like` dejaba FUERA justo las filas que la reemision acababa de escribir: **el mismo defecto, en la
+// misma operacion, se habria vuelto invisible**. Es la version de la fecha escrita a mano, que envejece
+// sin fallar.
+//
+// Se compara por el MAYOR y con un umbral que dice de donde sale: las tres capas existen desde el mayor
+// 3, asi que todo informe sellado con 3 o mas tiene que traerlas, y ninguno anterior. El mayor se extrae
+// con una expresion y no con `split_part`, porque en produccion conviven dos grafias (`1.0.0` y
+// `anibise-1.4.0`) y partir por el punto sobre la segunda da "anibise-1", que ni siquiera es un numero.
+//
+// Verificado en la nube el 2026-11-16, despues del recalculo: 552 informes vigentes, los 552 con las tres
+// capas (481 en 4.x, 70 en 1.x, 1 en 2.x). Cero incompletos.
 //
 // NO LLEVA UN SOLO DATO DE PACIENTE: id de la evaluacion, id del informe, que le falta y con que version
 // esta sellado.
@@ -39,7 +56,7 @@ export type CapaQueFalta = "rutasContent" | "efrContent" | "validityCaveats";
 export type InformeSinCapas = {
   evaluationId: string;
   reportId: string;
-  /** La version del motor del snapshot. Siempre 3.x: ver el filtro. */
+  /** La version del motor del snapshot. Siempre de mayor >= 3: ver el filtro. */
   motorSellado: string;
   /** Las capas ausentes, en el orden en que se congelan. Nunca vacio. */
   falta: CapaQueFalta[];
@@ -78,7 +95,7 @@ export async function informesSinCapasCongeladas(): Promise<InformeSinCapas[]> {
        order by r.evaluation_id, r.created_at desc
     )
     select * from vigentes
-     where motor like '3.%'
+     where coalesce((substring(motor from '([0-9]+)\.'))::int, 0) >= ${MAYOR_DESDE_EL_QUE_HAY_CAPAS}
        and not (tiene_rutas and tiene_efr and tiene_caveats)`);
 
   return filas.map((f) => ({

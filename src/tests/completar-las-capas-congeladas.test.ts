@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import {
+  MAYOR_DESDE_EL_QUE_HAY_CAPAS,
+  tieneQueTraerLasCapas,
+} from "@/modules/clinical-pipeline/mayor-con-capas";
+
 import { sinComentarios } from "./helpers/sin-comentarios";
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -102,9 +107,33 @@ describe("la reparacion SUCEDE a la fila, no la reescribe", () => {
 });
 
 describe("y solo puede tocar las filas que la reemision escribio hoy", () => {
-  it("exige motor 3.x, tanto al listar como al escribir", () => {
-    expect(LECTOR).toContain("motor like '3.%'");
-    expect(SERVICIO).toContain('startsWith("3.")');
+  // ═══ EL UMBRAL DEJA DE SER "EL MOTOR DE HOY" (2026-11-16) ═══
+  //
+  // Este caso exigia `motor like '3.%'` y `startsWith("3.")`, y era correcto el 7 de noviembre, cuando el
+  // 3.x era el motor del dia. El recalculo del 16 llevo la cohorte entera a 4.0.0, y con eso las dos
+  // comparaciones pasaron a mirar un conjunto VACIO: el mismo defecto, en la misma operacion, se habria
+  // vuelto invisible, y el candado habria seguido verde defendiendo la cifra de la semana pasada.
+  //
+  // Lo que se fija ahora es el UMBRAL CON SU RAZON (las capas existen desde el mayor 3) y que los dos
+  // lados lo lean del MISMO sitio, que es lo que impidio que una copia envejeciera sola.
+  it("exige el mayor 3 o mas, y el umbral lo leen los dos del mismo modulo", () => {
+    expect(LECTOR).toContain("MAYOR_DESDE_EL_QUE_HAY_CAPAS");
+    expect(SERVICIO).toContain("tieneQueTraerLasCapas(fila.motor)");
+    expect(MAYOR_DESDE_EL_QUE_HAY_CAPAS).toBe(3);
+    // Y ninguno de los dos vuelve a escribir la version del dia a mano.
+    expect(LECTOR, "el lector volvió a anclar a un mayor concreto").not.toContain("motor like '");
+    expect(SERVICIO, "el servicio volvió a anclar a un mayor concreto").not.toContain('startsWith("');
+  });
+
+  it("y la regla trata igual las DOS grafías del motor que conviven en producción", () => {
+    // `anibise-1.4.0` partido por el punto da "anibise-1", que ni siquiera es un numero: por eso el mayor
+    // se extrae con una expresion. Las dos de major 1 quedan fuera, y las de 3 y 4 dentro.
+    expect(tieneQueTraerLasCapas("anibise-1.4.0")).toBe(false);
+    expect(tieneQueTraerLasCapas("1.1.0")).toBe(false);
+    expect(tieneQueTraerLasCapas("3.0.0")).toBe(true);
+    expect(tieneQueTraerLasCapas("4.0.0")).toBe(true);
+    expect(tieneQueTraerLasCapas(null)).toBe(false);
+    expect(tieneQueTraerLasCapas("(sin versión)")).toBe(false);
   });
 
   it("exige que sea el informe VIGENTE de su consulta", () => {
