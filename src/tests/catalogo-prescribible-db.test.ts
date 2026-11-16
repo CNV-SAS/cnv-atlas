@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { createClient } from "@supabase/supabase-js";
 import { sql as dsql } from "drizzle-orm";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+
+import {
+  limpiarFixturesDeNutraceuticos,
+  registrarFixtureDeNutraceutico,
+} from "./helpers/fixtures-de-nutraceuticos";
 
 import { filtroCatalogoPrescribible } from "@/modules/treatment/catalogo-prescribible";
 
@@ -22,12 +27,18 @@ try {
 }
 HAS_DB = Boolean(process.env.DATABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL);
 
+afterAll(limpiarFixturesDeNutraceuticos);
+
 describe.skipIf(!HAS_DB)("catalogo prescribible (BD real)", () => {
   it("el de prueba a la venta solo se le ofrece a una cuenta de prueba; el retirado a nadie", async () => {
     const { db } = await import("@/db");
     const [org] = await db.execute<{ id: string }>(dsql`select id from organizations limit 1`);
     const sufijo = randomUUID().slice(0, 8);
     const ids = { pruebaRetirado: randomUUID(), pruebaALaVenta: randomUUID(), realNoDisponible: randomUUID() };
+    // SE REGISTRAN PARA BORRARLOS: este fixture dejaba 652 + 326 filas en la base local, y el
+    // `CATALOGO REAL ...` encima NO lleva `is_test` (a proposito, porque el caso compara un producto
+    // real contra dos de prueba), asi que inflaba tambien la cuenta de productos reales.
+    for (const id of Object.values(ids)) registrarFixtureDeNutraceutico(id);
     await db.execute(dsql`
       insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership, commercial_availability) values
         (${ids.pruebaRetirado}, ${org.id}, ${`CATALOGO PRUEBA RETIRADO ${sufijo}`}, 11900, true, 'propio', 'no_disponible'),

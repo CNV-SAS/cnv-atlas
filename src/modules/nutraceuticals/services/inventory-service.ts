@@ -19,6 +19,51 @@ import { saldoPorProducto } from "../saldo-por-producto";
 // y el historial del propio profesional, y el registro de una RECEPCION (un movimiento). El saldo lo
 // mueve el trigger; aqui solo se inserta el movimiento (la RLS acota a que sea del profesional).
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// EL CATALOGO SE LEE POR TANDAS Y PAGINADO  ·  2026-11-15
+//
+// ═══ EL REMEDIO DEL 19 DE SEPTIEMBRE SE PASO DE SU PROPIO LIMITE ═══
+//
+// Ese dia se cambio "pedir la tabla entera y filtrar en memoria" por "pedir solo lo que hace falta",
+// porque PostgREST corta en MIL filas sin avisar y los productos del final desaparecian del inventario
+// del profesional aunque tuviera existencias. El remedio fue un `id.in.(...)` con todos los ids que
+// tienen saldo, SIN TOPE. Y un `in` sin tope viaja en la URL: con unos cientos de productos con saldo,
+// la URL se pasa de largo y PostgREST responde **`URI too long`**. O sea que el remedio de la
+// truncacion silenciosa se convirtio en un fallo ruidoso un poco mas alla.
+//
+// MEDIDO: una uuid con su coma son 37 caracteres y el limite tipico de URL son 8 a 16 KB, asi que
+// revienta entre 200 y 400 ids. El catalogo real tiene 125 productos, asi que no era urgente; pero en la
+// base local ya se alcanzo (20.059 filas que dejaba un test sin limpiar) y ponia rojo a
+// `saldo-por-lote-db`, un test que no tiene nada que ver con esto.
+//
+// ═══ LAS DOS COSAS A LA VEZ, PORQUE SON EL MISMO DEFECTO VISTO DESDE DOS LADOS ═══
+//
+//   · TANDAS de ids, para que la URL no crezca con el catalogo;
+//   · PAGINACION con un orden estable, para que ninguna de las dos consultas se corte en mil sin decirlo
+//     (la de los `en_consultorio` tampoco la tenia).
+//
+// Paginar sin un `order by` estable no define que trae cada pagina: el motor puede devolver la misma
+// fila dos veces y perder otra. Se ordena por `id`, que es unico. EL ORDEN QUE SE VE no cambia: esta
+// funcion ya ordenaba en memoria al final (primero lo que tiene saldo, despues por nombre), asi que el
+// `order("name")` de la consulta era decorativo.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** Las columnas del catalogo que esta pantalla usa. En un solo sitio: se piden en dos consultas. */
+const COLUMNAS_DEL_CATALOGO = "id, name, indication, commercial_availability, is_test, unit_price";
+/** El tope de PostgREST por consulta. Se pagina de mil en mil. */
+const PAGINA_DEL_CATALOGO = 1000;
+/** Cuantos ids caben en un `in` sin arriesgar la URL: 150 x 37 caracteres son ~5,5 KB. */
+const IDS_POR_TANDA = 150;
+
+type FilaDelCatalogo = {
+  id: string;
+  name: string;
+  indication: string | null;
+  commercial_availability: string;
+  is_test: boolean | null;
+  unit_price: number | string | null;
+};
+
 export type InventoryLine = {
   nutraceuticalId: string;
   name: string;
@@ -128,15 +173,49 @@ export async function getOwnInventory(userId: string): Promise<InventoryLine[] |
   // haria que la pantalla contradijera el conteo fisico, y es la pantalla que existe PARA contar. Asi que
   // la regla es "con saldo siempre; sin saldo solo los reales".
   const idsConSaldo = [...stockByNutra.keys()];
-  const catalogo = supabase
-    .from("nutraceuticals")
-    .select("id, name, indication, commercial_availability, is_test, unit_price");
-  const ofrecibles = "and(commercial_availability.eq.en_consultorio,is_test.eq.false)";
-  const { data: cat, error: cErr } = await (idsConSaldo.length
-    ? catalogo.or(`${ofrecibles},id.in.(${idsConSaldo.join(",")})`)
-    : catalogo.eq("commercial_availability", "en_consultorio").eq("is_test", false)
-  ).order("name");
-  if (cErr) throw new Error(`inventory-service: catalogo: ${cErr.message}`);
+
+  // SE JUNTAN POR ID EN UN MAPA, no concatenando listas: un producto `en_consultorio` que ADEMAS tiene
+  // saldo sale en las dos consultas, y duplicarlo pondria la misma fila dos veces en la pantalla.
+  const porId = new Map<string, FilaDelCatalogo>();
+  const paginar = async (
+    etiqueta: string,
+    acotar: (desde: number, hasta: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  ) => {
+    for (let desde = 0; ; desde += PAGINA_DEL_CATALOGO) {
+      const { data, error } = await acotar(desde, desde + PAGINA_DEL_CATALOGO - 1);
+      if (error) throw new Error(`inventory-service: catalogo (${etiqueta}): ${error.message}`);
+      const filas = (data ?? []) as FilaDelCatalogo[];
+      for (const f of filas) porId.set(f.id, f);
+      if (filas.length < PAGINA_DEL_CATALOGO) return;
+    }
+  };
+
+  // 1 · LOS OFRECIBLES: los que el profesional puede llegar a tener, con su precio, aunque esten en cero.
+  await paginar("ofrecibles", (desde, hasta) =>
+    supabase
+      .from("nutraceuticals")
+      .select(COLUMNAS_DEL_CATALOGO)
+      .eq("commercial_availability", "en_consultorio")
+      .eq("is_test", false)
+      .order("id")
+      .range(desde, hasta),
+  );
+
+  // 2 · LOS QUE TIENEN SALDO, por tandas. Incluye los de prueba CON saldo y los que ya no se ofrecen:
+  //     esconder unidades que estan en su vitrina haria que la pantalla contradijera el conteo fisico, y
+  //     es la pantalla que existe PARA contar.
+  for (let i = 0; i < idsConSaldo.length; i += IDS_POR_TANDA) {
+    const tanda = idsConSaldo.slice(i, i + IDS_POR_TANDA);
+    await paginar(`con saldo ${i / IDS_POR_TANDA + 1}`, (desde, hasta) =>
+      supabase
+        .from("nutraceuticals")
+        .select(COLUMNAS_DEL_CATALOGO)
+        .in("id", tanda)
+        .order("id")
+        .range(desde, hasta),
+    );
+  }
+  const cat = [...porId.values()];
 
   return (cat ?? [])
     .map((c) => ({

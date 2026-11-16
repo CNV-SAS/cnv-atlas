@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { createClient } from "@supabase/supabase-js";
 import { sql as dsql } from "drizzle-orm";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+
+import {
+  limpiarFixturesDeNutraceuticos,
+  registrarFixtureDeNutraceutico,
+} from "./helpers/fixtures-de-nutraceuticos";
 
 // ═══ EL INVENTARIO DEL TABLERO DE DIRECCION (smoke del Bloque 3, 2026-09-14) ═══
 //
@@ -28,6 +33,8 @@ vi.mock("@/lib/supabase/server", () => ({
     }),
 }));
 
+afterAll(limpiarFixturesDeNutraceuticos);
+
 describe.skipIf(!HAS_DB)("inventario del tablero de Direccion (BD real)", () => {
   it("un producto de prueba con saldo no suma unidades, ni productos, ni ubicaciones", async () => {
     const { db } = await import("@/db");
@@ -50,6 +57,8 @@ describe.skipIf(!HAS_DB)("inventario del tablero de Direccion (BD real)", () => 
     );
     const [org] = await db.execute<{ id: string }>(dsql`select id from organizations limit 1`);
     const prod = randomUUID();
+    // SE REGISTRA PARA BORRARLO: los dos casos de este archivo dejaban 331 + 119 filas.
+    registrarFixtureDeNutraceutico(prod);
     await db.execute(dsql`
       insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership, commercial_availability)
       values (${prod}, ${org.id}, ${`TABLERO PRUEBA ${prod.slice(0, 8)}`}, 11900, true, 'propio', 'no_disponible')`);
@@ -126,6 +135,8 @@ describe.skipIf(!HAS_DB)("inventario del tablero de Direccion (BD real)", () => 
     const antes = await getDireccionDashboard();
 
     const prod = randomUUID();
+    // SE REGISTRA PARA BORRARLO: los dos casos de este archivo dejaban 331 + 119 filas.
+    registrarFixtureDeNutraceutico(prod);
     await db.execute(dsql`
       insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership, commercial_availability)
       values (${prod}, ${org.id}, ${`BODEGA PRUEBA ${prod.slice(0, 8)}`}, 11900, false, 'propio', 'no_disponible')`);

@@ -3,13 +3,21 @@ import { randomUUID } from "node:crypto";
 import { sql as dsql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import {
+  limpiarFixturesDeNutraceuticos,
+  registrarFixtureDeNutraceutico,
+} from "./helpers/fixtures-de-nutraceuticos";
+
 // ═══ ANULAR UN LINK, SELLAR DESDE `failed` Y LA REVISION (Bloque 3, sesion 2) ═══
 //
 // Contra la BASE REAL: lo que se protege son estados de la venta, bloqueos de fila, CHECKs de la 0140 y las
 // consultas de las colas de factura y descuento. Un mock de cualquiera de esas cosas diria lo que el mock
 // quiera.
 //
-// Cada caso usa un producto de prueba nuevo, con su lote y su saldo (misma forma que venta-inventario).
+// Cada caso usa un producto de prueba nuevo, con su lote y su saldo (misma forma que venta-inventario),
+// Y SE BORRA AL TERMINAR. Este fixture era el que mas filas dejaba de los seis: 12.334 de las 20.302 que
+// habia en la base local el 15 de noviembre, contra unos 11 productos reales. La limpieza y su razon
+// viven en `helpers/fixtures-de-nutraceuticos`.
 
 vi.mock("server-only", () => ({}));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(), captureMessage: vi.fn() }));
@@ -39,6 +47,7 @@ const revisionesCreadas: string[] = [];
 async function producto(cantidad: number) {
   const { db } = await import("@/db");
   const productoId = randomUUID();
+  registrarFixtureDeNutraceutico(productoId);
   await db.execute(dsql`
     insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership)
     values (${productoId}, ${organizationId}, ${`TEST ANULAR ${productoId.slice(0, 8)}`}, 107100, true, 'propio')`);
@@ -129,6 +138,9 @@ describe.skipIf(!HAS_DB)("anular link, sellar desde failed y la revision (BD rea
       await registrarVersionDelIntegrante(id, "Limpieza del test: pago de prueba", actorId);
       await resolverRevision(id, "devuelto", actorId, "TEST-LIMPIEZA");
     }
+    // Y LOS PRODUCTOS DE PRUEBA, que es lo que no se borraba: 12.334 filas acumuladas. Va DESPUES de
+    // resolver las revisiones, porque resolverlas lee las ventas que cuelgan de esos productos.
+    await limpiarFixturesDeNutraceuticos();
   });
 
   it("toda venta nueva nace con la entrega PENDIENTE", async () => {

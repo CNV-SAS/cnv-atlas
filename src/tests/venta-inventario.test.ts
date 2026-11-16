@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import { sql as dsql } from "drizzle-orm";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+import {
+  limpiarFixturesDeNutraceuticos,
+  registrarFixtureDeNutraceutico,
+} from "./helpers/fixtures-de-nutraceuticos";
 
 // ═══ LA VENTA MUEVE INVENTARIO (Bloque 3, sesion 1) ═══
 //
@@ -10,9 +15,30 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 // Un mock diria lo que el mock quiera.
 //
 // CADA CASO USA UN PRODUCTO DE PRUEBA NUEVO, con sus lotes y su saldo, para que ningun caso dependa del
-// saldo que dejo otro. Los movimientos son inmutables por trigger y las ventas que movieron inventario no se
-// pueden borrar (FK RESTRICT, a proposito), asi que los datos de prueba se quedan en la base local marcados
-// como de prueba; es lo mismo que ya hacen los tests de inventario.
+// saldo que dejo otro.
+//
+// ═══ Y AL TERMINAR SE BORRA, QUE ES LO QUE FALTABA  ·  medido el 2026-11-12, arreglado el 15 ═══
+//
+// Aqui decia que los datos de prueba *"se quedan en la base local marcados como de prueba"*, con su razon:
+// los movimientos son inmutables por trigger y una venta que movio inventario no se puede borrar (FK
+// RESTRICT, a proposito). La razon era correcta y la conclusion no: QUEDARSE no era gratis.
+//
+// LO QUE COSTO: **20.059 filas en `nutraceuticals`** en la base local, contra 125 reales, una por cada
+// corrida de la suite. Y el daño aparecio en OTRO test: `getOwnInventory` arma el catalogo con un
+// `id.in.(...)` que lleva todos los ids con saldo, y con veinte mil la URL de PostgREST se pasa de largo
+// (`URI too long`). Asi que `saldo-por-lote-db` salia rojo por una razon que no tiene nada que ver con lo
+// que prueba, y un rojo cuyo origen esta en otro archivo y en datos acumulados se diagnostica mal: parece
+// un defecto del cambio que uno acaba de hacer. Encima TAPABA el defecto real, que es de produccion (ver
+// el tope del `.in()`, arreglado aparte).
+//
+// COMO SE BORRA SIN FALSEAR NADA: el borrado va en UNA transaccion con `set local
+// session_replication_role = replica`, que apaga los triggers y las FK SOLO dentro de ella. Es el mismo
+// patron que ya usan otros siete tests de BD de esta casa, y `set local` es la parte que importa: el pool
+// reparte cada `execute` por una conexion distinta, asi que un `set` suelto no gobierna los deletes.
+//
+// Y NO DEBILITA LO QUE EL TRIGGER PROTEGE: lo que se apaga es la custodia append-only, que existe para que
+// nadie EDITE un movimiento real. Aqui se borra un fixture propio, por su id, en la base local, despues de
+// que los casos ya comprobaron el comportamiento del trigger.
 
 vi.mock("server-only", () => ({}));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(), captureMessage: vi.fn() }));
@@ -39,6 +65,7 @@ let locationId = "";
 async function productoConLotes(lotes: { vence: string; cantidad: number }[]) {
   const { db } = await import("@/db");
   const productoId = randomUUID();
+  registrarFixtureDeNutraceutico(productoId);
   await db.execute(dsql`
     insert into nutraceuticals (id, organization_id, name, unit_price, is_test, ownership)
     values (${productoId}, ${organizationId}, ${`TEST VENTA ${productoId.slice(0, 8)}`}, 107100, true, 'propio')`);
@@ -111,6 +138,11 @@ async function pagar(id: string, ambiente: "test" | "prod" | null = null) {
   const { sealPaidTransaction } = await import("@/modules/payments/data/payments-writer");
   return sealPaidTransaction(id, `wompi-${randomUUID()}`, "CARD", "CREDIT", ambiente);
 }
+
+// LA LIMPIEZA, UNA VEZ AL FINAL DE TODO EL ARCHIVO. Va a nivel de archivo y no dentro de un
+// `describe` porque `productoConLotes` la usan los tres, y un `afterAll` por bloque borraria lo del
+// siguiente a mitad de camino. El orden de borrado y su razon viven en el helper.
+afterAll(limpiarFixturesDeNutraceuticos);
 
 describe.skipIf(!HAS_DB)("la venta mueve inventario (BD real)", () => {
   beforeAll(async () => {
