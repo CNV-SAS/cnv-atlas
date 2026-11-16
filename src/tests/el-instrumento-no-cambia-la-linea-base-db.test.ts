@@ -263,17 +263,19 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     );
   });
 
-  it("EL SELLO: un seguimiento de un paciente DE PRUEBA recibe la CNV-S; uno REAL, no", async () => {
-    // ═══ LA PROPIEDAD DE SEGURIDAD DEL MODO PRUEBAS (2026-11-08) ═══
+  it("EL SELLO: un seguimiento recibe la CNV-S, y la derivada de 'cuenta como de prueba' llega hasta aquí", async () => {
+    // ═══ ESTE CASO CAMBIO DE LADO EL 2026-11-16, Y ES EL MISMO CABLE ═══
     //
-    // Santiago quiere hacer el smoke EN PRODUCCION, asi que la CNV-S se aplica solo a pacientes de
-    // prueba. Lo que no puede pasar es que alcance a una persona real: perderia los cuatro items
-    // retirados (no se le preguntan y no hay linea base previa que conserve su valor) y recibiria un
-    // cuestionario que Gildardo no ha aprobado.
+    // Nacio el 8 de noviembre defendiendo la propiedad del MODO PRUEBAS: la CNV-S se aplicaba solo a
+    // pacientes de prueba (Santiago queria hacer el smoke en produccion) y lo que no podia pasar era que
+    // alcanzara a una persona real. Santiago la encendio para todos el 16, con el smoke de los tres
+    // casos pasando, asi que ahora los DOS la reciben.
     //
-    // SE MIDE CONTRA LA BASE y no sobre la funcion pura, porque lo que decide es una columna DERIVADA
-    // (`cuenta_como_de_prueba`, que incluye a todo paciente de un profesional marcado de prueba): la
-    // funcion sola no dice nada sobre si esa derivacion llega hasta aqui.
+    // LO QUE ESTE CASO SIGUE MIDIENDO, y es por lo que no se borra: que el cable de la base hasta el
+    // sello funciona por los dos caminos. Se mide CONTRA LA BASE y no sobre la funcion pura porque la
+    // segunda puerta depende de una columna DERIVADA (`cuenta_como_de_prueba`, que incluye a todo
+    // paciente de un profesional marcado de prueba): la funcion sola no dice si esa derivacion llega
+    // hasta aqui, y el dia que `CNVS_ACTIVA` vuelva a `false` esa puerta es la unica que queda viva.
     const { instrumentoDeUnSeguimiento } = await import(
       "@/modules/evaluations/data/instrumento-de-la-consulta"
     );
@@ -291,12 +293,12 @@ describe.skipIf(!HAS_DB)("el instrumento de la linea base aplica la encuesta ent
     )) as unknown as { id: string }[];
     expect(
       await instrumentoDeUnSeguimiento(dePrueba.id),
-      "un paciente de prueba no recibe la CNV-S: el smoke en la nube no funcionaria",
+      "un paciente de prueba no recibe la CNV-S: la segunda puerta se rompio",
     ).toBe(cnvs.id);
     expect(
       await instrumentoDeUnSeguimiento(real.id),
-      "UN PACIENTE REAL RECIBIRIA LA CNV-S sin aprobacion de Gildardo",
-    ).toBeNull();
+      "un paciente REAL no recibe la CNV-S, y desde el 2026-11-16 tiene que recibirla",
+    ).toBe(cnvs.id);
   });
 
   it("y el enlace GENERICO del consultorio nunca sella la CNV-S, aunque acabe en seguimiento", async () => {
