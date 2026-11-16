@@ -375,10 +375,21 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
           </Seccion>
         )}
 
+        {/* ═══ EL BLOQUE VACIO NO SE IMPRIME (Santiago, 2026-11-16) ═══
+
+            Decia "Recomendaciones: No se emitieron recomendaciones para este caso." y justo debajo
+            venian las remisiones, que SI las hay. Leido de corrido, el documento parece negar lo que
+            afirma dos lineas mas abajo.
+
+            Y NO ES EL CASO DE "la ausencia deliberada se dice": estos siete bloques son CONDICIONALES
+            por diagnostico (su v8 L15255-15272). Que no se active ninguno no es un hueco que alguien
+            deba notar, es que para este caso su archivo no tiene nada que recomendar aparte de la ruta.
+            Ahi callar es exacto, y hablar es afirmar una ausencia que no significa nada.
+
+            Esto es PRESENTACION nuestra: su archivo no dice que haya que imprimir un bloque vacio. La
+            pantalla hacia lo mismo (una tarjeta con el titulo y nada debajo) y se corrige igual. */}
+        {hc.recomendaciones.length > 0 ? (
         <Seccion titulo="Recomendaciones">
-          {hc.recomendaciones.length === 0 ? (
-            <Text style={styles.vacio}>No se emitieron recomendaciones para este caso.</Text>
-          ) : null}
           {hc.recomendaciones.map((r) => (
             <View key={r.titulo} style={{ marginBottom: 4 }} wrap={false}>
               <Text style={{ fontWeight: "bold" }}>{r.titulo}</Text>
@@ -397,6 +408,7 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             </View>
           ))}
         </Seccion>
+        ) : null}
 
         <Seccion titulo="Remisiones">
           {/* LAS DOS COSAS, COMO EN LA PANTALLA (cotejo punto 30): lo que el modelo EXIGIÓ, que sale de

@@ -754,6 +754,12 @@ export function HcValidacionNutricional({ validacion }: { validacion: HcValidaci
 export type HcRecomendacion = { titulo: string; items: string[]; pendiente?: boolean };
 
 export function HcRecomendaciones({ bloques }: { bloques: HcRecomendacion[] }) {
+  // SIN BLOQUES NO HAY TARJETA (Santiago, 2026-11-16). Son los siete bloques CONDICIONALES por
+  // diagnostico de su archivo: que no se active ninguno no es un hueco, es que para este caso no hay
+  // nada que recomendar aparte de la ruta. La tarjeta salia con su titulo y nada debajo, y en el PDF
+  // con la frase "No se emitieron recomendaciones para este caso" justo encima de las remisiones, que
+  // si las hay. Es presentacion nuestra: su archivo no manda imprimir un bloque vacio.
+  if (bloques.length === 0) return null;
   return (
     <Tarjeta>
       <TituloSeccion>Recomendaciones</TituloSeccion>

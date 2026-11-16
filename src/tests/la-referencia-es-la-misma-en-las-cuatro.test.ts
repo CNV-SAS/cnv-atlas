@@ -102,3 +102,24 @@ describe("la referencia de cada índice es la misma en las cuatro superficies", 
     expect(rangos).toContain('core.icaBisRefTxt');
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y EL BLOQUE DE RECOMENDACIONES VACIO NO SE IMPRIME  ·  Santiago, 2026-11-16
+//
+// El PDF decia "Recomendaciones: No se emitieron recomendaciones para este caso." y justo debajo
+// listaba las remisiones, que si las hay. Leido de corrido, el documento parece negar lo que afirma dos
+// lineas mas abajo. La pantalla hacia lo mismo, mas callado: una tarjeta con su titulo y nada debajo.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("el bloque de recomendaciones vacío no se imprime", () => {
+  it("ni en el PDF ni en la pantalla", () => {
+    const pdf = readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8");
+    // La frase sigue NOMBRADA en el comentario que explica el defecto, que es donde tiene que estar.
+    // Lo que no puede volver es el <Text> que la imprime.
+    expect(pdf, "la frase del bloque vacío volvió al PDF").not.toContain(
+      "<Text style={styles.vacio}>No se emitieron recomendaciones",
+    );
+    expect(pdf).toContain("hc.recomendaciones.length > 0");
+    const web = readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8");
+    expect(web).toContain("if (bloques.length === 0) return null;");
+  });
+});
