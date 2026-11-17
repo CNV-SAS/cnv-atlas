@@ -22,9 +22,9 @@ calibración de la EB-BIS v7).
 
 **Y la Encuesta CNV-S está ACTIVA desde el 16 de noviembre, para todos los pacientes.** Las diez piezas
 de su v15 §2 están hechas; estuvo encendida solo para pacientes de prueba desde el 8 de noviembre, y el
-16, con el smoke de los tres casos pasando, Santiago la encendió para pacientes reales. **Se encendió sin
-su visto bueno, y es una decisión de Santiago que conviene que usted vea dicha así.** Lo que acepta: si su
-respuesta a la **39** pide una versión nueva del instrumento, las consultas que ya hayan aplicado la
+16, con el smoke de los tres casos pasando, Santiago la encendió para pacientes reales. **La decisión de
+encenderla fue de Santiago, sin esperar su visto bueno.** Lo que acepta: si su respuesta a la **39** pide
+una versión nueva del instrumento, las consultas que ya hayan aplicado la
 CNV-S quedan selladas con la 1.0 y la nueva rige hacia adelante; un registro clínico sellado no se
 reescribe. Cada consulta guarda qué instrumento se le mostró, sellado al abrirla.
 
@@ -61,7 +61,7 @@ la operación. **Ya se recalculó, el 16 de noviembre.**
 | --- | --- | --- |
 | El nivel de riesgo (bajo / medio / alto / crítico) | 183 | 34,4 % |
 | El sector de la Diana (sus cortes MCCB de la Tabla 10.2) | 325 | 61,1 % |
-| La ruta R2 | 108 entran · 80 salen |, |
+| La ruta R2 | 108 entran · 80 salen |  |
 | Los nutracéuticos sugeridos | 75 | 14,1 % |
 | El IEHH cambia de zona (sus tres de la Tabla 8.2) | 170 de 524 | 32,4 % |
 
@@ -78,7 +78,7 @@ Lo que cerraron sus entregas y lo que cerraron los hechos. Las que siguen abiert
 | **17** | La fila ICA-BIS con dos reglas por superficie | Su v17 §4: `dICA` ya no existe y las dos superficies leen `cPABU` |
 | **35** | Los dos colores de "Acorde con sus pares" | Absorbida en la **15** |
 | **36** | El Δ en el borde de ±5,0 | Absorbida en la **7** |
-| **38** | La R1 se activa por un criterio y su tarjeta anuncia otro | Su §10 retira `activar`, deja de evaluar `condicion` y reescribe los seis rótulos. Los seis portados |
+| **38** | La R1 se activa por un criterio y su tarjeta anuncia otro | Su §10 retira `activar`, deja de evaluar `condicion` y reescribe los seis rótulos. Los seis portados. Sobre la cohorte ya recalculada la R1 entra en **256 de 482 (53,1 %)**: conviene que eso sea una decisión y no un efecto |
 | **43** | "Lo suspendió" en el S1 | Aplicada la A el 9 de noviembre: cuenta como no adherencia, y el motivo queda en el S2 |
 | **51** | Qué pasa cuando falta la cintura | Su propio código responde A: `_cint` cae a 0 y el modificador no suma. Construido así |
 | **4** (1ª mitad) | El DFI y las rutas leen el IAE de la v7 | Su v15 §1.4. Aplicado, con el histórico recalculado |
@@ -89,7 +89,7 @@ embutidos, y en Atlas ya están los 15 grupos en las cinco versiones publicadas 
 traen el grupo 15); y su §7 acierta en el diagnóstico pero ya no en el estado, porque el componente
 Alimentación del ICEC se corrigió el 6 de septiembre por su propia instrucción.
 
-## Las 49 preguntas abiertas
+## Las 50 preguntas abiertas (siete solo piden confirmar lo que ya está aplicado)
 
 Una línea por pregunta; el detalle de cada una está debajo, con el mismo número.
 
@@ -104,38 +104,38 @@ Una línea por pregunta; el detalle de cada una está debajo, con el mismo núme
 |---|---|---|---|
 | **0** | El ejemplo de su prompt de IA lleva el nombre de una persona y viaja al proveedor en cada llamada | ¿Es real? | Reemplazarlo por `[NOMBRE]` en su copia |
 | **37** | Una cadera mal tecleada: ¿se repite la toma o se corrige? | A) repetir · B) corregir en Atlas · C) corregir en el Biody y reemplazar | **C**, y ya está construida |
-| **37a** | Al editar en el Biody Manager, ¿el programa recalcula algo? |, | Solo usted puede saberlo |
-| **37b** | ¿Qué se puede editar: solo cintura y cadera, o también el peso? |, | **Solo cintura y cadera** |
+| **37a** | Al editar en el Biody Manager, ¿el programa recalcula algo? | Abierta | Solo usted puede saberlo |
+| **37b** | ¿Qué se puede editar: solo cintura y cadera, o también el peso? | Abierta | **Solo cintura y cadera** |
 | **1** | Cuál Harris-Benedict manda y sobre qué va el 10 % | 1919 · 1984 | **1984**, y el 10 % sobre TMB × actividad |
-| **2** | Los cortes del control de calidad biológico |, | Que el corte que FRENA caiga fuera del mínimo y del máximo observados |
+| **2** | Los cortes del control de calidad biológico | Abierta | Que el corte que FRENA caiga fuera del mínimo y del máximo observados |
 | **3** | El estado de las consultas que el recálculo no puede tocar | ¿permanente? | Confirmar que sirve como estado permanente |
 | **4** | Sus tres textos por banda del IAE, ¿sustituyen al de trayectoria o conviven? | sustituir · convivir | **Convivir**, con media línea suya que lo diga |
-| **6** | El Δ del IAE dentro de la banda: raya o cero | raya · cero | **La raya**, pero es preferencia nuestra contra su regla |
+| **6** | El Δ del IAE dentro de la banda: raya o cero [aplicado] | raya · cero | **La raya**, pero es preferencia nuestra contra su regla |
 | **7** | El borde de ±5,0 del IAE, en tres sitios de su archivo | A) todo cerrado · B) el Δ abierto con raya y el resto cerrado · C) otra | **B** |
 | **8** | Los tres cortes de color de la Diana | 1) correr el gradiente · 2) tres sólidos · 3) otra | **Correr el gradiente hacia el rojo** |
-| **9** | Los nombres llanos de tres índices [aplicado] |, | Dejar "Desviación bioeléctrica" |
+| **9** | Los nombres llanos de tres índices [aplicado] | Abierta | Dejar "Desviación bioeléctrica" |
 | **10** | Quién ejecuta la eliminación de un perfil [aplicado] | dirección · administrador | **Administrador** |
 | **11** | El aviso de realimentación sale del motor viejo | se queda · pasa al nuevo | Díganos cuál; es una línea |
-| **12** | La fuerza prensil obligatoria, con salida |, | Obligatoria con salida registrada ("no se midió" más motivo) |
-| **13** | Los cinco textos de dominio del informe [propuesto] |, | Que los escriba usted |
-| **14** | Su banda media del IFC y del IRC tiene tres nombres, y uno dice "normal" |, | Texto suyo. Y decidir si la banda media cuenta como índice alterado |
+| **12** | La fuerza prensil obligatoria, con salida | Abierta | Obligatoria con salida registrada ("no se midió" más motivo) |
+| **13** | Los cinco textos de dominio del informe [propuesto] | Abierta | Que los escriba usted |
+| **14** | Su banda media del IFC y del IRC tiene tres nombres, y uno dice "normal" | Abierta | Texto suyo. Y decidir si la banda media cuenta como índice alterado |
 | **15** | El IAE "Concordante" en ámbar y en azul | A) azul · B) ámbar · C) distintos a propósito | **A** |
-| **16** | La casilla 3_3 de su matriz IFC×IRC lleva un cian |, | ¿Lo cambia, o el cian significa algo? |
+| **16** | La casilla 3_3 de su matriz IFC×IRC lleva un cian | Abierta | ¿Lo cambia, o el cian significa algo? |
 | **18** | El % de grasa con dos cortes suyos | HC · composición | ¿Cuál manda en la historia clínica? |
 | **19** | Dos clasificadores del índice cintura-cadera | `dICC` · `clasifICC` | ¿Cuál manda? El segundo dice más |
 | **20** | `clasifLancet` declarado y sin llamar | resto · lo va a usar | ¿Cuál de las dos? |
-| **21** | Las badges del Nivel III y el ECM/BCM sin fila |, | ¿El ECM/BCM debe verse, con qué corte y en qué fila? |
+| **21** | Las badges del Nivel III y el ECM/BCM sin fila | Abierta | ¿El ECM/BCM debe verse, con qué corte y en qué fila? |
 | **22** | El estado PBI y su tercer umbral de ángulo de fase | 6,80/6,30 · 6,5/6,0 | Si el PBI vuelve, cuál de los dos manda |
-| **23** | La fórmula sintética: lista plana o cuenta, y cómo se llama |, | Díganos cuál quiere, y el nombre del bloque |
+| **23** | La fórmula sintética: lista plana o cuenta, y cómo se llama | Abierta | Díganos cuál quiere, y el nombre del bloque |
 | **46** | Sus dos hidrataciones, 71 % contra 73 % | A) sube el piso · B) baja el piso · C) la tabla dice que son distintas · D) sale una fila | **C** |
 | **24** | Diez de sus quince alertas no pueden salir nunca | 1) como está · 2) retirar las diez · 3) capturar porciones | Díganos cuál; ninguna la tomamos por nuestra cuenta |
 | **25** | ¿Qué más debería alimentar al generador de menús? | acceso · tiempos de comida | ¿Alguno de los dos? |
 | **26** | Sus pasos 1 a 3 del Análisis IA no llegan al paso 4 | cablear · dejar | ¿Debían alimentar al cuarto? |
 | **27** | En la HC, ¿van todas las observaciones o solo la vigente? | todas · la vigente | **Todas**, y la objeción es nuestra también |
-| **28** | ¿En qué dominio van los síntomas digestivos? |, | Hoy no se usan como evidencia de ninguno |
+| **28** | ¿En qué dominio van los síntomas digestivos? | Abierta | Hoy no se usan como evidencia de ninguno |
 | **29** | La pregunta de amputación se queda y usted no la nombró | retirar · dejar | ¿La retiramos también? |
-| **30** | Dos ids de su anexo A son data de prueba |, | Retírelos de su lista de errores 1 y 2 |
-| **31** | Los pacientes pediátricos |, | Marcar fuera de rango de calibración y no calcular |
+| **30** | Dos ids de su anexo A son data de prueba | Abierta | Retírelos de su lista de errores 1 y 2 |
+| **31** | Los pacientes pediátricos | Abierta | Marcar fuera de rango de calibración y no calcular |
 | **32** | ¿Qué pasó con las versiones 13 y 14? | A) v15 y v16 lo recogen · B) falta algo | **A** (es una confirmación) |
 | **33** | La reconfirmación al cierre de una ruta [aplicado: A] | A) solo la anual · B) completa · C) solo esa ruta | **A** |
 | **34** | El S1 cuando no hay nutracéuticos indicados [aplicado: A] | A) S1 y S2 no se presentan · B) con una línea · C) otra | **A**, y ya corre con el Módulo S |
@@ -153,6 +153,7 @@ Una línea por pregunta; el detalle de cada una está debajo, con el mismo núme
 | **53** | El orden de prioridad de las rutas, que su §10 nombra y no escribe | A) el de `computeDFI` · B) con la R3 primera · C) otro | **B** |
 | **54** | Qué cortes de FMI y FFMI lee el profesional [aplicado: B] | A) `cFMI`/`cFFMI` · B) los del libro · C) los dos | **B** |
 | **55** | Su caso K dice "sin sexo no se clasifica" y el DFI lo vuelve femenino | A) vale el caso K · B) vale el código · C) otra | **A**, y no la aplicamos porque toca su código |
+| **56** | Las indicaciones y las urgencias condicionales de las remisiones | A) resolver las tres evaluables y contar el resto · B) como hoy · C) otra | **A** |
 
 # EL DETALLE DE CADA PREGUNTA
 
@@ -267,11 +268,11 @@ camino que calculaba la cifra del paciente se había migrado a la v7 y el que al
 riesgo integrado y las rutas se había quedado en la v5, así que en la misma consulta convivían dos edades
 biológicas, la que se le dice al paciente y la que decide lo que se le prescribe. Su v15 lo decide
 (`computeDFIFromData` L11834 · `atlasMigrarEbV7` L4458 · dominio 3 L13965 · §1.4), se aplicó el 6 de
-noviembre como CA-3 y el 7 se recalcularon las 422 consultas (`CAMBIOS_AUTORIZADOS.md`).
+noviembre y el 7 se recalcularon las 422 consultas.
 
 **El caso que lo hizo visible era suyo** (`ed83ff97`, la mujer de 64 años de su anexo A): la cifra que
 ella ve nunca estuvo mal (76,4 años · IAE +12,4), pero el dominio 3 leía 31,4 años con IAE -32,6 y
-"Enlentecido", y su pestaña de Tratamiento traía **cero rutas activas** donde hoy trae R1, R2 y R4.
+"Enlentecido", y su pestaña de Tratamiento traía **cero rutas activas** donde hoy trae R1 y R4.
 Cuarenta y cinco años de diferencia dentro de una consulta, y a esa paciente no se le había prescrito
 nada para el envejecimiento. Eran 43 informes así y 17 en el contrario, de 389, y ninguno de los 60 se
 había enviado porque el freno de la contradicción los retenía.
@@ -447,6 +448,10 @@ sobre una rampa verde-ámbar-rojo al centro le tocó el de en medio.
 
 **Y en la misma banda tiene DOS colores suyos**, verificado en su v17: `cIAE` ámbar (L4658), `dIAE` azul
 (L15655).
+
+**Tiene una consecuencia que se ve en el documento:** como el ámbar cuenta como alteración, un hombre
+reemitido con IAE 0,0, que es su "acorde con sus pares", sale listado entre los *índices alterados* de la
+historia clínica y del SOAP. Con la **A** eso desaparece solo.
 
  · **A)** Manda el azul: la banda central es lo esperado, no una alerta. · **B)** Manda el ámbar.
  · **C)** Son distintos a propósito, y díganos cuál va en cuál.
@@ -915,6 +920,31 @@ contradicción dentro de su propio archivo, y el día que entre un registro sin 
 en el caso K y el que Atlas ya aplica en los demás sitios. Asumir femenino es la clase de valor por
 defecto que no se ve en ninguna pantalla y cambia un veredicto.*
 
+## 56 · Las indicaciones y las urgencias condicionales de sus remisiones
+
+Su catálogo de rutas trae **10 indicaciones condicionales** ("Valoración médica si IRC > 5.0",
+"Valoración médica si IAE > 10 años" y ocho más) y **2 urgencias condicionales** ("obligatoria si HTA o
+DM2 activa" en la R2, "recomendada si IAE > 10 años" en la R4). **Ninguna se evalúa contra los datos del
+paciente, en ninguna superficie:** son texto suyo y se copian tal cual.
+
+**Y Atlas las trata de forma desigual, que es lo que le preguntamos.** La historia clínica, el SOAP y el
+PDF **filtran** las indicaciones condicionales, porque el bloque se titula "lo que el modelo exigió" y
+estaba listando condiciones que no aplicaban al paciente; **y no filtran las urgencias**. Medido el 16 de
+noviembre sobre los 553 informes sellados: **268 consultas** imprimen "Médico (obligatoria si HTA o DM2
+activa)" y **107** imprimen "recomendada si IAE > 10 años", se cumpla o no la condición. Y al revés:
+`ed83ff97` **sí cumple** la del IAE (+12,4 años) y su historia clínica no se la muestra.
+
+**De las diez, solo tres se pueden evaluar con lo que Atlas sella:** IRC > 5.0, IAE > 10 años y HTA o DM2
+activa (de su D5). Las otras siete son cualitativas ("FMI muy elevado", "purgas frecuentes", "si el
+psicólogo lo aprueba") y el instrumento no las captura.
+
+ · **A)** Las tres evaluables se resuelven contra el sello y se imprime **solo lo que se cumple, con el
+ valor** ("Valoración médica: IAE +12,4 años"); las siete que no se pueden evaluar se cuentan en una
+ línea, para que el hueco no se lea como que no había nada; y las dos urgencias se imprimen resueltas.
+ · **B)** Como hoy. · **C)** Otra.
+*Recomendamos **A**. No la aplicamos por nuestra cuenta porque decidir que "+12,4 cumple más de 10" lo
+diría el documento en nombre de su modelo, y eso es suyo.*
+
 # ANEXO · LO QUE DECIDIMOS NOSOTROS Y SOLO LE DECLARAMOS
 
 No pide nada: son las divergencias que tomamos por nuestra cuenta para no dejarle preguntas abiertas que
@@ -953,22 +983,9 @@ y `cnvsAdherenciaAdecuada` se derivan al leerlas.
 
 # LO QUE YA ESTÁ CERRADO Y NO VUELVE A APARECER AQUÍ
 
-Para que no lo busque. Una línea cada una.
+Para que no lo busque. Una línea cada una. Lo que cerraron sus entregas de este mes está arriba, en la
+tabla de "Lo que ya está contestado".
 
-- **5 · "Edad biológica estimada".** Su tabla 3 y su v15 la mantienen; es lo que Atlas aplicó. Los
-  informes ya enviados no se tocan.
-- **17 · La fila ICA-BIS con dos reglas por superficie.** Su v17 §4 borró `dICA`: las dos superficies leen
-  `cPABU`. Y no era de palabras: con el signo de su §4, el clasificador de magnitud metía todo el lado
-  negativo (el exceso de adiposidad) en "Reserva bioeléctrica". Ya portado.
-- **38 · La R1 se activa por un criterio y su tarjeta anuncia otro.** Su §10 retira `activar` y reescribe
-  los seis rótulos; los seis portados. *Y la consecuencia de fondo sigue ahí: sobre la cohorte ya
-  recalculada, la R1 entra en **256 de 482 consultas (53,1 %)**, y una ruta que entra en una de cada dos
-  ordena menos la atención que las otras cinco. Puede ser lo que usted quiere, pero conviene que sea una
-  decisión y no un efecto.*
-- **43 · "Lo suspendió" en el S1.** Aplicada la A el 9 de noviembre: cuenta como no adherencia, porque la
-  adherencia mide exposición, y el motivo queda registrado en el S2.
-- **51 · Qué pasa cuando falta la cintura.** Su propio código responde A: `_cint` cae a 0 y el modificador
-  no suma. (Y el caso es raro: 509 de 509 mediciones traen la cintura y el ICT.)
 - **Las ALERGIAS, con su fecha porque llegó tres veces.** Lo decidió el 27 de agosto y se ejecutó el 28:
   las tablas de alérgenos, equivalencias y filtros están retiradas, no hay regla de "avena implica
   gluten", leche y lactosa no se cruzan con productos, P43 y P44 quedan como están, y el producto externo
@@ -981,9 +998,8 @@ Para que no lo busque. Una línea cada una.
   recomendó. Siguen en la historia clínica y en la hoja del plan.
 - **El ICC y el ICT** (decidido por Santiago): si se teclea la cintura o la cadera, Atlas recalcula los
   dos con sus fórmulas; si no, manda el del equipo.
-- **La fila PABU.** El 7 de septiembre respondió:
-  "Ya revisé ATLAS y está bien como lo tienen". Un barrido de rótulos nuestro la cambió el 9 sin
-  instrucción suya, se restituyó el 21 y hoy lleva candado.
+- **La fila PABU.** Se queda como la aprobó el 7 de septiembre
+  ("Ya revisé ATLAS y está bien como lo tienen"), y lleva candado.
 - **Por sus respuestas de septiembre:** la apertura del párrafo de IA · el criterio del profesional en la
   HC · las tres entradas de Leche semidescremada · la ortografía de la tabla de intercambio · las dos
   preguntas de encuesta que no llegaron en la entrega del 4 · los dos guiones de ANI-BIS-E · el
@@ -999,7 +1015,7 @@ Este documento unificó las dos colas anteriores (el cotejo visual de septiembre
 y ATLAS v12* del 30 de octubre) y añadió lo que salió de leer la v15, la v16 y la v17 y de medir la
 cohorte contra la nube. **Verificado pregunta por pregunta contra sus entregas y contra el código o la
 base**, no contra otro documento: el 4 y el 5 de noviembre contra la v15 y la v16, el 7 en el barrido de
-la v10 a la v16 (`BARRIDO_FINAL_V10_A_V16_2026-11-07.md`), y el 12 y el 16 contra su
+la v10 a la v16, y el 12 y el 16 contra su
 `CAMBIOS_ATLAS_v17_URGENTE` v1.2 y su `ATLAS_v17.html`. En todas las de la sección D se fue al archivo a
 comprobar si el cambio estaba hecho sin estar narrado, y en todas sigue igual.
 
