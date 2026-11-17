@@ -24,14 +24,19 @@ había que hacer está aquí, en orden, y nada más hay que abrir.
 
 | | Qué | Dónde se prepara |
 |---|---|---|
-| 1 | **Un integrante de prueba en Comisión.** Sirve `Profesional Prueba`, que ya existe | ya está |
-| 2 | **Un integrante de prueba en Distribución.** Sirve `Profesional demo 2`, que ya tiene la modalidad vigente | ya está |
+| 1 | **Un integrante de prueba en Comisión.** Sirve `Profesional Demo`, que no tiene modalidad vigente y por eso es Comisión (sin fila de modalidad = Comisión) | ya está |
+| 2 | **Un integrante de prueba en Distribución.** Sirven `Profesional demo 2` y `Profesional Prueba`: medido el 2026-11-17, **los dos tienen `distribucion` vigente** | ya está |
 | 3 | **Un paciente de prueba** por cada uno, marcado como de prueba | /pacientes |
 | 4 | **Producto con saldo** en la vitrina de cada uno | /faltantes, bloque de remesas |
 | 5 | **Las dos cuentas marcadas como de prueba AL FINAL**, no antes (ver la parte D) | /admin |
 
 **El producto del smoke:** **MULTI-CELL BASE, lote `19826`**. No se usa ADAPTO-STRESS: desde el 15 de
 octubre la central no deja despachar lo que no tiene, y de ADAPTO-STRESS no tiene nada.
+
+> **Ojo con esto, que no era lo esperado:** de los **trece perfiles reales ninguno tiene modalidad
+> vigente**, así que todos están en **Comisión** (sin fila de modalidad = Comisión). Las dos únicas cuentas
+> con `distribucion` son de smoke. O sea que el día que un Integrante real pase a Distribución hay que
+> ponérsela, y antes hay que definirle `tax_is_withholding_agent`, o su retención sale mal.
 
 **Cambiar la modalidad a Distribución rige HOY MISMO** si ese integrante no tiene ninguna venta en el corte
 en curso; si tiene alguna, entra en el corte siguiente y la pantalla lo dice. Para una cuenta de prueba
