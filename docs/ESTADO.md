@@ -1,6 +1,6 @@
 # Estado de Atlas
 
-**Al 17 de noviembre de 2026.** Para que una sesión nueva arranque sin depender de una conversación
+**Al 17 de noviembre de 2026**, actualizado esa misma tarde al retomar lo comercial. Para que una sesión nueva arranque sin depender de una conversación
 larga. Una o dos páginas, y se mantiene así: lo que crezca se va a su documento propio.
 
 > **Cómo se mantiene:** al final de cada turno con cambios, se actualiza este archivo. Cada decisión
@@ -53,12 +53,46 @@ una migración aplicada no se modifica nunca, se crea otra. El control es `scrip
 Viven en `src/modules/evaluations/instrumento.ts`, con su candado. Apagar `CNVS_ACTIVA` devuelve el
 sistema a pacientes de prueba sin tocar nada más.
 
+### Y el tercero, que no es una constante sino un dato: la fecha de arranque
+
+`commercial_config.fecha_de_arranque` (migración 0198). **Hoy dice `2026-10-15`, que es una fecha en la
+que NO se arrancó**: se fijó el 11 de septiembre para un arranque que se aplazó tres veces.
+
+**Desde el 2026-11-17 ese valor tiene tres estados** (`src/modules/payments/arranque.ts`), y es el acto
+que enciende las cifras:
+
+| Valor | Qué hacen las pantallas de cifras |
+|---|---|
+| sin fecha | dicen *"todavía no se ha arrancado"* y **no cuentan nada** |
+| fecha en el futuro | dicen para cuándo está fijado el arranque, y **no cuentan nada** |
+| fecha de hoy o anterior | cuentan desde ese día, como hasta ahora |
+
+**Falta ponerla en el día real**, y es una escritura en producción: la hace
+`scripts/ARRANQUE_A_PRODUCCION_2026-11-18.sql`, que es el paso 2 del checklist de arranque. **No recorta
+el inventario ni lo que se le debe a alguien**, y las dos reglas tienen candado.
+
 ## En curso
+
+### ⚠ LO COMERCIAL, CON FECHA LÍMITE: miércoles 18 de noviembre de 2026
+
+Ese día tienen que quedar **las credenciales reales de Wompi y de Alegra**, con todo funcionando. Es la
+única cosa con fecha en todo el proyecto.
+
+**El orden acordado (Santiago, 2026-11-17):**
+
+1. barrido y **una sola lista de smoke** → `docs/SMOKE_COMERCIAL_FINAL.md` (hecho);
+2. Santiago hace el smoke **desde cero en sandbox**, con un integrante de prueba de Comisión y uno de
+   Distribución;
+3. **video** del flujo comercial para los Integrantes, todavía en sandbox;
+4. **arranque** con credenciales reales, por el checklist de ese mismo documento.
+
+**La poda de documentos y las mejoras de navegación van después del 18**, salvo lo trivial.
+
+**Lo que falta no es código.** Lo que falta son las llaves, la cuenta puente de transferencias en
+Alegra, y correr los dos procedimientos del día del arranque.
 
 - **Nada clínico abierto de nuestro lado.** Lo científico se cerró con la v17 aplicada, el histórico
   reemitido y la CNV-S encendida.
-- Lo que queda es **operativo y comercial**: el smoke comercial de punta a punta y las llaves de
-  producción (abajo).
 
 ## Lo que espera a alguien
 
@@ -71,11 +105,13 @@ sistema a pacientes de prueba sin tocar nada más.
 
 ## Los próximos pasos
 
-1. **Smoke comercial de punta a punta** (venta por pasarela y en efectivo, comisión, inventario).
-2. **Las llaves de producción de Alegra y de Wompi.** Hoy la factura es un simulacro en sandbox: ni el
-   pago por pasarela ni la venta en efectivo facturan de verdad. Las variables y su alcance están en
-   `DEPLOY.md`; el cotejo del catálogo, en `scripts/cotejo-alegra.mjs`.
-3. Lo demás, por prioridad, en `BACKLOG.md` y `LANZAMIENTO.md`.
+1. **Smoke comercial de punta a punta**, con un integrante de Comisión y uno de Distribución. El guion
+   completo, paso por paso y con su resultado esperado, está en **`docs/SMOKE_COMERCIAL_FINAL.md`**.
+2. **El video** del flujo comercial para los Integrantes, todavía en sandbox.
+3. **El arranque**, por el checklist de diez pasos del mismo documento: marcar lo de prueba, fijar la
+   fecha, cargar el inventario, las variables de Vercel, el webhook de Wompi, los ids del Alegra real,
+   redesplegar, la primera venta real vigilada, qué mirar en Sentry, y cómo volver atrás.
+4. Lo demás, por prioridad, en `BACKLOG.md` y `LANZAMIENTO.md`.
 
 ## Los scripts de solo lectura
 
@@ -88,6 +124,7 @@ caracteres, nunca nombres ni documentos.
 | `las-que-no-se-reemitieron.mjs` | Qué consultas quedaron sin reemitir con la v17, y por qué cada una |
 | `los-veredictos-de-la-hc-contra-el-dfi.mjs [id...]` | Qué dice cada superficie de cada índice sobre el mismo sello. Sin ids, barre y resume |
 | `hombres-con-el-ica-bis-alterado.mjs` | Qué consultas de hombre traen la fila del ICA-BIS alterada (para verificarla en la HC, que solo muestra lo alterado) |
+| `EL_INVENTARIO_CONTRA_LO_RECIBIDO_2026-11-17.mjs` | El catálogo y el saldo de cada vitrina contra lo que esa persona recibió, si las ventas de prueba descontaron, y la **simulación** de la carga al arranque, por persona y por producto |
 | `el-item-de-nutraceuticos-contra-la-vigente.mjs` | El pendiente del cierre contra la prescripción vigente: cuántas tienen solo producto externo |
 | `el-omega-en-la-cohorte.mjs` | Dónde sugiere el omega el modelo y en cuántas consultas se prescribió |
 | `los-pendientes-de-verdad.mjs` | Los pendientes que la franja del cierre cuenta de verdad, con las condiciones reales |
@@ -109,3 +146,15 @@ caracteres, nunca nombres ni documentos.
 **Los scripts que SÍ escriben** (`aplicar-migracion`, `normalize-patient-sex`, `adoptar-factura-alegra`,
 `reseed-indicator-defs`, `seed-golden`, `limpiar-fixtures-de-la-suite`, y los `gen-*`) no se corren contra
 producción sin que Santiago lo pida en ese turno.
+
+**Y los tres SQL del día del arranque**, que escriben y por eso vienen en modo ensayo (terminan en
+`rollback`; se cambia por `commit` después de leer sus cuadros):
+
+| Script | Qué hace |
+|---|---|
+| `ARRANQUE_A_PRODUCCION_2026-11-18.sql` | Marca como prueba lo operado antes de la fecha, anula las cuentas de Distribución anteriores no pagadas, y **fija la fecha de arranque** |
+| `CARGAR_EL_INVENTARIO_AL_ARRANQUE_2026-11-18.sql` | Deja el saldo de cada vitrina en lo que esa persona recibió, por conciliación, con su evento auditado |
+| `config-alegra-produccion.sql` | La fila de producción de `alegra_config` y los ids de los cinco productos en el Alegra real. Aborta mientras quede un `<LLENAR>` |
+
+**El de octubre (`ARRANQUE_A_PRODUCCION_2026-10-15.sql`) NO se vuelve a correr**: volvería a poner la
+fecha equivocada. Se conserva como el registro de lo que se hizo ese día.

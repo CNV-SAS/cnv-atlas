@@ -73,6 +73,29 @@ al 16 de noviembre), con la lista de lo ya cerrado al final de ese mismo documen
   decidir, prescrito, no prescribo) van de cualquiera a cualquiera. Y cuando hay nutracéuticos
   prescritos, la pantalla **pide quitarlos primero** en vez de borrarlos con una confirmación, porque
   borrar una prescripción guardada es un acto propio con su firma de concurrencia.
+- **2026-11-17 · Santiago ·** **La fecha límite de lo comercial es el miércoles 18 de noviembre de
+  2026**: ese día quedan las credenciales reales de Wompi y Alegra. El orden: barrido y una sola lista de
+  smoke, smoke desde cero en sandbox, video para los Integrantes, y arranque con credenciales reales.
+- **2026-11-17 · Santiago ·** **El arranque tiene tres estados, no dos.** Mientras no se haya arrancado
+  (sin fecha, o con una fecha futura), las pantallas de cifras lo DICEN y **no cuentan nada**. Antes,
+  "sin fecha" significaba "cuenta todo", así que no había forma de decir "todavía no" sin presentar las
+  pruebas como operación. Ver `ESTADO.md`, interruptores.
+- **2026-11-17 · Santiago ·** El inventario de cada Integrante **se carga con todo lo que recibió**, sin
+  descontar las ventas anteriores al arranque (que están marcadas de prueba en Atlas y facturadas a mano
+  en Alegra, y que entrarán después desde un xlsx como ventas atrasadas). **El sistema muestra más que el
+  físico, a propósito y temporalmente.**
+- **2026-11-17 · Santiago ·** Las **3 unidades que vendió la Integrante inactiva** se le cargan a su
+  nombre, salidas de bodega, para que el xlsx de ventas atrasadas pueda descontarlas y dejarla en cero.
+  Y lo que el sistema tenga hoy a nombre de los **dos Integrantes inactivos queda en cero**, con
+  auditoría y motivo: siguen inactivos y pueden reactivarse, pero la custodia describe dónde está el
+  producto físico, y con ellos ya no está.
+- **2026-11-17 · Claude, con el argumento delante ·** La carga inicial **FIJA el saldo por conciliación,
+  no suma ni usa una remesa.** Las ventas de prueba ya descontaron 56 unidades y la marca no las
+  devuelve, así que sumar encima da otra cifra equivocada; y una remesa más su aceptación serían el
+  Integrante declarando que recibió hoy algo que recibió en agosto, y se contaría dos veces. La remesa
+  sigue siendo el camino de toda entrega NUEVA.
+- **2026-11-17 · Santiago ·** El Integrante llega a **sus pagos desde la barra lateral** ("Mis pagos",
+  a /comercial). La pantalla ya le servía; lo que no había era cómo llegar sin teclear la URL.
 
 ## Lo legal y lo comercial
 
