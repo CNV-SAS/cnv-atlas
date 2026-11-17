@@ -104,38 +104,38 @@ Una línea por pregunta; el detalle de cada una está debajo, con el mismo núme
 |---|---|---|---|
 | **0** | El ejemplo de su prompt de IA lleva el nombre de una persona y viaja al proveedor en cada llamada | ¿Es real? | Reemplazarlo por `[NOMBRE]` en su copia |
 | **37** | Una cadera mal tecleada: ¿se repite la toma o se corrige? | A) repetir · B) corregir en Atlas · C) corregir en el Biody y reemplazar | **C**, y ya está construida |
-| **37a** | Al editar en el Biody Manager, ¿el programa recalcula algo? | Abierta | Solo usted puede saberlo |
-| **37b** | ¿Qué se puede editar: solo cintura y cadera, o también el peso? | Abierta | **Solo cintura y cadera** |
+| **37a** | Al editar en el Biody Manager, ¿el programa recalcula algo? | Respuesta libre | Solo usted puede saberlo |
+| **37b** | ¿Qué se puede editar: solo cintura y cadera, o también el peso? | Respuesta libre | **Solo cintura y cadera** |
 | **1** | Cuál Harris-Benedict manda y sobre qué va el 10 % | 1919 · 1984 | **1984**, y el 10 % sobre TMB × actividad |
-| **2** | Los cortes del control de calidad biológico | Abierta | Que el corte que FRENA caiga fuera del mínimo y del máximo observados |
+| **2** | Los cortes del control de calidad biológico | Respuesta libre | Que el corte que FRENA caiga fuera del mínimo y del máximo observados |
 | **3** | El estado de las consultas que el recálculo no puede tocar | ¿permanente? | Confirmar que sirve como estado permanente |
 | **4** | Sus tres textos por banda del IAE, ¿sustituyen al de trayectoria o conviven? | sustituir · convivir | **Convivir**, con media línea suya que lo diga |
 | **6** | El Δ del IAE dentro de la banda: raya o cero [aplicado] | raya · cero | **La raya**, pero es preferencia nuestra contra su regla |
 | **7** | El borde de ±5,0 del IAE, en tres sitios de su archivo | A) todo cerrado · B) el Δ abierto con raya y el resto cerrado · C) otra | **B** |
 | **8** | Los tres cortes de color de la Diana | 1) correr el gradiente · 2) tres sólidos · 3) otra | **Correr el gradiente hacia el rojo** |
-| **9** | Los nombres llanos de tres índices [aplicado] | Abierta | Dejar "Desviación bioeléctrica" |
+| **9** | Los nombres llanos de tres índices [aplicado] | Respuesta libre | Dejar "Desviación bioeléctrica" |
 | **10** | Quién ejecuta la eliminación de un perfil [aplicado] | dirección · administrador | **Administrador** |
 | **11** | El aviso de realimentación sale del motor viejo | se queda · pasa al nuevo | Díganos cuál; es una línea |
-| **12** | La fuerza prensil obligatoria, con salida | Abierta | Obligatoria con salida registrada ("no se midió" más motivo) |
-| **13** | Los cinco textos de dominio del informe [propuesto] | Abierta | Que los escriba usted |
-| **14** | Su banda media del IFC y del IRC tiene tres nombres, y uno dice "normal" | Abierta | Texto suyo. Y decidir si la banda media cuenta como índice alterado |
+| **12** | La fuerza prensil obligatoria, con salida | Respuesta libre | Obligatoria con salida registrada ("no se midió" más motivo) |
+| **13** | Los cinco textos de dominio del informe [propuesto] | Respuesta libre | Que los escriba usted |
+| **14** | Su banda media del IFC y del IRC tiene tres nombres, y uno dice "normal" | Respuesta libre | Texto suyo. Y decidir si la banda media cuenta como índice alterado |
 | **15** | El IAE "Concordante" en ámbar y en azul | A) azul · B) ámbar · C) distintos a propósito | **A** |
-| **16** | La casilla 3_3 de su matriz IFC×IRC lleva un cian | Abierta | ¿Lo cambia, o el cian significa algo? |
+| **16** | La casilla 3_3 de su matriz IFC×IRC lleva un cian | Respuesta libre | ¿Lo cambia, o el cian significa algo? |
 | **18** | El % de grasa con dos cortes suyos | HC · composición | ¿Cuál manda en la historia clínica? |
 | **19** | Dos clasificadores del índice cintura-cadera | `dICC` · `clasifICC` | ¿Cuál manda? El segundo dice más |
 | **20** | `clasifLancet` declarado y sin llamar | resto · lo va a usar | ¿Cuál de las dos? |
-| **21** | Las badges del Nivel III y el ECM/BCM sin fila | Abierta | ¿El ECM/BCM debe verse, con qué corte y en qué fila? |
+| **21** | Las badges del Nivel III y el ECM/BCM sin fila | Respuesta libre | ¿El ECM/BCM debe verse, con qué corte y en qué fila? |
 | **22** | El estado PBI y su tercer umbral de ángulo de fase | 6,80/6,30 · 6,5/6,0 | Si el PBI vuelve, cuál de los dos manda |
-| **23** | La fórmula sintética: lista plana o cuenta, y cómo se llama | Abierta | Díganos cuál quiere, y el nombre del bloque |
+| **23** | La fórmula sintética: lista plana o cuenta, y cómo se llama | Respuesta libre | Díganos cuál quiere, y el nombre del bloque |
 | **46** | Sus dos hidrataciones, 71 % contra 73 % | A) sube el piso · B) baja el piso · C) la tabla dice que son distintas · D) sale una fila | **C** |
 | **24** | Diez de sus quince alertas no pueden salir nunca | 1) como está · 2) retirar las diez · 3) capturar porciones | Díganos cuál; ninguna la tomamos por nuestra cuenta |
 | **25** | ¿Qué más debería alimentar al generador de menús? | acceso · tiempos de comida | ¿Alguno de los dos? |
 | **26** | Sus pasos 1 a 3 del Análisis IA no llegan al paso 4 | cablear · dejar | ¿Debían alimentar al cuarto? |
 | **27** | En la HC, ¿van todas las observaciones o solo la vigente? | todas · la vigente | **Todas**, y la objeción es nuestra también |
-| **28** | ¿En qué dominio van los síntomas digestivos? | Abierta | Hoy no se usan como evidencia de ninguno |
+| **28** | ¿En qué dominio van los síntomas digestivos? | Respuesta libre | Hoy no se usan como evidencia de ninguno |
 | **29** | La pregunta de amputación se queda y usted no la nombró | retirar · dejar | ¿La retiramos también? |
-| **30** | Dos ids de su anexo A son data de prueba | Abierta | Retírelos de su lista de errores 1 y 2 |
-| **31** | Los pacientes pediátricos | Abierta | Marcar fuera de rango de calibración y no calcular |
+| **30** | Dos ids de su anexo A son data de prueba | Respuesta libre | Retírelos de su lista de errores 1 y 2 |
+| **31** | Los pacientes pediátricos | Respuesta libre | Marcar fuera de rango de calibración y no calcular |
 | **32** | ¿Qué pasó con las versiones 13 y 14? | A) v15 y v16 lo recogen · B) falta algo | **A** (es una confirmación) |
 | **33** | La reconfirmación al cierre de una ruta [aplicado: A] | A) solo la anual · B) completa · C) solo esa ruta | **A** |
 | **34** | El S1 cuando no hay nutracéuticos indicados [aplicado: A] | A) S1 y S2 no se presentan · B) con una línea · C) otra | **A**, y ya corre con el Módulo S |

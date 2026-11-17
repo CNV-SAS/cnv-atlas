@@ -356,6 +356,18 @@ partes se pierden en el historial. A partir de ahora:
   turno (lo hecho, lo que falta, lo que le toca a Santiago, los comandos), aunque ya lo hayas dicho
   antes. Santiago solo debe necesitar leer ese ultimo bloque.
 
+## El estado y las decisiones se dejan por escrito (Santiago, 2026-11-17)
+
+Una sesion nueva no puede depender de una conversacion larga para saber donde esta el proyecto. Asi que:
+
+- **al final de cada turno con cambios, actualizar `docs/ESTADO.md`** (version del motor, migraciones,
+  interruptores de activacion, lo que esta en curso, lo que espera a alguien, los proximos pasos);
+- **cada decision nueva, una linea en `docs/DECISIONES.md`**, con fecha, quien decidio y que.
+
+Los dos son indices, no archivos de todo: el argumento completo se queda donde se tomo la decision (el
+comentario del codigo, `PENDIENTES_CIENTIFICOS.md`, `DECISIONES_LEGALES.md`), y desde ahi se enlaza. Sin
+nombres de paciente ni de profesional: ids de ocho caracteres.
+
 ---
 
 ## Verificación al final de cada bloque

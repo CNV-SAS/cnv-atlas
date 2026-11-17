@@ -1,72 +1,111 @@
-# Estado de Atlas (dónde vamos)
+# Estado de Atlas
 
-> **ANTES DE PLANEAR SOBRE ESTE DOCUMENTO, lee `docs/BARRIDO_CIENTIFICO_2026-09-18.md`.** Ese barrido verifico contra el CODIGO lo que aqui se daba por pendiente, y varias cosas ya estaban hechas: el gate de "Otra" vacia, las nueve preguntas con "Otra", el borrador de la encuesta, el envio de la HC al paciente, P-109, los cuatro bloques de Seguimiento, el cierre de la consulta y el prompt de IA por los cinco dominios. Planear sobre una lista que envejecio fue justo el error que ese barrido corrigio.
+**Al 17 de noviembre de 2026.** Para que una sesión nueva arranque sin depender de una conversación
+larga. Una o dos páginas, y se mantiene así: lo que crezca se va a su documento propio.
 
-Documento para consultar cuando se pierda el hilo. Lenguaje llano, sin tecnicismos. **Se actualiza al CERRAR cada bloque, no al planearlo.** Si el bloque lo cierra Santiago en consolas (un despliegue, sembrar la nube), ese trabajo no deja un commit al que colgar la actualización, así que la regla del "mismo commit" no se dispara. **Regla complementaria: cuando un bloque lo cierra Santiago, es Claude quien actualiza este estado en el turno siguiente.** No hay commit, pero sí hay turno. (Este desfase se repitió 7 veces; esta es la mitigación de la causa raíz.)
+> **Cómo se mantiene:** al final de cada turno con cambios, se actualiza este archivo. Cada decisión
+> nueva es una línea en `DECISIONES.md`. Está escrito también en `CLAUDE.md`, para que no dependa de que
+> alguien se acuerde.
 
-Última actualización: 2026-08-11, al cerrar el bloque de **retención en la fuente** (estado tributario del integrante + verificación del RUT + rechazo con motivo + aviso por correo).
-
-> **ATRASADO (nota 2026-08-22): este doc no refleja el CHECKPOINT 2 de Tratamiento (2026-08-21).** Desde el 08-11 se construyó: las dos subpestañas (Rutas / [Profesión]), la CADENA CALÓRICA completa, los NUTRACÉUTICOS + despacho en Rutas, restricciones y guías con guardado propio; y se está construyendo la pieza 1 (resumen, meta, objetivo del tratamiento). La verdad viva del avance está en los commits y en la cola (DECISIONES_ANIBISE). Pendiente una actualización propia de este estado.
+> **Qué NO está aquí:** los gates del lanzamiento (`LANZAMIENTO.md`, fuente única), el backlog
+> (`BACKLOG.md`), las reglas de arquitectura (`ARCHITECTURE.md`) y lo que espera a Gildardo, pregunta por
+> pregunta (`PENDIENTES_CIENTIFICOS.md`). Este documento no los repite: los nombra.
 
 ---
 
-## Qué funciona hoy
+## El motor clínico en producción
 
-De punta a punta, el camino de un paciente ya está construido:
+**`ENGINE_VERSION = "4.0.0"`** (`src/clinical-engine/version.ts`), más `PROTOCOL_ENGINE_VERSION = "1.0.0"`
+para la cadena calórica. Cada versión, en una línea; el porqué completo vive en los comentarios de ese
+archivo, que es la fuente.
 
-- Un profesional entra con su cuenta y su segundo factor (código del teléfono). Si olvida la clave, la recupera solo (enlace en la pantalla de acceso + correo + cambio con segundo factor).
-- Un paciente recibe un enlace o un QR. El intake es de dos fases: **primero firma el consentimiento** (por medios electrónicos: se le manda un código al correo, lo valida, y le llega una copia con sus datos), y **después llena la encuesta**. Si se detiene, puede retomar con un enlace. Funciona para adultos y para menores (con su representante).
-- Atlas decide solo si es un paciente nuevo o uno de seguimiento, por su documento. Ante duda por nombres parecidos, alerta y el profesional confirma (ya no se crean identidades duplicadas por error).
-- Se importa la medición del equipo Biody.
-- El motor clínico (la ciencia de Gildardo) calcula los indicadores, el diagnóstico, la Diana y las rutas de atención.
-- El profesional ve los resultados, arma el tratamiento (protocolo, menú por inteligencia artificial, nutracéuticos), y genera el reporte del paciente: lo revisa, lo aprueba y lo envía por correo en PDF.
-- En un seguimiento, Atlas compara contra la medición anterior y le comunica al paciente si mejoró, si sigue igual o si empeoró.
-- Alrededor: los cobros por pasarela (Wompi) **y la venta en efectivo**, el préstamo del equipo (comodato), el inventario de nutracéuticos con su remesa/consignación CNV→integrante, y los paneles de administración, dirección y observatorio, con auditoría de accesos.
-- **La retención en la fuente:** cuando un integrante empieza a generar comisiones, se le pide su estado tributario y su RUT; una persona designada de CNV verifica el RUT (o lo rechaza con un motivo que el integrante ve y recibe por correo), para que CNV pueda retener y pagarle su comisión con certificado.
+| | Fecha | Qué cambió |
+|---|---|---|
+| 1.0.0 | | Port inicial, paridad con su `ATLAS_v7.html` |
+| 1.1.0 | 2026-08-19 | Re-port contra su `ATLAS_v8.html` |
+| 1.2.0 | 2026-08-31 | La dinamometría entra al motor (su §6 del 30 de agosto) |
+| 1.3.0 / 1.3.1 | 2026-09-05 | Se enciende el LE8; patch del chip del PABU, sin ciencia |
+| 1.4.0 | 2026-09-06 | La guarda del LE8 pasa de seis insumos a ocho |
+| 2.0.0 | 2026-10-28 | La EB-BIS v7 entra al motor |
+| 3.0.0 | 2026-11-06 | El DFI lee la EB-BIS de la v7 (su v15 §1.4) |
+| 3.1.0 | 2026-11-06 | El puntaje de Alimentación del ICEC (su v16 §4.2) |
+| 3.2.0 | 2026-11-07 | El borde de ±5,0 del IAE se cierra, en los cuatro sitios nuestros |
+| 3.3.0 | 2026-11-11 | El ICA-BIS, con signo, y su referencia por percentiles (su v17 §4) |
+| 4.0.0 | 2026-11-12 | La Diana se mueve: sus cortes MCCB y el sector (su v17 §2.3 y §2.4) |
 
-## Dónde está desplegado
+**El histórico ya está recalculado con la v17:** **481 consultas quedaron en 4.x** y **71 no se pudieron
+reemitir**, cada una con su motivo (34 de prueba; de las 37 reales: 20 con la medición
+repetida, 13 sin fecha de nacimiento legible y 4 fuera del rango de calibración de la EB-BIS v7). Se
+mide con `scripts/las-que-no-se-reemitieron.mjs`.
 
-**Atlas ya está en la nube:** `atlas.cnvsystem.com` funciona, con Supabase en la nube, dominio propio, correo por Resend, y el pago probado de punta a punta con Wompi en sandbox. La nube nació limpia (se sembró sin datos demo; la tabla de pacientes quedó vacía). Los datos que hay ahora son los que Santiago fue creando probando. El entorno local sigue existiendo (es donde corren los tests y los smokes sin datos reales).
+## Base de datos
 
-## Los tres hitos (dónde estamos)
+**247 migraciones aplicadas**, la última `drizzle/0246_los_rotulos_para_el_paciente.sql`. Forward-only:
+una migración aplicada no se modifica nunca, se crea otra. El control es `scripts/check-migrations.mjs`.
 
-- **Hito 1** (producto pulido para el integrante, en sandbox, sin pacientes reales): EN CURSO.
-- **Hito 2** (los integrantes prueban en la nube y dan visto bueno): pendiente.
-- **Hito 3** (pacientes reales): pendiente.
+## Interruptores de activación
 
-La lista formal de gates, con su hito, vive en `LANZAMIENTO.md` (fuente única). Este documento es el resumen llano.
+| Constante | Valor | Qué significa |
+|---|---|---|
+| `CNVS_ACTIVA` | `true` | La Encuesta CNV-S de seguimiento se aplica a **todos** los pacientes, reales incluidos. Encendida el 2026-11-16 |
+| `CNVS_EN_PRUEBAS` | `true` | Se deja en `true` para conservar el estado anterior (solo pacientes de prueba) si alguna vez se apaga la de arriba |
 
-## Qué falta (de lo más chico a lo más grande)
+Viven en `src/modules/evaluations/instrumento.ts`, con su candado. Apagar `CNVS_ACTIVA` devuelve el
+sistema a pacientes de prueba sin tocar nada más.
 
-1. **Reenviar la copia del consentimiento.** Un botón para reenviar a quien no la recibió. Chico.
-2. **Los cinco datos sociodemográficos + el motivo.** La etnia (el sexto) va aparte, tras una consulta legal. Mediano.
-3. **Guardar el borrador de la encuesta.** Que un paciente que se detiene no pierda lo que llevaba. Va tras una consulta legal. Mediano.
-4. **La factura real de la venta (Alegra).** Hoy la factura es un simulacro en sandbox; ni el pago por Wompi ni la venta en efectivo facturan de verdad. Depende de que Santiago prepare Alegra (sandbox y luego producción). Grande.
-5. **La liquidación agregada del integrante** ("cuánto le deben"): junta ventas, faltantes, vencidos y retención para dar el neto. Es la pieza que el integrante pregunta al entrar. Depende de la tarifa de retención (contadora) para el número final, pero se puede construir antes. Grande.
-6. **El re-port del motor de peso/prescripción de Tratamiento.** Es la mitad de Tratamiento que sigue trabada; espera la fórmula exacta del déficit desde el peso meta (Gildardo). Grande.
-7. **Los grants sobre todo el contenido clínico** (cerrar el "god-view" del admin). Es gate de **pacientes reales (Hito 3)**, no de recibir integrantes: mientras no haya historias clínicas reales, lo que un admin vería de más son datos de prueba, no PHI de personas.
-8. **Renumerar el consentimiento a 1.0 y limpiar.** Tarea del lanzamiento.
+## En curso
 
-## Qué bloquea RECIBIR INTEGRANTES (la pregunta que importa)
+- **Nada clínico abierto de nuestro lado.** Lo científico se cerró con la v17 aplicada, el histórico
+  reemitido y la CNV-S encendida.
+- Lo que queda es **operativo y comercial**: el smoke comercial de punta a punta y las llaves de
+  producción (abajo).
 
-**Para que un integrante entre, opere y venda, hoy no falta código bloqueante:** el despliegue está, la autenticación (incluida "olvidé mi clave") está, la nube está limpia, y la venta (Wompi + efectivo) registra venta y comisión. Los grants son gate del Hito 3, no de esto.
+## Lo que espera a alguien
 
-**Lo único que un tercero bloquea de verdad es PAGARLE la comisión:** la tarifa exacta de retención la define la **contadora**, y la liquidación agregada se apoya en ella. Un integrante puede entrar, operar y vender antes de que la contadora responda; lo que no se puede es liquidarle el pago. Decisión ya tomada: lo clínico y la venta no se bloquean por lo fiscal.
+| Espera a | Qué | Dónde está |
+|---|---|---|
+| **Gildardo** | Las **50 preguntas abiertas** del 16 de noviembre (siete solo piden confirmar lo ya aplicado). Tres frenan trabajo: la **37**, la **1** y la **2** | `docs/PENDIENTES_CIENTIFICOS.md`, y el `.docx` del 16 en `docs/entregas/` (fuera de git) |
+| **Ángela** | Las correcciones de la cohorte: los grupos de **medición repetida**, **15 pacientes sin fecha de nacimiento** y **2 fechas que no cuadran** | `scripts/PARA_COORDINAR_CON_ANGELA_2026-11-07.mjs` arma el mensaje en `docs/entregas/dudas/` (gitignoreado) |
+| **Una profesional (`4d2a74e0`)** | Reportó un error en "Antrop. y BIS" y quedó en reintentar. Si vuelve a verlo, se corre el script de abajo con su identidad | `scripts/los-lectores-con-su-identidad.mjs` |
+| **La contadora** | La tarifa exacta de retención por comisiones. Bloquea **liquidar** el pago al integrante, no vender ni facturar | `DECISIONES_LEGALES.md` |
 
-(Si además se abre a profesiones distintas de nutricionista, eso sí espera a Gildardo, Q22: hoy solo el nutricionista tiene contenido de tratamiento.)
+## Los próximos pasos
 
-## Qué espera a Gildardo
+1. **Smoke comercial de punta a punta** (venta por pasarela y en efectivo, comisión, inventario).
+2. **Las llaves de producción de Alegra y de Wompi.** Hoy la factura es un simulacro en sandbox: ni el
+   pago por pasarela ni la venta en efectivo facturan de verdad. Las variables y su alcance están en
+   `DEPLOY.md`; el cotejo del catálogo, en `scripts/cotejo-alegra.mjs`.
+3. Lo demás, por prioridad, en `BACKLOG.md` y `LANZAMIENTO.md`.
 
-Nada de lo operativo/comercial (E2) lo espera. Lo que espera es clínico:
+## Los scripts de solo lectura
 
-- **Bloquea:** la fórmula exacta del déficit calórico desde el peso meta (la mitad del motor de Tratamiento), y confirmar el retiro del "peso ajustado".
-- **No bloquea:** unas confirmaciones de texto y de etiquetas, dos rarezas del patrón alimentario, cuántas de las 63 preguntas del intake son necesarias en la primera consulta, y una tabla de referencia que él ofreció entregar. Van en la ronda consolidada (`docs/entregas/RONDA_GILDARDO_2026-08-10.md`).
+Todos leen la nube y **no escriben nada en ella**. Se corren con
+`node --env-file=.env.production.local scripts/<nombre>`, e imprimen cuentas e ids abreviados a ocho
+caracteres, nunca nombres ni documentos.
 
-## Qué espera al contable y a la contadora
+| Script | Qué mide |
+|---|---|
+| `las-que-no-se-reemitieron.mjs` | Qué consultas quedaron sin reemitir con la v17, y por qué cada una |
+| `los-veredictos-de-la-hc-contra-el-dfi.mjs [id...]` | Qué dice cada superficie de cada índice sobre el mismo sello. Sin ids, barre y resume |
+| `hombres-con-el-ica-bis-alterado.mjs` | Qué consultas de hombre traen la fila del ICA-BIS alterada (para verificarla en la HC, que solo muestra lo alterado) |
+| `el-item-de-nutraceuticos-contra-la-vigente.mjs` | El pendiente del cierre contra la prescripción vigente: cuántas tienen solo producto externo |
+| `el-omega-en-la-cohorte.mjs` | Dónde sugiere el omega el modelo y en cuántas consultas se prescribió |
+| `los-pendientes-de-verdad.mjs` | Los pendientes que la franja del cierre cuenta de verdad, con las condiciones reales |
+| `mediciones-fuera-de-rango.mjs` | Mediciones con insumos fuera de rango fisiológico |
+| `repasar-el-seguimiento.mjs <id>` | Qué le quedó a una consulta de seguimiento |
+| `revisar-respuestas-de-la-consulta.mjs <id>` | Qué le quedó a una consulta después de un guardado que falló (acepta el prefijo que imprime Sentry) |
+| `los-lectores-con-su-identidad.mjs` | Corre los lectores de "Antrop. y BIS" con la identidad de una profesional, para reproducir su error |
+| `encuesta-de-los-importados.mjs` | Cuántos pacientes importados del HTML tienen la encuesta incompleta |
+| `que-trajo-el-html-en-otra.mjs` · `cotejo-de-las-opciones-otra.mjs` | Qué trajo el HTML en el texto libre de "Otra", y en cuántas preguntas se escribe distinto |
+| `datos-eb-bis-para-gildardo.mjs` | Los datos de la edad bioeléctrica para la dirección científica |
+| `simular-v17.mjs` | Simula una versión del motor sobre la cohorte sin escribir (es como se midió la v17 antes de aplicarla) |
+| `PARA_COORDINAR_CON_ANGELA_2026-11-07.mjs` | Arma lo que Santiago necesita para coordinar las correcciones con Ángela |
+| `cotejo-alegra.mjs` · `leer-alegra.mjs` · `sondeo-wompi-consulta.mjs` | Cotejan el catálogo y las cuentas de Alegra, y sondean las transacciones de Wompi |
 
-- **Contable** (ya entregó su dictamen): una consulta de seguimiento sobre el contacto en Alegra (afina cómo se factura, no si se factura) y confirmar el rediseño de retención (A2, ya elegida).
-- **Contadora** (bloquea la liquidación, no la factura): la **tarifa exacta de retención por comisiones** por perfil, y el tratamiento contable del efectivo en custodia + la conciliación quincenal.
+**Y las puertas, que corren en local y no tocan la nube:** `npx tsc --noEmit` · `pnpm lint` ·
+`pnpm check:rsc` · `pnpm check:cables` · `node scripts/check-secrets.mjs` ·
+`node scripts/check-entregas.mjs` · `npx vitest run --project unit` · `npx vitest run --project db`.
 
-## Qué falta consultar en lo legal
-
-Nada bloquea construir; espera consultas que aún no se hacen (el método que funcionó con la firma electrónica: consultar, decidir, construir, el abogado revisa al final). Preparadas: **etnia** (dato sensible para el observatorio) y **borrador de encuesta** (conservar respuestas antes de firmar). Y quedan el **adulto con representante legal** y varias de cumplimiento regulatorio: son gate de pacientes reales, no de hoy.
+**Los scripts que SÍ escriben** (`aplicar-migracion`, `normalize-patient-sex`, `adoptar-factura-alegra`,
+`reseed-indicator-defs`, `seed-golden`, `limpiar-fixtures-de-la-suite`, y los `gen-*`) no se corren contra
+producción sin que Santiago lo pida en ese turno.
