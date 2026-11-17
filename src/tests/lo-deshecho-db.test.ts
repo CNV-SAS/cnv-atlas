@@ -27,6 +27,8 @@ HAS_DB = Boolean(process.env.DATABASE_URL);
 describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   let db: any;
+  /** La fecha de arranque que la base local tenía antes de esta suite. */
+  let arranquePrevio: { f: string | null } | undefined;
   let lector: any;
   let orgId: string;
   let profId: string;
@@ -95,6 +97,19 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     lector = await import("@/modules/direccion/data/lo-deshecho");
+    // ═══ ESTA SUITE DECLARA SU ARRANQUE, Y DESDE EL 2026-11-17 TIENE QUE HACERLO ═══
+    //
+    // Antes, sin fecha de arranque, estos lectores contaban TODO, así que una base local sin configurar
+    // servía de universo completo por accidente. Ahora "sin arranque" significa lo que dice: no se ha
+    // arrancado, y no se cuenta nada (el defecto que lo motivó está en `fecha-de-arranque.test.ts`).
+    //
+    // Así que una suite que mide "cómo va la operación" tiene que decir DESDE CUÁNDO corre esa operación.
+    // Se usa una fecha anterior a cualquier fixture, y se devuelve la que había en el `afterAll`: es una
+    // fila compartida y dejarla puesta recortaría las cifras de toda la base local.
+    [arranquePrevio] = await db.execute(
+      dsql`select fecha_de_arranque::text as f from commercial_config limit 1`,
+    );
+    await db.execute(dsql`update commercial_config set fecha_de_arranque = '2020-01-01'::date`);
 
     // ═══ EL PROFESIONAL CON MENOS VENTAS, NO EL PRIMERO (2026-10-06) ═══
     //
@@ -159,6 +174,10 @@ describe.skipIf(!HAS_DB)("lo que se deshizo (BD real)", () => {
 
   afterAll(async () => {
     if (!HAS_DB) return;
+    // Y LA FECHA DE ARRANQUE VUELVE A SER LA QUE ERA (ver la nota del `beforeAll`).
+    await db.execute(
+      dsql`update commercial_config set fecha_de_arranque = ${arranquePrevio?.f ?? null}::date`,
+    );
     await db.execute(dsql`set session_replication_role = replica`);
     await db.execute(dsql`delete from patients where id = ${patientId}`);
     await db.execute(dsql`set session_replication_role = default`);

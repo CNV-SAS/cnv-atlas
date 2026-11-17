@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
 
-import { desdeElArranque, elMasTardio } from "../arranque";
+import { desdeElArranque, elArranque, elMasTardio, hoyEnColombia, type ElArranque } from "../arranque";
 
 // ═══ DESDE CUANDO CUENTAN LAS CIFRAS DE RESUMEN (0198) ═══
 //
@@ -40,5 +40,23 @@ export async function fechaDeArranque(): Promise<string | null> {
 }
 
 
+/**
+ * EL ESTADO DEL ARRANQUE, que es lo que un lector de cifras necesita y no la fecha pelada.
+ *
+ * ES LO QUE DEBERIAN LLAMAR LOS CUATRO LECTORES, y la razon esta en el comentario de `elArranque`: con la
+ * fecha sola, un lector solo puede elegir entre contar desde ella (afirmando un arranque que pudo no haber
+ * ocurrido) y contar TODO (metiendo las pruebas en las cifras de la operacion). El tercer estado, el de
+ * "todavia no", no se puede expresar con un `string | null`.
+ *
+ * EL RELOJ SALE DE `hoyEnColombia()` Y NO DE LA BASE a proposito: el unico uso es comparar dos dias en la
+ * misma zona, y preguntarle la fecha a la base por eso costaria una consulta mas en pantallas que ya se han
+ * colgado por el numero de consultas. Donde el corte decide DINERO (la liquidacion) se sigue usando
+ * `hoyEnBogota()`, que si la pregunta a la base.
+ */
+export async function elArranqueDeHoy(): Promise<ElArranque> {
+  return elArranque(await fechaDeArranque(), hoyEnColombia());
+}
+
 // Se reexportan para que quien lee la fecha no tenga que saber que la aritmetica vive en otro archivo.
-export { desdeElArranque, elMasTardio };
+export { desdeElArranque, elArranque, elMasTardio };
+export type { ElArranque };

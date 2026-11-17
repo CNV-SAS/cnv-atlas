@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { desdeElArranque, fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
+import { elArranqueDeHoy, type ElArranque } from "@/modules/payments/data/fecha-de-arranque";
 import {
   brutoReconocido,
   COLUMNA_VENTA_DE_PRUEBA,
@@ -63,7 +63,7 @@ export type DireccionDashboard = {
    * Desde cuando cuentan las cifras de dinero, o null si se cuenta todo. La pantalla lo DICE: una cifra sin
    * su ventana se lee como "todo el historico", y el dia del arranque eso seria falso.
    */
-  desdeElArranque: string | null;
+  arranque: ElArranque;
 };
 
 function sum(rows: { v: string | number | null }[]): number {
@@ -110,8 +110,7 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   // ellas deje de significar nada. Es el mismo defecto del "0 de 18" de los insights, en dinero.
   //
   // El inventario NO lleva corte, a proposito: es un saldo, no un flujo. Ver `fecha-de-arranque.ts`.
-  const arranque = await fechaDeArranque();
-  const desde = desdeElArranque(arranque);
+  const arranque = await elArranqueDeHoy();
 
   // ── Y FUERA EL PROFESIONAL DE DEMOSTRACION (0199) ──
   //
@@ -140,8 +139,19 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
   /** Una venta cuenta si la base no la marco como de prueba. */
   const esOperacion = (ventaId: string | null | undefined) =>
     !(ventaId != null && ventaDePrueba.has(ventaId));
-  const desdeElCorte = <T extends { gte: (c: string, v: string) => T }>(q: T, columna: string): T =>
-    desde == null ? q : q.gte(columna, desde);
+  // ── EL CORTE, CON LOS TRES ESTADOS DEL ARRANQUE (2026-11-17) ──
+  //
+  // ANTES DEL ARRANQUE LA VENTANA ESTA VACIA, y eso se dice con `.limit(0)`, no con una fecha centinela
+  // tipo 9999-01-01: una fecha se lee como un dato, y alguien la va a mover creyendo que es un corte.
+  // `.limit(0)` dice lo que es (ninguna fila) y no se puede confundir con un parametro.
+  //
+  // SOLO SIRVE PORQUE ESTA PANTALLA SUMA EN MEMORIA. Si alguna cifra pasara a contarse con
+  // `{ count: "exact", head: true }`, `.limit(0)` NO la pondria en cero (PostgREST devuelve el total
+  // igual, comprobado): ahi habria que cortar antes de la consulta.
+  const desdeElCorte = <T extends { gte: (c: string, v: string) => T; limit: (n: number) => T }>(
+    q: T,
+    columna: string,
+  ): T => (arranque.arrancado ? q.gte(columna, arranque.desde) : q.limit(0));
 
   const [paid, cnv, perdidas, devueltas, commissions, inventory] = await Promise.all([
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
@@ -290,6 +300,6 @@ export async function getDireccionDashboard(): Promise<DireccionDashboard> {
       todoElSaldo.filter((r) => ubicacionDe(r)?.kind !== "integrante"),
       (r) => uno(r.nutraceuticals as { name: string } | null)?.name ?? "(sin nombre)",
     ),
-    desdeElArranque: arranque,
+    arranque,
   };
 }

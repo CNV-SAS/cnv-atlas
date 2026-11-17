@@ -33,6 +33,8 @@ HAS_DB = Boolean(process.env.DATABASE_URL);
 describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   let db: any;
+  /** La fecha de arranque que la base local tenía antes de esta suite. */
+  let arranquePrevio: { f: string | null } | undefined;
   let lector: any;
   let orgId: string;
   let profId: string;
@@ -93,6 +95,19 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     lector = await import("@/modules/direccion/data/insights-de-la-compra");
+    // ═══ ESTA SUITE DECLARA SU ARRANQUE, Y DESDE EL 2026-11-17 TIENE QUE HACERLO ═══
+    //
+    // Antes, sin fecha de arranque, estos lectores contaban TODO, así que una base local sin configurar
+    // servía de universo completo por accidente. Ahora "sin arranque" significa lo que dice: no se ha
+    // arrancado, y no se cuenta nada (el defecto que lo motivó está en `fecha-de-arranque.test.ts`).
+    //
+    // Así que una suite que mide "cómo va la operación" tiene que decir DESDE CUÁNDO corre esa operación.
+    // Se usa una fecha anterior a cualquier fixture, y se devuelve la que había en el `afterAll`: es una
+    // fila compartida y dejarla puesta recortaría las cifras de toda la base local.
+    [arranquePrevio] = await db.execute(
+      dsql`select fecha_de_arranque::text as f from commercial_config limit 1`,
+    );
+    await db.execute(dsql`update commercial_config set fecha_de_arranque = '2020-01-01'::date`);
 
     const [prof] = await db.execute(dsql`
       select pp.id, pp.profile_id, p.organization_id
@@ -153,6 +168,10 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
   // cifras de las pantallas, que es justo lo que este lector mide.
   afterAll(async () => {
     if (!HAS_DB) return;
+    // Y LA FECHA DE ARRANQUE VUELVE A SER LA QUE ERA (ver la nota del `beforeAll`).
+    await db.execute(
+      dsql`update commercial_config set fecha_de_arranque = ${arranquePrevio?.f ?? null}::date`,
+    );
     await db.execute(dsql`set session_replication_role = replica`);
     for (const id of creados.tratamientos) await db.execute(dsql`delete from treatments where id = ${id}`);
     for (const id of creados.diagnosticos) await db.execute(dsql`delete from diagnoses where id = ${id}`);
@@ -297,10 +316,29 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
   it("con fecha de arranque, lo anterior no cuenta en ningun eje", async () => {
     const [previa] = await db.execute(dsql`select fecha_de_arranque::text as f from commercial_config limit 1`);
     try {
-      await db.execute(dsql`update commercial_config set fecha_de_arranque = null`);
       await ventaAntigua(); // del 2026-09-01
+
+      // ── 1 · SIN FECHA NO SE CUENTA NADA, Y ESO CAMBIO EL 2026-11-17 ──
+      //
+      // La 0198 escribio "NULL = se cuenta todo". Era el unico estado disponible para "todavia no
+      // arrancamos", y hacia que poner la fecha en nulo (el arreglo evidente al aviso falso de
+      // /direccion) presentara las 64 ventas de prueba como la operacion. Ahora NULL dice lo que es:
+      // no se ha arrancado, la ventana esta vacia.
+      await db.execute(dsql`update commercial_config set fecha_de_arranque = null`);
+      const sinArranque = await lector.insightsDeLaCompra();
+      expect(sinArranque.arranque.arrancado).toBe(false);
+      expect(sinArranque.ventasConConsulta).toBe(0);
+      expect(sinArranque.ventasSinConsulta).toBe(0);
+      expect(sinArranque.ventasAnterioresAlArranque).toBe(0);
+
+      // ── 2 · LA LINEA BASE, con un corte tan viejo que no deja nada fuera ──
+      //
+      // Hace falta porque "sin fecha" ya no sirve de linea base: antes era el universo completo y ahora
+      // es el vacio. Se usa una fecha anterior a cualquier fixture de esta suite.
+      await db.execute(dsql`update commercial_config set fecha_de_arranque = '2020-01-01'::date`);
       const sinCorte = await lector.insightsDeLaCompra();
-      expect(sinCorte.desdeElArranque).toBeNull();
+      expect(sinCorte.arranque.arrancado).toBe(true);
+      expect(sinCorte.ventasSinConsulta).toBeGreaterThan(0);
 
       // ── EL CORTE SALE DE LA CONSTANTE DEL MODULO, NO DE UNA FECHA TECLEADA ──
       //
@@ -311,7 +349,7 @@ describe.skipIf(!HAS_DB)("los insights de la compra (BD real)", () => {
       const corte = lector.DESDE_QUE_HAY_VINCULO;
       await db.execute(dsql`update commercial_config set fecha_de_arranque = ${corte}::date`);
       const conCorte = await lector.insightsDeLaCompra();
-      expect(conCorte.desdeElArranque).toBe(corte);
+      expect(conCorte.arranque).toMatchObject({ arrancado: true, fecha: corte });
       expect(conCorte.ventasSinConsulta).toBeLessThan(sinCorte.ventasSinConsulta);
       // LO QUE SALIO SE PUEDE DECIR, y por eso se cuenta: el dia del arranque la pantalla se vacia y un cero
       // mudo es indistinguible de una pantalla rota. Un cero que dice cuantas compras dejaron de contar, no.

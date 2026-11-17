@@ -36,7 +36,9 @@ export function LoDeshechoSection({ datos }: { datos: LoDeshecho }) {
         </p>
         <p className="max-w-prose text-xs text-muted-foreground">
           El dinero sí sale una sola vez: lo devuelto y lo perdido ya están descontados del ingreso bruto.
-          {datos.desdeElArranque ? ` Cuenta desde el ${datos.desdeElArranque}, como las demás cifras.` : ""}
+          {datos.arranque.arrancado
+            ? ` Cuenta desde el ${datos.arranque.fecha}, como las demás cifras.`
+            : " Todavía no se ha arrancado, así que no cuenta nada."}
         </p>
       </div>
 

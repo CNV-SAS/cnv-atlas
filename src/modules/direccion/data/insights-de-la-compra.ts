@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
+import { elArranqueDeHoy, type ElArranque } from "@/modules/payments/data/fecha-de-arranque";
 import { resolveRecommendation } from "@/modules/treatment/nutraceuticals-recommendation";
 
 // ═══ QUE SE PRESCRIBE, QUE SE COMPRA, Y QUE SE COMPRA FUERA DEL PLAN (2026-09-29) ═══
@@ -113,8 +113,8 @@ export type InsightsDeLaCompra = {
   /** Dias entre la consulta y la compra: la mediana dice mas que el promedio con pocos datos. */
   diasHastaLaCompra: { mediana: number | null; maximo: number | null };
   porProducto: ConversionDeProducto[];
-  /** Desde cuando cuenta la operacion real, o null si todavia no se fijo el arranque. */
-  desdeElArranque: string | null;
+  /** El estado del arranque. Mientras no se haya arrancado, no se cuenta nada (2026-11-17). */
+  arranque: ElArranque;
   /**
    * Cuantas compras pagadas quedaron FUERA por ser anteriores al arranque.
    *
@@ -143,7 +143,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
   // La consulta se atribuye por SU PACIENTE y no por quien la creo: `treatments.created_by` es un perfil y
   // puede ser el de un administrador que corrigio algo, mientras que la asignacion del paciente es la que
   // dice de quien es la operacion.
-  const arranque = await fechaDeArranque();
+  const arranque = await elArranqueDeHoy();
   // El paciente de prueba sale por los dos ejes, igual que el profesional: su compra no cuenta y su
   // consulta tampoco, porque si no sus prescripciones quedarian en el denominador sin compra posible.
   // LA VENTA DICE SOLA SI CUENTA (0203): las tres marcas vivian aqui como tres `exists`. Ahora una columna.
@@ -160,21 +160,29 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
         join evaluations ev2 on ev2.id = dx2.evaluation_id
         join patients pa2 on pa2.id = ev2.patient_id
        where dx2.id = tr.diagnosis_id and pa2.cuenta_como_de_prueba)`;
-  const corteVenta = arranque
-    ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date${sinDemoEnLaVenta}`
-    : sinDemoEnLaVenta;
-  const corteConsulta = arranque
-    ? sql` and (tr.created_at at time zone 'America/Bogota')::date >= ${arranque}::date${sinDemoEnLaConsulta}`
-    : sinDemoEnLaConsulta;
+  // == LOS TRES ESTADOS DEL ARRANQUE (2026-11-17) ==
+  //
+  // MIENTRAS NO SE HAYA ARRANCADO, LA VENTANA ESTA VACIA, y se dice con ' and false': explicito,
+  // imposible de confundir con un parametro, y el planificador lo resuelve sin recorrer nada.
+  //
+  // ANTES, "sin fecha" SIGNIFICABA "CUENTA TODO", asi que esta pantalla habria presentado las 64 ventas
+  // de prueba como la operacion en el momento en que alguien pusiera la fecha en nulo para corregir el
+  // aviso falso de /direccion. El estado "todavia no arrancamos" no se podia expresar.
+  const corteVenta = arranque.arrancado
+    ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque.fecha}::date${sinDemoEnLaVenta}`
+    : sql` and false`;
+  const corteConsulta = arranque.arrancado
+    ? sql` and (tr.created_at at time zone 'America/Bogota')::date >= ${arranque.fecha}::date${sinDemoEnLaConsulta}`
+    : sql` and false`;
 
   // LO QUE EL CORTE DEJO FUERA, para poder DECIRLO. Sin esta cifra, el dia del arranque la pantalla se
   // queda muda con un cero, y un cero mudo es indistinguible de una pantalla rota.
-  const [fuera] = arranque
+  const [fuera] = arranque.arrancado
     ? await db.execute<{ n: number }>(sql`
         select count(*)::int as n
           from transactions t
          where t.status = 'paid'
-           and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date < ${arranque}::date
+           and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date < ${arranque.fecha}::date
            ${sinDemoEnLaVenta}`)
     : [{ n: 0 }];
 
@@ -368,7 +376,7 @@ export async function insightsDeLaCompra(): Promise<InsightsDeLaCompra> {
 
   return {
     desde,
-    desdeElArranque: arranque,
+    arranque,
     ventasAnterioresAlArranque: Number(fuera?.n ?? 0),
     ventasConConsulta: Number(conteo?.con ?? 0),
     ventasSinConsulta: Number(conteo?.sin ?? 0),

@@ -152,7 +152,13 @@ export default async function DashboardPage() {
               // SOLO EN EL MES DEL ARRANQUE: ese mes la cifra no es del mes entero, y quien la lea va a
               // ver un mes flojo que nunca existió. Los meses siguientes vuelven a ser el mes completo y
               // la nota desaparece sola, porque un aviso permanente es ruido que nadie lee.
-              nota: t.desdeElArranque ? `Desde el ${t.desdeElArranque}, no el mes entero` : null,
+              // Y SI TODAVÍA NO SE HA ARRANCADO, el cero no es "no vendí": es que la ventana está
+              // vacía a propósito. Un cero sin explicación se lee como el peor de los dos.
+              nota: !t.arranque.arrancado
+                ? "Todavía no se ha arrancado: no cuenta nada"
+                : t.elCorteMuerdeElMes
+                  ? `Desde el ${t.arranque.fecha}, no el mes entero`
+                  : null,
             },
             {
               icono: Receipt,
@@ -161,9 +167,11 @@ export default async function DashboardPage() {
               // LAS CIFRAS DICEN QUE DEJAN FUERA (smoke del 2026-09-29). Los dos descuentos son correctos,
               // pero sin decirlos el número parece moverse solo, y un número que se mueve solo es
               // indistinguible de un defecto: costó media hora de smoke averiguar que estaba bien.
-              nota: t.desdeElArranque
-                ? `Sin lo devuelto ni lo que está en revisión · desde el ${t.desdeElArranque}`
-                : "Sin lo devuelto ni lo que está en revisión",
+              nota: !t.arranque.arrancado
+                ? "Todavía no se ha arrancado: no cuenta nada"
+                : t.elCorteMuerdeElMes
+                  ? `Sin lo devuelto ni lo que está en revisión · desde el ${t.arranque.fecha}`
+                  : "Sin lo devuelto ni lo que está en revisión",
             },
             {
               icono: Package,

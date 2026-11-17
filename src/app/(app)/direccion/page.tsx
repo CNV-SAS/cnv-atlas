@@ -9,6 +9,7 @@ import { insightsDeLaCompra } from "@/modules/direccion/data/insights-de-la-comp
 import { loDeshecho } from "@/modules/direccion/data/lo-deshecho";
 import { canViewDireccion } from "@/modules/direccion/policies/can-view-direccion";
 import { requireUser } from "@/modules/auth/session";
+import { avisoDeQueNoSeHaArrancado } from "@/modules/payments/arranque";
 
 export const metadata = { title: "Dirección - Atlas" };
 
@@ -34,7 +35,10 @@ export default async function DireccionPage() {
 
   // EL ALCANCE SE DICE EN CADA TARJETA DE DINERO, no en una nota al pie: el dia del arranque estas cifras
   // caen de golpe (sale todo lo de las pruebas) y una caida sin explicacion al lado se lee como un defecto.
-  const notaDeArranque = d.desdeElArranque ? `desde el ${d.desdeElArranque}` : null;
+  const notaDeArranque = d.arranque.arrancado ? `desde el ${d.arranque.fecha}` : null;
+  // LA FRASE SALE DEL MODULO NEUTRO, no se escribe aqui: las cuatro pantallas tienen que decir lo mismo
+  // y la vez anterior las cuatro afirmaron, cada una por su cuenta, un arranque que no habia ocurrido.
+  const sinArrancar = avisoDeQueNoSeHaArrancado(d.arranque);
 
   const cards: { label: string; value: string; hint?: string }[] = [
     // LAS CIFRAS DICEN QUE DEJAN FUERA (smoke del 2026-09-29): sin decirlo, el número parece moverse solo,
@@ -60,8 +64,8 @@ export default async function DireccionPage() {
       // SE DICE QUE ESTO NO ES LO QUE SE DEBE, porque la liquidación sí paga lo anterior al arranque y las
       // dos cifras van a discrepar a propósito. Sin esta línea, la diferencia parece un error de una de las
       // dos pantallas.
-      hint: d.desdeElArranque
-        ? `desde el ${d.desdeElArranque} · lo anterior se sigue liquidando, no se pierde`
+      hint: d.arranque.arrancado
+        ? `desde el ${d.arranque.fecha} · lo anterior se sigue liquidando, no se pierde`
         : undefined,
     },
     {
@@ -73,7 +77,7 @@ export default async function DireccionPage() {
       // EL INVENTARIO NO LLEVA CORTE Y HAY QUE DECIRLO: un saldo no es un flujo. Las unidades que hay están
       // hoy en la bodega, las haya puesto ahí quien las haya puesto. Recortarlo por fecha daría un número
       // que no es el de ninguna bodega.
-      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} vitrina${d.inventoryLocations === 1 ? "" : "s"} · sin los productos de prueba ni las vitrinas de demostración${d.desdeElArranque ? " · es el saldo de hoy, no lleva corte de fecha" : ""}`,
+      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} vitrina${d.inventoryLocations === 1 ? "" : "s"} · sin los productos de prueba ni las vitrinas de demostración${d.arranque.arrancado ? " · es el saldo de hoy, no lleva corte de fecha" : ""}`,
     },
   ];
 
@@ -87,14 +91,22 @@ export default async function DireccionPage() {
             letra chica porque una caída sin explicación se lee como un defecto, y ya nos pasó esta semana
             con el "0 de 18". La línea también dice qué NO cambia, que es lo que evita la pregunta
             siguiente: nadie perdió una comisión ni desapareció una venta. */}
-        {d.desdeElArranque ? (
+        {d.arranque.arrancado ? (
           <p className="max-w-prose text-sm text-muted-foreground">
             Las cifras de dinero cuentan desde el{" "}
-            <strong className="text-foreground">{d.desdeElArranque}</strong>, el día del arranque: lo anterior
+            <strong className="text-foreground">{d.arranque.fecha}</strong>, el día del arranque: lo anterior
             es de las pruebas y dejó de sumar aquí. No se borró nada, y lo que se le debe a alguien se sigue
             liquidando entero.
           </p>
-        ) : null}
+        ) : (
+          /* ═══ Y SI TODAVÍA NO SE HA ARRANCADO, LO DICE (Santiago, 2026-11-17) ═══
+
+             Aquí decía "el día del arranque" sobre una fecha que se fijó el 11 de septiembre para un
+             arranque que se aplazó tres veces. Textual suyo: *"Todavía no hemos arrancado. No entiendo
+             por qué"*. La pantalla no contaba mal: AFIRMABA UN HECHO FALSO, y el único que podía
+             desmentirlo era quien la leía. Las cifras de dinero de abajo salen en cero a propósito. */
+          <p className="max-w-prose text-sm text-muted-foreground">{sinArrancar}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

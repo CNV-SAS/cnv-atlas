@@ -1,5 +1,6 @@
 import { theadTr, th, thNum } from "@/components/shared/tabla";
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
+import { avisoDeQueNoSeHaArrancado } from "@/modules/payments/arranque";
 
 import type { InsightsDeLaCompra } from "../data/insights-de-la-compra";
 
@@ -33,19 +34,23 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
     return (
       <section className="flex flex-col gap-3">
         <TituloSeccion>Qué se prescribe y qué se compra</TituloSeccion>
-        {datos.desdeElArranque ? (
+        {!datos.arranque.arrancado ? (
+          /* ESTE ERA EL TEXTO QUE SANTIAGO REPORTÓ (2026-11-17): decía "es el día del arranque" sobre una
+             fecha en la que no se arrancó. Ahora el aviso sale del módulo neutro y dice la verdad. */
+          <div className="flex flex-col gap-2 rounded-lg border border-attention bg-attention-bg p-3">
+            <p className="max-w-prose text-sm text-foreground">{avisoDeQueNoSeHaArrancado(datos.arranque)}</p>
+          </div>
+        ) : datos.ventasAnterioresAlArranque > 0 ? (
           <div className="flex flex-col gap-2 rounded-lg border border-attention bg-attention-bg p-3">
             <p className="max-w-prose text-sm text-foreground">
-              <strong>Esto no es un error: está contando desde el {datos.desdeElArranque}</strong>, que es el
+              <strong>Esto no es un error: está contando desde el {datos.arranque.fecha}</strong>, que es el
               día del arranque, y todavía no hay ninguna compra de esa fecha en adelante.
             </p>
-            {datos.ventasAnterioresAlArranque > 0 ? (
-              <p className="max-w-prose text-xs text-muted-foreground">
-                Quedaron fuera {datos.ventasAnterioresAlArranque} compras anteriores, que son las de las
-                pruebas. No se borraron: siguen en el historial y en las liquidaciones. Con el primer cobro
-                real estas cifras vuelven a llenarse.
-              </p>
-            ) : null}
+            <p className="max-w-prose text-xs text-muted-foreground">
+              Quedaron fuera {datos.ventasAnterioresAlArranque} compras anteriores, que son las de las
+              pruebas. No se borraron: siguen en el historial y en las liquidaciones. Con el primer cobro
+              real estas cifras vuelven a llenarse.
+            </p>
           </div>
         ) : (
           <p className="max-w-prose text-sm text-muted-foreground">
@@ -67,9 +72,9 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
           todavía qué consumió el paciente, así que ninguna de estas cifras dice si le sirvió. Para eso hace
           falta el registro de consumo en el seguimiento.
         </p>
-        {datos.desdeElArranque ? (
+        {datos.arranque.arrancado ? (
           <p className="text-xs text-muted-foreground">
-            Cuenta desde el <strong className="text-foreground">{datos.desdeElArranque}</strong>, que es el
+            Cuenta desde el <strong className="text-foreground">{datos.arranque.fecha}</strong>, que es el
             día del arranque
             {datos.ventasAnterioresAlArranque > 0
               ? `, así que ${datos.ventasAnterioresAlArranque} compras anteriores dejaron de contar aquí`

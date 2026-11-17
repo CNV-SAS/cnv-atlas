@@ -2,7 +2,14 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { desdeElArranque, elMasTardio, hoyEnColombia, inicioDelMesEnBogota } from "@/modules/payments/arranque";
+import {
+  avisoDeQueNoSeHaArrancado,
+  desdeElArranque,
+  elArranque,
+  elMasTardio,
+  hoyEnColombia,
+  inicioDelMesEnBogota,
+} from "@/modules/payments/arranque";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
@@ -85,8 +92,12 @@ describe("la fecha de arranque llega a todas las cifras de resumen", () => {
       // parezca, dejarian pasar un lector que no corta nada. Comprobado revirtiendo el arreglo, que es
       // como se sabe que un candado sirve: la primera version de esta linea buscaba el nombre suelto y NO
       // atrapo el defecto que se le puso delante.
+      // SE ADMITEN LAS DOS PUERTAS, y la que importa es la segunda: `elArranqueDeHoy()` devuelve el
+      // ESTADO (los tres casos) y `fechaDeArranque()` la fecha pelada. Un lector que use la segunda
+      // corta igual, pero no puede distinguir "todavia no se ha arrancado" de "cuenta todo", que es
+      // el defecto del 2026-11-17. Las dos valen para el corte; solo una vale para el aviso.
       expect(
-        /fechaDeArranque\s*\(/.test(src),
+        /(fechaDeArranque|elArranqueDeHoy)\s*\(/.test(src),
         `${f} alimenta ${que} y no aplica la fecha de arranque`,
       ).toBe(true);
     }
@@ -231,5 +242,100 @@ describe("y el dia de hoy tambien es el de Colombia", () => {
 
   it("y a la medianoche de Bogota ya es el 1", () => {
     expect(hoyEnColombia(new Date("2026-10-01T05:00:00.000Z"))).toBe("2026-10-01");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// LOS TRES ESTADOS DEL ARRANQUE  ·  candado del defecto del 2026-11-17
+//
+// LO QUE PROTEGE: que "todavia no se ha arrancado" sea un estado DECIBLE, y no se tenga que elegir entre
+// afirmar un arranque que no ocurrio y contar las pruebas como operacion.
+//
+// EL DEFECTO, EN LAS PALABRAS DE SANTIAGO: /direccion decia *"esta contando desde el 2026-10-15, que es el
+// dia del arranque"*, y el arranque se habia aplazado tres veces. La fecha se fijo el 11 de septiembre
+// para un dia que nunca llego, asi que la pantalla afirmaba un hecho falso. Y el arreglo evidente (poner
+// la fecha en nulo) era peor, porque la 0198 escribio "NULL = se cuenta todo": las 64 ventas de prueba
+// habrian pasado a presentarse como la operacion.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("el arranque tiene tres estados, con un solo valor", () => {
+  it("sin fecha, no se ha arrancado y no se cuenta nada", () => {
+    expect(elArranque(null, "2026-11-17")).toEqual({ arrancado: false, fijadoPara: null });
+  });
+
+  // ESTE ES EL ESTADO QUE NO EXISTIA, y es el que permite fijar la fecha con antelacion sin que las
+  // cifras mientan mientras llega. Es lo que no se pudo hacer en octubre.
+  it("una fecha en el futuro todavia no es un arranque, y dice para cuando", () => {
+    expect(elArranque("2026-11-18", "2026-11-17")).toEqual({ arrancado: false, fijadoPara: "2026-11-18" });
+  });
+
+  it("la fecha de hoy ya es el arranque", () => {
+    expect(elArranque("2026-11-17", "2026-11-17")).toEqual({
+      arrancado: true,
+      fecha: "2026-11-17",
+      desde: "2026-11-17T00:00:00-05:00",
+    });
+  });
+
+  // EL CASO QUE SANTIAGO TENIA DELANTE: la fecha quedo en el pasado, asi que el sistema SI esta contando
+  // desde ella. El estado es correcto; lo que estaba mal era el dato, y eso se arregla fijando el dia
+  // real, que es el unico acto que enciende las cifras.
+  it("una fecha anterior es un arranque que ya ocurrio", () => {
+    expect(elArranque("2026-10-15", "2026-11-17")).toMatchObject({ arrancado: true, fecha: "2026-10-15" });
+  });
+
+  // EL CORTE SIGUE ANCLADO A BOGOTA, igual que antes: el estado no cambio esa parte.
+  it("el instante del corte es la medianoche de Bogota, no la de UTC", () => {
+    const a = elArranque("2026-11-18", "2026-11-18");
+    expect(a.arrancado && new Date(a.desde).toISOString()).toBe("2026-11-18T05:00:00.000Z");
+  });
+
+  // Y EL AVISO VIVE EN UN SOLO SITIO, que es lo que evita que cuatro pantallas vuelvan a afirmar cada
+  // una por su cuenta un arranque que no hubo.
+  it("el aviso dice que no se ha arrancado, y calla cuando ya se arranco", () => {
+    expect(avisoDeQueNoSeHaArrancado(elArranque(null, "2026-11-17"))).toContain("Todavía no se ha arrancado");
+    expect(avisoDeQueNoSeHaArrancado(elArranque("2026-11-18", "2026-11-17"))).toContain("2026-11-18");
+    expect(avisoDeQueNoSeHaArrancado(elArranque("2026-10-15", "2026-11-17"))).toBeNull();
+  });
+
+  // NINGUN AVISO PUEDE DECIR QUE SE BORRO ALGO NI QUE SE PERDIO UNA COMISION, que es la otra mitad de la
+  // regla de la 0198: el corte recorta cifras de resumen, nunca lo que se le debe a alguien.
+  it("y el aviso dice lo que NO cambia", () => {
+    for (const a of [elArranque(null, "2026-11-17"), elArranque("2026-11-18", "2026-11-17")]) {
+      const texto = avisoDeQueNoSeHaArrancado(a) as string;
+      expect(texto).toContain("no se borró nada");
+      expect(texto).toContain("se liquida igual");
+    }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y LAS CUATRO PANTALLAS DICEN EL ESTADO, NO LA FECHA PELADA
+//
+// Lo que esto atrapa es la reaparicion exacta del defecto: una pantalla que escribe "el día del arranque"
+// al lado de una fecha sin haber comprobado que el arranque OCURRIO.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("ninguna pantalla afirma un arranque sin comprobarlo", () => {
+  const PANTALLAS = [
+    "src/app/(app)/direccion/page.tsx",
+    "src/app/(app)/dashboard/page.tsx",
+    "src/modules/direccion/components/insights-de-la-compra-section.tsx",
+    "src/modules/direccion/components/lo-deshecho-section.tsx",
+  ];
+
+  it("cada una pregunta por `arrancado` antes de hablar del arranque", () => {
+    for (const f of PANTALLAS) {
+      const src = sinComentarios(readFileSync(f, "utf8"));
+      expect(
+        /arranque\.arrancado/.test(src),
+        `${f} habla del arranque y no comprueba si ocurrio`,
+      ).toBe(true);
+      // Y NINGUNA SE QUEDA CON EL CAMPO VIEJO: `desdeElArranque` como CAMPO de los lectores era justo lo
+      // que no podia distinguir los tres estados. La FUNCION del modulo neutro sigue existiendo y se
+      // sigue usando para el instante del corte; lo que no puede volver es el campo.
+      expect(
+        /\.desdeElArranque/.test(src),
+        `${f} lee el campo desdeElArranque, que no distingue "todavia no se ha arrancado" de "cuenta todo"`,
+      ).toBe(false);
+    }
   });
 });

@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
+import { elArranqueDeHoy, type ElArranque } from "@/modules/payments/data/fecha-de-arranque";
 import type { ClaseDeshecha } from "@/modules/payments/lo-deshecho";
 import { SQL_SIN_PROFESIONAL_DE_PRUEBA } from "@/modules/professionals/de-prueba";
 
@@ -61,11 +61,11 @@ export type LoDeshecho = {
    * Ver `lo-deshecho.ts` para por que son cuatro situaciones y no una.
    */
   links: { aMano: number; reemplazadosPorOtroCobro: number; noCompletados: number; sinUsar: number };
-  desdeElArranque: string | null;
+  arranque: ElArranque;
 };
 
 export async function loDeshecho(): Promise<LoDeshecho> {
-  const arranque = await fechaDeArranque();
+  const arranque = await elArranqueDeHoy();
   // Y FUERA EL PACIENTE DE PRUEBA: el filtro estaba a medias (ver dashboard-reader). Marcar un paciente
   // sacaba su diagnostico de las cifras y dejaba su dinero dentro.
   // LA VENTA DICE SOLA SI CUENTA (0203): antes aqui vivian dos `exists`, uno por el paciente y otro por el
@@ -77,10 +77,15 @@ export async function loDeshecho(): Promise<LoDeshecho> {
   // Y ARRASTRA EL FILTRO DEL PROFESIONAL DE DEMOSTRACION (0199) EN LA MISMA VARIABLE, a proposito: si
   // fueran dos fragmentos sueltos, la consulta que se escriba mañana pondria uno y olvidaria el otro. Aqui
   // el olvido posible es el de la variable entera, que es mucho mas visible.
+  // ── Y MIENTRAS NO SE HAYA ARRANCADO, LA VENTANA ESTA VACIA (2026-11-17) ──
+  //
+  // Antes, sin fecha, este fragmento quedaba vacio y la tasa se calculaba sobre TODAS las ventas de la
+  // historia, pruebas incluidas. Se dice con ' and false' y no con una fecha centinela: una fecha se lee
+  // como un dato y alguien la va a mover creyendo que es un corte.
   const corte = sql`${
-    arranque
-      ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque}::date`
-      : sql``
+    arranque.arrancado
+      ? sql` and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${arranque.fecha}::date`
+      : sql` and false`
   } and ${sql.raw(SQL_SIN_PROFESIONAL_DE_PRUEBA)}${sinPacienteDePrueba}`;
 
   const [pagadas] = await db.execute<{ n: number }>(sql`
@@ -172,6 +177,6 @@ export async function loDeshecho(): Promise<LoDeshecho> {
       noCompletados: Number(links?.no_completados ?? 0),
       sinUsar: Number(links?.sin_usar ?? 0),
     },
-    desdeElArranque: arranque,
+    arranque,
   };
 }

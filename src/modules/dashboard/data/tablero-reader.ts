@@ -12,7 +12,7 @@ import {
   FILTRO_FUERA_DE_REVISION,
 } from "@/modules/payments/cobro-reconocido";
 import { hoyEnColombia, inicioDelMesEnBogota } from "@/modules/payments/arranque";
-import { desdeElArranque, elMasTardio, fechaDeArranque } from "@/modules/payments/data/fecha-de-arranque";
+import { elArranqueDeHoy, elMasTardio, type ElArranque } from "@/modules/payments/data/fecha-de-arranque";
 import { pendienteDelPaciente } from "@/modules/patients/pendientes";
 import type { EvaluacionDelRoster } from "@/modules/patients/roster-fila";
 
@@ -60,10 +60,17 @@ export type Tablero = {
   /** Unidades en inventario de nutraceuticos. */
   unidadesEnInventario: number;
   /**
-   * Null salvo en el mes del arranque: entonces las dos cifras del mes NO son del mes entero, sino desde
-   * ese dia, y la pantalla tiene que decirlo o el profesional leera un mes flojo que nunca existio.
+   * EL ESTADO DEL ARRANQUE (2026-11-17). Mientras no se haya arrancado, las dos cifras del mes son CERO
+   * a proposito (la ventana esta vacia) y la pantalla tiene que decir por que, o un cero se lee como
+   * "no vendi".
    */
-  desdeElArranque: string | null;
+  arranque: ElArranque;
+  /**
+   * Solo en el mes del arranque: las dos cifras del mes NO son del mes entero, sino desde ese dia, y la
+   * pantalla tiene que decirlo o el profesional leera un mes flojo que nunca existio. Los meses
+   * siguientes vuelven a ser del mes entero y un aviso permanente seria ruido que nadie lee.
+   */
+  elCorteMuerdeElMes: boolean;
   /**
    * Si quien mira TIENE perfil profesional. Sin el, las tres cifras de "Tu mes" serian ceros que no
    * significan nada, y un cero sin significado se lee como "no vendi" en vez de "esto no es tuyo".
@@ -101,11 +108,18 @@ export async function getTablero(userId: string): Promise<Tablero> {
   // El mes empieza el dia 1; si el arranque cae a mitad de mes, lo que hay que contar empieza en el
   // arranque. Sin esto, la primera tarjeta del mes del arranque sumaria las pruebas de los dias
   // anteriores, que es justo lo que la fecha viene a evitar. Los meses siguientes no lo notan.
-  const arranque = await fechaDeArranque();
-  const desde = elMasTardio(inicioDelMes(), desdeElArranque(arranque));
+  const arranque = await elArranqueDeHoy();
+  const desde = elMasTardio(inicioDelMes(), arranque.arrancado ? arranque.desde : null);
   // Solo se avisa cuando el corte MUERDE: en los meses siguientes la cifra vuelve a ser del mes entero y
   // un aviso permanente seria ruido que nadie lee.
-  const recortaElMes = desde !== inicioDelMes() ? arranque : null;
+  const elCorteMuerdeElMes = arranque.arrancado && desde !== inicioDelMes();
+  // ── ANTES DEL ARRANQUE, LAS DOS CIFRAS DE DINERO NO CUENTAN NADA (2026-11-17) ──
+  //
+  // Se cuela por la MISMA puerta que ya existia para "esto no es tuyo" (`miProfesional`), y no por un
+  // filtro nuevo: la ventana vacia y la ausencia de perfil producen la misma respuesta honesta, que es una
+  // lista vacia, y la pantalla dice cual de las dos razones es. El inventario NO pasa por aqui, porque es
+  // un saldo y no un flujo.
+  const cuentaLaOperacion = miProfesional != null && arranque.arrancado;
 
   const [pacientes, citas, comision, ventas, perdidas, devueltas, inventario] = await Promise.all([
     // LOS PENDIENTES SALEN DE LA MISMA REGLA QUE LA COLUMNA (`pendienteDelPaciente`), no de un conteo
@@ -163,7 +177,7 @@ export async function getTablero(userId: string): Promise<Tablero> {
     // POR QUE LA DE LA VENTA Y NO LA DE LA FILA: es la convencion que este mismo archivo ya aplica a las
     // devoluciones ("se acota por la FECHA DE LA VENTA, porque lo que se corrige es lo que ese mes
     // facturo"). Tener dos criterios para el mismo mes es como se llega aqui otra vez.
-    miProfesional
+    cuentaLaOperacion
       ? supabase
           .from("professional_revenue")
           .select("commission_amount, transaction_id, transactions!inner(created_at, patient_id)")
@@ -173,7 +187,7 @@ export async function getTablero(userId: string): Promise<Tablero> {
           data: [] as { commission_amount: string; transaction_id: string; transactions: unknown }[],
         }),
     // Sin las ventas en revision: su dinero es un pasivo hasta resolverse (contabilidad, 2026-09-14).
-    miProfesional
+    cuentaLaOperacion
       ? supabase.from("transactions").select("id, amount, patient_id").eq("status", "paid").eq("professional_id", miProfesional).or(FILTRO_FUERA_DE_REVISION).is(COLUMNA_EFECTIVO_NO_RECIBIDO, null).gte("created_at", desde)
       : Promise.resolve({ data: [] as { id: string; amount: string; patient_id: string | null }[] }),
     // LO QUE VOLVIO NO SE FACTURO, y esta tarjeta no lo restaba (smoke del 2026-09-29): la venta devuelta de
@@ -183,11 +197,13 @@ export async function getTablero(userId: string): Promise<Tablero> {
     // devolucion de una venta de otro mes bajaria un bruto que nunca subio, y la cifra quedaria mal por el
     // lado contrario. Se acota por la FECHA DE LA VENTA (el embed), no por la de la devolucion, porque lo
     // que se corrige es lo que ese mes facturo.
-    supabase
-      .from("sale_reversals")
-      .select("debited_amount, transaction_id, transactions!inner(created_at, patient_id)")
-      .eq("state", ESTADO_DEVUELTA)
-      .gte("transactions.created_at", desde),
+    cuentaLaOperacion
+      ? supabase
+          .from("sale_reversals")
+          .select("debited_amount, transaction_id, transactions!inner(created_at, patient_id)")
+          .eq("state", ESTADO_DEVUELTA)
+          .gte("transactions.created_at", desde)
+      : Promise.resolve({ data: [] as { debited_amount: string; transaction_id: string }[] }),
     // SIN PRODUCTOS DE PRUEBA, igual que Direccion (smoke del 2026-09-29): esta tarjeta decia 1.903 y la de
     // Direccion 1.820 sobre el mismo hecho, y las 83 de diferencia eran saldo de los productos de prueba,
     // que no se puede borrar porque los movimientos son inmutables.
@@ -288,7 +304,8 @@ export async function getTablero(userId: string): Promise<Tablero> {
         .map((r) => r.debited_amount),
     }),
     unidadesEnInventario: suma(inventario.data, "stock_quantity"),
-    desdeElArranque: recortaElMes,
+    arranque,
+    elCorteMuerdeElMes,
     esIntegrante: miProfesional != null,
   };
 }
