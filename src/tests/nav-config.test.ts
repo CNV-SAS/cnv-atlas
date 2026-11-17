@@ -15,11 +15,24 @@ describe("B3: navegacion adaptativa por rol", () => {
     const adminHrefs = navItemsForRoles(["admin"]).map((i) => i.href);
     const proHrefs = navItemsForRoles(["professional"]).map((i) => i.href);
 
-    // Admin ve la gestion de usuarios y lo comercial; el profesional no.
+    // Admin ve la gestion de usuarios; el profesional no.
     expect(adminHrefs).toContain("/admin");
     expect(adminHrefs).toContain("/comercial");
     expect(proHrefs).not.toContain("/admin");
-    expect(proHrefs).not.toContain("/comercial");
+
+    // ═══ Y /comercial SI LA VE EL INTEGRANTE DESDE EL 2026-11-17, con otro rotulo ═══
+    //
+    // Este caso decia `not.toContain("/comercial")` y era FALSO sobre la pantalla: /comercial ya
+    // servia al Integrante (sus liquidaciones y sus cuentas de Distribucion) y solo le faltaba la
+    // puerta. El candado protegia la ausencia de un acceso que si le correspondia, que es la clase
+    // de caso que hace creer que algo esta decidido cuando esta olvidado.
+    //
+    // LO QUE SE VIGILA AHORA es lo que de verdad importa: que llegue, y que el rotulo sea el suyo.
+    expect(proHrefs).toContain("/comercial");
+    expect(navItemsForRoles(["professional"]).find((i) => i.href === "/comercial")?.label).toBe(
+      "Mis pagos",
+    );
+    expect(navItemsForRoles(["admin"]).find((i) => i.href === "/comercial")?.label).toBe("Comercial");
 
     // Ambos comparten el tablero, pero los conjuntos difieren.
     expect(adminHrefs).toContain("/dashboard");

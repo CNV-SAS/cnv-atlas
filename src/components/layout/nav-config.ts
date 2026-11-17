@@ -136,6 +136,25 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "operacion",
   },
   {
+    // ═══ LA MISMA PANTALLA, CON EL NOMBRE DE LO QUE EL INTEGRANTE VE (Santiago, 2026-11-17) ═══
+    //
+    // /comercial YA servía al Integrante: ahí están sus liquidaciones de Comisión y sus cuentas de
+    // Distribución, y la página lo deja entrar con su perfil profesional. Lo que no existía era CÓMO
+    // LLEGAR: el item de la barra era solo de admin y dirección, así que su historial de pagos solo se
+    // alcanzaba teclendo la URL. Textual suyo: *"no aparecería en ese entonces en el sidebar y estaba
+    // muy escondido"*. Es la familia de "un guard sin superficie que lo alcance": la pieza estaba
+    // construida y no había puerta.
+    //
+    // DOS ITEMS AL MISMO HREF, Y A PROPÓSITO: los roles son disjuntos, así que nadie ve los dos, y el
+    // rótulo tiene que decir lo que esa persona encuentra ahí. "Comercial" nombra el área de CNV;
+    // "Mis pagos" nombra lo que el Integrante va a buscar, que es lo que se le debe y lo que debe.
+    label: "Mis pagos",
+    href: "/comercial",
+    icon: "comercial",
+    roles: ["professional"],
+    group: "cuenta",
+  },
+  {
     label: "Comodato",
     href: "/comodato",
     icon: "comodato",

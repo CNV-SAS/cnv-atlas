@@ -70,6 +70,43 @@ export default async function AdminPage() {
     <div className="flex max-w-2xl flex-col gap-6">
       {/* SIN SUBTITULO: no lo tenia, y la lista de abajo ya dice que es. */}
       <TituloPantalla titulo="Usuarios" />
+
+      {/* ═══ LAS PANTALLAS QUE SOLO SE ALCANZABAN TECLEANDO LA URL (Santiago, 2026-11-17) ═══
+
+          Su petición era *"un panel de admin para aquellos links especiales para no poner todo en el
+          sidebar"*, y al contarlas son DOS: la recalibración y las ventas que ya ocurrieron. Un panel
+          propio para dos enlaces sería una pantalla que cuesta más de lo que ahorra (una entrada más en
+          la barra, que es justo lo que se quería evitar), así que viven aquí, que es donde ya se entra a
+          administrar.
+
+          NO SE LISTAN LAS QUE SÍ ESTÁN EN LA BARRA (importar del HTML, auditoría, verificación), ni las
+          que necesitan un id en la dirección (la operación de un Integrante se abre desde su fila de
+          abajo; la auditoría de un paciente, desde su ficha). Y /reportes NO está aquí a propósito: salió
+          del menú el 2026-09-18 porque el reporte se trabaja DENTRO de la consulta, y volver a ofrecerlo
+          como bandeja reabriría la pantalla que se decidió retirar. */}
+      <section className="flex flex-col gap-2 rounded-lg border bg-card p-4">
+        <h2 className="text-sm font-semibold">Herramientas de administración</h2>
+        <ul className="flex flex-col gap-2 text-sm">
+          <li>
+            <Link href="/admin/recalibracion" className="font-medium underline">
+              Recalibración científica
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Reemitir los diagnósticos que quedaron en una versión anterior del motor. Dice cuántos entran
+              antes de tocar nada.
+            </p>
+          </li>
+          <li>
+            <Link href="/admin/ventas-retroactivas" className="font-medium underline">
+              Ventas que ya ocurrieron
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Registrar en Atlas una venta anterior que ya se facturó por fuera, con su fecha real y el
+              número de la factura. No vuelve a facturarla.
+            </p>
+          </li>
+        </ul>
+      </section>
       <ul className="flex flex-col gap-3 text-sm">
         {(users ?? []).map((u) => {
           const prof = byProfile.get(u.id) ?? null;
