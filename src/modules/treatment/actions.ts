@@ -19,6 +19,7 @@ import {
   guardarProtocolo,
   saveNutraceuticals,
   registrarSinPrescripcion,
+  retirarSinPrescripcion,
 } from "./services/treatment-service";
 import type { NotaGuardada } from "./services/treatment-service";
 import {
@@ -30,6 +31,7 @@ import {
   guardarProtocoloSchema,
   saveNutraceuticalsSchema,
   registrarSinPrescripcionSchema,
+  retirarSinPrescripcionSchema,
 } from "./validations";
 
 // Actions del protocolo de tratamiento (B13). Thin (regla 2): autorizan por policy,
@@ -98,6 +100,35 @@ export async function registrarSinPrescripcionAction(
   return {
     error: null,
     success: "Quedó registrado que no prescribes nutracéuticos en esta consulta.",
+    warning: null,
+  };
+}
+
+// RETIRAR ESE REGISTRO (2026-11-16). Su propia accion por lo mismo que la de arriba: escribe otro hecho
+// (que el criterio dejo de regir) y lo audita con su propio payload.
+export async function retirarSinPrescripcionAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  const parsed = retirarSinPrescripcionSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "No se pudo retirar el registro.");
+  }
+
+  const result = await retirarSinPrescripcion(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) return fail(result.error.message);
+  return {
+    error: null,
+    success: "Se retiró el registro. La consulta queda sin decidir sobre los nutracéuticos.",
     warning: null,
   };
 }

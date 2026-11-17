@@ -26,6 +26,7 @@ import {
   saveNutraceuticals as writeNutraceuticals,
   saveMenuSemanal as writeMenuSemanal,
   registrarSinPrescripcion as writeSinPrescripcion,
+  retirarSinPrescripcion as writeRetirarSinPrescripcion,
   StaleNutraceuticalsError,
   StaleMenuSemanalError,
   TreatmentStateError,
@@ -38,6 +39,7 @@ import type {
   SaveNutraceuticalsInput,
   SaveMenuSemanalInput,
   RegistrarSinPrescripcionInput,
+  RetirarSinPrescripcionInput,
 } from "../validations";
 
 // Servicio del protocolo de tratamiento (la logica vive aqui; las actions son thin,
@@ -106,6 +108,25 @@ export async function registrarSinPrescripcion(
       motivo: input.motivo,
       ...actor,
     });
+  } catch (e) {
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// RETIRAR ESE REGISTRO: mismos gates que registrarlo (es una escritura clinica sobre el tratamiento, el
+// treatmentId se DERIVA de una lectura bajo RLS y solo lo toca un nutricionista).
+export async function retirarSinPrescripcion(
+  input: RetirarSinPrescripcionInput,
+  actor: Actor,
+): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  try {
+    await writeRetirarSinPrescripcion({ treatmentId: protocol.treatmentId, ...actor });
   } catch (e) {
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;

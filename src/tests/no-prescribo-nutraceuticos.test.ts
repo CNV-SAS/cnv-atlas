@@ -161,16 +161,89 @@ describe("la pantalla ofrece la vía nueva y solo LEE la vieja", () => {
 //    luego sí lo haga. En ese caso NO debería bloquear."* Lo único que no puede pasar es tener las dos cosas a
 //    la vez, y por eso prescribir LEVANTA el "no prescribo", en la misma transacción.
 describe("el botón mira lo guardado, no lo que hay en la grilla", () => {
-  it("la pantalla pasa las DOS fuentes", () => {
+  it("la pantalla pasa las DOS fuentes, contadas en nutracéuticos de CNV", () => {
     const src = leer(SECCION);
-    expect(src).toContain("hayPrescripcion={protocol.nutraceuticals.length > 0 || nutras.length > 0}");
+    // ERAN LINEAS Y PASARON A SER NUTRACEUTICOS DE CNV (2026-11-16): una LUVIA no cierra el pendiente del
+    // cierre, así que tampoco puede esconder el botón que lo cierra.
+    expect(src).toContain("deCnvGuardados={deCnvGuardados}");
+    expect(src).toContain("deCnvEnGrilla={deCnvEnGrilla}");
+    expect(src).toContain("cuantosNutraceuticosDeCnv(protocol.nutraceuticals)");
+    expect(src, "la grilla se cuenta con la misma regla").toContain(
+      "esNutraceuticoDeCnv(ownershipDe(n.nutraceuticalId))",
+    );
   });
 
-  it("y el rechazo del servidor ya no manda a quitar lo que no se puede quitar", () => {
-    // SIN COMENTARIOS: el writer CITA el mensaje viejo para explicar por que se fue.
+  it("y el rechazo del servidor manda a quitarlos, que ahora SÍ es un camino", () => {
+    // ═══ POR QUE ESTA ASERCION CAMBIO DE SIGNO (2026-11-16) ═══
+    //
+    // Hasta hoy este caso PROHIBIA la frase "quítalos de la prescripción", porque Santiago la recibió y era
+    // falsa: guardar una prescripción vacía estaba frenado, así que el mensaje mandaba a una puerta cerrada.
+    // Lo falso no era la instrucción, era que el camino no existía.
+    //
+    // EL CAMINO YA EXISTE (vaciar la grilla y guardar BORRA la prescripción), así que lo que hay que vigilar
+    // es lo contrario: que el mensaje nombre el paso que lo hace cierto, GUARDAR. Un "quítalos" a secas
+    // volvería a describir media maniobra.
     const src = soloCodigo(WRITER);
-    expect(src, "el mensaje volvió a mandar a una puerta cerrada").not.toMatch(/[Qq]uítalos de la prescripción/);
-    expect(src).toContain("ya tiene una prescripción guardada");
+    expect(src).toContain("nutracéuticos de CNV en la prescripción guardada");
+    expect(src, "sin nombrar el guardado, el mensaje describe media maniobra").toMatch(/guarda la prescripción/i);
+  });
+
+  it("el bloque ya no desaparece: con prescripción se queda y lo explica", () => {
+    const src = soloCodigo(NUEVO);
+    // Santiago, 2026-10-10, sobre el aviso de al lado: *"mejor mantenerlo activo y que salga un toast o
+    // mensaje"*. Un botón que desaparece no dice por qué desapareció, y el 2026-11-16 eso dejó un pendiente
+    // del cierre sin ninguna salida alcanzable.
+    expect(src, "volvió a esconderse con prescripción").not.toMatch(/if (hayPrescripcion) return null/);
+    expect(src).toContain("const hayDeCnv = deCnvGuardados > 0 || deCnvEnGrilla > 0;");
+    expect(src, "y dice qué hacer, no solo que no se puede").toMatch(/quita esas líneas de la prescripción/i);
+  });
+
+  it("vaciar una prescripción guardada ya no lo frena el aviso de 'no hay nada que guardar'", () => {
+    const src = soloCodigo(SECCION);
+    // Era el otro medio candado: el botón escondido Y el vaciado frenado dejaban la consulta sin ninguna
+    // salida. El aviso se queda para lo que describe: no hay nada guardado NI en la grilla.
+    expect(src).toContain(
+      "const nadaQueGuardar = nutras.length === 0 && protocol.nutraceuticals.length === 0;",
+    );
+    expect(src).toContain("if (nadaQueGuardar && !yaDecidido)");
+  });
+});
+
+// ═══ RETIRAR EL REGISTRO: LA TERCERA TRANSICION (Santiago, 2026-11-16) ═══
+//
+// SU REGLA: los tres estados (sin decidir, prescrito, no prescribo) tienen que ir de cualquiera a cualquiera.
+// Sin esto, corregir un motivo equivocado obligaba a PRESCRIBIR algo y volver a quitarlo, o sea a dejar en la
+// historia clínica una prescripción que nunca existió. Eso no es corregir: es escribir un dato falso.
+describe("el registro se puede retirar, y queda en el log", () => {
+  it("la pantalla ofrece retirarlo, con confirmación", () => {
+    const src = soloCodigo(NUEVO);
+    expect(src).toContain("retirarSinPrescripcionAction");
+    expect(src).toContain("Retirar este registro");
+    // Con confirmación: borra un registro clínico, no es un botón de paso.
+    expect(src).toMatch(/confirmarRetiro/);
+  });
+
+  it("el writer lo audita con el MISMO evento que al prescribir, marcado a mano", () => {
+    const src = leer(WRITER);
+    const bloque = src.slice(
+      src.indexOf("export async function retirarSinPrescripcion"),
+      src.indexOf("export type SaveTiemposActivosWrite"),
+    );
+    expect(bloque).toContain('event: "treatment.sin_prescripcion_levantada"');
+    expect(bloque).toContain("a_mano: true");
+    // IDEMPOTENTE: si no había nada registrado, ni escribe ni audita. Dos pestañas no generan dos eventos de
+    // algo que pasó una vez.
+    expect(bloque).toContain("isNotNull(treatments.sinPrescripcionMotivo)");
+    expect(bloque, "el motivo retirado no va al log: es texto libre de una consulta").not.toMatch(
+      /payload: {[^}]*motivo:/,
+    );
+  });
+
+  it("y el comportamiento contra BD real está en la suite", () => {
+    const db = leer("src/tests/protocol-concurrency.test.ts");
+    expect(db).toContain("prescribir y quitar hasta cero");
+    expect(db).toContain("quitar hasta dejar solo el producto externo");
+    expect(db).toContain("es idempotente");
   });
 });
 

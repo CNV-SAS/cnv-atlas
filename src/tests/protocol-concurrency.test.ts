@@ -46,6 +46,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   let guardarProtocolo: any;
   let saveNutraceuticals: any;
   let registrarSinPrescripcion: any;
+  let retirarSinPrescripcion: any;
   let TreatmentStateError: any;
   let StaleNutraceuticalsError: any;
   let treatmentId: string;
@@ -54,6 +55,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   let patientId: string;
   let nutraA: string;
   let nutraB: string;
+  /** El producto de TERCERO (LUVIA). No es un nutraceutico de CNV, y esa es la mitad del candado nuevo. */
+  let nutraTercero: string | null;
   const actor = { actorId: "", actorEmail: "concurrency@test", ip: null };
 
   // Firma actual de la PRESCRIPCION de nutraceuticos (base del candado de saveNutraceuticals).
@@ -83,16 +86,33 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
-    ({ saveNutraceuticals, registrarSinPrescripcion, StaleNutraceuticalsError, TreatmentStateError } =
-      await import("@/modules/treatment/data/treatment-writer"));
+    ({
+      saveNutraceuticals,
+      registrarSinPrescripcion,
+      retirarSinPrescripcion,
+      StaleNutraceuticalsError,
+      TreatmentStateError,
+    } = await import("@/modules/treatment/data/treatment-writer"));
     ({ guardarProtocolo } = await import("@/modules/treatment/data/protocolo-writer"));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
     const [prof] = await db.select({ id: schema.professionalProfiles.id, profileId: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
     const [mv] = await db.select({ id: schema.modelVersions.id }).from(schema.modelVersions).limit(1);
-    const nutras = await db.select({ id: schema.nutraceuticals.id }).from(schema.nutraceuticals).limit(2);
+    // SE ELIGEN POR OWNERSHIP, NO POR ORDEN (2026-11-16). Con un `limit(2)` a secas, el producto de tercero
+    // podia caer en nutraA y los casos nuevos medirian otra cosa sin fallar.
+    const nutras = await db
+      .select({ id: schema.nutraceuticals.id })
+      .from(schema.nutraceuticals)
+      .where(dsql`coalesce(${schema.nutraceuticals.ownership}, 'propio') <> 'tercero'`)
+      .limit(2);
     nutraA = nutras[0].id;
     nutraB = nutras[1].id;
+    const [tercero] = await db
+      .select({ id: schema.nutraceuticals.id })
+      .from(schema.nutraceuticals)
+      .where(eq(schema.nutraceuticals.ownership, "tercero"))
+      .limit(1);
+    nutraTercero = tercero?.id ?? null;
     actor.actorId = prof.profileId;
 
     patientId = (await db.insert(schema.patients).values({ organizationId: org.id, documentType: "CC", documentNumber: `CONC-${Date.now()}` }).returning({ id: schema.patients.id }))[0].id;
@@ -340,8 +360,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   });
 
   it("sin prescripcion se registra, y PRESCRIBIR DESPUES lo levanta solo", async () => {
-    // Se vacia la prescripcion por el writer (el camino que el profesional no tiene, pero el test si) para
-    // llegar al estado donde la decision es valida.
+    // Se vacia la prescripcion para llegar al estado donde la decision es valida. Hasta el 2026-11-16 este
+    // era un camino que solo tenia el test: la pantalla frenaba el guardado vacio. Ya no (ver mas abajo).
     await saveNutraceuticals({
       treatmentId,
       nutraceuticals: [],
@@ -369,6 +389,92 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     expect(despues.motivo, "prescribir tiene que levantar el 'no prescribo'").toBeNull();
     expect(despues.at).toBeNull();
     expect(await nutraCount()).toBe(1);
+  });
+
+
+  // ═══ PODER ARREPENTIRSE: LOS TRES ESTADOS VAN DE CUALQUIERA A CUALQUIERA (Santiago, 2026-11-16) ═══
+  //
+  // Textual suyo: *"si alguien prescribe un nutraceutico, el boton No prescribo nutraceuticos no vuelve a
+  // aparecer, y ya no hay forma de arrepentirse."*
+  //
+  // LOS TRES CASOS SON LOS QUE EL PIDIO, y van contra BD real porque las tres reglas son propiedades de la
+  // TRANSACCION: que lo de tercero no cuente se decide bajo el mismo lock que escribe, y el levantamiento
+  // ocurre dentro del guardado de la prescripcion. Un test de pantalla no prueba ninguna.
+  it("prescribir y quitar hasta cero: la consulta vuelve a quedar sin decidir y 'no prescribo' se acepta", async () => {
+    await saveNutraceuticals({
+      treatmentId,
+      nutraceuticals: [{ nutraceuticalId: nutraA, dosage: "1/dia", durationDays: 30 }],
+      baseSignature: await currentNutraSignature(),
+      ...actor,
+    });
+    await registrarSinPrescripcion({ treatmentId, motivo: "con prescripcion no aplica", ...actor }).catch(
+      () => null,
+    );
+    expect((await sinPrescripcion()).motivo, "con un nutraceutico de CNV sigue rechazando").toBeNull();
+
+    // QUITAR HASTA CERO. Este es el guardado que la pantalla frenaba con "no hay nada que guardar todavia".
+    await saveNutraceuticals({
+      treatmentId,
+      nutraceuticals: [],
+      baseSignature: await currentNutraSignature(),
+      ...actor,
+    });
+    expect(await nutraCount()).toBe(0);
+    await registrarSinPrescripcion({ treatmentId, motivo: "prefiero ajustar la alimentacion", ...actor });
+    expect((await sinPrescripcion()).motivo).toBe("prefiero ajustar la alimentacion");
+  });
+
+  it("quitar hasta dejar solo el producto externo: se puede registrar, y ese producto NO levanta el registro", async () => {
+    expect(nutraTercero, "el catalogo tiene que tener un producto de tercero (LUVIA)").not.toBeNull();
+    // Se parte de "no prescribo" ya registrado por el caso anterior, y se prescribe SOLO el externo.
+    expect((await sinPrescripcion()).motivo, "el caso anterior lo dejo registrado").not.toBeNull();
+    await saveNutraceuticals({
+      treatmentId,
+      nutraceuticals: [{ nutraceuticalId: nutraTercero as string, dosage: "1/dia", durationDays: 30 }],
+      baseSignature: await currentNutraSignature(),
+      ...actor,
+    });
+    expect(await nutraCount()).toBe(1);
+    // LA MITAD QUE IMPORTA: un producto externo no es un nutraceutico, asi que no contradice el criterio y
+    // NO puede borrarlo. Si lo borrara, prescribir una LUVIA perderia en silencio el unico sitio donde ese
+    // criterio vive.
+    expect(
+      (await sinPrescripcion()).motivo,
+      "un producto de tercero no levanta el 'no prescribo'",
+    ).not.toBeNull();
+
+    // Y DESDE ESE ESTADO SE PUEDE VOLVER A REGISTRAR: se retira y se registra otra vez con el externo puesto.
+    await retirarSinPrescripcion({ treatmentId, ...actor });
+    expect((await sinPrescripcion()).motivo, "retirar deja la consulta sin decidir").toBeNull();
+    await registrarSinPrescripcion({ treatmentId, motivo: "solo le indico el producto externo", ...actor });
+    expect(
+      (await sinPrescripcion()).motivo,
+      "con solo un producto externo prescrito, el registro SI aplica",
+    ).toBe("solo le indico el producto externo");
+    expect(await nutraCount(), "y la linea del externo sigue ahi").toBe(1);
+  });
+
+  it("'no prescribo' y despues prescribir un nutraceutico de CNV: la prescripcion manda", async () => {
+    expect((await sinPrescripcion()).motivo, "el caso anterior lo dejo registrado").not.toBeNull();
+    await saveNutraceuticals({
+      treatmentId,
+      nutraceuticals: [
+        { nutraceuticalId: nutraTercero as string, dosage: "1/dia", durationDays: 30 },
+        { nutraceuticalId: nutraA, dosage: "1/dia", durationDays: 30 },
+      ],
+      baseSignature: await currentNutraSignature(),
+      ...actor,
+    });
+    const despues = await sinPrescripcion();
+    expect(despues.motivo, "prescribir un nutraceutico de CNV levanta el registro").toBeNull();
+    expect(despues.at).toBeNull();
+    expect(await nutraCount()).toBe(2);
+  });
+
+  it("retirar un registro que no existe no escribe ni revienta (es idempotente)", async () => {
+    expect((await sinPrescripcion()).motivo).toBeNull();
+    await expect(retirarSinPrescripcion({ treatmentId, ...actor })).resolves.toBeUndefined();
+    expect((await sinPrescripcion()).motivo).toBeNull();
   });
 
   const INTER: IntercambioSaved = { objetivoBase: 2000, porciones: { Cereales: 3 } };

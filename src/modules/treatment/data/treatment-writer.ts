@@ -5,11 +5,13 @@ import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   diagnoses,
+  nutraceuticals,
   treatmentNotes,
   treatmentNutraceuticals,
   treatments,
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
+import { cuantosNutraceuticosDeCnv } from "@/modules/treatment/producto-de-tercero";
 
 import {
   menuSemanalSignature,
@@ -180,12 +182,18 @@ export type RegistrarSinPrescripcionWrite = {
 export async function registrarSinPrescripcion(input: RegistrarSinPrescripcionWrite): Promise<void> {
   await db.transaction(async (tx) => {
     await assertDiagnosisExists(tx, input.treatmentId);
+    // ═══ SOLO UN NUTRACEUTICO DE CNV CONTRADICE (Santiago, 2026-11-16) ═══
+    //
+    // Miraba si habia CUALQUIER fila, y por eso una prescripcion de solo LUVIA bloqueaba el registro: un
+    // producto EXTERNO no es un nutraceutico, asi que "no prescribo nutraceuticos" y una linea de LUVIA no
+    // se contradicen. La regla sale del modulo neutro, el mismo que parte el catalogo en la pantalla y el
+    // que cuenta el pendiente del cierre.
     const prescritos = await tx
-      .select({ id: treatmentNutraceuticals.id })
+      .select({ ownership: nutraceuticals.ownership })
       .from(treatmentNutraceuticals)
-      .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId))
-      .limit(1);
-    if (prescritos.length > 0) {
+      .innerJoin(nutraceuticals, eq(nutraceuticals.id, treatmentNutraceuticals.nutraceuticalId))
+      .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId));
+    if (cuantosNutraceuticosDeCnv(prescritos) > 0) {
       // ═══ EL MENSAJE MANDABA A HACER ALGO IMPOSIBLE (Santiago, 2026-10-10) ═══
       //
       // Decía *"quítalos de la prescripción antes de registrar"*, y él los quitó de la grilla y volvió a
@@ -197,10 +205,15 @@ export async function registrarSinPrescripcion(input: RegistrarSinPrescripcionWr
       // lo frena el aviso de "no hay nada que guardar todavía", que está ahí para que la consulta no quede
       // sin ninguno de los dos hechos. O sea que mandaba a una puerta cerrada.
       //
-      // ASÍ QUE AHORA DICE LO QUE ES: con una prescripción guardada, esta opción no aplica. Y la pantalla ya
-      // no ofrece el botón en ese caso, así que esto es el cinturón, no el camino.
+      // ── Y EL 2026-11-16 LA PUERTA SE ABRIÓ, ASÍ QUE EL MENSAJE VUELVE A MANDAR A QUITARLOS ──
+      //
+      // Lo que hacía falso aquel mensaje no era la instrucción, era que guardar una prescripción vacía estaba
+      // frenado: el camino no existía. Ahora existe (quitar las líneas y guardar BORRA la prescripción), así
+      // que decir "quita esas líneas y guarda" manda a una puerta abierta y es lo único que resuelve.
+      //
+      // SIGUE SIENDO EL CINTURÓN, NO EL CAMINO: la pantalla ya lo explica antes de llegar aquí.
       throw new TreatmentStateError(
-        "Esta consulta ya tiene una prescripción guardada, así que registrar que no prescribes nutracéuticos no aplica. Si la prescripción es la correcta, no hay nada que registrar.",
+        "Esta consulta tiene nutracéuticos de CNV en la prescripción guardada. Quita esas líneas y guarda la prescripción; entonces sí puedes registrar que no prescribes nutracéuticos.",
       );
     }
     // LOS TRES CAMPOS JUNTOS, que es lo que el CHECK de la 0214 exige: un motivo sin autor no dice quien
@@ -223,6 +236,49 @@ export async function registrarSinPrescripcion(input: RegistrarSinPrescripcionWr
       // EL MOTIVO NO VA AL LOG, igual que en la decision de nutraceuticos: es texto libre de una consulta
       // y puede nombrar al paciente. Que la decision se tomo, y quien, si queda.
       payload: { motivo_registrado: true },
+      ip: input.ip,
+    });
+  });
+}
+
+export type RetirarSinPrescripcionWrite = {
+  treatmentId: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// ═══ RETIRAR "NO PRESCRIBO NUTRACEUTICOS" (Santiago, 2026-11-16) ═══
+//
+// SU REGLA, y es la que faltaba: los tres estados del item (sin decidir, prescrito, no prescribo) tienen
+// que poder pasar de cualquiera a cualquiera. Prescribir ya levantaba el registro desde el 2026-10-10, y
+// quitar la prescripcion ya deja la consulta sin decidir. Lo que no tenia salida era el registro mismo: la
+// unica forma de corregir un motivo equivocado era PRESCRIBIR algo y volver a quitarlo, o sea dejar en la
+// historia clinica una prescripcion que nunca existio. Eso no es una correccion, es un dato falso.
+//
+// ES IDEMPOTENTE: si no habia nada registrado no escribe ni audita. Quien lo invoca dos veces (dos
+// pestañas) no genera dos eventos de algo que paso una vez.
+//
+// MISMO EVENTO QUE AL PRESCRIBIR, con "a_mano" para distinguirlos: lo que se registra es el mismo hecho
+// (el criterio dejo de regir), y partirlo en dos nombres obligaria a leer los dos para reconstruir la
+// historia del campo.
+export async function retirarSinPrescripcion(input: RetirarSinPrescripcionWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertDiagnosisExists(tx, input.treatmentId);
+    const [retirado] = await tx
+      .update(treatments)
+      .set({ sinPrescripcionMotivo: null, sinPrescripcionAt: null, sinPrescripcionBy: null })
+      .where(and(eq(treatments.id, input.treatmentId), isNotNull(treatments.sinPrescripcionMotivo)))
+      .returning({ id: treatments.id });
+    if (!retirado) return;
+    await recordAudit(tx, {
+      event: "treatment.sin_prescripcion_levantada",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      // El motivo retirado NO va al log: es texto libre de una consulta y puede nombrar al paciente.
+      payload: { a_mano: true },
       ip: input.ip,
     });
   });
@@ -369,7 +425,18 @@ export async function saveNutraceuticals(input: SaveNutraceuticalsWrite): Promis
     //
     // Y NO SE PIERDE EL HECHO DE QUE EXISTIÓ: queda en `clinical_audit_log` con quién y cuándo. Ahí es donde
     // vive el historial de una decisión corregida; la columna guarda el estado, no la bitácora.
-    if (input.nutraceuticals.length > 0) {
+    // LO QUE LEVANTA ES UN NUTRACEUTICO DE CNV, NO CUALQUIER LINEA (2026-11-16): prescribir solo un producto
+    // externo no contradice el criterio registrado, y borrarlo en silencio perderia el unico sitio donde ese
+    // criterio vive. Se cuenta sobre lo que QUEDO escrito, que es el estado, no sobre lo que venia en la
+    // peticion.
+    const vigentesDeCnv = cuantosNutraceuticosDeCnv(
+      await tx
+        .select({ ownership: nutraceuticals.ownership })
+        .from(treatmentNutraceuticals)
+        .innerJoin(nutraceuticals, eq(nutraceuticals.id, treatmentNutraceuticals.nutraceuticalId))
+        .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId)),
+    );
+    if (vigentesDeCnv > 0) {
       const [levantado] = await tx
         .update(treatments)
         .set({ sinPrescripcionMotivo: null, sinPrescripcionAt: null, sinPrescripcionBy: null })
@@ -383,7 +450,7 @@ export async function saveNutraceuticals(input: SaveNutraceuticalsWrite): Promis
           entityType: "treatment",
           entityId: input.treatmentId,
           // El motivo no va al log (texto libre de una consulta); que se levantó, y al prescribir, sí.
-          payload: { al_prescribir: true, nutraceuticals_count: input.nutraceuticals.length },
+          payload: { al_prescribir: true, nutraceuticals_count: vigentesDeCnv },
           ip: input.ip,
         });
       }

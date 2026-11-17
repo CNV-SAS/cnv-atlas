@@ -18,7 +18,11 @@ import { estadoParaPrescribir, LEYENDA_DISPONIBILIDAD } from "@/modules/nutraceu
 import { prescriptionSignature } from "../data/protocol-signature";
 import type { TreatmentProtocol } from "../data/treatment-view-types";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
-import { esNutraceuticoDeCnv, esProductoDeTercero } from "../producto-de-tercero";
+import {
+  cuantosNutraceuticosDeCnv,
+  esNutraceuticoDeCnv,
+  esProductoDeTercero,
+} from "../producto-de-tercero";
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
@@ -83,6 +87,17 @@ export function NutraceuticalsSection({
     (c) => esNutraceuticoDeCnv(c.ownership) && !idsRecomendados.has(c.id),
   );
   const productosDeTercero = protocol.catalog.filter((c) => esProductoDeTercero(c.ownership));
+  // ═══ CUANTOS NUTRACEUTICOS DE CNV HAY, EN LAS DOS FUENTES (Santiago, 2026-11-16) ═══
+  //
+  // Es lo que decide si "No prescribo nutraceuticos" aplica, y es la MISMA cuenta que la del pendiente del
+  // cierre: un producto externo (LUVIA) no cierra el pendiente, asi que tampoco puede esconder el boton que
+  // lo cierra. Mientras fueron dos cuentas distintas, la pantalla dejaba un pendiente abierto y sin salida.
+  //
+  // UN PRODUCTO QUE YA NO ESTA EN EL CATALOGO cuenta como de CNV (es lo que hace el modulo neutro con un
+  // ownership ausente): preferimos ofrecer de menos que esconder el boton por un dato que falta.
+  const ownershipDe = (id: string) => protocol.catalog.find((c) => c.id === id)?.ownership ?? null;
+  const deCnvGuardados = cuantosNutraceuticosDeCnv(protocol.nutraceuticals);
+  const deCnvEnGrilla = nutras.filter((n) => esNutraceuticoDeCnv(ownershipDe(n.nutraceuticalId))).length;
   const isAdded = (id: string) => nutras.some((n) => n.nutraceuticalId === id);
   // El producto del desplegable, para poner sus declaraciones junto a las del paciente mientras elige.
   const seleccionado = protocol.catalog.find((c) => c.id === pickId) ?? null;
@@ -199,7 +214,18 @@ export function NutraceuticalsSection({
           // vale para las consultas que ya la tienen registrada.
           const yaDecidido =
             protocol.sinPrescripcion != null || protocol.nutraceuticalDecision?.decision === "no";
-          if (nutras.length === 0 && !yaDecidido) {
+          // ═══ VACIAR UNA PRESCRIPCION GUARDADA SI ES ALGO QUE GUARDAR (Santiago, 2026-11-16) ═══
+          //
+          // Este freno miraba solo la grilla, asi que con una prescripcion GUARDADA y la grilla vacia decia
+          // "no hay nada que guardar todavia" y no dejaba borrarla. Y era la unica salida: el boton de "no
+          // prescribo" tampoco se ofrecia con lineas guardadas. Textual suyo: *"ya no hay forma de
+          // arrepentirse."*
+          //
+          // El aviso se queda para lo que de verdad describe: una consulta que no ha prescrito NADA, no tiene
+          // nada en la grilla y no ha registrado ninguna de las dos decisiones. Ahi si no hay que guardar,
+          // hay que decidir.
+          const nadaQueGuardar = nutras.length === 0 && protocol.nutraceuticals.length === 0;
+          if (nadaQueGuardar && !yaDecidido) {
             e.preventDefault();
             setFaltaCerrar(true);
             return;
@@ -508,11 +534,19 @@ export function NutraceuticalsSection({
                 decisión que contradice lo que está a punto de guardarse.
 
                 Y ES EL DEFECTO DE SIEMPRE AQUÍ: dos partes de la pantalla leyendo fuentes distintas del mismo
-                hecho. El arreglo no es cambiar el mensaje, es unir las fuentes. */}
+                hecho. El arreglo no es cambiar el mensaje, es unir las fuentes.
+
+                ── Y EL 2026-11-16, LO QUE SE CUENTA EN LAS DOS FUENTES ──
+
+                Eran LINEAS ("hay prescripción"), y pasaron a ser NUTRACEUTICOS DE CNV. Con una LUVIA
+                prescrita, el pendiente del cierre queda abierto (es un producto externo, no un nutracéutico)
+                y el botón que lo cierra estaba escondido por esa misma línea. El bloque ya no desaparece:
+                cuando no aplica, se pulsa y dice por qué. */}
             <SinPrescripcionForm
               evaluationId={evaluationId}
               yaRegistrado={protocol.sinPrescripcion}
-              hayPrescripcion={protocol.nutraceuticals.length > 0 || nutras.length > 0}
+              deCnvGuardados={deCnvGuardados}
+              deCnvEnGrilla={deCnvEnGrilla}
             />
             {/* El aviso va JUNTO AL BOTON, que es donde se resuelve. Puesto al final de la sección o
                 arriba, el profesional lo lee cuando ya bajó a la entrega y no sabe qué hacer con él. */}

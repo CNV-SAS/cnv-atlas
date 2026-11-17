@@ -351,6 +351,17 @@ export const registrarSinPrescripcionSchema = z.object({
 
 export type RegistrarSinPrescripcionInput = z.infer<typeof registrarSinPrescripcionSchema>;
 
+// ═══ RETIRAR EL REGISTRO (Santiago, 2026-11-16) ═══
+//
+// SIN MOTIVO, A PROPOSITO: retirar no es otra decision clinica, es deshacer la que se registro. Pedir un
+// motivo para deshacer convierte una correccion en un tramite, y el hecho de que existio ya queda en el
+// audit log con quien y cuando, que es donde vive la bitacora de una decision corregida.
+export const retirarSinPrescripcionSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+});
+
+export type RetirarSinPrescripcionInput = z.infer<typeof retirarSinPrescripcionSchema>;
+
 // ═══ EL SCHEMA DE LA DECISION VIEJA SE RETIRO (Santiago, 2026-10-10) ═══
 //
 // Validaba `saveNutraDecision`: la pregunta de "¿el paciente adquiere los nutraceuticos?" con sus seis
