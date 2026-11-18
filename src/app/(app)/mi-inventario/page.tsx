@@ -20,6 +20,7 @@ import {
 } from "@/modules/nutraceuticals/services/inventory-service";
 import { nombreDeDisponibilidad } from "@/modules/nutraceuticals/disponibilidad";
 import { getPendingRemesasForOwn } from "@/modules/nutraceuticals/services/remesa-service";
+import { avisoDeVentasHistoricas } from "@/modules/nutraceuticals/carga-de-ventas-historicas";
 import { fraseDelConteo } from "@/modules/nutraceuticals/ventana-de-conteo";
 
 export const metadata = { title: "Mi inventario - Atlas" };
@@ -65,6 +66,17 @@ export default async function MiInventarioPage() {
         titulo="Mi inventario"
         descripcion="Los productos son de CNV, en tu custodia (consignación). Cada movimiento queda como registro: es tu evidencia si hay una diferencia en un conteo."
       />
+
+      {/* ═══ EL INVENTARIO DICE MAS QUE EL FISICO, Y SE AVISA (Santiago y contabilidad, 2026-11-18) ═══
+
+          Va ARRIBA DEL TODO y no al pie: quien abre esta pantalla viene a comparar un número con unos
+          frascos, y si el aviso está debajo de la tabla lo lee después de haber decidido que algo falla.
+          La frase sale del módulo neutro para que las tres pantallas digan lo mismo. */}
+      {avisoDeVentasHistoricas() ? (
+        <div className="rounded-lg border border-attention bg-attention-bg p-3">
+          <p className="max-w-prose text-sm text-foreground">{avisoDeVentasHistoricas()}</p>
+        </div>
+      ) : null}
 
       <ConfirmarRemesaSection pending={pendingRemesas ?? []} />
 

@@ -9,6 +9,7 @@ import { insightsDeLaCompra } from "@/modules/direccion/data/insights-de-la-comp
 import { loDeshecho } from "@/modules/direccion/data/lo-deshecho";
 import { canViewDireccion } from "@/modules/direccion/policies/can-view-direccion";
 import { requireUser } from "@/modules/auth/session";
+import { avisoDeVentasHistoricas } from "@/modules/nutraceuticals/carga-de-ventas-historicas";
 import { avisoDeQueNoSeHaArrancado } from "@/modules/payments/arranque";
 
 export const metadata = { title: "Dirección - Atlas" };
@@ -33,8 +34,22 @@ export default async function DireccionPage() {
     loDeshecho(),
   ]);
 
-  // EL ALCANCE SE DICE EN CADA TARJETA DE DINERO, no en una nota al pie: el dia del arranque estas cifras
-  // caen de golpe (sale todo lo de las pruebas) y una caida sin explicacion al lado se lee como un defecto.
+  // EL ALCANCE SE DICE EN CADA TARJETA DE DINERO, no en una nota al pie: el dia que la ventana se mueve
+  // estas cifras cambian de golpe, y una caida sin explicacion al lado se lee como un defecto.
+  //
+  // ── Y LA FECHA NO ES LA DEL ARRANQUE, AUNQUE LA COLUMNA SE LLAME ASI (Santiago, 2026-11-18) ────
+  //
+  // SON DOS FECHAS DISTINTAS Y SE CONFUNDIERON EN UNA:
+  //
+  //   · EL CORTE DE PRUEBAS es el arranque (el 20 de noviembre): lo registrado antes es de prueba. NO se
+  //     expresa con esta fecha, se expresa con `cuenta_como_de_prueba`, que estas mismas cifras ya miran
+  //     por separado (`esOperacion` en el lector).
+  //   · ESTA FECHA es DESDE CUANDO CUENTA LA OPERACION, y es el 2026-08-08: la primera venta real, que
+  //     hizo CNV y se facturo a mano. Las ventas atrasadas que entren por el xlsx tienen fechas de antes
+  //     del arranque, y si la ventana empezara el 20 no contarian ninguna.
+  //
+  // Por eso aqui ya no se dice "el dia del arranque": lo era cuando las dos cosas eran la misma, y decirlo
+  // sobre el 8 de agosto seria la misma clase de afirmacion falsa que Santiago reporto el 17.
   const notaDeArranque = d.arranque.arrancado ? `desde el ${d.arranque.fecha}` : null;
   // LA FRASE SALE DEL MODULO NEUTRO, no se escribe aqui: las cuatro pantallas tienen que decir lo mismo
   // y la vez anterior las cuatro afirmaron, cada una por su cuenta, un arranque que no habia ocurrido.
@@ -77,7 +92,9 @@ export default async function DireccionPage() {
       // EL INVENTARIO NO LLEVA CORTE Y HAY QUE DECIRLO: un saldo no es un flujo. Las unidades que hay están
       // hoy en la bodega, las haya puesto ahí quien las haya puesto. Recortarlo por fecha daría un número
       // que no es el de ninguna bodega.
-      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} vitrina${d.inventoryLocations === 1 ? "" : "s"} · sin los productos de prueba ni las vitrinas de demostración${d.arranque.arrancado ? " · es el saldo de hoy, no lleva corte de fecha" : ""}`,
+      // Y QUE HOY DICE MAS QUE EL FISICO, mientras no entren las ventas atrasadas del xlsx: es la cifra que
+      // alguien va a comparar contra unos frascos, y sin la linea la diferencia se lee como un descuadre.
+      hint: `${d.inventoryProducts} producto${d.inventoryProducts === 1 ? "" : "s"} en ${d.inventoryLocations} vitrina${d.inventoryLocations === 1 ? "" : "s"} · sin los productos de prueba ni las vitrinas de demostración${d.arranque.arrancado ? " · es el saldo de hoy, no lleva corte de fecha" : ""}${avisoDeVentasHistoricas() ? " · pendiente la carga de ventas históricas: dice más unidades de las que hay" : ""}`,
     },
   ];
 
@@ -87,16 +104,17 @@ export default async function DireccionPage() {
         {/* Cae "vista consolidada de finanzas e inventario" (son las tarjetas de abajo) y queda que son
             AGREGADOS SIN DATOS PERSONALES, que es una garantia de gobernanza y no se ve en las cifras. */}
         <TituloPantalla titulo="Dirección" descripcion="Agregados, sin datos personales." />
-        {/* EL DÍA DEL ARRANQUE ESTAS CIFRAS CAEN DE GOLPE, y esa vez es correcto. Se dice arriba y no en
+        {/* EL DÍA QUE LA VENTANA SE MUEVE ESTAS CIFRAS CAMBIAN DE GOLPE, y esa vez es correcto. Se dice arriba y no en
             letra chica porque una caída sin explicación se lee como un defecto, y ya nos pasó esta semana
             con el "0 de 18". La línea también dice qué NO cambia, que es lo que evita la pregunta
             siguiente: nadie perdió una comisión ni desapareció una venta. */}
         {d.arranque.arrancado ? (
           <p className="max-w-prose text-sm text-muted-foreground">
             Las cifras de dinero cuentan desde el{" "}
-            <strong className="text-foreground">{d.arranque.fecha}</strong>, el día del arranque: lo anterior
-            es de las pruebas y dejó de sumar aquí. No se borró nada, y lo que se le debe a alguien se sigue
-            liquidando entero.
+            <strong className="text-foreground">{d.arranque.fecha}</strong>, que es cuando empezó la
+            operación: antes de esa fecha no hubo ninguna venta real. Lo que alguien marcó como prueba no
+            suma aquí, caiga dentro o fuera de esa ventana. No se borró nada, y lo que se le debe a alguien
+            se sigue liquidando entero.
           </p>
         ) : (
           /* ═══ Y SI TODAVÍA NO SE HA ARRANCADO, LO DICE (Santiago, 2026-11-17) ═══

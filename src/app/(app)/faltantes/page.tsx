@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
+import { avisoDeVentasHistoricas } from "@/modules/nutraceuticals/carga-de-ventas-historicas";
 import { Badge } from "@/components/ui/badge";
 import { hasRole, requireUser } from "@/modules/auth/session";
 import { ClasificarFaltanteForm } from "@/modules/nutraceuticals/components/clasificar-faltante-form";
@@ -112,6 +113,17 @@ export default async function FaltantesPage() {
         titulo="Revisión de inventario"
         descripcion="El cargo por un faltante injustificado exige dos: un administrador lo propone y dirección lo confirma. Nada se cobra hasta que ambos estén de acuerdo."
       />
+
+      {/* ═══ EL INVENTARIO DICE MAS QUE EL FISICO, Y SE AVISA (Santiago y contabilidad, 2026-11-18) ═══
+
+          Va ARRIBA DEL TODO y no al pie: quien abre esta pantalla viene a comparar un número con unos
+          frascos, y si el aviso está debajo de la tabla lo lee después de haber decidido que algo falla.
+          La frase sale del módulo neutro para que las tres pantallas digan lo mismo. */}
+      {avisoDeVentasHistoricas() ? (
+        <div className="rounded-lg border border-attention bg-attention-bg p-3">
+          <p className="max-w-prose text-sm text-foreground">{avisoDeVentasHistoricas()}</p>
+        </div>
+      ) : null}
 
       {seeRemesas ? (
         <RemesasCnvSection
