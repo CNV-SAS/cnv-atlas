@@ -92,12 +92,24 @@ export async function leerModalidad(professionalId: string): Promise<ModalidadVi
   // SE CUENTAN LAS PAGADAS Y NO TODAS: un link que nadie pago no liquida nada, asi que no parte ningun
   // periodo. Y se cuenta por la fecha de la VENTA (`operated_at`, con `created_at` de respaldo), que es la
   // misma con la que se liquida.
+  //
+  // ── Y NO SE CUENTAN LAS DE PRUEBA (Santiago, 2026-11-18) ──────────────────────────────────────
+  //
+  // El freno decia "ya tiene 2 ventas en el periodo en curso" sobre dos ventas MARCADAS COMO PRUEBA, y por
+  // eso mandaba el cambio de modalidad al corte siguiente. La regla existe para no liquidar un periodo con
+  // dos regimenes distintos, y una venta de prueba NO SE LIQUIDA: la excluye el propio liquidador
+  // (`liquidacion-writer`) y la excluyen las cifras. O sea que no habia nada que partir, y el freno estaba
+  // protegiendo un periodo que no existe.
+  //
+  // Mordio de verdad al preparar el smoke: una cuenta de prueba recien usada no podia cambiarse de
+  // modalidad el mismo dia, que es justo lo que el smoke necesita hacer.
   const desdeElCorte = inicioDelCorteEnCurso(hoy, modalidad);
   const [cuenta] = await db.execute<{ n: number }>(sql`
     select count(*)::int as n
       from transactions t
      where t.professional_id = ${professionalId}::uuid
        and t.status = 'paid'
+       and not t.cuenta_como_de_prueba
        and (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date >= ${desdeElCorte}::date`);
   const ventasEnElCorte = Number(cuenta?.n ?? 0);
 
