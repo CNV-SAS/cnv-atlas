@@ -43,8 +43,9 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
         ) : datos.ventasAnterioresAlArranque > 0 ? (
           <div className="flex flex-col gap-2 rounded-lg border border-attention bg-attention-bg p-3">
             <p className="max-w-prose text-sm text-foreground">
-              <strong>Esto no es un error: está contando desde el {datos.arranque.fecha}</strong>, que es el
-              día del arranque, y todavía no hay ninguna compra de esa fecha en adelante.
+              <strong>Esto no es un error: está contando desde el {datos.arranque.fecha}</strong>, que es
+              cuando empezó la operación, y todavía no hay ninguna compra de esa fecha en adelante que no
+              esté marcada como prueba.
             </p>
             <p className="max-w-prose text-xs text-muted-foreground">
               Quedaron fuera {datos.ventasAnterioresAlArranque} compras anteriores, que son las de las
@@ -74,12 +75,12 @@ export function InsightsDeLaCompraSection({ datos }: { datos: InsightsDeLaCompra
         </p>
         {datos.arranque.arrancado ? (
           <p className="text-xs text-muted-foreground">
-            Cuenta desde el <strong className="text-foreground">{datos.arranque.fecha}</strong>, que es el
-            día del arranque
+            Cuenta desde el <strong className="text-foreground">{datos.arranque.fecha}</strong>, que es
+            cuando empezó la operación
             {datos.ventasAnterioresAlArranque > 0
               ? `, así que ${datos.ventasAnterioresAlArranque} compras anteriores dejaron de contar aquí`
               : ""}
-            : las consultas y las compras de antes son de las pruebas, y mezclarlas haría que estas cifras
+            : las consultas y las compras de antes de esa fecha no son de la operación, y mezclarlas haría que estas cifras
             midieran otra cosa. No se borraron, siguen en el historial. El corte alcanza a los tres ejes a la
             vez (lo que el modelo propuso, lo prescrito y lo comprado), porque recortar solo uno los pondría a
             medir ventanas distintas.

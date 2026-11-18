@@ -15,9 +15,30 @@
 --     **PAGADA**, asi que el trigger de la 0215 prohibe anularla y el script la salta, correctamente. Ver
 --     la seccion 4e del segundo smoke.
 --
--- ASI QUE HACE FALTA UNO NUEVO, y es mucho mas pequeno que el primero: lo unico que de verdad tiene que
--- pasar el dia del arranque es FIJAR LA FECHA. Los otros dos pasos se quedan porque entre hoy y ese dia va
--- a haber un smoke, y un smoke deja ventas: si alguna queda sin marcar, este script la atrapa.
+-- ASI QUE HACE FALTA UNO NUEVO, y es mucho mas pequeno que el primero. Los otros dos pasos se quedan
+-- porque entre hoy y ese dia va a haber un smoke, y un smoke deja ventas: si alguna queda sin marcar, este
+-- script la atrapa.
+--
+-- ═══ Y SON DOS FECHAS, NO UNA (Santiago, 2026-11-18) ═══
+--
+-- La version anterior de este script usaba UNA sola fecha para dos cosas distintas, y Santiago lo vio
+-- antes de que mordiera:
+--
+--   · EL CORTE DE PRUEBAS = el dia del arranque (2026-11-20). Todo lo registrado ANTES es de prueba.
+--   · EL INICIO DE LA OPERACION PARA LAS CIFRAS = 2026-08-08, la PRIMERA VENTA REAL (la hizo CNV, la
+--     vendio Gildardo, sin comision y con descuento al paciente). La primera venta de un Integrante fue
+--     de Angela, el 2026-09-03; manda la del 8 de agosto.
+--
+-- POR QUE NO PUEDEN SER LA MISMA: las ventas atrasadas que entran por el xlsx antes del 30 de noviembre
+-- tienen fechas de AGOSTO A NOVIEMBRE, anteriores al arranque. Si la ventana de las cifras empezara el 20,
+-- esas ventas NO CONTARIAN NINGUNA, y la proporcion entre lo prescrito y lo comprado que mira Direccion
+-- saldria falsa por el lado que mas importa.
+--
+-- POR QUE NO HACE FALTA UNA COLUMNA NUEVA: porque el corte de pruebas NUNCA se expreso con esta fecha. Se
+-- expresa con `cuenta_como_de_prueba` (0203 y 0217), que los lectores de cifras ya miran por separado
+-- (`esOperacion` en `dashboard-reader`). O sea que los dos mecanismos ya estaban separados en el sistema; lo
+-- que estaba confundido era el NOMBRE. `commercial_config.fecha_de_arranque` es, y siempre fue, "desde
+-- cuando cuentan las cifras".
 --
 -- ═══ QUE HACE Y QUE NO ═══
 --
@@ -35,8 +56,8 @@
 --
 -- ═══ COMO SE CORRE ═══
 --
---   1. PARA_REVISAR el bloque (0): la FECHA real y el correo del actor. La fecha viene en 2026-11-18, que
---      es la fecha limite; si el arranque es otro dia, se cambia AHI y en ningun otro sitio.
+--   1. PARA_REVISAR el bloque (0): las DOS fechas y el correo del actor. El corte viene en 2026-11-20 y el
+--      inicio de la operacion en 2026-08-08; si cambia alguno, se cambia AHI y en ningun otro sitio.
 --   2. Pegarlo en el editor SQL de Supabase de PRODUCCION y correrlo TAL CUAL: termina en `rollback`, asi
 --      que no guarda nada y muestra los cuadros de verificacion.
 --   3. Leer los cuadros (1), (5) y (5c). Lo clinico tiene que dar EXACTAMENTE lo mismo antes y despues.
@@ -50,21 +71,39 @@ begin;
 
 -- ── (0) LOS PARAMETROS, en un solo sitio ─────────────────────────────────────────────────────────
 --
--- PARA_REVISAR: la fecha y el correo.
+-- PARA_REVISAR: las dos fechas y el correo. Ver la cabecera para por que son dos.
 --
--- LA FECHA ES EL PRIMER DIA QUE CUENTA. Todo lo OPERADO ANTES de este dia se marca como prueba; lo de ese
--- dia en adelante es operacion real. Y desde el 2026-11-17 esa fecha decide una cosa mas: mientras no haya
--- una fecha de arranque de hoy o anterior, las pantallas de cifras dicen que todavia no se ha arrancado y
--- NO cuentan nada (ver `src/modules/payments/arranque.ts`). O sea que fijarla es el acto que ENCIENDE las
--- cifras, y ponerla en el futuro es legitimo: dice "arrancamos ese dia" sin mentir mientras llega.
-create temporary table _arranque(fecha date, correo text, motivo text) on commit drop;
+--   · `corte` ES EL DIA DEL ARRANQUE. Todo lo OPERADO ANTES de este dia se marca como prueba; lo de ese
+--     dia en adelante es operacion real. Es lo unico que usan los pasos (2) y (3).
+--
+--   · `inicio_operacion` ES DESDE CUANDO CUENTAN LAS CIFRAS, y es lo unico que usa el paso (4). Desde el
+--     2026-11-17 ese valor tiene tres estados: sin fecha o con una fecha futura, las pantallas dicen que
+--     la operacion no ha empezado y NO cuentan nada; con una fecha de hoy o anterior, cuentan desde ahi
+--     (ver `src/modules/payments/arranque.ts`). O sea que ponerlo es el acto que ENCIENDE las cifras.
+--
+-- NO SE INTERCAMBIAN. Poner el corte en el 8 de agosto marcaria como prueba tres meses de nada y dejaria
+-- las ventas del smoke contando como reales; poner el inicio en el 20 dejaria fuera todas las ventas
+-- atrasadas del xlsx.
+create temporary table _arranque(corte date, inicio_operacion date, correo text, motivo text) on commit drop;
 insert into _arranque values (
-  '2026-11-18',
+  '2026-11-20',
+  '2026-08-08',
   'gilurgi69@gmail.com',
   -- EL MISMO MOTIVO PARA TODAS: un motivo generico que se pueda buscar despues. Cumple el minimo de diez
   -- caracteres del CHECK de la 0217.
-  'Smoke anterior a produccion: operacion de prueba previa al arranque del 2026-11-18'
+  'Smoke anterior a produccion: operacion de prueba previa al arranque del 2026-11-20'
 );
+
+-- LAS DOS FECHAS EN EL ORDEN QUE TIENEN QUE ESTAR. Si alguien las intercambia al editar el bloque de
+-- arriba, el script para aqui en vez de marcar tres meses de ventas reales como prueba.
+do $$
+declare v_corte date; v_inicio date;
+begin
+  select corte, inicio_operacion into v_corte, v_inicio from _arranque;
+  if v_inicio > v_corte then
+    raise exception 'El inicio de la operacion (%) es posterior al corte (%). Estan intercambiados: el corte es el dia del arranque, el inicio es la primera venta real.', v_inicio, v_corte;
+  end if;
+end $$;
 
 -- EL ACTOR TIENE QUE EXISTIR. Sin esto, un correo mal escrito dejaria `marcada_como_prueba_por` en nulo, el
 -- CHECK de la 0217 abortaria el script entero y el mensaje no diria por que.
@@ -86,11 +125,39 @@ select 'ANTES' as momento,
   (select count(*) from transactions)                                          as ventas,
   (select count(*) from transactions where cuenta_como_de_prueba)              as ventas_de_prueba,
   (select count(*) from transactions t join _arranque a on true
-    where coalesce(t.operated_at, t.created_at) < a.fecha::timestamptz
+    where coalesce(t.operated_at, t.created_at) < a.corte::timestamptz
       and not t.cuenta_como_de_prueba)                                         as ventas_reales_antes_del_corte,
   (select count(*) from distribucion_statements where superseded_at is null)   as cuentas_distribucion_vivas,
   (select count(*) from evaluations)                                           as consultas,
   (select count(*) from patient_consents)                                      as consentimientos;
+
+-- ── (1b) LO QUE ESTE SCRIPT VA A MARCAR, LISTADO ANTES DE MARCARLO ──────────────────────────────
+--
+-- ES LA RESPUESTA A LA PREGUNTA DE SANTIAGO ("¿lo marca o solo lo lista?"): LO MARCA, Y LO LISTA ANTES.
+--
+-- LA RECOMENDACION ES MARCAR, no solo listar, y la razon es concreta: una venta que se escape y siga
+-- contando como real entra en las cifras de Direccion Y PUEDE SER FACTURADA POR LA COLA en el Alegra de
+-- PRODUCCION, donde cada factura va a la DIAN y deshacerla es una nota credito con su hueco en el
+-- consecutivo. Listar y dejarla viva mantiene esa puerta abierta justo el dia en que se montan las llaves
+-- reales, que es el peor dia posible.
+--
+-- Y MARCARLA NO ES IRREVERSIBLE: la marca se quita desde /pagos y la venta vuelve a contar. Lo contrario
+-- (una factura ya emitida a la DIAN) no se quita.
+--
+-- EN SIMULACION ESTE CUADRO SE LEE ANTES DE DECIDIR. Si trae algo que NO deberia marcarse, se para aqui:
+-- la transaccion termina en rollback y no se ha escrito nada.
+select 'VA A MARCAR' as que,
+       t.id as venta,
+       (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date as dia,
+       t.status, t.payment_method, t.amount, t.wompi_env,
+       coalesce(p.full_name, 'sin integrante') as integrante
+  from transactions t
+  join _arranque a on true
+  left join professional_profiles pp on pp.id = t.professional_id
+  left join profiles p on p.id = pp.profile_id
+ where coalesce(t.operated_at, t.created_at) < a.corte::timestamptz
+   and not t.cuenta_como_de_prueba
+ order by dia;
 
 -- ── (2) LAS VENTAS ANTERIORES AL ARRANQUE SE MARCAN COMO PRUEBA ──────────────────────────────────
 --
@@ -111,7 +178,7 @@ update transactions t
                                    where lower(p.email) = lower(a2.correo)),
        marcada_como_prueba_motivo = (select motivo from _arranque)
   from _arranque a
- where coalesce(t.operated_at, t.created_at) < a.fecha::timestamptz
+ where coalesce(t.operated_at, t.created_at) < a.corte::timestamptz
    and not t.cuenta_como_de_prueba;
 
 -- ── (2b) Y CADA UNA DEJA SU RASTRO ───────────────────────────────────────────────────────────────
@@ -124,7 +191,7 @@ select 'venta.marcada_de_prueba',
        t.id::text,
        t.marcada_como_prueba_por,
        a.correo,
-       jsonb_build_object('motivo', t.marcada_como_prueba_motivo, 'arranque', a.fecha::text)
+       jsonb_build_object('motivo', t.marcada_como_prueba_motivo, 'arranque', a.corte::text)
   from transactions t
   join _arranque a on true
  where t.marcada_como_prueba_motivo = a.motivo
@@ -132,7 +199,7 @@ select 'venta.marcada_de_prueba',
      select 1 from clinical_audit_log l
       where l.entity_type = 'transaction' and l.entity_id = t.id::text
         and l.event = 'venta.marcada_de_prueba'
-        and l.payload->>'arranque' = a.fecha::text
+        and l.payload->>'arranque' = a.corte::text
    );
 
 -- ── (3) LAS CUENTAS DE DISTRIBUCION DE LOS CORTES DE PRUEBA SE ANULAN ────────────────────────────
@@ -147,13 +214,13 @@ update transactions t
    set distribucion_statement_id = null
  where t.distribucion_statement_id in (
    select s.id from distribucion_statements s join _arranque a on true
-    where s.superseded_at is null and s.paid_at is null and s.corte_hasta < a.fecha
+    where s.superseded_at is null and s.paid_at is null and s.corte_hasta < a.corte
  );
 
 update distribucion_statements s
    set superseded_at = now(), superseded_reason = 'anulada'
   from _arranque a
- where s.superseded_at is null and s.paid_at is null and s.corte_hasta < a.fecha;
+ where s.superseded_at is null and s.paid_at is null and s.corte_hasta < a.corte;
 
 insert into clinical_audit_log (event, entity_type, entity_id, actor_id, actor_email, payload)
 select 'distribucion.cuenta_anulada',
@@ -161,7 +228,7 @@ select 'distribucion.cuenta_anulada',
        s.id::text,
        (select p.id from profiles p join _arranque a2 on true where lower(p.email) = lower(a2.correo)),
        a.correo,
-       jsonb_build_object('motivo', a.motivo, 'arranque', a.fecha::text)
+       jsonb_build_object('motivo', a.motivo, 'arranque', a.corte::text)
   from distribucion_statements s
   join _arranque a on true
  where s.superseded_reason = 'anulada'
@@ -171,7 +238,7 @@ select 'distribucion.cuenta_anulada',
         and l.event = 'distribucion.cuenta_anulada'
    );
 
--- ── (4) LA FECHA DE ARRANQUE: EL ACTO QUE ENCIENDE LAS CIFRAS ───────────────────────────────────
+-- ── (4) EL INICIO DE LA OPERACION: EL ACTO QUE ENCIENDE LAS CIFRAS ─────────────────────────────
 --
 -- Recorta el bruto, el ingreso de CNV, las comisiones del periodo y los insights, y NO recorta lo que se le
 -- DEBE a alguien ni el inventario (un saldo no es un flujo). Las dos reglas tienen candado.
@@ -179,8 +246,11 @@ select 'distribucion.cuenta_anulada',
 -- Y DESDE EL 2026-11-17 ES ADEMAS LO QUE HACE QUE LAS PANTALLAS DEJEN DE DECIR "todavia no se ha arrancado".
 -- `updated_at` se toca a proposito: la version anterior no lo hacia, asi que la fila decia que se habia
 -- tocado por ultima vez el 11 de septiembre cuando la fecha se habia puesto el 15 de octubre.
+-- VA EL `inicio_operacion` (2026-08-08) Y NO EL CORTE. La columna se llama `fecha_de_arranque` por
+-- historia, pero lo que guarda es DESDE CUANDO CUENTAN LAS CIFRAS. Ver la cabecera: el corte de pruebas es
+-- otra cosa y lo expresa `cuenta_como_de_prueba`.
 update commercial_config c
-   set fecha_de_arranque = (select fecha from _arranque),
+   set fecha_de_arranque = (select inicio_operacion from _arranque),
        updated_at = now();
 
 -- ── (5) VERIFICACION: QUE QUEDO ─────────────────────────────────────────────────────────────────
@@ -190,7 +260,7 @@ select 'DESPUES' as momento,
   (select count(*) from transactions where cuenta_como_de_prueba)              as ventas_de_prueba,
   -- ESTA TIENE QUE QUEDAR EN CERO. Si no, alguna venta anterior al corte sigue contando como real.
   (select count(*) from transactions t join _arranque a on true
-    where coalesce(t.operated_at, t.created_at) < a.fecha::timestamptz
+    where coalesce(t.operated_at, t.created_at) < a.corte::timestamptz
       and not t.cuenta_como_de_prueba)                                         as ventas_reales_antes_del_corte,
   (select count(*) from distribucion_statements where superseded_at is null)   as cuentas_distribucion_vivas,
   -- LO CLINICO TIENE QUE DAR EXACTAMENTE LO MISMO QUE ANTES. Si alguna de estas dos se movio, este script

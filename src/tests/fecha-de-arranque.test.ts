@@ -339,3 +339,37 @@ describe("ninguna pantalla afirma un arranque sin comprobarlo", () => {
     }
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// Y NINGUNA LLAMA A ESA FECHA "EL DIA DEL ARRANQUE" (Santiago, 2026-11-18)
+//
+// ── SON DOS FECHAS Y SE CONFUNDIERON EN UNA ──────────────────────────────────────────────────────
+//
+//   · EL CORTE DE PRUEBAS es el arranque (el 20 de noviembre). NO lo expresa esta fecha: lo expresa
+//     `cuenta_como_de_prueba`, que los lectores ya miran por separado (`esOperacion`).
+//   · ESTA FECHA es DESDE CUANDO CUENTA LA OPERACION, y es el 2026-08-08: la primera venta real, que hizo
+//     CNV (la vendio Gildardo, sin comision y con descuento). Las ventas atrasadas que entren por el xlsx
+//     tienen fechas de antes del arranque, y si la ventana empezara el 20 no contarian ninguna.
+//
+// Asi que "el dia del arranque" sobre el 8 de agosto es la MISMA afirmacion falsa que Santiago reporto el
+// 17, con otra fecha. El candado de arriba vigila que no se afirme un arranque sin comprobarlo; este
+// vigila que, comprobado o no, no se le llame arranque a lo que no lo es.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+describe("la fecha de las cifras no se llama el día del arranque", () => {
+  const PANTALLAS_DE_CIFRAS = [
+    "src/app/(app)/direccion/page.tsx",
+    "src/app/(app)/dashboard/page.tsx",
+    "src/modules/direccion/components/insights-de-la-compra-section.tsx",
+    "src/modules/direccion/components/lo-deshecho-section.tsx",
+  ];
+
+  it("ninguna pantalla de cifras la llama así", () => {
+    for (const f of PANTALLAS_DE_CIFRAS) {
+      const src = sinComentarios(readFileSync(f, "utf8"));
+      expect(
+        /d[ií]a del arranque/i.test(src),
+        `${f} llama "el día del arranque" a la fecha desde la que cuentan las cifras, y son dos fechas distintas`,
+      ).toBe(false);
+    }
+  });
+});
