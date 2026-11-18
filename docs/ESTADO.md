@@ -1,6 +1,6 @@
 # Estado de Atlas
 
-**Al 17 de noviembre de 2026**, actualizado esa misma tarde al retomar lo comercial. Para que una sesión nueva arranque sin depender de una conversación
+**Al 18 de noviembre de 2026.** Para que una sesión nueva arranque sin depender de una conversación
 larga. Una o dos páginas, y se mantiene así: lo que crezca se va a su documento propio.
 
 > **Cómo se mantiene:** al final de cada turno con cambios, se actualiza este archivo. Cada decisión
@@ -49,11 +49,13 @@ una migración aplicada no se modifica nunca, se crea otra. El control es `scrip
 |---|---|---|
 | `CNVS_ACTIVA` | `true` | La Encuesta CNV-S de seguimiento se aplica a **todos** los pacientes, reales incluidos. Encendida el 2026-11-16 |
 | `CNVS_EN_PRUEBAS` | `true` | Se deja en `true` para conservar el estado anterior (solo pacientes de prueba) si alguna vez se apaga la de arriba |
+| `VENTAS_HISTORICAS_CARGADAS` | `false` | Mientras sea `false`, las tres pantallas de inventario avisan de que el sistema **muestra más unidades de las que hay**, porque las ventas de antes del arranque entran después por el xlsx. **Se pone en `true` en el mismo commit que carga el xlsx**, antes del 30 de noviembre |
 
-Viven en `src/modules/evaluations/instrumento.ts`, con su candado. Apagar `CNVS_ACTIVA` devuelve el
-sistema a pacientes de prueba sin tocar nada más.
+Las dos primeras viven en `src/modules/evaluations/instrumento.ts`; la tercera, en
+`src/modules/nutraceuticals/carga-de-ventas-historicas.ts`. Las tres con su candado. Apagar `CNVS_ACTIVA`
+devuelve el sistema a pacientes de prueba sin tocar nada más.
 
-### Y el tercero, que no es una constante sino un dato: la fecha de arranque
+### Y el tercero, que no es una constante sino un dato: desde cuándo cuentan las cifras
 
 `commercial_config.fecha_de_arranque` (migración 0198). **Hoy dice `2026-10-15`, que es una fecha en la
 que NO se arrancó**: se fijó el 11 de septiembre para un arranque que se aplazó tres veces.
@@ -65,31 +67,51 @@ que enciende las cifras:
 |---|---|
 | sin fecha | dicen *"todavía no se ha arrancado"* y **no cuentan nada** |
 | fecha en el futuro | dicen para cuándo está fijado el arranque, y **no cuentan nada** |
-| fecha de hoy o anterior | cuentan desde ese día, como hasta ahora |
+| fecha de hoy o anterior | cuentan desde ese día |
 
-**Falta ponerla en el día real**, y es una escritura en producción: la hace
-`scripts/ARRANQUE_A_PRODUCCION_2026-11-18.sql`, que es el paso 2 del checklist de arranque. **No recorta
-el inventario ni lo que se le debe a alguien**, y las dos reglas tienen candado.
+#### ⚠ Y SON DOS FECHAS, NO UNA (Santiago, 2026-11-18)
+
+| | Qué es | Valor | Cómo se expresa |
+|---|---|---|---|
+| **El corte de pruebas** | el día del arranque: lo registrado antes es de prueba | **2026-11-20** | la marca `cuenta_como_de_prueba` de cada venta, **no** una fecha |
+| **El inicio de la operación** | desde cuándo cuentan las cifras | **2026-08-08**, la primera venta real | `commercial_config.fecha_de_arranque` |
+
+**No hace falta migración:** los dos mecanismos ya estaban separados en el sistema (los lectores de cifras
+miran la marca por su cuenta, en `esOperacion`). Lo que estaba confundido era el **nombre** de la columna,
+que guarda "desde cuándo cuentan las cifras" y no "el día del arranque".
+
+**Por qué el inicio es el 8 de agosto:** las ventas atrasadas del xlsx tienen fechas de agosto a noviembre.
+Con la ventana empezando el 20 **no contaría ninguna**.
+
+**Falta ponerla**, y es una escritura en producción: la hace
+`scripts/ARRANQUE_A_PRODUCCION_2026-11-20.sql`, paso 2 del checklist. **No recorta el inventario ni lo que
+se le debe a alguien**, y las dos reglas tienen candado.
 
 ## En curso
 
-### ⚠ LO COMERCIAL, CON FECHA LÍMITE: miércoles 18 de noviembre de 2026
+### ⚠ EL ARRANQUE COMERCIAL ES EL VIERNES 20 DE NOVIEMBRE DE 2026, y no pasa de ese día
 
-Ese día tienen que quedar **las credenciales reales de Wompi y de Alegra**, con todo funcionando. Es la
-única cosa con fecha en todo el proyecto.
+Ese día quedan **las credenciales reales de Wompi y de Alegra**, con todo funcionando. Es la única cosa
+con fecha en todo el proyecto.
 
-**El orden acordado (Santiago, 2026-11-17):**
+| Día | Qué |
+|---|---|
+| **martes 18** | smoke, partes A y B |
+| **miércoles 19** | smoke, parte C · y el **video**, en sandbox |
+| **viernes 20** | **el arranque**, por el checklist |
+| **lunes 30** | el **xlsx de ventas atrasadas** cargado, antes del cierre del mes (contabilidad) |
 
-1. barrido y **una sola lista de smoke** → `docs/SMOKE_COMERCIAL_FINAL.md` (hecho);
-2. Santiago hace el smoke **desde cero en sandbox**, con un integrante de prueba de Comisión y uno de
-   Distribución;
-3. **video** del flujo comercial para los Integrantes, todavía en sandbox;
-4. **arranque** con credenciales reales, por el checklist de ese mismo documento.
+**Todo lo comercial vive en un solo documento: `docs/SMOKE_COMERCIAL_FINAL.md`.** Lleva el smoke, el
+checklist de 11 pasos, los comandos exactos en orden, y la lista de pendientes con su fecha.
 
-**La poda de documentos y las mejoras de navegación van después del 18**, salvo lo trivial.
+**NO SE PODA NI SE BORRA NINGÚN DOCUMENTO** (Santiago, 2026-11-18), ni después del 20.
 
-**Lo que falta no es código.** Lo que falta son las llaves, la cuenta puente de transferencias en
-Alegra, y correr los dos procedimientos del día del arranque.
+**Las modalidades reales:** **Katherine** en **Distribución** desde el 2026-11-18 (persona jurídica, única
+en Distribución); **Zoraida** y los demás en **Comisión**.
+
+**Lo que falta no es código**, salvo tres piezas con fecha: la migración de las anulaciones (antes del 20,
+**esperando autorización**), y la venta sin paciente más la venta de CNV con descuento (antes del 30, son
+requisito del xlsx).
 
 - **Nada clínico abierto de nuestro lado.** Lo científico se cerró con la v17 aplicada, el histórico
   reemitido y la CNV-S encendida.
@@ -101,7 +123,9 @@ Alegra, y correr los dos procedimientos del día del arranque.
 | **Gildardo** | Las **50 preguntas abiertas** del 16 de noviembre (siete solo piden confirmar lo ya aplicado). Tres frenan trabajo: la **37**, la **1** y la **2** | `docs/PENDIENTES_CIENTIFICOS.md`, y el `.docx` del 16 en `docs/entregas/` (fuera de git) |
 | **Ángela** | Las correcciones de la cohorte: los grupos de **medición repetida**, **15 pacientes sin fecha de nacimiento** y **2 fechas que no cuadran** | `scripts/PARA_COORDINAR_CON_ANGELA_2026-11-07.mjs` arma el mensaje en `docs/entregas/dudas/` (gitignoreado) |
 | **Una profesional (`4d2a74e0`)** | Reportó un error en "Antrop. y BIS" y quedó en reintentar. Si vuelve a verlo, se corre el script de abajo con su identidad | `scripts/los-lectores-con-su-identidad.mjs` |
-| **La contadora** | La tarifa exacta de retención por comisiones. Bloquea **liquidar** el pago al integrante, no vender ni facturar | `DECISIONES_LEGALES.md` |
+| **La contadora** | **Confirmar** la UVT 2026 (52.374) y la base mínima de retefuente por compras (27 UVT = 1.414.098), y **los rangos de la tabla del art. 383**. La tarifa de comisión ya la fijó el 2026-11-18: natural 10 % (u 11 % sobre 3.300 UVT), jurídica 11 % | `docs/SMOKE_COMERCIAL_FINAL.md`, "La retención por integrante" |
+| **Santiago** | **Autorizar la migración de las anulaciones** (paso 4 del checklist): hoy un trigger prohíbe retirar una cuenta pagada, y las liquidaciones de comisión no tienen ningún mecanismo de anulación | `docs/SMOKE_COMERCIAL_FINAL.md`, paso 4 |
+| **Santiago, con la contadora** | `tax_is_withholding_agent` **de Katherine**, hoy nulo. Sin él su cuenta de Distribución sale **con retención 0** | su perfil |
 
 ## Los próximos pasos
 
@@ -152,8 +176,8 @@ producción sin que Santiago lo pida en ese turno.
 
 | Script | Qué hace |
 |---|---|
-| `ARRANQUE_A_PRODUCCION_2026-11-18.sql` | Marca como prueba lo operado antes de la fecha, anula las cuentas de Distribución anteriores no pagadas, y **fija la fecha de arranque** |
-| `CARGAR_EL_INVENTARIO_AL_ARRANQUE_2026-11-18.sql` | Deja el saldo de cada vitrina en lo que esa persona recibió, por conciliación, con su evento auditado |
+| `ARRANQUE_A_PRODUCCION_2026-11-20.sql` | **Lista y luego marca** como prueba lo operado antes del **corte** (2026-11-20), anula las cuentas de Distribución anteriores no pagadas, y pone `fecha_de_arranque` en el **inicio de la operación** (2026-08-08). Para si las dos fechas están intercambiadas |
+| `CARGAR_EL_INVENTARIO_AL_ARRANQUE_2026-11-20.sql` | Deja el saldo de cada vitrina en lo que esa persona recibió, por conciliación, con su evento auditado. **Calcula** el neto esperado y dice CUADRA o NO CUADRA contra la primera tanda (500/500/426/300/84) |
 | `config-alegra-produccion.sql` | La fila de producción de `alegra_config` y los ids de los cinco productos en el Alegra real. Aborta mientras quede un `<LLENAR>` |
 
 **El de octubre (`ARRANQUE_A_PRODUCCION_2026-10-15.sql`) NO se vuelve a correr**: volvería a poner la

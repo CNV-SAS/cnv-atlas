@@ -60,6 +60,10 @@ const ENTREGADO = {
   Angela: { "MULTI-CELL BASE": 31, "OMEGA COMPLEX": 32, "CURCUMIN BIOACTIV": 31, "D3-K2 OSTEO": 23, LUVIA: 11 },
   Camilo: { "MULTI-CELL BASE": 15, "OMEGA COMPLEX": 15, "CURCUMIN BIOACTIV": 15, "D3-K2 OSTEO": 15, LUVIA: 10 },
   Frank: { "MULTI-CELL BASE": 10, "OMEGA COMPLEX": 10, "CURCUMIN BIOACTIV": 10, "D3-K2 OSTEO": 10, LUVIA: 5 },
+  // LOS DOS QUE FALTABAN EN LA LISTA (Santiago, 2026-11-18): 15 de cada uno de los cuatro, sin LUVIA. Son
+  // 120 unidades que estaban contadas en la bodega y no lo estaban.
+  "Víctor": { "MULTI-CELL BASE": 15, "OMEGA COMPLEX": 15, "CURCUMIN BIOACTIV": 15, "D3-K2 OSTEO": 15 },
+  "María Teresa": { "MULTI-CELL BASE": 15, "OMEGA COMPLEX": 15, "CURCUMIN BIOACTIV": 15, "D3-K2 OSTEO": 15 },
   // Diana Marcela e inactivos: el arranque le carga SOLO las 3 unidades que vendio (1 OMEGA, 1 CURCUMIN,
   // 1 D3-K2), para que el xlsx de ventas atrasadas las descuente y quede en cero. Roberto: nada.
   "Diana Marcela": { "OMEGA COMPLEX": 1, "CURCUMIN BIOACTIV": 1, "D3-K2 OSTEO": 1 },
@@ -299,7 +303,9 @@ else {
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 console.log("\n\n══ 8 · SIMULACION DE LA CARGA AL ARRANQUE (no escribe nada) ══\n");
 
-const BODEGA_OBJETIVO = { "MULTI-CELL BASE": 375, "OMEGA COMPLEX": 374, "CURCUMIN BIOACTIV": 301, "D3-K2 OSTEO": 183, LUVIA: 33 };
+// Con Victor y Maria Teresa dentro: 30 unidades menos de cada uno de los cuatro, ninguna de LUVIA.
+// Verificado contra la lista linea por linea el 2026-11-18, y coincide con las cifras de Santiago.
+const BODEGA_OBJETIVO = { "MULTI-CELL BASE": 345, "OMEGA COMPLEX": 344, "CURCUMIN BIOACTIV": 271, "D3-K2 OSTEO": 153, LUVIA: 33 };
 const loteDe = new Map();
 for (const c of CATALOGO_ESPERADO) {
   const prod = porNombre.get(c.nombre);

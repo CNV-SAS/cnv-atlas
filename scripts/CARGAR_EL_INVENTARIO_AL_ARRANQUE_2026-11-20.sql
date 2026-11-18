@@ -42,15 +42,25 @@
 --
 -- ═══ COMO SE CORRE ═══
 --
---   1. Correr `node --env-file=.env.production.local scripts/EL_INVENTARIO_CONTRA_LO_RECIBIDO_2026-11-17.mjs`
---      (solo lectura). Su bloque 8 imprime la simulacion por persona y por producto, y el bloque (2) de
---      abajo con los nombres EXACTOS de la base. Si alguna cifra cambio, se vuelve a copiar de ahi.
---   2. Pegarlo en el editor SQL de Supabase de PRODUCCION y correrlo TAL CUAL: termina en `rollback`, asi
---      que no guarda nada y muestra el cuadro "LO QUE VA A PASAR".
---   3. Leer ese cuadro. Al 2026-11-17 son **31 lineas** (16 suben, 15 bajan) y el ajuste NETO es
---      **+12 MULTI-CELL BASE y +8 OMEGA COMPLEX**, que son exactamente las 20 unidades que se llevaron las
---      ventas de prueba. Cualquier otro neto significa que algo mas se movio y hay que mirarlo antes.
---   4. Solo entonces, cambiar `rollback` por `commit` y volver a correr.
+--   1. Pegarlo en el editor SQL de Supabase de PRODUCCION y correrlo TAL CUAL: termina en `rollback`, asi
+--      que no guarda nada y muestra los cuadros de verificacion.
+--   2. Leer los TRES cuadros, en este orden:
+--        · (3c) SALDO FUERA DEL PLAN. Tiene que venir VACIO. Si trae una ubicacion con saldo, esa ubicacion
+--          no esta declarada en el bloque (2) y sus unidades van a quedar sueltas.
+--        · (4) LO QUE VA A PASAR, linea por linea.
+--        · (4b) EL VEREDICTO. Tiene que decir CUADRA en los cinco productos.
+--   3. Solo entonces, cambiar `rollback` por `commit` y volver a correr.
+--
+-- ═══ EL NETO NO SE ESCRIBE A MANO, SE CALCULA (Santiago, 2026-11-18) ═══
+--
+-- La version anterior decia "el neto tiene que dar +12 MULTI y +8 OMEGA", que era la medicion del 17 de
+-- noviembre. ESA CIFRA YA NO SIRVE: el smoke del 18 y el 19 mueve mas unidades, y una cifra escrita a mano
+-- que envejece es peor que ninguna, porque quien la lee cree que cuadra o cree que no por la razon
+-- equivocada. Ahora el bloque (4b) la CALCULA contra lo que de verdad se movio, y dice CUADRA o NO CUADRA.
+--
+-- LA INVARIANTE QUE COMPRUEBA: al terminar, el total por producto en todo el sistema tiene que ser la
+-- primera tanda completa (500 / 500 / 426 / 300 / 84). Es la unica cifra que no depende de como se repartio
+-- nada: son los frascos que CNV compro, y ninguno se destruyo.
 --
 -- ⚠ DESPUES DE `commit` NO SE DESHACE: un movimiento no se borra, se corrige con otro movimiento. El paso 2
 -- no es opcional.
@@ -64,7 +74,7 @@ begin;
 create temporary table _ajuste(correo text, motivo text) on commit drop;
 insert into _ajuste values (
   'gilurgi69@gmail.com',
-  'Carga inicial al arranque 2026-11-18: el saldo de cada vitrina queda en lo que esa persona recibio'
+  'Carga inicial al arranque 2026-11-20: el saldo de cada vitrina queda en lo que esa persona recibio'
 );
 
 -- EL ACTOR TIENE QUE EXISTIR. Sin esto, un correo mal escrito dejaria `created_by` en nulo y el ajuste
@@ -138,6 +148,17 @@ insert into _conteo values
   ('Frank Carrera',                    'CURCUMIN BIOACTIV', '20526',    10),
   ('Frank Carrera',                    'D3-K2 OSTEO',       '19726',    10),
   ('Frank Carrera',                    'LUVIA',             '04197232',  5),
+  -- LOS DOS QUE FALTABAN EN LA LISTA (Santiago, 2026-11-18): 15 de cada uno de los cuatro, sin LUVIA. Son
+  -- 120 unidades que estaban contadas en la bodega y no lo estaban: por eso la bodega esperada baja de
+  -- 375/374/301/183/33 a 345/344/271/153/33.
+  ('Víctor Cano',                      'MULTI-CELL BASE',   '19826',    15),
+  ('Víctor Cano',                      'OMEGA COMPLEX',     '20226',    15),
+  ('Víctor Cano',                      'CURCUMIN BIOACTIV', '20526',    15),
+  ('Víctor Cano',                      'D3-K2 OSTEO',       '19726',    15),
+  ('María Teresa Aragón Herrera',      'MULTI-CELL BASE',   '19826',    15),
+  ('María Teresa Aragón Herrera',      'OMEGA COMPLEX',     '20226',    15),
+  ('María Teresa Aragón Herrera',      'CURCUMIN BIOACTIV', '20526',    15),
+  ('María Teresa Aragón Herrera',      'D3-K2 OSTEO',       '19726',    15),
   -- LOS DOS QUE YA NO SIGUEN. Quedan INACTIVOS, no borrados: su cuenta, su historial y lo que se les deba
   -- se conservan, y pueden reactivarse. Lo que se pone en cero es la CUSTODIA, porque el producto fisico ya
   -- no esta con ellos. Una vitrina con saldo de alguien que no opera es una promesa de venta imposible.
@@ -154,12 +175,58 @@ insert into _conteo values
   ('Roberto Carlos Jarava Brun',       'CURCUMIN BIOACTIV', '20526',     0),
   ('Roberto Carlos Jarava Brun',       'D3-K2 OSTEO',       '19726',     0),
   ('Roberto Carlos Jarava Brun',       'LUVIA',             '04197232',  0),
-  -- LA BODEGA: lo inicial menos lo entregado. 500/500/426/300/84 menos la lista.
-  ('Bodega central CNV',               'MULTI-CELL BASE',   '19826',   375),
-  ('Bodega central CNV',               'OMEGA COMPLEX',     '20226',   374),
-  ('Bodega central CNV',               'CURCUMIN BIOACTIV', '20526',   301),
-  ('Bodega central CNV',               'D3-K2 OSTEO',       '19726',   183),
+  -- ═══ LAS VITRINAS DEL SMOKE VUELVEN A CERO, Y ESTA ES LA LINEA QUE EL SMOKE OBLIGA A AÑADIR ═══
+  --
+  -- El smoke del 18 y el 19 corre contra el SANDBOX de Wompi y de Alegra, pero el INVENTARIO ES EL MISMO:
+  -- sus remesas sacan unidades de la bodega central de verdad, y sus ventas las descuentan de verdad. Esas
+  -- unidades NUNCA SE MOVIERON FISICAMENTE: siguen en la bodega.
+  --
+  -- Si estas vitrinas no se declararan, el script dejaria la bodega en su cifra correcta Y ADEMAS dejaria
+  -- las unidades del smoke en las vitrinas de prueba. El total por producto quedaria por ENCIMA de la
+  -- primera tanda, o sea frascos que no existen. El bloque (4b) lo detectaria, pero mas vale no provocarlo.
+  --
+  -- Van los CINCO productos reales aunque hoy alguna este en cero: lo que el smoke vaya a usar no se sabe
+  -- de antemano, y una linea en cero sobre una vitrina vacia no hace nada. Lo que no se lista es
+  -- ADAPTO-STRESS y los "PRUEBA SMOKE", que son productos `is_test` y no cuentan en ninguna cifra.
+  ('Profesional Demo',                 'MULTI-CELL BASE',   '19826',     0),
+  ('Profesional Demo',                 'OMEGA COMPLEX',     '20226',     0),
+  ('Profesional Demo',                 'CURCUMIN BIOACTIV', '20526',     0),
+  ('Profesional Demo',                 'D3-K2 OSTEO',       '19726',     0),
+  ('Profesional Demo',                 'LUVIA',             '04197232',  0),
+  ('Profesional Prueba',               'MULTI-CELL BASE',   '19826',     0),
+  ('Profesional Prueba',               'OMEGA COMPLEX',     '20226',     0),
+  ('Profesional Prueba',               'CURCUMIN BIOACTIV', '20526',     0),
+  ('Profesional Prueba',               'D3-K2 OSTEO',       '19726',     0),
+  ('Profesional Prueba',               'LUVIA',             '04197232',  0),
+  ('Profesional demo 2',               'MULTI-CELL BASE',   '19826',     0),
+  ('Profesional demo 2',               'OMEGA COMPLEX',     '20226',     0),
+  ('Profesional demo 2',               'CURCUMIN BIOACTIV', '20526',     0),
+  ('Profesional demo 2',               'D3-K2 OSTEO',       '19726',     0),
+  ('Profesional demo 2',               'LUVIA',             '04197232',  0),
+  ('Santi pruebas',                    'MULTI-CELL BASE',   '19826',     0),
+  ('Santi pruebas',                    'OMEGA COMPLEX',     '20226',     0),
+  ('Santi pruebas',                    'CURCUMIN BIOACTIV', '20526',     0),
+  ('Santi pruebas',                    'D3-K2 OSTEO',       '19726',     0),
+  ('Santi pruebas',                    'LUVIA',             '04197232',  0),
+  -- LA BODEGA: lo inicial menos lo entregado. 500/500/426/300/84 menos la lista, ya con Victor y
+  -- Maria Teresa (30 unidades mas de cada uno de los cuatro, ninguna de LUVIA).
+  ('Bodega central CNV',               'MULTI-CELL BASE',   '19826',   345),
+  ('Bodega central CNV',               'OMEGA COMPLEX',     '20226',   344),
+  ('Bodega central CNV',               'CURCUMIN BIOACTIV', '20526',   271),
+  ('Bodega central CNV',               'D3-K2 OSTEO',       '19726',   153),
   ('Bodega central CNV',               'LUVIA',             '04197232', 33);
+
+-- ── (2b) LA PRIMERA TANDA, que es contra lo que se comprueba el total ───────────────────────────
+--
+-- Lo que CNV compro. No se reparte, no se destruye: al terminar el script, la suma de todas las ubicaciones
+-- tiene que ser exactamente esto, producto por producto.
+create temporary table _inicial(producto text, unidades integer) on commit drop;
+insert into _inicial values
+  ('MULTI-CELL BASE',   500),
+  ('OMEGA COMPLEX',     500),
+  ('CURCUMIN BIOACTIV', 426),
+  ('D3-K2 OSTEO',       300),
+  ('LUVIA',              84);
 
 -- ── (3) EL PLAN, resuelto contra los nombres ──────────────────────────────────────────────────────
 --
@@ -195,6 +262,33 @@ begin
   end if;
 end $$;
 
+-- ── (3c) SALDO QUE QUEDA FUERA DEL PLAN: TIENE QUE VENIR VACIO ──────────────────────────────────
+--
+-- "Lo que no se lista no se toca" es la regla del bloque (2), y es la correcta: una linea olvidada no debe
+-- borrar nada. Pero tiene una consecuencia que hay que VER, no suponer: si una ubicacion tiene saldo y no
+-- esta declarada, sus unidades se quedan donde estan y el total por producto no da la primera tanda.
+--
+-- Este cuadro es el unico sitio donde eso se nota ANTES de escribir. Si trae algo, hay dos salidas
+-- legitimas: declararlo en el bloque (2) con la cifra que debe quedar, o decidir a conciencia que esa
+-- ubicacion se queda como esta (y entonces el veredicto de (4b) dira NO CUADRA, y esta bien que lo diga).
+select 'SALDO FUERA DEL PLAN' as que,
+       l.kind as tipo_de_ubicacion, l.name as ubicacion, n.name as producto, lt.code as lote,
+       i.stock_quantity as sistema
+  from nutraceutical_inventory i
+  join inventory_locations l on l.id = i.location_id
+  join nutraceuticals n on n.id = i.nutraceutical_id
+  join lots lt on lt.id = i.lot_id
+ where i.stock_quantity <> 0
+   and l.kind <> 'cuarentena'
+   and coalesce(n.is_test, false) = false
+   and not exists (
+     select 1 from _plan p
+      where p.location_id = i.location_id
+        and p.nutraceutical_id = i.nutraceutical_id
+        and p.lot_id = i.lot_id
+   )
+ order by l.kind, l.name, n.name;
+
 -- ── (4) LO QUE VA A PASAR: LEER ESTO ANTES DE CAMBIAR rollback POR commit ───────────────────────
 select 'LO QUE VA A PASAR' as que,
        p.ubicacion, p.producto, p.lote,
@@ -205,10 +299,40 @@ select 'LO QUE VA A PASAR' as que,
   from _plan p
  order by (p.contado - p.sistema) = 0, p.ubicacion, p.producto, p.lote;
 
--- Y EL NETO POR PRODUCTO, que es el control de la cuenta entera: tiene que dar lo que las ventas de prueba
--- se llevaron (al 2026-11-17: +12 MULTI-CELL BASE, +8 OMEGA COMPLEX, 0 en los otros tres).
-select 'NETO POR PRODUCTO' as que, p.producto, sum(p.contado - p.sistema)::int as ajuste_neto
-  from _plan p group by p.producto order by p.producto;
+-- ── (4b) EL VEREDICTO: EL NETO CALCULADO, Y SI EL TOTAL VA A CUADRAR ───────────────────────────
+--
+-- NO HAY NINGUNA CIFRA ESCRITA A MANO AQUI salvo la primera tanda del bloque (2b), que son los frascos que
+-- CNV compro y no cambian. Todo lo demas se mide contra lo que de verdad hay hoy, asi que el smoke puede
+-- mover lo que quiera y este cuadro sigue diciendo la verdad.
+--
+--   · `movido_por_las_ventas` es lo que falta hoy respecto de la primera tanda: las unidades que las
+--     ventas de prueba y las del smoke se llevaron. Es el neto que el ajuste TIENE que reponer.
+--   · `ajuste_del_plan` es lo que el bloque (2) va a ajustar de verdad.
+--   · Si los dos coinciden, el total queda en la primera tanda: CUADRA.
+select 'VEREDICTO' as que,
+       ini.producto,
+       ini.unidades                                      as primera_tanda,
+       coalesce(hoy.total, 0)                            as total_hoy,
+       ini.unidades - coalesce(hoy.total, 0)             as movido_por_las_ventas,
+       coalesce(plan.ajuste, 0)                          as ajuste_del_plan,
+       coalesce(hoy.total, 0) + coalesce(plan.ajuste, 0) as total_despues,
+       case when coalesce(hoy.total, 0) + coalesce(plan.ajuste, 0) = ini.unidades
+            then 'CUADRA'
+            else '⛔ NO CUADRA: revisa (3c) y el bloque (2). NO corras el commit.' end as veredicto
+  from _inicial ini
+  left join (
+    select n.name as producto, sum(i.stock_quantity)::int as total
+      from nutraceutical_inventory i
+      join nutraceuticals n on n.id = i.nutraceutical_id
+      join inventory_locations l on l.id = i.location_id
+     where coalesce(n.is_test, false) = false and l.kind <> 'cuarentena'
+     group by n.name
+  ) hoy on hoy.producto = ini.producto
+  left join (
+    select p.producto, sum(p.contado - p.sistema)::int as ajuste
+      from _plan p group by p.producto
+  ) plan on plan.producto = ini.producto
+ order by ini.producto;
 
 -- ── (5) EL AJUSTE: UN MOVIMIENTO POR DIFERENCIA ─────────────────────────────────────────────────
 --
@@ -271,15 +395,25 @@ select 'COMO QUEDO' as que,
    and coalesce(n.is_test, false) = false
  order by l.kind, l.name, n.name, lt.code;
 
--- Y EL TOTAL POR PRODUCTO, que al terminar tiene que ser la primera tanda completa:
--- MULTI-CELL BASE 500 · OMEGA COMPLEX 500 · CURCUMIN BIOACTIV 426 · D3-K2 OSTEO 300 · LUVIA 84.
-select 'TOTAL POR PRODUCTO' as que, n.name as producto, sum(i.stock_quantity)::int as unidades
-  from nutraceutical_inventory i
-  join nutraceuticals n on n.id = i.nutraceutical_id
-  join inventory_locations l on l.id = i.location_id
- where coalesce(n.is_test, false) = false
-   and l.kind <> 'cuarentena'
- group by n.name order by n.name;
+-- Y EL TOTAL POR PRODUCTO YA AJUSTADO, contra la primera tanda. Es la misma comprobacion del (4b), hecha
+-- ahora sobre el resultado en vez de sobre la prediccion: si las dos dicen lo mismo, el trigger de la 0040
+-- hizo lo que se esperaba.
+select 'TOTAL POR PRODUCTO' as que,
+       ini.producto,
+       coalesce(fin.total, 0) as unidades,
+       ini.unidades           as primera_tanda,
+       case when coalesce(fin.total, 0) = ini.unidades then 'CUADRA'
+            else '⛔ NO CUADRA' end as veredicto
+  from _inicial ini
+  left join (
+    select n.name as producto, sum(i.stock_quantity)::int as total
+      from nutraceutical_inventory i
+      join nutraceuticals n on n.id = i.nutraceutical_id
+      join inventory_locations l on l.id = i.location_id
+     where coalesce(n.is_test, false) = false and l.kind <> 'cuarentena'
+     group by n.name
+  ) fin on fin.producto = ini.producto
+ order by ini.producto;
 
 -- ⚠ POR DEFECTO NO GUARDA. Revisar los cuadros (4) y cambiar esta linea por `commit;` para aplicarlo.
 rollback;
