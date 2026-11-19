@@ -53,7 +53,28 @@ insert into cfg_produccion (clave, valor) values
   --
   -- Y NO HEREDA LA DEL EFECTIVO a proposito (2026-09-25): "Efectivo en poder de Integrantes" dice que la
   -- plata esta en el bolsillo de alguien, y una transferencia ya llego a una cuenta.
-  ('bank_account_transferencia_id', '<LLENAR>');  -- la cuenta PUENTE de las transferencias
+  ('bank_account_transferencia_id', '<LLENAR>'),  -- la cuenta PUENTE de las transferencias
+  -- ═══ Y LA CONFIRMACION DE QUE ESTOS IDS NO SE COPIARON DEL SANDBOX (Santiago, 2026-11-19) ═══
+  --
+  -- LO QUE LO LEVANTO: los tres ids de cuenta puente que se anotaron para produccion (pasarela 6,
+  -- efectivo 5, transferencia 3) COINCIDEN EXACTAMENTE con los del sandbox que ya estan en
+  -- `alegra_config`. Puede ser casualidad (Alegra numera por cuenta y dos cuentas nuevas se parecen) o
+  -- puede ser que se copiaron de la de pruebas. Las dos cosas se ven igual.
+  --
+  -- Y EL DAÑO DE LA SEGUNDA NO AVISA: un id de sandbox en la fila de produccion factura contra algo que
+  -- en produccion no existe, o peor, contra otra cosa que por casualidad tenga ese id. Es lo que el
+  -- modelo comercial llama la causa numero uno de facturas mal emitidas.
+  --
+  -- ASI QUE EL SCRIPT ABORTA si algun valor de produccion repite el del sandbox, y solo sigue cuando
+  -- alguien pone 'si' aqui. Para poder ponerlo hay que haber corrido `leer-alegra.mjs` CON LAS
+  -- CREDENCIALES DE PRODUCCION y haber visto cada id JUNTO A SU NOMBRE:
+  --
+  --     "Wompi por liquidar"              -> pasarela
+  --     "Efectivo en poder de Integrantes" -> efectivo
+  --     "Bancolombia Ahorros 6997"         -> transferencia
+  --
+  -- El nombre es lo que distingue una cuenta de otra; el id solo, no.
+  ('confirmo_que_los_lei_en_produccion', '<LLENAR>');  -- 'si' SOLO despues de verlos por NOMBRE
 
 -- ══ 1b. EL VISTO BUENO DE LAS VENTAS QUE QUEDAN PENDIENTES ═══════════════════════════════════════
 --
@@ -164,7 +185,176 @@ begin
 
   -- Todo lleno, y con forma de id de Alegra (un entero). Un '<LLENAR>', un vacio o un nombre pegado donde
   -- iba el id abortan aqui.
-  select string_agg(clave, ', ') into faltan from cfg_produccion where valor !~ '^[0-9]+$';
+  -- LA CONFIRMACION VA PRIMERO Y NO ES UN ID: se responde 'si' o 'no', y tiene que estar respondida.
+  if lower(coalesce((select valor from cfg_produccion where clave = 'confirmo_que_los_lei_en_produccion'), '<llenar>')) not in ('si', 'no') then
+    raise exception 'ABORTADO: responde confirmo_que_los_lei_en_produccion con ''si'' o ''no'', en el bloque 1.';
+  end if;
+  select string_agg(clave, ', ') into faltan
+    from cfg_produccion
+   where clave <> 'confirmo_que_los_lei_en_produccion' and valor !~ '^[0-9]+
+  select string_agg(producto, ', ') into faltan from items_produccion where item !~ '^[0-9]+$';
+  if faltan is not null then
+    raise exception 'ABORTADO: falta el item de Alegra de: %', faltan;
+  end if;
+
+  -- Pares que no pueden ser el mismo id. Si lo son, se copio dos veces la misma linea.
+  if (select valor from cfg_produccion where clave = 'cost_center_propio_id')
+   = (select valor from cfg_produccion where clave = 'cost_center_tercero_id') then
+    raise exception 'ABORTADO: el centro de costo propio y el de tercero son el mismo id.';
+  end if;
+  if (select valor from cfg_produccion where clave = 'bank_account_efectivo_id')
+   = (select valor from cfg_produccion where clave = 'bank_account_pasarela_id') then
+    raise exception 'ABORTADO: la cuenta de efectivo y la de Wompi son el mismo id.';
+  end if;
+  -- LAS TRES CUENTAS PUENTE SON TRES SITIOS DISTINTOS. Si dos coinciden es que se copio la misma linea, y el
+  -- cotejo contra el extracto no puede notarlo: veria una cuenta que cuadra en el total y miente en el origen.
+  if (select valor from cfg_produccion where clave = 'bank_account_transferencia_id')
+   in (select valor from cfg_produccion where clave in ('bank_account_efectivo_id', 'bank_account_pasarela_id')) then
+    raise exception 'ABORTADO: la cuenta de transferencias repite la de efectivo o la de Wompi.';
+  end if;
+  if (select valor from cfg_produccion where clave = 'invoice_template_id')
+   = (select valor from cfg_produccion where clave = 'credit_note_template_id') then
+    raise exception 'ABORTADO: la numeracion de factura y la de nota credito son el mismo id.';
+  end if;
+
+  -- ═══ NINGUN VALOR SE COPIA DEL SANDBOX SIN DECIRLO (2026-11-19) ═══
+  --
+  -- Ver la nota de 'confirmo_que_los_lei_en_produccion' en el bloque 1. No prohibe que coincidan: prohibe
+  -- que coincidan SIN QUE NADIE LO HAYA MIRADO. Un id que se parece al de pruebas es exactamente lo que
+  -- hay que mirar dos veces, y es lo que nadie mira si el script no para.
+  if lower(coalesce((select valor from cfg_produccion where clave = 'confirmo_que_los_lei_en_produccion'), '')) <> 'si' then
+    declare
+      repetidos text;
+    begin
+      select string_agg(c.clave || ' (' || c.valor || ')', ', ')
+        into repetidos
+        from cfg_produccion c
+        join alegra_config a on a.env = 'sandbox'
+       where (c.clave = 'invoice_template_id'      and c.valor = a.invoice_template_id)
+          or (c.clave = 'credit_note_template_id'  and c.valor = a.credit_note_template_id)
+          or (c.clave = 'iva_tax_id'               and c.valor = a.iva_tax_id)
+          or (c.clave = 'cost_center_propio_id'    and c.valor = a.cost_center_propio_id)
+          or (c.clave = 'cost_center_tercero_id'   and c.valor = a.cost_center_tercero_id)
+          or (c.clave = 'bank_account_efectivo_id' and c.valor = a.bank_account_efectivo_id)
+          or (c.clave = 'bank_account_pasarela_id' and c.valor = a.bank_account_pasarela_id)
+          or (c.clave = 'bank_account_transferencia_id' and c.valor = a.bank_account_transferencia_id);
+      if repetidos is not null then
+        raise exception 'ABORTADO: estos valores de PRODUCCION son identicos a los del SANDBOX: %. Corre leer-alegra.mjs con las credenciales de produccion y comprueba cada id JUNTO A SU NOMBRE. Si de verdad coinciden, pon ''si'' en confirmo_que_los_lei_en_produccion.', repetidos;
+      end if;
+    end;
+  end if;
+
+  -- Y los items de los cinco productos, por lo mismo: un item de sandbox en la fila de produccion factura
+  -- un producto que alli no existe. El ambiente del item ya tiene su propio candado en `armarFactura`,
+  -- pero este atrapa el error antes de que llegue a haber una factura.
+  if lower(coalesce((select valor from cfg_produccion where clave = 'confirmo_que_los_lei_en_produccion'), '')) <> 'si' then
+    declare
+      repetidos text;
+    begin
+      select string_agg(i.producto || ' (item ' || i.item || ')', ', ')
+        into repetidos
+        from items_produccion i
+        join alegra_items ai on ai.env = 'sandbox' and ai.alegra_item_id = i.item
+        join nutraceuticals n on n.id = ai.nutraceutical_id and upper(n.name) = upper(i.producto);
+      if repetidos is not null then
+        raise exception 'ABORTADO: estos items de PRODUCCION son identicos a los del SANDBOX del mismo producto: %. Comprueba en leer-alegra.mjs que el item existe en la cuenta real, con su nombre.', repetidos;
+      end if;
+    end;
+  end if;
+  if (select count(distinct item) from items_produccion) <> (select count(*) from items_produccion) then
+    raise exception 'ABORTADO: dos productos apuntan al mismo item de Alegra. La factura diria un producto que no es.';
+  end if;
+
+  -- Cada nombre tiene que ser EXACTAMENTE un producto de Atlas. Buscar por texto ancla mal si el nombre
+  -- no coincide (cero filas: el producto quedaria sin mapear) o si se repite (dos filas: un item para dos).
+  for v in select producto from items_produccion loop
+    select count(*) into n from nutraceuticals where name = v.producto and not is_test;
+    if n <> 1 then
+      raise exception 'ABORTADO: "%" corresponde a % productos de Atlas, y tiene que ser exactamente 1.', v.producto, n;
+    end if;
+  end loop;
+
+  -- Y al reves: ningun producto VENDIBLE puede quedar fuera de la lista. Quedaria con su id del sandbox y
+  -- su primera venta en produccion fallaria con "Items de otro ambiente".
+  select string_agg(name, ', ') into faltan
+    from nutraceuticals
+   where not is_test
+     and commercial_availability <> 'no_disponible'
+     and name not in (select producto from items_produccion);
+  if faltan is not null then
+    raise exception 'ABORTADO: productos vendibles que esta lista no mapea: %', faltan;
+  end if;
+
+  if not exists (select 1 from alegra_config where env = 'sandbox') then
+    raise notice 'Aviso: no hay fila de sandbox. No impide nada, pero la vuelta atras no tendria a donde volver.';
+  end if;
+end $$;
+
+-- ══ 3. LA ESCRITURA ════════════════════════════════════════════════════════════════════════════════
+
+insert into alegra_config
+  (env, invoice_template_id, credit_note_template_id, iva_tax_id,
+   cost_center_propio_id, cost_center_tercero_id,
+   bank_account_efectivo_id, bank_account_pasarela_id, bank_account_transferencia_id, note, updated_at)
+select 'produccion',
+       max(valor) filter (where clave = 'invoice_template_id'),
+       max(valor) filter (where clave = 'credit_note_template_id'),
+       max(valor) filter (where clave = 'iva_tax_id'),
+       max(valor) filter (where clave = 'cost_center_propio_id'),
+       max(valor) filter (where clave = 'cost_center_tercero_id'),
+       max(valor) filter (where clave = 'bank_account_efectivo_id'),
+       max(valor) filter (where clave = 'bank_account_pasarela_id'),
+       max(valor) filter (where clave = 'bank_account_transferencia_id'),
+       'Leido de Alegra PRODUCCION con scripts/leer-alegra.mjs. Numeracion compartida con la facturacion manual (FE/NC), decision de contabilidad 2026-09-13. Pago contra cuentas PUENTE por el BRUTO.',
+       now()
+  from cfg_produccion
+on conflict (env) do update set
+  invoice_template_id      = excluded.invoice_template_id,
+  credit_note_template_id  = excluded.credit_note_template_id,
+  iva_tax_id               = excluded.iva_tax_id,
+  cost_center_propio_id    = excluded.cost_center_propio_id,
+  cost_center_tercero_id   = excluded.cost_center_tercero_id,
+  bank_account_efectivo_id = excluded.bank_account_efectivo_id,
+  bank_account_pasarela_id = excluded.bank_account_pasarela_id,
+  bank_account_transferencia_id = excluded.bank_account_transferencia_id,
+  note                     = excluded.note,
+  updated_at               = now();
+
+do $$
+declare n int;
+begin
+  insert into alegra_items (nutraceutical_id, env, item_id)
+  select n.id, 'produccion', i.item
+    from items_produccion i join nutraceuticals n on n.name = i.producto and not n.is_test
+  on conflict (nutraceutical_id, env) do update set item_id = excluded.item_id, updated_at = now();
+  get diagnostics n = row_count;
+  if n <> (select count(*) from items_produccion) then
+    raise exception 'ABORTADO: se esperaban % productos actualizados y fueron %.', (select count(*) from items_produccion), n;
+  end if;
+end $$;
+
+-- ══ 4. LO QUE QUEDO, PARA REVISARLO ═══════════════════════════════════════════════════════════════
+-- Como NOTICE y no como SELECT: `aplicar-migracion.mjs` imprime los avisos de Postgres y no el resultado
+-- de una consulta. Un SELECT de revision aqui no lo veria nadie.
+
+do $$
+declare r record;
+begin
+  for r in select * from alegra_config order by env loop
+    raise notice 'alegra_config %: factura % | nota credito % | IVA % | centro propio % | centro tercero % | cuenta efectivo % | cuenta Wompi % | cuenta transferencias %',
+      r.env, r.invoice_template_id, r.credit_note_template_id, r.iva_tax_id,
+      r.cost_center_propio_id, r.cost_center_tercero_id, r.bank_account_efectivo_id, r.bank_account_pasarela_id,
+      r.bank_account_transferencia_id;
+  end loop;
+  for r in select n.name, n.ownership, ai.item_id, ai.env from alegra_items ai
+             join nutraceuticals n on n.id = ai.nutraceutical_id
+            order by n.name, ai.env loop
+    raise notice 'producto % (%) -> item % de %', rpad(r.name, 18), r.ownership, r.item_id, r.env;
+  end loop;
+end $$;
+
+commit;
+;
   if faltan is not null then
     raise exception 'ABORTADO: falta llenar (o no es un id numerico): %', faltan;
   end if;
@@ -191,6 +381,51 @@ begin
   if (select valor from cfg_produccion where clave = 'invoice_template_id')
    = (select valor from cfg_produccion where clave = 'credit_note_template_id') then
     raise exception 'ABORTADO: la numeracion de factura y la de nota credito son el mismo id.';
+  end if;
+
+  -- ═══ NINGUN VALOR SE COPIA DEL SANDBOX SIN DECIRLO (2026-11-19) ═══
+  --
+  -- Ver la nota de 'confirmo_que_los_lei_en_produccion' en el bloque 1. No prohibe que coincidan: prohibe
+  -- que coincidan SIN QUE NADIE LO HAYA MIRADO. Un id que se parece al de pruebas es exactamente lo que
+  -- hay que mirar dos veces, y es lo que nadie mira si el script no para.
+  if lower(coalesce((select valor from cfg_produccion where clave = 'confirmo_que_los_lei_en_produccion'), '')) <> 'si' then
+    declare
+      repetidos text;
+    begin
+      select string_agg(c.clave || ' (' || c.valor || ')', ', ')
+        into repetidos
+        from cfg_produccion c
+        join alegra_config a on a.env = 'sandbox'
+       where (c.clave = 'invoice_template_id'      and c.valor = a.invoice_template_id)
+          or (c.clave = 'credit_note_template_id'  and c.valor = a.credit_note_template_id)
+          or (c.clave = 'iva_tax_id'               and c.valor = a.iva_tax_id)
+          or (c.clave = 'cost_center_propio_id'    and c.valor = a.cost_center_propio_id)
+          or (c.clave = 'cost_center_tercero_id'   and c.valor = a.cost_center_tercero_id)
+          or (c.clave = 'bank_account_efectivo_id' and c.valor = a.bank_account_efectivo_id)
+          or (c.clave = 'bank_account_pasarela_id' and c.valor = a.bank_account_pasarela_id)
+          or (c.clave = 'bank_account_transferencia_id' and c.valor = a.bank_account_transferencia_id);
+      if repetidos is not null then
+        raise exception 'ABORTADO: estos valores de PRODUCCION son identicos a los del SANDBOX: %. Corre leer-alegra.mjs con las credenciales de produccion y comprueba cada id JUNTO A SU NOMBRE. Si de verdad coinciden, pon ''si'' en confirmo_que_los_lei_en_produccion.', repetidos;
+      end if;
+    end;
+  end if;
+
+  -- Y los items de los cinco productos, por lo mismo: un item de sandbox en la fila de produccion factura
+  -- un producto que alli no existe. El ambiente del item ya tiene su propio candado en `armarFactura`,
+  -- pero este atrapa el error antes de que llegue a haber una factura.
+  if lower(coalesce((select valor from cfg_produccion where clave = 'confirmo_que_los_lei_en_produccion'), '')) <> 'si' then
+    declare
+      repetidos text;
+    begin
+      select string_agg(i.producto || ' (item ' || i.item || ')', ', ')
+        into repetidos
+        from items_produccion i
+        join alegra_items ai on ai.env = 'sandbox' and ai.alegra_item_id = i.item
+        join nutraceuticals n on n.id = ai.nutraceutical_id and upper(n.name) = upper(i.producto);
+      if repetidos is not null then
+        raise exception 'ABORTADO: estos items de PRODUCCION son identicos a los del SANDBOX del mismo producto: %. Comprueba en leer-alegra.mjs que el item existe en la cuenta real, con su nombre.', repetidos;
+      end if;
+    end;
   end if;
   if (select count(distinct item) from items_produccion) <> (select count(*) from items_produccion) then
     raise exception 'ABORTADO: dos productos apuntan al mismo item de Alegra. La factura diria un producto que no es.';
