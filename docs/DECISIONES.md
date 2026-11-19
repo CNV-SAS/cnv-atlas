@@ -141,6 +141,49 @@ al 16 de noviembre), con la lista de lo ya cerrado al final de ese mismo documen
 - **2026-11-18 · Santiago ·** El **descuento comercial** y la **venta de CNV sin Integrante** pasan de
   "dimensionados" a **requisito de la carga del xlsx**, antes del 30 de noviembre: la venta del 8 de agosto
   es las dos cosas a la vez.
+- **2026-11-18 · Contabilidad (C1) ·** La factura de un **paciente MENOR** va a nombre del **representante
+  legal**, que es quien compra y quien paga, con su cédula y su correo. **Nunca los datos del menor en un
+  documento tributario**, y **nada de "consumidor final" por defecto**. Sin representante, la venta se
+  registra, queda **pendiente de facturar** y no se emite en Alegra.
+- **2026-11-19 · Claude, con el argumento delante ·** De C1 se construye **solo el FRENO**, y se para antes
+  del mecanismo completo. Falta el **TIPO de documento del representante**
+  (`legal_representative_document` es texto libre, sin tipo) y Alegra lo **exige** porque alimenta el
+  documento ante la DIAN: suponer "CC" sería inventar un dato tributario de una persona real. Y el
+  representante **obligatorio en la ficha** es una superficie que no existe (hoy solo se captura en el
+  consentimiento). Las dos cosas piden **migración**, y el 19 es día de smoke.
+- **2026-11-19 · Claude, con el argumento delante ·** Un paciente **sin fecha de nacimiento NO se frena**:
+  no se sabe que sea menor, y frenar a todos congelaría la facturación de adultos reales el día del
+  arranque. Un freno sin salida detiene a una persona, y aquí sería alguien de quien no sabemos nada malo.
+- **2026-11-18 · Contabilidad (C2) ·** La **tabla del art. 383** es la alternativa al 10 % para persona
+  natural que lo declare en su cuenta de cobro, sobre la **base depurada del MES** (todos los pagos de CNV
+  de ese mes calendario). Depuración en orden: aportes obligatorios, deducciones certificadas, renta exenta
+  del 25 % (tope 790 UVT al año), y tope global del 40 % del ingreso o 1.340 UVT al año. El cambio de
+  método rige **desde el pago siguiente** a la nueva declaración. La contadora la valida antes del primer
+  pago.
+- **2026-11-18 · Contabilidad (C3) ·** **UVT 2026 = 52.374**, confirmada. Y la retención del **2,5 % por
+  compras que Katherine le practica a CNV la calcula ELLA, no Atlas**: Atlas pasa a **REGISTRAR** el valor
+  que efectivamente retuvo, con su soporte, para que la cuenta por cobrar cuadre. La base mínima (10 o 27
+  UVT) sigue pendiente de la contadora, y **deja de bloquear** porque ya no se calcula.
+- **2026-11-19 · Claude, con el argumento delante ·** Mientras eso no esté, **`tax_is_withholding_agent` de
+  Katherine se queda en NULO**: en nulo Atlas no anticipa nada y su cuenta sale por el bruto, que es lo que
+  contabilidad quiere ver. Marcarlo hoy haría que el sistema calculara una retención que no le corresponde
+  calcular. (Además no tiene escritor en la app: hoy solo se podría poner por SQL.)
+- **2026-11-18 · Contabilidad (C4) ·** El **20** se marcan como prueba `Profesional Prueba` y
+  `Profesional demo 2` desde /admin. La **anulación formal** de los cinco documentos, con estado
+  **"anulada - prueba"** y motivo, **sin borrar**, va **antes del cierre de noviembre**, no antes del
+  arranque.
+- **2026-11-18 · Contabilidad (C5) ·** **Conciliación de inventario** antes del cierre de noviembre y a más
+  tardar el **5.º día hábil de diciembre**, en este orden: cargar el xlsx, **conteo físico de la bodega y
+  del stock de cada Integrante confirmado con ella**, comparar los **tres** saldos (Atlas, conteo, Alegra),
+  y ajustar los **dos** sistemas al conteo con cada diferencia explicada. **Desde diciembre, en cada cierre
+  mensual el total por producto de Atlas tiene que ser igual al de Alegra.**
+- **2026-11-19 · Santiago ·** **No se poda ningún documento, tampoco después del arranque.** Lo comercial
+  pendiente vive en `SMOKE_COMERCIAL_FINAL.md`; lo que va después del arranque (ventas históricas y
+  conciliación), en `PLAN_VENTAS_HISTORICAS_XLSX.md`.
+- **2026-11-19 · Santiago ·** Los ids de Alegra **no se copian del sandbox**: los tres de cuenta puente
+  anotados para producción coinciden exactamente con los del sandbox, y puede ser casualidad o un copiado.
+  `config-alegra-produccion.sql` **aborta** si algún valor repite el del sandbox mientras no se confirme
+  que se leyeron en producción **por su NOMBRE** con `leer-alegra.mjs`.
 
 ## Lo legal y lo comercial
 

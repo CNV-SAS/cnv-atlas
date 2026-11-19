@@ -1,6 +1,6 @@
 # Estado de Atlas
 
-**Al 18 de noviembre de 2026.** Para que una sesión nueva arranque sin depender de una conversación
+**Al 19 de noviembre de 2026.** Para que una sesión nueva arranque sin depender de una conversación
 larga. Una o dos páginas, y se mantiene así: lo que crezca se va a su documento propio.
 
 > **Cómo se mantiene:** al final de cada turno con cambios, se actualiza este archivo. Cada decisión
@@ -52,7 +52,12 @@ una migración aplicada no se modifica nunca, se crea otra. El control es `scrip
 | `VENTAS_HISTORICAS_CARGADAS` | `false` | Mientras sea `false`, las tres pantallas de inventario avisan de que el sistema **muestra más unidades de las que hay**, porque las ventas de antes del arranque entran después por el xlsx. **Se pone en `true` en el mismo commit que carga el xlsx**, antes del 30 de noviembre |
 
 Las dos primeras viven en `src/modules/evaluations/instrumento.ts`; la tercera, en
-`src/modules/nutraceuticals/carga-de-ventas-historicas.ts`. Las tres con su candado. Apagar `CNVS_ACTIVA`
+`src/modules/nutraceuticals/carga-de-ventas-historicas.ts`. Las tres con su candado.
+
+**Y hay un cuarto freno que no es un interruptor sino una regla:** la venta de un **paciente menor** no se
+factura en ningún ambiente mientras no se pueda emitir a nombre de su representante legal
+(`motivoSiElMenorNoSePuedeFacturar`). No se apaga: desaparece solo cuando se construya el mecanismo
+completo. Apagar `CNVS_ACTIVA`
 devuelve el sistema a pacientes de prueba sin tocar nada más.
 
 ### Y el tercero, que no es una constante sino un dato: desde cuándo cuentan las cifras
@@ -96,22 +101,33 @@ con fecha en todo el proyecto.
 
 | Día | Qué |
 |---|---|
-| **martes 18** | smoke, partes A y B |
-| **miércoles 19** | smoke, parte C · y el **video**, en sandbox |
+| **miércoles 19** | el **smoke completo** (A, B, C y D) y el **video**, en sandbox |
 | **viernes 20** | **el arranque**, por el checklist |
 | **lunes 30** | el **xlsx de ventas atrasadas** cargado, antes del cierre del mes (contabilidad) |
+| **5.º día hábil de diciembre** | la **conciliación de inventario** (contabilidad) |
 
-**Todo lo comercial vive en un solo documento: `docs/SMOKE_COMERCIAL_FINAL.md`.** Lleva el smoke, el
-checklist de 11 pasos, los comandos exactos en orden, y la lista de pendientes con su fecha.
+**Lo comercial vive en `docs/SMOKE_COMERCIAL_FINAL.md`:** el smoke, el checklist de 11 pasos, los
+comandos exactos en orden y la lista de pendientes con su fecha. **Lo que va después del arranque** (las
+ventas históricas y la conciliación de inventario) está en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.
 
 **NO SE PODA NI SE BORRA NINGÚN DOCUMENTO** (Santiago, 2026-11-18), ni después del 20.
 
 **Las modalidades reales:** **Katherine** en **Distribución** desde el 2026-11-18 (persona jurídica, única
 en Distribución); **Zoraida** y los demás en **Comisión**.
 
-**Lo que falta no es código**, salvo tres piezas con fecha: la migración de las anulaciones (antes del 20,
-**esperando autorización**), y la venta sin paciente más la venta de CNV con descuento (antes del 30, son
-requisito del xlsx).
+### Lo que fijó contabilidad el 2026-11-18 (C1 a C5)
+
+| | Qué |
+|---|---|
+| **C1** | La factura de un **paciente menor** va a nombre de su **representante legal**, con su cédula y su correo. **Nunca los datos del menor en un documento tributario**, y nada de "consumidor final" por defecto. Sin representante: la venta se registra, queda **pendiente de facturar** y no se emite |
+| **C2** | La **tabla del art. 383** como alternativa al 10 % para persona natural, con su depuración y sus topes. La contadora la valida antes del primer pago |
+| **C3** | **UVT 2026 = 52.374** (confirmada). La retención del 2,5 % que Katherine le practica a CNV **la calcula ella**: Atlas solo **REGISTRA** lo que efectivamente retuvo |
+| **C4** | Las dos cuentas de smoke se **marcan como prueba el 20**; la **anulación formal** de los cinco documentos ("anulada - prueba", sin borrar) va **antes del cierre de noviembre** |
+| **C5** | **Conciliación de inventario** antes del 5.º día hábil de diciembre, y desde diciembre el total por producto de Atlas tiene que ser igual al de Alegra en cada cierre mensual |
+
+**El 19 de noviembre se construyó el FRENO de C1**, no el mecanismo completo: la factura a nombre del
+representante necesita el **tipo** de documento del representante, que no existe en la base y que Alegra
+exige. Hasta entonces, la venta de un menor **se registra y no se emite**, con su motivo visible.
 
 - **Nada clínico abierto de nuestro lado.** Lo científico se cerró con la v17 aplicada, el histórico
   reemitido y la CNV-S encendida.
@@ -124,8 +140,7 @@ requisito del xlsx).
 | **Ángela** | Las correcciones de la cohorte: los grupos de **medición repetida**, **15 pacientes sin fecha de nacimiento** y **2 fechas que no cuadran** | `scripts/PARA_COORDINAR_CON_ANGELA_2026-11-07.mjs` arma el mensaje en `docs/entregas/dudas/` (gitignoreado) |
 | **Una profesional (`4d2a74e0`)** | Reportó un error en "Antrop. y BIS" y quedó en reintentar. Si vuelve a verlo, se corre el script de abajo con su identidad | `scripts/los-lectores-con-su-identidad.mjs` |
 | **La contadora** | **Confirmar** la UVT 2026 (52.374) y la base mínima de retefuente por compras (27 UVT = 1.414.098), y **los rangos de la tabla del art. 383**. La tarifa de comisión ya la fijó el 2026-11-18: natural 10 % (u 11 % sobre 3.300 UVT), jurídica 11 % | `docs/SMOKE_COMERCIAL_FINAL.md`, "La retención por integrante" |
-| **Santiago** | **Autorizar la migración de las anulaciones** (paso 4 del checklist): hoy un trigger prohíbe retirar una cuenta pagada, y las liquidaciones de comisión no tienen ningún mecanismo de anulación | `docs/SMOKE_COMERCIAL_FINAL.md`, paso 4 |
-| **Santiago, con la contadora** | `tax_is_withholding_agent` **de Katherine**, hoy nulo. Sin él su cuenta de Distribución sale **con retención 0** | su perfil |
+| **Santiago** | **Cargar en Atlas el RUT y los datos bancarios** de cada Integrante. Ya los entregaron; el Integrante los llena en **/perfil** y CNV verifica el RUT en **/verificaciones**. Sin los tres campos del RUT el sistema **no liquida** | `/perfil` y `/verificaciones` |
 
 ## Los próximos pasos
 

@@ -1,15 +1,17 @@
 # Smoke comercial final, y el checklist del arranque
 
-**Al 18 de noviembre de 2026.** Este es **el único documento comercial que hay que abrir**: lleva el
-smoke, el checklist del arranque, los comandos en orden y lo que queda pendiente con su fecha.
+**Al 19 de noviembre de 2026.** Este es **el documento comercial que hay que abrir**: lleva el smoke, el
+checklist del arranque, los comandos en orden y lo que queda pendiente con su fecha. Lo de las ventas
+históricas, que va después, está en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.
 
 ## ⚠ EL ARRANQUE ES EL VIERNES 20 DE NOVIEMBRE DE 2026, y no pasa de ese día
 
 | Día | Qué |
 |---|---|
-| **martes 18** | smoke, partes A y B |
-| **miércoles 19** | smoke, parte C · y el **video**, todavía en sandbox |
+| **miércoles 19 (hoy)** | **el smoke completo**, partes A, B, C y D · y el **video**, todavía en sandbox |
 | **viernes 20** | **el arranque**: la parte E de este documento, de arriba abajo |
+| **lunes 30** | el **xlsx de ventas atrasadas** cargado, antes del cierre del mes |
+| **5.º día hábil de diciembre** | la **conciliación de inventario** |
 
 > **Lo que reemplaza y dónde quedó lo anterior:** `docs/entregas/SMOKE_UNICO_2026-09-26.md`,
 > `docs/entregas/SMOKE_SEGUNDO_2026-09-28.md` y `docs/entregas/ARRANQUE_OPERACION_REAL_2026-09-26.md`
@@ -226,6 +228,57 @@ siguiente comprueba.
 > de prueba, y una venta de un paciente de prueba cuenta como tal. La cola **sí la va a facturar** (solo
 > excluye la marca manual), pero **no la vas a ver en la bandeja** sin el interruptor. La línea gris de
 > arriba dice cuántas hay ocultas y tiene el enlace "Verlas".
+
+### B4b · El paciente MENOR de edad (nuevo, 2026-11-19)
+
+**La regla de contabilidad (2026-11-18):** la factura de un menor va a nombre de su **representante
+legal**, que es quien compra y quien paga, con su cédula y su correo. **Nunca los datos del menor en un
+documento tributario.** Y nada de "consumidor final" por defecto.
+
+**Lo que hay construido HOY es el FRENO**, no la redirección: la factura a nombre del representante
+necesita el **tipo** de documento del representante, que no existe en la base y que Alegra exige. Ver la
+sección de pendientes.
+
+#### Caso 1 · Menor SIN representante legal
+
+1. Crear un **paciente de prueba menor de edad** (fecha de nacimiento de hace unos 10 años), **sin**
+   consentimiento de representante legal.
+2. Venderle **1 MULTI-CELL BASE** en efectivo, como el B3.
+3. **Resultado esperado:**
+   - la venta **se registra y se paga** con normalidad, y **descuenta inventario**;
+   - en **/pagos?prueba=1**, en el panel de facturación, aparece **rechazada** con este motivo:
+     *"Paciente menor: falta el representante legal. La factura va a nombre de quien compra y paga, nunca
+     con los datos del menor. Completa el representante legal del paciente y la venta sale sola de este
+     estado."*;
+   - **no sale ninguna factura en el sandbox**, y el contador de intentos **NO sube** (el freno va antes
+     del reclamo, a propósito).
+
+#### Caso 2 · Menor CON representante legal
+
+1. Al mismo paciente (o a otro menor de prueba), **registrarle el consentimiento con representante legal**
+   por el camino normal del intake.
+2. Reintentar la factura desde /pagos.
+3. **Resultado esperado:** sigue **sin emitirse**, pero el motivo es **OTRO**:
+   *"...Atlas todavía no sabe el TIPO de documento del representante (cédula, cédula de extranjería), que
+   Alegra exige..."*.
+4. **Por qué dos mensajes distintos:** en el primer caso falta un dato que **quien atiende puede
+   completar**; en el segundo no falta nada que nadie pueda hacer, falta la pieza de software. Decirle
+   *"completa el representante"* a quien ya lo completó lo manda a buscar algo que está.
+
+#### Caso 3 · El de control, y es el que de verdad importa
+
+1. Volver al paciente **adulto** del B2 y del B3 y facturar.
+2. **Resultado esperado: sale exactamente igual que siempre.** Si un adulto queda frenado, el freno está
+   mirando "tiene representante" en vez de "es menor", y eso el día del arranque sería la facturación
+   entera parada.
+
+> **Un paciente SIN fecha de nacimiento NO se frena**, y es deliberado: no se sabe que sea menor, y
+> frenar a todos los que no tienen fecha congelaría la facturación de adultos reales (hay pacientes
+> reales sin fecha de nacimiento). Queda anotado como lo primero que el mecanismo completo debe revisar.
+
+**Candados:** `la-factura-de-un-menor.test.ts` (la regla, con el caso del adulto) y
+`la-factura-de-un-menor-db.test.ts` (el lector, con el borde de quien cumplió 18 **después** de la venta:
+ese día era menor).
 
 ### B5 · La comisión
 
@@ -468,48 +521,50 @@ de `conciliacion` por línea (motivo y autor) y una fila de auditoría
 > hoy**. Estas unidades llegaron en agosto y la mayoría ya está en su saldo: sería una fecha falsa y una
 > doble cuenta. **La remesa sigue siendo el camino de toda entrega NUEVA.**
 
-### Paso 4 · Anular los documentos de prueba
+### Paso 4 · Marcar como prueba las dos cuentas del smoke
 
-**Autorizado por contabilidad el 2026-11-18**, con la verificación de Santiago contra el Alegra real: **no
-hay factura ni documento soporte en producción** por ninguno de ellos. Así que lo que queda es un documento
-vivo dentro de Atlas que no corresponde a nada, y hay que retirarlo **sin borrarlo**.
+**Desde /admin, sin ningún script.** Es lo único de este bloque que entra antes del arranque.
 
-#### Qué hay que anular, medido el 2026-11-18
+| Cuenta | Hoy cuenta como | Qué hacer |
+|---|---|---|
+| `Profesional Prueba` | **REAL** (`is_test = false`) | marcarla como de prueba |
+| `Profesional demo 2` | **REAL** (`is_test = false`) | marcarla como de prueba |
+
+**Qué resuelve:** sus ventas, sus comisiones y su cuenta de Distribución salen de **todas** las pantallas
+de dinero y de todas las cifras. Es el 90 % del problema, y no necesita nada construido.
+
+**Qué NO resuelve, y queda para antes del 30:** los documentos siguen **vivos** dentro de Atlas. La
+anulación formal con el estado **"anulada - prueba"** y su motivo, **sin borrar**, la decidió contabilidad
+(C4) y **va después del arranque**, no antes.
+
+<details>
+<summary>Los cinco documentos que se anularán después del 20, y por qué necesitan una migración</summary>
 
 | Documento | De quién | Estado | Cifra |
 |---|---|---|---|
 | **1 cuenta de Distribución** `3d11d03b` | `Profesional demo 2` | **PAGADA** el 2026-10-12 | 171.360, corte 1→15 de octubre |
-| **3 liquidaciones de comisión** `03a94ec3`, `13e0f838`, `ff7b2b76` | `Profesional Demo` (ya marcada como de prueba) | **PAGADAS** | bases 522.252, 2.000 y 20.000, retención 10 % |
-| **1 liquidación de comisión** `57906fba` | `Profesional Prueba` (**NO** marcada como de prueba) | **sin pagar** | base 288.000, retención 10 % = 28.800 |
+| **3 liquidaciones** `03a94ec3`, `13e0f838`, `ff7b2b76` | `Profesional Demo` | **PAGADAS** | bases 522.252, 2.000 y 20.000 |
+| **1 liquidación** `57906fba` | `Profesional Prueba` | sin pagar | base 288.000 |
 
-#### ⚠ ESTE PASO ESTÁ PENDIENTE DE UNA AUTORIZACIÓN DE SANTIAGO: necesita una migración
+**Son dos obstáculos distintos:**
 
-**No se puede hacer con lo que hay hoy, y no es por falta de ganas:**
+1. **Un trigger prohíbe retirar una cuenta de Distribución PAGADA** (migración 0215), y su razón está
+   escrita y es buena: *"retirar una cuenta ya pagada dejaría un pago registrado contra un documento que
+   dice no existir, y la plata ya se movió"*.
+2. **`commission_settlements` no tiene NINGÚN mecanismo de anulación**: no hay `superseded_at` ni
+   equivalente.
 
-- **La cuenta de Distribución está PAGADA, y un trigger prohíbe retirar una pagada** (migración 0215, con
-  su razón escrita: *"retirar una cuenta ya pagada dejaría un pago registrado contra un documento que dice
-  no existir, y la plata ya se movió"*). La regla es correcta; lo que falta es la puerta de servicio para
-  este caso, que contabilidad acaba de autorizar.
-- **Las liquidaciones de comisión NO TIENEN NINGÚN MECANISMO DE ANULACIÓN.** `commission_settlements` no
-  tiene `superseded_at` ni equivalente: una liquidación emitida no se puede retirar por ningún camino.
+**Lo que se construirá:** una migración que añada `anulada_at` / `anulada_motivo` / `anulada_por` a las dos
+tablas, con el estado "anulada - prueba", y que **relaje el trigger solo por esa vía** (una bandera de
+transacción que el trigger comprueba, de modo que ningún camino normal de la app pueda retirar una cuenta
+pagada y este sí). Más un procedimiento auditado con simulación. **Las comisiones NO vuelven al pozo de
+pendientes:** sus ventas ya cuentan como de prueba, y devolver `settlement_id` a nulo las dejaría
+pareciendo "por pagar". Se anula **el documento**, no la cuenta.
 
-**Lo que propongo construir, en cuanto Santiago diga que sí** (es media jornada, y entra antes del 20):
+**Verificado por Santiago el 2026-11-18:** no hay factura ni documento soporte en el Alegra real por
+ninguno de los cinco.
 
-1. **Una migración** que añada a las dos tablas el trío `anulada_at` / `anulada_motivo` / `anulada_por`,
-   con el estado **"anulada - prueba"** como uno de los valores admitidos, y que **relaje el trigger de lo
-   pagado SOLO por esa vía**: la anulación se marca con una bandera de transacción
-   (`set local atlas.anulacion_de_prueba = 'on'`) que el trigger comprueba, de modo que **ningún camino
-   normal de la aplicación puede retirar una cuenta pagada** y este sí. Nada se borra.
-2. **Un procedimiento auditado** `scripts/ANULAR_LO_DE_PRUEBA_2026-11-20.sql`, con modo simulación
-   (`rollback` por defecto), que liste los cinco documentos, los anule con su motivo y escriba una fila de
-   `clinical_audit_log` por cada uno.
-3. **Las comisiones NO vuelven al pozo de pendientes.** Sus ventas ya cuentan como de prueba y el liquidador
-   las excluye, así que devolver `settlement_id` a nulo las dejaría pareciendo "por pagar". Lo que se anula
-   es **el documento**, no la cuenta.
-
-**Mientras tanto, lo que SÍ se puede hacer y hay que hacer en el paso 1 (parte D):** marcar como de prueba
-`Profesional Prueba` y `Profesional demo 2`, que hoy cuentan como **reales**. Eso saca sus cifras de todas
-las pantallas de dinero. Lo que no hace es retirar el documento, que es lo que esta migración resuelve.
+</details>
 
 ---
 
@@ -572,9 +627,38 @@ Lo que Santiago copió de Alegra. **"Banco 1" ya no existe: se renombró.**
 | **efectivo** | **Efectivo en poder de Integrantes** | **5** | efectivo |
 | **transferencia** | **Bancolombia Ahorros 6997** | **3** | banco |
 
-> **Estos ids hay que CONFIRMARLOS con `leer-alegra.mjs` el día 20, antes de escribirlos.** Vienen de leer
-> lo que Santiago copió, no de haber consultado la cuenta: un id mal puesto manda el pago a la cuenta
-> equivocada y el banco deja de cuadrar contra su extracto.
+#### ⚠ LOS TRES IDS COINCIDEN EXACTAMENTE CON LOS DEL SANDBOX
+
+Los ids anotados para producción (**pasarela 6, efectivo 5, transferencia 3**) son **los mismos** que ya
+están en `alegra_config` para el sandbox. **Puede ser casualidad** (Alegra numera por cuenta, y dos
+cuentas nuevas se parecen) **o puede ser que se copiaron de la cuenta de pruebas.** Las dos cosas se ven
+igual desde aquí.
+
+**Y el daño de la segunda no avisa:** un id de sandbox en la fila de producción factura contra algo que
+allí no existe, o peor, contra otra cosa que por casualidad tenga ese id.
+
+**Lo mismo vale para TODOS los demás valores**, que en el sandbox son:
+
+| Valor | En el sandbox |
+|---|---|
+| numeración de factura | **16** |
+| numeración de nota crédito | **17** |
+| IVA 19 % | **4** |
+| centros de costo (propio y tercero) | **1** y **2** |
+
+**Ninguno se copia del sandbox.** El día 20, con las credenciales de **producción** puestas,
+`leer-alegra.mjs` tiene que mostrar **cada id JUNTO A SU NOMBRE**:
+
+- **"Wompi por liquidar"** → pasarela
+- **"Efectivo en poder de Integrantes"** → efectivo
+- **"Bancolombia Ahorros 6997"** → transferencia
+
+**El nombre es lo que distingue una cuenta de otra. El id solo, no.**
+
+> **El script lo hace cumplir desde el 2026-11-19.** `config-alegra-produccion.sql` **ABORTA** si algún
+> valor de producción es idéntico al del sandbox, y solo sigue cuando se responde `'si'` en el parámetro
+> nuevo **`confirmo_que_los_lei_en_produccion`** del bloque 1. No prohíbe que coincidan: **prohíbe que
+> coincidan sin que nadie lo haya mirado.** Lo mismo con los items de los cinco productos.
 >
 > **Las dos primeras son de tipo "efectivo" a propósito, y no es un error:** cuando Atlas registra el pago,
 > la plata está retenida en Wompi o en el bolsillo del Integrante. **Nunca el banco.** Decir que llegó al
@@ -691,11 +775,12 @@ SQL" no son comandos: se pegan en el editor SQL de Supabase, en el proyecto de *
 4. **Si cuadra:** cambiar la última línea `rollback;` por `commit;` y volver a correr.
 5. **Si NO cuadra:** no se cambia nada. Ya está en `rollback`, así que no hay nada que deshacer.
 
-#### 2 · Anular los documentos de prueba — *editor SQL* · ⚠ PENDIENTE DE CONSTRUIR
+#### 2 · Marcar como prueba las dos cuentas del smoke — *desde /admin, sin script*
 
-Ver el **paso 4** del checklist: necesita una migración que Santiago tiene que autorizar. Si no entra, el
-arranque **sigue adelante**: lo que hace falta de verdad es marcar las dos cuentas como de prueba, y eso es
-desde /admin.
+`Profesional Prueba` y `Profesional demo 2`, que hoy cuentan como **reales**. Paso 4 del checklist.
+
+**La anulación formal de los cinco documentos va DESPUÉS del arranque** (contabilidad, C4): necesita una
+migración y queda en el pendiente "antes del 30".
 
 #### 3 · Cargar el inventario — *editor SQL de Supabase*
 
@@ -733,17 +818,23 @@ No son comandos: pasos 5 y 6 del checklist, en el panel de Vercel y en el de Wom
    node scripts/leer-alegra.mjs
    ```
    **Qué tiene que salir:** los cinco items con sus ids, el impuesto del 19 %, los centros de costo, las
-   numeraciones y **las tres cuentas puente**. Aquí se confirman los ids 6, 5 y 3 de la tabla del paso 7.
+   numeraciones y **las tres cuentas puente, CADA UNA CON SU NOMBRE**. Es el único sitio donde se
+   distingue "Wompi por liquidar" de "Efectivo en poder de Integrantes": **por el nombre, no por el id**.
+   Los ids anotados (6, 5, 3) coinciden con los del sandbox, así que aquí es donde se sale de la duda.
 3. Cotejar el catálogo contra la base:
    ```
    node scripts/cotejo-alegra.mjs
    ```
-4. Rellenar **todos** los `<LLENAR>` de `scripts/config-alegra-produccion.sql` y correrlo **en ensayo**:
+4. Rellenar **todos** los `<LLENAR>` de `scripts/config-alegra-produccion.sql`, **incluido el parámetro
+   nuevo `confirmo_que_los_lei_en_produccion`** (se responde `'si'` solo después de haber visto cada id
+   junto a su NOMBRE en la salida de `leer-alegra.mjs`), y correrlo **en ensayo**:
    ```
    node scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql
    ```
    **Qué tiene que salir:** "SIN ERRORES", y la lista de ventas que la cola emitiría en cuanto quede puesto.
-   **Aborta mientras quede un `<LLENAR>`.**
+   **Aborta mientras quede un `<LLENAR>`**, y **aborta también si algún valor es idéntico al del sandbox**
+   mientras no se confirme que se leyeron en producción (los ids de las tres cuentas puente coinciden hoy
+   exactamente con los del sandbox: ver el paso 7).
 5. Y solo entonces, con `--commit`:
    ```
    node scripts/aplicar-migracion.mjs scripts/config-alegra-produccion.sql --commit
@@ -772,58 +863,83 @@ como prueba para siempre.
 
 ## PENDIENTE COMERCIAL, CON FECHA
 
-**Esta es la lista. Todo lo comercial que quede abierto vive aquí**, no en otro documento.
+**Esta es la lista de lo comercial abierto.** Lo único que vive en otro documento es el plan de las
+ventas históricas y la conciliación, que es largo: `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.
 
 ### ⚠ Antes del viernes 20 (el arranque)
 
 | | Qué | Quién | Estado |
 |---|---|---|---|
-| 1 | **La migración de las anulaciones** y su procedimiento auditado (paso 4 del checklist) | Claude, en cuanto Santiago autorice la migración | **esperando autorización** |
-| 2 | El **smoke** completo, partes A, B y C | Santiago | en curso, parte A empezada |
-| 3 | El **video**, en sandbox | Santiago | el 19 |
-| 4 | **Los datos tributarios de Katherine**: `tax_is_withholding_agent` (hoy nulo) | Santiago, con la contadora | **ver abajo** |
-| 5 | Confirmar **los ids de las tres cuentas puente** con `leer-alegra.mjs` | Santiago, el día 20 | parte del paso 7 |
+| 1 | El **smoke** completo, partes A, B, C y D, **incluido el B4b de pacientes menores** | Santiago | **hoy 19** |
+| 2 | El **video**, en sandbox | Santiago | **hoy 19** |
+| 3 | **Push del freno de menores** antes del paso 7 del checklist | Santiago | ver el informe del 19 |
+| 4 | Confirmar **los ids de Alegra por su NOMBRE** con `leer-alegra.mjs` | Santiago, el día 20 | paso 7. **El script ahora aborta si se copian del sandbox** |
+
+**Ya hecho el 19 de noviembre:** el **freno de la facturación a menores** (la factura nunca sale con los
+datos del menor); el freno de los ids copiados del sandbox en el script de las llaves.
 
 **Ya hecho el 18 de noviembre:** el aviso de ventas históricas en las tres pantallas de inventario; que el
-cambio de modalidad ignore las ventas de prueba; las dos fechas separadas en los scripts y en las pantallas;
-Víctor y María Teresa en la carga de inventario.
+cambio de modalidad ignore las ventas de prueba; las dos fechas separadas; Víctor y María Teresa en la
+carga de inventario.
 
 ### Antes del lunes 30 de noviembre (cierre del mes)
 
-**Es la fecha que puso contabilidad**, y lo que la obliga es que el inventario está inflado hasta entonces.
-
 | | Qué | Por qué tiene esa fecha |
 |---|---|---|
-| 1 | **La venta SIN PACIENTE** (`patient_id` nulo con motivo obligatorio) | sin ella las 3 ventas de Diana Marcela no se pueden registrar, y el xlsx no puede cargarse completo |
-| 2 | **La venta de CNV sin Integrante**, y el **descuento comercial** | la venta del 8 de agosto es las dos cosas a la vez. Pasan de "dimensionado" a **requisito del xlsx** |
-| 3 | **La carga del xlsx de ventas atrasadas**, con su hoja de conteo de bodega | es lo que desinfla el inventario y lo deja igual al físico |
-| 4 | **La conciliación de bodega** contra el conteo de la hoja 2 | cierra la diferencia que quede, visible y con motivo |
-| 5 | Apagar `VENTAS_HISTORICAS_CARGADAS` (poner `true`) y quitar el aviso | el mismo commit de la carga |
+| 1 | **Las anulaciones formales** de los cinco documentos de prueba, con estado "anulada - prueba" y motivo, sin borrar. **Necesita migración** | contabilidad (C4) lo dejó para después del arranque. El día 20 solo se marcan las dos cuentas como de prueba |
+| 2 | **Registrar (no calcular) la retención de Katherine**: la cuenta sale en bruto y al pagar se captura lo que ella retuvo, con su soporte | contabilidad (C3). Su primer corte cierra el **30** |
+| 3 | **La venta SIN PACIENTE** (`patient_id` nulo con motivo obligatorio) | sin ella las 3 ventas de Diana Marcela no entran, y el xlsx no se puede cargar completo |
+| 4 | **La venta de CNV sin Integrante** y el **descuento comercial** | la venta del 8 de agosto es las dos cosas a la vez |
+| 5 | **La carga del xlsx de ventas atrasadas** | es lo que desinfla el inventario y lo deja igual al físico |
+| 6 | Poner `VENTAS_HISTORICAS_CARGADAS` en `true` y quitar el aviso | el mismo commit de la carga |
+
+**El plan completo de 3 a 6 está en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.**
+
+### Antes del 5.º día hábil de diciembre
+
+| | Qué |
+|---|---|
+| 1 | **La conciliación de inventario** de contabilidad (C5): conteo físico de la bodega **y de cada Integrante confirmado con ella**, comparar los **tres** saldos (Atlas, conteo, Alegra), y ajustar los **dos** sistemas al conteo con cada diferencia explicada |
+| 2 | Y desde diciembre, la regla permanente: **en cada cierre mensual el total por producto de Atlas tiene que ser igual al de Alegra** |
+
+**Detalle completo en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`, sección 8.**
 
 ### Antes de la primera liquidación real
 
-**La primera liquidación de comisión real cae en el corte que cierra después del arranque.** Hasta entonces
-se puede vender; lo que no se puede es **pagar**.
+**Katherine cierra su primer corte el 30 de noviembre; los demás, el 30 también.** Hasta entonces se puede
+vender; lo que no se puede es **pagar**.
 
 | | Qué | Hoy |
 |---|---|---|
-| 1 | **La tabla del art. 383** como opción por integrante (persona natural que lo declara en su cuenta de cobro) | no construida. El 10 % y el 11 % sí están |
-| 2 | **Los datos tributarios de los 13 perfiles reales** (tipo de persona, responsable de IVA, obligado a facturar) | **solo Katherine tiene tipo de persona.** Sin los tres, el sistema **no liquida** y dice cuáles faltan |
-| 3 | **Los datos bancarios** de cada uno | ninguno de los 13 los tiene |
-| 4 | `tax_is_withholding_agent` **de Katherine** | nulo → hoy su cuenta de Distribución saldría **con retención 0** |
+| 1 | **La tabla del art. 383** y su **depuración** con los cuatro pasos y los dos topes, la **base mensual por persona**, y el cambio de método desde el **pago siguiente** | no construida. El 10 % y el 11 % sí están. Tabla completa arriba, en "La retención por integrante" |
+| 2 | **Los datos tributarios de cada perfil real** (tipo de persona, responsable de IVA, obligado a facturar) | **los integrantes ya entregaron RUT y cuentas de cobro: los datos existen, falta cargarlos.** Sin los tres, el sistema **no liquida** y dice cuáles faltan |
+| 3 | **Los datos bancarios** de cada uno | lo mismo: ya los entregaron, falta cargarlos |
 
-### Sin fecha (lo que queda en el backlog comercial)
+### Después del 20, sin fecha fija
 
-- **El traslado automático de ventas rezagadas** al corte siguiente. Hoy es manual y la pantalla lo dice.
-  Contabilidad lo pidió, y el 2026-11-18 confirmó que **la prioridad es el xlsx**, no esto.
+| | Qué |
+|---|---|
+| 1 | **Lo que quedó pendiente de la facturación a menores:** el tipo de documento del representante (migración), que la factura salga **a nombre del representante** con su cédula y su correo, y el representante **obligatorio en la ficha** del paciente menor. Hoy solo está el freno |
+
+### Sin fecha (backlog comercial)
+
+- **El traslado automático de ventas rezagadas** al corte siguiente. Contabilidad confirmó el 2026-11-18
+  que **la prioridad es el xlsx**, no esto.
 - **"Mover inventario"**: retirarle unidades a un Integrante y pasarlas a la bodega o a otro. Hoy no existe
-  como acción (solo despachar y devolver). **Media jornada**, y va a repetirse.
-- **"Ya facturada por fuera"** sobre una venta ya registrada: la salida si una venta real queda sellada como
-  prueba. Hoy esa cuenta está en cero.
-- **El cargo por un vencido a cargo del Integrante**: la alerta llega hasta la propuesta de quién asume.
-- **La emisión de la cuenta de Distribución en Alegra**: se arma, se objeta y se cobra en Atlas.
+  (solo despachar y devolver). **Media jornada**, y va a repetirse.
+- **El cotejo automático de saldos Atlas / Alegra**, que es lo que haría sostenible la regla mensual nueva.
+- **"Ya facturada por fuera"** sobre una venta ya registrada.
+- **El cargo por un vencido a cargo del Integrante.**
+- **La emisión de la cuenta de Distribución en Alegra.**
 - **Que la remesa mueva el saldo con ubicación de tránsito.** La mitad barata ya está.
-- **El "Facturar ahora"** de una rezagada que cruza de bimestre: pide una decisión de contabilidad primero.
+- **El "Facturar ahora"** de una rezagada que cruza de bimestre.
+
+### Pendientes de la contadora
+
+| | Qué | ¿Bloquea? |
+|---|---|---|
+| 1 | **La base mínima de retefuente por compras**: ¿**10 UVT** (523.740) o **27 UVT** (1.414.098)? | **no**: Atlas pasa a registrar lo retenido, no a calcularlo |
+| 2 | **Validar la tabla del art. 383** y su depuración | **sí**, antes del primer pago |
 
 ---
 
@@ -844,9 +960,10 @@ Lo de aquí es solo el recordatorio de por qué no se prueba:
 
 ## LA RETENCIÓN POR INTEGRANTE
 
-**Lo que contabilidad fijó el 2026-11-18, y lo que falta para cumplirlo.**
+**Lo que fijó contabilidad el 2026-11-18 (C2 y C3), y lo que falta para cumplirlo.** Nada de esto se
+construye antes del arranque.
 
-### Lo que ya está construido, y es casi todo
+### Lo que ya está construido
 
 | Regla | Dónde vive | Estado |
 |---|---|---|
@@ -854,195 +971,133 @@ Lo de aquí es solo el recordatorio de por qué no se prueba:
 | Natural que pasa de **3.300 UVT** al año: **11 %** desde ese pago | `RETENCION_ALTA` + `UMBRAL_UVT` | ✔ |
 | **Jurídica** en Comisión: **11 %** siempre | rama `juridica` | ✔ |
 | **Sin datos tributarios no se liquida**, y se dice cuáles faltan | `faltantes` | ✔ |
-| **Distribución: no hay retención sobre comisión** | no hay comisión que retener | ✔ |
-| **La retención del 2,5 % que el Integrante agente retenedor le practica a CNV** | `RETEFUENTE_COMPRA = 0.025` | ✔ **ya construida** |
-| Base mínima para esa retención: **27 UVT** | `UVT_MINIMA_RETEFUENTE` | ✔ |
+| Distribución: **no hay retención sobre comisión** | no hay comisión que retener | ✔ |
+| **UVT 2026 = 52.374** | `UVT_2026` | ✔ **confirmada por contabilidad** |
 
-**Todo en `src/modules/payments/liquidacion.ts` y `src/modules/payments/distribucion.ts`.**
-
-### La base mínima de la retención de Katherine, con su cifra
-
-**27 UVT × 52.374 = `$`1.414.098.** Por encima de esa base (sin IVA, en el corte quincenal), Atlas le
-calcula la retención del 2,5 % a favor de ella; por debajo, cero.
-
-> **Lo que hay que preguntarle a la contadora no es "cuál es la base mínima", sino CONFIRMAR ESTAS DOS
-> CIFRAS para 2026:** que la UVT es **52.374** y que la base mínima de retefuente por compras es **27 UVT**.
-> Las dos salen del modelo comercial §4.1 y llevan ahí desde septiembre; conviene que alguien las firme
-> antes del primer corte real.
-
-### ⚠ Lo único que falta para Katherine, y es un dato, no código
-
-`tax_is_withholding_agent` está **en nulo** en su perfil. Y el código es explícito: *"NULL = sin verificar,
-y entonces no se anticipa retención"*. O sea que **hoy su cuenta de Distribución saldría con retención
-cero**, y ella le retendría el 2,5 % al pagar sin que Atlas lo hubiera previsto: la cuenta y el giro no
-cuadrarían.
-
-| Campo | Valor | Estado |
-|---|---|---|
-| `tax_person_type` | `juridica` | ✔ **ya está** |
-| `tax_is_withholding_agent` | **`true`** (código 07 del RUT) | ✖ **nulo** |
-| `tax_id_number` + `tax_id_dv` | **901819710** + **6** | hay que verificarlo |
-| `tax_is_vat_responsible` · `tax_must_invoice` | — | nulos |
-
-### Cuándo es la primera liquidación real, que es la fecha límite
-
-- **Katherine (Distribución, quincenal):** su primer corte real va del **20 al 30 de noviembre** y se emite
-  **después del 30**.
-- **Los demás (Comisión, mensual):** el corte de noviembre cierra el **30**, y se liquida en los primeros
-  días de diciembre.
-
-**Así que la fecha límite de todo lo tributario es el 30 de noviembre**, la misma que la del xlsx. Hasta
-entonces se puede vender sin problema: lo que no se puede es pagar.
-
-### Lo que falta construir: la tabla del art. 383
-
-**Una opción por integrante**, para la persona natural que la declara en su cuenta de cobro (y que casi
-siempre da 0). Hoy no existe: toda persona natural va al 10 %.
-
-**Lo que haría falta:** un campo en el perfil (`retencion_metodo`: `tarifa_fija` | `tabla_383`), la tabla
-por rangos de UVT, y que la liquidación elija el camino y **selle cuál usó**, como ya sella la tarifa.
-
-**Los datos que hay que pedirle a la contadora para construirla:**
-
-1. **Los rangos de la tabla del art. 383 vigentes en 2026**, en UVT, con su tarifa marginal y su base
-   restada (los cinco tramos: 0, 19 %, 28 %, 33 %, 35 %, 37 % y 39 %).
-2. **Si la depuración previa aplica** (el 25 % de renta exenta y su tope en UVT), que es lo que hace que casi
-   siempre dé 0.
-3. **Qué pasa si alguien cambia de método a mitad de año**: ¿rige desde el pago siguiente, o desde el
-   corte siguiente?
-4. Y la confirmación de las dos cifras de arriba: **UVT 2026 = 52.374** y **base mínima 27 UVT**.
-
+Todo en `src/modules/payments/liquidacion.ts`.
 
 ---
 
-## EL XLSX DE VENTAS ATRASADAS
+### ⚠ 1 · LA RETENCIÓN DE KATHERINE: Atlas la REGISTRA, no la calcula
 
-**Se carga DESPUÉS del arranque del 20 y ANTES del 30 de noviembre.** No se carga nada todavía: esto es la
-plantilla y el plan.
+**Esto cambia lo que hay construido hoy, y hay que saberlo antes de tocar su perfil.**
 
-### Qué es, en una frase
+**Lo que contabilidad decidió (C3):** la retención del 2,5 % por compras que Katherine le practica a CNV
+al pagar su cuenta **la calcula ELLA**, no Atlas. Atlas solo **registra el valor que ella efectivamente
+retuvo**, tomado de su pago o de su certificado, para que la cuenta por cobrar cuadre.
 
-Las ventas reales que ya ocurrieron, se facturaron **a mano en Alegra** y todavía no están en Atlas. Al
-entrar: **descuentan inventario**, **cuentan para los reportes**, y **no** emiten factura, **no** cobran por
-Wompi y **no** generan comisión duplicada.
+**Lo que Atlas hace hoy:** si `tax_is_withholding_agent = true`, **ANTICIPA** el 2,5 % por su cuenta
+(`RETEFUENTE_COMPRA`, con base mínima de 27 UVT) y lo descuenta del neto esperado de la cuenta.
 
-> **Confirmado en el código el 2026-11-18:** la venta retroactiva escribe su `created_at` **en la fecha
-> real de la venta** (es el único camino de la app que lo hace), guarda el número de la factura que ya
-> existe y **nunca llama a Alegra**. Y las cifras de Dirección se acotan por **la fecha de la venta**, no por
-> la de su registro. O sea que **las ventas atrasadas van a contar en su mes**, que es lo que había que
-> confirmar.
+**Por qué anticipar está mal aunque la tarifa sea correcta:** la base mínima no está confirmada
+(contabilidad dice que **probablemente son 10 UVT = 523.740**, no 27), y sobre todo **quien decide si
+retiene y cuánto es ella**. Si Atlas anticipa 2,5 % y ella retiene otra cosa (o no retiene porque la base
+no llegó al mínimo), la cuenta por cobrar y el giro no cuadran, y el descuadre **no avisa**: las dos
+cifras son plausibles.
 
-### HOJA 1 · Las ventas
-
-Una fila por venta. Si una venta llevó tres productos, son **tres filas** con el mismo número de factura.
-
-| Columna | Obligatoria | Qué va | Por qué |
-|---|---|---|---|
-| `vendedor` | **sí** | el nombre del Integrante, o **`CNV`** | hay ventas que hizo CNV sin Integrante (la del 8 de agosto). Decide si hay comisión |
-| `fecha_de_la_venta` | **sí** | `AAAA-MM-DD` | **es la fecha que mandan las cifras.** Es la que va a `created_at` |
-| `producto` | **sí** | el nombre exacto del catálogo | |
-| `lote` | **sí** | el código del lote | el inventario se descuenta por lote, no por producto |
-| `cantidad` | **sí** | entero | |
-| `de_donde_salio` | **sí** | `vitrina` (la del vendedor) o `bodega` | decide **de qué ubicación** sale el descuento. Sin esto hay que adivinar |
-| `medio_de_pago` | **sí** | `efectivo`, `transferencia` o `pasarela` | |
-| `paciente_documento` | **no** | la cédula, si la venta tiene paciente | vacío = venta sin paciente, y entonces `motivo_sin_paciente` es obligatorio |
-| `motivo_sin_paciente` | si no hay paciente | texto | las 3 ventas de Diana Marcela no tienen paciente |
-| `factura_alegra_numero` | **sí** | el consecutivo (p. ej. `FE97`) | es lo que permite cotejar y lo que impide emitir otra |
-| `factura_alegra_fecha` | **sí** | `AAAA-MM-DD` | **sale tarde a propósito**: muchas se emitieron en octubre o noviembre sobre ventas de agosto |
-| `recibo_numero` | no | el del recibo o anticipo | |
-| `recibo_fecha` | no | `AAAA-MM-DD` | **coincide con la fecha de la venta**, y por eso es la prueba de cuándo ocurrió de verdad |
-| `descuento_valor` | no | pesos descontados al paciente | la venta del 8 de agosto lleva descuento |
-| `descuento_motivo` | si hay descuento | texto | un descuento sin motivo es un precio inventado |
-| `notas` | no | lo que haga falta | |
-
-> **Las tres fechas son tres hechos distintos y hay que llevar las tres.** La venta ocurrió en agosto, la
-> factura salió en noviembre y el recibo es de agosto. **Las cifras cuentan por la fecha de la VENTA**; la
-> de la factura sirve para cotejar contra Alegra; la del recibo es la que respalda la primera.
-
-### HOJA 2 · El conteo de la bodega central
-
-| Columna | Qué va |
-|---|---|
-| `producto` | el nombre exacto |
-| `lote` | el código |
-| `cantidad_contada` | lo que de verdad hay, contado a mano |
-| `fecha_del_conteo` | `AAAA-MM-DD` |
-
-### El orden de carga, y por qué es ese
-
-1. **Primero las ventas.** Cada una descuenta de donde diga `de_donde_salio`. Al terminar, el inventario
-   del sistema ya no está inflado: las unidades que salieron, salieron.
-2. **Después se compara la bodega resultante con el conteo de la hoja 2.**
-3. **La diferencia se ajusta con UN movimiento de `conciliacion` por producto y lote**, con motivo
-   **"conteo físico del 30 de noviembre"**. Visible, con autor y con fecha.
-
-> **Por qué en ese orden y no al revés.** Si se concilia primero y se cargan las ventas después, las ventas
-> vuelven a descontar sobre un saldo ya corregido y la bodega queda baja por el mismo motivo dos veces.
-> Y si se conciliara **en vez** de cargar las ventas, cuadraría el número **tapando** lo que pasó: nadie
-> sabría qué se vendió, ni a quién, ni habría cómo cotejarlo contra Alegra.
+> ### 🔴 NO marques hoy el campo de agente de retención de Katherine
 >
-> **La conciliación final NO tapa errores, los muestra.** Si después de cargar todas las ventas la bodega
-> todavía no cuadra con el conteo, esa diferencia **es un hallazgo** y tiene que quedar escrita con su
-> motivo, no absorbida en silencio.
+> Está en **nulo**, y en nulo **Atlas no anticipa nada**: su cuenta sale por el **valor bruto**, que es
+> exactamente lo que contabilidad quiere ver hasta que esté el cambio. Marcarlo hoy haría que el sistema
+> calculara una retención que no le corresponde calcular.
+>
+> **Se marca cuando esté construido el registro del valor real, no antes.**
 
-### Cómo se valida el archivo ANTES de cargar
+#### Qué hay que construir, y para cuándo
 
-El cargador corre en **dos pasadas**, igual que los scripts del arranque: primero valida y no escribe nada.
+**Antes de su primer pago.** Su primer corte cierra el **30 de noviembre** y se emite después.
 
-| Se rechaza el archivo entero si | Por qué no se puede dejar pasar |
+| Pieza | Qué |
 |---|---|
-| un `producto` o un `lote` no existe en el catálogo | descontaría de donde no es, o no descontaría |
-| un `vendedor` no existe (y no es `CNV`) | la venta quedaría sin dueño |
-| falta `factura_alegra_numero` | sin él no hay forma de cotejar, y es lo que impide emitir una segunda |
-| un `factura_alegra_numero` **ya está en Atlas** | sería la misma venta dos veces |
-| hay paciente y el documento no existe | mejor parar que crear un paciente desde una hoja de cálculo |
-| no hay paciente y no hay `motivo_sin_paciente` | |
-| hay `descuento_valor` y no hay motivo | |
-| la `fecha_de_la_venta` es **posterior** a la de la factura en más de 90 días, o anterior al 2026-08-08 | atrapa el error de teclear el año o invertir dos columnas |
-| `de_donde_salio` = `vitrina` y esa vitrina **no tiene saldo suficiente** del lote | el descuento dejaría un saldo negativo, que el sistema no admite |
+| **La cuenta sale en bruto** | `armarCuentaQuincenal` deja de restar `retencionDelIntegrante`. El `netoEsperado` pasa a ser el total |
+| **Al registrar el pago, se captura lo retenido** | dos campos en el registro del pago: **valor retenido** y **soporte** (número del certificado o referencia del pago) |
+| **La cuenta por cobrar cuadra** | pagado + retenido = total de la cuenta. Si no cuadra, se dice, no se absorbe |
+| **`tax_is_withholding_agent` cambia de significado** | deja de ser "anticipa el 2,5 %" y pasa a ser "a esta persona se le espera una retención al pagar", o sea un aviso, no un cálculo |
 
-**Y la pasada de validación imprime, antes de escribir:** cuántas ventas, cuánto dinero, cuántas unidades
-por producto, cómo queda cada vitrina y cómo queda la bodega. Es el mismo cuadro "LO QUE VA A PASAR" de los
-otros dos scripts.
+**Media jornada.** Lo que ya está (la tarifa, la base mínima, el UVT) **no se borra**: se deja como el
+valor **esperado** que se cotejará contra el real, que es más útil que no tener referencia.
 
-### Lo que hay que construir para que esto se pueda cargar
+---
 
-**Son tres piezas, y las tres van antes del 30 de noviembre.**
+### 2 · LA TABLA DEL ART. 383 (C2)
 
-#### 1 · La venta SIN PACIENTE
+**Para la persona natural que la declara en su cuenta de cobro.** Hoy toda persona natural va al 10 %.
 
-**El problema, medido:** `registrarVentaRetroactiva` **exige** un `patientId`. La columna
-`transactions.patient_id` **sí admite nulo** en la base, así que el hueco está en el escritor y en el
-formulario, no en el esquema.
+#### La tabla, sobre la base depurada del MES, en UVT
 
-**Y NO se resuelve con un "paciente genérico".** Un paciente inventado contamina la lista de pacientes, las
-cifras clínicas, la cohorte de investigación y el conteo de consentimientos. Sería un dato falso que se ve
-igual que uno bueno.
-
-**Lo que hay que hacer:** aceptar `patientId = null` **con `motivo_sin_paciente` obligatorio**, igual que
-la venta suelta ya exige su motivo cuando no sale de ninguna consulta. Y la factura: **no se emite**, que es
-lo que ya hace toda venta retroactiva.
-
-**Tamaño: media jornada.** Relajar el escritor, añadir el campo al formulario de `/admin/ventas-retroactivas`
-con su `required` condicional (**ojo al hazard 6**: `required={!sinPaciente}`, nunca `required` a secas), y
-su candado.
-
-#### 2 · La venta de CNV sin Integrante, y el descuento comercial
-
-**Estaban dimensionados y sin construir. Pasan a ser requisito del xlsx**, porque la venta del 8 de agosto
-es las dos cosas a la vez: la hizo CNV, sin comisión, y con descuento al paciente.
-
-| Pieza | Qué hace falta |
+| Base depurada (UVT) | Retención |
 |---|---|
-| **Venta sin Integrante** | `professional_id = null`. El sellado ya lo contempla (*"una venta sin profesional no se bloquea: no hay modalidad de nadie"*, candado existente) y **no crea fila de comisión**, que es justo lo que se quiere. Falta la superficie |
-| **Descuento comercial** | un valor y un motivo por línea. El IVA se calcula sobre el precio **ya descontado**, y el reparto también: un descuento que no baje la base haría que CNV pagara IVA sobre plata que no cobró |
+| 0 – 95 | **0 %** |
+| 95 – 150 | (base − 95) × **19 %** |
+| 150 – 360 | (base − 150) × **28 %** + 10 UVT |
+| 360 – 640 | (base − 360) × **33 %** + 69 UVT |
+| 640 – 945 | (base − 640) × **35 %** + 162 UVT |
+| 945 – 2.300 | (base − 945) × **37 %** + 268 UVT |
+| > 2.300 | (base − 2.300) × **39 %** + 770 UVT |
 
-**Tamaño: una jornada las dos.** Para el xlsx basta con que el **cargador** sepa ponerlos; la pantalla puede
-ir después.
+#### La depuración previa, EN ESTE ORDEN
 
-#### 3 · El cargador del xlsx
+1. **aportes obligatorios** a salud y pensión, si los acredita;
+2. **deducciones certificadas**, si las hay;
+3. **renta exenta del 25 %**, con tope de **790 UVT al año** (≈ **65,83 al mes**);
+4. **tope global**: deducciones + rentas exentas **no pasan del 40 % del ingreso** ni de **1.340 UVT al
+   año**.
 
-Lee las dos hojas, valida, imprime el cuadro y escribe por los caminos que ya existen. **Una jornada.**
+> **El orden no es decorativo: cambia el resultado.** La renta exenta del 25 % se calcula sobre lo que
+> queda después de restar los aportes y las deducciones, no sobre el ingreso bruto. Y el tope global se
+> aplica **al final**, sobre la suma de los dos conceptos.
+>
+> **Por eso "casi siempre da 0":** 95 UVT son **4.975.530** al mes de base ya depurada. Una comisión
+> normal no llega.
 
-**Total: dos días y medio de trabajo**, y hay ocho días hábiles. Cabe, pero no sobra.
+#### Qué hay que construir
 
+| Pieza | Qué |
+|---|---|
+| **El método, en el perfil** | `retencion_metodo`: `tarifa_fija` (lo de hoy) o `tabla_383`. **Solo para persona natural**; una jurídica va siempre al 11 % |
+| **La base MENSUAL por persona** | hoy la liquidación calcula sobre **su propia base**. La tabla pide **todos los pagos de CNV de ese mes calendario**, sumados. Es un cambio real: hay que leer lo ya pagado en el mes antes de retener |
+| **La depuración, con sus cuatro pasos y sus dos topes** | módulo neutro y puro, como `liquidacion.ts`, con su tabla de casos |
+| **Los soportes** | lo que acredita los aportes y las deducciones. Sin soporte no se depura: se retiene sobre el bruto |
+| **El cambio de método** | **rige desde el pago SIGUIENTE a la nueva declaración**, no desde el corte siguiente ni retroactivamente |
+| **El sello** | la liquidación ya sella la tarifa aplicada; tiene que sellar también **el método y la base depurada**, o dentro de un año no se podrá explicar la cuenta |
+
+**Una jornada y media**, y es donde más cuidado hay que tener: es el único punto del sistema donde un
+error se convierte directamente en plata mal girada y en una declaración mal presentada.
+
+> **Contabilidad la valida antes del primer pago.** Lo de arriba es lo que se construye; lo que se
+> construye no se da por bueno hasta que ella lo firme.
+
+---
+
+### 3 · Cuándo es la primera liquidación real: la fecha límite
+
+| Quién | Cadencia | Primer corte real | Se liquida |
+|---|---|---|---|
+| **Katherine** (Distribución) | quincenal | **20 → 30 de noviembre** | después del 30 |
+| **Los demás** (Comisión) | mensual | **noviembre**, cierra el **30** | primeros días de diciembre |
+
+**Así que la fecha límite de todo lo tributario es el 30 de noviembre.** Hasta entonces se puede vender
+sin problema: lo que no se puede es **pagar**.
+
+---
+
+### 4 · Lo que sigue pendiente de la contadora
+
+1. **La base mínima de retefuente por compras**: contabilidad dice que **probablemente son 10 UVT
+   (523.740)**, y lo que hay escrito en el modelo comercial son **27 UVT (1.414.098)**. **Pendiente de
+   confirmar.** No bloquea, porque Atlas pasa a registrar y no a calcular.
+2. **La validación de la tabla del art. 383** y de su depuración, antes del primer pago.
+
+---
+
+## EL XLSX DE VENTAS ATRASADAS Y LA CONCILIACIÓN
+
+**EN PAUSA hasta después del arranque.** Santiago ya tiene un archivo avanzado y se trabaja sobre ese.
+
+**Todo lo planeado vive en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`:** las dos hojas con sus columnas, las
+tres fechas, el orden de carga, la validación en dos pasadas, las tres piezas que hay que construir (la
+venta sin paciente, la venta de CNV con descuento y el cargador), el interruptor
+`VENTAS_HISTORICAS_CARGADAS`, y **la conciliación de inventario completa** que fijó contabilidad.
+
+**Dos fechas límite:** la carga, el **30 de noviembre**; la conciliación, a más tardar el **5.º día hábil
+de diciembre**.
