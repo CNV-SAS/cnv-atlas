@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+// EL PARENTESCO SALE DE DONDE YA VIVE (el consentimiento), no de una lista copiada: dos listas del mismo
+// dato acaban divergiendo, y el formulario de la ficha tiene que ofrecer exactamente lo que el intake.
+import { LEGAL_REP_RELATIONSHIPS } from "@/modules/consent/validations";
+
 // Validaciones del modulo de pacientes.
 
 const DOCUMENT_TYPES = ["CC", "CE", "TI", "PA", "NIT"] as const;
@@ -101,6 +105,35 @@ export const contactoPacienteSchema = z.object({
   phone: z.string().nullish().transform(vacioANull).refine((v) => v === null || v.length <= 40, {
     message: "El teléfono es demasiado largo.",
   }),
+});
+
+// ═══ COMPLETAR O CORREGIR EL REPRESENTANTE LEGAL DE UN MENOR (contabilidad C1, 2026-11-19) ═══
+//
+// LOS TRES PRIMEROS SON OBLIGATORIOS porque sin ellos no se puede emitir la factura a su nombre, que es
+// para lo que existe este formulario. El correo NO lo es: es a donde llega la factura, y una factura sin
+// correo se emite igual (la ley la exige; el correo es una comodidad). Un correo mal escrito es PEOR que
+// ninguno, porque el envio se da por bueno y no llega a nadie, asi que se admite vaciarlo a proposito.
+//
+// EL TIPO SOLO ADMITE CC, CE Y PA: 'TI' es el documento de un menor (un menor no representa a otro) y
+// 'NIT' es de persona juridica. Lo mismo que el CHECK de la 0247, y aqui por segunda vez a proposito:
+// la base es la defensa de fondo y lanza, que desde una pantalla es un 500; esto devuelve un mensaje.
+export const TIPOS_DE_DOCUMENTO_DEL_REPRESENTANTE = ["CC", "CE", "PA"] as const;
+
+export const representanteLegalSchema = z.object({
+  patientId: z.guid(),
+  nombre: z.string().trim().min(1, "Ingresa el nombre del representante legal.").max(120),
+  tipoDocumento: z.enum(TIPOS_DE_DOCUMENTO_DEL_REPRESENTANTE, {
+    message: "Elige el tipo de documento del representante.",
+  }),
+  documento: z.string().trim().min(3, "Ingresa el documento del representante.").max(60),
+  parentesco: z.enum(LEGAL_REP_RELATIONSHIPS, { message: "Elige el parentesco." }),
+  correo: z
+    .string()
+    .nullish()
+    .transform(vacioANull)
+    .refine((v) => v === null || z.string().email().max(160).safeParse(v).success, {
+      message: "El correo del representante no tiene un formato válido.",
+    }),
 });
 
 // ═══ CORREGIR UN SEXO YA REGISTRADO (Santiago, 2026-10-10) ═══

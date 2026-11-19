@@ -14,6 +14,8 @@ import {
   canCorrectPatientBirthDate,
   canCorrectPatientSex,
 } from "@/modules/patients/policies/can-complete-patient-sex";
+import { leerRepresentanteVigente } from "@/modules/patients/data/representante-writer";
+import { canEditLegalRepresentative } from "@/modules/patients/policies/can-edit-legal-representative";
 import { canEditPatientContact } from "@/modules/patients/policies/can-edit-patient-contact";
 import { CompletarFechaDeNacimiento } from "@/modules/patients/components/completar-fecha-de-nacimiento";
 import { CompletarSexo } from "@/modules/patients/components/completar-sexo";
@@ -21,6 +23,7 @@ import { CorregirFechaDeNacimiento } from "@/modules/patients/components/corregi
 import { CorregirSexo } from "@/modules/patients/components/corregir-sexo";
 import { contarDiagnosticosDelPaciente } from "@/modules/patients/data/diagnosticos-del-paciente-reader";
 import { EditarContacto } from "@/modules/patients/components/editar-contacto";
+import { RepresentanteLegal } from "@/modules/patients/components/representante-legal";
 import { FollowupLinkEmitter } from "@/modules/evaluations/components/followup-link-emitter";
 import {
   canAbandonEvaluation,
@@ -91,6 +94,7 @@ export default async function HistoriaPacientePage({
   // boton: la de cerrar es solo del profesional.
   const puedeRetirar = canRetirarConsulta(user);
   const puedeEditarContacto = canEditPatientContact(user);
+  const puedeEditarRepresentante = canEditLegalRepresentative(user);
   // COMPLETAR EL SEXO: el permiso, y la condicion de que FALTE. El bloque solo existe cuando hay un hueco
   // que tapar; con el dato puesto, la ficha no muestra nada (ver `completar-sexo.tsx`).
   const leFaltaElSexo = (paciente.sex ?? "").trim() === "";
@@ -113,6 +117,17 @@ export default async function HistoriaPacientePage({
   const puedeEmitirSeguimiento = canEmitFollowupLink(user);
 
   const anos = edadEnAnios(paciente.birthDate);
+  // ═══ EL REPRESENTANTE LEGAL, SOLO SI ES MENOR (contabilidad C1, 2026-11-19) ═══
+  //
+  // La factura de un paciente menor va a nombre de su representante legal, nunca con los datos del menor.
+  // El bloque solo se monta cuando de verdad hace falta: en la ficha de un adulto invitaria a llenarlo, y
+  // un representante colgando de un adulto es un dato que no significa nada.
+  //
+  // SIN FECHA DE NACIMIENTO NO SE MUESTRA, por la misma razon por la que la facturacion no frena a quien
+  // no la tiene: no se sabe que sea menor. Lo que falta ahi es la fecha, y para eso ya esta su propio
+  // bloque, justo al lado.
+  const esMenorDeEdad = anos !== null && anos < 18;
+  const representante = esMenorDeEdad ? await leerRepresentanteVigente(patientId) : null;
   const nombre = `${paciente.firstName} ${paciente.lastName}`.trim() || "Sin nombre";
   // LOS CUATRO DE IDENTIDAD SUBEN A LA BANDA (2026-09-03). Son los que dicen DE QUIEN es esta pantalla y
   // no cambian de una consulta a otra; en la banda estan donde el ojo ya esta y dejan de gastar cuatro
@@ -176,6 +191,20 @@ export default async function HistoriaPacientePage({
             esta mirando esta zona. */}
         {/* LAS DOS CORRECCIONES DE LA FICHA, JUNTAS. Son el mismo gesto (corregir un dato del paciente que
             ya esta registrado) y vivian separadas solo porque la del sexo no existia. */}
+        {/* VA ARRIBA DE LAS CORRECCIONES y en su propia fila, no entre los botones: cuando falta, no es
+            una correccion opcional sino la razon por la que las compras de este paciente no se pueden
+            facturar, y eso tiene que leerse antes de decidir nada. */}
+        {esMenorDeEdad && puedeEditarRepresentante ? (
+          <RepresentanteLegal
+            patientId={patientId}
+            hayAutorizacion={representante !== null}
+            nombre={representante?.nombre ?? null}
+            tipoDocumento={representante?.tipoDocumento ?? null}
+            documento={representante?.documento ?? null}
+            parentesco={representante?.parentesco ?? null}
+            correo={representante?.correo ?? null}
+          />
+        ) : null}
         <div className="flex flex-wrap items-start gap-2">
           {puedeEditarContacto ? (
             <EditarContacto patientId={patientId} email={paciente.email} phone={paciente.phone} />

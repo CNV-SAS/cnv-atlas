@@ -16,6 +16,7 @@ import {
   resolverPropuestaDePrueba,
 } from "./data/de-prueba-writer";
 import { guardarContactoDelPaciente } from "./data/patient-contact-writer";
+import { guardarRepresentanteDelPaciente } from "./data/representante-writer";
 import {
   completarFechaDeNacimiento,
   corregirFechaDeNacimiento,
@@ -42,6 +43,7 @@ import {
   canCompletePatientSex,
   canCorrectPatientSex,
 } from "./policies/can-complete-patient-sex";
+import { canEditLegalRepresentative } from "./policies/can-edit-legal-representative";
 import { canEditPatientContact } from "./policies/can-edit-patient-contact";
 import { canReassignPatient } from "./policies/can-reassign-patient";
 import { canCreatePatientPresencial } from "./policies/can-create-patient";
@@ -49,6 +51,7 @@ import { documentoAjenoParaProfesional } from "./text/documento-ajeno";
 import type {
   ArchivarPacienteState,
   ContactoPacienteState,
+  RepresentanteLegalState,
   SexoPacienteState,
   VerificarDocumentoState,
 } from "./types";
@@ -57,6 +60,7 @@ import {
   peticionDeEliminacionSchema,
   resolucionDeEliminacionSchema,
   contactoPacienteSchema,
+  representanteLegalSchema,
   correccionDeSexoSchema,
   documentoSchema,
   correccionDeFechaDeNacimientoSchema,
@@ -909,4 +913,67 @@ export async function restituirAlPacienteAction(
     reportServerError("paciente.restituir", e);
     return sinEliminar("No se pudo restituir al paciente.");
   }
+}
+
+// ═══ COMPLETAR O CORREGIR EL REPRESENTANTE LEGAL DE UN MENOR (contabilidad C1, 2026-11-19) ═══
+//
+// La factura de un paciente menor va a nombre de su representante legal, nunca con los datos del menor.
+// Esta es la puerta para los que ya existen sin representante, y para todos los que lo tienen sin TIPO de
+// documento (esa columna nacio con la 0247). Sin ella, esas ventas quedarian pendientes de facturar para
+// siempre y la unica salida seria volver a firmar el consentimiento entero.
+export async function guardarRepresentanteLegalAction(
+  _prev: RepresentanteLegalState,
+  form: FormData,
+): Promise<RepresentanteLegalState> {
+  const user = await requireUser();
+  if (!canEditLegalRepresentative(user)) {
+    return { error: "No autorizado.", success: null, warning: null };
+  }
+
+  const datos = representanteLegalSchema.safeParse({
+    patientId: form.get("patientId"),
+    nombre: form.get("nombre"),
+    tipoDocumento: form.get("tipoDocumento"),
+    documento: form.get("documento"),
+    parentesco: form.get("parentesco"),
+    correo: form.get("correo"),
+  });
+  if (!datos.success) {
+    return {
+      error: datos.error.issues[0]?.message ?? "Revisa los datos del representante legal.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  // SE LEE EL PACIENTE BAJO RLS ANTES DE ESCRIBIR: es lo que acota el alcance del profesional a los suyos,
+  // igual que en la correccion del contacto. La policy dice QUE ROL puede; esto dice SOBRE QUIEN.
+  const paciente = await getPatientDetail(datos.data.patientId);
+  if (!paciente) return { error: "No se encontró ese paciente.", success: null, warning: null };
+
+  const ip = await getClientIp();
+  const r = await guardarRepresentanteDelPaciente(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+
+  if (!r.ok) {
+    // NO SE CREA LA AUTORIZACION DESDE AQUI. Firmar un consentimiento es un acto del paciente y de su
+    // representante, no algo que se teclee en la ficha. Se dice lo que falta y por donde se resuelve.
+    return {
+      error:
+        "Este paciente no tiene una autorización de representante legal vigente, así que no hay dónde guardar estos datos. Hay que firmar el consentimiento con su representante.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  // No revalida: el refresco lo hace la pantalla tras el aviso (el candado del doble ciclo).
+  return {
+    error: null,
+    success:
+      "Representante legal actualizado. Si había una venta pendiente de facturar por este motivo, sale sola en el siguiente intento.",
+    warning: null,
+  };
 }

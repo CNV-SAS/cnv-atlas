@@ -236,6 +236,13 @@ export type ContactoPacienteState = {
   warning: string | null;
 };
 
+/** Estado de la accion del representante legal. Misma forma (`FormToastState`). */
+export type RepresentanteLegalState = {
+  error: string | null;
+  success: string | null;
+  warning: string | null;
+};
+
 /** Estado de la accion de completar el sexo que falta. Misma forma (`FormToastState`). */
 export type SexoPacienteState = {
   error: string | null;
