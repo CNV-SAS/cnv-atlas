@@ -1,5 +1,9 @@
 import { HttpError } from "@/core/http/http-error";
 import { baseFromTotal, ivaFromTotal } from "@/core/iva";
+// LA MAYORIA DE EDAD SALE DE DONDE YA VIVE, no de un 18 escrito aqui: es la misma regla que gobierna el
+// consentimiento, y tenerla en dos sitios es como se llega a que una pantalla trate de menor a alguien a
+// quien la otra trata de adulto.
+import { isMinorAge as esMenorDeEdad } from "@/modules/consent/validations";
 
 import type { CanalDePago } from "./medio-de-pago";
 
@@ -324,4 +328,55 @@ export function pudoHaberseCreado(e: unknown): boolean {
 export function laVentaFueMarcadaComoPrueba(marcadaEn: Date | string | null): string | null {
   if (marcadaEn == null) return null;
   return "Alguien marcó esta venta como de PRUEBA, con su motivo. No se factura en ningún ambiente: un documento fiscal afirmaría un acto que ya se declaró que no ocurrió. Si la venta es real, quítale la marca y vuelve a intentarlo.";
+}
+
+/**
+ * ═══ LA FACTURA DE UN PACIENTE MENOR NO SALE A NOMBRE DEL MENOR (contabilidad, 2026-11-18) ═══
+ *
+ * Textual de contabilidad: la factura va a nombre del REPRESENTANTE LEGAL, que es quien compra y quien
+ * paga, con su cedula y su correo. **Nunca los datos del menor en un documento tributario.** Y nada de
+ * "consumidor final" por defecto: sin representante, la venta se registra y queda PENDIENTE DE FACTURAR.
+ *
+ * ── LO QUE ESTE FRENO HACE HOY, Y LO QUE TODAVIA NO ────────────────────────────────────────────
+ *
+ * HOY FRENA, no redirige. La factura a nombre del representante necesita una pieza que no existe en la
+ * base: EL TIPO DE DOCUMENTO del representante (`patient_consents.legal_representative_document` es texto
+ * libre, sin tipo, y Alegra EXIGE el tipo para crear el contacto porque alimenta el documento ante la
+ * DIAN). Suponer "CC" seria inventar un dato tributario de una persona real, que es justo la clase de dato
+ * que se ve igual que uno bueno.
+ *
+ * Asi que hasta que esa pieza exista, lo unico correcto que Atlas puede hacer con la venta de un menor es
+ * NO EMITIRLA, porque la alternativa (emitirla a nombre del menor) es lo que contabilidad prohibe.
+ *
+ * ── POR QUE DEVUELVE DOS MOTIVOS DISTINTOS ────────────────────────────────────────────────────
+ *
+ * Porque son dos cosas distintas que hacer, y quien lee /pagos tiene que saber cual le toca:
+ *
+ *   · SIN REPRESENTANTE, el dato lo completa quien atiende, y la venta sale sola del freno.
+ *   · CON REPRESENTANTE, no falta nada que nadie pueda hacer: falta la pieza de software, y decirle
+ *     "completa el representante" a quien ya lo completo lo manda a buscar algo que esta.
+ *
+ * ── Y POR QUE UN PACIENTE SIN FECHA DE NACIMIENTO NO SE FRENA ─────────────────────────────────
+ *
+ * Porque no se sabe que es menor, y frenar a todos los que no tienen fecha congelaria la facturacion de
+ * adultos reales el dia del arranque (hay pacientes reales sin fecha de nacimiento, es un hallazgo
+ * conocido de la cohorte). Un freno sin salida detiene a una persona, y aqui la persona detenida seria
+ * alguien de quien no sabemos nada malo. Queda escrito como lo primero que el mecanismo completo tiene
+ * que revisar.
+ *
+ * SE MIDE LA EDAD A LA FECHA DE LA VENTA, no a la de hoy: quien cumplio 18 el mes pasado era menor cuando
+ * compro, y la factura de ese dia es la de un menor.
+ */
+export function motivoSiElMenorNoSePuedeFacturar(
+  edadALaFechaDeLaVenta: number | null,
+  representante: { documento: string | null } | null,
+): string | null {
+  // Sin fecha de nacimiento no se afirma nada. Ver la cabecera.
+  if (edadALaFechaDeLaVenta == null) return null;
+  if (!esMenorDeEdad(edadALaFechaDeLaVenta)) return null;
+
+  if (representante?.documento?.trim()) {
+    return "El paciente era menor de edad el día de la venta. La factura tiene que salir a nombre de su representante legal, y Atlas todavía no sabe el TIPO de documento del representante (cédula, cédula de extranjería), que Alegra exige. No se emite hasta que esa pieza esté: la venta queda registrada y pendiente de facturar.";
+  }
+  return "Paciente menor: falta el representante legal. La factura va a nombre de quien compra y paga, nunca con los datos del menor. Completa el representante legal del paciente y la venta sale sola de este estado.";
 }

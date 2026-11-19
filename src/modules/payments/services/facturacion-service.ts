@@ -19,6 +19,7 @@ import {
   desgloseDeLaVenta,
   fechaEnColombia,
   laVentaFueMarcadaComoPrueba,
+  motivoSiElMenorNoSePuedeFacturar,
   motivoSiPacienteYAmbienteNoCuadran,
   pudoHaberseCreado,
   rangoDeBusqueda,
@@ -347,6 +348,18 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       : "El paciente de la venta no existe.";
     if (motivoPaciente) {
       await fr.registrarIntentoDeFactura(venta.id, { estado: "rechazada", error: motivoPaciente });
+      return;
+    }
+
+    // 4. LA EDAD DEL PACIENTE EL DIA DE LA VENTA (contabilidad, 2026-11-18). La factura de un menor va a
+    //    nombre de su representante legal, nunca con los datos del menor, y eso todavia no se puede
+    //    emitir: ver `motivoSiElMenorNoSePuedeFacturar`. Va con las otras tres y ANTES del reclamo por la
+    //    misma razon que ellas: no gasta intentos, y el dia que se complete el representante la venta sale
+    //    SOLA de `rechazada` sin que nadie tenga que acordarse de reintentarla.
+    const menor = await fr.getMenorYRepresentanteDeLaVenta(venta.id);
+    const motivoMenor = motivoSiElMenorNoSePuedeFacturar(menor.edadEnLaVenta, menor.representante);
+    if (motivoMenor) {
+      await fr.registrarIntentoDeFactura(venta.id, { estado: "rechazada", error: motivoMenor });
       return;
     }
 

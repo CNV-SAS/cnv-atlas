@@ -84,6 +84,7 @@ const DB_TESTS = [
   "src/tests/de-quien-es-la-venta-db.test.ts",
   "src/tests/comision-de-venta-de-prueba-no-se-gira-db.test.ts",
   "src/tests/el-cambio-de-modalidad-no-cuenta-las-pruebas-db.test.ts",
+  "src/tests/la-factura-de-un-menor-db.test.ts",
   "src/tests/el-envio-no-se-entrega-sin-direccion-db.test.ts",
   "src/tests/ventas-sin-documento-por-dia-db.test.ts",
   "src/tests/avisos-db.test.ts",

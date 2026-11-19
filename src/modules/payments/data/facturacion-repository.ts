@@ -255,6 +255,75 @@ export async function getMarcaDePruebaDeLaVenta(txId: string): Promise<Date | nu
   return t?.marcadaEn ?? null;
 }
 
+/**
+ * ═══ LA EDAD DEL PACIENTE EL DIA DE LA VENTA, Y SU REPRESENTANTE LEGAL (2026-11-19) ═══
+ *
+ * Lo que necesita `motivoSiElMenorNoSePuedeFacturar`. Las dos cosas se leen EN LA MISMA CONSULTA a
+ * proposito: la edad y el representante son las dos mitades de una sola decision, y leerlas por separado
+ * es como se llega a que una diga menor y la otra no encuentre a nadie.
+ *
+ * ── LA EDAD VA A LA FECHA DE LA VENTA, no a la de hoy ───────────────────────────────────────────
+ *
+ * `coalesce(operated_at, created_at)` es el mismo criterio con el que se arma cada corte y con el que
+ * cuentan las cifras. Quien cumplio 18 el mes pasado era menor cuando compro, y la factura de ese dia es
+ * la de un menor.
+ *
+ * ── Y EL REPRESENTANTE SALE DE `patient_consents`, que es el registro durable ────────────────────
+ *
+ * Es donde lo escribe el intake (`intake-writer`), tanto por el camino remoto como por el presencial: los
+ * dos pasan por el mismo servicio. La fila de `presencial_consent_sessions` tambien lo tiene, pero esa es
+ * efimera y es el borrador del acto, no el acto.
+ *
+ * SOLO LAS VIGENTES (`revoked_at is null`) y la MAS RECIENTE: si alguien revoco y volvio a firmar con otro
+ * representante, el que manda es el ultimo.
+ */
+export async function getMenorYRepresentanteDeLaVenta(txId: string): Promise<{
+  edadEnLaVenta: number | null;
+  representante: { nombre: string | null; documento: string | null; correo: string | null } | null;
+}> {
+  const [f] = await db.execute<{
+    edad: number | null;
+    rep_nombre: string | null;
+    rep_documento: string | null;
+    rep_correo: string | null;
+  }>(sql`
+    select
+      -- EN AÑOS CUMPLIDOS, con la misma aritmetica que edadEnFecha: age() de Postgres devuelve un
+      -- intervalo, y extract(year ...) de ese intervalo son los años cumplidos, que es lo que se quiere.
+      -- Sin comillas invertidas: dentro de una plantilla SQL terminan la cadena (candado
+      -- sin-backticks-dentro-del-sql).
+      case when pp.birth_date is null then null
+           else extract(year from age(
+                  (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date,
+                  pp.birth_date))::int
+      end as edad,
+      r.legal_representative_name     as rep_nombre,
+      r.legal_representative_document as rep_documento,
+      r.legal_representative_email    as rep_correo
+    from transactions t
+    -- LEFT en los dos: un paciente sin perfil, o una venta sin paciente, no pueden reventar la cola.
+    left join patient_profiles pp on pp.patient_id = t.patient_id
+    left join lateral (
+      select c.legal_representative_name, c.legal_representative_document, c.legal_representative_email
+        from patient_consents c
+       where c.patient_id = t.patient_id
+         and c.consent_type = 'representante_legal'
+         and c.revoked_at is null
+       order by c.signed_at desc
+       limit 1
+    ) r on true
+    where t.id = ${txId}`);
+
+  if (!f) return { edadEnLaVenta: null, representante: null };
+  const hayRepresentante = Boolean(f.rep_nombre || f.rep_documento || f.rep_correo);
+  return {
+    edadEnLaVenta: f.edad == null ? null : Number(f.edad),
+    representante: hayRepresentante
+      ? { nombre: f.rep_nombre, documento: f.rep_documento, correo: f.rep_correo }
+      : null,
+  };
+}
+
 /** Con que pago el paciente, para el medio de pago de la factura. Leido de la fila, igual que el ambiente. */
 export async function getInstrumentoDeVenta(
   txId: string,
