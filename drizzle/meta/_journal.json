@@ -1730,6 +1730,13 @@
       "when": 1793800380491,
       "tag": "0246_los_rotulos_para_el_paciente",
       "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1793800381491,
+      "tag": "0247_el_tipo_de_documento_del_representante",
+      "breakpoints": true
     }
   ]
 }

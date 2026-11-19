@@ -169,6 +169,11 @@ export const patientConsents = pgTable(
     // el representante es una autorizacion mas, con campos adicionales.
     legalRepresentativeName: text("legal_representative_name"),
     legalRepresentativeDocument: text("legal_representative_document"),
+    // EL TIPO DEL DOCUMENTO (0247). Hacia falta para facturar a nombre del representante: Alegra exige
+    // `identificationObject.type` y suponer "CC" seria inventar un dato tributario de una persona real.
+    // Un CHECK lo acota a CC | CE | PA: 'TI' es el documento de un menor y 'NIT' es de persona juridica,
+    // y las dos cosas producirian un documento fiscal valido y equivocado.
+    legalRepresentativeDocumentType: documentType("legal_representative_document_type"),
     legalRepresentativeRelationship: text("legal_representative_relationship"),
     legalRepresentativeEmail: text("legal_representative_email"),
     // COMO SE OBTUVO ESTA AUTORIZACION (0105, dictamen 2026-09-08). No es un metadato: dos
