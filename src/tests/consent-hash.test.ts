@@ -199,7 +199,10 @@ describe("consentSchema rama menor (representante legal + asentimiento)", () => 
     aceptacion_medio_electronico: true,
     ageBranch: "menor",
     legalRepresentativeName: "Maria Perez",
-    legalRepresentativeDocument: "CC 123456",
+    // EL TIPO VA APARTE DESDE LA 0247: el numero solo no sirve para crear el contacto en Alegra, que
+    // exige el tipo y lo lleva al documento ante la DIAN.
+    legalRepresentativeDocumentType: "CC",
+    legalRepresentativeDocument: "123456",
     legalRepresentativeRelationship: "madre",
     legalRepresentativeEmail: "madre@example.com",
     minorBirthDate: "2010-01-01",
