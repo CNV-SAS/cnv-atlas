@@ -331,52 +331,116 @@ export function laVentaFueMarcadaComoPrueba(marcadaEn: Date | string | null): st
 }
 
 /**
- * ═══ LA FACTURA DE UN PACIENTE MENOR NO SALE A NOMBRE DEL MENOR (contabilidad, 2026-11-18) ═══
+ * ═══ EL ADQUIRENTE DE LA FACTURA: EL PACIENTE, O SU REPRESENTANTE SI ES MENOR ═══
  *
- * Textual de contabilidad: la factura va a nombre del REPRESENTANTE LEGAL, que es quien compra y quien
- * paga, con su cedula y su correo. **Nunca los datos del menor en un documento tributario.** Y nada de
- * "consumidor final" por defecto: sin representante, la venta se registra y queda PENDIENTE DE FACTURAR.
- *
- * ── LO QUE ESTE FRENO HACE HOY, Y LO QUE TODAVIA NO ────────────────────────────────────────────
- *
- * HOY FRENA, no redirige. La factura a nombre del representante necesita una pieza que no existe en la
- * base: EL TIPO DE DOCUMENTO del representante (`patient_consents.legal_representative_document` es texto
- * libre, sin tipo, y Alegra EXIGE el tipo para crear el contacto porque alimenta el documento ante la
- * DIAN). Suponer "CC" seria inventar un dato tributario de una persona real, que es justo la clase de dato
- * que se ve igual que uno bueno.
- *
- * Asi que hasta que esa pieza exista, lo unico correcto que Atlas puede hacer con la venta de un menor es
- * NO EMITIRLA, porque la alternativa (emitirla a nombre del menor) es lo que contabilidad prohibe.
- *
- * ── POR QUE DEVUELVE DOS MOTIVOS DISTINTOS ────────────────────────────────────────────────────
- *
- * Porque son dos cosas distintas que hacer, y quien lee /pagos tiene que saber cual le toca:
- *
- *   · SIN REPRESENTANTE, el dato lo completa quien atiende, y la venta sale sola del freno.
- *   · CON REPRESENTANTE, no falta nada que nadie pueda hacer: falta la pieza de software, y decirle
- *     "completa el representante" a quien ya lo completo lo manda a buscar algo que esta.
- *
- * ── Y POR QUE UN PACIENTE SIN FECHA DE NACIMIENTO NO SE FRENA ─────────────────────────────────
- *
- * Porque no se sabe que es menor, y frenar a todos los que no tienen fecha congelaria la facturacion de
- * adultos reales el dia del arranque (hay pacientes reales sin fecha de nacimiento, es un hallazgo
- * conocido de la cohorte). Un freno sin salida detiene a una persona, y aqui la persona detenida seria
- * alguien de quien no sabemos nada malo. Queda escrito como lo primero que el mecanismo completo tiene
- * que revisar.
- *
- * SE MIDE LA EDAD A LA FECHA DE LA VENTA, no a la de hoy: quien cumplio 18 el mes pasado era menor cuando
- * compro, y la factura de ese dia es la de un menor.
+ * Los datos que identifican a quien compra. Es lo que viaja a Alegra como contacto, y nada mas: nombre,
+ * documento con su tipo, y correo (principio 7 del modelo comercial).
  */
-export function motivoSiElMenorNoSePuedeFacturar(
-  edadALaFechaDeLaVenta: number | null,
-  representante: { documento: string | null } | null,
-): string | null {
-  // Sin fecha de nacimiento no se afirma nada. Ver la cabecera.
-  if (edadALaFechaDeLaVenta == null) return null;
-  if (!esMenorDeEdad(edadALaFechaDeLaVenta)) return null;
+export type Adquirente = {
+  nombres: string;
+  apellidos: string;
+  documento: string;
+  tipoDocumento: string;
+  correo: string | null;
+  /** Si es el representante de un menor. Decide si el contacto se puede cachear en el paciente. */
+  esElRepresentante: boolean;
+};
 
-  if (representante?.documento?.trim()) {
-    return "El paciente era menor de edad el día de la venta. La factura tiene que salir a nombre de su representante legal, y Atlas todavía no sabe el TIPO de documento del representante (cédula, cédula de extranjería), que Alegra exige. No se emite hasta que esa pieza esté: la venta queda registrada y pendiente de facturar.";
+/** Lo que se sabe del representante legal de un paciente. Cualquier campo puede faltar. */
+export type RepresentanteLegal = {
+  nombre: string | null;
+  documento: string | null;
+  tipoDocumento: string | null;
+  correo: string | null;
+};
+
+/**
+ * ═══ QUIEN VA EN LA FACTURA (contabilidad, 2026-11-18, C1) ═══
+ *
+ * Textual de contabilidad: la factura de un menor va a nombre del REPRESENTANTE LEGAL, que es quien
+ * compra y quien paga, con su documento y su correo. **Nunca los datos del menor en un documento
+ * tributario.** Y nada de "consumidor final" por defecto: sin representante completo, la venta se
+ * registra y queda PENDIENTE DE FACTURAR.
+ *
+ * Devuelve el ADQUIRENTE cuando se puede emitir, o el MOTIVO cuando no. Nunca las dos cosas, y nunca
+ * ninguna: quien llama no tiene que decidir nada.
+ *
+ * ── POR QUE EL NOMBRE DEL REPRESENTANTE NO SE PARTE EN NOMBRES Y APELLIDOS ─────────────────────
+ *
+ * Porque se captura en UN campo ("nombre completo"), y partir "Ana Maria Lopez Gomez" de vuelta es
+ * imposible de hacer bien: no se sabe donde termina el nombre. Es la misma regla que ya esta escrita en
+ * `createAlegraContact` para el paciente, donde el apellido se pide separado a quien lo tiene separado.
+ * Aqui no lo tiene nadie separado, asi que el nombre entero va en `firstName` y `lastName` lleva su
+ * DOCUMENTO, que es verdadero, visible y lo identifica. Inventar un corte seria peor.
+ *
+ * ── Y EL CORREO ES EL DEL REPRESENTANTE, no el del menor ──────────────────────────────────────
+ *
+ * Es a donde llega la factura. Mandarla al correo del menor seria mandarle un documento tributario a
+ * nombre de otra persona.
+ *
+ * ── SE MIDE LA EDAD A LA FECHA DE LA VENTA ────────────────────────────────────────────────────
+ *
+ * Quien cumplio 18 el mes pasado era menor cuando compro, y la factura de ese dia es la de un menor.
+ *
+ * ── Y UN PACIENTE SIN FECHA DE NACIMIENTO NO SE FRENA ─────────────────────────────────────────
+ *
+ * Porque no se sabe que sea menor, y frenar a todos los que no tienen fecha congelaria la facturacion de
+ * adultos reales (hay pacientes reales sin fecha de nacimiento, es un hallazgo conocido de la cohorte).
+ * Un freno sin salida detiene a una persona, y aqui la persona detenida seria alguien de quien no
+ * sabemos nada malo.
+ */
+export function elAdquirenteDeLaFactura(e: {
+  edadALaFechaDeLaVenta: number | null;
+  paciente: { nombres: string | null; apellidos: string | null; documento: string; tipoDocumento: string; correo: string | null };
+  representante: RepresentanteLegal | null;
+}): { ok: true; adquirente: Adquirente } | { ok: false; motivo: string } {
+  const elPaciente = (): { ok: true; adquirente: Adquirente } => ({
+    ok: true,
+    adquirente: {
+      // Sin nombre no se deja de facturar: la factura la exige la ley y el documento identifica al
+      // adquirente igual. Se usa un rotulo con el documento, que es verdadero y visible.
+      nombres: e.paciente.nombres ?? "Paciente",
+      apellidos: e.paciente.apellidos ?? e.paciente.documento,
+      documento: e.paciente.documento,
+      tipoDocumento: e.paciente.tipoDocumento,
+      correo: e.paciente.correo,
+      esElRepresentante: false,
+    },
+  });
+
+  if (e.edadALaFechaDeLaVenta == null) return elPaciente();
+  if (!esMenorDeEdad(e.edadALaFechaDeLaVenta)) return elPaciente();
+
+  const r = e.representante;
+  const documento = r?.documento?.trim() ?? "";
+  const tipo = r?.tipoDocumento?.trim() ?? "";
+  const nombre = r?.nombre?.trim() ?? "";
+
+  if (!documento || !nombre) {
+    return {
+      ok: false,
+      motivo:
+        "Paciente menor: falta el representante legal. La factura va a nombre de quien compra y paga, nunca con los datos del menor. Complétalo en la ficha del paciente y la venta sale sola de este estado.",
+    };
   }
-  return "Paciente menor: falta el representante legal. La factura va a nombre de quien compra y paga, nunca con los datos del menor. Completa el representante legal del paciente y la venta sale sola de este estado.";
+  if (!tipo) {
+    return {
+      ok: false,
+      motivo:
+        "Paciente menor: al representante legal le falta el TIPO de documento (cédula, cédula de extranjería o pasaporte). Alegra lo exige para emitir. Complétalo en la ficha del paciente y la venta sale sola de este estado.",
+    };
+  }
+
+  return {
+    ok: true,
+    adquirente: {
+      // VER LA CABECERA: el nombre entero en `nombres`, y el documento en `apellidos`. No se parte.
+      nombres: nombre,
+      apellidos: documento,
+      documento,
+      tipoDocumento: tipo,
+      correo: r?.correo?.trim() || null,
+      esElRepresentante: true,
+    },
+  };
 }

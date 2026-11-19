@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { RepresentanteLegal } from "../facturacion";
 import type { CanalDePago } from "../medio-de-pago";
 import { and, eq, isNull, sql } from "drizzle-orm";
 
@@ -279,12 +280,13 @@ export async function getMarcaDePruebaDeLaVenta(txId: string): Promise<Date | nu
  */
 export async function getMenorYRepresentanteDeLaVenta(txId: string): Promise<{
   edadEnLaVenta: number | null;
-  representante: { nombre: string | null; documento: string | null; correo: string | null } | null;
+  representante: RepresentanteLegal | null;
 }> {
   const [f] = await db.execute<{
     edad: number | null;
     rep_nombre: string | null;
     rep_documento: string | null;
+    rep_tipo: string | null;
     rep_correo: string | null;
   }>(sql`
     select
@@ -297,14 +299,16 @@ export async function getMenorYRepresentanteDeLaVenta(txId: string): Promise<{
                   (coalesce(t.operated_at, t.created_at) at time zone 'America/Bogota')::date,
                   pp.birth_date))::int
       end as edad,
-      r.legal_representative_name     as rep_nombre,
-      r.legal_representative_document as rep_documento,
-      r.legal_representative_email    as rep_correo
+      r.legal_representative_name          as rep_nombre,
+      r.legal_representative_document      as rep_documento,
+      r.legal_representative_document_type as rep_tipo,
+      r.legal_representative_email         as rep_correo
     from transactions t
     -- LEFT en los dos: un paciente sin perfil, o una venta sin paciente, no pueden reventar la cola.
     left join patient_profiles pp on pp.patient_id = t.patient_id
     left join lateral (
-      select c.legal_representative_name, c.legal_representative_document, c.legal_representative_email
+      select c.legal_representative_name, c.legal_representative_document,
+             c.legal_representative_document_type, c.legal_representative_email
         from patient_consents c
        where c.patient_id = t.patient_id
          and c.consent_type = 'representante_legal'
@@ -315,11 +319,16 @@ export async function getMenorYRepresentanteDeLaVenta(txId: string): Promise<{
     where t.id = ${txId}`);
 
   if (!f) return { edadEnLaVenta: null, representante: null };
-  const hayRepresentante = Boolean(f.rep_nombre || f.rep_documento || f.rep_correo);
+  const hayRepresentante = Boolean(f.rep_nombre || f.rep_documento || f.rep_tipo || f.rep_correo);
   return {
     edadEnLaVenta: f.edad == null ? null : Number(f.edad),
     representante: hayRepresentante
-      ? { nombre: f.rep_nombre, documento: f.rep_documento, correo: f.rep_correo }
+      ? {
+          nombre: f.rep_nombre,
+          documento: f.rep_documento,
+          tipoDocumento: f.rep_tipo,
+          correo: f.rep_correo,
+        }
       : null,
   };
 }

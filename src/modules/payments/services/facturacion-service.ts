@@ -18,13 +18,14 @@ import {
   cuentaDelPago,
   desgloseDeLaVenta,
   fechaEnColombia,
+  elAdquirenteDeLaFactura,
   laVentaFueMarcadaComoPrueba,
-  motivoSiElMenorNoSePuedeFacturar,
   motivoSiPacienteYAmbienteNoCuadran,
   pudoHaberseCreado,
   rangoDeBusqueda,
   referenciaDeVenta,
 } from "../facturacion";
+import type { Adquirente } from "../facturacion";
 import * as fr from "../data/facturacion-repository";
 import { motivoSiLaVentaNoEsDeEsteAmbiente } from "../ambiente";
 import { codigoAlegraDelPago, type CanalDePago } from "../medio-de-pago";
@@ -96,51 +97,105 @@ export type VentaSellada = {
 };
 
 /**
- * Resuelve el contacto del paciente en Alegra: el suyo si ya lo tiene, el que exista con su documento, o
- * uno nuevo.
+ * ═══ QUIEN VA EN LA FACTURA ═══
+ *
+ * El PACIENTE, o su REPRESENTANTE LEGAL si era menor el dia de la venta (contabilidad, C1). La regla vive
+ * en `elAdquirenteDeLaFactura`, que es puro y tiene su propia tabla de casos; aqui solo se leen los datos.
+ *
+ * Devuelve el motivo cuando NO se puede emitir, para que quien llama lo registre sin gastar intentos.
+ */
+async function resolverAdquirente(
+  txId: string,
+  patientId: string,
+  env: string,
+): Promise<{ ok: true; adquirente: Adquirente } | { ok: false; motivo: string }> {
+  const datos = await fr.getDatosDelContacto(patientId);
+  if (!datos) return { ok: false, motivo: "El paciente de la venta no existe." };
+
+  const motivo = motivoSiPacienteYAmbienteNoCuadran(datos.esDePrueba, env);
+  if (motivo) return { ok: false, motivo };
+
+  const menor = await fr.getMenorYRepresentanteDeLaVenta(txId);
+  return elAdquirenteDeLaFactura({
+    edadALaFechaDeLaVenta: menor.edadEnLaVenta,
+    paciente: datos,
+    representante: menor.representante,
+  });
+}
+
+/**
+ * Resuelve el contacto del ADQUIRENTE en Alegra: el que ya este guardado, el que exista con su documento,
+ * o uno nuevo.
  *
  * SOLO VIAJAN NOMBRE, DOCUMENTO Y CORREO (principio 7 del modelo: a la contabilidad solo van datos de
  * identificacion). Ni diagnostico, ni evaluacion, ni nada clinico.
+ *
+ * ── EL CONTACTO DEL REPRESENTANTE NO SE CACHEA EN EL PACIENTE (2026-11-19) ─────────────────────
+ *
+ * `patients.alegra_contact_id` guarda el contacto DEL PACIENTE, y asi esta escrito en la 0129. Guardar
+ * ahi el del representante lo volveria mentira de dos formas, y las dos llegan solas:
+ *
+ *   · el dia que ese menor CUMPLE 18, su siguiente factura saldria a nombre de su representante, porque
+ *     el id cacheado se devuelve antes de mirar la edad;
+ *   · y si cambia de representante, seguiria facturandose al anterior.
+ *
+ * Asi que para un menor se resuelve POR DOCUMENTO cada vez. Cuesta una llamada mas a Alegra y es la unica
+ * version que no puede quedarse vieja. El patron buscar-o-crear ya existe porque Alegra rechaza un
+ * documento repetido, asi que el representante que ya este creado se reutiliza igual.
  */
-async function resolverContacto(patientId: string, env: string): Promise<number> {
-  const datos = await fr.getDatosDelContacto(patientId);
-  if (!datos) throw new Error("El paciente de la venta no existe.");
-
-  // SEGUNDA LINEA DEL GUARD. La primera va en `emitirFacturaDeVenta`, antes del reclamo, para no gastar
-  // intentos. Esta se queda porque `resolverContacto` tambien la llama `completarFactura`, y es la ultima
-  // puerta antes de la primera llamada que lleva PII: una vez creado el contacto, el dato ya salio.
-  const motivo = motivoSiPacienteYAmbienteNoCuadran(datos.esDePrueba, env);
-  if (motivo) throw new Error(motivo);
+async function resolverContacto(
+  patientId: string,
+  env: string,
+  adquirente: Adquirente,
+): Promise<number> {
+  const cacheable = !adquirente.esElRepresentante;
 
   // El id guardado solo sirve si es de ESTE ambiente. Uno de sandbox no existe en produccion, y usarlo
   // facturaria contra un contacto inexistente o, peor, contra otro que por casualidad tenga ese id.
-  if (datos.alegraContactId && datos.alegraEnv === env) return Number(datos.alegraContactId);
+  if (cacheable) {
+    const datos = await fr.getDatosDelContacto(patientId);
+    if (datos?.alegraContactId && datos.alegraEnv === env) return Number(datos.alegraContactId);
+  }
 
-  const existente = await findAlegraContactByDocument(datos.documento);
+  const existente = await findAlegraContactByDocument(adquirente.documento);
   if (existente) {
-    await fr.setContactoDeAlegra(patientId, existente.id, env);
+    if (cacheable) await fr.setContactoDeAlegra(patientId, existente.id, env);
     return Number(existente.id);
   }
 
   const creado = await createAlegraContact({
-    // Sin nombre no se deja de facturar: la factura la exige la ley y el documento identifica al
-    // adquirente igual. Se usa un rotulo con el documento, que es verdadero y visible.
-    nombres: datos.nombres ?? "Paciente",
-    apellidos: datos.apellidos ?? datos.documento,
-    documento: datos.documento,
-    tipoDocumento: datos.tipoDocumento,
-    correo: datos.correo,
+    nombres: adquirente.nombres,
+    apellidos: adquirente.apellidos,
+    documento: adquirente.documento,
+    tipoDocumento: adquirente.tipoDocumento,
+    correo: adquirente.correo,
     // EL TIPO DE PERSONA SALE DEL TIPO DE DOCUMENTO, no de un valor fijo. Un NIT es una persona
     // JURIDICA; una cedula, una natural. Hoy todos los pacientes son personas naturales, pero poner
     // "PERSON_ENTITY" a secas seria cierto por casualidad, y dejaria de serlo el dia que CNV le facture a
-    // una empresa sin que nada avise.
-    tipoDePersona: datos.tipoDocumento === "NIT" ? "LEGAL_ENTITY" : "PERSON_ENTITY",
+    // una empresa sin que nada avise. (El representante de un menor nunca es un NIT: lo impide el CHECK
+    // de la 0247.)
+    tipoDePersona: adquirente.tipoDocumento === "NIT" ? "LEGAL_ENTITY" : "PERSON_ENTITY",
     // Y EL REGIMEN: un paciente es consumidor final, no responsable de IVA. Si algun dia se factura a un
     // responsable, sale de su perfil tributario, no de aqui.
     regimen: "SIMPLIFIED_REGIME",
   });
-  await fr.setContactoDeAlegra(patientId, creado.id, env);
+  if (cacheable) await fr.setContactoDeAlegra(patientId, creado.id, env);
   return Number(creado.id);
+}
+
+/**
+ * Las dos cosas de una: quien es el adquirente y su contacto en Alegra. Es lo que llaman los caminos que
+ * no pueden registrar un motivo (completar una factura a medias, confirmar una transferencia), donde la
+ * unica salida es lanzar: a esa altura la decision ya se tomo antes, en `emitirFacturaDeVenta`.
+ */
+async function resolverContactoDeLaVenta(
+  txId: string,
+  patientId: string,
+  env: string,
+): Promise<number> {
+  const quien = await resolverAdquirente(txId, patientId, env);
+  if (!quien.ok) throw new Error(quien.motivo);
+  return resolverContacto(patientId, env, quien.adquirente);
 }
 
 /**
@@ -218,7 +273,7 @@ async function completarFactura(
     };
   }
   if (cuenta) {
-    const clientId = await resolverContacto(venta.patientId!, mapa.env);
+    const clientId = await resolverContactoDeLaVenta(venta.id, venta.patientId!, mapa.env);
     pago = await registrarPagoSiFalta(clientId, factura, cobrado, cuenta, hoy());
   }
 
@@ -351,15 +406,19 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       return;
     }
 
-    // 4. LA EDAD DEL PACIENTE EL DIA DE LA VENTA (contabilidad, 2026-11-18). La factura de un menor va a
-    //    nombre de su representante legal, nunca con los datos del menor, y eso todavia no se puede
-    //    emitir: ver `motivoSiElMenorNoSePuedeFacturar`. Va con las otras tres y ANTES del reclamo por la
-    //    misma razon que ellas: no gasta intentos, y el dia que se complete el representante la venta sale
-    //    SOLA de `rechazada` sin que nadie tenga que acordarse de reintentarla.
-    const menor = await fr.getMenorYRepresentanteDeLaVenta(venta.id);
-    const motivoMenor = motivoSiElMenorNoSePuedeFacturar(menor.edadEnLaVenta, menor.representante);
-    if (motivoMenor) {
-      await fr.registrarIntentoDeFactura(venta.id, { estado: "rechazada", error: motivoMenor });
+    // 4. QUIEN VA EN LA FACTURA (contabilidad, 2026-11-18, C1): el paciente, o su REPRESENTANTE LEGAL si
+    //    era menor el dia de la venta. Si el representante esta incompleto no se emite, porque la unica
+    //    alternativa seria facturar a nombre del menor, que es lo que contabilidad prohibe.
+    //
+    //    VA CON LAS OTRAS TRES Y ANTES DEL RECLAMO, por la misma razon que ellas: no gasta intentos, y el
+    //    dia que se complete el representante desde la ficha la venta sale SOLA de `rechazada`, sin que
+    //    nadie tenga que acordarse de reintentarla.
+    const quienVaEnLaFactura = await resolverAdquirente(venta.id, venta.patientId, mapa.env);
+    if (!quienVaEnLaFactura.ok) {
+      await fr.registrarIntentoDeFactura(venta.id, {
+        estado: "rechazada",
+        error: quienVaEnLaFactura.motivo,
+      });
       return;
     }
 
@@ -395,7 +454,7 @@ export async function emitirFacturaDeVenta(venta: VentaSellada): Promise<void> {
       return;
     }
 
-    const clientId = await resolverContacto(venta.patientId, mapa.env);
+    const clientId = await resolverContactoDeLaVenta(venta.id, venta.patientId, mapa.env);
     const fecha = hoy();
 
     // EL MEDIO DE PAGO viaja solo si su codigo de Alegra esta VERIFICADO. Si no, la factura sale "no
@@ -580,7 +639,7 @@ export async function confirmarPagoDeTransferencia(
   }
 
   const factura = await getAlegraInvoice(venta.facturaDeAlegra);
-  const clientId = await resolverContacto(venta.patientId!, mapa.env);
+  const clientId = await resolverContactoDeLaVenta(venta.id, venta.patientId!, mapa.env);
   const pago = await registrarPagoSiFalta(
     clientId,
     factura,
