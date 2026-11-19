@@ -177,6 +177,7 @@ async function resolveSignedIntake(input: {
       legalRepresentative: {
         name: consent.data.legalRepresentativeName!,
         document: consent.data.legalRepresentativeDocument!,
+        documentType: consent.data.legalRepresentativeDocumentType!,
         relationship: consent.data.legalRepresentativeRelationship!,
         email: consent.data.legalRepresentativeEmail!,
       },

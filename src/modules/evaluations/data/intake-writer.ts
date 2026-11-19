@@ -1,4 +1,7 @@
 import "server-only";
+
+/** Los tres tipos de documento que puede tener un representante legal (CHECK de la 0247). */
+const TIPOS_DEL_REPRESENTANTE = ["CC", "CE", "PA"] as const;
 import { reportServerError } from "@/lib/observability/report-error";
 
 import { randomBytes } from "node:crypto";
@@ -108,6 +111,12 @@ export type IntakeConsent = {
   legalRepresentative?: {
     name: string;
     document: string;
+    /**
+     * TIPO DEL DOCUMENTO (0247). Puede faltar por una via: el pase PRESENCIAL todavia captura el
+     * documento del representante sin tipo, y entonces se completa desde la ficha del paciente. Sin el
+     * no se factura a su nombre, que es lo correcto: inventar el tipo seria inventar un dato tributario.
+     */
+    documentType?: string | null;
     relationship: string;
     /**
      * EL CORREO PUEDE FALTAR, Y SOLO POR UNA VIA (0216). En el camino REMOTO es obligatorio y lo exige
@@ -302,6 +311,14 @@ async function writePatientConsentsAndGate(
         declarationVersion: input.presencial?.declaracionVersion ?? null,
         legalRepresentativeName: c.legalRepresentative?.name ?? null,
         legalRepresentativeDocument: c.legalRepresentative?.document ?? null,
+        // SE ESTRECHA AQUI, no se castea: la columna es el enum `document_type` entero y solo tres de
+        // sus valores pueden ser los de un representante (lo mismo que el CHECK de la 0247). Un `as` se
+        // habria tragado cualquier cadena, y ahi el error aparece como un fallo de la base al insertar.
+        legalRepresentativeDocumentType: TIPOS_DEL_REPRESENTANTE.includes(
+          c.legalRepresentative?.documentType as (typeof TIPOS_DEL_REPRESENTANTE)[number],
+        )
+          ? (c.legalRepresentative?.documentType as (typeof TIPOS_DEL_REPRESENTANTE)[number])
+          : null,
         legalRepresentativeRelationship: c.legalRepresentative?.relationship ?? null,
         legalRepresentativeEmail: c.legalRepresentative?.email ?? null,
       })),

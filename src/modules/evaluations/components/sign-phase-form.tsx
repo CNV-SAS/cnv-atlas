@@ -166,7 +166,7 @@ export function SignPhaseForm({
     datos_sensibles: false,
     aceptacion_medio_electronico: false,
   });
-  const [rep, setRep] = useState({ name: "", document: "", relationship: "", email: "" });
+  const [rep, setRep] = useState({ name: "", documentType: "", document: "", relationship: "", email: "" });
   const [minorBirthDate, setMinorBirthDate] = useState("");
   const [assent, setAssent] = useState(false);
   // Identidad: en SEGUIMIENTO con firma el prefill la trae (el paciente solo confirma); en inicial arranca en
@@ -493,7 +493,24 @@ export function SignPhaseForm({
                   onChange={(e) => setRep((s) => ({ ...s, name: e.target.value }))}
                 />
               </Field>
-              <Field label="Tipo y número de documento" required>
+              {/* EL TIPO VA APARTE DEL NUMERO (2026-11-19). Era un solo campo de texto, "Tipo y numero de
+                  documento", y de ahi no se puede sacar el tipo para la factura: Alegra lo exige en su
+                  propio campo y de ahi pasa al documento ante la DIAN. Solo las tres opciones de una
+                  persona natural adulta. */}
+              <Field label="Tipo de documento" required>
+                <select
+                  name="legalRepresentativeDocumentType"
+                  className={selectClass}
+                  value={rep.documentType}
+                  onChange={(e) => setRep((s) => ({ ...s, documentType: e.target.value }))}
+                >
+                  <option value="">Elige...</option>
+                  <option value="CC">Cédula de ciudadanía</option>
+                  <option value="CE">Cédula de extranjería</option>
+                  <option value="PA">Pasaporte</option>
+                </select>
+              </Field>
+              <Field label="Número de documento" required>
                 <Input
                   name="legalRepresentativeDocument"
                   className="h-9"

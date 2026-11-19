@@ -130,6 +130,11 @@ export const consentSchema = z
     // Rama menor: datos del representante legal (se validan en el refine segun rama).
     legalRepresentativeName: z.string().trim().min(1).max(120).optional(),
     legalRepresentativeDocument: z.string().trim().min(3).max(60).optional(),
+    // EL TIPO, SEPARADO DEL NUMERO (0247). Estaba todo en un campo de texto ("Tipo y numero de
+    // documento"), y de ahi no se puede sacar el tipo para Alegra, que lo exige aparte y lo lleva al
+    // documento ante la DIAN. Solo CC, CE y PA: 'TI' es el documento de un menor y 'NIT' es de persona
+    // juridica, y un representante legal es una persona natural adulta.
+    legalRepresentativeDocumentType: z.enum(["CC", "CE", "PA"]).optional(),
     legalRepresentativeRelationship: z.enum(LEGAL_REP_RELATIONSHIPS).optional(),
     legalRepresentativeEmail: z.email().max(160).optional(),
     // Fecha de nacimiento del menor: pedida en el consentimiento para determinar si
@@ -165,6 +170,13 @@ export const consentSchema = z
         code: "custom",
         path: ["legalRepresentativeDocument"],
         message: "Ingresa el documento del representante legal.",
+      });
+    }
+    if (!val.legalRepresentativeDocumentType) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["legalRepresentativeDocumentType"],
+        message: "Elige el tipo de documento del representante legal.",
       });
     }
     if (!val.legalRepresentativeRelationship) {

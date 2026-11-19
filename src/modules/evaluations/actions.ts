@@ -117,6 +117,7 @@ function readConsentFromForm(form: FormData) {
     mayoria_de_edad: ageBranchRaw === "mayor",
     legalRepresentativeName: str(form, "legalRepresentativeName") || undefined,
     legalRepresentativeDocument: str(form, "legalRepresentativeDocument") || undefined,
+    legalRepresentativeDocumentType: str(form, "legalRepresentativeDocumentType") || undefined,
     legalRepresentativeRelationship: str(form, "legalRepresentativeRelationship") || undefined,
     legalRepresentativeEmail: str(form, "legalRepresentativeEmail") || undefined,
     minorBirthDate: str(form, "minorBirthDate") || undefined,
