@@ -145,12 +145,27 @@ al 16 de noviembre), con la lista de lo ya cerrado al final de ese mismo documen
   legal**, que es quien compra y quien paga, con su cédula y su correo. **Nunca los datos del menor en un
   documento tributario**, y **nada de "consumidor final" por defecto**. Sin representante, la venta se
   registra, queda **pendiente de facturar** y no se emite en Alegra.
-- **2026-11-19 · Claude, con el argumento delante ·** De C1 se construye **solo el FRENO**, y se para antes
-  del mecanismo completo. Falta el **TIPO de documento del representante**
-  (`legal_representative_document` es texto libre, sin tipo) y Alegra lo **exige** porque alimenta el
-  documento ante la DIAN: suponer "CC" sería inventar un dato tributario de una persona real. Y el
-  representante **obligatorio en la ficha** es una superficie que no existe (hoy solo se captura en el
-  consentimiento). Las dos cosas piden **migración**, y el 19 es día de smoke.
+- **2026-11-19 · Santiago ·** C1 se construye **COMPLETO el mismo día**, no solo el freno, y se prueba
+  dentro del smoke comercial. La factura de un paciente menor sale **a nombre de su representante legal**,
+  con su tipo y número de documento y su correo.
+- **2026-11-19 · Claude, con el argumento delante ·** El tipo de documento del representante admite **solo
+  CC, CE y PA** (CHECK de la 0247). 'TI' es el documento de un menor (un menor no representa a otro) y
+  'NIT' es de persona jurídica; los dos producirían un documento fiscal **válido y equivocado**, que es la
+  clase de error que se frena antes y no después.
+- **2026-11-19 · Claude, con el argumento delante ·** El representante **se completa o se corrige desde la
+  ficha del paciente**, con su policy y su auditoría del valor anterior. Sin esa puerta, los menores que ya
+  firmaron sin representante (y todos los que lo tienen sin tipo, porque la columna nació hoy) no se
+  podrían facturar nunca: la única salida sería volver a firmar el consentimiento entero. **Un freno sin
+  salida no es un guard: detiene a una persona.** La ficha sigue sin dejar corregir el nombre, el documento
+  ni la fecha de nacimiento DEL PACIENTE, que es otra cosa: eso toca la resolución de identidad.
+- **2026-11-19 · Claude, con el argumento delante ·** El contacto del representante en Alegra **NO se
+  cachea** en `patients.alegra_contact_id`: se resuelve por documento en cada factura. Cacheado, el día que
+  ese menor cumpla 18 su factura seguiría saliendo a nombre del representante, porque el id guardado se
+  devuelve antes de mirar la edad. Cuesta una llamada más y es la única versión que no se queda vieja.
+- **2026-11-19 · Claude, con el argumento delante ·** El nombre del representante **no se parte** en nombres
+  y apellidos: se captura en un campo y partir "Ana María López Gómez" de vuelta es imposible de hacer bien.
+  El nombre entero va en `firstName` y en `lastName` va su documento, que es verdadero y lo identifica. Es
+  la misma regla que ya estaba escrita para el paciente.
 - **2026-11-19 · Claude, con el argumento delante ·** Un paciente **sin fecha de nacimiento NO se frena**:
   no se sabe que sea menor, y frenar a todos congelaría la facturación de adultos reales el día del
   arranque. Un freno sin salida detiene a una persona, y aquí sería alguien de quien no sabemos nada malo.
@@ -168,6 +183,11 @@ al 16 de noviembre), con la lista de lo ya cerrado al final de ese mismo documen
   Katherine se queda en NULO**: en nulo Atlas no anticipa nada y su cuenta sale por el bruto, que es lo que
   contabilidad quiere ver. Marcarlo hoy haría que el sistema calculara una retención que no le corresponde
   calcular. (Además no tiene escritor en la app: hoy solo se podría poner por SQL.)
+- **2026-11-19 · Santiago, ajustado por Claude web ·** Lo de Katherine **no es urgente**: va antes de su
+  primer PAGO, que es después del 30 de noviembre. Su cuenta muestra lo que le toca pagar **en bruto**, con
+  un aviso del tipo *"Integrante agente de retención: al pagar puede retener; revisar con la contadora"*, y
+  al registrar su pago se captura el **valor retenido** con su **soporte**, para que la cuenta por cobrar
+  cuadre con pagado + retenido. **Atlas no calcula nada.**
 - **2026-11-18 · Contabilidad (C4) ·** El **20** se marcan como prueba `Profesional Prueba` y
   `Profesional demo 2` desde /admin. La **anulación formal** de los cinco documentos, con estado
   **"anulada - prueba"** y motivo, **sin borrar**, va **antes del cierre de noviembre**, no antes del

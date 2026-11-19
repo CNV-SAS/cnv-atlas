@@ -1,8 +1,12 @@
 # Smoke comercial final, y el checklist del arranque
 
-**Al 19 de noviembre de 2026.** Este es **el documento comercial que hay que abrir**: lleva el smoke, el
-checklist del arranque, los comandos en orden y lo que queda pendiente con su fecha. Lo de las ventas
-históricas, que va después, está en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.
+**Al 19 de noviembre de 2026, por la tarde.** Este es **el documento comercial que hay que abrir**: lleva
+el smoke, el checklist del arranque, los comandos en orden y lo que queda pendiente con su fecha. Lo de
+las ventas históricas, que va después, está en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.
+
+> **⚠ ANTES DE EMPEZAR EL SMOKE: aplicar la migración 0247.** Añade el tipo de documento del
+> representante legal, y sin ella el paso **B4b** no se puede hacer. El comando exacto está en
+> "Los comandos, en orden".
 
 ## ⚠ EL ARRANQUE ES EL VIERNES 20 DE NOVIEMBRE DE 2026, y no pasa de ese día
 
@@ -44,6 +48,7 @@ históricas, que va después, está en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.
 | 1 | **Un integrante de prueba en Comisión.** Sirve `Profesional Demo`, que no tiene modalidad vigente y por eso es Comisión (sin fila de modalidad = Comisión) | ya está |
 | 2 | **Un integrante de prueba en Distribución.** Sirven `Profesional demo 2` y `Profesional Prueba`: medido el 2026-11-18, **los dos tienen `distribucion` vigente**. **Las cuentas de smoke se quedan como están**: no hay que cambiarles nada | ya está |
 | 3 | **Un paciente de prueba** por cada uno, marcado como de prueba | /pacientes |
+| 3b | **Un paciente de prueba MENOR de edad** (fecha de nacimiento de hace ~10 años), para el paso B4b | /pacientes |
 | 4 | **Producto con saldo** en la vitrina de cada uno | /faltantes, bloque de remesas |
 | 5 | **Las dos cuentas marcadas como de prueba AL FINAL**, no antes (ver la parte D) | /admin |
 
@@ -229,56 +234,77 @@ siguiente comprueba.
 > excluye la marca manual), pero **no la vas a ver en la bandeja** sin el interruptor. La línea gris de
 > arriba dice cuántas hay ocultas y tiene el enlace "Verlas".
 
-### B4b · El paciente MENOR de edad (nuevo, 2026-11-19)
+### B4b · El paciente MENOR de edad, y la factura a su representante legal
 
-**La regla de contabilidad (2026-11-18):** la factura de un menor va a nombre de su **representante
-legal**, que es quien compra y quien paga, con su cédula y su correo. **Nunca los datos del menor en un
-documento tributario.** Y nada de "consumidor final" por defecto.
+**La regla de contabilidad (C1):** la factura de un menor va a nombre de su **representante legal**, que
+es quien compra y quien paga, con **su tipo y número de documento** y **su correo**. **Nunca los datos del
+menor en un documento tributario.** Y nada de "consumidor final" por defecto.
 
-**Lo que hay construido HOY es el FRENO**, no la redirección: la factura a nombre del representante
-necesita el **tipo** de documento del representante, que no existe en la base y que Alegra exige. Ver la
-sección de pendientes.
+> **Antes de empezar:** la migración **0247** tiene que estar aplicada (añade el tipo de documento del
+> representante). Está en la lista de comandos.
 
-#### Caso 1 · Menor SIN representante legal
+#### Paso 1 · Un menor de prueba SIN representante
 
 1. Crear un **paciente de prueba menor de edad** (fecha de nacimiento de hace unos 10 años), **sin**
    consentimiento de representante legal.
 2. Venderle **1 MULTI-CELL BASE** en efectivo, como el B3.
 3. **Resultado esperado:**
-   - la venta **se registra y se paga** con normalidad, y **descuenta inventario**;
-   - en **/pagos?prueba=1**, en el panel de facturación, aparece **rechazada** con este motivo:
-     *"Paciente menor: falta el representante legal. La factura va a nombre de quien compra y paga, nunca
-     con los datos del menor. Completa el representante legal del paciente y la venta sale sola de este
-     estado."*;
-   - **no sale ninguna factura en el sandbox**, y el contador de intentos **NO sube** (el freno va antes
-     del reclamo, a propósito).
+   - la venta **se registra, se paga y descuenta inventario** con normalidad;
+   - en **`/pagos?prueba=1`**, panel de facturación, aparece **rechazada** con el motivo
+     *"Paciente menor: falta el representante legal... Complétalo en la ficha del paciente y la venta
+     sale sola de este estado."*;
+   - **no sale ninguna factura en el sandbox**, y el contador de intentos **NO sube**.
+4. Abrir la **ficha de ese paciente**. Arriba de los botones de corrección tiene que salir un aviso:
+   *"Este paciente es menor de edad y no tiene representante legal registrado."* con la explicación de
+   que sus compras no se pueden facturar.
 
-#### Caso 2 · Menor CON representante legal
+#### Paso 2 · Completar el representante en la ficha
 
-1. Al mismo paciente (o a otro menor de prueba), **registrarle el consentimiento con representante legal**
-   por el camino normal del intake.
-2. Reintentar la factura desde /pagos.
-3. **Resultado esperado:** sigue **sin emitirse**, pero el motivo es **OTRO**:
-   *"...Atlas todavía no sabe el TIPO de documento del representante (cédula, cédula de extranjería), que
-   Alegra exige..."*.
-4. **Por qué dos mensajes distintos:** en el primer caso falta un dato que **quien atiende puede
-   completar**; en el segundo no falta nada que nadie pueda hacer, falta la pieza de software. Decirle
-   *"completa el representante"* a quien ya lo completó lo manda a buscar algo que está.
+1. Firmarle el consentimiento **con representante legal** por el camino normal del intake (ahora el
+   formulario pide **tipo de documento** aparte del número: cédula, cédula de extranjería o pasaporte).
+2. Volver a la **ficha del paciente**. El bloque del representante ya aparece con sus datos y el botón
+   **"Corregir el representante legal"**.
+3. **Resultado esperado:** si algún dato quedó incompleto, el formulario **se abre solo**, porque entonces
+   no hay dato bueno que proteger y lo que hay es una venta que no se puede facturar.
 
-#### Caso 3 · El de control, y es el que de verdad importa
+#### Paso 3 · La factura sale sola, al representante
+
+1. Volver a /pagos y **reintentar** la factura de la venta del paso 1.
+2. **Resultado esperado:**
+   - **se emite en el sandbox de Alegra**;
+   - y en Alegra, el cliente de esa factura es **el representante legal**: su nombre, **su** tipo y número
+     de documento, y **su** correo;
+   - **ningún dato del menor** aparece en el documento.
+3. **Cotejarlo en Alegra**, no solo en Atlas. Es el punto entero de la prueba.
+
+#### Paso 4 · El caso del tipo de documento que falta
+
+1. En la ficha, **corregir el representante** y dejar el tipo de documento sin elegir no se puede (el
+   formulario lo exige). Para ver este caso: un paciente cuyo representante venga de un
+   **pase presencial**, que todavía captura el documento **sin tipo**.
+2. **Resultado esperado:** la venta queda pendiente con un motivo **DISTINTO**:
+   *"...al representante legal le falta el TIPO de documento..."*. Se completa desde la ficha y sale sola.
+3. **Por qué dos mensajes distintos:** en el primer caso falta el representante entero; en este, solo un
+   campo. Decirle *"falta el representante"* a quien ya lo registró lo manda a buscar algo que está.
+
+#### Paso 5 · El de control, y es el que de verdad importa
 
 1. Volver al paciente **adulto** del B2 y del B3 y facturar.
-2. **Resultado esperado: sale exactamente igual que siempre.** Si un adulto queda frenado, el freno está
-   mirando "tiene representante" en vez de "es menor", y eso el día del arranque sería la facturación
-   entera parada.
+2. **Resultado esperado: sale exactamente igual que siempre, a su propio nombre.** Si un adulto queda
+   frenado, o si su factura sale a nombre de otro, **para el smoke y avísame**: el freno estaría mirando
+   "tiene representante" en vez de "es menor".
 
 > **Un paciente SIN fecha de nacimiento NO se frena**, y es deliberado: no se sabe que sea menor, y
 > frenar a todos los que no tienen fecha congelaría la facturación de adultos reales (hay pacientes
-> reales sin fecha de nacimiento). Queda anotado como lo primero que el mecanismo completo debe revisar.
+> reales sin fecha de nacimiento).
 
-**Candados:** `la-factura-de-un-menor.test.ts` (la regla, con el caso del adulto) y
-`la-factura-de-un-menor-db.test.ts` (el lector, con el borde de quien cumplió 18 **después** de la venta:
-ese día era menor).
+> **El contacto del representante no se guarda en el paciente.** Se resuelve por documento en cada
+> factura, a propósito: si se cacheara, el día que ese menor cumpla 18 su factura seguiría saliendo a
+> nombre del representante. Cuesta una llamada más a Alegra y es la única versión que no se queda vieja.
+
+**Candados:** `la-factura-de-un-menor.test.ts` (15 casos, con el del adulto y el de que ningún dato del
+menor viaja) y `la-factura-de-un-menor-db.test.ts` (el lector, con el borde de quien cumplió 18 **después**
+de la venta).
 
 ### B5 · La comisión
 
@@ -752,7 +778,48 @@ Durante la primera hora, y con el filtro del entorno de producción:
 **Todo esto se corre desde `C:\\Users\\sarro\\Proyectos\\cnv-atlas`, en PowerShell.** Los que dicen "editor
 SQL" no son comandos: se pegan en el editor SQL de Supabase, en el proyecto de **producción**.
 
-### Durante el smoke (18 y 19), solo lectura
+### ⚠ Antes del smoke · la migración 0247
+
+**Añade el tipo de documento del representante legal.** Sin ella el paso B4b no corre **y la facturación
+entera falla**: el lector de la venta hace un `select` explícito de esa columna.
+
+**Es el runbook de `DEPLOY.md`, sin atajos: migrar ANTES de pushear.** Son DOS bases, y las dos.
+
+1. **Ensayo contra la nube** (corre todo y revierte, no deja nada):
+   ```
+   node --env-file=.env.production.local scripts/aplicar-migracion.mjs drizzle/0247_el_tipo_de_documento_del_representante.sql
+   ```
+   **Qué tiene que salir:** `El archivo corrio SIN ERRORES`, y tres avisos con cuántas autorizaciones de
+   representante hay, **cuántas sin tipo de documento** y cuántas sin número. Las que salgan sin tipo son
+   las que habrá que completar desde la ficha del paciente.
+
+2. **La base LOCAL** (aplica la migración y regenera los tipos, los dos en un comando):
+   ```
+   pnpm db:sync
+   ```
+   **Sin esto la suite de BD queda en rojo** por una columna que existe en la nube y no en local. Es un
+   hallazgo ya registrado en `DEPLOY.md`. El diff de `src/types/database.generated.ts` se commitea.
+
+3. **Ver qué falta en la nube** (solo lee, va por el pooler):
+   ```
+   DATABASE_URL="<url-directa-de-la-nube-5432>" pnpm db:check:cloud
+   ```
+
+4. **Aplicarla en la nube**, con la conexión **DIRECTA** (puerto 5432, **no** el pooler 6543: el DDL en
+   transacción no va bien por el pooler):
+   ```
+   DATABASE_URL="<url-directa-de-la-nube-5432>" pnpm db:migrate
+   ```
+
+5. **Confirmar** con el `db:check:cloud` del paso 3: tiene que decir "al día".
+
+6. **Y AHORA sí, push.**
+
+> **El orden importa y está escrito como regla dura:** Vercel despliega el código pero **no** corre las
+> migraciones. Pushear antes de migrar deja la nube con código que lee una columna que no existe, y eso no
+> tumba "la pantalla nueva": tumba la facturación entera.
+
+### Durante el smoke, solo lectura
 
 | Cuándo | Comando | Qué tiene que salir |
 |---|---|---|
@@ -872,11 +939,13 @@ ventas históricas y la conciliación, que es largo: `docs/PLAN_VENTAS_HISTORICA
 |---|---|---|---|
 | 1 | El **smoke** completo, partes A, B, C y D, **incluido el B4b de pacientes menores** | Santiago | **hoy 19** |
 | 2 | El **video**, en sandbox | Santiago | **hoy 19** |
-| 3 | **Push del freno de menores** antes del paso 7 del checklist | Santiago | ver el informe del 19 |
+| 3 | **Aplicar la 0247 y hacer push** del mecanismo de menores, antes del smoke | Santiago | el comando está arriba |
 | 4 | Confirmar **los ids de Alegra por su NOMBRE** con `leer-alegra.mjs` | Santiago, el día 20 | paso 7. **El script ahora aborta si se copian del sandbox** |
 
-**Ya hecho el 19 de noviembre:** el **freno de la facturación a menores** (la factura nunca sale con los
-datos del menor); el freno de los ids copiados del sandbox en el script de las llaves.
+**Ya hecho el 19 de noviembre:** **la facturación a menores completa** (la factura sale a nombre del
+representante legal, con su tipo y número de documento y su correo; el representante se captura en el
+consentimiento y se completa o corrige desde la ficha del paciente); el freno de los ids copiados del
+sandbox en el script de las llaves.
 
 **Ya hecho el 18 de noviembre:** el aviso de ventas históricas en las tres pantallas de inventario; que el
 cambio de modalidad ignore las ventas de prueba; las dos fechas separadas; Víctor y María Teresa en la
@@ -887,7 +956,7 @@ carga de inventario.
 | | Qué | Por qué tiene esa fecha |
 |---|---|---|
 | 1 | **Las anulaciones formales** de los cinco documentos de prueba, con estado "anulada - prueba" y motivo, sin borrar. **Necesita migración** | contabilidad (C4) lo dejó para después del arranque. El día 20 solo se marcan las dos cuentas como de prueba |
-| 2 | **Registrar (no calcular) la retención de Katherine**: la cuenta sale en bruto y al pagar se captura lo que ella retuvo, con su soporte | contabilidad (C3). Su primer corte cierra el **30** |
+| 2 | **Registrar (no calcular) la retención de Katherine** · va **antes de su primer PAGO**, que es después del 30 | contabilidad (C3) y Santiago, 2026-11-19. Ver abajo |
 | 3 | **La venta SIN PACIENTE** (`patient_id` nulo con motivo obligatorio) | sin ella las 3 ventas de Diana Marcela no entran, y el xlsx no se puede cargar completo |
 | 4 | **La venta de CNV sin Integrante** y el **descuento comercial** | la venta del 8 de agosto es las dos cosas a la vez |
 | 5 | **La carga del xlsx de ventas atrasadas** | es lo que desinfla el inventario y lo deja igual al físico |
@@ -919,7 +988,7 @@ vender; lo que no se puede es **pagar**.
 
 | | Qué |
 |---|---|
-| 1 | **Lo que quedó pendiente de la facturación a menores:** el tipo de documento del representante (migración), que la factura salga **a nombre del representante** con su cédula y su correo, y el representante **obligatorio en la ficha** del paciente menor. Hoy solo está el freno |
+| 1 | **El tipo de documento del representante en el PASE PRESENCIAL.** El camino remoto ya lo pide; el presencial sigue capturando el documento sin tipo, y esos representantes se completan desde la ficha. Cerrarlo es otra columna en `presencial_consent_sessions` y su formulario |
 
 ### Sin fecha (backlog comercial)
 
@@ -1005,17 +1074,19 @@ cifras son plausibles.
 
 #### Qué hay que construir, y para cuándo
 
-**Antes de su primer pago.** Su primer corte cierra el **30 de noviembre** y se emite después.
+**NO es urgente** (Santiago, 2026-11-19). Va **antes de su primer PAGO**: su primer corte cierra el **30 de
+noviembre**, y el pago es después. No bloquea el arranque ni el smoke.
 
 | Pieza | Qué |
 |---|---|
-| **La cuenta sale en bruto** | `armarCuentaQuincenal` deja de restar `retencionDelIntegrante`. El `netoEsperado` pasa a ser el total |
-| **Al registrar el pago, se captura lo retenido** | dos campos en el registro del pago: **valor retenido** y **soporte** (número del certificado o referencia del pago) |
-| **La cuenta por cobrar cuadra** | pagado + retenido = total de la cuenta. Si no cuadra, se dice, no se absorbe |
-| **`tax_is_withholding_agent` cambia de significado** | deja de ser "anticipa el 2,5 %" y pasa a ser "a esta persona se le espera una retención al pagar", o sea un aviso, no un cálculo |
+| **La cuenta sale en BRUTO** | `armarCuentaQuincenal` deja de restar `retencionDelIntegrante`. El `netoEsperado` pasa a ser el total: es lo que le toca pagar |
+| **Con su AVISO al lado** | *"Integrante agente de retención: al pagar puede retener; revisar con la contadora."* Un aviso, no una cifra: Atlas no calcula nada |
+| **Al registrar el pago, se captura lo retenido** | dos campos: **valor retenido** y **soporte** (número del certificado o referencia del pago) |
+| **La cuenta por cobrar cuadra** | **pagado + retenido = total de la cuenta**. Si no cuadra, se dice; no se absorbe |
+| **`tax_is_withholding_agent` cambia de significado** | deja de ser "anticipa el 2,5 %" y pasa a ser "a esta persona se le espera una retención al pagar": gobierna el AVISO, no un cálculo |
 
-**Media jornada.** Lo que ya está (la tarifa, la base mínima, el UVT) **no se borra**: se deja como el
-valor **esperado** que se cotejará contra el real, que es más útil que no tener referencia.
+**Media jornada.** Lo que ya está (la tarifa del 2,5 %, la base mínima, el UVT) **no se borra**: queda como
+el valor **esperado** contra el que cotejar el real, que es más útil que no tener referencia.
 
 ---
 

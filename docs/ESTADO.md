@@ -40,7 +40,8 @@ mide con `scripts/las-que-no-se-reemitieron.mjs`.
 
 ## Base de datos
 
-**247 migraciones aplicadas**, la última `drizzle/0246_los_rotulos_para_el_paciente.sql`. Forward-only:
+**248 migraciones**, la última `drizzle/0247_el_tipo_de_documento_del_representante.sql` (el tipo de
+documento del representante legal, para poder facturar a su nombre). Forward-only:
 una migración aplicada no se modifica nunca, se crea otra. El control es `scripts/check-migrations.mjs`.
 
 ## Interruptores de activación
@@ -55,9 +56,9 @@ Las dos primeras viven en `src/modules/evaluations/instrumento.ts`; la tercera, 
 `src/modules/nutraceuticals/carga-de-ventas-historicas.ts`. Las tres con su candado.
 
 **Y hay un cuarto freno que no es un interruptor sino una regla:** la venta de un **paciente menor** no se
-factura en ningún ambiente mientras no se pueda emitir a nombre de su representante legal
-(`motivoSiElMenorNoSePuedeFacturar`). No se apaga: desaparece solo cuando se construya el mecanismo
-completo. Apagar `CNVS_ACTIVA`
+factura mientras su representante legal esté incompleto (`elAdquirenteDeLaFactura`). No se apaga: se sale
+de él completando el dato en la ficha del paciente, y entonces la venta se factura sola en el siguiente
+intento. Apagar `CNVS_ACTIVA`
 devuelve el sistema a pacientes de prueba sin tocar nada más.
 
 ### Y el tercero, que no es una constante sino un dato: desde cuándo cuentan las cifras
@@ -125,9 +126,15 @@ en Distribución); **Zoraida** y los demás en **Comisión**.
 | **C4** | Las dos cuentas de smoke se **marcan como prueba el 20**; la **anulación formal** de los cinco documentos ("anulada - prueba", sin borrar) va **antes del cierre de noviembre** |
 | **C5** | **Conciliación de inventario** antes del 5.º día hábil de diciembre, y desde diciembre el total por producto de Atlas tiene que ser igual al de Alegra en cada cierre mensual |
 
-**El 19 de noviembre se construyó el FRENO de C1**, no el mecanismo completo: la factura a nombre del
-representante necesita el **tipo** de documento del representante, que no existe en la base y que Alegra
-exige. Hasta entonces, la venta de un menor **se registra y no se emite**, con su motivo visible.
+**C1 quedó COMPLETO el 19 de noviembre**, en dos pasadas: por la mañana el freno (la venta de un menor se
+registra y no se emite) y por la tarde el mecanismo entero. Hoy la factura de un paciente que era menor el
+día de la venta sale **a nombre de su representante legal**, con su tipo y número de documento y su correo;
+el representante se captura en el consentimiento (con el tipo, que antes no existía) y **se completa o se
+corrige desde la ficha del paciente**, que es la salida para los que ya estaban sin él.
+
+**El contacto del representante NO se cachea en el paciente**, a propósito: `patients.alegra_contact_id`
+guarda el del paciente, y guardar ahí el del representante haría que, el día que ese menor cumpla 18, su
+factura siguiera saliendo a nombre del representante.
 
 - **Nada clínico abierto de nuestro lado.** Lo científico se cerró con la v17 aplicada, el histórico
   reemitido y la CNV-S encendida.
