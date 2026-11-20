@@ -1,6 +1,6 @@
 # Estado de Atlas
 
-**Al 19 de noviembre de 2026.** Para que una sesión nueva arranque sin depender de una conversación
+**Al 20 de noviembre de 2026.** Para que una sesión nueva arranque sin depender de una conversación
 larga. Una o dos páginas, y se mantiene así: lo que crezca se va a su documento propio.
 
 > **Cómo se mantiene:** al final de cada turno con cambios, se actualiza este archivo. Cada decisión
@@ -119,6 +119,27 @@ ventas históricas y la conciliación de inventario) está en `docs/PLAN_VENTAS_
 **Las modalidades reales:** **Katherine** en **Distribución** desde el 2026-11-18 (persona jurídica, única
 en Distribución); **Zoraida** y los demás en **Comisión**.
 
+### El inventario del arranque, corregido el 2026-11-20
+
+Santiago revisó el inventario a fondo con el chat contable, y **tres cifras de lo recibido se movieron**
+(dos de una Integrante, una de otra; el detalle por persona está solo en el script de carga). Los otros
+ocho Integrantes quedan idénticos. **La bodega esperada pasa a 345 / 328 / 271 / 153 / 31.**
+
+**Lo que decide que las nuevas son las buenas es LUVIA**: con la cifra corregida la bodega da 31, que es
+exactamente el conteo físico del 19 de noviembre; antes daba 33 contra un conteo de 31.
+
+**Se carga LO RECIBIDO, no el saldo de hoy**, aunque el archivo corregido traiga las dos cifras: cargar el
+saldo y después subir el xlsx restaría esas ventas dos veces. El aviso de ventas históricas y
+`VENTAS_HISTORICAS_CARGADAS` se quedan como estaban.
+
+**Simulación del 20 contra producción** (`EL_INVENTARIO_CONTRA_LO_RECIBIDO_2026-11-17.mjs`, solo lectura):
+40 líneas cambian, neto **+12 MULTI-CELL y +8 OMEGA** (exactamente lo que las ventas de prueba se
+llevaron), total final **500 / 500 / 426 / 300 / 84**. **Cuadra en los cinco.**
+
+**Hallazgo abierto:** el conteo físico del 19 dio 334 / 304 / 254 / 151 / 31, y sobran **cuatro unidades**
+(1 de cada producto propio) que salieron sin registro. **Las cierra C5**, no el arranque. Detalle en
+`docs/SMOKE_COMERCIAL_FINAL.md`, "Lo que cambió el 20 de noviembre".
+
 ### El xlsx de ventas atrasadas, cotejado el 2026-11-19
 
 **El archivo llegó** (`docs/entregas/Ventas/`, fuera de git por la regla `docs/entregas/**/*.xlsx`):
@@ -160,6 +181,7 @@ factura siguiera saliendo a nombre del representante.
 | **Ángela** | Las correcciones de la cohorte: los grupos de **medición repetida**, **15 pacientes sin fecha de nacimiento** y **2 fechas que no cuadran** | `scripts/PARA_COORDINAR_CON_ANGELA_2026-11-07.mjs` arma el mensaje en `docs/entregas/dudas/` (gitignoreado) |
 | **Una profesional (`4d2a74e0`)** | Reportó un error en "Antrop. y BIS" y quedó en reintentar. Si vuelve a verlo, se corre el script de abajo con su identidad | `scripts/los-lectores-con-su-identidad.mjs` |
 | **La contadora** | **Confirmar** la UVT 2026 (52.374) y la base mínima de retefuente por compras (27 UVT = 1.414.098), y **los rangos de la tabla del art. 383**. La tarifa de comisión ya la fijó el 2026-11-18: natural 10 % (u 11 % sobre 3.300 UVT), jurídica 11 % | `docs/SMOKE_COMERCIAL_FINAL.md`, "La retención por integrante" |
+| **Santiago** | **El pase presencial (QR) debe pedir el TIPO de documento del representante.** Hoy no lo pide, así que cada menor nuevo que entre por ahí nace con su primera compra pendiente de facturar. **Necesita migración** en `presencial_consent_sessions` y su formulario. Va junto con completar el tipo de los 4 representantes reales que ya existen | `docs/SMOKE_COMERCIAL_FINAL.md`, "Después del 20, sin fecha fija" |
 | **Santiago** | **Nueve preguntas sobre el xlsx de ventas atrasadas**, que el archivo no puede contestar solo: de dónde salió cada producto (vitrina o bodega), si las 147 filas sin número de factura están sin facturar o solo sin anotar, y si las 3 ventas de Diana Marcela tienen paciente con documento. **Sin la primera, el inventario se descuenta de la ubicación equivocada** | `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`, sección 2bis(c) |
 | **Santiago** | **Completar el TIPO de documento de los 4 representantes legales** que lo tienen vacío, desde la ficha de cada paciente menor. Hasta entonces sus compras se registran y no se facturan | la ficha del paciente, bloque "Corregir el representante legal" |
 | **Santiago** | **Cargar en Atlas el RUT y los datos bancarios** de cada Integrante. Ya los entregaron; el Integrante los llena en **/perfil** y CNV verifica el RUT en **/verificaciones**. Sin los tres campos del RUT el sistema **no liquida** | `/perfil` y `/verificaciones` |

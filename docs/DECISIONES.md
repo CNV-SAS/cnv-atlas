@@ -125,6 +125,15 @@ al 16 de noviembre), con la lista de lo ya cerrado al final de ese mismo documen
 - **2026-11-18 · Santiago ·** **Víctor Cano y María Teresa Aragón Herrera** faltaban en el inventario
   recibido: 15 unidades de cada uno de los cuatro nutracéuticos, sin LUVIA. La bodega esperada pasa a
   **345 / 344 / 271 / 153 / 33**, verificado contra la lista.
+- **2026-11-20 · Santiago, con el chat contable ·** El inventario recibido queda **corregido**: tres
+  cifras se mueven (el detalle por persona, solo en
+  `scripts/CARGAR_EL_INVENTARIO_AL_ARRANQUE_2026-11-20.sql`) y la bodega esperada pasa a
+  **345 / 328 / 271 / 153 / 31**. Lo que decide es LUVIA: con la cifra corregida la bodega da 31, que es
+  **exactamente el conteo físico del 19 de noviembre**. Supera la línea del 18.
+- **2026-11-20 · Claude, con el argumento delante ·** Lo que se carga al arranque sigue siendo **LO
+  RECIBIDO**, no el saldo de hoy, aunque el archivo corregido traiga las dos cifras. Cargar el saldo de hoy
+  y después subir el xlsx de ventas atrasadas **restaría esas ventas dos veces**. El aviso de ventas
+  históricas y `VENTAS_HISTORICAS_CARGADAS` se quedan como estaban.
 - **2026-11-18 · Claude, con el argumento delante ·** El script del arranque **marca** las ventas que se
   escapen, no solo las lista, **y las lista antes**. La asimetría decide: una venta que siga contando como
   real puede facturarse en el Alegra de producción y eso va a la DIAN; una marca puesta de más se quita

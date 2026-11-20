@@ -535,6 +535,33 @@ de `conciliacion` por línea (motivo y autor) y una fila de auditoría
 - **El neto ya no es una cifra escrita a mano: el script lo calcula.** La del 17 de noviembre (+12 y +8)
   dejó de valer en cuanto el smoke movió unidades.
 
+#### Lo que cambió el 20 de noviembre · las cifras corregidas (ESTAS son las que se cargan)
+
+Santiago revisó el inventario a fondo con el chat contable, y el archivo corregido mueve **tres cifras de
+lo recibido**: dos de una Integrante (OMEGA y LUVIA) y una de otra (OMEGA). Nada más se movió, y los otros
+ocho quedan idénticos. **El detalle por persona vive solo en el script de carga**
+(`scripts/CARGAR_EL_INVENTARIO_AL_ARRANQUE_2026-11-20.sql`, bloque 2), que es donde se aplica.
+
+- **La bodega esperada pasa a 345 / 328 / 271 / 153 / 31**, que es 500−155, 500−172, 426−155, 300−147,
+  84−53. Solo cambian OMEGA (344 → **328**) y LUVIA (33 → **31**).
+- **LA PRUEBA DE QUE LAS CIFRAS NUEVAS SON LAS BUENAS ES LUVIA.** Con la cifra corregida, lo entregado de
+  LUVIA da 53 y la bodega queda en **31**, que es **exactamente el conteo físico del 19 de noviembre**.
+  Antes daba 33 contra un conteo de 31, y nadie sabía de dónde salían esas dos.
+- **Lo que se carga sigue siendo LO RECIBIDO, no el saldo de hoy.** El archivo corregido trae las dos
+  cifras (su sección 3a es lo recibido, su 3d es lo que debería quedar hoy). Se carga la primera porque
+  cargar la segunda **y después** subir el xlsx de ventas atrasadas restaría esas ventas **dos veces**. El
+  plan no cambia: el xlsx resta después, y el aviso de ventas históricas se queda hasta entonces.
+- **La simulación del 20 de noviembre, contra producción:** 40 líneas cambian (25 suben, 15 bajan) y el
+  **neto por producto es +12 MULTI-CELL y +8 OMEGA, cero en los otros tres**, que es **exactamente** lo que
+  las ventas de prueba se llevaron (46 movimientos, 56 unidades, de las cuales 12 MULTI, 8 OMEGA y 1 LUVIA
+  son de producto real; el resto es ADAPTO-STRESS y PRUEBA SMOKE, que son `is_test`). Al terminar, el total
+  por producto queda en **500 / 500 / 426 / 300 / 84**. **VEREDICTO: cuadra en los cinco.**
+- **Y queda un hallazgo, que NO lo cierra esta carga:** el conteo físico del 19 dio 334 / 304 / 254 / 151 /
+  31. Contra lo recibido menos los despachos directos de bodega, las ventas de precio especial y las compras
+  de socios, sobran **cuatro unidades** (1 de cada uno de los cuatro propios) que salieron sin registro.
+  **Las cierra el conteo físico de C5**, no el arranque. Tres de las siete que el archivo marcaba sí tienen
+  explicación: son las que vendió la Integrante inactiva, y el archivo no las había restado.
+
 #### Qué hay que leer, en este orden
 
 | Cuadro | Qué tiene que decir |
@@ -1000,7 +1027,8 @@ vender; lo que no se puede es **pagar**.
 
 | | Qué |
 |---|---|
-| 1 | **El tipo de documento del representante en el PASE PRESENCIAL.** El camino remoto ya lo pide; el presencial sigue capturando el documento sin tipo, y esos representantes se completan desde la ficha. Cerrarlo es otra columna en `presencial_consent_sessions` y su formulario. **Mientras no se cierre, cada menor que entre por el pase presencial nace con el representante sin tipo**, o sea con su primera compra pendiente de facturar: es el caso del paso 2 del B4b |
+| 1 | **EL PASE PRESENCIAL (QR) TIENE QUE PEDIR EL TIPO DE DOCUMENTO DEL REPRESENTANTE.** Hoy no lo pide: el camino remoto sí, el presencial captura nombre, documento, parentesco y correo, y el tipo no existe en ese camino. **Necesita migración**: una columna nueva en `presencial_consent_sessions` (el mismo enum `document_type` restringido a CC, CE y PA, como la 0247), el campo en su formulario, y que `actions.qr.ts` lo mande. **Hoy no se construye: se arranca primero.** Mientras no se cierre, **cada menor nuevo que entre por el pase presencial nace con el representante sin tipo**, o sea con su primera compra registrada y pendiente de facturar, con su motivo visible. Es el caso del paso 2 del B4b, y por eso el smoke lo usa: la prueba mide el hueco real |
+| 1b | **Y junto con ella, completar el TIPO de los 4 representantes legales reales que ya existen**, desde la ficha de cada paciente menor. Son dos mitades del mismo asunto: la columna nació el 19 de noviembre, así que **ninguna autorización anterior lo tiene**, y el pase presencial sigue creando nuevos sin tipo. Cerrar solo una de las dos deja el problema abierto por el otro lado. El detalle de los 4 está arriba, en "Antes del viernes 20", ítem 3b |
 
 ### Sin fecha (backlog comercial)
 
