@@ -153,8 +153,19 @@ Van en orden de lo que más duele:
    nombre o ID") y quedó con el nombre completo; con el documento al lado, el nombre se puede incluso
    borrar antes de pasar el archivo a nadie.
 
-6. **Revisar la fila con `Cantidad = 9,6`** (Katherine, OMEGA COMPLEX, Distribución, sin factura).
-   No existen 9,6 frascos. Deja su saldo en **14,4 unidades**, que no es un inventario.
+6. **La fila con `Cantidad = 9,6` (OMEGA COMPLEX, Distribución, sin factura) no es una venta: es un
+   ABONO.** Resuelto el 2026-11-20 con el inventario corregido, que lo dice en una nota al pie: el abono
+   de esa cuenta de Distribución **equivale a 9,6 unidades a precio al paciente** (y a 12 a precio de
+   distribuidora con IVA). O sea que alguien convirtió plata en unidades y lo escribió en la columna de
+   cantidad. **No se corrige el 9,6 a un número entero: se saca la fila de las ventas**, porque la venta
+   real es la compra de Distribución completa, que ya está facturada aparte, y lo que queda de ella es un
+   **saldo por cobrar**, no producto en una vitrina.
+
+   **Y de ahí sale lo que de verdad importa para la carga:** las compras de **Distribución** (tres cuentas,
+   122 unidades en total según el inventario corregido) **no son inventario de CNV, son cartera**. El
+   producto ya se vendió. Si el cargador las trata como ventas que descuentan vitrina, hay que haberlas
+   cargado antes en esa vitrina; si se tratan como lo que son, salen del inventario de CNV el día de su
+   factura. **Hay que decidirlo antes de cargar el xlsx**, y es la decisión que falta.
 
 7. **Completar las cédulas de la hoja `Integrantes`**: solo **2 de 11** la tienen, y las dos en
    **formatos distintos** (`42107382-2` con dígito de verificación y `43.868.949` con
