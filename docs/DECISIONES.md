@@ -183,6 +183,12 @@ al 16 de noviembre), con la lista de lo ya cerrado al final de ese mismo documen
   Katherine se queda en NULO**: en nulo Atlas no anticipa nada y su cuenta sale por el bruto, que es lo que
   contabilidad quiere ver. Marcarlo hoy haría que el sistema calculara una retención que no le corresponde
   calcular. (Además no tiene escritor en la app: hoy solo se podría poner por SQL.)
+- **2026-11-19 · Claude, con el argumento delante ·** El caso *"menor SIN representante"* **sale del
+  smoke**: desde hoy el consentimiento de un menor exige el representante con su tipo, así que no se puede
+  fabricar por el camino normal, y donde existe es en datos viejos (los 6 menores), que son pacientes
+  REALES y no se facturan en una prueba. El B4b queda en tres casos, y el del **tipo que falta** se
+  fabrica por el **pase presencial**, que es el camino que todavía captura el representante sin tipo: o
+  sea que la prueba usa el hueco real en vez de simularlo.
 - **2026-11-19 · Santiago, ajustado por Claude web ·** Lo de Katherine **no es urgente**: va antes de su
   primer PAGO, que es después del 30 de noviembre. Su cuenta muestra lo que le toca pagar **en bruto**, con
   un aviso del tipo *"Integrante agente de retención: al pagar puede retener; revisar con la contadora"*, y

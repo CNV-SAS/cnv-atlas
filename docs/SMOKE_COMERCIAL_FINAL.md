@@ -4,9 +4,9 @@
 el smoke, el checklist del arranque, los comandos en orden y lo que queda pendiente con su fecha. Lo de
 las ventas históricas, que va después, está en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.
 
-> **⚠ ANTES DE EMPEZAR EL SMOKE: aplicar la migración 0247.** Añade el tipo de documento del
-> representante legal, y sin ella el paso **B4b** no se puede hacer. El comando exacto está en
-> "Los comandos, en orden".
+> **La migración 0247 ya está aplicada y pusheada** (Santiago, 19 de noviembre: 248 = 248 en local y en
+> la nube). Añadió el tipo de documento del representante legal, y es la que hace posible el paso
+> **B4b**. El runbook con el que se aplicó se queda escrito en "Los comandos, en orden", como registro.
 
 ## ⚠ EL ARRANQUE ES EL VIERNES 20 DE NOVIEMBRE DE 2026, y no pasa de ese día
 
@@ -48,7 +48,7 @@ las ventas históricas, que va después, está en `docs/PLAN_VENTAS_HISTORICAS_X
 | 1 | **Un integrante de prueba en Comisión.** Sirve `Profesional Demo`, que no tiene modalidad vigente y por eso es Comisión (sin fila de modalidad = Comisión) | ya está |
 | 2 | **Un integrante de prueba en Distribución.** Sirven `Profesional demo 2` y `Profesional Prueba`: medido el 2026-11-18, **los dos tienen `distribucion` vigente**. **Las cuentas de smoke se quedan como están**: no hay que cambiarles nada | ya está |
 | 3 | **Un paciente de prueba** por cada uno, marcado como de prueba | /pacientes |
-| 3b | **Un paciente de prueba MENOR de edad** (fecha de nacimiento de hace ~10 años), para el paso B4b | /pacientes |
+| 3b | **DOS pacientes de prueba MENORES de edad** (fecha de nacimiento de hace ~10 años), para el B4b: uno se firma por el **camino remoto** (pide el tipo de documento del representante) y el otro por el **pase presencial** (no lo pide, y es el caso que tiene que quedar pendiente) | /pacientes |
 | 4 | **Producto con saldo** en la vitrina de cada uno | /faltantes, bloque de remesas |
 | 5 | **Las dos cuentas marcadas como de prueba AL FINAL**, no antes (ver la parte D) | /admin |
 
@@ -240,54 +240,60 @@ siguiente comprueba.
 es quien compra y quien paga, con **su tipo y número de documento** y **su correo**. **Nunca los datos del
 menor en un documento tributario.** Y nada de "consumidor final" por defecto.
 
-> **Antes de empezar:** la migración **0247** tiene que estar aplicada (añade el tipo de documento del
-> representante). Está en la lista de comandos.
+> **La 0247 ya está aplicada** (Santiago, 19 de noviembre: 248 = 248). Si este paso falla por una columna
+> que no existe, lo que falta es el push, no la migración.
 
-#### Paso 1 · Un menor de prueba SIN representante
+#### Por qué son TRES casos y no cuatro
 
-1. Crear un **paciente de prueba menor de edad** (fecha de nacimiento de hace unos 10 años), **sin**
-   consentimiento de representante legal.
-2. Venderle **1 MULTI-CELL BASE** en efectivo, como el B3.
-3. **Resultado esperado:**
-   - la venta **se registra, se paga y descuenta inventario** con normalidad;
-   - en **`/pagos?prueba=1`**, panel de facturación, aparece **rechazada** con el motivo
-     *"Paciente menor: falta el representante legal... Complétalo en la ficha del paciente y la venta
-     sale sola de este estado."*;
-   - **no sale ninguna factura en el sandbox**, y el contador de intentos **NO sube**.
-4. Abrir la **ficha de ese paciente**. Arriba de los botones de corrección tiene que salir un aviso:
-   *"Este paciente es menor de edad y no tiene representante legal registrado."* con la explicación de
-   que sus compras no se pueden facturar.
+El caso *"menor sin representante"* **ya no se puede fabricar por el camino normal**: desde hoy el
+consentimiento de un menor **exige** el representante con su tipo de documento, así que un menor nuevo no
+puede terminar la encuesta sin él. Ese caso existe solo en **datos viejos** (los 6 menores que firmaron
+antes), y esos son **pacientes reales**: no se facturan en un smoke.
 
-#### Paso 2 · Completar el representante en la ficha
+Lo que sí hay que probar es que el freno **existe** y que **se sale solo de él**, y para eso sirve el caso
+del tipo que falta, que además es el que va a seguir apareciendo de verdad (ver el paso 2).
 
-1. Firmarle el consentimiento **con representante legal** por el camino normal del intake (ahora el
-   formulario pide **tipo de documento** aparte del número: cédula, cédula de extranjería o pasaporte).
-2. Volver a la **ficha del paciente**. El bloque del representante ya aparece con sus datos y el botón
+#### Paso 1 · Menor con representante COMPLETO, y la factura sale a su nombre
+
+1. Crear un **paciente de prueba menor de edad** (fecha de nacimiento de hace unos 10 años) y firmarle el
+   consentimiento por el **camino remoto normal** (la encuesta). Ahora el formulario pide el **tipo** de
+   documento del representante aparte del número: cédula, cédula de extranjería o pasaporte.
+2. En la **ficha del paciente** tiene que aparecer el bloque del representante con sus datos y el botón
    **"Corregir el representante legal"**.
-3. **Resultado esperado:** si algún dato quedó incompleto, el formulario **se abre solo**, porque entonces
-   no hay dato bueno que proteger y lo que hay es una venta que no se puede facturar.
+3. Venderle **1 MULTI-CELL BASE** en efectivo, como el B3.
+4. **Resultado esperado:** la factura **se emite en el sandbox**, y en **Alegra** el cliente de esa factura
+   es **el representante**: su nombre, **su** tipo y número de documento, y **su** correo. **Ningún dato
+   del menor** aparece en el documento.
+5. **Cotejarlo en Alegra, no solo en Atlas.** Es el punto entero de la prueba: en Atlas la factura se ve
+   "emitida" igual en los dos casos, y lo que se está probando es **a nombre de quién salió**.
 
-#### Paso 3 · La factura sale sola, al representante
+#### Paso 2 · Menor con representante SIN TIPO: pendiente, y sale solo al completarlo
 
-1. Volver a /pagos y **reintentar** la factura de la venta del paso 1.
-2. **Resultado esperado:**
-   - **se emite en el sandbox de Alegra**;
-   - y en Alegra, el cliente de esa factura es **el representante legal**: su nombre, **su** tipo y número
-     de documento, y **su** correo;
-   - **ningún dato del menor** aparece en el documento.
-3. **Cotejarlo en Alegra**, no solo en Atlas. Es el punto entero de la prueba.
+**La forma más corta de dejarlo así es el PASE PRESENCIAL (el QR).** No es un truco para la prueba: es el
+camino que **todavía** captura el representante sin tipo de documento, porque la tabla
+`presencial_consent_sessions` no tiene esa columna (el remoto sí la pide). O sea que este paso
+prueba el caso real que va a seguir llegando mientras eso no se cierre.
 
-#### Paso 4 · El caso del tipo de documento que falta
+1. Crear un **segundo paciente de prueba menor** y firmarle el consentimiento por el **pase presencial**,
+   con los datos del representante (nombre, documento, parentesco y correo). **No pide el tipo.**
+2. Venderle **1 MULTI-CELL BASE** en efectivo.
+3. **Resultado esperado:** en **`/pagos?prueba=1`**, panel de facturación, la venta aparece
+   **rechazada** con un motivo que habla del **TIPO** de documento:
+   *"...al representante legal le falta el TIPO de documento (cédula, cédula de extranjería o
+   pasaporte). Alegra lo exige para emitir..."*. Y la venta **se registró, se pagó y descontó
+   inventario** con normalidad: lo que se frena es la factura, no la venta.
+   - **El contador de intentos NO sube.** El freno se decide antes de reclamar el intento, a propósito:
+     una venta que está esperando un dato no gasta sus tres oportunidades esperando.
+4. **En la ficha del paciente**, el bloque del representante **se abre solo** (no hay dato bueno que
+   proteger, y lo que hay es una venta que no se puede facturar). Elegir el tipo de documento y guardar.
+5. **Volver a /pagos y reintentar la factura.** **Resultado esperado: se emite, a nombre del
+   representante**, sin tocar nada más. Eso es lo que significa "sale sola de este estado".
 
-1. En la ficha, **corregir el representante** y dejar el tipo de documento sin elegir no se puede (el
-   formulario lo exige). Para ver este caso: un paciente cuyo representante venga de un
-   **pase presencial**, que todavía captura el documento **sin tipo**.
-2. **Resultado esperado:** la venta queda pendiente con un motivo **DISTINTO**:
-   *"...al representante legal le falta el TIPO de documento..."*. Se completa desde la ficha y sale sola.
-3. **Por qué dos mensajes distintos:** en el primer caso falta el representante entero; en este, solo un
-   campo. Decirle *"falta el representante"* a quien ya lo registró lo manda a buscar algo que está.
+> **Por qué el motivo es DISTINTO del de "falta el representante":** en un caso falta la persona entera y
+> alguien la puede completar; en este solo falta un campo. Decirle *"falta el representante"* a quien ya
+> lo registró lo manda a buscar algo que está.
 
-#### Paso 5 · El de control, y es el que de verdad importa
+#### Paso 3 · El adulto de control, y es el que de verdad importa
 
 1. Volver al paciente **adulto** del B2 y del B3 y facturar.
 2. **Resultado esperado: sale exactamente igual que siempre, a su propio nombre.** Si un adulto queda
@@ -302,9 +308,9 @@ menor en un documento tributario.** Y nada de "consumidor final" por defecto.
 > factura, a propósito: si se cacheara, el día que ese menor cumpla 18 su factura seguiría saliendo a
 > nombre del representante. Cuesta una llamada más a Alegra y es la única versión que no se queda vieja.
 
-**Candados:** `la-factura-de-un-menor.test.ts` (15 casos, con el del adulto y el de que ningún dato del
-menor viaja) y `la-factura-de-un-menor-db.test.ts` (el lector, con el borde de quien cumplió 18 **después**
-de la venta).
+**Candados:** `la-factura-de-un-menor.test.ts` (15 casos, con el del adulto y el de que ningún
+dato del menor viaja) y `la-factura-de-un-menor-db.test.ts` (el lector, con el borde de quien
+cumplió 18 **después** de la venta; sus 5 casos **ya corren**, la columna existe en local).
 
 ### B5 · La comisión
 
@@ -778,12 +784,17 @@ Durante la primera hora, y con el filtro del entorno de producción:
 **Todo esto se corre desde `C:\\Users\\sarro\\Proyectos\\cnv-atlas`, en PowerShell.** Los que dicen "editor
 SQL" no son comandos: se pegan en el editor SQL de Supabase, en el proyecto de **producción**.
 
-### ⚠ Antes del smoke · la migración 0247
+### ✓ La migración 0247, ya aplicada (se queda como registro)
 
-**Añade el tipo de documento del representante legal.** Sin ella el paso B4b no corre **y la facturación
-entera falla**: el lector de la venta hace un `select` explícito de esa columna.
+**HECHA el 19 de noviembre**, en las dos bases: 248 = 248. Añadió el tipo de documento del representante
+legal. Sin ella el paso B4b no corre **y la facturación entera falla**, porque el lector de la venta hace
+un `select` explícito de esa columna.
 
-**Es el runbook de `DEPLOY.md`, sin atajos: migrar ANTES de pushear.** Son DOS bases, y las dos.
+**El ensayo contra la nube dio 4 autorizaciones de representante vigentes SIN tipo de documento**, y esas
+cuatro están en la lista de pendientes: se completan desde la ficha de cada paciente, una por una.
+
+**Esto queda escrito porque es el runbook de `DEPLOY.md` y vale para la próxima: migrar ANTES de
+pushear, en las DOS bases.**
 
 1. **Ensayo contra la nube** (corre todo y revierte, no deja nada):
    ```
@@ -939,7 +950,8 @@ ventas históricas y la conciliación, que es largo: `docs/PLAN_VENTAS_HISTORICA
 |---|---|---|---|
 | 1 | El **smoke** completo, partes A, B, C y D, **incluido el B4b de pacientes menores** | Santiago | **hoy 19** |
 | 2 | El **video**, en sandbox | Santiago | **hoy 19** |
-| 3 | **Aplicar la 0247 y hacer push** del mecanismo de menores, antes del smoke | Santiago | el comando está arriba |
+| 3 | ~~Aplicar la 0247 y hacer push~~ | Santiago | **HECHO el 19**: 248 = 248 en las dos bases |
+| 3b | **Completar el TIPO de documento de los 4 representantes legales reales que lo tienen vacío.** Se hace desde la **ficha de cada paciente menor**, con el bloque "Corregir el representante legal". Hasta entonces, la compra de esos menores se registra y **no se factura**, con su motivo visible | Santiago, o el profesional que los atienda | **antes de venderles**. Son 4, medidos en el ensayo de la 0247. La columna nació el 19, así que **ninguna** autorización anterior la tiene: no es que se hayan llenado mal |
 | 4 | Confirmar **los ids de Alegra por su NOMBRE** con `leer-alegra.mjs` | Santiago, el día 20 | paso 7. **El script ahora aborta si se copian del sandbox** |
 
 **Ya hecho el 19 de noviembre:** **la facturación a menores completa** (la factura sale a nombre del
@@ -988,7 +1000,7 @@ vender; lo que no se puede es **pagar**.
 
 | | Qué |
 |---|---|
-| 1 | **El tipo de documento del representante en el PASE PRESENCIAL.** El camino remoto ya lo pide; el presencial sigue capturando el documento sin tipo, y esos representantes se completan desde la ficha. Cerrarlo es otra columna en `presencial_consent_sessions` y su formulario |
+| 1 | **El tipo de documento del representante en el PASE PRESENCIAL.** El camino remoto ya lo pide; el presencial sigue capturando el documento sin tipo, y esos representantes se completan desde la ficha. Cerrarlo es otra columna en `presencial_consent_sessions` y su formulario. **Mientras no se cierre, cada menor que entre por el pase presencial nace con el representante sin tipo**, o sea con su primera compra pendiente de facturar: es el caso del paso 2 del B4b |
 
 ### Sin fecha (backlog comercial)
 
