@@ -237,9 +237,13 @@ describe("signSurveyIntake", () => {
     expect(types).toContain("representante_legal");
     expect(types).toContain("asentimiento_menor");
     const rep = call.consents.find((c) => c.type === "representante_legal");
+    // EL TIPO VIAJA APARTE DEL NUMERO (0247). Esta expectativa decia document: "CC 123456", de cuando
+    // los dos iban pegados en un campo de texto. Y es la forma la que importa: el codigo NO parte un
+    // texto adivinando el tipo, porque el tipo es un dato tributario de una persona real.
     expect(rep?.legalRepresentative).toEqual({
       name: "Maria Perez",
-      document: "CC 123456",
+      document: "123456",
+      documentType: "CC",
       relationship: "madre",
       email: "madre@example.com",
     });
