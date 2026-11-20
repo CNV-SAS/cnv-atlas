@@ -1,6 +1,17 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 -- LA CARGA INICIAL DEL INVENTARIO AL ARRANQUE  ·  se corre EL DIA del arranque, no antes
 --
+-- ═══ LAS CIFRAS SON LAS CORREGIDAS DEL 2026-11-20 ═══
+--
+-- Santiago reviso el inventario a fondo con el chat contable. Tres cifras de lo entregado se movieron
+-- (Angela OMEGA 32 -> 38 y LUVIA 11 -> 13; Katherine OMEGA 24 -> 34), y con ellas la bodega esperada pasa
+-- de 345/344/271/153/33 a 345/328/271/153/31. LA PRUEBA DE QUE SON LAS BUENAS ES LUVIA: con 13 para
+-- Angela, la bodega da 31, que es EXACTAMENTE el conteo fisico del 19 de noviembre; antes daba 33 contra un
+-- conteo de 31.
+--
+-- Y lo que se carga sigue siendo LO RECIBIDO, no el saldo de hoy. El archivo corregido trae las dos cifras,
+-- pero cargar el saldo de hoy y despues subir el xlsx de ventas atrasadas restaria esas ventas DOS VECES.
+--
 -- ═══ LA REGLA QUE APLICA (Santiago, 2026-11-17) ═══
 --
 -- Textual suya: *"El inventario de cada integrante se carga con TODO LO QUE RECIBIO, segun la lista. Las
@@ -116,7 +127,7 @@ create temporary table _conteo(ubicacion text, producto text, lote text, contado
 insert into _conteo values
   -- Lo entregado, segun la lista de Santiago del 2026-11-17.
   ('Katherine Ruiz Velez',             'MULTI-CELL BASE',   '19826',    24),
-  ('Katherine Ruiz Velez',             'OMEGA COMPLEX',     '20226',    24),
+  ('Katherine Ruiz Velez',             'OMEGA COMPLEX',     '20226',    34),
   ('Katherine Ruiz Velez',             'CURCUMIN BIOACTIV', '20526',    24),
   ('Katherine Ruiz Velez',             'D3-K2 OSTEO',       '19726',    24),
   ('Zoraida Meneses',                  'MULTI-CELL BASE',   '19826',    15),
@@ -134,10 +145,10 @@ insert into _conteo values
   ('Valentina Ramírez Huertas',        'D3-K2 OSTEO',       '19726',    15),
   ('Valentina Ramírez Huertas',        'LUVIA',             '04197232', 10),
   ('Angela Marin Ramirez',             'MULTI-CELL BASE',   '19826',    31),
-  ('Angela Marin Ramirez',             'OMEGA COMPLEX',     '20226',    32),
+  ('Angela Marin Ramirez',             'OMEGA COMPLEX',     '20226',    38),
   ('Angela Marin Ramirez',             'CURCUMIN BIOACTIV', '20526',    31),
   ('Angela Marin Ramirez',             'D3-K2 OSTEO',       '19726',    23),
-  ('Angela Marin Ramirez',             'LUVIA',             '04197232', 11),
+  ('Angela Marin Ramirez',             'LUVIA',             '04197232', 13),
   ('Camilo Alberto Camargo Puerto ',   'MULTI-CELL BASE',   '19826',    15),
   ('Camilo Alberto Camargo Puerto ',   'OMEGA COMPLEX',     '20226',    15),
   ('Camilo Alberto Camargo Puerto ',   'CURCUMIN BIOACTIV', '20526',    15),
@@ -150,7 +161,7 @@ insert into _conteo values
   ('Frank Carrera',                    'LUVIA',             '04197232',  5),
   -- LOS DOS QUE FALTABAN EN LA LISTA (Santiago, 2026-11-18): 15 de cada uno de los cuatro, sin LUVIA. Son
   -- 120 unidades que estaban contadas en la bodega y no lo estaban: por eso la bodega esperada baja de
-  -- 375/374/301/183/33 a 345/344/271/153/33.
+  -- 375/374/301/183/33 a 345/344/271/153/33, y con la correccion del 20 a 345/328/271/153/31.
   ('Víctor Cano',                      'MULTI-CELL BASE',   '19826',    15),
   ('Víctor Cano',                      'OMEGA COMPLEX',     '20226',    15),
   ('Víctor Cano',                      'CURCUMIN BIOACTIV', '20526',    15),
@@ -208,13 +219,19 @@ insert into _conteo values
   ('Santi pruebas',                    'CURCUMIN BIOACTIV', '20526',     0),
   ('Santi pruebas',                    'D3-K2 OSTEO',       '19726',     0),
   ('Santi pruebas',                    'LUVIA',             '04197232',  0),
-  -- LA BODEGA: lo inicial menos lo entregado. 500/500/426/300/84 menos la lista, ya con Victor y
-  -- Maria Teresa (30 unidades mas de cada uno de los cuatro, ninguna de LUVIA).
+  -- LA BODEGA: lo inicial menos lo entregado, y nada mas. 500/500/426/300/84 menos la lista de arriba.
+  --
+  -- NO ES EL CONTEO FISICO, y la diferencia es un dato, no un error del script: el conteo del 19 de
+  -- noviembre dio 334 / 304 / 254 / 151 / 31. De la diferencia, casi todo esta explicado (los despachos
+  -- directos de bodega para las ventas de Angela y Maria Camila, las ventas de precio especial, las compras
+  -- de socios y familia, y las 3 unidades que vendio la Integrante inactiva), y lo que el xlsx de ventas
+  -- atrasadas va a restar. Quedan CUATRO unidades (1 MULTI, 1 OMEGA, 1 CURCUMIN, 1 D3-K2) que salieron sin
+  -- registro: eso lo cierra el conteo fisico de C5, no esta carga.
   ('Bodega central CNV',               'MULTI-CELL BASE',   '19826',   345),
-  ('Bodega central CNV',               'OMEGA COMPLEX',     '20226',   344),
+  ('Bodega central CNV',               'OMEGA COMPLEX',     '20226',   328),
   ('Bodega central CNV',               'CURCUMIN BIOACTIV', '20526',   271),
   ('Bodega central CNV',               'D3-K2 OSTEO',       '19726',   153),
-  ('Bodega central CNV',               'LUVIA',             '04197232', 33);
+  ('Bodega central CNV',               'LUVIA',             '04197232', 31);
 
 -- ── (2b) LA PRIMERA TANDA, que es contra lo que se comprueba el total ───────────────────────────
 --

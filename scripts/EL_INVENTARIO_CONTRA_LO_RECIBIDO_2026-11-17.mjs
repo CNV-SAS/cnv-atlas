@@ -51,13 +51,27 @@ const CATALOGO_ESPERADO = [
   { nombre: "LUVIA", referencia: "EXT-001", codigo: "6", pvp: 90000, lote: "04197232", vence: "2028-07-10", inicial: 84 },
 ];
 
-/** Lo entregado a cada Integrante. El nombre es el que usa Santiago; se cruza por coincidencia parcial. */
+/**
+ * Lo entregado a cada Integrante. El nombre es el que usa Santiago; se cruza por coincidencia parcial.
+ *
+ * CORREGIDO el 2026-11-20 contra el inventario que Santiago reviso con el chat contable (su seccion 3a,
+ * "Entregado por CNV", mas el cuadre de bodega de su seccion 2). Tres cifras se movieron, y las tres
+ * cuadran la bodega que antes no cuadraba:
+ *   · Angela OMEGA 32 -> 38 y LUVIA 11 -> 13
+ *   · Katherine OMEGA 24 -> 34
+ * La prueba de que son las correctas es LUVIA: con 13 para Angela, lo entregado da 53 y la bodega queda en
+ * 31, que es EXACTAMENTE el conteo fisico del 19 de noviembre. Antes daba 33 y el conteo decia 31.
+ *
+ * SIGUE SIENDO LO RECIBIDO, no el saldo de hoy: el xlsx de ventas atrasadas resta despues. El archivo trae
+ * las dos cifras (su 3a es lo recibido, su 3d es lo que deberia quedar hoy), y la que se carga es la
+ * primera, porque cargar la segunda y luego subir el xlsx restaria esas ventas DOS VECES.
+ */
 const ENTREGADO = {
-  Katherine: { "MULTI-CELL BASE": 24, "OMEGA COMPLEX": 24, "CURCUMIN BIOACTIV": 24, "D3-K2 OSTEO": 24 },
+  Katherine: { "MULTI-CELL BASE": 24, "OMEGA COMPLEX": 34, "CURCUMIN BIOACTIV": 24, "D3-K2 OSTEO": 24 },
   Zoraida: { "MULTI-CELL BASE": 15, "OMEGA COMPLEX": 14, "CURCUMIN BIOACTIV": 14, "D3-K2 OSTEO": 14 },
   "Maria Camila": { "MULTI-CELL BASE": 15, "OMEGA COMPLEX": 15, "CURCUMIN BIOACTIV": 15, "D3-K2 OSTEO": 15, LUVIA: 15 },
   Valentina: { "MULTI-CELL BASE": 15, "OMEGA COMPLEX": 15, "CURCUMIN BIOACTIV": 15, "D3-K2 OSTEO": 15, LUVIA: 10 },
-  Angela: { "MULTI-CELL BASE": 31, "OMEGA COMPLEX": 32, "CURCUMIN BIOACTIV": 31, "D3-K2 OSTEO": 23, LUVIA: 11 },
+  Angela: { "MULTI-CELL BASE": 31, "OMEGA COMPLEX": 38, "CURCUMIN BIOACTIV": 31, "D3-K2 OSTEO": 23, LUVIA: 13 },
   Camilo: { "MULTI-CELL BASE": 15, "OMEGA COMPLEX": 15, "CURCUMIN BIOACTIV": 15, "D3-K2 OSTEO": 15, LUVIA: 10 },
   Frank: { "MULTI-CELL BASE": 10, "OMEGA COMPLEX": 10, "CURCUMIN BIOACTIV": 10, "D3-K2 OSTEO": 10, LUVIA: 5 },
   // LOS DOS QUE FALTABAN EN LA LISTA (Santiago, 2026-11-18): 15 de cada uno de los cuatro, sin LUVIA. Son
@@ -303,9 +317,11 @@ else {
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 console.log("\n\n══ 8 · SIMULACION DE LA CARGA AL ARRANQUE (no escribe nada) ══\n");
 
-// Con Victor y Maria Teresa dentro: 30 unidades menos de cada uno de los cuatro, ninguna de LUVIA.
-// Verificado contra la lista linea por linea el 2026-11-18, y coincide con las cifras de Santiago.
-const BODEGA_OBJETIVO = { "MULTI-CELL BASE": 345, "OMEGA COMPLEX": 344, "CURCUMIN BIOACTIV": 271, "D3-K2 OSTEO": 153, LUVIA: 33 };
+// LO INICIAL MENOS LO ENTREGADO, y nada mas: 500/500/426/300/84 menos la lista de arriba. No es el conteo
+// fisico, y la diferencia es el dato: el conteo del 19 de noviembre dio 334/304/254/151/31, o sea CUATRO
+// unidades menos de las que explican las entregas, los despachos, las ventas de precio especial y las
+// compras de socios. Esas cuatro se cierran en el conteo fisico de C5, no aqui.
+const BODEGA_OBJETIVO = { "MULTI-CELL BASE": 345, "OMEGA COMPLEX": 328, "CURCUMIN BIOACTIV": 271, "D3-K2 OSTEO": 153, LUVIA: 31 };
 const loteDe = new Map();
 for (const c of CATALOGO_ESPERADO) {
   const prod = porNombre.get(c.nombre);
