@@ -135,3 +135,17 @@ docs/entregas/RESULTADOS_SMOKE_Y_PROXIMOS_PASOS.md
 # del hash es inventado).
 docs/entregas/**/ATLAS_*.html
 docs/entregas/gildardo-*/ATLAS_*.html
+
+# LA CARPETA /ventas: el xlsx de ventas atrasadas que Santiago deja para planear la carga.
+#
+# TRAE NOMBRES DE PACIENTES, y por eso la regla se escribe ANTES de abrir el archivo: el orden
+# importa, porque entre dejarlo caer y leerlo hay una ventana en la que un `git add` lo publica.
+# Es la tercera vez que esta leccion llega por el mismo sitio (los xlsx de entregas el 2026-10-02,
+# los HTML de Gildardo el 2026-10-22): un archivo con datos de una persona real aparece en una
+# carpeta nueva que ninguna regla cubria.
+#
+# ES POR CARPETA, no por extension, a proposito: aqui lo que llega es material de trabajo
+# administrativo (el xlsx, su version corregida, lo que Santiago exporte de Alegra para cotejar), y
+# cualquiera de esas cosas puede traer el nombre del paciente al lado de la factura. El PLAN de la
+# carga si se versiona, y vive en docs/PLAN_VENTAS_HISTORICAS_XLSX.md, sin un solo dato de paciente.
+/ventas/
