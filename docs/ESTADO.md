@@ -82,7 +82,7 @@ que enciende las cifras:
 
 | | Qué es | Valor | Cómo se expresa |
 |---|---|---|---|
-| **El corte de pruebas** | el día del arranque: lo registrado antes es de prueba | **2026-11-20** | la marca `cuenta_como_de_prueba` de cada venta, **no** una fecha |
+| **El corte de pruebas** | lo que no se puede facturar no cuenta | **no es una fecha** | la marca `cuenta_como_de_prueba` de cada venta. **Desde el 2026-11-20 el criterio para ponerla es `wompi_env = 'test'`, no la fecha**: el smoke y el arranque son el mismo día, así que una venta registrada hoy antes de cambiar las llaves nace sellada en sandbox y no se podrá facturar nunca |
 | **El inicio de la operación** | desde cuándo cuentan las cifras | **2026-08-08**, la primera venta real | `commercial_config.fecha_de_arranque` |
 
 **No hace falta migración:** los dos mecanismos ya estaban separados en el sistema (los lectores de cifras
@@ -95,6 +95,12 @@ Con la ventana empezando el 20 **no contaría ninguna**.
 **Falta ponerla**, y es una escritura en producción: la hace
 `scripts/ARRANQUE_A_PRODUCCION_2026-11-20.sql`, paso 2 del checklist. **No recorta el inventario ni lo que
 se le debe a alguien**, y las dos reglas tienen candado.
+
+**Ese script se corre DOS VECES el día del arranque** (2026-11-20): la primera **justo antes** de montar las
+variables de Vercel, y la segunda **después del redespliegue**, en `rollback`, donde su cuadro **(1b) tiene
+que salir VACÍO**. La segunda pasada cierra la ventana entre las dos cosas, y de paso comprueba que el
+redespliegue tomó las llaves nuevas: si trae una venta registrada DESPUÉS de redesplegar, lo que falló son
+las variables. Orden completo en `docs/SMOKE_COMERCIAL_FINAL.md`, "LOS COMANDOS, EN ORDEN".
 
 ## En curso
 

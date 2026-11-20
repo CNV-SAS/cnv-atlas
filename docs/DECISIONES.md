@@ -125,6 +125,19 @@ al 16 de noviembre), con la lista de lo ya cerrado al final de ese mismo documen
 - **2026-11-18 · Santiago ·** **Víctor Cano y María Teresa Aragón Herrera** faltaban en el inventario
   recibido: 15 unidades de cada uno de los cuatro nutracéuticos, sin LUVIA. La bodega esperada pasa a
   **345 / 344 / 271 / 153 / 33**, verificado contra la lista.
+- **2026-11-20 · Santiago ·** El criterio con el que el script del arranque marca lo de prueba **deja de
+  ser la fecha y pasa a ser el ambiente**: `wompi_env = 'test' and not cuenta_como_de_prueba`, sin fecha.
+  El smoke y el arranque son el mismo día, así que una venta que un profesional real registre antes del
+  cambio de llaves nace sellada en sandbox, **no se podrá facturar nunca** y aun así contaría como real.
+  Se descartó poner el corte en `now()` por tres razones: el script ahora se corre dos veces y `now()`
+  marcaría una venta real posterior al redespliegue; la fecha se vuelve una trampa en cuanto entren las 175
+  ventas atrasadas del xlsx, que son **reales** y anteriores al corte; y el ambiente sigue al hecho (un
+  link pagado después del cambio de llaves lo corrige el evento de Wompi), mientras el reloj no.
+- **2026-11-20 · Santiago ·** El script del arranque se corre **dos veces**: justo antes de las variables de
+  Vercel, y otra vez después del redespliegue en `rollback`, donde el cuadro (1b) tiene que salir **vacío**.
+  Cierra la ventana en la que una venta nace en sandbox, y de paso comprueba que el redespliegue tomó las
+  llaves. Si esa segunda pasada trae ventas, **el inventario también quedó movido** y la carga se vuelve a
+  correr: la marca de prueba no devuelve la unidad al estante.
 - **2026-11-20 · Santiago, con el chat contable ·** El inventario recibido queda **corregido**: tres
   cifras se mueven (el detalle por persona, solo en
   `scripts/CARGAR_EL_INVENTARIO_AL_ARRANQUE_2026-11-20.sql`) y la bodega esperada pasa a

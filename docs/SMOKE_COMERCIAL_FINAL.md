@@ -1,6 +1,6 @@
 # Smoke comercial final, y el checklist del arranque
 
-**Al 19 de noviembre de 2026, por la tarde.** Este es **el documento comercial que hay que abrir**: lleva
+**Al 20 de noviembre de 2026.** Este es **el documento comercial que hay que abrir**: lleva
 el smoke, el checklist del arranque, los comandos en orden y lo que queda pendiente con su fecha. Lo de
 las ventas históricas, que va después, está en `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`.
 
@@ -12,8 +12,7 @@ las ventas históricas, que va después, está en `docs/PLAN_VENTAS_HISTORICAS_X
 
 | Día | Qué |
 |---|---|
-| **miércoles 19 (hoy)** | **el smoke completo**, partes A, B, C y D · y el **video**, todavía en sandbox |
-| **viernes 20** | **el arranque**: la parte E de este documento, de arriba abajo |
+| **viernes 20 (HOY)** | **el smoke completo** (partes A, B, C y D) y el **video** en sandbox, **y a continuación el arranque** (parte E). **Los dos son hoy, en ese orden**, y por eso el orden importa más que nunca: cada venta del smoke nace sellada en sandbox |
 | **lunes 30** | el **xlsx de ventas atrasadas** cargado, antes del cierre del mes |
 | **5.º día hábil de diciembre** | la **conciliación de inventario** |
 
@@ -420,11 +419,12 @@ son dos bloques distintos de /comercial.
 
 | | Qué | Dónde |
 |---|---|---|
-| 1 | **Marcar a mano las ventas del smoke** (motivo de 10 caracteres) | /pagos, como admin |
-| 2 | **Marcar las dos cuentas de prueba**: `Profesional Prueba` y `Profesional demo 2`. Hoy cuentan como **reales** a pesar del nombre | /admin |
-| 3 | **Marcar los pacientes del smoke.** El paso 2 arrastra a los suyos hacia atrás, así que solo queda a mano el que tenga `es_real_confirmado`: hay **uno** en toda la base, y se arregla con **"Quitar la confirmación"** en su fila | /admin/integrantes/[id] |
+| 1 | **Marcar a mano las ventas del smoke** (motivo de 10 caracteres). **No hace falta cazarlas una por una:** el script del arranque las marca TODAS por su ambiente, y este paso es para las que se quieran dejar explicadas con su propio motivo | /pagos, como admin |
+| 2 | **Marcar las dos cuentas de prueba**: `Profesional Prueba` y `Profesional demo 2`. Hoy cuentan como **reales** a pesar del nombre. **ES LA MISMA ACCIÓN QUE EL PASO 4 DEL CHECKLIST, no dos**: se hace UNA VEZ, aquí o allá, y queda hecha en los dos sitios. Está escrita dos veces porque cierra el smoke y además es requisito del arranque | /admin |
+| 3 | **Marcar los pacientes del smoke.** La fila 2 arrastra a los suyos hacia atrás, así que solo queda a mano el que tenga `es_real_confirmado`: hay **uno** en toda la base, y se arregla con **"Quitar la confirmación"** en su fila | /admin/integrantes/[id] |
 | 4 | **Decidir ADAPTO-STRESS.** CNV no lo tiene: va a `no_disponible` desde /nutraceuticos, y sus **16 unidades** se llevan a cero por **conciliación**, no por baja (baja afirmaría que CNV destruyó 16 frascos que nunca tuvo) | /nutraceuticos |
-| 5 | **Correr el script de las llaves en ensayo** (sin `--commit`) y revisar la lista de ventas que la cola emitiría | `scripts/config-alegra-produccion.sql` |
+
+> **El script de las llaves de Alegra NO va aquí.** Estaba como fila 5 de esta tabla y se quitó: `scripts/config-alegra-produccion.sql` **solo se puede correr con los valores de PRODUCCIÓN**, que no existen hasta haberlos leído con `leer-alegra.mjs`, y el propio script **aborta** mientras quede un `<LLENAR>` o mientras un valor sea idéntico al del sandbox. **Su sitio es el paso 7 del checklist**, y ahí está completo, con su ensayo y su `--commit`.
 
 > **Lo que NO hay que limpiar a mano: el inventario del smoke.** Las remesas y las ventas del smoke sacaron
 > unidades REALES de la bodega central, y esas unidades siguen físicamente ahí. El **paso 3 del checklist**
@@ -457,6 +457,36 @@ cifras en cero.
 scripts/ARRANQUE_A_PRODUCCION_2026-11-20.sql
 ```
 
+> ### ⚠ CUÁNDO se corre: JUSTO ANTES del paso 5 (las variables de Vercel), y otra vez DESPUÉS del paso 8
+>
+> **Lleva el número 2 porque es el segundo que se documenta, no el segundo que se corre.** Los números de
+> paso son nombres (hay una docena de referencias a ellos en este documento); el orden real del día está en
+> **"LOS COMANDOS, EN ORDEN"**, y ahí este script va en el momento **3**, pegado a las variables.
+>
+> **Por qué lo más tarde posible:** su criterio son las ventas **selladas en sandbox**, y el smoke y el
+> arranque son el mismo día. Cada venta que se registre mientras el sistema siga con las llaves de prueba
+> nace así. Corriéndolo al final, atrapa todas; corriéndolo primero, deja fuera todo lo que pase después.
+>
+> **Y se corre DOS VECES:**
+>
+> | | Cuándo | Cómo | Qué tiene que salir |
+> |---|---|---|---|
+> | **1.ª pasada** | justo antes del paso 5 | simulación, leer **(1b)**, y luego `commit` | (1b) con las ventas del smoke, una por una |
+> | **2.ª pasada** | después del paso 8 (el redespliegue) | **solo `rollback`** | **(1b) VACÍO** |
+>
+> **Si la segunda pasada NO sale vacía**, hay que mirar la columna `registrada_a_las` de cada venta, porque
+> son dos problemas distintos:
+>
+> - **registrada ANTES del redespliegue** → alguien vendió en la ventana. Se corre otra vez con `commit` y
+>   queda resuelto.
+> - **registrada DESPUÉS del redespliegue** → **el redespliegue no tomó las llaves nuevas.** Lo que hay que
+>   arreglar son las variables, no la venta. Es el mismo síntoma que el aviso amarillo del paso 8, visto
+>   desde la base.
+>
+> **Conviene avisar a los Integrantes de que no registren ventas durante esa ventana** (entre la primera
+> pasada y el redespliegue). No es obligatorio, para eso está la segunda pasada, pero desmarcar una venta
+> hay que hacerlo a mano desde /pagos y es más barato no tener que hacerlo.
+
 #### ⚠ Son DOS fechas, no una
 
 Es la corrección de Santiago del 18 de noviembre, y evita que las ventas atrasadas se queden fuera de las
@@ -484,7 +514,8 @@ miran por su cuenta. Lo que estaba confundido era el **nombre** de la columna.
 **Se corre en el editor SQL de Supabase de producción, tal cual: termina en `rollback` y solo informa.** Se
 leen los cuadros, y solo entonces se cambia `rollback` por `commit`.
 
-1. **Lista** las ventas anteriores al corte que todavía cuentan como reales (cuadro **(1b) VA A MARCAR**).
+1. **Lista** las ventas **selladas en sandbox** (`wompi_env = 'test'`) que todavía cuentan como reales
+   (cuadro **(1b) VA A MARCAR**).
 2. **Las marca** como prueba, con motivo y una fila de auditoría por venta.
 3. **Anula** las cuentas de Distribución de cortes anteriores **no pagadas**.
 4. **Pone `fecha_de_arranque = 2026-08-08`**, que es lo que enciende las cifras.
@@ -494,9 +525,33 @@ leen los cuadros, y solo entonces se cambia `rollback` por `commit`.
 > y deshacerla es una nota crédito con su hueco en el consecutivo. Y marcarla **sí** se deshace: se le quita
 > la marca desde /pagos. La asimetría decide.
 
+#### ⚠ El criterio de marcar ya NO es la fecha: es el ambiente (2026-11-20)
+
+**Era "todo lo operado antes del corte". Ahora es `wompi_env = 'test' and not cuenta_como_de_prueba`, sin
+fecha.** El hueco que lo obligó: el smoke y el arranque son el mismo día, así que una venta que un
+profesional **real** registre hoy antes de cambiar las llaves nace sellada en sandbox, **nunca se podrá
+facturar** (el candado exige que el pago y la factura sean del mismo mundo) y aun así contaría como real en
+las cifras y en las comisiones. Con el criterio viejo el script no la veía, porque era del día 20.
+
+**Se consideró poner el corte en `now()`, el momento de ejecución, y se descartó por tres razones:**
+
+1. **El script se corre dos veces**, y con `now()` la segunda pasada marcaría como prueba una venta **real**
+   hecha justo después del redespliegue. Con el ambiente no puede: esa venta nace `produccion`.
+2. **La fecha se vuelve una trampa en cuanto entre el xlsx.** Las ventas atrasadas se registran con su fecha
+   de operación **histórica** (agosto a noviembre), o sea anterior al corte, y son **reales**. Volver a
+   correr el script después de cargarlas marcaría **las 175** de un golpe. El ambiente las deja en paz.
+3. **El ambiente sigue al hecho y el reloj no.** Un link creado en la ventana pero **pagado** después del
+   cambio de llaves lo corrige el evento de Wompi a `produccion`, y esa venta sí es real.
+
+**No hay agujero de nulos:** `wompi_env` es `not null` y solo vale `test` o `produccion`, y se sella también
+en efectivo y transferencia.
+
+**El corte sigue en el bloque (0)**, pero ya no decide a quién se marca: le quedan anular las cuentas de
+Distribución de cortes anteriores y ser la etiqueta del rastro de auditoría.
+
 **El de octubre NO se vuelve a correr:** su paso 4 volvería a poner `2026-10-15`.
 
-**Resultado esperado:** `fecha_de_arranque` queda en **2026-08-08**, `ventas_reales_antes_del_corte` en
+**Resultado esperado:** `fecha_de_arranque` queda en **2026-08-08**, `sandbox_que_cuentan_como_real` en
 **0**, y las dos cifras clínicas (consultas y consentimientos) **idénticas** antes y después. Dirección deja
 de decir *"Todavía no se ha arrancado"* y empieza a contar desde el 8 de agosto, que hasta que entre el
 xlsx mostrará muy poco: es correcto.
@@ -507,7 +562,15 @@ xlsx mostrará muy poco: es correcto.
 
 ### Paso 3 · Cargar el inventario real
 
-**Va DESPUÉS del script del arranque y al final del smoke, no antes.**
+**Va al final del smoke, cuando ya no se vaya a mover ni una unidad más en pruebas.** Desde el 2026-11-20
+va **ANTES** del script del arranque, no después: ese script se movió a pegarse a las variables de Vercel
+(ver su propio paso 2), y los dos son independientes porque **el del arranque no toca el inventario**.
+
+> **Lo único que los ata es la ventana.** Una venta registrada entre esta carga y el redespliegue
+> **descuenta inventario de verdad**, y marcarla como de prueba **no devuelve la unidad** (el libro de
+> movimientos es append-only). Así que **si la segunda pasada del script del arranque trae alguna venta**
+> (momento 7 de los comandos), hay que volver a correr este script: es idempotente, declara el saldo otra
+> vez y deja las vitrinas donde tienen que estar.
 
 ```
 scripts/CARGAR_EL_INVENTARIO_AL_ARRANQUE_2026-11-20.sql
@@ -584,6 +647,10 @@ ocho quedan idénticos. **El detalle por persona vive solo en el script de carga
 
 **Desde /admin, sin ningún script.** Es lo único de este bloque que entra antes del arranque.
 
+> **ES LA MISMA ACCIÓN QUE LA FILA 2 DE LA PARTE D, no una segunda.** Se hace **una vez**. Aparece en los
+> dos sitios porque es a la vez el cierre del smoke y un requisito del arranque; si ya se hizo al cerrar el
+> smoke, aquí solo hay que **comprobar** que las dos cuentas figuran como de prueba.
+
 | Cuenta | Hoy cuenta como | Qué hacer |
 |---|---|---|
 | `Profesional Prueba` | **REAL** (`is_test = false`) | marcarla como de prueba |
@@ -597,13 +664,20 @@ anulación formal con el estado **"anulada - prueba"** y su motivo, **sin borrar
 (C4) y **va después del arranque**, no antes.
 
 <details>
-<summary>Los cinco documentos que se anularán después del 20, y por qué necesitan una migración</summary>
+<summary>Los documentos que se anularán después del 20, y por qué necesitan una migración</summary>
 
 | Documento | De quién | Estado | Cifra |
 |---|---|---|---|
 | **1 cuenta de Distribución** `3d11d03b` | `Profesional demo 2` | **PAGADA** el 2026-10-12 | 171.360, corte 1→15 de octubre |
 | **3 liquidaciones** `03a94ec3`, `13e0f838`, `ff7b2b76` | `Profesional Demo` | **PAGADAS** | bases 522.252, 2.000 y 20.000 |
 | **1 liquidación** `57906fba` | `Profesional Prueba` | sin pagar | base 288.000 |
+| **+ la liquidación del B5 de HOY** | `Profesional Demo` | la que deje el smoke | **anotar su id al liquidar** |
+
+**Eran cinco y son SEIS**, porque el B5 del smoke de hoy liquida una comisión con `Profesional Demo`, y eso
+deja **un documento de prueba más**, nacido después de haberse contado los cinco. No es un caso nuevo: es
+exactamente el mismo que las tres liquidaciones pagadas de esa cuenta, y entra en la misma migración. **Al
+liquidar en el B5, anotar el id de la liquidación** para no tener que buscarla después. Y si el smoke
+liquida más de una, van todas.
 
 **Son dos obstáculos distintos:**
 
@@ -868,28 +942,17 @@ pushear, en las DOS bases.**
 
 ### El día del arranque (viernes 20), en este orden
 
-#### 1 · El corte y el inicio de la operación — *editor SQL de Supabase*
-
-1. Abrir `scripts/ARRANQUE_A_PRODUCCION_2026-11-20.sql` y **revisar el bloque (0)**: `corte` en
-   `'2026-11-20'`, `inicio_operacion` en `'2026-08-08'`, el correo.
-2. Pegarlo entero en el editor SQL de producción y darle a correr. **Termina en `rollback`: no guarda
-   nada.**
-3. **Leer:** el cuadro **(1b) VA A MARCAR** (las ventas que se van a marcar, una por una) y el **(5)
-   DESPUES** (`ventas_reales_antes_del_corte` en **0**, y `consultas` y `consentimientos` **idénticas** a
-   las del cuadro (1)).
-4. **Si cuadra:** cambiar la última línea `rollback;` por `commit;` y volver a correr.
-5. **Si NO cuadra:** no se cambia nada. Ya está en `rollback`, así que no hay nada que deshacer.
-
-#### 2 · Marcar como prueba las dos cuentas del smoke — *desde /admin, sin script*
+#### 1 · Marcar como prueba las dos cuentas del smoke — *desde /admin, sin script*
 
 `Profesional Prueba` y `Profesional demo 2`, que hoy cuentan como **reales**. Paso 4 del checklist.
 
-**La anulación formal de los cinco documentos va DESPUÉS del arranque** (contabilidad, C4): necesita una
-migración y queda en el pendiente "antes del 30".
+**La anulación formal de esos documentos va DESPUÉS del arranque** (contabilidad, C4): necesita una
+migración y queda en el pendiente "antes del 30". **Son seis**, contando la liquidación que deje el B5 de
+hoy.
 
-#### 3 · Cargar el inventario — *editor SQL de Supabase*
+#### 2 · Cargar el inventario — *editor SQL de Supabase*
 
-**Al final del smoke, después del script anterior.**
+**Al final del smoke, cuando ya no se vaya a mover ni una unidad más en pruebas.**
 
 1. Primero, leer cómo quedó todo tras el smoke:
    ```
@@ -905,6 +968,26 @@ migración y queda en el pendiente "antes del 30".
 
 > ⚠ **Después del `commit` no se deshace.** Un movimiento no se borra: se corrige con otro movimiento. El
 > paso 3 no es opcional.
+
+#### 3 · El corte y el inicio de la operación — *editor SQL de Supabase* · **JUSTO ANTES de las variables**
+
+**Va aquí, lo más tarde posible, y no al principio.** Su criterio son las ventas selladas en sandbox, y
+cada venta que se registre mientras el sistema siga con las llaves de prueba nace así: corriéndolo pegado a
+las variables, atrapa todas. (Es el paso 2 del checklist; ahí está el porqué completo.)
+
+1. Abrir `scripts/ARRANQUE_A_PRODUCCION_2026-11-20.sql` y **revisar el bloque (0)**: `corte` en
+   `'2026-11-20'`, `inicio_operacion` en `'2026-08-08'`, el correo.
+2. Pegarlo entero en el editor SQL de producción y darle a correr. **Termina en `rollback`: no guarda
+   nada.**
+3. **Leer:** el cuadro **(1b) VA A MARCAR** (las ventas selladas en sandbox que todavía cuentan, una por
+   una) y el **(5) DESPUES** (`sandbox_que_cuentan_como_real` en **0**, y `consultas` y `consentimientos`
+   **idénticas** a las del cuadro (1)).
+4. **Si cuadra:** cambiar la última línea `rollback;` por `commit;` y volver a correr.
+5. **Si NO cuadra:** no se cambia nada. Ya está en `rollback`, así que no hay nada que deshacer.
+
+> **Antes de empezar esta ventana, avisar a los Integrantes de que no registren ventas** hasta que el
+> redespliegue termine. Una venta registrada en la ventana se arregla (con la segunda pasada del momento
+> 7), pero desmarcarla si no hacía falta es trabajo a mano.
 
 #### 4 · Las variables en Vercel y el webhook
 
@@ -955,6 +1038,26 @@ Redesplegar producción desde Vercel, y abrir **/pagos**: **el aviso amarillo de
 haber DESAPARECIDO.** Si sigue ahí, la llave de Wompi no entró, y toda venta que se registre nacerá sellada
 como prueba para siempre.
 
+#### 7 · La SEGUNDA pasada del script del arranque — *editor SQL de Supabase*
+
+**Cierra la ventana.** Entre el momento 3 y el redespliegue puede haberse registrado una venta, y esa nació
+sellada en sandbox igual que las del smoke.
+
+1. Pegar otra vez `scripts/ARRANQUE_A_PRODUCCION_2026-11-20.sql` **tal cual, en `rollback`**.
+2. **El cuadro (1b) tiene que salir VACÍO.** Si sale vacío, se acabó: no se hace `commit` y no hay nada que
+   hacer.
+3. **Si NO sale vacío**, mirar la columna `registrada_a_las` de cada fila:
+   - **antes del redespliegue** → alguien vendió en la ventana: cambiar `rollback;` por `commit;` y correr.
+   - **después del redespliegue** → **las variables no entraron.** No se hace `commit`: se arregla Vercel y
+     se vuelve a redesplegar. Es el mismo problema que el aviso amarillo, visto desde la base.
+
+> **Esta pasada es gratis y detecta dos cosas con una sola consulta:** una venta en la ventana, y un
+> redespliegue que no tomó las llaves. Vale la pena aunque se esté seguro de las dos.
+
+> ⚠ **Y si trae alguna venta, el inventario también quedó movido.** Esa venta descontó unidades de verdad, y
+> la marca de prueba **no las devuelve**. Hay que volver a correr el **momento 2** (la carga del inventario),
+> que es idempotente: declara el saldo otra vez y deja cada vitrina donde tiene que estar.
+
 ### Si algo sale distinto
 
 | Qué pasó | Qué hacer |
@@ -962,6 +1065,7 @@ como prueba para siempre.
 | Un script en `rollback` sacó algo raro | **No pasó nada.** Se lee el cuadro, se corrige el bloque de parámetros y se vuelve a correr |
 | Ya se hizo `commit` y el inventario quedó mal | **No se borra.** Se corrige con otro movimiento de conciliación, con su motivo |
 | Las llaves entraron y algo falla | **Paso 11:** devolver las variables a sandbox y redesplegar. La base no se toca |
+| La **segunda pasada** del script del arranque trae ventas | mirar `registrada_a_las`: antes del redespliegue, `commit` y resuelto; después, **las variables no entraron** y lo que se arregla es Vercel |
 | Una factura salió mal **en el Alegra real** | **Nota crédito, a mano.** No hay botón, y no se deshace de otra forma |
 
 ---
@@ -975,8 +1079,8 @@ ventas históricas y la conciliación, que es largo: `docs/PLAN_VENTAS_HISTORICA
 
 | | Qué | Quién | Estado |
 |---|---|---|---|
-| 1 | El **smoke** completo, partes A, B, C y D, **incluido el B4b de pacientes menores** | Santiago | **hoy 19** |
-| 2 | El **video**, en sandbox | Santiago | **hoy 19** |
+| 1 | El **smoke** completo, partes A, B, C y D, **incluido el B4b de pacientes menores** | Santiago | **hoy 20**, antes del arranque |
+| 2 | El **video**, en sandbox | Santiago | **hoy 20**, antes del arranque |
 | 3 | ~~Aplicar la 0247 y hacer push~~ | Santiago | **HECHO el 19**: 248 = 248 en las dos bases |
 | 3b | **Completar el TIPO de documento de los 4 representantes legales reales que lo tienen vacío.** Se hace desde la **ficha de cada paciente menor**, con el bloque "Corregir el representante legal". Hasta entonces, la compra de esos menores se registra y **no se factura**, con su motivo visible | Santiago, o el profesional que los atienda | **antes de venderles**. Son 4, medidos en el ensayo de la 0247. La columna nació el 19, así que **ninguna** autorización anterior la tiene: no es que se hayan llenado mal |
 | 4 | Confirmar **los ids de Alegra por su NOMBRE** con `leer-alegra.mjs` | Santiago, el día 20 | paso 7. **El script ahora aborta si se copian del sandbox** |
@@ -994,7 +1098,7 @@ carga de inventario.
 
 | | Qué | Por qué tiene esa fecha |
 |---|---|---|
-| 1 | **Las anulaciones formales** de los cinco documentos de prueba, con estado "anulada - prueba" y motivo, sin borrar. **Necesita migración** | contabilidad (C4) lo dejó para después del arranque. El día 20 solo se marcan las dos cuentas como de prueba |
+| 1 | **Las anulaciones formales** de los documentos de prueba, con estado "anulada - prueba" y motivo, sin borrar. **Necesita migración.** **Son SEIS, no cinco**: los cinco contados el 18 más **la liquidación que deja el B5 del smoke de hoy** con `Profesional Demo` (anotar su id al liquidarla) | contabilidad (C4) lo dejó para después del arranque. El día 20 solo se marcan las dos cuentas como de prueba |
 | 2 | **Registrar (no calcular) la retención de Katherine** · va **antes de su primer PAGO**, que es después del 30 | contabilidad (C3) y Santiago, 2026-11-19. Ver abajo |
 | 3 | **La venta SIN PACIENTE** (`patient_id` nulo con motivo obligatorio) | sin ella las 3 ventas de Diana Marcela no entran, y el xlsx no se puede cargar completo |
 | 4 | **La venta de CNV sin Integrante** y el **descuento comercial** | la venta del 8 de agosto es las dos cosas a la vez |
