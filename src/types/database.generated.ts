@@ -593,6 +593,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"correcciones_de_fecha_de_nacimiento": {
+                  Row: {
+                    "anterior": string | null,"cambia_la_rama_del_consentimiento": boolean,"corregida_por": string,"created_at": string,"fuente": string,"id": string,"motivo": string,"nueva": string,"patient_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "anterior"?: string | null,"cambia_la_rama_del_consentimiento"?: boolean,"corregida_por": string,"created_at"?: string,"fuente": string,"id"?: string,"motivo": string,"nueva": string,"patient_id": string
+                  }
+                  Update: {
+                    "anterior"?: string | null,"cambia_la_rama_del_consentimiento"?: boolean,"corregida_por"?: string,"created_at"?: string,"fuente"?: string,"id"?: string,"motivo"?: string,"nueva"?: string,"patient_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "correcciones_de_fecha_de_nacimiento_corregida_por_fkey"
+      columns: ["corregida_por"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "correcciones_de_fecha_de_nacimiento_patient_id_fkey"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "pacientes_del_roster"
+      referencedColumns: ["patient_id"]
+    },{
+      foreignKeyName: "correcciones_de_fecha_de_nacimiento_patient_id_fkey"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "patients"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"delivery_cities": {
                   Row: {
                     "city": string,"created_at": string,"dane_code": string | null,"department": string,"id": string,"is_active": boolean
@@ -1803,14 +1835,14 @@ isOneToOne: false
                   ]
                 },"patient_consents": {
                   Row: {
-                    "consent_type": Database["public"]['Enums']["consent_type_enum"],"consent_version": string,"declaration_version": string | null,"declared_by": string | null,"document_hash": string,"id": string,"legal_representative_document": string | null,"legal_representative_email": string | null,"legal_representative_name": string | null,"legal_representative_relationship": string | null,"patient_id": string,"revoked_at": string | null,"signature_channel": string | null,"signed_at": string
+                    "consent_type": Database["public"]['Enums']["consent_type_enum"],"consent_version": string,"declaration_version": string | null,"declared_by": string | null,"document_hash": string,"id": string,"legal_representative_document": string | null,"legal_representative_document_type": Database["public"]['Enums']["document_type"] | null,"legal_representative_email": string | null,"legal_representative_name": string | null,"legal_representative_relationship": string | null,"patient_id": string,"revoked_at": string | null,"signature_channel": string | null,"signed_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "consent_type": Database["public"]['Enums']["consent_type_enum"],"consent_version": string,"declaration_version"?: string | null,"declared_by"?: string | null,"document_hash": string,"id"?: string,"legal_representative_document"?: string | null,"legal_representative_email"?: string | null,"legal_representative_name"?: string | null,"legal_representative_relationship"?: string | null,"patient_id": string,"revoked_at"?: string | null,"signature_channel"?: string | null,"signed_at"?: string
+                    "consent_type": Database["public"]['Enums']["consent_type_enum"],"consent_version": string,"declaration_version"?: string | null,"declared_by"?: string | null,"document_hash": string,"id"?: string,"legal_representative_document"?: string | null,"legal_representative_document_type"?: Database["public"]['Enums']["document_type"] | null,"legal_representative_email"?: string | null,"legal_representative_name"?: string | null,"legal_representative_relationship"?: string | null,"patient_id": string,"revoked_at"?: string | null,"signature_channel"?: string | null,"signed_at"?: string
                   }
                   Update: {
-                    "consent_type"?: Database["public"]['Enums']["consent_type_enum"],"consent_version"?: string,"declaration_version"?: string | null,"declared_by"?: string | null,"document_hash"?: string,"id"?: string,"legal_representative_document"?: string | null,"legal_representative_email"?: string | null,"legal_representative_name"?: string | null,"legal_representative_relationship"?: string | null,"patient_id"?: string,"revoked_at"?: string | null,"signature_channel"?: string | null,"signed_at"?: string
+                    "consent_type"?: Database["public"]['Enums']["consent_type_enum"],"consent_version"?: string,"declaration_version"?: string | null,"declared_by"?: string | null,"document_hash"?: string,"id"?: string,"legal_representative_document"?: string | null,"legal_representative_document_type"?: Database["public"]['Enums']["document_type"] | null,"legal_representative_email"?: string | null,"legal_representative_name"?: string | null,"legal_representative_relationship"?: string | null,"patient_id"?: string,"revoked_at"?: string | null,"signature_channel"?: string | null,"signed_at"?: string
                   }
                   Relationships: [
                     {
