@@ -40,8 +40,11 @@ mide con `scripts/las-que-no-se-reemitieron.mjs`.
 
 ## Base de datos
 
-**248 migraciones**, la última `drizzle/0247_el_tipo_de_documento_del_representante.sql` (el tipo de
-documento del representante legal, para poder facturar a su nombre). Forward-only:
+**248 migraciones aplicadas** (248 = 248 en local y en la nube, el 19 de noviembre), la última
+`drizzle/0247_el_tipo_de_documento_del_representante.sql` (el tipo de documento del representante legal,
+para poder facturar a su nombre). El ensayo contra la nube dio **4 autorizaciones de representante
+vigentes SIN tipo de documento**: se completan desde la ficha de cada paciente, una por una, y hasta
+entonces la compra de esos menores se registra y no se factura. Forward-only:
 una migración aplicada no se modifica nunca, se crea otra. El control es `scripts/check-migrations.mjs`.
 
 ## Interruptores de activación
@@ -116,6 +119,16 @@ ventas históricas y la conciliación de inventario) está en `docs/PLAN_VENTAS_
 **Las modalidades reales:** **Katherine** en **Distribución** desde el 2026-11-18 (persona jurídica, única
 en Distribución); **Zoraida** y los demás en **Comisión**.
 
+### El xlsx de ventas atrasadas, cotejado el 2026-11-19
+
+**El archivo llegó** (`docs/entregas/Ventas/`, fuera de git por la regla `docs/entregas/**/*.xlsx`):
+cuatro hojas, **175 filas de venta** del 2026-08-08 al 2026-11-18, con los 5 productos y 11 Integrantes.
+**La estructura sirve**; faltan cuatro datos (de dónde salió el producto, medio de pago, fecha de la
+factura y el documento del paciente) y hay dos cosas rotas (la columna de código quedó con formato de
+fecha, y 15 filas de tres días distintos comparten la misma celda de factura). El cotejo columna por
+columna, las nueve mejoras que se aplican a mano y las nueve preguntas están en
+`docs/PLAN_VENTAS_HISTORICAS_XLSX.md`, sección **2bis**. **Nada cargado.**
+
 ### Lo que fijó contabilidad el 2026-11-18 (C1 a C5)
 
 | | Qué |
@@ -147,6 +160,8 @@ factura siguiera saliendo a nombre del representante.
 | **Ángela** | Las correcciones de la cohorte: los grupos de **medición repetida**, **15 pacientes sin fecha de nacimiento** y **2 fechas que no cuadran** | `scripts/PARA_COORDINAR_CON_ANGELA_2026-11-07.mjs` arma el mensaje en `docs/entregas/dudas/` (gitignoreado) |
 | **Una profesional (`4d2a74e0`)** | Reportó un error en "Antrop. y BIS" y quedó en reintentar. Si vuelve a verlo, se corre el script de abajo con su identidad | `scripts/los-lectores-con-su-identidad.mjs` |
 | **La contadora** | **Confirmar** la UVT 2026 (52.374) y la base mínima de retefuente por compras (27 UVT = 1.414.098), y **los rangos de la tabla del art. 383**. La tarifa de comisión ya la fijó el 2026-11-18: natural 10 % (u 11 % sobre 3.300 UVT), jurídica 11 % | `docs/SMOKE_COMERCIAL_FINAL.md`, "La retención por integrante" |
+| **Santiago** | **Nueve preguntas sobre el xlsx de ventas atrasadas**, que el archivo no puede contestar solo: de dónde salió cada producto (vitrina o bodega), si las 147 filas sin número de factura están sin facturar o solo sin anotar, y si las 3 ventas de Diana Marcela tienen paciente con documento. **Sin la primera, el inventario se descuenta de la ubicación equivocada** | `docs/PLAN_VENTAS_HISTORICAS_XLSX.md`, sección 2bis(c) |
+| **Santiago** | **Completar el TIPO de documento de los 4 representantes legales** que lo tienen vacío, desde la ficha de cada paciente menor. Hasta entonces sus compras se registran y no se facturan | la ficha del paciente, bloque "Corregir el representante legal" |
 | **Santiago** | **Cargar en Atlas el RUT y los datos bancarios** de cada Integrante. Ya los entregaron; el Integrante los llena en **/perfil** y CNV verifica el RUT en **/verificaciones**. Sin los tres campos del RUT el sistema **no liquida** | `/perfil` y `/verificaciones` |
 
 ## Los próximos pasos

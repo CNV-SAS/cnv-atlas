@@ -75,6 +75,143 @@ pregunta por qué una venta de agosto tiene una factura de noviembre.
 
 ---
 
+## 2bis · EL ARCHIVO QUE LLEGÓ, COTEJADO CONTRA LO DE ARRIBA (2026-11-19)
+
+Santiago dejó el archivo el 19 de noviembre. **Está fuera de git** (lo cubre la regla
+`docs/entregas/**/*.xlsx`, verificado con `git check-ignore`), y aquí no se escribe ni un
+dato de paciente: solo cuentas.
+
+**Lo que trae:** cuatro hojas. `Ventas` con **175 filas** de venta (del **2026-08-08** al
+**2026-11-18**), `Catálogo` con los 5 productos, `Integrantes` con 11 personas más CNV, y
+`Desglose NUTRIS`, que es una hoja de cuentas a mano (celdas sueltas, sin tabla) y **no se carga**:
+sirve para cotejar totales, no para leerla con un programa.
+
+**La estructura es buena.** Una fila por producto, que es justo lo que pide el cargador, y el vendedor con
+`CNV` escrito tal cual cuando la venta no es de un Integrante. Lo que falta no es forma: son
+**cuatro datos que el archivo no tiene** y sin los que el inventario no se puede descontar bien.
+
+### a) Las columnas, una por una
+
+| Lo que pide el cargador | Qué hay en el archivo | Veredicto |
+|---|---|---|
+| `vendedor` | **`Integrante`** (175/175, y CNV viene como `CNV`) | **sirve tal cual** |
+| `fecha_de_la_venta` | **`Fecha de venta`** (175/175, fechas puras a 00:00 UTC) | **sirve tal cual.** Ver el aviso de abajo sobre la zona |
+| `producto` | **`Producto`** (175/175, los 5 nombres exactos del catálogo) | **sirve tal cual** |
+| `cantidad` | **`Cantidad`** (175/175) | **sirve**, menos una fila con `9,6` (ver abajo) |
+| `paciente_documento` | `Paciente` trae **el NOMBRE**, nunca el documento (175 nombres, 120 pacientes distintos) | **se mapea, y es el mapeo más caro.** Atlas resuelve identidad **por documento exacto**; con el nombre no puede, y adivinar es colgarle una compra a otra persona |
+| `descuento_valor` | `Descuento al paciente %` (un **porcentaje**: 0, 0,206, 0,4 y 0,434) | **se mapea**: pesos = PVP x cantidad x %. 8 filas con descuento |
+| `factura_alegra_numero` | `ID / Factura Alegra`, **28 de 175 llenas** | **se mapea, con dos problemas** (ver abajo) |
+| `lote` | **no está** | **se deduce**: hoy hay **un solo lote por producto**, así que sale del catálogo. Hay que escribirlo, no suponerlo |
+| `de_donde_salio` | **NO ESTÁ, y es la que más falta** | **falta.** Sin ella no se sabe si la unidad salió de la vitrina del Integrante o de la bodega, y el descuento de inventario va a la ubicación equivocada |
+| `medio_de_pago` | `Estado de pago` dice **si** se pagó (Pagado / Pendiente), no **cómo** | **falta** |
+| `factura_alegra_fecha` | **no está** | **falta.** Es la fecha que explica por qué una venta de agosto tiene factura de noviembre |
+| `recibo_numero` / `recibo_fecha` | **no están** | **faltan**, y son el respaldo del dinero |
+| `motivo_sin_paciente` | **no está** | **puede que no haga falta**: las 175 filas traen paciente, incluidas **las 3 de Diana Marcela** (ver la pregunta 1) |
+| `descuento_motivo` | **no está** | **falta** en las 8 filas con descuento |
+
+**Y hay diez columnas que el cargador NO necesita**, porque **Atlas las vuelve a calcular**: PVP unitario,
+Total con IVA, Base sin IVA, IVA, % Integrante, Ganancia Integrante, Proveedor tercero, Ingreso neto CNV,
+Cómo recibe la ganancia y Modalidad. **No se borran: se usan para COTEJAR.** Si lo que calcula Atlas no
+coincide con lo que dice el archivo, ahí hay algo que mirar antes de cargar, y eso vale más que la columna.
+
+> **⚠ LA ZONA HORARIA, que es el error fácil de este archivo.** Las 175 fechas están guardadas como
+> **fechas puras a 00:00 UTC** y son correctas (la primera venta es el **8 de agosto**, no el 7). Pero si
+> el cargador las convierte a la hora de Colombia, **retroceden un día** y las 175 ventas cambian de
+> fecha: la del 8 de agosto se vuelve del 7, y una venta del día 1 de un mes se va al mes anterior. **Es
+> un hazard ya documentado en el proyecto** (`edadEnFecha` en `src/lib/format/edad.ts`: una
+> fecha pura no se pasa por la zona). El cargador lee los tres primeros campos de la fecha y nada más.
+
+### b) Mejoras concretas, que Santiago puede aplicar a mano
+
+Van en orden de lo que más duele:
+
+1. **La columna `Código` de la hoja `Ventas` está rota: NO SE PUEDE LEER.** La celda tiene
+   formato de fecha (`yyyy/mm/dd`), así que los 174 códigos quedaron convertidos en **fechas
+   inválidas**. Un programa lee basura y una persona ve `#######` o una fecha absurda.
+   **El arreglo:** seleccionar la columna, formato **Texto**, y volver a escribir los códigos.
+   **Y de paso, el nombre engaña:** lo que hay ahí (`NUT-001`) es la **REFERENCIA**, no el código.
+   El código de Alegra es el número (`2` a `6`). Esa confusión ya costó tiempo el 17 de
+   noviembre. Mejor dos columnas: `Referencia` y `Código Alegra`.
+
+2. **Añadir la columna `De dónde salió`**, con dos valores y nada más: `vitrina` o
+   `bodega`. Es la que decide de qué ubicación se descuenta, y hoy **no hay forma de deducirla**:
+   la modalidad no sirve, porque Angela vendió por Comisión y por Distribución. Si se deja vacía, el
+   cargador tiene que frenar esa fila, no suponer.
+
+3. **Partir `FE6 / NC1` en dos columnas.** Hoy **15 filas comparten esa misma celda**, y son de
+   **tres días distintos** (3, 4 y 5 de septiembre): no pueden ser una sola factura. Y lleva una factura
+   **y una nota crédito** en el mismo texto, que son dos documentos con efectos opuestos. Dos columnas:
+   `Factura` y `Nota crédito`, cada fila con la suya.
+
+4. **Añadir `Fecha de la factura`, `Medio de pago`, `Recibo` y
+   `Fecha del recibo`.** Cuatro columnas. La fecha de la factura es la que explica el desfase; el
+   medio de pago es obligatorio en Atlas para registrar el cobro.
+
+5. **Poner el DOCUMENTO del paciente al lado del nombre.** Es lo que deja cargar las ventas sin
+   adivinar. Si para una fila no se sabe, se deja vacía: **una fila sin documento se carga a mano y se
+   revisa, y eso es mucho mejor que colgarla al paciente equivocado.** El encabezado ya lo pedía ("solo
+   nombre o ID") y quedó con el nombre completo; con el documento al lado, el nombre se puede incluso
+   borrar antes de pasar el archivo a nadie.
+
+6. **Revisar la fila con `Cantidad = 9,6`** (Katherine, OMEGA COMPLEX, Distribución, sin factura).
+   No existen 9,6 frascos. Deja su saldo en **14,4 unidades**, que no es un inventario.
+
+7. **Completar las cédulas de la hoja `Integrantes`**: solo **2 de 11** la tienen, y las dos en
+   **formatos distintos** (`42107382-2` con dígito de verificación y `43.868.949` con
+   puntos). Atlas cruza por documento exacto: conviene **un solo formato, sin puntos ni guiones**.
+
+8. **Borrar las cuatro columnas vacías del final** de la hoja `Ventas` (20 a 23). No estorban al
+   cargador, pero hacen que la tabla parezca tener 23 columnas y se preste a escribir en la equivocada.
+
+9. **La hoja `Integrantes` dice "Falta RUT" en cinco**, y el 19 de noviembre ya habían entregado
+   RUT y cuentas de cobro. Actualizarla, o el archivo contradice lo que ya se sabe.
+
+### c) Lo que el archivo NO puede resolver, y hay que preguntar
+
+1. **Las 3 ventas de Diana Marcela SÍ tienen paciente en el archivo**, y el plan de arriba (§6.1) asumía
+   que no. ¿Son pacientes de Atlas, con documento, o son nombres anotados sin ficha? **De la respuesta
+   depende si la pieza "venta SIN PACIENTE" hace falta para cargar el xlsx**, o si se puede dejar para
+   después.
+
+2. **147 de las 175 filas no tienen número de factura.** Concentradas así: Angela **101 de 119**, María
+   Teresa **19 de 19**, CNV **16 de 16**, María Camila **4 de 4**, Diana **3 de 3**, Katherine **1 de 1**,
+   Valentina **3 de 13**. Por mes: agosto 4 de 4, septiembre 39 de 60, octubre 74 de 81, noviembre 30 de
+   30. **¿Están sin facturar, o están facturadas y el número no se anotó?** No es lo mismo: lo primero es
+   un pendiente con la DIAN, lo segundo es solo transcripción. Y si están sin facturar, **¿se emiten al
+   cargarlas o se cargan ya emitidas?**
+
+3. **Ninguna fila dice de dónde salió el producto.** Sé que varias de Angela salieron de la bodega, pero
+   el archivo no lo dice en ninguna. **¿Cuáles?** Sin eso, el descuento de inventario va a la vitrina del
+   Integrante en todas, y ahí es donde aparece el saldo negativo del informe.
+
+4. **Angela está declarada en `Comisión` en la hoja Integrantes, y en la hoja Ventas tiene las
+   dos modalidades** (109 unidades por Comisión y 23 por Distribución). La observación de la hoja dice
+   "tiene 2 ventas por distribución", pero son **23 unidades, no 2**. ¿Cuál manda? En Atlas la modalidad
+   es **vigente con fecha**, así que si cambió, la fecha del cambio decide cada venta.
+
+5. **Angela tiene `% Retención comisión = 0,1`** (10 %) en la hoja Integrantes. Atlas calcula la
+   retención del Integrante con la tabla del art. 383 y la tarifa configurada. **¿El 10 % lo dijo la
+   contadora para ella en particular?** Si sí, es un dato por persona y no una tarifa general.
+
+6. **12 filas están `Pendiente` de pago** (CNV 8, María Camila 3, Angela 1). **El producto ya
+   salió**, así que el inventario se descuenta igual; lo que queda es una **cuenta por cobrar**.
+   ¿Se cargan como venta pagada con cartera, o como venta sin cobro registrado?
+
+7. **Cuatro Integrantes tienen producto y ninguna venta** en el archivo: Zoraida, Frank, Camilo y Víctor.
+   ¿Es que no han vendido, o es que sus ventas no están en el archivo? Lo primero no se arregla; lo
+   segundo cambia el inventario de cuatro vitrinas.
+
+8. **La hoja `Desglose NUTRIS` tiene totales a mano** que conviene cotejar contra lo que calcule
+   Atlas (menciona "Ingresos 12 ventas" de Valentina, y un "no me ha confirmado" de María Camila). ¿Es la
+   fuente de algo, o son cuentas de trabajo que se pueden descartar?
+
+9. **Tres columnas calculadas no tienen valor guardado**, solo la fórmula: `% Integrante` (16
+   filas), `Ganancia Integrante` (1) y `Proveedor tercero` (169). Si el archivo se exporta
+   a CSV **salen vacías**. No importa para cargar (Atlas las recalcula), pero sí importa si alguien las
+   usa para cuadrar a mano.
+
+---
+
 ## 3 · HOJA 2 · El conteo de la bodega central
 
 | Columna | Qué va |
